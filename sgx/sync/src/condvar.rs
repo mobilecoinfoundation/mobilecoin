@@ -4,14 +4,15 @@
 // modification, are permitted provided that the following conditions
 // are met:
 //
-//  * Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//  * Neither the name of Baidu, Inc., nor the names of its contributors may be
-//    used to endorse or promote products derived from this software without
-//    specific prior written permission.
+//  * Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+//  * Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in
+//    the documentation and/or other materials provided with the
+//    distribution.
+//  * Neither the name of Baidu, Inc., nor the names of its
+//    contributors may be used to endorse or promote products derived
+//    from this software without specific prior written permission.
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 // "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -26,16 +27,16 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //!
-//! The Intel(R) Software Guard Extensions SDK already supports mutex and
-//! conditional variable synchronization mechanisms by means of the following
-//! API and data types defined in the Types and Enumerations section. Some
-//! functions included in the trusted Thread Synchronization library may make
-//! calls outside the enclave (OCALLs). If you use any of the APIs below, you
-//! must first import the needed OCALL functions from sgx_tstdc.edl. Otherwise,
-//! you will get a linker error when the enclave is being built; see Calling
-//! Functions outside the Enclave for additional details. The table below
-//! illustrates the primitives that the Intel(R) SGX Thread Synchronization
-//! library supports, as well as the OCALLs that each API function needs.
+//! The Intel(R) Software Guard Extensions SDK already supports mutex and conditional
+//! variable synchronization mechanisms by means of the following APIand data types
+//! defined in the Types and Enumerations section. Some functions included in the
+//! trusted Thread Synchronization library may make calls outside the enclave (OCALLs).
+//! If you use any of the APIs below, you must first import the needed OCALL functions
+//! from sgx_tstdc.edl. Otherwise, you will get a linker error when the enclave is
+//! being built; see Calling Functions outside the Enclave for additional details.
+//! The table below illustrates the primitives that the Intel(R) SGX Thread
+//! Synchronization library supports, as well as the OCALLs that each API function needs.
+//!
 use super::{
     mutex::{self, SgxMutexGuard, SgxThreadMutex},
     poison::{LockResult, PoisonError},
@@ -116,23 +117,20 @@ unsafe impl Sync for SgxThreadCondvar {}
 
 impl SgxThreadCondvar {
     ///
-    /// The function initializes a trusted condition variable within the
-    /// enclave.
+    /// The function initializes a trusted condition variable within the enclave.
     ///
     /// # Description
     ///
-    /// When a thread creates a condition variable within an enclave, it simply
-    /// initializes the various fields of the object to indicate that the
-    /// condition variable is available. The results of using a condition
-    /// variable in a wait, signal or broadcast operation before it has been
-    /// fully initialized are undefined. To avoid race conditions in the
-    /// initialization of a condition variable, it is recommended statically
-    /// initializing the condition variable with the macro
-    /// SGX_THREAD_COND_INITIALIZER.
+    /// When a thread creates a condition variable within an enclave, it simply initializes the various
+    /// fields of the object to indicate that the condition variable is available. The results of using
+    /// a condition variable in a wait, signal or broadcast operation before it has been fully initialized
+    /// are undefined. To avoid race conditions in the initialization of a condition variable, it is
+    /// recommended statically initializing the condition variable with the macro SGX_THREAD_COND_INITIALIZER.
     ///
     /// # Requirements
     ///
     /// Library: libsgx_tstdc.a
+    ///
     pub const fn new() -> Self {
         SgxThreadCondvar {
             cond: UnsafeCell::new(mc_sgx_types::SGX_THREAD_COND_INITIALIZER),
@@ -144,27 +142,23 @@ impl SgxThreadCondvar {
     ///
     /// # Description
     ///
-    /// A condition variable is always used in conjunction with a mutex. To wait
-    /// on a condition variable, a thread first needs to acquire the
-    /// condition variable spin lock. After the spin lock is acquired, the
-    /// thread updates the condition variable waiting queue. To avoid the
-    /// lost wake-up signal problem, the condition variable spin lock is
-    /// released after the mutex. This order ensures the function atomically
-    /// releases the mutex and causes the calling thread to block on the
-    /// condition variable, with respect to other threads accessing the
-    /// mutex and the condition variable. After releasing the condition
-    /// variable spin lock, the thread makes an OCALL to get suspended. When
-    /// the thread is awakened, it acquires the condition variable
-    /// spin lock. The thread then searches the condition variable queue. If the
-    /// thread is in the queue, it means that the thread was already waiting
-    /// on the condition variable outside the enclave, and it has been
-    /// awakened unexpectedly. When this happens, the thread releases the
-    /// condition variable spin lock, makes an OCALL and simply goes back to
-    /// sleep. Otherwise, another thread has signaled or broadcasted
-    /// the condition variable and this thread may proceed. Before returning,
-    /// the thread releases the condition variable spin lock and acquires
-    /// the mutex, ensuring that upon returning from the function call the
-    /// thread still owns the mutex.
+    /// A condition variable is always used in conjunction with a mutex. To wait on a
+    /// condition variable, a thread first needs to acquire the condition variable spin
+    /// lock. After the spin lock is acquired, the thread updates the condition variable
+    /// waiting queue. To avoid the lost wake-up signal problem, the condition variable
+    /// spin lock is released after the mutex. This order ensures the function atomically
+    /// releases the mutex and causes the calling thread to block on the condition variable,
+    /// with respect to other threads accessing the mutex and the condition variable.
+    /// After releasing the condition variable spin lock, the thread makes an OCALL to
+    /// get suspended. When the thread is awakened, it acquires the condition variable
+    /// spin lock. The thread then searches the condition variable queue. If the thread
+    /// is in the queue, it means that the thread was already waiting on the condition
+    /// variable outside the enclave, and it has been awakened unexpectedly. When this
+    /// happens, the thread releases the condition variable spin lock, makes an OCALL
+    /// and simply goes back to sleep. Otherwise, another thread has signaled or broadcasted
+    /// the condition variable and this thread may proceed. Before returning, the thread
+    /// releases the condition variable spin lock and acquires the mutex, ensuring that
+    /// upon returning from the function call the thread still owns the mutex.
     ///
     /// # Requirements
     ///
@@ -174,19 +168,18 @@ impl SgxThreadCondvar {
     ///
     /// **mutex**
     ///
-    /// The trusted mutex object that will be unlocked when the thread is
-    /// blocked inthe condition variable
+    /// The trusted mutex object that will be unlocked when the thread is blocked inthe condition variable
     ///
     /// # Errors
     ///
     /// **EINVAL**
     ///
-    /// The trusted condition variable or mutex object is invalid or the mutex
-    /// is not locked.
+    /// The trusted condition variable or mutex object is invalid or the mutex is not locked.
     ///
     /// **EPERM**
     ///
     /// The trusted mutex is locked by another thread.
+    ///
     #[inline]
     pub unsafe fn wait(&self, mutex: &SgxThreadMutex) -> SysError {
         rsgx_thread_cond_wait(&mut *self.cond.get(), mutex.get_raw())
@@ -197,16 +190,14 @@ impl SgxThreadCondvar {
     ///
     /// # Description
     ///
-    /// To signal a condition variable, a thread starts acquiring the condition
-    /// variable spin-lock. Then it inspects the status of the condition
-    /// variable queue. If the queue is empty it means that there are not
-    /// any threads waiting on the condition variable. When that happens,
-    /// the thread releases the condition variable and returns. However, if
-    /// the queue is not empty, the thread removes the first thread waiting
-    /// in the queue. The thread then makes an OCALL to wake up the thread that
-    /// is suspended outside the enclave, but first the thread releases the
-    /// condition variable spin-lock. Upon returning from the OCALL, the
-    /// thread continues normal execution.
+    /// To signal a condition variable, a thread starts acquiring the condition variable
+    /// spin-lock. Then it inspects the status of the condition variable queue. If the
+    /// queue is empty it means that there are not any threads waiting on the condition
+    /// variable. When that happens, the thread releases the condition variable and returns.
+    /// However, if the queue is not empty, the thread removes the first thread waiting
+    /// in the queue. The thread then makes an OCALL to wake up the thread that is suspended
+    /// outside the enclave, but first the thread releases the condition variable spin-lock.
+    /// Upon returning from the OCALL, the thread continues normal execution.
     ///
     /// # Requirements
     ///
@@ -217,22 +208,21 @@ impl SgxThreadCondvar {
     /// **EINVAL**
     ///
     /// The trusted condition variable is invalid.
+    ///
     #[inline]
     pub unsafe fn signal(&self) -> SysError {
         rsgx_thread_cond_signal(&mut *self.cond.get())
     }
 
     ///
-    /// The function wakes all pending threads waiting on the condition
-    /// variable.
+    /// The function wakes all pending threads waiting on the condition variable.
     ///
     /// # Description
     ///
-    /// Broadcast and signal operations on a condition variable are analogous.
-    /// The only difference is that during a broadcast operation, the thread
-    /// removes all the threads waiting on the condition variable queue and
-    /// wakes up all the threads suspended outside the enclave in a single
-    /// OCALL.
+    /// Broadcast and signal operations on a condition variable are analogous. The
+    /// only difference is that during a broadcast operation, the thread removes all
+    /// the threads waiting on the condition variable queue and wakes up all the
+    /// threads suspended outside the enclave in a single OCALL.
     ///
     /// # Requirements
     ///
@@ -247,6 +237,7 @@ impl SgxThreadCondvar {
     /// **ENOMEM**
     ///
     /// Internal memory allocation failed.
+    ///
     #[inline]
     pub unsafe fn broadcast(&self) -> SysError {
         rsgx_thread_cond_broadcast(&mut *self.cond.get())
@@ -257,11 +248,10 @@ impl SgxThreadCondvar {
     ///
     /// # Description
     ///
-    /// The procedure first confirms that there are no threads waiting on the
-    /// condition variable before it is destroyed. The destroy operation
-    /// acquires the spin lock at the beginning of the operation to prevent
-    /// other threads from signaling to or waiting on the condition
-    /// variable.
+    /// The procedure first confirms that there are no threads waiting on the condition
+    /// variable before it is destroyed. The destroy operation acquires the spin lock at
+    /// the beginning of the operation to prevent other threads from signaling to or
+    /// waiting on the condition variable.
     ///
     /// # Requirements
     ///
@@ -276,6 +266,7 @@ impl SgxThreadCondvar {
     /// **EBUSY**
     ///
     /// The condition variable has pending threads waiting on it.
+    ///
     #[inline]
     pub unsafe fn destroy(&self) -> SysError {
         rsgx_thread_cond_destroy(&mut *self.cond.get())
@@ -304,6 +295,7 @@ impl SgxThreadCondvar {
 /// attempt to use multiple mutexes on the same condition variable will result
 /// in a runtime panic. If this is not desired, then the unsafe primitives in
 /// `sys` do not have this restriction but may result in undefined behavior.
+///
 pub struct SgxCondvar {
     inner: Box<SgxThreadCondvar>,
     mutex: AtomicUsize,
@@ -311,8 +303,8 @@ pub struct SgxCondvar {
 
 impl SgxCondvar {
     ///
-    /// Creates a new condition variable which is ready to be waited on and
-    /// notified.
+    /// Creates a new condition variable which is ready to be waited on and notified.
+    ///
     pub fn new() -> Self {
         SgxCondvar {
             inner: Box::new(SgxThreadCondvar::new()),
@@ -376,6 +368,7 @@ impl SgxCondvar {
     /// This function will return an error if the mutex being waited on is
     /// poisoned when this thread re-acquires the lock. For more information,
     /// see information about [poisoning] on the [`Mutex`] type.
+    ///
     pub fn wait_until<'a, T, F>(
         &self,
         mut guard: SgxMutexGuard<'a, T>,
@@ -393,8 +386,8 @@ impl SgxCondvar {
     /// Wakes up one blocked thread on this condvar.
     ///
     /// If there is a blocked thread on this condition variable, then it will
-    /// be woken up from its call to [`wait`]. Calls to `signal` are not
-    /// buffered in any way.
+    /// be woken up from its call to [`wait`]. Calls to `signal` are not buffered
+    /// in any way.
     ///
     /// To wake up all threads, see [`broadcast`].
     pub fn signal(&self) {
