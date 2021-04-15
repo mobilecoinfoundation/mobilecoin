@@ -1063,12 +1063,12 @@ mod test {
         {
             let mut utxos = generate_utxos(6);
 
-            utxos[0].value = 1 * MILLIMOB_TO_PICOMOB;
-            utxos[1].value = 1 * MILLIMOB_TO_PICOMOB;
-            utxos[2].value = 1 * MILLIMOB_TO_PICOMOB;
-            utxos[3].value = 1 * MILLIMOB_TO_PICOMOB;
-            utxos[4].value = 2000 * MILLIMOB_TO_PICOMOB;
-            utxos[5].value = 1 * MILLIMOB_TO_PICOMOB;
+            utxos[0].value = MINIMUM_FEE / 10;
+            utxos[1].value = MINIMUM_FEE / 10;
+            utxos[2].value = MINIMUM_FEE / 10;
+            utxos[3].value = MINIMUM_FEE / 10;
+            utxos[4].value = 200 * MINIMUM_FEE;
+            utxos[5].value = MINIMUM_FEE / 10;
 
             assert!(
                 utxos[0].value + utxos[1].value + utxos[2].value + utxos[3].value + utxos[5].value
@@ -1102,9 +1102,9 @@ mod test {
             let mut utxos = generate_utxos(4);
 
             utxos[0].value = MINIMUM_FEE;
-            utxos[1].value = 2000 * MILLIMOB_TO_PICOMOB;
-            utxos[2].value = 1 * MILLIMOB_TO_PICOMOB;
-            utxos[3].value = 2 * MILLIMOB_TO_PICOMOB;
+            utxos[1].value = 208 * MINIMUM_FEE;
+            utxos[2].value = MINIMUM_FEE / 10;
+            utxos[3].value = MINIMUM_FEE / 5;
 
             let (selected_utxos, fee) =
                 TransactionsManager::<
