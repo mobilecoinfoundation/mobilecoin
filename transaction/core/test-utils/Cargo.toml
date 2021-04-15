@@ -5,7 +5,7 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
-rand = "0.7"
+rand = "0.8"
 tempdir = "0.3"
 
 # MobileCoin dependencies

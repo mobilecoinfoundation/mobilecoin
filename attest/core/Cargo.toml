@@ -56,8 +56,8 @@ mc-util-serial = { path = "../../util/serial" }
 bincode = "1.3"
 hex = "0.4"
 pem = "0.8"
-rand = "0.7"
-rand_hc = "0.2"
+rand = "0.8"
+rand_hc = "0.3"
 
 [build-dependencies]
 mc-sgx-build =  { path = "../../sgx/build" }
@@ -66,8 +66,8 @@ cargo-emit = "0.1"
 chrono = "0.4"
 hex = "0.4"
 lazy_static = "1.4"
-rand = "0.7"
-rand_hc = "0.2"
+rand = "0.8"
+rand_hc = "0.3"
 
 # We use mbedtls to generate certificates for simulation mode
 mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3", default-features = false }

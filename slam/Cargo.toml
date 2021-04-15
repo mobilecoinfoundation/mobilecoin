@@ -24,7 +24,7 @@ mc-util-uri = { path = "../util/uri" }
 crossbeam-channel = "0.5"
 grpcio = "0.6.0"
 lazy_static = "1.4"
-rand = "0.7"
+rand = "0.8"
 structopt = "0.3"
 tempdir = "0.3"
 

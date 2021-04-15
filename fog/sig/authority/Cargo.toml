@@ -13,5 +13,5 @@ signature = { version = "1.2.2", default-features = false, features = ["digest-p
 [dev-dependencies]
 mc-util-from-random = { path = "../../../util/from-random" }
 
-rand_core = "0.5"
-rand_hc = "0.2"
+rand_core = "0.6"
+rand_hc = "0.3"
