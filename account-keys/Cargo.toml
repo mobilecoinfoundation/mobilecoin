@@ -32,7 +32,7 @@ blake2 = { version = "0.9.0", default-features = false }
 
 [dev-dependencies]
 criterion = "0.3"
-datatest = "0.6"
+datatest = "0.6.4"
 rand = "0.7"
 rand_hc = "0.2"
 tempdir = "0.3"
