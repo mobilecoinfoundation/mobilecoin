@@ -8,12 +8,7 @@ use crate::{read_keyfile, read_pubfile, write_keyfile, write_pubfile};
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use rand::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;
-use std::{
-    cmp::Ordering,
-    ffi::OsStr,
-    fs,
-    path::{Path, PathBuf},
-};
+use std::{cmp::Ordering, ffi::OsStr, fs, path::Path};
 
 pub const DEFAULT_SEED: [u8; 32] = [1; 32];
 
@@ -78,7 +73,7 @@ pub fn read_default_pubfiles<P: AsRef<Path>>(
             entries.push(filename);
         }
     }
-    entries.sort_by(compare_keyfile_names);
+    entries.sort_by(|a, b| compare_keyfile_names(a, b));
     let result: Vec<PublicAddress> = entries
         .iter()
         .map(|f| read_pubfile(f).expect("Could not read pubfile"))
@@ -97,7 +92,7 @@ pub fn read_default_root_entropies<P: AsRef<Path>>(
             entries.push(filename);
         }
     }
-    entries.sort_by(compare_keyfile_names);
+    entries.sort_by(|a, b| compare_keyfile_names(a, b));
     let result: Vec<RootIdentity> = entries
         .iter()
         .map(|f| read_keyfile(f).expect("Could not read keyfile"))
@@ -111,7 +106,7 @@ pub fn read_default_root_entropies<P: AsRef<Path>>(
 // The implementation is, first sort by length, and then if there's a tie,
 // sort lexicographically. This makes keyfile_name(a) < keyfile_name(b) iff a <
 // b
-fn compare_keyfile_names(a: &PathBuf, b: &PathBuf) -> Ordering {
+fn compare_keyfile_names(a: &Path, b: &Path) -> Ordering {
     let a = a.as_os_str();
     let b = b.as_os_str();
     a.len().cmp(&b.len()).then_with(|| a.cmp(b))
@@ -120,7 +115,7 @@ fn compare_keyfile_names(a: &PathBuf, b: &PathBuf) -> Ordering {
 #[cfg(test)]
 mod testing {
     use super::*;
-    use std::{collections::HashSet, iter::FromIterator};
+    use std::{collections::HashSet, iter::FromIterator, path::PathBuf};
     use tempdir::TempDir;
 
     #[test]
@@ -134,7 +129,7 @@ mod testing {
             PathBuf::from(keyfile_name(100)).with_extension("json"),
         ];
         let mut entries2 = entries.clone();
-        entries2.sort_by(compare_keyfile_names);
+        entries2.sort_by(|a, b| compare_keyfile_names(a, b));
         assert_eq!(entries, entries2);
     }
 

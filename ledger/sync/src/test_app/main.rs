@@ -67,7 +67,7 @@ fn main() {
     if false {
         // let mut ledger = LedgerDB::open(format!("../../target/sample_data/{}/ledger",
         // NETWORK)).expect("Failed opening local LedgerDB");
-        let mut ledger = LedgerDB::open(PathBuf::from("../../target/sample_data/ledger"))
+        let mut ledger = LedgerDB::open(&PathBuf::from("../../target/sample_data/ledger"))
             .expect("Failed opening local LedgerDB");
         _make_ledger_long(&mut ledger);
         return;
@@ -79,7 +79,7 @@ fn main() {
     )
     .expect("failed copying ledger");
 
-    let ledger = LedgerDB::open(ledger_path).expect("Failed opening local LedgerDB");
+    let ledger = LedgerDB::open(&ledger_path).expect("Failed opening local LedgerDB");
     log::info!(
         logger,
         "num_blocks = {}, num_txos = {}",

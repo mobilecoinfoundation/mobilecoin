@@ -14,7 +14,7 @@ use mc_transaction_core::{
 use mc_util_from_random::FromRandom;
 use rand::{RngCore, SeedableRng};
 use rand_hc::Hc128Rng as FixedRng;
-use std::{path::PathBuf, vec::Vec};
+use std::{path::Path, vec::Vec};
 
 /// Deterministically populates a testnet ledger.
 ///
@@ -33,7 +33,7 @@ use std::{path::PathBuf, vec::Vec};
 /// This will panic if it attempts to distribute the total value of mobilecoin
 /// into fewer than 16 outputs.
 pub fn bootstrap_ledger(
-    path: &PathBuf,
+    path: &Path,
     recipients: &[PublicAddress],
     outputs_per_recipient_per_block: usize,
     num_blocks: usize,
@@ -43,9 +43,9 @@ pub fn bootstrap_ledger(
     logger: Logger,
 ) {
     // Create the DB
-    std::fs::create_dir_all(path.clone()).expect("Could not create ledger dir");
-    LedgerDB::create(path.clone()).expect("Could not create ledger_db");
-    let mut db = LedgerDB::open(path.clone()).expect("Could not open ledger_db");
+    std::fs::create_dir_all(path).expect("Could not create ledger dir");
+    LedgerDB::create(path).expect("Could not create ledger_db");
+    let mut db = LedgerDB::open(path).expect("Could not open ledger_db");
 
     let num_outputs: u64 = (recipients.len() * outputs_per_recipient_per_block * num_blocks) as u64;
     assert!(num_outputs >= 16);
