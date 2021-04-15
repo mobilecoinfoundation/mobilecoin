@@ -174,7 +174,7 @@ mod tests {
     use super::*;
     use mc_consensus_scp::{core_types::Ballot, msg::*};
     use mc_peers_test_utils::test_node_id;
-    use std::collections::BTreeSet;
+    use std::{collections::BTreeSet, iter::FromIterator};
 
     #[test]
     fn test_new() {
