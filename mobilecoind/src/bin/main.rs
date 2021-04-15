@@ -20,7 +20,7 @@ use structopt::StructOpt;
 ///
 /// This should be updated to whatever version has been deployed to MAINNET when
 /// this release is made.
-const MINIMUM_CONSENSUS_SVN: u16 = 0;
+const MINIMUM_CONSENSUS_SVN: u16 = 1;
 
 fn main() {
     let config = Config::from_args();
