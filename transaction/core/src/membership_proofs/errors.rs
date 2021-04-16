@@ -32,9 +32,6 @@ pub enum Error {
 
     /// Numeric limits exceeded
     NumericLimitsExceeded,
-
-    /// Precondition failed
-    PreconditionFailed,
 }
 
 impl From<mc_util_serial::encode::Error> for Error {
