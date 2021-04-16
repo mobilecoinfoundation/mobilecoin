@@ -8,7 +8,7 @@ use crate::{
     domain_separators::{
         TXOUT_MERKLE_LEAF_DOMAIN_TAG, TXOUT_MERKLE_NIL_DOMAIN_TAG, TXOUT_MERKLE_NODE_DOMAIN_TAG,
     },
-    membership_proofs::errors::Error,
+    membership_proofs::errors::{Error, RangesNotAdjacentError},
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash, TxOutMembershipProof},
 };
 use alloc::vec::Vec;
@@ -80,7 +80,7 @@ fn hash_nil() -> [u8; 32] {
 pub fn compose_adjacent_membership_elements(
     a: &TxOutMembershipElement,
     b: &TxOutMembershipElement,
-) -> Result<TxOutMembershipElement, Error> {
+) -> Result<TxOutMembershipElement, RangesNotAdjacentError> {
     // a is to the left if a.to matches b.from
     // a is to the right if a.from matches b.to
     // Because these are inclusive [,] ranges and not half-open ranges [,)
@@ -95,7 +95,7 @@ pub fn compose_adjacent_membership_elements(
     // this test, then one of the ranges must be reversed, contrary to the
     // precondition.
     if !bool::from(a_is_left ^ b_is_left) {
-        return Err(Error::PreconditionFailed);
+        return Err(RangesNotAdjacentError);
     }
 
     // Initialize the result as if a is the left and b is right,

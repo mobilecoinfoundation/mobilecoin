@@ -32,9 +32,6 @@ pub enum Error {
 
     /// Numeric limits exceeded
     NumericLimitsExceeded,
-
-    /// Precondition failed
-    PreconditionFailed,
 }
 
 impl From<mc_util_serial::encode::Error> for Error {
@@ -48,3 +45,8 @@ impl From<membership_proofs::RangeError> for Error {
         Error::RangeError(e)
     }
 }
+
+/// Error type for `compose_adjacent_membership_elements`, returned when the
+/// ranges passed to the function are not adjacent, which implies that the
+/// merkle proof was badly structured.
+pub struct RangesNotAdjacentError;
