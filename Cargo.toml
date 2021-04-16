@@ -166,3 +166,6 @@ ed25519-dalek = { git = "https://github.com/eranrund/ed25519-dalek.git", rev = "
 
 # Bump curve25519-dalek version to 4.0.0-pre0
 x25519-dalek = { git = "https://github.com/eranrund/x25519-dalek.git", rev = "57c04e5c5aca3551c015167d8176393fbe76dc65" }
+
+# Overridden since we need a commit that uprevs a bunch of dependencies.
+schnorrkel = { git = "https://github.com/eranrund/schnorrkel", rev = "fa27d0ed32d251a27399a23d3ef69611acb14d56" }
