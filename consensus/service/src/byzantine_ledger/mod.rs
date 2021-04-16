@@ -156,7 +156,7 @@ impl ByzantineLedger {
                         if !worker.tick() {
                             break;
                         }
-                        thread::sleep(Duration::from_millis(10 as u64));
+                        thread::sleep(Duration::from_millis(10));
                     })
                     .expect("failed spawning ByzantineLedger"),
             )

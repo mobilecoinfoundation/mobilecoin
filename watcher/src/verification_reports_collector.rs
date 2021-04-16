@@ -88,9 +88,9 @@ impl NodeClient for ConsensusNodeClient {
             )
         })?;
 
-        Ok(client
+        client
             .attest()
-            .map_err(|err| format!("Failed attesting {}: {}", node_url, err))?)
+            .map_err(|err| format!("Failed attesting {}: {}", node_url, err))
     }
 
     /// Get the block signer key out of a VerificationReport

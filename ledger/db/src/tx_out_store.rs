@@ -115,7 +115,7 @@ impl TxOutStore {
         db_transaction.put(
             self.counts,
             &NUM_TX_OUTS_KEY,
-            &u64_to_key_bytes(num_tx_outs + 1 as u64),
+            &u64_to_key_bytes(num_tx_outs + 1_u64),
             WriteFlags::empty(),
         )?;
 

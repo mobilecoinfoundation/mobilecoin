@@ -113,7 +113,7 @@ impl ReqwestTransactionsFetcher {
             // All source_urls must end with a '/'
             .map(|mut url| {
                 if !url.ends_with('/') {
-                    url.push_str("/");
+                    url.push('/');
                 }
 
                 url
@@ -157,9 +157,9 @@ impl ReqwestTransactionsFetcher {
     ) -> Result<Vec<BlockData>, ReqwestTransactionsFetcherError> {
         let archive_blocks: blockchain::ArchiveBlocks = self.fetch_protobuf_object(url)?;
 
-        Ok(Vec::<BlockData>::try_from(&archive_blocks).map_err(|err| {
+        Vec::<BlockData>::try_from(&archive_blocks).map_err(|err| {
             ReqwestTransactionsFetcherError::InvalidBlockReceived(url.to_string(), err.to_string())
-        })?)
+        })
     }
 
     pub fn get_origin_block_and_transactions(
