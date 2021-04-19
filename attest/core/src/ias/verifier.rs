@@ -772,6 +772,12 @@ impl From<Signature> for MrSignerVerifier {
     }
 }
 
+impl From<&Signature> for MrSignerVerifier {
+    fn from(src: &Signature) -> Self {
+        Self::new(src.mrsigner().into(), src.product_id(), src.version())
+    }
+}
+
 impl Verify<VerificationReportData> for MrSignerVerifier {
     fn verify(&self, data: &VerificationReportData) -> bool {
         if let Ok(report_body) = data.quote.report_body() {
