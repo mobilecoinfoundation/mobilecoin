@@ -156,7 +156,6 @@ cpuid-bool = { git = "https://github.com/eranrund/RustCrypto-utils", rev = "74f8
 aes-gcm = { git = "https://github.com/mobilecoinofficial/AEADs", rev = "d1a8517d3dd867ed9c5794002add67992a42f6aa" }
 
 # See https://github.com/commure/datatest/pull/30
-# TODO fork to our org
 datatest = { git = "https://github.com/cormacrelf/datatest.git", rev = "0c12efa" }
 
 # ed25519-dalek depends on rand 0.7 which in turns depends on a broken version of packed_simd
