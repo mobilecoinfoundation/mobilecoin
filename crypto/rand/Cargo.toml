@@ -16,6 +16,10 @@ standard rust `rand` crate's `thread_rng`, using the `getrandom` crate OsRng to
 seed a thread-local rng. `RdRandRng` is in all configurations a zero-width type.
 '''
 
+[features]
+default = []
+std = ["rand_core/std", "rand/std"]
+
 [dependencies]
 cfg-if = "0.1"
 getrandom = "0.1"
