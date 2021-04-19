@@ -5147,7 +5147,7 @@ dependencies = [
 [[package]]
 name = "schnorrkel"
 version = "0.10.1"
-source = "git+https://github.com/eranrund/schnorrkel?rev=fa27d0ed32d251a27399a23d3ef69611acb14d56#fa27d0ed32d251a27399a23d3ef69611acb14d56"
+source = "git+https://github.com/mobilecoinofficial/schnorrkel?rev=fa27d0ed32d251a27399a23d3ef69611acb14d56#fa27d0ed32d251a27399a23d3ef69611acb14d56"
 dependencies = [
  "arrayref",
  "arrayvec",
