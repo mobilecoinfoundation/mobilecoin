@@ -18,7 +18,7 @@ seed a thread-local rng. `RdRandRng` is in all configurations a zero-width type.
 
 [features]
 default = []
-std = ["rand_core/std", "rand/std"]
+std = ["rand_core/std", "rand/std", "rand/std_rng"]
 
 [dependencies]
 cfg-if = "0.1"
