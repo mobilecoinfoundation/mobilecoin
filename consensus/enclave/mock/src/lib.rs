@@ -41,18 +41,10 @@ use std::{
     },
 };
 
+#[derive(Clone)]
 pub struct ConsensusServiceMockEnclave {
     pub signing_keypair: Arc<Ed25519Pair>,
-    pub minimum_fee: AtomicU64,
-}
-
-impl Clone for ConsensusServiceMockEnclave {
-    fn clone(&self) -> Self {
-        Self {
-            signing_keypair: self.signing_keypair.clone(),
-            minimum_fee: self.minimum_fee.load(Ordering::Acquire).into(),
-        }
-    }
+    pub minimum_fee: Arc<AtomicU64>,
 }
 
 impl Default for ConsensusServiceMockEnclave {
@@ -62,7 +54,7 @@ impl Default for ConsensusServiceMockEnclave {
 
         Self {
             signing_keypair,
-            minimum_fee: MINIMUM_FEE.into(),
+            minimum_fee: Arc::new(MINIMUM_FEE.into()),
         }
     }
 }
