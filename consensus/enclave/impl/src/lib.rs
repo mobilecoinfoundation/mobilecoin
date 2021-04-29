@@ -18,7 +18,10 @@ mod identity;
 include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 
 use alloc::{collections::BTreeSet, format, string::String, vec::Vec};
-use core::convert::TryFrom;
+use core::{
+    convert::TryFrom,
+    sync::atomic::{AtomicU64, Ordering},
+};
 use identity::Ed25519Identity;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{
@@ -45,6 +48,7 @@ use mc_crypto_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
+    constants::MINIMUM_FEE,
     membership_proofs::compute_implied_merkle_root,
     onetime_keys::{create_onetime_public_key, create_shared_secret, create_tx_public_key},
     ring_signature::{KeyImage, Scalar},
@@ -108,6 +112,9 @@ pub struct SgxConsensusEnclave {
 
     /// Logger
     logger: Logger,
+
+    /// The minimum fee as initialized
+    minimum_fee: AtomicU64,
 }
 
 impl SgxConsensusEnclave {
@@ -119,6 +126,7 @@ impl SgxConsensusEnclave {
                 &mut McRng::default(),
             )),
             logger,
+            minimum_fee: AtomicU64::new(MINIMUM_FEE),
         }
     }
 
@@ -169,9 +177,17 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         peer_self_id: &ResponderId,
         client_self_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
+        minimum_fee: Option<u64>,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
-        self.ake
-            .init(peer_self_id.clone(), client_self_id.clone())?;
+        // Inject the fee into the peer ResponderId
+        let peer_self_id = if let Some(fee) = minimum_fee {
+            let str = format!("{}-{}", &peer_self_id.0, fee);
+            ResponderId(str)
+        } else {
+            peer_self_id.clone()
+        };
+
+        self.ake.init(peer_self_id, client_self_id.clone())?;
 
         // if we were passed a sealed key, unseal it and overwrite the private key
 
@@ -191,6 +207,10 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let key = (*lock).private_key();
         let sealed = IntelSealed::seal_raw(key.as_ref(), &[]).unwrap();
 
+        if let Some(fee) = minimum_fee {
+            self.minimum_fee.store(fee, Ordering::Release);
+        }
+
         Ok((
             sealed.as_ref().to_vec(),
             TARGET_FEATURES
@@ -198,6 +218,10 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 .map(|feature| String::from(*feature))
                 .collect::<Vec<String>>(),
         ))
+    }
+
+    fn get_minimum_fee(&self) -> Result<u64> {
+        Ok(self.minimum_fee.load(Ordering::Acquire))
     }
 
     fn get_identity(&self) -> Result<X25519Public> {
@@ -345,7 +369,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         // Validate.
         let mut csprng = McRng::default();
-        mc_transaction_core::validation::validate(&tx, block_index, &proofs, &mut csprng)?;
+        mc_transaction_core::validation::validate(
+            &tx,
+            block_index,
+            &proofs,
+            self.minimum_fee.load(Ordering::Acquire),
+            &mut csprng,
+        )?;
 
         // Convert into a well formed encrypted transaction + context.
         let well_formed_tx_context = WellFormedTxContext::from(&tx);
@@ -415,6 +445,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 tx,
                 parent_block.index + 1,
                 proofs,
+                self.minimum_fee.load(Ordering::Acquire),
                 &mut rng,
             )?;
 

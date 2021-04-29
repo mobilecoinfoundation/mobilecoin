@@ -209,7 +209,11 @@ pub trait ConsensusEnclave: ReportableEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
+        minimum_fee: Option<u64>,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)>;
+
+    /// Retrieve the current minimum fee
+    fn get_minimum_fee(&self) -> Result<u64>;
 
     /// Retrieve the public identity of the enclave.
     fn get_identity(&self) -> Result<X25519Public>;

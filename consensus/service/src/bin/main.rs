@@ -60,6 +60,7 @@ fn main() -> Result<(), ConsensusServiceError> {
         &config.peer_responder_id,
         &config.client_responder_id,
         &cached_key,
+        config.minimum_fee().expect("Could not parse minimum fee"),
     );
 
     log::info!(logger, "Enclave target features: {}", features.join(", "));

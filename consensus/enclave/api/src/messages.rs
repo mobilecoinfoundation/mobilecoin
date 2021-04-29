@@ -17,7 +17,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum EnclaveCall {
     /// The [ConsensusEnclave::enclave_init()] method.
-    EnclaveInit(ResponderId, ResponderId, Option<SealedBlockSigningKey>),
+    EnclaveInit(
+        ResponderId,
+        ResponderId,
+        Option<SealedBlockSigningKey>,
+        Option<u64>,
+    ),
 
     /// The [PeerableEnclave::peer_init()] method.
     ///
@@ -125,4 +130,9 @@ pub enum EnclaveCall {
         Block,
         Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>,
     ),
+
+    /// The [ConsensusEnclave::get_minimum_fee()] method.
+    ///
+    /// Retrieves the minimum fee, as initialized.
+    GetMinimumFee,
 }

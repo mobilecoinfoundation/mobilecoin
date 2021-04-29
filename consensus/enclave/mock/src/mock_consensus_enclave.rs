@@ -29,7 +29,10 @@ mock! {
             self_peer_id: &ResponderId,
             self_client_id: &ResponderId,
             sealed_key: &Option<SealedBlockSigningKey>,
+            minimum_fee: Option<u64>,
         ) -> ConsensusEnclaveResult<(SealedBlockSigningKey, Vec<String>)>;
+
+        fn get_minimum_fee(&self) -> ConsensusEnclaveResult<u64>;
 
         fn get_identity(&self) -> ConsensusEnclaveResult<X25519Public>;
 
