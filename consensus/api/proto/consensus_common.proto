@@ -18,6 +18,8 @@ service BlockchainAPI {
 message LastBlockInfoResponse {
     // Block index
     uint64 index = 1;
+    // Current minimum fee
+    uint64 minimum_fee = 2;
 }
 
 // Requests a range [offset, offset+limit) of Blocks.
