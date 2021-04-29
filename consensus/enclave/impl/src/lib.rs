@@ -259,7 +259,16 @@ impl ConsensusEnclave for SgxConsensusEnclave {
     }
 
     fn peer_init(&self, peer_id: &ResponderId) -> Result<PeerAuthRequest> {
-        Ok(self.ake.peer_init(peer_id)?)
+        // Inject the minimum fee (if necessary) before passing off to the AKE
+        let minimum_fee = self.minimum_fee.load(Ordering::Acquire);
+        let peer_auth_request = if minimum_fee != MINIMUM_FEE {
+            let peer_id_str = format!("{}-{}", peer_id, minimum_fee);
+            self.ake.peer_init(&ResponderId(peer_id_str))?
+        } else {
+            self.ake.peer_init(peer_id)?
+        };
+
+        Ok(peer_auth_request)
     }
 
     fn peer_accept(&self, req: PeerAuthRequest) -> Result<(PeerAuthResponse, PeerSession)> {

@@ -219,7 +219,7 @@ mod tests {
         );
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger, minimum_fee);
+            BlockchainApiService::new(ledger_db, authenticator, logger, Some(minimum_fee));
 
         let block_response = blockchain_api_service.get_last_block_info_helper().unwrap();
         assert_eq!(block_response, expected_response);
@@ -236,7 +236,8 @@ mod tests {
             SystemTimeProvider::default(),
         ));
 
-        let blockchain_api_service = BlockchainApiService::new(ledger_db, authenticator, logger);
+        let blockchain_api_service =
+            BlockchainApiService::new(ledger_db, authenticator, logger, None);
 
         let (client, _server) = get_client_server(blockchain_api_service);
 
@@ -268,7 +269,7 @@ mod tests {
             .collect();
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger);
+            BlockchainApiService::new(ledger_db, authenticator, logger, None);
 
         {
             // The empty range [0,0) should return an empty collection of Blocks.
@@ -306,7 +307,7 @@ mod tests {
         let _blocks = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger);
+            BlockchainApiService::new(ledger_db, authenticator, logger, None);
 
         {
             // The range [0, 1000) requests values that don't exist. The response should
@@ -332,7 +333,7 @@ mod tests {
             .collect();
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger);
+            BlockchainApiService::new(ledger_db, authenticator, logger, None);
         blockchain_api_service.set_max_page_size(5);
 
         // The request exceeds the max_page_size, so only max_page_size items should be
@@ -355,7 +356,8 @@ mod tests {
             SystemTimeProvider::default(),
         ));
 
-        let blockchain_api_service = BlockchainApiService::new(ledger_db, authenticator, logger);
+        let blockchain_api_service =
+            BlockchainApiService::new(ledger_db, authenticator, logger, None);
 
         let (client, _server) = get_client_server(blockchain_api_service);
 
