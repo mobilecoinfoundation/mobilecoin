@@ -3523,6 +3523,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-util-b58-decoder"
+version = "1.0.1-pre1"
+dependencies = [
+ "hex 0.4.2",
+ "mc-api",
+ "structopt",
+]
+
+[[package]]
 name = "mc-util-build-bolt-signalapp"
 version = "1.0.1-pre1"
 
