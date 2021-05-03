@@ -54,14 +54,7 @@ impl Amount {
 
         // The value is XORed with the first 8 bytes of the mask.
         // `v XOR_8 Blake2B(value_mask | shared_secret)`
-        let masked_value: u64 = {
-            let mask: u64 = {
-                let mut temp = [0u8; 8];
-                temp.copy_from_slice(&get_value_mask(&shared_secret).as_bytes()[0..8]);
-                u64::from_le_bytes(temp)
-            };
-            value ^ mask
-        };
+        let masked_value: u64 = value ^ get_value_mask(&shared_secret);
 
         Ok(Amount {
             commitment,
@@ -93,24 +86,24 @@ impl Amount {
 
     /// Reveals `masked_value`.
     fn unmask_value(&self, shared_secret: &RistrettoPublic) -> u64 {
-        let mask: u64 = {
-            let mut temp = [0u8; 8];
-            temp.copy_from_slice(&get_value_mask(&shared_secret).as_bytes()[0..8]);
-            u64::from_le_bytes(temp)
-        };
-        self.masked_value ^ mask
+        self.masked_value ^ get_value_mask(shared_secret)
     }
 }
 
-/// Computes `Blake2B(value_mask | shared_secret)`.
+/// Computes `Blake2B(value_mask | shared_secret)`, hashed to Ristretto, then
+/// interprets the first 8 canonical bytes as as u64 in little-endian
+/// representation.
 ///
 /// # Arguments
 /// * `shared_secret` - The shared secret, e.g. `rB`.
-fn get_value_mask(shared_secret: &RistrettoPublic) -> Scalar {
+pub fn get_value_mask(shared_secret: &RistrettoPublic) -> u64 {
     let mut hasher = Blake2b::new();
     hasher.update(&AMOUNT_VALUE_DOMAIN_TAG);
     hasher.update(&shared_secret.to_bytes());
-    Scalar::from_hash(hasher)
+    let scalar = Scalar::from_hash(hasher);
+    let mut temp = [0u8; 8];
+    temp.copy_from_slice(&scalar.as_bytes()[0..8]);
+    u64::from_le_bytes(temp)
 }
 
 /// Computes `Blake2B("blinding" | shared_secret)`.
