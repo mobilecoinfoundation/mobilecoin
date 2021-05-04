@@ -90,9 +90,9 @@ impl Amount {
     }
 }
 
-/// Computes `Blake2B(value_mask | shared_secret)`, hashed to Ristretto, then
-/// interprets the first 8 canonical bytes as as u64 in little-endian
-/// representation.
+/// Computes `Blake2B(value_mask | shared_secret)`, hashed to a Ristretto
+/// scalar, then interprets the first 8 canonical bytes as a u64 number in
+/// little-endian representation.
 ///
 /// # Arguments
 /// * `shared_secret` - The shared secret, e.g. `rB`.
