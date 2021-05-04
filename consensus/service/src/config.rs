@@ -218,7 +218,7 @@ impl Config {
     pub fn minimum_fee(&self) -> Result<Option<u64>, String> {
         if let Some(fee) = self.minimum_fee {
             // 1 MOB -> 10nMOB
-            if (fee > 1_000_000_000_000 || fee < 10_000) && !self.allow_any_fee {
+            if !self.allow_any_fee && !(10_000..1_000_000_000_000u64).contains(&fee) {
                 Err(format!("Fee {} picoMOB is out of bounds", fee))
             } else {
                 Ok(Some(fee))
