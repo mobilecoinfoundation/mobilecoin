@@ -11,9 +11,9 @@ path = "src/bin/generate_account_keys.rs"
 [dependencies]
 # External dependencies
 lazy_static = "1.4"
-rand = "0.7"
-rand_core = "0.5"
-rand_hc = "0.2"
+rand = "0.8"
+rand_core = "0.6"
+rand_hc = "0.3"
 structopt = "0.3"
 
 # MobileCoin dependencies

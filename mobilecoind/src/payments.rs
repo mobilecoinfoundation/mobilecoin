@@ -632,7 +632,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<
             let mut rng = rand::thread_rng();
             let mut samples: HashSet<u64> = HashSet::default();
             while samples.len() < num_requested {
-                let index = rng.gen_range(0, num_txos);
+                let index = rng.gen_range(0..num_txos);
                 if excluded_tx_out_indices.contains(&index) {
                     continue;
                 }

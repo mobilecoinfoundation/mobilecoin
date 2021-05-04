@@ -17,5 +17,5 @@ mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-serial = { path = "../../../util/serial" }
 
 mockall = "0.8.3"
-rand_core = "0.5"
-rand_hc = "0.2"
+rand_core = "0.6"
+rand_hc = "0.3"

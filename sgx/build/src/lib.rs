@@ -16,7 +16,8 @@ pub use libs::*;
 pub use sign::{SgxConfigBuilder, SgxSign, TcsPolicy};
 pub use tools::{get_mrenclave, link_enclave};
 
-/// This structure is used to pass output paths from the "signed" crate to the "measurement" crate.
+/// This structure is used to pass output paths from the "signed" crate to the
+/// "measurement" crate.
 #[derive(Clone, Debug, Default, Deserialize, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct SignedPaths {
     pub enclave: String,
@@ -24,7 +25,8 @@ pub struct SignedPaths {
     pub dump_file: String,
 }
 
-/// This structure is used to pass output paths from the "shared" crate to the "signed" crate.
+/// This structure is used to pass output paths from the "shared" crate to the
+/// "signed" crate.
 #[derive(Clone, Debug, Default, Deserialize, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct UnsignedPaths {
     pub enclave: String,

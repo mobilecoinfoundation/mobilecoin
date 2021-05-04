@@ -18,7 +18,9 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// A collection of common errors for use by implementers
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Fail, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Eq, Hash, Fail, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub enum KeyError {
     #[fail(
         display = "The length of the given data does not match the algorithm's expected length, provided {}, required {}",

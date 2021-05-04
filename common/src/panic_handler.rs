@@ -41,7 +41,7 @@ fn handle_panic(panic_info: &PanicInfo<'_>) {
     // Give the logger, filebeat and sentry time to process the message.
     thread::sleep(time::Duration::from_millis(1000));
 
-    // Kill the process. 13 is a random exit code to make it easier to tell a process exited using
-    // this code flow.
+    // Kill the process. 13 is a random exit code to make it easier to tell a
+    // process exited using this code flow.
     process::exit(13);
 }

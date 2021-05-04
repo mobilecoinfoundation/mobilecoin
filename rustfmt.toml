@@ -1,6 +1,6 @@
 edition = "2018"
 wrap_comments = true
-merge_imports = true
+imports_granularity = "Crate"
 
 ignore = [
     "sgx/types",   # copy-pasta from rust-sgx-sdk

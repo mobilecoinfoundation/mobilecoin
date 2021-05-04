@@ -21,7 +21,9 @@ use crate::{
 };
 
 /// A member in a QuorumSet. Can be either a Node or another QuorumSet.
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize, Digestible)]
+#[derive(
+    Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize, Digestible,
+)]
 #[serde(tag = "type", content = "args")]
 pub enum QuorumSetMember<ID: GenericNodeId> {
     /// A single trusted entity with an identity.
