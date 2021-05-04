@@ -1,0 +1,15 @@
+[package]
+name = "mc-util-b58-decoder"
+version = "1.0.1-pre1"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[[bin]]
+name = "mc-util-b58-decoder"
+path = "src/bin/main.rs"
+
+[dependencies]
+mc-api = { path = "../../api" }
+
+hex = "0.4"
+structopt = "0.3"

@@ -37,5 +37,5 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 mc-connection-test-utils = { path = "../connection/test-utils" }
 mc-peers-test-utils = { path = "./test-utils" }
 
-rand_hc = "0.2"
-rand = "0.7"
+rand_hc = "0.3"
+rand = "0.8"

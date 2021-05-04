@@ -25,18 +25,18 @@ lazy_static = "1.4"
 lmdb-rkv = "0.14.0"
 mockall = "0.8.3"
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
-rand = { version = "0.7", optional = true }
-rand_core = "0.5"
+rand = { version = "0.8", optional = true }
+rand_core = "0.6"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "3.0", default-features = false, features = ["simd_backend", "nightly"] }
+curve25519-dalek = { version = "4.0.0-pre.0", default-features = false, features = ["simd_backend", "nightly"] }
 
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "3.0", default-features = false, features = ["nightly", "u64_backend"] }
+curve25519-dalek = { version = "4.0.0-pre.0", default-features = false, features = ["nightly", "u64_backend"] }
 
 [dev-dependencies]
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-rand = { path = "../../crypto/rand" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
-rand = "0.7"
+rand = "0.8"
 tempdir = "0.3"

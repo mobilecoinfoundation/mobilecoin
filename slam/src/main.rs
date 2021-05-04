@@ -602,7 +602,7 @@ fn get_rings(
     let mut rng = rand::thread_rng();
     let mut sampled_indices: HashSet<u64> = HashSet::default();
     while sampled_indices.len() < num_requested {
-        let index = rng.gen_range(0, num_txos);
+        let index = rng.gen_range(0..num_txos);
         sampled_indices.insert(index);
     }
     let sampled_indices_vec: Vec<u64> = sampled_indices.into_iter().collect();

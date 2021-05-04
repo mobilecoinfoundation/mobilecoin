@@ -18,14 +18,22 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
  - Reduce minimum fee from 10mMOB to 400uMOB
  - Parallelize HTTP transaction fetcher
  - Optionally seed RNGs for mock attestation signer from `MC_SEED` env.
+ - Bump rust version to `nightly-2021-03-25`
 
 #### Rust Dependencies
 
  - Update `anyhow` to 1.0.39
- - Update `curve25519-dalek` to 3.0.2
+ - Update `arrayvec` to 0.5.2
+ - Update `curve25519-dalek` to 4.0.0-pre.0
+ - Update `datatest` to 0.6.4
  - Update `protobuf` to 2.22.1
+ - Update `rand_core` to 0.6.2
+ - Update `rand_hc` to 0.3.0
+ - Update `rand` to 0.8.3
+ - Update `sha2` to 0.9.3
  - Update `thiserr` to 1.0.24
  - Update `unicode-normalization` to 1.1.17
+ - Update `version_check` to 0.9.3
  - Update `zeroize` to 1.2.0
 
 #### Python Dependencies

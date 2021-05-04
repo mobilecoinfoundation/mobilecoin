@@ -119,16 +119,17 @@ fn create_udp_json_logger() -> Option<slog::Fuse<slog_async::Async>> {
 }
 
 /// Create the root logger, which logs to stdout and optionally a GELF endpoint
-/// (if the `MC_LOG_GELF` environment variable is set) or a UDP JSON endpoint (if the
-/// `MC_LOG_UDP_JSON` environment variable is set).
+/// (if the `MC_LOG_GELF` environment variable is set) or a UDP JSON endpoint
+/// (if the `MC_LOG_UDP_JSON` environment variable is set).
 pub fn create_root_logger() -> Logger {
-    // Support MC_LOG in addition to RUST_LOG. This makes allows us to not affect cargo's logs when
-    // doing stuff like MC_LOG=trace cargo test -p ...
+    // Support MC_LOG in addition to RUST_LOG. This makes allows us to not affect
+    // cargo's logs when doing stuff like MC_LOG=trace cargo test -p ...
     if env::var("RUST_LOG").is_err() && env::var("MC_LOG").is_ok() {
         env::set_var("RUST_LOG", env::var("MC_LOG").unwrap());
     }
 
-    // Default to INFO log level for everything if we do not have an explicit setting.
+    // Default to INFO log level for everything if we do not have an explicit
+    // setting.
     if env::var("RUST_LOG").is_err() {
         env::set_var("RUST_LOG", "info");
     }
@@ -218,7 +219,8 @@ pub fn create_app_logger<T: slog::SendSyncRefUnwindSafeKV + 'static>(
     // Get the root logger
     let root_logger = Logger::root(SWITCHABLE_APP_LOGGER.drain().fuse(), o!());
 
-    // Wrap root logger in a SentryLogger so that error and critical messages get forwarded to Sentry.
+    // Wrap root logger in a SentryLogger so that error and critical messages get
+    // forwarded to Sentry.
     let root_logger = SentryLogger::wrap(root_logger);
 
     // App-specific logging context and slog-scope initialization.
@@ -255,10 +257,11 @@ pub fn recreate_app_logger() {
     );
 }
 
-// `MaybeMcSrcValue` allows us to selectively include "mc.src" in our logging context.
-// We want to only include it for log messages that did not originate from inside an enclave,
-// since enclave logging context already includes this information (see mc_sgx_urts::enclave_log).
-// Doing it this way is necessary due due to how `slog` works.
+// `MaybeMcSrcValue` allows us to selectively include "mc.src" in our logging
+// context. We want to only include it for log messages that did not originate
+// from inside an enclave, since enclave logging context already includes this
+// information (see mc_sgx_urts::enclave_log). Doing it this way is necessary
+// due due to how `slog` works.
 struct MaybeMcSrcValue;
 impl slog::Value for MaybeMcSrcValue {
     fn serialize(

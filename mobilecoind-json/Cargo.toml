@@ -30,7 +30,7 @@ mc-util-from-random = { path = "../util/from-random" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 
-rand = "0.7"
+rand = "0.8"
 
 [build-dependencies]
 # Even though this is unused, it needs to be here otherwise Cargo brings in some weird mixture of packages/features that refuses to compile.
