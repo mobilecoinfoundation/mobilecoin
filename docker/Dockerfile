@@ -111,7 +111,8 @@ RUN wget https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustu
     rust-analysis \
     rust-src \
     rustfmt && \
-  /root/.cargo/bin/cargo install sccache cargo-cache cargo2junit cargo-tree cargo-feature-analyst
+  /root/.cargo/bin/cargo install sccache cargo-cache cargo2junit cargo-tree cargo-feature-analyst cbindgen && \
+  /root/.cargo/bin/cargo install diesel_cli --no-default-features --features postgres
 
 # Set PATH in the container environment to include cargo bin
 ENV PATH="/root/.cargo/bin:$PATH"
