@@ -208,7 +208,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let sealed = IntelSealed::seal_raw(key.as_ref(), &[]).unwrap();
 
         if let Some(fee) = minimum_fee {
-            self.minimum_fee.store(fee, Ordering::Release);
+            self.minimum_fee.store(fee, Ordering::SeqCst);
         }
 
         Ok((
@@ -221,7 +221,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
     }
 
     fn get_minimum_fee(&self) -> Result<u64> {
-        Ok(self.minimum_fee.load(Ordering::Acquire))
+        Ok(self.minimum_fee.load(Ordering::SeqCst))
     }
 
     fn get_identity(&self) -> Result<X25519Public> {
@@ -260,7 +260,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
     fn peer_init(&self, peer_id: &ResponderId) -> Result<PeerAuthRequest> {
         // Inject the minimum fee (if necessary) before passing off to the AKE
-        let minimum_fee = self.minimum_fee.load(Ordering::Acquire);
+        let minimum_fee = self.minimum_fee.load(Ordering::SeqCst);
         let peer_auth_request = if minimum_fee != MINIMUM_FEE {
             let peer_id_str = format!("{}-{}", peer_id, minimum_fee);
             self.ake.peer_init(&ResponderId(peer_id_str))?
@@ -280,7 +280,16 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
     ) -> Result<(PeerSession, VerificationReport)> {
-        Ok(self.ake.peer_connect(peer_id, msg)?)
+        // Inject the minimum fee (if necessary) before passing off to the AKE
+        let minimum_fee = self.minimum_fee.load(Ordering::SeqCst);
+        let session_and_report = if minimum_fee != MINIMUM_FEE {
+            let peer_id_str = format!("{}-{}", peer_id, minimum_fee);
+            self.ake.peer_connect(&ResponderId(peer_id_str), msg)?
+        } else {
+            self.ake.peer_connect(peer_id, msg)?
+        };
+
+        Ok(session_and_report)
     }
 
     fn peer_close(&self, session_id: &PeerSession) -> Result<()> {

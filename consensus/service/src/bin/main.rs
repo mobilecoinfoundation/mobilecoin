@@ -64,6 +64,7 @@ fn main() -> Result<(), ConsensusServiceError> {
     );
 
     log::info!(logger, "Enclave target features: {}", features.join(", "));
+    log::info!(logger, "Configured minimum fee: {:?}", config.minimum_fee());
 
     // write the sealed block signing key
     let mut sealed_key_file =
