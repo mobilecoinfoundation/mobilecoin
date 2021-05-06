@@ -104,12 +104,12 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         minimum_fee: Option<u64>,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
         self.minimum_fee
-            .store(minimum_fee.unwrap_or(MINIMUM_FEE), Ordering::Release);
+            .store(minimum_fee.unwrap_or(MINIMUM_FEE), Ordering::SeqCst);
         Ok((vec![], vec![]))
     }
 
     fn get_minimum_fee(&self) -> Result<u64> {
-        Ok(self.minimum_fee.load(Ordering::Acquire))
+        Ok(self.minimum_fee.load(Ordering::SeqCst))
     }
 
     fn get_identity(&self) -> Result<X25519Public> {

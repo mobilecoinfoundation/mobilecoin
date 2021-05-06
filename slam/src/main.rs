@@ -133,7 +133,7 @@ fn main() {
             .map(|block_info| block_info.minimum_fee)
             .max()
             .unwrap_or(MINIMUM_FEE),
-        Ordering::Release,
+        Ordering::SeqCst,
     );
 
     // The number of blocks we've processed so far.
@@ -490,7 +490,7 @@ fn build_tx(
     // Create tx_builder. No fog reports.
     let mut tx_builder = TransactionBuilder::new(FogResolver::default());
 
-    tx_builder.set_fee(FEE.load(Ordering::Acquire));
+    tx_builder.set_fee(FEE.load(Ordering::SeqCst));
 
     // Unzip each vec of tuples into a tuple of vecs.
     let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
@@ -572,7 +572,7 @@ fn build_tx(
         let mut amount = utxo.amount;
         // Use the first input to pay for the fee.
         if i == 0 {
-            amount -= FEE.load(Ordering::Acquire);
+            amount -= FEE.load(Ordering::SeqCst);
         }
 
         tx_builder
