@@ -5,10 +5,12 @@
 use crate::error::{Result, RetryResult};
 use grpcio::Error as GrpcError;
 use mc_attest_core::VerificationReport;
+use mc_consensus_api::consensus_common::LastBlockInfoResponse;
 use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
+use mc_util_serial::prost::alloc::fmt::Formatter;
 use mc_util_uri::ConnectionUri;
 use std::{
-    fmt::{Debug, Display},
+    fmt::{Debug, Display, Result as FmtResult},
     hash::Hash,
     ops::Range,
     result::Result as StdResult,
@@ -53,6 +55,34 @@ pub trait AttestedConnection: Connection {
     }
 }
 
+/// A structure meant to contain the results of a GetLastBlockInfo response
+#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct BlockInfo {
+    /// The index of the last block (aka the block height)
+    pub block_index: BlockIndex,
+    /// The minimum fee to use when contacting this system
+    pub minimum_fee: u64,
+}
+
+impl Display for BlockInfo {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(
+            f,
+            "Block {} with fee {}",
+            self.block_index, self.minimum_fee
+        )
+    }
+}
+
+impl From<LastBlockInfoResponse> for BlockInfo {
+    fn from(src: LastBlockInfoResponse) -> Self {
+        BlockInfo {
+            block_index: src.index,
+            minimum_fee: src.minimum_fee,
+        }
+    }
+}
+
 /// A connection trait providing APIs for use in retrieving blocks from a
 /// consensus node.
 pub trait BlockchainConnection: Connection {
@@ -65,6 +95,9 @@ pub trait BlockchainConnection: Connection {
 
     /// Retrieve the consensus node's current block height
     fn fetch_block_height(&mut self) -> Result<BlockIndex>;
+
+    /// Retrieve the consensus node's current block height and fee
+    fn fetch_block_info(&mut self) -> Result<BlockInfo>;
 }
 
 /// A trait which supports supporting the submission of transactions to a node
@@ -100,6 +133,12 @@ pub trait RetryableBlockchainConnection {
         &self,
         retry_iterator: impl IntoIterator<Item = Duration>,
     ) -> RetryResult<BlockIndex>;
+
+    /// Retrieve the highest block index published
+    fn fetch_block_info(
+        &self,
+        retry_iterator: impl IntoIterator<Item = Duration>,
+    ) -> RetryResult<BlockInfo>;
 }
 
 /// A trait which supports re-trying transaction submission

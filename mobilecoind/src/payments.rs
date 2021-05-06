@@ -8,7 +8,10 @@ use mc_common::{
     logger::{log, o, Logger},
     HashMap, HashSet,
 };
-use mc_connection::{ConnectionManager, RetryableUserTxConnection, UserTxConnection};
+use mc_connection::{
+    BlockchainConnection, ConnectionManager, RetryableBlockchainConnection,
+    RetryableUserTxConnection, UserTxConnection,
+};
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_fog_report_validation::FogPubkeyResolver;
@@ -23,6 +26,7 @@ use mc_transaction_core::{
 use mc_transaction_std::{InputCredentials, TransactionBuilder};
 use mc_util_uri::FogUri;
 use rand::Rng;
+use rayon::prelude::*;
 use std::{
     cmp::Reverse,
     convert::TryFrom,
@@ -79,7 +83,10 @@ impl TxProposal {
     }
 }
 
-pub struct TransactionsManager<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> {
+pub struct TransactionsManager<
+    T: BlockchainConnection + UserTxConnection + 'static,
+    FPR: FogPubkeyResolver,
+> {
     /// Ledger database.
     ledger_db: LedgerDB,
 
@@ -102,7 +109,9 @@ pub struct TransactionsManager<T: UserTxConnection + 'static, FPR: FogPubkeyReso
     fog_resolver_factory: Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
 }
 
-impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> Clone for TransactionsManager<T, FPR> {
+impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver> Clone
+    for TransactionsManager<T, FPR>
+{
     fn clone(&self) -> Self {
         Self {
             ledger_db: self.ledger_db.clone(),
@@ -115,7 +124,31 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> Clone for Transactio
     }
 }
 
-impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<T, FPR> {
+fn get_fee<T: BlockchainConnection + UserTxConnection + 'static>(
+    peer_manager: &ConnectionManager<T>,
+    opt_fee: u64,
+) -> u64 {
+    if opt_fee > 0 {
+        opt_fee
+    } else if peer_manager.is_empty() {
+        MINIMUM_FEE
+    } else {
+        // iterate an owned list of connections in parallel, get the block info for
+        // each, and extract the fee. If no fees are returned, use the hard-coded
+        // minimum.
+        peer_manager
+            .conns()
+            .par_iter()
+            .filter_map(|conn| conn.fetch_block_info(empty()).ok())
+            .map(|block_info| block_info.minimum_fee)
+            .max()
+            .unwrap_or(MINIMUM_FEE)
+    }
+}
+
+impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver>
+    TransactionsManager<T, FPR>
+{
     pub fn new(
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
@@ -173,8 +206,9 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<
             total_value
         );
 
-        // Figure out the fee.
-        let fee = if opt_fee > 0 { opt_fee } else { MINIMUM_FEE };
+        // Figure out the fee (involves network round-trips to consensus, unless
+        // opt_fee is non-zero
+        let fee = get_fee(&self.peer_manager, opt_fee);
 
         // Select the UTXOs to be used for this transaction.
         let selected_utxos =
@@ -352,7 +386,8 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<
     /// * `account_key` -Account key that owns the inputs.
     /// * `inputs` - UTXOs that will be spent by the transaction.
     /// * `receiver` - The single receiver of the transaction's outputs.
-    /// * `fee` - Transaction fee in picoMOB. If zero, defaults to MIN_FEE.
+    /// * `fee` - Transaction fee in picoMOB. If zero, defaults to the highest
+    ///   fee set by configured consensus nodes, or the hard-coded MINIMUM_FEE.
     pub fn generate_tx_from_tx_list(
         &self,
         account_key: &AccountKey,
@@ -363,7 +398,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<
         let logger = self.logger.new(o!("receiver" => receiver.to_string()));
         log::trace!(logger, "Generating txo list transaction...");
 
-        let fee = if fee == 0 { MINIMUM_FEE } else { fee };
+        let fee = get_fee(&self.peer_manager, fee);
 
         // All inputs are to be spent
         let total_value: u64 = inputs.iter().map(|utxo| utxo.value).sum();

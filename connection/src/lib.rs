@@ -19,7 +19,7 @@ pub use self::{
     sync::SyncConnection,
     thick::{ThickClient, ThickClientAttestationError},
     traits::{
-        AttestationError, AttestedConnection, BlockchainConnection, Connection,
+        AttestationError, AttestedConnection, BlockInfo, BlockchainConnection, Connection,
         RetryableBlockchainConnection, RetryableUserTxConnection, UserTxConnection,
     },
 };

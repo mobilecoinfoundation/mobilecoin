@@ -7,7 +7,8 @@ use crate::{
     credentials::{AuthenticationError, CredentialsProvider, CredentialsProviderError},
     error::{Error, Result},
     traits::{
-        AttestationError, AttestedConnection, BlockchainConnection, Connection, UserTxConnection,
+        AttestationError, AttestedConnection, BlockInfo, BlockchainConnection, Connection,
+        UserTxConnection,
     },
 };
 use aes_gcm::Aes256Gcm;
@@ -383,6 +384,32 @@ impl<CP: CredentialsProvider> BlockchainConnection for ThickClient<CP> {
                 Ok(message)
             })?
             .index)
+    }
+
+    fn fetch_block_info(&mut self) -> Result<BlockInfo> {
+        trace_time!(self.logger, "ThickClient::fetch_block_height");
+
+        let block_info = self.authenticated_attested_call(|this, call_option| {
+            let (header, message, trailer) = this
+                .blockchain_api_client
+                .get_last_block_info_full(&Empty::new(), call_option)?;
+
+            // Update cookies from server-sent metadata
+            if let Err(e) = this
+                .cookies
+                .update_from_server_metadata(header.as_ref(), trailer.as_ref())
+            {
+                log::warn!(
+                    this.logger,
+                    "Could not update cookies from gRPC metadata: {}",
+                    e
+                )
+            }
+
+            Ok(message)
+        })?;
+
+        Ok(block_info.into())
     }
 }
 
