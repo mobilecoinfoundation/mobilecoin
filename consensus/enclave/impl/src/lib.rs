@@ -463,7 +463,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 tx,
                 parent_block.index + 1,
                 proofs,
-                self.minimum_fee.load(Ordering::Acquire),
+                self.minimum_fee.load(Ordering::SeqCst),
                 &mut rng,
             )?;
 
