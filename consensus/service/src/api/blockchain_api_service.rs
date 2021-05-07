@@ -11,6 +11,7 @@ use mc_consensus_api::{
     empty::Empty,
 };
 use mc_ledger_db::Ledger;
+use mc_transaction_core::constants::MINIMUM_FEE;
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use protobuf::RepeatedField;
@@ -30,6 +31,9 @@ pub struct BlockchainApiService<L: Ledger + Clone> {
 
     /// Logger.
     logger: Logger,
+
+    /// Configured minimum-fee
+    minimum_fee: Option<u64>,
 }
 
 impl<L: Ledger + Clone> BlockchainApiService<L> {
@@ -37,12 +41,14 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
         ledger: L,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
+        minimum_fee: Option<u64>,
     ) -> Self {
         BlockchainApiService {
             ledger,
             authenticator,
             max_page_size: 2000,
             logger,
+            minimum_fee,
         }
     }
 
@@ -57,6 +63,7 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
         let num_blocks = self.ledger.num_blocks()?;
         let mut resp = LastBlockInfoResponse::new();
         resp.set_index(num_blocks - 1);
+        resp.set_minimum_fee(self.minimum_fee.unwrap_or(MINIMUM_FEE));
 
         Ok(resp)
     }
@@ -201,16 +208,18 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
         let block_entities = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
+        let minimum_fee = 10_000;
 
         let mut expected_response = LastBlockInfoResponse::new();
         expected_response.set_index(block_entities.last().unwrap().index);
+        expected_response.set_minimum_fee(minimum_fee);
         assert_eq!(
             block_entities.last().unwrap().index,
             ledger_db.num_blocks().unwrap() - 1
         );
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger);
+            BlockchainApiService::new(ledger_db, authenticator, logger, Some(minimum_fee));
 
         let block_response = blockchain_api_service.get_last_block_info_helper().unwrap();
         assert_eq!(block_response, expected_response);
@@ -227,7 +236,8 @@ mod tests {
             SystemTimeProvider::default(),
         ));
 
-        let blockchain_api_service = BlockchainApiService::new(ledger_db, authenticator, logger);
+        let blockchain_api_service =
+            BlockchainApiService::new(ledger_db, authenticator, logger, None);
 
         let (client, _server) = get_client_server(blockchain_api_service);
 
@@ -259,7 +269,7 @@ mod tests {
             .collect();
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger);
+            BlockchainApiService::new(ledger_db, authenticator, logger, None);
 
         {
             // The empty range [0,0) should return an empty collection of Blocks.
@@ -297,7 +307,7 @@ mod tests {
         let _blocks = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger);
+            BlockchainApiService::new(ledger_db, authenticator, logger, None);
 
         {
             // The range [0, 1000) requests values that don't exist. The response should
@@ -323,7 +333,7 @@ mod tests {
             .collect();
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger);
+            BlockchainApiService::new(ledger_db, authenticator, logger, None);
         blockchain_api_service.set_max_page_size(5);
 
         // The request exceeds the max_page_size, so only max_page_size items should be
@@ -346,7 +356,8 @@ mod tests {
             SystemTimeProvider::default(),
         ));
 
-        let blockchain_api_service = BlockchainApiService::new(ledger_db, authenticator, logger);
+        let blockchain_api_service =
+            BlockchainApiService::new(ledger_db, authenticator, logger, None);
 
         let (client, _server) = get_client_server(blockchain_api_service);
 

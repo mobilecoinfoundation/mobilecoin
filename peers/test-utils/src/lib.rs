@@ -4,7 +4,8 @@
 
 use mc_common::{NodeID, ResponderId};
 use mc_connection::{
-    BlockchainConnection, Connection, Error as ConnectionError, Result as ConnectionResult,
+    BlockInfo, BlockchainConnection, Connection, Error as ConnectionError,
+    Result as ConnectionResult,
 };
 use mc_consensus_api::consensus_peer::{ConsensusMsgResponse, ConsensusMsgResult};
 use mc_consensus_enclave_api::{TxContext, WellFormedEncryptedTx};
@@ -170,6 +171,10 @@ impl<L: Ledger + Sync> BlockchainConnection for MockPeerConnection<L> {
     }
 
     fn fetch_block_height(&mut self) -> ConnectionResult<BlockIndex> {
+        unimplemented!()
+    }
+
+    fn fetch_block_info(&mut self) -> ConnectionResult<BlockInfo> {
         unimplemented!()
     }
 }

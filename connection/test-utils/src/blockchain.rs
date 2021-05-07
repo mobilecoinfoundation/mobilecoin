@@ -3,11 +3,11 @@
 //! Connection mock and test utilities
 
 use mc_connection::{
-    BlockchainConnection, Connection, Error as ConnectionError, Result as ConnectionResult,
-    UserTxConnection,
+    BlockInfo, BlockchainConnection, Connection, Error as ConnectionError,
+    Result as ConnectionResult, UserTxConnection,
 };
 use mc_ledger_db::Ledger;
-use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
+use mc_transaction_core::{constants::MINIMUM_FEE, tx::Tx, Block, BlockID, BlockIndex};
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{
     cmp::{min, Ordering},
@@ -111,6 +111,13 @@ impl<L: Ledger + Sync> BlockchainConnection for MockBlockchainConnection<L> {
 
     fn fetch_block_height(&mut self) -> ConnectionResult<BlockIndex> {
         Ok(self.ledger.num_blocks().unwrap() - 1)
+    }
+
+    fn fetch_block_info(&mut self) -> ConnectionResult<BlockInfo> {
+        Ok(BlockInfo {
+            block_index: self.ledger.num_blocks().unwrap() - 1,
+            minimum_fee: MINIMUM_FEE,
+        })
     }
 }
 

@@ -3044,6 +3044,7 @@ dependencies = [
  "rand 0.8.3",
  "rand_chacha 0.3.0",
  "rand_core 0.6.2",
+ "rayon",
  "reqwest",
  "retry",
  "serde_json",
@@ -3412,6 +3413,7 @@ dependencies = [
  "mc-util-keyfile",
  "mc-util-uri",
  "rand 0.8.3",
+ "rayon",
  "structopt",
  "tempdir",
 ]
