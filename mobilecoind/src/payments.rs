@@ -23,7 +23,7 @@ use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     BlockIndex,
 };
-use mc_transaction_std::{InputCredentials, TransactionBuilder};
+use mc_transaction_std::{DefaultMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_util_uri::FogUri;
 use rand::Rng;
 use rayon::prelude::*;
@@ -774,7 +774,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         };
 
         // Create tx_builder.
-        let mut tx_builder = TransactionBuilder::new(fog_resolver);
+        let mut tx_builder = TransactionBuilder::new(fog_resolver, DefaultMemoBuilder::default());
 
         tx_builder.set_fee(fee);
 
@@ -877,7 +877,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if total_value > input_value {
             return Err(Error::InsufficientFunds);
         }
-        let change = input_value - total_value - tx_builder.fee;
+        let change = input_value - total_value - tx_builder.get_fee();
 
         // If we do, add an output for that as well.
         if change > 0 {

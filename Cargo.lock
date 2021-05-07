@@ -35,6 +35,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "cipher",
  "cpufeatures",
+ "ctr",
  "opaque-debug 0.3.0",
 ]
 
@@ -49,7 +50,7 @@ dependencies = [
  "cipher",
  "ctr",
  "ghash",
- "subtle 2.2.3",
+ "subtle 2.4.1",
 ]
 
 [[package]]
@@ -378,7 +379,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "sha3",
- "subtle 2.2.3",
+ "subtle 2.4.1",
 ]
 
 [[package]]
@@ -795,7 +796,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b584a330336237c1eecd3e94266efb216c56ed91225d634cb2991c5f3fd1aeab"
 dependencies = [
  "generic-array 0.14.4",
- "subtle 2.2.3",
+ "subtle 2.4.1",
 ]
 
 [[package]]
@@ -805,7 +806,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4857fd85a0c34b3c3297875b747c1e02e06b6a0ea32dd892d8192b9ce0813ea6"
 dependencies = [
  "generic-array 0.14.4",
- "subtle 2.2.3",
+ "subtle 2.4.1",
+]
+
+[[package]]
+name = "crypto-mac"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1d1a86f49236c215f271d40892d5fc950490551400b02ef360692c29815c714"
+dependencies = [
+ "generic-array 0.14.4",
+ "subtle 2.4.1",
 ]
 
 [[package]]
@@ -869,7 +880,7 @@ dependencies = [
  "packed_simd_2",
  "rand_core 0.6.2",
  "serde",
- "subtle 2.2.3",
+ "subtle 2.4.1",
  "zeroize",
 ]
 
@@ -1555,6 +1566,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "hmac"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a2a2320eb7ec0ebe8da8f744d7812d9fc4cb4d09344ac01898dbcb6a20ae69b"
+dependencies = [
+ "crypto-mac 0.11.1",
+ "digest 0.9.0",
+]
+
+[[package]]
 name = "hmac-sha512"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2079,6 +2100,7 @@ dependencies = [
  "rand 0.8.3",
  "rand_core 0.6.2",
  "rand_hc 0.3.0",
+ "subtle 2.4.1",
  "tempdir",
  "zeroize",
 ]
@@ -2221,7 +2243,7 @@ dependencies = [
  "rjson",
  "serde",
  "sha2 0.9.5",
- "subtle 2.2.3",
+ "subtle 2.4.1",
 ]
 
 [[package]]
@@ -2706,7 +2728,7 @@ dependencies = [
  "mc-util-test-helper",
  "rand_core 0.6.2",
  "serde",
- "subtle 2.2.3",
+ "subtle 2.4.1",
 ]
 
 [[package]]
@@ -2726,7 +2748,7 @@ dependencies = [
  "secrecy",
  "serde",
  "sha2 0.9.5",
- "subtle 2.2.3",
+ "subtle 2.4.1",
  "zeroize",
 ]
 
@@ -3113,7 +3135,7 @@ dependencies = [
  "cipher",
  "ctr",
  "ghash",
- "subtle 2.2.3",
+ "subtle 2.4.1",
  "zeroize",
 ]
 
@@ -3352,12 +3374,14 @@ dependencies = [
 name = "mc-transaction-core"
 version = "1.1.0"
 dependencies = [
+ "aes",
  "blake2",
  "bulletproofs",
  "curve25519-dalek",
  "displaydoc",
  "generic-array 0.14.4",
  "hex_fmt",
+ "hkdf",
  "lazy_static",
  "mc-account-keys",
  "mc-common",
@@ -3380,7 +3404,8 @@ dependencies = [
  "rand_core 0.6.2",
  "rand_hc 0.3.0",
  "serde",
- "subtle 2.2.3",
+ "sha2 0.9.5",
+ "subtle 2.4.1",
  "tempdir",
  "time 0.1.43",
  "zeroize",
@@ -3409,6 +3434,7 @@ dependencies = [
  "blake2",
  "curve25519-dalek",
  "displaydoc",
+ "hmac 0.11.0",
  "maplit",
  "mc-account-keys",
  "mc-crypto-keys",
@@ -3421,6 +3447,8 @@ dependencies = [
  "prost",
  "rand 0.8.3",
  "rand_core 0.6.2",
+ "sha2 0.9.5",
+ "subtle 2.4.1",
  "yaml-rust",
  "zeroize",
 ]
@@ -3553,7 +3581,7 @@ dependencies = [
  "rand 0.8.3",
  "sha2 0.9.5",
  "signal-hook",
- "subtle 2.2.3",
+ "subtle 2.4.1",
  "tempfile",
  "zeroize",
 ]
@@ -5083,7 +5111,7 @@ dependencies = [
  "merlin",
  "rand_core 0.6.2",
  "sha2 0.9.5",
- "subtle 2.2.3",
+ "subtle 2.4.1",
  "zeroize",
 ]
 
@@ -5682,9 +5710,9 @@ checksum = "2d67a5a62ba6e01cb2192ff309324cb4875d0c451d55fe2319433abe7a05a8ee"
 
 [[package]]
 name = "subtle"
-version = "2.2.3"
+version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "502d53007c02d7605a05df1c1a73ee436952781653da5d0bf57ad608f66932c1"
+checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "syn"
@@ -6332,7 +6360,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8326b2c654932e3e4f9196e69d08fdf7cfd718e1dc6f66b347e6024a0c961402"
 dependencies = [
  "generic-array 0.14.4",
- "subtle 2.2.3",
+ "subtle 2.4.1",
 ]
 
 [[package]]

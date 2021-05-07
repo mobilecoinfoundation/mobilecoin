@@ -2,7 +2,7 @@
 
 use crate::{convert::ConversionError, external};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
-use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, tx, Amount};
+use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, tx, Amount, EncryptedMemo};
 use std::convert::TryFrom;
 
 /// Convert tx::TxOut --> external::TxOut.
@@ -21,6 +21,13 @@ impl From<&tx::TxOut> for external::TxOut {
 
         let hint_bytes = source.e_fog_hint.as_ref().to_vec();
         tx_out.mut_e_fog_hint().set_data(hint_bytes);
+
+        let memo_bytes: &[u8] = source
+            .e_memo
+            .as_ref()
+            .map(|memo| memo.as_ref())
+            .unwrap_or_default();
+        tx_out.mut_e_memo().set_data(memo_bytes.to_vec());
 
         tx_out
     }
@@ -46,11 +53,22 @@ impl TryFrom<&external::TxOut> for tx::TxOut {
         let e_fog_hint = EncryptedFogHint::try_from(source.get_e_fog_hint().get_data())
             .map_err(|_| ConversionError::ArrayCastError)?;
 
+        let e_memo_bytes = source.get_e_memo().get_data();
+        let e_memo = if e_memo_bytes.is_empty() {
+            None
+        } else {
+            Some(
+                EncryptedMemo::try_from(e_memo_bytes)
+                    .map_err(|_| ConversionError::ArrayCastError)?,
+            )
+        };
+
         let tx_out = tx::TxOut {
             amount,
             target_key,
             public_key,
             e_fog_hint,
+            e_memo,
         };
         Ok(tx_out)
     }
@@ -74,6 +92,7 @@ mod tests {
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
             e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
+            e_memo: None,
         };
 
         let converted = external::TxOut::from(&source);

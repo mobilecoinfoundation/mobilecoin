@@ -2,8 +2,9 @@
 
 use displaydoc::Display;
 use mc_fog_report_validation::FogPubkeyError;
-use mc_transaction_core::{ring_signature, ring_signature::Error, AmountError};
+use mc_transaction_core::{ring_signature, ring_signature::Error, AmountError, NewTxError};
 
+/// An error that can occur when using the TransactionBuilder
 #[derive(Debug, Display)]
 pub enum TxBuilderError {
     /// Ring Signature construction failed
@@ -20,6 +21,9 @@ pub enum TxBuilderError {
 
     /// Bad Amount: {0}
     BadAmount(AmountError),
+
+    /// New Tx: {0}
+    NewTx(NewTxError),
 
     /// Ring has incorrect size
     InvalidRingSize,
@@ -52,6 +56,12 @@ impl From<prost::EncodeError> for TxBuilderError {
 impl From<AmountError> for TxBuilderError {
     fn from(x: AmountError) -> Self {
         TxBuilderError::BadAmount(x)
+    }
+}
+
+impl From<NewTxError> for TxBuilderError {
+    fn from(x: NewTxError) -> Self {
+        TxBuilderError::NewTx(x)
     }
 }
 

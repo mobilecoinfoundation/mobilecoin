@@ -795,13 +795,15 @@ mod ledger_db_test {
     fn get_origin_block_and_contents(account_key: &AccountKey) -> (Block, BlockContents) {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let output = TxOut::new(
+        let mut output = TxOut::new(
             1000,
             &account_key.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
         )
         .unwrap();
+        // Origin block transactions dont' have memos
+        output.e_memo = None;
 
         let outputs = vec![output];
         let block = Block::new_origin_block(&outputs);

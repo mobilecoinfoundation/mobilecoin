@@ -15,7 +15,7 @@ pub use mc_transaction_core::{
     Block, BlockID, BlockIndex, BLOCK_VERSION,
 };
 use mc_transaction_core::{constants::RING_SIZE, membership_proofs::Range, BlockContents};
-use mc_transaction_std::{InputCredentials, TransactionBuilder};
+use mc_transaction_std::{DefaultMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_util_from_random::FromRandom;
 use rand::{seq::SliceRandom, Rng};
 use tempdir::TempDir;
@@ -87,7 +87,8 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
     tombstone_block: BlockIndex,
     rng: &mut R,
 ) -> Tx {
-    let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
+    let mut transaction_builder =
+        TransactionBuilder::new(MockFogResolver::default(), DefaultMemoBuilder::default());
 
     // The first transaction in the origin block should contain enough outputs to
     // use as mixins.
@@ -203,13 +204,16 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                 // Create an origin block.
                 let outputs: Vec<TxOut> = (0..RING_SIZE)
                     .map(|_i| {
-                        TxOut::new(
+                        let mut tx_out = TxOut::new(
                             value,
                             &account_key.default_subaddress(),
                             &RistrettoPrivate::from_random(rng),
                             Default::default(),
                         )
-                        .unwrap()
+                        .unwrap();
+                        // The origin block did not historically have memo fields
+                        tx_out.e_memo = None;
+                        tx_out
                     })
                     .collect();
 
