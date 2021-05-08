@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-sig-authority"
-version = "1.0.1-pre1"
+version = "1.1.0-pre2"
 authors = ["MobileCoin"]
 edition = "2018"
 description = "Create and verify fog authority signatures"

@@ -1,6 +1,6 @@
 [package]
 name = "mc-sgx-epid-sys"
-version = "1.0.1-pre1"
+version = "1.1.0-pre2"
 authors = ["MobileCoin"]
 description = "EPID FFI for Intel SGX SDK."
 readme = "README.md"
