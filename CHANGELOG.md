@@ -20,6 +20,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
  - `mobilecoind` support for load balancing (via forked grpcio)
  - `mobilecoind` encrypts account key at rest
  - `watcher` app to keep track of Attestation Verification Reports from live machines
+ - `consensus-service` now takes `--minimum-fee=<picoMOB>` to configure minimum fees (nodes with different fees cannot attest to each other).
 
 ### Changed
 
