@@ -2,7 +2,11 @@
 
 use crate::ConvertError;
 use alloc::{vec, vec::Vec};
-use core::{convert::TryFrom, fmt::Debug, hash::Hash};
+use core::{
+    convert::TryFrom,
+    fmt::{Debug, Display, Formatter, Result as FmtResult},
+    hash::Hash,
+};
 use mc_crypto_digestible::Digestible;
 use prost::{
     bytes::{Buf, BufMut},
@@ -30,6 +34,12 @@ impl TryFrom<&[u8]> for BlockID {
 impl AsRef<[u8]> for BlockID {
     fn as_ref(&self) -> &[u8] {
         &self.0
+    }
+}
+
+impl Display for BlockID {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        write!(f, "{}", hex_fmt::HexFmt(&self.0),)
     }
 }
 

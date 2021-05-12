@@ -2898,7 +2898,7 @@ name = "mc-ledger-db"
 version = "1.0.1-pre1"
 dependencies = [
  "curve25519-dalek",
- "failure",
+ "displaydoc",
  "lazy_static",
  "lmdb-rkv",
  "mc-account-keys",
