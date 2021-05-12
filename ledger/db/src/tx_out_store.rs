@@ -1007,7 +1007,7 @@ pub mod tx_out_store_tests {
 
         let mut rw_transaction: RwTransaction = env.begin_rw_txn().unwrap();
         match tx_out_store.push(&tx_outs[0], &mut rw_transaction) {
-            Err(Error::LmdbError(lmdb::Error::KeyExist)) => {}
+            Err(Error::Lmdb(lmdb::Error::KeyExist)) => {}
             Ok(_) => panic!("unexpected success"),
             Err(_) => panic!("unexpected error"),
         };
@@ -1032,7 +1032,7 @@ pub mod tx_out_store_tests {
 
         let mut rw_transaction: RwTransaction = env.begin_rw_txn().unwrap();
         match tx_out_store.push(&tx_outs[0], &mut rw_transaction) {
-            Err(Error::LmdbError(lmdb::Error::KeyExist)) => {}
+            Err(Error::Lmdb(lmdb::Error::KeyExist)) => {}
             Ok(_) => panic!("unexpected success"),
             Err(_) => panic!("unexpected error"),
         };
