@@ -12,9 +12,16 @@ use std::{env::var, path::PathBuf};
 // if you do.
 const SGX_VERSION: &str = "2.9.101.2";
 
+/// The consensus enclave product ID, this must remain as "1"
 const CONSENSUS_ENCLAVE_PRODUCT_ID: u16 = 1;
+
+/// The Consensus Enclave Version: Increment this whenever releasing to mainnet.
 const CONSENSUS_ENCLAVE_SECURITY_VERSION: u16 = 2;
+
+/// The name of the enclave, used to construct consistent paths.
 const CONSENSUS_ENCLAVE_NAME: &str = "consensus-enclave";
+
+/// The relative location (to this file) where the trusted crate lives.
 const CONSENSUS_ENCLAVE_DIR: &str = "../trusted";
 
 fn main() {
