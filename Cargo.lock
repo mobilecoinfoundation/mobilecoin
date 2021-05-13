@@ -2940,12 +2940,14 @@ dependencies = [
 
 [[package]]
 name = "mc-ledger-from-archive"
-version = "1.0.1-pre1"
+version = "1.1.0-pre4"
 dependencies = [
+ "crossbeam-channel 0.5.0",
  "mc-api",
  "mc-common",
  "mc-ledger-db",
  "mc-ledger-sync",
+ "mc-transaction-core",
  "structopt",
 ]
 

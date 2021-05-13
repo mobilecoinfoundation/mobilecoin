@@ -24,4 +24,8 @@ pub struct LedgerFromArchiveConfig {
     /// (Optional) Number of blocks to sync
     #[structopt(long)]
     pub num_blocks: Option<u64>,
+
+    /// (Optional) Chunk size
+    #[structopt(long, default_value = "100")]
+    pub block_chunk_size: u64,
 }
