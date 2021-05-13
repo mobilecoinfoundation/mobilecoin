@@ -7,18 +7,16 @@
 mod config;
 
 use config::LedgerFromArchiveConfig;
-use mc_common::logger::{create_app_logger, log, Logger, o};
+use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::ReqwestTransactionsFetcher;
 use mc_transaction_core::{BlockData, BlockIndex};
-use structopt::StructOpt;
 use std::{
-    collections::{BTreeMap},
-    sync::{
-        Arc, Condvar, Mutex,
-    },
+    collections::BTreeMap,
+    sync::{Arc, Condvar, Mutex},
     time::{Duration, Instant},
 };
+use structopt::StructOpt;
 
 /// Maximal amount of concurrent get_block_contents calls to allow.
 const MAX_CONCURRENT_GET_BLOCK_CONTENTS_CALLS: usize = 50;
@@ -29,9 +27,10 @@ fn main() {
 
     let config = LedgerFromArchiveConfig::from_args();
 
-    let transactions_fetcher =
-        Arc::new(ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
-            .expect("Failed creating ReqwestTransactionsFetcher"));
+    let transactions_fetcher = Arc::new(
+        ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
+            .expect("Failed creating ReqwestTransactionsFetcher"),
+    );
 
     log::info!(logger, "Creating local ledger at {:?}", config.ledger_db);
     // Open LedgerDB
@@ -53,26 +52,48 @@ fn main() {
         .expect("Could not append origin block to ledger");
 
     let mut start = 1;
+    let mut reached_end = false;
     loop {
         let end = start + config.block_chunk_size;
+        if reached_end {
+            log::info!(
+                logger,
+                "Done fetching transactions. Local ledger at {} blocks",
+                local_ledger.num_blocks().expect("Could not get num blocks"),
+            );
+            return;
+        }
         if let Some(block_limit) = config.num_blocks {
             if start >= block_limit {
                 log::info!(
                     logger,
                     "Done fetching transactions for {} blocks",
-                    start,
+                    block_limit,
                 );
                 return;
             }
         }
         log::info!(logger, "Getting block contents for {}-{}", start, end);
-        let block_map = get_block_contents(transactions_fetcher.clone(), start.clone(), end, std::time::Duration::from_secs(1), &logger);
+        let block_map = get_block_contents(
+            transactions_fetcher.clone(),
+            start.clone(),
+            end,
+            std::time::Duration::from_secs(1),
+            &logger,
+        );
         log::info!(logger, "Got block contents. Now appending to ledger");
         for (block_index, block_data_opt) in block_map.iter() {
             if let Some(block_data) = block_data_opt {
-                local_ledger.append_block(&block_data.block(), &block_data.contents(), block_data.signature().clone()).unwrap();
+                local_ledger
+                    .append_block(
+                        &block_data.block(),
+                        &block_data.contents(),
+                        block_data.signature().clone(),
+                    )
+                    .unwrap();
             } else {
                 log::warn!(logger, "No block data for index {}", block_index);
+                reached_end = true;
             }
         }
         start = end;
@@ -174,7 +195,7 @@ fn get_block_contents(
 
                             match thread_transactions_fetcher
                                 .get_block_data_by_index(block_index, None)
-                                {
+                            {
                                 Ok(block_data) => {
                                     // Log
                                     log::trace!(
@@ -209,7 +230,9 @@ fn get_block_contents(
                                     // Sleep, with a linearly increasing delay. This prevents
                                     // endless retries
                                     // as long as the deadline is not exceeded.
-                                    std::thread::sleep(std::time::Duration::from_secs(num_attempts + 1));
+                                    std::thread::sleep(std::time::Duration::from_secs(
+                                        num_attempts + 1,
+                                    ));
 
                                     // Put back to queue for a retry
                                     thread_sender
