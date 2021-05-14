@@ -604,7 +604,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             }
 
             // Calculate the fee - right now this is constant.
-            let fee = MINIMUM_FEE;
+            let fee = get_fees(0);
 
             // See if the total amount we are trying to merge into our biggest UTXO is
             // bigger than the fee. If it's smaller, the merge would just lose
