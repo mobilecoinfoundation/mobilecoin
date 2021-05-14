@@ -7,7 +7,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ## [Unreleased]
 
-## [1.1.0-pre2 Unreleased]
+## [1.1.0] - 2021-05-14
 
 ### Added
 
