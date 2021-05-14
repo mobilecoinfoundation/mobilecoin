@@ -285,6 +285,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         &self,
         monitor_id: &MonitorId,
         subaddress_index: u64,
+        fee: u64,
     ) -> Result<TxProposal, Error> {
         let logger = self.logger.new(
             o!("monitor_id" => monitor_id.to_string(), "subaddress_index" => subaddress_index),
@@ -296,12 +297,19 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let num_blocks_in_ledger = self.ledger_db.num_blocks()?;
 
+        let fee = get_fee(&self.peer_manager, fee);
+
         // Select UTXOs that will be spent by this transaction.
-        let (selected_utxos, fee) = {
+        let selected_utxos = {
             let inputs = self
                 .mobilecoind_db
                 .get_utxos_for_subaddress(monitor_id, subaddress_index)?;
-            Self::select_utxos_for_optimization(num_blocks_in_ledger, &inputs, MAX_INPUTS as usize)?
+            Self::select_utxos_for_optimization(
+                num_blocks_in_ledger,
+                &inputs,
+                MAX_INPUTS as usize,
+                fee,
+            )?
         };
 
         log::trace!(
@@ -559,12 +567,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// UTXOs > fee, we would be able to increase our largest    UTXO and
     /// we're done. If not, try again without the smallest UTXO.
     ///
-    /// Returns a tuple of (selected UTXOs, fee).
+    /// Returns selected UTXOs
     fn select_utxos_for_optimization(
         num_blocks_in_ledger: u64,
         inputs: &[UnspentTxOut],
         max_inputs: usize,
-    ) -> Result<(Vec<UnspentTxOut>, u64), Error> {
+        fee: u64,
+    ) -> Result<Vec<UnspentTxOut>, Error> {
         if max_inputs < 2 {
             return Err(Error::InvalidArgument(
                 "max_inputs".to_owned(),
@@ -603,9 +612,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 total += utxo.value;
             }
 
-            // Calculate the fee - right now this is constant.
-            let fee = get_fees(0);
-
             // See if the total amount we are trying to merge into our biggest UTXO is
             // bigger than the fee. If it's smaller, the merge would just lose
             // us money.
@@ -619,7 +625,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 assert!(total_value - fee > biggest_utxo.value);
 
                 // Return our selected utxos and fee.
-                return Ok((selected_utxos.into_iter().cloned().collect(), fee));
+                return Ok(selected_utxos.into_iter().cloned().collect());
             }
 
             // Merging the currently selected set of UTXOs would lose us money. Try again
@@ -1058,7 +1064,7 @@ mod test {
                 TransactionsManager::<
                     ThickClient<HardcodedCredentialsProvider>,
                     MockFogPubkeyResolver,
-                >::select_utxos_for_optimization(1000, &utxos, 2)
+                >::select_utxos_for_optimization(1000, &utxos, 2, MINIMUM_FEE)
                 .unwrap();
 
             assert_eq!(selected_utxos, vec![utxos[0].clone(), utxos[4].clone()]);
@@ -1080,7 +1086,7 @@ mod test {
                 TransactionsManager::<
                     ThickClient<HardcodedCredentialsProvider>,
                     MockFogPubkeyResolver,
-                >::select_utxos_for_optimization(1000, &utxos, 3)
+                >::select_utxos_for_optimization(1000, &utxos, 3, MINIMUM_FEE)
                 .unwrap();
 
             assert_eq!(
@@ -1111,10 +1117,11 @@ mod test {
                     < MINIMUM_FEE
             );
 
-            let result = TransactionsManager::<
-                ThickClient<HardcodedCredentialsProvider>,
-                MockFogPubkeyResolver,
-            >::select_utxos_for_optimization(1000, &utxos, 100);
+            let result =
+                TransactionsManager::<
+                    ThickClient<HardcodedCredentialsProvider>,
+                    MockFogPubkeyResolver,
+                >::select_utxos_for_optimization(1000, &utxos, 100, MINIMUM_FEE);
             assert!(result.is_err());
         }
 
@@ -1126,10 +1133,11 @@ mod test {
             utxos[0].value = MINIMUM_FEE;
             utxos[1].value = 2000 * MILLIMOB_TO_PICOMOB;
 
-            let result = TransactionsManager::<
-                ThickClient<HardcodedCredentialsProvider>,
-                MockFogPubkeyResolver,
-            >::select_utxos_for_optimization(1000, &utxos, 100);
+            let result =
+                TransactionsManager::<
+                    ThickClient<HardcodedCredentialsProvider>,
+                    MockFogPubkeyResolver,
+                >::select_utxos_for_optimization(1000, &utxos, 100, MINIMUM_FEE);
             assert!(result.is_err());
         }
 
@@ -1146,7 +1154,7 @@ mod test {
                 TransactionsManager::<
                     ThickClient<HardcodedCredentialsProvider>,
                     MockFogPubkeyResolver,
-                >::select_utxos_for_optimization(1000, &utxos, 3)
+                >::select_utxos_for_optimization(1000, &utxos, 3, MINIMUM_FEE)
                 .unwrap();
             // Since we're limited to 3 inputs, the lowest input (of value 1) is going to
             // get excluded.
@@ -1169,13 +1177,13 @@ mod test {
         let result = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
-        >::select_utxos_for_optimization(1000, &[], 100);
+        >::select_utxos_for_optimization(1000, &[], 100, MINIMUM_FEE);
         assert!(result.is_err());
 
         let result = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
-        >::select_utxos_for_optimization(1000, &utxos[0..1], 100);
+        >::select_utxos_for_optimization(1000, &utxos[0..1], 100, MINIMUM_FEE);
         assert!(result.is_err());
 
         // A set of 2 utxos succeeds when max inputs is 2, but fails when it is 3 (since
@@ -1183,13 +1191,13 @@ mod test {
         let result = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
-        >::select_utxos_for_optimization(1000, &utxos[0..2], 2);
+        >::select_utxos_for_optimization(1000, &utxos[0..2], 2, MINIMUM_FEE);
         assert!(result.is_ok());
 
         let result = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
-        >::select_utxos_for_optimization(1000, &utxos[0..2], 3);
+        >::select_utxos_for_optimization(1000, &utxos[0..2], 3, MINIMUM_FEE);
         assert!(result.is_err());
     }
 }
