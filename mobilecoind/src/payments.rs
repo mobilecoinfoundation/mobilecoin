@@ -1060,7 +1060,7 @@ mod test {
             utxos[4].value = 2000 * MILLIMOB_TO_PICOMOB;
             utxos[5].value = 1000 * MILLIMOB_TO_PICOMOB;
 
-            let (selected_utxos, fee) =
+            let selected_utxos =
                 TransactionsManager::<
                     ThickClient<HardcodedCredentialsProvider>,
                     MockFogPubkeyResolver,
@@ -1068,7 +1068,6 @@ mod test {
                 .unwrap();
 
             assert_eq!(selected_utxos, vec![utxos[0].clone(), utxos[4].clone()]);
-            assert_eq!(fee, MINIMUM_FEE);
         }
 
         // Optimizing with max_inputs=3 should select 100, 150, 2000;
@@ -1082,7 +1081,7 @@ mod test {
             utxos[4].value = 2000 * MILLIMOB_TO_PICOMOB;
             utxos[5].value = 1000 * MILLIMOB_TO_PICOMOB;
 
-            let (selected_utxos, fee) =
+            let selected_utxos =
                 TransactionsManager::<
                     ThickClient<HardcodedCredentialsProvider>,
                     MockFogPubkeyResolver,
@@ -1093,7 +1092,6 @@ mod test {
                 selected_utxos,
                 vec![utxos[0].clone(), utxos[2].clone(), utxos[4].clone()]
             );
-            assert_eq!(fee, MINIMUM_FEE);
         }
     }
 
@@ -1150,7 +1148,7 @@ mod test {
             utxos[2].value = MINIMUM_FEE / 10;
             utxos[3].value = MINIMUM_FEE / 5;
 
-            let (selected_utxos, fee) =
+            let selected_utxos =
                 TransactionsManager::<
                     ThickClient<HardcodedCredentialsProvider>,
                     MockFogPubkeyResolver,
@@ -1162,7 +1160,6 @@ mod test {
                 selected_utxos,
                 vec![utxos[3].clone(), utxos[0].clone(), utxos[1].clone()]
             );
-            assert_eq!(fee, MINIMUM_FEE);
         }
     }
 
