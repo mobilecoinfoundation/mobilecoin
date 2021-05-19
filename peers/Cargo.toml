@@ -29,7 +29,7 @@ ed25519 = { version = "1.0.1", default-features = false, features = ["serde"] }
 failure = "0.1.8"
 grpcio = "0.6.0"
 mockall = "0.8.3"
-protobuf = "2.12"
+protobuf = "2.22.1"
 retry = "1.2"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 
@@ -37,5 +37,5 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 mc-connection-test-utils = { path = "../connection/test-utils" }
 mc-peers-test-utils = { path = "./test-utils" }
 
-rand_hc = "0.2"
-rand = "0.7"
+rand_hc = "0.3"
+rand = "0.8"

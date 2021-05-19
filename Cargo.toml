@@ -78,6 +78,7 @@ members = [
     "transaction/core",
     "transaction/core/test-utils",
     "transaction/std",
+    "util/b58-decoder",
     "util/build/bolt-signalapp",
     "util/build/enclave",
     "util/build/grpc",
@@ -147,10 +148,24 @@ lmdb-rkv = { git = "https://github.com/mozilla/lmdb-rs", rev = "df1c2f5" }
 serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a7c1d523aae1ec4aa7386f402cb2f4341b5" }
 
 # Not-yet-released version that depends on newer crates.
-bulletproofs = { git = "https://github.com/dalek-cryptography/bulletproofs", rev = "464acb72432ccc6c5131397fd811a5f01ec2454b" }
+bulletproofs = { git = "https://github.com/eranrund/bulletproofs", rev = "8a7c9cdd1efafa3ad68cd65676302f925de68373" }
 
 # Patched to disable the cpuid instruction because that is incompatible with our sgx builds.
 cpuid-bool = { git = "https://github.com/eranrund/RustCrypto-utils", rev = "74f8e04e9d18d93fc6d05c72756c236dc88daa19" }
 
 # We need to patch aes-gcm so we can make some fields/functions/structs pub in order to have a constant time decrypt
 aes-gcm = { git = "https://github.com/mobilecoinofficial/AEADs", rev = "d1a8517d3dd867ed9c5794002add67992a42f6aa" }
+
+# See https://github.com/commure/datatest/pull/30
+datatest = { git = "https://github.com/cormacrelf/datatest.git", rev = "0c12efa" }
+
+# ed25519-dalek depends on rand 0.7 which in turns depends on a broken version of packed_simd
+# This is a PR that moves it to newer rand
+# See https://github.com/dalek-cryptography/ed25519-dalek/pull/160
+ed25519-dalek = { git = "https://github.com/eranrund/ed25519-dalek.git", rev = "484369672f45d776fe13fdd17618aed2f4047909" }
+
+# Bump curve25519-dalek version to 4.0.0-pre0
+x25519-dalek = { git = "https://github.com/eranrund/x25519-dalek.git", rev = "57c04e5c5aca3551c015167d8176393fbe76dc65" }
+
+# Overridden since we need a commit that uprevs a bunch of dependencies.
+schnorrkel = { git = "https://github.com/mobilecoinofficial/schnorrkel", rev = "fa27d0ed32d251a27399a23d3ef69611acb14d56" }

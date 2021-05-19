@@ -26,8 +26,8 @@ pub const INITIALIZE_LEDGER_AMOUNT: u64 = 1_000_000 * 1_000_000_000;
 /// Creates a LedgerDB instance.
 pub fn create_ledger() -> LedgerDB {
     let temp_dir = TempDir::new("test").unwrap();
-    let path = temp_dir.path().to_path_buf();
-    LedgerDB::create(path.clone()).unwrap();
+    let path = temp_dir.path();
+    LedgerDB::create(path).unwrap();
     LedgerDB::open(path).unwrap()
 }
 
@@ -189,7 +189,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                 let block_contents = BlockContents::new(key_images, outputs);
 
                 let block = Block::new(
-                    BLOCK_VERSION,
+                    0,
                     &parent.as_ref().unwrap().id,
                     block_index,
                     parent.as_ref().unwrap().cumulative_txo_count,
@@ -251,12 +251,12 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
     let mut last_block = initial_block.clone();
 
     for block_index in 0..n_blocks {
-        let n_txs = rng.gen_range(min_txs_per_block, max_txs_per_block + 1);
+        let n_txs = rng.gen_range(min_txs_per_block..=max_txs_per_block);
         let recipient_and_amount: Vec<(PublicAddress, u64)> = (0..n_txs)
             .map(|_| {
                 (
                     recipients.choose(rng).unwrap().clone(),
-                    rng.gen_range(1, 10_000_000_000),
+                    rng.gen_range(1..10_000_000_000),
                 )
             })
             .collect();

@@ -28,16 +28,16 @@ where
     }
 }
 
-impl Into<AuthResponseOutput> for AuthMessage {
-    fn into(self) -> AuthResponseOutput {
-        let mut taken_self = self;
+impl From<AuthMessage> for AuthResponseOutput {
+    fn from(src: AuthMessage) -> AuthResponseOutput {
+        let mut taken_self = src;
         AuthResponseOutput::from(taken_self.take_data())
     }
 }
 
-impl Into<PeerAuthRequest> for AuthMessage {
-    fn into(self) -> PeerAuthRequest {
-        self.data.into()
+impl From<AuthMessage> for PeerAuthRequest {
+    fn from(src: AuthMessage) -> PeerAuthRequest {
+        src.data.into()
     }
 }
 
@@ -49,9 +49,9 @@ impl From<PeerAuthRequest> for AuthMessage {
     }
 }
 
-impl Into<ClientAuthRequest> for AuthMessage {
-    fn into(self) -> ClientAuthRequest {
-        self.data.into()
+impl From<AuthMessage> for ClientAuthRequest {
+    fn from(src: AuthMessage) -> ClientAuthRequest {
+        src.data.into()
     }
 }
 
@@ -63,9 +63,9 @@ impl From<ClientAuthRequest> for AuthMessage {
     }
 }
 
-impl Into<PeerAuthResponse> for AuthMessage {
-    fn into(self) -> PeerAuthResponse {
-        self.data.into()
+impl From<AuthMessage> for PeerAuthResponse {
+    fn from(src: AuthMessage) -> PeerAuthResponse {
+        src.data.into()
     }
 }
 
@@ -77,9 +77,9 @@ impl From<PeerAuthResponse> for AuthMessage {
     }
 }
 
-impl Into<ClientAuthResponse> for AuthMessage {
-    fn into(self) -> ClientAuthResponse {
-        self.data.into()
+impl From<AuthMessage> for ClientAuthResponse {
+    fn from(src: AuthMessage) -> ClientAuthResponse {
+        src.data.into()
     }
 }
 
@@ -91,12 +91,12 @@ impl From<ClientAuthResponse> for AuthMessage {
     }
 }
 
-impl<S: Session> Into<EnclaveMessage<S>> for Message {
-    fn into(self) -> EnclaveMessage<S> {
+impl<S: Session> From<Message> for EnclaveMessage<S> {
+    fn from(src: Message) -> EnclaveMessage<S> {
         EnclaveMessage {
-            aad: self.aad,
-            channel_id: S::from(&self.channel_id),
-            data: self.data,
+            aad: src.aad,
+            channel_id: S::from(&src.channel_id),
+            data: src.data,
         }
     }
 }

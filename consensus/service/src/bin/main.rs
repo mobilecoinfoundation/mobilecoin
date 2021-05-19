@@ -20,7 +20,7 @@ use std::{
     env,
     fs::File,
     io::{Read, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 use structopt::StructOpt;
@@ -60,9 +60,11 @@ fn main() -> Result<(), ConsensusServiceError> {
         &config.peer_responder_id,
         &config.client_responder_id,
         &cached_key,
+        config.minimum_fee().expect("Could not parse minimum fee"),
     );
 
     log::info!(logger, "Enclave target features: {}", features.join(", "));
+    log::info!(logger, "Configured minimum fee: {:?}", config.minimum_fee());
 
     // write the sealed block signing key
     let mut sealed_key_file =
@@ -73,8 +75,7 @@ fn main() -> Result<(), ConsensusServiceError> {
 
     setup_ledger_dir(&config.origin_block_path, &config.ledger_path);
 
-    let local_ledger =
-        LedgerDB::open(config.ledger_path.clone()).expect("Failed creating LedgerDB");
+    let local_ledger = LedgerDB::open(&config.ledger_path).expect("Failed creating LedgerDB");
 
     let ias_client = Client::new(&config.ias_api_key).expect("Could not create IAS client");
 
@@ -114,7 +115,7 @@ fn main() -> Result<(), ConsensusServiceError> {
     panic!("Oh oh, our threads died");
 }
 
-fn setup_ledger_dir(config_origin_path: &Option<PathBuf>, ledger_path: &PathBuf) {
+fn setup_ledger_dir(config_origin_path: &Option<PathBuf>, ledger_path: &Path) {
     if let Some(origin_block_path) = config_origin_path.clone() {
         // Copy origin block to ledger_db path if there are not already contents in
         // ledger_db. If ledger_path does not exist, create the dir.

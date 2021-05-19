@@ -34,9 +34,17 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
     // And actually do it
     let outdata = match call_details {
         // Utility methods
-        EnclaveCall::EnclaveInit(peer_self_id, client_self_id, sealed_key) => {
-            serialize(&ENCLAVE.enclave_init(&peer_self_id, &client_self_id, &sealed_key))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
+        EnclaveCall::EnclaveInit(peer_self_id, client_self_id, sealed_key, minimum_fee) => {
+            serialize(&ENCLAVE.enclave_init(
+                &peer_self_id,
+                &client_self_id,
+                &sealed_key,
+                minimum_fee,
+            ))
+            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
+        }
+        EnclaveCall::GetMinimumFee => {
+            serialize(&ENCLAVE.get_minimum_fee()).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
         // Node-to-Node Attestation
         EnclaveCall::PeerInit(node_id) => {

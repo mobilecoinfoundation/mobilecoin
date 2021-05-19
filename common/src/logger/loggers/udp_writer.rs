@@ -18,7 +18,8 @@ impl UdpWriter {
         Self {
             destination,
             socket,
-            buf: Vec::with_capacity(65507), // Max UDP packet size (65,535 − 8 byte UDP header − 20 byte IP header).
+            buf: Vec::with_capacity(65507), /* Max UDP packet size (65,535 − 8 byte UDP header −
+                                             * 20 byte IP header). */
         }
     }
 }
@@ -31,9 +32,11 @@ impl io::Write for UdpWriter {
 
     fn flush(&mut self) -> io::Result<()> {
         // Don't send packets that are too big since that's guaranteed to fail.
-        // The field size sets a theoretical limit of 65,535 bytes (8 byte header + 65,527 bytes of data) for
-        // a UDP datagram. However the actual limit for the data length, which is imposed by the underlying
-        // IPv4 protocol, is 65,507 bytes (65,535 − 8 byte UDP header − 20 byte IP header).
+        // The field size sets a theoretical limit of 65,535 bytes (8 byte header +
+        // 65,527 bytes of data) for a UDP datagram. However the actual limit
+        // for the data length, which is imposed by the underlying
+        // IPv4 protocol, is 65,507 bytes (65,535 − 8 byte UDP header − 20 byte IP
+        // header).
         if self.buf.len() > 65507 {
             self.buf.clear();
             return Ok(());

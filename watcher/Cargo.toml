@@ -36,6 +36,7 @@ grpcio = "0.6.0"
 hex = "0.4"
 lmdb-rkv = "0.14.0"
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
+rayon = "1.2"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 structopt = "0.3"
 toml = "0.5"
@@ -47,8 +48,8 @@ mc-common = { path = "../common", features = ["loggers"] }
 mc-util-test-helper = { path = "../util/test-helper" }
 
 lazy_static = "1.4"
-rand_core = "0.5"
-rand_hc = "0.2"
+rand_core = "0.6"
+rand_hc = "0.3"
 serial_test = "0.5"
 serial_test_derive = "0.5"
 tempdir = "0.3"

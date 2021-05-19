@@ -44,18 +44,18 @@ impl AsRef<[u8]> for Slip10Key {
 /// Create the view and spend private keys, and return them in reverse order,
 /// e.g. `(spend, view)`, to match
 /// [`AccountKey::new()`](mc_account_key::AccountKey::new)
-impl Into<(RistrettoPrivate, RistrettoPrivate)> for Slip10Key {
-    fn into(self) -> (RistrettoPrivate, RistrettoPrivate) {
+impl From<Slip10Key> for (RistrettoPrivate, RistrettoPrivate) {
+    fn from(src: Slip10Key) -> (RistrettoPrivate, RistrettoPrivate) {
         let mut okm = [0u8; 64];
 
-        let view_kdf = Hkdf::<Sha512>::new(Some(b"mobilecoin-ristretto255-view"), self.as_ref());
+        let view_kdf = Hkdf::<Sha512>::new(Some(b"mobilecoin-ristretto255-view"), src.as_ref());
         view_kdf
             .expand(b"", &mut okm)
             .expect("Invalid okm length when creating private view key");
         let view_scalar = Scalar::from_bytes_mod_order_wide(&okm);
         let view_private_key = RistrettoPrivate::from(view_scalar);
 
-        let spend_kdf = Hkdf::<Sha512>::new(Some(b"mobilecoin-ristretto255-spend"), self.as_ref());
+        let spend_kdf = Hkdf::<Sha512>::new(Some(b"mobilecoin-ristretto255-spend"), src.as_ref());
         spend_kdf
             .expand(b"", &mut okm)
             .expect("Invalid okm length when creating private spend key");
@@ -105,7 +105,7 @@ const COINTYPE_MOBILECOIN: u32 = 866;
 impl Slip10KeyGenerator for Mnemonic {
     fn derive_slip10_key(self, account_index: u32) -> Slip10Key {
         // We explicitly do not support passphrases for BIP-39 mnemonics, please
-        // see the Mobilecoin Key Derivation design specification, v1.0.0, for
+        // see the MobileCoin Key Derivation design specification, v1.0.0, for
         // design rationale.
         let seed = Seed::new(&self, "");
 
@@ -113,7 +113,7 @@ impl Slip10KeyGenerator for Mnemonic {
         let path = [USAGE_BIP44, COINTYPE_MOBILECOIN, account_index];
 
         // We're taking what the SLIP-0010 spec calls the "Ed25519 private key"
-        // here as our `SLip10Key`. That said, we're not actually using this as
+        // here as our `Slip10Key`. That said, we're not actually using this as
         // an Ed25519 key, just IKM for a pair of HKDF-SHA512 instances whose
         // output will be correctly transformed into the Ristretto255 keypair we
         // need.

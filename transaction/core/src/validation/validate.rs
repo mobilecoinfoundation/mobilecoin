@@ -31,6 +31,7 @@ pub fn validate<R: RngCore + CryptoRng>(
     tx: &Tx,
     current_block_index: u64,
     root_proofs: &[TxOutMembershipProof],
+    minimum_fee: u64,
     csprng: &mut R,
 ) -> TransactionValidationResult<()> {
     validate_number_of_inputs(&tx.prefix, MAX_INPUTS)?;
@@ -49,7 +50,7 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_signature(&tx, csprng)?;
 
-    validate_transaction_fee(&tx)?;
+    validate_transaction_fee(&tx, minimum_fee)?;
 
     validate_key_images_are_unique(&tx)?;
 
@@ -224,9 +225,9 @@ pub fn validate_signature<R: RngCore + CryptoRng>(
         .map_err(TransactionValidationError::InvalidTransactionSignature)
 }
 
-/// The fee amount must be greater than or equal to `MINIMUM_FEE`.
-fn validate_transaction_fee(tx: &Tx) -> TransactionValidationResult<()> {
-    if tx.prefix.fee < MINIMUM_FEE {
+/// The fee amount must be greater than or equal to the given minimum fee.
+fn validate_transaction_fee(tx: &Tx, minimum_fee: u64) -> TransactionValidationResult<()> {
+    if tx.prefix.fee < minimum_fee {
         Err(TransactionValidationError::TxFeeError)
     } else {
         Ok(())
@@ -822,9 +823,9 @@ mod tests {
         match validate_signature(&tx, &mut rng) {
             Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
             Err(e) => {
-                panic!(alloc::format!("Unexpected error {}", e));
+                panic!("Unexpected error {}", e);
             }
-            Ok(()) => panic!(),
+            Ok(()) => panic!("Unexpected success"),
         }
     }
 
@@ -841,9 +842,9 @@ mod tests {
         match validate_signature(&tx, &mut rng) {
             Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
             Err(e) => {
-                panic!(alloc::format!("Unexpected error {}", e));
+                panic!("Unexpected error {}", e);
             }
-            Ok(()) => panic!(),
+            Ok(()) => panic!("Unexpected success"),
         }
     }
 
@@ -858,9 +859,9 @@ mod tests {
         match validate_signature(&tx, &mut rng) {
             Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
             Err(e) => {
-                panic!(alloc::format!("Unexpected error {}", e));
+                panic!("Unexpected error {}", e);
             }
-            Ok(()) => panic!(),
+            Ok(()) => panic!("Unexpected success"),
         }
     }
 
@@ -870,7 +871,7 @@ mod tests {
             // Zero fees gets rejected
             let (tx, _ledger) = create_test_tx_with_amount(INITIALIZE_LEDGER_AMOUNT, 0);
             assert_eq!(
-                validate_transaction_fee(&tx),
+                validate_transaction_fee(&tx, 1000),
                 Err(TransactionValidationError::TxFeeError)
             );
         }
@@ -880,7 +881,7 @@ mod tests {
             let fee = MINIMUM_FEE - 1;
             let (tx, _ledger) = create_test_tx_with_amount(INITIALIZE_LEDGER_AMOUNT - fee, fee);
             assert_eq!(
-                validate_transaction_fee(&tx),
+                validate_transaction_fee(&tx, MINIMUM_FEE),
                 Err(TransactionValidationError::TxFeeError)
             );
         }
@@ -889,14 +890,14 @@ mod tests {
             // Exact fee amount is okay
             let (tx, _ledger) =
                 create_test_tx_with_amount(INITIALIZE_LEDGER_AMOUNT - MINIMUM_FEE, MINIMUM_FEE);
-            assert_eq!(validate_transaction_fee(&tx), Ok(()));
+            assert_eq!(validate_transaction_fee(&tx, MINIMUM_FEE), Ok(()));
         }
 
         {
             // Overpaying fees is okay
             let fee = MINIMUM_FEE + 1;
             let (tx, _ledger) = create_test_tx_with_amount(INITIALIZE_LEDGER_AMOUNT - fee, fee);
-            assert_eq!(validate_transaction_fee(&tx), Ok(()));
+            assert_eq!(validate_transaction_fee(&tx, MINIMUM_FEE), Ok(()));
         }
     }
 

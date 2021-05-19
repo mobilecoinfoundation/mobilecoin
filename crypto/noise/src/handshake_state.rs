@@ -20,7 +20,9 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
 /// The public error messages which can be included in this construction
-#[derive(Copy, Clone, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Copy, Clone, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub enum HandshakeError {
     #[fail(display = "The initiator identity pubkey was not provided")]
     MissingInitiatorIdentity,

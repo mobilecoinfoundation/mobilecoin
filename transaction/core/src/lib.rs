@@ -31,7 +31,7 @@ pub mod validation;
 #[cfg(test)]
 pub mod proptest_fixtures;
 
-pub use amount::{Amount, AmountError, Commitment, CompressedCommitment};
+pub use amount::{get_value_mask, Amount, AmountError, Commitment, CompressedCommitment};
 pub use blockchain::*;
 
 /// Get the shared secret for a transaction output.

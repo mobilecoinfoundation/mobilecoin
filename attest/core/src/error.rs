@@ -25,7 +25,9 @@ use mc_util_encodings::Error as EncodingError;
 use serde::{Deserialize, Serialize};
 
 /// A collection of errors surrounding the EPID pseudonym
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub enum EpidPseudonymError {
     #[fail(display = "The quote body could not be decoded")]
     Decode(EncodingError),
@@ -368,7 +370,9 @@ pub enum ReportBodyVerifyError {
 /// structure
 ///
 /// This is soon-to-be-deprecated.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub enum ReportDetailsError {
     #[fail(display = "The key type provided was unknown")]
     UnknownKeyType,
@@ -415,7 +419,9 @@ bitflags! {
 }
 
 /// An enumeration of errors which can occur when verifying report from IAS
-#[derive(Clone, Copy, Debug, Deserialize, Fail, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Fail, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub enum SignatureError {
     #[fail(display = "No certificates were provided to validate against")]
     NoCerts,
@@ -582,9 +588,9 @@ impl Hash for SgxError {
     }
 }
 
-impl Into<sgx_status_t> for SgxError {
-    fn into(self) -> sgx_status_t {
-        self.0
+impl From<SgxError> for sgx_status_t {
+    fn from(src: SgxError) -> sgx_status_t {
+        src.0
     }
 }
 

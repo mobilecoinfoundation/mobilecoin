@@ -166,7 +166,7 @@ impl ProcessedBlockStore {
         let key = ProcessedBlockKey::new(monitor_id, block_index);
         let key_bytes = key.to_vec();
 
-        Ok(cursor
+        cursor
             .iter_dup_of(&key_bytes)
             .map(|result| {
                 result.map_err(Error::from).and_then(|(db_key, db_value)| {
@@ -176,7 +176,7 @@ impl ProcessedBlockStore {
                     Ok(mc_util_serial::decode(db_value)?)
                 })
             })
-            .collect::<Result<Vec<_>, Error>>()?)
+            .collect::<Result<Vec<_>, Error>>()
     }
 
     /// Remove the data associated with a given monitor id.

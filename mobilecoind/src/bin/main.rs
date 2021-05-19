@@ -75,25 +75,27 @@ fn main() {
 
             log::info!(logger, "Opening watcher db at {:?}.", watcher_db_path);
             let watcher_db = create_or_open_rw_watcher_db(
-                watcher_db_path.clone(),
+                &watcher_db_path,
                 &transactions_fetcher.source_urls,
                 logger.clone(),
             )
             .expect("Could not create or open WatcherDB");
 
             // Start watcher db sync thread, unless running in offline mode.
-            log::info!(logger, "Starting watcher sync thread from mobilecoind.");
             let watcher_sync_thread = if config.offline {
-                None
+                panic!("Attempted to start watcher but we are configured in offline mode");
             } else {
-                Some(WatcherSyncThread::new(
-                    watcher_db.clone(),
-                    transactions_fetcher,
-                    ledger_db.clone(),
-                    config.poll_interval,
-                    false,
-                    logger.clone(),
-                ))
+                log::info!(logger, "Starting watcher sync thread from mobilecoind.");
+                Some(
+                    WatcherSyncThread::new(
+                        watcher_db.clone(),
+                        ledger_db.clone(),
+                        config.poll_interval,
+                        false,
+                        logger.clone(),
+                    )
+                    .expect("Failed starting watcher thread"),
+                )
             };
             (Some(watcher_db), watcher_sync_thread)
         }
@@ -155,7 +157,7 @@ fn create_or_open_ledger_db(
     transactions_fetcher: &ReqwestTransactionsFetcher,
 ) -> LedgerDB {
     // Attempt to open the ledger and see if it has anything in it.
-    if let Ok(ledger_db) = LedgerDB::open(config.ledger_db.clone()) {
+    if let Ok(ledger_db) = LedgerDB::open(&config.ledger_db) {
         if let Ok(num_blocks) = ledger_db.num_blocks() {
             if num_blocks > 0 {
                 // Successfully opened a ledger that has blocks in it.
@@ -186,12 +188,12 @@ fn create_or_open_ledger_db(
             // Try and create directory in case it doesn't exist. We need it to exist before
             // we can copy the data.mdb file.
             if !Path::new(&config.ledger_db).exists() {
-                std::fs::create_dir_all(config.ledger_db.clone())
+                std::fs::create_dir_all(&config.ledger_db)
                     .unwrap_or_else(|_| panic!("Failed creating directory {:?}", config.ledger_db));
             }
 
             let src = format!("{}/data.mdb", ledger_db_bootstrap);
-            std::fs::copy(src.clone(), ledger_db_file.clone()).unwrap_or_else(|_| {
+            std::fs::copy(src.clone(), &ledger_db_file).unwrap_or_else(|_| {
                 panic!(
                     "Failed copying ledger from {} into directory {}",
                     src,
@@ -205,13 +207,12 @@ fn create_or_open_ledger_db(
                     "Ledger DB {:?} does not exist, bootstrapping from peer, this may take a few minutes",
                     config.ledger_db
                 );
-            std::fs::create_dir_all(config.ledger_db.clone()).expect("Could not create ledger dir");
-            LedgerDB::create(config.ledger_db.clone()).expect("Could not create ledger_db");
+            std::fs::create_dir_all(&config.ledger_db).expect("Could not create ledger dir");
+            LedgerDB::create(&config.ledger_db).expect("Could not create ledger_db");
             let block_data = transactions_fetcher
                 .get_origin_block_and_transactions()
                 .expect("Failed to download initial transactions");
-            let mut db =
-                LedgerDB::open(config.ledger_db.clone()).expect("Could not open ledger_db");
+            let mut db = LedgerDB::open(&config.ledger_db).expect("Could not open ledger_db");
             db.append_block(
                 block_data.block(),
                 block_data.contents(),
@@ -224,7 +225,7 @@ fn create_or_open_ledger_db(
 
     // Open ledger and verify it has (at least) the origin block.
     log::debug!(logger, "Opening Ledger DB {:?}", config.ledger_db);
-    let ledger_db = LedgerDB::open(config.ledger_db.clone())
+    let ledger_db = LedgerDB::open(&config.ledger_db)
         .unwrap_or_else(|_| panic!("Could not open ledger db inside {:?}", config.ledger_db));
 
     let num_blocks = ledger_db

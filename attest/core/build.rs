@@ -28,7 +28,7 @@ use std::{
     env,
     fs::{read, remove_file, write},
     ops::Deref,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 
@@ -72,8 +72,8 @@ impl RngCallback for RngForMbedTls {
     }
 }
 
-fn purge_expired_cert(path: &PathBuf) {
-    let mut bytes = match read(path.clone()) {
+fn purge_expired_cert(path: &Path) {
+    let mut bytes = match read(path) {
         Ok(bytes) => bytes,
         Err(_) => {
             return;
@@ -98,14 +98,14 @@ fn purge_expired_cert(path: &PathBuf) {
             // If certificate expired or expires in the next 24 hours, delete it so it gets
             // regenerated.
             if utc_now + Duration::hours(24) > not_after {
-                remove_file(path.clone())
+                remove_file(path)
                     .unwrap_or_else(|e| panic!("failed deleting expired cert {:?}: {:?}", path, e));
             }
         }
         Err(_) => {
             // Failed getting expiration date from certificate, delete it so it gets
             // regenerated.
-            remove_file(path.clone()).unwrap_or_else(|e| {
+            remove_file(path).unwrap_or_else(|e| {
                 panic!("failed deleting non-parseable cert {:?}: {:?}", path, e)
             });
         }

@@ -135,8 +135,8 @@ pub fn get_test_monitor_data_and_id(
 fn generate_ledger_db(path: &str) -> LedgerDB {
     // DELETE the old database if it already exists.
     let _ = std::fs::remove_file(format!("{}/data.mdb", path));
-    LedgerDB::create(PathBuf::from(path)).expect("Could not create ledger_db");
-    let db = LedgerDB::open(PathBuf::from(path)).expect("Could not open ledger_db");
+    LedgerDB::create(&PathBuf::from(path)).expect("Could not create ledger_db");
+    let db = LedgerDB::open(&PathBuf::from(path)).expect("Could not open ledger_db");
     db
 }
 

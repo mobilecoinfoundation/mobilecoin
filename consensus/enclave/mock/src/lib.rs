@@ -23,6 +23,7 @@ use mc_crypto_keys::{
 use mc_crypto_rand::McRng;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
+    constants::MINIMUM_FEE,
     membership_proofs::compute_implied_merkle_root,
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutMembershipProof},
@@ -32,11 +33,18 @@ use mc_transaction_core::{
 use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng;
-use std::{convert::TryFrom, sync::Arc};
+use std::{
+    convert::TryFrom,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+};
 
 #[derive(Clone)]
 pub struct ConsensusServiceMockEnclave {
     pub signing_keypair: Arc<Ed25519Pair>,
+    pub minimum_fee: Arc<AtomicU64>,
 }
 
 impl Default for ConsensusServiceMockEnclave {
@@ -44,7 +52,10 @@ impl Default for ConsensusServiceMockEnclave {
         let mut csprng = Hc128Rng::seed_from_u64(0);
         let signing_keypair = Arc::new(Ed25519Pair::from_random(&mut csprng));
 
-        Self { signing_keypair }
+        Self {
+            signing_keypair,
+            minimum_fee: Arc::new(MINIMUM_FEE.into()),
+        }
     }
 }
 
@@ -90,8 +101,15 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         _self_peer_id: &ResponderId,
         _self_client_id: &ResponderId,
         _sealed_key: &Option<SealedBlockSigningKey>,
+        minimum_fee: Option<u64>,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
+        self.minimum_fee
+            .store(minimum_fee.unwrap_or(MINIMUM_FEE), Ordering::SeqCst);
         Ok((vec![], vec![]))
+    }
+
+    fn get_minimum_fee(&self) -> Result<u64> {
+        Ok(self.minimum_fee.load(Ordering::SeqCst))
     }
 
     fn get_identity(&self) -> Result<X25519Public> {
@@ -217,6 +235,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
                 tx,
                 parent_block.index + 1,
                 proofs,
+                MINIMUM_FEE,
                 &mut rng,
             )?;
 

@@ -27,6 +27,6 @@ secrecy = "0.4"
 sha2 = "0.9"
 
 [dev-dependencies]
-rand = "0.7"
-rand_hc = "0.2"
+rand = "0.8"
+rand_hc = "0.3"
 tempdir = "0.3"

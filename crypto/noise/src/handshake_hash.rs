@@ -111,9 +111,9 @@ where
 }
 
 /// A HandshakeHash may be consumed to reveal the result.
-impl<DigestType: Default + FixedOutput + Update> Into<Vec<u8>> for HandshakeHash<DigestType> {
-    fn into(self) -> Vec<u8> {
-        self.hash.expose_secret().clone()
+impl<DigestType: Default + FixedOutput + Update> From<HandshakeHash<DigestType>> for Vec<u8> {
+    fn from(src: HandshakeHash<DigestType>) -> Vec<u8> {
+        src.hash.expose_secret().clone()
     }
 }
 

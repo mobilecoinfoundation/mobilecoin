@@ -10,10 +10,7 @@ use mc_util_uri::{
     AdminUri, ConnectionUri, ConsensusClientUri as ClientUri, ConsensusPeerUri as PeerUri,
 };
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt::Debug, fs, iter::FromIterator, path::PathBuf, str::FromStr, string::String, sync::Arc,
-    time::Duration,
-};
+use std::{fmt::Debug, fs, path::PathBuf, str::FromStr, string::String, sync::Arc, time::Duration};
 use structopt::StructOpt;
 
 #[derive(Clone, Debug, StructOpt)]
@@ -94,6 +91,14 @@ pub struct Config {
     /// hours).
     #[structopt(long, default_value = "86400", parse(try_from_str=parse_duration_in_seconds))]
     pub client_auth_token_max_lifetime: Duration,
+
+    /// Override the hard-coded minimum fee.
+    #[structopt(long, env = "MC_MINIMUM_FEE")]
+    pub minimum_fee: Option<u64>,
+
+    /// Allow extreme (>= 1MOB, <= 0.000_000_01 MOB).
+    #[structopt(long)]
+    pub allow_any_fee: bool,
 }
 
 /// Decodes an Ed25519 private key.
@@ -135,8 +140,11 @@ impl NetworkConfig {
             panic!("invalid quorum set: {:?}", self.quorum_set);
         }
 
-        let mut peer_map: HashMap<ResponderId, NodeID> =
-            HashMap::from_iter(self.broadcast_peers.iter().cloned().map(|uri| {
+        let mut peer_map: HashMap<ResponderId, NodeID> = self
+            .broadcast_peers
+            .iter()
+            .cloned()
+            .map(|uri| {
                 (
                     uri.responder_id().unwrap_or_else(|e| {
                         panic!("unable to get responder_id for {}: {:?}", uri, e)
@@ -144,7 +152,8 @@ impl NetworkConfig {
                     uri.node_id()
                         .unwrap_or_else(|e| panic!("unable to get node_id for {}: {:?}", uri, e)),
                 )
-            }));
+            })
+            .collect();
 
         if let Some(known_peers) = self.known_peers.as_ref() {
             for uri in known_peers.iter() {
@@ -202,6 +211,20 @@ impl Config {
         NodeID {
             responder_id: self.peer_responder_id.clone(),
             public_key: self.msg_signer_key.public_key(),
+        }
+    }
+
+    /// Get the configured minimum fee.
+    pub fn minimum_fee(&self) -> Result<Option<u64>, String> {
+        if let Some(fee) = self.minimum_fee {
+            // 1 MOB -> 10nMOB
+            if !self.allow_any_fee && !(10_000..1_000_000_000_000u64).contains(&fee) {
+                Err(format!("Fee {} picoMOB is out of bounds", fee))
+            } else {
+                Ok(Some(fee))
+            }
+        } else {
+            Ok(None)
         }
     }
 
@@ -431,6 +454,8 @@ mod tests {
             sealed_block_signing_key: PathBuf::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Duration::from_secs(60),
+            minimum_fee: None,
+            allow_any_fee: false,
         };
 
         assert_eq!(
@@ -486,6 +511,8 @@ mod tests {
             sealed_block_signing_key: PathBuf::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Duration::from_secs(60),
+            minimum_fee: None,
+            allow_any_fee: false,
         };
 
         assert_eq!(

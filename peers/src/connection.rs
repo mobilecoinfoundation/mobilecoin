@@ -17,7 +17,7 @@ use mc_common::{
     trace_time, NodeID, ResponderId,
 };
 use mc_connection::{
-    AttestedConnection, BlockchainConnection, Connection, Error as ConnectionError,
+    AttestedConnection, BlockInfo, BlockchainConnection, Connection, Error as ConnectionError,
     Result as ConnectionResult,
 };
 use mc_consensus_api::{
@@ -250,6 +250,16 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> BlockchainConnection
                     .get_last_block_info(&Empty::new())
             })?
             .index)
+    }
+
+    fn fetch_block_info(&mut self) -> ConnectionResult<BlockInfo> {
+        trace_time!(self.logger, "PeerConnection::fetch_block_info");
+
+        let block_info = self.log_attested_call("fetch_block_info", |this| {
+            this.blockchain_api_client
+                .get_last_block_info(&Empty::new())
+        })?;
+        Ok(block_info.into())
     }
 }
 

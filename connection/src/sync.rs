@@ -5,8 +5,8 @@
 use crate::{
     error::RetryResult,
     traits::{
-        BlockchainConnection, Connection, RetryableBlockchainConnection, RetryableUserTxConnection,
-        UserTxConnection,
+        BlockInfo, BlockchainConnection, Connection, RetryableBlockchainConnection,
+        RetryableUserTxConnection, UserTxConnection,
     },
 };
 use mc_common::logger::Logger;
@@ -212,6 +212,13 @@ impl<BC: BlockchainConnection> RetryableBlockchainConnection for SyncConnection<
             fetch_block_height,
             retry_iterator
         )
+    }
+
+    fn fetch_block_info(
+        &self,
+        retry_iterator: impl IntoIterator<Item = Duration>,
+    ) -> RetryResult<BlockInfo> {
+        impl_sync_connection_retry!(self.write(), self.logger, fetch_block_info, retry_iterator)
     }
 }
 

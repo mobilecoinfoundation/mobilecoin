@@ -224,6 +224,7 @@ lazy_static::lazy_static! {
         std::iter::repeat(())
             .map(|()| rng.sample(rand::distributions::Alphanumeric))
             .take(32)
+            .map(char::from)
             .collect()
     };
 

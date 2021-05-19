@@ -30,7 +30,7 @@ An example MainNet build and launch command for mobilecoind is:
     SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css cargo build --release -p mc-mobilecoind -p mc-mobilecoind-json
     ```
 
-1. Run mobilecoind, connecting to one or mulltiple Consensus Validator Nodes:
+1. Run mobilecoind, connecting to one or multiple Consensus Validator Nodes:
 
     ```
     ./target/release/mobilecoind \
@@ -72,7 +72,7 @@ If you have a Linux-compatible home computer, or choose to operate a Linux-compa
 
 If you have an SGX-capable machine, or choose to operate an SGX-capable server in the cloud, you can run a *validator node* in the MobileCoin MainNet.
 
-1. Send an email to [support@mobilecoin.foundation](mailto://support@mobilecoin.foundation) and let the MobilCoin Foundation know how you'd like to get involved!
+1. Send an email to [support@mobilecoin.foundation](mailto://support@mobilecoin.foundation) and let the MobileCoin Foundation know how you'd like to get involved!
 
 ## Getting Help
 

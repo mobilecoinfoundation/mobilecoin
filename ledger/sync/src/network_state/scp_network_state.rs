@@ -13,7 +13,6 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     hash::Hash,
-    iter::FromIterator,
 };
 
 pub struct SCPNetworkState<ID: GenericNodeId + Send = NodeID> {
@@ -71,20 +70,23 @@ impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serializ
     fn is_blocking_and_quorum(&self, responder_ids: &HashSet<ResponderId>) -> bool {
         // Construct a map of responder id -> dummy message so that we could leverage
         // the existing quorum findBlockingSet/findQuorum code.
-        let msg_map = HashMap::from_iter(responder_ids.iter().map(|responder_id| {
-            (
-                responder_id.clone(),
-                Msg::<&str, ResponderId>::new(
+        let msg_map = responder_ids
+            .iter()
+            .map(|responder_id| {
+                (
                     responder_id.clone(),
-                    QuorumSet::empty(),
-                    1,
-                    Topic::Externalize(ExternalizePayload {
-                        C: Ballot::new(1, &["fake"]),
-                        HN: 1,
-                    }),
-                ),
-            )
-        }));
+                    Msg::<&str, ResponderId>::new(
+                        responder_id.clone(),
+                        QuorumSet::empty(),
+                        1,
+                        Topic::Externalize(ExternalizePayload {
+                            C: Ballot::new(1, &["fake"]),
+                            HN: 1,
+                        }),
+                    ),
+                )
+            })
+            .collect();
 
         let quorum_set: QuorumSet<ResponderId> = (&self.local_quorum_set).into();
 
@@ -123,11 +125,12 @@ impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serializ
             .map(|(id, _block_index)| id.clone())
             .collect();
 
-        self.is_blocking_and_quorum(&HashSet::from_iter(
-            peers_on_higher_block
+        self.is_blocking_and_quorum(
+            &peers_on_higher_block
                 .iter()
-                .map(|node_id| node_id.as_ref().clone()),
-        ))
+                .map(|node_id| node_id.as_ref().clone())
+                .collect(),
+        )
     }
 
     /// Returns the highest block index the network agrees on (the highest block
@@ -138,7 +141,7 @@ impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serializ
         // for the highest slot index the network agrees on.
         let mut seen_block_indexes: Vec<BlockIndex> =
             self.peer_to_current_slot().values().cloned().collect();
-        seen_block_indexes.sort();
+        seen_block_indexes.sort_unstable();
         seen_block_indexes.dedup();
 
         // For each potential block index we saw (from the highest to the lowest), see
@@ -151,11 +154,12 @@ impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serializ
                 .map(|(id, _block_index)| id.clone())
                 .collect();
 
-            if self.is_blocking_and_quorum(&HashSet::from_iter(
-                peers_on_higher_block
+            if self.is_blocking_and_quorum(
+                &peers_on_higher_block
                     .iter()
-                    .map(|node_id| node_id.as_ref().clone()),
-            )) {
+                    .map(|node_id| node_id.as_ref().clone())
+                    .collect(),
+            ) {
                 // Found a block index the network agrees on.
                 return Some(*highest_block_index);
             }
@@ -170,7 +174,7 @@ mod tests {
     use super::*;
     use mc_consensus_scp::{core_types::Ballot, msg::*};
     use mc_peers_test_utils::test_node_id;
-    use std::collections::BTreeSet;
+    use std::{collections::BTreeSet, iter::FromIterator};
 
     #[test]
     fn test_new() {

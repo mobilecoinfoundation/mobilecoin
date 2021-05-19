@@ -44,30 +44,28 @@ fn read_cert_dir_contents(dirname: OsString) -> Result<Vec<u8>, String> {
     let mut retval = Vec::<u8>::with_capacity(INITIAL_BUNDLE_CAPACITY);
     let mut errors = Vec::<String>::new();
     // First, get a count of files that end in crt or pem
-    for entry in entries {
-        if let Ok(entry) = entry {
-            if let Ok(metadata) = entry.metadata() {
-                if metadata.is_file() {
-                    let path = entry.path();
-                    if let Some(ext) = path.extension() {
-                        let ext = ext.to_string_lossy().to_lowercase();
-                        for desired in SSL_CERT_EXTENSIONS {
-                            if *desired == ext {
-                                // Double capacity until we have enough space to cover this cert
-                                // We *assume* that metadata is not doing a stat() on each call.
-                                while retval.capacity() - retval.len() < metadata.len() as usize {
-                                    let capacity = retval.capacity();
-                                    retval.reserve(capacity);
-                                }
+    for entry in entries.flatten() {
+        if let Ok(metadata) = entry.metadata() {
+            if metadata.is_file() {
+                let path = entry.path();
+                if let Some(ext) = path.extension() {
+                    let ext = ext.to_string_lossy().to_lowercase();
+                    for desired in SSL_CERT_EXTENSIONS {
+                        if *desired == ext {
+                            // Double capacity until we have enough space to cover this cert
+                            // We *assume* that metadata is not doing a stat() on each call.
+                            while retval.capacity() - retval.len() < metadata.len() as usize {
+                                let capacity = retval.capacity();
+                                retval.reserve(capacity);
+                            }
 
-                                if let Ok(mut f) = fs::File::open(&path) {
-                                    if let Err(e) = f.read_to_end(&mut retval) {
-                                        errors.push(format!(
-                                            "Could not read {}: {}",
-                                            path.display(),
-                                            e
-                                        ));
-                                    }
+                            if let Ok(mut f) = fs::File::open(&path) {
+                                if let Err(e) = f.read_to_end(&mut retval) {
+                                    errors.push(format!(
+                                        "Could not read {}: {}",
+                                        path.display(),
+                                        e
+                                    ));
                                 }
                             }
                         }

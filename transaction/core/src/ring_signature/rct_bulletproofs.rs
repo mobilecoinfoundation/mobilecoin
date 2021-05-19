@@ -360,7 +360,7 @@ fn extend_message(
     let mut extended_message: Vec<u8> = Vec::with_capacity(
         message.len() + pseudo_output_commitments.len() * 32 + range_proof_bytes.len(),
     );
-    extended_message.extend_from_slice(&message[..]);
+    extended_message.extend_from_slice(message);
     for commitment in pseudo_output_commitments {
         extended_message.extend_from_slice(commitment.as_ref());
     }
@@ -831,9 +831,9 @@ mod rct_bulletproofs_tests {
             ) {
                 Err(Error::ValueNotConserved) => {} // Expected
                 Err(e) => {
-                    panic!(alloc::format!("Unexpected error {}", e));
+                    panic!("Unexpected error {}", e);
                 }
-                _ => panic!()
+                _ => panic!("Unexpected success")
             }
 
         }

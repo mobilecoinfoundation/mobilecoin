@@ -102,9 +102,9 @@ impl From<sgx_quote_sign_type_t> for QuoteSignType {
     }
 }
 
-impl Into<sgx_quote_sign_type_t> for QuoteSignType {
-    fn into(self) -> sgx_quote_sign_type_t {
-        match self {
+impl From<QuoteSignType> for sgx_quote_sign_type_t {
+    fn from(src: QuoteSignType) -> sgx_quote_sign_type_t {
+        match src {
             QuoteSignType::Unlinkable => sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE,
             QuoteSignType::Linkable => sgx_quote_sign_type_t::SGX_LINKABLE_SIGNATURE,
         }
@@ -373,7 +373,7 @@ impl FromBase64 for Quote {
         let expected_len = s.len() / 4 * 3;
         // Don't try to decode any base64 string that's larger than our size limits or
         // smaller than our minimum size
-        if expected_len > QUOTE_MINSIZE + QUOTE_SIGLEN_MAX || expected_len < QUOTE_IAS_SIZE {
+        if !(QUOTE_IAS_SIZE..=QUOTE_MINSIZE + QUOTE_SIGLEN_MAX).contains(&expected_len) {
             return Err(EncodingError::InvalidInputLength.into());
         }
 
@@ -478,7 +478,7 @@ impl TryFrom<Vec<u8>> for Quote {
     type Error = QuoteError;
 
     fn try_from(src: Vec<u8>) -> Result<Self, QuoteError> {
-        Ok(Self::try_from(&src[..])?)
+        Self::try_from(&src[..])
     }
 }
 

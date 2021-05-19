@@ -12,13 +12,13 @@ mc-util-uri = { path = "../../util/uri" }
 
 futures = "0.3"
 grpcio = "0.6.0"
-protobuf = "2.12"
+protobuf = "2.22.1"
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-transaction-std = { path = "../../transaction/std" }
 
-rand = "0.7"
+rand = "0.8"
 hex_fmt = "0.3"
 
 [build-dependencies]

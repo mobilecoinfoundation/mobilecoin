@@ -206,9 +206,9 @@ macro_rules! impl_sgx_wrapper_reqs {
             }
         }
 
-        impl Into<$inner> for $wrapper {
-            fn into(self) -> $inner {
-                self.0
+        impl From<$wrapper> for $inner {
+            fn from(src: $wrapper) -> $inner {
+                src.0
             }
         }
 

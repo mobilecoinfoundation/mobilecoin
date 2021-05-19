@@ -10,7 +10,6 @@ use mc_common::{
 use mc_util_uri::ConnectionUri;
 use std::{
     collections::BTreeMap,
-    iter::FromIterator,
     sync::{Arc, RwLock, RwLockReadGuard},
 };
 
@@ -37,18 +36,21 @@ impl<C: Connection> ConnectionManager<C> {
     pub fn new(conns: Vec<C>, logger: Logger) -> Self {
         Self {
             inner: Arc::new(RwLock::new(ConnectionManagerInner {
-                id_to_conn: BTreeMap::from_iter(conns.into_iter().map(|conn| {
-                    let name = conn.to_string();
-                    let responder_id = conn.uri().responder_id().unwrap_or_else(|_| {
-                        panic!(
-                            "Could not create responder_id from {:?}",
-                            conn.uri().to_string()
-                        )
-                    });
-                    let sync_conn =
-                        SyncConnection::new(conn, logger.new(o!("mc.peers.peer_name" => name)));
-                    (responder_id, sync_conn)
-                })),
+                id_to_conn: conns
+                    .into_iter()
+                    .map(|conn| {
+                        let name = conn.to_string();
+                        let responder_id = conn.uri().responder_id().unwrap_or_else(|_| {
+                            panic!(
+                                "Could not create responder_id from {:?}",
+                                conn.uri().to_string()
+                            )
+                        });
+                        let sync_conn =
+                            SyncConnection::new(conn, logger.new(o!("mc.peers.peer_name" => name)));
+                        (responder_id, sync_conn)
+                    })
+                    .collect(),
             })),
         }
     }

@@ -26,7 +26,7 @@ use std::{
 };
 
 /// How long to wait between report refreshes.
-pub const REPORT_REFRESH_INTERNAL: Duration = Duration::from_secs(18 * 60 * 60); // 18 hours.
+pub const REPORT_REFRESH_INTERVAL: Duration = Duration::from_secs(18 * 60 * 60); // 18 hours.
 
 /// Possible errors.
 #[derive(Debug, Display)]
@@ -323,7 +323,7 @@ impl ReportCacheThread {
             }
 
             let now = Instant::now();
-            if now - last_refreshed_at > REPORT_REFRESH_INTERNAL {
+            if now - last_refreshed_at > REPORT_REFRESH_INTERVAL {
                 log::info!(logger, "Report refresh internal exceeded, refreshing...");
                 match report_cache.update_enclave_report_cache() {
                     Ok(()) => {

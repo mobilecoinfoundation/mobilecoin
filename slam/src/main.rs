@@ -9,8 +9,8 @@ use mc_common::{
     HashMap, HashSet, ResponderId,
 };
 use mc_connection::{
-    HardcodedCredentialsProvider, RetryError, RetryableUserTxConnection, SyncConnection,
-    ThickClient,
+    HardcodedCredentialsProvider, RetryError, RetryableBlockchainConnection,
+    RetryableUserTxConnection, SyncConnection, ThickClient,
 };
 use mc_consensus_scp::QuorumSet;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
@@ -28,6 +28,7 @@ use mc_transaction_core::{
 use mc_transaction_std::{InputCredentials, TransactionBuilder};
 use mc_util_uri::ConnectionUri;
 use rand::{seq::SliceRandom, thread_rng, Rng};
+use rayon::prelude::*;
 use std::{
     iter::empty,
     path::Path,
@@ -44,10 +45,12 @@ use tempdir::TempDir;
 thread_local! {
     pub static CONNS: RefCell<Option<Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>>>> = RefCell::new(None);
 }
+
 fn set_conns(config: &SlamConfig, logger: &Logger) {
     let conns = config.get_connections(logger).unwrap();
     CONNS.with(|c| *c.borrow_mut() = Some(conns));
 }
+
 fn get_conns(
     config: &SlamConfig,
     logger: &Logger,
@@ -64,6 +67,8 @@ fn get_conns(
 
 lazy_static! {
     pub static ref BLOCK_HEIGHT: AtomicU64 = AtomicU64::default();
+
+    pub static ref FEE: AtomicU64 = AtomicU64::default();
 
     // A map of tx pub keys to account index. This is used in conjunction with ledger syncing to
     // identify which new txs belong to which accounts without having to do any slow crypto.
@@ -116,10 +121,20 @@ fn main() {
     )
     .expect("failed copying ledger");
 
-    let ledger_db =
-        LedgerDB::open(ledger_dir.path().to_path_buf()).expect("Could not open ledger_db");
+    let ledger_db = LedgerDB::open(ledger_dir.path()).expect("Could not open ledger_db");
 
     BLOCK_HEIGHT.store(ledger_db.num_blocks().unwrap(), Ordering::SeqCst);
+
+    // Use the maximum fee of all configured consensus nodes
+    FEE.store(
+        get_conns(&config, &logger)
+            .par_iter()
+            .filter_map(|conn| conn.fetch_block_info(empty()).ok())
+            .map(|block_info| block_info.minimum_fee)
+            .max()
+            .unwrap_or(MINIMUM_FEE),
+        Ordering::SeqCst,
+    );
 
     // The number of blocks we've processed so far.
     let mut block_count = 0;
@@ -475,7 +490,7 @@ fn build_tx(
     // Create tx_builder. No fog reports.
     let mut tx_builder = TransactionBuilder::new(FogResolver::default());
 
-    tx_builder.set_fee(MINIMUM_FEE);
+    tx_builder.set_fee(FEE.load(Ordering::SeqCst));
 
     // Unzip each vec of tuples into a tuple of vecs.
     let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
@@ -557,7 +572,7 @@ fn build_tx(
         let mut amount = utxo.amount;
         // Use the first input to pay for the fee.
         if i == 0 {
-            amount -= MINIMUM_FEE;
+            amount -= FEE.load(Ordering::SeqCst);
         }
 
         tx_builder
@@ -603,7 +618,7 @@ fn get_rings(
     let mut rng = rand::thread_rng();
     let mut sampled_indices: HashSet<u64> = HashSet::default();
     while sampled_indices.len() < num_requested {
-        let index = rng.gen_range(0, num_txos);
+        let index = rng.gen_range(0..num_txos);
         sampled_indices.insert(index);
     }
     let sampled_indices_vec: Vec<u64> = sampled_indices.into_iter().collect();

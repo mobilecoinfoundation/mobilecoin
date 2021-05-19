@@ -152,6 +152,7 @@ class Node:
         self.admin_http_gateway_port = admin_http_gateway_port
         self.peers = peers
         self.quorum_set = quorum_set
+        self.minimum_fee = 10_000_000_000
 
         self.consensus_process = None
         self.ledger_distribution_process = None
@@ -227,6 +228,7 @@ class Node:
             f'--peer-listen-uri="insecure-mcp://0.0.0.0:{self.peer_port}/"',
             f'--scp-debug-dump {WORK_DIR}/scp-debug-dump-{self.node_num}',
             f'--sealed-block-signing-key {WORK_DIR}/consensus-sealed-block-signing-key-{self.node_num}',
+            f'--minimum-fee={self.minimum_fee}',
         ])
 
         print(f'Starting node {self.name}: client_port={self.client_port} peer_port={self.peer_port} admin_port={self.admin_port}')
@@ -410,7 +412,7 @@ class Network:
             )
 
         subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-slam -p mc-crypto-x509-test-vectors {CARGO_FLAGS}',
             shell=True,
             check=True,
         )

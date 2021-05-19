@@ -195,7 +195,8 @@ mod display_tests {
     #[test]
     fn test_transfer_payload_roundtrip() {
         let mut transfer_payload = TransferPayload::new();
-        transfer_payload.set_entropy(vec![1u8; 32]);
+        transfer_payload.set_root_entropy(vec![1u8; 32]);
+        transfer_payload.set_bip39_entropy(vec![12u8; 32]);
         transfer_payload
             .mut_tx_out_public_key()
             .set_data(vec![2u8; 32]);

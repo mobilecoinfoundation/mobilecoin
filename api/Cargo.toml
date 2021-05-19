@@ -18,13 +18,13 @@ mc-watcher-api = { path = "../watcher/api" }
 bs58 = "0.3.0"
 crc = "1.8.1"
 displaydoc = { version = "0.2", default-features = false }
-protobuf = "2.20"
+protobuf = "2.22.1"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "3.0", default-features = false, features = ["simd_backend", "nightly"] }
+curve25519-dalek = { version = "4.0.0-pre.0", default-features = false, features = ["simd_backend", "nightly"] }
 
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "3.0", default-features = false, features = ["nightly", "u64_backend"] }
+curve25519-dalek = { version = "4.0.0-pre.0", default-features = false, features = ["nightly", "u64_backend"] }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../util/build/grpc" }
@@ -41,7 +41,7 @@ mc-util-from-random = { path = "../util/from-random" }
 mc-util-test-helper = { path = "../util/test-helper" }
 mc-util-test-vector = { path = "../util/test-vector" }
 
-datatest = "0.6"
+datatest = "0.6.4"
 pem = "0.8"
 prost = { version = "0.6.1", default-features = false }
-rand = "0.7"
+rand = "0.8"

@@ -115,7 +115,7 @@ impl TxOutStore {
         db_transaction.put(
             self.counts,
             &NUM_TX_OUTS_KEY,
-            &u64_to_key_bytes(num_tx_outs + 1 as u64),
+            &u64_to_key_bytes(num_tx_outs + 1_u64),
             WriteFlags::empty(),
         )?;
 
@@ -890,7 +890,7 @@ pub mod tx_out_store_tests {
         // unrecognized hash.
         let unrecognized_hash: Hash = [0u8; 32];
         match tx_out_store.get_tx_out_index_by_hash(&unrecognized_hash, &ro_transaction) {
-            Ok(index) => panic!(format!("Returned index {:?} for unrecognized hash.", index)),
+            Ok(index) => panic!("Returned index {:?} for unrecognized hash.", index),
             Err(Error::NotFound) => {
                 // This is expected.
             }
@@ -936,10 +936,7 @@ pub mod tx_out_store_tests {
         let unrecognized_public_key = CompressedRistrettoPublic::from(&[0; 32]);
         match tx_out_store.get_tx_out_index_by_public_key(&unrecognized_public_key, &ro_transaction)
         {
-            Ok(index) => panic!(format!(
-                "Returned index {:?} for unrecognized public key.",
-                index
-            )),
+            Ok(index) => panic!("Returned index {:?} for unrecognized public key.", index),
             Err(Error::NotFound) => {
                 // This is expected.
             }
@@ -1010,7 +1007,7 @@ pub mod tx_out_store_tests {
 
         let mut rw_transaction: RwTransaction = env.begin_rw_txn().unwrap();
         match tx_out_store.push(&tx_outs[0], &mut rw_transaction) {
-            Err(Error::LmdbError(lmdb::Error::KeyExist)) => {}
+            Err(Error::Lmdb(lmdb::Error::KeyExist)) => {}
             Ok(_) => panic!("unexpected success"),
             Err(_) => panic!("unexpected error"),
         };
@@ -1035,7 +1032,7 @@ pub mod tx_out_store_tests {
 
         let mut rw_transaction: RwTransaction = env.begin_rw_txn().unwrap();
         match tx_out_store.push(&tx_outs[0], &mut rw_transaction) {
-            Err(Error::LmdbError(lmdb::Error::KeyExist)) => {}
+            Err(Error::Lmdb(lmdb::Error::KeyExist)) => {}
             Ok(_) => panic!("unexpected success"),
             Err(_) => panic!("unexpected error"),
         };

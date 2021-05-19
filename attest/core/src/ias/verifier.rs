@@ -479,8 +479,7 @@ impl IasReportVerifier {
             })
             // Then construct a set of chains, one for each signer certificate
             .filter_map(|cert| {
-                let mut signer_chain: Vec<Certificate> = Vec::new();
-                signer_chain.push(cert);
+                let mut signer_chain: Vec<Certificate> = vec![cert];
                 'outer: loop {
                     // Exclude any signing changes greater than our max depth
                     if signer_chain.len() > MAX_CHAIN_DEPTH {
@@ -769,6 +768,12 @@ impl MrSignerVerifier {
 
 impl From<Signature> for MrSignerVerifier {
     fn from(src: Signature) -> Self {
+        Self::new(src.mrsigner().into(), src.product_id(), src.version())
+    }
+}
+
+impl From<&Signature> for MrSignerVerifier {
+    fn from(src: &Signature) -> Self {
         Self::new(src.mrsigner().into(), src.product_id(), src.version())
     }
 }
@@ -1773,7 +1778,7 @@ mod test {
         let quote =
             Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
         let verifier = BasenameVerifier {
-            basename: Basename::from(quote.basename().expect("Could not read basename")),
+            basename: quote.basename().expect("Could not read basename"),
         };
 
         assert!(verifier.verify(&quote));
@@ -1823,9 +1828,7 @@ mod test {
         let quote =
             Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
         let verifier = EpidGroupIdVerifier {
-            epid_group_id: EpidGroupId::from(
-                quote.epid_group_id().expect("Could not read EPID Group ID"),
-            ),
+            epid_group_id: quote.epid_group_id().expect("Could not read EPID Group ID"),
         };
 
         assert!(verifier.verify(&quote));
@@ -1997,7 +2000,7 @@ mod test {
     #[test]
     fn attributes_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let mut attributes = REPORT_BODY_SRC.attributes.clone();
+        let mut attributes = REPORT_BODY_SRC.attributes;
         attributes.flags = 0;
         let verifier = AttributesVerifier {
             attributes: Attributes::from(attributes),
@@ -2021,7 +2024,7 @@ mod test {
     #[test]
     fn config_id_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let mut config_id = REPORT_BODY_SRC.config_id.clone();
+        let mut config_id = REPORT_BODY_SRC.config_id;
         config_id[0] = 0;
         let verifier = ConfigIdVerifier {
             config_id: ConfigId::from(config_id),
@@ -2078,7 +2081,7 @@ mod test {
     #[test]
     fn cpu_svn_newer_pass() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let mut cpu_svn = REPORT_BODY_SRC.cpu_svn.clone();
+        let mut cpu_svn = REPORT_BODY_SRC.cpu_svn;
         cpu_svn.svn[0] = 0;
         let verifier = CpuVersionVerifier {
             cpu_svn: CpuSecurityVersion::from(cpu_svn),
@@ -2091,7 +2094,7 @@ mod test {
     #[test]
     fn cpu_svn_older_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let mut cpu_svn = REPORT_BODY_SRC.cpu_svn.clone();
+        let mut cpu_svn = REPORT_BODY_SRC.cpu_svn;
         cpu_svn.svn[0] = 0xff;
         let verifier = CpuVersionVerifier {
             cpu_svn: CpuSecurityVersion::from(cpu_svn),
@@ -2121,7 +2124,7 @@ mod test {
     /// Allow debug off means debug enclaves fail
     #[test]
     fn no_debug_fail() {
-        let mut report_body = REPORT_BODY_SRC.clone();
+        let mut report_body = REPORT_BODY_SRC;
         report_body.attributes.flags |= SGX_FLAGS_DEBUG;
         let report_body = ReportBody::from(report_body);
         let verifier = DebugVerifier { allow_debug: false };
@@ -2145,7 +2148,7 @@ mod test {
     #[test]
     fn data_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let mut data = REPORT_BODY_SRC.report_data.d.clone();
+        let mut data = REPORT_BODY_SRC.report_data.d;
         data[0] = 0;
         let verifier = DataVerifier {
             data: ReportDataMask::new_with_mask(&data, &ONES[..])
@@ -2170,7 +2173,7 @@ mod test {
     #[test]
     fn ext_prod_id_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let mut ext_prod_id = REPORT_BODY_SRC.isv_ext_prod_id.clone();
+        let mut ext_prod_id = REPORT_BODY_SRC.isv_ext_prod_id;
         ext_prod_id[0] = 0;
         let verifier = ExtendedProductIdVerifier {
             ext_prod_id: ExtendedProductId::from(ext_prod_id),
@@ -2194,7 +2197,7 @@ mod test {
     #[test]
     fn family_id_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let mut family_id = REPORT_BODY_SRC.isv_family_id.clone();
+        let mut family_id = REPORT_BODY_SRC.isv_family_id;
         family_id[0] = 0;
         let verifier = FamilyIdVerifier {
             family_id: FamilyId::from(family_id),
@@ -2208,7 +2211,7 @@ mod test {
     fn misc_select_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
         let verifier = MiscSelectVerifier {
-            misc_select: MiscSelect::from(REPORT_BODY_SRC.misc_select),
+            misc_select: REPORT_BODY_SRC.misc_select,
         };
 
         assert!(verifier.verify(&report_body));
@@ -2219,7 +2222,7 @@ mod test {
     fn misc_select_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
         let verifier = MiscSelectVerifier {
-            misc_select: MiscSelect::from(REPORT_BODY_SRC.misc_select - 1),
+            misc_select: REPORT_BODY_SRC.misc_select - 1,
         };
 
         assert!(!verifier.verify(&report_body));
@@ -2230,7 +2233,7 @@ mod test {
     fn product_id_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
         let verifier = ProductIdVerifier {
-            product_id: ProductId::from(REPORT_BODY_SRC.isv_prod_id),
+            product_id: REPORT_BODY_SRC.isv_prod_id,
         };
 
         assert!(verifier.verify(&report_body));
@@ -2241,7 +2244,7 @@ mod test {
     fn product_id_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
         let verifier = ProductIdVerifier {
-            product_id: ProductId::from(REPORT_BODY_SRC.isv_prod_id - 1),
+            product_id: REPORT_BODY_SRC.isv_prod_id - 1,
         };
 
         assert!(!verifier.verify(&report_body));

@@ -9,7 +9,7 @@ use mc_api::external::{
 };
 use protobuf::RepeatedField;
 use serde_derive::{Deserialize, Serialize};
-use std::{collections::HashMap, convert::TryFrom, iter::FromIterator};
+use std::convert::TryFrom;
 
 #[derive(Deserialize, Default, Debug)]
 pub struct JsonPasswordRequest {
@@ -32,14 +32,27 @@ pub struct JsonUnlockDbResponse {
 }
 
 #[derive(Serialize, Default, Debug)]
-pub struct JsonEntropyResponse {
+pub struct JsonRootEntropyResponse {
     pub entropy: String,
 }
 
-impl From<&mc_mobilecoind_api::GenerateEntropyResponse> for JsonEntropyResponse {
-    fn from(src: &mc_mobilecoind_api::GenerateEntropyResponse) -> Self {
+impl From<&mc_mobilecoind_api::GenerateRootEntropyResponse> for JsonRootEntropyResponse {
+    fn from(src: &mc_mobilecoind_api::GenerateRootEntropyResponse) -> Self {
         Self {
-            entropy: hex::encode(&src.entropy),
+            entropy: hex::encode(&src.root_entropy),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Default, Debug)]
+pub struct JsonMnemonicResponse {
+    pub mnemonic: String,
+}
+
+impl From<&mc_mobilecoind_api::GenerateMnemonicResponse> for JsonMnemonicResponse {
+    fn from(src: &mc_mobilecoind_api::GenerateMnemonicResponse) -> Self {
+        Self {
+            mnemonic: src.mnemonic.clone(),
         }
     }
 }
@@ -981,11 +994,12 @@ impl TryFrom<&JsonTxProposal> for mc_mobilecoind_api::TxProposal {
         proposal
             .set_tx(Tx::try_from(&src.tx).map_err(|err| format!("Could not convert tx: {}", err))?);
         proposal.set_fee(src.fee);
-        proposal.set_outlay_index_to_tx_out_index(HashMap::from_iter(
+        proposal.set_outlay_index_to_tx_out_index(
             src.outlay_index_to_tx_out_index
                 .iter()
-                .map(|(key, val)| (*key as u64, *val as u64)),
-        ));
+                .map(|(key, val)| (*key as u64, *val as u64))
+                .collect(),
+        );
         proposal.set_outlay_confirmation_numbers(RepeatedField::from_vec(
             src.outlay_confirmation_numbers.clone(),
         ));
@@ -1282,6 +1296,7 @@ mod test {
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
+    use std::{collections::HashMap, iter::FromIterator};
 
     /// Test conversion of TxProposal
     #[test]

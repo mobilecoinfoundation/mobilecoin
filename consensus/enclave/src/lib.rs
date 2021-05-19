@@ -40,6 +40,7 @@ impl ConsensusServiceSgxEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
+        minimum_fee: Option<u64>,
     ) -> (
         ConsensusServiceSgxEnclave,
         SealedBlockSigningKey,
@@ -66,7 +67,7 @@ impl ConsensusServiceSgxEnclave {
         };
 
         let (sealed_key, features) = sgx_enclave
-            .enclave_init(self_peer_id, self_client_id, &sealed_key)
+            .enclave_init(self_peer_id, self_client_id, &sealed_key, minimum_fee)
             .expect("enclave_init failed");
 
         (sgx_enclave, sealed_key, features)
@@ -118,12 +119,20 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
+        minimum_fee: Option<u64>,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::EnclaveInit(
             self_peer_id.clone(),
             self_client_id.clone(),
             sealed_key.clone(),
+            minimum_fee,
         ))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn get_minimum_fee(&self) -> Result<u64> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetMinimumFee)?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }

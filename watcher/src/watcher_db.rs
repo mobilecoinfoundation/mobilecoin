@@ -17,11 +17,14 @@ use mc_util_repr_bytes::ReprBytes;
 use mc_util_serial::{decode, encode, Message};
 use mc_watcher_api::TimestampResultCode;
 
-use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
+use lmdb::{
+    Cursor, Database, DatabaseFlags, Environment, EnvironmentFlags, RwTransaction, Transaction,
+    WriteFlags,
+};
 use mc_util_repr_bytes::typenum::Unsigned;
 use std::{
     convert::{TryFrom, TryInto},
-    path::PathBuf,
+    path::Path,
     str::FromStr,
     sync::Arc,
 };
@@ -142,12 +145,14 @@ pub struct WatcherDB {
 
 impl WatcherDB {
     /// Open an existing WatcherDB for read-only operations.
-    pub fn open_ro(path: PathBuf, logger: Logger) -> Result<Self, WatcherDBError> {
+    pub fn open_ro(path: &Path, logger: Logger) -> Result<Self, WatcherDBError> {
         let env = Arc::new(
             Environment::new()
                 .set_max_dbs(10)
                 .set_map_size(MAX_LMDB_FILE_SIZE)
-                .open(path.as_ref())?,
+                // TODO - needed because currently our test cloud machines have slow disks.
+                .set_flags(EnvironmentFlags::NO_SYNC)
+                .open(path)?,
         );
 
         let metadata_store = MetadataStore::<WatcherDbMetadataStoreSettings>::new(&env)?;
@@ -188,7 +193,7 @@ impl WatcherDB {
 
     /// Open an existing WatcherDB for read-write operations.
     pub fn open_rw(
-        path: PathBuf,
+        path: &Path,
         tx_source_urls: &[Url],
         logger: Logger,
     ) -> Result<Self, WatcherDBError> {
@@ -199,12 +204,12 @@ impl WatcherDB {
     }
 
     /// Create a fresh WatcherDB.
-    pub fn create(path: PathBuf) -> Result<(), WatcherDBError> {
+    pub fn create(path: &Path) -> Result<(), WatcherDBError> {
         let env = Arc::new(
             Environment::new()
                 .set_max_dbs(10)
                 .set_map_size(MAX_LMDB_FILE_SIZE)
-                .open(path.as_ref())?,
+                .open(path)?,
         );
 
         MetadataStore::<WatcherDbMetadataStoreSettings>::create(&env)?;
@@ -363,7 +368,7 @@ impl WatcherDB {
             block_index
         );
 
-        Ok(cursor
+        cursor
             .iter_dup_of(&key_bytes)
             .map(|result| {
                 result
@@ -382,7 +387,7 @@ impl WatcherDB {
                         Ok(signature_data)
                     })
             })
-            .collect::<Result<Vec<_>, WatcherDBError>>()?)
+            .collect::<Result<Vec<_>, WatcherDBError>>()
     }
 
     /// Get the earliest timestamp for a given block.
@@ -995,17 +1000,17 @@ impl WatcherDB {
 
 /// Open an existing WatcherDB or create a new one in read-write mode.
 pub fn create_or_open_rw_watcher_db(
-    watcher_db_path: PathBuf,
+    watcher_db_path: &Path,
     src_urls: &[Url],
     logger: Logger,
 ) -> Result<WatcherDB, WatcherDBError> {
     // Create the path if it does not exist.
     if !watcher_db_path.exists() {
-        std::fs::create_dir_all(watcher_db_path.clone())?;
+        std::fs::create_dir_all(watcher_db_path)?;
     }
 
     // Attempt to open the WatcherDB and see if it has anything in it.
-    if let Ok(watcher_db) = WatcherDB::open_rw(watcher_db_path.clone(), src_urls, logger.clone()) {
+    if let Ok(watcher_db) = WatcherDB::open_rw(watcher_db_path, src_urls, logger.clone()) {
         if let Ok(last_synced) = watcher_db.last_synced_blocks() {
             if last_synced.values().any(|val| val.is_some()) {
                 // Successfully opened a ledger that has blocks in it.
@@ -1021,7 +1026,7 @@ pub fn create_or_open_rw_watcher_db(
     }
 
     // WatcherDB does't exist, or is empty. Create a new WatcherDB, and open it.
-    WatcherDB::create(watcher_db_path.clone())?;
+    WatcherDB::create(watcher_db_path)?;
     WatcherDB::open_rw(watcher_db_path, src_urls, logger)
 }
 
@@ -1043,8 +1048,8 @@ pub mod tests {
 
     pub fn setup_watcher_db(src_urls: &[Url], logger: Logger) -> WatcherDB {
         let db_tmp = TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
-        WatcherDB::create(db_tmp.path().to_path_buf()).unwrap();
-        WatcherDB::open_rw(db_tmp.path().to_path_buf(), src_urls, logger).unwrap()
+        WatcherDB::create(db_tmp.path()).unwrap();
+        WatcherDB::open_rw(db_tmp.path(), src_urls, logger).unwrap()
     }
 
     pub fn setup_blocks() -> Vec<(Block, BlockContents)> {

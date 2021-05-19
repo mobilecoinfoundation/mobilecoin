@@ -135,9 +135,7 @@ macro_rules! derive_repr_bytes_from_as_ref_and_try_from {
             type Error = <$mytype as ::core::convert::TryFrom<&'static [u8]>>::Error;
 
             fn from_bytes(src: &$crate::GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
-                Ok(<Self as ::core::convert::TryFrom<&[u8]>>::try_from(
-                    src.as_slice(),
-                )?)
+                <Self as ::core::convert::TryFrom<&[u8]>>::try_from(src.as_slice())
             }
 
             fn to_bytes(&self) -> $crate::GenericArray<u8, Self::Size> {
@@ -158,14 +156,14 @@ macro_rules! derive_repr_bytes_from_as_ref_and_try_from {
     };
 }
 
-/// Derive Into<Vec<u8>> from a ReprBytes implementation
+/// Derive From<...> for Vec<u8> from a ReprBytes implementation
 #[cfg(feature = "alloc")]
 #[macro_export]
 macro_rules! derive_into_vec_from_repr_bytes {
     ($mytype:ty) => {
-        impl Into<$crate::_exports::alloc::vec::Vec<u8>> for $mytype {
-            fn into(self) -> $crate::_exports::alloc::vec::Vec<u8> {
-                <$mytype as $crate::ReprBytes>::map_bytes(&self, |slice| slice.to_vec())
+        impl From<$mytype> for $crate::_exports::alloc::vec::Vec<u8> {
+            fn from(src: $mytype) -> $crate::_exports::alloc::vec::Vec<u8> {
+                <$mytype as $crate::ReprBytes>::map_bytes(&src, |slice| slice.to_vec())
             }
         }
     };
@@ -323,9 +321,8 @@ macro_rules! derive_serde_from_repr_bytes {
                         }
                         let value =
                             &<GenericArray<u8, <$mytype as ReprBytes>::Size>>::from_slice(value);
-                        Ok(<$mytype as ReprBytes>::from_bytes(value).map_err(|err| {
-                            <E as $crate::_exports::serde::de::Error>::custom(err)
-                        })?)
+                        <$mytype as ReprBytes>::from_bytes(value)
+                            .map_err(|err| <E as $crate::_exports::serde::de::Error>::custom(err))
                     }
 
                     fn visit_seq<V>(self, mut seq: V) -> Result<Self::Value, V::Error>

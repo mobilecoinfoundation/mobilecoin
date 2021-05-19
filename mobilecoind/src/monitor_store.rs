@@ -228,7 +228,7 @@ impl MonitorStore {
                 Ok(data)
             }
             Err(lmdb::Error::NotFound) => Err(Error::MonitorIdNotFound),
-            Err(err) => Err(Error::LMDB(err)),
+            Err(err) => Err(Error::Lmdb(err)),
         }
     }
 
@@ -239,7 +239,7 @@ impl MonitorStore {
     ) -> Result<HashMap<MonitorId, MonitorData>, Error> {
         let mut cursor = db_txn.open_ro_cursor(self.monitor_id_to_monitor_data)?;
 
-        Ok(cursor
+        cursor
             .iter()
             .map(|result| {
                 result
@@ -253,13 +253,13 @@ impl MonitorStore {
                         Ok((monitor_id, data))
                     })
             })
-            .collect::<Result<HashMap<_, _>, Error>>()?)
+            .collect::<Result<HashMap<_, _>, Error>>()
     }
 
     /// Get a list of all MonitorIds in database.
     pub fn get_ids(&self, db_txn: &impl Transaction) -> Result<Vec<MonitorId>, Error> {
         let mut cursor = db_txn.open_ro_cursor(self.monitor_id_to_monitor_data)?;
-        Ok(cursor
+        cursor
             .iter()
             .map(|result| {
                 result
@@ -268,7 +268,7 @@ impl MonitorStore {
                         MonitorId::try_from(key_bytes).map_err(|_| Error::KeyDeserializationError)
                     })
             })
-            .collect::<Result<Vec<_>, Error>>()?)
+            .collect::<Result<Vec<_>, Error>>()
     }
 
     /// Set the MonitorData for an existing monitor
@@ -293,7 +293,7 @@ impl MonitorStore {
                 Ok(())
             }
             Err(lmdb::Error::NotFound) => Err(Error::MonitorIdNotFound),
-            Err(err) => Err(Error::LMDB(err)),
+            Err(err) => Err(Error::Lmdb(err)),
         }
     }
 

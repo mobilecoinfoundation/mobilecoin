@@ -19,15 +19,15 @@ mc-util-from-random = { path = "../../util/from-random" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 
 hex = "0.3"
-rand = "0.7"
-rand_hc = "0.2.0"
+rand = "0.8"
+rand_hc = "0.3"
 structopt = "0.3"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "3.0", default-features = false, features = ["simd_backend", "nightly"] }
+curve25519-dalek = { version = "4.0.0-pre.0", default-features = false, features = ["simd_backend", "nightly"] }
 
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "3.0", default-features = false, features = ["nightly", "u64_backend"] }
+curve25519-dalek = { version = "4.0.0-pre.0", default-features = false, features = ["nightly", "u64_backend"] }
 
 [dev-dependencies]
 tempdir = "0.3"

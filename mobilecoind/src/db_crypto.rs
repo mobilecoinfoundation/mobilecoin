@@ -225,7 +225,7 @@ impl DbCryptoProvider {
 
             let cipher = Aes256Gcm::new(&key);
 
-            Ok(cipher.encrypt(&nonce, &plaintext_bytes[..])?)
+            Ok(cipher.encrypt(&nonce, plaintext_bytes)?)
         } else {
             Ok(plaintext_bytes.to_vec())
         }
@@ -254,7 +254,7 @@ impl DbCryptoProvider {
         let (key, nonce) = Self::expand_password(password)?;
 
         let cipher = Aes256Gcm::new(&key);
-        Ok(cipher.encrypt(&nonce, &plaintext_bytes[..])?)
+        Ok(cipher.encrypt(&nonce, plaintext_bytes)?)
     }
 
     /// Decrypt data with the currently set password.

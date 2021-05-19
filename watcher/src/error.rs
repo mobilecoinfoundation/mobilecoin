@@ -23,6 +23,9 @@ pub enum WatcherError {
 
     /// Connection: {0}
     Connection(ConnectionError),
+
+    /// Unknown tx source url: {0}
+    UnknownTxSourceUrl(String),
 }
 
 impl From<url::ParseError> for WatcherError {

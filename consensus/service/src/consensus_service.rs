@@ -338,6 +338,9 @@ impl<
                 self.ledger_db.clone(),
                 self.client_authenticator.clone(),
                 self.logger.clone(),
+                self.config
+                    .minimum_fee()
+                    .expect("Could not read minimum fee"),
             ));
 
         let is_serving_user_requests = self.create_is_serving_user_requests_fn();
@@ -430,6 +433,9 @@ impl<
                 self.ledger_db.clone(),
                 peer_authenticator.clone(),
                 self.logger.clone(),
+                self.config
+                    .minimum_fee()
+                    .expect("Could not read minimum fee"),
             ));
 
         let peer_service = consensus_peer_grpc::create_consensus_peer_api(PeerApiService::new(
