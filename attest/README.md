@@ -79,13 +79,13 @@ In addition to the contents of Bob's `Quote` is the contents of Bob's `EREPORT`,
 
 ### IAS
 
-One the MobileCoin application has gotten a `Quote` back from the QE, it encodes it into a JSON document and sends it to the *Intel Attestation Service* (IAS). IAS, for it's part, looks at the quote and tries to verify everything: is the QE up-to-date? Does the CPU have any known vulnerabilities? IAS, then, is verifying that there aren't any known problems with the TCB---that you can actually T the CB.
+Once the MobileCoin application has gotten a `Quote` back from the QE, it encodes it into a JSON document and sends it to the *Intel Attestation Service* (IAS). IAS, for it's part, looks at the quote and tries to verify everything: is the QE up-to-date? Does the CPU have any known vulnerabilities? IAS, then, is verifying that there aren't any known problems with the TCB---that you can actually T the CB.
 
 It puts all that (alongside "update info" if something is not up-to-date) into a report, and signs the bytes using an RSA key, then provides a standard certificate chain.
 
 ### Verification
 
-The software the MobileCoin enclave is attesting to (the client) must now verify the report provided by IAS. In particular, it must authenticate the message was signed by a key it trusts. Doing so is fairly straightforward RSA signature checking, where the verifier is given an X509 certificate chain and signature alongside the  authenticate that the chain leads back to a trust anchor the application expects.
+The software the MobileCoin enclave is attesting to (the client) must now verify the report provided by IAS. In particular, it must authenticate the message was signed by a key it trusts. Doing so is fairly straightforward RSA signature checking, where the verifier is given an X509 certificate chain and signature alongside the authenticate that the chain leads back to a trust anchor the application expects.
 
 Once it's authenticated a report as coming from IAS, the verifier can parse the JSON string and use the contents of the report to determine whether or not to trust the enclave. The status returned by Intel will indicate broadly if anything is wrong, and the verifiers can do things like checking the MRENCLAVE values, ensuring the enclave isn't running in debug mode, etc.
 
