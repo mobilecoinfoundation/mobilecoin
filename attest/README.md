@@ -61,9 +61,9 @@ This "telling the difference" is handled by attestation, which is a multi-layere
 
 The first thing to know about attestation is that it begins with Alice The Enclave asking the CPU for it's own `EREPORT`. The CPU will fill in a data structure containing information about Alice.
 
-The contents of Alice's `EREPORT` can be used to construct a `TARGETINFO` data structure, which is given to Bob The Enclave. Bob Alice's targetting information when he calls `EREPORT` from within his context, and he CPU fills in the report as before, and adds an authentication code so Alice can verify Bob's report is valid.
+The contents of Alice's `EREPORT` can be used to construct a `TARGETINFO` data structure, which is given to Bob The Enclave. Bob uses Alice's targetting information when he calls `EREPORT` from within his context, and he CPU fills in the report as before, and adds an authentication code so Alice can verify Bob's report is valid.
 
-Bob sends his `EREPORT` (with authentication code) to Alice, and she verifies the code using information available only to here and the CPU, and she can trust the report that she got from Bob is actually from Bob. That is, she's authenticated the report, and knows there was a Bob enclave out there, and she knows she has a report for it.
+Bob sends his `EREPORT` (with authentication code) to Alice, and she verifies the code using information available only to her and the CPU, and she can trust the report that she got from Bob is actually from Bob. That is, she's authenticated the report, and knows there was a Bob enclave out there, and she knows she has a report for it.
 
 #### Eve
 
