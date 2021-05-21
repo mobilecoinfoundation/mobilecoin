@@ -7,6 +7,8 @@ import "external.proto";
 
 package blockchain;
 
+option go_package = "mobilecoin/api";
+
 // Block ID.
 message BlockID {
     bytes data = 1;
