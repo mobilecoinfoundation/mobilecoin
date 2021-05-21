@@ -144,7 +144,14 @@ fn get_fee<T: BlockchainConnection + UserTxConnection + 'static>(
             .conns()
             .par_iter()
             .filter_map(|conn| conn.fetch_block_info(empty()).ok())
-            .map(|block_info| block_info.minimum_fee)
+            .filter_map(|block_info| {
+                // Cleanup the protobuf default fee
+                if block_info.minimum_fee == 0 {
+                    None
+                } else {
+                    Some(block_info.minimum_fee)
+                }
+            })
             .max()
             .unwrap_or(FALLBACK_FEE)
     }
