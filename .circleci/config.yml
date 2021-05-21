@@ -378,15 +378,15 @@ jobs:
     steps:
       - prepare-for-build
       - run:
-          name: Cargo check (SW/IAS dev)
-          command: cargo check --frozen --target "$HOST_TARGET_TRIPLE"
+          name: Cargo build (SW/IAS dev)
+          command: cargo build --frozen --target "$HOST_TARGET_TRIPLE"
       - check-dirty-git
       - run:
-          name: Cargo check (HW/IAS prod)
+          name: Cargo build (HW/IAS prod)
           environment:
             SGX_MODE: HW
             IAS_MODE: PROD
-          command: cargo check --frozen --target "$HOST_TARGET_TRIPLE"
+          command: cargo build --frozen --target "$HOST_TARGET_TRIPLE"
 
       # The lint and saving of caches happens here since this job is faster than the run-tests job.
       # This results in shorter CI times.
