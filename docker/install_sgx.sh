@@ -19,7 +19,20 @@ set -u
 
 cd /tmp
 
+# Install SGX Ubuntu/Debian Repo
 # NB: When updating dependencies, please remember to update the instructions in BUILD.md as well
+(
+	. /etc/os-release
+
+	wget "https://download.01.org/intel-sgx/sgx-linux/2.13.3/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_sdk_2.13.103.1.bin"
+
+	echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/intel-sgx-archive-keyring.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu/ ${UBUNTU_CODENAME} main" > /etc/apt/sources.list.d/intel-sgx.list
+)
+
+wget -O- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
+	gpg --dearmor > /etc/apt/trusted.gpg.d/intel-sgx-archive-keyring.gpg
+
+# Actually install stuff
 apt-get update
 apt-get install -yq --no-install-recommends \
 	ca-certificates \
@@ -32,7 +45,6 @@ apt-get install -yq --no-install-recommends \
 	wget \
 	python \
 	libssl-dev \
-	libssl-dev \
 	libcurl4-openssl-dev \
 	protobuf-compiler \
 	git \
@@ -41,29 +53,12 @@ apt-get install -yq --no-install-recommends \
 	cmake \
 	debhelper \
 	uuid-dev \
-	libxml2-dev
+	libxml2-dev \
+	libsgx-uae-service \
+	sgx-aesm-service
 
-# Install SGX Development Environment
-# NB: When updating dependencies, please remember to update the instructions in BUILD.md as well
-mkdir -p /tmp/sgx-install
-cd /tmp/sgx-install
-cat <<EOF | wget -nv -i-
-https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/sgx_linux_x64_sdk_2.9.101.2.bin
-https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-ae-epid/libsgx-ae-epid_2.9.101.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-ae-pce/libsgx-ae-pce_2.9.101.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-aesm-epid-plugin/libsgx-aesm-epid-plugin_2.9.101.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-aesm-pce-plugin/libsgx-aesm-pce-plugin_2.9.101.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-enclave-common/libsgx-enclave-common_2.9.101.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-epid/libsgx-epid_2.9.101.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-pce-logic/libsgx-pce-logic_1.6.100.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-urts/libsgx-urts_2.9.101.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/utils/sgx-aesm-service/sgx-aesm-service_2.9.101.2-bionic1_amd64.deb
-EOF
-
-dpkg --install *.deb
-
-chmod +x ./sgx_linux_x64_sdk_2.9.101.2.bin
-./sgx_linux_x64_sdk_2.9.101.2.bin --prefix=/opt/intel
+chmod +x ./sgx_linux_x64_sdk_2.13.103.1.bin
+./sgx_linux_x64_sdk_2.13.103.1.bin --prefix=/opt/intel
 
 # Update .bashrc to source sgxsdk
 echo 'source /opt/intel/sgxsdk/environment' >> /root/.bashrc
