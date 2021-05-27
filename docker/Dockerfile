@@ -39,7 +39,6 @@ RUN apt-get update -q -q && \
   cmake \
   curl \
   git \
-  golang \
   jq \
   libclang-dev \
   libcurl4-openssl-dev \
@@ -75,6 +74,15 @@ RUN apt-get update -q -q && \
   zlib1g-dev
 # psmisc = killall
 # prometheus = helps with running slam scripts locally
+
+# Install go 1.16 release
+RUN wget https://golang.org/dl/go1.16.4.linux-amd64.tar.gz && \
+    mv go1.16.4.linux-amd64.tar.gz go.tgz && \
+    tar -C /usr/local -xzf go.tgz  && \
+    rm -rf go.tgz
+ENV PATH="/usr/local/go/bin:$PATH"
+ENV GOPATH=/opt/go/
+ENV PATH=$PATH:$GOPATH/bin
 
 # Install SQLite latest release.
 ENV SQLITE=sqlite-autoconf-3350400
