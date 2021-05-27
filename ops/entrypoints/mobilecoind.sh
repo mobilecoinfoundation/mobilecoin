@@ -17,6 +17,10 @@ mobilecoind \
     --peer mc://node5.${BRANCH}.mobilecoin.com/ \
     --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.${BRANCH}.mobilecoin.com/ \
     --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.${BRANCH}.mobilecoin.com/ \
+    --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node3.${BRANCH}.mobilecoin.com/ \
+    --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node4.${BRANCH}.mobilecoin.com/ \
+    --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node5.${BRANCH}.mobilecoin.com/ \
+    --quorum-set="{ \"threshold\": 3, \"members\": [{ \"type\": \"Node\", \"args\": \"node1.${BRANCH}.mobilecoin.com:443\"}, {\"type\": \"Node\", \"args\": \"node2.${BRANCH}.mobilecoin.com:443\" }, { \"type\": \"Node\", \"args\": \"node3.${BRANCH}.mobilecoin.com:443\" }, { \"type\": \"Node\", \"args\": \"node4.${BRANCH}.mobilecoin.com:443\" }, { \"type\": \"Node\", \"args\": \"node5.${BRANCH}.mobilecoin.com:443\" }]}" \
     --ledger-db "${NODE_LEDGER_DIR}" \
     --poll-interval 1 \
     --mobilecoind-db "${MOBILECOIND_DB_DIR}" \
