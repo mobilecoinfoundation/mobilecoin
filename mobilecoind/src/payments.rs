@@ -17,7 +17,7 @@ use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_transaction_core::{
-    constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
+    constants::{MAX_INPUTS, MILLIMOB_TO_PICOMOB, RING_SIZE},
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
@@ -45,6 +45,10 @@ pub const DEFAULT_NEW_TX_BLOCK_ATTEMPTS: u64 = 50;
 
 /// Default ring size
 pub const DEFAULT_RING_SIZE: usize = RING_SIZE;
+
+/// The original hard-coded 10mMOB fee, used as a fallback when calls to
+/// consensus fail or we have no peers.
+const FALLBACK_FEE: u64 = 10 * MILLIMOB_TO_PICOMOB;
 
 /// An outlay - the API representation of a desired transaction output.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -131,7 +135,7 @@ fn get_fee<T: BlockchainConnection + UserTxConnection + 'static>(
     if opt_fee > 0 {
         opt_fee
     } else if peer_manager.is_empty() {
-        MINIMUM_FEE
+        FALLBACK_FEE
     } else {
         // iterate an owned list of connections in parallel, get the block info for
         // each, and extract the fee. If no fees are returned, use the hard-coded
@@ -140,9 +144,16 @@ fn get_fee<T: BlockchainConnection + UserTxConnection + 'static>(
             .conns()
             .par_iter()
             .filter_map(|conn| conn.fetch_block_info(empty()).ok())
-            .map(|block_info| block_info.minimum_fee)
+            .filter_map(|block_info| {
+                // Cleanup the protobuf default fee
+                if block_info.minimum_fee == 0 {
+                    None
+                } else {
+                    Some(block_info.minimum_fee)
+                }
+            })
             .max()
-            .unwrap_or(MINIMUM_FEE)
+            .unwrap_or(FALLBACK_FEE)
     }
 }
 
@@ -946,7 +957,7 @@ mod test {
     use mc_connection::{HardcodedCredentialsProvider, ThickClient};
     use mc_crypto_keys::RistrettoPrivate;
     use mc_fog_report_validation::MockFogPubkeyResolver;
-    use mc_transaction_core::constants::MILLIMOB_TO_PICOMOB;
+    use mc_transaction_core::constants::{MILLIMOB_TO_PICOMOB, MINIMUM_FEE};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 
