@@ -71,7 +71,6 @@ members = [
     "transaction/core/test-utils",
     "transaction/std",
     "util/b58-decoder",
-    "util/build/bolt-signalapp",
     "util/build/enclave",
     "util/build/grpc",
     "util/build/script",

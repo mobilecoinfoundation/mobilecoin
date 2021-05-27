@@ -24,7 +24,6 @@ cd /tmp
 (
 	. /etc/os-release
 
-	wget "https://download.01.org/intel-sgx/sgx-linux/2.13.3/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_driver_2.11.0_2d2b795.bin"
 	wget "https://download.01.org/intel-sgx/sgx-linux/2.13.3/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_sdk_2.13.103.1.bin"
 
 	echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/intel-sgx-archive-keyring.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu/ ${UBUNTU_CODENAME} main" > /etc/apt/sources.list.d/intel-sgx.list
@@ -57,9 +56,6 @@ apt-get install -yq --no-install-recommends \
 	libxml2-dev \
 	libsgx-uae-service \
 	sgx-aesm-service
-
-chmod +x ./sgx_linux_x64_driver_2.11.0_2d2b795.bin
-./sgx_linux_x64_driver_2.11.0_2d2b795.bin --prefix=/opt/intel
 
 chmod +x ./sgx_linux_x64_sdk_2.13.103.1.bin
 ./sgx_linux_x64_sdk_2.13.103.1.bin --prefix=/opt/intel
