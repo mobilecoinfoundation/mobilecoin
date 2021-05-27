@@ -7,7 +7,22 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ## [Unreleased]
 
-## [1.1.0-pre2 Unreleased]
+### Changed
+
+ - Update SGX to 2.13.3.
+
+### Fixed
+
+ - `mc-mobilecoind` and `mc-slam` will now use a fallback fee of 10mMOB if consensus cannot be contacted, or does not return a value for the fee.
+ - Allow `mc-mobilecoind`'s `GenerateOptimizationTxRequest` API to take a user-supplied fee, calculate it properly if it isn't given one.
+
+## [1.1.0-pre4]
+
+### Fixed
+
+ - Revert block version bump, which broke older clients
+
+## [1.1.0-pre2]
 
 ### Added
 
