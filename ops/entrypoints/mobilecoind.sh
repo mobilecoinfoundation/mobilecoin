@@ -25,3 +25,4 @@ mobilecoind \
     --poll-interval 1 \
     --mobilecoind-db "${MOBILECOIND_DB_DIR}" \
     --listen-uri "insecure-mobilecoind://0.0.0.0:${MOBILECOIND_SERVICE_PORT}/"
+
