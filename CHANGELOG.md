@@ -7,44 +7,31 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ## [Unreleased]
 
-### Changed
-
- - Update SGX to 2.13.3.
-
-### Fixed
-
- - `mc-mobilecoind` and `mc-slam` will now use a fallback fee of 10mMOB if consensus cannot be contacted, or does not return a value for the fee.
- - Allow `mc-mobilecoind`'s `GenerateOptimizationTxRequest` API to take a user-supplied fee, calculate it properly if it isn't given one.
-
-## [1.1.0-pre4]
-
-### Fixed
-
- - Revert block version bump, which broke older clients
-
-## [1.1.0-pre2]
+## [1.1.0] - 2021-06-08
 
 ### Added
 
  - Mnemonics-based Key Derivation
- - `mc-slam` load generation utility
- - `mc-sgx-css-dump` SIGSTRUCT (CSS) debug utility
+ - Dynamic Fees [rfcs/#1](https://github.com/mobilecoinfoundation/rfcs/#1)
+   - `consensus-service` now takes `--minimum-fee=<picoMOB>` to configure minimum fees (nodes with different fees cannot attest to each other).
+   - `mobilecoind`'s `GenerateOptimizationTxRequest` API to takes a user-supplied fee.
  - Authenticated fog details in public addresses
- - Admin gRPC for `mobilecoind`
- - `mobilecoind` can send change to a designated subaddress
- - `mobilecoind` support for load balancing (via forked grpcio)
- - `mobilecoind` encrypts account key at rest
- - `watcher` app to keep track of Attestation Verification Reports from live machines
- - `consensus-service` now takes `--minimum-fee=<picoMOB>` to configure minimum fees (nodes with different fees cannot attest to each other).
+ - Admin gRPC for `mobilecoind`.
+ - `mc-slam` load generation utility.
+ - `mc-sgx-css-dump` SIGSTRUCT (CSS) debug utility.
+ - `mobilecoind` can send change to a designated subaddress.
+ - `mobilecoind` support for load balancing (via forked grpcio).
+ - `mobilecoind` encrypts account key at rest.
+ - `watcher` app to keep track of Attestation Verification Reports from live machines.
 
 ### Changed
 
- - Bump block version to 1
  - Bump ISV SVN for consensus enclave to 2
  - Reduce minimum fee from 10mMOB to 400uMOB
  - Parallelize HTTP transaction fetcher
  - Optionally seed RNGs for mock attestation signer from `MC_SEED` env.
  - Bump rust version to `nightly-2021-03-25`
+ - Update SGX to 2.13.3.
  - Use `AWS_REGION` instead of `?region=`.
  - Make enclave errors (to clients/peers) result in `PERMISSION_DENIED` to force reattestation.
  - Fog hints now use AES256-GCM
