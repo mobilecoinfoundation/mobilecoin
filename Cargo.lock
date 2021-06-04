@@ -3815,6 +3815,7 @@ name = "mc-watcher"
 version = "1.0.1-pre1"
 dependencies = [
  "displaydoc",
+ "futures 0.3.8",
  "grpcio",
  "hex 0.4.2",
  "lazy_static",
