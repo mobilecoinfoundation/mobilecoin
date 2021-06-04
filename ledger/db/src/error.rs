@@ -1,59 +1,67 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use failure::Fail;
-use mc_transaction_core::membership_proofs::RangeError;
+use displaydoc::Display;
+use mc_transaction_core::{membership_proofs::RangeError, BlockID, BlockIndex};
 use mc_util_lmdb::MetadataStoreError;
 
 /// A Ledger error kind.
-#[derive(Debug, Eq, PartialEq, Copy, Clone, Fail)]
+#[derive(Debug, Eq, PartialEq, Clone, Display)]
 pub enum Error {
-    #[fail(display = "NotFound")]
+    /// NotFound
     NotFound,
 
-    #[fail(display = "Serialization")]
+    /// Serialization
     Serialization,
 
-    #[fail(display = "Deserialization")]
+    /// Deserialization
     Deserialization,
 
-    #[fail(display = "NoTransactions")]
+    /// NoTransactions
     NoTransactions,
 
-    #[fail(display = "InvalidBlock")]
-    InvalidBlock,
+    /// InvalidBlockVersion: {0}
+    InvalidBlockVersion(u32),
 
-    #[fail(display = "KeyImageAlreadySpent")]
+    /// NoKeyImages
+    NoKeyImages,
+
+    /// InvalidBlockIndex: {0}
+    InvalidBlockIndex(BlockIndex),
+
+    /// KeyImageAlreadySpent
     KeyImageAlreadySpent,
 
-    #[fail(display = "DuplicateOutputPublicKey")]
+    /// DuplicateOutputPublicKey
     DuplicateOutputPublicKey,
 
-    #[fail(display = "InvalidBlockContents")]
+    /// InvalidBlockContents
     InvalidBlockContents,
 
-    #[fail(display = "InvalidBlockID")]
-    InvalidBlockID,
+    /// InvalidBlockID: {0}
+    InvalidBlockID(BlockID),
 
-    #[fail(display = "NoOutputs")]
+    /// InvalidParentBlockID: {0}
+    InvalidParentBlockID(BlockID),
+
+    /// NoOutputs
     NoOutputs,
 
     /// LMDB error, may mean database is opened multiple times in a process.
-    #[fail(display = "BadRslot")]
     BadRslot,
 
-    #[fail(display = "CapacityExceeded")]
+    /// CapacityExceeded
     CapacityExceeded,
 
-    #[fail(display = "IndexOutOfBounds: {}", _0)]
+    /// IndexOutOfBounds: {0}
     IndexOutOfBounds(u64),
 
-    #[fail(display = "LmdbError")]
-    LmdbError(lmdb::Error),
+    /// Lmdb: {0}
+    Lmdb(lmdb::Error),
 
-    #[fail(display = "RangeError")]
-    RangeError,
+    /// Range
+    Range,
 
-    #[fail(display = "Metadata store error: {}", _0)]
+    /// Metadata store: {0}
     MetadataStore(MetadataStoreError),
 }
 
@@ -62,7 +70,7 @@ impl From<lmdb::Error> for Error {
         match lmdb_error {
             lmdb::Error::NotFound => Error::NotFound,
             lmdb::Error::BadRslot => Error::BadRslot,
-            err => Error::LmdbError(err),
+            err => Error::Lmdb(err),
         }
     }
 }
@@ -93,7 +101,7 @@ impl From<mc_util_serial::EncodeError> for Error {
 
 impl From<RangeError> for Error {
     fn from(_: RangeError) -> Self {
-        Error::RangeError
+        Error::Range
     }
 }
 

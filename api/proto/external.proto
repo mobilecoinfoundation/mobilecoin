@@ -8,6 +8,7 @@ package external;
 
 option java_package = "com.mobilecoin.api";
 option java_outer_classname = "MobileCoinAPI";
+option go_package = "mobilecoin/api";
 
 ///////////////////////////////////////////////////////////////////////////////
 // `keys` crate

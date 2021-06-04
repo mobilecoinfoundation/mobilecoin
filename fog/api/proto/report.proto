@@ -7,6 +7,8 @@ package report;
 
 import "external.proto";
 
+option go_package = "mobilecoin/api";
+
 /// The public API for getting reports
 service ReportAPI {
     /// Get all available pubkeys, with Intel SGX reports, fog urls, and expiry info
