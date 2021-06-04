@@ -21,6 +21,10 @@ use std::{
     },
 };
 use structopt::StructOpt;
+use mc_util_grpc::{HealthCheckStatus, HealthService, ConnectionUriGrpcioServer};
+use futures::executor::block_on;
+use grpcio::{EnvBuilder, ServerBuilder};
+
 
 fn main() {
     mc_common::setup_panic_handler();
@@ -45,16 +49,41 @@ fn main() {
         logger.clone(),
     );
 
+    // Start watcher sync thread.
     let mut sync_thread = WatcherSyncThread::start(
         watcher,
-        config,
+        config.clone(),
         logger.clone(),
     ).expect("Failed starting watcher sync thread.");
 
+    // Start gRPC server.
+    let health_check_callback: Arc<dyn Fn(&str) -> HealthCheckStatus + Sync + Send> =
+        Arc::new(move |_| { HealthCheckStatus::SERVING });
+    let health_service = HealthService::new(Some(health_check_callback), logger.clone()).into_service();
+
+    let env = Arc::new(
+        EnvBuilder::new()
+            .name_prefix("User-RPC".to_string())
+            .build(),
+    );
+
+    let server_builder = ServerBuilder::new(env)
+        .register_service(health_service)
+        .bind_using_uri(&config.client_listen_uri, logger.clone());
+
+    let mut server = server_builder.build().unwrap();
+    server.start();
+
+    for (host, port) in server.bind_addrs() {
+        log::info!(logger, "gRPC API listening on {}:{}", host, port);
+    }
+
+    // Wait forever for sync thread to exit. If it ever exits, shut down the gRPC server.
     sync_thread.join_handle.take()
         .expect("No join handle for watcher sync thread")
         .join()
         .expect("Failed waiting for watcher sync thread");
+    block_on(server.shutdown()).expect("Could not shut down gRPC server.")
 }
 
 /// Possible errors.
