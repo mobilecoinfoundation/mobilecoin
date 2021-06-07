@@ -20,7 +20,7 @@ mc-util-lmdb = { path = "../../util/lmdb" }
 mc-util-metrics = { path = "../../util/metrics" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 
-failure = "0.1.8"
+displaydoc = { version = "0.2", default-features = false }
 lazy_static = "1.4"
 lmdb-rkv = "0.14.0"
 mockall = "0.8.3"
