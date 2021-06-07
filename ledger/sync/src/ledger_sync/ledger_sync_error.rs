@@ -10,8 +10,8 @@ use retry::Error as RetryError;
 
 #[derive(Debug, Fail)]
 pub enum LedgerSyncError {
-    #[fail(display = "Ledger db: {0}", _0)]
-    DBError(LedgerDbError),
+    #[fail(display = "Error occurred with ledger_db.")]
+    DBError,
 
     #[fail(display = "No potentially safe blocks.")]
     NoSafeBlocks,
@@ -46,7 +46,7 @@ impl<TFE: TransactionFetcherError + 'static> From<TFE> for LedgerSyncError {
 }
 
 impl From<LedgerDbError> for LedgerSyncError {
-    fn from(src: LedgerDbError) -> Self {
-        LedgerSyncError::DBError(src)
+    fn from(_x: LedgerDbError) -> Self {
+        LedgerSyncError::DBError
     }
 }

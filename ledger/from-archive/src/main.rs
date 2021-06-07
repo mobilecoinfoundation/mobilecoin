@@ -7,10 +7,10 @@
 mod config;
 
 use config::LedgerFromArchiveConfig;
+use mc_api::block_num_to_s3block_path;
 use mc_common::logger::{create_app_logger, log, o};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::ReqwestTransactionsFetcher;
-use std::fs;
 use structopt::StructOpt;
 
 fn main() {
@@ -23,14 +23,13 @@ fn main() {
         ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
             .expect("Failed creating ReqwestTransactionsFetcher");
 
-    log::info!(logger, "Creating local ledger at {:?}", config.ledger_db);
+    log::debug!(logger, "Creating local ledger at {:?}", config.ledger_db);
     // Open LedgerDB
-    let _ = fs::create_dir_all(&config.ledger_db);
     LedgerDB::create(&config.ledger_db).expect("Could not create ledger_db");
     let mut local_ledger = LedgerDB::open(&config.ledger_db).expect("Failed creating LedgerDB");
 
     // Sync Origin Block
-    log::info!(logger, "Getting origin block");
+    log::debug!(logger, "Getting origin block");
     let block_data = transactions_fetcher
         .get_origin_block_and_transactions()
         .expect("Could not retrieve origin block");
@@ -47,7 +46,7 @@ fn main() {
     loop {
         if let Some(block_limit) = config.num_blocks {
             if block_index >= block_limit {
-                log::info!(
+                log::debug!(
                     logger,
                     "Done fetching transactions for {} blocks",
                     block_index,
@@ -55,10 +54,21 @@ fn main() {
                 return;
             }
         }
+        // Construct URL for the block we are trying to fetch.
+        let filename = block_num_to_s3block_path(block_index)
+            .into_os_string()
+            .into_string()
+            .unwrap();
+        let url = transactions_fetcher.source_urls[0].join(&filename).unwrap();
 
         // Try and get the block.
-        log::info!(logger, "Attempting to fetch block {}", block_index,);
-        match transactions_fetcher.get_block_data_by_index(block_index, None) {
+        log::debug!(
+            logger,
+            "Attempting to fetch block {} from {}",
+            block_index,
+            url
+        );
+        match transactions_fetcher.block_from_url(&url) {
             Ok(block_data) => {
                 // Append new data to the ledger
                 local_ledger
@@ -70,7 +80,7 @@ fn main() {
                     .unwrap_or_else(|_| panic!("Could not append block {:?}", block_index))
             }
             Err(err) => {
-                log::info!(
+                log::debug!(
                     logger,
                     "Done fetching transactions for {} blocks ({:?})",
                     block_index,

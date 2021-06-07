@@ -10,8 +10,6 @@ import "consensus_common.proto";
 
 package consensus_peer;
 
-option go_package = "mobilecoin/api";
-
 service ConsensusPeerAPI {
     /// This API call is made with an encrypted payload for the enclave,
     /// indicating a new value to be acted upon.

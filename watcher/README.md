@@ -24,8 +24,3 @@ SGX_MODE=HW IAS_MODE=PROD MC_LOG=debug,hyper=error,want=error,reqwest=error,mio=
 ```
 
 The watcher can also be incorporated into other programs, as in [`mobilecoind`](../mobilecoind/README.md), where the watcher continuously syncs block signatures, and `mobilecoind` offers an interface to query block signatures for watched nodes through the mobilecoind API.
-
-In order to check that the watcher is running, you can send a gRPC request to the health check endpoint:
-```sh
-grpcurl -proto ./util/grpc/proto/health_api.proto -plaintext localhost:3226 grpc.health.v1.Health/Check
-```

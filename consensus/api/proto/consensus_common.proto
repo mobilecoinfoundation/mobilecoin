@@ -8,8 +8,6 @@ import "blockchain.proto";
 
 package consensus_common;
 
-option go_package = "mobilecoin/api";
-
 /// Blockchain API shared between clients and peers.
 service BlockchainAPI {
     rpc GetLastBlockInfo (google.protobuf.Empty) returns (LastBlockInfoResponse);

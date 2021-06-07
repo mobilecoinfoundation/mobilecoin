@@ -297,7 +297,7 @@ impl Ledger for LedgerDB {
                 Ok(Some(u64::from_le_bytes(u64_buf)))
             }
             Err(lmdb::Error::NotFound) => Ok(None),
-            Err(e) => Err(Error::Lmdb(e)),
+            Err(e) => Err(Error::LmdbError(e)),
         }
     }
 
@@ -552,16 +552,13 @@ impl LedgerDB {
 
             // The origin block is version 0
             if block.version != 0 {
-                return Err(Error::InvalidBlockVersion(block.version));
+                return Err(Error::InvalidBlock);
             }
 
             // The origin block is index '0' with default-initialized parent ID, by
             // convention
-            if block.index != 0 {
-                return Err(Error::InvalidBlockIndex(block.index));
-            }
-            if block.parent_id != BlockID::default() {
-                return Err(Error::InvalidParentBlockID(block.id.clone()));
+            if block.index != 0 || block.parent_id != BlockID::default() {
+                return Err(Error::InvalidBlock);
             }
         } else {
             let last_block = self.get_block(num_blocks - 1)?;
@@ -569,15 +566,12 @@ impl LedgerDB {
             // The block's version should be bounded by
             // [prev block version, max block version]
             if block.version < last_block.version || block.version > BLOCK_VERSION {
-                return Err(Error::InvalidBlockVersion(block.version));
+                return Err(Error::InvalidBlock);
             }
 
             // The block must have the correct index and parent.
-            if block.index != num_blocks {
-                return Err(Error::InvalidBlockIndex(block.index));
-            }
-            if block.parent_id != last_block.id {
-                return Err(Error::InvalidParentBlockID(block.parent_id.clone()));
+            if block.index != num_blocks || block.parent_id != last_block.id {
+                return Err(Error::InvalidBlock);
             }
         }
 
@@ -588,7 +582,7 @@ impl LedgerDB {
 
         // Non-origin blocks must have key images.
         if block.index != 0 && block_contents.key_images.is_empty() {
-            return Err(Error::NoKeyImages);
+            return Err(Error::InvalidBlock);
         }
 
         // Check that the block contents match the hash.
@@ -612,7 +606,7 @@ impl LedgerDB {
 
         // Validate block id.
         if !block.is_block_id_valid() {
-            return Err(Error::InvalidBlockID(block.id.clone()));
+            return Err(Error::InvalidBlockID);
         }
 
         // All good
@@ -910,7 +904,7 @@ mod ledger_db_test {
     }
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: NoKeyImages")]
+    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: InvalidBlock")]
     // Appending a non-origin block should fail if the block contains no key images.
     fn test_append_block_fails_for_non_origin_blocks_without_key_images() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
@@ -1162,7 +1156,7 @@ mod ledger_db_test {
     }
 
     #[test]
-    /// Attempting to append an empty block should return Error::NoOutputs.
+    /// Attempting to append an empty block should return Error::InvalidBlock.
     fn test_append_empty_block() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
@@ -1199,7 +1193,7 @@ mod ledger_db_test {
 
     #[test]
     /// Appending an block of incorrect version should return
-    /// Error::InvalidBlockVersion.
+    /// Error::InvalidBlock.
     fn test_append_block_with_invalid_version() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
@@ -1221,7 +1215,7 @@ mod ledger_db_test {
 
         assert_eq!(
             ledger_db.append_block(&block, &block_contents, None),
-            Err(Error::InvalidBlockVersion(block.version))
+            Err(Error::InvalidBlock)
         );
     }
 
@@ -1320,7 +1314,7 @@ mod ledger_db_test {
             );
             assert_eq!(
                 ledger_db.append_block(&invalid_block, &block_contents, None),
-                Err(Error::InvalidBlockVersion(invalid_block.version))
+                Err(Error::InvalidBlock)
             );
 
             if last_block.version > 0 {
@@ -1374,14 +1368,14 @@ mod ledger_db_test {
 
         assert_eq!(
             ledger_db.append_block(&new_block, &block_contents, None),
-            Err(Error::InvalidBlockIndex(new_block.index))
+            Err(Error::InvalidBlock)
         );
 
         // Appending a non-contiguous location should fail.
         new_block.index = 3 * n_blocks;
         assert_eq!(
             ledger_db.append_block(&new_block, &block_contents, None),
-            Err(Error::InvalidBlockIndex(new_block.index))
+            Err(Error::InvalidBlock)
         );
     }
 
@@ -1516,7 +1510,7 @@ mod ledger_db_test {
             block.id.0[0] += 1;
             assert_eq!(
                 ledger_db.append_block(&block, &origin_block_contents, None),
-                Err(Error::InvalidBlockID(block.id.clone()))
+                Err(Error::InvalidBlockID)
             );
         }
 
@@ -1563,7 +1557,7 @@ mod ledger_db_test {
 
             assert_eq!(
                 ledger_db.append_block(&block_one_bad, &block_contents, None),
-                Err(Error::InvalidParentBlockID(block_one_bad.parent_id.clone()))
+                Err(Error::InvalidBlock)
             );
 
             // This block correctly has block zero as its parent.

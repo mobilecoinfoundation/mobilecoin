@@ -132,11 +132,8 @@ impl LedgerSyncServiceThread {
             if is_behind {
                 let network_state = network_state.read().expect("lock poisoned");
 
-                if let Err(err) = ledger_sync_service
-                    .attempt_ledger_sync(&*network_state, MAX_BLOCKS_PER_SYNC_ITERATION)
-                {
-                    log::error!(logger, "Attempt ledger sync failed: {}", err);
-                }
+                let _ = ledger_sync_service
+                    .attempt_ledger_sync(&*network_state, MAX_BLOCKS_PER_SYNC_ITERATION);
             } else if !stop_requested.load(Ordering::SeqCst) {
                 log::trace!(
                     logger,
