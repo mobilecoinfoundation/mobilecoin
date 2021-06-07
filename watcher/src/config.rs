@@ -2,12 +2,11 @@
 
 //! Configuration parameters for the watcher test utility.
 
-use mc_util_uri::ConsensusClientUri;
+use mc_util_uri::{ConsensusClientUri, WatcherUri};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
 use url::Url;
-use mc_util_uri::WatcherUri;
 
 #[derive(Clone, Debug, StructOpt)]
 #[structopt(
