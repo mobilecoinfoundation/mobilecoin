@@ -1332,7 +1332,7 @@ mod ledger_db_test {
                 );
                 assert_eq!(
                     ledger_db.append_block(&invalid_block, &block_contents, None),
-                    Err(Error::InvalidBlock)
+                    Err(Error::InvalidBlockVersion(invalid_block.version))
                 );
             }
         }
