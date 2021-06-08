@@ -1,7 +1,0 @@
-[package]
-name = "mc-util-build-bolt-signalapp"
-version = "1.0.1-pre1"
-authors = ["MobileCoin"]
-edition = "2018"
-readme = "README.md"
-description = "A programmatic interface to Signal's patched llvm-bolt utility."

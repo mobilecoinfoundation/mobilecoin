@@ -1323,16 +1323,18 @@ mod ledger_db_test {
                 Err(Error::InvalidBlockVersion(invalid_block.version))
             );
 
-            let invalid_block = Block::new_with_parent(
-                last_block.version - 1,
-                &last_block,
-                &Default::default(),
-                &block_contents,
-            );
-            assert_eq!(
-                ledger_db.append_block(&invalid_block, &block_contents, None),
-                Err(Error::InvalidBlockVersion(invalid_block.version))
-            );
+            if last_block.version > 0 {
+                let invalid_block = Block::new_with_parent(
+                    last_block.version - 1,
+                    &last_block,
+                    &Default::default(),
+                    &block_contents,
+                );
+                assert_eq!(
+                    ledger_db.append_block(&invalid_block, &block_contents, None),
+                    Err(Error::InvalidBlockVersion(invalid_block.version))
+                );
+            }
         }
     }
 

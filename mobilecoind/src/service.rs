@@ -886,7 +886,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         // Generate optimization tx.
         let tx_proposal = self
             .transactions_manager
-            .generate_optimization_tx(&monitor_id, request.subaddress)
+            .generate_optimization_tx(&monitor_id, request.subaddress, request.fee)
             .map_err(|err| {
                 rpc_internal_error(
                     "transactions_manager.generate_optimization_tx",

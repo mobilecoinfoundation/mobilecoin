@@ -8,6 +8,17 @@ FROM ubuntu:18.04 AS consensus
 #
 SHELL ["/bin/bash", "-c"]
 
+# Install SGX Ubuntu/Debian Repo
+RUN ( \
+	. /etc/os-release \
+	wget "https://download.01.org/intel-sgx/sgx-linux/2.13.3/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_driver_2.11.0_2d2b795.bin" \
+	wget "https://download.01.org/intel-sgx/sgx-linux/2.13.3/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_sdk_2.13.103.1.bin" \
+	echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/intel-sgx-archive-keyring.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu/ ${UBUNTU_CODENAME} main" > /etc/apt/sources.list.d/intel-sgx.list \
+)
+
+RUN wget -O- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
+	gpg --dearmor > /etc/apt/trusted.gpg.d/intel-sgx-archive-keyring.gpg
+
 # Update OS and install deps
 #
 # - All of these are runtime dependencies of both aesm_service and mobilenode.
@@ -28,11 +39,14 @@ RUN apt-get update -q -q && \
   libprotobuf-c1 \
   libprotobuf10 \
   libstdc++6 \
+  libsgx-uae-service \
   rsync \
+  sgx-aesm-service \
   supervisor \
   tar \
   wget \
-  zlib1g && \
+  zlib1g \
+  && \
  rm -rf /var/cache/apt && \
  rm -rf /var/lib/apt/lists/*
 
@@ -41,31 +55,7 @@ RUN GRPC_HEALTH_PROBE_VERSION=v0.3.2 && \
     wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
     chmod +x /bin/grpc_health_probe
 
-# Install SGX
-RUN mkdir -p /tmp/sgx-debs
-WORKDIR /tmp/sgx-debs
-RUN wget -nv \
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-ae-qe3/libsgx-ae-qe3_1.5.100.2-bionic1_amd64.deb \
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-enclave-common/libsgx-enclave-common_2.9.100.2-bionic1_amd64.deb \
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-epid/libsgx-epid_2.9.100.2-bionic1_amd64.deb \
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-launch/libsgx-launch_2.9.100.2-bionic1_amd64.deb \
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-quote-ex/libsgx-quote-ex_2.9.100.2-bionic1_amd64.deb \
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-uae-service/libsgx-uae-service_2.9.100.2-bionic1_amd64.deb \
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-urts/libsgx-urts_2.9.100.2-bionic1_amd64.deb \
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-ae-epid/libsgx-ae-epid_2.9.100.2-bionic1_amd64.deb \
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-ae-le/libsgx-ae-le_2.9.100.2-bionic1_amd64.deb \
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-ae-pce/libsgx-ae-pce_2.9.100.2-bionic1_amd64.deb \
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-aesm-pce-plugin/libsgx-aesm-pce-plugin_2.9.100.2-bionic1_amd64.deb \
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-aesm-ecdsa-plugin/libsgx-aesm-ecdsa-plugin_2.9.100.2-bionic1_amd64.deb \
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-aesm-epid-plugin/libsgx-aesm-epid-plugin_2.9.100.2-bionic1_amd64.deb \
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-aesm-launch-plugin/libsgx-aesm-launch-plugin_2.9.100.2-bionic1_amd64.deb \
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-aesm-quote-ex-plugin/libsgx-aesm-quote-ex-plugin_2.9.100.2-bionic1_amd64.deb \
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/sgx-aesm-service/sgx-aesm-service_2.9.100.2-bionic1_amd64.deb
-
-RUN dpkg --install /tmp/sgx-debs/*.deb
-
 WORKDIR /
-RUN rm -rf /tmp/sgx-debs
 
 COPY bin/libconsensus-enclave.signed.so /usr/bin/
 COPY bin/consensus-service /usr/bin/

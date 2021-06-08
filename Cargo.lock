@@ -2038,7 +2038,7 @@ dependencies = [
 
 [[package]]
 name = "mc-account-keys"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "blake2",
  "criterion",
@@ -2066,7 +2066,7 @@ dependencies = [
 
 [[package]]
 name = "mc-account-keys-slip10"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -2082,7 +2082,7 @@ dependencies = [
 
 [[package]]
 name = "mc-admin-http-gateway"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "grpcio",
  "mc-common",
@@ -2098,7 +2098,7 @@ dependencies = [
 
 [[package]]
 name = "mc-api"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "bs58",
  "cargo-emit",
@@ -2130,7 +2130,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-ake"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "aead",
  "aes-gcm",
@@ -2154,7 +2154,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-api"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "aead",
  "cargo-emit",
@@ -2172,7 +2172,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-core"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "binascii",
  "bincode",
@@ -2208,7 +2208,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-enclave-api"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "displaydoc",
  "mc-attest-ake",
@@ -2220,7 +2220,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-net"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cfg-if 0.1.10",
  "failure",
@@ -2239,7 +2239,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-trusted"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "failure",
  "mc-attest-core",
@@ -2250,7 +2250,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-untrusted"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-attest-core",
  "mc-sgx-build",
@@ -2259,7 +2259,7 @@ dependencies = [
 
 [[package]]
 name = "mc-common"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "backtrace",
  "binascii",
@@ -2296,7 +2296,7 @@ dependencies = [
 
 [[package]]
 name = "mc-connection"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "aes-gcm",
  "cookie 0.14.3",
@@ -2324,7 +2324,7 @@ dependencies = [
 
 [[package]]
 name = "mc-connection-test-utils"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-connection",
  "mc-ledger-db",
@@ -2334,7 +2334,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-api"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cargo-emit",
  "futures 0.3.8",
@@ -2349,7 +2349,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cargo-emit",
  "mc-attest-core",
@@ -2373,7 +2373,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-api"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "failure",
  "mc-attest-ake",
@@ -2391,7 +2391,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-edl"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cargo-emit",
  "mc-util-build-script",
@@ -2399,7 +2399,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-impl"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cargo-emit",
  "hex 0.4.2",
@@ -2431,7 +2431,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-measurement"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cargo-emit",
  "mc-attest-core",
@@ -2443,7 +2443,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-mock"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
@@ -2462,7 +2462,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-scp"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "bigint",
  "crossbeam-channel 0.5.0",
@@ -2487,7 +2487,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-scp-play"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-common",
  "mc-consensus-scp",
@@ -2499,7 +2499,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-service"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "base64 0.12.3",
  "chrono",
@@ -2556,7 +2556,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ake-enclave"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "aes-gcm",
  "digest 0.9.0",
@@ -2575,7 +2575,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-box"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "aes-gcm",
  "blake2",
@@ -2591,7 +2591,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ct-aead"
-version = "0.5.0"
+version = "1.1.0"
 dependencies = [
  "aead",
  "aes-gcm",
@@ -2601,7 +2601,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cfg-if 0.1.10",
  "curve25519-dalek",
@@ -2614,7 +2614,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-derive"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.4",
@@ -2623,7 +2623,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-derive-test"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-digestible-test-utils",
@@ -2631,7 +2631,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-signature"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-crypto-digestible",
  "schnorrkel",
@@ -2640,7 +2640,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-test-utils"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-crypto-digestible",
  "serde_json",
@@ -2648,7 +2648,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-hashes"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "blake2",
  "digest 0.9.0",
@@ -2657,7 +2657,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-keys"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "binascii",
  "curve25519-dalek",
@@ -2689,7 +2689,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-message-cipher"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "aes-gcm",
  "failure",
@@ -2703,7 +2703,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-noise"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "aead",
  "aes-gcm",
@@ -2724,7 +2724,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-rand"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cfg-if 0.1.10",
  "getrandom 0.1.14",
@@ -2735,7 +2735,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-x509-test-vectors"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cargo-emit",
  "mc-crypto-keys",
@@ -2747,7 +2747,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-x509-utils"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "displaydoc",
  "mc-crypto-keys",
@@ -2758,7 +2758,7 @@ dependencies = [
 
 [[package]]
 name = "mc-enclave-boundary"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-common",
  "mc-crypto-rand",
@@ -2769,7 +2769,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-api"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cargo-emit",
  "futures 0.3.8",
@@ -2788,7 +2788,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-api-test-utils"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-util-serial",
  "prost",
@@ -2797,7 +2797,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-report-connection"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "displaydoc",
  "grpcio",
@@ -2814,7 +2814,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-report-validation"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "displaydoc",
  "mc-account-keys",
@@ -2830,7 +2830,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-report-validation-test-utils"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-account-keys",
  "mc-fog-report-validation",
@@ -2838,7 +2838,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sig"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "displaydoc",
  "mc-account-keys",
@@ -2859,7 +2859,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sig-authority"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-crypto-keys",
  "mc-util-from-random",
@@ -2870,7 +2870,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sig-report"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -2885,7 +2885,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-types"
-version = "0.10.0"
+version = "1.1.0"
 dependencies = [
  "mc-attest-core",
  "mc-crypto-digestible",
@@ -2895,7 +2895,7 @@ dependencies = [
 
 [[package]]
 name = "mc-ledger-db"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "curve25519-dalek",
  "displaydoc",
@@ -2920,7 +2920,7 @@ dependencies = [
 
 [[package]]
 name = "mc-ledger-distribution"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "dirs 2.0.2",
  "failure",
@@ -2940,7 +2940,7 @@ dependencies = [
 
 [[package]]
 name = "mc-ledger-from-archive"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-api",
  "mc-common",
@@ -2951,7 +2951,7 @@ dependencies = [
 
 [[package]]
 name = "mc-ledger-migration"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "lmdb-rkv",
  "mc-common",
@@ -2964,7 +2964,7 @@ dependencies = [
 
 [[package]]
 name = "mc-ledger-sync"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "crossbeam-channel 0.5.0",
  "failure",
@@ -2994,7 +2994,7 @@ dependencies = [
 
 [[package]]
 name = "mc-mobilecoind"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "aes-gcm",
  "blake2",
@@ -3055,7 +3055,7 @@ dependencies = [
 
 [[package]]
 name = "mc-mobilecoind-api"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cargo-emit",
  "futures 0.3.8",
@@ -3073,7 +3073,7 @@ dependencies = [
 
 [[package]]
 name = "mc-mobilecoind-json"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "grpcio",
  "hex 0.4.2",
@@ -3097,7 +3097,7 @@ dependencies = [
 
 [[package]]
 name = "mc-peers"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "crossbeam-channel 0.5.0",
  "ed25519",
@@ -3130,7 +3130,7 @@ dependencies = [
 
 [[package]]
 name = "mc-peers-test-utils"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "grpcio",
  "hex 0.4.2",
@@ -3153,7 +3153,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-build"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cc",
  "lazy_static",
@@ -3163,7 +3163,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-compat"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cfg-if 0.1.10",
  "mc-sgx-types",
@@ -3171,7 +3171,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-compat-edl"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cargo-emit",
  "mc-sgx-debug-edl",
@@ -3179,37 +3179,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-sgx-core-types"
-version = "1.0.1-pre1"
-dependencies = [
- "base64 0.12.3",
- "bincode",
- "bitflags",
- "displaydoc",
- "hex 0.4.2",
- "hex_fmt",
- "mc-sgx-core-types-sys",
- "mc-util-encodings",
- "mc-util-repr-bytes",
- "prost",
- "serde",
- "subtle 2.2.3",
-]
-
-[[package]]
-name = "mc-sgx-core-types-sys"
-version = "1.0.1-pre1"
-dependencies = [
- "bindgen",
- "cargo-emit",
- "mc-util-build-script",
- "mc-util-build-sgx",
- "pkg-config",
-]
-
-[[package]]
 name = "mc-sgx-css"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "displaydoc",
  "sha2 0.9.3",
@@ -3217,7 +3188,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-css-dump"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "hex_fmt",
  "mc-sgx-css",
@@ -3226,102 +3197,21 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-debug-edl"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cargo-emit",
-]
-
-[[package]]
-name = "mc-sgx-epid"
-version = "1.0.1-pre1"
-dependencies = [
- "bitflags",
- "mc-sgx-core-types",
- "mc-sgx-core-types-sys",
- "mc-sgx-epid-sys",
- "mc-sgx-epid-types",
-]
-
-[[package]]
-name = "mc-sgx-epid-sys"
-version = "1.0.1-pre1"
-dependencies = [
- "bindgen",
- "cargo-emit",
- "mc-sgx-core-types-sys",
- "mc-sgx-epid-types-sys",
- "mc-util-build-script",
- "mc-util-build-sgx",
- "pkg-config",
-]
-
-[[package]]
-name = "mc-sgx-epid-types"
-version = "1.0.1-pre1"
-dependencies = [
- "base64 0.12.3",
- "bincode",
- "bytes 0.5.4",
- "hex 0.4.2",
- "hex_fmt",
- "mc-sgx-core-types",
- "mc-sgx-core-types-sys",
- "mc-sgx-epid-types-sys",
- "mc-util-encodings",
- "mc-util-from-random",
- "mc-util-repr-bytes",
- "prost",
- "rand_core 0.6.2",
- "rand_hc 0.3.0",
- "serde",
- "subtle 2.2.3",
-]
-
-[[package]]
-name = "mc-sgx-epid-types-sys"
-version = "1.0.1-pre1"
-dependencies = [
- "bindgen",
- "cargo-emit",
- "mc-sgx-core-types-sys",
- "mc-util-build-script",
- "mc-util-build-sgx",
- "pkg-config",
-]
-
-[[package]]
-name = "mc-sgx-ias-types"
-version = "1.0.1-pre1"
-dependencies = [
- "base64 0.12.3",
- "bitflags",
- "chrono",
- "displaydoc",
- "generic-array 0.14.4",
- "hex 0.4.2",
- "hex_fmt",
- "mc-sgx-core-types",
- "mc-sgx-epid-types",
- "mc-util-encodings",
- "mc-util-from-random",
- "mc-util-repr-bytes",
- "prost",
- "prost-types",
- "rand_core 0.6.2",
- "rand_hc 0.3.0",
- "rjson",
 ]
 
 [[package]]
 name = "mc-sgx-panic-edl"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cargo-emit",
 ]
 
 [[package]]
 name = "mc-sgx-report-cache-api"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -3332,7 +3222,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-report-cache-untrusted"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -3347,7 +3237,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-slog"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cfg-if 0.1.10",
  "mc-common",
@@ -3357,18 +3247,18 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-slog-edl"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cargo-emit",
 ]
 
 [[package]]
 name = "mc-sgx-types"
-version = "1.0.1-pre1"
+version = "1.1.0"
 
 [[package]]
 name = "mc-sgx-urts"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-common",
  "mc-sgx-build",
@@ -3378,20 +3268,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-sgx-urts-sys"
-version = "1.0.1-pre1"
-dependencies = [
- "bindgen",
- "cargo-emit",
- "mc-sgx-core-types-sys",
- "mc-util-build-script",
- "mc-util-build-sgx",
- "pkg-config",
-]
-
-[[package]]
 name = "mc-slam"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "crossbeam-channel 0.5.0",
  "curve25519-dalek",
@@ -3420,7 +3298,7 @@ dependencies = [
 
 [[package]]
 name = "mc-test-vectors-account-keys"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "hex 0.4.2",
  "mc-account-keys",
@@ -3432,7 +3310,7 @@ dependencies = [
 
 [[package]]
 name = "mc-test-vectors-b58-encodings"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-account-keys",
  "mc-api",
@@ -3442,7 +3320,7 @@ dependencies = [
 
 [[package]]
 name = "mc-test-vectors-definitions"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-util-test-vector",
  "serde",
@@ -3450,7 +3328,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-core"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "blake2",
  "bulletproofs",
@@ -3488,7 +3366,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-core-test-utils"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-account-keys",
  "mc-crypto-keys",
@@ -3504,7 +3382,7 @@ dependencies = [
 
 [[package]]
 name = "mc-transaction-std"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "blake2",
  "curve25519-dalek",
@@ -3527,7 +3405,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-b58-decoder"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "hex 0.4.2",
  "mc-api",
@@ -3535,12 +3413,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-util-build-bolt-signalapp"
-version = "1.0.1-pre1"
-
-[[package]]
 name = "mc-util-build-enclave"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cargo-emit",
  "cargo_metadata 0.9.1",
@@ -3556,7 +3430,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-build-grpc"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "mc-util-build-script",
  "protoc-grpcio",
@@ -3564,14 +3438,14 @@ dependencies = [
 
 [[package]]
 name = "mc-util-build-info"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "json",
 ]
 
 [[package]]
 name = "mc-util-build-script"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cargo-emit",
  "failure",
@@ -3582,7 +3456,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-build-sgx"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "cargo-emit",
  "cc",
@@ -3593,7 +3467,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-encodings"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "base64 0.12.3",
  "binascii",
@@ -3605,14 +3479,14 @@ dependencies = [
 
 [[package]]
 name = "mc-util-from-random"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "rand_core 0.6.2",
 ]
 
 [[package]]
 name = "mc-util-generate-sample-ledger"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "curve25519-dalek",
  "hex 0.3.2",
@@ -3633,7 +3507,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-grpc"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "base64 0.12.3",
  "cookie 0.14.3",
@@ -3664,7 +3538,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-grpc-admin-tool"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "grpcio",
  "mc-common",
@@ -3676,7 +3550,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-grpc-token-generator"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "hex 0.4.2",
  "mc-common",
@@ -3688,11 +3562,11 @@ dependencies = [
 
 [[package]]
 name = "mc-util-host-cert"
-version = "1.0.1-pre1"
+version = "1.1.0"
 
 [[package]]
 name = "mc-util-keyfile"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "hex 0.4.2",
  "mc-account-keys",
@@ -3711,7 +3585,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-lmdb"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "displaydoc",
  "lmdb-rkv",
@@ -3721,7 +3595,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-logger-macros"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "proc-macro2 0.4.30",
  "quote 0.6.13",
@@ -3730,7 +3604,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-metered-channel"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "crossbeam-channel 0.5.0",
  "mc-util-metrics",
@@ -3738,7 +3612,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-metrics"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "chrono",
  "grpcio",
@@ -3751,7 +3625,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-repr-bytes"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "generic-array 0.14.4",
  "prost",
@@ -3761,7 +3635,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-serial"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "prost",
  "serde",
@@ -3770,7 +3644,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-test-helper"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "itertools",
  "lazy_static",
@@ -3784,7 +3658,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-test-vector"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "datatest",
  "serde",
@@ -3793,7 +3667,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-uri"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "base64 0.12.3",
  "displaydoc",
@@ -3812,7 +3686,7 @@ dependencies = [
 
 [[package]]
 name = "mc-watcher"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "displaydoc",
  "futures 0.3.8",
@@ -3854,7 +3728,7 @@ dependencies = [
 
 [[package]]
 name = "mc-watcher-api"
-version = "1.0.1-pre1"
+version = "1.1.0"
 dependencies = [
  "displaydoc",
  "serde",
@@ -4544,16 +4418,6 @@ dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.4",
  "syn 1.0.45",
-]
-
-[[package]]
-name = "prost-types"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1834f67c0697c001304b75be76f67add9c89742eda3a085ad8ee0bb38c3417aa"
-dependencies = [
- "bytes 0.5.4",
- "prost",
 ]
 
 [[package]]

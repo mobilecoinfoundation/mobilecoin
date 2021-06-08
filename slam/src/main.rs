@@ -19,7 +19,7 @@ use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransactionsFetcher};
 use mc_slam::SlamConfig;
 use mc_transaction_core::{
-    constants::MINIMUM_FEE,
+    constants::MILLIMOB_TO_PICOMOB,
     get_tx_out_shared_secret,
     onetime_keys::{recover_onetime_private_key, view_key_matches_output},
     ring_signature::KeyImage,
@@ -45,6 +45,8 @@ use tempdir::TempDir;
 thread_local! {
     pub static CONNS: RefCell<Option<Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>>>> = RefCell::new(None);
 }
+
+const FALLBACK_FEE: u64 = 10 * MILLIMOB_TO_PICOMOB;
 
 fn set_conns(config: &SlamConfig, logger: &Logger) {
     let conns = config.get_connections(logger).unwrap();
@@ -130,9 +132,16 @@ fn main() {
         get_conns(&config, &logger)
             .par_iter()
             .filter_map(|conn| conn.fetch_block_info(empty()).ok())
-            .map(|block_info| block_info.minimum_fee)
+            .filter_map(|block_info| {
+                // Cleanup the protobuf default fee
+                if block_info.minimum_fee == 0 {
+                    None
+                } else {
+                    Some(block_info.minimum_fee)
+                }
+            })
             .max()
-            .unwrap_or(MINIMUM_FEE),
+            .unwrap_or(FALLBACK_FEE),
         Ordering::SeqCst,
     );
 
