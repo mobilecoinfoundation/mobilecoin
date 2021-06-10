@@ -42,7 +42,7 @@ impl RngCallback for ThreadRngForMbedTls {
         0
     }
 
-    fn data_ptr(&mut self) -> *mut c_void {
+    fn data_ptr(&self) -> *mut c_void {
         ptr::null_mut()
     }
 }

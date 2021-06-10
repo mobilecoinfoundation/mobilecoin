@@ -10,16 +10,13 @@ use mbedtls::{
     pk::Pk,
     rng::RngCallback,
     x509::{
-        certificate::{Builder, Certificate, LinkedCertificate},
+        certificate::{Builder, Certificate},
         KeyUsage, Time,
     },
 };
-use mbedtls_sys::{
-    types::{
-        raw_types::{c_int, c_uchar, c_void},
-        size_t,
-    },
-    x509_crt,
+use mbedtls_sys::types::{
+    raw_types::{c_int, c_uchar, c_void},
+    size_t,
 };
 use rand::{RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
@@ -27,7 +24,6 @@ use std::{
     convert::TryFrom,
     env,
     fs::{read, remove_file, write},
-    ops::Deref,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
@@ -67,11 +63,10 @@ impl RngCallback for RngForMbedTls {
         0
     }
 
-    fn data_ptr(&mut self) -> *mut c_void {
+    fn data_ptr(&self) -> *mut c_void {
         null_mut()
     }
 }
-
 fn purge_expired_cert(path: &Path) {
     let mut bytes = match read(path) {
         Ok(bytes) => bytes,
@@ -84,13 +79,11 @@ fn purge_expired_cert(path: &Path) {
     bytes.push(0);
 
     match Certificate::from_pem(&bytes).map(|cert| {
-        // mbedtls doesn't expose a better way of getting the expiration time.
-        let linked: &LinkedCertificate = cert.deref();
-        let inner: *const x509_crt = linked.into();
-        let ts = unsafe { (*inner).valid_to };
-
-        Utc.ymd(ts.year as i32, ts.mon as u32, ts.day as u32)
-            .and_hms(ts.hour as u32, ts.min as u32, ts.sec as u32)
+        let ts = cert
+            .not_after()
+            .unwrap_or_else(|e| panic!("invalid certificate expiration time: {:?}", e));
+        Utc.ymd(ts.year as i32, ts.month as u32, ts.day as u32)
+            .and_hms(ts.hour as u32, ts.minute as u32, ts.second as u32)
     }) {
         Ok(not_after) => {
             let utc_now = Utc::now();

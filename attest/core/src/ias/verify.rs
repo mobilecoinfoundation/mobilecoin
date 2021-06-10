@@ -613,7 +613,7 @@ impl VerificationReport {
         // The third possible scenario, which is that one of the certs in the
         // middle of the chain is in our trust_anchors list. In this case, our
         // explicit trust of a cert makes any other issuer relationships
-        // irrelevant, including relationships with blacklisted issuers.
+        // irrelevant, including relationships with blocklisted issuers.
         //
         // This scenario is less likely, but would occur when someone is
         // trying to deprecate an existing authority in favor of a new one. In
@@ -657,11 +657,13 @@ impl VerificationReport {
             trust_anchors
                 .iter()
                 .filter_map(|pem| Certificate::from_pem(pem.as_bytes()).ok())
+                .map(|cert| *cert)
                 .collect()
         } else {
             IAS_SIGNING_ROOT_CERT_PEMS
                 .iter()
                 .filter_map(|pem| Certificate::from_pem(pem.as_bytes()).ok())
+                .map(|cert| *cert)
                 .collect()
         };
 

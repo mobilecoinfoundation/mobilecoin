@@ -29,9 +29,10 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use core::{convert::TryFrom, ops::Deref};
+use core::convert::TryFrom;
 use displaydoc::Display;
 use mbedtls::{
+    alloc::Box,
     hash::Type as HashType,
     pk::{EcGroupId, Type as PkType},
     x509::{Certificate, Profile},
@@ -110,10 +111,10 @@ impl Verifier {
                     Certificate::from_pem(pem.as_bytes())
                 }
             })
-            .collect::<Result<Vec<Certificate>, TlsError>>()
+            .collect::<Result<Vec<Box<Certificate>>, TlsError>>()
             .map_err(|e| Error::InvalidTrustAnchor(e.to_string()))?
             .into_iter()
-            .map(|cert| cert.deref().as_der().to_owned())
+            .map(|cert| cert.as_der().to_owned())
             .collect::<Vec<Vec<u8>>>();
 
         Ok(Self {
@@ -346,9 +347,12 @@ impl Verifier {
         let trust_anchors = self
             .trust_anchors
             .iter()
-            .map(|cert_der| Certificate::from_der(cert_der.as_slice()))
-            .collect::<Result<Vec<Certificate>, TlsError>>()
-            .expect("Trust anchors modified after Verifier creation");
+            .map(|cert_der| {
+                let cert = Certificate::from_der(cert_der.as_slice())
+                    .expect("Trust anchors modified after Verifier creation");
+                *cert
+            })
+            .collect::<Vec<Certificate>>();
 
         // Construct the top-level verifier.
         IasReportVerifier {
@@ -412,7 +416,7 @@ impl IasReportVerifier {
         // The third possible scenario, which is that one of the certs in the
         // middle of the chain is in our trust_anchors list. In this case, our
         // explicit trust of a cert makes any other issuer relationships
-        // irrelevant, including relationships with blacklisted issuers.
+        // irrelevant, including relationships with blocklisted issuers.
         //
         // This scenario is less likely, but would occur when someone is
         // trying to deprecate an existing authority in favor of a new one. In

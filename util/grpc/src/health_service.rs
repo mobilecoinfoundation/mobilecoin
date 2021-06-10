@@ -87,9 +87,9 @@ impl Health for HealthService {
         let logger = self.logger.clone();
 
         let resp = sink
-            .fail(RpcStatus::new(
+            .fail(RpcStatus::with_message(
                 RpcStatusCode::UNIMPLEMENTED,
-                Some("Unimplemented".into()),
+                "Unimplemented".to_string(),
             ))
             .map_err(move |err| log::error!(logger, "failed to reply: {:?}", err))
             .map(|_| ());
