@@ -35,7 +35,8 @@ mc-util-encodings = { path = "../../util/encodings" }
 mc-sgx-css = { path = "../../sgx/css" }
 mc-sgx-types = { path = "../../sgx/types" }
 
-mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3", default-features = false }
+# mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3", default-features = false }
+mbedtls = { path = "/home/christian/third-party-code/mbedtls/mbedtls/", default-features = false }
 
 binascii = "0.1.2"
 bitflags = "1.2"
@@ -70,5 +71,7 @@ rand = "0.8"
 rand_hc = "0.3"
 
 # We use mbedtls to generate certificates for simulation mode
-mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3", default-features = false }
-mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3", default-features = false }
+# mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3", default-features = false }
+# mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3", default-features = false }
+mbedtls = { path = "/home/christian/third-party-code/mbedtls/mbedtls/", default-features = false }
+mbedtls-sys-auto = { path = "/home/christian/third-party-code/mbedtls/mbedtls-sys/", default-features = false }
