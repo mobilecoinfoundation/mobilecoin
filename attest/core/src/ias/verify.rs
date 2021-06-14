@@ -8,7 +8,7 @@ use super::json::JsonValue;
 use crate::{
     error::{
         IasQuoteError, IasQuoteResult, JsonError, NonceError, PseManifestError,
-        PseManifestHashError, PseManifestResult, RevocationCause, SignatureError, VerifyError,
+        PseManifestHashError, PseManifestResult, RevocationCause, VerifyError,
     },
     nonce::IasNonce,
     quote::{Quote, QuoteSignType},
@@ -16,7 +16,6 @@ use crate::{
         epid_group_id::EpidGroupId, measurement::Measurement, pib::PlatformInfoBlob,
         report_data::ReportDataMask,
     },
-    IAS_SIGNING_ROOT_CERT_PEMS, IAS_VERSION,
 };
 use alloc::{
     string::{String, ToString},
@@ -31,11 +30,6 @@ use core::{
     result::Result,
     str,
 };
-use digest::Digest;
-use mbedtls::{
-    hash, pk,
-    x509::{Certificate, Profile},
-};
 use mc_crypto_digestible::Digestible;
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex, ToBase64};
 use prost::{
@@ -44,7 +38,6 @@ use prost::{
     DecodeError, Message,
 };
 use serde::{Deserialize, Serialize};
-use sha2::Sha256;
 
 // The lengths of the two EPID Pseudonym chunks
 const EPID_PSEUDONYM_B_LEN: usize = 64;
@@ -549,9 +542,6 @@ impl Message for VerificationSignature {
     }
 }
 
-/// Arbitrary maximum depth for certificate chains
-const MAX_CHAIN_DEPTH: usize = 5;
-
 /// Container for holding the quote verification sent back from IAS.
 ///
 /// The fields correspond to the data sent from IAS in the
@@ -575,219 +565,6 @@ pub struct VerificationReport {
     /// The raw report body JSON, as a byte sequence
     #[prost(string, required)]
     pub http_body: String,
-}
-
-impl VerificationReport {
-    /// A method to validate the signature of a verification report,
-    /// and ensure the signatory is rooted in a trust anchor.
-    pub fn verify_signature(
-        &self,
-        trust_anchors: Option<Vec<String>>,
-    ) -> Result<(), SignatureError> {
-        // Here's the background information for this code:
-        //
-        //  1. An X509 certificate can be signed by only one issuer.
-        //  2. mbedtls' certificates-list API demands certs in the RFC5246
-        //     order (endpoint cert first, every other cert signed the
-        //     cert preceeding it in the list).
-        //  3. I don't recall Intel's specification mentioning certificate
-        //     ordering at all (meaning they can change it w/o warning).
-        //  4. mbedtls' certificates-list API isn't actually exposed to us,
-        //     anyways.
-        //
-        // As a result, we need to find the cert which signed the data (this
-        // doubles as the signature check), then find a way back up the
-        // derived chain until we either hit a max-height limit (and fail),
-        // or top out at something that was itself signed by a trust_anchor.
-        //
-        // If we have the root CA that's in our trust_anchor list in the
-        // provided chain, then it will pass the "signed by trust_anchor"
-        // check, because all root CAs are self-signed by definition.
-        //
-        // If Intel doesn't provide the root CA in the chain, then the last
-        // entry in the derived chain will still contain the intermediate CA,
-        // which will (obviously) be signed by the root CA. Combined, these
-        // two situations mean checking that the last cert in the list was
-        // signed by a trust anchor will result in success.
-        //
-        // The third possible scenario, which is that one of the certs in the
-        // middle of the chain is in our trust_anchors list. In this case, our
-        // explicit trust of a cert makes any other issuer relationships
-        // irrelevant, including relationships with blacklisted issuers.
-        //
-        // This scenario is less likely, but would occur when someone is
-        // trying to deprecate an existing authority in favor of a new one. In
-        // this case, they sign the old CA with the new CA, so things which
-        // trust the new CA also trust the old CA "for free". When everyone
-        // has the new CA in their trust list, they start issuing certs from
-        // the new CA, and stop renewing certs from the old CA. The old CA is
-        // gradually phased out of use as the certs it issued expire, and is
-        // eventually allowed to expire itself, or revoked by the new CA.
-        //
-        // As a result, if any pubkey in the actual chain matches the pubkey
-        // of a trust anchor, then we can consider the actual chain trusted.
-        //
-        // Lastly, it's possible that Intel provides multiple complete chains
-        // terminating at different root CAs. That is, the signature is tied
-        // to pubkey X, but there are multiple leaf certificates in the
-        // provided certs for pubkey X, and each one has its own path back to
-        // a trust anchor.
-
-        if self.chain.is_empty() {
-            return Err(SignatureError::NoCerts);
-        }
-
-        // Construct a verification profile for what kind of X509 chain we
-        // will support
-        let profile = Profile::new(
-            vec![hash::Type::Sha256, hash::Type::Sha384, hash::Type::Sha512],
-            vec![pk::Type::Rsa, pk::Type::Ecdsa],
-            vec![
-                pk::EcGroupId::Curve25519,
-                pk::EcGroupId::SecP256K1,
-                pk::EcGroupId::SecP256R1,
-                pk::EcGroupId::SecP384R1,
-                pk::EcGroupId::SecP521R1,
-            ],
-            2048,
-        );
-
-        // Load default anchors if none provided.
-        let mut trust_anchors: Vec<Certificate> = if let Some(trust_anchors) = trust_anchors {
-            trust_anchors
-                .iter()
-                .filter_map(|pem| Certificate::from_pem(pem.as_bytes()).ok())
-                .collect()
-        } else {
-            IAS_SIGNING_ROOT_CERT_PEMS
-                .iter()
-                .filter_map(|pem| Certificate::from_pem(pem.as_bytes()).ok())
-                .collect()
-        };
-
-        // Intel uses rsa-sha256 as their signature algorithm, which means
-        // the signature is actually over the sha256 hash of the data, not
-        // the data itself. mbedtls is primitive enough that we need to do
-        // these steps ourselves.
-        let hash = Sha256::digest(self.http_body.as_bytes());
-
-        let parsed_chain: Vec<Certificate> = self
-            .chain
-            .iter()
-            .filter_map(|maybe_der_bytes| Certificate::from_der(maybe_der_bytes).ok())
-            .collect();
-
-        parsed_chain
-            .iter()
-            // First, find any certs for the signer pubkey
-            .filter_map(|src_cert| {
-                let mut newcert = src_cert.clone();
-                newcert
-                    .public_key_mut()
-                    .verify(hash::Type::Sha256, hash.as_slice(), self.sig.as_ref())
-                    .and(Ok(newcert))
-                    .ok()
-            })
-            // Then construct a set of chains, one for each signer certificate
-            .filter_map(|cert| {
-                let mut signer_chain: Vec<Certificate> = vec![cert];
-                'outer: loop {
-                    // Exclude any signing changes greater than our max depth
-                    if signer_chain.len() > MAX_CHAIN_DEPTH {
-                        return None;
-                    }
-
-                    for chain_cert in &parsed_chain {
-                        let mut chain_cert = chain_cert.clone();
-                        let existing_cert = signer_chain
-                            .last_mut()
-                            .expect("Somehow our per-signer chain was empty");
-                        if existing_cert.public_key_mut().write_public_der_vec()
-                            != chain_cert.public_key_mut().write_public_der_vec()
-                            && existing_cert
-                                .verify_with_profile(&mut chain_cert, None, Some(&profile), None)
-                                .is_ok()
-                        {
-                            signer_chain.push(chain_cert);
-                            continue 'outer;
-                        }
-                    }
-
-                    break;
-                }
-                Some(signer_chain)
-            })
-            // Then see if any of those chains are connected to a trust anchor
-            .find_map(|mut signer_chain| {
-                let signer_toplevel = signer_chain
-                    .last_mut()
-                    .expect("Signer chain was somehow emptied before use.");
-                // First, check if the last element in the chain is signed by a trust anchor
-                for cacert in &mut trust_anchors {
-                    if signer_toplevel
-                        .verify_with_profile(cacert, None, Some(&profile), None)
-                        .is_ok()
-                    {
-                        return Some(());
-                    }
-                }
-
-                // Otherwise, check if any of the pubkeys in the chain are a trust anchor
-                for cert in &mut signer_chain {
-                    for cacert in &mut trust_anchors {
-                        if cert.public_key_mut().write_public_der_vec()
-                            == cacert.public_key_mut().write_public_der_vec()
-                        {
-                            return Some(());
-                        }
-                    }
-                }
-                None
-            })
-            .ok_or(SignatureError::BadSignature)
-    }
-
-    /// Wrap up all the relevant validity checks against the this report
-    /// and it's parsed contents.
-    ///
-    /// This method is a convenience to allow us to check signatures,
-    /// parse the JSON, check the data, including the quote body inside
-    /// the data.
-    pub fn verify(
-        &self,
-        trust_anchors: Option<Vec<String>>,
-        expected_ias_nonce: Option<&IasNonce>,
-        expected_pse_manifest_hash: Option<&[u8]>,
-        expected_gid: Option<EpidGroupId>,
-        expected_type: QuoteSignType,
-        allow_debug: bool,
-        expected_measurements: &[Measurement],
-        expected_product_id: u16,
-        minimum_security_version: u16,
-        expected_data: &ReportDataMask,
-    ) -> Result<VerificationReportData, VerifyError> {
-        // Check signature
-        self.verify_signature(trust_anchors)?;
-
-        // Parse the JSON
-        let report_data: VerificationReportData = self.try_into()?;
-
-        // Check the report contents
-        report_data.verify(
-            IAS_VERSION,
-            expected_ias_nonce,
-            expected_pse_manifest_hash,
-            expected_gid,
-            expected_type,
-            allow_debug,
-            expected_measurements,
-            expected_product_id,
-            minimum_security_version,
-            expected_data,
-        )?;
-
-        Ok(report_data)
-    }
 }
 
 #[cfg(test)]
