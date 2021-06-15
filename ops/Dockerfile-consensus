@@ -8,16 +8,23 @@ FROM ubuntu:18.04 AS consensus
 #
 SHELL ["/bin/bash", "-c"]
 
+RUN apt-get update -q -q && \
+ apt-get upgrade --yes && \
+ apt-get install --yes \
+   gpg \
+   wget \
+   && \
+ rm -rf /var/cache/apt && \
+ rm -rf /var/lib/apt/lists/*
+
 # Install SGX Ubuntu/Debian Repo
-RUN ( \
-	. /etc/os-release \
-	wget "https://download.01.org/intel-sgx/sgx-linux/2.13.3/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_driver_2.11.0_2d2b795.bin" \
-	wget "https://download.01.org/intel-sgx/sgx-linux/2.13.3/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_sdk_2.13.103.1.bin" \
-	echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/intel-sgx-archive-keyring.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu/ ${UBUNTU_CODENAME} main" > /etc/apt/sources.list.d/intel-sgx.list \
-)
+RUN source /etc/os-release && \
+	wget "https://download.01.org/intel-sgx/sgx-linux/2.13.3/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_driver_2.11.0_2d2b795.bin" && \
+	wget "https://download.01.org/intel-sgx/sgx-linux/2.13.3/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_sdk_2.13.103.1.bin" && \
+	echo "deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu/ ${UBUNTU_CODENAME} main" > /etc/apt/sources.list.d/intel-sgx.list
 
 RUN wget -O- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
-	gpg --dearmor > /etc/apt/trusted.gpg.d/intel-sgx-archive-keyring.gpg
+	apt-key add -
 
 # Update OS and install deps
 #
@@ -25,8 +32,8 @@ RUN wget -O- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key
 # - This is run as a one-off in order to reduce the number of layers in the resulting image
 #
 RUN apt-get update -q -q && \
- apt-get upgrade --yes --force-yes && \
- apt-get install --yes --force-yes \
+ apt-get upgrade --yes && \
+ apt-get install --yes \
   build-essential \
   ca-certificates \
   cmake \
@@ -44,7 +51,6 @@ RUN apt-get update -q -q && \
   sgx-aesm-service \
   supervisor \
   tar \
-  wget \
   zlib1g \
   && \
  rm -rf /var/cache/apt && \
