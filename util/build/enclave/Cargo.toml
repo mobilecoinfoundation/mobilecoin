@@ -11,10 +11,8 @@ mc-util-build-script = { path = "../script" }
 mc-util-build-sgx = { path = "../sgx" }
 mc-sgx-css = { path = "../../../sgx/css" }
 
-# mqqmbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3", default-features = false }
-# mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3", default-features = false }
-mbedtls = { path = "/home/christian/third-party-code/mbedtls/mbedtls/", default-features = false }
-mbedtls-sys-auto = { path = "/home/christian/third-party-code/mbedtls/mbedtls-sys/",  default-features = false }
+mbedtls = "0.8.1"
+mbedtls-sys-auto = "2.26.1"
 
 cargo-emit = "0.1.1"
 cargo_metadata = "0.9"

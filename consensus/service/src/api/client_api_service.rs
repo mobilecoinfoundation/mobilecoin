@@ -515,7 +515,7 @@ mod client_api_tests {
                 panic!("Unexpected response {:?}", response);
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
-                assert_eq!(rpc_status.status, RpcStatusCode::UNAUTHENTICATED);
+                assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
             Err(err @ _) => {
                 panic!("Unexpected error {:?}", err);

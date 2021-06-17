@@ -129,7 +129,7 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
 
             let resp = self
                 .get_last_block_info_helper()
-                .map_err(|_| RpcStatus::new(RpcStatusCode::INTERNAL, None));
+                .map_err(|_| RpcStatus::new(RpcStatusCode::INTERNAL));
             send_result(ctx, sink, resp, &logger);
         });
     }
@@ -157,7 +157,7 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
 
             let resp = self
                 .get_blocks_helper(request.offset, request.limit)
-                .map_err(|_| RpcStatus::new(RpcStatusCode::INTERNAL, None));
+                .map_err(|_| RpcStatus::new(RpcStatusCode::INTERNAL));
             send_result(ctx, sink, resp, &logger);
         });
     }
@@ -246,7 +246,7 @@ mod tests {
                 panic!("Unexpected response {:?}", response);
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
-                assert_eq!(rpc_status.status, RpcStatusCode::UNAUTHENTICATED);
+                assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
             Err(err @ _) => {
                 panic!("Unexpected error {:?}", err);
@@ -366,7 +366,7 @@ mod tests {
                 panic!("Unexpected response {:?}", response);
             }
             Err(GrpcError::RpcFailure(rpc_status)) => {
-                assert_eq!(rpc_status.status, RpcStatusCode::UNAUTHENTICATED);
+                assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
             Err(err @ _) => {
                 panic!("Unexpected error {:?}", err);

@@ -20,7 +20,7 @@ mc-attest-core = { path = "../../attest/core" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-util-encodings = { path = "../../util/encodings" }
 
-mbedtls = { path = "/home/christian/third-party-code/mbedtls/mbedtls/", default-features = false }
+mbedtls = "0.8.1"
 
 cfg-if = "0.1"
 failure = { version = "0.1.8", features = ["derive"] }

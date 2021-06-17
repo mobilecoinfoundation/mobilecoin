@@ -214,10 +214,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ) -> Result<mc_mobilecoind_api::AddMonitorResponse, RpcStatus> {
         // Get the AccountKey from the GRPC request.
         let proto_account_key = request.account_key.as_ref().ok_or_else(|| {
-            RpcStatus::new(
-                RpcStatusCode::INVALID_ARGUMENT,
-                Some("account_key".to_string()),
-            )
+            RpcStatus::with_message(RpcStatusCode::INVALID_ARGUMENT, "account_key".to_string())
         })?;
         let account_key = AccountKey::try_from(proto_account_key)
             .map_err(|err| rpc_internal_error("account_key.try_from", err, &self.logger))?;
@@ -364,9 +361,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ) -> Result<mc_mobilecoind_api::GetAccountKeyResponse, RpcStatus> {
         // Get the entropy.
         if request.get_root_entropy().len() != 32 {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("entropy".to_string()),
+                "entropy".to_string(),
             ));
         }
 
@@ -418,9 +415,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .subaddress_indexes()
             .contains(&request.subaddress_index)
         {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("subaddress_index".to_string()),
+                "subaddress_index".to_string(),
             ));
         }
 
@@ -468,9 +465,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             response.set_memo(String::new());
             Ok(response)
         } else {
-            Err(RpcStatus::new(
+            Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("Neither payment request nor public address".to_string()),
+                "Neither payment request nor public address".to_string(),
             ))
         }
     }
@@ -509,9 +506,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         .map_err(|err| rpc_internal_error("PrintableWrapper.b58_decode", err, &self.logger))?;
 
         if !wrapper.has_transfer_payload() {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("has_transfer_payload".to_string()),
+                "has_transfer_payload".to_string(),
             ));
         }
         let transfer_payload = wrapper.get_transfer_payload();
@@ -549,9 +546,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         } else {
             let mut root_entropy = [0u8; 32];
             if root_entropy.len() != transfer_payload.get_root_entropy().len() {
-                return Err(RpcStatus::new(
+                return Err(RpcStatus::with_message(
                     RpcStatusCode::INVALID_ARGUMENT,
-                    Some("root_entropy".to_string()),
+                    "root_entropy".to_string(),
                 ));
             }
             root_entropy.copy_from_slice(transfer_payload.get_root_entropy());
@@ -600,17 +597,17 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ) -> Result<mc_mobilecoind_api::CreateTransferCodeResponse, RpcStatus> {
         // Must have entropy.
         if request.bip39_entropy.is_empty() && request.root_entropy.is_empty() {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("bip39_entropy/root_entropy".to_string()),
+                "bip39_entropy/root_entropy".to_string(),
             ));
         }
 
         // Only allow one type of entropy.
         if !request.bip39_entropy.is_empty() && !request.root_entropy.is_empty() {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("bip39_entropy/root_entropy".to_string()),
+                "bip39_entropy/root_entropy".to_string(),
             ));
         }
 
@@ -619,25 +616,25 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if !request.bip39_entropy.is_empty()
             && Mnemonic::from_entropy(request.get_bip39_entropy(), Language::English).is_err()
         {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("bip39_entropy".to_string()),
+                "bip39_entropy".to_string(),
             ));
         }
 
         // If we were provided with root entropy, ensure it is 32 bytes long.
         if !request.root_entropy.is_empty() && request.root_entropy.len() != 32 {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("bip39_entropy".to_string()),
+                "bip39_entropy".to_string(),
             ));
         }
 
         // Tx public key must be 32 bytes long.
         if request.get_tx_public_key().get_data().len() != 32 {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("tx_public_key".to_string()),
+                "tx_public_key".to_string(),
             ));
         }
 
@@ -680,9 +677,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             response.set_receiver(public_address.clone());
             Ok(response)
         } else {
-            Err(RpcStatus::new(
+            Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("Neither payment request nor public address".to_string()),
+                "Neither payment request nor public address".to_string(),
             ))
         }
     }
@@ -803,9 +800,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .subaddress_indexes()
             .contains(&request.change_subaddress)
         {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("change_subaddress".to_string()),
+                "change_subaddress".to_string(),
             ));
         }
 
@@ -833,9 +830,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                     })?;
 
                 if subaddress_id.monitor_id != sender_monitor_id {
-                    return Err(RpcStatus::new(
+                    return Err(RpcStatus::with_message(
                         RpcStatusCode::INVALID_ARGUMENT,
-                        Some(format!("input_list.{}", i)),
+                        format!("input_list.{}", i),
                     ));
                 }
 
@@ -906,10 +903,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         request: mc_mobilecoind_api::GenerateTxFromTxOutListRequest,
     ) -> Result<mc_mobilecoind_api::GenerateTxFromTxOutListResponse, RpcStatus> {
         let proto_account_key = request.account_key.as_ref().ok_or_else(|| {
-            RpcStatus::new(
-                RpcStatusCode::INVALID_ARGUMENT,
-                Some("account_key".to_string()),
-            )
+            RpcStatus::with_message(RpcStatusCode::INVALID_ARGUMENT, "account_key".to_string())
         })?;
 
         let account_key = AccountKey::try_from(proto_account_key)
@@ -983,12 +977,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let proto_tx_public_key = {
             // We expect only a single outlay.
             if tx_proposal.get_outlay_index_to_tx_out_index().len() != 1 {
-                return Err(RpcStatus::new(
+                return Err(RpcStatus::with_message(
                     RpcStatusCode::INTERNAL,
-                    Some(format!(
+                    format!(
                         "outlay_index_to_tx_out_index contains {} elements, was expecting 1",
                         tx_proposal.get_outlay_index_to_tx_out_index().len()
-                    )),
+                    ),
                 ));
             }
 
@@ -997,9 +991,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 .get_outlay_index_to_tx_out_index()
                 .get(&0)
                 .ok_or_else(|| {
-                    RpcStatus::new(
+                    RpcStatus::with_message(
                         RpcStatusCode::INTERNAL,
-                        Some("outlay_index_to_tx_out_index doesn't contain index 0".to_owned()),
+                        "outlay_index_to_tx_out_index doesn't contain index 0".to_owned(),
                     )
                 })?;
 
@@ -1010,9 +1004,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 .get_outputs()
                 .get(*tx_out_index as usize)
                 .ok_or_else(|| {
-                    RpcStatus::new(
+                    RpcStatus::with_message(
                         RpcStatusCode::INTERNAL,
-                        Some(format!("tx out index {} not found", tx_out_index)),
+                        format!("tx out index {} not found", tx_out_index),
                     )
                 })?;
 
@@ -1101,9 +1095,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                     .outlay_index_to_tx_out_index
                     .get(&outlay_index)
                     .ok_or_else(|| {
-                        RpcStatus::new(
+                        RpcStatus::with_message(
                             RpcStatusCode::INVALID_ARGUMENT,
-                            Some("outlay_index_to_tx_out_index".to_string()),
+                            "outlay_index_to_tx_out_index".to_string(),
                         )
                     })?;
 
@@ -1113,9 +1107,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                     .outputs
                     .get(*tx_out_index)
                     .ok_or_else(|| {
-                        RpcStatus::new(
+                        RpcStatus::with_message(
                             RpcStatusCode::INVALID_ARGUMENT,
-                            Some("outlay_index_to_tx_out_index".to_string()),
+                            "outlay_index_to_tx_out_index".to_string(),
                         )
                     })?;
 
@@ -1238,24 +1232,24 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .get_key_image_list()
             .is_empty()
         {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("sender_receipt.key_image_list".to_string()),
+                "sender_receipt.key_image_list".to_string(),
             ));
         }
 
         if request.get_sender_tx_receipt().tombstone == 0 {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("sender_receipt.tombstone".to_string()),
+                "sender_receipt.tombstone".to_string(),
             ));
         }
 
         // Receiver receipt should have at least one output
         if request.get_receiver_tx_receipt_list().is_empty() {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("receiver_receipt.receiver_tx_receipt_list".to_string()),
+                "receiver_receipt.receiver_tx_receipt_list".to_string(),
             ));
         }
 
@@ -1397,16 +1391,16 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ) -> Result<mc_mobilecoind_api::GetTxStatusAsReceiverResponse, RpcStatus> {
         // Sanity-test the request.
         if request.get_receipt().get_tx_out_hash().len() != 32 {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("receipt.tx_out_hash".to_string()),
+                "receipt.tx_out_hash".to_string(),
             ));
         }
 
         if request.get_receipt().tombstone == 0 {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("receipt.tombstone".to_string()),
+                "receipt.tombstone".to_string(),
             ));
         }
 
@@ -1448,9 +1442,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                         let view_private_key = monitor_data.account_key.view_private_key();
 
                         if request.get_receipt().get_confirmation_number().len() != 32 {
-                            return Err(RpcStatus::new(
+                            return Err(RpcStatus::with_message(
                                 RpcStatusCode::INVALID_ARGUMENT,
-                                Some("receipt.confirmation_number".to_string()),
+                                "receipt.confirmation_number".to_string(),
                             ));
                         }
 
@@ -1478,9 +1472,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                         }
                     }
                     _ => {
-                        return Err(RpcStatus::new(
+                        return Err(RpcStatus::with_message(
                             RpcStatusCode::INVALID_ARGUMENT,
-                            Some("monitor_id".to_string()),
+                            "monitor_id".to_string(),
                         ));
                     }
                 }
@@ -1629,12 +1623,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // It's possible the balance does not fit into a u64.
         if balance > u64::max_value().into() {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INTERNAL,
-                Some(format!(
+                format!(
                     "balance of {} won't fit in u64, fetch utxo list instead",
                     balance
-                )),
+                ),
             ));
         }
 
@@ -1718,9 +1712,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ) -> Result<mc_mobilecoind_api::SendPaymentResponse, RpcStatus> {
         // Sanity check.
         if request.get_amount() == 0 {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("amount".to_string()),
+                "amount".to_string(),
             ));
         }
 
@@ -1758,9 +1752,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .num_blocks()
             .map_err(|err| rpc_internal_error("ledger_db.num_blocks", err, &self.logger))?;
         if num_blocks == 0 {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INTERNAL,
-                Some("no bootstrap block".to_owned()),
+                "no bootstrap block".to_owned(),
             ));
         }
         let local_block_index = num_blocks - 1;
@@ -1789,9 +1783,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ) -> Result<mc_mobilecoind_api::Empty, RpcStatus> {
         // Check if the database is unlocked and allowing this operation.
         if !self.mobilecoind_db.is_unlocked() {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INTERNAL,
-                Some("must unlock before changing current password".to_owned()),
+                "must unlock before changing current password".to_owned(),
             ));
         }
 
@@ -1810,9 +1804,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         request: mc_mobilecoind_api::UnlockDbRequest,
     ) -> Result<mc_mobilecoind_api::Empty, RpcStatus> {
         if self.mobilecoind_db.is_unlocked() {
-            return Err(RpcStatus::new(
+            return Err(RpcStatus::with_message(
                 RpcStatusCode::INTERNAL,
-                Some("already unlocked".to_owned()),
+                "already unlocked".to_owned(),
             ));
         }
 
@@ -1920,7 +1914,7 @@ mod test {
         },
         utxo_store::UnspentTxOut,
     };
-    use grpcio::{Error as GrpcError, RpcStatus};
+    use grpcio::Error as GrpcError;
     use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_keys::RistrettoPrivate;
@@ -4338,10 +4332,10 @@ mod test {
         request.set_max_input_utxo_value(20);
         match client.send_payment(&request) {
             Ok(_) => panic!("Should've returned an error"),
-            Err(GrpcError::RpcFailure(RpcStatus { details, .. })) => {
+            Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(
-                    details,
-                    Some("transactions_manager.build_transaction: Insufficient funds".to_owned())
+                    rpc_status.message(),
+                    "transactions_manager.build_transaction: Insufficient funds".to_owned()
                 );
             }
             Err(err) => panic!("Unexpected error: {:?}", err),

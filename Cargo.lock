@@ -1387,6 +1387,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "grpcio"
 version = "0.9.0"
+source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=614ea0675e93d7062449efea50ac371d6d3852e4#614ea0675e93d7062449efea50ac371d6d3852e4"
 dependencies = [
  "futures 0.3.8",
  "grpcio-sys",
@@ -1398,9 +1399,8 @@ dependencies = [
 
 [[package]]
 name = "grpcio-compiler"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad76ae5de2e2d85fe8f45e072f7909e22fa9ffaf0d53b280825783720dab051c"
+version = "0.9.0"
+source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=614ea0675e93d7062449efea50ac371d6d3852e4#614ea0675e93d7062449efea50ac371d6d3852e4"
 dependencies = [
  "protobuf",
 ]
@@ -1408,6 +1408,7 @@ dependencies = [
 [[package]]
 name = "grpcio-sys"
 version = "0.9.0+1.38.0"
+source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=614ea0675e93d7062449efea50ac371d6d3852e4#614ea0675e93d7062449efea50ac371d6d3852e4"
 dependencies = [
  "bindgen",
  "boringssl-src",
@@ -2017,6 +2018,7 @@ checksum = "60302e4db3a61da70c0cb7991976248362f30319e88850c487b9b95bbf059e00"
 [[package]]
 name = "mbedtls"
 version = "0.8.1"
+source = "git+https://github.com/mobilecoinofficial/rust-mbedtls.git?rev=d6d23d8239e7a828d8c0f01a9ee337fe6e91808b#d6d23d8239e7a828d8c0f01a9ee337fe6e91808b"
 dependencies = [
  "bitflags",
  "byteorder",
@@ -2033,6 +2035,7 @@ dependencies = [
 [[package]]
 name = "mbedtls-sys-auto"
 version = "2.26.1"
+source = "git+https://github.com/mobilecoinofficial/rust-mbedtls.git?rev=d6d23d8239e7a828d8c0f01a9ee337fe6e91808b#d6d23d8239e7a828d8c0f01a9ee337fe6e91808b"
 dependencies = [
  "bindgen",
  "cc",
@@ -2040,6 +2043,7 @@ dependencies = [
  "cmake",
  "lazy_static",
  "libc",
+ "libz-sys",
  "quote 1.0.9",
  "syn 1.0.67",
 ]
@@ -4460,14 +4464,13 @@ version = "2.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "349d80967ee438cd03ccd236d548d4dcd5f2d9349acda206bef1490a826165d3"
 dependencies = [
- "log 0.3.9",
+ "log 0.4.11",
 ]
 
 [[package]]
 name = "protoc-grpcio"
 version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af5d484461b7f14e103742f21014cc519f6f3711b05d50b3e86d912467a3f8b7"
+source = "git+https://github.com/mobilecoinofficial/protoc-grpcio?rev=54e7b547f35aa45a743b95bb5f292558d9339afe#54e7b547f35aa45a743b95bb5f292558d9339afe"
 dependencies = [
  "failure",
  "grpcio-compiler",
@@ -6673,7 +6676,3 @@ dependencies = [
  "syn 1.0.67",
  "synstructure",
 ]
-
-[[patch.unused]]
-name = "grpcio-compiler"
-version = "0.9.0"

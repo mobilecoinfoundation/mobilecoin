@@ -119,11 +119,14 @@ overflow-checks = false
 rpath = true
 
 [patch.crates-io]
+
 # grpcio patched with metadata
-# grpcio = { git = "https://github.com/mobilecoinofficial/grpc-rs", rev = "e1c0396da149df9f681b8cfd649171f71d27b2ca" }
-grpcio = { path = "/home/christian/third-party-code/grpc-rs/" }
-# Code gen patched with metadata
-grpcio-compiler = { path = "/home/christian/third-party-code/grpc-rs/compiler/" }
+grpcio = { git = "https://github.com/mobilecoinofficial/grpc-rs", rev = "614ea0675e93d7062449efea50ac371d6d3852e4" }
+protoc-grpcio = { git = "https://github.com/mobilecoinofficial/protoc-grpcio", rev = "54e7b547f35aa45a743b95bb5f292558d9339afe" }
+
+# mbedtls patched to allow certificate verification with a profile
+mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "d6d23d8239e7a828d8c0f01a9ee337fe6e91808b", default-features = false }
+mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "d6d23d8239e7a828d8c0f01a9ee337fe6e91808b", default-features = false }
 
 # prost is patched with no_std support (https://github.com/danburkert/prost/pull/319)
 # current revision is from jun 13 2020, waiting for a new prost release
