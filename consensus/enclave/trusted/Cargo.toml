@@ -35,7 +35,7 @@ mc-sgx-slog = { path = "../../../sgx/slog", features = ["sgx"] }
 mc-sgx-slog-edl = { path = "../../../sgx/slog-edl" }
 mc-sgx-types = { path = "../../../sgx/types" }
 
-mbedtls = "0.8.1"
+mbedtls = { version = "0.8.1", default-features = false }
 
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
 sha2 = { version = "0.9", default-features = false, features = ["asm"] }

@@ -20,7 +20,7 @@ mc-attest-core = { path = "../../attest/core" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-util-encodings = { path = "../../util/encodings" }
 
-mbedtls = "0.8.1"
+mbedtls = { version = "0.8.1", default-features = false }
 
 cfg-if = "0.1"
 failure = { version = "0.1.8", features = ["derive"] }

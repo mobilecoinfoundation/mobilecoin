@@ -3,6 +3,7 @@
 //! An implementation of the IAS client for simulation purposes
 
 use crate::traits::{RaClient, Result};
+use alloc::sync::Arc;
 use mbedtls::{
     hash::Type as HashType,
     pk::Pk,
@@ -16,7 +17,6 @@ use mc_util_encodings::ToBase64;
 use pem::parse_many;
 use serde_json::json;
 use sha2::{digest::Digest, Sha256};
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct SimClient;

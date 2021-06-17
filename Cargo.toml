@@ -125,8 +125,8 @@ grpcio = { git = "https://github.com/mobilecoinofficial/grpc-rs", rev = "614ea06
 protoc-grpcio = { git = "https://github.com/mobilecoinofficial/protoc-grpcio", rev = "54e7b547f35aa45a743b95bb5f292558d9339afe" }
 
 # mbedtls patched to allow certificate verification with a profile
-mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "d6d23d8239e7a828d8c0f01a9ee337fe6e91808b", default-features = false }
-mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "d6d23d8239e7a828d8c0f01a9ee337fe6e91808b", default-features = false }
+mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "d6d23d8239e7a828d8c0f01a9ee337fe6e91808b" }
+mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "d6d23d8239e7a828d8c0f01a9ee337fe6e91808b" }
 
 # prost is patched with no_std support (https://github.com/danburkert/prost/pull/319)
 # current revision is from jun 13 2020, waiting for a new prost release

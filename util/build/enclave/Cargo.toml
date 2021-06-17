@@ -11,8 +11,8 @@ mc-util-build-script = { path = "../script" }
 mc-util-build-sgx = { path = "../sgx" }
 mc-sgx-css = { path = "../../../sgx/css" }
 
-mbedtls = "0.8.1"
-mbedtls-sys-auto = "2.26.1"
+mbedtls = { version = "0.8.1", default-features = false }
+mbedtls-sys-auto = { version = "2.26.1", default-features = false }
 
 cargo-emit = "0.1.1"
 cargo_metadata = "0.9"
