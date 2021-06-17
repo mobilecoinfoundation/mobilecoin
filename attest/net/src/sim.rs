@@ -16,6 +16,7 @@ use mc_util_encodings::ToBase64;
 use pem::parse_many;
 use serde_json::json;
 use sha2::{digest::Digest, Sha256};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct SimClient;
@@ -86,8 +87,8 @@ impl RaClient for SimClient {
         let http_body = jsvalue.to_string();
         let hash = Sha256::digest(http_body.as_bytes());
 
-        let mut entropy = OsEntropy::new();
-        let mut csprng = CtrDrbg::new(&mut entropy, None).expect("Could not create CtrDrbg");
+        let entropy = OsEntropy::new();
+        let mut csprng = CtrDrbg::new(Arc::new(entropy), None).expect("Could not create CtrDrbg");
 
         let mut signer = Pk::from_private_key(IAS_SIM_SIGNING_KEY.as_bytes(), None)
             .expect("Could not load signing key.");
