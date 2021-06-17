@@ -35,7 +35,7 @@ mc-util-encodings = { path = "../../util/encodings" }
 mc-sgx-css = { path = "../../sgx/css" }
 mc-sgx-types = { path = "../../sgx/types" }
 
-mbedtls = { version = "0.8.1", default-features = false }
+mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps"] }
 
 binascii = "0.1.2"
 bitflags = "1.2"
@@ -70,5 +70,5 @@ rand = "0.8"
 rand_hc = "0.3"
 
 # We use mbedtls to generate certificates for simulation mode
-mbedtls = { version = "0.8.1", default-features = false }
+mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps"] }
 mbedtls-sys-auto = { version = "2.26.1", default-features = false }
