@@ -70,5 +70,5 @@ rand = "0.8"
 rand_hc = "0.3"
 
 # We use mbedtls to generate certificates for simulation mode
-mbedtls = "0.8.1"
-mbedtls-sys-auto = "2.26.1"
+mbedtls = { version = "0.8.1", default-features = false }
+mbedtls-sys-auto = { version = "2.26.1", default-features = false }
