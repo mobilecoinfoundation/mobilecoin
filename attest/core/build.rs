@@ -78,8 +78,11 @@ fn purge_expired_cert(path: &Path) {
     // mbedtls says "Input must be NULL-terminated".
     bytes.push(0);
 
-    match Certificate::from_pem(&bytes).map(|cert| {
+    match Certificate::from_pem_multiple(&bytes).map(|cert| {
         let ts = cert
+            .iter()
+            .last()
+            .expect("no certs")
             .not_after()
             .unwrap_or_else(|e| panic!("invalid certificate expiration time: {:?}", e));
         Utc.ymd(ts.year as i32, ts.month as u32, ts.day as u32)

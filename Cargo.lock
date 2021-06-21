@@ -2054,6 +2054,7 @@ dependencies = [
  "cmake",
  "lazy_static",
  "libc",
+ "libz-sys",
  "quote 1.0.9",
  "syn 1.0.67",
 ]
