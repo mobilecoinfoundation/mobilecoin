@@ -89,7 +89,7 @@ impl Health for HealthService {
         let resp = sink
             .fail(RpcStatus::with_message(
                 RpcStatusCode::UNIMPLEMENTED,
-                "Unimplemented".to_string(),
+                "Unimplemented".into(),
             ))
             .map_err(move |err| log::error!(logger, "failed to reply: {:?}", err))
             .map(|_| ());

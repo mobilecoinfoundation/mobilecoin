@@ -35,7 +35,7 @@ mc-sgx-slog = { path = "../../../sgx/slog", features = ["sgx"] }
 mc-sgx-slog-edl = { path = "../../../sgx/slog-edl" }
 mc-sgx-types = { path = "../../../sgx/types" }
 
-mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps"] }
+mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps", "aesni", "force_aesni_support", "rdrand"] }
 mbedtls-sys-auto = { version = "2.26.1", default-features = false, features = ["custom_threading"] }
 
 lazy_static = { version = "1.4", features = ["spin_no_std"] }

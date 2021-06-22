@@ -214,7 +214,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ) -> Result<mc_mobilecoind_api::AddMonitorResponse, RpcStatus> {
         // Get the AccountKey from the GRPC request.
         let proto_account_key = request.account_key.as_ref().ok_or_else(|| {
-            RpcStatus::with_message(RpcStatusCode::INVALID_ARGUMENT, "account_key".to_string())
+            RpcStatus::with_message(RpcStatusCode::INVALID_ARGUMENT, "account_key".into())
         })?;
         let account_key = AccountKey::try_from(proto_account_key)
             .map_err(|err| rpc_internal_error("account_key.try_from", err, &self.logger))?;
@@ -363,7 +363,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if request.get_root_entropy().len() != 32 {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "entropy".to_string(),
+                "entropy".into(),
             ));
         }
 
@@ -417,7 +417,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "subaddress_index".to_string(),
+                "subaddress_index".into(),
             ));
         }
 
@@ -467,7 +467,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         } else {
             Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "Neither payment request nor public address".to_string(),
+                "Neither payment request nor public address".into(),
             ))
         }
     }
@@ -508,7 +508,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if !wrapper.has_transfer_payload() {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "has_transfer_payload".to_string(),
+                "has_transfer_payload".into(),
             ));
         }
         let transfer_payload = wrapper.get_transfer_payload();
@@ -548,7 +548,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             if root_entropy.len() != transfer_payload.get_root_entropy().len() {
                 return Err(RpcStatus::with_message(
                     RpcStatusCode::INVALID_ARGUMENT,
-                    "root_entropy".to_string(),
+                    "root_entropy".into(),
                 ));
             }
             root_entropy.copy_from_slice(transfer_payload.get_root_entropy());
@@ -599,7 +599,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if request.bip39_entropy.is_empty() && request.root_entropy.is_empty() {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "bip39_entropy/root_entropy".to_string(),
+                "bip39_entropy/root_entropy".into(),
             ));
         }
 
@@ -607,7 +607,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if !request.bip39_entropy.is_empty() && !request.root_entropy.is_empty() {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "bip39_entropy/root_entropy".to_string(),
+                "bip39_entropy/root_entropy".into(),
             ));
         }
 
@@ -618,7 +618,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "bip39_entropy".to_string(),
+                "bip39_entropy".into(),
             ));
         }
 
@@ -626,7 +626,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if !request.root_entropy.is_empty() && request.root_entropy.len() != 32 {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "bip39_entropy".to_string(),
+                "bip39_entropy".into(),
             ));
         }
 
@@ -634,7 +634,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if request.get_tx_public_key().get_data().len() != 32 {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "tx_public_key".to_string(),
+                "tx_public_key".into(),
             ));
         }
 
@@ -679,7 +679,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         } else {
             Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "Neither payment request nor public address".to_string(),
+                "Neither payment request nor public address".into(),
             ))
         }
     }
@@ -802,7 +802,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "change_subaddress".to_string(),
+                "change_subaddress".into(),
             ));
         }
 
@@ -903,7 +903,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         request: mc_mobilecoind_api::GenerateTxFromTxOutListRequest,
     ) -> Result<mc_mobilecoind_api::GenerateTxFromTxOutListResponse, RpcStatus> {
         let proto_account_key = request.account_key.as_ref().ok_or_else(|| {
-            RpcStatus::with_message(RpcStatusCode::INVALID_ARGUMENT, "account_key".to_string())
+            RpcStatus::with_message(RpcStatusCode::INVALID_ARGUMENT, "account_key".into())
         })?;
 
         let account_key = AccountKey::try_from(proto_account_key)
@@ -1097,7 +1097,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                     .ok_or_else(|| {
                         RpcStatus::with_message(
                             RpcStatusCode::INVALID_ARGUMENT,
-                            "outlay_index_to_tx_out_index".to_string(),
+                            "outlay_index_to_tx_out_index".into(),
                         )
                     })?;
 
@@ -1109,7 +1109,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                     .ok_or_else(|| {
                         RpcStatus::with_message(
                             RpcStatusCode::INVALID_ARGUMENT,
-                            "outlay_index_to_tx_out_index".to_string(),
+                            "outlay_index_to_tx_out_index".into(),
                         )
                     })?;
 
@@ -1234,14 +1234,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "sender_receipt.key_image_list".to_string(),
+                "sender_receipt.key_image_list".into(),
             ));
         }
 
         if request.get_sender_tx_receipt().tombstone == 0 {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "sender_receipt.tombstone".to_string(),
+                "sender_receipt.tombstone".into(),
             ));
         }
 
@@ -1249,7 +1249,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if request.get_receiver_tx_receipt_list().is_empty() {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "receiver_receipt.receiver_tx_receipt_list".to_string(),
+                "receiver_receipt.receiver_tx_receipt_list".into(),
             ));
         }
 
@@ -1393,14 +1393,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if request.get_receipt().get_tx_out_hash().len() != 32 {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "receipt.tx_out_hash".to_string(),
+                "receipt.tx_out_hash".into(),
             ));
         }
 
         if request.get_receipt().tombstone == 0 {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "receipt.tombstone".to_string(),
+                "receipt.tombstone".into(),
             ));
         }
 
@@ -1444,7 +1444,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                         if request.get_receipt().get_confirmation_number().len() != 32 {
                             return Err(RpcStatus::with_message(
                                 RpcStatusCode::INVALID_ARGUMENT,
-                                "receipt.confirmation_number".to_string(),
+                                "receipt.confirmation_number".into(),
                             ));
                         }
 
@@ -1474,7 +1474,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                     _ => {
                         return Err(RpcStatus::with_message(
                             RpcStatusCode::INVALID_ARGUMENT,
-                            "monitor_id".to_string(),
+                            "monitor_id".into(),
                         ));
                     }
                 }
@@ -1714,7 +1714,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if request.get_amount() == 0 {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INVALID_ARGUMENT,
-                "amount".to_string(),
+                "amount".into(),
             ));
         }
 

@@ -78,8 +78,8 @@ fn purge_expired_cert(path: &Path) {
     // mbedtls says "Input must be NULL-terminated".
     bytes.push(0);
 
-    match Certificate::from_pem_multiple(&bytes).map(|cert| {
-        let ts = cert
+    match Certificate::from_pem_multiple(&bytes).map(|certs| {
+        let ts = certs
             .iter()
             .last()
             .expect("no certs")

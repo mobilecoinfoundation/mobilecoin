@@ -11,11 +11,10 @@ mc-util-build-script = { path = "../script" }
 mc-util-build-sgx = { path = "../sgx" }
 mc-sgx-css = { path = "../../../sgx/css" }
 
-mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps"] }
-mbedtls-sys-auto = { version = "2.26.1", default-features = false }
-
 cargo-emit = "0.1.1"
 cargo_metadata = "0.9"
 displaydoc = { version = "0.2", default-features = false }
+mbedtls = "0.8.1"
+mbedtls-sys-auto = "2.26.1"
 pkg-config = "0.3"
 rand = "0.8"
