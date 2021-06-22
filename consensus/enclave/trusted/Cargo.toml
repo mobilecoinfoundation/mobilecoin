@@ -89,8 +89,8 @@ x25519-dalek = { git = "https://github.com/eranrund/x25519-dalek.git", rev = "57
 # Overridden since we need a commit that uprevs a bunch of dependencies.
 schnorrkel = { git = "https://github.com/mobilecoinofficial/schnorrkel", rev = "fa27d0ed32d251a27399a23d3ef69611acb14d56" }
 
-mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "9342856bdd8eed6ef3dc3c58927b55bcccf456f3" }
-mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "9342856bdd8eed6ef3dc3c58927b55bcccf456f3" }
+mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "358564b57a2ae51d06419878b0f073a0603028cc" }
+mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "358564b57a2ae51d06419878b0f073a0603028cc" }
 
 
 [workspace]
