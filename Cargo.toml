@@ -121,8 +121,8 @@ rpath = true
 [patch.crates-io]
 
 # grpcio patched with metadata
-grpcio = { git = "https://github.com/mobilecoinofficial/grpc-rs", rev = "614ea0675e93d7062449efea50ac371d6d3852e4" }
-protoc-grpcio = { git = "https://github.com/mobilecoinofficial/protoc-grpcio", rev = "54e7b547f35aa45a743b95bb5f292558d9339afe" }
+grpcio = { git = "https://github.com/mobilecoinofficial/grpc-rs", rev = "10ba9f8f4546916c7e7532c4d1c6cdcf5df62553" }
+protoc-grpcio = { git = "https://github.com/mobilecoinofficial/protoc-grpcio", rev = "9e63f09ec408722f731c9cb60bf06c3d46bcabec" }
 
 # mbedtls patched to allow certificate verification with a profile
 mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "c7fa3f0c737f36af8f437e147131d1f5c8a90b0e" }
