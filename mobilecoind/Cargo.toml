@@ -46,7 +46,7 @@ blake2 = { version = "0.9", default-features = false }
 crossbeam-channel = "0.5"
 displaydoc = { version = "0.2", default-features = false}
 failure = "0.1.8"
-grpcio = "0.6.0"
+grpcio = "0.9.0"
 hex_fmt = "0.3"
 lmdb-rkv = "0.14.0"
 num_cpus = "1.12"

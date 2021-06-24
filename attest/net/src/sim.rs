@@ -3,6 +3,7 @@
 //! An implementation of the IAS client for simulation purposes
 
 use crate::traits::{RaClient, Result};
+use alloc::sync::Arc;
 use mbedtls::{
     hash::Type as HashType,
     pk::Pk,
@@ -86,8 +87,8 @@ impl RaClient for SimClient {
         let http_body = jsvalue.to_string();
         let hash = Sha256::digest(http_body.as_bytes());
 
-        let mut entropy = OsEntropy::new();
-        let mut csprng = CtrDrbg::new(&mut entropy, None).expect("Could not create CtrDrbg");
+        let entropy = OsEntropy::new();
+        let mut csprng = CtrDrbg::new(Arc::new(entropy), None).expect("Could not create CtrDrbg");
 
         let mut signer = Pk::from_private_key(IAS_SIM_SIGNING_KEY.as_bytes(), None)
             .expect("Could not load signing key.");

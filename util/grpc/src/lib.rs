@@ -152,7 +152,7 @@ pub fn report_err_with_code<S: Display, E: Display>(
 ) -> RpcStatus {
     let err_str = format!("{}: {}", context, err);
     log::error!(logger, "{}", err_str);
-    RpcStatus::new(code, Some(err_str))
+    RpcStatus::with_message(code, err_str)
 }
 
 /// Converts a serialization Error to an RpcStatus error.

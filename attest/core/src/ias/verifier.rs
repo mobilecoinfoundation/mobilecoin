@@ -29,14 +29,16 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use core::{convert::TryFrom, ops::Deref};
+use core::convert::TryFrom;
 use displaydoc::Display;
 use mbedtls::{
+    alloc::{Box as MbedtlsBox, List as MbedtlsList},
     hash::Type as HashType,
     pk::{EcGroupId, Type as PkType},
     x509::{Certificate, Profile},
     Error as TlsError,
 };
+
 use mc_sgx_css::Signature;
 use mc_sgx_types::SGX_FLAGS_DEBUG;
 use serde::{Deserialize, Serialize};
@@ -110,10 +112,10 @@ impl Verifier {
                     Certificate::from_pem(pem.as_bytes())
                 }
             })
-            .collect::<Result<Vec<Certificate>, TlsError>>()
+            .collect::<Result<Vec<MbedtlsBox<Certificate>>, TlsError>>()
             .map_err(|e| Error::InvalidTrustAnchor(e.to_string()))?
             .into_iter()
-            .map(|cert| cert.deref().as_der().to_owned())
+            .map(|cert| cert.as_der().to_owned())
             .collect::<Vec<Vec<u8>>>();
 
         Ok(Self {
@@ -346,9 +348,11 @@ impl Verifier {
         let trust_anchors = self
             .trust_anchors
             .iter()
-            .map(|cert_der| Certificate::from_der(cert_der.as_slice()))
-            .collect::<Result<Vec<Certificate>, TlsError>>()
-            .expect("Trust anchors modified after Verifier creation");
+            .map(|cert_der| {
+                Certificate::from_der(cert_der.as_slice())
+                    .expect("Trust anchors modified after Verifier creation")
+            })
+            .collect::<Vec<MbedtlsBox<Certificate>>>();
 
         // Construct the top-level verifier.
         IasReportVerifier {
@@ -365,7 +369,7 @@ impl Verifier {
 struct IasReportVerifier {
     /// A vector of trust anchor certificates to verify the report signature and
     /// chain against.
-    trust_anchors: Vec<Certificate>,
+    trust_anchors: Vec<MbedtlsBox<Certificate>>,
     /// A vector of report verifiers, one of which must succeed.
     or_verifiers: Vec<VerifyIasReportDataType>,
     /// A vector of report verifiers, all of which must succeed.
@@ -412,7 +416,7 @@ impl IasReportVerifier {
         // The third possible scenario, which is that one of the certs in the
         // middle of the chain is in our trust_anchors list. In this case, our
         // explicit trust of a cert makes any other issuer relationships
-        // irrelevant, including relationships with blacklisted issuers.
+        // irrelevant, including relationships with blocklisted issuers.
         //
         // This scenario is less likely, but would occur when someone is
         // trying to deprecate an existing authority in favor of a new one. In
@@ -460,7 +464,7 @@ impl IasReportVerifier {
         // Cloned here because it needs to be mutable because mbedtls.
         let mut trust_anchors = self.trust_anchors.clone();
 
-        let parsed_chain: Vec<Certificate> = report
+        let parsed_chain: Vec<MbedtlsBox<Certificate>> = report
             .chain
             .iter()
             .filter_map(|maybe_der_bytes| Certificate::from_der(maybe_der_bytes).ok())
@@ -479,7 +483,7 @@ impl IasReportVerifier {
             })
             // Then construct a set of chains, one for each signer certificate
             .filter_map(|cert| {
-                let mut signer_chain: Vec<Certificate> = vec![cert];
+                let mut signer_chain: Vec<MbedtlsBox<Certificate>> = vec![cert];
                 'outer: loop {
                     // Exclude any signing changes greater than our max depth
                     if signer_chain.len() > MAX_CHAIN_DEPTH {
@@ -487,15 +491,28 @@ impl IasReportVerifier {
                     }
 
                     for chain_cert in &parsed_chain {
+                        // The verify function takes lists of certificates, so make lists of size
+                        // one for each verification.
                         let mut chain_cert = chain_cert.clone();
+                        let mut chain_cert_single = MbedtlsList::new();
+                        chain_cert_single.push(chain_cert.clone());
+
                         let existing_cert = signer_chain
                             .last_mut()
                             .expect("Somehow our per-signer chain was empty");
+                        let mut existing_cert_single = MbedtlsList::new();
+                        existing_cert_single.push(existing_cert.clone());
+
                         if existing_cert.public_key_mut().write_public_der_vec()
                             != chain_cert.public_key_mut().write_public_der_vec()
-                            && existing_cert
-                                .verify_with_profile(&mut chain_cert, None, Some(&profile), None)
-                                .is_ok()
+                            && Certificate::verify_with_profile(
+                                &existing_cert_single,
+                                &chain_cert_single,
+                                None,
+                                Some(&profile),
+                                None,
+                            )
+                            .is_ok()
                         {
                             signer_chain.push(chain_cert);
                             continue 'outer;
@@ -509,13 +526,23 @@ impl IasReportVerifier {
             // Then see if any of those chains are connected to a trust anchor
             .find_map(|mut signer_chain| {
                 let signer_toplevel = signer_chain
-                    .last_mut()
+                    .last()
                     .expect("Signer chain was somehow emptied before use.");
+                let mut signer_toplevel_single = MbedtlsList::new();
+                signer_toplevel_single.push(signer_toplevel.clone());
+
                 // First, check if the last element in the chain is signed by a trust anchor
-                for cacert in &mut trust_anchors {
-                    if signer_toplevel
-                        .verify_with_profile(cacert, None, Some(&profile), None)
-                        .is_ok()
+                for cacert in &trust_anchors {
+                    let mut cacert_single = MbedtlsList::new();
+                    cacert_single.push(cacert.clone());
+                    if Certificate::verify_with_profile(
+                        &signer_toplevel_single,
+                        &cacert_single,
+                        None,
+                        Some(&profile),
+                        None,
+                    )
+                    .is_ok()
                     {
                         return Some(());
                     }

@@ -67,9 +67,9 @@ impl AdminService {
 
         let mut response = GetPrometheusMetricsResponse::new();
         response.set_metrics(String::from_utf8(buffer).map_err(|err| {
-            RpcStatus::new(
+            RpcStatus::with_message(
                 RpcStatusCode::INTERNAL,
-                Some(format!("from_utf8 failed: {}", err)),
+                format!("from_utf8 failed: {}", err),
             )
         })?);
         Ok(response)
@@ -84,9 +84,9 @@ impl AdminService {
 
         let mut build_info_json = String::new();
         mc_util_build_info::write_report(&mut build_info_json).map_err(|err| {
-            RpcStatus::new(
+            RpcStatus::with_message(
                 RpcStatusCode::INTERNAL,
-                Some(format!("write_report failed: {}", err)),
+                format!("write_report failed: {}", err),
             )
         })?;
 
