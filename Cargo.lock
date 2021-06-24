@@ -360,9 +360,9 @@ checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
 
 [[package]]
 name = "boringssl-src"
-version = "0.2.0"
+version = "0.3.0+688fc5c"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0511b9f0b739706e05b7279ece5dfc1932a42839cf005cb0f00420a3fea27c96"
+checksum = "f901accdf830d2ea2f4e27f923a5e1125cd8b1a39ab578b9db1a42d578a6922b"
 dependencies = [
  "cmake",
 ]
@@ -583,9 +583,9 @@ dependencies = [
 
 [[package]]
 name = "cmake"
-version = "0.1.43"
+version = "0.1.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49f97562167906afc51aa3fd7e6c83c10a5c96d33bd18f98a4c06a1413134caa"
+checksum = "eb6210b637171dfba4cda12e579ac6dc73f5165ad56133e5d72ef3131f320855"
 dependencies = [
  "cc",
 ]
@@ -1396,7 +1396,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "grpcio"
 version = "0.9.0"
-source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=614ea0675e93d7062449efea50ac371d6d3852e4#614ea0675e93d7062449efea50ac371d6d3852e4"
+source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=10ba9f8f4546916c7e7532c4d1c6cdcf5df62553#10ba9f8f4546916c7e7532c4d1c6cdcf5df62553"
 dependencies = [
  "futures 0.3.8",
  "grpcio-sys",
@@ -1409,7 +1409,7 @@ dependencies = [
 [[package]]
 name = "grpcio-compiler"
 version = "0.9.0"
-source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=614ea0675e93d7062449efea50ac371d6d3852e4#614ea0675e93d7062449efea50ac371d6d3852e4"
+source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=10ba9f8f4546916c7e7532c4d1c6cdcf5df62553#10ba9f8f4546916c7e7532c4d1c6cdcf5df62553"
 dependencies = [
  "protobuf",
 ]
@@ -1417,7 +1417,7 @@ dependencies = [
 [[package]]
 name = "grpcio-sys"
 version = "0.9.0+1.38.0"
-source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=614ea0675e93d7062449efea50ac371d6d3852e4#614ea0675e93d7062449efea50ac371d6d3852e4"
+source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=10ba9f8f4546916c7e7532c4d1c6cdcf5df62553#10ba9f8f4546916c7e7532c4d1c6cdcf5df62553"
 dependencies = [
  "bindgen",
  "boringssl-src",
@@ -2027,7 +2027,7 @@ checksum = "60302e4db3a61da70c0cb7991976248362f30319e88850c487b9b95bbf059e00"
 [[package]]
 name = "mbedtls"
 version = "0.8.1"
-source = "git+https://github.com/mobilecoinofficial/rust-mbedtls.git?rev=4068177d332c470f281654504a2dc298dd26b4c0#4068177d332c470f281654504a2dc298dd26b4c0"
+source = "git+https://github.com/mobilecoinofficial/rust-mbedtls.git?rev=c7fa3f0c737f36af8f437e147131d1f5c8a90b0e#c7fa3f0c737f36af8f437e147131d1f5c8a90b0e"
 dependencies = [
  "bitflags",
  "byteorder",
@@ -2046,7 +2046,7 @@ dependencies = [
 [[package]]
 name = "mbedtls-sys-auto"
 version = "2.26.1"
-source = "git+https://github.com/mobilecoinofficial/rust-mbedtls.git?rev=4068177d332c470f281654504a2dc298dd26b4c0#4068177d332c470f281654504a2dc298dd26b4c0"
+source = "git+https://github.com/mobilecoinofficial/rust-mbedtls.git?rev=c7fa3f0c737f36af8f437e147131d1f5c8a90b0e#c7fa3f0c737f36af8f437e147131d1f5c8a90b0e"
 dependencies = [
  "bindgen",
  "cc",
@@ -4481,7 +4481,7 @@ dependencies = [
 [[package]]
 name = "protoc-grpcio"
 version = "2.0.0"
-source = "git+https://github.com/mobilecoinofficial/protoc-grpcio?rev=54e7b547f35aa45a743b95bb5f292558d9339afe#54e7b547f35aa45a743b95bb5f292558d9339afe"
+source = "git+https://github.com/mobilecoinofficial/protoc-grpcio?rev=9e63f09ec408722f731c9cb60bf06c3d46bcabec#9e63f09ec408722f731c9cb60bf06c3d46bcabec"
 dependencies = [
  "failure",
  "grpcio-compiler",
