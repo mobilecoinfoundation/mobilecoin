@@ -21,7 +21,7 @@ mc-attest-enclave-api = { path = "../enclave-api" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-noise = { path = "../../crypto/noise" }
 
-aead = "0.3"
+aead = "0.4"
 digest = "0.9"
 futures = "0.3"
 grpcio = "0.9.0"

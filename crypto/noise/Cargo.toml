@@ -8,8 +8,8 @@ edition = "2018"
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-util-from-random = { path = "../../util/from-random" }
 
-aes-gcm = "0.6"
-aead = "0.3"
+aes-gcm = "0.9.2"
+aead = "0.4"
 digest = { version = "0.9", default-features = false }
 failure = { version = "0.1.8", default-features = false, features = ["derive"] }
 generic-array = { version = "0.14", features = ["serde"] }
