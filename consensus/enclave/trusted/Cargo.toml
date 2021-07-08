@@ -38,6 +38,9 @@ mc-sgx-types = { path = "../../../sgx/types" }
 mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps", "aesni", "force_aesni_support", "rdrand"] }
 mbedtls-sys-auto = { version = "2.26.1", default-features = false, features = ["custom_threading"] }
 
+
+# We include this here so we can make sure it uses the compile-only feature
+cpufeatures = { version = "0.1.5", features = ["compile-only"] }
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
 sha2 = { version = "0.9", default-features = false, features = ["asm"] }
 

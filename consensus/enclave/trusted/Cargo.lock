@@ -841,6 +841,7 @@ name = "mc-consensus-enclave-trusted"
 version = "1.1.0"
 dependencies = [
  "cargo-emit",
+ "cpufeatures",
  "lazy_static",
  "mbedtls",
  "mbedtls-sys-auto",
