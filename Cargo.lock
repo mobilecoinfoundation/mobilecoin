@@ -317,15 +317,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "block-cipher"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa136449e765dc7faa244561ccae839c394048667929af599b5d931ebe7b7f10"
-dependencies = [
- "generic-array 0.14.4",
-]
-
-[[package]]
 name = "block-padding"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -630,11 +621,6 @@ checksum = "66c99696f6c9dd7f35d486b9d04d7e6e202aa3e8c40d553f2fdf5e7e0c6a71ef"
 dependencies = [
  "libc",
 ]
-
-[[package]]
-name = "cpuid-bool"
-version = "0.1.2"
-source = "git+https://github.com/eranrund/RustCrypto-utils?rev=74f8e04e9d18d93fc6d05c72756c236dc88daa19#74f8e04e9d18d93fc6d05c72756c236dc88daa19"
 
 [[package]]
 name = "crc"
@@ -1060,7 +1046,7 @@ dependencies = [
  "rand 0.8.3",
  "serde",
  "serde_bytes",
- "sha2 0.9.3",
+ "sha2 0.9.5",
  "zeroize",
 ]
 
@@ -2107,7 +2093,7 @@ dependencies = [
  "hkdf",
  "mc-account-keys",
  "mc-crypto-keys",
- "sha2 0.9.3",
+ "sha2 0.9.5",
  "slip10_ed25519",
  "tiny-bip39",
  "zeroize",
@@ -2182,7 +2168,7 @@ dependencies = [
  "rand_core 0.6.2",
  "rand_hc 0.3.0",
  "serde",
- "sha2 0.9.3",
+ "sha2 0.9.5",
 ]
 
 [[package]]
@@ -2235,7 +2221,7 @@ dependencies = [
  "rand_hc 0.3.0",
  "rjson",
  "serde",
- "sha2 0.9.3",
+ "sha2 0.9.5",
  "subtle 2.2.3",
 ]
 
@@ -2267,7 +2253,7 @@ dependencies = [
  "rand 0.8.3",
  "reqwest",
  "serde_json",
- "sha2 0.9.3",
+ "sha2 0.9.5",
 ]
 
 [[package]]
@@ -2351,7 +2337,7 @@ dependencies = [
  "rand_hc 0.3.0",
  "retry",
  "secrecy",
- "sha2 0.9.3",
+ "sha2 0.9.5",
  "tempdir",
 ]
 
@@ -2603,33 +2589,23 @@ dependencies = [
  "mc-sgx-build",
  "mc-sgx-compat",
  "mc-util-from-random",
- "sha2 0.9.3",
+ "sha2 0.9.5",
 ]
 
 [[package]]
 name = "mc-crypto-box"
 version = "1.1.0"
 dependencies = [
- "aes-gcm",
+ "aead",
  "blake2",
  "digest 0.9.0",
  "failure",
  "hkdf",
- "mc-crypto-ct-aead",
  "mc-crypto-keys",
+ "mc-oblivious-aes-gcm",
  "mc-util-from-random",
  "mc-util-test-helper",
  "rand_core 0.6.2",
-]
-
-[[package]]
-name = "mc-crypto-ct-aead"
-version = "1.1.0"
-dependencies = [
- "aead",
- "aes-gcm",
- "block-cipher",
- "subtle 2.2.3",
 ]
 
 [[package]]
@@ -2713,7 +2689,7 @@ dependencies = [
  "semver 0.11.0",
  "serde",
  "serde_json",
- "sha2 0.9.3",
+ "sha2 0.9.5",
  "signature",
  "tempdir",
  "x25519-dalek",
@@ -2750,7 +2726,7 @@ dependencies = [
  "rand_hc 0.3.0",
  "secrecy",
  "serde",
- "sha2 0.9.3",
+ "sha2 0.9.5",
  "subtle 2.2.3",
  "zeroize",
 ]
@@ -3129,6 +3105,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-oblivious-aes-gcm"
+version = "0.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "126762b52a0017e74dd490b13fe04a53c1d5e51e66ca1762fa344118696d5357"
+dependencies = [
+ "aead",
+ "aes",
+ "cipher",
+ "ctr",
+ "ghash",
+ "subtle 2.2.3",
+ "zeroize",
+]
+
+[[package]]
 name = "mc-peers"
 version = "1.1.0"
 dependencies = [
@@ -3181,7 +3172,7 @@ dependencies = [
  "rand 0.8.3",
  "rand_hc 0.3.0",
  "retry",
- "sha2 0.9.3",
+ "sha2 0.9.5",
 ]
 
 [[package]]
@@ -3216,7 +3207,7 @@ name = "mc-sgx-css"
 version = "1.1.0"
 dependencies = [
  "displaydoc",
- "sha2 0.9.3",
+ "sha2 0.9.5",
 ]
 
 [[package]]
@@ -3562,7 +3553,7 @@ dependencies = [
  "prometheus",
  "protobuf",
  "rand 0.8.3",
- "sha2 0.9.3",
+ "sha2 0.9.5",
  "signal-hook",
  "subtle 2.2.3",
  "tempfile",
@@ -4977,7 +4968,7 @@ dependencies = [
  "rusoto_credential",
  "rustc_version 0.2.3",
  "serde",
- "sha2 0.8.1",
+ "sha2 0.8.2",
  "time 0.1.43",
  "tokio 0.1.22",
 ]
@@ -5093,7 +5084,7 @@ dependencies = [
  "curve25519-dalek",
  "merlin",
  "rand_core 0.6.2",
- "sha2 0.9.3",
+ "sha2 0.9.5",
  "subtle 2.2.3",
  "zeroize",
 ]
@@ -5309,9 +5300,9 @@ checksum = "2579985fda508104f7587689507983eadd6a6e84dd35d6d115361f530916fa0d"
 
 [[package]]
 name = "sha2"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27044adfd2e1f077f649f59deb9490d3941d674002f7d062870a60ebe9bd47a0"
+checksum = "a256f46ea78a0c0d9ff00077504903ac881a1dafdc20da66545699e7776b3e69"
 dependencies = [
  "block-buffer 0.7.3",
  "digest 0.8.1",
@@ -5321,24 +5312,23 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.9.3"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa827a14b29ab7f44778d14a88d3cb76e949c45083f7dbfa507d0cb699dc12de"
+checksum = "b362ae5752fd2137731f9fa25fd4d9058af34666ca1966fb969119cc35719f12"
 dependencies = [
  "block-buffer 0.9.0",
  "cfg-if 1.0.0",
- "cpuid-bool",
+ "cpufeatures",
  "digest 0.9.0",
- "libc",
  "opaque-debug 0.3.0",
  "sha2-asm",
 ]
 
 [[package]]
 name = "sha2-asm"
-version = "0.5.3"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "817aaf5c624a7ccba7b46fb2caea2c3192831a5a2e5f66a288de21eac5e6784c"
+checksum = "5c397a68de3079fa40e34eba871bea7f10de663f27f4c8b865c89ab47f103723"
 dependencies = [
  "cc",
 ]
@@ -5890,7 +5880,7 @@ dependencies = [
  "pbkdf2",
  "rand 0.7.3",
  "rustc-hash",
- "sha2 0.9.3",
+ "sha2 0.9.5",
  "thiserror",
  "unicode-normalization",
  "zeroize",

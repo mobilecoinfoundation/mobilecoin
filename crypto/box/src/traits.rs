@@ -1,7 +1,4 @@
-use crate::aead;
-use alloc::vec::Vec;
-
-use aead::{
+use crate::aead::{
     generic_array::{
         sequence::{Concat, Split},
         typenum::{Diff, Sum, Unsigned},
@@ -9,10 +6,11 @@ use aead::{
     },
     Error as AeadError,
 };
+use alloc::vec::Vec;
 use core::ops::{Add, Sub};
 use failure::Fail;
-use mc_crypto_ct_aead::CtDecryptResult;
 use mc_crypto_keys::{Kex, KeyError};
+use mc_oblivious_aes_gcm::CtDecryptResult;
 use rand_core::{CryptoRng, RngCore};
 
 /// Error type for decryption

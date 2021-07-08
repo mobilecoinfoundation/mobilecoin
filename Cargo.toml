@@ -119,9 +119,6 @@ overflow-checks = false
 rpath = true
 
 [patch.crates-io]
-
-mc-oblivious-aes-gcm = { git = "https://github.com/mobilecoinfoundation/oblivious-aes-gcm.git", rev = "" }
-
 # grpcio patched with metadata
 grpcio = { git = "https://github.com/mobilecoinofficial/grpc-rs", rev = "10ba9f8f4546916c7e7532c4d1c6cdcf5df62553" }
 protoc-grpcio = { git = "https://github.com/mobilecoinofficial/protoc-grpcio", rev = "9e63f09ec408722f731c9cb60bf06c3d46bcabec" }
@@ -146,9 +143,6 @@ serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a
 
 # Not-yet-released version that depends on newer crates.
 bulletproofs = { git = "https://github.com/eranrund/bulletproofs", rev = "8a7c9cdd1efafa3ad68cd65676302f925de68373" }
-
-# Patched to disable the cpuid instruction because that is incompatible with our sgx builds.
-cpuid-bool = { git = "https://github.com/eranrund/RustCrypto-utils", rev = "74f8e04e9d18d93fc6d05c72756c236dc88daa19" }
 
 # See https://github.com/commure/datatest/pull/30
 datatest = { git = "https://github.com/cormacrelf/datatest.git", rev = "0c12efa" }

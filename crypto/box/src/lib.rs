@@ -15,14 +15,11 @@
 
 extern crate alloc;
 
-pub use aead::generic_array;
-pub use mc_crypto_ct_aead::aead;
-
 mod hkdf_box;
 mod traits;
 mod versioned;
 
-pub use aead::Error as AeadError;
+pub use aead::{self, generic_array, Error as AeadError};
 pub use traits::{CryptoBox, Error};
 pub use versioned::{VersionError, VersionedCryptoBox};
 
