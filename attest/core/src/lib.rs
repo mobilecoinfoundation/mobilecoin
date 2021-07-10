@@ -81,8 +81,8 @@ cfg_if! {
             "../data/Dev_AttestationReportSigningCACert.pem"
         ), "\0")];
     } else {
-        /// Whether or not enclaves should be run and validated in debug mode.
-        pub const DEBUG_ENCLAVE: bool = cfg!(debug_assertions);
+        /// Debug enclaves in prod mode are not supported.
+        pub const DEBUG_ENCLAVE: bool = false;
         /// An array of zero-terminated signing certificate PEM files used as root anchors.
         pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[concat!(include_str!(
             "../data/AttestationReportSigningCACert.pem"
