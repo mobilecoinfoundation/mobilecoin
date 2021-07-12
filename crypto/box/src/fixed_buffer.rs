@@ -1,5 +1,9 @@
-use crate::aead;
-use aead::{Buffer, Error};
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+
+//! Fixed-length buffer, useful for operating on a portion of an underlying
+//! buffer.
+
+use crate::aead::{Buffer, Error};
 
 /// The rust aead crate is organized around a Buffer trait which abstracts
 /// commonalities of alloc::vec::Vec and heapless::Vec which are useful for

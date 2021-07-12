@@ -5,16 +5,15 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
-aes-gcm = { version = "0.6.0" }
+aead = { version = "0.4", default-features = false, features = ["alloc"] }
 blake2 = { version = "0.9", default-features = false }
 digest = { version = "0.9" }
 failure = { version = "0.1.8", default-features = false }
 hkdf = { version = "0.9.0", default-features = false }
+mc-oblivious-aes-gcm = { version = "0.9.2", default-features = false, features = ["aes", "alloc", "zeroize"] }
 rand_core = { version = "0.6", default-features = false }
 
-mc-crypto-ct-aead = { path = "../ct-aead" }
 mc-crypto-keys = { path = "../keys", default-features = false }
-
 
 [dev_dependencies]
 mc-util-from-random = { path = "../../util/from-random" }
