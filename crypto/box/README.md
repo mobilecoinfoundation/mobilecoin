@@ -24,12 +24,12 @@ Decryption takes the private key and the cryptogram and repoduces the message.
 Properties
 ----------
 
-The `VersionedCryptoBox` object aims for semantic security at a 128-bit security level,
+The `VersionedCryptoBox` object aims for semantic security at at least 128-bit security level,
 and non-malleability of the cryptograms. The primitives used at current version are:
 
 - Ristretto elliptic curve (`curve25519-dalek` crate) for key exchange
 - HKDF + Blake2b for the KDF step
-- AES-128-GCM for authenticated encryption
+- AES-256-GCM for authenticated encryption
 
 The wire-format is intended to be stable, with forwards and backwards compatibility
 if we must change the primitives.
