@@ -1566,16 +1566,6 @@ dependencies = [
  "cpufeatures",
  "digest",
  "opaque-debug",
- "sha2-asm",
-]
-
-[[package]]
-name = "sha2-asm"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c397a68de3079fa40e34eba871bea7f10de663f27f4c8b865c89ab47f103723"
-dependencies = [
- "cc",
 ]
 
 [[package]]
