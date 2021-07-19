@@ -57,21 +57,13 @@ members = [
     "peers",
     "peers/test-utils",
     "sgx/compat-edl",
-    "sgx/core-types",
-    "sgx/core-types-sys",
     "sgx/css",
     "sgx/css-dump",
     "sgx/debug-edl",
-    "sgx/epid",
-    "sgx/epid-sys",
-    "sgx/epid-types",
-    "sgx/epid-types-sys",
-    "sgx/ias-types",
     "sgx/panic-edl",
     "sgx/report-cache/api",
     "sgx/report-cache/untrusted",
     "sgx/slog-edl",
-    "sgx/urts-sys",
     "slam",
     "test-vectors/account-keys",
     "test-vectors/b58-encodings",
@@ -79,7 +71,6 @@ members = [
     "transaction/core/test-utils",
     "transaction/std",
     "util/b58-decoder",
-    "util/build/bolt-signalapp",
     "util/build/enclave",
     "util/build/grpc",
     "util/build/script",
@@ -129,9 +120,12 @@ rpath = true
 
 [patch.crates-io]
 # grpcio patched with metadata
-grpcio = { git = "https://github.com/jcape/grpc-rs", rev = "2ad042e9e65ecb664a60e034d0a899a8760d81d3" }
-# Code gen patched with metadata
-grpcio-compiler = { git = "https://github.com/jcape/grpc-rs", rev = "2ad042e9e65ecb664a60e034d0a899a8760d81d3" }
+grpcio = { git = "https://github.com/mobilecoinofficial/grpc-rs", rev = "10ba9f8f4546916c7e7532c4d1c6cdcf5df62553" }
+protoc-grpcio = { git = "https://github.com/mobilecoinofficial/protoc-grpcio", rev = "9e63f09ec408722f731c9cb60bf06c3d46bcabec" }
+
+# mbedtls patched to allow certificate verification with a profile
+mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "c7fa3f0c737f36af8f437e147131d1f5c8a90b0e" }
+mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "c7fa3f0c737f36af8f437e147131d1f5c8a90b0e" }
 
 # prost is patched with no_std support (https://github.com/danburkert/prost/pull/319)
 # current revision is from jun 13 2020, waiting for a new prost release
@@ -149,12 +143,6 @@ serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a
 
 # Not-yet-released version that depends on newer crates.
 bulletproofs = { git = "https://github.com/eranrund/bulletproofs", rev = "8a7c9cdd1efafa3ad68cd65676302f925de68373" }
-
-# Patched to disable the cpuid instruction because that is incompatible with our sgx builds.
-cpuid-bool = { git = "https://github.com/eranrund/RustCrypto-utils", rev = "74f8e04e9d18d93fc6d05c72756c236dc88daa19" }
-
-# We need to patch aes-gcm so we can make some fields/functions/structs pub in order to have a constant time decrypt
-aes-gcm = { git = "https://github.com/mobilecoinofficial/AEADs", rev = "d1a8517d3dd867ed9c5794002add67992a42f6aa" }
 
 # See https://github.com/commure/datatest/pull/30
 datatest = { git = "https://github.com/cormacrelf/datatest.git", rev = "0c12efa" }

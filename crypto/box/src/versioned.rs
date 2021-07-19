@@ -31,12 +31,11 @@ use crate::{
     traits::{CryptoBox, Error},
 };
 
-use aes_gcm::Aes256Gcm;
 use alloc::vec::Vec;
 use blake2::Blake2b;
 use failure::Fail;
-use mc_crypto_ct_aead::CtDecryptResult;
 use mc_crypto_keys::{Kex, Ristretto};
+use mc_oblivious_aes_gcm::{Aes256Gcm, CtDecryptResult};
 use rand_core::{CryptoRng, RngCore};
 
 ////

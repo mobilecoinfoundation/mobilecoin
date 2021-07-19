@@ -24,7 +24,7 @@ impl AuthenticationError for GrpcError {
     fn is_unauthenticated(&self) -> bool {
         match self {
             GrpcError::RpcFailure(rpc_status) => {
-                rpc_status.status == RpcStatusCode::UNAUTHENTICATED
+                rpc_status.code() == RpcStatusCode::UNAUTHENTICATED
             }
             _ => false,
         }

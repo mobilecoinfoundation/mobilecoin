@@ -78,37 +78,35 @@ impl From<ConsensusGrpcError> for RpcStatus {
     fn from(src: ConsensusGrpcError) -> Self {
         match src {
             ConsensusGrpcError::RpcStatus(rpc_status) => rpc_status,
-            ConsensusGrpcError::Ledger(err) => RpcStatus::new(
-                RpcStatusCode::INTERNAL,
-                Some(format!("Ledger error: {}", err)),
-            ),
-            ConsensusGrpcError::OverCapacity => RpcStatus::new(
+            ConsensusGrpcError::Ledger(err) => {
+                RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("Ledger error: {}", err))
+            }
+            ConsensusGrpcError::OverCapacity => RpcStatus::with_message(
                 RpcStatusCode::UNAVAILABLE,
-                Some("Temporarily over capacity".into()),
+                "Temporarily over capacity".into(),
             ),
-            ConsensusGrpcError::NotServing => RpcStatus::new(
+            ConsensusGrpcError::NotServing => RpcStatus::with_message(
                 RpcStatusCode::UNAVAILABLE,
-                Some("Temporarily not serving requests".into()),
+                "Temporarily not serving requests".into(),
             ),
             ConsensusGrpcError::Enclave(EnclaveError::Attest(err)) => {
                 global_log::error!("Permission denied: {}", err);
-                RpcStatus::new(
+                RpcStatus::with_message(
                     RpcStatusCode::PERMISSION_DENIED,
-                    Some("Permission Denied (attestation)".into()),
+                    "Permission Denied (attestation)".into(),
                 )
             }
-            ConsensusGrpcError::Other(err) => RpcStatus::new(RpcStatusCode::INTERNAL, Some(err)),
+            ConsensusGrpcError::Other(err) => RpcStatus::with_message(RpcStatusCode::INTERNAL, err),
             ConsensusGrpcError::TransactionValidation(err) => {
                 global_log::error!("Attempting to convert a ConsensusGrpcError::TransactionValidation into RpcStatus, this should not happen! Error is: {}", err);
-                RpcStatus::new(
+                RpcStatus::with_message(
                     RpcStatusCode::INTERNAL,
-                    Some(format!("Unexpected transaction validation error: {}", err)),
+                    format!("Unexpected transaction validation error: {}", err),
                 )
             }
-            _ => RpcStatus::new(
-                RpcStatusCode::INTERNAL,
-                Some(format!("Internal error: {}", src)),
-            ),
+            _ => {
+                RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("Internal error: {}", src))
+            }
         }
     }
 }

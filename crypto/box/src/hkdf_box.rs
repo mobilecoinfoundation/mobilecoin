@@ -17,8 +17,8 @@ use core::{
 };
 use digest::{BlockInput, Digest, FixedOutput, Reset, Update};
 use hkdf::Hkdf;
-use mc_crypto_ct_aead::{CtAeadDecrypt, CtDecryptResult};
 use mc_crypto_keys::{Kex, ReprBytes};
+use mc_oblivious_aes_gcm::{CtAeadDecrypt, CtDecryptResult};
 use rand_core::{CryptoRng, RngCore};
 
 /// Represents a generic implementation of CryptoBox using Hkdf, a KexAlgo, and

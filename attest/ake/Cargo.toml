@@ -1,6 +1,6 @@
 [package]
 name = "mc-attest-ake"
-version = "1.0.1-pre1"
+version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -20,7 +20,7 @@ mc-attest-core = { path = "../../attest/core", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-noise = { path = "../../crypto/noise", default-features = false }
 
-aead = "0.3"
+aead = "0.4"
 digest = { version = "0.9", default-features = false }
 displaydoc = { version = "0.2", default-features = false }
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
@@ -31,7 +31,7 @@ serde = { version = "1.0", default-features = false, features = ["alloc"] }
 mc-attest-net = { path = "../net" }
 mc-util-encodings = { path = "../../util/encodings" }
 mc-util-from-random = { path = "../../util/from-random" }
-aes-gcm = "0.6"
+aes-gcm = "0.9.2"
 rand_hc = "0.3"
 sha2 = "0.9"
 

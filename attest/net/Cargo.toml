@@ -1,6 +1,6 @@
 [package]
 name = "mc-attest-net"
-version = "1.0.1-pre1"
+version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
 description = '''
@@ -20,10 +20,9 @@ mc-attest-core = { path = "../../attest/core" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-util-encodings = { path = "../../util/encodings" }
 
-mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3" }
-
 cfg-if = "0.1"
 failure = { version = "0.1.8", features = ["derive"] }
+mbedtls = "0.8.1"
 pem = "0.8"
 percent-encoding = "2.1.0"
 reqwest = { version = "0.10" , default-features = false, features = ["rustls-tls", "gzip"] }

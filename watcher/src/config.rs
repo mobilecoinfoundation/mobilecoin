@@ -2,13 +2,13 @@
 
 //! Configuration parameters for the watcher test utility.
 
-use mc_util_uri::ConsensusClientUri;
+use mc_util_uri::{ConsensusClientUri, WatcherUri};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
 use url::Url;
 
-#[derive(Debug, StructOpt)]
+#[derive(Clone, Debug, StructOpt)]
 #[structopt(
     name = "mc-watcher",
     about = "Sync data from multiple sources, reconcile blocks, and verify signatures."
@@ -34,6 +34,10 @@ pub struct WatcherConfig {
     /// Store block data for every fetched block.
     #[structopt(long)]
     pub store_block_data: bool,
+
+    /// gRPC listening URI.
+    #[structopt(long, default_value = "insecure-watcher://0.0.0.0:3226/")]
+    pub client_listen_uri: WatcherUri,
 }
 
 impl WatcherConfig {

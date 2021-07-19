@@ -10,7 +10,7 @@
 version: 2.1
 
 defaults:
-  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_21
+  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_22
   default-xcode-version: &default-xcode-version "12.0.0"
 
   default-environment: &default-environment
@@ -196,6 +196,7 @@ commands:
       - run:
           name: Install Homebrew dependencies
           command: |
+            rm '/usr/local/lib/python3.8/site-packages/six.py'
             brew bundle --no-upgrade
 
   save-homebrew-cache:
@@ -223,7 +224,7 @@ commands:
           name: Install Rust
           command: |
             command -v rustup >/dev/null \
-              || curl https://sh.rustup.rs --tlsv1.2 -sSf | sh -s -- -y --default-toolchain none
+              || curl https://sh.rustup.rs --tlsv1.2 -sSf | sh -s -- -y --default-toolchain stable
             # Installs the toolchain specified in `rust-toolchain`
             "$HOME/.cargo/bin/rustup" show active-toolchain
 
@@ -285,7 +286,7 @@ commands:
     parameters:
       test_command:
         type: string
-        default: cargo test --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests
+        default: cargo test --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests -j 6
     steps:
       - run:
           name: Run tests
@@ -378,15 +379,15 @@ jobs:
     steps:
       - prepare-for-build
       - run:
-          name: Cargo check (SW/IAS dev)
-          command: cargo check --frozen --target "$HOST_TARGET_TRIPLE"
+          name: Cargo build (SW/IAS dev)
+          command: cargo build --frozen --target "$HOST_TARGET_TRIPLE"
       - check-dirty-git
       - run:
-          name: Cargo check (HW/IAS prod)
+          name: Cargo build (HW/IAS prod)
           environment:
             SGX_MODE: HW
             IAS_MODE: PROD
-          command: cargo check --frozen --target "$HOST_TARGET_TRIPLE"
+          command: cargo build --frozen --target "$HOST_TARGET_TRIPLE"
 
       # The lint and saving of caches happens here since this job is faster than the run-tests job.
       # This results in shorter CI times.
@@ -421,15 +422,7 @@ jobs:
               --exclude mc-attest-untrusted \
               --exclude mc-consensus-enclave \
               --exclude mc-consensus-service \
-              --exclude mc-sgx-core-types \
-              --exclude mc-sgx-core-types-sys \
-              --exclude mc-sgx-epid \
-              --exclude mc-sgx-epid-sys \
-              --exclude mc-sgx-epid-types \
-              --exclude mc-sgx-epid-types-sys \
-              --exclude mc-sgx-ias-types \
-              --exclude mc-sgx-report-cache-untrusted \
-              --exclude mc-sgx-urts-sys
+              --exclude mc-sgx-report-cache-untrusted
       - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }

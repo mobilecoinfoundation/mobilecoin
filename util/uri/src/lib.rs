@@ -16,6 +16,7 @@ pub type AdminUri = Uri<AdminScheme>;
 pub type ConsensusClientUri = Uri<ConsensusClientScheme>;
 pub type ConsensusPeerUri = Uri<ConsensusPeerScheme>;
 pub type FogUri = Uri<FogScheme>;
+pub type WatcherUri = Uri<WatcherScheme>;
 
 // Conversions
 
@@ -94,6 +95,21 @@ impl UriScheme for FogScheme {
     /// Default port numbers
     const DEFAULT_SECURE_PORT: u16 = 443;
     const DEFAULT_INSECURE_PORT: u16 = 3225;
+}
+
+/// Watcher Uri Scheme
+/// Used in public addresses, and when talking to fog report server
+#[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
+pub struct WatcherScheme {}
+
+impl UriScheme for WatcherScheme {
+    /// The part before the '://' of a URL.
+    const SCHEME_SECURE: &'static str = "watcher";
+    const SCHEME_INSECURE: &'static str = "insecure-watcher";
+
+    /// Default port numbers
+    const DEFAULT_SECURE_PORT: u16 = 443;
+    const DEFAULT_INSECURE_PORT: u16 = 3226;
 }
 
 #[cfg(test)]

@@ -17,7 +17,7 @@ use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_transaction_core::{
-    constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
+    constants::{MAX_INPUTS, MILLIMOB_TO_PICOMOB, RING_SIZE},
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
@@ -45,6 +45,10 @@ pub const DEFAULT_NEW_TX_BLOCK_ATTEMPTS: u64 = 50;
 
 /// Default ring size
 pub const DEFAULT_RING_SIZE: usize = RING_SIZE;
+
+/// The original hard-coded 10mMOB fee, used as a fallback when calls to
+/// consensus fail or we have no peers.
+const FALLBACK_FEE: u64 = 10 * MILLIMOB_TO_PICOMOB;
 
 /// An outlay - the API representation of a desired transaction output.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -131,7 +135,7 @@ fn get_fee<T: BlockchainConnection + UserTxConnection + 'static>(
     if opt_fee > 0 {
         opt_fee
     } else if peer_manager.is_empty() {
-        MINIMUM_FEE
+        FALLBACK_FEE
     } else {
         // iterate an owned list of connections in parallel, get the block info for
         // each, and extract the fee. If no fees are returned, use the hard-coded
@@ -140,9 +144,16 @@ fn get_fee<T: BlockchainConnection + UserTxConnection + 'static>(
             .conns()
             .par_iter()
             .filter_map(|conn| conn.fetch_block_info(empty()).ok())
-            .map(|block_info| block_info.minimum_fee)
+            .filter_map(|block_info| {
+                // Cleanup the protobuf default fee
+                if block_info.minimum_fee == 0 {
+                    None
+                } else {
+                    Some(block_info.minimum_fee)
+                }
+            })
             .max()
-            .unwrap_or(MINIMUM_FEE)
+            .unwrap_or(FALLBACK_FEE)
     }
 }
 
@@ -285,6 +296,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         &self,
         monitor_id: &MonitorId,
         subaddress_index: u64,
+        fee: u64,
     ) -> Result<TxProposal, Error> {
         let logger = self.logger.new(
             o!("monitor_id" => monitor_id.to_string(), "subaddress_index" => subaddress_index),
@@ -296,12 +308,19 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let num_blocks_in_ledger = self.ledger_db.num_blocks()?;
 
+        let fee = get_fee(&self.peer_manager, fee);
+
         // Select UTXOs that will be spent by this transaction.
-        let (selected_utxos, fee) = {
+        let selected_utxos = {
             let inputs = self
                 .mobilecoind_db
                 .get_utxos_for_subaddress(monitor_id, subaddress_index)?;
-            Self::select_utxos_for_optimization(num_blocks_in_ledger, &inputs, MAX_INPUTS as usize)?
+            Self::select_utxos_for_optimization(
+                num_blocks_in_ledger,
+                &inputs,
+                MAX_INPUTS as usize,
+                fee,
+            )?
         };
 
         log::trace!(
@@ -559,12 +578,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// UTXOs > fee, we would be able to increase our largest    UTXO and
     /// we're done. If not, try again without the smallest UTXO.
     ///
-    /// Returns a tuple of (selected UTXOs, fee).
+    /// Returns selected UTXOs
     fn select_utxos_for_optimization(
         num_blocks_in_ledger: u64,
         inputs: &[UnspentTxOut],
         max_inputs: usize,
-    ) -> Result<(Vec<UnspentTxOut>, u64), Error> {
+        fee: u64,
+    ) -> Result<Vec<UnspentTxOut>, Error> {
         if max_inputs < 2 {
             return Err(Error::InvalidArgument(
                 "max_inputs".to_owned(),
@@ -603,9 +623,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 total += utxo.value;
             }
 
-            // Calculate the fee - right now this is constant.
-            let fee = MINIMUM_FEE;
-
             // See if the total amount we are trying to merge into our biggest UTXO is
             // bigger than the fee. If it's smaller, the merge would just lose
             // us money.
@@ -619,7 +636,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 assert!(total_value - fee > biggest_utxo.value);
 
                 // Return our selected utxos and fee.
-                return Ok((selected_utxos.into_iter().cloned().collect(), fee));
+                return Ok(selected_utxos.into_iter().cloned().collect());
             }
 
             // Merging the currently selected set of UTXOs would lose us money. Try again
@@ -940,7 +957,7 @@ mod test {
     use mc_connection::{HardcodedCredentialsProvider, ThickClient};
     use mc_crypto_keys::RistrettoPrivate;
     use mc_fog_report_validation::MockFogPubkeyResolver;
-    use mc_transaction_core::constants::MILLIMOB_TO_PICOMOB;
+    use mc_transaction_core::constants::{MILLIMOB_TO_PICOMOB, MINIMUM_FEE};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 
@@ -1054,15 +1071,14 @@ mod test {
             utxos[4].value = 2000 * MILLIMOB_TO_PICOMOB;
             utxos[5].value = 1000 * MILLIMOB_TO_PICOMOB;
 
-            let (selected_utxos, fee) =
+            let selected_utxos =
                 TransactionsManager::<
                     ThickClient<HardcodedCredentialsProvider>,
                     MockFogPubkeyResolver,
-                >::select_utxos_for_optimization(1000, &utxos, 2)
+                >::select_utxos_for_optimization(1000, &utxos, 2, MINIMUM_FEE)
                 .unwrap();
 
             assert_eq!(selected_utxos, vec![utxos[0].clone(), utxos[4].clone()]);
-            assert_eq!(fee, MINIMUM_FEE);
         }
 
         // Optimizing with max_inputs=3 should select 100, 150, 2000;
@@ -1076,18 +1092,17 @@ mod test {
             utxos[4].value = 2000 * MILLIMOB_TO_PICOMOB;
             utxos[5].value = 1000 * MILLIMOB_TO_PICOMOB;
 
-            let (selected_utxos, fee) =
+            let selected_utxos =
                 TransactionsManager::<
                     ThickClient<HardcodedCredentialsProvider>,
                     MockFogPubkeyResolver,
-                >::select_utxos_for_optimization(1000, &utxos, 3)
+                >::select_utxos_for_optimization(1000, &utxos, 3, MINIMUM_FEE)
                 .unwrap();
 
             assert_eq!(
                 selected_utxos,
                 vec![utxos[0].clone(), utxos[2].clone(), utxos[4].clone()]
             );
-            assert_eq!(fee, MINIMUM_FEE);
         }
     }
 
@@ -1111,10 +1126,11 @@ mod test {
                     < MINIMUM_FEE
             );
 
-            let result = TransactionsManager::<
-                ThickClient<HardcodedCredentialsProvider>,
-                MockFogPubkeyResolver,
-            >::select_utxos_for_optimization(1000, &utxos, 100);
+            let result =
+                TransactionsManager::<
+                    ThickClient<HardcodedCredentialsProvider>,
+                    MockFogPubkeyResolver,
+                >::select_utxos_for_optimization(1000, &utxos, 100, MINIMUM_FEE);
             assert!(result.is_err());
         }
 
@@ -1126,10 +1142,11 @@ mod test {
             utxos[0].value = MINIMUM_FEE;
             utxos[1].value = 2000 * MILLIMOB_TO_PICOMOB;
 
-            let result = TransactionsManager::<
-                ThickClient<HardcodedCredentialsProvider>,
-                MockFogPubkeyResolver,
-            >::select_utxos_for_optimization(1000, &utxos, 100);
+            let result =
+                TransactionsManager::<
+                    ThickClient<HardcodedCredentialsProvider>,
+                    MockFogPubkeyResolver,
+                >::select_utxos_for_optimization(1000, &utxos, 100, MINIMUM_FEE);
             assert!(result.is_err());
         }
 
@@ -1142,11 +1159,11 @@ mod test {
             utxos[2].value = MINIMUM_FEE / 10;
             utxos[3].value = MINIMUM_FEE / 5;
 
-            let (selected_utxos, fee) =
+            let selected_utxos =
                 TransactionsManager::<
                     ThickClient<HardcodedCredentialsProvider>,
                     MockFogPubkeyResolver,
-                >::select_utxos_for_optimization(1000, &utxos, 3)
+                >::select_utxos_for_optimization(1000, &utxos, 3, MINIMUM_FEE)
                 .unwrap();
             // Since we're limited to 3 inputs, the lowest input (of value 1) is going to
             // get excluded.
@@ -1154,7 +1171,6 @@ mod test {
                 selected_utxos,
                 vec![utxos[3].clone(), utxos[0].clone(), utxos[1].clone()]
             );
-            assert_eq!(fee, MINIMUM_FEE);
         }
     }
 
@@ -1169,13 +1185,13 @@ mod test {
         let result = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
-        >::select_utxos_for_optimization(1000, &[], 100);
+        >::select_utxos_for_optimization(1000, &[], 100, MINIMUM_FEE);
         assert!(result.is_err());
 
         let result = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
-        >::select_utxos_for_optimization(1000, &utxos[0..1], 100);
+        >::select_utxos_for_optimization(1000, &utxos[0..1], 100, MINIMUM_FEE);
         assert!(result.is_err());
 
         // A set of 2 utxos succeeds when max inputs is 2, but fails when it is 3 (since
@@ -1183,13 +1199,13 @@ mod test {
         let result = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
-        >::select_utxos_for_optimization(1000, &utxos[0..2], 2);
+        >::select_utxos_for_optimization(1000, &utxos[0..2], 2, MINIMUM_FEE);
         assert!(result.is_ok());
 
         let result = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
-        >::select_utxos_for_optimization(1000, &utxos[0..2], 3);
+        >::select_utxos_for_optimization(1000, &utxos[0..2], 3, MINIMUM_FEE);
         assert!(result.is_err());
     }
 }

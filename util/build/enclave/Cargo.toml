@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-build-enclave"
-version = "1.0.1-pre1"
+version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
 description = "Enclave build assistance, from MobileCoin."
@@ -11,11 +11,10 @@ mc-util-build-script = { path = "../script" }
 mc-util-build-sgx = { path = "../sgx" }
 mc-sgx-css = { path = "../../../sgx/css" }
 
-mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3", default-features = false }
-mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3", default-features = false }
-
 cargo-emit = "0.1.1"
 cargo_metadata = "0.9"
 displaydoc = { version = "0.2", default-features = false }
+mbedtls = "0.8.1"
+mbedtls-sys-auto = "2.26.1"
 pkg-config = "0.3"
 rand = "0.8"

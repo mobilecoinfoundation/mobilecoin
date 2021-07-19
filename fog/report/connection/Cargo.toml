@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-report-connection"
-version = "1.0.1-pre1"
+version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -16,4 +16,4 @@ mc-util-serial = { path = "../../../util/serial" }
 mc-util-uri = { path = "../../../util/uri" }
 
 displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.6.0"
+grpcio = "0.9.0"

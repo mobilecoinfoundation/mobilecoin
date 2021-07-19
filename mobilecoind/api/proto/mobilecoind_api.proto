@@ -483,6 +483,9 @@ message GenerateOptimizationTxRequest {
 
     // Subaddress to operate on.
     uint64 subaddress = 2;
+
+    // Add an optional fee
+    uint64 fee = 3;
 }
 message GenerateOptimizationTxResponse {
     TxProposal tx_proposal = 1;

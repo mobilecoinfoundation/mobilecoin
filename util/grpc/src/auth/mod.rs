@@ -43,9 +43,9 @@ impl From<AuthorizationHeaderError> for AuthenticatorError {
 
 impl<T> From<AuthenticatorError> for Result<T, RpcStatus> {
     fn from(src: AuthenticatorError) -> Result<T, RpcStatus> {
-        Err(RpcStatus::new(
+        Err(RpcStatus::with_message(
             RpcStatusCode::UNAUTHENTICATED,
-            Some(src.to_string()),
+            src.to_string(),
         ))
     }
 }

@@ -16,7 +16,7 @@
 # ##################################### #
 
 # Ubuntu 18.04
-FROM ubuntu@sha256:ea188fdc5be9b25ca048f1e882b33f1bc763fb976a8a4fea446b38ed0efcbeba AS builder-install
+FROM ubuntu@sha256:538529c9d229fb55f50e6746b119e899775205d62c0fc1b7e679b30d02ecb6e8 AS builder-install
 
 # Party like it's June 8th, 1989.
 #
@@ -134,11 +134,6 @@ RUN wget https://github.com/SimonKagstrom/kcov/archive/v36.tar.gz && \
     cmake . && \
     make && \
     make install
-
-# Patch and install the patched LLVM BOLT utility
-
-COPY --chown=root:root install-bolt.sh /tmp
-RUN /bin/bash /tmp/install-bolt.sh
 
 # Conditionally install intel SGX libs
 

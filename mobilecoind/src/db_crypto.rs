@@ -5,9 +5,9 @@
 use aes_gcm::{
     aead::{
         generic_array::{sequence::Split, GenericArray},
-        Aead, AeadInPlace, Error as AeadError, NewAead,
+        Aead,
     },
-    Aes256Gcm,
+    AeadCore, Aes256Gcm, Error as AeadError, NewAead,
 };
 use blake2::{Blake2b, Digest};
 use failure::Fail;
@@ -296,7 +296,7 @@ impl DbCryptoProvider {
     ) -> Result<
         (
             GenericArray<u8, <Aes256Gcm as NewAead>::KeySize>,
-            GenericArray<u8, <Aes256Gcm as AeadInPlace>::NonceSize>,
+            GenericArray<u8, <Aes256Gcm as AeadCore>::NonceSize>,
         ),
         DbCryptoError,
     > {
@@ -308,8 +308,7 @@ impl DbCryptoProvider {
         let result = hasher.finalize();
 
         let (key, remainder) = Split::<u8, <Aes256Gcm as NewAead>::KeySize>::split(result);
-        let (nonce, _remainder) =
-            Split::<u8, <Aes256Gcm as AeadInPlace>::NonceSize>::split(remainder);
+        let (nonce, _remainder) = Split::<u8, <Aes256Gcm as AeadCore>::NonceSize>::split(remainder);
 
         Ok((key, nonce))
     }

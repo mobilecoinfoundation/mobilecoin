@@ -3,6 +3,7 @@
 //! An implementation of the IAS client for simulation purposes
 
 use crate::traits::{RaClient, Result};
+use alloc::sync::Arc;
 use mbedtls::{
     hash::Type as HashType,
     pk::Pk,
@@ -86,8 +87,8 @@ impl RaClient for SimClient {
         let http_body = jsvalue.to_string();
         let hash = Sha256::digest(http_body.as_bytes());
 
-        let mut entropy = OsEntropy::new();
-        let mut csprng = CtrDrbg::new(&mut entropy, None).expect("Could not create CtrDrbg");
+        let entropy = OsEntropy::new();
+        let mut csprng = CtrDrbg::new(Arc::new(entropy), None).expect("Could not create CtrDrbg");
 
         let mut signer = Pk::from_private_key(IAS_SIM_SIGNING_KEY.as_bytes(), None)
             .expect("Could not load signing key.");
@@ -119,7 +120,7 @@ impl RaClient for SimClient {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mc_attest_core::IAS_SIM_ROOT_ANCHORS;
+    use mc_attest_core::{Verifier, IAS_SIM_ROOT_ANCHORS};
     use mc_util_encodings::FromBase64;
 
     const QUOTE_TEST: &str = include_str!("../data/quote_out_of_date.txt");
@@ -132,10 +133,10 @@ mod test {
             .verify_quote(&quote, None)
             .expect("Could not generate IAS report");
 
-        let signing_chain = vec![String::from(IAS_SIM_ROOT_ANCHORS); 1];
-
-        report
-            .verify_signature(Some(signing_chain))
-            .expect("Could not verify anchor signature");
+        Verifier::new(&[IAS_SIM_ROOT_ANCHORS])
+            .expect("Could not initialize new verifier")
+            .debug(true)
+            .verify(&report)
+            .expect("Could not verify IAS report");
     }
 }
