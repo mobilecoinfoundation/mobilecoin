@@ -47,7 +47,7 @@ pub enum ReqwestTransactionsFetcherError {
     /// IO error on {0}: {1:?}
     IO(String, std::io::Error),
 
-    /// Received an invalid block from {0}: {1}"
+    /// Received an invalid block from {0}: {1}
     InvalidBlockReceived(String, String),
 
     /// No URLs configured
