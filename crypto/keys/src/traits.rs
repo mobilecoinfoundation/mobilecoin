@@ -22,7 +22,10 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
     Clone, Copy, Debug, Deserialize, Eq, Hash, Display, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub enum KeyError {
-    /// The length of the given data does not match the algorithm's expected length, provided {0}, required {1}
+    /**
+     * The length of the given data does not match the algorithm's expected
+     * length, provided {0}, required {1}
+     */
     LengthMismatch(usize, usize),
     /// The specified algorithm does not match what was expected
     AlgorithmMismatch,

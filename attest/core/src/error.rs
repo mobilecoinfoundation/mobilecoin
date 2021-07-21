@@ -195,7 +195,10 @@ pub type PseManifestResult = Result<(), PseManifestError>;
 /// This is defined in the [IAS API v3, S4.2.1](https://software.intel.com/sites/default/files/managed/7e/3b/ias-api-spec.pdf).
 #[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum PseManifestError {
-    /// Security properties of the PSW cannot be verified due to unrecognized PSE Manifest
+    /**
+     * Security properties of the PSW cannot be verified due to unrecognized
+     * PSE Manifest
+     */
     Unknown,
     /// Security properties of the PSW are invalid
     Invalid,
@@ -203,7 +206,10 @@ pub enum PseManifestError {
     OutOfDate(PlatformInfoBlob),
     /// Hardware/firmware component involved in the PSW has been revoked
     Revoked(PlatformInfoBlob),
-    /// The PSW revocation list is out of date, use the included PIB to force an update
+    /**
+     * The PSW revocation list is out of date, use the included PIB to force
+     * an update
+     */
     RlVersionMismatch(PlatformInfoBlob),
     /// The PSE status was not returned by IAS
     Missing,
@@ -349,7 +355,10 @@ pub enum ReportBodyVerifyError {
     ProductId(u16, u16),
     /// The enclave's security version was not at least {0}
     SecurityVersion(u16),
-    /// Measurement error, expected one of {0:0x?}, got MRENCLAVE {1}, and MRSIGNER {2}
+    /**
+     * Measurement error, expected one of {0:0x?}, got MRENCLAVE {1}, and
+     * MRSIGNER {2}
+     */
     MrMismatch(Vec<Measurement>, MrEnclave, MrSigner),
     /// Report data mismatch
     DataMismatch,

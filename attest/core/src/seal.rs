@@ -7,8 +7,8 @@
 
 use crate::SgxError;
 use alloc::vec::Vec;
-use displaydoc::Display;
 use core::{convert::TryFrom, fmt::Display as DisplayTrait};
+use displaydoc::Display;
 use prost::Message;
 
 /// A `Sealed<T>` is a Sealed representation of a T, with some additional
@@ -191,7 +191,10 @@ pub fn get_add_mac_txt_offset(sealed_data: &[u8]) -> Result<u32, ParseSealedErro
 pub enum ParseSealedError {
     /// Byte range is too short to be a sealed blob: {0} < {1}
     TooShort(usize, usize),
-    /// The mac text offset is invalid, because it points outside the buffer: {0} > {1}
+    /**
+     * The mac text offset is invalid, because it points outside the buffer:
+     * {0} > {1}
+     */
     MacTxtOffsetOutOfBounds(usize, usize),
     /// The mac text length doesn't match what we expected: actual {0} != {1}
     UnexpectedMacTextLen(usize, usize),

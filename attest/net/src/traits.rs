@@ -22,9 +22,15 @@ pub enum Error {
     MissingSignatureError,
     /// A header header string could not be parsed: {0}
     ToStrError(ToStrError),
-    /// The verification report response did not include any signing certificates
+    /**
+     * The verification report response did not include any signing
+     * certificates
+     */
     MissingSigningCertsError,
-    /// The verification report response did not contain valid PEM for it's signing certificates
+    /**
+     * The verification report response did not contain valid PEM for it's
+     * signing certificates
+     */
     BadSigningCertsError,
     /// The given API key is not a valid header value
     BadApiKey,

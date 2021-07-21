@@ -2,8 +2,8 @@
 
 //! Messages used in Consensus by Peers
 
-use ed25519::signature::Error as SignatureError;
 use displaydoc::Display;
+use ed25519::signature::Error as SignatureError;
 use mc_common::{NodeID, ResponderId};
 use mc_consensus_scp::Msg;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
