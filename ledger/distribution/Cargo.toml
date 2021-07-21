@@ -15,7 +15,7 @@ mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }
 
 dirs = "2.0"
-failure = "0.1.8"
+displaydoc = "0.2"
 protobuf = "2.22.1"
 retry = "1.2"
 rusoto_core = { version = "0.42.0", features = ["rustls"], default_features = false }

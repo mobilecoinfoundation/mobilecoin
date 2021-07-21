@@ -3,7 +3,7 @@
 //! This module contains a structure wrapping up the build environment.
 
 use crate::vars::*;
-use failure::Fail;
+use displaydoc::Display;
 use std::{
     borrow::ToOwned,
     collections::{hash_map::Iter as HashMapIter, hash_set::Iter as HashSetIter, HashMap, HashSet},
@@ -25,10 +25,9 @@ pub enum TargetFamily {
 
 /// An enumeration of errors which can occur while parsing the target family
 /// environment variable
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Display)]
 pub enum TargetFamilyError {
-    /// The family was not one of the values
-    #[fail(display = "Unknown family: {}", _0)]
+    /// Unknown family: {0}
     Unknown(String),
 }
 
@@ -55,10 +54,9 @@ pub enum Endianness {
 
 /// An enumeration of errors which can occur while parsing the endianness
 /// environment variable
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Display)]
 pub enum EndiannessError {
-    /// The endianness value given was neither "big" nor "little".
-    #[fail(display = "Unknown endianness: {}", _0)]
+    /// Unknown endianness: {0}
     Unknown(String),
 }
 
@@ -75,24 +73,17 @@ impl TryFrom<&str> for Endianness {
 }
 
 /// An enumeration of errors which can occur when parsing the build environment
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Display)]
 pub enum EnvironmentError {
-    /// An environment variable which we expected was not set
-    #[fail(display = "Environment variable {} not readable: {}", _0, _1)]
+    /// Environment variable {0} not readable: {1}
     Var(String, VarError),
-    /// The endianness could not be parsed
-    #[fail(display = "Endianness error: {}", _0)]
+    /// Endianness error: {0}
     Endianness(EndiannessError),
-    /// The target family could not be parsed
-    #[fail(display = "Target family error: {}", _0)]
+    /// Target family error: {0}
     TargetFamily(TargetFamilyError),
-    /// There was an error parsing a variable which was supposed to be a numeric
-    /// value
-    #[fail(display = "Could not parse {}: {}", _0, _1)]
+    /// Could not parse {0}: {1}
     ParseInt(String, ParseIntError),
-    /// The output directory was not in the form
-    /// `.../<target-dir>/<profile>/out/etc.`
-    #[fail(display = "Output directory badly constructed: {:?}", _0)]
+    /// Output directory badly constructed: {0:?}
     OutDir(PathBuf),
 }
 

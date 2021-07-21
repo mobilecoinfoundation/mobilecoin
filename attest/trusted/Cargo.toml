@@ -9,5 +9,5 @@ mc-attest-core = { path = "../../attest/core", default-features = false }
 mc-sgx-compat = { path = "../../sgx/compat" }
 mc-sgx-types = { path = "../../sgx/types" }
 
-failure = { version = "0.1.8", default-features = false, features = ["derive"] }
+displaydoc = { version = "0.2", default-features = false }
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }

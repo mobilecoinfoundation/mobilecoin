@@ -8,7 +8,7 @@ use crate::aead::{
 };
 use alloc::vec::Vec;
 use core::ops::{Add, Sub};
-use failure::Fail;
+use displaydoc::Display;
 use mc_crypto_keys::{Kex, KeyError};
 use mc_oblivious_aes_gcm::CtDecryptResult;
 use rand_core::{CryptoRng, RngCore};
@@ -18,18 +18,15 @@ use rand_core::{CryptoRng, RngCore};
 /// Note that mac failed is indicated separately from this enum,
 /// because a design goal is that we can be constant-time with respect to mac
 /// failure, but enum cannot be matched or accessed without branching.
-#[derive(PartialEq, Eq, Fail, Debug)]
+#[derive(Debug, Display, Eq, PartialEq)]
 pub enum Error {
-    #[fail(display = "Error decoding curvepoint: {}", _0)]
+    /// Error decoding curvepoint: {0}
     Key(KeyError),
-    #[fail(
-        display = "Too short, ciphertext is shorter than a footer: {} < {}",
-        _0, _1
-    )]
+    /// Ciphertext is shorter than a footer: {0} < {1}
     TooShort(usize, usize),
-    #[fail(display = "Unknown algorithm code: {}", _0)]
+    /// Unknown algorithm code: {0}
     UnknownAlgorithm(usize),
-    #[fail(display = "Wrong magic bytes")]
+    /// Wrong magic bytes
     WrongMagicBytes,
 }
 

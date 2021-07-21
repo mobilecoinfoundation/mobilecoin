@@ -8,7 +8,7 @@ readme = "README.md"
 
 [dependencies]
 cargo-emit = "0.1.1"
-failure = { version = "0.1.8", default-features = false, features = ["derive"] }
+displaydoc = { version = "0.2", default-features = false }
 lazy_static = "1.4"
 url = "2.1"
 walkdir = "2.3"

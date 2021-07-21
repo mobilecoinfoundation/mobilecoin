@@ -13,7 +13,7 @@ mc-fog-sig-report = { path = "./report" }
 mc-fog-sig-authority = { path = "./authority" }
 mc-fog-types = { path = "../types" }
 
-displaydoc = { version = "0.2" }
+displaydoc = "0.2"
 pem = "0.8"
 signature = { version = "1.2.2" }
 x509-signature = "0.5"

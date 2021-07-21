@@ -8,24 +8,24 @@ use aead::{AeadMut, Error as AeadError, NewAead, Payload};
 use aes_gcm::Aes256Gcm;
 use alloc::vec::Vec;
 use core::cmp::min;
-use failure::Fail;
+use displaydoc::Display;
 use generic_array::{typenum::Unsigned, GenericArray};
 use secrecy::{ExposeSecret, SecretVec};
 use serde::{Deserialize, Serialize};
 
 #[derive(
-    Copy, Clone, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Copy, Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub enum CipherError {
-    #[fail(display = "Key is the wrong length")]
+    /// Key is the wrong length
     KeyLength,
-    #[fail(display = "Nonce rollover or too many bytes encrypted")]
+    /// Nonce rollover or too many bytes encrypted
     ReKeyNeeded,
-    #[fail(display = "The chosen cipher does not support re-keying")]
+    /// The chosen cipher does not support re-keying
     ReKeyNotSupported,
-    #[fail(display = "Rekey attempted when no key was set")]
+    /// Rekey attempted when no key was set
     NoKey,
-    #[fail(display = "Authenticated encryption error")]
+    /// Authenticated encryption error
     Aead,
 }
 
