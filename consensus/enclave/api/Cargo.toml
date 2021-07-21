@@ -10,6 +10,7 @@ The ECALL API declarations and API for operating an enclave.
 [features]
 default = ["std"]
 std = [
+    "displaydoc/std",
     "mc-attest-core/std",
     "mc-attest-ake/std",
     "mc-util-serial/std",
@@ -28,5 +29,5 @@ mc-sgx-compat = { path = "../../../sgx/compat" }
 mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
 mc-transaction-core = { path = "../../../transaction/core" }
 
-failure = { version = "0.1.8", default-features = false, features = ["derive"] }
+displaydoc = { version = "0.2", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

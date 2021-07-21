@@ -3,7 +3,7 @@
 //! A Peer-to-Peer networking error.
 
 use crate::ConsensusMsgError;
-use failure::Fail;
+use displaydoc::Display;
 use grpcio::Error as GrpcError;
 use mc_connection::AttestationError;
 use mc_consensus_api::ConversionError;
@@ -26,42 +26,31 @@ pub type RetryResult<T> = StdResult<T, RetryError<Error>>;
 
 /// An enumeration of errors which can occur as the result of a peer connection
 /// issue
-#[derive(Debug, Fail)]
+#[derive(Debug, Display)]
 pub enum Error {
-    /// There was an error during attestation
-    #[fail(display = "Attestation failure: {}", _0)]
+    /// Attestation failure: {0}
     Attestation(PeerAttestationError),
-    /// A requested resource was not found.
-    #[fail(display = "Resource not found")]
+    /// Resource not found
     NotFound,
-    /// The message could not be sent because the channel is disconnected.
-    #[fail(display = "Channel disconnected, could not send")]
+    /// Channel disconnected, could not send
     ChannelSend,
-    /// The requested range was too large for the API to support
-    #[fail(display = "Request range too large")]
+    /// Request range too large
     RequestTooLarge,
-    /// GRPC error.
-    #[fail(display = "gRPC failure: {}", _0)]
+    /// gRPC failure: {0}
     Grpc(GrpcError),
-    /// Retry error.
-    #[fail(display = "Internal retry failure: {}", _0)]
+    /// Internal retry failure: {0}
     RetryInternal(String),
-    /// Error converting from gRPC protobuf type to the business-logic type.
-    #[fail(display = "Conversion failure: {}", _0)]
+    /// Conversion failure: {0}
     Conversion(ConversionError),
-    /// Deserialize error.
-    #[fail(display = "Serialization")]
+    /// Serialization
     Serialization,
-    #[fail(display = "Enclave error: {}", _0)]
+    /// Enclave error: {0}
     Enclave(EnclaveError),
-    /// Consensus message error.
-    #[fail(display = "Conensus message: {}", _0)]
+    /// Conensus message: {0}
     ConsensusMsg(ConsensusMsgError),
-    /// Tx hashes not in cache.
-    #[fail(display = "Tx hashes not in cache: {:?}", _0)]
+    /// Tx hashes not in cache: {0:?}
     TxHashesNotInCache(Vec<TxHash>),
-    /// Some other error.
-    #[fail(display = "Unknown peering issue")]
+    /// Unknown peering issue
     Other,
 }
 
@@ -143,11 +132,11 @@ impl From<ConsensusMsgError> for Error {
     }
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Display)]
 pub enum PeerAttestationError {
-    #[fail(display = "gRPC failure during attestation: {}", _0)]
+    /// gRPC failure during attestation: {0}
     Grpc(GrpcError),
-    #[fail(display = "Local enclave failure during attestation: {}", _0)]
+    /// Local enclave failure during attestation: {0}
     Enclave(EnclaveError),
 }
 

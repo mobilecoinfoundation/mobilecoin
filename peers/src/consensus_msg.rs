@@ -3,7 +3,7 @@
 //! Messages used in Consensus by Peers
 
 use ed25519::signature::Error as SignatureError;
-use failure::Fail;
+use displaydoc::Display;
 use mc_common::{NodeID, ResponderId};
 use mc_consensus_scp::Msg;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -74,21 +74,21 @@ pub struct TxProposeAAD {
     pub relayed_by: ResponderId,
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Display)]
 pub enum ConsensusMsgError {
-    #[fail(display = "ZeroSlot")]
+    /// ZeroSlot
     ZeroSlot,
 
-    #[fail(display = "Ledger db error: {}", _0)]
+    /// Ledger db error: {0}
     LedgerDbError(mc_ledger_db::Error),
 
-    #[fail(display = "Serialization")]
+    /// Serialization
     Serialization,
 
-    #[fail(display = "Key error: {}", _0)]
+    /// Key error: {0}
     KeyError(KeyError),
 
-    #[fail(display = "Signature error: {}", _0)]
+    /// Signature error: {0}
     SignatureError(SignatureError),
 }
 

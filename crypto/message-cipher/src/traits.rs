@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use alloc::vec::Vec;
-use failure::Fail;
+use displaydoc::Display;
 use mc_util_serial::prost;
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
@@ -49,25 +49,25 @@ pub trait MessageCipher {
     }
 }
 
-////
 // Error types
-////
 
-#[derive(Clone, Debug, Deserialize, Fail, PartialEq, PartialOrd, Serialize)]
+/// An error which occurred while decrypting the encrypted message
+#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
 pub enum CipherError {
-    #[fail(display = "The ciphertext was too short")]
+    /// The ciphertext was too short
     TooShort,
-    #[fail(display = "The ciphertext refers to a key that doesn't exist")]
+    /// The ciphertext refers to a key that doesn't exist
     UnknownKey,
-    #[fail(display = "Mac mismatch when decrypting")]
+    /// Mac mismatch when decrypting
     MacFailure,
 }
 
-#[derive(Debug, Fail, Serialize, Deserialize)]
+/// An error occurred while decrypting an protobuf-encoded encrypted message
+#[derive(Debug, Display, Serialize, Deserialize)]
 pub enum ProstCipherError {
-    #[fail(display = "An error with the underlying cipher: {}", _0)]
+    /// Error with the underlying cipher: {0}
     Cipher(CipherError),
-    #[fail(display = "An error with prost deserialization")]
+    /// Error while deserializing
     Prost,
 }
 

@@ -11,7 +11,7 @@ use alloc::vec;
 
 use alloc::{string::String, vec::Vec};
 use core::{convert::TryFrom, fmt::Debug, hash::Hash};
-use failure::Fail;
+use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
@@ -19,23 +19,20 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// A collection of common errors for use by implementers
 #[derive(
-    Clone, Copy, Debug, Deserialize, Eq, Hash, Fail, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Copy, Debug, Deserialize, Eq, Hash, Display, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub enum KeyError {
-    #[fail(
-        display = "The length of the given data does not match the algorithm's expected length, provided {}, required {}",
-        _0, _1
-    )]
+    /// The length of the given data does not match the algorithm's expected length, provided {0}, required {1}
     LengthMismatch(usize, usize),
-    #[fail(display = "The specified algorithm does not match what was expected")]
+    /// The specified algorithm does not match what was expected
     AlgorithmMismatch,
-    #[fail(display = "The provided public key is invalid")]
+    /// The provided public key is invalid
     InvalidPublicKey,
-    #[fail(display = "The provided private key is invalid")]
+    /// The provided private key is invalid
     InvalidPrivateKey,
-    #[fail(display = "The signature was not able to be validated")]
+    /// The signature was not able to be validated
     SignatureMismatch,
-    #[fail(display = "There was an opaque error returned by another crate or library")]
+    /// There was an opaque error returned by another crate or library
     InternalError,
 }
 

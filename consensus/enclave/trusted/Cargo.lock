@@ -358,9 +358,9 @@ dependencies = [
 
 [[package]]
 name = "displaydoc"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f98e1bbbcbb1b2646d6e900da42974b641eb784851adcd4f0ae4c07c8bc7b42b"
+checksum = "3274a6bc8a6a4521291b53b9dcb8345e963fe931c3fc462a7d3ead71d7ccd30d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -408,27 +408,6 @@ dependencies = [
  "log",
  "regex",
  "termcolor",
-]
-
-[[package]]
-name = "failure"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d32e9bd16cc02eae7db7ef620b392808b89f6a5e16bb3497d159c6b92a0f4f86"
-dependencies = [
- "failure_derive",
-]
-
-[[package]]
-name = "failure_derive"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa4da3c766cd7a0db8242e326e9e4e081edd567072893ed320008189715366a4"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
- "synstructure",
 ]
 
 [[package]]
@@ -717,7 +696,6 @@ dependencies = [
  "chrono",
  "digest",
  "displaydoc",
- "failure",
  "hex",
  "hex_fmt",
  "lazy_static",
@@ -755,7 +733,7 @@ dependencies = [
 name = "mc-attest-trusted"
 version = "1.1.0"
 dependencies = [
- "failure",
+ "displaydoc",
  "mc-attest-core",
  "mc-sgx-compat",
  "mc-sgx-types",
@@ -768,7 +746,7 @@ version = "1.1.0"
 dependencies = [
  "binascii",
  "cfg-if 0.1.10",
- "failure",
+ "displaydoc",
  "hashbrown",
  "hex_fmt",
  "mc-crypto-digestible",
@@ -786,7 +764,7 @@ dependencies = [
 name = "mc-consensus-enclave-api"
 version = "1.1.0"
 dependencies = [
- "failure",
+ "displaydoc",
  "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-enclave-api",
@@ -892,7 +870,7 @@ dependencies = [
  "aead",
  "blake2",
  "digest",
- "failure",
+ "displaydoc",
  "hkdf",
  "mc-crypto-keys",
  "mc-oblivious-aes-gcm",
@@ -946,9 +924,9 @@ dependencies = [
  "binascii",
  "curve25519-dalek",
  "digest",
+ "displaydoc",
  "ed25519",
  "ed25519-dalek",
- "failure",
  "hex_fmt",
  "mc-crypto-digestible",
  "mc-crypto-digestible-signature",
@@ -969,7 +947,7 @@ name = "mc-crypto-message-cipher"
 version = "1.1.0"
 dependencies = [
  "aes-gcm",
- "failure",
+ "displaydoc",
  "generic-array",
  "mc-util-serial",
  "rand_core",
@@ -984,7 +962,7 @@ dependencies = [
  "aead",
  "aes-gcm",
  "digest",
- "failure",
+ "displaydoc",
  "generic-array",
  "hkdf",
  "mc-crypto-keys",
@@ -1180,7 +1158,7 @@ name = "mc-util-build-script"
 version = "1.1.0"
 dependencies = [
  "cargo-emit",
- "failure",
+ "displaydoc",
  "lazy_static",
  "url",
  "walkdir",

@@ -7,7 +7,7 @@ use aead::AeadMut;
 use aes_gcm::Aes256Gcm;
 use core::marker::PhantomData;
 use digest::{FixedOutput, Update};
-use failure::Fail;
+use displaydoc::Display;
 use mc_crypto_keys::{Kex, X25519};
 use serde::{Deserialize, Serialize};
 use sha2::Sha512;
@@ -16,10 +16,10 @@ use subtle::ConstantTimeEq;
 /// An enumeration of errors which can be generated while parsing a protocol
 /// name string.
 #[derive(
-    Clone, Copy, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Copy, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub enum ProtocolNameError {
-    #[fail(display = "The string given does not match the type in question")]
+    /// The string given does not match the type in question
     Unknown,
 }
 

@@ -19,19 +19,18 @@ use core::{
     hash::{Hash, Hasher},
 };
 use displaydoc::Display;
-use failure::Fail;
 use mc_sgx_types::sgx_status_t;
 use mc_util_encodings::Error as EncodingError;
 use serde::{Deserialize, Serialize};
 
 /// A collection of errors surrounding the EPID pseudonym
 #[derive(
-    Clone, Copy, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Copy, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub enum EpidPseudonymError {
-    #[fail(display = "The quote body could not be decoded")]
+    /// The quote body could not be decoded
     Decode(EncodingError),
-    #[fail(display = "The size of the data does not match the expected size")]
+    /// The size of the data does not match the expected size
     SizeMismatch,
 }
 
@@ -53,7 +52,7 @@ pub type IasQuoteResult = Result<Option<PseManifestResult>, IasQuoteError>;
 /// An enumeration of errors returned by IAS as part of the signed quote
 ///
 /// This is defined in the [IAS API v3, S4.2.1](https://software.intel.com/sites/default/files/managed/7e/3b/ias-api-spec.pdf).
-#[derive(Clone, Debug, Deserialize, Display, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum IasQuoteError {
     /// EPID signature of the ISV enclave QUOTE was invalid
     SignatureInvalid,
@@ -114,31 +113,28 @@ pub enum IasQuoteError {
 
 /// An enumeration of errors which can occur while parsing the JSON of a
 /// verification report
-#[derive(Clone, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum JsonError {
-    #[fail(display = "There was no non-whitespace data to parse.")]
+    /// There was no non-whitespace data to parse.
     NoData,
-    #[fail(display = "Not all data could be read, error at position: {}", _0)]
+    /// Not all data could be read, error at position: {0}
     IncompleteParse(usize),
-    #[fail(display = "The root of the JSON is not an object")]
+    /// The root of the JSON is not an object
     RootNotObject,
-    #[fail(display = "The '{}' field was missing from the IAS JSON", _0)]
+    /// The '{0}' field was missing from the IAS JSON"
     FieldMissing(String),
-    #[fail(display = "A field within the JSON contained an unexpected type")]
+    /// A field within the JSON contained an unexpected type
     FieldType,
 }
 
 /// An enumeration of possible errors while working with nonce values
-#[derive(Clone, Debug, Deserialize, Fail, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum NonceError {
-    #[fail(display = "The nonce was not returned")]
+    /// The nonce was not returned
     Missing,
-    #[fail(display = "The nonce does not match the expected value")]
+    /// The nonce does not match the expected value
     Mismatch,
-    #[fail(
-        display = "There was an error deserializing the nonce from bytes or a string: {}",
-        _0
-    )]
+    /// There was an error deserializing the nonce from bytes or a string: {0}
     Convert(EncodingError),
 }
 
@@ -150,13 +146,13 @@ impl From<EncodingError> for NonceError {
 
 /// An enumeration of possible errors while working with a PlatformInfoBase
 /// object
-#[derive(Clone, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum PibError {
-    #[fail(display = "There was an SGX error while updating the TCB: {}", _0)]
+    /// There was an SGX error while updating the TCB: {0}
     Sgx(SgxError),
-    #[fail(display = "SGX must be updated: {}", _0)]
+    /// SGX must be updated: {0}
     UpdateNeeded(UpdateInfo),
-    #[fail(display = "There was an error deserializing a PIB from bytes or a string")]
+    /// There was an error deserializing a PIB from bytes or a string
     Convert(EncodingError),
 }
 
@@ -197,47 +193,43 @@ pub type PseManifestResult = Result<(), PseManifestError>;
 /// as part of the signed quote.
 ///
 /// This is defined in the [IAS API v3, S4.2.1](https://software.intel.com/sites/default/files/managed/7e/3b/ias-api-spec.pdf).
-#[derive(Clone, Debug, Deserialize, Fail, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum PseManifestError {
-    #[fail(
-        display = "Security properties of the PSW cannot be verified due to unrecognized PSE Manifest."
-    )]
+    /// Security properties of the PSW cannot be verified due to unrecognized PSE Manifest
     Unknown,
-    #[fail(display = "Security properties of the PSW are invalid.")]
+    /// Security properties of the PSW are invalid
     Invalid,
-    #[fail(display = "TCB level of PSW is outdated but not identified as compromised.")]
+    /// TCB level of PSW is outdated but not identified as compromised
     OutOfDate(PlatformInfoBlob),
-    #[fail(display = "Hardware/firmware component involved in the PSW has been revoked.")]
+    /// Hardware/firmware component involved in the PSW has been revoked
     Revoked(PlatformInfoBlob),
-    #[fail(
-        display = "The PSW revocation list is out of date, use the included PIB to force an update."
-    )]
+    /// The PSW revocation list is out of date, use the included PIB to force an update
     RlVersionMismatch(PlatformInfoBlob),
-    #[fail(display = "The PSE status was not returned by IAS")]
+    /// The PSE status was not returned by IAS
     Missing,
 }
 
 /// An enumeration of errors which can occur related to a PSE Manifest Hash
-#[derive(Clone, Debug, Deserialize, Fail, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum PseManifestHashError {
-    #[fail(display = "There was a problem parsing the PSE manifest hash")]
+    /// There was a problem parsing the PSE manifest hash
     Parse(EncodingError),
-    #[fail(display = "The PSE manifest hash does not match the expected value")]
+    /// The PSE manifest hash does not match the expected value
     Mismatch,
 }
 
 /// An enumeration of failure conditions when creating or handling quotes.
-#[derive(Clone, Debug, Deserialize, Fail, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum QuoteError {
-    #[fail(display = "SGX error: {}", _0)]
+    /// SGX error: {0}
     Sgx(SgxError),
-    #[fail(display = "Text or binary conversion error: {}", _0)]
+    /// Text or binary conversion error: {0}
     Encoding(EncodingError),
-    #[fail(display = "The quote could not be verified: {}", _0)]
+    /// The quote could not be verified: {0}
     QuoteVerify(QuoteVerifyError),
-    #[fail(display = "The size '{}' is not valid for a quote", _0)]
+    /// The size '{0}' is not valid for a quote
     InvalidSize(u32),
-    #[fail(display = "The base64 encoder did not output valid UTF-8 data")]
+    /// The base64 encoder did not output valid UTF-8 data
     InvalidUtf8,
 }
 
@@ -285,7 +277,7 @@ impl From<sgx_status_t> for QuoteError {
 
 /// An enumeration of failure conditions when converting a foreign value into a
 /// QuoteSignType
-#[derive(Clone, Debug, Deserialize, Display, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum QuoteSignTypeError {
     /// Expected quote signature type {0}, got {1}
     Mismatch(QuoteSignType, QuoteSignType),
@@ -308,19 +300,19 @@ impl From<EncodingError> for QuoteSignTypeError {
 }
 
 /// An enumeration of failure conditions when verifying a Quote
-#[derive(Clone, Debug, Deserialize, Fail, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum QuoteVerifyError {
-    #[fail(display = "The quote body could not be decoded: {}", _0)]
+    /// The quote body could not be decoded: {0}
     Decode(EncodingError),
-    #[fail(display = "The quote's GID, {}, was not the expected {}", _0, _1)]
+    /// The quote's GID, {0}, was not the expected {1}
     GidMismatch(EpidGroupId, EpidGroupId),
-    #[fail(display = "The quote's linkable vs. unlinkable type was incorrect")]
+    /// The quote's linkable vs. unlinkable type was incorrect
     QuoteSignType(QuoteSignTypeError),
-    #[fail(display = "The quote's report could not be verified: {}", _0)]
+    /// The quote's report could not be verified: {0}
     ReportBodyVerify(ReportBodyVerifyError),
-    #[fail(display = "The QE version in the quote and the one in the QE's report don't match.")]
+    /// The QE version in the quote and the one in the QE's report don't match.
     QeVersionMismatch,
-    #[fail(display = "The quote appears valid, but the report is not expected.")]
+    /// The quote appears valid, but the report is not expected.
     QuotedReportMismatch,
 }
 
@@ -349,20 +341,17 @@ impl From<ReportBodyVerifyError> for QuoteVerifyError {
 }
 
 /// An enumeration of failure conditions
-#[derive(Clone, Debug, Deserialize, Fail, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum ReportBodyVerifyError {
-    #[fail(display = "The enclave was running in debug mode")]
+    /// The enclave was running in debug mode
     DebugNotAllowed,
-    #[fail(display = "Product ID mismatch, expected {}, got {}", _0, _1)]
+    /// Product ID mismatch, expected {0}, got {1}
     ProductId(u16, u16),
-    #[fail(display = "The enclave's security version was not at least {}", _0)]
+    /// The enclave's security version was not at least {0}
     SecurityVersion(u16),
-    #[fail(
-        display = "Measurement error, expected one of {:?}, got MRENCLAVE {}, and MRSIGNER {}",
-        _0, _1, _2
-    )]
+    /// Measurement error, expected one of {0:0x?}, got MRENCLAVE {1}, and MRSIGNER {2}
     MrMismatch(Vec<Measurement>, MrEnclave, MrSigner),
-    #[fail(display = "Report data mismatch")]
+    /// Report data mismatch
     DataMismatch,
 }
 
@@ -371,16 +360,16 @@ pub enum ReportBodyVerifyError {
 ///
 /// This is soon-to-be-deprecated.
 #[derive(
-    Clone, Copy, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Copy, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub enum ReportDetailsError {
-    #[fail(display = "The key type provided was unknown")]
+    /// The key type provided was unknown
     UnknownKeyType,
-    #[fail(display = "Provided output buffer is too short, must be {} bytes", _0)]
+    /// Provided output buffer is too short, must be {0} bytes
     InsufficientBuffer(usize),
-    #[fail(display = "Our public key was not as part of the report details")]
+    /// Our public key was not as part of the report details
     PubkeyMismatch,
-    #[fail(display = "Our nonce was not the one indicated in the report details")]
+    /// Our nonce was not the one indicated in the report details
     NonceMismatch,
 }
 
@@ -420,16 +409,16 @@ bitflags! {
 
 /// An enumeration of errors which can occur when verifying report from IAS
 #[derive(
-    Clone, Copy, Debug, Deserialize, Fail, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Copy, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub enum SignatureError {
-    #[fail(display = "No certificates were provided to validate against")]
+    /// No certificates were provided to validate against
     NoCerts,
-    #[fail(display = "There was an error taking the hash of the data")]
+    /// There was an error taking the hash of the data
     Hash,
-    #[fail(display = "The signature is invalid, or the signer is untrusted.")]
+    /// The signature is invalid, or the signer is untrusted
     BadSignature,
-    #[fail(display = "There was another error inside the certificate library")]
+    /// There was another error inside the certificate library
     Tls,
 }
 
@@ -606,15 +595,15 @@ impl PartialEq<sgx_status_t> for SgxError {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum TargetInfoError {
-    #[fail(display = "SGX error: {}", _0)]
+    /// SGX error: {0}
     Sgx(SgxError),
-    #[fail(display = "Quoting enclave busy")]
+    /// Quoting enclave busy
     QeBusy,
-    #[fail(display = "Error retrying: {}", _0)]
+    /// Error retrying: {0}
     Retry(String),
-    #[fail(display = "String or binary conversion error: {}", _0)]
+    /// String or binary conversion error: {0}
     Convert(EncodingError),
 }
 
@@ -644,33 +633,33 @@ impl From<sgx_status_t> for TargetInfoError {
 
 /// An enumeration of errors while parsing or verifying contents of a
 /// verification report
-#[derive(Clone, Debug, Deserialize, Fail, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
 pub enum VerifyError {
-    #[fail(display = "There was an error verifying the signature: {}", _0)]
+    /// There was an error verifying the signature: {0}
     Signature(SignatureError),
-    #[fail(display = "JSON parsing error: {}", _0)]
+    /// JSON parsing error: {0}
     Json(JsonError),
-    #[fail(display = "Expected IAS API version {}, found {}", _0, _1)]
+    /// Expected IAS API version {0}, found {1}
     VersionMismatch(f64, f64),
-    #[fail(display = "IAS nonce error: {}", _0)]
+    /// IAS nonce error: {0}
     Nonce(NonceError),
-    #[fail(display = "Error verifying the quote contents: {}", _0)]
+    /// Error verifying the quote contents: {0}
     Quote(QuoteError),
-    #[fail(display = "IAS returned an error: {}", _0)]
+    /// IAS returned an error: {0}
     IasQuote(IasQuoteError),
-    #[fail(display = "IAS returned a PSE manifest error: {}", _0)]
+    /// IAS returned a PSE manifest error: {0}
     PseManifest(PseManifestError),
-    #[fail(display = "There was an error decoding the manifest hash: {}", _0)]
+    /// There was an error decoding the manifest hash: {0}
     PseManifestHash(PseManifestHashError),
-    #[fail(display = "There was an error decoding the platform info blob: {}", _0)]
+    /// There was an error decoding the platform info blob: {0}
     Pib(PibError),
-    #[fail(display = "The EPID psuedonym could not be parsed: {}", _0)]
+    /// The EPID psuedonym could not be parsed: {0}
     EpidPseudonym(EpidPseudonymError),
-    #[fail(display = "The quote in a verification report does not match the expected quote.")]
+    /// The quote in a verification report does not match the expected quote.
     IasQuoteMismatch,
-    #[fail(display = "There was an error parsing the timestamp {}: {}", _0, _1)]
+    /// There was an error parsing the timestamp {0}: {1}
     TimestampParse(String, String),
-    #[fail(display = "There was an unknown error")]
+    /// There was an unknown error
     Unknown,
 }
 

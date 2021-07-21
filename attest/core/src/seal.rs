@@ -7,8 +7,8 @@
 
 use crate::SgxError;
 use alloc::vec::Vec;
-use core::convert::TryFrom;
-use failure::Fail;
+use displaydoc::Display;
+use core::{convert::TryFrom, fmt::Display as DisplayTrait};
 use prost::Message;
 
 /// A `Sealed<T>` is a Sealed representation of a T, with some additional
@@ -24,7 +24,7 @@ pub trait Sealed: AsRef<IntelSealed> + Into<IntelSealed> {
     /// Type for the mac bytes
     type MacType: AsRef<[u8]>;
     /// Type for the parsing error, which must generalize ParseSealedError
-    type Error: Fail + From<ParseSealedError> + From<SgxError>;
+    type Error: DisplayTrait + From<ParseSealedError> + From<SgxError>;
 
     /// Given an object, get the bytes to be used as mac text when it is sealed.
     fn compute_mac_txt(obj: &Self::Source) -> Self::MacType;
@@ -187,25 +187,13 @@ pub fn get_add_mac_txt_offset(sealed_data: &[u8]) -> Result<u32, ParseSealedErro
     Ok(result)
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Fail)]
+#[derive(Clone, Debug, Display, Eq, PartialEq)]
 pub enum ParseSealedError {
-    /// The bytes were too short to contain a sgx_sealed_data_t header
-    #[fail(
-        display = "Byte range is too short to be a sealed blob: {} < {}",
-        _0, _1
-    )]
+    /// Byte range is too short to be a sealed blob: {0} < {1}
     TooShort(usize, usize),
-    /// The mac_text_offset parameter pointed out of the buffer
-    #[fail(
-        display = "The mac text offset is invalid, because it points outside the buffer: {} > {}",
-        _0, _1
-    )]
+    /// The mac text offset is invalid, because it points outside the buffer: {0} > {1}
     MacTxtOffsetOutOfBounds(usize, usize),
-    /// Unexpected mac text length
-    #[fail(
-        display = "The mac text length doesn't match what we expected: actual {} != {}",
-        _0, _1
-    )]
+    /// The mac text length doesn't match what we expected: actual {0} != {1}
     UnexpectedMacTextLen(usize, usize),
 }
 

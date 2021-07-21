@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use failure::Fail;
+use displaydoc::Display;
 use rusoto_core::{region::ParseRegionError, Region};
 use std::{path::PathBuf, str::FromStr};
 use url::Url;
@@ -20,18 +20,18 @@ pub struct Uri {
     pub destination: Destination,
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Display)]
 pub enum UriParseError {
-    #[fail(display = "Url parse error: {}", _0)]
+    /// Url parse error: {0}
     UrlParse(url::ParseError),
 
-    #[fail(display = "Unknown scheme: {}", _0)]
+    /// Unknown scheme: {0}
     UnknownScheme(String),
 
-    #[fail(display = "Missing path")]
+    /// Missing path
     MissingPath,
 
-    #[fail(display = "Invalid S3 region: {}", _0)]
+    /// Invalid S3 region: {0}
     InvalidS3Region(ParseRegionError),
 }
 

@@ -12,7 +12,7 @@ use aead::{AeadMut, NewAead};
 use alloc::vec::Vec;
 use core::convert::{TryFrom, TryInto};
 use digest::{BlockInput, Digest, FixedOutput, Reset, Update};
-use failure::Fail;
+use displaydoc::Display;
 use generic_array::typenum::Unsigned;
 use mc_crypto_keys::{Kex, KexReusablePrivate, ReprBytes};
 use mc_util_from_random::FromRandom;
@@ -21,36 +21,36 @@ use serde::{Deserialize, Serialize};
 
 /// The public error messages which can be included in this construction
 #[derive(
-    Copy, Clone, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Copy, Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub enum HandshakeError {
-    #[fail(display = "The initiator identity pubkey was not provided")]
+    /// The initiator identity pubkey was not provided
     MissingInitiatorIdentity,
-    #[fail(display = "The initiator ephemeral pubkey was not provided")]
+    /// The initiator ephemeral pubkey was not provided
     MissingInitiatorEphemeral,
-    #[fail(display = "The responder identity pubkey was not provided")]
+    /// The responder identity pubkey was not provided
     MissingResponderIdentity,
-    #[fail(display = "The responder ephemeral pubkey was not provided")]
+    /// The responder ephemeral pubkey was not provided
     MissingResponderEphemeral,
-    #[fail(display = "The initiator identity pubkey was already provided")]
+    /// The initiator identity pubkey was already provided
     ExistingInitiatorIdentity,
-    #[fail(display = "The initiator ephemeral pubkey was already provided")]
+    /// The initiator ephemeral pubkey was already provided
     ExistingInitiatorEphemeral,
-    #[fail(display = "The responder identity pubkey was already provided")]
+    /// The responder identity pubkey was already provided
     ExistingResponderIdentity,
-    #[fail(display = "The responder ephemeral pubkey was already provided")]
+    /// The responder ephemeral pubkey was already provided
     ExistingResponderEphemeral,
-    #[fail(display = "Attempted to write a message when a read was expected)")]
+    /// Attempted to write a message when a read was expected)
     WriteOutOfOrder,
-    #[fail(display = "Attempted to read a message when a write was expected)")]
+    /// Attempted to read a message when a write was expected)
     ReadOutOfOrder,
-    #[fail(display = "An error occurred during symmetric encryption/decryption")]
+    /// An error occurred during symmetric encryption/decryption: {0}
     Symmetric(SymmetricError),
-    #[fail(display = "An error occurred while attempting to parse a public key")]
+    /// An error occurred while attempting to parse a public key
     KeyParse,
-    #[fail(display = "Message is too short")]
+    /// Message is too short
     MessageTooShort,
-    #[fail(display = "Unknown error")]
+    /// Unknown error
     Unknown,
 }
 

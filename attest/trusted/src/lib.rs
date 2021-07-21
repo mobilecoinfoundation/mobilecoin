@@ -11,7 +11,7 @@ use alloc::vec;
 
 use alloc::vec::Vec;
 use core::convert::TryFrom;
-use failure::Fail;
+use displaydoc::Display;
 use mc_attest_core::{
     IntelSealed, ParseSealedError, Report, ReportData, Sealed, SgxError, SgxResult, TargetInfo,
 };
@@ -97,13 +97,11 @@ impl SealAlgo for IntelSealed {
 
 /// Represents an error that can occur during sealing an IntelSealed blob
 /// This is the error type of seal_raw
-#[derive(Clone, Debug, Eq, Fail, PartialEq)]
+#[derive(Clone, Debug, Display, Eq, PartialEq)]
 pub enum IntelSealingError {
-    /// Sgx failed
-    #[fail(display = "SGX error: {}", _0)]
+    /// SGX error: {0}
     Sgx(SgxError),
-    /// Could not interpret mac text
-    #[fail(display = "Bad sealed format: {:?}", _0)]
+    /// Bad sealed format: {0}
     SealFormat(ParseSealedError),
 }
 
@@ -137,13 +135,11 @@ fn error_conversion_helper<T: From<SgxError> + From<ParseSealedError>>(
 }
 
 /// Represents an error that can occur during unsealing
-#[derive(Clone, Debug, Eq, Fail, PartialEq)]
+#[derive(Clone, Debug, Display, Eq, PartialEq)]
 pub enum UnsealingError {
-    /// Sgx failed
-    #[fail(display = "SGX error: {}", _0)]
+    /// SGX error: {0}
     SgxError(SgxError),
-    /// Prost failed to decode
-    #[fail(display = "Prost decode error: {}", _0)]
+    /// Prost decode error: {0}
     Decode(prost::DecodeError),
 }
 

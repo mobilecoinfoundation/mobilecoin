@@ -10,16 +10,16 @@ use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     str::FromStr,
 };
-use failure::Fail;
+use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use serde::{Deserialize, Serialize};
 
 /// Potential parse errors
-#[derive(Debug, Fail, Ord, PartialOrd, Eq, PartialEq, Clone)]
+#[derive(Debug, Display, Eq, Ord, PartialOrd, PartialEq, Clone)]
 pub enum ResponderIdParseError {
-    #[fail(display = "Failure from Utf8 for {:?}", _0)]
+    /// Failure from Utf8 for {0:0x?}
     FromUtf8Error(Vec<u8>),
-    #[fail(display = "Invalid Format for {}", _0)]
+    /// Invalid Format for {0}
     InvalidFormat(String),
 }
 
