@@ -33,7 +33,7 @@ use crate::{
 
 use alloc::vec::Vec;
 use blake2::Blake2b;
-use failure::Fail;
+use displaydoc::Display;
 use mc_crypto_keys::{Kex, Ristretto};
 use mc_oblivious_aes_gcm::{Aes256Gcm, CtDecryptResult};
 use rand_core::{CryptoRng, RngCore};
@@ -163,9 +163,9 @@ impl CryptoBox<Ristretto> for VersionedCryptoBox {
     }
 }
 
-#[derive(Fail, Debug)]
+#[derive(Debug, Display)]
 pub enum VersionError {
-    #[fail(display = "No mutually acceptable CryptoBox versions could be found")]
+    /// No mutually acceptable CryptoBox versions could be found
     NoAcceptableVersions,
 }
 

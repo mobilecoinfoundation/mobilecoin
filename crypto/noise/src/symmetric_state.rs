@@ -14,7 +14,7 @@ use aead::{AeadMut, NewAead};
 use alloc::vec::Vec;
 use core::{convert::TryInto, marker::PhantomData};
 use digest::{BlockInput, FixedOutput, Reset, Update};
-use failure::Fail;
+use displaydoc::Display;
 use generic_array::typenum::Unsigned;
 use hkdf::{Hkdf, InvalidLength};
 use mc_crypto_keys::{Kex, KexPublic, ReprBytes};
@@ -22,12 +22,12 @@ use secrecy::{ExposeSecret, SecretVec};
 use serde::{Deserialize, Serialize};
 
 #[derive(
-    Copy, Clone, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Copy, Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub enum SymmetricError {
-    #[fail(display = "Cipher state error: {}", _0)]
+    /// Cipher state error: {0}
     Cipher(CipherError),
-    #[fail(display = "Tried to expand too many keys")]
+    /// Tried to expand too many keys
     KdfExpansion,
 }
 

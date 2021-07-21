@@ -7,7 +7,7 @@ edition = "2018"
 [features]
 default = []
 std = [
-    "failure/std",
+    "displaydoc/std",
     "mc-util-serial/std",
 ]
 log = [
@@ -38,7 +38,7 @@ loggers = [
 [dependencies]
 cfg-if = "0.1"
 mc-crypto-digestible = { path = "../crypto/digestible" }
-failure = { version = "0.1.8", default-features = false, features = ["derive"] }
+displaydoc = { version = "0.2", default-features = false }
 hashbrown = { version = "0.6", default-features = false, features = ["serde", "nightly"] }
 mc-crypto-keys = { path = "../crypto/keys", default-features = false }
 mc-crypto-rand = { path = "../crypto/rand" }

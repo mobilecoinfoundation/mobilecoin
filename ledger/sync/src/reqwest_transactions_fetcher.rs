@@ -5,7 +5,7 @@
 //! to get transaction data from S3.
 
 use crate::transactions_fetcher_trait::{TransactionFetcherError, TransactionsFetcher};
-use failure::Fail;
+use displaydoc::Display;
 use mc_api::{block_num_to_s3block_path, blockchain, merged_block_num_to_s3block_path};
 use mc_common::{
     logger::{log, Logger},
@@ -36,21 +36,21 @@ pub const DEFAULT_MERGED_BLOCKS_BUCKET_SIZES: &[u64] = &[10000, 1000, 100];
 /// Maximum number of pre-fetched blocks to keep in cache.
 pub const MAX_PREFETCHED_BLOCKS: usize = 10000;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Display)]
 pub enum ReqwestTransactionsFetcherError {
-    #[fail(display = "Url parse error on {}: {}", _0, _1)]
+    /// Url parse error on {0}: {1}
     UrlParse(String, url::ParseError),
 
-    #[fail(display = "reqwest error on {}: {:?}", _0, _1)]
+    /// reqwest error on {0}: {1:?}
     ReqwestError(String, ReqwestError),
 
-    #[fail(display = "IO error on {}: {:?}", _0, _1)]
+    /// IO error on {0}: {1:?}
     IO(String, std::io::Error),
 
-    #[fail(display = "Received an invalid block from {}: {}", _0, _1)]
+    /// Received an invalid block from {0}: {1}
     InvalidBlockReceived(String, String),
 
-    #[fail(display = "No URLs configured.")]
+    /// No URLs configured
     NoUrlsConfigured,
 }
 

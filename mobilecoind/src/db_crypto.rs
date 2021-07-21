@@ -10,7 +10,7 @@ use aes_gcm::{
     AeadCore, Aes256Gcm, Error as AeadError, NewAead,
 };
 use blake2::{Blake2b, Digest};
-use failure::Fail;
+use displaydoc::Display;
 use lmdb::{
     Database, DatabaseFlags, Environment, Error as LmdbError, RwTransaction, Transaction,
     WriteFlags,
@@ -33,21 +33,21 @@ const ENCRYPTION_STATE_KEY: &str = "db_encrypted";
 const ENCRYPTION_STATE_VAL: &str = "true";
 
 /// Possible db crypto error types.
-#[derive(Debug, Fail)]
+#[derive(Debug, Display)]
 pub enum DbCryptoError {
-    #[fail(display = "Invalid password length")]
+    /// Invalid password length
     InvalidPasswordLength,
 
-    #[fail(display = "Invalid password")]
+    /// Invalid password
     InvalidPassword,
 
-    #[fail(display = "Password needed")]
+    /// Password needed
     PasswordNeeded,
 
-    #[fail(display = "AEAD: {}", _0)]
+    /// AEAD: {0}
     Aead(AeadError),
 
-    #[fail(display = "LMDB: {}", _0)]
+    /// LMDB: {0}
     Lmdb(LmdbError),
 }
 

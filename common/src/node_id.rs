@@ -9,25 +9,25 @@ use core::{
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use failure::Fail;
+use displaydoc::Display;
 use hex_fmt::HexFmt;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{Ed25519Public, KeyError};
 use serde::{Deserialize, Serialize};
 
 #[derive(
-    Clone, Copy, Debug, Deserialize, Fail, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize,
+    Clone, Copy, Debug, Deserialize, Display, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub enum NodeIDError {
-    #[fail(display = "Could not create NodeID due to serialization failure")]
+    /// Could not create NodeID due to serialization failure
     Deserialization,
-    #[fail(display = "The input length was too short or not right (padding)")]
+    /// The input length was too short or not right (padding)
     InvalidInputLength,
-    #[fail(display = "The output buffer was too short for the data")]
+    /// The output buffer was too short for the data
     InvalidOutputLength,
-    #[fail(display = "The input data contained invalid characters")]
+    /// The input data contained invalid characters
     InvalidInput,
-    #[fail(display = "Could not parse public key for NodeID")]
+    /// Could not parse public key for NodeID
     KeyParseError,
 }
 

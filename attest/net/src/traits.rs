@@ -2,7 +2,7 @@
 
 //! A collection of generic traits for remote attestation providers
 
-use failure::Fail;
+use displaydoc::Display;
 use mc_attest_core::{EpidGroupId, IasNonce, Quote, QuoteError, SigRL, VerificationReport};
 use mc_util_encodings::Error as EncodingError;
 use reqwest::{header::ToStrError, Error as ReqwestError};
@@ -10,28 +10,29 @@ use std::result::Result as StdResult;
 
 /// An enumeration of potential client errors when communicating with a
 /// remote attestation service.
-#[derive(Debug, Fail)]
+#[derive(Debug, Display)]
 pub enum Error {
-    #[fail(display = "There was an error while handling a quote object")]
+    /// There was an error while handling a quote object
     Quote(QuoteError),
-    #[fail(display = "There was an error making a request to the IAS API: {}", _0)]
+    /// There was an error making a request to the IAS API: {0}
     Reqwest(ReqwestError),
-    #[fail(
-        display = "There was an converting a response received from the IAS API: {}",
-        _0
-    )]
+    /// There was an converting a response received from the IAS API: {0}
     Encoding(EncodingError),
-    #[fail(display = "There is no signature header in the verification report response")]
+    /// There is no signature header in the verification report response
     MissingSignatureError,
-    #[fail(display = "A header header string could not be parsed: {}", _0)]
+    /// A header header string could not be parsed: {0}
     ToStrError(ToStrError),
-    #[fail(display = "The verification report response did not include any signing certificates")]
+    /**
+     * The verification report response did not include any signing
+     * certificates
+     */
     MissingSigningCertsError,
-    #[fail(
-        display = "The verification report response did not contain valid PEM for it's signing certificates"
-    )]
+    /**
+     * The verification report response did not contain valid PEM for it's
+     * signing certificates
+     */
     BadSigningCertsError,
-    #[fail(display = "The given API key is not a valid header value")]
+    /// The given API key is not a valid header value
     BadApiKey,
 }
 
