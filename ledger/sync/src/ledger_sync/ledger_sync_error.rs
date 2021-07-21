@@ -3,39 +3,39 @@
 //! Errors related to ledger synchronization
 
 use crate::transactions_fetcher_trait::TransactionFetcherError;
-use failure::Fail;
+use displaydoc::Display;
 use mc_connection::Error as ConnectionError;
 use mc_ledger_db::Error as LedgerDbError;
 use retry::Error as RetryError;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Display)]
 pub enum LedgerSyncError {
-    #[fail(display = "Ledger db: {0}", _0)]
+    /// Ledger db: {0}
     DBError(LedgerDbError),
 
-    #[fail(display = "No potentially safe blocks.")]
+    /// No potentially safe blocks
     NoSafeBlocks,
 
-    #[fail(display = "Empty vec of potentially safe blocks.")]
+    /// Empty vec of potentially safe blocks
     EmptyBlockVec,
 
-    #[fail(display = "Transactions and block do not match.")]
+    /// Transactions and block do not match
     TransactionsAndBlockMismatch,
 
-    #[fail(display = "Consensus connection failure: {:?}", _0)]
+    /// Consensus connection failure: {0:?}
     Consensus(RetryError<ConnectionError>),
 
     // Super not a fan of this, but the error story here is really complex
-    #[fail(display = "Transaction fetch failure: {:?}", _0)]
+    /// Transaction fetch failure: {0:?}
     TransactionFetcher(Box<dyn TransactionFetcherError>),
 
-    #[fail(display = "Api conversion error: {:?}", _0)]
+    /// Api conversion error: {0:?}
     ApiConversionError(mc_api::ConversionError),
 
-    #[fail(display = "Invalid block ID.")]
+    /// Invalid block ID
     InvalidBlockId,
 
-    #[fail(display = "No transaction data.")]
+    /// No transaction data
     NoTransactionData,
 }
 
