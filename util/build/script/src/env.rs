@@ -75,13 +75,13 @@ impl TryFrom<&str> for Endianness {
 /// An enumeration of errors which can occur when parsing the build environment
 #[derive(Clone, Debug, Display)]
 pub enum EnvironmentError {
-    /// Environment variable {0} not readable: {0}
+    /// Environment variable {0} not readable: {1}
     Var(String, VarError),
     /// Endianness error: {0}
     Endianness(EndiannessError),
     /// Target family error: {0}
     TargetFamily(TargetFamilyError),
-    /// Could not parse {0}: {1}"
+    /// Could not parse {0}: {1}
     ParseInt(String, ParseIntError),
     /// Output directory badly constructed: {0:?}
     OutDir(PathBuf),
