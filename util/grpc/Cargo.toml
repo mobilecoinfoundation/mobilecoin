@@ -29,7 +29,7 @@ protobuf = "2.22.1"
 rand = "0.8"
 sha2 = "0.9"
 signal-hook = "0.3"
-subtle = { version = "2.2", default-features = false, features = ["i128"] }
+subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
 zeroize = { version = "1", default-features = false }
 
 [build-dependencies]
