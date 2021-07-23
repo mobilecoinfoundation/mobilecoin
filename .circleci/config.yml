@@ -138,8 +138,10 @@ commands:
 
             # Configure cargo-trim with the project's Cargo.lock files
             mkdir -p ~/.config
-            cargo trim --directory "$(pwd)"
-            cargo trim --directory "$(pwd)/consensus/enclave/trusted"
+            cargo trim init
+            pushd "consensus/enclave/trusted"
+            cargo trim init
+            popd
 
             # Clean dependencies not in the Cargo.lock
             time cargo trim --orphan-clean
