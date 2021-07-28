@@ -50,7 +50,7 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
         sys.exit()
 
     # create and fund a new MobileCoin TestNet account
-    recipient_entropy = mobilecoind.generate_entropy().entropy
+    recipient_entropy = mobilecoind.generate_entropy()
     recipient_account_key = mobilecoind.get_account_key(recipient_entropy).account_key
     print("# generated entropy {} for email {}".format(recipient_entropy.hex(), new_user_email))
 
