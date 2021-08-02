@@ -42,7 +42,7 @@ if __name__ == '__main__':
     print("\n...testing `mobilecoind.add_monitor`")
     print("{:>18}, {:>18}".format("num_subaddresses", "duration (sec)"))
     for count in subaddress_counts:
-        entropy_bytes = mobilecoind.generate_entropy().entropy
+        entropy_bytes = mobilecoind.generate_entropy()
         account_key = mobilecoind.get_account_key(entropy_bytes).account_key
         start = datetime.datetime.now()
         monitor_id = mobilecoind.add_monitor(account_key,
@@ -86,7 +86,7 @@ if __name__ == '__main__':
         print("\n...testing block processing rate with new monitor with {} subaddresses".format(count))
         accum_count = 0
         accum_rate_times_count = 0
-        entropy_bytes = mobilecoind.generate_entropy().entropy
+        entropy_bytes = mobilecoind.generate_entropy()
         account_key = mobilecoind.get_account_key(entropy_bytes).account_key
         monitor_id = mobilecoind.add_monitor(account_key,
                                              first_subaddress = mobilecoin.DEFAULT_SUBADDRESS_INDEX,

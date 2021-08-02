@@ -142,16 +142,29 @@ class Client(object):
     # Utilities
     #
 
-    def generate_entropy(self):
+    def generate_entropy(self) -> bytes:
         """ Generate 32 bytes of entropy using a cryptographically secure RNG.
         """
-        return self.stub.GenerateEntropy(empty_pb2.Empty())
+        response = self.stub.GenerateRootEntropy(empty_pb2.Empty())
+        return response.root_entropy
+
+    def generate_mnemonic(self) -> str:
+        """ Generate entropy mnemonic using a cryptographically secure RNG.
+        """
+        response = self.stub.GenerateMnemonic(empty_pb2.Empty())
+        return response.mnemonic
 
     def get_account_key(self, entropy: bytes):
         """ Get the private keys from entropy.
         """
-        request = GetAccountKeyRequest(entropy=entropy)
-        return self.stub.GetAccountKey(request)
+        request = GetAccountKeyFromRootEntropyRequest(root_entropy=entropy)
+        return self.stub.GetAccountKeyFromRootEntropy(request)
+
+    def get_account_key_from_mnemonic(self, mnemonic: str):
+        """ Get the private keys from the entropy mnemonic.
+        """
+        request = GetAccountKeyFromMnemonicRequest(mnemonic=mnemonic)
+        return self.stub.GetAccountKeyFromMnemonic(request)
 
     def get_public_address(self,
                            monitor_id: bytes,

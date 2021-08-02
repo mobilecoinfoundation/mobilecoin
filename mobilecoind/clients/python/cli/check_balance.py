@@ -20,13 +20,23 @@ if __name__ == '__main__':
         description='Processes all downloaded blocks to display current balance information for a provided master key.'
     )
     parser.add_argument('-k', '--key', help='account master key', type=str, required=True)
+    parser.add_argument('-m', '--mnemonic', help='account key as mnemonic string', type=str)
     parser.add_argument('-s', '--subaddress', help='(optional) subaddress', nargs='?', const=mobilecoin.DEFAULT_SUBADDRESS_INDEX, type=int, default=mobilecoin.DEFAULT_SUBADDRESS_INDEX)
     parser.add_argument('--first-block', help='(optional) first ledger block to scan', nargs='?', const=0, type=int, dest='first_block', default=0)
     args = parser.parse_args()
 
+    # determine account key from entropy
+    if args.key:
+        entropy_bytes = bytes.fromhex(args.key)
+        account_key = mobilecoind.get_account_key(entropy_bytes).account_key
+        entropy_display = entropy_bytes.hex()
+    elif:
+        account_key = mobilecoind.get_account_key_from_mnemonic(args.mnemonic)
+        entropy_display = mnemonic
+    else:
+        raise ValueError("One of --mnemonic or --key must be specified!")
+
     # create a monitor
-    entropy_bytes = bytes.fromhex(args.key)
-    account_key = mobilecoind.get_account_key(entropy_bytes).account_key
     monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=args.subaddress, first_block=args.first_block).monitor_id
 
     # Wait for the monitor to process the complete ledger (this also downloads the complete ledger)
@@ -49,7 +59,7 @@ if __name__ == '__main__':
 
     # print account information
     print("\n")
-    print("    {:<18}{}".format("Master Key:", args.key))
+    print("    {:<18}{}".format("Master Key:", entropy_display))
     print("    {:<18}{}".format("Subaddress Index:", args.subaddress))
     print("    {:<18}{}".format("Address Code:", public_address.b58_code))
     print("    {:<18}{}".format("Address URL:", "mob58://"+ public_address.b58_code))
