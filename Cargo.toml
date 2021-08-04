@@ -119,6 +119,23 @@ overflow-checks = false
 rpath = true
 
 [patch.crates-io]
+# Fixes for nightly-2021-07-21
+blake2 = { git = "https://github.com/jcape/RustCrypto-hashes.git", rev = "fc927fb0709b93ace4a5a1f50999a2b679f8c502" }
+
+# Not-yet-released version that depends on newer crates.
+bulletproofs = { git = "https://github.com/eranrund/bulletproofs", rev = "8a7c9cdd1efafa3ad68cd65676302f925de68373" }
+
+# Fixes for nightly-2021-07-21
+curve25519-dalek = { git = "https://github.com/jcape/curve25519-dalek.git", rev = "46d07765b228d43fe910eb6a1769143f8fc366bb" }
+
+# See https://github.com/commure/datatest/pull/30
+datatest = { git = "https://github.com/jcape/datatest.git", rev = "04fcb4bf8ccb6b216f8d7769446f47b1a5cd0e66" }
+
+# ed25519-dalek depends on rand 0.7 which in turns depends on a broken version of packed_simd
+# This is a PR that moves it to newer rand
+# See https://github.com/dalek-cryptography/ed25519-dalek/pull/160
+ed25519-dalek = { git = "https://github.com/eranrund/ed25519-dalek.git", rev = "484369672f45d776fe13fdd17618aed2f4047909" }
+
 # grpcio patched with metadata
 grpcio = { git = "https://github.com/mobilecoinofficial/grpc-rs", rev = "10ba9f8f4546916c7e7532c4d1c6cdcf5df62553" }
 protoc-grpcio = { git = "https://github.com/mobilecoinofficial/protoc-grpcio", rev = "9e63f09ec408722f731c9cb60bf06c3d46bcabec" }
@@ -136,24 +153,13 @@ prost-derive = { git = "https://github.com/danburkert/prost", rev = "6113789f70b
 # Override lmdb-rkv for a necessary bugfix (see https://github.com/mozilla/lmdb-rs/pull/80)
 lmdb-rkv = { git = "https://github.com/mozilla/lmdb-rs", rev = "df1c2f5" }
 
+# Overridden since we need a commit that uprevs a bunch of dependencies.
+schnorrkel = { git = "https://github.com/mobilecoinofficial/schnorrkel", rev = "fa27d0ed32d251a27399a23d3ef69611acb14d56" }
+
 # Fixes the following:
 # * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.
 #   See: https://github.com/pyfisch/cbor/pull/198
 serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a7c1d523aae1ec4aa7386f402cb2f4341b5" }
 
-# Not-yet-released version that depends on newer crates.
-bulletproofs = { git = "https://github.com/eranrund/bulletproofs", rev = "8a7c9cdd1efafa3ad68cd65676302f925de68373" }
-
-# See https://github.com/commure/datatest/pull/30
-datatest = { git = "https://github.com/cormacrelf/datatest.git", rev = "0c12efa" }
-
-# ed25519-dalek depends on rand 0.7 which in turns depends on a broken version of packed_simd
-# This is a PR that moves it to newer rand
-# See https://github.com/dalek-cryptography/ed25519-dalek/pull/160
-ed25519-dalek = { git = "https://github.com/eranrund/ed25519-dalek.git", rev = "484369672f45d776fe13fdd17618aed2f4047909" }
-
 # Bump curve25519-dalek version to 4.0.0-pre0
-x25519-dalek = { git = "https://github.com/eranrund/x25519-dalek.git", rev = "57c04e5c5aca3551c015167d8176393fbe76dc65" }
-
-# Overridden since we need a commit that uprevs a bunch of dependencies.
-schnorrkel = { git = "https://github.com/mobilecoinofficial/schnorrkel", rev = "fa27d0ed32d251a27399a23d3ef69611acb14d56" }
+x25519-dalek = { git = "https://github.com/jcape/x25519-dalek.git", rev = "c012698737563a490d1ac9516d29cd6e0bb7319e" }

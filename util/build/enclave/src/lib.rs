@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-#![feature(external_doc)]
-#![doc(include = "../README.md")]
+#![doc = include_str!("../README.md")]
 
 use cargo_emit::{rerun_if_changed, rustc_env, warning};
 use cargo_metadata::{CargoOpt, Error as MetadataError, Metadata, MetadataCommand};

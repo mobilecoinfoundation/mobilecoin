@@ -275,8 +275,7 @@ dependencies = [
 [[package]]
 name = "blake2"
 version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10a5720225ef5daecf08657f23791354e1685a8c91a4c60c7f3d3b2892f978f4"
+source = "git+https://github.com/jcape/RustCrypto-hashes.git?rev=fc927fb0709b93ace4a5a1f50999a2b679f8c502#fc927fb0709b93ace4a5a1f50999a2b679f8c502"
 dependencies = [
  "crypto-mac 0.8.0",
  "digest 0.9.0",
@@ -851,9 +850,8 @@ dependencies = [
 
 [[package]]
 name = "curve25519-dalek"
-version = "4.0.0-pre.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78f72b0f5a8f0cc80b7e4b6d98efe1adc0b7b151a618ecd7cd4d18e6d776e31a"
+version = "4.0.0-pre.1"
+source = "git+https://github.com/jcape/curve25519-dalek.git?rev=46d07765b228d43fe910eb6a1769143f8fc366bb#46d07765b228d43fe910eb6a1769143f8fc366bb"
 dependencies = [
  "byteorder",
  "digest 0.9.0",
@@ -867,7 +865,7 @@ dependencies = [
 [[package]]
 name = "datatest"
 version = "0.6.4"
-source = "git+https://github.com/cormacrelf/datatest.git?rev=0c12efa#0c12efabd3c0d1769b62d241f51aced05b35df11"
+source = "git+https://github.com/jcape/datatest.git?rev=04fcb4bf8ccb6b216f8d7769446f47b1a5cd0e66#04fcb4bf8ccb6b216f8d7769446f47b1a5cd0e66"
 dependencies = [
  "ctor",
  "datatest-derive",
@@ -882,7 +880,7 @@ dependencies = [
 [[package]]
 name = "datatest-derive"
 version = "0.6.4"
-source = "git+https://github.com/cormacrelf/datatest.git?rev=0c12efa#0c12efabd3c0d1769b62d241f51aced05b35df11"
+source = "git+https://github.com/jcape/datatest.git?rev=04fcb4bf8ccb6b216f8d7769446f47b1a5cd0e66#04fcb4bf8ccb6b216f8d7769446f47b1a5cd0e66"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
@@ -1479,6 +1477,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hashbrown"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
+
+[[package]]
 name = "heck"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1787,11 +1791,12 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.3.2"
+version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "076f042c5b7b98f31d205f1249267e12a6518c1481e9dae9764af19b707d2292"
+checksum = "bc633605454125dec4b66843673f01c7df2b89479b32e0ed634e43a91cff62a5"
 dependencies = [
  "autocfg 1.0.0",
+ "hashbrown 0.11.2",
 ]
 
 [[package]]
@@ -2284,7 +2289,7 @@ dependencies = [
  "cfg-if 0.1.10",
  "chrono",
  "displaydoc",
- "hashbrown",
+ "hashbrown 0.6.3",
  "hex_fmt",
  "hostname 0.1.5",
  "lazy_static",
@@ -4816,12 +4821,12 @@ checksum = "5510dbde48c4c37bf69123b1f636b6dd5f8dffe1f4e358af03c46a4947dca219"
 
 [[package]]
 name = "rocket"
-version = "0.4.6"
+version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fc7e5d6aaa32ace6893ae8a1875688ca7b07d6c2428ae88e704c3623c8866e9"
+checksum = "4a7ab1dfdc75bb8bd2be381f37796b1b300c45a3c9145b34d86715e8dd90bf28"
 dependencies = [
  "atty",
- "base64 0.12.3",
+ "base64 0.13.0",
  "log 0.4.11",
  "memchr",
  "num_cpus",
@@ -4837,9 +4842,9 @@ dependencies = [
 
 [[package]]
 name = "rocket_codegen"
-version = "0.4.6"
+version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "519154b16df5fe552a8f9cd76a97793a9f5d58e34f186ab79c7b29ce1d009358"
+checksum = "1729e687d6d2cf434d174da84fb948f7fef4fac22d20ce94ca61c28b72dbcf9f"
 dependencies = [
  "devise",
  "glob 0.3.0",
@@ -4852,9 +4857,9 @@ dependencies = [
 
 [[package]]
 name = "rocket_contrib"
-version = "0.4.6"
+version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9465babd59cfb360669b60431db510f3dc3268d51ccd69fc9264e626681e596a"
+checksum = "6b6303dccab46dce6c7ac26c9b9d8d8cde1b19614b027c3f913be6611bff6d9b"
 dependencies = [
  "log 0.4.11",
  "notify",
@@ -4865,9 +4870,9 @@ dependencies = [
 
 [[package]]
 name = "rocket_http"
-version = "0.4.6"
+version = "0.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9d087de7203c7a60a0ed5cd3a135b552dbfbed9932c52d49d083e8629935257"
+checksum = "6131e6e6d38a9817f4a494ff5da95971451c2eb56a53915579fc9c80f6ef0117"
 dependencies = [
  "cookie 0.11.3",
  "hyper 0.10.16",
@@ -6630,8 +6635,8 @@ dependencies = [
 
 [[package]]
 name = "x25519-dalek"
-version = "1.1.1"
-source = "git+https://github.com/eranrund/x25519-dalek.git?rev=57c04e5c5aca3551c015167d8176393fbe76dc65#57c04e5c5aca3551c015167d8176393fbe76dc65"
+version = "2.0.0-pre.0"
+source = "git+https://github.com/jcape/x25519-dalek.git?rev=c012698737563a490d1ac9516d29cd6e0bb7319e#c012698737563a490d1ac9516d29cd6e0bb7319e"
 dependencies = [
  "curve25519-dalek",
  "rand_core 0.6.2",

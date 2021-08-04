@@ -59,16 +59,8 @@ debug-assertions = false
 overflow-checks = false
 
 [patch.crates-io]
-# prost is patched with no_std support (https://github.com/danburkert/prost/pull/319)
-# current revision is from jun 13 2020, waiting for a new prost release
-# https://github.com/danburkert/prost/issues/329
-prost = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
-prost-derive = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
-
-# Fixes the following:
-# * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.
-#   See: https://github.com/pyfisch/cbor/pull/198
-serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a7c1d523aae1ec4aa7386f402cb2f4341b5" }
+# Fixes for nightly-2021-07-21
+blake2 = { git = "https://github.com/jcape/RustCrypto-hashes.git", rev = "fc927fb0709b93ace4a5a1f50999a2b679f8c502" }
 
 # Not-yet-released version that depends on newer crates.
 bulletproofs = { git = "https://github.com/eranrund/bulletproofs", rev = "8a7c9cdd1efafa3ad68cd65676302f925de68373" }
@@ -76,19 +68,34 @@ bulletproofs = { git = "https://github.com/eranrund/bulletproofs", rev = "8a7c9c
 # Patched to disable the cpuid instruction because that is incompatible with our sgx builds.
 cpufeatures = { git = "https://github.com/mobilecoinfoundation/RustCrypto-utils.git", rev = "9a22d2a3e5b829277cc05f4833751dd86c155218" }
 
+# Fixes for nightly-2021-07-21
+curve25519-dalek = { git = "https://github.com/jcape/curve25519-dalek.git", rev = "46d07765b228d43fe910eb6a1769143f8fc366bb" }
+
 # ed25519-dalek depends on rand 0.7 which in turns depends on a broken version of packed_simd
 # This is a PR that moves it to newer rand
 # See https://github.com/dalek-cryptography/ed25519-dalek/pull/160
 ed25519-dalek = { git = "https://github.com/eranrund/ed25519-dalek.git", rev = "484369672f45d776fe13fdd17618aed2f4047909" }
 
-# Bump curve25519-dalek version to 4.0.0-pre0
-x25519-dalek = { git = "https://github.com/eranrund/x25519-dalek.git", rev = "57c04e5c5aca3551c015167d8176393fbe76dc65" }
+# Our patches for newer bindgen, no-std
+mbedtls = { git = "https://github.com/jcape/rust-mbedtls.git", rev = "1cc22203456f5a0f9e06a57d4a4e7a49582f7a90" }
+mbedtls-sys-auto = { git = "https://github.com/jcape/rust-mbedtls.git", rev = "1cc22203456f5a0f9e06a57d4a4e7a49582f7a90" }
+
+# prost is patched with no_std support (https://github.com/danburkert/prost/pull/319)
+# current revision is from jun 13 2020, waiting for a new prost release
+# https://github.com/danburkert/prost/issues/329
+prost = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
+prost-derive = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
 
 # Overridden since we need a commit that uprevs a bunch of dependencies.
 schnorrkel = { git = "https://github.com/mobilecoinofficial/schnorrkel", rev = "fa27d0ed32d251a27399a23d3ef69611acb14d56" }
 
-mbedtls = { git = "https://github.com/jcape/rust-mbedtls.git", rev = "1cc22203456f5a0f9e06a57d4a4e7a49582f7a90" }
-mbedtls-sys-auto = { git = "https://github.com/jcape/rust-mbedtls.git", rev = "1cc22203456f5a0f9e06a57d4a4e7a49582f7a90" }
+# Fixes the following:
+# * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.
+#   See: https://github.com/pyfisch/cbor/pull/198
+serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a7c1d523aae1ec4aa7386f402cb2f4341b5" }
+
+# Bump curve25519-dalek version to 4.0.0-pre0
+x25519-dalek = { git = "https://github.com/jcape/x25519-dalek.git", rev = "c012698737563a490d1ac9516d29cd6e0bb7319e" }
 
 
 [workspace]

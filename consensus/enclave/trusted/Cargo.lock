@@ -146,8 +146,7 @@ checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 [[package]]
 name = "blake2"
 version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10a5720225ef5daecf08657f23791354e1685a8c91a4c60c7f3d3b2892f978f4"
+source = "git+https://github.com/jcape/RustCrypto-hashes.git?rev=fc927fb0709b93ace4a5a1f50999a2b679f8c502#fc927fb0709b93ace4a5a1f50999a2b679f8c502"
 dependencies = [
  "crypto-mac",
  "digest",
@@ -325,9 +324,8 @@ dependencies = [
 
 [[package]]
 name = "curve25519-dalek"
-version = "4.0.0-pre.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78f72b0f5a8f0cc80b7e4b6d98efe1adc0b7b151a618ecd7cd4d18e6d776e31a"
+version = "4.0.0-pre.1"
+source = "git+https://github.com/jcape/curve25519-dalek.git?rev=46d07765b228d43fe910eb6a1769143f8fc366bb#46d07765b228d43fe910eb6a1769143f8fc366bb"
 dependencies = [
  "byteorder",
  "digest",
@@ -1806,8 +1804,8 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "x25519-dalek"
-version = "1.1.1"
-source = "git+https://github.com/eranrund/x25519-dalek.git?rev=57c04e5c5aca3551c015167d8176393fbe76dc65#57c04e5c5aca3551c015167d8176393fbe76dc65"
+version = "2.0.0-pre.0"
+source = "git+https://github.com/jcape/x25519-dalek.git?rev=c012698737563a490d1ac9516d29cd6e0bb7319e#c012698737563a490d1ac9516d29cd6e0bb7319e"
 dependencies = [
  "curve25519-dalek",
  "rand_core",
