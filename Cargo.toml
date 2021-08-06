@@ -123,7 +123,7 @@ rpath = true
 blake2 = { git = "https://github.com/jcape/RustCrypto-hashes.git", rev = "fc927fb0709b93ace4a5a1f50999a2b679f8c502" }
 
 # Not-yet-released version that depends on newer crates.
-bulletproofs = { git = "https://github.com/eranrund/bulletproofs", rev = "8a7c9cdd1efafa3ad68cd65676302f925de68373" }
+bulletproofs-og = { git = "https://github.com/jcape/bulletproofs.git", rev = "bafd274c1f1cbbac47da815dcd2bbe33c38c43eb" }
 
 # Fixes for nightly-2021-07-21
 curve25519-dalek = { git = "https://github.com/jcape/curve25519-dalek.git", rev = "46d07765b228d43fe910eb6a1769143f8fc366bb" }
@@ -134,7 +134,7 @@ datatest = { git = "https://github.com/jcape/datatest.git", rev = "04fcb4bf8ccb6
 # ed25519-dalek depends on rand 0.7 which in turns depends on a broken version of packed_simd
 # This is a PR that moves it to newer rand
 # See https://github.com/dalek-cryptography/ed25519-dalek/pull/160
-ed25519-dalek = { git = "https://github.com/eranrund/ed25519-dalek.git", rev = "484369672f45d776fe13fdd17618aed2f4047909" }
+ed25519-dalek = { git = "https://github.com/jcape/ed25519-dalek.git", rev = "5758cffaa08ed191204f3c62d8302152216e4ce5" }
 
 # grpcio patched with metadata
 grpcio = { git = "https://github.com/mobilecoinofficial/grpc-rs", rev = "10ba9f8f4546916c7e7532c4d1c6cdcf5df62553" }

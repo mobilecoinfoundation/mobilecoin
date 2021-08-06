@@ -364,9 +364,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39092a32794787acd8525ee150305ff051b0aa6cc2abaf193924f5ab05425f39"
 
 [[package]]
-name = "bulletproofs"
-version = "2.0.0"
-source = "git+https://github.com/eranrund/bulletproofs?rev=8a7c9cdd1efafa3ad68cd65676302f925de68373#8a7c9cdd1efafa3ad68cd65676302f925de68373"
+name = "bulletproofs-og"
+version = "3.0.0-pre.0"
+source = "git+https://github.com/jcape/bulletproofs.git?rev=bafd274c1f1cbbac47da815dcd2bbe33c38c43eb#bafd274c1f1cbbac47da815dcd2bbe33c38c43eb"
 dependencies = [
  "byteorder",
  "clear_on_drop",
@@ -1027,8 +1027,8 @@ dependencies = [
 
 [[package]]
 name = "ed25519-dalek"
-version = "1.0.1"
-source = "git+https://github.com/eranrund/ed25519-dalek.git?rev=484369672f45d776fe13fdd17618aed2f4047909#484369672f45d776fe13fdd17618aed2f4047909"
+version = "2.0.0-pre.0"
+source = "git+https://github.com/jcape/ed25519-dalek.git?rev=5758cffaa08ed191204f3c62d8302152216e4ce5#5758cffaa08ed191204f3c62d8302152216e4ce5"
 dependencies = [
  "curve25519-dalek",
  "ed25519",
@@ -3358,7 +3358,7 @@ name = "mc-transaction-core"
 version = "1.1.0"
 dependencies = [
  "blake2",
- "bulletproofs",
+ "bulletproofs-og",
  "curve25519-dalek",
  "displaydoc",
  "generic-array 0.14.4",
