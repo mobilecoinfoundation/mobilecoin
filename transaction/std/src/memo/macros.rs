@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+
 // Implement an enum over a list of memo types.
 //
 // All memo types must implement RegisteredMemoType.
