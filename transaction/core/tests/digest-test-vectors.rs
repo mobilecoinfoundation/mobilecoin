@@ -26,7 +26,7 @@ fn test_origin_tx_outs() -> Vec<TxOut> {
                 EncryptedFogHint::fake_onetime_hint(&mut rng),
             )
             .unwrap();
-            // FIXME
+            // Origin TxOuts do not have encrypted memo fields.
             tx_out.e_memo = None;
             tx_out
         })

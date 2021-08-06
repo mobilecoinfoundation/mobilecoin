@@ -42,6 +42,10 @@ pub struct DestinationMemo {
     /// the amount of that, and this memo, the owner can determine the sum of
     /// the inputs spent in the transaction by adding change + fee +
     /// total_outlay
+    ///
+    /// Note: It is technically possible the total outlay is not representable
+    /// as a u64. In that case, the memo builder is responsible to signal an
+    /// an error. The client may disable destination memos for this transaction.
     total_outlay: u64,
 }
 

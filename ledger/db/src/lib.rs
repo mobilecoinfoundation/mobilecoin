@@ -742,13 +742,18 @@ mod ledger_db_test {
         for block_index in 0..num_blocks {
             let outputs: Vec<TxOut> = (0..num_outputs_per_block)
                 .map(|_i| {
-                    TxOut::new(
+                    let mut result = TxOut::new(
                         initial_amount,
                         &account_key.default_subaddress(),
                         &RistrettoPrivate::from_random(&mut rng),
                         Default::default(),
                     )
-                    .unwrap()
+                    .unwrap();
+                    // Origin block doesn't have memos
+                    if block_index == 0 {
+                        result.e_memo = None
+                    };
+                    result
                 })
                 .collect();
 

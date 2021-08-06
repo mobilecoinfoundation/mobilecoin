@@ -296,12 +296,12 @@ impl TxOut {
         memo_fn: impl FnOnce(&RistrettoPublic) -> Result<MemoPayload, String>,
     ) -> Result<Self, NewTxError> {
         let target_key = create_onetime_public_key(tx_private_key, recipient).into();
-        let public_key = create_tx_public_key(tx_private_key, recipient.spend_public_key()).into();
+        let public_key = create_tx_public_key(tx_private_key, recipient.spend_public_key());
 
         let shared_secret = create_shared_secret(recipient.view_public_key(), tx_private_key);
 
         let amount = Amount::new(value, &shared_secret)?;
-        let memo = memo_fn(&public_key).map_err(|msg| NewTxError::Memo(msg))?;
+        let memo = memo_fn(&public_key).map_err(NewTxError::Memo)?;
         let e_memo = memo.encrypt(&shared_secret);
 
         Ok(TxOut {
