@@ -211,7 +211,37 @@ fn origin_block_digestible_ast() {
 
 #[test]
 fn block_contents_digestible_test_vectors() {
-    let results = test_blockchain();
+    let mut results = test_blockchain();
+
+    // Test digest of block contents
+    assert_eq!(
+        results[0].1.hash().0,
+        [
+            50, 42, 154, 188, 35, 247, 163, 87, 61, 59, 82, 164, 186, 4, 72, 210, 76, 213, 151,
+            223, 66, 55, 136, 186, 157, 33, 91, 190, 42, 17, 253, 118
+        ]
+    );
+    assert_eq!(
+        results[1].1.hash().0,
+        [
+            247, 31, 5, 1, 203, 138, 88, 158, 24, 207, 237, 227, 114, 101, 55, 137, 19, 180, 68,
+            177, 232, 192, 225, 22, 151, 232, 239, 137, 39, 230, 118, 219
+        ]
+    );
+    assert_eq!(
+        results[2].1.hash().0,
+        [
+            228, 130, 116, 249, 30, 143, 159, 34, 37, 156, 76, 25, 254, 136, 205, 157, 69, 167,
+            179, 156, 223, 149, 164, 110, 140, 105, 169, 233, 46, 235, 98, 194
+        ]
+    );
+
+    // Now remove all memos and run the old test vectors
+    for (_, ref mut block_contents) in results.iter_mut() {
+        for ref mut output in block_contents.outputs.iter_mut() {
+            output.e_memo = None;
+        }
+    }
 
     // Test digest of block contents
     assert_eq!(
