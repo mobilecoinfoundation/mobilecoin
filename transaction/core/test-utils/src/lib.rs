@@ -210,7 +210,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                             &RistrettoPrivate::from_random(rng),
                             Default::default(),
                         )
-                        .unwrap();
+                        .expect("Could not create origin block TxOut");
                         // The origin block did not historically have memo fields
                         tx_out.e_memo = None;
                         tx_out
