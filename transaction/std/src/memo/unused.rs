@@ -19,8 +19,8 @@ impl From<&[u8; 44]> for UnusedMemo {
     }
 }
 
-impl Into<[u8; 44]> for UnusedMemo {
-    fn into(self) -> [u8; 44] {
+impl From<UnusedMemo> for [u8; 44] {
+    fn from(_: UnusedMemo) -> [u8; 44] {
         [0u8; 44]
     }
 }

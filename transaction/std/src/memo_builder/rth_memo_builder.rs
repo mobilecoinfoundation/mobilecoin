@@ -31,6 +31,10 @@ use mc_transaction_core::MemoPayload;
 /// A memo builder configured this way will use 0x0100 Authenticated Sender Memo
 /// on regular outputs and 0x0200 Destination Memo on change outputs.
 ///
+/// If you have a payment request id, you specify it like this:
+///
+///   mb.set_payment_request_id(request_id);
+///
 /// If a payment request id is specified, then 0x0101 Authenticated Sender With
 /// Payment Request Id Memo is used instead of 0x0100.
 ///
@@ -38,7 +42,7 @@ use mc_transaction_core::MemoPayload;
 /// regular outputs.
 ///
 /// If mb.enable_destination_memo() is not called 0x0000 Unused will appear on
-/// change outputs.
+/// change outputs, instead of 0x0200 Destination Memo.
 ///
 /// When invoking the transaction builder, the change output must be created
 /// last. If a normal output is created after the change output, an error will

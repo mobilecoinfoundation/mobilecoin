@@ -137,13 +137,13 @@ impl From<&[u8; 44]> for DestinationMemo {
     }
 }
 
-impl Into<[u8; 44]> for DestinationMemo {
-    fn into(self) -> [u8; 44] {
+impl From<DestinationMemo> for [u8; 44] {
+    fn from(src: DestinationMemo) -> [u8; 44] {
         let mut memo_data = [0u8; 44];
-        memo_data[0..16].copy_from_slice(self.address_hash.as_ref());
-        memo_data[16..24].copy_from_slice(&self.fee.to_be_bytes());
-        memo_data[16] = self.num_recipients;
-        memo_data[24..32].copy_from_slice(&self.total_outlay.to_be_bytes());
+        memo_data[0..16].copy_from_slice(src.address_hash.as_ref());
+        memo_data[16..24].copy_from_slice(&src.fee.to_be_bytes());
+        memo_data[16] = src.num_recipients;
+        memo_data[24..32].copy_from_slice(&src.total_outlay.to_be_bytes());
         memo_data
     }
 }

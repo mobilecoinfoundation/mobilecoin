@@ -131,9 +131,9 @@ impl From<&[u8; 44]> for AuthenticatedSenderMemo {
     }
 }
 
-impl Into<[u8; 44]> for AuthenticatedSenderMemo {
-    fn into(self) -> [u8; 44] {
-        self.memo_data
+impl From<AuthenticatedSenderMemo> for [u8; 44] {
+    fn from(src: AuthenticatedSenderMemo) -> [u8; 44] {
+        src.memo_data
     }
 }
 
