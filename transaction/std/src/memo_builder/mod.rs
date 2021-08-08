@@ -33,12 +33,12 @@ pub trait MemoBuilder {
     fn make_memo_for_change_output(&mut self, fee: u64) -> Result<MemoPayload, String>;
 }
 
-/// The default memo builder always builds UnusedMemo.
+/// The empty memo builder always builds UnusedMemo.
 /// This is the safe and maximally private default.
 #[derive(Default, Clone)]
-pub struct DefaultMemoBuilder;
+pub struct EmptyMemoBuilder;
 
-impl MemoBuilder for DefaultMemoBuilder {
+impl MemoBuilder for EmptyMemoBuilder {
     fn make_memo_for_output(
         &mut self,
         _value: u64,

@@ -494,7 +494,7 @@ mod combine_tests {
         tx::{TxOut, TxOutMembershipProof},
     };
     use mc_transaction_core_test_utils::{AccountKey, MockFogResolver};
-    use mc_transaction_std::{DefaultMemoBuilder, InputCredentials, TransactionBuilder};
+    use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
     use mc_util_from_random::FromRandom;
     use rand::SeedableRng;
     use rand_hc::Hc128Rng;
@@ -569,7 +569,7 @@ mod combine_tests {
         .unwrap();
 
         let mut transaction_builder =
-            TransactionBuilder::new(MockFogResolver::default(), DefaultMemoBuilder::default());
+            TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
         transaction_builder.add_input(input_credentials);
         transaction_builder.set_fee(0);
         transaction_builder
@@ -617,7 +617,7 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     MockFogResolver::default(),
-                    DefaultMemoBuilder::default(),
+                    EmptyMemoBuilder::default(),
                 );
 
                 // Create InputCredentials to spend the TxOut.
@@ -710,7 +710,7 @@ mod combine_tests {
             .unwrap();
 
             let mut transaction_builder =
-                TransactionBuilder::new(MockFogResolver::default(), DefaultMemoBuilder::default());
+                TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0);
             transaction_builder
@@ -743,7 +743,7 @@ mod combine_tests {
             .unwrap();
 
             let mut transaction_builder =
-                TransactionBuilder::new(MockFogResolver::default(), DefaultMemoBuilder::default());
+                TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0);
             transaction_builder
@@ -799,7 +799,7 @@ mod combine_tests {
             .unwrap();
 
             let mut transaction_builder =
-                TransactionBuilder::new(MockFogResolver::default(), DefaultMemoBuilder::default());
+                TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0);
             transaction_builder
@@ -880,7 +880,7 @@ mod combine_tests {
             .unwrap();
 
             let mut transaction_builder =
-                TransactionBuilder::new(MockFogResolver::default(), DefaultMemoBuilder::default());
+                TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0);
             transaction_builder
@@ -914,7 +914,7 @@ mod combine_tests {
             .unwrap();
 
             let mut transaction_builder =
-                TransactionBuilder::new(MockFogResolver::default(), DefaultMemoBuilder::default());
+                TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0);
             transaction_builder
@@ -971,7 +971,7 @@ mod combine_tests {
             .unwrap();
 
             let mut transaction_builder =
-                TransactionBuilder::new(MockFogResolver::default(), DefaultMemoBuilder::default());
+                TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0);
             transaction_builder

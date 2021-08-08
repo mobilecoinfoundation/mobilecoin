@@ -25,7 +25,7 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutMembershipProof},
 };
-use mc_transaction_std::{DefaultMemoBuilder, InputCredentials, TransactionBuilder};
+use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_util_uri::ConnectionUri;
 use rand::{seq::SliceRandom, thread_rng, Rng};
 use rayon::prelude::*;
@@ -498,7 +498,7 @@ fn build_tx(
 
     // Create tx_builder. No fog reports.
     let mut tx_builder =
-        TransactionBuilder::new(FogResolver::default(), DefaultMemoBuilder::default());
+        TransactionBuilder::new(FogResolver::default(), EmptyMemoBuilder::default());
 
     tx_builder.set_fee(FEE.load(Ordering::SeqCst));
 

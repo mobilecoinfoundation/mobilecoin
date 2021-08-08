@@ -4,7 +4,7 @@
 //!
 //! See https://cryptonote.org/img/cryptonote_transaction.png
 
-use crate::{DefaultMemoBuilder, InputCredentials, MemoBuilder, TxBuilderError};
+use crate::{EmptyMemoBuilder, InputCredentials, MemoBuilder, TxBuilderError};
 use core::cmp::min;
 use curve25519_dalek::scalar::Scalar;
 use mc_account_keys::{AccountKey, PublicAddress};
@@ -61,7 +61,7 @@ impl From<&AccountKey> for ChangeDestination {
 /// This is generic over MemoBuilder to allow injecting a policy for how to
 /// use the memos in the TxOuts.
 #[derive(Debug)]
-pub struct TransactionBuilder<FPR: FogPubkeyResolver, MB: MemoBuilder = DefaultMemoBuilder> {
+pub struct TransactionBuilder<FPR: FogPubkeyResolver, MB: MemoBuilder = EmptyMemoBuilder> {
     /// The input credentials used to form the transaction
     input_credentials: Vec<InputCredentials>,
     /// The outputs created by the transaction, and associated shared secrets
@@ -542,7 +542,7 @@ pub mod transaction_builder_tests {
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
         let mut transaction_builder =
-            TransactionBuilder::new(MockFogResolver::default(), DefaultMemoBuilder::default());
+            TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
         let input_value = 1000;
         let output_value = 10;
 
@@ -581,7 +581,7 @@ pub mod transaction_builder_tests {
         let key_image = KeyImage::from(&input_credentials.onetime_private_key);
 
         let mut transaction_builder =
-            TransactionBuilder::new(MockFogResolver::default(), DefaultMemoBuilder::default());
+            TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
 
         transaction_builder.add_input(input_credentials);
         let (_txout, confirmation) = transaction_builder
@@ -654,7 +654,7 @@ pub mod transaction_builder_tests {
         });
 
         let mut transaction_builder =
-            TransactionBuilder::new(fog_resolver, DefaultMemoBuilder::default());
+            TransactionBuilder::new(fog_resolver, EmptyMemoBuilder::default());
 
         transaction_builder.add_input(input_credentials);
         let (_txout, confirmation) = transaction_builder
@@ -736,7 +736,7 @@ pub mod transaction_builder_tests {
         });
 
         let mut transaction_builder =
-            TransactionBuilder::new(fog_resolver, DefaultMemoBuilder::default());
+            TransactionBuilder::new(fog_resolver, EmptyMemoBuilder::default());
 
         let input_credentials = get_input_credentials(&sender, value, &mut rng);
         transaction_builder.add_input(input_credentials);
@@ -828,7 +828,7 @@ pub mod transaction_builder_tests {
         .unwrap();
 
         let mut transaction_builder =
-            TransactionBuilder::new(MockFogResolver::default(), DefaultMemoBuilder::default());
+            TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
         transaction_builder.add_input(input_credentials);
 
         let wrong_value = 999;

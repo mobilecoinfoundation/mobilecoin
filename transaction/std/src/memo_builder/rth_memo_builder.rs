@@ -74,6 +74,11 @@ impl RTHMemoBuilder {
     /// another address or a subaddress of yours,
     /// you can do that as long as you have the spend private key
     /// for that address.
+    ///
+    /// For example, if you are an exchange, and you are sending
+    /// MOB to a user, you might set this to match the subaddress that they
+    /// normally deposit to. Then a chat client will be able to associate both
+    /// their deposits and withdrawals into a single chat interaction.
     pub fn set_sender_cred(&mut self, cred: SenderMemoCredential) {
         self.sender_cred = Some(cred);
     }
