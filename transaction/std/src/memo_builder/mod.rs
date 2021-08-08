@@ -5,6 +5,7 @@
 //! submodule.
 
 use super::memo;
+use core::fmt::Debug;
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::RistrettoPublic;
 use mc_transaction_core::MemoPayload;
@@ -20,7 +21,7 @@ pub use rth_memo_builder::RTHMemoBuilder;
 /// installed in the transaction builder when that is constructed.
 /// This way low-level handing of memo payloads with TxOuts is not needed,
 /// and just invoking the TransactionBuilder as before will do the right thing.
-pub trait MemoBuilder {
+pub trait MemoBuilder: Debug {
     /// Build a memo for a normal output (to another party).
     fn make_memo_for_output(
         &mut self,
@@ -35,7 +36,7 @@ pub trait MemoBuilder {
 
 /// The empty memo builder always builds UnusedMemo.
 /// This is the safe and maximally private default.
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct EmptyMemoBuilder;
 
 impl MemoBuilder for EmptyMemoBuilder {

@@ -4,8 +4,8 @@
 //!
 //! See https://cryptonote.org/img/cryptonote_transaction.png
 
-use crate::{EmptyMemoBuilder, InputCredentials, MemoBuilder, TxBuilderError};
-use core::cmp::min;
+use crate::{InputCredentials, MemoBuilder, TxBuilderError};
+use core::{cmp::min, fmt::Debug};
 use curve25519_dalek::scalar::Scalar;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
@@ -61,7 +61,7 @@ impl From<&AccountKey> for ChangeDestination {
 /// This is generic over MemoBuilder to allow injecting a policy for how to
 /// use the memos in the TxOuts.
 #[derive(Debug)]
-pub struct TransactionBuilder<FPR: FogPubkeyResolver, MB: MemoBuilder = EmptyMemoBuilder> {
+pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
     /// The input credentials used to form the transaction
     input_credentials: Vec<InputCredentials>,
     /// The outputs created by the transaction, and associated shared secrets
@@ -76,18 +76,25 @@ pub struct TransactionBuilder<FPR: FogPubkeyResolver, MB: MemoBuilder = EmptyMem
     /// The limit on the tombstone block value imposed pubkey_expiry values in
     /// fog pubkeys used so far
     fog_tombstone_block_limit: u64,
-    /// An policy object which constructs memos for this transaction.
+    /// An policy object implementing MemoBuilder which constructs memos for
+    /// this transaction.
+    ///
     /// This is an Option in order to allow working around the borrow checker.
-    memo_builder: Option<MB>,
+    /// Box<dyn ...> is used because having more generic parameters creates more
+    /// types that SDKs must bind to if they support multiple memo builder
+    /// types.
+    memo_builder: Option<Box<dyn MemoBuilder + 'static>>,
 }
 
-impl<FPR: FogPubkeyResolver, MB: MemoBuilder> TransactionBuilder<FPR, MB> {
+impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// Initializes a new TransactionBuilder.
     ///
     /// # Arguments
     /// * `fog_resolver` - Source of validated fog keys to use with this
     ///   transaction
-    pub fn new(fog_resolver: FPR, memo_builder: MB) -> Self {
+    /// * `memo_builder` - An object which creates memos for the TxOuts in this
+    ///   transaction
+    pub fn new<MB: MemoBuilder + 'static>(fog_resolver: FPR, memo_builder: MB) -> Self {
         TransactionBuilder {
             input_credentials: Vec::new(),
             outputs_and_shared_secrets: Vec::new(),
@@ -95,7 +102,7 @@ impl<FPR: FogPubkeyResolver, MB: MemoBuilder> TransactionBuilder<FPR, MB> {
             fee: MINIMUM_FEE,
             fog_resolver,
             fog_tombstone_block_limit: u64::max_value(),
-            memo_builder: Some(memo_builder),
+            memo_builder: Some(Box::new(memo_builder)),
         }
     }
 
@@ -124,8 +131,9 @@ impl<FPR: FogPubkeyResolver, MB: MemoBuilder> TransactionBuilder<FPR, MB> {
         recipient: &PublicAddress,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
-        // Taking self.memo_builder here means that we can call functions on self,
+        // Taking self.memo_builder here means that we can call functions on &mut self,
         // and pass them something that has captured the memo builder.
+        // Calling take() on Option<Box> is just moving a pointer.
         let mut mb = self
             .memo_builder
             .take()
@@ -175,8 +183,9 @@ impl<FPR: FogPubkeyResolver, MB: MemoBuilder> TransactionBuilder<FPR, MB> {
         change_destination: &ChangeDestination,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
-        // Taking self.memo_builder here means that we can call functions on self,
+        // Taking self.memo_builder here means that we can call functions on &mut self,
         // and pass them something that has captured the memo builder.
+        // Calling take() on Option<Box> is just moving a pointer.
         let mut mb = self
             .memo_builder
             .take()
