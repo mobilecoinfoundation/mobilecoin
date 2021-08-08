@@ -22,12 +22,11 @@ impl From<&tx::TxOut> for external::TxOut {
         let hint_bytes = source.e_fog_hint.as_ref().to_vec();
         tx_out.mut_e_fog_hint().set_data(hint_bytes);
 
-        let memo_bytes: &[u8] = source
-            .e_memo
-            .as_ref()
-            .map(|memo| memo.as_ref())
-            .unwrap_or_default();
-        tx_out.mut_e_memo().set_data(memo_bytes.to_vec());
+        if let Some(ref memo) = source.e_memo {
+            tx_out
+                .mut_e_memo()
+                .set_data(AsRef::<[u8]>::as_ref(memo).to_vec());
+        }
 
         tx_out
     }
