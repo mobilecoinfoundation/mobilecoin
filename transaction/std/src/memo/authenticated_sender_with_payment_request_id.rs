@@ -66,8 +66,12 @@ impl AuthenticatedSenderWithPaymentRequestIdMemo {
             .subaddress_spend_private_key
             .key_exchange(recieving_subaddress_view_public_key);
 
-        let hmac_value =
-            compute_category1_hmac(shared_secret.as_ref(), tx_out_public_key, &memo_data);
+        let hmac_value = compute_category1_hmac(
+            shared_secret.as_ref(),
+            tx_out_public_key,
+            Self::MEMO_TYPE_BYTES,
+            &memo_data,
+        );
         memo_data[28..].copy_from_slice(&hmac_value);
 
         Self { memo_data }
@@ -125,8 +129,12 @@ impl AuthenticatedSenderWithPaymentRequestIdMemo {
         let shared_secret =
             recieving_subaddress_view_private_key.key_exchange(sender_address.spend_public_key());
 
-        let expected_hmac =
-            compute_category1_hmac(shared_secret.as_ref(), tx_out_public_key, &self.memo_data);
+        let expected_hmac = compute_category1_hmac(
+            shared_secret.as_ref(),
+            tx_out_public_key,
+            Self::MEMO_TYPE_BYTES,
+            &self.memo_data,
+        );
         let found_hmac: [u8; 16] = self.memo_data[28..].try_into().unwrap();
         result &= expected_hmac.ct_eq(&found_hmac);
         result

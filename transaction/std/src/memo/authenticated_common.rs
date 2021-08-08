@@ -20,12 +20,14 @@ type HmacSha512 = Hmac<Sha512>;
 pub fn compute_category1_hmac(
     shared_secret: &[u8; 32],
     tx_out_public_key: &CompressedRistrettoPublic,
-    memo_data: &[u8],
+    memo_type_bytes: [u8; 2],
+    memo_data: &[u8; 44],
 ) -> [u8; 16] {
     let mut mac = HmacSha512::new_from_slice(shared_secret.as_ref())
         .expect("hmac can take a key of any size");
     mac.update(tx_out_public_key.as_ref());
-    mac.update(&memo_data[..(memo_data.len() - 16)]);
+    mac.update(&memo_type_bytes);
+    mac.update(&memo_data[..(44 - 16)]);
     let mut result = [0u8; 16];
     result.copy_from_slice(&mac.finalize().into_bytes()[0..16]);
     result
