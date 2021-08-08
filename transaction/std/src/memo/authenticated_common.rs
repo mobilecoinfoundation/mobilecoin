@@ -25,8 +25,13 @@ pub fn compute_category1_hmac(
 ) -> [u8; 16] {
     let mut mac = HmacSha512::new_from_slice(shared_secret.as_ref())
         .expect("hmac can take a key of any size");
+    // First add domain separation
+    mac.update("mc-memo-mac");
+    // Next add tx_out_public_key, binding this mac to a paritcular TxOut
     mac.update(tx_out_public_key.as_ref());
+    // Next add memo type bytes (2)
     mac.update(&memo_type_bytes);
+    // Next add all the memo data bytes, except for the last 16 (which are the mac)
     mac.update(&memo_data[..(44 - 16)]);
     let mut result = [0u8; 16];
     result.copy_from_slice(&mac.finalize().into_bytes()[0..16]);
