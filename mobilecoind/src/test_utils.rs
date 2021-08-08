@@ -168,7 +168,7 @@ pub fn add_block_to_ledger_db(
                 &RistrettoPrivate::from_random(rng),
                 Default::default(),
             )
-            .unwrap();
+            .expect("Could not create TxOut");
             // The origin block does not have memos
             if num_blocks == 0 {
                 result.e_memo = None;
