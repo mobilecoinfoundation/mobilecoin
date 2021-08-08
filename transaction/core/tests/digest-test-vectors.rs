@@ -25,7 +25,7 @@ fn test_origin_tx_outs() -> Vec<TxOut> {
                 &RistrettoPrivate::from_random(&mut rng),
                 EncryptedFogHint::fake_onetime_hint(&mut rng),
             )
-            .unwrap();
+            .expect("Could not create TxOut");
             // Origin TxOuts do not have encrypted memo fields.
             tx_out.e_memo = None;
             tx_out
