@@ -31,7 +31,9 @@ macro_rules! impl_memo_enum {
         /// to interpret MemoPayload objects.
         ///
         /// Most memo types require further validation before they can be considered
-        /// to be "trusted" data, see documentation.
+        /// to be "trusted" data. When handling a memo type that you recieved
+        /// from the blockchain, see the documentation for that specific memo
+        /// to determine how it can be validated.
         #[derive(Clone, Debug)]
         pub enum $enum_name {
             $(
