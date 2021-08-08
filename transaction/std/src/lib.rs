@@ -15,7 +15,11 @@ pub use error::TxBuilderError;
 pub use input_credentials::InputCredentials;
 pub use memo::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
-    DestinationMemoError, MemoDecodingError, MemoType, SenderMemoCredential, UnusedMemo,
+    DestinationMemoError, MemoDecodingError, MemoType, RegisteredMemoType, SenderMemoCredential,
+    UnusedMemo,
 };
 pub use memo_builder::{DefaultMemoBuilder, MemoBuilder, RTHMemoBuilder};
 pub use transaction_builder::TransactionBuilder;
+
+// Re-export this to help the exported macros work
+pub use mc_transaction_core::MemoPayload;

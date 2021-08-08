@@ -9,7 +9,6 @@
 
 use core::{convert::TryFrom, fmt::Debug};
 use displaydoc::Display;
-use mc_transaction_core::MemoPayload;
 
 mod authenticated_common;
 mod authenticated_sender;
@@ -20,6 +19,7 @@ mod destination;
 mod macros;
 mod unused;
 
+use crate::impl_memo_enum;
 pub use authenticated_common::compute_category1_hmac;
 pub use authenticated_sender::AuthenticatedSenderMemo;
 pub use authenticated_sender_with_payment_request_id::AuthenticatedSenderWithPaymentRequestIdMemo;

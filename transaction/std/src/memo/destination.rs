@@ -3,6 +3,7 @@
 //! Object for 0x0200 Destination memo type
 
 use super::RegisteredMemoType;
+use crate::impl_memo_type_conversions;
 use core::convert::TryInto;
 use displaydoc::Display;
 use mc_account_keys::AddressHash;
@@ -153,3 +154,5 @@ pub enum DestinationMemoError {
     /// The fee amount is too large to be represented in the destination memo
     FeeTooLarge,
 }
+
+impl_memo_type_conversions! { DestinationMemo }

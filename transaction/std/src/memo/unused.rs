@@ -3,6 +3,7 @@
 //! Object for 0x0000 Unused memo type
 
 use super::RegisteredMemoType;
+use crate::impl_memo_type_conversions;
 
 /// A memo that the sender declined to use to convey any information.
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -23,3 +24,5 @@ impl Into<[u8; 44]> for UnusedMemo {
         [0u8; 44]
     }
 }
+
+impl_memo_type_conversions! { UnusedMemo }

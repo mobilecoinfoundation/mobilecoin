@@ -6,6 +6,7 @@ use super::{
     authenticated_common::compute_category1_hmac, credential::SenderMemoCredential,
     RegisteredMemoType,
 };
+use crate::impl_memo_type_conversions;
 use core::convert::TryInto;
 use mc_account_keys::{AddressHash, PublicAddress};
 use mc_crypto_keys::{
@@ -135,3 +136,5 @@ impl Into<[u8; 44]> for AuthenticatedSenderMemo {
         self.memo_data
     }
 }
+
+impl_memo_type_conversions! { AuthenticatedSenderMemo }
