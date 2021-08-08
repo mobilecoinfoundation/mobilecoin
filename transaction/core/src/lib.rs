@@ -17,12 +17,13 @@ use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
 mod amount;
 mod blockchain;
-pub mod constants;
 mod domain_separators;
+mod memo;
+
+pub mod constants;
 pub mod encrypted_fog_hint;
 pub mod fog_hint;
 pub mod membership_proofs;
-mod memo;
 pub mod onetime_keys;
 pub mod range_proofs;
 pub mod ring_signature;
