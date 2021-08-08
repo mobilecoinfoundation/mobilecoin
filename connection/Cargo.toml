@@ -24,7 +24,7 @@ displaydoc = { version = "0.2", default-features = false }
 grpcio = "0.9.0"
 retry = "1.2"
 secrecy = "0.4"
-sha2 = "0.9"
+sha2 = "0.9.5"
 
 [dev-dependencies]
 rand = "0.8"
