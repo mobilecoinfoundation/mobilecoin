@@ -35,7 +35,7 @@ pub mod proptest_fixtures;
 
 pub use amount::{get_value_mask, Amount, AmountError, Commitment, CompressedCommitment};
 pub use blockchain::*;
-pub use memo::{EncryptedMemo, LengthError, MemoPayload};
+pub use memo::{EncryptedMemo, MemoError, MemoPayload};
 pub use tx::NewTxError;
 
 /// Get the shared secret for a transaction output.

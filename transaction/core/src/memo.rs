@@ -76,12 +76,12 @@ impl From<GenericArray<u8, U46>> for EncryptedMemo {
 }
 
 impl TryFrom<&[u8]> for EncryptedMemo {
-    type Error = LengthError;
+    type Error = MemoError;
     fn try_from(src: &[u8]) -> Result<EncryptedMemo, Self::Error> {
         if src.len() == 46 {
             Ok(Self(*GenericArray::from_slice(src)))
         } else {
-            Err(LengthError::BadLength(src.len()))
+            Err(MemoError::BadLength(src.len()))
         }
     }
 }
@@ -122,12 +122,14 @@ impl MemoPayload {
 
     /// Get the memo type bytes (two bytes)
     pub fn get_memo_type(&self) -> &[u8; 2] {
-        self.0.as_slice()[0..2].try_into().unwrap()
+        self.0.as_slice()[0..2].try_into().expect("length mismatch")
     }
 
     /// Get the memo data bytes (fourty-four bytes)
     pub fn get_memo_data(&self) -> &[u8; 44] {
-        self.0.as_slice()[2..46].try_into().unwrap()
+        self.0.as_slice()[2..46]
+            .try_into()
+            .expect("length mismatch")
     }
 
     /// Encrypt this memo payload using a given shared-secret, consuming it and
@@ -196,12 +198,12 @@ impl From<GenericArray<u8, U46>> for MemoPayload {
 }
 
 impl TryFrom<&[u8]> for MemoPayload {
-    type Error = LengthError;
+    type Error = MemoError;
     fn try_from(src: &[u8]) -> Result<MemoPayload, Self::Error> {
         if src.len() == 46 {
             Ok(Self(*GenericArray::from_slice(src)))
         } else {
-            Err(LengthError::BadLength(src.len()))
+            Err(MemoError::BadLength(src.len()))
         }
     }
 }
@@ -212,7 +214,7 @@ derive_serde_from_repr_bytes!(MemoPayload);
 derive_prost_message_from_repr_bytes!(MemoPayload);
 
 #[derive(Display, Debug)]
-pub enum LengthError {
+pub enum MemoError {
     /// Wrong length for memo payload: {0}
     BadLength(usize),
 }

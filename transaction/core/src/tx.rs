@@ -21,7 +21,7 @@ use crate::{
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
     membership_proofs::Range,
-    memo::{EncryptedMemo, LengthError, MemoPayload},
+    memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_onetime_public_key, create_shared_secret, create_tx_public_key},
     ring_signature::{KeyImage, SignatureRctBulletproofs},
     CompressedCommitment,
@@ -330,14 +330,14 @@ impl TxOut {
     /// or 46.
     ///
     /// Note that the results of this function call are unauthenticated.
-    pub fn try_decrypt_memo(
-        &self,
-        tx_out_shared_secret: &RistrettoPublic,
-    ) -> Result<MemoPayload, LengthError> {
+    ///
+    /// The next step is usually to call MemoType::try_from to determine what
+    /// memo type this is, see transaction_std::memo module.
+    pub fn decrypt_memo(&self, tx_out_shared_secret: &RistrettoPublic) -> MemoPayload {
         if let Some(e_memo) = self.e_memo {
-            Ok(e_memo.decrypt(tx_out_shared_secret))
+            e_memo.decrypt(tx_out_shared_secret)
         } else {
-            Ok(MemoPayload::default())
+            MemoPayload::default()
         }
     }
 }

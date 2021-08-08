@@ -3,9 +3,26 @@
 //! Defines an object for each known high-level memo type,
 //! and an enum to allow matching recovered memos to one of these types.
 //!
-//! To add a new memo type, add a new module for it, add a structure,
-//! and make it convertible to MemoPayload.
-//! Then also add it to the MemoType enum and extend the TryFrom logic.
+//! The intended use is like:
+//! - Call `TxOut::decrypt_memo`, obtaining `MemoPayload`
+//! - Call `MemoType::try_from`, obtaining the enum `MemoType`
+//! - Match on the enum, which tells you what memo type this is, then you can
+//!   read that data and validate it. See individual memo types for their
+//!   semantics.
+//!
+//! To add a new memo type, you can add it to this crate in a new module,
+//! make it implement `RegisteredMemoType`, and add it to the `impl_memo_enum`
+//! macro call below.
+//!
+//! You can also make your own custom version of `MemoType` using different
+//! structs, in your own crate, if you prefer. The `impl_memo_enum` macro is
+//! exported, and will work as long as your memo types all implement
+//! RegisteredMemoType, and all have different MEMO_TYPE_BYTES.
+//!
+//! If you want to put new memo types into transactions, you will need to
+//! implement a new `MemoBuilder`. See the `memo_builder` module for examples.
+//! Or, if you don't want to use the `TransactionBuilder`, you can call
+//! `TxOut::new_with_memo` directly.
 
 use core::{convert::TryFrom, fmt::Debug};
 use displaydoc::Display;
