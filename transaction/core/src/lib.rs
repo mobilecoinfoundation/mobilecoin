@@ -19,6 +19,7 @@ mod amount;
 mod blockchain;
 mod domain_separators;
 mod memo;
+mod tx_error;
 
 pub mod constants;
 pub mod encrypted_fog_hint;
@@ -36,7 +37,8 @@ pub mod proptest_fixtures;
 pub use amount::{get_value_mask, Amount, AmountError, Commitment, CompressedCommitment};
 pub use blockchain::*;
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
-pub use tx::NewTxError;
+pub use tx::MemoContext;
+pub use tx_error::{NewMemoError, NewTxError};
 
 /// Get the shared secret for a transaction output.
 ///

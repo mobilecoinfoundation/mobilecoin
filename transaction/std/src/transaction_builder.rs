@@ -17,7 +17,7 @@ use mc_transaction_core::{
     onetime_keys::create_shared_secret,
     ring_signature::SignatureRctBulletproofs,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
-    CompressedCommitment, MemoPayload,
+    CompressedCommitment, MemoContext, MemoPayload, NewMemoError,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
@@ -142,7 +142,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             value,
             recipient,
             recipient,
-            |tx_public_key| mb.make_memo_for_output(value, recipient, tx_public_key),
+            |memo_ctxt| mb.make_memo_for_output(value, recipient, memo_ctxt.tx_public_key),
             rng,
         );
         // Put the memo builder back
@@ -226,7 +226,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         value: u64,
         recipient: &PublicAddress,
         fog_hint_address: &PublicAddress,
-        memo_fn: impl FnOnce(&RistrettoPublic) -> Result<MemoPayload, String>,
+        memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
         let (hint, pubkey_expiry) = create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
@@ -385,7 +385,7 @@ fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
     value: u64,
     recipient: &PublicAddress,
     fog_hint: EncryptedFogHint,
-    memo_fn: impl FnOnce(&RistrettoPublic) -> Result<MemoPayload, String>,
+    memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
     rng: &mut RNG,
 ) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
     let private_key = RistrettoPrivate::from_random(rng);
@@ -426,6 +426,7 @@ fn create_fog_hint<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
 #[cfg(test)]
 pub mod transaction_builder_tests {
     use super::*;
+    use crate::EmptyMemoBuilder;
     use maplit::btreemap;
     use mc_account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX};
     use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};

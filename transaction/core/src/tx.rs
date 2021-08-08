@@ -1,9 +1,8 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use alloc::{string::String, vec::Vec};
+use alloc::vec::Vec;
 use blake2::digest::Update;
 use core::{convert::TryFrom, fmt};
-use displaydoc::Display;
 use mc_account_keys::PublicAddress;
 use mc_common::Hash;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
@@ -24,7 +23,7 @@ use crate::{
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_onetime_public_key, create_shared_secret, create_tx_public_key},
     ring_signature::{KeyImage, SignatureRctBulletproofs},
-    CompressedCommitment,
+    CompressedCommitment, NewMemoError, NewTxError,
 };
 
 /// Transaction hash length, in bytes.
@@ -253,6 +252,27 @@ pub struct TxOut {
     pub e_memo: Option<EncryptedMemo>,
 }
 
+/// When creating a MemoPayload for a TxOut, sometimes it is important to be
+/// able to have access to the fields of this TxOut. For example, in some of
+/// the authenticated memos, the memo contains an HMAC, which includes the
+/// tx_out_public_key, in order to bind the memo to the TxOut.
+///
+/// However, the TxOut public key is not created until `TxOut::new` is already
+/// being called. We also want for `TxOut::new` to be responsible to encrypt
+/// the memo using the shared secret. So this means that `TxOut::new_with_memo`
+/// needs to take a callback which produces the memo and has access to these
+/// intermediate variables.
+///
+/// The intermediate variables that we provide to the memo callback are gathered
+/// up into a MemoContext object, and this is passed to the callback. This makes
+/// the callbacks more readable and it makes it easy to pass new variables into
+/// the callbacks in the future if needed without disrupting existing working
+/// code.
+pub struct MemoContext<'a> {
+    /// The tx_public_key of the TxOut we are creating that we need a memo for
+    pub tx_public_key: &'a RistrettoPublic,
+}
+
 impl TxOut {
     /// Creates a TxOut that sends `value` to `recipient`.
     /// This uses a defaulted (all zeroes) MemoPayload.
@@ -261,7 +281,7 @@ impl TxOut {
     /// * `value` - Value of the output.
     /// * `recipient` - Recipient's address.
     /// * `tx_private_key` - The transaction's private key
-    /// * `hint` - Encrypted Fog hint.
+    /// * `hint` - Encrypted Fog hint for this output.
     pub fn new(
         value: u64,
         recipient: &PublicAddress,
@@ -273,6 +293,7 @@ impl TxOut {
         })
         .map_err(|err| match err {
             NewTxError::Amount(err) => err,
+            // Memo error is unreachable because the memo_fn we passed is infallible
             NewTxError::Memo(_) => unreachable!(),
         })
     }
@@ -293,7 +314,7 @@ impl TxOut {
         recipient: &PublicAddress,
         tx_private_key: &RistrettoPrivate,
         hint: EncryptedFogHint,
-        memo_fn: impl FnOnce(&RistrettoPublic) -> Result<MemoPayload, String>,
+        memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
     ) -> Result<Self, NewTxError> {
         let target_key = create_onetime_public_key(tx_private_key, recipient).into();
         let public_key = create_tx_public_key(tx_private_key, recipient.spend_public_key());
@@ -301,7 +322,11 @@ impl TxOut {
         let shared_secret = create_shared_secret(recipient.view_public_key(), tx_private_key);
 
         let amount = Amount::new(value, &shared_secret)?;
-        let memo = memo_fn(&public_key).map_err(NewTxError::Memo)?;
+
+        let memo_ctxt = MemoContext {
+            tx_public_key: &public_key,
+        };
+        let memo = memo_fn(memo_ctxt).map_err(NewTxError::Memo)?;
         let e_memo = memo.encrypt(&shared_secret);
 
         Ok(TxOut {
@@ -326,9 +351,6 @@ impl TxOut {
     /// - If self.e_memo is present, we use MemoPayload::try_decrypt. This
     ///   succeeds unless the e_memo has an invalid length.
     ///
-    /// This function only returns an error if e_memo has a length other than 0
-    /// or 46.
-    ///
     /// Note that the results of this function call are unauthenticated.
     ///
     /// The next step is usually to call MemoType::try_from to determine what
@@ -339,20 +361,6 @@ impl TxOut {
         } else {
             MemoPayload::default()
         }
-    }
-}
-
-#[derive(Debug, Display)]
-pub enum NewTxError {
-    /// Amount: {0}
-    Amount(AmountError),
-    /// Memo: {0}
-    Memo(String),
-}
-
-impl From<AmountError> for NewTxError {
-    fn from(src: AmountError) -> NewTxError {
-        NewTxError::Amount(src)
     }
 }
 

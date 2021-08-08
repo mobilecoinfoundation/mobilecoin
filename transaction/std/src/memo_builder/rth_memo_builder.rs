@@ -8,13 +8,13 @@
 use super::{
     memo::{
         AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
-        SenderMemoCredential, UnusedMemo,
+        DestinationMemoError, SenderMemoCredential, UnusedMemo,
     },
     MemoBuilder,
 };
 use mc_account_keys::{AddressHash, PublicAddress};
 use mc_crypto_keys::RistrettoPublic;
-use mc_transaction_core::MemoPayload;
+use mc_transaction_core::{MemoPayload, NewMemoError};
 
 /// This memo builder attaches 0x0100 Authenticated Sender Memos to normal
 /// outputs, and 0x0200 Destination Memos to change outputs.
@@ -120,18 +120,18 @@ impl MemoBuilder for RTHMemoBuilder {
         value: u64,
         recipient: &PublicAddress,
         tx_public_key: &RistrettoPublic,
-    ) -> Result<MemoPayload, String> {
+    ) -> Result<MemoPayload, NewMemoError> {
         if self.wrote_destination_memo {
-            return Err("Cannot make more outputs after the change output, the destination memo is already written".to_string());
+            return Err(NewMemoError::OutputsAfterChange);
         }
         self.total_outlay = self
             .total_outlay
             .checked_add(value)
-            .ok_or_else(|| "Total outlay overflow".to_string())?;
+            .ok_or_else(|| NewMemoError::LimitsExceeded("total_outlay"))?;
         self.num_recipients = self
             .num_recipients
             .checked_add(1)
-            .ok_or_else(|| "Num recipients overflow".to_string())?;
+            .ok_or_else(|| NewMemoError::LimitsExceeded("num_recipients"))?;
         self.last_recipient = AddressHash::from(recipient);
         Ok(if let Some(cred) = &self.sender_cred {
             if let Some(payment_request_id) = self.payment_request_id {
@@ -156,21 +156,25 @@ impl MemoBuilder for RTHMemoBuilder {
     }
 
     /// Build a memo for a change output (to ourselves).
-    fn make_memo_for_change_output(&mut self, fee: u64) -> Result<MemoPayload, String> {
+    fn make_memo_for_change_output(&mut self, fee: u64) -> Result<MemoPayload, NewMemoError> {
         if !self.destination_memo_enabled {
             return Ok(UnusedMemo {}.into());
         }
         if self.wrote_destination_memo {
-            return Err("Cannot make multiple change outputs".to_string());
+            return Err(NewMemoError::MultipleChangeOutputs);
         }
         self.total_outlay = self
             .total_outlay
             .checked_add(fee)
-            .ok_or_else(|| "Total outlay overflow".to_string())?;
-        let mut d_memo = DestinationMemo::new(self.last_recipient.clone(), self.total_outlay, fee)
-            .map_err(|err| err.to_string())?;
-        d_memo.set_num_recipients(self.num_recipients);
-        self.wrote_destination_memo = true;
-        Ok(d_memo.into())
+            .ok_or_else(|| NewMemoError::LimitsExceeded("total_outlay"))?;
+        match DestinationMemo::new(self.last_recipient.clone(), self.total_outlay, fee) {
+            Ok(mut d_memo) => {
+                d_memo.set_num_recipients(self.num_recipients);
+                Ok(d_memo.into())
+            }
+            Err(err) => match err {
+                DestinationMemoError::FeeTooLarge => Err(NewMemoError::LimitsExceeded("fee")),
+            },
+        }
     }
 }

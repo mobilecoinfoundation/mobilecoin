@@ -8,7 +8,7 @@ use super::memo;
 use core::fmt::Debug;
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::RistrettoPublic;
-use mc_transaction_core::MemoPayload;
+use mc_transaction_core::{MemoPayload, NewMemoError};
 
 mod rth_memo_builder;
 pub use rth_memo_builder::RTHMemoBuilder;
@@ -28,10 +28,10 @@ pub trait MemoBuilder: Debug {
         value: u64,
         recipient: &PublicAddress,
         tx_public_key: &RistrettoPublic,
-    ) -> Result<MemoPayload, String>;
+    ) -> Result<MemoPayload, NewMemoError>;
 
     /// Build a memo for a change output (to ourselves).
-    fn make_memo_for_change_output(&mut self, fee: u64) -> Result<MemoPayload, String>;
+    fn make_memo_for_change_output(&mut self, fee: u64) -> Result<MemoPayload, NewMemoError>;
 }
 
 /// The empty memo builder always builds UnusedMemo.
@@ -45,11 +45,11 @@ impl MemoBuilder for EmptyMemoBuilder {
         _value: u64,
         _recipient: &PublicAddress,
         _tx_public_key: &RistrettoPublic,
-    ) -> Result<MemoPayload, String> {
+    ) -> Result<MemoPayload, NewMemoError> {
         Ok(memo::UnusedMemo {}.into())
     }
 
-    fn make_memo_for_change_output(&mut self, _fee: u64) -> Result<MemoPayload, String> {
+    fn make_memo_for_change_output(&mut self, _fee: u64) -> Result<MemoPayload, NewMemoError> {
         Ok(memo::UnusedMemo {}.into())
     }
 }
