@@ -127,11 +127,11 @@ impl MemoBuilder for RTHMemoBuilder {
         self.total_outlay = self
             .total_outlay
             .checked_add(value)
-            .ok_or_else(|| NewMemoError::LimitsExceeded("total_outlay"))?;
+            .ok_or(NewMemoError::LimitsExceeded("total_outlay"))?;
         self.num_recipients = self
             .num_recipients
             .checked_add(1)
-            .ok_or_else(|| NewMemoError::LimitsExceeded("num_recipients"))?;
+            .ok_or(NewMemoError::LimitsExceeded("num_recipients"))?;
         self.last_recipient = AddressHash::from(recipient);
         Ok(if let Some(cred) = &self.sender_cred {
             if let Some(payment_request_id) = self.payment_request_id {
@@ -166,7 +166,7 @@ impl MemoBuilder for RTHMemoBuilder {
         self.total_outlay = self
             .total_outlay
             .checked_add(fee)
-            .ok_or_else(|| NewMemoError::LimitsExceeded("total_outlay"))?;
+            .ok_or(NewMemoError::LimitsExceeded("total_outlay"))?;
         match DestinationMemo::new(self.last_recipient.clone(), self.total_outlay, fee) {
             Ok(mut d_memo) => {
                 d_memo.set_num_recipients(self.num_recipients);
