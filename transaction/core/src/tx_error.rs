@@ -39,11 +39,9 @@ pub enum NewMemoError {
     LimitsExceeded(&'static str),
     /// Multiple change outputs not supported
     MultipleChangeOutputs,
-    /// Creating more outputs after the change output is not supported, the
-    /// destination memo is already written
+    /// Creating more outputs after the change output is not supported
     OutputsAfterChange,
-    /// Changing the fee after the change output is not supported, the
-    /// destination memo is already written
+    /// Changing the fee after the change output is not supported
     FeeAfterChange,
     /// Other: {0}
     Other(String),
