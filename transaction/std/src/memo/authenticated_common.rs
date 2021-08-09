@@ -26,7 +26,7 @@ pub fn compute_category1_hmac(
     let mut mac = HmacSha512::new_from_slice(shared_secret.as_ref())
         .expect("hmac can take a key of any size");
     // First add domain separation
-    mac.update("mc-memo-mac");
+    mac.update(b"mc-memo-mac");
     // Next add tx_out_public_key, binding this mac to a paritcular TxOut
     mac.update(tx_out_public_key.as_ref());
     // Next add memo type bytes (2)
