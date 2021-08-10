@@ -573,7 +573,7 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
         txo.set_target_key(target_key);
         txo.set_public_key(public_key);
         txo.set_e_fog_hint(e_fog_hint);
-        if e_memo.get_data().len() != 0 {
+        if !e_memo.get_data().is_empty() {
             txo.set_e_memo(e_memo);
         }
 
