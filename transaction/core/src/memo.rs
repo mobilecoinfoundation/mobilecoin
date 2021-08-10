@@ -218,3 +218,43 @@ pub enum MemoError {
     /// Wrong length for memo payload: {0}
     BadLength(usize),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mc_util_from_random::FromRandom;
+    use rand_core::SeedableRng;
+    use rand_hc::Hc128Rng;
+
+    #[test]
+    fn test_memo_payload_round_trip() {
+        let mut rng = Hc128Rng::seed_from_u64(37);
+
+        let key1 = RistrettoPublic::from_random(&mut rng);
+        let key2 = RistrettoPublic::from_random(&mut rng);
+
+        let memo1 = MemoPayload::default();
+        let e_memo1 = memo1.clone().encrypt(&key1);
+        assert_eq!(memo1, e_memo1.decrypt(&key1), "roundtrip failed");
+
+        let memo2 = MemoPayload::new([1u8, 2u8], [47u8; 44]);
+        let e_memo2 = memo2.clone().encrypt(&key1);
+        assert_eq!(memo2, e_memo2.decrypt(&key1), "roundtrip failed");
+
+        let memo1 = MemoPayload::default();
+        let e_memo1 = memo1.clone().encrypt(&key1);
+        assert_ne!(
+            memo1,
+            e_memo1.decrypt(&key2),
+            "decrypting with wrong key succeeded"
+        );
+
+        let memo2 = MemoPayload::new([1u8, 2u8], [47u8; 44]);
+        let e_memo2 = memo2.clone().encrypt(&key2);
+        assert_ne!(
+            memo2,
+            e_memo2.decrypt(&key1),
+            "decrypting with wrong key succeeded"
+        );
+    }
+}

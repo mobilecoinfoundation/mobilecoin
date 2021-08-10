@@ -608,11 +608,9 @@ fn mint_aggregate_fee(
 
         let shared_secret = create_shared_secret(fee_recipient.view_public_key(), tx_private_key);
 
-        let amount =
-            // The fee view key is publicly known, so there is no need for a blinding.
-            Amount::new(total_fee, &shared_secret)
-                .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?
-        ;
+        // The fee view key is publicly known, so there is no need for a blinding.
+        let amount = Amount::new(total_fee, &shared_secret)
+            .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?;
 
         let e_memo = Some(MemoPayload::default().encrypt(&shared_secret));
 

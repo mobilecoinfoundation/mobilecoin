@@ -2147,6 +2147,7 @@ dependencies = [
  "curve25519-dalek",
  "datatest",
  "displaydoc",
+ "generic-array 0.14.4",
  "mc-account-keys",
  "mc-attest-core",
  "mc-crypto-keys",

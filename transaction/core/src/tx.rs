@@ -307,8 +307,8 @@ impl TxOut {
     /// * `recipient` - Recipient's address.
     /// * `tx_private_key` - The transaction's private key
     /// * `hint` - Encrypted Fog hint.
-    /// * `memo_fn` - A callback taking tx_public_key, which produces a
-    ///   MemoPayload, or a String error
+    /// * `memo_fn` - A callback taking MemoContext, which produces a
+    ///   MemoPayload, or a NewMemo error
     pub fn new_with_memo(
         value: u64,
         recipient: &PublicAddress,
@@ -554,16 +554,19 @@ mod tests {
     use crate::{
         constants::MINIMUM_FEE,
         encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
+        get_tx_out_shared_secret,
         memo::MemoPayload,
         ring_signature::SignatureRctBulletproofs,
         tx::{Tx, TxIn, TxOut, TxPrefix},
         Amount,
     };
     use alloc::vec::Vec;
-    use mc_crypto_keys::RistrettoPublic;
+    use mc_account_keys::AccountKey;
+    use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
     use prost::Message;
     use rand::{rngs::StdRng, SeedableRng};
+    use std::convert::TryFrom;
 
     #[test]
     // `serialize_tx` should create a Tx, encode/decode it, and compare
@@ -679,5 +682,75 @@ mod tests {
         tx.encode(&mut buf).expect("failed to serialize into slice");
         let recovered_tx: Tx = Tx::decode(&buf[..]).unwrap();
         assert_eq!(tx, recovered_tx);
+    }
+
+    // round trip memos from `TxOut` constructors through `decrypt_memo()`
+    #[test]
+    fn test_decrypt_memo() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        let bob = AccountKey::new(
+            &RistrettoPrivate::from_random(&mut rng),
+            &RistrettoPrivate::from_random(&mut rng),
+        );
+        let bob_addr = bob.default_subaddress();
+
+        {
+            let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+
+            // A tx out with an empty memo
+            let mut tx_out =
+                TxOut::new(13u64, &bob_addr, &tx_private_key, Default::default()).unwrap();
+            assert!(
+                tx_out.e_memo.is_some(),
+                "All TxOut (except preexisting) should have a memo"
+            );
+            let ss = get_tx_out_shared_secret(
+                bob.view_private_key(),
+                &RistrettoPublic::try_from(&tx_out.public_key).unwrap(),
+            );
+            assert_eq!(
+                tx_out.decrypt_memo(&ss),
+                MemoPayload::default(),
+                "TxOut::new should produce an empty memo"
+            );
+
+            // Now, modify TxOut to make it like old TxOut's with no memo
+            tx_out.e_memo = None;
+            assert_eq!(
+                tx_out.decrypt_memo(&ss),
+                MemoPayload::default(),
+                "decrypt_memo should produce an empty memo on old TxOut's"
+            );
+        }
+
+        {
+            let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+
+            let memo_val = MemoPayload::new([2u8; 2], [4u8; 44]);
+            // A tx out with a memo
+            let tx_out = TxOut::new_with_memo(
+                13u64,
+                &bob_addr,
+                &tx_private_key,
+                Default::default(),
+                |_| Ok(memo_val.clone()),
+            )
+            .unwrap();
+
+            assert!(
+                tx_out.e_memo.is_some(),
+                "All TxOut (except preexisting) should have a memo"
+            );
+            let ss = get_tx_out_shared_secret(
+                bob.view_private_key(),
+                &RistrettoPublic::try_from(&tx_out.public_key).unwrap(),
+            );
+            assert_eq!(
+                tx_out.decrypt_memo(&ss),
+                memo_val,
+                "memo did not round trip"
+            );
+        }
     }
 }
