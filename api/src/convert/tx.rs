@@ -92,7 +92,7 @@ mod tests {
         .unwrap();
 
         transaction_builder.add_input(input_credentials);
-        transaction_builder.set_fee(0);
+        transaction_builder.set_fee(0).unwrap();
         transaction_builder
             .add_output(65536, &bob.default_subaddress(), &mut rng)
             .unwrap();

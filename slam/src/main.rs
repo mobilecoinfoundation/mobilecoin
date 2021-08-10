@@ -500,7 +500,9 @@ fn build_tx(
     let mut tx_builder =
         TransactionBuilder::new(FogResolver::default(), EmptyMemoBuilder::default());
 
-    tx_builder.set_fee(FEE.load(Ordering::SeqCst));
+    tx_builder
+        .set_fee(FEE.load(Ordering::SeqCst))
+        .expect("failed to set fee");
 
     // Unzip each vec of tuples into a tuple of vecs.
     let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings

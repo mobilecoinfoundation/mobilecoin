@@ -4,10 +4,10 @@
 //!
 //! See https://cryptonote.org/img/cryptonote_transaction.png
 
-use crate::{InputCredentials, MemoBuilder, TxBuilderError};
+use crate::{ChangeDestination, InputCredentials, MemoBuilder, TxBuilderError};
 use core::{cmp::min, fmt::Debug};
 use curve25519_dalek::scalar::Scalar;
-use mc_account_keys::{AccountKey, PublicAddress};
+use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
@@ -21,36 +21,6 @@ use mc_transaction_core::{
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
-
-/// This is an API type for the transaction builder that helps name and organize
-/// data that is passed when creating a change output.
-///
-/// When creating a standard change output, the primary address is used to
-/// create the fog hint, and the change subaddress actually owns the change
-/// output.
-///
-/// This object can be created from an AccountKey, but it could also be created
-/// offline and then serialized and sent to a different machine.
-#[derive(Clone, Debug)]
-pub struct ChangeDestination {
-    /// This is normally the default subaddress of an account. It is used to
-    /// create the fog hint.
-    pub primary_address: PublicAddress,
-    /// This is a secret subaddress not known except by the owner of the
-    /// account. It is the account to which all change outputs are actually
-    /// sent. The account owner is able to confirm that an output is change
-    /// by checking that it matches to the change subaddress.
-    pub change_subaddress: PublicAddress,
-}
-
-impl From<&AccountKey> for ChangeDestination {
-    fn from(src: &AccountKey) -> Self {
-        Self {
-            primary_address: src.default_subaddress(),
-            change_subaddress: src.change_subaddress(),
-        }
-    }
-}
 
 /// Helper utility for building and signing a CryptoNote-style transaction,
 /// and attaching fog hint and memos as appropriate.
@@ -142,7 +112,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             value,
             recipient,
             recipient,
-            |memo_ctxt| mb.make_memo_for_output(value, recipient, memo_ctxt.tx_public_key),
+            |memo_ctxt| mb.make_memo_for_output(value, recipient, memo_ctxt),
             rng,
         );
         // Put the memo builder back
@@ -190,12 +160,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .memo_builder
             .take()
             .expect("memo builder is missing, this is a logic error");
-        let fee = self.fee;
         let result = self.add_output_with_fog_hint_address(
             value,
             &change_destination.primary_address,
             &change_destination.change_subaddress,
-            |_| mb.make_memo_for_change_output(fee),
+            |memo_ctxt| mb.make_memo_for_change_output(value, &change_destination, memo_ctxt),
             rng,
         );
         // Put the memo builder back
@@ -265,8 +234,15 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     ///
     /// # Arguments
     /// * `fee` - Transaction fee, in picoMOB.
-    pub fn set_fee(&mut self, fee: u64) {
+    pub fn set_fee(&mut self, fee: u64) -> Result<(), TxBuilderError> {
+        // Set the fee in memo builder first, so that it can signal an error
+        // before we set self.fee, and don't have to roll back.
+        self.memo_builder
+            .as_mut()
+            .expect("memo builder is missing, this is a logic error")
+            .set_fee(fee)?;
         self.fee = fee;
+        Ok(())
     }
 
     /// Gets the transaction fee.
@@ -571,7 +547,7 @@ pub mod transaction_builder_tests {
 
         // Set the fee so that sum(inputs) = sum(outputs) + fee.
         let fee = num_inputs as u64 * input_value - num_outputs as u64 * output_value;
-        transaction_builder.set_fee(fee);
+        transaction_builder.set_fee(fee).unwrap();
 
         transaction_builder.build(rng)
     }

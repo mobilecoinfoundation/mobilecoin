@@ -136,7 +136,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
     transaction_builder.set_tombstone_block(tombstone_block);
 
     // Fee
-    transaction_builder.set_fee(fee);
+    transaction_builder.set_fee(fee).unwrap();
 
     // Build and return the transaction
     transaction_builder.build(rng).unwrap()

@@ -5,12 +5,14 @@
 
 #![deny(missing_docs)]
 
+mod change_destination;
 mod error;
 mod input_credentials;
 mod memo;
 mod memo_builder;
 mod transaction_builder;
 
+pub use change_destination::ChangeDestination;
 pub use error::TxBuilderError;
 pub use input_credentials::InputCredentials;
 pub use memo::{

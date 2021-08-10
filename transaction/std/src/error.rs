@@ -2,7 +2,9 @@
 
 use displaydoc::Display;
 use mc_fog_report_validation::FogPubkeyError;
-use mc_transaction_core::{ring_signature, ring_signature::Error, AmountError, NewTxError};
+use mc_transaction_core::{
+    ring_signature, ring_signature::Error, AmountError, NewMemoError, NewTxError,
+};
 
 /// An error that can occur when using the TransactionBuilder
 #[derive(Debug, Display)]
@@ -13,10 +15,10 @@ pub enum TxBuilderError {
     /// Range proof construction failed
     RangeProofFailed,
 
-    /// Serialization failed: {0}
+    /// Serialization: {0}
     SerializationFailed(mc_util_serial::encode::Error),
 
-    /// Serialization failed: {0}
+    /// Serialization: {0}
     EncodingFailed(prost::EncodeError),
 
     /// Bad Amount: {0}
@@ -34,11 +36,14 @@ pub enum TxBuilderError {
     /// No inputs
     NoInputs,
 
-    /// Fog public key error: {0}
+    /// Fog public key: {0}
     FogPublicKey(FogPubkeyError),
 
-    /// Key error: {0}
+    /// Key: {0}
     KeyError(mc_crypto_keys::KeyError),
+
+    /// Memo: {0}
+    Memo(NewMemoError),
 }
 
 impl From<mc_util_serial::encode::Error> for TxBuilderError {
@@ -80,5 +85,11 @@ impl From<ring_signature::Error> for TxBuilderError {
 impl From<FogPubkeyError> for TxBuilderError {
     fn from(src: FogPubkeyError) -> Self {
         TxBuilderError::FogPublicKey(src)
+    }
+}
+
+impl From<NewMemoError> for TxBuilderError {
+    fn from(src: NewMemoError) -> Self {
+        TxBuilderError::Memo(src)
     }
 }

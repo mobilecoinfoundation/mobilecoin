@@ -12,9 +12,9 @@ use super::{
     },
     MemoBuilder,
 };
+use crate::ChangeDestination;
 use mc_account_keys::{AddressHash, PublicAddress};
-use mc_crypto_keys::RistrettoPublic;
-use mc_transaction_core::{MemoPayload, NewMemoError};
+use mc_transaction_core::{MemoContext, MemoPayload, NewMemoError};
 
 /// This memo builder attaches 0x0100 Authenticated Sender Memos to normal
 /// outputs, and 0x0200 Destination Memos to change outputs.
@@ -66,6 +66,8 @@ pub struct RTHMemoBuilder {
     total_outlay: u64,
     // Tracks the number of recipients so far
     num_recipients: u8,
+    // Tracks the fee
+    fee: u64,
 }
 
 impl RTHMemoBuilder {
@@ -114,12 +116,21 @@ impl RTHMemoBuilder {
 }
 
 impl MemoBuilder for RTHMemoBuilder {
+    /// Set the fee
+    fn set_fee(&mut self, fee: u64) -> Result<(), NewMemoError> {
+        if self.wrote_destination_memo {
+            return Err(NewMemoError::FeeAfterChange);
+        }
+        self.fee = fee;
+        Ok(())
+    }
+
     /// Build a memo for a normal output (to another party).
     fn make_memo_for_output(
         &mut self,
         value: u64,
         recipient: &PublicAddress,
-        tx_public_key: &RistrettoPublic,
+        memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
         if self.wrote_destination_memo {
             return Err(NewMemoError::OutputsAfterChange);
@@ -138,7 +149,7 @@ impl MemoBuilder for RTHMemoBuilder {
                 AuthenticatedSenderWithPaymentRequestIdMemo::new(
                     &cred,
                     recipient.view_public_key(),
-                    &tx_public_key.into(),
+                    &memo_context.tx_public_key.into(),
                     payment_request_id,
                 )
                 .into()
@@ -146,7 +157,7 @@ impl MemoBuilder for RTHMemoBuilder {
                 AuthenticatedSenderMemo::new(
                     &cred,
                     recipient.view_public_key(),
-                    &tx_public_key.into(),
+                    &memo_context.tx_public_key.into(),
                 )
                 .into()
             }
@@ -156,7 +167,12 @@ impl MemoBuilder for RTHMemoBuilder {
     }
 
     /// Build a memo for a change output (to ourselves).
-    fn make_memo_for_change_output(&mut self, fee: u64) -> Result<MemoPayload, NewMemoError> {
+    fn make_memo_for_change_output(
+        &mut self,
+        _value: u64,
+        _change_destination: &ChangeDestination,
+        _memo_context: MemoContext,
+    ) -> Result<MemoPayload, NewMemoError> {
         if !self.destination_memo_enabled {
             return Ok(UnusedMemo {}.into());
         }
@@ -165,9 +181,9 @@ impl MemoBuilder for RTHMemoBuilder {
         }
         self.total_outlay = self
             .total_outlay
-            .checked_add(fee)
+            .checked_add(self.fee)
             .ok_or(NewMemoError::LimitsExceeded("total_outlay"))?;
-        match DestinationMemo::new(self.last_recipient.clone(), self.total_outlay, fee) {
+        match DestinationMemo::new(self.last_recipient.clone(), self.total_outlay, self.fee) {
             Ok(mut d_memo) => {
                 d_memo.set_num_recipients(self.num_recipients);
                 Ok(d_memo.into())
