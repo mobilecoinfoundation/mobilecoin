@@ -141,6 +141,18 @@ mod tests {
                 panic!("unexpected deserialization");
             }
         }
+
+        let memo5 = MemoPayload::new([7u8, 8u8], [0u8; 44]);
+        match MemoType::try_from(&memo5) {
+            Ok(_) => {
+                panic!("failure was expected");
+            }
+            Err(err) => match err {
+                MemoDecodingError::UnknownMemoType(code) => {
+                    assert_eq!(code, [7u8, 8u8], "unexpected memo type bytes");
+                }
+            },
+        }
     }
 
     #[test]
