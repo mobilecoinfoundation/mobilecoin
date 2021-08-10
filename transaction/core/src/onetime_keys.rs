@@ -3,16 +3,18 @@
 //! # MobileCoin transactions use CryptoNote-style `onetime keys` to protect
 //! recipient privacy.
 //!
-//! When creating a transaction, the sender computes a onetime public key for
-//! each output in such a way that only the sender and the recipient know who
-//! the recipient is, and only the recipient is able to compute the
-//! corresponding onetime private key that is required to spend the output.
+//! When creating a transaction, the sender computes a one-time use public key
+//! for each output in such a way that only the sender and the recipient know
+//! who the recipient is, and only the recipient is able to compute the
+//! corresponding private key that is required to spend the output.
 //!
 //! To further protect recipient privacy, an output's onetime key is computed
 //! for a `subaddress` that the recipient generated from their CryptoNote-style
 //! address. This makes it easy for a recipient to use different subaddresses
 //! for different purposes and keep track of how much MobileCoin was sent to
 //! each subaddress.
+//!
+//! This key is called the "target key" of the TxOut.
 //!
 //! ## User account keys (a,b)
 //! To begin, a user creates unique account keys `(a,b)`, where `a` is the
@@ -40,10 +42,8 @@
 //! unique random number `r`, and creates the following public keys and includes
 //! them in a transaction output:
 //!
-//!    `onetime_public_key = Hs( r * C ) * G + D`
+//!    `tx_target_key = Hs( r * C ) * G + D`
 //!    `tx_public_key = r * D`
-//!
-//! The `onetime_public_key` is sometimes called `target_key`.
 //!
 //! ## Identifying an output sent to your subaddress (C_i, D_i).
 //! If you are the recipient of an output, even though you don’t know the random
@@ -60,8 +60,8 @@
 //! key:
 //!
 //! ```text
-//!     onetime_private_key = Hs(a * tx_public_key) + d
-//!                         = Hs(a * tx_public_key) + b + Hs( a | i )
+//!     tx_private_key = Hs(a * tx_public_key) + d
+//!                    = Hs(a * tx_public_key) + b + Hs( a | i )
 //! ```
 //!
 //! # References
@@ -135,11 +135,11 @@ pub fn create_tx_public_key(
 ///
 /// # Arguments
 /// * `view_private_key` - The recipient's view private key `a`.
-/// * `onetime_public_key` - The output's onetime_public_key.
-/// * `tx_public_key` - The output's tx_public_key.
+/// * `tx_target_key` - The output's target_key.
+/// * `tx_public_key` - The output's public_key.
 pub fn recover_public_subaddress_spend_key(
     view_private_key: &RistrettoPrivate,
-    onetime_public_key: &RistrettoPublic,
+    tx_target_key: &RistrettoPublic,
     tx_public_key: &RistrettoPublic,
 ) -> RistrettoPublic {
     // `Hs( a * R )`
@@ -162,11 +162,11 @@ pub fn recover_public_subaddress_spend_key(
 /// # Arguments
 /// * `view_key` - The recipient's private view key and public subaddress spend
 ///   key, `(a, D_i)`.
-/// * `onetime_public_key` - The output's onetime_public_key
-/// * `tx_public_key` - The output's tx_public_key `R`.
+/// * `tx_target_key` - The output's target_key
+/// * `tx_public_key` - The output's public_key `R`.
 pub fn view_key_matches_output(
     view_key: &ViewKey,
-    onetime_public_key: &RistrettoPublic,
+    tx_target_key: &RistrettoPublic,
     tx_public_key: &RistrettoPublic,
 ) -> bool {
     let D_prime = recover_public_subaddress_spend_key(
