@@ -162,8 +162,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .expect("memo builder is missing, this is a logic error");
         let result = self.add_output_with_fog_hint_address(
             value,
-            &change_destination.primary_address,
             &change_destination.change_subaddress,
+            &change_destination.primary_address,
             |memo_ctxt| mb.make_memo_for_change_output(value, &change_destination, memo_ctxt),
             rng,
         );
