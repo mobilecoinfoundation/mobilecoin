@@ -14,7 +14,7 @@ use super::{
 };
 use crate::ChangeDestination;
 use mc_account_keys::{AddressHash, PublicAddress};
-use mc_transaction_core::{MemoContext, MemoPayload, NewMemoError};
+use mc_transaction_core::{constants::MINIMUM_FEE, MemoContext, MemoPayload, NewMemoError};
 
 /// This memo builder attaches 0x0100 Authenticated Sender Memos to normal
 /// outputs, and 0x0200 Destination Memos to change outputs.
@@ -23,7 +23,7 @@ use mc_transaction_core::{MemoContext, MemoPayload, NewMemoError};
 /// You should usually use this like:
 ///
 ///   let mut mb = RTHMemoBuilder::default();
-///   mb.set_sender_cred(SenderMemoCredential::from(&account_key);
+///   mb.set_sender_credential(SenderMemoCredential::from(&account_key);
 ///   mb.enable_destination_memo();
 ///
 /// Then use it to construct a transaction builder.
@@ -50,7 +50,7 @@ use mc_transaction_core::{MemoContext, MemoPayload, NewMemoError};
 ///
 /// If more than one normal output is created, only the last recipient's public
 /// address will be recorded in the 0x0200 Destination Memo.
-#[derive(Default, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct RTHMemoBuilder {
     // The credential used to form 0x0100 and 0x0101 memos, if present.
     sender_cred: Option<SenderMemoCredential>,
@@ -70,6 +70,21 @@ pub struct RTHMemoBuilder {
     fee: u64,
 }
 
+impl Default for RTHMemoBuilder {
+    fn default() -> Self {
+        Self {
+            sender_cred: Default::default(),
+            payment_request_id: None,
+            destination_memo_enabled: false,
+            wrote_destination_memo: false,
+            last_recipient: Default::default(),
+            total_outlay: 0,
+            num_recipients: 0,
+            fee: MINIMUM_FEE,
+        }
+    }
+}
+
 impl RTHMemoBuilder {
     /// Set the sender credential. If no sender credential is provided,
     /// then authenticated sender memos cannot be produced.
@@ -85,12 +100,12 @@ impl RTHMemoBuilder {
     /// MOB to a user, you might set this to match the subaddress that they
     /// normally deposit to. Then a chat client will be able to associate both
     /// their deposits and withdrawals into a single chat interaction.
-    pub fn set_sender_cred(&mut self, cred: SenderMemoCredential) {
+    pub fn set_sender_credential(&mut self, cred: SenderMemoCredential) {
         self.sender_cred = Some(cred);
     }
 
     /// Clear the sender credential.
-    pub fn clear_sender_cred(&mut self) {
+    pub fn clear_sender_credential(&mut self) {
         self.sender_cred = None;
     }
 
@@ -185,6 +200,7 @@ impl MemoBuilder for RTHMemoBuilder {
             .ok_or(NewMemoError::LimitsExceeded("total_outlay"))?;
         match DestinationMemo::new(self.last_recipient.clone(), self.total_outlay, self.fee) {
             Ok(mut d_memo) => {
+                self.wrote_destination_memo = true;
                 d_memo.set_num_recipients(self.num_recipients);
                 Ok(d_memo.into())
             }
