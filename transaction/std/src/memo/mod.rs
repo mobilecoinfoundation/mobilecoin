@@ -70,3 +70,272 @@ impl_memo_enum! { MemoType,
     AuthenticatedSenderWithPaymentRequestId(AuthenticatedSenderWithPaymentRequestIdMemo),
     Destination(DestinationMemo),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mc_account_keys::{AccountKey, AddressHash};
+    use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
+    use mc_transaction_core::MemoPayload;
+    use mc_util_from_random::FromRandom;
+    use rand::{rngs::StdRng, SeedableRng};
+
+    #[test]
+    fn test_memo_type_round_trips() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        let alice = AccountKey::new(
+            &RistrettoPrivate::from_random(&mut rng),
+            &RistrettoPrivate::from_random(&mut rng),
+        );
+        let alice_cred = SenderMemoCredential::from(&alice);
+
+        let bob = AccountKey::new(
+            &RistrettoPrivate::from_random(&mut rng),
+            &RistrettoPrivate::from_random(&mut rng),
+        );
+        let bob_addr = bob.default_subaddress();
+
+        let tx_public_key = CompressedRistrettoPublic::from_random(&mut rng);
+
+        let memo1 = UnusedMemo {};
+        match MemoType::try_from(&MemoPayload::from(memo1)).unwrap() {
+            MemoType::Unused(_) => {}
+            _ => {
+                panic!("unexpected deserialization");
+            }
+        }
+
+        let memo2 =
+            AuthenticatedSenderMemo::new(&alice_cred, bob_addr.view_public_key(), &tx_public_key);
+        match MemoType::try_from(&MemoPayload::from(memo2.clone())).unwrap() {
+            MemoType::AuthenticatedSender(memo) => {
+                assert_eq!(memo2, memo, "memo did not round trip");
+            }
+            _ => {
+                panic!("unexpected deserialization");
+            }
+        }
+
+        let memo3 = AuthenticatedSenderWithPaymentRequestIdMemo::new(
+            &alice_cred,
+            bob_addr.view_public_key(),
+            &tx_public_key,
+            7u64,
+        );
+        match MemoType::try_from(&MemoPayload::from(memo3.clone())).unwrap() {
+            MemoType::AuthenticatedSenderWithPaymentRequestId(memo) => {
+                assert_eq!(memo3, memo);
+            }
+            _ => {
+                panic!("unexpected deserialization");
+            }
+        }
+
+        let memo4 = DestinationMemo::new(AddressHash::from(&bob_addr), 17, 18).unwrap();
+        match MemoType::try_from(&MemoPayload::from(memo4.clone())).unwrap() {
+            MemoType::Destination(memo) => {
+                assert_eq!(memo4, memo);
+            }
+            _ => {
+                panic!("unexpected deserialization");
+            }
+        }
+    }
+
+    #[test]
+    fn test_memo_authentication() {
+        let mut rng: StdRng = SeedableRng::from_seed([2u8; 32]);
+
+        let alice = AccountKey::new(
+            &RistrettoPrivate::from_random(&mut rng),
+            &RistrettoPrivate::from_random(&mut rng),
+        );
+        let alice_cred = SenderMemoCredential::from(&alice);
+        let alice_addr = alice.default_subaddress();
+
+        let bob = AccountKey::new(
+            &RistrettoPrivate::from_random(&mut rng),
+            &RistrettoPrivate::from_random(&mut rng),
+        );
+        let bob_addr = bob.default_subaddress();
+
+        let tx_public_key = CompressedRistrettoPublic::from_random(&mut rng);
+        let tx_public_key2 = CompressedRistrettoPublic::from_random(&mut rng);
+
+        let memo1 =
+            AuthenticatedSenderMemo::new(&alice_cred, bob_addr.view_public_key(), &tx_public_key);
+        assert_eq!(memo1.sender_address_hash(), AddressHash::from(&alice_addr));
+        assert!(
+            bool::from(memo1.validate(
+                &alice_addr,
+                &bob.default_subaddress_view_private(),
+                &tx_public_key
+            )),
+            "validation should have passed"
+        );
+        assert!(
+            !bool::from(memo1.validate(
+                &bob_addr,
+                &bob.default_subaddress_view_private(),
+                &tx_public_key
+            )),
+            "validation should have failed"
+        );
+        assert!(
+            !bool::from(memo1.validate(
+                &alice_addr,
+                &alice.default_subaddress_view_private(),
+                &tx_public_key
+            )),
+            "validation should have failed"
+        );
+        assert!(
+            !bool::from(memo1.validate(
+                &bob_addr,
+                &alice.default_subaddress_view_private(),
+                &tx_public_key
+            )),
+            "validation should have failed"
+        );
+        assert!(
+            !bool::from(memo1.validate(
+                &alice_addr,
+                &bob.default_subaddress_view_private(),
+                &tx_public_key2
+            )),
+            "validation should have failed"
+        );
+        assert!(
+            !bool::from(memo1.validate(
+                &bob_addr,
+                &bob.default_subaddress_view_private(),
+                &tx_public_key2
+            )),
+            "validation should have failed"
+        );
+        assert!(
+            !bool::from(memo1.validate(
+                &alice_addr,
+                &alice.default_subaddress_view_private(),
+                &tx_public_key2
+            )),
+            "validation should have failed"
+        );
+        assert!(
+            !bool::from(memo1.validate(
+                &bob_addr,
+                &alice.default_subaddress_view_private(),
+                &tx_public_key2
+            )),
+            "validation should have failed"
+        );
+
+        let memo2 = AuthenticatedSenderWithPaymentRequestIdMemo::new(
+            &alice_cred,
+            bob_addr.view_public_key(),
+            &tx_public_key,
+            7u64,
+        );
+        assert_eq!(memo2.sender_address_hash(), AddressHash::from(&alice_addr));
+        assert_eq!(memo2.payment_request_id(), 7u64);
+        assert!(
+            bool::from(memo2.validate(
+                &alice_addr,
+                &bob.default_subaddress_view_private(),
+                &tx_public_key
+            )),
+            "validation should have passed"
+        );
+        assert!(
+            !bool::from(memo2.validate(
+                &bob_addr,
+                &bob.default_subaddress_view_private(),
+                &tx_public_key
+            )),
+            "validation should have failed"
+        );
+        assert!(
+            !bool::from(memo2.validate(
+                &alice_addr,
+                &alice.default_subaddress_view_private(),
+                &tx_public_key
+            )),
+            "validation should have failed"
+        );
+        assert!(
+            !bool::from(memo2.validate(
+                &bob_addr,
+                &alice.default_subaddress_view_private(),
+                &tx_public_key
+            )),
+            "validation should have failed"
+        );
+        assert!(
+            !bool::from(memo2.validate(
+                &alice_addr,
+                &bob.default_subaddress_view_private(),
+                &tx_public_key2
+            )),
+            "validation should have failed"
+        );
+        assert!(
+            !bool::from(memo2.validate(
+                &bob_addr,
+                &bob.default_subaddress_view_private(),
+                &tx_public_key2
+            )),
+            "validation should have failed"
+        );
+        assert!(
+            !bool::from(memo2.validate(
+                &alice_addr,
+                &alice.default_subaddress_view_private(),
+                &tx_public_key2
+            )),
+            "validation should have failed"
+        );
+        assert!(
+            !bool::from(memo2.validate(
+                &bob_addr,
+                &alice.default_subaddress_view_private(),
+                &tx_public_key2
+            )),
+            "validation should have failed"
+        );
+    }
+
+    #[test]
+    fn test_destination_memo() {
+        let mut rng: StdRng = SeedableRng::from_seed([2u8; 32]);
+
+        let alice = AccountKey::new(
+            &RistrettoPrivate::from_random(&mut rng),
+            &RistrettoPrivate::from_random(&mut rng),
+        );
+        let alice_addr = alice.default_subaddress();
+
+        let bob = AccountKey::new(
+            &RistrettoPrivate::from_random(&mut rng),
+            &RistrettoPrivate::from_random(&mut rng),
+        );
+        let bob_addr = bob.default_subaddress();
+
+        let mut memo = DestinationMemo::new(AddressHash::from(&alice_addr), 12u64, 13u64).unwrap();
+
+        assert_eq!(memo.get_address_hash(), &AddressHash::from(&alice_addr));
+        assert_eq!(memo.get_total_outlay(), 12u64);
+        assert_eq!(memo.get_fee(), 13u64);
+        assert_eq!(memo.get_num_recipients(), 1);
+
+        memo.set_address_hash(AddressHash::from(&bob_addr));
+        memo.set_total_outlay(19);
+        memo.set_fee(17).unwrap();
+        memo.set_num_recipients(4);
+
+        assert_eq!(memo.get_address_hash(), &AddressHash::from(&bob_addr));
+        assert_eq!(memo.get_total_outlay(), 19u64);
+        assert_eq!(memo.get_fee(), 17u64);
+        assert_eq!(memo.get_num_recipients(), 4);
+    }
+}

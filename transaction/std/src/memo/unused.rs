@@ -6,7 +6,7 @@ use super::RegisteredMemoType;
 use crate::impl_memo_type_conversions;
 
 /// A memo that the sender declined to use to convey any information.
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Default, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct UnusedMemo;
 
 impl RegisteredMemoType for UnusedMemo {
