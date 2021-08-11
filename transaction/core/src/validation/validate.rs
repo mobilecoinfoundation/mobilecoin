@@ -38,6 +38,8 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_number_of_outputs(&tx.prefix, MAX_OUTPUTS)?;
 
+    validate_memos_exist(&tx)?;
+
     validate_ring_sizes(&tx.prefix, RING_SIZE)?;
 
     validate_ring_elements_are_unique(&tx.prefix)?;
@@ -190,6 +192,17 @@ fn validate_outputs_public_keys_are_unique(tx: &Tx) -> TransactionValidationResu
     }
     Ok(())
 }
+
+/// All outputs have a memo (old-style TxOuts are rejected)
+fn validate_memos_exist(tx: &Tx) -> TransactionValidationResult<()> {
+    for output in tx.prefix.outputs.iter() {
+        if output.e_memo.is_none() {
+            return Err(TransactionValidationError::MissingMemo);
+        }
+    }
+    Ok(())
+}
+
 /// Verifies the transaction signature.
 ///
 /// A valid RctBulletproofs signature implies that:
@@ -380,10 +393,10 @@ mod tests {
             error::TransactionValidationError,
             validate::{
                 validate_inputs_are_sorted, validate_key_images_are_unique,
-                validate_membership_proofs, validate_number_of_inputs, validate_number_of_outputs,
-                validate_outputs_public_keys_are_unique, validate_ring_elements_are_unique,
-                validate_ring_sizes, validate_signature, validate_tombstone,
-                validate_transaction_fee, MAX_TOMBSTONE_BLOCKS,
+                validate_membership_proofs, validate_memos_exist, validate_number_of_inputs,
+                validate_number_of_outputs, validate_outputs_public_keys_are_unique,
+                validate_ring_elements_are_unique, validate_ring_sizes, validate_signature,
+                validate_tombstone, validate_transaction_fee, MAX_TOMBSTONE_BLOCKS,
             },
         },
     };
@@ -463,6 +476,20 @@ mod tests {
         );
 
         (adapt_hack(&tx), ledger)
+    }
+
+    #[test]
+    // Should return MissingMemo when memos are missing in the outputs
+    fn test_validate_memos_exist() {
+        let (mut tx, _) = create_test_tx();
+        for ref mut output in tx.prefix.outputs.iter_mut() {
+            output.e_memo = None;
+        }
+
+        assert_eq!(
+            validate_memos_exist(&tx),
+            Err(TransactionValidationError::MissingMemo)
+        );
     }
 
     #[test]
