@@ -53,7 +53,7 @@ pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
     /// Box<dyn ...> is used because having more generic parameters creates more
     /// types that SDKs must bind to if they support multiple memo builder
     /// types.
-    memo_builder: Option<Box<dyn MemoBuilder + 'static>>,
+    memo_builder: Option<Box<dyn MemoBuilder + 'static + Send>>,
 }
 
 impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
@@ -64,7 +64,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     ///   transaction
     /// * `memo_builder` - An object which creates memos for the TxOuts in this
     ///   transaction
-    pub fn new<MB: MemoBuilder + 'static>(fog_resolver: FPR, memo_builder: MB) -> Self {
+    pub fn new<MB: MemoBuilder + 'static + Send>(fog_resolver: FPR, memo_builder: MB) -> Self {
         TransactionBuilder {
             input_credentials: Vec::new(),
             outputs_and_shared_secrets: Vec::new(),
