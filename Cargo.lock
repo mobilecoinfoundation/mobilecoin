@@ -2647,7 +2647,7 @@ name = "mc-crypto-digestible-signature"
 version = "1.1.0"
 dependencies = [
  "mc-crypto-digestible",
- "schnorrkel",
+ "schnorrkel-og",
  "signature",
 ]
 
@@ -2689,7 +2689,7 @@ dependencies = [
  "pem",
  "rand_core 0.6.2",
  "rand_hc 0.3.0",
- "schnorrkel",
+ "schnorrkel-og",
  "semver 0.11.0",
  "serde",
  "serde_json",
@@ -5069,9 +5069,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "schnorrkel"
-version = "0.10.1"
-source = "git+https://github.com/mobilecoinofficial/schnorrkel?rev=fa27d0ed32d251a27399a23d3ef69611acb14d56#fa27d0ed32d251a27399a23d3ef69611acb14d56"
+name = "schnorrkel-og"
+version = "0.10.2"
+source = "git+https://github.com/jcape/schnorrkel.git?rev=b90fd446eeaef2996c199138427888afcf972bbd#b90fd446eeaef2996c199138427888afcf972bbd"
 dependencies = [
  "arrayref",
  "arrayvec",

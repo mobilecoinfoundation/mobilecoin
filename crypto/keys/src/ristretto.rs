@@ -27,7 +27,7 @@ use mc_util_repr_bytes::{
 };
 use rand_core::{CryptoRng, RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
-use schnorrkel::{
+use schnorrkel_og::{
     context::attach_rng, PublicKey as SchnorrkelPublic, SecretKey as SchnorrkelPrivate,
     Signature as SchnorrkelSignature, SignatureError as SchnorrkelError, SIGNATURE_LENGTH,
 };
@@ -293,7 +293,7 @@ impl RistrettoPublic {
         message: &[u8],
         signature: &RistrettoSignature,
     ) -> Result<(), SchnorrkelError> {
-        let ctx = schnorrkel::signing_context(context);
+        let ctx = schnorrkel_og::signing_context(context);
         let pubkey = SchnorrkelPublic::from_point(*self.as_ref());
         pubkey.verify(ctx.bytes(&message), &signature.try_into()?)
     }

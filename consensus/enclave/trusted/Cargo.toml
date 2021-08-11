@@ -87,7 +87,7 @@ prost = { git = "https://github.com/danburkert/prost", rev = "6113789f70b6970982
 prost-derive = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
 
 # Overridden since we need a commit that uprevs a bunch of dependencies.
-schnorrkel = { git = "https://github.com/mobilecoinofficial/schnorrkel", rev = "fa27d0ed32d251a27399a23d3ef69611acb14d56" }
+schnorrkel-og = { git = "https://github.com/jcape/schnorrkel.git", rev = "b90fd446eeaef2996c199138427888afcf972bbd" }
 
 # Fixes the following:
 # * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.

@@ -89,7 +89,7 @@ pub fn rethrow(msg: Box<dyn Any + Send>) -> ! {
 /// try_closure:
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
 #[cfg(feature = "alloc")]
-pub unsafe fn try_closure<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
+pub unsafe fn try_closure<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send + 'static>> {
     use self::panic_counter::update_panic_count;
     use core::{mem, mem::ManuallyDrop};
 
@@ -145,7 +145,7 @@ pub unsafe fn try_closure<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + 
         // FIXME: this has been deprecated in latest nightly, see
         //        https://rust-lang.github.io/rfcs/2580-ptr-meta.html for
         //        details on how to fix it.
-        Err(mem::transmute(raw::TraitObject {
+        Err(mem::transmute(TraitObject {
             data: any_data as *mut _,
             vtable: any_vtable as *mut _,
         }))
