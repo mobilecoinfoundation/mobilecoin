@@ -56,12 +56,6 @@ impl Block {
     /// * `outputs` - Outputs "minted" by the origin block.
     pub fn new_origin_block(outputs: &[TxOut]) -> Self {
         let version = 0; // The origin block is always 0
-                         // Version 0 TxOut's don't have memos
-        for output in outputs {
-            if output.e_memo.is_some() {
-                panic!("Version 0 TxOuts in the origin block don't have memos");
-            }
-        }
         let parent_id = BlockID::default();
         let index: BlockIndex = 0;
         let cumulative_txo_count = outputs.len() as u64;
