@@ -9,7 +9,7 @@ use subtle::{Choice, ConstantTimeEq};
 /// Represents a "standard" public address hash created using merlin,
 /// used in memos as a compact representation of a MobileCoin public address.
 /// This hash is collision resistant.
-#[derive(Default, Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Default, Debug, Clone, Eq, Hash, PartialEq, Ord, PartialOrd)]
 pub struct AddressHash([u8; 16]);
 
 impl From<[u8; 16]> for AddressHash {
