@@ -118,7 +118,7 @@ impl AuthenticatedSenderMemo {
         result &= sender_address_hash.ct_eq(&self.sender_address_hash());
 
         let shared_secret =
-            receeving_subaddress_view_private_key.key_exchange(sender_address.spend_public_key());
+            receiving_subaddress_view_private_key.key_exchange(sender_address.spend_public_key());
 
         let expected_hmac = compute_category1_hmac(
             shared_secret.as_ref(),
