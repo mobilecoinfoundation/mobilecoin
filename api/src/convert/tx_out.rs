@@ -118,5 +118,9 @@ mod tests {
 
         let recovered_tx_out = tx::TxOut::try_from(&converted).unwrap();
         assert_eq!(source.amount, recovered_tx_out.amount);
+        assert_eq!(source.target_key, recovered_tx_out.target_key);
+        assert_eq!(source.public_key, recovered_tx_out.public_key);
+        assert_eq!(source.e_fog_hint, recovered_tx_out.e_fog_hint);
+        assert_eq!(source.e_memo, recovered_tx_out.e_memo);
     }
 }

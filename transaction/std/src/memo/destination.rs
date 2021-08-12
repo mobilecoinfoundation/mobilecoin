@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! Object for 0x0200 Destination memo type
+//! FIXME: Link to MCIP
 
 use super::RegisteredMemoType;
 use crate::impl_memo_type_conversions;

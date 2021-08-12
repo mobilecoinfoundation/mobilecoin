@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! Object for 0x0100 Authenticated Sender memo type
+//! FIXME: Link to MCIP
 
 use super::{
     authenticated_common::compute_category1_hmac, credential::SenderMemoCredential,
@@ -40,13 +41,13 @@ impl AuthenticatedSenderMemo {
     /// # Arguments:
     /// * cred: A sender memo credential tied to the address we wish to identify
     ///   ourselves as
-    /// * recieving_subaddress_view_public_key: This is the view public key from
+    /// * receiving_subaddress_view_public_key: This is the view public key from
     ///   the public address of recipient
     /// * tx_out_public_key: The public_key of the TxOut to which we will attach
     ///   this memo
     pub fn new(
         cred: &SenderMemoCredential,
-        recieving_subaddress_view_public_key: &RistrettoPublic,
+        receiving_subaddress_view_public_key: &RistrettoPublic,
         tx_out_public_key: &CompressedRistrettoPublic,
     ) -> Self {
         // The layout of the memo is:
@@ -59,7 +60,7 @@ impl AuthenticatedSenderMemo {
 
         let shared_secret = cred
             .subaddress_spend_private_key
-            .key_exchange(recieving_subaddress_view_public_key);
+            .key_exchange(receiving_subaddress_view_public_key);
 
         let hmac_value = compute_category1_hmac(
             shared_secret.as_ref(),
@@ -117,7 +118,7 @@ impl AuthenticatedSenderMemo {
         result &= sender_address_hash.ct_eq(&self.sender_address_hash());
 
         let shared_secret =
-            recieving_subaddress_view_private_key.key_exchange(sender_address.spend_public_key());
+            receeving_subaddress_view_private_key.key_exchange(sender_address.spend_public_key());
 
         let expected_hmac = compute_category1_hmac(
             shared_secret.as_ref(),

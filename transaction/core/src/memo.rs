@@ -4,7 +4,7 @@
 //!
 //! The encrypted memo of TxOut's is designed to have one encryption scheme and
 //! the payload is an extensible format. Two bytes are used for a schema type,
-//! and thirty two bytes are used for data according to that schema.
+//! and fourty four bytes are used for data according to that schema.
 //!
 //! The encryption details are defined in the transaction crate, but we would
 //! like to avoid making the introduction of a new schema require changes to

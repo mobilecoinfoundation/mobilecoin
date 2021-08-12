@@ -243,7 +243,7 @@ pub struct TxOut {
     #[prost(message, required, tag = "3")]
     pub public_key: CompressedRistrettoPublic,
 
-    /// The encrypted fog hint for the fog server.
+    /// The encrypted fog hint for the fog ingest server.
     #[prost(message, required, tag = "4")]
     pub e_fog_hint: EncryptedFogHint,
 

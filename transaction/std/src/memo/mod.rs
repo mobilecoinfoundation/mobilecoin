@@ -24,6 +24,7 @@
 //! Or, if you don't want to use the `TransactionBuilder`, you can call
 //! `TxOut::new_with_memo` directly.
 
+use crate::impl_memo_enum;
 use core::{convert::TryFrom, fmt::Debug};
 use displaydoc::Display;
 
@@ -32,11 +33,9 @@ mod authenticated_sender;
 mod authenticated_sender_with_payment_request_id;
 mod credential;
 mod destination;
-#[macro_use]
 mod macros;
 mod unused;
 
-use crate::impl_memo_enum;
 pub use authenticated_common::compute_category1_hmac;
 pub use authenticated_sender::AuthenticatedSenderMemo;
 pub use authenticated_sender_with_payment_request_id::AuthenticatedSenderWithPaymentRequestIdMemo;
@@ -49,7 +48,8 @@ pub use unused::UnusedMemo;
 pub trait RegisteredMemoType:
     Sized + Clone + Debug + Into<[u8; 44]> + for<'a> From<&'a [u8; 44]>
 {
-    /// The type bytes assigned to this memo type. Refer to MCIP for these.
+    /// The type bytes assigned to this memo type.
+    /// These are typically found in the MCIP that specifies this memo type.
     ///
     /// The first byte is conceptually a "type category"
     /// The second byte is a type within the category

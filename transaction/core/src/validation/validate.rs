@@ -195,10 +195,13 @@ fn validate_outputs_public_keys_are_unique(tx: &Tx) -> TransactionValidationResu
 
 /// All outputs have a memo (old-style TxOuts are rejected)
 fn validate_memos_exist(tx: &Tx) -> TransactionValidationResult<()> {
-    for output in tx.prefix.outputs.iter() {
-        if output.e_memo.is_none() {
-            return Err(TransactionValidationError::MissingMemo);
-        }
+    if tx
+        .prefix
+        .outputs
+        .iter()
+        .any(|output| output.e_memo.is_none())
+    {
+        return Err(TransactionValidationError::MissingMemo);
     }
     Ok(())
 }
