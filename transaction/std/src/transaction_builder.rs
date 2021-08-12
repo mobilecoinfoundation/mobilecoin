@@ -181,6 +181,10 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// Caution: This method should not be used without fully understanding the
     /// implications.
     ///
+    /// Deprecation note: This method will not be public in future versions of
+    /// this crate, we believe the only legitimate use of this is now served
+    /// by add_change_output.
+    ///
     /// Receiving a `TxOut` addressed to a different recipient than what's
     /// contained in the fog hint is normally considered to be a violation
     /// of convention and is likely to be filtered out silently by the
