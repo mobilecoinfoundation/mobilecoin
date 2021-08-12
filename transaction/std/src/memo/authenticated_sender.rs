@@ -109,7 +109,7 @@ impl AuthenticatedSenderMemo {
     pub fn validate(
         &self,
         sender_address: &PublicAddress,
-        recieving_subaddress_view_private_key: &RistrettoPrivate,
+        receiving_subaddress_view_private_key: &RistrettoPrivate,
         tx_out_public_key: &CompressedRistrettoPublic,
     ) -> Choice {
         let mut result = Choice::from(1u8);
