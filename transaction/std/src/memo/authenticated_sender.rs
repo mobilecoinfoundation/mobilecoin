@@ -1,7 +1,8 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! Object for 0x0100 Authenticated Sender memo type
-//! FIXME: Link to MCIP
+//!
+//! This was proposed for standardization in mobilecoinfoundation/mcips/pull/4
 
 use super::{
     authenticated_common::compute_category1_hmac, credential::SenderMemoCredential,

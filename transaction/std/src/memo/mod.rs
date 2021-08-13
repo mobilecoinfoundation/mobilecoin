@@ -3,6 +3,13 @@
 //! Defines an object for each known high-level memo type,
 //! and an enum to allow matching recovered memos to one of these types.
 //!
+//! The framework for memo types was proposed for standardization
+//! in mobilecoinfoundation/mcips/pull/3.
+//!
+//! Several memo types from that proposal and subsequent proposals
+//! are implemented in modules beneath this module, and then included in the
+//! MemoType enum defined in this module.
+//!
 //! The intended use is like:
 //! - Call `TxOut::decrypt_memo`, obtaining `MemoPayload`
 //! - Call `MemoType::try_from`, obtaining the enum `MemoType`

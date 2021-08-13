@@ -1,6 +1,9 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! HMAC code shared by all category 0x01 memos.
+//!
+//! This validation scheme was proposed for standardization in
+//! mobilecoinfoundation/mcips/pull/4
 
 use hmac::{Hmac, Mac, NewMac};
 use mc_crypto_keys::CompressedRistrettoPublic;
