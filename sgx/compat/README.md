@@ -60,6 +60,6 @@ What cross-dependencies there are between them, generally have emerged because o
 implemented anyways.
 
 This is often the most maintainable pattern if your project has many crates (and possibly many enclaves),
-because it means that the configuration options on `mc_sgx_panic`, `mc_sgx_sync`, `mc_sgx_alloc`, etc. appear only once
+because it means that the configuration options on `mc_sgx_sync`, `mc_sgx_alloc`, etc. appear only once
 in your facade's Cargo.toml and not in multiple place. When multiple things depend on `mc_sgx_sync` it may be harder
 to figure out how cargo will ultimately configure it due to feature unification.

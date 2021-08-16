@@ -19,8 +19,6 @@
 #![feature(negative_impls)]
 
 extern crate alloc;
-#[cfg(feature = "sgx_panic")]
-extern crate mc_sgx_panic;
 extern crate mc_sgx_types;
 
 mod condvar;

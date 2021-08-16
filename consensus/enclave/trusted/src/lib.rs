@@ -12,7 +12,6 @@ use lazy_static::lazy_static;
 use mc_consensus_enclave_api::{ConsensusEnclave, EnclaveCall};
 use mc_consensus_enclave_impl::SgxConsensusEnclave;
 use mc_enclave_boundary::trusted::RetryBuffer;
-use mc_sgx_compat::panic::catch_unwind;
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_sgx_types::{c_void, sgx_is_outside_enclave, sgx_status_t};
 use mc_util_serial::{deserialize, serialize};
@@ -144,19 +143,23 @@ pub extern "C" fn mobileenclave_call(
         return sgx_status_t::SGX_ERROR_INVALID_PARAMETER;
     }
 
-    match catch_unwind(|| {
-        let mut temp_outbuf_used = unsafe { *outbuf_used };
-        let mut temp_outbuf_retry_id = unsafe { *outbuf_retry_id };
-        let res = RETRY_BUFFER.call(
-            unsafe { slice::from_raw_parts(inbuf, inbuf_len) },
-            unsafe { slice::from_raw_parts_mut(outbuf, outbuf_len) },
-            &mut temp_outbuf_used,
-            &mut temp_outbuf_retry_id,
-        );
-        unsafe {
-            *outbuf_used = temp_outbuf_used;
-            *outbuf_retry_id = temp_outbuf_retry_id;
-        }
+
+    let mut temp_outbuf_used = unsafe { *outbuf_used };
+    let mut temp_outbuf_retry_id = unsafe { *outbuf_retry_id };
+    let res = RETRY_BUFFER.call(
+        unsafe { slice::from_raw_parts(inbuf, inbuf_len) },
+        unsafe { slice::from_raw_parts_mut(outbuf, outbuf_len) },
+        &mut temp_outbuf_used,
+        &mut temp_outbuf_retry_id,
+    );
+    unsafe {
+        *outbuf_used = temp_outbuf_used;
+        *outbuf_retry_id = temp_outbuf_retry_id;
+    }
+
+    if res.is_ok() {
+        sgx_status_t
+    }
         res
     }) {
         Ok(x) => match x {
