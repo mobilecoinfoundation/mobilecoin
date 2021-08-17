@@ -7,6 +7,14 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/backend-protocol: "GRPCS"
     cert-manager.io/cluster-issuer: letsencrypt-production
+
+    ### HAProxy Ingress
+    haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
+    haproxy.org/server-ssl: "true"             # The backend (server) is http
+    haproxy.org/abortonclose: "true"
+    haproxy.org/backend-config-snippet: |-
+      http-reuse aggressive
+
 spec:
   tls:
     - hosts:
