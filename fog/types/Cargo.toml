@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-types"
-version = "1.1.0"
+version = "1.1.1"
 authors = ["Mobilecoin"]
 edition = "2018"
 
