@@ -225,7 +225,7 @@ impl Builder {
             .features(CargoOpt::SomeFeatures(features_vec))
             .exec()?;
 
-        let mut cargo_builder = CargoBuilder::new(&env, staticlib_dir, false);
+        let mut cargo_builder = CargoBuilder::new(env, staticlib_dir, false);
 
         // copy our target features to the enclave's build
         let features = env.target_features();
@@ -530,12 +530,7 @@ impl Builder {
         // If we have been given a private key to use, just sign the enclave in the
         // insecure, one-shot mode
         if let Some(private_key) = &self.privkey.clone() {
-            self.oneshot(
-                &unsigned_enclave,
-                &config_xml,
-                &private_key,
-                &signed_enclave,
-            )?;
+            self.oneshot(&unsigned_enclave, &config_xml, private_key, signed_enclave)?;
         } else if enclave_rebuilt || (self.pubkey.is_none() && self.signature.is_none()) {
             warning!("Generating single-use key for insecure, one-shot signature");
 
@@ -555,12 +550,7 @@ impl Builder {
             )
             .expect("Could not write PEM string to private key file");
 
-            self.oneshot(
-                &unsigned_enclave,
-                &config_xml,
-                &private_key,
-                &signed_enclave,
-            )?;
+            self.oneshot(&unsigned_enclave, &config_xml, &private_key, signed_enclave)?;
         } else {
             let pubkey = self.pubkey.as_ref().unwrap();
             let signature = self.signature.as_ref().unwrap();
@@ -577,9 +567,9 @@ impl Builder {
                 .catsig(
                     &unsigned_enclave,
                     &config_xml,
-                    &pubkey,
+                    pubkey,
                     &gendata,
-                    &signature,
+                    signature,
                     signed_enclave,
                 )
                 .status()?
@@ -601,12 +591,7 @@ impl Builder {
         output_enclave: &Path,
     ) -> Result<(), Error> {
         if SgxSign::new(&self.target_arch)?
-            .sign(
-                &unsigned_enclave,
-                &config_path,
-                &private_key,
-                output_enclave,
-            )
+            .sign(unsigned_enclave, config_path, private_key, output_enclave)
             .status()?
             .success()
         {

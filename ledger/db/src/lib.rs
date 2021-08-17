@@ -194,7 +194,7 @@ impl Ledger for LedgerDB {
     fn num_blocks(&self) -> Result<u64, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
         Ok(key_bytes_to_u64(
-            &db_transaction.get(self.counts, &NUM_BLOCKS_KEY)?,
+            db_transaction.get(self.counts, &NUM_BLOCKS_KEY)?,
         ))
     }
 
@@ -243,7 +243,7 @@ impl Ledger for LedgerDB {
         let db_transaction = self.env.begin_ro_txn()?;
         let key = u64_to_key_bytes(tx_out_index);
         let block_index_bytes = db_transaction.get(self.block_number_by_tx_out_index, &key)?;
-        Ok(key_bytes_to_u64(&block_index_bytes))
+        Ok(key_bytes_to_u64(block_index_bytes))
     }
 
     /// Returns the index of the TxOut with the given hash.
@@ -434,7 +434,7 @@ impl LedgerDB {
     ) -> Result<(), lmdb::Error> {
         // Update total number of blocks.
         let num_blocks_before: u64 =
-            key_bytes_to_u64(&db_transaction.get(self.counts, &NUM_BLOCKS_KEY)?);
+            key_bytes_to_u64(db_transaction.get(self.counts, &NUM_BLOCKS_KEY)?);
         db_transaction.put(
             self.counts,
             &NUM_BLOCKS_KEY,
@@ -637,7 +637,7 @@ impl LedgerDB {
     ) -> Result<Block, Error> {
         let key = u64_to_key_bytes(block_number);
         let block_bytes = db_transaction.get(self.blocks, &key)?;
-        let block = decode(&block_bytes)?;
+        let block = decode(block_bytes)?;
         Ok(block)
     }
 
@@ -650,7 +650,7 @@ impl LedgerDB {
     ) -> Result<BlockContents, Error> {
         // Get all TxOuts in block.
         let bytes = db_transaction.get(self.tx_outs_by_block, &u64_to_key_bytes(block_number))?;
-        let value: TxOutsByBlockValue = decode(&bytes)?;
+        let value: TxOutsByBlockValue = decode(bytes)?;
 
         let outputs = (value.first_tx_out_index..(value.first_tx_out_index + value.num_tx_outs))
             .map(|tx_out_index| {
@@ -679,7 +679,7 @@ impl LedgerDB {
     ) -> Result<BlockSignature, Error> {
         let key = u64_to_key_bytes(block_number);
         let signature_bytes = db_transaction.get(self.block_signatures, &key)?;
-        let signature = decode(&signature_bytes)?;
+        let signature = decode(signature_bytes)?;
         Ok(signature)
     }
 }

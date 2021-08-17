@@ -112,7 +112,7 @@ cfg_if::cfg_if! {
         where
             F: FnOnce(&Logger) -> R,
         {
-            slog_scope::scope(&logger, || f(&logger))
+            slog_scope::scope(logger, || f(logger))
         }
     }
 }

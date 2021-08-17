@@ -237,7 +237,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
         if let Some(msgs) = slot_index_to_msgs.get(&self.current_slot.get_index()) {
             if let Some(response) = self.current_slot.handle_messages(msgs)? {
                 if let Topic::Externalize(ext_payload) = &response.topic {
-                    self.externalize(&ext_payload)?;
+                    self.externalize(ext_payload)?;
                 }
                 outbound_msgs.push(response);
             }

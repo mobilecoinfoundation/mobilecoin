@@ -157,7 +157,7 @@ impl RingMLSAG {
                 // zero.
 
                 let L0 = *alpha_0 * G;
-                let R0 = *alpha_0 * hash_to_point(&P_i);
+                let R0 = *alpha_0 * hash_to_point(P_i);
                 let L1 = *alpha_1 * G;
                 (L0, R0, L1)
             } else {
@@ -176,7 +176,7 @@ impl RingMLSAG {
                 // zero.
 
                 let L0 = r[2 * i] * G + c[i] * P_i.as_ref();
-                let R0 = r[2 * i] * hash_to_point(&P_i) + c[i] * I;
+                let R0 = r[2 * i] * hash_to_point(P_i) + c[i] * I;
                 let L1 =
                     r[2 * i + 1] * G + c[i] * (output_commitment.point - input_commitment.point);
                 (L0, R0, L1)

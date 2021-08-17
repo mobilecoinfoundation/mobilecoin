@@ -145,8 +145,8 @@ impl AdminApi for AdminService {
             send_result(
                 ctx,
                 sink,
-                self.get_prometheus_metrics_impl(request, &logger),
-                &logger,
+                self.get_prometheus_metrics_impl(request, logger),
+                logger,
             )
         });
     }
@@ -154,7 +154,7 @@ impl AdminApi for AdminService {
     fn get_info(&mut self, ctx: RpcContext, request: Empty, sink: UnarySink<GetInfoResponse>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(ctx, sink, self.get_info_impl(request, &logger), &logger)
+            send_result(ctx, sink, self.get_info_impl(request, logger), logger)
         });
     }
 
@@ -166,19 +166,14 @@ impl AdminApi for AdminService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(ctx, sink, self.set_rust_log_impl(request, &logger), &logger)
+            send_result(ctx, sink, self.set_rust_log_impl(request, logger), logger)
         });
     }
 
     fn test_log_error(&mut self, ctx: RpcContext, request: Empty, sink: UnarySink<Empty>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(
-                ctx,
-                sink,
-                self.test_log_error_impl(request, &logger),
-                &logger,
-            )
+            send_result(ctx, sink, self.test_log_error_impl(request, logger), logger)
         });
     }
 }

@@ -89,9 +89,9 @@ impl RistrettoPrivate {
         // README for a security statement.
         let nonce = {
             let mut transcript = MerlinTranscript::new(b"SigningNonce");
-            transcript.append_message(b"context", &context);
+            transcript.append_message(b"context", context);
             transcript.append_message(b"private", &self.to_bytes());
-            transcript.append_message(b"message", &message);
+            transcript.append_message(b"message", message);
             let mut nonce = [0u8; 32];
             transcript.challenge_bytes(b"nonce", &mut nonce);
             nonce
@@ -107,7 +107,7 @@ impl RistrettoPrivate {
         // SigningContext provides domain separation for signature
         let mut t = MerlinTranscript::new(b"SigningContext");
         t.append_message(b"", context);
-        t.append_message(b"sign-bytes", &message);
+        t.append_message(b"sign-bytes", message);
         // NOTE: This signature is deterministic due to using the above nonce as the rng
         // seed
         let csprng = Hc128Rng::from_seed(nonce);
@@ -295,7 +295,7 @@ impl RistrettoPublic {
     ) -> Result<(), SchnorrkelError> {
         let ctx = schnorrkel_og::signing_context(context);
         let pubkey = SchnorrkelPublic::from_point(*self.as_ref());
-        pubkey.verify(ctx.bytes(&message), &signature.try_into()?)
+        pubkey.verify(ctx.bytes(message), &signature.try_into()?)
     }
 }
 
@@ -361,7 +361,7 @@ impl<T: Digestible> DigestibleVerifier<RistrettoSignature, T> for RistrettoPubli
         signature: &RistrettoSignature,
     ) -> Result<(), SignatureError> {
         let message = message.digest32::<MerlinTranscript>(context);
-        self.verify_schnorrkel(context, &message, &signature)
+        self.verify_schnorrkel(context, &message, signature)
             .map_err(|_e| SignatureError::new())
     }
 }

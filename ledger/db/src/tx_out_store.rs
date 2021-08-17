@@ -108,8 +108,7 @@ impl TxOutStore {
     /// Appends a TxOut to the end of the collection.
     /// Returns the index of the TxOut in the ledger, or an Error.
     pub fn push(&self, tx_out: &TxOut, db_transaction: &mut RwTransaction) -> Result<u64, Error> {
-        let num_tx_outs: u64 =
-            key_bytes_to_u64(&db_transaction.get(self.counts, &NUM_TX_OUTS_KEY)?);
+        let num_tx_outs: u64 = key_bytes_to_u64(db_transaction.get(self.counts, &NUM_TX_OUTS_KEY)?);
         let index: u64 = num_tx_outs;
 
         db_transaction.put(
@@ -150,7 +149,7 @@ impl TxOutStore {
     /// Get the total number of TxOuts in the ledger.
     pub fn num_tx_outs<T: Transaction>(&self, db_transaction: &T) -> Result<u64, Error> {
         Ok(key_bytes_to_u64(
-            &db_transaction.get(self.counts, &NUM_TX_OUTS_KEY)?,
+            db_transaction.get(self.counts, &NUM_TX_OUTS_KEY)?,
         ))
     }
 
