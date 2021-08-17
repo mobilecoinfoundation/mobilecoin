@@ -109,7 +109,7 @@ You agree to release the Compliance Entities and its Associates from liability f
 
 ## **Electronic Communications**
 
-You agree and consent to receive electronically all communications, agreements, receipts and disclosures that the Compliance Entities may provide in connection with these Terms. Information in relation to how we may communicate with you and your rights in that respect can be found in the appropriate Privacy Policy at [www.buymobilecoin.us](https://www.buymobilecoin.us/) or [www.buymobilecoin.com/](https://www.buymobilecoin.com/).
+You agree and consent to receive electronically all communications, agreements, receipts and disclosures that the Compliance Entities may provide in connection with these Terms. Information in relation to how we may communicate with you and your rights in that respect can be found in the appropriate Privacy Policy at [www.buymobilecoin.us](https://www.buymobilecoin.us/) or [www.buymobilecoin.com](https://www.buymobilecoin.com/).
 
 ## **Miscellaneous**
 
