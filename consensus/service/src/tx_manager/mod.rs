@@ -152,7 +152,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         // find the expired entries and remove them, storing their keys in expired,
         // without destroying or re-allocating the cache
         cache.retain(|key, entry| -> bool {
-            if entry.context().tombstone_block() < block_index {
+            if entry.context().tombstone_block() <= block_index {
                 expired.insert(*key);
                 false
             } else {

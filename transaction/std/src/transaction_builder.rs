@@ -32,8 +32,8 @@ pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
     input_credentials: Vec<InputCredentials>,
     /// The outputs created by the transaction, and associated shared secrets
     outputs_and_shared_secrets: Vec<(TxOut, RistrettoPublic)>,
-    /// The tombstone_block value, a block index after which the transaction
-    /// expires.
+    /// The tombstone_block value, a block index in which the transaction
+    /// expires, and can no longer be added to the blockchain
     tombstone_block: u64,
     /// The fee paid in connection to this transaction
     pub fee: u64,
