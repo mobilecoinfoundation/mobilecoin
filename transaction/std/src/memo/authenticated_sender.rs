@@ -5,7 +5,8 @@
 //! This was proposed for standardization in mobilecoinfoundation/mcips/pull/4
 
 use super::{
-    authenticated_common::compute_category1_hmac, credential::SenderMemoCredential,
+    authenticated_common::{compute_category1_hmac, validate_authenticated_sender},
+    credential::SenderMemoCredential,
     RegisteredMemoType,
 };
 use crate::impl_memo_type_conversions;
@@ -14,7 +15,7 @@ use mc_account_keys::{PublicAddress, ShortAddressHash};
 use mc_crypto_keys::{
     CompressedRistrettoPublic, KexReusablePrivate, RistrettoPrivate, RistrettoPublic,
 };
-use subtle::{Choice, ConstantTimeEq};
+use subtle::Choice;
 
 /// A memo that the sender writes to convey their identity in an authenticated
 /// but deniable way, for the recipient of a TxOut.
@@ -114,22 +115,13 @@ impl AuthenticatedSenderMemo {
         receiving_subaddress_view_private_key: &RistrettoPrivate,
         tx_out_public_key: &CompressedRistrettoPublic,
     ) -> Choice {
-        let mut result = Choice::from(1u8);
-        let sender_address_hash = ShortAddressHash::from(sender_address);
-        result &= sender_address_hash.ct_eq(&self.sender_address_hash());
-
-        let shared_secret =
-            receiving_subaddress_view_private_key.key_exchange(sender_address.spend_public_key());
-
-        let expected_hmac = compute_category1_hmac(
-            shared_secret.as_ref(),
+        validate_authenticated_sender(
+            sender_address,
+            receiving_subaddress_view_private_key,
             tx_out_public_key,
             Self::MEMO_TYPE_BYTES,
             &self.memo_data,
-        );
-        let found_hmac: [u8; 16] = self.memo_data[28..].try_into().unwrap();
-        result &= expected_hmac.ct_eq(&found_hmac);
-        result
+        )
     }
 }
 

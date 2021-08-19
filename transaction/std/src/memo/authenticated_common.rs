@@ -6,8 +6,11 @@
 //! mobilecoinfoundation/mcips/pull/4
 
 use hmac::{Hmac, Mac, NewMac};
-use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_account_keys::{PublicAddress, ShortAddressHash};
+use mc_crypto_keys::{CompressedRistrettoPublic, KexReusablePrivate, RistrettoPrivate};
 use sha2::Sha512;
+use std::convert::TryInto;
+use subtle::{Choice, ConstantTimeEq};
 
 type HmacSha512 = Hmac<Sha512>;
 
@@ -38,5 +41,33 @@ pub fn compute_category1_hmac(
     mac.update(&memo_data[..(44 - 16)]);
     let mut result = [0u8; 16];
     result.copy_from_slice(&mac.finalize().into_bytes()[0..16]);
+    result
+}
+
+/// Shared code for validation of 0x0100 and 0x0101 memos
+pub fn validate_authenticated_sender(
+    sender_address: &PublicAddress,
+    receiving_subaddress_view_private_key: &RistrettoPrivate,
+    tx_out_public_key: &CompressedRistrettoPublic,
+    memo_type_bytes: [u8; 2],
+    memo_data: &[u8; 44],
+) -> Choice {
+    let mut result = Choice::from(1u8);
+    let expected_sender_address_hash = ShortAddressHash::from(sender_address);
+    let hash_bytes: [u8; 16] = memo_data[0..16].try_into().expect("length mismatch");
+    let found_sender_address_hash = ShortAddressHash::from(hash_bytes);
+    result &= expected_sender_address_hash.ct_eq(&found_sender_address_hash);
+
+    let shared_secret =
+        receiving_subaddress_view_private_key.key_exchange(sender_address.spend_public_key());
+
+    let expected_hmac = compute_category1_hmac(
+        shared_secret.as_ref(),
+        tx_out_public_key,
+        memo_type_bytes,
+        memo_data,
+    );
+    let found_hmac: [u8; 16] = memo_data[28..].try_into().unwrap();
+    result &= expected_hmac.ct_eq(&found_hmac);
     result
 }
