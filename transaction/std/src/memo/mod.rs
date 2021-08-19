@@ -81,7 +81,7 @@ impl_memo_enum! { MemoType,
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_account_keys::{AccountKey, AddressHash};
+    use mc_account_keys::{AccountKey, ShortAddressHash};
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
     use mc_transaction_core::MemoPayload;
     use mc_util_from_random::FromRandom;
@@ -139,7 +139,7 @@ mod tests {
             }
         }
 
-        let memo4 = DestinationMemo::new(AddressHash::from(&bob_addr), 17, 18).unwrap();
+        let memo4 = DestinationMemo::new(ShortAddressHash::from(&bob_addr), 17, 18).unwrap();
         match MemoType::try_from(&MemoPayload::from(memo4.clone())).unwrap() {
             MemoType::Destination(memo) => {
                 assert_eq!(memo4, memo);
@@ -184,7 +184,10 @@ mod tests {
 
         let memo1 =
             AuthenticatedSenderMemo::new(&alice_cred, bob_addr.view_public_key(), &tx_public_key);
-        assert_eq!(memo1.sender_address_hash(), AddressHash::from(&alice_addr));
+        assert_eq!(
+            memo1.sender_address_hash(),
+            ShortAddressHash::from(&alice_addr)
+        );
         assert!(
             bool::from(memo1.validate(
                 &alice_addr,
@@ -256,7 +259,10 @@ mod tests {
             &tx_public_key,
             7u64,
         );
-        assert_eq!(memo2.sender_address_hash(), AddressHash::from(&alice_addr));
+        assert_eq!(
+            memo2.sender_address_hash(),
+            ShortAddressHash::from(&alice_addr)
+        );
         assert_eq!(memo2.payment_request_id(), 7u64);
         assert!(
             bool::from(memo2.validate(
@@ -340,19 +346,23 @@ mod tests {
         );
         let bob_addr = bob.default_subaddress();
 
-        let mut memo = DestinationMemo::new(AddressHash::from(&alice_addr), 12u64, 13u64).unwrap();
+        let mut memo =
+            DestinationMemo::new(ShortAddressHash::from(&alice_addr), 12u64, 13u64).unwrap();
 
-        assert_eq!(memo.get_address_hash(), &AddressHash::from(&alice_addr));
+        assert_eq!(
+            memo.get_address_hash(),
+            &ShortAddressHash::from(&alice_addr)
+        );
         assert_eq!(memo.get_total_outlay(), 12u64);
         assert_eq!(memo.get_fee(), 13u64);
         assert_eq!(memo.get_num_recipients(), 1);
 
-        memo.set_address_hash(AddressHash::from(&bob_addr));
+        memo.set_address_hash(ShortAddressHash::from(&bob_addr));
         memo.set_total_outlay(19);
         memo.set_fee(17).unwrap();
         memo.set_num_recipients(4);
 
-        assert_eq!(memo.get_address_hash(), &AddressHash::from(&bob_addr));
+        assert_eq!(memo.get_address_hash(), &ShortAddressHash::from(&bob_addr));
         assert_eq!(memo.get_total_outlay(), 19u64);
         assert_eq!(memo.get_fee(), 17u64);
         assert_eq!(memo.get_num_recipients(), 4);

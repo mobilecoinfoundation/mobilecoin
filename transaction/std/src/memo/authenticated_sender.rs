@@ -10,7 +10,7 @@ use super::{
 };
 use crate::impl_memo_type_conversions;
 use core::convert::TryInto;
-use mc_account_keys::{AddressHash, PublicAddress};
+use mc_account_keys::{PublicAddress, ShortAddressHash};
 use mc_crypto_keys::{
     CompressedRistrettoPublic, KexReusablePrivate, RistrettoPrivate, RistrettoPublic,
 };
@@ -75,9 +75,9 @@ impl AuthenticatedSenderMemo {
     }
 
     /// Get the sender address hash from the memo
-    pub fn sender_address_hash(&self) -> AddressHash {
+    pub fn sender_address_hash(&self) -> ShortAddressHash {
         let bytes: [u8; 16] = self.memo_data[0..16].try_into().unwrap();
-        AddressHash::from(bytes)
+        ShortAddressHash::from(bytes)
     }
 
     /// Validate an AuthenticatedSenderMemo
@@ -96,7 +96,7 @@ impl AuthenticatedSenderMemo {
     ///
     /// Arguments:
     /// * sender_address: The public address of the sender. This can be looked
-    ///   up by the AddressHash provided.
+    ///   up by the ShortAddressHash provided.
     /// * receiving_subaddress_view_private_key: This is usually our
     ///   default_subaddress_view_private_key, but should correspond to whatever
     ///   subaddress recieved this TxOut.
@@ -115,7 +115,7 @@ impl AuthenticatedSenderMemo {
         tx_out_public_key: &CompressedRistrettoPublic,
     ) -> Choice {
         let mut result = Choice::from(1u8);
-        let sender_address_hash = AddressHash::from(sender_address);
+        let sender_address_hash = ShortAddressHash::from(sender_address);
         result &= sender_address_hash.ct_eq(&self.sender_address_hash());
 
         let shared_secret =

@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use mc_account_keys::{AccountKey, AddressHash, PublicAddress};
+use mc_account_keys::{AccountKey, PublicAddress, ShortAddressHash};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
 /// A credential that a sender can use to make an Authenticated Sender Memo.
@@ -17,7 +17,7 @@ use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 #[derive(Debug, Clone)]
 pub struct SenderMemoCredential {
     /// The address hash of the public address that we wish to identify as
-    pub address_hash: AddressHash,
+    pub address_hash: ShortAddressHash,
     /// The (subaddress) spend private key hash of the public address that we
     /// wish to identify as
     pub subaddress_spend_private_key: RistrettoPrivate,
@@ -34,7 +34,7 @@ impl SenderMemoCredential {
             address.spend_public_key() == &RistrettoPublic::from(&subaddress_spend_private_key),
             "provided sender private key didn't match sender public address!"
         );
-        let address_hash = AddressHash::from(address);
+        let address_hash = ShortAddressHash::from(address);
         Self {
             address_hash,
             subaddress_spend_private_key,

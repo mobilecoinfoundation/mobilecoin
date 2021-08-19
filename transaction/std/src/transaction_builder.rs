@@ -412,7 +412,7 @@ pub mod transaction_builder_tests {
     use crate::{EmptyMemoBuilder, MemoType, RTHMemoBuilder, SenderMemoCredential};
     use maplit::btreemap;
     use mc_account_keys::{
-        AccountKey, AddressHash, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
+        AccountKey, ShortAddressHash, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
     };
     use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
     use mc_transaction_core::{
@@ -1073,7 +1073,7 @@ pub mod transaction_builder_tests {
                     MemoType::AuthenticatedSender(memo) => {
                         assert_eq!(
                             memo.sender_address_hash(),
-                            AddressHash::from(&sender_addr),
+                            ShortAddressHash::from(&sender_addr),
                             "lookup based on address hash failed"
                         );
                         assert!(
@@ -1106,7 +1106,7 @@ pub mod transaction_builder_tests {
                     MemoType::Destination(memo) => {
                         assert_eq!(
                             memo.get_address_hash(),
-                            &AddressHash::from(&recipient_address),
+                            &ShortAddressHash::from(&recipient_address),
                             "lookup based on address hash failed"
                         );
                         assert_eq!(memo.get_num_recipients(), 1);
@@ -1203,7 +1203,7 @@ pub mod transaction_builder_tests {
                     MemoType::AuthenticatedSender(memo) => {
                         assert_eq!(
                             memo.sender_address_hash(),
-                            AddressHash::from(&sender_addr),
+                            ShortAddressHash::from(&sender_addr),
                             "lookup based on address hash failed"
                         );
                         assert!(
@@ -1236,7 +1236,7 @@ pub mod transaction_builder_tests {
                     MemoType::Destination(memo) => {
                         assert_eq!(
                             memo.get_address_hash(),
-                            &AddressHash::from(&recipient_address),
+                            &ShortAddressHash::from(&recipient_address),
                             "lookup based on address hash failed"
                         );
                         assert_eq!(memo.get_num_recipients(), 1);
@@ -1333,7 +1333,7 @@ pub mod transaction_builder_tests {
                     MemoType::AuthenticatedSenderWithPaymentRequestId(memo) => {
                         assert_eq!(
                             memo.sender_address_hash(),
-                            AddressHash::from(&sender_addr),
+                            ShortAddressHash::from(&sender_addr),
                             "lookup based on address hash failed"
                         );
                         assert!(
@@ -1367,7 +1367,7 @@ pub mod transaction_builder_tests {
                     MemoType::Destination(memo) => {
                         assert_eq!(
                             memo.get_address_hash(),
-                            &AddressHash::from(&recipient_address),
+                            &ShortAddressHash::from(&recipient_address),
                             "lookup based on address hash failed"
                         );
                         assert_eq!(memo.get_num_recipients(), 1);
@@ -1463,7 +1463,7 @@ pub mod transaction_builder_tests {
                     MemoType::AuthenticatedSenderWithPaymentRequestId(memo) => {
                         assert_eq!(
                             memo.sender_address_hash(),
-                            AddressHash::from(&sender_addr),
+                            ShortAddressHash::from(&sender_addr),
                             "lookup based on address hash failed"
                         );
                         assert!(
@@ -1600,7 +1600,7 @@ pub mod transaction_builder_tests {
                     MemoType::Destination(memo) => {
                         assert_eq!(
                             memo.get_address_hash(),
-                            &AddressHash::from(&recipient_address),
+                            &ShortAddressHash::from(&recipient_address),
                             "lookup based on address hash failed"
                         );
                         assert_eq!(memo.get_num_recipients(), 1);
@@ -1720,7 +1720,7 @@ pub mod transaction_builder_tests {
                     MemoType::AuthenticatedSender(memo) => {
                         assert_eq!(
                             memo.sender_address_hash(),
-                            AddressHash::from(&charlie_addr),
+                            ShortAddressHash::from(&charlie_addr),
                             "lookup based on address hash failed"
                         );
                         assert!(
@@ -1753,7 +1753,7 @@ pub mod transaction_builder_tests {
                     MemoType::Destination(memo) => {
                         assert_eq!(
                             memo.get_address_hash(),
-                            &AddressHash::from(&bob_address),
+                            &ShortAddressHash::from(&bob_address),
                             "lookup based on address hash failed"
                         );
                         assert_eq!(memo.get_num_recipients(), 1);

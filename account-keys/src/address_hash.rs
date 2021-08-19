@@ -10,34 +10,34 @@ use subtle::{Choice, ConstantTimeEq};
 /// used in memos as a compact representation of a MobileCoin public address.
 /// This hash is collision resistant.
 #[derive(Default, Debug, Clone, Eq, Hash, PartialEq, Ord, PartialOrd)]
-pub struct AddressHash([u8; 16]);
+pub struct ShortAddressHash([u8; 16]);
 
-impl From<[u8; 16]> for AddressHash {
+impl From<[u8; 16]> for ShortAddressHash {
     fn from(src: [u8; 16]) -> Self {
         Self(src)
     }
 }
 
-impl From<AddressHash> for [u8; 16] {
-    fn from(src: AddressHash) -> [u8; 16] {
+impl From<ShortAddressHash> for [u8; 16] {
+    fn from(src: ShortAddressHash) -> [u8; 16] {
         src.0
     }
 }
 
-impl AsRef<[u8; 16]> for AddressHash {
+impl AsRef<[u8; 16]> for ShortAddressHash {
     fn as_ref(&self) -> &[u8; 16] {
         &self.0
     }
 }
 
-impl From<&PublicAddress> for AddressHash {
+impl From<&PublicAddress> for ShortAddressHash {
     fn from(src: &PublicAddress) -> Self {
         let digest = src.digest32::<MerlinTranscript>(b"mc-address");
         Self(digest[0..16].try_into().expect("arithmetic error"))
     }
 }
 
-impl ConstantTimeEq for AddressHash {
+impl ConstantTimeEq for ShortAddressHash {
     fn ct_eq(&self, other: &Self) -> Choice {
         self.0.ct_eq(&other.0)
     }

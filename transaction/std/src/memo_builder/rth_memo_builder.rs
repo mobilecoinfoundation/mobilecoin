@@ -3,7 +3,7 @@
 //! Defines the RTHMemoBuilder.
 //! (RTH is an abbrevation of Recoverable Transaction History.)
 //! This MemoBuilder policy implements Recoverable Transaction History using
-//! the encrypted memos, as envisioned in MCIP #XXX.
+//! the encrypted memos, as envisioned in MCIP #4.
 
 use super::{
     memo::{
@@ -13,7 +13,7 @@ use super::{
     MemoBuilder,
 };
 use crate::ChangeDestination;
-use mc_account_keys::{AddressHash, PublicAddress};
+use mc_account_keys::{PublicAddress, ShortAddressHash};
 use mc_transaction_core::{constants::MINIMUM_FEE, MemoContext, MemoPayload, NewMemoError};
 
 /// This memo builder attaches 0x0100 Authenticated Sender Memos to normal
@@ -61,7 +61,7 @@ pub struct RTHMemoBuilder {
     // Tracks if we already wrote a destination memo, for error reporting
     wrote_destination_memo: bool,
     // Tracks the last recipient
-    last_recipient: AddressHash,
+    last_recipient: ShortAddressHash,
     // Tracks the total outlay so far
     total_outlay: u64,
     // Tracks the number of recipients so far
@@ -158,7 +158,7 @@ impl MemoBuilder for RTHMemoBuilder {
             .num_recipients
             .checked_add(1)
             .ok_or(NewMemoError::LimitsExceeded("num_recipients"))?;
-        self.last_recipient = AddressHash::from(recipient);
+        self.last_recipient = ShortAddressHash::from(recipient);
         Ok(if let Some(cred) = &self.sender_cred {
             if let Some(payment_request_id) = self.payment_request_id {
                 AuthenticatedSenderWithPaymentRequestIdMemo::new(

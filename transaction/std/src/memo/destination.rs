@@ -8,7 +8,7 @@ use super::RegisteredMemoType;
 use crate::impl_memo_type_conversions;
 use core::convert::TryInto;
 use displaydoc::Display;
-use mc_account_keys::AddressHash;
+use mc_account_keys::ShortAddressHash;
 
 /// A memo that the sender writes to themself to record details of the
 /// transaction, and attaches to the change TxOut so that they can recover it
@@ -21,7 +21,7 @@ use mc_account_keys::AddressHash;
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct DestinationMemo {
     /// The address hash of the recipient to whom the payment is attributed
-    address_hash: AddressHash,
+    address_hash: ShortAddressHash,
     /// The number of recipients of the transaction (ignoring the change output
     /// and fee). For a typical transaction, this is one, and the address
     /// hash refers to that recipient. When there is more than one
@@ -62,7 +62,7 @@ impl DestinationMemo {
     ///
     /// Returns an error if the data are out of bounds
     pub fn new(
-        address_hash: AddressHash,
+        address_hash: ShortAddressHash,
         total_outlay: u64,
         fee: u64,
     ) -> Result<Self, DestinationMemoError> {
@@ -77,11 +77,11 @@ impl DestinationMemo {
     }
 
     /// Get the address hash
-    pub fn get_address_hash(&self) -> &AddressHash {
+    pub fn get_address_hash(&self) -> &ShortAddressHash {
         &self.address_hash
     }
     /// Set the address hash
-    pub fn set_address_hash(&mut self, val: AddressHash) {
+    pub fn set_address_hash(&mut self, val: ShortAddressHash) {
         self.address_hash = val;
     }
     /// Get the number of recipients
