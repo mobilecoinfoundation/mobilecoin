@@ -7,6 +7,13 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ## [Unreleased]
 
+## [1.1.1] - 2021-08-16
+
+### Changed
+
+ - Updated TOS.
+ - Update IP restriction handling in mobilecoind to match TOS.
+
 ## [1.1.0] - 2021-06-08
 
 ### Added
