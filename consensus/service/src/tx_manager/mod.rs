@@ -536,9 +536,16 @@ mod tests {
         assert_eq!(tx_manager.num_entries(), 14);
 
         {
-            // By block index 10, none have expired.
-            let removed = tx_manager.remove_expired(10);
+            // By block index 9, none have expired.
+            let removed = tx_manager.remove_expired(9);
             assert_eq!(removed.len(), 0);
+            assert_eq!(tx_manager.num_entries(), 14);
+        }
+
+        {
+            // By block index 10, one has expired.
+            let removed = tx_manager.remove_expired(10);
+            assert_eq!(removed.len(), 1);
             assert_eq!(tx_manager.num_entries(), 14);
         }
 
