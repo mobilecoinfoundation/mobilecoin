@@ -546,20 +546,20 @@ mod tests {
             // By block index 10, one has expired.
             let removed = tx_manager.remove_expired(10);
             assert_eq!(removed.len(), 1);
-            assert_eq!(tx_manager.num_entries(), 14);
+            assert_eq!(tx_manager.num_entries(), 13);
         }
 
         {
             // By block index 15, some have expired.
             let removed = tx_manager.remove_expired(15);
             assert_eq!(removed.len(), 5);
-            assert_eq!(tx_manager.num_entries(), 9);
+            assert_eq!(tx_manager.num_entries(), 8);
         }
 
         {
             // By block index 24, all have expired.
             let removed = tx_manager.remove_expired(24);
-            assert_eq!(removed.len(), 9);
+            assert_eq!(removed.len(), 8);
             assert_eq!(tx_manager.num_entries(), 0);
         }
     }
