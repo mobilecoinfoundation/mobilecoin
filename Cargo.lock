@@ -116,6 +116,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 
 [[package]]
+name = "ascii"
+version = "0.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eab1c04a571841102f5345a8fc0f6bb3d31c315dec879b5c6e42e40ce7ffa34e"
+
+[[package]]
 name = "async-compression"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -494,10 +500,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "cbindgen"
+version = "0.14.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6e03a705df2e735cc5486f104a48e25a8f72ae06eaea5b7753a81270ed00859"
+dependencies = [
+ "clap",
+ "heck",
+ "log 0.4.11",
+ "proc-macro2 1.0.24",
+ "quote 1.0.9",
+ "serde",
+ "serde_json",
+ "syn 1.0.67",
+ "tempfile",
+ "toml 0.5.7",
+]
+
+[[package]]
 name = "cc"
 version = "1.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4c0496836a84f8d0495758516b8621a622beb77c0fed418570e50764093ced48"
+
+[[package]]
+name = "cesu8"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d43a04d8753f35258c91f8ec639f792891f748a1edbd759cf1dcea3382ad83c"
 
 [[package]]
 name = "cexpr"
@@ -600,6 +630,19 @@ version = "0.1.45"
 source = "git+https://github.com/alexcrichton/cmake-rs?rev=5f89f90ee5d7789832963bffdb2dcb5939e6199c#5f89f90ee5d7789832963bffdb2dcb5939e6199c"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "combine"
+version = "3.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da3da6baa321ec19e1cc41d31bf599f00c783d0517095cdaf0332e3fe8d20680"
+dependencies = [
+ "ascii",
+ "byteorder",
+ "either",
+ "memchr",
+ "unreachable",
 ]
 
 [[package]]
@@ -2891,6 +2934,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8b7a7c0c47db5545ed3fef7468ee7bb5b74691498139e4b3f6a20685dc6dd8e"
 
 [[package]]
+name = "jni"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22bbdc25b49340bc4fc3d9c96dd84d878c4beeca35e3651efa53db51a68d7d4d"
+dependencies = [
+ "cesu8",
+ "combine",
+ "error-chain",
+ "jni-sys",
+ "log 0.4.11",
+ "walkdir",
+]
+
+[[package]]
+name = "jni-sys"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8eaf4bc02d17cbdd7ff4c7438cafcdf7fb9a4613313ad11b4f8fefe7d3fa0130"
+
+[[package]]
 name = "js-sys"
 version = "0.3.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2963,6 +3026,41 @@ name = "libm"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fc7aa29613bd6a620df431842069224d8bc9011086b1db4c0e0cd47fa03ec9a"
+
+[[package]]
+name = "libmobilecoin"
+version = "1.1.0"
+dependencies = [
+ "aes-gcm",
+ "cbindgen",
+ "cmake",
+ "displaydoc",
+ "fog-kex-rng",
+ "libc",
+ "mc-account-keys",
+ "mc-account-keys-slip10",
+ "mc-api",
+ "mc-attest-ake",
+ "mc-attest-core",
+ "mc-common",
+ "mc-crypto-box",
+ "mc-crypto-keys",
+ "mc-crypto-noise",
+ "mc-crypto-rand",
+ "mc-crypto-sig",
+ "mc-fog-report-validation",
+ "mc-transaction-core",
+ "mc-transaction-std",
+ "mc-util-ffi",
+ "mc-util-serial",
+ "mc-util-uri",
+ "protobuf",
+ "rand_core 0.6.2",
+ "sha2 0.9.5",
+ "slip10_ed25519",
+ "tiny-bip39",
+ "zeroize",
+]
 
 [[package]]
 name = "libz-sys"
@@ -3166,6 +3264,41 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "structopt",
+]
+
+[[package]]
+name = "mc-android-bindings"
+version = "1.1.0"
+dependencies = [
+ "aes-gcm",
+ "anyhow",
+ "displaydoc",
+ "fog-kex-rng",
+ "jni",
+ "mc-account-keys",
+ "mc-account-keys-slip10",
+ "mc-api",
+ "mc-attest-ake",
+ "mc-attest-core",
+ "mc-common",
+ "mc-crypto-box",
+ "mc-crypto-keys",
+ "mc-crypto-noise",
+ "mc-crypto-rand",
+ "mc-fog-report-validation",
+ "mc-fog-types",
+ "mc-transaction-core",
+ "mc-transaction-std",
+ "mc-util-encodings",
+ "mc-util-from-random",
+ "mc-util-serial",
+ "mc-util-uri",
+ "protobuf",
+ "rand 0.8.3",
+ "sha2 0.9.5",
+ "slip10_ed25519",
+ "tiny-bip39",
+ "zeroize",
 ]
 
 [[package]]
@@ -3793,6 +3926,19 @@ dependencies = [
  "rand 0.8.3",
  "rand_core 0.6.2",
  "rand_hc 0.3.0",
+]
+
+[[package]]
+name = "mc-crypto-sig"
+version = "1.1.2"
+dependencies = [
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "mc-util-test-helper",
+ "merlin",
+ "rand_core 0.6.2",
+ "rand_hc 0.3.0",
+ "schnorrkel",
 ]
 
 [[package]]
@@ -4595,6 +4741,10 @@ dependencies = [
  "mc-util-repr-bytes",
  "serde",
 ]
+
+[[package]]
+name = "mc-util-ffi"
+version = "1.1.0"
 
 [[package]]
 name = "mc-util-from-random"
@@ -7495,6 +7645,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "unreachable"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "382810877fe448991dfc7f0dd6e3ae5d58088fd0ea5e35189655f84e6814fa56"
+dependencies = [
+ "void",
+]
+
+[[package]]
 name = "untrusted"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7556,6 +7715,12 @@ name = "version_check"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
+
+[[package]]
+name = "void"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
 
 [[package]]
 name = "wait-timeout"
