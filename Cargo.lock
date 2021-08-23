@@ -63,6 +63,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "aligned-array"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e05c92d086290f52938013f6242ac62bf7d401fab8ad36798a609faa65c3fd2c"
+dependencies = [
+ "generic-array 0.14.4",
+ "subtle 2.4.1",
+]
+
+[[package]]
+name = "aligned-cmov"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42131cad0df1f867cc8c693912fe2ba04c67f29be3378c951dac62c80554301f"
+dependencies = [
+ "aligned-array",
+ "generic-array 0.14.4",
+]
+
+[[package]]
 name = "ansi_term"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -143,6 +163,16 @@ dependencies = [
  "miniz_oxide",
  "object",
  "rustc-demangle",
+]
+
+[[package]]
+name = "balanced-tree-index"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6d6bd47b2008be3e67743e1a6ff23c7c49f7fea5506694915008ad79b9a3f28"
+dependencies = [
+ "aligned-cmov",
+ "rand_core 0.6.2",
 ]
 
 [[package]]
@@ -567,8 +597,7 @@ dependencies = [
 [[package]]
 name = "cmake"
 version = "0.1.45"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb6210b637171dfba4cda12e579ac6dc73f5165ad56133e5d72ef3131f320855"
+source = "git+https://github.com/alexcrichton/cmake-rs?rev=5f89f90ee5d7789832963bffdb2dcb5939e6199c#5f89f90ee5d7789832963bffdb2dcb5939e6199c"
 dependencies = [
  "cc",
 ]
@@ -652,7 +681,7 @@ dependencies = [
  "clap",
  "criterion-plot",
  "csv",
- "itertools",
+ "itertools 0.9.0",
  "lazy_static",
  "num-traits",
  "oorandom",
@@ -673,7 +702,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddeaf7989f00f2e1d871a26a110f3ed713632feac17f65f03ca938c542618b60"
 dependencies = [
  "cast",
- "itertools",
+ "itertools 0.9.0",
 ]
 
 [[package]]
@@ -952,6 +981,53 @@ dependencies = [
 ]
 
 [[package]]
+name = "diesel"
+version = "1.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bba51ca66f57261fd17cadf8b73e4775cc307d0521d855de3f5de91a8f074e0e"
+dependencies = [
+ "bitflags",
+ "byteorder",
+ "chrono",
+ "diesel_derives",
+ "pq-sys",
+ "r2d2",
+]
+
+[[package]]
+name = "diesel-derive-enum"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70806b70be328e646f243680a3fc93b3cfdd6db373faa5110660a5dd5af243bc"
+dependencies = [
+ "heck",
+ "proc-macro2 1.0.24",
+ "quote 1.0.9",
+ "syn 1.0.67",
+]
+
+[[package]]
+name = "diesel_derives"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45f5098f628d02a7a0f68ddba586fb61e80edec3bdc1be3b921f4ceec60858d3"
+dependencies = [
+ "proc-macro2 1.0.24",
+ "quote 1.0.9",
+ "syn 1.0.67",
+]
+
+[[package]]
+name = "diesel_migrations"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf3cde8413353dc7f5d72fa8ce0b99a560a359d2c5ef1e5817ca731cd9008f4c"
+dependencies = [
+ "migrations_internals",
+ "migrations_macros",
+]
+
+[[package]]
 name = "difference"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1165,6 +1241,943 @@ name = "fnv"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2fad85553e09a6f881f739c29f0b00b0f01357c743266d478b68951ce23285f3"
+
+[[package]]
+name = "fog-api"
+version = "1.1.0"
+dependencies = [
+ "cargo-emit",
+ "displaydoc",
+ "fog-enclave-connection",
+ "fog-kex-rng",
+ "fog-types",
+ "fog-uri",
+ "futures 0.3.8",
+ "grpcio",
+ "mc-api",
+ "mc-attest-api",
+ "mc-attest-core",
+ "mc-consensus-api",
+ "mc-crypto-keys",
+ "mc-fog-api",
+ "mc-fog-api-test-utils",
+ "mc-transaction-core",
+ "mc-util-build-grpc",
+ "mc-util-build-script",
+ "mc-util-encodings",
+ "mc-util-from-random",
+ "mc-util-grpc",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "mc-watcher-api",
+ "prost",
+ "protobuf",
+]
+
+[[package]]
+name = "fog-distribution"
+version = "1.1.0"
+dependencies = [
+ "crossbeam-channel 0.5.0",
+ "curve25519-dalek",
+ "fog-ingest-enclave-measurement",
+ "grpcio",
+ "lazy_static",
+ "mc-account-keys",
+ "mc-attest-core",
+ "mc-common",
+ "mc-connection",
+ "mc-consensus-enclave-measurement",
+ "mc-crypto-keys",
+ "mc-fog-report-connection",
+ "mc-fog-report-validation",
+ "mc-ledger-db",
+ "mc-mobilecoind",
+ "mc-transaction-core",
+ "mc-transaction-std",
+ "mc-util-keyfile",
+ "mc-util-uri",
+ "rand 0.8.3",
+ "rayon",
+ "retry",
+ "structopt",
+ "tempfile",
+]
+
+[[package]]
+name = "fog-enclave-connection"
+version = "1.1.0"
+dependencies = [
+ "aes-gcm",
+ "cookie 0.14.3",
+ "displaydoc",
+ "grpcio",
+ "mc-attest-ake",
+ "mc-attest-api",
+ "mc-attest-core",
+ "mc-common",
+ "mc-connection",
+ "mc-crypto-keys",
+ "mc-crypto-noise",
+ "mc-crypto-rand",
+ "mc-util-grpc",
+ "mc-util-serial",
+ "mc-util-uri",
+ "sha2 0.9.5",
+]
+
+[[package]]
+name = "fog-ingest-client"
+version = "1.1.0"
+dependencies = [
+ "displaydoc",
+ "fog-api",
+ "fog-types",
+ "fog-uri",
+ "grpcio",
+ "hex 0.4.2",
+ "mc-account-keys",
+ "mc-api",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-util-grpc",
+ "mc-util-keyfile",
+ "mc-util-uri",
+ "protobuf",
+ "retry",
+ "serde_json",
+ "structopt",
+]
+
+[[package]]
+name = "fog-ingest-enclave"
+version = "1.1.0"
+dependencies = [
+ "cargo-emit",
+ "criterion",
+ "fog-ingest-enclave-api",
+ "fog-ingest-enclave-edl",
+ "fog-kex-rng",
+ "fog-ocall-oram-storage-edl",
+ "fog-ocall-oram-storage-untrusted",
+ "fog-recovery-db-iface",
+ "fog-test-infra",
+ "fog-types",
+ "mc-attest-core",
+ "mc-attest-enclave-api",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-crypto-rand",
+ "mc-enclave-boundary",
+ "mc-sgx-debug-edl",
+ "mc-sgx-panic-edl",
+ "mc-sgx-report-cache-api",
+ "mc-sgx-slog-edl",
+ "mc-sgx-types",
+ "mc-sgx-urts",
+ "mc-util-build-script",
+ "mc-util-build-sgx",
+ "mc-util-from-random",
+ "mc-util-serial",
+ "pkg-config",
+]
+
+[[package]]
+name = "fog-ingest-enclave-api"
+version = "1.1.0"
+dependencies = [
+ "displaydoc",
+ "fog-kex-rng",
+ "fog-types",
+ "mc-attest-core",
+ "mc-attest-enclave-api",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-sgx-compat",
+ "mc-sgx-report-cache-api",
+ "mc-util-serial",
+ "serde",
+]
+
+[[package]]
+name = "fog-ingest-enclave-edl"
+version = "1.1.0"
+dependencies = [
+ "cargo-emit",
+ "mc-util-build-script",
+]
+
+[[package]]
+name = "fog-ingest-enclave-impl"
+version = "1.1.0"
+dependencies = [
+ "aligned-cmov",
+ "fog-ingest-enclave-api",
+ "fog-kex-rng",
+ "fog-recovery-db-iface",
+ "fog-types",
+ "fog-view-protocol",
+ "mc-account-keys",
+ "mc-attest-core",
+ "mc-attest-enclave-api",
+ "mc-attest-trusted",
+ "mc-common",
+ "mc-crypto-ake-enclave",
+ "mc-crypto-box",
+ "mc-crypto-keys",
+ "mc-crypto-rand",
+ "mc-oblivious-map",
+ "mc-oblivious-ram",
+ "mc-oblivious-traits",
+ "mc-sgx-compat",
+ "mc-sgx-report-cache-api",
+ "mc-transaction-core",
+ "mc-util-from-random",
+ "mc-util-logger-macros",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "rand_core 0.6.2",
+ "zeroize",
+]
+
+[[package]]
+name = "fog-ingest-enclave-measurement"
+version = "1.1.0"
+dependencies = [
+ "cargo-emit",
+ "mc-attest-core",
+ "mc-sgx-css",
+ "mc-util-build-enclave",
+ "mc-util-build-script",
+ "mc-util-build-sgx",
+]
+
+[[package]]
+name = "fog-ingest-server"
+version = "1.1.0"
+dependencies = [
+ "dirs 2.0.2",
+ "displaydoc",
+ "fog-api",
+ "fog-ingest-client",
+ "fog-ingest-enclave",
+ "fog-ingest-enclave-api",
+ "fog-ingest-enclave-measurement",
+ "fog-recovery-db-iface",
+ "fog-sql-recovery-db",
+ "fog-test-infra",
+ "fog-types",
+ "fog-uri",
+ "futures 0.3.8",
+ "grpcio",
+ "hex 0.4.2",
+ "itertools 0.10.1",
+ "lazy_static",
+ "maplit",
+ "mc-api",
+ "mc-attest-api",
+ "mc-attest-core",
+ "mc-attest-enclave-api",
+ "mc-attest-net",
+ "mc-common",
+ "mc-connection",
+ "mc-crypto-keys",
+ "mc-ledger-db",
+ "mc-sgx-report-cache-api",
+ "mc-sgx-report-cache-untrusted",
+ "mc-transaction-core",
+ "mc-util-build-info",
+ "mc-util-from-random",
+ "mc-util-grpc",
+ "mc-util-metrics",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "mc-util-uri",
+ "mc-watcher",
+ "mc-watcher-api",
+ "protobuf",
+ "rand_core 0.6.2",
+ "rand_hc 0.3.0",
+ "retry",
+ "serde",
+ "serde_json",
+ "structopt",
+ "tempdir",
+ "url 2.1.1",
+]
+
+[[package]]
+name = "fog-kex-rng"
+version = "1.1.0"
+dependencies = [
+ "blake2",
+ "displaydoc",
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "mc-util-test-helper",
+ "prost",
+ "rand_core 0.6.2",
+ "serde",
+]
+
+[[package]]
+name = "fog-ledger-connection"
+version = "1.1.0"
+dependencies = [
+ "displaydoc",
+ "fog-api",
+ "fog-enclave-connection",
+ "fog-types",
+ "fog-uri",
+ "grpcio",
+ "mc-api",
+ "mc-attest-core",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-transaction-core",
+ "mc-util-grpc",
+ "mc-util-uri",
+ "protobuf",
+]
+
+[[package]]
+name = "fog-ledger-enclave"
+version = "1.1.0"
+dependencies = [
+ "cargo-emit",
+ "fog-ledger-enclave-api",
+ "fog-ledger-enclave-edl",
+ "fog-ledger-enclave-measurement",
+ "fog-ocall-oram-storage-edl",
+ "fog-ocall-oram-storage-untrusted",
+ "fog-types",
+ "mc-attest-core",
+ "mc-attest-enclave-api",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-enclave-boundary",
+ "mc-sgx-debug-edl",
+ "mc-sgx-panic-edl",
+ "mc-sgx-report-cache-api",
+ "mc-sgx-slog-edl",
+ "mc-sgx-types",
+ "mc-sgx-urts",
+ "mc-util-build-script",
+ "mc-util-build-sgx",
+ "mc-util-serial",
+ "pkg-config",
+]
+
+[[package]]
+name = "fog-ledger-enclave-api"
+version = "1.1.0"
+dependencies = [
+ "displaydoc",
+ "fog-types",
+ "mc-attest-core",
+ "mc-attest-enclave-api",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-sgx-compat",
+ "mc-sgx-report-cache-api",
+ "mc-transaction-core",
+ "mc-util-encodings",
+ "mc-util-serial",
+ "serde",
+]
+
+[[package]]
+name = "fog-ledger-enclave-edl"
+version = "1.1.0"
+dependencies = [
+ "cargo-emit",
+ "mc-util-build-script",
+]
+
+[[package]]
+name = "fog-ledger-enclave-impl"
+version = "1.1.0"
+dependencies = [
+ "aligned-cmov",
+ "fog-ledger-enclave-api",
+ "fog-types",
+ "mc-attest-core",
+ "mc-attest-enclave-api",
+ "mc-common",
+ "mc-crypto-ake-enclave",
+ "mc-crypto-keys",
+ "mc-crypto-rand",
+ "mc-oblivious-map",
+ "mc-oblivious-ram",
+ "mc-oblivious-traits",
+ "mc-sgx-compat",
+ "mc-sgx-report-cache-api",
+ "mc-transaction-core",
+ "mc-util-serial",
+ "mc-watcher-api",
+]
+
+[[package]]
+name = "fog-ledger-enclave-measurement"
+version = "1.1.0"
+dependencies = [
+ "cargo-emit",
+ "mc-attest-core",
+ "mc-sgx-css",
+ "mc-util-build-enclave",
+ "mc-util-build-script",
+ "mc-util-build-sgx",
+]
+
+[[package]]
+name = "fog-ledger-server"
+version = "1.1.0"
+dependencies = [
+ "curve25519-dalek",
+ "displaydoc",
+ "fog-api",
+ "fog-ledger-connection",
+ "fog-ledger-enclave",
+ "fog-ledger-enclave-api",
+ "fog-ledger-enclave-measurement",
+ "fog-ledger-test-infra",
+ "fog-test-infra",
+ "fog-types",
+ "fog-uri",
+ "futures 0.3.8",
+ "grpcio",
+ "hex 0.4.2",
+ "lazy_static",
+ "mc-account-keys",
+ "mc-api",
+ "mc-attest-api",
+ "mc-attest-core",
+ "mc-attest-enclave-api",
+ "mc-attest-net",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-ledger-db",
+ "mc-sgx-report-cache-untrusted",
+ "mc-transaction-core",
+ "mc-util-build-script",
+ "mc-util-build-sgx",
+ "mc-util-encodings",
+ "mc-util-from-random",
+ "mc-util-grpc",
+ "mc-util-metrics",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "mc-util-uri",
+ "mc-watcher",
+ "mc-watcher-api",
+ "rand 0.8.3",
+ "retry",
+ "serde",
+ "serde_json",
+ "structopt",
+ "tempdir",
+ "url 2.1.1",
+]
+
+[[package]]
+name = "fog-ledger-test-infra"
+version = "1.1.0"
+dependencies = [
+ "curve25519-dalek",
+ "fog-ledger-enclave",
+ "fog-ledger-enclave-api",
+ "fog-types",
+ "mc-attest-core",
+ "mc-attest-enclave-api",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-ledger-db",
+ "mc-sgx-report-cache-api",
+ "mc-transaction-core",
+]
+
+[[package]]
+name = "fog-load-testing"
+version = "1.1.0"
+dependencies = [
+ "arrayvec",
+ "fog-api",
+ "fog-ingest-client",
+ "fog-ingest-server",
+ "fog-recovery-db-iface",
+ "fog-sql-recovery-db",
+ "fog-uri",
+ "grpcio",
+ "libc",
+ "mc-account-keys",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-crypto-rand",
+ "mc-ledger-db",
+ "mc-transaction-core",
+ "mc-transaction-core-test-utils",
+ "mc-util-build-info",
+ "mc-util-from-random",
+ "mc-util-grpc",
+ "mc-util-uri",
+ "mc-watcher",
+ "nix",
+ "retry",
+ "structopt",
+ "tempdir",
+]
+
+[[package]]
+name = "fog-ocall-oram-storage-edl"
+version = "1.1.0"
+dependencies = [
+ "cargo-emit",
+]
+
+[[package]]
+name = "fog-ocall-oram-storage-testing"
+version = "1.1.0"
+dependencies = [
+ "aligned-cmov",
+ "fog-ocall-oram-storage-trusted",
+ "fog-ocall-oram-storage-untrusted",
+ "mc-oblivious-traits",
+ "mc-util-test-helper",
+]
+
+[[package]]
+name = "fog-ocall-oram-storage-trusted"
+version = "1.1.0"
+dependencies = [
+ "aes",
+ "aligned-cmov",
+ "balanced-tree-index",
+ "blake2",
+ "displaydoc",
+ "lazy_static",
+ "mc-oblivious-traits",
+ "mc-sgx-compat",
+ "rand_core 0.6.2",
+ "subtle 2.4.1",
+]
+
+[[package]]
+name = "fog-ocall-oram-storage-untrusted"
+version = "1.1.0"
+dependencies = [
+ "lazy_static",
+ "mc-common",
+]
+
+[[package]]
+name = "fog-recovery-db-iface"
+version = "1.1.0"
+dependencies = [
+ "displaydoc",
+ "fog-kex-rng",
+ "fog-types",
+ "mc-attest-core",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-transaction-core",
+ "serde",
+]
+
+[[package]]
+name = "fog-report-cli"
+version = "1.1.0"
+dependencies = [
+ "base64 0.12.3",
+ "binascii",
+ "fog-api",
+ "fog-ingest-enclave-measurement",
+ "grpcio",
+ "mc-account-keys",
+ "mc-attest-core",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-fog-report-connection",
+ "mc-fog-report-validation",
+ "mc-util-keyfile",
+ "mc-util-uri",
+ "structopt",
+]
+
+[[package]]
+name = "fog-report-server"
+version = "1.1.0"
+dependencies = [
+ "displaydoc",
+ "fog-api",
+ "fog-recovery-db-iface",
+ "fog-sql-recovery-db",
+ "fog-test-infra",
+ "futures 0.3.8",
+ "grpcio",
+ "mc-attest-core",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-crypto-x509-test-vectors",
+ "mc-crypto-x509-utils",
+ "mc-fog-sig-report",
+ "mc-fog-types",
+ "mc-util-from-random",
+ "mc-util-grpc",
+ "mc-util-metrics",
+ "mc-util-uri",
+ "pem",
+ "prost",
+ "rand 0.8.3",
+ "serde",
+ "serde_json",
+ "signature",
+ "structopt",
+ "tempdir",
+ "x509-signature",
+ "zeroize",
+]
+
+[[package]]
+name = "fog-sample-paykit"
+version = "1.1.0"
+dependencies = [
+ "cargo-emit",
+ "displaydoc",
+ "fog-api",
+ "fog-enclave-connection",
+ "fog-ingest-enclave-measurement",
+ "fog-ledger-connection",
+ "fog-ledger-enclave-measurement",
+ "fog-types",
+ "fog-uri",
+ "fog-view-connection",
+ "fog-view-enclave-measurement",
+ "fog-view-protocol",
+ "futures 0.3.8",
+ "grpcio",
+ "link-cplusplus",
+ "mc-account-keys",
+ "mc-attest-core",
+ "mc-common",
+ "mc-connection",
+ "mc-consensus-api",
+ "mc-consensus-enclave-measurement",
+ "mc-crypto-keys",
+ "mc-crypto-rand",
+ "mc-fog-report-connection",
+ "mc-fog-report-validation",
+ "mc-transaction-core",
+ "mc-transaction-core-test-utils",
+ "mc-transaction-std",
+ "mc-util-build-grpc",
+ "mc-util-build-script",
+ "mc-util-grpc",
+ "mc-util-keyfile",
+ "mc-util-uri",
+ "protobuf",
+ "rand 0.8.3",
+ "serde_json",
+ "structopt",
+]
+
+[[package]]
+name = "fog-sql-recovery-db"
+version = "1.1.0"
+dependencies = [
+ "chrono",
+ "diesel",
+ "diesel-derive-enum",
+ "diesel_migrations",
+ "displaydoc",
+ "fog-kex-rng",
+ "fog-recovery-db-iface",
+ "fog-test-infra",
+ "fog-types",
+ "mc-attest-core",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-crypto-x509-test-vectors",
+ "mc-transaction-core",
+ "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "mc-util-test-helper",
+ "pem",
+ "prost",
+ "r2d2",
+ "rand 0.8.3",
+ "rand_core 0.6.2",
+ "tempdir",
+]
+
+[[package]]
+name = "fog-test-client"
+version = "1.1.0"
+dependencies = [
+ "fog-sample-paykit",
+ "mc-account-keys",
+ "mc-common",
+ "mc-crypto-rand",
+ "mc-transaction-core",
+ "mc-transaction-std",
+ "mc-util-keyfile",
+ "mc-util-uri",
+ "more-asserts",
+ "structopt",
+]
+
+[[package]]
+name = "fog-test-infra"
+version = "1.1.0"
+dependencies = [
+ "curve25519-dalek",
+ "digest 0.9.0",
+ "fog-ingest-client",
+ "fog-kex-rng",
+ "fog-recovery-db-iface",
+ "fog-types",
+ "fog-view-protocol",
+ "hex 0.4.2",
+ "mc-account-keys",
+ "mc-common",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-ledger-db",
+ "mc-transaction-core",
+ "mc-util-build-info",
+ "mc-util-from-random",
+ "mc-util-generate-sample-ledger",
+ "mc-util-keyfile",
+ "mc-watcher",
+ "mc-watcher-api",
+ "rand_core 0.6.2",
+ "rand_hc 0.3.0",
+ "serde",
+ "serde_json",
+ "structopt",
+ "url 2.1.1",
+]
+
+[[package]]
+name = "fog-types"
+version = "1.1.0"
+dependencies = [
+ "blake2",
+ "crc",
+ "displaydoc",
+ "fog-kex-rng",
+ "mc-crypto-keys",
+ "mc-transaction-core",
+ "mc-util-test-helper",
+ "mc-watcher-api",
+ "prost",
+ "serde",
+]
+
+[[package]]
+name = "fog-uri"
+version = "1.1.0"
+dependencies = [
+ "mc-common",
+ "mc-util-uri",
+]
+
+[[package]]
+name = "fog-view-connection"
+version = "1.1.0"
+dependencies = [
+ "fog-api",
+ "fog-enclave-connection",
+ "fog-types",
+ "fog-uri",
+ "fog-view-protocol",
+ "grpcio",
+ "mc-attest-core",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-util-grpc",
+ "mc-util-serial",
+]
+
+[[package]]
+name = "fog-view-enclave"
+version = "1.1.0"
+dependencies = [
+ "cargo-emit",
+ "criterion",
+ "fog-ocall-oram-storage-edl",
+ "fog-ocall-oram-storage-untrusted",
+ "fog-test-infra",
+ "fog-types",
+ "fog-view-enclave-api",
+ "fog-view-enclave-edl",
+ "fog-view-enclave-measurement",
+ "mc-attest-core",
+ "mc-attest-enclave-api",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-enclave-boundary",
+ "mc-sgx-debug-edl",
+ "mc-sgx-panic-edl",
+ "mc-sgx-report-cache-api",
+ "mc-sgx-slog",
+ "mc-sgx-slog-edl",
+ "mc-sgx-types",
+ "mc-sgx-urts",
+ "mc-util-build-script",
+ "mc-util-build-sgx",
+ "mc-util-from-random",
+ "mc-util-serial",
+ "pkg-config",
+ "serde",
+ "tempdir",
+]
+
+[[package]]
+name = "fog-view-enclave-api"
+version = "1.1.0"
+dependencies = [
+ "displaydoc",
+ "fog-recovery-db-iface",
+ "fog-types",
+ "mc-attest-core",
+ "mc-attest-enclave-api",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-sgx-compat",
+ "mc-sgx-report-cache-api",
+ "mc-sgx-types",
+ "mc-util-serial",
+ "serde",
+]
+
+[[package]]
+name = "fog-view-enclave-edl"
+version = "1.1.0"
+dependencies = [
+ "cargo-emit",
+ "mc-util-build-script",
+]
+
+[[package]]
+name = "fog-view-enclave-impl"
+version = "1.1.0"
+dependencies = [
+ "aligned-cmov",
+ "fog-recovery-db-iface",
+ "fog-types",
+ "fog-view-enclave-api",
+ "mc-attest-core",
+ "mc-attest-enclave-api",
+ "mc-common",
+ "mc-crypto-ake-enclave",
+ "mc-crypto-keys",
+ "mc-crypto-rand",
+ "mc-oblivious-map",
+ "mc-oblivious-ram",
+ "mc-oblivious-traits",
+ "mc-sgx-compat",
+ "mc-sgx-report-cache-api",
+ "mc-util-serial",
+]
+
+[[package]]
+name = "fog-view-enclave-measurement"
+version = "1.1.0"
+dependencies = [
+ "cargo-emit",
+ "mc-attest-core",
+ "mc-sgx-css",
+ "mc-util-build-enclave",
+ "mc-util-build-script",
+ "mc-util-build-sgx",
+]
+
+[[package]]
+name = "fog-view-load-test"
+version = "1.1.0"
+dependencies = [
+ "fog-kex-rng",
+ "fog-uri",
+ "fog-view-connection",
+ "fog-view-enclave-measurement",
+ "fog-view-protocol",
+ "grpcio",
+ "mc-account-keys",
+ "mc-attest-core",
+ "mc-common",
+ "mc-util-keyfile",
+ "structopt",
+]
+
+[[package]]
+name = "fog-view-protocol"
+version = "1.1.0"
+dependencies = [
+ "blake2",
+ "displaydoc",
+ "fog-kex-rng",
+ "fog-types",
+ "mc-account-keys",
+ "mc-common",
+ "mc-crypto-box",
+ "mc-crypto-keys",
+ "mc-transaction-core",
+ "mc-util-from-random",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "mc-watcher-api",
+ "rand_core 0.6.2",
+ "rand_hc 0.3.0",
+ "serde",
+ "zeroize",
+]
+
+[[package]]
+name = "fog-view-server"
+version = "1.1.0"
+dependencies = [
+ "displaydoc",
+ "fog-api",
+ "fog-kex-rng",
+ "fog-recovery-db-iface",
+ "fog-sql-recovery-db",
+ "fog-test-infra",
+ "fog-types",
+ "fog-uri",
+ "fog-view-connection",
+ "fog-view-enclave",
+ "fog-view-enclave-api",
+ "fog-view-enclave-measurement",
+ "fog-view-protocol",
+ "futures 0.3.8",
+ "grpcio",
+ "hex 0.4.2",
+ "lazy_static",
+ "mc-attest-api",
+ "mc-attest-core",
+ "mc-attest-net",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-crypto-x509-test-vectors",
+ "mc-sgx-report-cache-untrusted",
+ "mc-transaction-core",
+ "mc-util-encodings",
+ "mc-util-from-random",
+ "mc-util-grpc",
+ "mc-util-metered-channel",
+ "mc-util-metrics",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "mc-util-uri",
+ "pem",
+ "rand 0.8.3",
+ "rand_core 0.6.2",
+ "serde",
+ "serde_json",
+ "structopt",
+ "tempdir",
+]
 
 [[package]]
 name = "fragile"
@@ -1863,6 +2876,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69ddb889f9d0d08a67338271fa9b62996bc788c7796a5c18cf057420aaed5eaf"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1952,6 +2974,15 @@ dependencies = [
  "libc",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "link-cplusplus"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f1becd27d473556dc610b8afa1636ef90747b574a84553bc11e82371d5ef2d1"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
@@ -3141,6 +4172,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-oblivious-map"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75ec69b95958d2e9a32a586810490e84e84131576a03089150c866d8f5c5b2db"
+dependencies = [
+ "aligned-array",
+ "aligned-cmov",
+ "generic-array 0.14.4",
+ "mc-oblivious-traits",
+ "rand_core 0.6.2",
+ "siphasher",
+]
+
+[[package]]
+name = "mc-oblivious-ram"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5315761b84f4d58c26af116531cb6f1d53084f38eeab04f8f3f69e15e532d779"
+dependencies = [
+ "aligned-cmov",
+ "balanced-tree-index",
+ "mc-oblivious-traits",
+ "rand_core 0.6.2",
+]
+
+[[package]]
+name = "mc-oblivious-traits"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "696594033b1b0d6974460924e74ed2764355055d2287982b8bc07821671f23d0"
+dependencies = [
+ "aligned-cmov",
+ "balanced-tree-index",
+ "rand_core 0.6.2",
+]
+
+[[package]]
 name = "mc-peers"
 version = "1.1.2"
 dependencies = [
@@ -3697,7 +4765,7 @@ dependencies = [
 name = "mc-util-test-helper"
 version = "1.1.2"
 dependencies = [
- "itertools",
+ "itertools 0.9.0",
  "lazy_static",
  "mc-account-keys",
  "mc-common",
@@ -3816,6 +4884,27 @@ dependencies = [
  "keccak",
  "rand_core 0.6.2",
  "zeroize",
+]
+
+[[package]]
+name = "migrations_internals"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b4fc84e4af020b837029e017966f86a1c2d5e83e64b589963d5047525995860"
+dependencies = [
+ "diesel",
+]
+
+[[package]]
+name = "migrations_macros"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9753f12909fd8d923f75ae5c3258cae1ed3c8ec052e1b38c93c21a6d157f789c"
+dependencies = [
+ "migrations_internals",
+ "proc-macro2 1.0.24",
+ "quote 1.0.9",
+ "syn 1.0.67",
 ]
 
 [[package]]
@@ -3971,6 +5060,18 @@ dependencies = [
  "cfg-if 0.1.10",
  "libc",
  "winapi 0.3.8",
+]
+
+[[package]]
+name = "nix"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83450fe6a6142ddd95fb064b746083fc4ef1705fe81f64a64e1d4b39f54a1055"
+dependencies = [
+ "bitflags",
+ "cc",
+ "cfg-if 0.1.10",
+ "libc",
 ]
 
 [[package]]
@@ -4333,6 +5434,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
 
 [[package]]
+name = "pq-sys"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ac25eee5a0582f45a67e837e350d784e7003bd29a5f460796772061ca49ffda"
+dependencies = [
+ "vcpkg",
+]
+
+[[package]]
 name = "predicates"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4478,7 +5588,7 @@ version = "0.6.1"
 source = "git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec#6113789f70b69709820becba4242824b4fb3ffec"
 dependencies = [
  "anyhow",
- "itertools",
+ "itertools 0.9.0",
  "proc-macro2 1.0.24",
  "quote 1.0.9",
  "syn 1.0.67",
@@ -4552,6 +5662,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d0b9745dc2debf507c8422de05d7226cc1f0644216dfdfead988f9b1ab32a7"
 dependencies = [
  "proc-macro2 1.0.24",
+]
+
+[[package]]
+name = "r2d2"
+version = "0.8.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "545c5bc2b880973c9c10e4067418407a0ccaa3091781d1671d46eb35107cb26f"
+dependencies = [
+ "log 0.4.11",
+ "parking_lot 0.11.0",
+ "scheduled-thread-pool",
 ]
 
 [[package]]
@@ -5099,6 +6220,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "scheduled-thread-pool"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc6f74fd1204073fa02d5d5d68bec8021be4c38690b61264b2fdb48083d0e7d7"
+dependencies = [
+ "parking_lot 0.11.0",
 ]
 
 [[package]]

@@ -1,0 +1,24 @@
+[package]
+name = "fog-report-cli"
+version = "1.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+license = "GPL-3.0"
+
+[dependencies]
+fog-api = { path = "../../api" }
+fog-ingest-enclave-measurement = { path = "../../ingest/enclave/measurement" }
+
+mc-account-keys = { path = "../../../account-keys" }
+mc-attest-core = { path = "../../../attest/core" }
+mc-common = { path = "../../../common", features = ["loggers"] }
+mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-fog-report-connection = { path = "../../../mc-fog/report/connection" }
+mc-fog-report-validation = { path = "../../../mc-fog/report/validation" }
+mc-util-keyfile = { path = "../../../util/keyfile" }
+mc-util-uri = { path = "../../../util/uri" }
+
+base64 = "0.12"
+binascii = "0.1.4"
+grpcio = "0.9.0"
+structopt = "0.3"

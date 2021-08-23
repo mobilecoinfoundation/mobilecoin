@@ -1,0 +1,269 @@
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+
+syntax = "proto3";
+
+package fog_view;
+option go_package = "mobilecoin/api";
+
+import "attest.proto";
+import "external.proto";
+import "kex_rng.proto";
+import "fog_common.proto";
+
+service FogViewAPI {
+    /// This is called to perform IX key exchange with the enclave before calling GetOutputs.
+    rpc Auth(attest.AuthMessage) returns (attest.AuthMessage) {}
+    /// Input should be an encrypted QueryRequest, result is an encrypted QueryResponse
+    rpc Query(attest.Message) returns (attest.Message) {}
+}
+
+/// There are several kinds of records returned by the fog view API
+/// - RngRecords, which a user can use with their private key to construct KexRng's
+/// - TxOutSearchResults, which the user can decrypt with their private key to obtain TxOutRecords
+/// - Missed BlockRanges, which tell the user about blocks that fog didn't process,
+///   on which they have to fallback to view key scanning. They can download these blocks
+///   from the fog-ledger server.
+///
+/// The TxOut requests ultimately have to be served obliviously to the user in order to meet
+/// our definition of privacy. The other two do not.
+///
+/// A QueryRequest is one request which can represent many logical requests for the above
+/// kinds of records. The API is amalgamated in this way to reduce the number of round-trips
+/// needed by the client. Note that QueryRequest is actually split into two Protobuf messages:
+/// QueryRequest -  which contains sensitive data exchanged over an attested and encrypted connection
+/// and QueryRequestAAD - which contains unsensitive data.
+/// We split sensitive and unsensitive data since part of the request is fulfilled by untrusted code and part
+/// is fulfilled by an enclave.
+///
+/// The API also supports an important optimization called "cursoring". This means that when
+/// you make a request, you tell us "where you were when you visited the API last" and we can
+/// avoid searching historical data to give you relevant updates.
+///
+/// There are two cursors to pay attention to:
+/// - start_from_user_event_id - This cursors the events table, allowing the caller to skip events they have already received.
+/// - start_from_block_index - This limits the set of blocks in which ETxOutRecords are searched, resulting in less load on the server.
+///
+/// Missed BlockRanges are reported to you based on whatever cursor value you supply.
+/// RngRecords can only be supplied if you supply the user's public view key. We will skip that
+/// if you don't.
+/// TxOutSearchResults are supplied if you supply fog search keys (outputs from a kex rng) in the get_txos
+/// field.
+///
+/// Example usage:
+/// Typically when hitting fog view, you will make a series of requests, not just one.
+/// The first one checks for new rng records, and later ones check for new txos in increasingly
+/// large numbers, depending on how many responses come back, how many Rng's you have, etc.
+///
+/// QueryRequest { address_public_key = 0x123..., start_from_block_index = 100, start_from_user_event_id = 100 }
+/// QueryRequest { get_txos = { 0x1..., 0x2... }, start_from... }
+/// QueryRequest { get_txos = { 0x3..., 0x4..., 0x5..., 0x6.... , start_from...} }
+/// QueryRequest { get_txos = { 0x7..., 0x8..., 0x9..., 0x10... , start_from...} }
+///
+/// It is possible to combine the first get_txos request with the address_public_key request
+/// if you already have some Rng's before you make that request.
+///
+/// The highest_processed_block_count value from the first request in a given session should become the
+/// start_from_block_index value the next time you make a request. Similarly, next_start_from_user_event_id should
+/// become start_from_user_event_id for the next request.
+///
+// After the interaction, you can be sure that you got every Txo of yours up to those cursor values.
+///
+/// An additional optimizaiton is possible: if doing full wallet recovery and you have no Rngs
+/// at all, the request sequence might look like this:
+///
+/// QueryRequest { address_public_key = 0x123..., start_from_block_index = 0 }
+/// QueryRequest { start_from_block_index = 73, get_txos = { 0x1..., 0x2... } }
+/// QueryRequest { start_from_block_index = 73, get_txos = { 0x3..., 0x4..., 0x5..., 0x6.... } }
+/// QueryRequest { start_from_block_index = 73, get_txos = { 0x7..., 0x8..., 0x9..., 0x10... } }
+///
+/// The first request has start_from_block_index = 0, and gives back all the Rng records of the user.
+/// After inspecting those records, if there are no Rng's with start_block less than 73,
+/// then start_from_block_index can be 73 for the rest of the requests, which limits the amount of
+/// historical data that must be searched to support the requst.
+message QueryRequestAAD {
+    /// The last event id the client is aware of.
+    int64 start_from_user_event_id = 1;
+
+    /// The first block index to search TXOs in.
+    uint64 start_from_block_index = 2;
+}
+
+message QueryRequest {
+    /// KexRng output bytes, "search keys", to request TxOutSearchResult's for
+    repeated bytes get_txos = 1;
+}
+
+/// When the result comes back, after decryption, the attest.Message plaintext
+/// follows this schema
+message QueryResponse {
+    /// The number of blocks processed at the time that the request was evaluated.
+    ///
+    /// The semantics of the result as a whole are, we guarantee to get you all
+    /// relevant event data from start_from_user_event_id to next_start_from_user_event_id
+    /// and all TxOutSearchResults from start_from_block_index to highest_processed_block_count.
+    ///
+    /// The highest_processed_block_count value you had last time should generally be the start_from_block_index
+    /// value next time, but there are caveats.
+    ///
+    /// If you have no data, start_from_block_index should be 0. Then you get your rng records,
+    /// and start_from_block_index can be the minimum start block of any of your rng records.
+    uint64 highest_processed_block_count = 1;
+
+    /// The timestamp of the block corresponding to highest_processed_block_count
+    uint64 highest_processed_block_signature_timestamp = 2;
+
+    /// The next value to use for start_from_user_event_id. For the first query, this should
+    /// be 0.
+    int64 next_start_from_user_event_id = 3;
+
+    /// Any block ranges that are missed.
+    /// These ranges are guaranteed to be non-overlapping.
+    /// The client should take these ranges to fog ledger and download them and scan them
+    /// in order to recover any TxOut's from these ranges.
+    ///
+    /// FIXME: MC-1488 Don't tell users about missed blocks from before they had an RNG.
+    /// Possibly, don't tell them about ANY missed blocks UNLESS they supply user_public
+    /// It is expected to be omitted when they are making repeated follow-up
+    /// "get_txos" queries.
+    repeated fog_common.BlockRange missed_block_ranges = 4;
+
+    /// Any new rng records produced by the request
+    repeated RngRecord rngs = 5;
+
+    /// Any decommissioned ingest invocations
+    repeated DecommissionedIngestInvocation decommissioned_ingest_invocations = 6;
+
+    /// Any TxOutSearchResults from the get_txos in the request.
+    repeated TxOutSearchResult tx_out_search_results = 7;
+
+    /// Extra data: The index of the last known block.
+    /// This might be larger than highest_processed_block_count.
+    /// This field doesn't have the same "cursor" semantics as the other fields.
+    uint64 last_known_block_count = 8;
+
+    /// Extra data: The cumulative txo count of the last known block.
+    /// This can be used by the client as a hint when choosing cryptonote mixin indices.
+    /// This field doesn't have the same "cursor" semantics as the other fields.
+    uint64 last_known_block_cumulative_txo_count = 9;
+}
+
+/// A record of an Rng created by a fog ingest enclave.
+/// This can be used with the user's private view key to construct ClientKexRng,
+/// and get fog search keys.
+message RngRecord {
+    /// The ingest invocation id that produced this record.
+    /// This is used to match against DecommissionedIngestInvocation objects when querying for new events.
+    int64 ingest_invocation_id = 1;
+
+    /// A key-exchange message to be used by the client to create a VersionedKexRng
+    kex_rng.KexRngPubkey pubkey = 2;
+
+    /// The start block (when fog started using this rng)
+    uint64 start_block = 3;
+}
+
+/// Information about a decommissioned ingest invocation.
+message DecommissionedIngestInvocation {
+    /// The ingest invocation id that was decommissioned.
+    int64 ingest_invocation_id = 1;
+
+    /// The last block index that was successfully ingested by this invocation.
+    uint64 last_ingested_block = 2;
+}
+
+/// The result of a search result for a TxOutRecord
+message TxOutSearchResult {
+    /// The search key associated to this result
+    bytes search_key = 1;
+    /// The result code for the query.
+    /// This is logically an enum, but should not be an enum because protobuf
+    /// requires that enums are encoded using the "varint" encoding which is not fixed size.
+    /// We want that e.g. "Found" and "NotFound" have the same length on the wire to avoid leaking that.
+    /// So it is a fixed32 in protobuf, and the 0 (default) value is intentionally unused.
+    fixed32 result_code = 2;
+
+    /// A ciphertext, which is a view-key encrypted TxOutRecord in case result_code == 1.
+    /// It is be zero-padding in the other cases.
+    /// FIXME: MC-1491 ensure this happens either in enclave or db, or wait for ORAM
+    bytes ciphertext = 3;
+}
+
+/// Corresponds to and documents values of TxOutSearchResult.result_code
+/// If any values are added they must be synced with TxOutSearchResult used in recovery db
+enum TxOutSearchResultCode {
+    IntentionallyUnused = 0;
+    /// A result was found
+    Found = 1;
+    /// A result was not found
+    NotFound = 2;
+    /// The search key is bad (e.g. wrong size) and the request could not be completed
+    BadSearchKey = 3;
+    /// An internal occurred (e.g. a database failed)
+    InternalError = 4;
+    /// The query was rate limited
+    /// (the server decided not to service the query in order to satisfy a limit)
+    RateLimited = 5;
+}
+
+/// The schema for the decrypted TxOutSearchResult ciphertext
+/// This is the information that the Ingest enclave produces for the user about their TxOut
+///
+/// Note: The fields of FogTxOut are flattened here because it reduces the size of the protobuf
+/// enough to make a difference for the quality of ORAM implementation, like ~10% better memory utilization
+///
+/// Note: Fog TxOutRecord DOES NOT include the encrypted fog hint of the original TxOut, because it is big,
+/// and the client cannot read it anyways. However, when using the TxOut to build transactions, you must have that
+/// or the merkle proofs will fail validation, at least for now.
+/// The fog merkle proof server gives you a TxOut with fog hint, as it appears in blockchain,
+/// and that's the version of the TxOut that you should use when building a transaction.
+message TxOutRecord {
+    /// The (compressed ristretto) bytes of commitment associated to amount field in the TxOut that was recovered
+    ///
+    /// Note: This field is omitted in recent versions, because it can be reconstructed by the recipient instead.
+    bytes tx_out_amount_commitment_data = 1;
+    /// The masked value associated to amount field in the TxOut that was recovered
+    fixed64 tx_out_amount_masked_value = 2;
+    /// The (compressed ristretto) bytes of the target key associated to the TxOut that was recovered
+    bytes tx_out_target_key_data = 3;
+    /// The (compressed ristretto) bytes of the public key associated to the TxOut that was recovered
+    bytes tx_out_public_key_data = 4;
+    /// The global index of this TxOut in the set of all TxOuts in the entire block chain
+    fixed64 tx_out_global_index = 5;
+    /// The index of the block index in which this TxOut appeared
+    fixed64 block_index = 6;
+    /// The timestamp of the block containing this output.
+    /// Some blocks, like the origin block, don't have a timestamp, and this value is u64::MAX
+    /// Other blocks are expected to have timestamps.
+    ///
+    /// Note: The timestamp is based on untrusted reporting of time from ONE of the consensus validators.
+    /// Because it is a distributed system, it may not be the SAME consensus validator from block to block,
+    /// and the timestamps may not make even a minimal amount of sense when the validator differs.
+    ///
+    /// These timestamps are
+    /// - NOISY, forward and backwards in time, depending on system time settings of many different servers.
+    /// - NOT MONOTONIC: it's possible that you get a timestamp for block 101 that is before the timestamp for block 100.
+    /// - Not even CONSISTENT across fog services: It's possible you get a different timestamp for a TxOut in block 100,
+    ///   than you do for a key image in block 100 from the key image endpoint.
+    ///   This is unavoidable right now because it is possible that fog-ingest has different levels of
+    ///   connectivity from the fog-key-image service to the blockchain data sources.
+    ///
+    /// Timestamps are BEST-EFFORT and for a good user experience, the client software should attempt to reconcile these
+    /// timestamps, so that events that have a happens-before relationship in the system, have timestamps that reflect that.
+    /// Otherwise, we should expect users to be confused and disturbed about the occasional time-travelling transaction.
+    ///
+    /// We hope to improve the quality guarantees of these timestamps over time, but for now this is the best we
+    /// can do until some changes can be made to the consensus network and other services related to timestamps.
+    ///
+    /// Represented as seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z.
+    fixed64 timestamp = 7;
+    /// The crc32 of the commitment data bytes.
+    /// This is a 4-byte IEEE crc32 of the bytes of the tx_out_amount_commitment_data bytes, which is present if
+    /// the full tx_out_amount_commitment_data is omitted.
+    /// The client can recompute the tx_out_amount_commitment from the other data that we include.
+    /// They can confirm correct recomputation by checking this crc value.
+    fixed32 tx_out_amount_commitment_data_crc32 = 8;
+    /// The bytes of the encrypted memo.
+    /// This exactly 46 bytes when present.
+    /// This is omitted for TxOut's from before the upgrade that introduced memos.
+    bytes tx_out_e_memo_data = 9;
+}
