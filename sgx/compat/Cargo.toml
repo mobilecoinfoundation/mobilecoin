@@ -21,7 +21,7 @@ default = []
 sgx = [
     'mc-sgx-alloc', 'mc-sgx-alloc/oom_panic',
     'mc-sgx-panic', 'mc-sgx-panic/panic_abort',
-    'mc-sgx-sync',
+    'mc-sgx-sync', 'mc-sgx-sync/mc-sgx-panic',
     'mc-sgx-debug',
     'mc-sgx-service',
 ]

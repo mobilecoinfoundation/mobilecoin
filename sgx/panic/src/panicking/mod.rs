@@ -1,23 +1,25 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use super::panic_strategy;
-/// This module defines a `panic_handler` lang item and defines a function
-/// `log_and_panic` which does logging as appropriate before calling to
-/// `panic_strategy` module to actually initiate a panic.
-/// A thread-local panic_counter variable is provided by submodule `panic_counter`
-/// which keeps track of how many times we have looped through the panic
-/// infrastructure, in order to break recursive panics.
-/// The `try` function takes a closure and submits it to the panic_strategy,
-/// taking care to return the results in a nice format and decremeent the
-/// panic_counter in case a panic was caught.
-/// rethrow function is used to rethrow exceptions... err, panics.
-use core::panic::PanicInfo;
+//! This module defines a `panic_handler` lang item and defines a function
+//! `log_and_panic` which does logging as appropriate before calling to
+//! `panic_strategy` module to actually initiate a panic.
+//! A thread-local panic_counter variable is provided by submodule
+//! `panic_counter` which keeps track of how many times we have looped through
+//! the panic infrastructure, in order to break recursive panics.
+//! The `try` function takes a closure and submits it to the panic_strategy,
+//! taking care to return the results in a nice format and decremeent the
+//! panic_counter in case a panic was caught.
+//! rethrow function is used to rethrow exceptions... err, panics.
 
 // Get formatting helper
 mod format_helper;
 
 // Counter for recursive panics
 mod panic_counter;
+
+use self::panic_counter::update_panic_count;
+use super::panic_strategy;
+use core::{mem::ManuallyDrop, panic::PanicInfo};
 
 /// Determines whether the current thread is unwinding because of panic.
 /// Analogous to std::thread::panicking()
@@ -90,8 +92,14 @@ pub fn rethrow(msg: Box<dyn Any + Send>) -> ! {
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
 #[cfg(feature = "alloc")]
 pub unsafe fn try_closure<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
-    use self::panic_counter::update_panic_count;
-    use core::{mem, mem::ManuallyDrop, raw};
+    extern "C" fn do_call<F: FnOnce() -> R, R>(data: *mut u8) {
+        unsafe {
+            let data = data as *mut Data<F, R>;
+            let data = &mut (*data);
+            let f = ManuallyDrop::take(&mut data.f);
+            data.r = ManuallyDrop::new(f());
+        }
+    }
 
     union Data<F, R> {
         f: ManuallyDrop<F>,
@@ -112,8 +120,8 @@ pub unsafe fn try_closure<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + 
     // * If the closure successfully returns, we write the return value into the
     //   data's return slot. Note that `ptr::write` is used as it's overwriting
     //   uninitialized data.
-    // * Finally, when we come back out of the `__rust_maybe_catch_panic` we're
-    //   in one of two states:
+    // * Finally, when we come back out of the `__rust_maybe_catch_panic` we're in
+    //   one of two states:
     //
     //      1. The closure didn't panic, in which case the return value was
     //         filled in. We move it out of `data` and return it.
@@ -123,39 +131,14 @@ pub unsafe fn try_closure<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + 
     //
     // Once we stack all that together we should have the "most efficient'
     // method of calling a catch panic whilst juggling ownership.
-    let mut any_data = 0;
-    let mut any_vtable = 0;
     let mut data = Data {
         f: ManuallyDrop::new(f),
     };
 
-    let r = panic_strategy::__rust_maybe_catch_panic(
-        do_call::<F, R>,
-        &mut data as *mut _ as *mut u8,
-        &mut any_data,
-        &mut any_vtable,
-    );
+    do_call::<F, R>(&mut data as *mut _ as *mut u8);
 
-    return if r == 0 {
-        debug_assert!(update_panic_count(0) == 0);
-        Ok(ManuallyDrop::into_inner(data.r))
-    } else {
-        update_panic_count(-1);
-        debug_assert!(update_panic_count(0) == 0);
-        Err(mem::transmute(raw::TraitObject {
-            data: any_data as *mut _,
-            vtable: any_vtable as *mut _,
-        }))
-    };
-
-    extern "C" fn do_call<F: FnOnce() -> R, R>(data: *mut u8) {
-        unsafe {
-            let data = data as *mut Data<F, R>;
-            let data = &mut (*data);
-            let f = ManuallyDrop::take(&mut data.f);
-            data.r = ManuallyDrop::new(f());
-        }
-    }
+    debug_assert!(update_panic_count(0) == 0);
+    Ok(ManuallyDrop::into_inner(data.r))
 }
 
 // These functions are implemented in panic_abort or panic_unwind according

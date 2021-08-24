@@ -10,6 +10,12 @@ use cfg_if::cfg_if;
 cfg_if! {
     if #[cfg(feature = "sgx")] {
         extern crate mc_sgx_alloc;
+        pub use mc_sgx_panic as panic;
+
+        // Compat with std
+        mod thread {
+            pub use mc_sgx_panic::thread_panicking as panicking;
+        }
 
         pub use mc_sgx_sync as sync;
         pub use mc_sgx_debug::eprintln;
@@ -18,6 +24,10 @@ cfg_if! {
     }
     else {
         extern crate std;
+        mod thread {
+            pub use std::thread::panicking;
+        }
+        pub use std::panic;
         pub use std::sync;
         pub use std::eprintln;
 

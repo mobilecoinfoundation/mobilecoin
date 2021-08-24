@@ -4,14 +4,15 @@
 // modification, are permitted provided that the following conditions
 // are met:
 //
-//  * Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//  * Neither the name of Baidu, Inc., nor the names of its contributors may be
-//    used to endorse or promote products derived from this software without
-//    specific prior written permission.
+//  * Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+//  * Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in
+//    the documentation and/or other materials provided with the
+//    distribution.
+//  * Neither the name of Baidu, Inc., nor the names of its
+//    contributors may be used to endorse or promote products derived
+//    from this software without specific prior written permission.
 //
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 // "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -48,6 +49,11 @@ use core::{
 
 //use std::thread;
 mod thread {
+    #[cfg(feature = "sgx_panic")]
+    pub fn panicking() -> bool {
+        mc_sgx_panic::thread_panicking()
+    }
+    #[cfg(not(feature = "sgx_panic"))]
     pub fn panicking() -> bool {
         false
     }
@@ -105,10 +111,10 @@ pub struct Guard {
 
 /// A type of error which can be returned whenever a lock is acquired.
 ///
-/// Both [`SgxMutex`]es and [`SgxRwLock`]s are poisoned whenever a thread fails
-/// while the lock is held. The precise semantics for when a lock is poisoned is
-/// documented on each lock, but once a lock is poisoned then all future
-/// acquisitions will return this error.
+/// Both [`SgxMutex`]es and [`SgxRwLock`]s are poisoned whenever a thread fails while the lock
+/// is held. The precise semantics for when a lock is poisoned is documented on
+/// each lock, but once a lock is poisoned then all future acquisitions will
+/// return this error.
 pub struct PoisonError<T> {
     guard: T,
 }
@@ -122,9 +128,10 @@ impl<T> fmt::Debug for PoisonError<T> {
 /// An enumeration of possible errors associated with a [`TryLockResult`] which
 /// can occur while trying to acquire a lock, from the [`try_lock`] method on a
 /// [`Mutex`] or the [`try_read`] and [`try_write`] methods on an [`RwLock`].
+///
 pub enum TryLockError<T> {
-    /// The lock could not be acquired because another thread failed while
-    /// holding the lock.
+    /// The lock could not be acquired because another thread failed while holding
+    /// the lock.
     Poisoned(PoisonError<T>),
     /// The lock could not be acquired at this time because the operation would
     /// otherwise block.
@@ -135,16 +142,17 @@ pub enum TryLockError<T> {
 ///
 /// The [`Ok`] variant of this result indicates that the primitive was not
 /// poisoned, and the `Guard` is contained within. The [`Err`] variant indicates
-/// that the primitive was poisoned. Note that the [`Err`] variant *also*
-/// carries the associated guard, and it can be acquired through the
-/// [`into_inner`] method.
+/// that the primitive was poisoned. Note that the [`Err`] variant *also* carries
+/// the associated guard, and it can be acquired through the [`into_inner`]
+/// method.
+///
 pub type LockResult<Guard> = Result<Guard, PoisonError<Guard>>;
 
 /// A type alias for the result of a nonblocking locking method.
 ///
 /// For more information, see [`LockResult`]. A `TryLockResult` doesn't
-/// necessarily hold the associated guard in the [`Err`] type as the lock may
-/// not have been acquired for other reasons.
+/// necessarily hold the associated guard in the [`Err`] type as the lock may not
+/// have been acquired for other reasons.
 pub type TryLockResult<Guard> = Result<Guard, TryLockError<Guard>>;
 
 /*
@@ -172,26 +180,29 @@ impl<T> Error for PoisonError<T> {
 impl<T> PoisonError<T> {
     /// Creates a `PoisonError`.
     ///
-    /// This is generally created by methods like [`SgxMutex::lock`] or
-    /// [`SgxRwLock::read`].
+    /// This is generally created by methods like [`SgxMutex::lock`] or [`SgxRwLock::read`].
+    ///
     pub fn new(guard: T) -> PoisonError<T> {
         PoisonError { guard }
     }
 
     /// Consumes this error indicating that a lock is poisoned, returning the
     /// underlying guard to allow access regardless.
+    ///
     pub fn into_inner(self) -> T {
         self.guard
     }
 
     /// Reaches into this error indicating that a lock is poisoned, returning a
     /// reference to the underlying guard to allow access regardless.
+    ///
     pub fn get_ref(&self) -> &T {
         &self.guard
     }
 
     /// Reaches into this error indicating that a lock is poisoned, returning a
     /// mutable reference to the underlying guard to allow access regardless.
+    ///
     pub fn get_mut(&mut self) -> &mut T {
         &mut self.guard
     }

@@ -5,3 +5,7 @@ authors = ["MobileCoin"]
 
 [dependencies]
 mc-sgx-types = { path = "../types" }
+mc-sgx-panic = { path = "../panic", optional = true }
+
+[features]
+default = ["mc-sgx-panic"]
