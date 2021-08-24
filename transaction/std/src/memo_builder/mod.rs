@@ -22,6 +22,8 @@ pub use rth_memo_builder::RTHMemoBuilder;
 /// installed in the transaction builder when that is constructed.
 /// This way low-level handing of memo payloads with TxOuts is not needed,
 /// and just invoking the TransactionBuilder as before will do the right thing.
+///
+/// This trait derives DynClone so that Box<dyn MemoBuilder> can derive Clone.
 pub trait MemoBuilder: Debug + Sync + Send + DynClone {
     /// Set the fee.
     /// The memo builder is in the loop when the fee is set and changed,
@@ -47,6 +49,7 @@ pub trait MemoBuilder: Debug + Sync + Send + DynClone {
     ) -> Result<MemoPayload, NewMemoError>;
 }
 
+// Enables Box<dyn MemoBuilder> to derive Clone:
 clone_trait_object!(MemoBuilder);
 
 /// The empty memo builder always builds UnusedMemo.
