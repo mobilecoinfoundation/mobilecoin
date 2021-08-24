@@ -321,7 +321,6 @@ commands:
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
           steps: [ update-ci-deps ]
-      - env_setup
       - print_versions
       - enable_sccache
       # Cache is only saved when building from master. We don't restore sccache on
