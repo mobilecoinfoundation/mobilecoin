@@ -1,6 +1,0 @@
-# Ignore generated grpc files
-src/ingest*
-src/view*
-src/ledger*
-src/report*
-src/report_admin*
