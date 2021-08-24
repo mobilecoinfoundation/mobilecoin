@@ -68,6 +68,21 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         fog_resolver: FPR,
         memo_builder: MB,
     ) -> Self {
+        TransactionBuilder::new_with_box(fog_resolver, Box::new(memo_builder))
+    }
+
+    /// Initializes a new TransactionBuilder, using a Box<dyn MemoBuilder>
+    /// instead of statically typed
+    ///
+    /// # Arguments
+    /// * `fog_resolver` - Source of validated fog keys to use with this
+    ///   transaction
+    /// * `memo_builder` - An object which creates memos for the TxOuts in this
+    ///   transaction
+    pub fn new_with_box(
+        fog_resolver: FPR,
+        memo_builder: Box<dyn MemoBuilder + Send + Sync>,
+    ) -> Self {
         TransactionBuilder {
             input_credentials: Vec::new(),
             outputs_and_shared_secrets: Vec::new(),
@@ -75,7 +90,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             fee: MINIMUM_FEE,
             fog_resolver,
             fog_tombstone_block_limit: u64::max_value(),
-            memo_builder: Some(Box::new(memo_builder)),
+            memo_builder: Some(memo_builder),
         }
     }
 
