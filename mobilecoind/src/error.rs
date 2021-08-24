@@ -56,7 +56,7 @@ pub enum Error {
     MonitorIdNotFound,
 
     /// Failed to deserialize lmdb key bytes
-    KeyDeserializationError,
+    KeyDeserialization,
 
     /// Subaddress SPK not found
     SubaddressSPKNotFound,
@@ -80,10 +80,10 @@ pub enum Error {
     OptimizationNotBeneficial(String),
 
     /// Tx build error: {0}
-    TxBuildError(String),
+    TxBuild(String),
 
     /// Fog error: {0}
-    FogError(String),
+    Fog(String),
 
     /// Insufficient funds
     InsufficientFunds,
