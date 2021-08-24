@@ -446,13 +446,8 @@ impl WatcherDB {
 
     /// Get the timestamp from the watcher, or an error code,
     /// using retries if the watcher fell behind
-    /// The block index and watcher timeout set is the time that has elapsed to
-    /// indicate watcher is behind from ingest or ledger for example
-    pub fn get_block_timestamp_polling(
-        &self,
-        block_index: BlockIndex,
-        watcher_timeout: Duration,
-    ) -> u64 {
+    /// The block index from ingest or ledger for example, watcher timeout set
+    pub fn get_watcher_timestamp(&self, block_index: BlockIndex, watcher_timeout: Duration) -> u64 {
         // Timer that tracks how long we have had WatcherBehind error for,
         // if this exceeds watcher_timeout, we log a warning.
         let mut watcher_behind_timer = Instant::now();
