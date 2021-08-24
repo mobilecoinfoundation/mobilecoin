@@ -32,6 +32,11 @@ executors:
       - image: *builder-install
     resource_class: xlarge
 
+  android-bindings-executor:
+    docker:
+      - image: *android-bindings-builder
+    resource_class: xlarge
+
   macos:
     parameters:
       xcode-version: { type: string, default: *default-xcode-version }
@@ -74,6 +79,8 @@ commands:
       - run:
           name: Set utility environment variables
           command: |
+            HOST_TARGET_TRIPLE="$(rustc -Vv | sed -n 's/^host: //p')"
+            echo "export HOST_TARGET_TRIPLE=\"$HOST_TARGET_TRIPLE\"" >> $BASH_ENV
             echo "export HOST_TARGET_TRIPLE=\"$(rustc -Vv | sed -n 's/^host: //p')\"" >> $BASH_ENV
 
   enable_sccache:
@@ -142,6 +149,15 @@ commands:
             pushd "consensus/enclave/trusted"
             cargo trim init
             popd
+            pushd "fog/ingest/enclave/trusted"
+            cargo trim init
+            popd
+            pushd "fog/ledger/enclave/trusted"
+            cargo trim init
+            popd
+            pushd "fog/view/enclave/trusted"
+            cargo trim init
+            popd
 
             # Clean dependencies not in the Cargo.lock
             time cargo trim --orphan
@@ -150,6 +166,9 @@ commands:
             # a bug where cargo trim erroneously removes certain git repos.
             time cargo fetch --locked
             (cd consensus/enclave/trusted && time cargo fetch --locked)
+            (cd fog/ingest/enclave/trusted && time cargo fetch --locked)
+            (cd fog/ledger/enclave/trusted && time cargo fetch --locked)
+            (cd fog/view/enclave/trusted && time cargo fetch --locked)
 
             # Remove the registry src dir since it's the largest dir and it's
             # recreatable from the archives in ~/.cargo/cache
@@ -231,6 +250,8 @@ commands:
             "$HOME/.cargo/bin/rustup" show active-toolchain
 
   install-ci-deps:
+    parameters:
+      cbindgen: { type: boolean, default: false }
     steps:
       - run:
           name: Install CI dependencies
@@ -239,6 +260,9 @@ commands:
             command -v sccache >/dev/null || rustup run --install stable cargo install sccache
             command -v cargo-cache >/dev/null || rustup run --install stable cargo install cargo-cache
             command -v cargo2junit >/dev/null || rustup run --install stable cargo install cargo2junit
+            <<# parameters.cbindgen >>
+              command -v cbindgen >/dev/null || rustup run --install stable cargo install cbindgen
+            <</ parameters.cbindgen >>
 
   update-ci-deps:
     steps:
@@ -259,18 +283,39 @@ commands:
             set -x
             time cargo fetch --locked
             (cd consensus/enclave/trusted && time cargo fetch --locked)
+            (cd fog/ingest/enclave/trusted && time cargo fetch --locked)
+            (cd fog/ledger/enclave/trusted && time cargo fetch --locked)
+            (cd fog/view/enclave/trusted && time cargo fetch --locked)
+
+  enable-postgresql:
+    steps:
+      - run:
+          name: Setup PostgreSQL server
+          command: |
+            # Start the server
+            echo "Starting PostgreSQL"
+            service postgresql start
+            # Setup test environment
+            TEST_DATABASE_URL="postgres://localhost"
+            echo "export TEST_DATABASE_URL=\"$TEST_DATABASE_URL\"" >> $BASH_ENV
 
   prepare-for-build:
     parameters:
+      cbindgen: { type: boolean, default: false }
       os: { type: enum, enum: [ "linux", "macos", "windows" ], default: linux }
     steps:
       - checkout
       - when:
           condition: { equal: [ << parameters.os >>, macos ] }
           steps: [ restore-homebrew-cache ]
+      - when:
+          condition: { equal: [ << parameters.os >>, linux ] }
+          steps: [ enable-postgresql ]
       - install-rust
       - restore-cargo-cache
-      - install-ci-deps
+      - env_setup
+      - install-ci-deps:
+          cbindgen: << parameters.cbindgen >>
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
           steps: [ update-ci-deps ]
@@ -284,16 +329,16 @@ commands:
           steps: [ restore-sccache-cache ]
       - prefetch-cargo-deps
 
-  run-tests:
+  run-mc-tests:
     parameters:
       test_command:
         type: string
-        default: cargo test --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests -j 6
+        default: cargo test --exclude "fog-*" --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests -j 6
     steps:
       - run:
           name: Run tests
           command: |
-            mkdir -p /tmp/test-results
+            mkdir -p /tmp/mc-test-results
 
             # Run tests, then convert the cargo json results into junit xml format.
             #
@@ -310,21 +355,83 @@ commands:
               | {
                   tee /tmp/test-results/output.log
                   cat /tmp/test-results/output.log \
-                    | cargo2junit > /tmp/test-results/results.xml \
+                    | cargo2junit > /tmp/mc-test-results/results.xml \
                     || true
                 }
+
+  run-fog-tests:
+    parameters:
+      test_command:
+        type: string
+        default: cargo test --package "fog-*" --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests -j 6
+    steps:
+      - run:
+          name: Run tests
+          command: |
+            mkdir -p /tmp/fog-test-results
+
+            # Run tests, then convert the cargo json results into junit xml format.
+            #
+            # Note: Using curly braces ensures that the conversion is run even if the tests fail,
+            # while still allowing the exit code from the tests to be propagated. Using `tee` to
+            # pipe the output to a file before converting ensures that the tests are not
+            # interrupted if conversion fails. `|| true` is added so that the test as a whole does
+            # not fail even if conversion fails. This is especially necessary because the
+            # conversion tool must parse all test output, including log output, in order to parse
+            # the test results, and unfortunately Cargo does not always output the test results in
+            # such a way that is cleanly parsable.
+            << parameters.test_command >> -- \
+                -Zunstable-options --format json --report-time \
+              | {
+                  tee /tmp/test-results/output.log
+                  cat /tmp/test-results/output.log \
+                    | cargo2junit > /tmp/fog-test-results/results.xml \
+                    || true
+                }
+
+  # A job that runs the fog-conformance-tests, building things in debug mode
+  # Note: If we bring back the run-parallel-tests stuff, we could make this use --skip-build,
+  # and consume the build targets built in earlier step
+  run-fog-conformance-tests-debug:
+    steps:
+      - run:
+          name: fog_conformance_tests.py
+          command: |
+            openssl genrsa -out mobilecoin/Enclave_private.pem -3 3072
+            export CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/mobilecoin/Enclave_private.pem
+            export INGEST_ENCLAVE_PRIVKEY=$(pwd)/mobilecoin/Enclave_private.pem
+            export LEDGER_ENCLAVE_PRIVKEY=$(pwd)/mobilecoin/Enclave_private.pem
+            export VIEW_ENCLAVE_PRIVKEY=$(pwd)/mobilecoin/Enclave_private.pem
+
+            apt-get update && apt-get install -y python3-venv
+            cd tools/fog-local-network
+            python3 -m venv env
+            . ./env/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
+            ./build.sh
+            cd ../..
+
+            python ./tools/fog-local-network/fog_conformance_tests.py
 
   post-build:
     steps:
       - record-sccache-cache-stats
       - print-cargo-cache-stats
 
-  post-test:
+  post-mc-test:
     steps:
       - store_test_results:
-          path: /tmp/test-results
+          path: /tmp/mc-test-results
       - store_artifacts:
-          path: /tmp/test-results
+          path: /tmp/mc-test-results
+
+  post-fog-test:
+    steps:
+      - store_test_results:
+          path: /tmp/fog-test-results
+      - store_artifacts:
+          path: /tmp/fog-test-results
 
   lint:
     steps:
@@ -332,6 +439,13 @@ commands:
           name: Lint/fmt
           command: |
             ./tools/lint.sh
+
+  run-libmobilecoin-cbindgen:
+    steps:
+      - run:
+          name: Run cbindgen for LibMobileCoin
+          working_directory: libmobilecoin
+          command: make cbindgen
 
   generate-docs:
     steps:
@@ -358,20 +472,35 @@ commands:
             fi
 
 jobs:
-  # Run tests on a single container
-  run-tests:
+  # Run mobilecoin tests on a single container
+  run-mc-tests:
     executor: build-executor
     environment:
       <<: *default-build-environment
     steps:
       - prepare-for-build
-      - run-tests
+      - run-mc-tests
       - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
           steps: [ save-sccache-cache ]
       - post-build
-      - post-test
+      - post-mc-test
+
+  # Run fog tests on a single container
+  run-fog-tests:
+    executor: build-executor
+    environment:
+      <<: *default-build-environment
+    steps:
+      - prepare-for-build
+      - run-fog-tests
+      - check-dirty-git
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ save-sccache-cache ]
+      - post-build
+      - post-fog-test
 
   # Build and lint in debug mode
   build-and-lint-debug:
@@ -397,10 +526,56 @@ jobs:
       - generate-docs
       - store-docs
       - check-dirty-git
+      - run-libmobilecoin-cbindgen
+      - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
           steps: [ save-sccache-cache, save-cargo-cache ]
       - post-build
+
+  # Build/publish Android bindings
+  android-bindings:
+    executor: android-bindings-executor
+    environment:
+      <<: *default-environment
+    steps:
+      - checkout
+      - git_submodule
+      - print_versions
+      - enable_sccache
+      - restore_cache:
+          name: Restore cargo cache
+          key: android-bindings-cargo-cache-stable
+      - restore_cache:
+          name: Restore sccache cache
+          key: android-bindings-sccache-cache-stable
+
+      - run:
+          name: Build
+          command: |
+            cd android-bindings
+            RUST_BACKTRACE=full make libs
+      - save_cache:
+          name: Save cargo cache
+          key: android-bindings-cargo-cache-stable-{{ epoch }}
+          paths:
+            - "/usr/local/cargo"
+      - save_cache:
+          name: Save sccache cache
+          key: android-bindings-sccache-cache-stable-{{ epoch }}
+          paths:
+            - "~/.cache/sccache"
+# FIXME: Need to install aws creds
+#      - run:
+#          name: Upload to s3
+#          command: |
+#            tar -czf android-bindings.tar.gz -C android-bindings/build .
+#            aws s3 cp android-bindings.tar.gz s3://mobilecoin.android-bindings/branches/${CIRCLE_BRANCH}-latest.tar.gz --acl public-read
+#            aws s3 cp android-bindings.tar.gz s3://mobilecoin.android-bindings/${CIRCLE_SHA1}.tar.gz --acl public-read
+#            echo
+#            echo "Bindings are available at:"
+#            echo "https://s3-us-west-1.amazonaws.com/mobilecoin.android-bindings/branches/${CIRCLE_BRANCH}-latest.tar.gz"
+#            echo "https://s3-us-west-1.amazonaws.com/mobilecoin.android-bindings/${CIRCLE_SHA1}.tar.gz"
 
   # Build using macOS
   build-macos:
@@ -420,11 +595,7 @@ jobs:
       - run:
           name: Cargo check
           command: |
-            cargo check --frozen --target "$HOST_TARGET_TRIPLE" --workspace \
-              --exclude mc-attest-untrusted \
-              --exclude mc-consensus-enclave \
-              --exclude mc-consensus-service \
-              --exclude mc-sgx-report-cache-untrusted
+            cargo check --frozen --target "$HOST_TARGET_TRIPLE" -p libmobilecoin
       - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
@@ -436,11 +607,21 @@ workflows:
   # Build and run tests on a single container
   build-and-run-tests:
     jobs:
-      # Run tests on a single container
-      - run-tests
+      # Run mc tests on a single container
+      - run-mc-tests
+          filters: { branches: { ignore: /^deploy\/.*/ } }
+
+      # Run fog tests on a single container
+      - run-fog-tests
+          filters: { branches: { ignore: /^deploy\/.*/ } }
 
       # Build everything in debug
       - build-and-lint-debug
+          filters: { branches: { ignore: /^deploy\/.*/ } }
+
+      # build/publish android bindings
+      - android-bindings:
+          filters: { branches: { ignore: /^deploy\/.*/ } }
 
       # Build using macOS
       - build-macos:
@@ -448,3 +629,4 @@ workflows:
           matrix:
             parameters:
               xcode-version: ["11.7.0", *default-xcode-version]
+          filters: { branches: { ignore: /^deploy\/.*/ } }
