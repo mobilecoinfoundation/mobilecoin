@@ -541,7 +541,6 @@ jobs:
       <<: *default-environment
     steps:
       - checkout
-      - git_submodule
       - print_versions
       - enable_sccache
       - restore_cache:
