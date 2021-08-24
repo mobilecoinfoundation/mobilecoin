@@ -432,7 +432,7 @@ fn submit_tx(
             max_retries
         );
         thread::sleep(Duration::from_millis(config.add_tx_delay_ms));
-        match conn.propose_tx(&tx, empty()) {
+        match conn.propose_tx(tx, empty()) {
             Ok(block_height) => {
                 log::debug!(
                     logger,
