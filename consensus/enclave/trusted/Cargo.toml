@@ -77,8 +77,11 @@ curve25519-dalek = { git = "https://github.com/jcape/curve25519-dalek.git", rev 
 ed25519-dalek = { git = "https://github.com/jcape/ed25519-dalek.git", rev = "5758cffaa08ed191204f3c62d8302152216e4ce5" }
 
 # Our patches for newer bindgen, no-std
-mbedtls = { git = "https://github.com/jcape/rust-mbedtls.git", rev = "1cc22203456f5a0f9e06a57d4a4e7a49582f7a90" }
-mbedtls-sys-auto = { git = "https://github.com/jcape/rust-mbedtls.git", rev = "1cc22203456f5a0f9e06a57d4a4e7a49582f7a90" }
+mbedtls = { git = "https://github.com/jcape/rust-mbedtls.git", rev = "6ee973af72d10ea6a26f513cd340171717536f94" }
+mbedtls-sys-auto = { git = "https://github.com/jcape/rust-mbedtls.git", rev = "6ee973af72d10ea6a26f513cd340171717536f94" }
+
+# packed_simd_2 has unreleased fixes for our nightly version
+packed_simd_2 = { git = "https://github.com/rust-lang/packed_simd.git", rev = "f60e900f4ceb71303baa37ff8b41ee7d490c01bf" }
 
 # prost is patched with no_std support (https://github.com/danburkert/prost/pull/319)
 # current revision is from jun 13 2020, waiting for a new prost release

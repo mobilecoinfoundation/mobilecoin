@@ -141,8 +141,11 @@ grpcio = { git = "https://github.com/mobilecoinofficial/grpc-rs", rev = "10ba9f8
 protoc-grpcio = { git = "https://github.com/mobilecoinofficial/protoc-grpcio", rev = "9e63f09ec408722f731c9cb60bf06c3d46bcabec" }
 
 # mbedtls patched to allow certificate verification with a profile
-mbedtls = { git = "https://github.com/jcape/rust-mbedtls.git", rev = "1cc22203456f5a0f9e06a57d4a4e7a49582f7a90" }
-mbedtls-sys-auto = { git = "https://github.com/jcape/rust-mbedtls.git", rev = "1cc22203456f5a0f9e06a57d4a4e7a49582f7a90" }
+mbedtls = { git = "https://github.com/jcape/rust-mbedtls.git", rev = "6ee973af72d10ea6a26f513cd340171717536f94" }
+mbedtls-sys-auto = { git = "https://github.com/jcape/rust-mbedtls.git", rev = "6ee973af72d10ea6a26f513cd340171717536f94" }
+
+# packed_simd_2 has unreleased fixes for build issues we're experiencing
+packed_simd_2 = { git = "https://github.com/rust-lang/packed_simd.git", rev = "f60e900f4ceb71303baa37ff8b41ee7d490c01bf" }
 
 # prost is patched with no_std support (https://github.com/danburkert/prost/pull/319)
 # current revision is from jun 13 2020, waiting for a new prost release
