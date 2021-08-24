@@ -1,8 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-#![feature(external_doc)]
-#![doc(include = "../README.md")]
 #![no_std]
+#![doc = include_str!("../README.md")]
 
 use core::convert::TryFrom;
 use mc_attest_core::{MrEnclaveVerifier, MrSignerVerifier, SecurityVersion};
