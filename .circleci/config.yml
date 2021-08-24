@@ -609,15 +609,15 @@ workflows:
   build-and-run-tests:
     jobs:
       # Run mc tests on a single container
-      - run-mc-tests
+      - run-mc-tests:
           filters: { branches: { ignore: /^deploy\/.*/ } }
 
       # Run fog tests on a single container
-      - run-fog-tests
+      - run-fog-tests:
           filters: { branches: { ignore: /^deploy\/.*/ } }
 
       # Build everything in debug
-      - build-and-lint-debug
+      - build-and-lint-debug:
           filters: { branches: { ignore: /^deploy\/.*/ } }
 
       # build/publish android bindings
