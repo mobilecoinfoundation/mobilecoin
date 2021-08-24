@@ -325,7 +325,7 @@ dependencies = [
 [[package]]
 name = "curve25519-dalek"
 version = "4.0.0-pre.1"
-source = "git+https://github.com/jcape/curve25519-dalek.git?rev=46d07765b228d43fe910eb6a1769143f8fc366bb#46d07765b228d43fe910eb6a1769143f8fc366bb"
+source = "git+https://github.com/jcape/curve25519-dalek.git?rev=38d012c267a4a518c25ce2489f7c2a60df1cfa5e#38d012c267a4a518c25ce2489f7c2a60df1cfa5e"
 dependencies = [
  "byteorder",
  "digest",
@@ -1115,6 +1115,7 @@ dependencies = [
 name = "mc-sgx-sync"
 version = "1.1.1"
 dependencies = [
+ "mc-sgx-panic",
  "mc-sgx-types",
 ]
 
