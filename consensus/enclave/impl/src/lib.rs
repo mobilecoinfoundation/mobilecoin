@@ -577,7 +577,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // Form the block.
         let block = Block::new_with_parent(
             BLOCK_VERSION,
-            &parent_block,
+            parent_block,
             &root_elements[0],
             &block_contents,
         );
@@ -602,9 +602,9 @@ fn mint_aggregate_fee(
 ) -> Result<TxOut> {
     // Create a single TxOut
     let fee_output: TxOut = {
-        let target_key = create_onetime_public_key(tx_private_key, &fee_recipient).into();
+        let target_key = create_onetime_public_key(tx_private_key, fee_recipient).into();
         let public_key =
-            create_tx_public_key(&tx_private_key, fee_recipient.spend_public_key()).into();
+            create_tx_public_key(tx_private_key, fee_recipient.spend_public_key()).into();
         let amount = {
             let shared_secret =
                 create_shared_secret(fee_recipient.view_public_key(), tx_private_key);

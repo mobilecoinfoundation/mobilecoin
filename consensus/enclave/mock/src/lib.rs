@@ -264,7 +264,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
 
         let block = Block::new_with_parent(
             BLOCK_VERSION,
-            &parent_block,
+            parent_block,
             &root_elements[0],
             &block_contents,
         );

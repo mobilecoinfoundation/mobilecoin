@@ -334,7 +334,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         // Encrypt for the peer.
         let mut peers = peer_map.lock()?;
         let session = peers.get_mut(peer).ok_or(Error::NotFound)?;
-        let data = session.encrypt(aad, &data)?;
+        let data = session.encrypt(aad, data)?;
 
         // Return message
         Ok(EnclaveMessage {
