@@ -13,8 +13,6 @@
 #![allow(clippy::drop_copy)]
 // rwlock does this in its spinlock
 #![allow(clippy::while_immutable_condition)]
-// Various ::new() calls are const fn
-#![feature(const_fn)]
 // !Send = https://github.com/rust-lang/rust/issues/68318
 #![feature(negative_impls)]
 
