@@ -334,7 +334,7 @@ commands:
     parameters:
       test_command:
         type: string
-        default: cargo test --exclude "fog-*" --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests -j 6
+        default: cargo test --workspace --exclude "fog-*" --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests -j 4
     steps:
       - run:
           name: Run tests
@@ -354,8 +354,8 @@ commands:
             << parameters.test_command >> -- \
                 -Zunstable-options --format json --report-time \
               | {
-                  tee /tmp/test-results/output.log
-                  cat /tmp/test-results/output.log \
+                  tee /tmp/mc-test-results/output.log
+                  cat /tmp/mc-test-results/output.log \
                     | cargo2junit > /tmp/mc-test-results/results.xml \
                     || true
                 }
@@ -364,7 +364,7 @@ commands:
     parameters:
       test_command:
         type: string
-        default: cargo test --package "fog-*" --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests -j 6
+        default: cargo test --package "fog-*" --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests -j 4
     steps:
       - run:
           name: Run tests
@@ -384,8 +384,8 @@ commands:
             << parameters.test_command >> -- \
                 -Zunstable-options --format json --report-time \
               | {
-                  tee /tmp/test-results/output.log
-                  cat /tmp/test-results/output.log \
+                  tee /tmp/fog-test-results/output.log
+                  cat /tmp/fog-test-results/output.log \
                     | cargo2junit > /tmp/fog-test-results/results.xml \
                     || true
                 }
@@ -512,14 +512,14 @@ jobs:
       - prepare-for-build
       - run:
           name: Cargo build (SW/IAS dev)
-          command: cargo build --frozen --target "$HOST_TARGET_TRIPLE"
+          command: cargo build --frozen --target "$HOST_TARGET_TRIPLE" -j 4
       - check-dirty-git
       - run:
           name: Cargo build (HW/IAS prod)
           environment:
             SGX_MODE: HW
             IAS_MODE: PROD
-          command: cargo build --frozen --target "$HOST_TARGET_TRIPLE"
+          command: cargo build --frozen --target "$HOST_TARGET_TRIPLE" -j 4
 
       # The lint and saving of caches happens here since this job is faster than the run-tests job.
       # This results in shorter CI times.
