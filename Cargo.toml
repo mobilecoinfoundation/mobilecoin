@@ -125,9 +125,6 @@ blake2 = { git = "https://github.com/jcape/RustCrypto-hashes.git", rev = "fc927f
 # Not-yet-released version that depends on newer crates.
 bulletproofs-og = { git = "https://github.com/jcape/bulletproofs.git", rev = "bafd274c1f1cbbac47da815dcd2bbe33c38c43eb" }
 
-# Fixes for nightly-2021-07-21
-curve25519-dalek = { git = "https://github.com/jcape/curve25519-dalek.git", rev = "38d012c267a4a518c25ce2489f7c2a60df1cfa5e" }
-
 # See https://github.com/commure/datatest/pull/30
 datatest = { git = "https://github.com/jcape/datatest.git", rev = "04fcb4bf8ccb6b216f8d7769446f47b1a5cd0e66" }
 

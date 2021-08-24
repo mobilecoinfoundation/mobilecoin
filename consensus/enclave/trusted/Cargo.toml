@@ -68,9 +68,6 @@ bulletproofs-og = { git = "https://github.com/jcape/bulletproofs.git", rev = "ba
 # Patched to disable the cpuid instruction because that is incompatible with our sgx builds.
 cpufeatures = { git = "https://github.com/mobilecoinfoundation/RustCrypto-utils.git", rev = "9a22d2a3e5b829277cc05f4833751dd86c155218" }
 
-# Unreleased fixes for nightly-2021-07-21
-curve25519-dalek = { git = "https://github.com/jcape/curve25519-dalek.git", rev = "38d012c267a4a518c25ce2489f7c2a60df1cfa5e" }
-
 # ed25519-dalek depends on rand 0.7 which in turns depends on a broken version of packed_simd
 # This is a PR that moves it to newer rand
 # See https://github.com/dalek-cryptography/ed25519-dalek/pull/160
