@@ -75,21 +75,22 @@ pub const CONFIG_DB_NAME: &str = "watcher_db:config";
 /// Keys used by the `config` database.
 pub const CONFIG_DB_KEY_TX_SOURCE_URLS: &str = "tx_source_urls";
 
-/// Poll for new data every 10 ms
-pub const POLLING_FREQUENCY: Duration = Duration::from_millis(10);
+/// Get watcher timestamp poll for new data every 10 ms
+pub const GET_WATCHER_TIMESTAMP_POLLING_FREQUENCY: Duration = Duration::from_millis(10);
 
-/// If a database invariant is violated, e.g. we get block but not block
-/// contents, it typically will not be fixed and so we won't be able to
-/// proceed. Generally when an invariant is violated we would panic, but
-/// this code is used in services that are expensive to restart (such as the
-/// ingest enclave)
+/// Get watcher timestamp error retry frequency. The reason we have an error
+/// retry frequency is because when  a database invariant is violated, e.g. we
+/// get block but not block contents, it typically will not be fixed and so we
+/// won't be able to proceed. Generally when an invariant is violated we would
+/// panic, but this code is used in services that are expensive to restart (such
+/// as the ingest enclave and ledger enclave)
 ///
 /// So instead, if this happens, we log an error, and retry in 1s.
 /// This avoids logging at > 1hz when there is this error, which would be
 /// very spammy. But the retries are unlikely to eventually lead to
 /// progress. Another strategy might be for the server to enter a
 /// "paused" state and signal for intervention.
-pub const ERROR_RETRY_FREQUENCY: Duration = Duration::from_millis(1000);
+pub const GET_WATCHER_TIMESTAMP_ERROR_RETRY_FREQUENCY: Duration = Duration::from_millis(1000);
 
 /// Block Signature Data for Signature Store.
 #[derive(Message, Eq, PartialEq)]
@@ -445,15 +446,8 @@ impl WatcherDB {
 
     /// Get the timestamp from the watcher, or an error code,
     /// using retries if the watcher fell behind
-    /// Fog ledger server db fetcher and Ingest Server worker are both affected
-    /// by this change to move get_watcher_timestamp to a shared crate in mc
-    /// watcher
-    pub fn get_watcher_timestamp(
-        &self,
-        block_index: BlockIndex,
-        watcher_timeout: Duration,
-        logger: &Logger,
-    ) -> u64 {
+    /// The block index from ingest or ledger for example, watcher timeout set
+    pub fn get_watcher_timestamp(&self, block_index: BlockIndex, watcher_timeout: Duration) -> u64 {
         // Timer that tracks how long we have had WatcherBehind error for,
         // if this exceeds watcher_timeout, we log a warning.
         let mut watcher_behind_timer = Instant::now();
@@ -462,22 +456,22 @@ impl WatcherDB {
                 Ok((ts, res)) => match res {
                     TimestampResultCode::WatcherBehind => {
                         if watcher_behind_timer.elapsed() > watcher_timeout {
-                            log::warn!(logger, "watcher is still behind on block index = {} after waiting {} seconds, caller will be blocked", block_index, watcher_timeout.as_secs());
+                            log::warn!(self.logger, "watcher is still behind on block index = {} after waiting {} seconds, caller will be blocked", block_index, watcher_timeout.as_secs());
                             watcher_behind_timer = Instant::now();
                         }
-                        std::thread::sleep(POLLING_FREQUENCY);
+                        std::thread::sleep(GET_WATCHER_TIMESTAMP_POLLING_FREQUENCY);
                     }
                     TimestampResultCode::BlockIndexOutOfBounds => {
-                        log::warn!(logger, "block index {} was out of bounds, we should not be scanning it, we will have junk timestamps for it", block_index);
+                        log::warn!(self.logger, "block index {} was out of bounds, we should not be scanning it, we will have junk timestamps for it", block_index);
                         return u64::MAX;
                     }
                     TimestampResultCode::Unavailable => {
-                        log::crit!(logger, "watcher configuration is wrong and timestamps will not be available with this configuration. caller is blocked at block index {}", block_index);
-                        std::thread::sleep(ERROR_RETRY_FREQUENCY);
+                        log::crit!(self.logger, "watcher configuration is wrong and timestamps will not be available with this configuration. caller is blocked at block index {}", block_index);
+                        std::thread::sleep(GET_WATCHER_TIMESTAMP_ERROR_RETRY_FREQUENCY);
                     }
                     TimestampResultCode::WatcherDatabaseError => {
-                        log::crit!(logger, "The watcher database has an error which prevents us from getting timestamps. caller is blocked at block index {}", block_index);
-                        std::thread::sleep(ERROR_RETRY_FREQUENCY);
+                        log::crit!(self.logger, "The watcher database has an error which prevents us from getting timestamps. caller is blocked at block index {}", block_index);
+                        std::thread::sleep(GET_WATCHER_TIMESTAMP_ERROR_RETRY_FREQUENCY);
                     }
                     TimestampResultCode::TimestampFound => {
                         return ts;
@@ -485,12 +479,12 @@ impl WatcherDB {
                 },
                 Err(err) => {
                     log::error!(
-                            logger,
+                            self.logger,
                             "Could not obtain timestamp for block {} due to error {}, this may mean the watcher is not correctly configured. will retry",
                             block_index,
                             err
                         );
-                    std::thread::sleep(ERROR_RETRY_FREQUENCY);
+                    std::thread::sleep(GET_WATCHER_TIMESTAMP_ERROR_RETRY_FREQUENCY);
                 }
             };
         }
