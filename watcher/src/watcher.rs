@@ -166,7 +166,7 @@ impl Watcher {
                             block_index
                         );
                         if self.store_block_data {
-                            match self.watcher_db.add_block_data(src_url, &block_data) {
+                            match self.watcher_db.add_block_data(src_url, block_data) {
                                 Ok(()) => {}
                                 Err(WatcherDBError::AlreadyExists) => {}
                                 Err(err) => {

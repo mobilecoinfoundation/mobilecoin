@@ -189,14 +189,14 @@ impl NetworkConfig {
             let new_member = match member {
                 QuorumSetMember::Node(responder_id) => QuorumSetMember::Node(
                     peer_map
-                        .get(&responder_id)
+                        .get(responder_id)
                         .unwrap_or_else(|| {
                             panic!("Unknown responder_id {} in quorum set", responder_id)
                         })
                         .clone(),
                 ),
                 QuorumSetMember::InnerSet(qs_config) => {
-                    QuorumSetMember::InnerSet(Self::resolve_quorum_set(&qs_config, peer_map))
+                    QuorumSetMember::InnerSet(Self::resolve_quorum_set(qs_config, peer_map))
                 }
             };
             new_members.push(new_member);

@@ -201,9 +201,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Must have at least one output
         if outlays.is_empty() {
-            return Err(Error::TxBuildError(
-                "Must have at least one destination".into(),
-            ));
+            return Err(Error::TxBuild("Must have at least one destination".into()));
         }
 
         // Get sender monitor data.
@@ -465,7 +463,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             &inputs_with_proofs,
             rings,
             fee,
-            &account_key,
+            account_key,
             0,
             &outlays,
             tombstone_block,
@@ -751,14 +749,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 inputs.len()
             );
             log::error!(logger, "{}", err);
-            return Err(Error::TxBuildError(err));
+            return Err(Error::TxBuild(err));
         }
 
         // Check that we have at least one destination.
         if destinations.is_empty() {
-            return Err(Error::TxBuildError(
-                "Must have at least one destination".into(),
-            ));
+            return Err(Error::TxBuild("Must have at least one destination".into()));
         }
 
         // Collect all required FogUris from public addresses, then pass to resolver
@@ -770,7 +766,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 .chain(destinations.iter().map(|x| &x.receiver))
                 .filter_map(|x| extract_fog_uri(x).transpose())
                 .collect::<Result<Vec<_>, _>>()?;
-            fog_resolver_factory(&fog_uris).map_err(Error::FogError)?
+            fog_resolver_factory(&fog_uris).map_err(Error::Fog)?
         };
 
         // Create tx_builder.
@@ -788,7 +784,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         for (utxo, proof) in inputs {
             let (mut ring, mut membership_proofs) = rings_and_proofs
                 .pop()
-                .ok_or_else(|| Error::TxBuildError("rings_and_proofs was empty".to_string()))?;
+                .ok_or_else(|| Error::TxBuild("rings_and_proofs was empty".to_string()))?;
             assert_eq!(
                 ring.len(),
                 membership_proofs.len(),
@@ -851,7 +847,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                     onetime_private_key,
                     *from_account_key.view_private_key(),
                 )
-                .map_err(|_| Error::TxBuildError("failed creating InputCredentials".into()))?,
+                .map_err(|_| Error::TxBuild("failed creating InputCredentials".into()))?,
             );
         }
 
@@ -862,7 +858,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         for (i, outlay) in destinations.iter().enumerate() {
             let (tx_out, confirmation_number) = tx_builder
                 .add_output(outlay.value, &outlay.receiver, rng)
-                .map_err(|err| Error::TxBuildError(format!("failed adding output: {}", err)))?;
+                .map_err(|err| Error::TxBuild(format!("failed adding output: {}", err)))?;
 
             tx_out_to_outlay_index.insert(tx_out, i);
             outlay_confirmation_numbers.push(confirmation_number);
@@ -885,9 +881,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
             tx_builder
                 .add_output(change, &change_public_address, rng)
-                .map_err(|err| {
-                    Error::TxBuildError(format!("failed adding output (change): {}", err))
-                })?;
+                .map_err(|err| Error::TxBuild(format!("failed adding output (change): {}", err)))?;
         }
 
         // Set tombstone block.
@@ -896,7 +890,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         // Build tx.
         let tx = tx_builder
             .build(rng)
-            .map_err(|err| Error::TxBuildError(format!("build tx failed: {}", err)))?;
+            .map_err(|err| Error::TxBuild(format!("build tx failed: {}", err)))?;
 
         // Map each TxOut in the constructed transaction to its respective outlay.
         let outlay_index_to_tx_out_index = tx
@@ -944,7 +938,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 fn extract_fog_uri(addr: &PublicAddress) -> Result<Option<FogUri>, Error> {
     if let Some(string) = addr.fog_report_url() {
         Ok(Some(FogUri::from_str(string).map_err(|err| {
-            Error::FogError(format!("Could not parse recipient Fog Url: {}", err))
+            Error::Fog(format!("Could not parse recipient Fog Url: {}", err))
         })?))
     } else {
         Ok(None)

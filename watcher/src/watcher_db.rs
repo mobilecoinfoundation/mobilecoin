@@ -256,7 +256,7 @@ impl WatcherDB {
 
         // Sanity test - the URL needs to be configured.
         let urls = self.get_config_urls_with_txn(&db_txn)?;
-        if !urls.contains(&src_url) {
+        if !urls.contains(src_url) {
             return Err(WatcherDBError::NotFound);
         }
 
@@ -285,7 +285,7 @@ impl WatcherDB {
 
         // Sanity test - the URL needs to be configured.
         let urls = self.get_config_urls_with_txn(&db_txn)?;
-        if !urls.contains(&src_url) {
+        if !urls.contains(src_url) {
             log::trace!(self.logger, "{} not in {:?}", src_url, urls);
             return Err(WatcherDBError::NotFound);
         }
@@ -611,7 +611,7 @@ impl WatcherDB {
 
         // Sanity test - the URL needs to be configured.
         let urls = self.get_config_urls_with_txn(&db_txn)?;
-        if !urls.contains(&src_url) {
+        if !urls.contains(src_url) {
             return Err(WatcherDBError::NotFound);
         }
 
@@ -856,7 +856,7 @@ impl WatcherDB {
 
         // Sanity test - the URL needs to be configured.
         let urls = self.get_config_urls_with_txn(db_txn)?;
-        if !urls.contains(&src_url) {
+        if !urls.contains(src_url) {
             return Err(WatcherDBError::NotFound);
         }
 

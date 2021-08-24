@@ -290,7 +290,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
 
         let (block, block_contents, mut signature) = self
             .enclave
-            .form_block(&parent_block, &encrypted_txs_with_proofs)?;
+            .form_block(parent_block, &encrypted_txs_with_proofs)?;
 
         // The enclave cannot provide a timestamp, so this happens in untrusted.
         signature.set_signed_at(chrono::Utc::now().timestamp() as u64);

@@ -252,12 +252,12 @@ impl ConsensusPeerApi for PeerApiService {
                     }
 
                     Err(peer_service_error) => match peer_service_error {
-                        PeerServiceError::Enclave(err) => Err(rpc_enclave_err(err, &logger)),
-                        err => Err(rpc_internal_error("peer_tx_propose", err, &logger)),
+                        PeerServiceError::Enclave(err) => Err(rpc_enclave_err(err, logger)),
+                        err => Err(rpc_internal_error("peer_tx_propose", err, logger)),
                     },
                 };
 
-            send_result(ctx, sink, result, &logger)
+            send_result(ctx, sink, result, logger)
         });
     }
 
@@ -277,9 +277,9 @@ impl ConsensusPeerApi for PeerApiService {
                     let result = Err(rpc_invalid_arg_error(
                         "send_consensus_msg",
                         "from_responder_id",
-                        &logger,
+                        logger,
                     ));
-                    send_result(ctx, sink, result, &logger);
+                    send_result(ctx, sink, result, logger);
                     return;
                 }
             };
@@ -290,9 +290,9 @@ impl ConsensusPeerApi for PeerApiService {
                     let result = Err(rpc_invalid_arg_error(
                         "send_consensus_msg",
                         "consensus_msg",
-                        &logger,
+                        logger,
                     ));
-                    send_result(ctx, sink, result, &logger);
+                    send_result(ctx, sink, result, logger);
                     return;
                 }
             };
@@ -313,16 +313,16 @@ impl ConsensusPeerApi for PeerApiService {
                 Err(PeerServiceError::ConsensusMsgInvalidSignature) => Err(rpc_invalid_arg_error(
                     "send_consensus_msg",
                     "InvalidConsensusMsgSignature",
-                    &logger,
+                    logger,
                 )),
                 Err(_) => Err(rpc_internal_error(
                     "send_consensus_msg",
                     "InternalError",
-                    &logger,
+                    logger,
                 )),
             };
 
-            send_result(ctx, sink, result, &logger);
+            send_result(ctx, sink, result, logger);
         });
     }
 
@@ -341,7 +341,7 @@ impl ConsensusPeerApi for PeerApiService {
                     .expect("Failed serializing consensus msg");
                 response.set_payload(serialized_msg);
             }
-            send_result(ctx, sink, Ok(response), &logger);
+            send_result(ctx, sink, Ok(response), logger);
         });
     }
 
@@ -360,8 +360,8 @@ impl ConsensusPeerApi for PeerApiService {
                 match TxHash::try_from(&tx_hash_bytes[..]) {
                     Ok(tx_hash) => tx_hashes.push(tx_hash),
                     Err(_) => {
-                        let result = Err(rpc_invalid_arg_error("tx_hash", "", &logger));
-                        send_result(ctx, sink, result, &logger);
+                        let result = Err(rpc_invalid_arg_error("tx_hash", "", logger));
+                        send_result(ctx, sink, result, logger);
                         return;
                     }
                 }
@@ -370,7 +370,7 @@ impl ConsensusPeerApi for PeerApiService {
             let peer_session = PeerSession::from(request.get_channel_id());
 
             let result: Result<GetTxsResponse, RpcStatus> =
-                match self.handle_get_txs(tx_hashes, peer_session, &logger) {
+                match self.handle_get_txs(tx_hashes, peer_session, logger) {
                     Ok(enclave_message) => {
                         let mut response = GetTxsResponse::new();
                         response.set_success(enclave_message.into());
@@ -387,10 +387,10 @@ impl ConsensusPeerApi for PeerApiService {
                         Ok(response)
                     }
                     // Unexpected errors:
-                    Err(err) => Err(rpc_internal_error("get_txs", err, &logger)),
+                    Err(err) => Err(rpc_internal_error("get_txs", err, logger)),
                 };
 
-            send_result(ctx, sink, result, &logger)
+            send_result(ctx, sink, result, logger)
         });
     }
 }

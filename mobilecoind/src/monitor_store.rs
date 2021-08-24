@@ -246,7 +246,7 @@ impl MonitorStore {
                     .map_err(Error::from)
                     .and_then(|(key_bytes, value_bytes)| {
                         let monitor_id = MonitorId::try_from(key_bytes)
-                            .map_err(|_| Error::KeyDeserializationError)?;
+                            .map_err(|_| Error::KeyDeserialization)?;
                         let value_bytes = self.crypto_provider.decrypt(value_bytes)?;
                         let data: MonitorData = mc_util_serial::decode(&value_bytes)?;
 
@@ -265,7 +265,7 @@ impl MonitorStore {
                 result
                     .map_err(Error::from)
                     .and_then(|(key_bytes, _value_bytes)| {
-                        MonitorId::try_from(key_bytes).map_err(|_| Error::KeyDeserializationError)
+                        MonitorId::try_from(key_bytes).map_err(|_| Error::KeyDeserialization)
                     })
             })
             .collect::<Result<Vec<_>, Error>>()

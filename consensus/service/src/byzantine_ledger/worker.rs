@@ -487,7 +487,7 @@ impl<
                 self.broadcaster
                     .lock()
                     .expect("mutex poisoned")
-                    .broadcast_consensus_msg(consensus_msg.as_ref(), &from_responder_id);
+                    .broadcast_consensus_msg(consensus_msg.as_ref(), from_responder_id);
             }
 
             let scp_msgs: Vec<Msg<_>> = resolved
@@ -655,7 +655,7 @@ impl<
         };
 
         for chunk in missing_hashes[..].chunks(100) {
-            match conn.fetch_txs(&chunk, Fibonacci::from_millis(100).take(10)) {
+            match conn.fetch_txs(chunk, Fibonacci::from_millis(100).take(10)) {
                 Ok(tx_contexts) => {
                     if tx_contexts.len() != chunk.len() {
                         log::error!(

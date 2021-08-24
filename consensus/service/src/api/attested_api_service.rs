@@ -42,7 +42,7 @@ impl AttestedApi for AttestedApiService<PeerSession> {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
-                return send_result(ctx, sink, err.into(), &logger);
+                return send_result(ctx, sink, err.into(), logger);
             }
 
             // TODO: Use the prost message directly, once available
@@ -54,7 +54,7 @@ impl AttestedApi for AttestedApiService<PeerSession> {
                             .expect("Thread crashed while inserting new session ID")
                             .insert(session_id);
                     }
-                    send_result(ctx, sink, Ok(response.into()), &logger);
+                    send_result(ctx, sink, Ok(response.into()), logger);
                 }
                 Err(peer_error) => {
                     // This is debug because there's no requirement on the remote party to trigger
@@ -70,9 +70,9 @@ impl AttestedApi for AttestedApiService<PeerSession> {
                         Err(rpc_permissions_error(
                             "peer_auth",
                             "Permission denied",
-                            &logger,
+                            logger,
                         )),
-                        &logger,
+                        logger,
                     );
                 }
             }
@@ -85,7 +85,7 @@ impl AttestedApi for AttestedApiService<ClientSession> {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
-                return send_result(ctx, sink, err.into(), &logger);
+                return send_result(ctx, sink, err.into(), logger);
             }
 
             // TODO: Use the prost message directly, once available
@@ -97,7 +97,7 @@ impl AttestedApi for AttestedApiService<ClientSession> {
                             .expect("Thread crashed while inserting client sesssion ID")
                             .insert(session_id);
                     }
-                    send_result(ctx, sink, Ok(response.into()), &logger);
+                    send_result(ctx, sink, Ok(response.into()), logger);
                 }
                 Err(client_error) => {
                     // This is debug because there's no requirement on the remote party to trigger
@@ -113,9 +113,9 @@ impl AttestedApi for AttestedApiService<ClientSession> {
                         Err(rpc_permissions_error(
                             "client_auth",
                             "Permission denied",
-                            &logger,
+                            logger,
                         )),
-                        &logger,
+                        logger,
                     );
                 }
             }

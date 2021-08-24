@@ -140,7 +140,7 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
         // new ledger must download a large number of blocks.
         'outer: for (block_index, block_id_to_nodes) in grouping.iter().rev() {
             for (block_id, responder_ids) in block_id_to_nodes.iter() {
-                if network_state.is_blocking_and_quorum(&responder_ids) {
+                if network_state.is_blocking_and_quorum(responder_ids) {
                     // It should be possible to sync with these nodes up to `block_id` at
                     // `block_index`.
                     //
@@ -161,7 +161,7 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
         // `sync_to_block_index`. Copy those blocks from one of the nodes.
         let (sync_to_block_index, _block_id, responder_ids) = sync_target.unwrap();
         if let Some(responder_id) = responder_ids.get(0) {
-            if let Some(ref blocks) = node_to_blocks.get(responder_id) {
+            if let Some(blocks) = node_to_blocks.get(responder_id) {
                 let blocks_to_sync: Vec<Block> = blocks
                     .iter()
                     .filter(|block| block.index <= sync_to_block_index)

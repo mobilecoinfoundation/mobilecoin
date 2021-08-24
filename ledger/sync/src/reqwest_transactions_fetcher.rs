@@ -141,7 +141,7 @@ impl ReqwestTransactionsFetcher {
     }
 
     pub fn block_from_url(&self, url: &Url) -> Result<BlockData, ReqwestTransactionsFetcherError> {
-        let archive_block: blockchain::ArchiveBlock = self.fetch_protobuf_object(&url)?;
+        let archive_block: blockchain::ArchiveBlock = self.fetch_protobuf_object(url)?;
 
         let block_data = BlockData::try_from(&archive_block).map_err(|err| {
             ReqwestTransactionsFetcherError::InvalidBlockReceived(url.to_string(), err.to_string())

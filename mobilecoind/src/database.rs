@@ -168,7 +168,7 @@ impl Database {
 
         let mut db_txn = self.env.begin_rw_txn()?;
 
-        let data = self.monitor_store.get_data(&db_txn, &id)?;
+        let data = self.monitor_store.get_data(&db_txn, id)?;
 
         for index in data.subaddress_indexes() {
             self.subaddress_store.delete(&mut db_txn, &data, index)?;
@@ -270,7 +270,7 @@ impl Database {
         // Store new utxos
         for utxo in discovered_utxos {
             self.utxo_store
-                .append_utxo(&mut db_txn, &monitor_id, utxo.subaddress_index, &utxo)?;
+                .append_utxo(&mut db_txn, monitor_id, utxo.subaddress_index, utxo)?;
         }
 
         // Remove spent utxos

@@ -134,7 +134,7 @@ impl ConsensusClientApi for ClientApiService {
         });
 
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(ctx, sink, result, &logger)
+            send_result(ctx, sink, result, logger)
         });
     }
 }
