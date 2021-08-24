@@ -6,10 +6,10 @@
 
 use super::{memo, ChangeDestination};
 use core::fmt::Debug;
+use dyn_clone::{clone_trait_object, DynClone};
 use mc_account_keys::PublicAddress;
 use mc_transaction_core::{MemoContext, MemoPayload, NewMemoError};
 
-use dyn_clone::{clone_trait_object, DynClone};
 
 mod rth_memo_builder;
 pub use rth_memo_builder::RTHMemoBuilder;
