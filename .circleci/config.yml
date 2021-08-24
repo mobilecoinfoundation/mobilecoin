@@ -337,7 +337,7 @@ commands:
         default: cargo test --workspace --exclude "fog-*" --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests -j 4
     steps:
       - run:
-          name: Run tests
+          name: Run mobilecoin tests
           command: |
             mkdir -p /tmp/mc-test-results
 
@@ -360,35 +360,13 @@ commands:
                     || true
                 }
 
+  # FIXME: Figure out why the method using cargo2junit isn't working
   run-fog-tests:
-    parameters:
-      test_command:
-        type: string
-        default: cargo test --package "fog-*" --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests -j 4
     steps:
       - run:
-          name: Run tests
+          name: Run fog tests
           command: |
-            mkdir -p /tmp/fog-test-results
-
-            # Run tests, then convert the cargo json results into junit xml format.
-            #
-            # Note: Using curly braces ensures that the conversion is run even if the tests fail,
-            # while still allowing the exit code from the tests to be propagated. Using `tee` to
-            # pipe the output to a file before converting ensures that the tests are not
-            # interrupted if conversion fails. `|| true` is added so that the test as a whole does
-            # not fail even if conversion fails. This is especially necessary because the
-            # conversion tool must parse all test output, including log output, in order to parse
-            # the test results, and unfortunately Cargo does not always output the test results in
-            # such a way that is cleanly parsable.
-            << parameters.test_command >> -- \
-                -Zunstable-options --format json --report-time \
-              | {
-                  tee /tmp/fog-test-results/output.log
-                  cat /tmp/fog-test-results/output.log \
-                    | cargo2junit > /tmp/fog-test-results/results.xml \
-                    || true
-                }
+            cargo test --package "fog-*" --frozen -j 4
 
   # A job that runs the fog-conformance-tests, building things in debug mode
   # Note: If we bring back the run-parallel-tests stuff, we could make this use --skip-build,
@@ -593,9 +571,9 @@ jobs:
     steps:
       - prepare-for-build: { os: macos }
       - run:
-          name: Cargo check
+          name: Cargo build
           command: |
-            cargo check --frozen --target "$HOST_TARGET_TRIPLE" -p libmobilecoin
+            cargo build --frozen --target "$HOST_TARGET_TRIPLE" -p libmobilecoin
       - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
