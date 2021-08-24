@@ -282,6 +282,7 @@ commands:
           name: Fetch project Cargo dependencies
           command: |
             set -x
+            cat .cargo/config
             time cargo fetch --locked
             (cd consensus/enclave/trusted && time cargo fetch --locked)
             (cd fog/ingest/enclave/trusted && time cargo fetch --locked)
