@@ -9,6 +9,8 @@ use core::fmt::Debug;
 use mc_account_keys::PublicAddress;
 use mc_transaction_core::{MemoContext, MemoPayload, NewMemoError};
 
+use dyn_clone::{clone_trait_object, DynClone};
+
 mod rth_memo_builder;
 pub use rth_memo_builder::RTHMemoBuilder;
 
@@ -20,7 +22,7 @@ pub use rth_memo_builder::RTHMemoBuilder;
 /// installed in the transaction builder when that is constructed.
 /// This way low-level handing of memo payloads with TxOuts is not needed,
 /// and just invoking the TransactionBuilder as before will do the right thing.
-pub trait MemoBuilder: Debug {
+pub trait MemoBuilder: Debug + Sync + Send + DynClone {
     /// Set the fee.
     /// The memo builder is in the loop when the fee is set and changed,
     /// and gets a chance to report an error, if the fee is too large, or if it
@@ -44,6 +46,8 @@ pub trait MemoBuilder: Debug {
         memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError>;
 }
+
+clone_trait_object!(MemoBuilder);
 
 /// The empty memo builder always builds UnusedMemo.
 /// This is the safe and maximally private default.
