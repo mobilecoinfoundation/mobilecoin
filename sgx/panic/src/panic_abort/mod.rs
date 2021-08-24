@@ -1,5 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+use core::any::Any;
+
 // There is no catching here because we are always aborting in case of panic,
 // so we simply call the function we are passed.
 #[no_mangle]
@@ -14,6 +16,11 @@ pub unsafe extern "C" fn __rust_maybe_catch_panic(
 }
 
 pub fn panic_with_info(_: &core::panic::PanicInfo) -> ! {
+    rust_panic()
+}
+
+#[cfg(feature = "alloc")]
+pub fn panic_with_payload(_: alloc::boxed::Box<dyn Any + Send>) -> ! {
     rust_panic()
 }
 
