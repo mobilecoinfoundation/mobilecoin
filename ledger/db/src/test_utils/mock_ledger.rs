@@ -215,13 +215,15 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
     for block_index in 0..n_blocks {
         if block_index == 0 {
             // Create the origin block.
-            let tx_out = TxOut::new(
+            let mut tx_out = TxOut::new(
                 value,
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
             )
             .unwrap();
+            // Version 0 tx_out in the origin block don't have memos
+            tx_out.e_memo = None;
 
             let outputs = vec![tx_out];
             let origin_block = Block::new_origin_block(&outputs);

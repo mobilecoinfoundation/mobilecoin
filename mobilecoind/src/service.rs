@@ -1929,7 +1929,7 @@ mod test {
         tx::{Tx, TxOut},
         Block, BlockContents, BLOCK_VERSION,
     };
-    use mc_transaction_std::TransactionBuilder;
+    use mc_transaction_std::{EmptyMemoBuilder, TransactionBuilder};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
@@ -2803,7 +2803,8 @@ mod test {
 
         // Insert into database.
         let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
-        let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
+        let mut transaction_builder =
+            TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
         let (tx_out, tx_confirmation) = transaction_builder
             .add_output(10, &receiver.subaddress(0), &mut rng)
             .unwrap();
@@ -4884,7 +4885,8 @@ mod test {
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
 
-        let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
+        let mut transaction_builder =
+            TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
                 10,
@@ -4991,7 +4993,8 @@ mod test {
         let key = mnemonic.derive_slip10_key(0);
         let account_key = AccountKey::from(key);
 
-        let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
+        let mut transaction_builder =
+            TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
                 10,

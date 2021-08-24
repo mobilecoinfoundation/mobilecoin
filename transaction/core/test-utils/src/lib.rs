@@ -15,7 +15,7 @@ pub use mc_transaction_core::{
     Block, BlockID, BlockIndex, BLOCK_VERSION,
 };
 use mc_transaction_core::{constants::RING_SIZE, membership_proofs::Range, BlockContents};
-use mc_transaction_std::{InputCredentials, TransactionBuilder};
+use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_util_from_random::FromRandom;
 use rand::{seq::SliceRandom, Rng};
 use tempdir::TempDir;
@@ -87,7 +87,8 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
     tombstone_block: BlockIndex,
     rng: &mut R,
 ) -> Tx {
-    let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
+    let mut transaction_builder =
+        TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
 
     // The first transaction in the origin block should contain enough outputs to
     // use as mixins.
@@ -135,7 +136,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
     transaction_builder.set_tombstone_block(tombstone_block);
 
     // Fee
-    transaction_builder.set_fee(fee);
+    transaction_builder.set_fee(fee).unwrap();
 
     // Build and return the transaction
     transaction_builder.build(rng).unwrap()
@@ -203,13 +204,16 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                 // Create an origin block.
                 let outputs: Vec<TxOut> = (0..RING_SIZE)
                     .map(|_i| {
-                        TxOut::new(
+                        let mut tx_out = TxOut::new(
                             value,
                             &account_key.default_subaddress(),
                             &RistrettoPrivate::from_random(rng),
                             Default::default(),
                         )
-                        .unwrap()
+                        .expect("Could not create origin block TxOut");
+                        // The origin block did not historically have memo fields
+                        tx_out.e_memo = None;
+                        tx_out
                     })
                     .collect();
 

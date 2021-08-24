@@ -1,6 +1,6 @@
 [package]
 name = "mc-peers-test-utils"
-version = "1.1.1"
+version = "1.1.2"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -22,7 +22,7 @@ hex = "0.4"
 rand = "0.8"
 rand_hc = "0.3"
 retry = "1.2"
-sha2 = { version = "0.9", features = ["asm"] }
+sha2 = { version = "0.9.5", features = ["asm"] }
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
