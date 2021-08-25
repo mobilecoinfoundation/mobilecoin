@@ -75,10 +75,10 @@ pub const CONFIG_DB_NAME: &str = "watcher_db:config";
 /// Keys used by the `config` database.
 pub const CONFIG_DB_KEY_TX_SOURCE_URLS: &str = "tx_source_urls";
 
-/// Get watcher timestamp poll for new data every 10 ms
-pub const GET_WATCHER_TIMESTAMP_POLLING_FREQUENCY: Duration = Duration::from_millis(10);
+/// Poll block timestamp polling frequency for new data every 10 ms
+pub const POLL_BLOCK_TIMESTAMP_POLLING_FREQUENCY: Duration = Duration::from_millis(10);
 
-/// Get watcher timestamp error retry frequency. The reason we have an error
+/// Poll block timestamp error retry frequency. The reason we have an error
 /// retry frequency is because when  a database invariant is violated, e.g. we
 /// get block but not block contents, it typically will not be fixed and so we
 /// won't be able to proceed. Generally when an invariant is violated we would
@@ -90,7 +90,7 @@ pub const GET_WATCHER_TIMESTAMP_POLLING_FREQUENCY: Duration = Duration::from_mil
 /// very spammy. But the retries are unlikely to eventually lead to
 /// progress. Another strategy might be for the server to enter a
 /// "paused" state and signal for intervention.
-pub const GET_WATCHER_TIMESTAMP_ERROR_RETRY_FREQUENCY: Duration = Duration::from_millis(1000);
+pub const POLL_BLOCK_TIMESTAMP_ERROR_RETRY_FREQUENCY: Duration = Duration::from_millis(1000);
 
 /// Block Signature Data for Signature Store.
 #[derive(Message, Eq, PartialEq)]
@@ -444,7 +444,7 @@ impl WatcherDB {
         }
     }
 
-    /// Get the timestamp from the watcher, or an error code,
+    /// Poll the timestamp from the watcher, or an error code,
     /// using retries if the watcher fell behind
     /// The block index and watcher timeout set is the time that has elapsed to
     /// indicate watcher is behind in the ingest or ledger for example
