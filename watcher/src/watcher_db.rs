@@ -460,7 +460,7 @@ impl WatcherDB {
                             log::warn!(self.logger, "watcher is still behind on block index = {} after waiting {} seconds, caller will be blocked", block_index, watcher_timeout.as_secs());
                             watcher_behind_timer = Instant::now();
                         }
-                        std::thread::sleep(GET_WATCHER_TIMESTAMP_POLLING_FREQUENCY);
+                        std::thread::sleep(POLL_BLOCK_TIMESTAMP_POLLING_FREQUENCY);
                     }
                     TimestampResultCode::BlockIndexOutOfBounds => {
                         log::warn!(self.logger, "block index {} was out of bounds, we should not be scanning it, we will have junk timestamps for it", block_index);
@@ -468,11 +468,11 @@ impl WatcherDB {
                     }
                     TimestampResultCode::Unavailable => {
                         log::crit!(self.logger, "watcher configuration is wrong and timestamps will not be available with this configuration. caller is blocked at block index {}", block_index);
-                        std::thread::sleep(GET_WATCHER_TIMESTAMP_ERROR_RETRY_FREQUENCY);
+                        std::thread::sleep(POLL_BLOCK_TIMESTAMP_ERROR_RETRY_FREQUENCY);
                     }
                     TimestampResultCode::WatcherDatabaseError => {
                         log::crit!(self.logger, "The watcher database has an error which prevents us from getting timestamps. caller is blocked at block index {}", block_index);
-                        std::thread::sleep(GET_WATCHER_TIMESTAMP_ERROR_RETRY_FREQUENCY);
+                        std::thread::sleep(POLL_BLOCK_TIMESTAMP_ERROR_RETRY_FREQUENCY);
                     }
                     TimestampResultCode::TimestampFound => {
                         return ts;
@@ -485,7 +485,7 @@ impl WatcherDB {
                             block_index,
                             err
                         );
-                    std::thread::sleep(GET_WATCHER_TIMESTAMP_ERROR_RETRY_FREQUENCY);
+                    std::thread::sleep(POLL_BLOCK_TIMESTAMPERROR_RETRY_FREQUENCY);
                 }
             };
         }
