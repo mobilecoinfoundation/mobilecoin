@@ -25,7 +25,7 @@ BASE_LEDGER_ADMIN_HTTP_GATEWAY_PORT = 7500
 
 BASE_NGINX_CLIENT_PORT = 8200
 
-PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'mobilecoin'))
+PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 FOG_PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 IAS_API_KEY = os.getenv('IAS_API_KEY', default='0'*64) # 32 bytes
