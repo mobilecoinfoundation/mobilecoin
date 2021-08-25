@@ -485,7 +485,7 @@ impl WatcherDB {
                             block_index,
                             err
                         );
-                    std::thread::sleep(POLL_BLOCK_TIMESTAMPERROR_RETRY_FREQUENCY);
+                    std::thread::sleep(POLL_BLOCK_TIMESTAMP_ERROR_RETRY_FREQUENCY);
                 }
             };
         }
