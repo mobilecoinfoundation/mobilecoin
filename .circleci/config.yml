@@ -376,11 +376,11 @@ commands:
       - run:
           name: fog_conformance_tests.py
           command: |
-            openssl genrsa -out mobilecoin/Enclave_private.pem -3 3072
-            export CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/mobilecoin/Enclave_private.pem
-            export INGEST_ENCLAVE_PRIVKEY=$(pwd)/mobilecoin/Enclave_private.pem
-            export LEDGER_ENCLAVE_PRIVKEY=$(pwd)/mobilecoin/Enclave_private.pem
-            export VIEW_ENCLAVE_PRIVKEY=$(pwd)/mobilecoin/Enclave_private.pem
+            openssl genrsa -out Enclave_private.pem -3 3072
+            export CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+            export INGEST_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+            export LEDGER_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+            export VIEW_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
 
             apt-get update && apt-get install -y python3-venv
             cd tools/fog-local-network
