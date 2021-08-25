@@ -59,11 +59,11 @@ class FogNetwork(Network):
             pass
 
         # Get chain and key
-        root = subprocess.check_output(f"mobilecoin/{TARGET_DIR}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head",
+        root = subprocess.check_output(f"{TARGET_DIR}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head",
                                    encoding='utf8', shell=True).strip()
-        chain = subprocess.check_output(f"mobilecoin/{TARGET_DIR}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_chain_25519_leaf",
+        chain = subprocess.check_output(f"{TARGET_DIR}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_chain_25519_leaf",
                                    encoding='utf8', shell=True).strip()
-        key = subprocess.check_output(f"mobilecoin/{TARGET_DIR}/mc-crypto-x509-test-vectors --type=key --test-name=ok_rsa_chain_25519_leaf",
+        key = subprocess.check_output(f"{TARGET_DIR}/mc-crypto-x509-test-vectors --type=key --test-name=ok_rsa_chain_25519_leaf",
                                  encoding='utf8', shell=True).strip()
         print(f"chain path = {chain}, key path = {key}")
 

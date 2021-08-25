@@ -23,7 +23,7 @@ In order to use it, the following steps are necessary.
 
 2) Generating a set of sample keys:
     ```
-    cargo run -p mc-util-keyfile --bin sample-keys --release --manifest-path ../mobilecoin/Cargo.toml -- --num 1000 --fog-report-url 'insecure-fog://localhost:6200'
+    cargo run -p mc-util-keyfile --bin sample-keys --release --manifest-path ../Cargo.toml -- --num 1000 --fog-report-url 'insecure-fog://localhost:6200'
     ```
 
     Some important things to note:
@@ -33,7 +33,7 @@ In order to use it, the following steps are necessary.
 
 3) Bootstrap a ledger:
     ```
-    cargo run --manifest-path ../mobilecoin/util/generate-sample-ledger/Cargo.toml --release -- --txs 100
+    cargo run --manifest-path ../util/generate-sample-ledger/Cargo.toml --release -- --txs 100
     ```
 
 4) Start a local network, for example:
@@ -58,14 +58,14 @@ In order to use it, the following steps are necessary.
     # Create a set of target keys. They would be identical to the first N keys inside `keys/`. This is needed if you don't
     # want to send to transactions to all 1000 keys created at step 1.
     # Notice the addition of the --output-dir argument
-    cargo run -p mc-util-keyfile --bin sample-keys --release --manifest-path ../mobilecoin/Cargo.toml -- --num 10 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $(../mobilecoin/target/release/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head)
+    cargo run -p mc-util-keyfile --bin sample-keys --release --manifest-path ../Cargo.toml -- --num 10 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $(../target/release/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head)
 
     # Run the distribution script. This takes awhile and you should see transactions going through by looking at the logs.
     SGX_MODE=SW IAS_MODE=DEV MC_LOG=debug \
-    INGEST_ENCLAVE_PRIVKEY=$(pwd)/../mobilecoin/Enclave_private.pem \
-    LEDGER_ENCLAVE_PRIVKEY=$(pwd)/../mobilecoin/Enclave_private.pem \
-    VIEW_ENCLAVE_PRIVKEY=$(pwd)/../mobilecoin/Enclave_private.pem \
-    CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/../mobilecoin/Enclave_private.pem \
+    INGEST_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
+    LEDGER_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
+    VIEW_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
+    CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
         cargo run -p fog-distribution --release -- \
         --sample-data-dir . \
         --peer insecure-mc://localhost:3200/ \
@@ -81,10 +81,10 @@ In order to use it, the following steps are necessary.
 6) When its done, wait for consensus to complete processing the transactions (by looking at the logs). Afterwards you should be able to successfully run the test client:
     ```
     SGX_MODE=SW IAS_MODE=DEV MC_LOG=trace \
-    INGEST_ENCLAVE_PRIVKEY=$(pwd)/../mobilecoin/Enclave_private.pem \
-    LEDGER_ENCLAVE_PRIVKEY=$(pwd)/../mobilecoin/Enclave_private.pem \
-    VIEW_ENCLAVE_PRIVKEY=$(pwd)/../mobilecoin/Enclave_private.pem \
-    CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/../mobilecoin/Enclave_private.pem \
+    INGEST_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
+    LEDGER_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
+    VIEW_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
+    CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
         cargo run -p fog-test-client -- \
         --consensus insecure-mc://localhost:3200/ \
         --consensus insecure-mc://localhost:3201/ \
@@ -123,7 +123,7 @@ Usage
 1. Start the fog conformance test script: `./tools/fog-local-network/fog_conformance_test.py`
 
 You can build the servers and test in release mode instead:
-`./tools/fog-local-netwotk/fog_conformance_test.py --release`
+`./tools/fog-local-network/fog_conformance_test.py --release`
 
 If you have already built in mobilecoin and fog, you can skip the build step with `--skip-build`.
 
