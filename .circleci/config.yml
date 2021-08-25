@@ -360,13 +360,13 @@ commands:
                     || true
                 }
 
-  # FIXME: Figure out why the method using cargo2junit isn't working
+  # FIXME: Figure out why the parallel tests stuff using cargo2junit isn't working in the cloud for fog, maybe a memory limit issue?
   run-fog-tests:
     steps:
       - run:
           name: Run fog tests
           command: |
-            cargo test --package "fog-*" --frozen -j 4
+            cargo test --package "fog-*" -j 4 --frozen --no-fail-fast
 
   # A job that runs the fog-conformance-tests, building things in debug mode
   # Note: If we bring back the run-parallel-tests stuff, we could make this use --skip-build,
@@ -591,6 +591,10 @@ workflows:
 
       # Run fog tests on a single container
       - run-fog-tests:
+          filters: { branches: { ignore: /^deploy\/.*/ } }
+
+      # run fog conformance tests
+      - run-fog-conformance-tests:
           filters: { branches: { ignore: /^deploy\/.*/ } }
 
       # Build everything in debug
