@@ -370,8 +370,8 @@ commands:
 
   # A job that runs the fog-conformance-tests, building things in debug mode
   # Note: If we bring back the run-parallel-tests stuff, we could make this use --skip-build,
-  # and consume the build targets built in earlier step
-  run-fog-conformance-tests-debug:
+  # and consume the build targets built in earlier step perhaps
+  run-fog-conformance-tests:
     steps:
       - run:
           name: fog_conformance_tests.py
