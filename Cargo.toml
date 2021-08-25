@@ -1,4 +1,4 @@
-cargo-features = ["resolver"]
+cargo-features = ["named-profiles"]
 
 [workspace]
 resolver = "2"
@@ -6,6 +6,7 @@ members = [
     "account-keys",
     "account-keys/slip10",
     "admin-http-gateway",
+    "android-bindings",
     "api",
     "attest/ake",
     "attest/api",
@@ -39,18 +40,59 @@ members = [
     "crypto/x509/utils",
     "enclave-boundary",
     "fog/api",
-    "fog/report/connection",
-    "fog/report/validation",
-    "fog/report/validation/test-utils",
-    "fog/sig",
-    "fog/sig/authority",
-    "fog/sig/report",
-    "fog/types",
+    "fog/distribution",
+    "fog/fog_types",
+    "fog/ingest/client",
+    "fog/ingest/enclave",
+    "fog/ingest/enclave/api",
+    "fog/ingest/enclave/edl",
+    "fog/ingest/enclave/impl",
+    "fog/ingest/enclave/measurement",
+    "fog/ingest/server",
+    "fog/kex_rng",
+    "fog/ledger/connection",
+    "fog/ledger/enclave",
+    "fog/ledger/enclave/api",
+    "fog/ledger/enclave/edl",
+    "fog/ledger/enclave/impl",
+    "fog/ledger/enclave/measurement",
+    "fog/ledger/server",
+    "fog/load_testing",
+    "fog/ocall_oram_storage/edl",
+    "fog/ocall_oram_storage/testing",
+    "fog/ocall_oram_storage/trusted",
+    "fog/ocall_oram_storage/untrusted",
+    "fog/recovery_db_iface",
+    "fog/report/cli",
+    "fog/report/server",
+    "fog/sample-paykit",
+    "fog/sql_recovery_db",
+    "fog/test-client",
+    "fog/test_infra",
+    "fog/uri",
+    "fog/view/connection",
+    "fog/view/enclave",
+    "fog/view/enclave/api",
+    "fog/view/enclave/edl",
+    "fog/view/enclave/impl",
+    "fog/view/enclave/measurement",
+    "fog/view/load-test",
+    "fog/view/protocol",
+    "fog/view/server",
     "ledger/db",
     "ledger/distribution",
     "ledger/from-archive",
     "ledger/migration",
     "ledger/sync",
+    "libmobilecoin",
+    "mc-fog/api",
+    "mc-fog/report/connection",
+    "mc-fog/report/validation",
+    "mc-fog/report/validation/test-utils",
+    "mc-fog/sig",
+    "mc-fog/sig/authority",
+    "mc-fog/sig/report",
+    "mc-fog/types",
     "mobilecoind",
     "mobilecoind-json",
     "mobilecoind/api",
@@ -76,6 +118,7 @@ members = [
     "util/build/script",
     "util/build/sgx",
     "util/encodings",
+    "util/ffi",
     "util/from-random",
     "util/generate-sample-ledger",
     "util/grpc",
@@ -101,6 +144,9 @@ exclude = [
     # N.B. for some reason, putting these crates under `exclude` helps with
     # making `cargo test --all` work, when `consensus-enclave-impl` is part of workspace
     "sgx",
+    "fog/ingest/enclave/trusted",
+    "fog/ledger/enclave/trusted",
+    "fog/view/enclave/trusted",
 ]
 
 [profile.dev]
@@ -113,6 +159,11 @@ rpath = false
 lto = false
 debug-assertions = false
 overflow-checks = false
+
+[profile.mobile]
+inherits = "release"
+debug = false
+lto = true
 
 # Skip the need for LD_LIBRARY_PATH in `cargo test`
 [profile.test]
@@ -157,3 +208,6 @@ x25519-dalek = { git = "https://github.com/eranrund/x25519-dalek.git", rev = "57
 
 # Overridden since we need a commit that uprevs a bunch of dependencies.
 schnorrkel = { git = "https://github.com/mobilecoinofficial/schnorrkel", rev = "fa27d0ed32d251a27399a23d3ef69611acb14d56" }
+
+# This version contains iOS build fixes
+cmake = { git = "https://github.com/alexcrichton/cmake-rs", rev = "5f89f90ee5d7789832963bffdb2dcb5939e6199c" }

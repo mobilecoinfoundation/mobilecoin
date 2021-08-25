@@ -1,0 +1,67 @@
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+
+/// This file contains a simple service wrapper for a wallet that is used by the fog conformance tests
+/// to perform balance checks against an arbitrary client implementation.
+/// The sample-paykit includes such implementation, and the idea is that other clients/SDKs could
+/// also implement this service and then get tested by the fog conformance tests Python script.
+
+syntax = "proto3";
+
+package remote_wallet;
+
+option java_package = "com.example.myapplication.proto";
+option java_outer_classname = "RemoteWalletProto";
+
+import "google/protobuf/empty.proto";
+
+service RemoteWalletApi {
+    /// Start a new client and perform a fresh balance check.
+    rpc FreshBalanceCheck (FreshBalanceCheckRequest) returns (BalanceCheckResponse);
+
+    /// Perform a balance check on a previously-started client.
+    rpc FollowupBalanceCheck (FollowupBalanceCheckRequest) returns (BalanceCheckResponse);
+
+    /// Stop a previously-started client.
+    rpc Stop (StopRequest) returns (google.protobuf.Empty);
+
+    /// Get debug info for a previously-started client.
+    rpc Debug (DebugRequest) returns (DebugResponse);
+
+    /// Drop all previously-started clients.
+    rpc Reset (google.protobuf.Empty) returns (google.protobuf.Empty);
+}
+
+message FreshBalanceCheckRequest {
+    /// Root entropy for the account the new client will be using.
+    bytes root_entropy = 1;
+
+    /// FOG URI (should have view and ledger servers accessible).
+    string fog_uri = 2;
+}
+
+message BalanceCheckResponse {
+    /// A unique client identifier that is used in followup requests to refer to the client.
+    uint32 client_id = 1;
+
+    /// The account balance.
+    uint64 balance = 2;
+
+    /// The block count the balance is valid for.
+    uint64 block_count = 3;
+}
+
+message FollowupBalanceCheckRequest {
+    uint32 client_id = 1;
+}
+
+message StopRequest {
+    uint32 client_id = 1;
+}
+
+message DebugRequest {
+    uint32 client_id = 1;
+}
+
+message DebugResponse {
+    string debug_info = 1;
+}

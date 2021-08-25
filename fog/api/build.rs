@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2021 MobileCoin Inc.
 
 use mc_util_build_script::Environment;
 
@@ -25,6 +25,12 @@ fn main() {
         .to_owned();
     all_proto_dirs.extend(api_proto_path.split(':').collect::<Vec<&str>>());
 
+    let public_fog_api_proto_path = env
+        .depvar("MC_FOG_API_PROTOS_PATH")
+        .expect("Could not read mc-fog-api's protos path")
+        .to_owned();
+    all_proto_dirs.extend(public_fog_api_proto_path.split(':').collect::<Vec<&str>>());
+
     let consensus_api_proto_path = env
         .depvar("MC_CONSENSUS_API_PROTOS_PATH")
         .expect("Could not read consensus api's protos path")
@@ -33,6 +39,14 @@ fn main() {
 
     mc_util_build_grpc::compile_protos_and_generate_mod_rs(
         all_proto_dirs.as_slice(),
-        &["report.proto"],
+        &[
+            "fog_common.proto",
+            "ingest.proto",
+            "ingest_common.proto",
+            "ingest_peer.proto",
+            "kex_rng.proto",
+            "ledger.proto",
+            "view.proto",
+        ],
     );
 }

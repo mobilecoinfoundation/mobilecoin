@@ -1,0 +1,27 @@
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+
+syntax = "proto3";
+
+package kex_rng;
+option go_package = "mobilecoin/api";
+
+/// The key exchange message associated to creating a kex rng
+message KexRngPubkey {
+    /// A canonical representation of KexAlgo public key
+    bytes pubkey = 1;
+    /// A version number for the RNG algo.
+    uint32 version = 2;
+}
+
+/// A stored, wire-stable representation of a KexRng
+message StoredRng {
+    /// A canonical representation of KexRng secret state
+    bytes secret = 1;
+    /// A canonical representation of KexRng output buffer
+    bytes buffer = 2;
+    /// The internal counter of the KexRng
+    uint64 counter = 3;
+    /// A version number for the RNG algo.
+    /// This is u32 for protobuf compatibility.
+    uint32 version = 4;
+}
