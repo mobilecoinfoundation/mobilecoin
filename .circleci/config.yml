@@ -371,7 +371,7 @@ commands:
   # A job that runs the fog-conformance-tests, building things in debug mode
   # Note: If we bring back the run-parallel-tests stuff, we could make this use --skip-build,
   # and consume the build targets built in earlier step perhaps
-  run-fog-conformance-tests:
+  run-fog-conformance-tests-debug:
     steps:
       - run:
           name: fog_conformance_tests.py
@@ -480,6 +480,15 @@ jobs:
           steps: [ save-sccache-cache ]
       - post-build
       - post-fog-test
+
+  # Run fog conformance tests on a single container
+  run-fog-conformance-tests:
+    executor: build-executor
+    environment:
+      <<: *default-build-environment
+    steps:
+      - prepare-for-build
+      - run-fog-conformance-tests-debug
 
   # Build and lint in debug mode
   build-and-lint-debug:
