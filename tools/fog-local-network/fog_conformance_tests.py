@@ -388,7 +388,7 @@ class FogConformanceTest:
             log_and_run_shell(f'openssl genrsa -out {enclave_pem} -3 3072')
 
         log_and_run_shell(f"cd {PROJECT_DIR} && exec cargo build {FLAGS} -p mc-util-keyfile -p mc-admin-http-gateway -p mc-crypto-x509-test-vectors")
-        log_and_run_shell(f"cd {FOG_PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY={enclave_pem} INGEST_ENCLAVE_PRIVKEY={enclave_pem} LEDGER_ENCLAVE_PRIVKEY={enclave_pem} VIEW_ENCLAVE_PRIVKEY={enclave_pem} exec cargo build --packages \"fog-*\" {FLAGS}")
+        log_and_run_shell(f"cd {FOG_PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY={enclave_pem} INGEST_ENCLAVE_PRIVKEY={enclave_pem} LEDGER_ENCLAVE_PRIVKEY={enclave_pem} VIEW_ENCLAVE_PRIVKEY={enclave_pem} exec cargo build --package \"fog-*\" {FLAGS}")
 
     def __init__(self, work_dir, args):
         self.release = args.release
