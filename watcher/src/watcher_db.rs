@@ -449,6 +449,11 @@ impl WatcherDB {
     /// The block index and watcher timeout set is the time that has elapsed to
     /// indicate watcher is behind in the ingest or ledger for example
     pub fn poll_block_timestamp(&self, block_index: BlockIndex, watcher_timeout: Duration) -> u64 {
+        // special case the origin block has a timestamp of u64::MAX
+        if block_index == 0 {
+            return u64::MAX;
+        }
+
         // Timer that tracks how long we have had WatcherBehind error for,
         // if this exceeds watcher_timeout, we log a warning.
         let mut watcher_behind_timer = Instant::now();
