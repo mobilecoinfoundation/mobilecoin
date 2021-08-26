@@ -29,10 +29,10 @@ mc-watcher-api = { path = "../../watcher/api" }
 
 [dev-dependencies]
 mc-fog-report-api-test-utils = { path = "../../fog/report/api/test-utils" }
-fog-kex-rng = { path = "../kex_rng" }
-fog-types = { path = "../fog_types" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-util-test-helper = { path = "../../util/test-helper" }
+fog-kex-rng = { path = "../kex_rng" }
+fog-types = { path = "../fog_types" }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../util/build/grpc" }
