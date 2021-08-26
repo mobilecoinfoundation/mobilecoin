@@ -8,7 +8,6 @@ use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_sgx_report_cache_untrusted::REPORT_REFRESH_INTERVAL;
 use mc_transaction_core::BlockIndex;
 use mc_watcher::watcher_db::WatcherDB;
-use mc_watcher_api::TimestampResultCode;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -128,12 +127,8 @@ impl IngestWorker {
                             }
 
                             // Get the timestamp for the block.
-                            let timestamp = Self::get_watcher_timestamp(
-                                next_block_index,
-                                &watcher,
-                                watcher_timeout,
-                                &logger,
-                            );
+                            let timestamp =
+                                watcher.poll_block_timestamp(next_block_index, watcher_timeout);
 
                             controller.process_next_block(
                                 block_data.block(),

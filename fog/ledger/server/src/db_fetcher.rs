@@ -11,9 +11,7 @@ use mc_common::{
     trace_time,
 };
 use mc_ledger_db::{self, Error as LedgerError, Ledger};
-use mc_transaction_core::BlockIndex;
 use mc_watcher::watcher_db::WatcherDB;
-use mc_watcher_api::TimestampResultCode;
 use retry::{delay, retry, OperationResult};
 use std::{
     sync::{
@@ -21,7 +19,7 @@ use std::{
         Arc, Mutex,
     },
     thread::{Builder as ThreadBuilder, JoinHandle},
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 /// An object for managing background data fetches from the ledger database.
@@ -157,12 +155,9 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
             }
             Ok(block_contents) => {
                 // Get the timestamp for the block.
-                let timestamp = Self::get_watcher_timestamp(
-                    self.next_block_index,
-                    &self.watcher,
-                    watcher_timeout,
-                    &self.logger,
-                );
+                let timestamp = self
+                    .watcher
+                    .poll_block_timestamp(self.next_block_index, watcher_timeout);
 
                 let records = block_contents
                     .key_images
@@ -198,61 +193,6 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
             }
         }
         has_more_work
-    }
-
-    // Get the timestamp from the watcher, or an error code,
-    // using retries if the watcher fell behind
-    fn get_watcher_timestamp(
-        block_index: BlockIndex,
-        watcher: &WatcherDB,
-        watcher_timeout: Duration,
-        logger: &Logger,
-    ) -> u64 {
-        // special case the origin block has a timestamp of u64::MAX
-        if block_index == 0 {
-            return u64::MAX;
-        }
-
-        // Timer that tracks how long we have had WatcherBehind error for,
-        // if this exceeds watcher_timeout, we log a warning.
-        let mut watcher_behind_timer = Instant::now();
-        loop {
-            match watcher.get_block_timestamp(block_index) {
-                Ok((ts, res)) => match res {
-                    TimestampResultCode::WatcherBehind => {
-                        if watcher_behind_timer.elapsed() > watcher_timeout {
-                            log::warn!(logger, "watcher is still behind on block index = {} after waiting {} seconds, ledger service will be blocked", block_index, watcher_timeout.as_secs());
-                            watcher_behind_timer = Instant::now();
-                        }
-                        std::thread::sleep(Self::POLLING_FREQUENCY);
-                    }
-                    TimestampResultCode::BlockIndexOutOfBounds => {
-                        log::warn!(logger, "block index {} was out of bounds, we should not be scanning it, we will have junk timestamps for it", block_index);
-                        return u64::MAX;
-                    }
-                    TimestampResultCode::Unavailable => {
-                        log::crit!(logger, "watcher configuration is wrong and timestamps will not be available with this configuration. Ledger service is blocked at block index {}", block_index);
-                        std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
-                    }
-                    TimestampResultCode::WatcherDatabaseError => {
-                        log::crit!(logger, "The watcher database has an error which prevents us from getting timestamps. Ledger service is blocked at block index {}", block_index);
-                        std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
-                    }
-                    TimestampResultCode::TimestampFound => {
-                        return ts;
-                    }
-                },
-                Err(err) => {
-                    log::error!(
-                        logger,
-                        "Could not obtain timestamp for block {} due to error {}, this may mean the watcher is not correctly configured. will retry",
-                        block_index,
-                        err
-                    );
-                    std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
-                }
-            };
-        }
     }
 
     fn add_records_to_enclave(&mut self, block_index: u64, records: Vec<KeyImageData>) {
