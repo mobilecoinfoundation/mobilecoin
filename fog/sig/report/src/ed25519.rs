@@ -6,7 +6,7 @@
 use crate::{Signer, Verifier};
 use mc_crypto_digestible_signature::{DigestibleSigner, DigestibleVerifier};
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public, Ed25519Signature, Ed25519SignatureError};
-use mc_fog_types::Report;
+use mc_fog_report_types::Report;
 
 impl Signer for Ed25519Pair {
     type Sig = Ed25519Signature;

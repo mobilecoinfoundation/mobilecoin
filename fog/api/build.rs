@@ -25,11 +25,15 @@ fn main() {
         .to_owned();
     all_proto_dirs.extend(api_proto_path.split(':').collect::<Vec<&str>>());
 
-    let public_fog_api_proto_path = env
-        .depvar("MC_FOG_API_PROTOS_PATH")
-        .expect("Could not read mc-fog-api's protos path")
+    let mc_fog_report_api_proto_path = env
+        .depvar("MC_FOG_REPORT_API_PROTOS_PATH")
+        .expect("Could not read mc-fog-report-api's protos path")
         .to_owned();
-    all_proto_dirs.extend(public_fog_api_proto_path.split(':').collect::<Vec<&str>>());
+    all_proto_dirs.extend(
+        mc_fog_report_api_proto_path
+            .split(':')
+            .collect::<Vec<&str>>(),
+    );
 
     let consensus_api_proto_path = env
         .depvar("MC_CONSENSUS_API_PROTOS_PATH")

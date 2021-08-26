@@ -32,8 +32,8 @@ use mc_common::ResponderId;
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic, X25519};
 use mc_crypto_rand::McRng;
+use mc_fog_report_types::{Report, ReportResponse};
 use mc_fog_report_validation::{FogReportResponses, FogResolver};
-use mc_fog_types::{Report, ReportResponse};
 use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::{create_shared_secret, recover_onetime_private_key},

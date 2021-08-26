@@ -18,8 +18,8 @@ mc-attest-core = { path = "../../../attest/core" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-crypto-x509-utils = { path = "../../../crypto/x509/utils" }
-mc-fog-sig-report = { path = "../../../mc-fog/sig/report" }
-mc-fog-types = { path = "../../../mc-fog/types" }
+mc-fog-sig-report = { path = "../../sig/report" }
+mc-fog-report-types = { path = "../../report/types" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-metrics = { path = "../../../util/metrics" }
 mc-util-uri = { path = "../../../util/uri" }

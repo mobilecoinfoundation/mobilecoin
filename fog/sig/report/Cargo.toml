@@ -9,7 +9,7 @@ description = "Create and verify fog report signatures"
 mc-attest-core = { path = "../../../attest/core", default-features = false }
 mc-crypto-digestible-signature = { path = "../../../crypto/digestible/signature", default-features = false }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
-mc-fog-types = { path = "../../types", default-features = false }
+mc-fog-report-types = { path = "../../report/types", default-features = false }
 
 displaydoc = { version = "0.2", default-features = false }
 signature = { version = "1.2.2" }

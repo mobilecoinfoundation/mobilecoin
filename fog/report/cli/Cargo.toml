@@ -13,8 +13,8 @@ mc-account-keys = { path = "../../../account-keys" }
 mc-attest-core = { path = "../../../attest/core" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
-mc-fog-report-connection = { path = "../../../mc-fog/report/connection" }
-mc-fog-report-validation = { path = "../../../mc-fog/report/validation" }
+mc-fog-report-connection = { path = "../connection" }
+mc-fog-report-validation = { path = "../validation" }
 mc-util-keyfile = { path = "../../../util/keyfile" }
 mc-util-uri = { path = "../../../util/uri" }
 

@@ -1302,8 +1302,8 @@ dependencies = [
  "mc-attest-core",
  "mc-consensus-api",
  "mc-crypto-keys",
- "mc-fog-api",
- "mc-fog-api-test-utils",
+ "mc-fog-report-api",
+ "mc-fog-report-api-test-utils",
  "mc-transaction-core",
  "mc-util-build-grpc",
  "mc-util-build-script",
@@ -1863,8 +1863,8 @@ dependencies = [
  "mc-crypto-keys",
  "mc-crypto-x509-test-vectors",
  "mc-crypto-x509-utils",
+ "mc-fog-report-types",
  "mc-fog-sig-report",
- "mc-fog-types",
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-metrics",
@@ -3285,8 +3285,8 @@ dependencies = [
  "mc-crypto-keys",
  "mc-crypto-noise",
  "mc-crypto-rand",
+ "mc-fog-report-types",
  "mc-fog-report-validation",
- "mc-fog-types",
  "mc-transaction-core",
  "mc-transaction-std",
  "mc-util-encodings",
@@ -3976,7 +3976,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-fog-api"
+name = "mc-fog-report-api"
 version = "1.1.2"
 dependencies = [
  "cargo-emit",
@@ -3986,8 +3986,8 @@ dependencies = [
  "mc-attest-api",
  "mc-attest-core",
  "mc-consensus-api",
- "mc-fog-api-test-utils",
- "mc-fog-types",
+ "mc-fog-report-api-test-utils",
+ "mc-fog-report-types",
  "mc-util-build-grpc",
  "mc-util-build-script",
  "prost",
@@ -3995,7 +3995,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-fog-api-test-utils"
+name = "mc-fog-report-api-test-utils"
 version = "1.1.2"
 dependencies = [
  "mc-util-serial",
@@ -4012,12 +4012,22 @@ dependencies = [
  "mc-account-keys",
  "mc-attest-core",
  "mc-common",
- "mc-fog-api",
+ "mc-fog-report-api",
+ "mc-fog-report-types",
  "mc-fog-report-validation",
- "mc-fog-types",
  "mc-util-grpc",
  "mc-util-serial",
  "mc-util-uri",
+]
+
+[[package]]
+name = "mc-fog-report-types"
+version = "1.1.2"
+dependencies = [
+ "mc-attest-core",
+ "mc-crypto-digestible",
+ "prost",
+ "serde",
 ]
 
 [[package]]
@@ -4028,8 +4038,8 @@ dependencies = [
  "mc-account-keys",
  "mc-attest-core",
  "mc-crypto-keys",
+ "mc-fog-report-types",
  "mc-fog-sig",
- "mc-fog-types",
  "mc-util-encodings",
  "mc-util-serial",
  "mc-util-uri",
@@ -4054,9 +4064,9 @@ dependencies = [
  "mc-crypto-keys",
  "mc-crypto-x509-test-vectors",
  "mc-crypto-x509-utils",
+ "mc-fog-report-types",
  "mc-fog-sig-authority",
  "mc-fog-sig-report",
- "mc-fog-types",
  "mc-util-from-random",
  "pem",
  "rand_core 0.6.2",
@@ -4084,21 +4094,11 @@ dependencies = [
  "mc-attest-core",
  "mc-crypto-digestible-signature",
  "mc-crypto-keys",
- "mc-fog-types",
+ "mc-fog-report-types",
  "mc-util-from-random",
  "rand_core 0.6.2",
  "rand_hc 0.3.0",
  "signature",
-]
-
-[[package]]
-name = "mc-fog-types"
-version = "1.1.2"
-dependencies = [
- "mc-attest-core",
- "mc-crypto-digestible",
- "prost",
- "serde",
 ]
 
 [[package]]

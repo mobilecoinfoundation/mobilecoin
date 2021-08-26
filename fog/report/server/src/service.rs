@@ -11,8 +11,8 @@ use fog_api::{
 use fog_recovery_db_iface::{RecoveryDbError, ReportDb};
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_common::logger::{self, log, Logger};
+use mc_fog_report_types::{Report, ReportResponse};
 use mc_fog_sig_report::Signer as ReportSigner;
-use mc_fog_types::{Report, ReportResponse};
 use mc_util_grpc::{rpc_database_err, rpc_internal_error, rpc_logger, send_result};
 use mc_util_metrics::SVC_COUNTERS;
 use prost::DecodeError;

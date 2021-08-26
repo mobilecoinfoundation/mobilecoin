@@ -77,7 +77,7 @@ copy_artifacts:
 	cp -f ../consensus/api/proto/consensus_common.proto build/proto/
 	cp -f ../consensus/api/proto/consensus_peer.proto build/proto/
 	cp -f ../attest/api/proto/attest.proto build/proto/
-	cp -f ../mc-fog/api/proto/report.proto build/proto/
+	cp -f ../fog/report/api/proto/report.proto build/proto/
 	cp -f ../fog/api/proto/view.proto build/proto/
 	cp -f ../fog/api/proto/fog_common.proto build/proto/
 	cp -f ../fog/api/proto/kex_rng.proto build/proto/

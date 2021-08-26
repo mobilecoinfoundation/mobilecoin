@@ -25,8 +25,8 @@ mc-consensus-scp = { path = "../consensus/scp" }
 mc-crypto-digestible = { path = "../crypto/digestible", features = ["derive"] }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-rand = { path = "../crypto/rand" }
-mc-fog-report-connection = { path = "../mc-fog/report/connection" }
-mc-fog-report-validation = { path = "../mc-fog/report/validation" }
+mc-fog-report-connection = { path = "../fog/report/connection" }
+mc-fog-report-validation = { path = "../fog/report/validation" }
 mc-ledger-db = { path = "../ledger/db" }
 mc-ledger-sync = { path = "../ledger/sync" }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
@@ -62,8 +62,8 @@ tiny-bip39 = "0.8"
 [dev-dependencies]
 mc-common = { path = "../common", features = ["loggers"] }
 mc-connection-test-utils = { path = "../connection/test-utils" }
-mc-fog-report-validation = { path = "../mc-fog/report/validation", features = ["automock"] }
-mc-fog-report-validation-test-utils = { path = "../mc-fog/report/validation/test-utils" }
+mc-fog-report-validation = { path = "../fog/report/validation", features = ["automock"] }
+mc-fog-report-validation-test-utils = { path = "../fog/report/validation/test-utils" }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-util-from-random = { path = "../util/from-random" }
 

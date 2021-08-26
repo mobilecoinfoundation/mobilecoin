@@ -11,7 +11,7 @@ mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-x509-utils = { path = "../../crypto/x509/utils" }
 mc-fog-sig-report = { path = "./report" }
 mc-fog-sig-authority = { path = "./authority" }
-mc-fog-types = { path = "../types" }
+mc-fog-report-types = { path = "../report/types" }
 
 displaydoc = "0.2"
 pem = "0.8"
