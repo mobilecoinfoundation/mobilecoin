@@ -12,7 +12,7 @@ mc-connection = { path = "../connection" }
 mc-consensus-enclave-measurement = { path = "../consensus/enclave/measurement" }
 mc-consensus-scp = { path = "../consensus/scp" }
 mc-crypto-keys = { path = "../crypto/keys" }
-mc-fog-report-validation = { path = "../mc-fog/report/validation" }
+mc-fog-report-validation = { path = "../fog/report/validation" }
 mc-ledger-db = { path = "../ledger/db" }
 mc-ledger-sync = { path = "../ledger/sync" }
 mc-mobilecoind = { path = "../mobilecoind" }

@@ -1,14 +1,15 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use mc_attest_core::VerificationReport as ProstVerificationReport;
-use mc_fog_api::{
+use mc_fog_report_api::{
     external::{
         VerificationReport as ProtobufVerificationReport,
         VerificationSignature as ProtobufVerificationSignature,
     },
     report::{Report as ProtobufReport, ReportResponse as ProtobufReportResponse},
 };
-use mc_fog_types::{Report as ProstReport, ReportResponse as ProstReportResponse};
+use mc_fog_report_api_test_utils::{round_trip_message, round_trip_protobuf_object};
+use mc_fog_report_types::{Report as ProstReport, ReportResponse as ProstReportResponse};
 use prost::Message as ProstMessage;
 use protobuf::{Message as ProtobufMessage, RepeatedField};
 
@@ -19,7 +20,7 @@ where
     SRC: ProstMessage + Eq + Default + Clone + From<DEST>,
     DEST: ProtobufMessage + From<SRC>,
 {
-    mc_fog_api_test_utils::round_trip_message::<SRC, DEST>(&prost_val);
+    round_trip_message::<SRC, DEST>(&prost_val);
 
     let prost_val2 = SRC::from(DEST::from(prost_val.clone()));
     assert!(prost_val == prost_val2);
@@ -32,7 +33,7 @@ where
     SRC: ProtobufMessage + Eq + Clone + From<DEST>,
     DEST: ProstMessage + Default + From<SRC>,
 {
-    mc_fog_api_test_utils::round_trip_protobuf_object::<SRC, DEST>(&protobuf_val);
+    round_trip_protobuf_object::<SRC, DEST>(&protobuf_val);
 
     let protobuf_val2 = SRC::from(DEST::from(protobuf_val.clone()));
     assert!(protobuf_val == protobuf_val2);

@@ -12,7 +12,7 @@
 mod ed25519;
 
 use core::fmt::{Debug, Display};
-use mc_fog_types::Report;
+use mc_fog_report_types::Report;
 use signature::Signature;
 
 /// Retrieve the domain separator used to sign a report server response

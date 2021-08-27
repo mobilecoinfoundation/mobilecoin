@@ -7,7 +7,7 @@ use core::convert::TryFrom;
 use fog_api::kex_rng;
 use fog_kex_rng::{KexRngPubkey, StoredRng};
 use mc_crypto_keys::RistrettoPublic;
-use mc_fog_api_test_utils::{round_trip_message, round_trip_protobuf_object};
+use mc_fog_report_api_test_utils::{round_trip_message, round_trip_protobuf_object};
 use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     membership_proofs::Range,

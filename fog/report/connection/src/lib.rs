@@ -9,8 +9,8 @@
 use displaydoc::Display;
 use grpcio::{ChannelBuilder, Environment};
 use mc_common::logger::{log, o, Logger};
-use mc_fog_api::{report::ReportRequest, report_grpc};
-use mc_fog_types::ReportResponse;
+use mc_fog_report_api::{report::ReportRequest, report_grpc};
+use mc_fog_report_types::ReportResponse;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::FogUri;
 use std::sync::Arc;

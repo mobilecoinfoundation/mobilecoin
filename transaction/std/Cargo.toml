@@ -18,10 +18,10 @@ zeroize = "1"
 # MobileCoin dependencies
 mc-account-keys = { path = "../../account-keys" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
-mc-util-serial = { path = "../../util/serial" }
+mc-fog-report-validation = { path = "../../fog/report/validation" }
 mc-transaction-core = { path = "../../transaction/core"}
 mc-util-from-random = { path = "../../util/from-random" }
-mc-fog-report-validation = { path = "../../mc-fog/report/validation" }
+mc-util-serial = { path = "../../util/serial" }
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
 curve25519-dalek = { version = "4.0.0-pre.0", default-features = false, features = ["simd_backend", "nightly"] }
@@ -35,5 +35,5 @@ blake2 = { version = "0.9", default-features = false }
 maplit = "1.0"
 yaml-rust = "0.4"
 
-mc-fog-report-validation-test-utils = { path = "../../mc-fog/report/validation/test-utils" }
+mc-fog-report-validation-test-utils = { path = "../../fog/report/validation/test-utils" }
 mc-util-test-helper = { path = "../../util/test-helper" }

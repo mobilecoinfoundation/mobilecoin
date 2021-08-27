@@ -12,8 +12,8 @@ mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
 mc-crypto-keys = { path = "../../crypto/keys" }
-mc-fog-report-connection = { path = "../../mc-fog/report/connection" }
-mc-fog-report-validation = { path = "../../mc-fog/report/validation" }
+mc-fog-report-connection = { path = "../../fog/report/connection" }
+mc-fog-report-validation = { path = "../../fog/report/validation" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-mobilecoind = { path = "../../mobilecoind" }
 mc-transaction-core = { path = "../../transaction/core" }

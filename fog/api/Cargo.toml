@@ -20,7 +20,7 @@ mc-attest-api = { path = "../../attest/api" }
 mc-attest-core = { path = "../../attest/core" }
 mc-consensus-api = { path = "../../consensus/api" }
 mc-crypto-keys = { path = "../../crypto/keys" }
-mc-fog-api = { path = "../../mc-fog/api" }
+mc-fog-report-api = { path = "../../fog/report/api" }
 mc-util-encodings = { path = "../../util/encodings" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-grpc = { path = "../../util/grpc" }
@@ -28,11 +28,11 @@ mc-util-serial = { path = "../../util/serial" }
 mc-watcher-api = { path = "../../watcher/api" }
 
 [dev-dependencies]
-mc-fog-api-test-utils = { path = "../../mc-fog/api/test-utils" }
-fog-kex-rng = { path = "../kex_rng" }
-fog-types = { path = "../fog_types" }
+mc-fog-report-api-test-utils = { path = "../../fog/report/api/test-utils" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-util-test-helper = { path = "../../util/test-helper" }
+fog-kex-rng = { path = "../kex_rng" }
+fog-types = { path = "../fog_types" }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../util/build/grpc" }
