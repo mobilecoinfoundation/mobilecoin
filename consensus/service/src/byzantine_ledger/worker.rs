@@ -1251,8 +1251,9 @@ mod tests {
         assert_eq!(worker.pending_consensus_msgs.len(), 1);
     }
 
-    /// Should maintain the invariant that pending_values and pending_values map only contain
-    /// tx_hashes corresponding to transactions that are valid w.r.t the current ledger.
+    /// Should maintain the invariant that pending_values and pending_values map
+    /// only contain tx_hashes corresponding to transactions that are valid
+    /// w.r.t the current ledger.
     #[test_with_logger]
     fn receive_tasks_omits_expired_transactions(logger: Logger) {
         let (node_id, _local_node_uri, msg_signer_key) = get_local_node_config(11);
@@ -1297,7 +1298,7 @@ mod tests {
         );
 
         // Initially, pending_values should be empty.
-        assert_eq!(worker.pending_values, vec![]);
+        assert_eq!(worker.pending_values.len(), 0);
 
         // Submit the transactions.
         for tx_hash in &tx_hashes {
@@ -1308,9 +1309,9 @@ mod tests {
 
         assert_eq!(worker.receive_tasks(), true);
         // Should maintain the invariant that pending_values and pending_values map
-        // only contain tx_hashes corresponding to transactions that are valid w.r.t the current ledger.
+        // only contain tx_hashes corresponding to transactions that are valid w.r.t the
+        // current ledger.
         assert_eq!(worker.pending_values.len(), 0);
-        assert_eq!(worker.pending_values_map.len(), 0);
     }
 
     /// Constructs a VerifiedConsensusMsg.
