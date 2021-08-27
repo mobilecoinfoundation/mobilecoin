@@ -3,8 +3,11 @@
 MobileCoin Fog is a privacy-preserving service designed to support use of the MobileCoin Payments Network on mobile devices,
 which can use Fog to check their balance and send payments, without syncing the ledger.
 
-For an example fog client written in rust, check out the [`fog-sample-paykit`](./sample-paykit).
-For bindings used to support Java and Swift SDKs that support fog clients in production,
+Fog is designed so that the MobileCoin and Fog service operators have no nontrivial insight into your payment.
+Please see the [threat model](../fog-threat-model-2.1.0.md) for a comprehensive explanation.
+
+For an example Fog client written in rust, check out the [`fog-sample-paykit`](./sample-paykit).
+For bindings used to support Java and Swift SDKs that support Fog clients in production,
 check out the [`android-bindings`](../android-bindings) and [`libmobilecoin`](../libmobilecoin).
 
 # Table of Contents
