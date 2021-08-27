@@ -131,9 +131,12 @@ To run a *watcher node*, build and run the [`mobilecoind`](./mobilecoind) daemon
     Please see [`fog`](./fog), [`android-bindings`](./android-bindings), and [`libmobilecoin`](./libmobilecoin), to see how the balance checking and
     transaction building process works on mobile devices that don't sync the ledger.
 
+    Please see also the MobileCoin [Android](https://github.com/mobilecoinofficial/android-sdk/) and [iOS](https://github.com/mobilecoinofficial/MobileCoin-Swift) SDKs,
+    which can be integrated into your app to enable MobileCoin payments.
+
 1. Will I need to put my keys on a remote server to scan the blockchain for incoming transactions?
 
-    Keys will never leave your mobile device. This is a challenging problem and we are very excited to share a good overview of our solution soon.
+    Keys will never leave your mobile device. For more details on how this works, please see the [MobileCoin Fog README](./fog).
 
 
 ## Support
