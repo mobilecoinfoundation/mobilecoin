@@ -38,7 +38,7 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_number_of_outputs(&tx.prefix, MAX_OUTPUTS)?;
 
-    validate_memos_exist(&tx)?;
+    validate_memos_exist(tx)?;
 
     validate_ring_sizes(&tx.prefix, RING_SIZE)?;
 

@@ -101,7 +101,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> SgxIngestEnclave
             // Note: This is ignored because the semantic we want is, user_id should be
             // random if decryption failed, and ct_decrypt has no side-effects
             // if decryption fails.
-            let _success = FogHint::ct_decrypt(&ingress_key, &txo.e_fog_hint, &mut user_id);
+            let _success = FogHint::ct_decrypt(ingress_key, &txo.e_fog_hint, &mut user_id);
 
             let mut aligned_view_pubkey: A8Bytes<U32> = Aligned(*GenericArray::from_slice(
                 user_id.get_view_pubkey().as_bytes(),
@@ -244,7 +244,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> IngestEnclave
         let public_key = RistrettoPublic::from(&private_key);
 
         Ok((
-            self.ake.peer_encrypt(&peer, &[], &private_key.as_ref())?,
+            self.ake.peer_encrypt(&peer, &[], private_key.as_ref())?,
             public_key.into(),
         ))
     }

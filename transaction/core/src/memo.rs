@@ -141,7 +141,7 @@ impl MemoPayload {
     /// The shared-secret is expected to be the TxOut shared secret of the TxOut
     /// that this memo is associated to.
     pub fn encrypt(mut self, shared_secret: &RistrettoPublic) -> EncryptedMemo {
-        self.apply_keystream(&shared_secret);
+        self.apply_keystream(shared_secret);
         EncryptedMemo(self.0)
     }
 
@@ -149,7 +149,7 @@ impl MemoPayload {
     /// it and returning the underlying buffer.
     pub fn decrypt_from(encrypted: &EncryptedMemo, shared_secret: &RistrettoPublic) -> Self {
         let mut result = Self::from(encrypted.0);
-        result.apply_keystream(&shared_secret);
+        result.apply_keystream(shared_secret);
         result
     }
 

@@ -182,7 +182,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             value,
             &change_destination.change_subaddress,
             &change_destination.primary_address,
-            |memo_ctxt| mb.make_memo_for_change_output(value, &change_destination, memo_ctxt),
+            |memo_ctxt| mb.make_memo_for_change_output(value, change_destination, memo_ctxt),
             rng,
         );
         // Put the memo builder back

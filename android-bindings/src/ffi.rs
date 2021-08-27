@@ -20,7 +20,7 @@ pub fn jni_ffi_call<R: Default>(
     env: &JNIEnv,
     f: impl (FnOnce(&JNIEnv) -> Result<R, McError>) + UnwindSafe,
 ) -> R {
-    jni_ffi_call_or(|| Ok(R::default()), &env, f)
+    jni_ffi_call_or(|| Ok(R::default()), env, f)
 }
 
 /// Performs an FFI-wrapped call. The purpose of this is to provide a wrapper

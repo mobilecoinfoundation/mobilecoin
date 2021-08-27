@@ -604,7 +604,7 @@ fn mint_aggregate_fee(
     let fee_output: TxOut = {
         let target_key = create_onetime_public_key(tx_private_key, fee_recipient).into();
         let public_key =
-            create_tx_public_key(&tx_private_key, fee_recipient.spend_public_key()).into();
+            create_tx_public_key(tx_private_key, fee_recipient.spend_public_key()).into();
 
         let shared_secret = create_shared_secret(fee_recipient.view_public_key(), tx_private_key);
 

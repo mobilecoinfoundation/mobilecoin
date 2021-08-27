@@ -230,7 +230,7 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> EnclaveConnection<U, G> {
                 .as_mut()
                 .expect("no enclave_connection even though attest succeeded");
 
-            let plaintext_bytes = attest_cipher.decrypt(&message.get_aad(), message.get_data())?;
+            let plaintext_bytes = attest_cipher.decrypt(message.get_aad(), message.get_data())?;
             let plaintext_response: ResponseMessage = mc_util_serial::decode(&plaintext_bytes)?;
             Ok(plaintext_response)
         }

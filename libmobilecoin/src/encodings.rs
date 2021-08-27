@@ -12,7 +12,7 @@ impl<'a> TryFromFfi<&McBuffer<'a>> for PrintableWrapper {
     type Error = LibMcError;
 
     fn try_from_ffi(src: &McBuffer<'a>) -> Result<Self, Self::Error> {
-        Self::parse_from_bytes(&src).map_err(|err| LibMcError::InvalidInput(format!("{:?}", err)))
+        Self::parse_from_bytes(src).map_err(|err| LibMcError::InvalidInput(format!("{:?}", err)))
     }
 }
 

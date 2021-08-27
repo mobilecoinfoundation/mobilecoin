@@ -312,7 +312,7 @@ impl CachedTxData {
                         }
                     }
                     // Handle memo
-                    self.memo_handler.handle_memo(&otxo.tx_out, &account_key);
+                    self.memo_handler.handle_memo(&otxo.tx_out, account_key);
                 }
                 Err(err) => {
                     errors.push(err);
@@ -597,7 +597,7 @@ impl OwnedTxOut {
         let fog_tx_out = rec.get_fog_tx_out()?;
 
         // Reconstute TxOut from FogTxOut and our view private key
-        let tx_out = fog_tx_out.try_recover_tx_out(&account_key.view_private_key())?;
+        let tx_out = fog_tx_out.try_recover_tx_out(account_key.view_private_key())?;
 
         // This is view key scanning part, getting the value fails if view-key scanning
         // fails
