@@ -177,8 +177,8 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         // Maybe we should take ias-spid from env also
         let mut command = std::process::Command::new(ingest_server_binary.to_str().unwrap());
         command
-            .args(&["--ledger-db", &ledger_db_path.path().to_str().unwrap()])
-            .args(&["--watcher-db", &watcher_db_path.path().to_str().unwrap()])
+            .args(&["--ledger-db", ledger_db_path.path().to_str().unwrap()])
+            .args(&["--watcher-db", watcher_db_path.path().to_str().unwrap()])
             .args(&["--client-listen-uri", &client_listen_uri.to_string()])
             .args(&["--peer-listen-uri", &peer_listen_uri.to_string()])
             .args(&["--ias-spid", &"0".repeat(32)])

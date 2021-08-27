@@ -48,7 +48,7 @@ where
             // TODO: Use the prost message directly, once available
             match self.controller.peer_accept(request.into()) {
                 Ok((response, _session_id)) => {
-                    send_result(ctx, sink, Ok(response.into()), &logger);
+                    send_result(ctx, sink, Ok(response.into()), logger);
                 }
                 Err(peer_error) => {
                     // This is debug because there's no requirement on the remote party to trigger
@@ -64,9 +64,9 @@ where
                         Err(rpc_permissions_error(
                             "peer_auth",
                             "Permission denied",
-                            &logger,
+                            logger,
                         )),
-                        &logger,
+                        logger,
                     );
                 }
             }

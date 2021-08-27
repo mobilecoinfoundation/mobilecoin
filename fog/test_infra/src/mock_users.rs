@@ -94,7 +94,7 @@ pub fn test_block_to_inputs_and_expected_outputs(
 pub fn test_block_to_pairs(test_block: &TestBlock) -> Vec<(UserPrivate, TxOut)> {
     let mut result = Vec::new();
 
-    for (upriv, ref redacted_transactions) in test_block.iter() {
+    for (upriv, redacted_transactions) in test_block.iter() {
         for rtx in redacted_transactions.iter() {
             result.push((upriv.clone(), rtx.clone()));
         }
@@ -165,7 +165,7 @@ impl UserPool {
         self.users
             .iter()
             .filter_map(|(upriv, data)| {
-                let prev_count = *checkpoint.get(&upriv).unwrap_or(&0);
+                let prev_count = *checkpoint.get(upriv).unwrap_or(&0);
                 let user_txos = data.get_txos();
                 // If there are new txos associated to this user, report them,
                 // otherwise None which strips this user from the delta

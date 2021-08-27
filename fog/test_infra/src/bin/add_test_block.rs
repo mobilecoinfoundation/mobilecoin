@@ -174,7 +174,7 @@ fn main() {
 
         let onetime_private_key = recover_onetime_private_key(
             &RistrettoPublic::try_from(&tx_out.public_key).unwrap(),
-            &account_keys[credit.account].view_private_key(),
+            account_keys[credit.account].view_private_key(),
             &account_keys[credit.account].subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
         );
 
