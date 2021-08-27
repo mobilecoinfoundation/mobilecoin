@@ -1,0 +1,9 @@
+# Copyright (c) 2018-2021 The MobileCoin Foundation
+
+# For documentation on how to configure this file,
+# see diesel.rs/guides/configuring-diesel-cli
+
+[print_schema]
+file = "src/schema.rs"
+patch_file = "src/schema.patch"
+import_types = ["diesel::sql_types::*", "crate::sql_types::*"]

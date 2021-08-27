@@ -1,0 +1,15 @@
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+
+syntax = "proto3";
+
+package fog_common;
+option go_package = "mobilecoin/api";
+
+/// Represents a half-open range [start_block, end_block) of blocks
+message BlockRange {
+    /// The first block in the range
+    uint64 start_block = 1;
+
+    /// One-past-the-end of the range
+    uint64 end_block = 2;
+}

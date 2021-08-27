@@ -10,9 +10,9 @@ use mc_crypto_keys::Ed25519Signature;
 use mc_crypto_x509_utils::{
     PublicKeyType, X509CertificateChain, X509CertificateIter, X509KeyExtrator,
 };
+use mc_fog_report_types::ReportResponse;
 use mc_fog_sig_authority::Verifier as AuthorityVerifier;
 use mc_fog_sig_report::Verifier as ReportVerifier;
-use mc_fog_types::ReportResponse;
 use signature::{Error as SignatureError, Signature};
 use x509_signature::X509Certificate;
 
@@ -67,8 +67,8 @@ mod tests {
     use mc_attest_core::VerificationReport;
     use mc_crypto_keys::Ed25519Pair;
     use mc_crypto_x509_utils::X509CertificateIterable;
+    use mc_fog_report_types::Report;
     use mc_fog_sig_report::Signer;
-    use mc_fog_types::Report;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 

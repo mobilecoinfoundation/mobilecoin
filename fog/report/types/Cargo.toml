@@ -1,0 +1,12 @@
+[package]
+name = "mc-fog-report-types"
+version = "1.1.2"
+authors = ["Mobilecoin"]
+edition = "2018"
+
+[dependencies]
+mc-attest-core = { path = "../../../attest/core", default-features = false }
+mc-crypto-digestible = { path = "../../../crypto/digestible", default-features = false }
+
+prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
+serde = { version = "1.0", default-features = false, features = ["derive"] }

@@ -1,0 +1,53 @@
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+
+syntax = "proto3";
+
+import "external.proto";
+
+package ingest_common;
+
+/// Represents the possible modes of an ingest server controller
+enum IngestControllerMode {
+    /// Server is not actively consuming and scanning the blockchain
+    Idle = 0;
+    /// Server is actively consuming and scanning the blockchain,
+    /// and attempting to publish fog reports, unless DB says the key is retired.
+    Active = 1;
+}
+
+/// A summary of the state of the ingest server
+message IngestSummary {
+    /// The current mode of the server
+    IngestControllerMode mode = 1;
+    /// The next block index that will scanned
+    uint64 next_block_index = 2;
+    /// The pubkey expiry window value, used to compute pubkey_expiry values in reports.
+    /// This is how many more blocks we commit to scanning with this key.
+    /// (If we don't scan that many blocks, then the ones we didn't scan are "missed blocks".)
+    uint64 pubkey_expiry_window = 3;
+    /// The ingress public key of the server
+    external.CompressedRistretto ingress_pubkey = 4;
+    /// The egress public key of the server (appearing in RngRecord objects)
+    bytes egress_pubkey = 5;
+    /// The kex rng version of the server (appearing in RngRecord objects)
+    uint32 kex_rng_version = 6;
+    /// The list of peers of this server. The list contains igp:// URIs
+    repeated string peers = 7;
+    /// The current ingest invocation id of this server (only if Active)
+    int64 ingest_invocation_id = 8;
+}
+
+/// The schema of the ingest server's state file that it backs up on disk
+message IngestStateFile {
+    /// The summary of the ingest server state
+    IngestSummary summary = 1;
+    /// Sealed ingress key blob.
+    /// In a well-formed state file, the private key sealed here matches the ingress_pubkey in the summary.
+    bytes sealed_ingress_key = 2;
+}
+
+/// A request to change the list of peers of an ingest server
+message SetPeersRequest {
+    /// The new list of peer uris
+    repeated string ingest_peer_uris = 1;
+}

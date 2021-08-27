@@ -9,9 +9,9 @@ description = "Verify Fog Signatures"
 mc-account-keys = { path = "../../account-keys"}
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-x509-utils = { path = "../../crypto/x509/utils" }
+mc-fog-report-types = { path = "../report/types" }
 mc-fog-sig-report = { path = "./report" }
 mc-fog-sig-authority = { path = "./authority" }
-mc-fog-types = { path = "../types" }
 
 displaydoc = "0.2"
 pem = "0.8"

@@ -1,0 +1,100 @@
+// Copyright (c) 2018-2021 MobileCoin Inc.
+
+enclave {
+    untrusted {
+        /// Ask untrusted to allocate oram storage
+        ///
+        /// This means, roughly, two arrays of byte arrays:
+        /// data: [[u8; DataSize]; Count]
+        /// meta: [[u8; MetaSize]; Count]
+        ///
+        /// The allocation produces an id which can be used to refer to and
+        /// eventually free the allocation.
+        ///
+        /// If allocation fails, the id is set to 0, which is not a valid id.
+        ///
+        /// The enclave will check-out, and then later, check-in, elements of the storage.
+        /// Multiple storage elements may be checked out in one operation, and then
+        /// checked back in together.
+        ///
+        /// The untrusted implementation may assume that check-in will never occur without
+        /// prior check-out, and that double check-out won't happen.
+        ///
+        /// When an element is checked out for the first time, the metadata MUST be zeroed.
+        /// The data NEED NOT be initialized to any particular value, it would be correct
+        /// for untrusted to malloc the data part and not initialize it.
+        ///
+        /// Arguments:
+        /// - count: The number of data items (and metadata items)
+        /// - data_size: The size in bytes of a data item. Must be a multiple of 8
+        /// - meta_size: The size in bytes of a metadata item. Must be a multiple of 8
+        /// - id: Output parameter for the id of the new allocation.
+        ///
+        /// Thread safety: This call is thread-safe unconditionally
+        void allocate_oram_storage(uint64_t count,
+                                   uint64_t data_size,
+                                   uint64_t meta_size,
+                                   [out] uint64_t * id);
+
+        /// Release oram storage allocation
+        ///
+        /// Thread safety:
+        /// The untrusted implementation may also assume that multiple threads will not
+        /// attempt to manipulate *the same storage id* concurrently, and may panic
+        /// if this is violated.
+        void release_oram_storage(uint64_t id);
+
+        /// Checkout several values from the untrusted storage allocation.
+        ///
+        /// Arguments:
+        /// - id: The id of the storage to checkout from
+        ///       Must be a valid id obtained from allocate_oram_storage
+        /// - idx: The pointer to sequence of storage indices to checkout.
+        ///        Each MUST be less than Count for this allocation.
+        /// - idx_len: The number of storage indices to checkout.
+        /// - databuf: Memory in which to place consecutive data items.
+        /// - databuf_size: Number of u64 elements in the databuf buffer.
+        ///                 MUST be equal to idx_len * DataSize / 8 for this allocation.
+        /// - metabuf: Memory in which to place consecutive metadata items.
+        /// - metabuf_len: Number of u64 elements in the metabuf buffer.
+        ///                 MUST be equal to idx_len * MetaSize / 8 for this allocation.
+        ///
+        /// Thread safety:
+        /// The untrusted implementation may also assume that multiple threads will not
+        /// attempt to manipulate *the same storage id* concurrently, and may panic
+        /// if this is violated.
+        void checkout_oram_storage(uint64_t id,
+                                   [in, count=idx_len] const uint64_t * idx,
+                                   size_t idx_len,
+                                   [out, count=databuf_len] uint64_t * databuf,
+                                   size_t databuf_len,
+                                   [out, count=metabuf_len] uint64_t * metabuf,
+                                   size_t metabuf_len);
+
+        /// Checkin several values to the untrusted storage allocation.
+        ///
+        /// Arguments:
+        /// - id: The id of the storage to checkout from
+        ///       Must be a valid id obtained from allocate_oram_storage
+        /// - idx: The pointer to sequence of storage indices to checkout.
+        ///        Each MUST be less than Count for this allocation.
+        /// - idx_len: The number of storage indices to checkout.
+        /// - databuf: Memory in which to place consecutive data items.
+        /// - databuf_size: Number of u64 elements in the databuf buffer.
+        ///                 MUST be equal to idx_len * DataSize / 8 for this allocation.
+        /// - metabuf: Memory in which to place consecutive metadata items.
+        /// - metabuf_len: Number of u64 elements in the metabuf buffer.
+        ///                 MUST be equal to idx_len * MetaSize / 8 for this allocation.
+        /// Thread safety:
+        /// The untrusted implementation may also assume that multiple threads will not
+        /// attempt to manipulate *the same storage id* concurrently, and may panic
+        /// if this is violated.
+        void checkin_oram_storage(uint64_t id,
+                                  [in, count=idx_len] const uint64_t * idx,
+                                  size_t idx_len,
+                                  [in, count=databuf_len] const uint64_t * databuf,
+                                  size_t databuf_len,
+                                  [in, count=metabuf_len] const uint64_t * metabuf,
+                                  size_t metabuf_len);
+    };
+};

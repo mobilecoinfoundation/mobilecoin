@@ -8,9 +8,9 @@ edition = "2018"
 mc-account-keys = { path = "../../../account-keys" }
 mc-attest-core = { path = "../../../attest/core" }
 mc-common = { path = "../../../common", features = ["log"] }
-mc-fog-api = { path = "../../api" }
+mc-fog-report-api = { path = "../api" }
+mc-fog-report-types = { path = "../types" }
 mc-fog-report-validation = { path = "../validation" }
-mc-fog-types = { path = "../../types" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-serial = { path = "../../../util/serial" }
 mc-util-uri = { path = "../../../util/uri" }
