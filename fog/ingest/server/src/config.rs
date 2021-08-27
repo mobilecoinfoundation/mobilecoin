@@ -2,9 +2,9 @@
 
 //! Configuration parameters for the Fog Ingest Node
 
-use fog_uri::{FogIngestUri, IngestPeerUri};
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
+use mc_fog_uri::{FogIngestUri, IngestPeerUri};
 use mc_util_uri::AdminUri;
 use serde::Serialize;
 use std::{path::PathBuf, str::FromStr, time::Duration};

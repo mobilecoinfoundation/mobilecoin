@@ -1,14 +1,15 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use fog_ingest_server::{
-    server::{IngestServer, IngestServerConfig},
-    state_file::StateFile,
-};
-use fog_test_infra::get_enclave_path;
-use fog_uri::{FogIngestUri, IngestPeerUri};
 use maplit::btreeset;
 use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_common::logger::{test_with_logger, Logger};
+use mc_fog_ingest_server::{
+    server::{IngestServer, IngestServerConfig},
+    state_file::StateFile,
+};
+use mc_fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
+use mc_fog_test_infra::get_enclave_path;
+use mc_fog_uri::{FogIngestUri, IngestPeerUri};
 use mc_ledger_db::LedgerDB;
 use mc_util_uri::ConnectionUri;
 use mc_watcher::watcher_db::WatcherDB;
@@ -19,8 +20,6 @@ const OMAP_CAPACITY: u64 = 256;
 
 #[test_with_logger]
 fn test_ingest_sealed_key_recovery(logger: Logger) {
-    use fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
-
     let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
 
     let db = db_test_context.get_db_instance();
@@ -51,7 +50,7 @@ fn test_ingest_sealed_key_recovery(logger: Logger) {
         peer_checkup_period: None,
         watcher_timeout: Duration::default(),
         state_file: Some(StateFile::new(state_file.clone())),
-        enclave_path: get_enclave_path(fog_ingest_enclave::ENCLAVE_FILE),
+        enclave_path: get_enclave_path(mc_fog_ingest_enclave::ENCLAVE_FILE),
         omap_capacity: OMAP_CAPACITY,
     };
 

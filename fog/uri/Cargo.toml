@@ -1,5 +1,5 @@
 [package]
-name = "fog-uri"
+name = "mc-fog-uri"
 version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"

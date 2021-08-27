@@ -8,11 +8,11 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 use core::slice;
-use fog_ingest_enclave_api::{EnclaveCall, IngestEnclave};
-use fog_ingest_enclave_impl::SgxIngestEnclave;
-use fog_ocall_oram_storage_trusted::OcallORAMStorageCreator;
 use lazy_static::lazy_static;
 use mc_enclave_boundary::trusted::RetryBuffer;
+use mc_fog_ingest_enclave_api::{EnclaveCall, IngestEnclave};
+use mc_fog_ingest_enclave_impl::SgxIngestEnclave;
+use mc_fog_ocall_oram_storage_trusted::OcallORAMStorageCreator;
 use mc_sgx_compat::panic::catch_unwind;
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_sgx_slog::default_logger;

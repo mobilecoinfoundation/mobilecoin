@@ -1,9 +1,13 @@
 [package]
-name = "fog-distribution"
+name = "mc-fog-distribution"
 version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
 license = "GPL-3.0"
+
+[[bin]]
+name = "fog_distribution"
+path = "src/main.rs"
 
 [dependencies]
 mc-account-keys = { path = "../../account-keys" }
@@ -12,6 +16,7 @@ mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
 mc-crypto-keys = { path = "../../crypto/keys" }
+mc-fog-ingest-enclave-measurement = { path = "../ingest/enclave/measurement" }
 mc-fog-report-connection = { path = "../../fog/report/connection" }
 mc-fog-report-validation = { path = "../../fog/report/validation" }
 mc-ledger-db = { path = "../../ledger/db" }
@@ -20,8 +25,6 @@ mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-std = { path = "../../transaction/std" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-uri = { path = "../../util/uri" }
-
-fog-ingest-enclave-measurement = { path = "../ingest/enclave/measurement" }
 
 crossbeam-channel = "0.5"
 grpcio = "0.9.0"

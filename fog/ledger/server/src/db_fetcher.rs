@@ -4,12 +4,12 @@
 //! LedgerDB for new blocks, then gets all the key images associated to those
 //! blocks and adds them to the enclave.
 use crate::{counters, server::DbPollSharedState};
-use fog_ledger_enclave::LedgerEnclaveProxy;
-use fog_ledger_enclave_api::KeyImageData;
 use mc_common::{
     logger::{log, Logger},
     trace_time,
 };
+use mc_fog_ledger_enclave::LedgerEnclaveProxy;
+use mc_fog_ledger_enclave_api::KeyImageData;
 use mc_ledger_db::{self, Error as LedgerError, Ledger};
 use mc_watcher::watcher_db::WatcherDB;
 use retry::{delay, retry, OperationResult};

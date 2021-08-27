@@ -1,12 +1,12 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use fog_api::{
+use grpcio::{RpcContext, RpcStatus, UnarySink};
+use mc_common::logger::{log, Logger};
+use mc_fog_api::{
     external,
     ledger::{BlockData, BlockRequest, BlockResponse},
     ledger_grpc::FogBlockApi,
 };
-use grpcio::{RpcContext, RpcStatus, UnarySink};
-use mc_common::logger::{log, Logger};
 use mc_ledger_db::{self, Error as DbError, Ledger};
 use mc_util_grpc::{rpc_database_err, rpc_logger, send_result, Authenticator};
 use mc_util_metrics::SVC_COUNTERS;

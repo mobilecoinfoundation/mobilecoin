@@ -1,11 +1,11 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use fog_ingest_enclave::{IngestSgxEnclave, ENCLAVE_FILE};
-use fog_test_infra::get_enclave_path;
 use mc_common::{
     logger::{log, test_with_logger, Logger},
     ResponderId,
 };
+use mc_fog_ingest_enclave::{IngestSgxEnclave, ENCLAVE_FILE};
+use mc_fog_test_infra::get_enclave_path;
 use std::str::FromStr;
 
 const NUM_TRIALS: usize = 3;

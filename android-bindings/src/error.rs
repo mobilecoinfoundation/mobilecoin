@@ -2,12 +2,12 @@
 
 use bip39::ErrorKind as Bip39Error;
 use displaydoc::Display;
-use fog_kex_rng::Error as KexRngError;
 use mc_attest_ake::Error as AkeError;
 use mc_attest_core::VerifyError as AttestVerifyError;
 use mc_crypto_box::Error as CryptoBoxError;
 use mc_crypto_keys::KeyError;
 use mc_crypto_noise::CipherError;
+use mc_fog_kex_rng::Error as KexRngError;
 use mc_transaction_core::{ring_signature::Error as RingSignatureError, AmountError};
 use mc_transaction_std::TxBuilderError;
 use mc_util_encodings::Error as EncodingsError;

@@ -2,12 +2,12 @@
 
 use crate::common::McError;
 use displaydoc::Display;
-use fog_kex_rng::Error as FogKexRngError;
 use mc_api::display::Error as ApiDisplayError;
 use mc_attest_ake::Error as AttestAkeError;
 use mc_attest_core::VerifierError;
 use mc_crypto_box::{AeadError, Error as CryptoBoxError};
 use mc_crypto_noise::CipherError;
+use mc_fog_kex_rng::Error as FogKexRngError;
 use mc_fog_report_validation::{ingest_report::Error as IngestReportError, FogPubkeyError};
 use mc_transaction_core::AmountError;
 use mc_transaction_std::TxBuilderError;

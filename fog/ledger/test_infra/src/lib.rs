@@ -2,14 +2,14 @@
 
 //! Functionality for mocking and testing components in the ledger server
 
-use fog_ledger_enclave::{
-    GetOutputsResponse, LedgerEnclave, OutputContext, Result as EnclaveResult,
-};
-use fog_ledger_enclave_api::{KeyImageData, UntrustedKeyImageQueryResponse};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
 use mc_common::{HashMap, ResponderId};
 use mc_crypto_keys::{CompressedRistrettoPublic, X25519Public};
+use mc_fog_ledger_enclave::{
+    GetOutputsResponse, LedgerEnclave, OutputContext, Result as EnclaveResult,
+};
+use mc_fog_ledger_enclave_api::{KeyImageData, UntrustedKeyImageQueryResponse};
 use mc_ledger_db::{Error, Ledger};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
@@ -70,14 +70,14 @@ impl LedgerEnclave for MockEnclave {
         &self,
         _msg: EnclaveMessage<ClientSession>,
         _untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
-    ) -> Result<Vec<u8>, fog_ledger_enclave::Error> {
+    ) -> Result<Vec<u8>, mc_fog_ledger_enclave::Error> {
         unimplemented!()
     }
 
     fn add_key_image_data(
         &self,
         _records: Vec<KeyImageData>,
-    ) -> Result<(), fog_ledger_enclave::Error> {
+    ) -> Result<(), mc_fog_ledger_enclave::Error> {
         unimplemented!()
     }
 }

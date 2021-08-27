@@ -2,10 +2,10 @@
 
 use crate::{attest::McVerifier, common::*, LibMcError};
 use core::convert::TryFrom;
-use fog_kex_rng::{BufferedRng, KexRngPubkey, NewFromKex, StoredRng, VersionedKexRng};
 use libc::ssize_t;
 use mc_attest_core::Verifier;
 use mc_crypto_keys::RistrettoPrivate;
+use mc_fog_kex_rng::{BufferedRng, KexRngPubkey, NewFromKex, StoredRng, VersionedKexRng};
 use mc_fog_report_validation::FogReportResponses;
 use mc_util_ffi::*;
 use mc_util_serial::Message;

@@ -2,19 +2,20 @@
 
 use super::Error;
 use displaydoc::Display;
-use fog_api::ledger_grpc;
-use fog_enclave_connection::EnclaveConnection;
-use fog_uri::FogLedgerUri;
 use grpcio::{ChannelBuilder, Environment};
 use mc_attest_core::Verifier;
 use mc_common::logger::{o, Logger};
+use mc_fog_api::ledger_grpc::FogMerkleProofApiClient;
+use mc_fog_enclave_connection::EnclaveConnection;
+use mc_fog_types::ledger::{GetOutputsRequest, GetOutputsResponse, OutputResult};
+use mc_fog_uri::FogLedgerUri;
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use std::sync::Arc;
 
 /// An attested connection to the Fog Merkle Proof service.
 pub struct FogMerkleProofGrpcClient {
-    conn: EnclaveConnection<FogLedgerUri, ledger_grpc::FogMerkleProofApiClient>,
+    conn: EnclaveConnection<FogLedgerUri, FogMerkleProofApiClient>,
 }
 
 impl FogMerkleProofGrpcClient {
@@ -29,7 +30,7 @@ impl FogMerkleProofGrpcClient {
 
         let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&uri, &logger);
 
-        let grpc_client = ledger_grpc::FogMerkleProofApiClient::new(ch);
+        let grpc_client = FogMerkleProofApiClient::new(ch);
 
         Self {
             conn: EnclaveConnection::new(uri, grpc_client, verifier, logger),
@@ -41,14 +42,13 @@ impl FogMerkleProofGrpcClient {
         &mut self,
         indices: Vec<u64>,
         merkle_root_block: u64,
-    ) -> Result<fog_types::ledger::GetOutputsResponse, Error> {
-        let request = fog_types::ledger::GetOutputsRequest {
+    ) -> Result<GetOutputsResponse, Error> {
+        let request = GetOutputsRequest {
             indices,
             merkle_root_block,
         };
 
-        let response: fog_types::ledger::GetOutputsResponse =
-            self.conn.encrypted_enclave_request(&request, &[])?;
+        let response: GetOutputsResponse = self.conn.encrypted_enclave_request(&request, &[])?;
 
         Ok(response)
     }
@@ -63,15 +63,15 @@ pub trait OutputResultExtension {
     fn status(&self) -> Result<Option<(TxOut, TxOutMembershipProof)>, OutputError>;
 }
 
-impl OutputResultExtension for fog_types::ledger::OutputResult {
+impl OutputResultExtension for OutputResult {
     /// Map the protobuf OutputResult type to a more idiomatic rust Result type
     fn status(&self) -> Result<Option<(TxOut, TxOutMembershipProof)>, OutputError> {
         // Rust does not allow the left side of match expression to a be `Foo as u32`.
-        const OUTPUT_RESULT_CODE_EXISTS: u32 = fog_api::ledger::OutputResultCode::Exists as u32;
+        const OUTPUT_RESULT_CODE_EXISTS: u32 = mc_fog_api::ledger::OutputResultCode::Exists as u32;
         const OUTPUT_RESULT_CODE_DOES_NOT_EXIST: u32 =
-            fog_api::ledger::OutputResultCode::DoesNotExist as u32;
+            mc_fog_api::ledger::OutputResultCode::DoesNotExist as u32;
         const OUTPUT_RESULT_CODE_DATABASE_ERROR: u32 =
-            fog_api::ledger::OutputResultCode::OutputDatabaseError as u32;
+            mc_fog_api::ledger::OutputResultCode::OutputDatabaseError as u32;
 
         match self.result_code {
             OUTPUT_RESULT_CODE_EXISTS => Ok(Some((self.output.clone(), self.proof.clone()))),

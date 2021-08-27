@@ -14,7 +14,7 @@ use mc_transaction_core::{
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
-pub use fog_kex_rng::KexRngPubkey;
+pub use mc_fog_kex_rng::KexRngPubkey;
 
 // User <-> enclave proto schema types
 // These are synced with types in fog_api view.proto, and tests enforce that

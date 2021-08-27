@@ -11,8 +11,6 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::result::Result as StdResult;
 use displaydoc::Display;
-use fog_recovery_db_iface::FogUserEvent;
-use fog_types::ETxOutRecord;
 use mc_attest_core::{Quote, Report, SgxError, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,
@@ -20,6 +18,8 @@ use mc_attest_enclave_api::{
 };
 use mc_common::ResponderId;
 use mc_crypto_keys::X25519Public;
+use mc_fog_recovery_db_iface::FogUserEvent;
+use mc_fog_types::ETxOutRecord;
 use mc_sgx_compat::sync::PoisonError;
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t};

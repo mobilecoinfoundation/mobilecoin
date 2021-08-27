@@ -1,13 +1,9 @@
 [package]
-name = "fog-ingest-server"
+name = "mc-fog-ingest-server"
 version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
 license = "GPL-3.0"
-
-[lib]
-name = "fog_ingest_server"
-path = "src/lib.rs"
 
 [[bin]]
 name = "fog_ingest_server"
@@ -49,22 +45,21 @@ mc-watcher = { path = "../../../watcher" }
 mc-watcher-api = { path = "../../../watcher/api" }
 
 # fog
-fog-api = { path = "../../api" }
-fog-ingest-client = { path = "../client" }
-fog-ingest-enclave = { path = "../enclave" }
-fog-ingest-enclave-api = { path = "../enclave/api" }
-fog-ingest-enclave-measurement = { path = "../enclave/measurement" }
-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
-fog-types = { path = "../../fog_types" }
-fog-uri = { path = "../../uri" }
+mc-fog-api = { path = "../../api" }
+mc-fog-ingest-client = { path = "../client" }
+mc-fog-ingest-enclave = { path = "../enclave" }
+mc-fog-ingest-enclave-api = { path = "../enclave/api" }
+mc-fog-ingest-enclave-measurement = { path = "../enclave/measurement" }
+mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
+mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
+mc-fog-types = { path = "../../types" }
+mc-fog-uri = { path = "../../uri" }
 
 [dev-dependencies]
+mc-fog-test-infra = { path = "../../test_infra" }
 mc-util-build-info = { path = "../../../util/build/info" }
 mc-util-test-helper = { path = "../../../util/test-helper" }
 mc-util-from-random = { path = "../../../util/from-random" }
-
-fog-test-infra = { path = "../../test_infra" }
 
 maplit = "1"
 rand_core = "0.6"

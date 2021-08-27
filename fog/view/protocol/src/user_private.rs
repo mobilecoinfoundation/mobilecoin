@@ -3,10 +3,10 @@
 use crate::user_rng_set::TxOutRecoveryError;
 use alloc::vec::Vec;
 use core::hash::{Hash, Hasher};
-use fog_types::view::TxOutRecord;
 use mc_account_keys::AccountKey;
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use mc_fog_types::view::TxOutRecord;
 use mc_transaction_core::fog_hint::FogHint;
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
@@ -108,9 +108,9 @@ impl From<&AccountKey> for UserPrivate {
 mod testing {
     use super::*;
     use core::convert::TryFrom;
-    use fog_types::view::{FogTxOut, FogTxOutMetadata};
     use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
     use mc_crypto_keys::CompressedRistrettoPublic;
+    use mc_fog_types::view::{FogTxOut, FogTxOutMetadata};
     use mc_transaction_core::{fog_hint::FogHint, tx::TxOut};
     pub use rand_core::{CryptoRng, RngCore, SeedableRng};
     use rand_hc::Hc128Rng;

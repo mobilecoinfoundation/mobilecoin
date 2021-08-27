@@ -2,9 +2,9 @@
 
 //! Configuration parameters for the MobileCoin Fog View Node
 
-use fog_uri::FogViewUri;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
+use mc_fog_uri::FogViewUri;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
 use std::{str::FromStr, time::Duration};

@@ -1,12 +1,12 @@
 [package]
-name = "fog-sql-recovery-db"
+name = "mc-fog-sql-recovery-db"
 version = "1.1.0"
 authors = ["Mobilecoin"]
 edition = "2018"
 license = "GPL-3.0"
 
 [lib]
-name = "fog_sql_recovery_db"
+name = "mc_fog_sql_recovery_db"
 path = "src/lib.rs"
 
 [[bin]]
@@ -26,9 +26,9 @@ mc-transaction-core = { path = "../../transaction/core" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 
-fog-recovery-db-iface = { path = "../recovery_db_iface" }
-fog-kex-rng = { path = "../kex_rng" }
-fog-types = { path = "../fog_types" }
+mc-fog-kex-rng = { path = "../kex_rng" }
+mc-fog-recovery-db-iface = { path = "../recovery_db_iface" }
+mc-fog-types = { path = "../types" }
 
 chrono = "0.4"
 diesel = { version = "1.4.5", features = ["chrono", "postgres", "r2d2"] }
@@ -41,10 +41,10 @@ rand = "0.8"
 rand_core = "0.6"
 
 # needed for fog-sql-recovery-db-write-bench
-fog-test-infra = { path = "../test_infra" }
+mc-fog-test-infra = { path = "../test_infra" }
 
 [dev-dependencies]
-fog-test-infra = { path = "../test_infra" }
+mc-fog-test-infra = { path = "../test_infra" }
 
 mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
 mc-util-test-helper = { path = "../../util/test-helper" }

@@ -10,16 +10,19 @@ mod e_tx_out_store;
 use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
 
 use alloc::vec::Vec;
-use fog_recovery_db_iface::FogUserEvent;
-use fog_types::ETxOutRecord;
-use fog_view_enclave_api::{
-    Error, Result, UntrustedQueryResponse, ViewEnclaveApi, ViewEnclaveInitParams,
-};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
 use mc_common::logger::{log, Logger};
 use mc_crypto_ake_enclave::{AkeEnclaveState, NullIdentity};
 use mc_crypto_keys::X25519Public;
+use mc_fog_recovery_db_iface::FogUserEvent;
+use mc_fog_types::{
+    view::{QueryRequest, QueryResponse},
+    ETxOutRecord,
+};
+use mc_fog_view_enclave_api::{
+    Error, Result, UntrustedQueryResponse, ViewEnclaveApi, ViewEnclaveInitParams,
+};
 use mc_oblivious_traits::ORAMStorageCreator;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
@@ -116,11 +119,10 @@ where
         let channel_id = msg.channel_id.clone();
         let user_plaintext = self.ake.client_decrypt(msg)?;
 
-        let req: fog_types::view::QueryRequest =
-            mc_util_serial::decode(&user_plaintext).map_err(|e| {
-                log::error!(self.logger, "Could not decode user request: {}", e);
-                Error::ProstDecode
-            })?;
+        let req: QueryRequest = mc_util_serial::decode(&user_plaintext).map_err(|e| {
+            log::error!(self.logger, "Could not decode user request: {}", e);
+            Error::ProstDecode
+        })?;
 
         // Prepare the untrusted part of the response.
         let mut missed_block_ranges = Vec::new();
@@ -139,7 +141,7 @@ where
             }
         }
 
-        let mut resp = fog_types::view::QueryResponse {
+        let mut resp = QueryResponse {
             highest_processed_block_count: untrusted_query_response.highest_processed_block_count,
             highest_processed_block_signature_timestamp: untrusted_query_response
                 .highest_processed_block_signature_timestamp,

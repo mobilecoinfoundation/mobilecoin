@@ -4,7 +4,7 @@
 
 use mc_common::logger::{create_app_logger, o};
 
-use fog_test_client::{config::Config, error::TestClientError, test_client::TestClient};
+use mc_fog_test_client::{config::Config, error::TestClientError, test_client::TestClient};
 
 use structopt::StructOpt;
 

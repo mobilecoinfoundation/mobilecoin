@@ -1,12 +1,12 @@
 [package]
-name = "fog-ingest-client"
+name = "mc-fog-ingest-client"
 version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
 license = "GPL-3.0"
 
 [lib]
-name = "fog_ingest_client"
+name = "mc_fog_ingest_client"
 path = "src/lib.rs"
 
 [[bin]]
@@ -33,6 +33,6 @@ mc-util-keyfile = { path = "../../../util/keyfile" }
 mc-util-uri = { path = "../../../util/uri" }
 
 # fog
-fog-api = { path = "../../api" }
-fog-uri = { path = "../../uri" }
-fog-types = { path = "../../fog_types" }
+mc-fog-api = { path = "../../api" }
+mc-fog-types = { path = "../../types" }
+mc-fog-uri = { path = "../../uri" }

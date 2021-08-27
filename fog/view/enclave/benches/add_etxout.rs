@@ -2,13 +2,13 @@
 
 use core::time::Duration;
 use criterion::{criterion_group, criterion_main, Criterion};
-use fog_lmdb_recovery_db::{clear_recovery_db, init_recovery_db, open_recovery_db};
-use fog_test_infra::get_enclave_path;
-use fog_types::ETxOutRecord;
-use fog_view_enclave::{SgxViewEnclave, ENCLAVE_FILE};
-use fog_view_enclave_api::{AddETxOutRecordsRequest, ViewEnclaveApi};
 use mc_common::ResponderId;
 use mc_crypto_rand::{McRng, RngCore};
+use mc_fog_lmdb_recovery_db::{clear_recovery_db, init_recovery_db, open_recovery_db};
+use mc_fog_test_infra::get_enclave_path;
+use mc_fog_types::ETxOutRecord;
+use mc_fog_view_enclave::{SgxViewEnclave, ENCLAVE_FILE};
+use mc_fog_view_enclave_api::{AddETxOutRecordsRequest, ViewEnclaveApi};
 use std::{str::FromStr, sync::Arc, vec};
 
 fn make_enclave(desired_tx_out_capacity: u64) -> SgxViewEnclave {

@@ -2,7 +2,7 @@
 
 use super::schema::*;
 use crate::sql_types::{SqlCompressedRistrettoPublic, UserEventType};
-use fog_types::common::BlockRange;
+use mc_fog_types::common::BlockRange;
 
 #[derive(Debug, Queryable)]
 pub struct IngressKey {

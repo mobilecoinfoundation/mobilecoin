@@ -1,12 +1,12 @@
 [package]
-name = "fog-report-server"
+name = "mc-fog-report-server"
 version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
 license = "GPL-3.0"
 
 [lib]
-name = "fog_report_server"
+name = "mc_fog_report_server"
 path = "src/lib.rs"
 
 [[bin]]
@@ -18,15 +18,14 @@ mc-attest-core = { path = "../../../attest/core" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-crypto-x509-utils = { path = "../../../crypto/x509/utils" }
+mc-fog-api = { path = "../../api" }
+mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
 mc-fog-report-types = { path = "../../report/types" }
 mc-fog-sig-report = { path = "../../sig/report" }
+mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-metrics = { path = "../../../util/metrics" }
 mc-util-uri = { path = "../../../util/uri" }
-
-fog-api = { path = "../../api" }
-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
 
 displaydoc = "0.2"
 futures = "0.3"
@@ -47,6 +46,5 @@ tempdir = "0.3"
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-crypto-x509-test-vectors = { path = "../../../crypto/x509/test-vectors" }
+mc-fog-test-infra = { path = "../../test_infra" }
 mc-util-from-random = { path = "../../../util/from-random" }
-
-fog-test-infra = { path = "../../test_infra" }

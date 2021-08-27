@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use fog_types::ETxOutRecord;
+use mc_fog_types::ETxOutRecord;
 use prost::Message;
 
 /// Protobuf data stored with an ingested block record in sql

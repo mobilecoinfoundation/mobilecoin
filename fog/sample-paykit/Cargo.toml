@@ -1,14 +1,10 @@
 [package]
-name = "fog-sample-paykit"
+name = "mc-fog-sample-paykit"
 version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
 readme = "README.md"
 license = "GPL-3.0"
-
-[lib]
-name = "fog_sample_paykit"
-path = "src/lib.rs"
 
 [[bin]]
 name = "balance_check"
@@ -19,6 +15,7 @@ name = "sample_paykit_remote_wallet"
 path = "src/bin/sample_paykit_remote_wallet.rs"
 
 [dependencies]
+# mobilecoin
 mc-account-keys = { path = "../../account-keys" }
 mc-attest-core = { path = "../../attest/core" }
 mc-common = { path = "../../common", features = ["log"] }
@@ -27,24 +24,25 @@ mc-consensus-api = { path = "../../consensus/api" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-rand = { path = "../../crypto/rand" }
-mc-fog-report-connection = { path = "../../fog/report/connection" }
-mc-fog-report-validation = { path = "../../fog/report/validation" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-std = { path = "../../transaction/std" }
 mc-util-grpc = { path = "../../util/grpc" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-uri = { path = "../../util/uri" }
 
-fog-api = { path = "../api" }
-fog-enclave-connection = { path = "../enclave_connection" }
-fog-ingest-enclave-measurement = { path = "../ingest/enclave/measurement" }
-fog-ledger-connection = { path = "../ledger/connection" }
-fog-ledger-enclave-measurement = { path = "../ledger/enclave/measurement" }
-fog-types =  {path = "../fog_types" }
-fog-uri = { path = "../uri" }
-fog-view-connection = { path = "../view/connection" }
-fog-view-enclave-measurement = { path = "../view/enclave/measurement" }
-fog-view-protocol = { path = "../view/protocol" }
+# fog
+mc-fog-api = { path = "../api" }
+mc-fog-enclave-connection = { path = "../enclave_connection" }
+mc-fog-ingest-enclave-measurement = { path = "../ingest/enclave/measurement" }
+mc-fog-ledger-connection = { path = "../ledger/connection" }
+mc-fog-ledger-enclave-measurement = { path = "../ledger/enclave/measurement" }
+mc-fog-report-connection = { path = "../../fog/report/connection" }
+mc-fog-report-validation = { path = "../../fog/report/validation" }
+mc-fog-types =  {path = "../types" }
+mc-fog-uri = { path = "../uri" }
+mc-fog-view-connection = { path = "../view/connection" }
+mc-fog-view-enclave-measurement = { path = "../view/enclave/measurement" }
+mc-fog-view-protocol = { path = "../view/protocol" }
 
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"

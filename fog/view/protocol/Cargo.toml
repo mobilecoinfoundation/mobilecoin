@@ -1,5 +1,5 @@
 [package]
-name = "fog-view-protocol"
+name = "mc-fog-view-protocol"
 version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
@@ -7,6 +7,7 @@ readme = "README.md"
 license = "GPL-3.0"
 
 [dependencies]
+# mobilecoin
 mc-account-keys = { path = "../../../account-keys" }
 mc-common = { path = "../../../common", default-features = false }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
@@ -15,9 +16,11 @@ mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-serial = { path = "../../../util/serial", default-features = false }
 
-fog-kex-rng = { path = "../../kex_rng" }
-fog-types = { path = "../../fog_types" }
+# fog
+mc-fog-kex-rng = { path = "../../kex_rng" }
+mc-fog-types = { path = "../../types" }
 
+# third-party
 displaydoc = { version = "0.2", default-features = false }
 rand_core = { version = "0.6", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

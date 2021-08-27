@@ -1,12 +1,12 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use fog_kex_rng::KexRngPubkey;
-use fog_recovery_db_iface::{
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
+use mc_fog_kex_rng::KexRngPubkey;
+use mc_fog_recovery_db_iface::{
     ETxOutRecord, FogUserEvent, IngestInvocationId, IngressPublicKeyStatus, RecoveryDb, ReportData,
     ReportDb,
 };
-use fog_types::view::{RngRecord, TxOutSearchResultCode};
-use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
+use mc_fog_types::view::{RngRecord, TxOutSearchResultCode};
 use mc_transaction_core::{Block, BlockID, BLOCK_VERSION};
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};

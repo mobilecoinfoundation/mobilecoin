@@ -1,12 +1,12 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use fog_api::{ledger::OutputResultCode, ledger_grpc::FogMerkleProofApi};
-use fog_ledger_enclave::{GetOutputsResponse, LedgerEnclaveProxy, OutputContext, OutputResult};
-use fog_ledger_enclave_api::Error as EnclaveError;
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::{AuthMessage, Message};
 use mc_attest_enclave_api::ClientSession;
 use mc_common::logger::{log, Logger};
+use mc_fog_api::{ledger::OutputResultCode, ledger_grpc::FogMerkleProofApi};
+use mc_fog_ledger_enclave::{GetOutputsResponse, LedgerEnclaveProxy, OutputContext, OutputResult};
+use mc_fog_ledger_enclave_api::Error as EnclaveError;
 use mc_ledger_db::{self, Error as DbError, Ledger};
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use mc_util_grpc::{
@@ -204,13 +204,13 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogMerkleProofApi for MerkleProof
 #[cfg(test)]
 mod test {
     use super::*;
-    use fog_ledger_test_infra::{MockEnclave, MockLedger};
     use mc_account_keys::AccountKey;
     use mc_common::{
         logger::{test_with_logger, Logger},
         HashSet,
     };
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+    use mc_fog_ledger_test_infra::{MockEnclave, MockLedger};
     use mc_transaction_core::{
         encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
         membership_proofs::Range,
