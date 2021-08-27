@@ -1,4 +1,4 @@
-#[cfg(any(test, feature = "automock"))]
+#[cfg(feature = "automock")]
 use mockall::*;
 
 use crate::ingest_report::Error as IngestReportError;
