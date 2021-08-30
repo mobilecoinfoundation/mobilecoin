@@ -66,7 +66,7 @@ In order to use it, the following steps are necessary.
     LEDGER_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
     VIEW_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
     CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
-        cargo run -p fog-distribution --release -- \
+        cargo run -p mc-fog-distribution --release -- \
         --sample-data-dir . \
         --peer insecure-mc://localhost:3200/ \
         --peer insecure-mc://localhost:3201/ \
@@ -85,7 +85,7 @@ In order to use it, the following steps are necessary.
     LEDGER_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
     VIEW_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
     CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
-        cargo run -p fog-test-client -- \
+        cargo run -p mc-fog-test-client -- \
         --consensus insecure-mc://localhost:3200/ \
         --consensus insecure-mc://localhost:3201/ \
         --consensus insecure-mc://localhost:3202/ \

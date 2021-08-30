@@ -6,7 +6,7 @@ edition = "2018"
 license = "GPL-3.0"
 
 [[bin]]
-name = "fog_distribution"
+name = "fog-distribution"
 path = "src/main.rs"
 
 [dependencies]
