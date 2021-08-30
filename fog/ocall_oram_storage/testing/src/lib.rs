@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 // this pub-use ensures linkage
-pub use fog_ocall_oram_storage_untrusted::{
+pub use mc_fog_ocall_oram_storage_untrusted::{
     allocate_oram_storage, checkin_oram_storage, checkout_oram_storage, release_oram_storage,
 };
 // TODO: this test should ideally be generic over ORAMStorage trait, and part of
@@ -9,7 +9,7 @@ pub use fog_ocall_oram_storage_untrusted::{
 #[cfg(test)]
 mod testing {
     use aligned_cmov::{typenum, A64Bytes, A8Bytes, ArrayLength};
-    use fog_ocall_oram_storage_trusted::OcallORAMStorage;
+    use mc_fog_ocall_oram_storage_trusted::OcallORAMStorage;
     use mc_oblivious_traits::ORAMStorage;
     use mc_util_test_helper::run_with_several_seeds;
     use typenum::{U1024, U16};

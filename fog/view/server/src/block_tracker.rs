@@ -1,8 +1,8 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use fog_recovery_db_iface::IngressPublicKeyRecord;
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_fog_recovery_db_iface::IngressPublicKeyRecord;
 use std::collections::HashMap;
 
 /// A utility object that keeps track of which block number was processed for
@@ -187,8 +187,8 @@ impl BlockTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fog_recovery_db_iface::IngressPublicKeyStatus;
     use mc_common::logger::test_with_logger;
+    use mc_fog_recovery_db_iface::IngressPublicKeyStatus;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use std::{cmp::min, iter::FromIterator};

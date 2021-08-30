@@ -2,7 +2,7 @@
 
 //! State we want to keep between invocations of the ingest server.
 
-use fog_api::ingest_common::IngestStateFile;
+use mc_fog_api::ingest_common::IngestStateFile;
 use protobuf::Message;
 use std::{
     fs,

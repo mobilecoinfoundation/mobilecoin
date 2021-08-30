@@ -3,15 +3,6 @@
 //! Integration tests at the level of the fog ledger connection / fog ledger
 //! grpc API
 
-use fog_api::ledger::TxOutResultCode;
-use fog_ledger_connection::{
-    FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
-    KeyImageResultExtension, OutputResultExtension,
-};
-use fog_ledger_enclave::LedgerSgxEnclave;
-use fog_ledger_server::{LedgerServer, LedgerServerConfig};
-use fog_test_infra::get_enclave_path;
-use fog_uri::{ConnectionUri, FogLedgerUri};
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
 use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
@@ -22,6 +13,15 @@ use mc_common::{
     ResponderId,
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair, RistrettoPrivate};
+use mc_fog_api::ledger::TxOutResultCode;
+use mc_fog_ledger_connection::{
+    FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
+    KeyImageResultExtension, OutputResultExtension,
+};
+use mc_fog_ledger_enclave::LedgerSgxEnclave;
+use mc_fog_ledger_server::{LedgerServer, LedgerServerConfig};
+use mc_fog_test_infra::get_enclave_path;
+use mc_fog_uri::{ConnectionUri, FogLedgerUri};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
     ring_signature::KeyImage, tx::TxOut, Block, BlockContents, BlockSignature, BLOCK_VERSION,
@@ -115,7 +115,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
         };
 
         let enclave = LedgerSgxEnclave::new(
-            get_enclave_path(fog_ledger_enclave::ENCLAVE_FILE),
+            get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
             &config.client_responder_id,
             OMAP_CAPACITY,
             logger.clone(),
@@ -142,7 +142,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
 
         // Make ledger enclave client
         let mut mr_signer_verifier =
-            MrSignerVerifier::from(fog_ledger_enclave_measurement::sigstruct());
+            MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
         mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
 
         let mut verifier = Verifier::default();
@@ -289,7 +289,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
         };
 
         let enclave = LedgerSgxEnclave::new(
-            get_enclave_path(fog_ledger_enclave::ENCLAVE_FILE),
+            get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
             &config.client_responder_id,
             OMAP_CAPACITY,
             logger.clone(),
@@ -316,7 +316,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
 
         // Make ledger enclave client
         let mut mr_signer_verifier =
-            MrSignerVerifier::from(fog_ledger_enclave_measurement::sigstruct());
+            MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
         mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
 
         let mut verifier = Verifier::default();
@@ -475,7 +475,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         };
 
         let enclave = LedgerSgxEnclave::new(
-            get_enclave_path(fog_ledger_enclave::ENCLAVE_FILE),
+            get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
             &config.client_responder_id,
             OMAP_CAPACITY,
             logger.clone(),
@@ -628,7 +628,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         };
 
         let enclave = LedgerSgxEnclave::new(
-            get_enclave_path(fog_ledger_enclave::ENCLAVE_FILE),
+            get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
             &config.client_responder_id,
             OMAP_CAPACITY,
             logger.clone(),

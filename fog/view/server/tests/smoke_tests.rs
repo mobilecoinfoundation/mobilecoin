@@ -8,20 +8,6 @@
 // It exercises both the ingest enclave, and the fog-related crypto that makes
 // its way into the client.
 
-use fog_kex_rng::KexRngPubkey;
-use fog_recovery_db_iface::{RecoveryDb, ReportData, ReportDb};
-use fog_sql_recovery_db::{test_utils::SqlRecoveryDbTestContext, SqlRecoveryDb};
-use fog_test_infra::{db_tests::random_kex_rng_pubkey, get_enclave_path};
-use fog_types::{
-    common::BlockRange,
-    view::{TxOutSearchResult, TxOutSearchResultCode},
-    ETxOutRecord,
-};
-use fog_uri::{ConnectionUri, FogViewUri};
-use fog_view_connection::FogViewGrpcClient;
-use fog_view_enclave::SgxViewEnclave;
-use fog_view_protocol::FogViewConnection;
-use fog_view_server::{config::MobileAcctViewConfig as ViewConfig, server::ViewServer};
 use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_common::{
@@ -30,6 +16,20 @@ use mc_common::{
     ResponderId,
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
+use mc_fog_kex_rng::KexRngPubkey;
+use mc_fog_recovery_db_iface::{RecoveryDb, ReportData, ReportDb};
+use mc_fog_sql_recovery_db::{test_utils::SqlRecoveryDbTestContext, SqlRecoveryDb};
+use mc_fog_test_infra::{db_tests::random_kex_rng_pubkey, get_enclave_path};
+use mc_fog_types::{
+    common::BlockRange,
+    view::{TxOutSearchResult, TxOutSearchResultCode},
+    ETxOutRecord,
+};
+use mc_fog_uri::{ConnectionUri, FogViewUri};
+use mc_fog_view_connection::FogViewGrpcClient;
+use mc_fog_view_enclave::SgxViewEnclave;
+use mc_fog_view_protocol::FogViewConnection;
+use mc_fog_view_server::{config::MobileAcctViewConfig as ViewConfig, server::ViewServer};
 use mc_transaction_core::{Block, BlockID, BLOCK_VERSION};
 use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, SeedableRng};
@@ -72,7 +72,7 @@ fn get_test_environment(
         };
 
         let enclave = SgxViewEnclave::new(
-            get_enclave_path(fog_view_enclave::ENCLAVE_FILE),
+            get_enclave_path(mc_fog_view_enclave::ENCLAVE_FILE),
             config.client_responder_id.clone(),
             config.omap_capacity,
             logger.clone(),
@@ -96,7 +96,7 @@ fn get_test_environment(
     let client = {
         let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
         let mut mr_signer_verifier =
-            MrSignerVerifier::from(fog_view_enclave_measurement::sigstruct());
+            MrSignerVerifier::from(mc_fog_view_enclave_measurement::sigstruct());
         mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
 
         let mut verifier = Verifier::default();
@@ -509,11 +509,11 @@ fn test_overlapping_ingest_ranges(logger: Logger) {
     // see blocks 0-4 for now.
     let mut expected_records = Vec::new();
     for i in 0..5 {
-        let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+        let (block, records) = mc_fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
         db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
         expected_records.extend(records);
 
-        let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, i + 10, 5); // start block is 10
+        let (block, records) = mc_fog_test_infra::db_tests::random_block(&mut rng, i + 10, 5); // start block is 10
         db.add_block_data(&invoc_id2, &block, 0, &records).unwrap();
         expected_records.extend(records);
     }
@@ -552,7 +552,7 @@ fn test_overlapping_ingest_ranges(logger: Logger) {
     // Add blocks 5-19 to invoc_id1. This will allow us to query blocks 0-14, since
     // invoc_id2 only has blocks 10-14.
     for i in 5..20 {
-        let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+        let (block, records) = mc_fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
         db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
 
         expected_records.extend(records);
@@ -605,7 +605,7 @@ fn test_overlapping_ingest_ranges(logger: Logger) {
 
     // Add blocks 15-30 to invoc_id2, this should bring us to block 20.
     for i in 15..30 {
-        let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+        let (block, records) = mc_fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
         db.add_block_data(&invoc_id2, &block, 0, &records).unwrap();
         expected_records.extend(records);
     }
@@ -672,7 +672,7 @@ fn test_start_with_missing_range(logger: Logger) {
     // Add 5 blocks to invoc_id1.
     let mut expected_records = Vec::new();
     for i in 10..15 {
-        let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+        let (block, records) = mc_fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
         db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
         expected_records.extend(records);
     }
@@ -698,7 +698,7 @@ fn test_start_with_missing_range(logger: Logger) {
 
     // Adding the first 5 blocks that were the gap
     for i in 5..10 {
-        let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+        let (block, records) = mc_fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
         db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
         expected_records.extend(records);
     }
@@ -753,7 +753,7 @@ fn test_middle_missing_range_with_decommission(logger: Logger) {
     // Add 5 blocks to invoc_id1.
     let mut expected_records = Vec::new();
     for i in 0..5 {
-        let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+        let (block, records) = mc_fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
         db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
         expected_records.extend(records);
     }
@@ -793,7 +793,7 @@ fn test_middle_missing_range_with_decommission(logger: Logger) {
 
     // Add 5 blocks to invoc_id2.
     for i in 10..15 {
-        let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+        let (block, records) = mc_fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
         db.add_block_data(&invoc_id2, &block, 0, &records).unwrap();
         expected_records.extend(records);
     }

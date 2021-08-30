@@ -11,10 +11,6 @@
 //! Processing Txos gets slower as the map gets more full, the load test
 //! should be updated to measure this effect.
 
-use fog_load_testing::{get_bin_path, sig_child_handler};
-use fog_recovery_db_iface::RecoveryDb;
-use fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
-use fog_uri::{FogIngestUri, IngestPeerUri};
 use grpcio::{ChannelBuilder, Error as GrpcioError};
 use mc_account_keys::AccountKey;
 use mc_common::{
@@ -22,6 +18,10 @@ use mc_common::{
     ResponderId,
 };
 use mc_crypto_rand::McRng;
+use mc_fog_load_testing::{get_bin_path, sig_child_handler};
+use mc_fog_recovery_db_iface::RecoveryDb;
+use mc_fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
+use mc_fog_uri::{FogIngestUri, IngestPeerUri};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{Block, BlockContents};
 use mc_util_grpc::{admin_grpc::AdminApiClient, ConnectionUriGrpcioChannel, Empty};

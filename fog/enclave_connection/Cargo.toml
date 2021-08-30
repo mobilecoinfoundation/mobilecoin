@@ -1,5 +1,5 @@
 [package]
-name = "fog-enclave-connection"
+name = "mc-fog-enclave-connection"
 version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"

@@ -3,7 +3,7 @@
 use mc_common::logger::{log, Logger};
 use mc_util_uri::ConsensusClientUri;
 
-use fog_sample_paykit::AccountKey;
+use mc_fog_sample_paykit::AccountKey;
 
 use std::{path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;

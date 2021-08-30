@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use core::{cell::RefCell, convert::TryFrom};
-use fog_distribution::Config;
 use lazy_static::lazy_static;
 use mc_account_keys::AccountKey;
 use mc_attest_core::{Verifier, DEBUG_ENCLAVE};
@@ -14,6 +13,7 @@ use mc_connection::{
     RetryableBlockchainConnection, RetryableUserTxConnection, SyncConnection, ThickClient,
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
+use mc_fog_distribution::Config;
 use mc_fog_report_connection::{Error as ReportConnError, GrpcFogReportConnection};
 use mc_fog_report_validation::FogResolver;
 use mc_ledger_db::{Ledger, LedgerDB};
@@ -314,7 +314,7 @@ fn build_fog_resolver(
     .expect("Could not contact fog report server");
 
     let report_verifier = {
-        let mr_signer_verifier = fog_ingest_enclave_measurement::get_mr_signer_verifier(None);
+        let mr_signer_verifier = mc_fog_ingest_enclave_measurement::get_mr_signer_verifier(None);
         let mut verifier = Verifier::default();
         verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
         verifier

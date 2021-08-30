@@ -14,9 +14,9 @@
 //! didn't have the expected value). See fog-conformance-test documentation for
 //! more details.
 
-use fog_sample_paykit::ClientBuilder;
 use mc_account_keys::AccountKey;
 use mc_common::logger::{create_root_logger, log};
+use mc_fog_sample_paykit::ClientBuilder;
 use mc_util_uri::ConsensusClientUri;
 use serde_json::json;
 use std::{

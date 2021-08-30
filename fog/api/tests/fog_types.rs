@@ -1,12 +1,12 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-// Test that fog_types structs match the protos defined in .proto files,
+// Test that mc_fog_types structs match the protos defined in .proto files,
 // by testing that they round-trip through the proto-generated rust types
 
 use core::convert::TryFrom;
-use fog_api::kex_rng;
-use fog_kex_rng::{KexRngPubkey, StoredRng};
 use mc_crypto_keys::RistrettoPublic;
+use mc_fog_api::kex_rng;
+use mc_fog_kex_rng::{KexRngPubkey, StoredRng};
 use mc_fog_report_api_test_utils::{round_trip_message, round_trip_protobuf_object};
 use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
@@ -23,18 +23,22 @@ use mc_watcher_api::TimestampResultCode;
 #[test]
 fn fog_view_query_request_round_trip() {
     {
-        let test_val: fog_types::view::QueryRequest = Default::default();
-        round_trip_message::<fog_types::view::QueryRequest, fog_api::view::QueryRequest>(&test_val);
+        let test_val: mc_fog_types::view::QueryRequest = Default::default();
+        round_trip_message::<mc_fog_types::view::QueryRequest, mc_fog_api::view::QueryRequest>(
+            &test_val,
+        );
     }
 
     run_with_several_seeds(|mut rng| {
         let num_txos = rng.next_u32() as u8;
-        let test_val = fog_types::view::QueryRequest {
+        let test_val = mc_fog_types::view::QueryRequest {
             get_txos: (0..num_txos as usize)
                 .map(|_| <[u8; 32]>::sample(&mut rng).to_vec())
                 .collect(),
         };
-        round_trip_message::<fog_types::view::QueryRequest, fog_api::view::QueryRequest>(&test_val);
+        round_trip_message::<mc_fog_types::view::QueryRequest, mc_fog_api::view::QueryRequest>(
+            &test_val,
+        );
     });
 }
 
@@ -43,15 +47,16 @@ fn fog_view_query_request_round_trip() {
 #[test]
 fn fog_view_query_request_protobuf_round_trip() {
     run_with_several_seeds(|mut rng| {
-        let mut test_val = fog_api::view::QueryRequest::new();
+        let mut test_val = mc_fog_api::view::QueryRequest::new();
         for _ in 0..20 {
             test_val
                 .get_txos
                 .push(<[u8; 32]>::sample(&mut rng).to_vec());
         }
-        round_trip_protobuf_object::<fog_api::view::QueryRequest, fog_types::view::QueryRequest>(
-            &test_val,
-        );
+        round_trip_protobuf_object::<
+            mc_fog_api::view::QueryRequest,
+            mc_fog_types::view::QueryRequest,
+        >(&test_val);
     });
 }
 
@@ -60,18 +65,18 @@ fn fog_view_query_request_protobuf_round_trip() {
 #[test]
 fn fog_view_query_request_aad_round_trip() {
     {
-        let test_val: fog_types::view::QueryRequestAAD = Default::default();
-        round_trip_message::<fog_types::view::QueryRequestAAD, fog_api::view::QueryRequestAAD>(
+        let test_val: mc_fog_types::view::QueryRequestAAD = Default::default();
+        round_trip_message::<mc_fog_types::view::QueryRequestAAD, mc_fog_api::view::QueryRequestAAD>(
             &test_val,
         );
     }
 
     run_with_several_seeds(|mut rng| {
-        let test_val = fog_types::view::QueryRequestAAD {
+        let test_val = mc_fog_types::view::QueryRequestAAD {
             start_from_user_event_id: rng.next_u64() as i64,
             start_from_block_index: rng.next_u64(),
         };
-        round_trip_message::<fog_types::view::QueryRequestAAD, fog_api::view::QueryRequestAAD>(
+        round_trip_message::<mc_fog_types::view::QueryRequestAAD, mc_fog_api::view::QueryRequestAAD>(
             &test_val,
         );
     });
@@ -82,23 +87,23 @@ fn fog_view_query_request_aad_round_trip() {
 #[test]
 fn fog_view_query_request_aad_protobuf_round_trip() {
     run_with_several_seeds(|mut rng| {
-        let mut test_val = fog_api::view::QueryRequestAAD::new();
+        let mut test_val = mc_fog_api::view::QueryRequestAAD::new();
         test_val.start_from_user_event_id = rng.next_u64() as i64;
         test_val.start_from_block_index = rng.next_u64();
 
         round_trip_protobuf_object::<
-            fog_api::view::QueryRequestAAD,
-            fog_types::view::QueryRequestAAD,
+            mc_fog_api::view::QueryRequestAAD,
+            mc_fog_types::view::QueryRequestAAD,
         >(&test_val);
     });
 
     run_with_several_seeds(|mut rng| {
-        let mut test_val = fog_api::view::QueryRequestAAD::new();
+        let mut test_val = mc_fog_api::view::QueryRequestAAD::new();
         test_val.start_from_user_event_id = rng.next_u64() as i64;
         test_val.start_from_block_index = rng.next_u64();
         round_trip_protobuf_object::<
-            fog_api::view::QueryRequestAAD,
-            fog_types::view::QueryRequestAAD,
+            mc_fog_api::view::QueryRequestAAD,
+            mc_fog_types::view::QueryRequestAAD,
         >(&test_val);
     });
 }
@@ -108,81 +113,84 @@ fn fog_view_query_request_aad_protobuf_round_trip() {
 #[test]
 fn fog_view_query_response_round_trip() {
     {
-        let test_val: fog_types::view::QueryResponse = Default::default();
-        round_trip_message::<fog_types::view::QueryResponse, fog_api::view::QueryResponse>(
+        let test_val: mc_fog_types::view::QueryResponse = Default::default();
+        round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::view::QueryResponse>(
             &test_val,
         );
     }
 
     run_with_several_seeds(|mut rng| {
-        let test_val = fog_types::view::QueryResponse {
+        let test_val = mc_fog_types::view::QueryResponse {
             highest_processed_block_count: rng.next_u64(),
             highest_processed_block_signature_timestamp: rng.next_u64(),
             next_start_from_user_event_id: rng.next_u64() as i64,
             rng_records: (0..20)
-                .map(|_| fog_types::view::RngRecord::sample(&mut rng))
+                .map(|_| mc_fog_types::view::RngRecord::sample(&mut rng))
                 .collect(),
             decommissioned_ingest_invocations: (0..5)
-                .map(|_| fog_types::view::DecommissionedIngestInvocation::sample(&mut rng))
+                .map(|_| mc_fog_types::view::DecommissionedIngestInvocation::sample(&mut rng))
                 .collect(),
             missed_block_ranges: Default::default(),
             tx_out_search_results: (0..40)
-                .map(|_| fog_types::view::TxOutSearchResult::sample(&mut rng))
+                .map(|_| mc_fog_types::view::TxOutSearchResult::sample(&mut rng))
                 .collect(),
             last_known_block_count: rng.next_u32() as u64,
             last_known_block_cumulative_txo_count: rng.next_u32() as u64,
         };
-        round_trip_message::<fog_types::view::QueryResponse, fog_api::view::QueryResponse>(
+        round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::view::QueryResponse>(
             &test_val,
         );
     });
 
     run_with_several_seeds(|mut rng| {
-        let test_val = fog_types::view::QueryResponse {
+        let test_val = mc_fog_types::view::QueryResponse {
             highest_processed_block_count: rng.next_u64(),
             highest_processed_block_signature_timestamp: rng.next_u64(),
             next_start_from_user_event_id: rng.next_u64() as i64,
             rng_records: (0..20)
-                .map(|_| fog_types::view::RngRecord::sample(&mut rng))
+                .map(|_| mc_fog_types::view::RngRecord::sample(&mut rng))
                 .collect(),
             decommissioned_ingest_invocations: (0..5)
-                .map(|_| fog_types::view::DecommissionedIngestInvocation::sample(&mut rng))
+                .map(|_| mc_fog_types::view::DecommissionedIngestInvocation::sample(&mut rng))
                 .collect(),
             missed_block_ranges: Default::default(),
             tx_out_search_results: (0..40)
-                .map(|_| fog_types::view::TxOutSearchResult::sample(&mut rng))
+                .map(|_| mc_fog_types::view::TxOutSearchResult::sample(&mut rng))
                 .collect(),
             last_known_block_count: rng.next_u32() as u64,
             last_known_block_cumulative_txo_count: rng.next_u32() as u64,
         };
-        round_trip_message::<fog_types::view::QueryResponse, fog_api::view::QueryResponse>(
+        round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::view::QueryResponse>(
             &test_val,
         );
     });
 
     run_with_several_seeds(|mut rng| {
-        let test_val = fog_types::view::QueryResponse {
+        let test_val = mc_fog_types::view::QueryResponse {
             highest_processed_block_count: rng.next_u64(),
             highest_processed_block_signature_timestamp: rng.next_u64(),
             next_start_from_user_event_id: rng.next_u64() as i64,
             rng_records: (0..20)
-                .map(|_| fog_types::view::RngRecord::sample(&mut rng))
+                .map(|_| mc_fog_types::view::RngRecord::sample(&mut rng))
                 .collect(),
             decommissioned_ingest_invocations: (0..5)
-                .map(|_| fog_types::view::DecommissionedIngestInvocation::sample(&mut rng))
+                .map(|_| mc_fog_types::view::DecommissionedIngestInvocation::sample(&mut rng))
                 .collect(),
             missed_block_ranges: (0..10)
                 .map(|_| {
-                    fog_types::common::BlockRange::new(rng.next_u32() as u64, rng.next_u32() as u64)
+                    mc_fog_types::common::BlockRange::new(
+                        rng.next_u32() as u64,
+                        rng.next_u32() as u64,
+                    )
                 })
                 .collect(),
             tx_out_search_results: (0..40)
-                .map(|_| fog_types::view::TxOutSearchResult::sample(&mut rng))
+                .map(|_| mc_fog_types::view::TxOutSearchResult::sample(&mut rng))
                 .collect(),
             last_known_block_count: rng.next_u32() as u64,
             last_known_block_cumulative_txo_count: rng.next_u32() as u64,
         };
-        round_trip_message::<fog_types::view::QueryResponse, fog_api::view::QueryResponse>(
+        round_trip_message::<mc_fog_types::view::QueryResponse, mc_fog_api::view::QueryResponse>(
             &test_val,
         );
     });
@@ -193,20 +201,24 @@ fn fog_view_query_response_round_trip() {
 #[test]
 fn tx_out_record_round_trip() {
     {
-        let test_val: fog_types::view::TxOutRecord = Default::default();
-        round_trip_message::<fog_types::view::TxOutRecord, fog_api::view::TxOutRecord>(&test_val);
+        let test_val: mc_fog_types::view::TxOutRecord = Default::default();
+        round_trip_message::<mc_fog_types::view::TxOutRecord, mc_fog_api::view::TxOutRecord>(
+            &test_val,
+        );
     }
 
     run_with_several_seeds(|mut rng| {
-        let fog_txout = fog_types::view::FogTxOut::from(&TxOut::sample(&mut rng));
-        let meta = fog_types::view::FogTxOutMetadata {
+        let fog_txout = mc_fog_types::view::FogTxOut::from(&TxOut::sample(&mut rng));
+        let meta = mc_fog_types::view::FogTxOutMetadata {
             global_index: rng.next_u64(),
             block_index: rng.next_u64(),
             timestamp: rng.next_u64(),
         };
-        let test_val = fog_types::view::TxOutRecord::new(fog_txout, meta);
+        let test_val = mc_fog_types::view::TxOutRecord::new(fog_txout, meta);
 
-        round_trip_message::<fog_types::view::TxOutRecord, fog_api::view::TxOutRecord>(&test_val);
+        round_trip_message::<mc_fog_types::view::TxOutRecord, mc_fog_api::view::TxOutRecord>(
+            &test_val,
+        );
     });
 }
 
@@ -215,24 +227,24 @@ fn tx_out_record_round_trip() {
 #[test]
 fn get_output_response_round_trip() {
     {
-        let test_val = fog_types::ledger::GetOutputsResponse::default();
+        let test_val = mc_fog_types::ledger::GetOutputsResponse::default();
         round_trip_message::<
-            fog_types::ledger::GetOutputsResponse,
-            fog_api::ledger::GetOutputsResponse,
+            mc_fog_types::ledger::GetOutputsResponse,
+            mc_fog_api::ledger::GetOutputsResponse,
         >(&test_val);
     }
 
     run_with_several_seeds(|mut rng| {
-        let mut test_val = fog_types::ledger::GetOutputsResponse::default();
+        let mut test_val = mc_fog_types::ledger::GetOutputsResponse::default();
         for _ in 0..20 {
             test_val
                 .results
-                .push(fog_types::ledger::OutputResult::sample(&mut rng))
+                .push(mc_fog_types::ledger::OutputResult::sample(&mut rng))
         }
 
         round_trip_message::<
-            fog_types::ledger::GetOutputsResponse,
-            fog_api::ledger::GetOutputsResponse,
+            mc_fog_types::ledger::GetOutputsResponse,
+            mc_fog_api::ledger::GetOutputsResponse,
         >(&test_val);
     });
 }
@@ -242,26 +254,26 @@ fn get_output_response_round_trip() {
 #[test]
 fn check_key_images_response_round_trip() {
     {
-        let test_val = fog_types::ledger::CheckKeyImagesResponse::default();
+        let test_val = mc_fog_types::ledger::CheckKeyImagesResponse::default();
         round_trip_message::<
-            fog_types::ledger::CheckKeyImagesResponse,
-            fog_api::ledger::CheckKeyImagesResponse,
+            mc_fog_types::ledger::CheckKeyImagesResponse,
+            mc_fog_api::ledger::CheckKeyImagesResponse,
         >(&test_val);
     }
 
     run_with_several_seeds(|mut rng| {
-        let mut test_val = fog_types::ledger::CheckKeyImagesResponse::default();
+        let mut test_val = mc_fog_types::ledger::CheckKeyImagesResponse::default();
         test_val.num_blocks = rng.next_u32() as u64;
         test_val.global_txo_count = rng.next_u32() as u64;
         for _ in 0..20 {
             test_val
                 .results
-                .push(fog_types::ledger::KeyImageResult::sample(&mut rng))
+                .push(mc_fog_types::ledger::KeyImageResult::sample(&mut rng))
         }
 
         round_trip_message::<
-            fog_types::ledger::CheckKeyImagesResponse,
-            fog_api::ledger::CheckKeyImagesResponse,
+            mc_fog_types::ledger::CheckKeyImagesResponse,
+            mc_fog_api::ledger::CheckKeyImagesResponse,
         >(&test_val);
     });
 }
@@ -271,24 +283,24 @@ fn check_key_images_response_round_trip() {
 #[test]
 fn test_tx_out_search_result_enum_values() {
     assert_eq!(
-        fog_types::view::TxOutSearchResultCode::Found as u32,
-        fog_api::view::TxOutSearchResultCode::Found as u32
+        mc_fog_types::view::TxOutSearchResultCode::Found as u32,
+        mc_fog_api::view::TxOutSearchResultCode::Found as u32
     );
     assert_eq!(
-        fog_types::view::TxOutSearchResultCode::NotFound as u32,
-        fog_api::view::TxOutSearchResultCode::NotFound as u32
+        mc_fog_types::view::TxOutSearchResultCode::NotFound as u32,
+        mc_fog_api::view::TxOutSearchResultCode::NotFound as u32
     );
     assert_eq!(
-        fog_types::view::TxOutSearchResultCode::BadSearchKey as u32,
-        fog_api::view::TxOutSearchResultCode::BadSearchKey as u32
+        mc_fog_types::view::TxOutSearchResultCode::BadSearchKey as u32,
+        mc_fog_api::view::TxOutSearchResultCode::BadSearchKey as u32
     );
     assert_eq!(
-        fog_types::view::TxOutSearchResultCode::InternalError as u32,
-        fog_api::view::TxOutSearchResultCode::InternalError as u32
+        mc_fog_types::view::TxOutSearchResultCode::InternalError as u32,
+        mc_fog_api::view::TxOutSearchResultCode::InternalError as u32
     );
     assert_eq!(
-        fog_types::view::TxOutSearchResultCode::RateLimited as u32,
-        fog_api::view::TxOutSearchResultCode::RateLimited as u32
+        mc_fog_types::view::TxOutSearchResultCode::RateLimited as u32,
+        mc_fog_api::view::TxOutSearchResultCode::RateLimited as u32
     );
 }
 
@@ -296,16 +308,16 @@ fn test_tx_out_search_result_enum_values() {
 #[test]
 fn test_key_image_result_code_enum_values() {
     assert_eq!(
-        fog_types::ledger::KeyImageResultCode::Spent as u32,
-        fog_api::ledger::KeyImageResultCode::Spent as u32
+        mc_fog_types::ledger::KeyImageResultCode::Spent as u32,
+        mc_fog_api::ledger::KeyImageResultCode::Spent as u32
     );
     assert_eq!(
-        fog_types::ledger::KeyImageResultCode::NotSpent as u32,
-        fog_api::ledger::KeyImageResultCode::NotSpent as u32
+        mc_fog_types::ledger::KeyImageResultCode::NotSpent as u32,
+        mc_fog_api::ledger::KeyImageResultCode::NotSpent as u32
     );
     assert_eq!(
-        fog_types::ledger::KeyImageResultCode::KeyImageError as u32,
-        fog_api::ledger::KeyImageResultCode::KeyImageError as u32
+        mc_fog_types::ledger::KeyImageResultCode::KeyImageError as u32,
+        mc_fog_api::ledger::KeyImageResultCode::KeyImageError as u32
     );
 }
 
@@ -396,7 +408,7 @@ impl Sample for KexRngPubkey {
     }
 }
 
-impl Sample for fog_types::view::RngRecord {
+impl Sample for mc_fog_types::view::RngRecord {
     fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
         let mut result = Self::default();
         result.ingest_invocation_id = rng.next_u64() as i64;
@@ -406,7 +418,7 @@ impl Sample for fog_types::view::RngRecord {
     }
 }
 
-impl Sample for fog_types::view::DecommissionedIngestInvocation {
+impl Sample for mc_fog_types::view::DecommissionedIngestInvocation {
     fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
         let mut result = Self::default();
         result.ingest_invocation_id = rng.next_u64() as i64;
@@ -415,7 +427,7 @@ impl Sample for fog_types::view::DecommissionedIngestInvocation {
     }
 }
 
-impl Sample for fog_types::view::TxOutSearchResult {
+impl Sample for mc_fog_types::view::TxOutSearchResult {
     fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
         let mut result = Self::default();
         result.search_key = <[u8; 32]>::sample(rng).to_vec();
@@ -490,7 +502,7 @@ impl Sample for TxOutMembershipProof {
     }
 }
 
-impl Sample for fog_types::ledger::OutputResult {
+impl Sample for mc_fog_types::ledger::OutputResult {
     fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
         Self {
             index: rng.next_u64(),
@@ -501,14 +513,14 @@ impl Sample for fog_types::ledger::OutputResult {
     }
 }
 
-impl Sample for fog_types::ledger::KeyImageResult {
+impl Sample for mc_fog_types::ledger::KeyImageResult {
     fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
         Self {
             key_image: mc_transaction_core::ring_signature::KeyImage::sample(rng),
             spent_at: rng.next_u32() as u64,
             timestamp: 11,
             timestamp_result_code: TimestampResultCode::TimestampFound as u32,
-            key_image_result_code: fog_types::ledger::KeyImageResultCode::Spent as u32,
+            key_image_result_code: mc_fog_types::ledger::KeyImageResultCode::Spent as u32,
         }
     }
 }

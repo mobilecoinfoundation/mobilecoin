@@ -2,21 +2,21 @@
 
 //! Tests involving activation and retiry of a three node ingest cluster
 
-use fog_ingest_server::{
-    error::IngestServiceError,
-    server::{IngestServer, IngestServerConfig},
-    state_file::StateFile,
-};
-use fog_recovery_db_iface::{IngestInvocationId, RecoveryDb};
-use fog_sql_recovery_db::{test_utils::SqlRecoveryDbTestContext, SqlRecoveryDb};
-use fog_test_infra::get_enclave_path;
-use fog_uri::{FogIngestUri, IngestPeerUri};
 use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_common::{
     logger::{log, o, test_with_logger, Logger},
     ResponderId,
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair, RistrettoPublic};
+use mc_fog_ingest_server::{
+    error::IngestServiceError,
+    server::{IngestServer, IngestServerConfig},
+    state_file::StateFile,
+};
+use mc_fog_recovery_db_iface::{IngestInvocationId, RecoveryDb};
+use mc_fog_sql_recovery_db::{test_utils::SqlRecoveryDbTestContext, SqlRecoveryDb};
+use mc_fog_test_infra::get_enclave_path;
+use mc_fog_uri::{FogIngestUri, IngestPeerUri};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
@@ -87,7 +87,7 @@ fn make_node(
         peer_checkup_period: Some(Duration::from_secs(5)),
         watcher_timeout: Duration::from_secs(5),
         state_file: Some(StateFile::new(state_file)),
-        enclave_path: get_enclave_path(fog_ingest_enclave::ENCLAVE_FILE),
+        enclave_path: get_enclave_path(mc_fog_ingest_enclave::ENCLAVE_FILE),
         omap_capacity: OMAP_CAPACITY,
     };
 
@@ -410,8 +410,6 @@ fn three_node_cluster_activation_retiry(logger: Logger) {
 #[test_with_logger]
 fn three_node_cluster_fencing(logger: Logger) {
     let mut rng: Hc128Rng = SeedableRng::from_seed([0u8; 32]);
-
-    use fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
 
     let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
     let recovery_db = db_test_context.get_db_instance();

@@ -17,12 +17,12 @@ pub use crate::{
 
 use alloc::vec::Vec;
 use core::result::Result as StdResult;
-use fog_kex_rng::KexRngPubkey;
-use fog_types::{ingest::TxsForIngest, ETxOutRecord};
 use mc_attest_core::VerificationReport;
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
 use mc_common::ResponderId;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic, X25519Public};
+use mc_fog_kex_rng::KexRngPubkey;
+use mc_fog_types::{ingest::TxsForIngest, ETxOutRecord};
 use mc_sgx_report_cache_api::ReportableEnclave;
 
 /// A generic result type for enclave calls

@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use displaydoc::Display;
-use fog_view_enclave::Error as ViewEnclaveError;
+use mc_fog_view_enclave::Error as ViewEnclaveError;
 use mc_sgx_report_cache_untrusted::Error as ReportCacheError;
 
 #[derive(Debug, Display)]

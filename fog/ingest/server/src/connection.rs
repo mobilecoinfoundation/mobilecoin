@@ -7,13 +7,6 @@ use crate::{
     connection_traits::IngestConnection,
 };
 use core::fmt::{Display, Formatter, Result as FmtResult};
-use fog_api::{
-    ingest_common::{IngestSummary, SetPeersRequest},
-    ingest_peer::GetPrivateKeyRequest,
-    ingest_peer_grpc::AccountIngestPeerApiClient,
-};
-use fog_ingest_enclave_api::IngestEnclaveProxy;
-use fog_uri::IngestPeerUri;
 use grpcio::{ChannelBuilder, Environment};
 use mc_attest_api::{attest::Message, attest_grpc::AttestedApiClient};
 use mc_attest_core::VerificationReport;
@@ -24,6 +17,13 @@ use mc_common::{
 };
 use mc_connection::{AttestedConnection, Connection};
 use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_fog_api::{
+    ingest_common::{IngestSummary, SetPeersRequest},
+    ingest_peer::GetPrivateKeyRequest,
+    ingest_peer_grpc::AccountIngestPeerApiClient,
+};
+use mc_fog_ingest_enclave_api::IngestEnclaveProxy;
+use mc_fog_uri::IngestPeerUri;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConnectionUri;
 use std::{

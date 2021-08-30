@@ -1,10 +1,5 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use fog_ingest_enclave_api::{IngestEnclave, IngestEnclaveInitParams};
-use fog_ingest_enclave_impl::SgxIngestEnclave;
-use fog_kex_rng::{BufferedRng, NewFromKex, VersionedKexRng};
-use fog_types::{ingest::TxsForIngest, view::FogTxOut};
-use fog_view_protocol::{TxOutRecoveryError, UserPrivate};
 use mc_account_keys::AccountKey;
 use mc_common::{
     logger::{log, Logger},
@@ -12,6 +7,11 @@ use mc_common::{
 };
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use mc_fog_ingest_enclave_api::{IngestEnclave, IngestEnclaveInitParams};
+use mc_fog_ingest_enclave_impl::SgxIngestEnclave;
+use mc_fog_kex_rng::{BufferedRng, NewFromKex, VersionedKexRng};
+use mc_fog_types::{ingest::TxsForIngest, view::FogTxOut};
+use mc_fog_view_protocol::{TxOutRecoveryError, UserPrivate};
 use mc_oblivious_traits::HeapORAMStorageCreator;
 use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,

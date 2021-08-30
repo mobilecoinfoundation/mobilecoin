@@ -1,13 +1,13 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use core::str::FromStr;
-use fog_types::ETxOutRecord;
-use fog_view_enclave_api::{ViewEnclaveApi, ViewEnclaveInitParams};
-use fog_view_enclave_impl::ViewEnclave;
 use mc_common::{
     logger::{test_with_logger, Logger},
     ResponderId,
 };
+use mc_fog_types::ETxOutRecord;
+use mc_fog_view_enclave_api::{ViewEnclaveApi, ViewEnclaveInitParams};
+use mc_fog_view_enclave_impl::ViewEnclave;
 use mc_oblivious_traits::HeapORAMStorageCreator;
 
 #[test_with_logger]

@@ -1,5 +1,5 @@
 [package]
-name = "fog-test-client"
+name = "mc-fog-test-client"
 version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
@@ -19,7 +19,7 @@ mc-transaction-std = { path = "../../transaction/std" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-uri = { path = "../../util/uri" }
 
-fog-sample-paykit = { path = "../sample-paykit" }
+mc-fog-sample-paykit = { path = "../sample-paykit" }
 
 more-asserts = "0.2"
 structopt = "0.3"

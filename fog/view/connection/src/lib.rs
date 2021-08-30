@@ -1,15 +1,16 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use fog_api::view_grpc;
-use fog_enclave_connection::{EnclaveConnection, Error as EnclaveConnectionError};
-use fog_uri::FogViewUri;
-use fog_view_protocol::FogViewConnection;
 use grpcio::{ChannelBuilder, Environment};
 use mc_attest_core::Verifier;
 use mc_common::{
     logger::{log, o, Logger},
     trace_time,
 };
+use mc_fog_api::view_grpc;
+use mc_fog_enclave_connection::{EnclaveConnection, Error as EnclaveConnectionError};
+use mc_fog_types::view::{QueryRequest, QueryRequestAAD, QueryResponse};
+use mc_fog_uri::FogViewUri;
+use mc_fog_view_protocol::FogViewConnection;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use std::sync::Arc;
 
@@ -41,7 +42,7 @@ impl FogViewConnection for FogViewGrpcClient {
         start_from_user_event_id: i64,
         start_from_block_index: u64,
         search_keys: Vec<Vec<u8>>,
-    ) -> Result<fog_types::view::QueryResponse, Self::Error> {
+    ) -> Result<QueryResponse, Self::Error> {
         trace_time!(self.logger, "FogViewGrpcClient::request");
 
         log::trace!(
@@ -52,11 +53,11 @@ impl FogViewConnection for FogViewGrpcClient {
             search_keys.len()
         );
 
-        let req = fog_types::view::QueryRequest {
+        let req = QueryRequest {
             get_txos: search_keys,
         };
 
-        let req_aad = fog_types::view::QueryRequestAAD {
+        let req_aad = QueryRequestAAD {
             start_from_user_event_id,
             start_from_block_index,
         };

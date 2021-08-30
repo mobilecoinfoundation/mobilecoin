@@ -2,13 +2,13 @@
 
 use core::convert::TryFrom;
 
-use fog_api::{
-    ledger::{TxOutRequest, TxOutResponse, TxOutResult, TxOutResultCode},
-    ledger_grpc::FogUntrustedTxOutApi,
-};
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_fog_api::{
+    ledger::{TxOutRequest, TxOutResponse, TxOutResult, TxOutResultCode},
+    ledger_grpc::FogUntrustedTxOutApi,
+};
 use mc_ledger_db::{self, Error as DbError, Ledger};
 use mc_util_grpc::{rpc_internal_error, rpc_logger, send_result, Authenticator};
 use mc_util_metrics::SVC_COUNTERS;

@@ -12,12 +12,6 @@ use crate::{
     worker::{IngestWorker, PeerCheckupWorker, ReportCacheWorker},
     SeqDisplay,
 };
-use fog_api::{
-    ingest_common::{IngestControllerMode, IngestSummary},
-    ingest_grpc, ingest_peer_grpc,
-};
-use fog_recovery_db_iface::{RecoveryDb, ReportDb};
-use fog_uri::{FogIngestUri, IngestPeerUri};
 use futures::executor::block_on;
 use mc_attest_api::attest_grpc::create_attested_api;
 use mc_attest_core::ProviderId;
@@ -26,6 +20,12 @@ use mc_common::{
     logger::{log, Logger},
     ResponderId,
 };
+use mc_fog_api::{
+    ingest_common::{IngestControllerMode, IngestSummary},
+    ingest_grpc, ingest_peer_grpc,
+};
+use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
+use mc_fog_uri::{FogIngestUri, IngestPeerUri};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_util_grpc::ConnectionUriGrpcioServer;
 use mc_util_uri::ConnectionUri;

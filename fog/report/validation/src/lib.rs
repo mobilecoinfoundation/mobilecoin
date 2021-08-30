@@ -19,7 +19,7 @@ mod traits;
 /// Data structure for fog-ingest report validation
 pub mod ingest_report;
 
-#[cfg(any(test, feature = "automock"))]
+#[cfg(feature = "automock")]
 pub use crate::traits::MockFogPubkeyResolver;
 pub use crate::traits::{FogPubkeyError, FogPubkeyResolver, FullyValidatedFogPubkey};
 

@@ -12,10 +12,10 @@ use aligned_cmov::{
     A8Bytes, CMov,
 };
 use alloc::boxed::Box;
-use fog_types::view::{TxOutSearchResult, TxOutSearchResultCode};
-use fog_view_enclave_api::AddRecordsError;
 use mc_common::logger::Logger;
 use mc_crypto_rand::McRng;
+use mc_fog_types::view::{TxOutSearchResult, TxOutSearchResultCode};
+use mc_fog_view_enclave_api::AddRecordsError;
 use mc_oblivious_map::CuckooHashTableCreator;
 use mc_oblivious_ram::PathORAM4096Z4Creator;
 use mc_oblivious_traits::{

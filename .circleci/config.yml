@@ -333,7 +333,7 @@ commands:
     parameters:
       test_command:
         type: string
-        default: cargo test --workspace --exclude "fog-*" --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests -j 4
+        default: cargo test --workspace --exclude "mc-fog-*" --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests -j 4
     steps:
       - run:
           name: Run mobilecoin tests
@@ -365,7 +365,7 @@ commands:
       - run:
           name: Run fog tests
           command: |
-            cargo test --package "fog-*" -j 4 --frozen --no-fail-fast
+            cargo test --package "mc-fog-*" -j 4 --frozen --no-fail-fast
 
   # A job that runs the fog-conformance-tests, building things in debug mode
   # Note: If we bring back the run-parallel-tests stuff, we could make this use --skip-build,

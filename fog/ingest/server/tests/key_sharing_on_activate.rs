@@ -1,17 +1,17 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use fog_ingest_server::{
-    server::{IngestServer, IngestServerConfig},
-    state_file::StateFile,
-};
-use fog_sql_recovery_db::SqlRecoveryDb;
-use fog_test_infra::get_enclave_path;
-use fog_uri::{FogIngestUri, IngestPeerUri};
 use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_common::{
     logger::{o, test_with_logger, Logger},
     ResponderId,
 };
+use mc_fog_ingest_server::{
+    server::{IngestServer, IngestServerConfig},
+    state_file::StateFile,
+};
+use mc_fog_sql_recovery_db::{test_utils::SqlRecoveryDbTestContext, SqlRecoveryDb};
+use mc_fog_test_infra::get_enclave_path;
+use mc_fog_uri::{FogIngestUri, IngestPeerUri};
 use mc_ledger_db::LedgerDB;
 use mc_watcher::watcher_db::WatcherDB;
 use std::{collections::BTreeSet, str::FromStr, time::Duration};
@@ -62,7 +62,7 @@ fn make_node(
         peer_checkup_period: None,
         watcher_timeout: Duration::default(),
         state_file: Some(StateFile::new(state_file.clone())),
-        enclave_path: get_enclave_path(fog_ingest_enclave::ENCLAVE_FILE),
+        enclave_path: get_enclave_path(mc_fog_ingest_enclave::ENCLAVE_FILE),
         omap_capacity: OMAP_CAPACITY,
     };
 
@@ -87,8 +87,6 @@ fn make_node(
 
 #[test_with_logger]
 fn test_key_sharing_on_activate(logger: Logger) {
-    use fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
-
     let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
 
     let peer_indices = vec![0u16, 1u16, 2u16, 3u16, 4u16];

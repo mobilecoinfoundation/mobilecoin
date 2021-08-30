@@ -3,10 +3,10 @@
 //! The message types used by the ledger_enclave_api.
 use crate::UntrustedKeyImageQueryResponse;
 use alloc::vec::Vec;
-use fog_types::ledger::GetOutputsResponse;
 use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{ClientAuthRequest, ClientSession, EnclaveMessage};
 use mc_common::ResponderId;
+use mc_fog_types::ledger::GetOutputsResponse;
 use mc_transaction_core::ring_signature::KeyImage;
 use serde::{Deserialize, Serialize};
 

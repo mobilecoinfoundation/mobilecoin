@@ -3,17 +3,17 @@
 //! Client Builder
 
 use crate::client::Client;
-use fog_ledger_connection::{
-    FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
-};
-use fog_uri::{FogLedgerUri, FogViewUri};
-use fog_view_connection::FogViewGrpcClient;
 use grpcio::EnvBuilder;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_attest_core::{Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{log, o, Logger};
 use mc_connection::{HardcodedCredentialsProvider, ThickClient};
+use mc_fog_ledger_connection::{
+    FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
+};
 use mc_fog_report_connection::GrpcFogReportConnection;
+use mc_fog_uri::{FogLedgerUri, FogViewUri};
+use mc_fog_view_connection::FogViewGrpcClient;
 use mc_transaction_core::constants::RING_SIZE;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{str::FromStr, sync::Arc};
@@ -118,7 +118,8 @@ impl ClientBuilder {
         .expect("ThickClient::new returned an error");
 
         let fog_verifier = {
-            let mr_signer_verifier = fog_ingest_enclave_measurement::get_mr_signer_verifier(None);
+            let mr_signer_verifier =
+                mc_fog_ingest_enclave_measurement::get_mr_signer_verifier(None);
 
             let mut verifier = Verifier::default();
             verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
@@ -152,7 +153,7 @@ impl ClientBuilder {
     // and default port
     fn build_fog_view_conn(&self, grpc_env: Arc<grpcio::Environment>) -> FogViewGrpcClient {
         let verifier = {
-            let mr_signer_verifier = fog_view_enclave_measurement::get_mr_signer_verifier(None);
+            let mr_signer_verifier = mc_fog_view_enclave_measurement::get_mr_signer_verifier(None);
 
             let mut verifier = Verifier::default();
             verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
@@ -177,7 +178,8 @@ impl ClientBuilder {
         FogUntrustedLedgerGrpcClient,
     ) {
         let verifier = {
-            let mr_signer_verifier = fog_ledger_enclave_measurement::get_mr_signer_verifier(None);
+            let mr_signer_verifier =
+                mc_fog_ledger_enclave_measurement::get_mr_signer_verifier(None);
 
             let mut verifier = Verifier::default();
             verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);

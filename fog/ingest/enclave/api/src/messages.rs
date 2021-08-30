@@ -2,9 +2,9 @@
 
 //! The message types used by the ingest_enclave_api.
 
-use fog_types::ingest::TxsForIngest;
 use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
+use mc_fog_types::ingest::TxsForIngest;
 use serde::{Deserialize, Serialize};
 
 use crate::{ResponderId, SealedIngestKey};

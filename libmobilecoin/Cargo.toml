@@ -27,7 +27,6 @@ zeroize = "1.1"
 cmake = "= 0.1.45"
 
 # MobileCoin dependencies
-fog-kex-rng = { path = "../fog/kex_rng" }
 mc-account-keys = { path = "../account-keys" }
 mc-account-keys-slip10 = { path = "../account-keys/slip10" }
 mc-api = { path = "../api" }
@@ -39,6 +38,7 @@ mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-noise = { path = "../crypto/noise" }
 mc-crypto-rand = { path = "../crypto/rand", features = ["std"] }
 mc-crypto-sig = { path = "../crypto/sig" }
+mc-fog-kex-rng = { path = "../fog/kex_rng" }
 mc-fog-report-validation = { path = "../fog/report/validation" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-std = { path = "../transaction/std" }

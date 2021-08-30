@@ -22,22 +22,22 @@ use diesel::{
     prelude::*,
     r2d2::{ConnectionManager, Pool},
 };
-use fog_kex_rng::KexRngPubkey;
-use fog_recovery_db_iface::{
-    AddBlockDataStatus, FogUserEvent, IngestInvocationId, IngressPublicKeyRecord,
-    IngressPublicKeyStatus, RecoveryDb, ReportData, ReportDb,
-};
-use fog_types::{
-    common::BlockRange,
-    view::{TxOutSearchResult, TxOutSearchResultCode},
-    ETxOutRecord,
-};
 use mc_attest_core::VerificationReport;
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_fog_kex_rng::KexRngPubkey;
+use mc_fog_recovery_db_iface::{
+    AddBlockDataStatus, FogUserEvent, IngestInvocationId, IngressPublicKeyRecord,
+    IngressPublicKeyStatus, RecoveryDb, ReportData, ReportDb,
+};
+use mc_fog_types::{
+    common::BlockRange,
+    view::{TxOutSearchResult, TxOutSearchResultCode},
+    ETxOutRecord,
+};
 use mc_transaction_core::Block;
 use prost::Message;
 use proto_types::ProtoIngestedBlockData;
@@ -348,7 +348,7 @@ impl RecoveryDb for SqlRecoveryDb {
 
     fn get_ingestable_ranges(
         &self,
-    ) -> Result<Vec<fog_recovery_db_iface::IngestableRange>, Self::Error> {
+    ) -> Result<Vec<mc_fog_recovery_db_iface::IngestableRange>, Self::Error> {
         let conn = self.pool.get()?;
 
         // For each ingest invocation we are aware of get its id, start block, is
@@ -372,7 +372,7 @@ impl RecoveryDb for SqlRecoveryDb {
             .map(|row| {
                 let (ingest_invocation_id, start_block, decommissioned, last_ingested_block) = row;
 
-                fog_recovery_db_iface::IngestableRange {
+                mc_fog_recovery_db_iface::IngestableRange {
                     id: IngestInvocationId::from(ingest_invocation_id),
                     start_block: start_block as u64,
                     decommissioned,
@@ -405,7 +405,7 @@ impl RecoveryDb for SqlRecoveryDb {
         ingest_invocation_id: &IngestInvocationId,
         block: &Block,
         block_signature_timestamp: u64,
-        txs: &[fog_types::ETxOutRecord],
+        txs: &[mc_fog_types::ETxOutRecord],
     ) -> Result<AddBlockDataStatus, Self::Error> {
         let conn = self.pool.get()?;
 
@@ -637,14 +637,14 @@ impl RecoveryDb for SqlRecoveryDb {
                 user_event_id,
                 match user_event_type {
                     UserEventType::NewIngestInvocation => {
-                        FogUserEvent::NewRngRecord(fog_types::view::RngRecord {
+                        FogUserEvent::NewRngRecord(mc_fog_types::view::RngRecord {
                             ingest_invocation_id: rng_record_ingest_invocation_id.ok_or(
                                 Error::UserEventSchemaViolation(
                                     user_event_id,
                                     "missing rng_record_ingest_invocation_id",
                                 ),
                             )?,
-                            pubkey: fog_types::view::KexRngPubkey {
+                            pubkey: mc_fog_types::view::KexRngPubkey {
                                 public_key: rng_record_egress_public_key.ok_or(
                                     Error::UserEventSchemaViolation(
                                         user_event_id,
@@ -668,7 +668,7 @@ impl RecoveryDb for SqlRecoveryDb {
                     }
                     UserEventType::DecommissionIngestInvocation => {
                         FogUserEvent::DecommissionIngestInvocation(
-                            fog_types::view::DecommissionedIngestInvocation {
+                            mc_fog_types::view::DecommissionedIngestInvocation {
                                 ingest_invocation_id: decommission_ingest_invocation_id.ok_or(
                                     Error::UserEventSchemaViolation(
                                         user_event_id,
@@ -681,7 +681,7 @@ impl RecoveryDb for SqlRecoveryDb {
                         )
                     }
                     UserEventType::MissingBlocks => {
-                        FogUserEvent::MissingBlocks(fog_types::common::BlockRange {
+                        FogUserEvent::MissingBlocks(mc_fog_types::common::BlockRange {
                             start_block: missing_blocks_start.ok_or(
                                 Error::UserEventSchemaViolation(
                                     user_event_id,
@@ -1037,9 +1037,9 @@ impl ReportDb for SqlRecoveryDb {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fog_test_infra::db_tests::random_kex_rng_pubkey;
     use mc_common::logger::{log, test_with_logger, Logger};
     use mc_crypto_keys::RistrettoPublic;
+    use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use std::{collections::HashSet, iter::FromIterator};
@@ -1140,8 +1140,7 @@ mod tests {
 
         // Add an ingested block and see that last_ingested_block gets updated.
         for block_index in 123..130 {
-            let (block, records) =
-                fog_test_infra::db_tests::random_block(&mut rng, block_index, 10);
+            let (block, records) = random_block(&mut rng, block_index, 10);
 
             db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
 
@@ -1275,7 +1274,7 @@ mod tests {
         assert_eq!(
             events[0],
             FogUserEvent::DecommissionIngestInvocation(
-                fog_types::view::DecommissionedIngestInvocation {
+                mc_fog_types::view::DecommissionedIngestInvocation {
                     ingest_invocation_id: *ranges[1].id,
                     last_ingested_block: 0,
                 },
@@ -1323,7 +1322,7 @@ mod tests {
         assert_eq!(
             events[0],
             FogUserEvent::DecommissionIngestInvocation(
-                fog_types::view::DecommissionedIngestInvocation {
+                mc_fog_types::view::DecommissionedIngestInvocation {
                     ingest_invocation_id: *ranges[0].id,
                     last_ingested_block: 0,
                 },
@@ -1331,7 +1330,7 @@ mod tests {
         );
         assert_eq!(
             events[1],
-            FogUserEvent::NewRngRecord(fog_types::view::RngRecord {
+            FogUserEvent::NewRngRecord(mc_fog_types::view::RngRecord {
                 ingest_invocation_id: *invoc_id3,
                 pubkey: invoc_id3_kex_rng_pubkey,
                 start_block: 456,
@@ -1357,10 +1356,10 @@ mod tests {
             .new_ingest_invocation(None, &ingress_key, &random_kex_rng_pubkey(&mut rng), 15)
             .unwrap();
 
-        let (block1, mut records1) = fog_test_infra::db_tests::random_block(&mut rng, 20, 10);
+        let (block1, mut records1) = random_block(&mut rng, 20, 10);
         records1.sort_by_key(|rec| rec.search_key.clone()); // this makes comparing tests result predictable.
 
-        let (block2, mut records2) = fog_test_infra::db_tests::random_block(&mut rng, 21, 15);
+        let (block2, mut records2) = random_block(&mut rng, 21, 15);
         records2.sort_by_key(|rec| rec.search_key.clone()); // this makes comparing tests result predictable.
 
         // Get the last_active_at of the two ingest invocations so we could compare to
@@ -1566,32 +1565,32 @@ mod tests {
         assert_eq!(
             events,
             vec![
-                FogUserEvent::NewRngRecord(fog_types::view::RngRecord {
+                FogUserEvent::NewRngRecord(mc_fog_types::view::RngRecord {
                     ingest_invocation_id: *invoc_ids[0],
                     pubkey: kex_rng_pubkeys[0].clone(),
                     start_block: 123,
                 }),
-                FogUserEvent::NewRngRecord(fog_types::view::RngRecord {
+                FogUserEvent::NewRngRecord(mc_fog_types::view::RngRecord {
                     ingest_invocation_id: *invoc_ids[1],
                     pubkey: kex_rng_pubkeys[1].clone(),
                     start_block: 123,
                 }),
-                FogUserEvent::NewRngRecord(fog_types::view::RngRecord {
+                FogUserEvent::NewRngRecord(mc_fog_types::view::RngRecord {
                     ingest_invocation_id: *invoc_ids[2],
                     pubkey: kex_rng_pubkeys[2].clone(),
                     start_block: 123,
                 }),
                 FogUserEvent::DecommissionIngestInvocation(
-                    fog_types::view::DecommissionedIngestInvocation {
+                    mc_fog_types::view::DecommissionedIngestInvocation {
                         ingest_invocation_id: *invoc_ids[1],
                         last_ingested_block: 0
                     }
                 ),
-                FogUserEvent::MissingBlocks(fog_types::common::BlockRange {
+                FogUserEvent::MissingBlocks(mc_fog_types::common::BlockRange {
                     start_block: 10,
                     end_block: 20
                 }),
-                FogUserEvent::MissingBlocks(fog_types::common::BlockRange {
+                FogUserEvent::MissingBlocks(mc_fog_types::common::BlockRange {
                     start_block: 30,
                     end_block: 40
                 })
@@ -1637,12 +1636,10 @@ mod tests {
 
         let first_block_index = 10;
 
-        let (block1, records1) =
-            fog_test_infra::db_tests::random_block(&mut rng, first_block_index, 10);
+        let (block1, records1) = random_block(&mut rng, first_block_index, 10);
         db.add_block_data(&invoc_id, &block1, 0, &records1).unwrap();
 
-        let (block2, records2) =
-            fog_test_infra::db_tests::random_block(&mut rng, first_block_index + 1, 10);
+        let (block2, records2) = random_block(&mut rng, first_block_index + 1, 10);
         db.add_block_data(&invoc_id, &block2, 0, &records2).unwrap();
 
         // Search for non-existent keys, all should be NotFound
@@ -1822,11 +1819,11 @@ mod tests {
             .new_ingest_invocation(None, &ingress_key, &random_kex_rng_pubkey(&mut rng), 123)
             .unwrap();
 
-        let (block1, records1) = fog_test_infra::db_tests::random_block(&mut rng, 122, 10);
+        let (block1, records1) = random_block(&mut rng, 122, 10);
         db.add_block_data(&invoc_id1, &block1, 0, &records1)
             .unwrap();
 
-        let (block2, records2) = fog_test_infra::db_tests::random_block(&mut rng, 123, 10);
+        let (block2, records2) = random_block(&mut rng, 123, 10);
         db.add_block_data(&invoc_id2, &block2, 0, &records2)
             .unwrap();
 
@@ -1874,22 +1871,22 @@ mod tests {
 
         assert_eq!(db.get_highest_known_block_index().unwrap(), None);
 
-        let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, 123, 10);
+        let (block, records) = random_block(&mut rng, 123, 10);
         db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
 
         assert_eq!(db.get_highest_known_block_index().unwrap(), Some(123));
 
-        let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, 122, 10);
+        let (block, records) = random_block(&mut rng, 122, 10);
         db.add_block_data(&invoc_id2, &block, 0, &records).unwrap();
 
         assert_eq!(db.get_highest_known_block_index().unwrap(), Some(123));
 
-        let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, 125, 10);
+        let (block, records) = random_block(&mut rng, 125, 10);
         db.add_block_data(&invoc_id2, &block, 0, &records).unwrap();
 
         assert_eq!(db.get_highest_known_block_index().unwrap(), Some(125));
 
-        let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, 120, 10);
+        let (block, records) = random_block(&mut rng, 120, 10);
         db.add_block_data(&invoc_id2, &block, 0, &records).unwrap();
 
         assert_eq!(db.get_highest_known_block_index().unwrap(), Some(125));
@@ -2084,7 +2081,7 @@ mod tests {
             .unwrap();
 
         for block_id in 123..=130 {
-            let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, block_id, 10);
+            let (block, records) = random_block(&mut rng, block_id, 10);
             db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
 
             assert_eq!(
@@ -2117,7 +2114,7 @@ mod tests {
         }
 
         // Publishing an old block should not afftect last_scanned_block.
-        let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, 50, 10);
+        let (block, records) = random_block(&mut rng, 50, 10);
         db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
 
         assert_eq!(
@@ -2225,7 +2222,7 @@ mod tests {
                 )
                 .unwrap();
 
-            let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, block_id, 10);
+            let (block, records) = random_block(&mut rng, block_id, 10);
             db.add_block_data(&invoc_id, &block, 0, &records).unwrap();
 
             assert_eq!(

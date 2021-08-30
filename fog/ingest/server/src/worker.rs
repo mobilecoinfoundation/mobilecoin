@@ -1,9 +1,9 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use crate::{controller::IngestController, error::IngestServiceError};
-use fog_recovery_db_iface::{RecoveryDb, ReportDb};
 use mc_attest_net::RaClient;
 use mc_common::logger::{log, Logger};
+use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_sgx_report_cache_untrusted::REPORT_REFRESH_INTERVAL;
 use mc_transaction_core::BlockIndex;

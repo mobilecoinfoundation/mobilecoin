@@ -4,13 +4,15 @@ use crate::user_private::UserPrivate;
 use alloc::vec::Vec;
 use core::convert::TryFrom;
 use displaydoc::Display;
-use fog_kex_rng::{BufferedRng, NewFromKex, VersionedKexRng};
-use fog_types::{
+use mc_common::HashMap;
+use mc_crypto_box::Error as CryptoBoxError;
+use mc_crypto_keys::KeyError;
+use mc_fog_kex_rng::{BufferedRng, Error as KexRngError, NewFromKex, VersionedKexRng};
+use mc_fog_types::{
     view::{RngRecord, TxOutRecord, TxOutSearchResult, TxOutSearchResultCode},
     BlockCount,
 };
-use mc_common::HashMap;
-use mc_crypto_box::Error as CryptoBoxError;
+use mc_util_serial::DecodeError;
 
 /// A set of kex_rngs. Together with a view node endpoint, this can be used to
 /// find the user's transactions.
@@ -139,7 +141,7 @@ pub enum TxOutRecoveryError {
     /// Invalid nonce
     InvalidNonce,
     /// Key error: {0}
-    InvalidKey(mc_crypto_keys::KeyError),
+    InvalidKey(KeyError),
     /// Fog returned an error when searching for tx: {0}, search_key = {1:?}
     TxOutSearchFailure(TxOutSearchResultCode, Vec<u8>),
     /**
@@ -150,41 +152,41 @@ pub enum TxOutRecoveryError {
     /// Search key was not found amongst our rngs: {0:?}
     SearchKeyNotFound(Vec<u8>),
     /// Error initializing KexRng: {0}
-    KexRng(fog_kex_rng::Error),
+    KexRng(KexRngError),
 }
 
-impl From<mc_crypto_keys::KeyError> for TxOutRecoveryError {
-    fn from(src: mc_crypto_keys::KeyError) -> Self {
+impl From<KeyError> for TxOutRecoveryError {
+    fn from(src: KeyError) -> Self {
         Self::InvalidKey(src)
     }
 }
 
-impl From<fog_kex_rng::Error> for TxOutRecoveryError {
-    fn from(err: fog_kex_rng::Error) -> Self {
+impl From<KexRngError> for TxOutRecoveryError {
+    fn from(err: KexRngError) -> Self {
         Self::KexRng(err)
     }
 }
 
-impl From<mc_util_serial::DecodeError> for TxOutRecoveryError {
-    fn from(_: mc_util_serial::DecodeError) -> Self {
+impl From<DecodeError> for TxOutRecoveryError {
+    fn from(_: DecodeError) -> Self {
         Self::ProstDeserializationFailed
     }
 }
 
 #[derive(Debug)]
 pub enum RngSetError {
-    Decode(mc_util_serial::DecodeError),
-    KexRng(fog_kex_rng::Error),
+    Decode(DecodeError),
+    KexRng(KexRngError),
 }
 
-impl From<mc_util_serial::DecodeError> for RngSetError {
-    fn from(err: mc_util_serial::DecodeError) -> Self {
+impl From<DecodeError> for RngSetError {
+    fn from(err: DecodeError) -> Self {
         Self::Decode(err)
     }
 }
 
-impl From<fog_kex_rng::Error> for RngSetError {
-    fn from(err: fog_kex_rng::Error) -> Self {
+impl From<KexRngError> for RngSetError {
+    fn from(err: KexRngError) -> Self {
         Self::KexRng(err)
     }
 }
