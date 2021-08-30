@@ -5,9 +5,9 @@ use aligned_cmov::{
     Aligned, GenericArray,
 };
 use alloc::boxed::Box;
-use fog_kex_rng::{KexRng20201124, KexRngCore};
 use mc_common::logger::Logger;
 use mc_crypto_rand::McRng;
+use mc_fog_kex_rng::{KexRng20201124, KexRngCore};
 use mc_oblivious_map::CuckooHashTableCreator;
 use mc_oblivious_ram::PathORAM4096Z4Creator;
 use mc_oblivious_traits::{

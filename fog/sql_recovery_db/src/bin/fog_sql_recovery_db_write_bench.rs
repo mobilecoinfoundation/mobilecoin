@@ -1,9 +1,10 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use fog_recovery_db_iface::RecoveryDb;
-use fog_sql_recovery_db::SqlRecoveryDb;
 use mc_common::logger::create_null_logger;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
+use mc_fog_recovery_db_iface::RecoveryDb;
+use mc_fog_sql_recovery_db::SqlRecoveryDb;
+use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
 use mc_util_from_random::FromRandom;
 use rand::thread_rng;
 use rand_core::RngCore;
@@ -22,7 +23,7 @@ fn main() {
     db.new_ingress_key(&ingress_key, 0).unwrap();
 
     // e_tx_out_records tests
-    let egress_key = fog_test_infra::db_tests::random_kex_rng_pubkey(&mut rng);
+    let egress_key = random_kex_rng_pubkey(&mut rng);
     let invoc_id = db
         .new_ingest_invocation(None, &ingress_key, &egress_key, 0)
         .unwrap();
@@ -36,8 +37,7 @@ fn main() {
         }
 
         let n_txs = 1 + (rng.next_u32() % 500);
-        let (block, records) =
-            fog_test_infra::db_tests::random_block(&mut rng, block_index, n_txs as usize);
+        let (block, records) = random_block(&mut rng, block_index, n_txs as usize);
 
         let start = Instant::now();
         db.add_block_data(&invoc_id, &block, 0, &records).unwrap();

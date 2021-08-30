@@ -3,12 +3,12 @@
 //! Traits and objects specific to peering connections.
 
 use crate::connection_error::Result;
-use fog_api::ingest_common::IngestSummary;
-use fog_uri::IngestPeerUri;
 use mc_attest_api::attest::Message;
 use mc_common::ResponderId;
 use mc_connection::Connection;
 use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_fog_api::ingest_common::IngestSummary;
+use mc_fog_uri::IngestPeerUri;
 use std::collections::BTreeSet;
 
 /// A trait which describes a connection from one ingest node to another.

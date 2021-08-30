@@ -1,5 +1,5 @@
 [package]
-name = "fog-ingest-enclave-measurement"
+name = "mc-fog-ingest-enclave-measurement"
 version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"

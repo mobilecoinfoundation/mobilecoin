@@ -10,10 +10,10 @@ use aligned_cmov::{
 };
 use alloc::boxed::Box;
 use core::convert::TryInto;
-use fog_ledger_enclave_api::AddRecordsError;
-use fog_types::ledger::{KeyImageResult, KeyImageResultCode};
 use mc_common::logger::{log, Logger};
 use mc_crypto_rand::McRng;
+use mc_fog_ledger_enclave_api::AddRecordsError;
+use mc_fog_types::ledger::{KeyImageResult, KeyImageResultCode};
 use mc_oblivious_map::CuckooHashTableCreator;
 use mc_oblivious_ram::PathORAM4096Z4Creator;
 use mc_oblivious_traits::{

@@ -3,18 +3,19 @@
 // This integration-level test checks that a backup ingest node will
 // use the private key from its primary.
 
-use fog_api::ingest_grpc;
-use fog_ingest_server::{
-    error::IngestServiceError,
-    server::{IngestServer, IngestServerConfig},
-};
-use fog_recovery_db_iface::{RecoveryDb, ReportDb};
-use fog_test_infra::get_enclave_path;
-use fog_uri::{FogIngestUri, IngestPeerUri};
 use grpcio::ChannelBuilder;
 use maplit::btreeset;
 use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_common::logger::{log, test_with_logger, Logger};
+use mc_fog_api::ingest_grpc;
+use mc_fog_ingest_server::{
+    error::IngestServiceError,
+    server::{IngestServer, IngestServerConfig},
+};
+use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
+use mc_fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
+use mc_fog_test_infra::get_enclave_path;
+use mc_fog_uri::{FogIngestUri, IngestPeerUri};
 use mc_ledger_db::LedgerDB;
 use mc_util_uri::ConnectionUri;
 use mc_watcher::watcher_db::WatcherDB;
@@ -68,7 +69,7 @@ where
                     peer_checkup_period: None,
                     watcher_timeout: Duration::default(),
                     state_file: None,
-                    enclave_path: get_enclave_path(fog_ingest_enclave::ENCLAVE_FILE),
+                    enclave_path: get_enclave_path(mc_fog_ingest_enclave::ENCLAVE_FILE),
                     omap_capacity: OMAP_CAPACITY,
                 };
 
@@ -125,7 +126,7 @@ where
                     peer_checkup_period: Some(std::time::Duration::from_millis(10000)),
                     watcher_timeout: Duration::default(),
                     state_file: None,
-                    enclave_path: get_enclave_path(fog_ingest_enclave::ENCLAVE_FILE),
+                    enclave_path: get_enclave_path(mc_fog_ingest_enclave::ENCLAVE_FILE),
                     omap_capacity: OMAP_CAPACITY,
                 };
 
@@ -266,8 +267,6 @@ where
 /// Run the ingest validation test using sql recovery db
 #[test_with_logger]
 fn test_ingest_pool_sql(logger: Logger) {
-    use fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
-
     let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
 
     let mut trial_count = 0;

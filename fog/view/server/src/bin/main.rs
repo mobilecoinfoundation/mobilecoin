@@ -1,12 +1,12 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! MobileCoin Fog View target
-use fog_sql_recovery_db::SqlRecoveryDb;
-use fog_view_enclave::{SgxViewEnclave, ENCLAVE_FILE};
-use fog_view_server::{config::MobileAcctViewConfig, server::ViewServer};
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_attest_net::{Client, RaClient};
 use mc_common::{logger::log, time::SystemTimeProvider};
+use mc_fog_sql_recovery_db::SqlRecoveryDb;
+use mc_fog_view_enclave::{SgxViewEnclave, ENCLAVE_FILE};
+use mc_fog_view_server::{config::MobileAcctViewConfig, server::ViewServer};
 use mc_util_grpc::AdminServer;
 use std::{env, sync::Arc};
 use structopt::StructOpt;

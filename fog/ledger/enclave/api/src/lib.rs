@@ -15,12 +15,12 @@ pub use crate::{
 };
 use alloc::vec::Vec;
 use core::result::Result as StdResult;
-pub use fog_types::ledger::{
-    CheckKeyImagesResponse, GetOutputsResponse, KeyImageResult, KeyImageResultCode, OutputResult,
-};
 use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
 use mc_common::ResponderId;
 use mc_crypto_keys::X25519Public;
+pub use mc_fog_types::ledger::{
+    CheckKeyImagesResponse, GetOutputsResponse, KeyImageResult, KeyImageResultCode, OutputResult,
+};
 use mc_sgx_report_cache_api::ReportableEnclave;
 use serde::{Deserialize, Serialize};
 

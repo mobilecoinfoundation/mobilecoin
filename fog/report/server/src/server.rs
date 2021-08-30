@@ -3,11 +3,11 @@
 //! Server for ingest reports.
 
 use crate::{config::Materials, service::Service};
-use fog_api::report_grpc;
-use fog_recovery_db_iface::ReportDb;
 use futures::executor::block_on;
 use grpcio::{Server as GrpcioServer, ServerBuilder};
 use mc_common::logger::{log, Logger};
+use mc_fog_api::report_grpc;
+use mc_fog_recovery_db_iface::ReportDb;
 use mc_util_grpc::{ConnectionUriGrpcioServer, HealthService};
 use mc_util_uri::{ConnectionUri, FogUri};
 use std::sync::Arc;

@@ -3,10 +3,10 @@
 //! A Peer-to-Peer networking error.
 
 use displaydoc::Display;
-use fog_ingest_enclave_api::Error as EnclaveError;
 use grpcio::Error as GrpcError;
 use mc_connection::AttestationError;
 use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_fog_ingest_enclave_api::Error as EnclaveError;
 use mc_util_serial::{
     decode::Error as RmpDecodeError, encode::Error as RmpEncodeError,
     DecodeError as ProstDecodeError, EncodeError as ProstEncodeError,

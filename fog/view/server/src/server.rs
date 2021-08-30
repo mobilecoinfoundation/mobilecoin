@@ -8,11 +8,6 @@ use crate::{
     block_tracker::BlockTracker, config::MobileAcctViewConfig, counters, db_fetcher::DbFetcher,
     fog_view_service::FogViewService,
 };
-use fog_api::view_grpc;
-use fog_recovery_db_iface::RecoveryDb;
-use fog_types::ETxOutRecord;
-use fog_uri::ConnectionUri;
-use fog_view_enclave::ViewEnclaveProxy;
 use futures::executor::block_on;
 use mc_attest_net::RaClient;
 use mc_common::{
@@ -21,6 +16,11 @@ use mc_common::{
     trace_time,
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_fog_api::view_grpc;
+use mc_fog_recovery_db_iface::RecoveryDb;
+use mc_fog_types::ETxOutRecord;
+use mc_fog_uri::ConnectionUri;
+use mc_fog_view_enclave::ViewEnclaveProxy;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
     AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, TokenAuthenticator,

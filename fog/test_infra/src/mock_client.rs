@@ -1,7 +1,8 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use fog_recovery_db_iface::{FogUserEvent, RecoveryDb};
-use fog_view_protocol::FogViewConnection;
+use mc_fog_recovery_db_iface::{FogUserEvent, RecoveryDb};
+use mc_fog_types::view::QueryResponse;
+use mc_fog_view_protocol::FogViewConnection;
 
 // A structure that wraps recovery db reader and implements FogViewConnection,
 // bypassing view node grpc and view enclave entirely.
@@ -26,7 +27,7 @@ impl<R: RecoveryDb> FogViewConnection for PassThroughViewClient<R> {
         start_from_user_event_id: i64,
         start_from_block_index: u64,
         search_keys: Vec<Vec<u8>>,
-    ) -> Result<fog_types::view::QueryResponse, Self::Error> {
+    ) -> Result<QueryResponse, Self::Error> {
         let (user_events, next_start_from_user_event_id) =
             self.db.search_user_events(start_from_user_event_id)?;
 
@@ -61,7 +62,7 @@ impl<R: RecoveryDb> FogViewConnection for PassThroughViewClient<R> {
             }
         }
 
-        let mut resp = fog_types::view::QueryResponse {
+        let mut resp = QueryResponse {
             highest_processed_block_count: highest_known_block_count,
             highest_processed_block_signature_timestamp: 0,
             next_start_from_user_event_id,

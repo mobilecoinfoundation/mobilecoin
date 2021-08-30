@@ -1,4 +1,4 @@
-#[cfg(any(test, feature = "automock"))]
+#[cfg(feature = "automock")]
 use mockall::*;
 
 use crate::ingest_report::Error as IngestReportError;
@@ -11,7 +11,7 @@ use mc_util_uri::UriParseError;
 
 /// Class that can resolve a public address to a fully-validated fog public key
 /// structure, including the pubkey expiry data from the report server.
-#[cfg_attr(any(test, feature = "automock"), automock)]
+#[cfg_attr(feature = "automock", automock)]
 pub trait FogPubkeyResolver {
     /// Fetch and validate a fog public key, given a recipient's public address
     fn get_fog_pubkey(

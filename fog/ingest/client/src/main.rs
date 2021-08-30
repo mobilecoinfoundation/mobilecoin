@@ -2,14 +2,14 @@
 
 //! Fog Ingest client
 
-use fog_api::ingest_common::IngestSummary;
-use fog_ingest_client::{
+use mc_common::logger::{create_root_logger, log, Logger};
+use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_fog_api::ingest_common::IngestSummary;
+use mc_fog_ingest_client::{
     config::{IngestConfig, IngestConfigCommand},
     ClientResult, FogIngestGrpcClient,
 };
-use fog_uri::FogIngestUri;
-use mc_common::logger::{create_root_logger, log, Logger};
-use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_fog_uri::FogIngestUri;
 use serde_json::json;
 use std::{str::FromStr, sync::Arc};
 use structopt::StructOpt;

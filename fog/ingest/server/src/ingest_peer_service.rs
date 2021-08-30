@@ -3,18 +3,18 @@
 //! Implement the ingest grpc API
 
 use crate::{controller::IngestController, error::IngestServiceError};
-use fog_api::{
-    ingest_common::{IngestSummary, SetPeersRequest},
-    ingest_peer::*,
-    Empty,
-};
-use fog_recovery_db_iface::{RecoveryDb, ReportDb};
-use fog_uri::IngestPeerUri;
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
 use mc_attest_enclave_api::PeerSession;
 use mc_attest_net::RaClient;
 use mc_common::logger::{log, Logger};
+use mc_fog_api::{
+    ingest_common::{IngestSummary, SetPeersRequest},
+    ingest_peer::*,
+    Empty,
+};
+use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
+use mc_fog_uri::IngestPeerUri;
 use mc_util_grpc::{rpc_enclave_err, rpc_invalid_arg_error, rpc_logger, send_result};
 use mc_util_metrics::SVC_COUNTERS;
 use std::{str::FromStr, sync::Arc};
@@ -106,7 +106,7 @@ where
 impl<
         R: RaClient + Send + Sync + 'static,
         DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
-    > fog_api::ingest_peer_grpc::AccountIngestPeerApi for IngestPeerService<R, DB>
+    > mc_fog_api::ingest_peer_grpc::AccountIngestPeerApi for IngestPeerService<R, DB>
 where
     IngestServiceError: From<<DB as RecoveryDb>::Error>,
 {

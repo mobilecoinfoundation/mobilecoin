@@ -4,7 +4,10 @@
 //! paykit. This can be used by the fog conformance tests to run tests against
 //! the sample paykit.
 
-use fog_sample_paykit::{
+use grpcio::{RpcContext, RpcStatus, UnarySink};
+use mc_account_keys::{AccountKey, RootEntropy, RootIdentity};
+use mc_common::logger::{create_root_logger, log, Logger};
+use mc_fog_sample_paykit::{
     empty::Empty,
     remote_wallet::{
         BalanceCheckResponse, DebugRequest, DebugResponse, FollowupBalanceCheckRequest,
@@ -13,9 +16,6 @@ use fog_sample_paykit::{
     remote_wallet_grpc::{create_remote_wallet_api, RemoteWalletApi},
     Client, ClientBuilder,
 };
-use grpcio::{RpcContext, RpcStatus, UnarySink};
-use mc_account_keys::{AccountKey, RootEntropy, RootIdentity};
-use mc_common::logger::{create_root_logger, log, Logger};
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, send_result, ConnectionUriGrpcioServer,
 };

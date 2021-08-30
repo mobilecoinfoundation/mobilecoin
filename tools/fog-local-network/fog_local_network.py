@@ -25,7 +25,7 @@ class FogNetwork(Network):
                 f'INGEST_ENCLAVE_PRIVKEY="{enclave_pem}"',
                 f'LEDGER_ENCLAVE_PRIVKEY="{enclave_pem}"',
                 f'VIEW_ENCLAVE_PRIVKEY="{enclave_pem}"',
-                f'cargo build -p fog-ingest-server -p fog-ingest-client -p fog-view-server -p fog-report-server -p fog-ledger-server -p fog-distribution -p fog-test-client -p fog-ingest-client -p fog-sql-recovery-db -p fog-test-client {CARGO_FLAGS}',
+                f'cargo build -p mc-fog-ingest-server -p mc-fog-ingest-client -p mc-fog-view-server -p mc-fog-report-server -p mc-fog-ledger-server -p mc-fog-distribution -p mc-fog-test-client -p mc-fog-ingest-client -p mc-fog-sql-recovery-db -p mc-fog-test-client {CARGO_FLAGS}',
             ]),
             shell=True,
             check=True,

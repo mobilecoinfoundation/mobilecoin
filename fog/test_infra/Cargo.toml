@@ -1,13 +1,9 @@
 [package]
-name = "fog-test-infra"
+name = "mc-fog-test-infra"
 version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
 license = "GPL-3.0"
-
-[lib]
-name = "fog_test_infra"
-path = "src/lib.rs"
 
 # This is used by fog-conformance-testing
 [[bin]]
@@ -35,11 +31,11 @@ mc-watcher = { path = "../../watcher" }
 mc-watcher-api = { path = "../../watcher/api" }
 
 # from fog
-fog-ingest-client = { path = "../ingest/client" }
-fog-kex-rng = { path = "../kex_rng" }
-fog-recovery-db-iface = { path = "../recovery_db_iface" }
-fog-types = { path = "../fog_types" }
-fog-view-protocol = { path = "../view/protocol" }
+mc-fog-ingest-client = { path = "../ingest/client" }
+mc-fog-kex-rng = { path = "../kex_rng" }
+mc-fog-recovery-db-iface = { path = "../recovery_db_iface" }
+mc-fog-types = { path = "../types" }
+mc-fog-view-protocol = { path = "../view/protocol" }
 
 # third party
 digest = "0.9"

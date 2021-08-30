@@ -6,6 +6,10 @@
 use core::{fmt, ops::Deref};
 use mc_attest_core::VerificationReport;
 use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_fog_types::{
+    common::BlockRange,
+    view::{DecommissionedIngestInvocation, RngRecord},
+};
 use serde::{Deserialize, Serialize};
 
 /// Status in the database connected to this ingress public key
@@ -120,13 +124,13 @@ impl IngressPublicKeyRecord {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub enum FogUserEvent {
     /// A new RNG record the user should begin searching for.
-    NewRngRecord(fog_types::view::RngRecord),
+    NewRngRecord(RngRecord),
 
     /// Ingest invocation decommissioned event
-    DecommissionIngestInvocation(fog_types::view::DecommissionedIngestInvocation),
+    DecommissionIngestInvocation(DecommissionedIngestInvocation),
 
     /// A missed block range
-    MissingBlocks(fog_types::common::BlockRange),
+    MissingBlocks(BlockRange),
 }
 
 /// An ingest invocation begins consuming the blockchain at some particular

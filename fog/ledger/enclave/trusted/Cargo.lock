@@ -456,107 +456,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fog-kex-rng"
-version = "1.1.0"
-dependencies = [
- "blake2",
- "displaydoc",
- "mc-crypto-keys",
- "mc-util-from-random",
- "mc-util-repr-bytes",
- "prost",
- "rand_core",
- "serde",
-]
-
-[[package]]
-name = "fog-ledger-enclave-api"
-version = "1.1.0"
-dependencies = [
- "displaydoc",
- "fog-types",
- "mc-attest-core",
- "mc-attest-enclave-api",
- "mc-common",
- "mc-crypto-keys",
- "mc-sgx-compat",
- "mc-sgx-report-cache-api",
- "mc-transaction-core",
- "mc-util-encodings",
- "mc-util-serial",
- "serde",
-]
-
-[[package]]
-name = "fog-ledger-enclave-edl"
-version = "1.1.0"
-dependencies = [
- "cargo-emit",
- "mc-util-build-script",
-]
-
-[[package]]
-name = "fog-ledger-enclave-impl"
-version = "1.1.0"
-dependencies = [
- "aligned-cmov",
- "fog-ledger-enclave-api",
- "fog-types",
- "mc-attest-core",
- "mc-attest-enclave-api",
- "mc-common",
- "mc-crypto-ake-enclave",
- "mc-crypto-keys",
- "mc-crypto-rand",
- "mc-oblivious-map",
- "mc-oblivious-ram",
- "mc-oblivious-traits",
- "mc-sgx-compat",
- "mc-sgx-report-cache-api",
- "mc-transaction-core",
- "mc-util-serial",
- "mc-watcher-api",
-]
-
-[[package]]
-name = "fog-ocall-oram-storage-edl"
-version = "1.1.0"
-dependencies = [
- "cargo-emit",
-]
-
-[[package]]
-name = "fog-ocall-oram-storage-trusted"
-version = "1.1.0"
-dependencies = [
- "aes",
- "aligned-cmov",
- "balanced-tree-index",
- "blake2",
- "displaydoc",
- "lazy_static",
- "mc-oblivious-traits",
- "mc-sgx-compat",
- "rand_core",
- "subtle",
-]
-
-[[package]]
-name = "fog-types"
-version = "1.1.0"
-dependencies = [
- "blake2",
- "crc",
- "displaydoc",
- "fog-kex-rng",
- "mc-crypto-keys",
- "mc-transaction-core",
- "mc-watcher-api",
- "prost",
- "serde",
-]
-
-[[package]]
 name = "generic-array"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -717,36 +616,6 @@ name = "lazycell"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
-
-[[package]]
-name = "ledger_enclave_trusted"
-version = "1.1.0"
-dependencies = [
- "cargo-emit",
- "fog-ledger-enclave-api",
- "fog-ledger-enclave-edl",
- "fog-ledger-enclave-impl",
- "fog-ocall-oram-storage-edl",
- "fog-ocall-oram-storage-trusted",
- "lazy_static",
- "mbedtls",
- "mbedtls-sys-auto",
- "mc-attest-core",
- "mc-enclave-boundary",
- "mc-sgx-compat",
- "mc-sgx-debug-edl",
- "mc-sgx-enclave-id",
- "mc-sgx-panic-edl",
- "mc-sgx-report-cache-api",
- "mc-sgx-slog",
- "mc-sgx-slog-edl",
- "mc-sgx-types",
- "mc-util-build-script",
- "mc-util-build-sgx",
- "mc-util-serial",
- "pkg-config",
- "serde",
-]
 
 [[package]]
 name = "libc"
@@ -1087,11 +956,142 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-fog-kex-rng"
+version = "1.1.0"
+dependencies = [
+ "blake2",
+ "displaydoc",
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "prost",
+ "rand_core",
+ "serde",
+]
+
+[[package]]
+name = "mc-fog-ledger-enclave-api"
+version = "1.1.0"
+dependencies = [
+ "displaydoc",
+ "mc-attest-core",
+ "mc-attest-enclave-api",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-fog-types",
+ "mc-sgx-compat",
+ "mc-sgx-report-cache-api",
+ "mc-transaction-core",
+ "mc-util-encodings",
+ "mc-util-serial",
+ "serde",
+]
+
+[[package]]
+name = "mc-fog-ledger-enclave-edl"
+version = "1.1.0"
+dependencies = [
+ "cargo-emit",
+ "mc-util-build-script",
+]
+
+[[package]]
+name = "mc-fog-ledger-enclave-impl"
+version = "1.1.0"
+dependencies = [
+ "aligned-cmov",
+ "mc-attest-core",
+ "mc-attest-enclave-api",
+ "mc-common",
+ "mc-crypto-ake-enclave",
+ "mc-crypto-keys",
+ "mc-crypto-rand",
+ "mc-fog-ledger-enclave-api",
+ "mc-fog-types",
+ "mc-oblivious-map",
+ "mc-oblivious-ram",
+ "mc-oblivious-traits",
+ "mc-sgx-compat",
+ "mc-sgx-report-cache-api",
+ "mc-transaction-core",
+ "mc-util-serial",
+ "mc-watcher-api",
+]
+
+[[package]]
+name = "mc-fog-ledger-enclave-trusted"
+version = "1.1.0"
+dependencies = [
+ "cargo-emit",
+ "lazy_static",
+ "mbedtls",
+ "mbedtls-sys-auto",
+ "mc-attest-core",
+ "mc-enclave-boundary",
+ "mc-fog-ledger-enclave-api",
+ "mc-fog-ledger-enclave-edl",
+ "mc-fog-ledger-enclave-impl",
+ "mc-fog-ocall-oram-storage-edl",
+ "mc-fog-ocall-oram-storage-trusted",
+ "mc-sgx-compat",
+ "mc-sgx-debug-edl",
+ "mc-sgx-enclave-id",
+ "mc-sgx-panic-edl",
+ "mc-sgx-report-cache-api",
+ "mc-sgx-slog",
+ "mc-sgx-slog-edl",
+ "mc-sgx-types",
+ "mc-util-build-script",
+ "mc-util-build-sgx",
+ "mc-util-serial",
+ "pkg-config",
+ "serde",
+]
+
+[[package]]
+name = "mc-fog-ocall-oram-storage-edl"
+version = "1.1.0"
+dependencies = [
+ "cargo-emit",
+]
+
+[[package]]
+name = "mc-fog-ocall-oram-storage-trusted"
+version = "1.1.0"
+dependencies = [
+ "aes",
+ "aligned-cmov",
+ "balanced-tree-index",
+ "blake2",
+ "displaydoc",
+ "lazy_static",
+ "mc-oblivious-traits",
+ "mc-sgx-compat",
+ "rand_core",
+ "subtle",
+]
+
+[[package]]
 name = "mc-fog-sig-authority"
 version = "1.1.2"
 dependencies = [
  "mc-crypto-keys",
  "signature",
+]
+
+[[package]]
+name = "mc-fog-types"
+version = "1.1.0"
+dependencies = [
+ "blake2",
+ "crc",
+ "displaydoc",
+ "mc-crypto-keys",
+ "mc-fog-kex-rng",
+ "mc-transaction-core",
+ "mc-watcher-api",
+ "prost",
+ "serde",
 ]
 
 [[package]]

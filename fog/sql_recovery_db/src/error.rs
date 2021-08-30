@@ -2,8 +2,8 @@
 
 use diesel::{result::Error as DieselError, ConnectionError};
 use displaydoc::Display;
-use fog_types::common::BlockRange;
 use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_fog_types::common::BlockRange;
 use prost::{DecodeError, EncodeError};
 use r2d2::Error as R2d2Error;
 

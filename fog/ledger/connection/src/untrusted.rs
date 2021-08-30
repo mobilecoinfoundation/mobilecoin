@@ -1,11 +1,11 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use super::Error;
-use fog_api::{fog_common::BlockRange, ledger, ledger_grpc};
-use fog_uri::FogLedgerUri;
 use grpcio::{ChannelBuilder, Environment};
 use mc_common::logger::Logger;
 use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_fog_api::{fog_common::BlockRange, ledger, ledger_grpc};
+use mc_fog_uri::FogLedgerUri;
 use mc_transaction_core::BlockIndex;
 use mc_util_grpc::{BasicCredentials, ConnectionUriGrpcioChannel};
 use mc_util_uri::ConnectionUri;

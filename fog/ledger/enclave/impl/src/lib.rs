@@ -14,10 +14,6 @@ extern crate alloc;
 
 mod key_image_store;
 use alloc::vec::Vec;
-use fog_ledger_enclave_api::{
-    Error, KeyImageData, LedgerEnclave, OutputContext, Result, UntrustedKeyImageQueryResponse,
-};
-use fog_types::ledger::{GetOutputsRequest, GetOutputsResponse};
 use key_image_store::{KeyImageStore, StorageDataSize, StorageMetaSize};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
@@ -27,6 +23,12 @@ use mc_common::{
 };
 use mc_crypto_ake_enclave::{AkeEnclaveState, NullIdentity};
 use mc_crypto_keys::X25519Public;
+use mc_fog_ledger_enclave_api::{
+    Error, KeyImageData, LedgerEnclave, OutputContext, Result, UntrustedKeyImageQueryResponse,
+};
+use mc_fog_types::ledger::{
+    CheckKeyImagesRequest, CheckKeyImagesResponse, GetOutputsRequest, GetOutputsResponse,
+};
 use mc_oblivious_traits::ORAMStorageCreator;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
@@ -143,13 +145,12 @@ where
         let channel_id = msg.channel_id.clone(); //client session does not implement copy trait so clone
         let user_plaintext = self.ake.client_decrypt(msg)?;
 
-        let req: fog_types::ledger::CheckKeyImagesRequest = mc_util_serial::decode(&user_plaintext)
-            .map_err(|e| {
-                log::error!(self.logger, "Could not decode user request: {}", e);
-                Error::ProstDecode
-            })?;
+        let req: CheckKeyImagesRequest = mc_util_serial::decode(&user_plaintext).map_err(|e| {
+            log::error!(self.logger, "Could not decode user request: {}", e);
+            Error::ProstDecode
+        })?;
 
-        let mut resp = fog_types::ledger::CheckKeyImagesResponse {
+        let mut resp = CheckKeyImagesResponse {
             num_blocks: untrusted_keyimagequery_response.highest_processed_block_count,
             results: Default::default(),
             global_txo_count: untrusted_keyimagequery_response
@@ -193,9 +194,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fog_ledger_enclave_api::KeyImageData;
     use key_image_store::KeyImageStore;
     use mc_common::logger::create_root_logger;
+    use mc_fog_ledger_enclave_api::KeyImageData;
     use mc_oblivious_traits::HeapORAMStorageCreator;
     use mc_transaction_core::ring_signature::KeyImage;
     // Test that we were able to add key image record to the oram
@@ -240,7 +241,7 @@ mod tests {
         assert_eq!(rec.timestamp, v.timestamp);
         assert_eq!(
             v.key_image_result_code,
-            fog_types::ledger::KeyImageResultCode::Spent as u32
+            mc_fog_types::ledger::KeyImageResultCode::Spent as u32
         );
 
         // add test KeyImageData record to ledger oram
@@ -257,7 +258,7 @@ mod tests {
         assert_eq!(rec2.timestamp, v2.timestamp);
         assert_eq!(
             v2.key_image_result_code,
-            fog_types::ledger::KeyImageResultCode::Spent as u32
+            mc_fog_types::ledger::KeyImageResultCode::Spent as u32
         );
 
         let v_result3 =
@@ -285,14 +286,14 @@ mod tests {
         assert_eq!(rec3.timestamp, v3.timestamp);
         assert_eq!(
             v3.key_image_result_code,
-            fog_types::ledger::KeyImageResultCode::Spent as u32
+            mc_fog_types::ledger::KeyImageResultCode::Spent as u32
         );
 
         //query the ledger oram for the record using the key_image not added
         let v_keyimagenotfound = key_image_store.find_record(&KeyImage::from(4));
         assert_eq!(
             v_keyimagenotfound.key_image_result_code,
-            fog_types::ledger::KeyImageResultCode::NotSpent as u32
+            mc_fog_types::ledger::KeyImageResultCode::NotSpent as u32
         );
     }
 }

@@ -1,5 +1,5 @@
 [package]
-name = "fog-view-load-test"
+name = "mc-fog-view-load-test"
 version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
@@ -14,15 +14,15 @@ path = "src/main.rs"
 grpcio = "0.9.0"
 structopt = "0.3"
 
-# # root
+# mobilecoin
 mc-account-keys = { path = "../../../account-keys" }
 mc-attest-core = { path = "../../../attest/core" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-util-keyfile = { path = "../../../util/keyfile" }
 
-# # fog
-fog-kex-rng = { path = "../../kex_rng" }
-fog-uri = { path = "../../uri" }
-fog-view-connection = { path = "../connection" }
-fog-view-enclave-measurement = { path = "../enclave/measurement" }
-fog-view-protocol = { path = "../protocol" }
+# fog
+mc-fog-kex-rng = { path = "../../kex_rng" }
+mc-fog-uri = { path = "../../uri" }
+mc-fog-view-connection = { path = "../connection" }
+mc-fog-view-enclave-measurement = { path = "../enclave/measurement" }
+mc-fog-view-protocol = { path = "../protocol" }

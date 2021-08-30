@@ -7,19 +7,19 @@ use core::{
     result::Result as StdResult,
 };
 use displaydoc::Display;
-use fog_enclave_connection::Error as EnclaveConnectionError;
-use fog_ledger_connection::{
-    Error as LedgerConnectionError, FogKeyImageGrpcClient, KeyImageResultExtension,
-};
-use fog_types::{view::TxOutRecord, BlockCount};
-use fog_view_connection::FogViewGrpcClient;
-use fog_view_protocol::{FogViewConnection, UserPrivate, UserRngSet};
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
 use mc_crypto_keys::RistrettoPublic;
+use mc_fog_enclave_connection::Error as EnclaveConnectionError;
+use mc_fog_ledger_connection::{
+    Error as LedgerConnectionError, FogKeyImageGrpcClient, KeyImageResultExtension,
+};
+use mc_fog_types::{view::TxOutRecord, BlockCount};
+use mc_fog_view_connection::FogViewGrpcClient;
+use mc_fog_view_protocol::{FogViewConnection, UserPrivate, UserRngSet};
 use mc_transaction_core::{
     get_tx_out_shared_secret, onetime_keys::recover_onetime_private_key, ring_signature::KeyImage,
     tx::TxOut, BlockIndex,

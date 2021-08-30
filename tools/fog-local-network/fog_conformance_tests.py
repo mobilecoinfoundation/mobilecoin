@@ -387,7 +387,7 @@ class FogConformanceTest:
         if not os.path.exists(enclave_pem):
             log_and_run_shell(f'openssl genrsa -out {enclave_pem} -3 3072')
 
-        log_and_run_shell(f"cd {FOG_PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY={enclave_pem} INGEST_ENCLAVE_PRIVKEY={enclave_pem} LEDGER_ENCLAVE_PRIVKEY={enclave_pem} VIEW_ENCLAVE_PRIVKEY={enclave_pem} exec cargo build -p mc-util-keyfile -p mc-admin-http-gateway -p mc-crypto-x509-test-vectors -p fog-view-server -p fog-ledger-server -p fog-ingest-server -p fog-report-server -p fog-report-cli -p fog-ingest-client -p fog-sql-recovery-db -p fog-sample-paykit -p fog-test-infra {FLAGS}")
+        log_and_run_shell(f"cd {FOG_PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY={enclave_pem} INGEST_ENCLAVE_PRIVKEY={enclave_pem} LEDGER_ENCLAVE_PRIVKEY={enclave_pem} VIEW_ENCLAVE_PRIVKEY={enclave_pem} exec cargo build -p mc-util-keyfile -p mc-admin-http-gateway -p mc-crypto-x509-test-vectors -p mc-fog-view-server -p mc-fog-ledger-server -p mc-fog-ingest-server -p mc-fog-report-server -p mc-fog-report-cli -p mc-fog-ingest-client -p mc-fog-sql-recovery-db -p mc-fog-sample-paykit -p mc-fog-test-infra {FLAGS}")
 
     def __init__(self, work_dir, args):
         self.release = args.release

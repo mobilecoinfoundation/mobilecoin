@@ -19,15 +19,6 @@ pub use rng_store::{RngStore, StorageDataSize, StorageMetaSize};
 use aligned_cmov::{typenum::U32, A8Bytes, Aligned, GenericArray};
 use alloc::vec::Vec;
 use core::convert::TryFrom;
-use fog_ingest_enclave_api::{
-    Error, IngestEnclave, IngestEnclaveInitParams, Result, SealedIngestKey,
-};
-use fog_kex_rng::KexRngPubkey;
-use fog_recovery_db_iface::ETxOutRecord;
-use fog_types::{
-    ingest::TxsForIngest,
-    view::{FogTxOut, FogTxOutMetadata, TxOutRecord},
-};
 use mc_attest_core::{
     IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
 };
@@ -40,6 +31,15 @@ use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic, X25519Public};
 use mc_crypto_rand::McRng;
+use mc_fog_ingest_enclave_api::{
+    Error, IngestEnclave, IngestEnclaveInitParams, Result, SealedIngestKey,
+};
+use mc_fog_kex_rng::KexRngPubkey;
+use mc_fog_recovery_db_iface::ETxOutRecord;
+use mc_fog_types::{
+    ingest::TxsForIngest,
+    view::{FogTxOut, FogTxOutMetadata, TxOutRecord},
+};
 use mc_oblivious_traits::ORAMStorageCreator;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};

@@ -21,10 +21,13 @@ use crate::{
 use alloc::vec::Vec;
 use core::fmt::{Debug, Display};
 use displaydoc::Display;
-use fog_kex_rng::BufferedRng;
-use fog_types::{view::TxOutRecord, BlockCount};
 use mc_common::HashSet;
 use mc_crypto_keys::KeyError;
+use mc_fog_kex_rng::BufferedRng;
+use mc_fog_types::{
+    view::{QueryResponse, TxOutRecord},
+    BlockCount,
+};
 
 use alloc::vec;
 
@@ -44,7 +47,7 @@ pub trait FogViewConnection {
         start_from_user_event_id: i64,
         start_from_block_index: u64,
         search_keys: Vec<Vec<u8>>,
-    ) -> Result<fog_types::view::QueryResponse, Self::Error>;
+    ) -> Result<QueryResponse, Self::Error>;
 
     /// Take a view endpoint and use the above two functions to poll for updates
     /// Returns any new TxOuts

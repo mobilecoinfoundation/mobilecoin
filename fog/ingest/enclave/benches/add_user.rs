@@ -1,11 +1,11 @@
 use core::time::Duration;
 use criterion::{criterion_group, criterion_main, Criterion};
-use fog_ingest_enclave::{IngestSgxEnclave, ENCLAVE_FILE};
-use fog_ingest_enclave_api::IngestEnclave;
-use fog_test_infra::get_enclave_path;
 use mc_common::ResponderId;
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_rand::McRng;
+use mc_fog_ingest_enclave::{IngestSgxEnclave, ENCLAVE_FILE};
+use mc_fog_ingest_enclave_api::IngestEnclave;
+use mc_fog_test_infra::get_enclave_path;
 use mc_util_from_random::FromRandom;
 use std::str::FromStr;
 

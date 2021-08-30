@@ -8,17 +8,20 @@
 // It exercises both the ingest enclave, and the fog-related crypto that makes
 // its way into the client.
 
-use fog_ingest_client::FogIngestGrpcClient;
-use fog_ingest_server::{
-    error::IngestServiceError,
-    server::{IngestServer, IngestServerConfig},
-};
-use fog_recovery_db_iface::{RecoveryDb, ReportDb};
-use fog_test_infra::{get_enclave_path, mock_client::PassThroughViewClient, mock_users::UserPool};
-use fog_uri::{FogIngestUri, IngestPeerUri};
 use maplit::btreeset;
 use mc_attest_net::{Client as AttestClient, RaClient};
 use mc_common::logger::{log, test_with_logger, Logger};
+use mc_fog_ingest_client::FogIngestGrpcClient;
+use mc_fog_ingest_server::{
+    error::IngestServiceError,
+    server::{IngestServer, IngestServerConfig},
+};
+use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
+use mc_fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
+use mc_fog_test_infra::{
+    get_enclave_path, mock_client::PassThroughViewClient, mock_users::UserPool,
+};
+use mc_fog_uri::{FogIngestUri, IngestPeerUri};
 use mc_ledger_db::LedgerDB;
 use mc_util_uri::ConnectionUri;
 use mc_watcher::watcher_db::WatcherDB;
@@ -112,7 +115,7 @@ fn test_ingest_polling_integration<A, DB>(
                     watcher_timeout: Duration::default(),
                     state_file: None,
                     omap_capacity: OMAP_CAPACITY,
-                    enclave_path: get_enclave_path(fog_ingest_enclave::ENCLAVE_FILE),
+                    enclave_path: get_enclave_path(mc_fog_ingest_enclave::ENCLAVE_FILE),
                 };
 
                 let ra_client = A::new("").expect("Could not create IAS client");
@@ -146,7 +149,7 @@ fn test_ingest_polling_integration<A, DB>(
                 log::info!(logger, "Block {}/{}", block_count + 1, NUM_BLOCKS_PER_PHASE);
 
                 let num_tx = gen_num_tx_for_block(&mut rng);
-                num_txos = fog_test_infra::test_block(
+                num_txos = mc_fog_test_infra::test_block(
                     &mut users,
                     &ingest_client,
                     &mut view_client,
@@ -158,7 +161,7 @@ fn test_ingest_polling_integration<A, DB>(
                     num_txos,
                 );
                 block_index += 1;
-                fog_test_infra::test_polling_recovery(&mut users, &mut view_client);
+                mc_fog_test_infra::test_polling_recovery(&mut users, &mut view_client);
             }
         }
 
@@ -173,8 +176,6 @@ fn test_ingest_polling_integration<A, DB>(
 
 #[test_with_logger]
 fn test_ingest_sql(logger: Logger) {
-    use fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
-
     let mut trial_count = 0;
     mc_util_test_helper::run_with_several_seeds(|rng| {
         trial_count += 1;

@@ -1,5 +1,5 @@
 [package]
-name = "fog-kex-rng"
+name = "mc-fog-kex-rng"
 version = "1.1.0"
 authors = ["Mobilecoin"]
 edition = "2018"

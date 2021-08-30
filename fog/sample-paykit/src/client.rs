@@ -8,13 +8,6 @@ use crate::{
     MemoHandlerError, TransactionStatus,
 };
 use core::{convert::TryFrom, result::Result as StdResult, str::FromStr};
-use fog_api::ledger::TxOutResultCode;
-use fog_ledger_connection::{
-    FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
-    OutputResultExtension,
-};
-use fog_types::BlockCount;
-use fog_view_connection::FogViewGrpcClient;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_attest_core::Verifier;
 use mc_common::{
@@ -26,8 +19,15 @@ use mc_connection::{
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_crypto_rand::{CryptoRng, RngCore};
+use mc_fog_api::ledger::TxOutResultCode;
+use mc_fog_ledger_connection::{
+    FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
+    OutputResultExtension,
+};
 use mc_fog_report_connection::GrpcFogReportConnection;
 use mc_fog_report_validation::{FogPubkeyResolver, FogResolver};
+use mc_fog_types::BlockCount;
+use mc_fog_view_connection::FogViewGrpcClient;
 use mc_transaction_core::{
     constants::MINIMUM_FEE,
     onetime_keys::*,
@@ -648,10 +648,10 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
 mod test_build_transaction_helper {
     use super::*;
     use core::result::Result as StdResult;
-    use fog_types::view::{FogTxOut, FogTxOutMetadata, TxOutRecord};
     use mc_account_keys::{AccountKey, PublicAddress};
     use mc_common::logger::{test_with_logger, Logger};
     use mc_fog_report_validation::{FogPubkeyError, FullyValidatedFogPubkey};
+    use mc_fog_types::view::{FogTxOut, FogTxOutMetadata, TxOutRecord};
     use mc_transaction_core::{
         constants::MILLIMOB_TO_PICOMOB,
         tx::{TxOut, TxOutMembershipProof},

@@ -4,12 +4,10 @@
 
 #![deny(missing_docs)]
 
-extern crate fog_ocall_oram_storage_untrusted;
+extern crate mc_fog_ocall_oram_storage_untrusted;
 
 use std::{path, result::Result as StdResult, sync::Arc};
 
-use fog_types::ETxOutRecord;
-use fog_view_enclave_api::UntrustedQueryResponse;
 use mc_attest_core::{
     IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport, DEBUG_ENCLAVE,
 };
@@ -17,11 +15,13 @@ use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession
 use mc_common::{logger::Logger, ResponderId};
 use mc_crypto_keys::X25519Public;
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;
+use mc_fog_types::ETxOutRecord;
+use mc_fog_view_enclave_api::UntrustedQueryResponse;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_sgx_types::{sgx_attributes_t, sgx_enclave_id_t, sgx_launch_token_t, sgx_misc_attribute_t};
 use mc_sgx_urts::SgxEnclave;
 
-pub use fog_view_enclave_api::{
+pub use mc_fog_view_enclave_api::{
     Error, Result, ViewEnclaveApi, ViewEnclaveInitParams, ViewEnclaveProxy, ViewEnclaveRequest,
 };
 

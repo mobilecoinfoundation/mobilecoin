@@ -5,7 +5,7 @@ use protobuf::error::ProtobufError;
 
 use mc_api::ConversionError;
 
-use fog_enclave_connection::Error as EnclaveConnectionError;
+use mc_fog_enclave_connection::Error as EnclaveConnectionError;
 
 /// Error type returned by LedgerServerConn
 #[derive(Debug, Display)]

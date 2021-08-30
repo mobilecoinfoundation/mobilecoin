@@ -4,13 +4,13 @@
 //! node, and then exercise the view node to try to find them.
 //! This is basically mocking both the consensus output and the SDK
 
-use fog_types::{
+use mc_common::logger::global_log;
+use mc_crypto_keys::RistrettoPublic;
+use mc_fog_types::{
     view::{FogTxOut, FogTxOutMetadata, TxOutRecord},
     BlockCount,
 };
-use fog_view_protocol::{FogViewConnection, UserPrivate, UserRngSet};
-use mc_common::logger::global_log;
-use mc_crypto_keys::RistrettoPublic;
+use mc_fog_view_protocol::{FogViewConnection, UserPrivate, UserRngSet};
 use mc_transaction_core::{fog_hint::FogHint, tx::TxOut, Amount};
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};

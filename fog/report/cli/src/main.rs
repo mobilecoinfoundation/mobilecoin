@@ -14,12 +14,12 @@
 //! useful diagnostic tool.
 
 use binascii::bin2hex;
-use fog_api::report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_report;
 use grpcio::EnvBuilder;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_attest_core::{Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{create_root_logger, log, Logger};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
+use mc_fog_api::report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_report;
 use mc_fog_report_connection::{Error, GrpcFogReportConnection};
 use mc_fog_report_validation::{
     FogPubkeyResolver, FogReportResponses, FogResolver, FullyValidatedFogPubkey,
@@ -131,7 +131,7 @@ fn get_validated_pubkey(
     let mut verifier = Verifier::default();
 
     {
-        let mr_signer_verifier = fog_ingest_enclave_measurement::get_mr_signer_verifier(None);
+        let mr_signer_verifier = mc_fog_ingest_enclave_measurement::get_mr_signer_verifier(None);
         verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
     }
 

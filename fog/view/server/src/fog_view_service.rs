@@ -1,13 +1,14 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use crate::server::DbPollSharedState;
-use fog_recovery_db_iface::RecoveryDb;
-use fog_types::view::QueryRequestAAD;
-use fog_view_enclave::{Error as ViewEnclaveError, ViewEnclaveProxy};
-use fog_view_enclave_api::UntrustedQueryResponse;
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
+use mc_fog_api::view_grpc::FogViewApi;
+use mc_fog_recovery_db_iface::RecoveryDb;
+use mc_fog_types::view::QueryRequestAAD;
+use mc_fog_view_enclave::{Error as ViewEnclaveError, ViewEnclaveProxy};
+use mc_fog_view_enclave_api::UntrustedQueryResponse;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
     Authenticator,
@@ -122,9 +123,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
 }
 
 // Implement grpc trait
-impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> fog_api::view_grpc::FogViewApi
-    for FogViewService<E, DB>
-{
+impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewService<E, DB> {
     fn auth(
         &mut self,
         ctx: RpcContext,

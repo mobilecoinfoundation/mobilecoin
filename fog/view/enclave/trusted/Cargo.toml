@@ -1,5 +1,5 @@
 [package]
-name = "view_enclave_trusted"
+name = "mc-fog-view-enclave-trusted"
 version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
@@ -21,15 +21,16 @@ ias-dev = [
 ]
 
 [dependencies]
-fog-view-enclave-api = { path = "../api" }
-fog-view-enclave-edl = { path = "../edl" }
-fog-view-enclave-impl = { path = "../impl" }
+# fog
+mc-fog-ocall-oram-storage-edl = { path = "../../../ocall_oram_storage/edl" }
+mc-fog-ocall-oram-storage-trusted = { path = "../../../ocall_oram_storage/trusted" }
+mc-fog-recovery-db-iface = { path = "../../../recovery_db_iface" }
+mc-fog-types = { path = "../../../types" }
+mc-fog-view-enclave-api = { path = "../api" }
+mc-fog-view-enclave-edl = { path = "../edl" }
+mc-fog-view-enclave-impl = { path = "../impl" }
 
-fog-ocall-oram-storage-edl = { path = "../../../ocall_oram_storage/edl" }
-fog-ocall-oram-storage-trusted = { path = "../../../ocall_oram_storage/trusted" }
-fog-recovery-db-iface = { path = "../../../recovery_db_iface" }
-fog-types = { path = "../../../fog_types" }
-
+# mobilecoin
 mc-attest-core = { path = "../../../../attest/core", default-features = false }
 mc-attest-trusted = { path = "../../../../attest/trusted" }
 mc-enclave-boundary = { path = "../../../../enclave-boundary" }
@@ -46,6 +47,7 @@ mc-sgx-slog-edl = { path = "../../../../sgx/slog-edl" }
 mc-sgx-enclave-id = { path = "../../../../sgx/enclave-id" }
 mc-sgx-types = { path = "../../../../sgx/types" }
 
+# third-party
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
 mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps", "aesni", "force_aesni_support", "rdrand"] }
 mbedtls-sys-auto = { version = "2.26.1", default-features = false, features = ["custom_threading"] }

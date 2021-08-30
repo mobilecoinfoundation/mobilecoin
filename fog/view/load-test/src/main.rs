@@ -2,14 +2,14 @@
 
 //! A utility to load-test a fog-view server.
 
-use fog_kex_rng::{NewFromKex, VersionedKexRng};
-use fog_uri::FogViewUri;
-use fog_view_connection::FogViewGrpcClient;
-use fog_view_protocol::FogViewConnection;
 use grpcio::EnvBuilder;
 use mc_account_keys::AccountKey;
 use mc_attest_core::{Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{create_root_logger, log, Logger};
+use mc_fog_kex_rng::{NewFromKex, VersionedKexRng};
+use mc_fog_uri::FogViewUri;
+use mc_fog_view_connection::FogViewGrpcClient;
+use mc_fog_view_protocol::FogViewConnection;
 use std::{
     path::PathBuf,
     str::FromStr,
@@ -107,7 +107,7 @@ fn build_fog_view_conn(uri: &str, logger: &Logger) -> FogViewGrpcClient {
     );
 
     let verifier = {
-        let mr_signer_verifier = fog_view_enclave_measurement::get_mr_signer_verifier(None);
+        let mr_signer_verifier = mc_fog_view_enclave_measurement::get_mr_signer_verifier(None);
 
         let mut verifier = Verifier::default();
         verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);

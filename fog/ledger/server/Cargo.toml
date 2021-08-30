@@ -1,12 +1,12 @@
 [package]
-name = "fog-ledger-server"
+name = "mc-fog-ledger-server"
 version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
 license = "GPL-3.0"
 
 [lib]
-name = "fog_ledger_server"
+name = "mc_fog_ledger_server"
 path = "src/lib.rs"
 
 [[bin]]
@@ -33,12 +33,14 @@ mc-util-uri = { path = "../../../util/uri" }
 mc-watcher = { path = "../../../watcher" }
 mc-watcher-api = { path = "../../../watcher/api" }
 
-fog-api = { path = "../../api" }
-fog-uri = { path = "../../uri" }
-fog-ledger-enclave = { path = "../enclave" }
-fog-ledger-enclave-api = { path = "../enclave/api" }
-fog-types = { path = "../../fog_types" }
+# fog
+mc-fog-api = { path = "../../api" }
+mc-fog-ledger-enclave = { path = "../enclave" }
+mc-fog-ledger-enclave-api = { path = "../enclave/api" }
+mc-fog-types = { path = "../../types" }
+mc-fog-uri = { path = "../../uri" }
 
+# third-party
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.9.0"
@@ -56,6 +58,7 @@ mc-util-build-sgx = { path = "../../../util/build/sgx" }
 mc-util-build-script = { path = "../../../util/build/script" }
 
 [dev-dependencies]
+# mobilecoin
 mc-account-keys = { path = "../../../account-keys" }
 mc-api = { path = "../../../api" }
 mc-common = { path = "../../../common", features = ["loggers"] }
@@ -63,11 +66,13 @@ mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-util-test-helper = { path = "../../../util/test-helper" }
 mc-util-uri = { path = "../../../util/uri" }
 
-fog-test-infra = { path = "../../test_infra" }
-fog-ledger-test-infra = { path = "../test_infra" }
-fog-ledger-connection = { path = "../connection" }
-fog-ledger-enclave-measurement = { path = "../enclave/measurement" }
+# fog
+mc-fog-ledger-test-infra = { path = "../test_infra" }
+mc-fog-ledger-connection = { path = "../connection" }
+mc-fog-ledger-enclave-measurement = { path = "../enclave/measurement" }
+mc-fog-test-infra = { path = "../../test_infra" }
 
+# third-party
 tempdir = "0.3"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dev-dependencies]

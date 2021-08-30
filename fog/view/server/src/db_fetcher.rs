@@ -3,10 +3,10 @@
 //! An object for managing background data fetches from the recovery database.
 
 use crate::{block_tracker::BlockTracker, counters};
-use fog_recovery_db_iface::{IngressPublicKeyRecord, RecoveryDb};
-use fog_types::ETxOutRecord;
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_fog_recovery_db_iface::{IngressPublicKeyRecord, RecoveryDb};
+use mc_fog_types::ETxOutRecord;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -339,11 +339,11 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fog_recovery_db_iface::{IngressPublicKeyStatus, ReportData, ReportDb};
-    use fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
-    use fog_test_infra::db_tests::random_kex_rng_pubkey;
     use mc_attest_core::VerificationReport;
     use mc_common::logger::test_with_logger;
+    use mc_fog_recovery_db_iface::{IngressPublicKeyStatus, ReportData, ReportDb};
+    use mc_fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
+    use mc_fog_test_infra::db_tests::{random_block, random_kex_rng_pubkey};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use std::{thread::sleep, time::Duration};
@@ -403,7 +403,7 @@ mod tests {
 
         let mut blocks_and_records = Vec::new();
         for block_index in 10..20 {
-            let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, block_index, 5); // 5 outputs per block
+            let (block, records) = random_block(&mut rng, block_index, 5); // 5 outputs per block
 
             db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
             blocks_and_records.push((block, records));
@@ -449,7 +449,7 @@ mod tests {
         // Add a few more blocks, they should get picked up.
         let mut blocks_and_records = Vec::new();
         for i in 20..30 {
-            let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+            let (block, records) = random_block(&mut rng, i, 5); // 5 outputs per block
 
             db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
             blocks_and_records.push((block, records));
@@ -497,7 +497,7 @@ mod tests {
         // range is reported.
         let mut blocks_and_records_40_50 = Vec::new();
         for i in 40..50 {
-            let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+            let (block, records) = random_block(&mut rng, i, 5); // 5 outputs per block
 
             db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
             blocks_and_records_40_50.push((block, records));
@@ -546,7 +546,7 @@ mod tests {
 
         let mut blocks_and_records = Vec::new();
         for i in 30..40 {
-            let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+            let (block, records) = random_block(&mut rng, i, 5); // 5 outputs per block
 
             db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
             blocks_and_records.push((block, records));
@@ -602,11 +602,11 @@ mod tests {
         // Add 10 blocks to both keys and see that we are able to get both.
         let mut blocks_and_records = Vec::new();
         for i in 0..10 {
-            let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+            let (block, records) = random_block(&mut rng, i, 5); // 5 outputs per block
             db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
             blocks_and_records.push((key1, block, records));
 
-            let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, i + 5, 5); // start block is 5
+            let (block, records) = random_block(&mut rng, i + 5, 5); // start block is 5
             db.add_block_data(&invoc_id2, &block, 0, &records).unwrap();
             blocks_and_records.push((key2, block, records));
         }
@@ -659,18 +659,18 @@ mod tests {
         // Add 10 blocks to both keys and see that we are able to get both.
         let mut blocks_and_records = Vec::new();
         for i in 0..10 {
-            let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+            let (block, records) = random_block(&mut rng, i, 5); // 5 outputs per block
             db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
             blocks_and_records.push((key1, block, records));
 
-            let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, i + 50, 5); // start block is 50
+            let (block, records) = random_block(&mut rng, i + 50, 5); // start block is 50
             db.add_block_data(&invoc_id2, &block, 0, &records).unwrap();
             blocks_and_records.push((key2, block, records));
         }
 
         // Add a few more blocks to invoc_id2
         for i in 10..20 {
-            let (block, records) = fog_test_infra::db_tests::random_block(&mut rng, i + 50, 5); // start block is 50
+            let (block, records) = random_block(&mut rng, i + 50, 5); // start block is 50
             db.add_block_data(&invoc_id2, &block, 0, &records).unwrap();
             blocks_and_records.push((key2, block, records));
         }

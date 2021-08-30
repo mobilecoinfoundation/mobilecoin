@@ -4,16 +4,12 @@
 
 #![deny(missing_docs)]
 
-extern crate fog_ocall_oram_storage_untrusted;
+extern crate mc_fog_ocall_oram_storage_untrusted;
 
-pub use fog_ingest_enclave_api::{
+pub use mc_fog_ingest_enclave_api::{
     Error, IngestEnclave, IngestEnclaveInitParams, IngestEnclaveProxy, Result, SealedIngestKey,
 };
 
-use fog_ingest_enclave_api::EnclaveCall;
-use fog_kex_rng::KexRngPubkey;
-use fog_recovery_db_iface::ETxOutRecord;
-use fog_types::ingest::TxsForIngest;
 use mc_attest_core::{
     IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport, DEBUG_ENCLAVE,
 };
@@ -21,6 +17,10 @@ use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, P
 use mc_common::ResponderId;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic, X25519Public};
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;
+use mc_fog_ingest_enclave_api::EnclaveCall;
+use mc_fog_kex_rng::KexRngPubkey;
+use mc_fog_recovery_db_iface::ETxOutRecord;
+use mc_fog_types::ingest::TxsForIngest;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_sgx_types::{
     sgx_attributes_t, sgx_enclave_id_t, sgx_launch_token_t, sgx_misc_attribute_t, sgx_status_t,

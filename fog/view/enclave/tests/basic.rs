@@ -1,20 +1,20 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use fog_test_infra::get_enclave_path;
-use fog_types::ETxOutRecord;
-use fog_view_enclave::SgxViewEnclave;
-use fog_view_enclave_api::ViewEnclaveApi;
 use mc_common::{
     logger::{test_with_logger, Logger},
     ResponderId,
 };
+use mc_fog_test_infra::get_enclave_path;
+use mc_fog_types::ETxOutRecord;
+use mc_fog_view_enclave::SgxViewEnclave;
+use mc_fog_view_enclave_api::ViewEnclaveApi;
 use std::str::FromStr;
 
 const VIEW_OMAP_CAPACITY: u64 = 1024 * 1024;
 
 fn get_enclave(logger: Logger) -> SgxViewEnclave {
     let sgx_enclave = SgxViewEnclave::new(
-        get_enclave_path(fog_view_enclave::ENCLAVE_FILE),
+        get_enclave_path(mc_fog_view_enclave::ENCLAVE_FILE),
         ResponderId::from_str("abc:123").unwrap(),
         VIEW_OMAP_CAPACITY,
         logger.clone(),

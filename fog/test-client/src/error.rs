@@ -1,15 +1,17 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+use mc_fog_sample_paykit::Error as SamplePaykitError;
+
 #[derive(Debug)]
 pub enum TestClientError {
     TxTimeout,
     SubmittedTxTimeout,
     DoubleSpend,
-    ClientError(fog_sample_paykit::Error),
+    ClientError(SamplePaykitError),
 }
 
-impl From<fog_sample_paykit::Error> for TestClientError {
-    fn from(src: fog_sample_paykit::Error) -> Self {
+impl From<SamplePaykitError> for TestClientError {
+    fn from(src: SamplePaykitError) -> Self {
         TestClientError::ClientError(src)
     }
 }

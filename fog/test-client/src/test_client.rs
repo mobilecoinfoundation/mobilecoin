@@ -4,10 +4,10 @@
 
 use crate::error::TestClientError;
 
-use fog_sample_paykit::{AccountKey, Client, ClientBuilder, TransactionStatus, Tx};
 use mc_account_keys::ShortAddressHash;
 use mc_common::logger::{log, Logger};
 use mc_crypto_rand::McRng;
+use mc_fog_sample_paykit::{AccountKey, Client, ClientBuilder, TransactionStatus, Tx};
 use mc_transaction_core::{
     constants::{MINIMUM_FEE, RING_SIZE},
     BlockIndex,

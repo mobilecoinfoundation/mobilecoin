@@ -5,8 +5,6 @@ use crate::{
     MerkleProofService, UntrustedTxOutService,
 };
 use displaydoc::Display;
-use fog_api::ledger_grpc;
-use fog_ledger_enclave::{Error as EnclaveError, LedgerEnclaveProxy};
 use futures::executor::block_on;
 use grpcio::Error as GrpcError;
 use mc_attest_net::RaClient;
@@ -14,6 +12,8 @@ use mc_common::{
     logger::{log, Logger},
     time::TimeProvider,
 };
+use mc_fog_api::ledger_grpc;
+use mc_fog_ledger_enclave::{Error as EnclaveError, LedgerEnclaveProxy};
 use mc_ledger_db::LedgerDB;
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
 use mc_util_encodings::Error as EncodingError;

@@ -12,7 +12,6 @@ use crate::{
 use aes_gcm::Aes256Gcm;
 use bip39::{Language, Mnemonic};
 use core::convert::TryFrom;
-use fog_kex_rng::{BufferedRng, KexRngPubkey, NewFromKex, VersionedKexRng};
 use jni::{
     objects::{JObject, JString},
     sys::{jboolean, jbyteArray, jint, jlong, jobject, jobjectArray, jshort, jstring, JNI_FALSE},
@@ -32,6 +31,7 @@ use mc_common::ResponderId;
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic, X25519};
 use mc_crypto_rand::McRng;
+use mc_fog_kex_rng::{BufferedRng, KexRngPubkey, NewFromKex, VersionedKexRng};
 use mc_fog_report_types::{Report, ReportResponse};
 use mc_fog_report_validation::{FogReportResponses, FogResolver};
 use mc_transaction_core::{
