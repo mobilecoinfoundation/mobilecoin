@@ -1231,8 +1231,8 @@ mod tests {
         // Initially, pending_values should be empty.
         assert!(worker.pending_values.is_empty());
         assert_eq!(worker.receive_tasks(), true);
-        // Should maintain the invariant that pending_values only contain tx_hashes
-        // corresponding to transactions that are valid w.r.t the current ledger.
+        // Should maintain the invariant that pending_values only contains tx_hashes
+        // corresponding to transactions that are valid w.r.t. the current ledger.
         assert_eq!(worker.pending_values.len(), tx_hashes.len() - 3);
 
         let responder_id = ResponderId::default();
