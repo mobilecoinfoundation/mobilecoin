@@ -389,7 +389,7 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
 
     assert_eq!(ingestable_ranges[1].id, invoc_id2);
     assert_eq!(ingestable_ranges[1].start_block, 10);
-    assert!(ingestable_ranges[1].decommissioned);
+    assert!(!ingestable_ranges[1].decommissioned);
     assert_eq!(ingestable_ranges[1].last_ingested_block, None);
 
     // Check if we can see an event for that.
