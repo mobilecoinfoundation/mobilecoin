@@ -79,6 +79,10 @@ $(ARCHS_IOS):
 			| grep '\.o$$' \
 			| xargs ar -x ../$(IOS_LIB)
 
+	@# Remove psa_crypto_driver_wrappers.c.o file from mbedtls which causes linker errors
+	cd $(CARGO_TARGET_DIR)/$@/$(BUILD_CONFIG_FOLDER)/extracted && \
+		rm psa_crypto_driver_wrappers.c.o
+
 	@# Create list of libmobilecoin symbols.
 	cd $(CARGO_TARGET_DIR)/$@/$(BUILD_CONFIG_FOLDER) && \
 		rust-nm -jgU extracted/mobilecoin*.mobilecoin.*.o -s __TEXT __text \
