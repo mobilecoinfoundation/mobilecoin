@@ -11,7 +11,6 @@ mod env;
 mod libraries;
 mod sign;
 mod utils;
-mod vars;
 
 pub use crate::{
     config::{ConfigBuilder, TcsPolicy},
