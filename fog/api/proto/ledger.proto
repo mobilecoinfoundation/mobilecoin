@@ -1,0 +1,261 @@
+// Copyright (c) 2018-2021 MobileCoin Inc.
+
+syntax = "proto3";
+import "attest.proto";
+import "external.proto";
+import "fog_common.proto";
+
+package fog_ledger;
+option go_package = "mobilecoin/api";
+
+////
+// Merkle proofs
+////
+
+service FogMerkleProofAPI {
+    /// This is called to perform mc-noise IX key exchange with the enclave,
+    /// before calling GetOutputs.
+    rpc Auth(attest.AuthMessage) returns (attest.AuthMessage) {}
+    /// Get TxOut's and merkle proofs of membership for these outputs
+    /// These requests can be the user's "real" outputs from fog view, in order
+    /// to get the needed merkle proof, or their mixins for RingCT.
+    rpc GetOutputs (attest.Message) returns (attest.Message) {}
+}
+
+message GetOutputsRequest {
+    /// The global txout indices being requested
+    repeated fixed64 indices = 1;
+    /// The common merkle-root block that all the proofs should share
+    fixed64 merkle_root_block = 2;
+}
+
+message GetOutputsResponse {
+    /// The outputs that we found
+    repeated OutputResult results = 1;
+    /// The total number of blocks in the ledger at the time the request is evaluated
+    uint64 num_blocks = 2;
+    /// The total number of Txos in the ledger at the time the request is evaluated
+    uint64 global_txo_count = 3;
+}
+
+message OutputResult {
+    /// The global txout index that was queried
+    fixed64 index = 1;
+    /// A status code indicating the result of the query
+    /// This is fixed32 to avoid leaking information about found / not found
+    /// in the size of the encrypted payload.
+    /// The possible values are described in enum OutputResultCode
+    fixed32 result_code = 2;
+    /// The output that we found
+    external.TxOut output = 3;
+    /// The merkle proof for that output
+    external.TxOutMembershipProof proof = 4;
+}
+
+/// The logical result of an individual index in a GetOutputs request
+enum OutputResultCode {
+    /// The default value for fixed32 is intentionally unused to avoid omitting this field
+    IntentionallyUnused = 0;
+    /// A TxOut with this index was not found in the ledger (it is out of bounds)
+    DoesNotExist = 1;
+    /// A TxOut with this index was found and the output and merkle-proof are provided
+    Exists = 2;
+    /// A database error prevented us from satisfying the request
+    OutputDatabaseError = 3;
+}
+
+////
+// Key Images
+////
+
+service FogKeyImageAPI {
+    /// This is called to perform IX key exchange with the enclave before calling GetOutputs.
+    rpc Auth(attest.AuthMessage) returns (attest.AuthMessage) {}
+    /// Check if key images have appeared in the ledger, and if so, when
+    rpc CheckKeyImages (attest.Message) returns (attest.Message) {}
+}
+
+message CheckKeyImagesRequest {
+    /// A list of key images queries, to check if they have appeared in the ledger
+    /// already, and if so, in what block.
+    repeated KeyImageQuery queries = 1;
+}
+
+message KeyImageQuery {
+    /// The key image to check.
+    external.KeyImage key_image = 1;
+    /// An optional start_block to start searching forward from when performing the check.
+    ///
+    /// Note:
+    /// A correct implementation of the server may ignore this, it is an optimization.
+    /// This may help scaling because then for daily active users we won't have to
+    /// obliviously scan the whole set to support their queries.
+    fixed64 start_block = 2;
+}
+
+/// A response to a request for key image checks
+///
+/// Contracts:
+/// If a KeyImageResult comes back with spent_at != 0, then it was spent in that block index.
+/// If a KeyImageResult comes back with spent_at == 0, then it was NOT spent, AT LEAST as of
+/// resp.block_height (the top level block height number). It is possible that it WAS actually
+/// spent in resp.block_height + 1, but the server didn't know, or didn't figure that out.
+message CheckKeyImagesResponse {
+    /// The number of blocks in the ledger at the time that the request was evaluated.
+    ///
+    /// Note: This may be a conservative estimate, in the sense of being a lower bound.
+    /// It's allowed that the data is "more fresh" than we are telling the client, but not less fresh.
+    ///
+    /// Implementation note: If the server does not evaluate all the key image checks as one
+    /// database transaction, then this number should be a lower bound on the num_blocks across
+    /// all of those database transactions.
+    uint64 num_blocks = 1;
+    /// The number of txos in the ledger at the time that the request was evaluated.
+    uint64 global_txo_count = 2;
+    /// The results for each key image query
+    repeated KeyImageResult results = 3;
+}
+
+message KeyImageResult {
+    /// The key image that was queried.
+    external.KeyImage key_image = 1;
+    /// The block index at which it was spent.
+    /// Note, spent_at is only valid if key_image_result_code == Spent. If
+    /// key_image_result_code is not Spent, then spent_at is undefined, but > 0.
+    fixed64 spent_at = 2;
+    /// The timestamp of the block containing this key image.
+    /// The value is u64::MAX if the timestamp cannot be found.
+    /// If the timestamp cannot be found, even when key_image_result_code == Spent,
+    /// that represents an internal error of the server
+    /// which should be reported to the developers.
+    /// Note: The timestamps are based on untrusted reporting of time from the consensus validators.
+    /// Represented as seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z.
+    fixed64 timestamp = 3;
+    /// The result code indicating whether the timestamp was found, can be tried again later, or will
+    /// never be found with the current configuration of the Key Image Service's watcher.
+    /// This is fixed32 to avoid leaking information about found / not found in the size of the encrypted
+    /// payload.
+    /// The possible values are described in enum TimestampResultCode.
+    /// This is a legacy result code which was forwarded by ledger server from the Watcher db API if a timestamp is not available.
+    /// The ledger server now handles all of these errors and the result will always be `TimestampFound`.
+    /// Clients should ignore this value, and in a future revision we may make it always zero.
+    fixed32 timestamp_result_code = 4;
+    /// The result code indicating whether the key image was spent.
+    /// The possible values are described in enum KeyImageResultCode.
+    fixed32 key_image_result_code = 5;
+}
+
+/// The result code indicating whether the spent_at block was found.
+enum KeyImageResultCode {
+    /// The default value for fixed32 is intentionally unused to avoid omitting this field.
+    Unused = 0;
+    /// The key image has been spent, and the spent_at value was found.
+    Spent = 1;
+    /// The key image has not been spent.
+    NotSpent = 2;
+    /// Error occurred when getting key image
+    KeyImageError = 3;
+}
+
+////
+// Blocks
+////
+
+service FogBlockAPI {
+    /// Request for all of the TxOuts for a particular range of blocks.
+    /// This is meant to help the users recover from "missed blocks" i.e.
+    /// data loss in the fog service.
+    rpc GetBlocks (BlockRequest) returns (BlockResponse) {}
+}
+
+message BlockRequest {
+    /// A request formulated as several ranges of block indices
+    repeated fog_common.BlockRange ranges = 1;
+}
+
+
+message BlockResponse {
+    /// The block data returned by the server
+    repeated BlockData blocks = 1;
+    /// The total number of blocks in the ledger at the time the request is evaluated
+    uint64 num_blocks = 2;
+    /// The total number of Txos in the ledger at the time the request is evaluated
+    uint64 global_txo_count = 3;
+}
+
+message BlockData {
+    /// The index of the block in the blockchain
+    uint64 index = 1;
+    /// The cumulative number of Txos in the blockchain, including this block
+    uint64 global_txo_count = 2;
+    /// The TxOuts of this block in consecutive order
+    repeated external.TxOut outputs = 3;
+    /// The timestamp of the block (if timestamp is available)
+    uint64 timestamp = 4;
+    /// Indicates if the block had a timestamp
+    /// The possible values are described in enum TimestampResultCode.
+    uint32 timestamp_result_code = 5;
+}
+
+////
+// TxOut check
+////
+
+service FogUntrustedTxOutApi {
+    /// This can be used by a sender who may be sharing their private keys across
+    /// multiple parties / devices, to confirm that a transaction that they sent
+    /// landed in the blockchain, by confirming that one of the random keys from
+    /// a TxOut that they produced appears in the ledger.
+    ///
+    /// Given the TxOut.pubkey value, we return if it is found, and the num_blocks
+    /// value, allowing Alice to determine that her transactions succeeded, or if
+    /// num_blocks exceeded her tombstone value, conclude that it failed somehow.
+    /// We also return the global tx out index. We don't currently return the block
+    /// index or time stamp in which the TxOut appeared.
+    ///
+    /// This API is NOT attested and Bob, the recipient, SHOULD NOT use it in connection
+    /// to the same TxOut, as that will leak the transaction graph to fog operator,
+    /// which breaks the privacy statement for fog as a whole.
+    rpc GetTxOuts (TxOutRequest) returns (TxOutResponse) {}
+}
+
+message TxOutRequest {
+    /// The TxOut.pubkey (compressed ristretto point bytes) of interest
+    /// This is repeated so that several logical queries can be bundled into one
+    /// grpc request.
+    repeated external.CompressedRistretto tx_out_pubkeys = 1;
+}
+
+message TxOutResponse {
+    /// The results corresponding to each tx_out_pubkey request
+    repeated TxOutResult results = 1;
+    /// The total number of blocks in the ledger at the time the request is evaluated
+    /// tx_out_pubkeys which are NotFound are guaranteed not to have appeared in the blockchain
+    /// in any block of index less than this value.
+    uint64 num_blocks = 2;
+    /// The total number of Txos in the ledger at the time the request is evaluated
+    uint64 global_txo_count = 3;
+}
+
+message TxOutResult {
+    /// The query that this result corresponds to
+    external.CompressedRistretto tx_out_pubkey = 1;
+    /// A status code indicating the result of the query
+    TxOutResultCode result_code = 2;
+    /// The global index of this tx out (if found)
+    uint64 tx_out_global_index = 3;
+    /// The block index of this tx out (if found)
+    uint64 block_index = 4;
+    /// The timestamp of the block of this tx out (if found and timestamp is available)
+    uint64 timestamp = 5;
+    /// Indicates if the block had a timestamp (if tx out was found)
+    /// The possible values are described in enum TimestampResultCode.
+    uint32 timestamp_result_code = 6;
+}
+
+enum TxOutResultCode {
+    NotFound = 0;
+    Found = 1;
+    MalformedRequest = 2;
+    DatabaseError = 3;
+}

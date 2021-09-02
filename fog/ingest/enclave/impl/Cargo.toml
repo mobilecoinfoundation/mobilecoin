@@ -1,0 +1,45 @@
+[package]
+name = "mc-fog-ingest-enclave-impl"
+version = "1.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+license = "GPL-3.0"
+
+[dependencies]
+# mobilecoin
+mc-attest-core = { path = "../../../../attest/core", default-features = false }
+mc-attest-enclave-api = { path = "../../../../attest/enclave-api", default-features = false }
+mc-attest-trusted = { path = "../../../../attest/trusted", default-features = false }
+mc-common = { path = "../../../../common", default-features = false }
+mc-crypto-ake-enclave = { path = "../../../../crypto/ake/enclave" }
+mc-crypto-box = { path = "../../../../crypto/box" }
+mc-crypto-keys = { path = "../../../../crypto/keys", default-features = false }
+mc-crypto-rand = { path = "../../../../crypto/rand" }
+mc-sgx-compat = { path = "../../../../sgx/compat" }
+mc-sgx-report-cache-api = { path = "../../../../sgx/report-cache/api" }
+mc-transaction-core = { path = "../../../../transaction/core", default-features = false }
+mc-util-from-random = { path = "../../../../util/from-random" }
+mc-util-serial = { path = "../../../../util/serial" }
+
+# mc-oblivious
+aligned-cmov = "2.0"
+mc-oblivious-map = "2.0"
+mc-oblivious-ram = "2.0"
+mc-oblivious-traits = "2.0"
+
+# fog
+mc-fog-ingest-enclave-api = { path = "../api", default-features = false }
+mc-fog-kex-rng = { path = "../../../kex_rng" }
+mc-fog-recovery-db-iface = { path = "../../../recovery_db_iface", default-features = false }
+mc-fog-types = { path = "../../../types" }
+
+rand_core = { version = "0.6", default-features = false }
+zeroize = { version = "1.1", default-features = false }
+
+[dev-dependencies]
+
+mc-account-keys = { path = "../../../../account-keys" }
+mc-common = { path = "../../../../common", features = ["loggers"] }
+mc-fog-view-protocol = { path = "../../../view/protocol" }
+mc-util-test-helper = { path = "../../../../util/test-helper" }
+mc-util-logger-macros = { path = "../../../../util/logger-macros" }

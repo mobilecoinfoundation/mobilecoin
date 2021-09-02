@@ -8,7 +8,6 @@
 
 * Please see [*MAINNET.md*](./MAINNET.md) for instructions on using MobileCoin!
 * You must read and accept the [Terms of Use for MobileCoins and MobileCoin Wallets](./TERMS-OF-USE.md) to use MobileCoin Software.
-* Please note that currently, the MobileCoin Wallet is not available for download or use by U.S. persons or entities, persons or entities located in the U.S., or persons or entities in other prohibited jurisdictions.
 
 ### Note to Developers
 
@@ -36,13 +35,16 @@ This distribution includes cryptographic software. Your country may have restric
 ## Repository Structure
 |Directory |Description |
 | :-- | :-- |
+| [android-bindings](./android-bindings) | Android bindings exposing primitives to build Fog-enabled MobileCoin clients |
 | [attest](./attest) | Remote attestation primitives. |
 | [build-info](./build-info) | Measurements made at compile time. |
 | [common](./common) | Items shared across MobileCoin crates. |
 | [consensus](./consensus) | Byzantine Fault Tolerant Consensus. |
 | [crypto](./crypto) | Cryptography. |
 | [enclave-boundary](./enclave-boundary) | Intel® SGX ECALL infrastructure. |
+| [fog](./fog) | Private payments for mobile devices |
 | [ledger](./ledger) | Storage and synchronization for the MobileCoin blockchain. |
+| [libmobilecoin](./libmobilecoin) | A C-library exposing primitives to build Fog-enabled MobileCoin clients |
 | [mcbuild](./mcbuild/) | Tools for building and signing enclaves. |
 | [mcconnection](./mcconnection/) | Attested MobileCoin connections. |
 | [mobilecoind](./mobilecoind/) | Blockchain daemon and example client code. |
@@ -126,11 +128,15 @@ To run a *watcher node*, build and run the [`mobilecoind`](./mobilecoind) daemon
 
 1. I thought you were called *MobileCoin*. Where is the code for mobile devices?
 
-    We are hard at work building mobile SDKs for iOS and Android, as well as additional privacy-preserving infrastructure to support blockchain transactions from mobile devices. We will be releasing this software soon.
+    Please see [`fog`](./fog), [`android-bindings`](./android-bindings), and [`libmobilecoin`](./libmobilecoin), to see how the balance checking and
+    transaction building process works on mobile devices that don't sync the ledger.
+
+    Please see also the MobileCoin [Android](https://github.com/mobilecoinofficial/android-sdk/) and [iOS](https://github.com/mobilecoinofficial/MobileCoin-Swift) SDKs,
+    which can be integrated into your app to enable MobileCoin payments.
 
 1. Will I need to put my keys on a remote server to scan the blockchain for incoming transactions?
 
-    Keys will never leave your mobile device. This is a challenging problem and we are very excited to share our solution when we release our mobile SDK software.
+    Keys will never leave your mobile device. For more details on how this works, please see the [MobileCoin Fog README](./fog).
 
 
 ## Support

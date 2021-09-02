@@ -2,7 +2,7 @@
 
 use crate::{convert::ConversionError, external};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
-use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, tx, Amount};
+use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, tx, Amount, EncryptedMemo};
 use std::convert::TryFrom;
 
 /// Convert tx::TxOut --> external::TxOut.
@@ -21,6 +21,12 @@ impl From<&tx::TxOut> for external::TxOut {
 
         let hint_bytes = source.e_fog_hint.as_ref().to_vec();
         tx_out.mut_e_fog_hint().set_data(hint_bytes);
+
+        if let Some(ref memo) = source.e_memo {
+            tx_out
+                .mut_e_memo()
+                .set_data(AsRef::<[u8]>::as_ref(memo).to_vec());
+        }
 
         tx_out
     }
@@ -46,11 +52,22 @@ impl TryFrom<&external::TxOut> for tx::TxOut {
         let e_fog_hint = EncryptedFogHint::try_from(source.get_e_fog_hint().get_data())
             .map_err(|_| ConversionError::ArrayCastError)?;
 
+        let e_memo_bytes = source.get_e_memo().get_data();
+        let e_memo = if e_memo_bytes.is_empty() {
+            None
+        } else {
+            Some(
+                EncryptedMemo::try_from(e_memo_bytes)
+                    .map_err(|_| ConversionError::ArrayCastError)?,
+            )
+        };
+
         let tx_out = tx::TxOut {
             amount,
             target_key,
             public_key,
             e_fog_hint,
+            e_memo,
         };
         Ok(tx_out)
     }
@@ -59,6 +76,7 @@ impl TryFrom<&external::TxOut> for tx::TxOut {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use generic_array::GenericArray;
     use mc_crypto_keys::RistrettoPublic;
     use mc_transaction_core::{encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, Amount};
     use mc_util_from_random::FromRandom;
@@ -74,11 +92,35 @@ mod tests {
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
             e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
+            e_memo: None,
         };
 
         let converted = external::TxOut::from(&source);
 
         let recovered_tx_out = tx::TxOut::try_from(&converted).unwrap();
         assert_eq!(source.amount, recovered_tx_out.amount);
+    }
+
+    #[test]
+    // tx::TxOut -> external::TxOut --> tx::TxOut
+    fn test_tx_out_from_tx_out_stored_with_memo() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        let source = tx::TxOut {
+            amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+            target_key: RistrettoPublic::from_random(&mut rng).into(),
+            public_key: RistrettoPublic::from_random(&mut rng).into(),
+            e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
+            e_memo: Some((*GenericArray::from_slice(&[9u8; 46])).into()),
+        };
+
+        let converted = external::TxOut::from(&source);
+
+        let recovered_tx_out = tx::TxOut::try_from(&converted).unwrap();
+        assert_eq!(source.amount, recovered_tx_out.amount);
+        assert_eq!(source.target_key, recovered_tx_out.target_key);
+        assert_eq!(source.public_key, recovered_tx_out.public_key);
+        assert_eq!(source.e_fog_hint, recovered_tx_out.e_fog_hint);
+        assert_eq!(source.e_memo, recovered_tx_out.e_memo);
     }
 }

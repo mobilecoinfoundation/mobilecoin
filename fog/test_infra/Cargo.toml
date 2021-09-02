@@ -1,0 +1,54 @@
+[package]
+name = "mc-fog-test-infra"
+version = "1.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+license = "GPL-3.0"
+
+# This is used by fog-conformance-testing
+[[bin]]
+name = "init_test_ledger"
+path = "src/bin/init_test_ledger.rs"
+
+# This is used by fog-conformance-testing
+[[bin]]
+name = "add_test_block"
+path = "src/bin/add_test_block.rs"
+
+[dependencies]
+# from public
+mc-account-keys = { path = "../../account-keys" }
+mc-common = { path = "../../common" }
+mc-crypto-hashes = { path = "../../crypto/hashes" }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-ledger-db = { path = "../../ledger/db" }
+mc-transaction-core = { path = "../../transaction/core" }
+mc-util-build-info = { path = "../../util/build/info" }
+mc-util-from-random = { path = "../../util/from-random" }
+mc-util-generate-sample-ledger = { path = "../../util/generate-sample-ledger" }
+mc-util-keyfile = { path = "../../util/keyfile" }
+mc-watcher = { path = "../../watcher" }
+mc-watcher-api = { path = "../../watcher/api" }
+
+# from fog
+mc-fog-ingest-client = { path = "../ingest/client" }
+mc-fog-kex-rng = { path = "../kex_rng" }
+mc-fog-recovery-db-iface = { path = "../recovery_db_iface" }
+mc-fog-types = { path = "../types" }
+mc-fog-view-protocol = { path = "../view/protocol" }
+
+# third party
+digest = "0.9"
+hex = "0.4"
+rand_core = "0.6"
+rand_hc = "0.3"
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+serde_json = "1.0"
+structopt = "0.3"
+url = "2.1"
+
+[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
+curve25519-dalek = { version = "4.0.0-pre.0", default-features = false, features = ["simd_backend", "nightly"] }
+
+[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
+curve25519-dalek = { version = "4.0.0-pre.0", default-features = false, features = ["nightly", "u64_backend"] }

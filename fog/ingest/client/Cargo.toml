@@ -1,0 +1,38 @@
+[package]
+name = "mc-fog-ingest-client"
+version = "1.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+license = "GPL-3.0"
+
+[lib]
+name = "mc_fog_ingest_client"
+path = "src/lib.rs"
+
+[[bin]]
+name = "fog_ingest_client"
+path = "src/main.rs"
+
+[dependencies]
+# third party
+displaydoc = { version = "0.2", default-features = false }
+grpcio = "0.9.0"
+hex = "0.4"
+protobuf = "2.22.1"
+retry = "1.2"
+serde_json = "1.0"
+structopt = "0.3"
+
+# root
+mc-account-keys = { path = "../../../account-keys" }
+mc-api = { path = "../../../api" }
+mc-common = { path = "../../../common", features = ["log"] }
+mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
+mc-util-grpc = { path = "../../../util/grpc" }
+mc-util-keyfile = { path = "../../../util/keyfile" }
+mc-util-uri = { path = "../../../util/uri" }
+
+# fog
+mc-fog-api = { path = "../../api" }
+mc-fog-types = { path = "../../types" }
+mc-fog-uri = { path = "../../uri" }

@@ -3,22 +3,35 @@ name = "mc-fog-api"
 version = "1.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
-links = "mc-fog-api"
+license = "GPL-3.0"
 
 [dependencies]
+displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.9.0"
+prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
 protobuf = "2.22.1"
 
 mc-api = { path = "../../api" }
 mc-attest-api = { path = "../../attest/api" }
+mc-attest-core = { path = "../../attest/core" }
 mc-consensus-api = { path = "../../consensus/api" }
-mc-fog-types = { path = "../types" }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-fog-enclave-connection = { path = "../enclave_connection" }
+mc-fog-report-api = { path = "../../fog/report/api" }
+mc-fog-uri = { path = "../uri" }
+mc-util-encodings = { path = "../../util/encodings" }
+mc-util-from-random = { path = "../../util/from-random" }
+mc-util-grpc = { path = "../../util/grpc" }
+mc-util-serial = { path = "../../util/serial" }
+mc-watcher-api = { path = "../../watcher/api" }
 
 [dev-dependencies]
-prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
-mc-attest-core = { path = "../../attest/core", default-features = false }
-mc-fog-api-test-utils = { path = "test-utils" }
+mc-fog-kex-rng = { path = "../kex_rng" }
+mc-fog-report-api-test-utils = { path = "../../fog/report/api/test-utils" }
+mc-fog-types = { path = "../types" }
+mc-transaction-core = { path = "../../transaction/core" }
+mc-util-test-helper = { path = "../../util/test-helper" }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../util/build/grpc" }

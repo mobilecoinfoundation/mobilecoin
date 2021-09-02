@@ -1,0 +1,30 @@
+[package]
+name = "mc-fog-ledger-connection"
+version = "1.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+license = "GPL-3.0"
+
+[dependencies]
+# mobilecoin
+mc-api = { path = "../../../api" }
+mc-attest-core = { path = "../../../attest/core" }
+mc-common = { path = "../../../common", features = ["log"] }
+mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-transaction-core = { path = "../../../transaction/core" }
+mc-util-grpc = { path = "../../../util/grpc" }
+mc-util-uri = { path = "../../../util/uri" }
+
+# fog
+mc-fog-api = { path = "../../api" }
+mc-fog-enclave-connection = { path = "../../enclave_connection" }
+mc-fog-types = { path = "../../types" }
+mc-fog-uri = { path = "../../uri" }
+
+# third-party
+displaydoc = { version = "0.2", default-features = false }
+grpcio = "0.9.0"
+protobuf = "2.22.1"
+
+[dev-dependencies]
+mc-common = { path = "../../../common", features = ["loggers"] }

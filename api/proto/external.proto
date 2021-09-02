@@ -177,7 +177,13 @@ message Amount {
     fixed64 masked_value = 2;
 }
 
+// The bytes of encrypted fog hint
 message EncryptedFogHint {
+    bytes data = 1;
+}
+
+// The bytes of encrypted memo
+message EncryptedMemo {
     bytes data = 1;
 }
 
@@ -196,6 +202,9 @@ message TxOut {
     // This is an mc-crypto-box cryptogram for the fog ingest server,
     // or a random cryptogram indistinguishable from a real one.
     EncryptedFogHint e_fog_hint = 4;
+
+    // Encrypted memo
+    EncryptedMemo e_memo = 5;
 }
 
 message TxIn {

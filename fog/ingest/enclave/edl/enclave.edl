@@ -1,0 +1,22 @@
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+
+enclave {
+    from "sgx_tstdc.edl" import *;
+    from "sgx_debug.edl" import *;
+    from "sgx_panic.edl" import *;
+    from "sgx_slog.edl" import *;
+    from "oram_storage.edl" import *;
+
+    trusted {
+        /*
+         * Entry point for enclave functionality.
+         */
+        public sgx_status_t ingest_enclave_call([in, size=inbuf_len] const uint8_t* inbuf,
+                                                size_t inbuf_len,
+                                                [user_check] uint8_t *outbuf,
+                                                size_t outbuf_len,
+                                                [user_check] size_t* outbuf_used,
+                                                [user_check] uint64_t* outbuf_retry_id);
+
+    };
+};

@@ -1,0 +1,28 @@
+[package]
+name = "mc-fog-ocall-oram-storage-trusted"
+version = "1.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+license = "GPL-3.0"
+
+[dependencies]
+# mobilecoin
+mc-sgx-compat = { path = "../../../sgx/compat" }
+
+# mc-oblivious
+aligned-cmov = "2.0"
+balanced-tree-index = "2.0"
+mc-oblivious-traits = "2.0"
+
+# third-party
+aes = { version = "0.7.4", default-features = false, features = ["ctr"] }
+displaydoc = { version = "0.2", default-features = false }
+lazy_static = { version = "1.4", features = ["spin_no_std"] }
+rand_core = { version = "0.6", default-features = false }
+subtle = { version = "2", default-features = false }
+
+[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
+blake2 = { version = "0.9", default-features = false, features = ["simd"] }
+
+[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
+blake2 = { version = "0.9", default-features = false }

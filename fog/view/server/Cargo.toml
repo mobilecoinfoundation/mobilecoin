@@ -1,0 +1,71 @@
+[package]
+name = "mc-fog-view-server"
+version = "1.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+license = "GPL-3.0"
+
+[lib]
+name = "mc_fog_view_server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "fog_view_server"
+path = "src/bin/main.rs"
+
+[dependencies]
+# third party
+displaydoc = { version = "0.2", default-features = false }
+futures = "0.3"
+grpcio = "0.9.0"
+hex = "0.4"
+lazy_static = "1.4"
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+serde_json = "1.0"
+structopt = "0.3"
+
+# mobilecoin
+mc-attest-api = { path = "../../../attest/api" }
+mc-attest-core = { path = "../../../attest/core" }
+mc-attest-net = { path = "../../../attest/net" }
+mc-common = { path = "../../../common", features = ["log"] }
+mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-sgx-report-cache-untrusted = { path = "../../../sgx/report-cache/untrusted" }
+mc-util-from-random = { path = "../../../util/from-random" }
+mc-util-grpc = { path = "../../../util/grpc" }
+mc-util-metered-channel = { path = "../../../util/metered-channel" }
+mc-util-metrics = { path = "../../../util/metrics" }
+mc-util-serial = { path = "../../../util/serial" }
+mc-util-uri = { path = "../../../util/uri" }
+
+# fog
+mc-fog-api = { path = "../../api" }
+mc-fog-kex-rng = { path = "../../kex_rng" }
+mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
+mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
+mc-fog-types = { path = "../../types" }
+mc-fog-uri = { path = "../../uri" }
+mc-fog-view-enclave = { path = "../enclave" }
+mc-fog-view-enclave-api = { path = "../enclave/api" }
+
+[dev-dependencies]
+pem = "0.8"
+rand = "0.8"
+rand_core = "0.6"
+tempdir = "0.3"
+
+mc-attest-core = { path = "../../../attest/core" }
+mc-common = { path = "../../../common", features = ["loggers"] }
+mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-crypto-x509-test-vectors = { path = "../../../crypto/x509/test-vectors" }
+mc-transaction-core = { path = "../../../transaction/core" }
+mc-util-encodings = { path = "../../../util/encodings" }
+mc-util-serial = { path = "../../../util/serial" }
+mc-util-test-helper = { path = "../../../util/test-helper" }
+mc-util-uri = { path = "../../../util/uri" }
+
+mc-fog-test-infra = { path = "../../test_infra" }
+mc-fog-types = { path = "../../types" }
+mc-fog-view-connection = { path = "../connection" }
+mc-fog-view-enclave-measurement = { path = "../enclave/measurement" }
+mc-fog-view-protocol = { path = "../protocol" }

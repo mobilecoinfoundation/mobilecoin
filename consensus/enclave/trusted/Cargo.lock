@@ -20,6 +20,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "cipher",
  "cpufeatures",
+ "ctr",
  "opaque-debug",
 ]
 
@@ -649,7 +650,7 @@ dependencies = [
 
 [[package]]
 name = "mc-account-keys"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "blake2",
  "curve25519-dalek",
@@ -664,12 +665,13 @@ dependencies = [
  "mc-util-serial",
  "prost",
  "rand_core",
+ "subtle",
  "zeroize",
 ]
 
 [[package]]
 name = "mc-attest-ake"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "aead",
  "cargo-emit",
@@ -687,7 +689,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-core"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "binascii",
  "bitflags",
@@ -719,7 +721,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-enclave-api"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "displaydoc",
  "mc-attest-ake",
@@ -731,7 +733,7 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-trusted"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -742,7 +744,7 @@ dependencies = [
 
 [[package]]
 name = "mc-common"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "binascii",
  "cfg-if 0.1.10",
@@ -762,7 +764,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-api"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "displaydoc",
  "mc-attest-ake",
@@ -780,7 +782,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-edl"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "cargo-emit",
  "mc-util-build-script",
@@ -788,7 +790,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-impl"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "cargo-emit",
  "hex",
@@ -816,7 +818,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-trusted"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "cargo-emit",
  "lazy_static",
@@ -846,7 +848,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-ake-enclave"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "aes-gcm",
  "digest",
@@ -865,7 +867,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-box"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "aead",
  "blake2",
@@ -879,7 +881,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "cfg-if 0.1.10",
  "curve25519-dalek",
@@ -892,7 +894,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-derive"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -901,7 +903,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-signature"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "mc-crypto-digestible",
  "schnorrkel",
@@ -910,7 +912,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-hashes"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "blake2",
  "digest",
@@ -919,7 +921,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-keys"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "binascii",
  "curve25519-dalek",
@@ -944,7 +946,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-message-cipher"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "aes-gcm",
  "displaydoc",
@@ -957,7 +959,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-noise"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "aead",
  "aes-gcm",
@@ -977,7 +979,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-rand"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "cfg-if 0.1.10",
  "getrandom 0.1.14",
@@ -988,7 +990,7 @@ dependencies = [
 
 [[package]]
 name = "mc-enclave-boundary"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "mc-common",
  "mc-crypto-rand",
@@ -999,7 +1001,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-sig-authority"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "mc-crypto-keys",
  "signature",
@@ -1022,11 +1024,11 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-alloc"
-version = "1.1.0"
+version = "1.1.2"
 
 [[package]]
 name = "mc-sgx-build"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "cc",
  "lazy_static",
@@ -1036,7 +1038,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-compat"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "cfg-if 0.1.10",
  "mc-sgx-alloc",
@@ -1049,7 +1051,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-css"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "displaydoc",
  "sha2",
@@ -1057,29 +1059,29 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-debug"
-version = "1.1.0"
+version = "1.1.2"
 
 [[package]]
 name = "mc-sgx-enclave-id"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "mc-sgx-types",
 ]
 
 [[package]]
 name = "mc-sgx-panic"
-version = "1.1.0"
+version = "1.1.2"
 
 [[package]]
 name = "mc-sgx-panic-edl"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "cargo-emit",
 ]
 
 [[package]]
 name = "mc-sgx-report-cache-api"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
@@ -1090,7 +1092,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-service"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "mc-sgx-build",
  "mc-sgx-types",
@@ -1098,7 +1100,7 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-slog"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "cfg-if 0.1.10",
  "mc-common",
@@ -1108,14 +1110,14 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-slog-edl"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "cargo-emit",
 ]
 
 [[package]]
 name = "mc-sgx-sync"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "mc-sgx-panic",
  "mc-sgx-types",
@@ -1123,18 +1125,20 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-types"
-version = "1.1.0"
+version = "1.1.2"
 
 [[package]]
 name = "mc-transaction-core"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
+ "aes",
  "blake2",
  "bulletproofs",
  "curve25519-dalek",
  "displaydoc",
  "generic-array",
  "hex_fmt",
+ "hkdf",
  "lazy_static",
  "mc-account-keys",
  "mc-common",
@@ -1149,13 +1153,14 @@ dependencies = [
  "prost",
  "rand_core",
  "serde",
+ "sha2",
  "subtle",
  "zeroize",
 ]
 
 [[package]]
 name = "mc-util-build-script"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "cargo-emit",
  "displaydoc",
@@ -1166,7 +1171,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-build-sgx"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "cargo-emit",
  "cc",
@@ -1177,7 +1182,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-encodings"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "base64",
  "binascii",
@@ -1189,14 +1194,14 @@ dependencies = [
 
 [[package]]
 name = "mc-util-from-random"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "rand_core",
 ]
 
 [[package]]
 name = "mc-util-repr-bytes"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "generic-array",
  "prost",
@@ -1205,7 +1210,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-serial"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "prost",
  "serde",

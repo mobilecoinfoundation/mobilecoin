@@ -1,0 +1,64 @@
+[package]
+name = "mc-fog-sample-paykit"
+version = "1.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+readme = "README.md"
+license = "GPL-3.0"
+
+[[bin]]
+name = "balance_check"
+path = "src/bin/balance_check.rs"
+
+[[bin]]
+name = "sample_paykit_remote_wallet"
+path = "src/bin/sample_paykit_remote_wallet.rs"
+
+[dependencies]
+# mobilecoin
+mc-account-keys = { path = "../../account-keys" }
+mc-attest-core = { path = "../../attest/core" }
+mc-common = { path = "../../common", features = ["log"] }
+mc-connection = { path = "../../connection" }
+mc-consensus-api = { path = "../../consensus/api" }
+mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-crypto-rand = { path = "../../crypto/rand" }
+mc-transaction-core = { path = "../../transaction/core" }
+mc-transaction-std = { path = "../../transaction/std" }
+mc-util-grpc = { path = "../../util/grpc" }
+mc-util-keyfile = { path = "../../util/keyfile" }
+mc-util-uri = { path = "../../util/uri" }
+
+# fog
+mc-fog-api = { path = "../api" }
+mc-fog-enclave-connection = { path = "../enclave_connection" }
+mc-fog-ingest-enclave-measurement = { path = "../ingest/enclave/measurement" }
+mc-fog-ledger-connection = { path = "../ledger/connection" }
+mc-fog-ledger-enclave-measurement = { path = "../ledger/enclave/measurement" }
+mc-fog-report-connection = { path = "../../fog/report/connection" }
+mc-fog-report-validation = { path = "../../fog/report/validation" }
+mc-fog-types =  {path = "../types" }
+mc-fog-uri = { path = "../uri" }
+mc-fog-view-connection = { path = "../view/connection" }
+mc-fog-view-enclave-measurement = { path = "../view/enclave/measurement" }
+mc-fog-view-protocol = { path = "../view/protocol" }
+
+displaydoc = { version = "0.2", default-features = false }
+futures = "0.3"
+grpcio = "0.9.0"
+link-cplusplus = "1.0" # This is needed to support building on darwin which only has libc++ and not libstdc++
+protobuf = "2.22.1"
+rand = "0.8"
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+structopt = "0.3"
+
+[dev-dependencies]
+mc-common = { path = "../../common", features = ["loggers"] }
+mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
+
+[build-dependencies]
+mc-util-build-grpc = { path = "../../util/build/grpc" }
+mc-util-build-script = { path = "../../util/build/script" }
+
+cargo-emit = "0.1.1"

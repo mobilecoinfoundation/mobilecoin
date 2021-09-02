@@ -19,7 +19,7 @@ mod traits;
 /// Data structure for fog-ingest report validation
 pub mod ingest_report;
 
-#[cfg(any(test, feature = "automock"))]
+#[cfg(feature = "automock")]
 pub use crate::traits::MockFogPubkeyResolver;
 pub use crate::traits::{FogPubkeyError, FogPubkeyResolver, FullyValidatedFogPubkey};
 
@@ -31,8 +31,8 @@ use alloc::{
 use core::str::FromStr;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::Verifier;
+use mc_fog_report_types::ReportResponse;
 use mc_fog_sig::Verifier as FogSigVerifier;
-use mc_fog_types::ReportResponse;
 use mc_util_uri::{FogUri, UriParseError};
 
 /// Represents a set of unvalidated responses from Fog report servers

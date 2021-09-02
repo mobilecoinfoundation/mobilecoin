@@ -1,0 +1,48 @@
+[package]
+name = "mc-fog-ingest-enclave"
+version = "1.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+license = "GPL-3.0"
+
+[dependencies]
+# fog
+mc-fog-ingest-enclave-api = { path = "./api" }
+mc-fog-ingest-enclave-edl = { path = "./edl" }
+mc-fog-kex-rng = { path = "../../kex_rng" }
+mc-fog-ocall-oram-storage-edl = { path = "../../ocall_oram_storage/edl" }
+mc-fog-ocall-oram-storage-untrusted = { path = "../../ocall_oram_storage/untrusted" }
+mc-fog-recovery-db-iface = { path = "../../recovery_db_iface", default-features = false }
+mc-fog-types = { path = "../../types", default-features = false }
+
+# mobilecoin
+mc-attest-core = { path = "../../../attest/core" }
+mc-attest-enclave-api = { path = "../../../attest/enclave-api", default-features = false }
+mc-common = { path = "../../../common" }
+mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-enclave-boundary = { path = "../../../enclave-boundary" }
+mc-sgx-debug-edl = { path = "../../../sgx/debug-edl" }
+mc-sgx-panic-edl = { path = "../../../sgx/panic-edl" }
+mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
+mc-sgx-slog-edl = { path = "../../../sgx/slog-edl" }
+mc-sgx-types = { path = "../../../sgx/types" }
+mc-sgx-urts = { path = "../../../sgx/urts" }
+mc-util-serial = { path = "../../../util/serial" }
+
+[dev-dependencies]
+mc-common = { path = "../../../common", features = ["loggers"] }
+mc-crypto-rand = { path = "../../../crypto/rand" }
+mc-fog-test-infra = { path = "../../test_infra" }
+mc-util-from-random = { path = "../../../util/from-random" }
+criterion = "0.3"
+
+[build-dependencies]
+mc-util-build-sgx = { path = "../../../util/build/sgx" }
+mc-util-build-script = { path = "../../../util/build/script" }
+
+cargo-emit = "0.1.1"
+pkg-config = "0.3"
+
+[[bench]]
+name = "add_user"
+harness = false

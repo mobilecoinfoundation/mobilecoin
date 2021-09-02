@@ -1,0 +1,21 @@
+[package]
+name = "mc-fog-recovery-db-iface"
+version = "1.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+license = "GPL-3.0"
+
+[dependencies]
+# mobilecoin
+mc-attest-core = { path = "../../attest/core", default-features = false }
+mc-common = { path = "../../common", default-features = false }
+mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-transaction-core = { path = "../../transaction/core" }
+
+# fog
+mc-fog-kex-rng = { path = "../kex_rng" }
+mc-fog-types = { path = "../types" }
+
+# third-party
+displaydoc = { version = "0.2", default-features = false }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

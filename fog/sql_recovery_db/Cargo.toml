@@ -1,0 +1,60 @@
+[package]
+name = "mc-fog-sql-recovery-db"
+version = "1.1.0"
+authors = ["Mobilecoin"]
+edition = "2018"
+license = "GPL-3.0"
+
+[lib]
+name = "mc_fog_sql_recovery_db"
+path = "src/lib.rs"
+
+[[bin]]
+name = "fog-sql-recovery-db-migrations"
+path = "src/bin/fog_sql_recovery_db_migrations.rs"
+
+
+[[bin]]
+name = "fog-sql-recovery-db-write-bench"
+path = "src/bin/fog_sql_recovery_db_write_bench.rs"
+
+[dependencies]
+mc-attest-core = { path = "../../attest/core" }
+mc-common = { path = "../../common", features = ["loggers"] }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-transaction-core = { path = "../../transaction/core" }
+mc-util-from-random = { path = "../../util/from-random" }
+mc-util-repr-bytes = { path = "../../util/repr-bytes" }
+
+mc-fog-kex-rng = { path = "../kex_rng" }
+mc-fog-recovery-db-iface = { path = "../recovery_db_iface" }
+mc-fog-types = { path = "../types" }
+
+chrono = "0.4"
+diesel = { version = "1.4.5", features = ["chrono", "postgres", "r2d2"] }
+diesel-derive-enum = { version = "1", features = ["postgres"] }
+diesel_migrations = { version = "1.4.0", features = ["postgres"] }
+displaydoc = { version = "0.2", default-features = false }
+prost = "0.6.1"
+r2d2 = "0.8.9"
+rand = "0.8"
+rand_core = "0.6"
+
+# needed for fog-sql-recovery-db-write-bench
+mc-fog-test-infra = { path = "../test_infra" }
+
+[dev-dependencies]
+mc-fog-test-infra = { path = "../test_infra" }
+
+mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
+mc-util-test-helper = { path = "../../util/test-helper" }
+
+pem = "0.8"
+rand = "0.8"
+# Note: tempdir is deprecated, but tempfile doesn't build because it depends
+# on the wrong version of rand.
+tempdir = "0.3"
+
+[build-dependencies]
+# clippy fails to run without this.
+diesel = { version = "1.4.5", features = ["chrono", "postgres", "r2d2"] }

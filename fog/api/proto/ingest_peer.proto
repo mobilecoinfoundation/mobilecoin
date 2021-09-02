@@ -1,0 +1,30 @@
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+
+syntax = "proto3";
+
+package ingest_peer;
+
+import "attest.proto";
+import "ingest_common.proto";
+import "google/protobuf/empty.proto";
+
+service AccountIngestPeerAPI {
+    /// Get a summary of the state of this ingest server
+    rpc GetStatus (google.protobuf.Empty) returns (ingest_common.IngestSummary) {}
+    /// Get the ingress private key of this enclave, encrypted for peer enclave
+    rpc GetIngressPrivateKey (GetPrivateKeyRequest) returns (attest.Message) {}
+    /// Set the ingress private key of this enclave, encrypted by peer enclave
+    /// Returns the status after the operation, or, an error
+    rpc SetIngressPrivateKey (attest.Message) returns (ingest_common.IngestSummary) {}
+    /// Set the list of peers of this ingest server
+    /// Returns the status after the operation, or, an error
+    /// Duplicates in this list are removed, and if a server is told to be a peer of itself,
+    /// it is handled correctly and is not an error.
+    rpc SetPeers (ingest_common.SetPeersRequest) returns (ingest_common.IngestSummary) {}
+}
+
+/// When requesting private key, the channel_id of previously established channel to encrypt it with
+message GetPrivateKeyRequest {
+    /// This is obtained using attest API
+    bytes channel_id = 1;
+}

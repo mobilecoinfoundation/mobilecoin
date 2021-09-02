@@ -122,6 +122,9 @@ pub enum TransactionValidationError {
 
     /// Public keys must be valid Ristretto points.
     KeyError,
+
+    /// A TxOut is missing the required memo field
+    MissingMemo,
 }
 
 impl From<mc_crypto_keys::KeyError> for TransactionValidationError {

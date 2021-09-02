@@ -1,0 +1,18 @@
+[package]
+name = "mc-fog-ocall-oram-storage-testing"
+version = "1.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+license = "GPL-3.0"
+
+[dependencies]
+# mc-oblivious
+aligned-cmov = "2.0"
+mc-oblivious-traits = "2.0"
+
+# fog
+mc-fog-ocall-oram-storage-trusted = { path = "../trusted" }
+mc-fog-ocall-oram-storage-untrusted = { path = "../untrusted" }
+
+# mobilecoin
+mc-util-test-helper = { path = "../../../util/test-helper" }

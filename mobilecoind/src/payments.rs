@@ -23,7 +23,9 @@ use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     BlockIndex,
 };
-use mc_transaction_std::{InputCredentials, TransactionBuilder};
+use mc_transaction_std::{
+    ChangeDestination, EmptyMemoBuilder, InputCredentials, TransactionBuilder,
+};
 use mc_util_uri::FogUri;
 use rand::Rng;
 use rayon::prelude::*;
@@ -774,9 +776,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         };
 
         // Create tx_builder.
-        let mut tx_builder = TransactionBuilder::new(fog_resolver);
+        let mut tx_builder = TransactionBuilder::new(fog_resolver, EmptyMemoBuilder::default());
 
-        tx_builder.set_fee(fee);
+        tx_builder
+            .set_fee(fee)
+            .map_err(|err| Error::TxBuildError(format!("Error setting fee: {}", err)))?;
 
         // Unzip each vec of tuples into a tuple of vecs.
         let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
@@ -877,14 +881,17 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if total_value > input_value {
             return Err(Error::InsufficientFunds);
         }
-        let change = input_value - total_value - tx_builder.fee;
+        let change = input_value - total_value - tx_builder.get_fee();
 
         // If we do, add an output for that as well.
+        // TODO: Should the exchange write destination memos?
+        // If so then we must always write a change output, even if the change is zero
         if change > 0 {
-            let change_public_address = from_account_key.subaddress(change_subaddress);
+            let change_dest =
+                ChangeDestination::from_subaddress_index(from_account_key, change_subaddress);
 
             tx_builder
-                .add_output(change, &change_public_address, rng)
+                .add_change_output(change, &change_dest, rng)
                 .map_err(|err| {
                     Error::TxBuildError(format!("failed adding output (change): {}", err))
                 })?;

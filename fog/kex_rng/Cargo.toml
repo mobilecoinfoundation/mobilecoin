@@ -1,0 +1,26 @@
+[package]
+name = "mc-fog-kex-rng"
+version = "1.1.0"
+authors = ["Mobilecoin"]
+edition = "2018"
+readme = "README.md"
+license = "GPL-3.0"
+
+[dependencies]
+mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-util-from-random = { path = "../../util/from-random" }
+mc-util-repr-bytes = { path = "../../util/repr-bytes" }
+
+displaydoc = { version = "0.2", default-features = false }
+prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
+rand_core = { version = "0.6", default-features = false }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+
+[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
+blake2 = { version = "0.9", default-features = false, features = ["simd"] }
+
+[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
+blake2 = { version = "0.9", default-features = false }
+
+[dev_dependencies]
+mc-util-test-helper = { path = "../../util/test-helper" }

@@ -156,23 +156,28 @@ pub fn add_block_to_ledger_db(
     key_images: &[KeyImage],
     rng: &mut (impl CryptoRng + RngCore),
 ) -> u64 {
+    let num_blocks = ledger_db.num_blocks().expect("failed to get block height");
+
     let outputs: Vec<_> = recipients
         .iter()
         .map(|recipient| {
-            TxOut::new(
+            let mut result = TxOut::new(
                 // TODO: allow for subaddress index!
                 output_value,
                 recipient,
                 &RistrettoPrivate::from_random(rng),
                 Default::default(),
             )
-            .unwrap()
+            .expect("Could not create TxOut");
+            // The origin block does not have memos
+            if num_blocks == 0 {
+                result.e_memo = None;
+            }
+            result
         })
         .collect();
 
     let block_contents = BlockContents::new(key_images.to_vec(), outputs.clone());
-
-    let num_blocks = ledger_db.num_blocks().expect("failed to get block height");
 
     let new_block;
     if num_blocks > 0 {
