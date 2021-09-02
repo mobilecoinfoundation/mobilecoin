@@ -176,8 +176,9 @@ checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 
 [[package]]
 name = "blake2"
-version = "0.9.1"
-source = "git+https://github.com/jcape/RustCrypto-hashes.git?rev=fc927fb0709b93ace4a5a1f50999a2b679f8c502#fc927fb0709b93ace4a5a1f50999a2b679f8c502"
+version = "0.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a4e37d16930f5459780f5621038b6382b9bb37c19016f39fb6b5808d831f174"
 dependencies = [
  "crypto-mac",
  "digest",

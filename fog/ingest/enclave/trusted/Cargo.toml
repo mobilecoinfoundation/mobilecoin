@@ -65,9 +65,6 @@ debug-assertions = false
 overflow-checks = false
 
 [patch.crates-io]
-# Fixes for nightly-2021-07-21
-blake2 = { git = "https://github.com/jcape/RustCrypto-hashes.git", rev = "fc927fb0709b93ace4a5a1f50999a2b679f8c502" }
-
 # Not-yet-released version that depends on newer crates.
 bulletproofs-og = { git = "https://github.com/jcape/bulletproofs.git", rev = "bafd274c1f1cbbac47da815dcd2bbe33c38c43eb" }
 
