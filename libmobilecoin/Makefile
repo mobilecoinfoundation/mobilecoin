@@ -11,7 +11,7 @@ export IAS_MODE ?= DEV
 
 ### Build Configuration
 
-CARGO_PROFILE ?= release
+CARGO_PROFILE ?= mobile
 CARGO_BUILD_FLAGS ?=
 CARGO_TARGET_DIR ?= ../target
 
@@ -59,7 +59,12 @@ ifeq ($(CARGO_PROFILE),release)
   BUILD_CONFIG_FOLDER = release
   CARGO_BUILD_FLAGS += --release
 else
-  BUILD_CONFIG_FOLDER = debug
+  ifeq ($(CARGO_PROFILE),mobile)
+    BUILD_CONFIG_FOLDER = mobile
+    CARGO_BUILD_FLAGS += -Z unstable-options --profile=mobile
+  else
+    BUILD_CONFIG_FOLDER = debug
+  endif
 endif
 
 .PHONY: $(ARCHS_IOS)
