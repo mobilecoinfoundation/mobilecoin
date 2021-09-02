@@ -11,7 +11,7 @@ export IAS_MODE ?= DEV
 
 CARGO_PROFILE ?= mobile
 ARCHS = aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
-DOCKER_BUILDER_IMAGE_TAG = gcr.io/mobilenode-211420/android-bindings-builder:1_3
+DOCKER_BUILDER_IMAGE_TAG = gcr.io/mobilenode-211420/android-bindings-builder:1_4
 CARGO_BUILD_FLAGS += -Zunstable-options --profile=$(CARGO_PROFILE)
 BUILD_DEPS_FOLDER = /tmp/build/deps/
 MIN_API_LEVEL = 19
