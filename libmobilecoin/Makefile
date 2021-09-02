@@ -95,7 +95,7 @@ $(ARCHS_IOS):
 	@cd $(CARGO_TARGET_DIR)/$@/$(BUILD_CONFIG_FOLDER) && \
 		rm -f $(IOS_LIB_STRIPPED) || true
 	cd $(CARGO_TARGET_DIR)/$@/$(BUILD_CONFIG_FOLDER) && \
-		ld -r -arch $(LD_ARCH) -x -keep_private_externs \
+		ld -r -arch $(LD_ARCH) -x \
 			-exported_symbols_list exported-symbols.def \
 			-o $(IOS_LIB_STRIPPED) \
 			extracted/*.o
