@@ -71,16 +71,14 @@ debug-assertions = false
 overflow-checks = false
 
 [patch.crates-io]
-# Not-yet-released version that depends on newer crates.
-bulletproofs-og = { git = "https://github.com/jcape/bulletproofs.git", rev = "bafd274c1f1cbbac47da815dcd2bbe33c38c43eb" }
+# Fork and rename to use "OG" dalek-cryptography.
+bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "675330c754f28876dbf94fc303fe73666cf8f8f4" }
 
 # Patched to disable the cpuid instruction because that is incompatible with our sgx builds.
 cpufeatures = { git = "https://github.com/mobilecoinfoundation/RustCrypto-utils.git", rev = "9a22d2a3e5b829277cc05f4833751dd86c155218" }
 
-# ed25519-dalek depends on rand 0.7 which in turns depends on a broken version of packed_simd
-# This is a PR that moves it to newer rand
-# See https://github.com/dalek-cryptography/ed25519-dalek/pull/160
-ed25519-dalek = { git = "https://github.com/jcape/ed25519-dalek.git", rev = "5758cffaa08ed191204f3c62d8302152216e4ce5" }
+# Fix issues with recent nightlies, bump curve25519-dalek version
+ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "78bdc2a0b0af852cb4e47a0ca9be74bdf77c57b6" }
 
 # Our patches for newer bindgen, no-std
 mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "4ab09e036754c29eac197c2c099acc06b8815c6f" }
@@ -95,13 +93,13 @@ packed_simd_2 = { git = "https://github.com/rust-lang/packed_simd.git", rev = "f
 prost = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
 prost-derive = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
 
-# Overridden since we need a commit that uprevs a bunch of dependencies.
-schnorrkel-og = { git = "https://github.com/jcape/schnorrkel.git", rev = "b90fd446eeaef2996c199138427888afcf972bbd" }
+# Fork and rename to use "OG" dalek-cryptography.
+schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "9b48418556b0af476be2313309bc5a23fb8b351d" }
 
 # Fixes the following:
 # * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.
 #   See: https://github.com/pyfisch/cbor/pull/198
 serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a7c1d523aae1ec4aa7386f402cb2f4341b5" }
 
-# Bump curve25519-dalek version to 4.0.0-pre0
-x25519-dalek = { git = "https://github.com/jcape/x25519-dalek.git", rev = "c012698737563a490d1ac9516d29cd6e0bb7319e" }
+# Fix issues with recent nightlies, bump curve25519-dalek version
+x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "672f29ef4b3addd9a3c4888cf4b836b243bda595" }

@@ -404,7 +404,7 @@ checksum = "39092a32794787acd8525ee150305ff051b0aa6cc2abaf193924f5ab05425f39"
 [[package]]
 name = "bulletproofs-og"
 version = "3.0.0-pre.0"
-source = "git+https://github.com/jcape/bulletproofs.git?rev=bafd274c1f1cbbac47da815dcd2bbe33c38c43eb#bafd274c1f1cbbac47da815dcd2bbe33c38c43eb"
+source = "git+https://github.com/mobilecoinfoundation/bulletproofs.git?rev=675330c754f28876dbf94fc303fe73666cf8f8f4#675330c754f28876dbf94fc303fe73666cf8f8f4"
 dependencies = [
  "byteorder",
  "clear_on_drop",
@@ -950,7 +950,7 @@ dependencies = [
 [[package]]
 name = "datatest"
 version = "0.6.4"
-source = "git+https://github.com/jcape/datatest.git?rev=04fcb4bf8ccb6b216f8d7769446f47b1a5cd0e66#04fcb4bf8ccb6b216f8d7769446f47b1a5cd0e66"
+source = "git+https://github.com/mobilecoinfoundation/datatest.git?rev=dc3521f692228b846a2312e7ceece50e7664be6e#dc3521f692228b846a2312e7ceece50e7664be6e"
 dependencies = [
  "ctor",
  "datatest-derive",
@@ -965,7 +965,7 @@ dependencies = [
 [[package]]
 name = "datatest-derive"
 version = "0.6.4"
-source = "git+https://github.com/jcape/datatest.git?rev=04fcb4bf8ccb6b216f8d7769446f47b1a5cd0e66#04fcb4bf8ccb6b216f8d7769446f47b1a5cd0e66"
+source = "git+https://github.com/mobilecoinfoundation/datatest.git?rev=dc3521f692228b846a2312e7ceece50e7664be6e#dc3521f692228b846a2312e7ceece50e7664be6e"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
@@ -1160,7 +1160,7 @@ dependencies = [
 [[package]]
 name = "ed25519-dalek"
 version = "2.0.0-pre.0"
-source = "git+https://github.com/jcape/ed25519-dalek.git?rev=5758cffaa08ed191204f3c62d8302152216e4ce5#5758cffaa08ed191204f3c62d8302152216e4ce5"
+source = "git+https://github.com/mobilecoinfoundation/ed25519-dalek.git?rev=78bdc2a0b0af852cb4e47a0ca9be74bdf77c57b6#78bdc2a0b0af852cb4e47a0ca9be74bdf77c57b6"
 dependencies = [
  "curve25519-dalek",
  "ed25519",
@@ -6381,7 +6381,7 @@ dependencies = [
 [[package]]
 name = "schnorrkel-og"
 version = "0.10.2"
-source = "git+https://github.com/jcape/schnorrkel.git?rev=b90fd446eeaef2996c199138427888afcf972bbd#b90fd446eeaef2996c199138427888afcf972bbd"
+source = "git+https://github.com/mobilecoinfoundation/schnorrkel.git?rev=9b48418556b0af476be2313309bc5a23fb8b351d#9b48418556b0af476be2313309bc5a23fb8b351d"
 dependencies = [
  "arrayref",
  "arrayvec",
@@ -7955,7 +7955,7 @@ dependencies = [
 [[package]]
 name = "x25519-dalek"
 version = "2.0.0-pre.0"
-source = "git+https://github.com/jcape/x25519-dalek.git?rev=c012698737563a490d1ac9516d29cd6e0bb7319e#c012698737563a490d1ac9516d29cd6e0bb7319e"
+source = "git+https://github.com/mobilecoinfoundation/x25519-dalek.git?rev=672f29ef4b3addd9a3c4888cf4b836b243bda595#672f29ef4b3addd9a3c4888cf4b836b243bda595"
 dependencies = [
  "curve25519-dalek",
  "rand_core 0.6.2",
