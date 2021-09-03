@@ -16,7 +16,6 @@ extern "C" {
 /* ==== Types ==== */
 
 typedef struct {
-  const McBuffer* MC_NONNULL commitment;
   uint64_t masked_value;
 } McTxOutAmount;
 
@@ -24,6 +23,17 @@ typedef struct _McTransactionBuilderRing McTransactionBuilderRing;
 typedef struct _McTransactionBuilder McTransactionBuilder;
 
 /* ==== TxOut ==== */
+
+/// # Preconditions
+///
+/// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
+bool mc_tx_out_shared_secret(
+  const McBuffer* MC_NONNULL tx_out_public_key,
+  const McBuffer* MC_NONNULL view_private_key,
+  McMutableBuffer* MC_NONNULL out_subaddress_spend_public_key,
+  McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
 
 /// # Preconditions
 ///

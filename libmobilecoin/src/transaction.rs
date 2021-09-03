@@ -6,6 +6,7 @@ use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{ReprBytes, RistrettoPrivate, RistrettoPublic};
 use mc_fog_report_validation::FogResolver;
 use mc_transaction_core::{
+    get_value_mask,
     get_tx_out_shared_secret,
     onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
     ring_signature::KeyImage,
@@ -18,22 +19,37 @@ use mc_util_ffi::*;
 /* ==== TxOut ==== */
 
 #[repr(C)]
-pub struct McTxOutAmount<'a> {
+pub struct McTxOutAmount {
     /// 32-byte `CompressedCommitment`
-    commitment: FfiRefPtr<'a, McBuffer<'a>>,
     masked_value: u64,
 }
 
-impl<'a> TryFromFfi<&McTxOutAmount<'a>> for Amount {
-    type Error = LibMcError;
+/// # Preconditions
+///
+/// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
+#[no_mangle]
+pub extern "C" fn mc_tx_out_shared_secret(
+    tx_out_public_key: FfiRefPtr<McBuffer>,
+    view_private_key: FfiRefPtr<McBuffer>,
+    out_tx_out_shared_secret: FfiMutPtr<McMutableBuffer>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>
+) -> bool {
+    ffi_boundary_with_error(out_error, || {
+        let view_private_key = RistrettoPrivate::try_from_ffi(&view_private_key)
+            .expect("view_private_key is not a valid RistrettoPrivate");
 
-    fn try_from_ffi(src: &McTxOutAmount<'a>) -> Result<Self, Self::Error> {
-        let commitment = CompressedCommitment::try_from_ffi(&src.commitment)?;
-        Ok(Amount {
-            commitment,
-            masked_value: src.masked_value,
-        })
-    }
+        let tx_out_public_key = RistrettoPublic::try_from_ffi(&tx_out_public_key)?;
+
+        let shared_secret = get_tx_out_shared_secret(&view_private_key, &tx_out_public_key);
+        
+        let out_tx_out_shared_secret = out_tx_out_shared_secret
+            .into_mut()
+            .as_slice_mut_of_len(RistrettoPublic::size())
+            .expect("out_tx_out_shared_secret length is insufficient");
+
+        out_tx_out_shared_secret.copy_from_slice(&shared_secret.to_bytes());
+        Ok(())
+    })
 }
 
 /// # Preconditions
@@ -50,12 +66,15 @@ pub extern "C" fn mc_tx_out_matches_any_subaddress(
         let view_private_key = RistrettoPrivate::try_from_ffi(&view_private_key)
             .expect("view_private_key is not a valid RistrettoPrivate");
 
+
         let mut matches = false;
-        if let Ok(amount) = Amount::try_from_ffi(&tx_out_amount) {
-            if let Ok(public_key) = RistrettoPublic::try_from_ffi(&tx_out_public_key) {
-                let shared_secret = get_tx_out_shared_secret(&view_private_key, &public_key);
-                matches = amount.get_value(&shared_secret).is_ok()
-            }
+        if let Ok(public_key) = RistrettoPublic::try_from_ffi(&tx_out_public_key) {
+            let shared_secret = get_tx_out_shared_secret(&view_private_key, &public_key);
+            let value =
+                (tx_out_amount.masked_value as u64) ^ get_value_mask(&shared_secret);
+            let amount: Amount = Amount::new(value, &shared_secret)
+                .expect("could not create amount object");
+            matches = amount.get_value(&shared_secret).is_ok()
         }
         *out_matches.into_mut() = matches;
     })
@@ -147,12 +166,14 @@ pub extern "C" fn mc_tx_out_get_value(
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
 ) -> bool {
     ffi_boundary_with_error(out_error, || {
-        let amount = Amount::try_from_ffi(&tx_out_amount)?;
         let tx_out_public_key = RistrettoPublic::try_from_ffi(&tx_out_public_key)?;
         let view_private_key = RistrettoPrivate::try_from_ffi(&view_private_key)
             .expect("view_private_key is not a valid RistrettoPrivate");
 
         let shared_secret = get_tx_out_shared_secret(&view_private_key, &tx_out_public_key);
+        let value =
+            (tx_out_amount.masked_value as u64) ^ get_value_mask(&shared_secret);
+        let amount: Amount = Amount::new(value, &shared_secret)?;
         let (val, _blinding) = amount.get_value(&shared_secret)?;
 
         *out_value.into_mut() = val;
