@@ -33,10 +33,17 @@ endif
 ### Local Variables
 
 CARGO_PACKAGE = libmobilecoin
-ARCHS_IOS = x86_64-apple-ios aarch64-apple-ios
+ARCHS_IOS = aarch64-apple-ios-sim aarch64-apple-ios-macabi aarch64-apple-ios x86_64-apple-ios-macabi x86_64-apple-ios x86_64-apple-darwin
 IOS_LIB = libmobilecoin.a
 IOS_LIB_STRIPPED = libmobilecoin_stripped.a
 IOS_C_HEADERS = include/*
+
+### Helper Function
+
+define BINARY_copy
+	mkdir -p out/ios/target/$(1)/release
+	cp $(CARGO_TARGET_DIR)/$(1)/release/libmobilecoin_stripped.a out/ios/target/$(1)/release;
+endef
 
 ####################################
 ############## Targets #############
@@ -47,8 +54,8 @@ all: setup ios
 
 .PHONY: setup
 setup:
-	rustup target add $(ARCHS_IOS)
-	rustup component add llvm-tools-preview
+	rustup target add x86_64-apple-ios aarch64-apple-ios
+	rustup component add llvm-tools-preview rust-src
 	rustup run --install stable cargo install cargo-binutils
 
 .PHONY: ios
@@ -65,10 +72,14 @@ endif
 .PHONY: $(ARCHS_IOS)
 x86_64-apple-ios aarch64-apple-ios: CARGO_ENV_FLAGS += CFLAGS="-DPB_NO_PACKED_STRUCTS=1"
 x86_64-apple-ios aarch64-apple-ios: CARGO_ENV_FLAGS += CXXFLAGS="-DPB_NO_PACKED_STRUCTS=1"
-x86_64-apple-ios: LD_ARCH = x86_64
-aarch64-apple-ios: LD_ARCH = arm64
+
+x86_64-apple-ios x86_64-apple-ios-macabi x86_64-apple-darwin: LD_ARCH = x86_64
+aarch64-apple-ios aarch64-apple-ios-sim aarch64-apple-ios-macabi: LD_ARCH = arm64
+
+x86_64-apple-ios-macabi aarch64-apple-ios-sim aarch64-apple-ios-macabi: CARGO_BUILD_FLAGS += -Zbuild-std
+
 $(ARCHS_IOS):
-	$(CARGO_ENV_FLAGS) $(CARGO) build --package $(CARGO_PACKAGE) --target $@ $(CARGO_BUILD_FLAGS)
+	(CARGO_ENV_FLAGS) $(CARGO) build --package $(CARGO_PACKAGE) --target $@ $(CARGO_BUILD_FLAGS) -vv
 
 	@# Extract object files from static archive.
 	@cd $(CARGO_TARGET_DIR)/$@/$(BUILD_CONFIG_FOLDER) && \
@@ -98,7 +109,7 @@ $(ARCHS_IOS):
 .PHONY: out/ios/$(IOS_LIB)
 out/ios/$(IOS_LIB): $(ARCHS_IOS)
 	mkdir -p out/ios
-	lipo -create -output $@ $(foreach arch,$^,$(CARGO_TARGET_DIR)/$(arch)/$(BUILD_CONFIG_FOLDER)/$(IOS_LIB_STRIPPED))
+	$(foreach arch,$^,$(call BINARY_copy,$(arch)))
 
 	mkdir -p out/ios/include
 	cp $(IOS_C_HEADERS) out/ios/include
