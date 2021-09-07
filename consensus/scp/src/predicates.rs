@@ -149,7 +149,7 @@ impl<V: Value> ValueSetPredicate<V> {
                 if a_node_ids.len() != b_node_ids.len() {
                     a_node_ids.len().cmp(&b_node_ids.len())
                 } else {
-                    a_values.cmp(&b_values)
+                    a_values.cmp(b_values)
                 }
             })
             .unwrap();

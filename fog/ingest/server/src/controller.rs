@@ -545,7 +545,7 @@ where
                 // It's okay to .expect here since this code should not run if we did not get an
                 // ingest invocation id.
                 iid.as_ref().expect("no ingest invocation id"),
-                &block,
+                block,
                 timestamp,
                 &tx_rows,
             ) {

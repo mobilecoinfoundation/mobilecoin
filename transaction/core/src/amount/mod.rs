@@ -54,7 +54,7 @@ impl Amount {
 
         // The value is XORed with the first 8 bytes of the mask.
         // `v XOR_8 Blake2B(value_mask | shared_secret)`
-        let masked_value: u64 = value ^ get_value_mask(&shared_secret);
+        let masked_value: u64 = value ^ get_value_mask(shared_secret);
 
         Ok(Amount {
             commitment,

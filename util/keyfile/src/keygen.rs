@@ -22,7 +22,7 @@ pub fn write_keyfiles<P: AsRef<Path>>(
 
     fs::create_dir_all(&path)?;
 
-    write_keyfile(path.as_ref().join(name).with_extension("json"), &root_id)?;
+    write_keyfile(path.as_ref().join(name).with_extension("json"), root_id)?;
     write_pubfile(
         path.as_ref().join(name).with_extension("pub"),
         &acct_key.default_subaddress(),
@@ -52,7 +52,7 @@ pub fn write_default_keyfiles<P: AsRef<Path>>(
     for i in 0..num_accounts {
         let root_id = RootIdentity::random_with_fog(
             &mut keys_rng,
-            fog_url.unwrap_or(&""),
+            fog_url.unwrap_or(""),
             fog_report_id.unwrap_or_default(),
             fog_authority_spki.unwrap_or_default(),
         );

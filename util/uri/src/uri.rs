@@ -112,8 +112,8 @@ impl<Scheme: UriScheme> FromStr for Uri<Scheme> {
             false
         } else {
             return Err(UriParseError::UnknownScheme(
-                &Scheme::SCHEME_SECURE,
-                &Scheme::SCHEME_INSECURE,
+                Scheme::SCHEME_SECURE,
+                Scheme::SCHEME_INSECURE,
             ));
         };
 

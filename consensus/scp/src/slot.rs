@@ -331,14 +331,9 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
     /// ignored.
     fn handle_messages(&mut self, msgs: &[Msg<V>]) -> Result<Option<Msg<V>>, String> {
         // Ignore messages from self.
-        let msgs: Vec<&Msg<V>> = msgs
+        let (mut msgs_for_slot, msgs_for_other_slots): (Vec<_>, Vec<_>) = msgs
             .iter()
             .filter(|&msg| msg.sender_id != self.node_id)
-            .collect();
-
-        // Omit messages for other slots.
-        let (mut msgs_for_slot, msgs_for_other_slots): (Vec<_>, Vec<_>) = msgs
-            .into_iter()
             .partition(|&msg| msg.slot_index == self.slot_index);
 
         if !msgs_for_other_slots.is_empty() {
@@ -1519,7 +1514,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             test_fn: Arc::new(|msg, values| match msg.accepts_nominated() {
                 None => BTreeSet::default(),
                 Some(values_accepted_nominated) => values
-                    .intersection(&values_accepted_nominated)
+                    .intersection(values_accepted_nominated)
                     .cloned()
                     .collect(),
             }),

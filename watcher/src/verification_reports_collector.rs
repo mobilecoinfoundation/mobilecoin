@@ -278,7 +278,7 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
 
             // Contact node and get a VerificationReport.
             let verification_report = match NC::get_verification_report(
-                &source_config,
+                source_config,
                 self.grpcio_env.clone(),
                 self.logger.clone(),
             ) {

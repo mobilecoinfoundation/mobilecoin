@@ -9,7 +9,7 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
-use bulletproofs::RangeProof;
+use bulletproofs_og::RangeProof;
 use core::convert::TryFrom;
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use mc_common::HashSet;
@@ -281,15 +281,13 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         .collect();
 
     let (range_proof, commitments) = {
-        let values_and_blindings: Vec<(u64, Scalar)> = pseudo_output_values_and_blindings
+        // The implicit fee output is omitted from the range proof because it is known.
+
+        let (values, blindings): (Vec<_>, Vec<_>) = pseudo_output_values_and_blindings
             .iter()
             .chain(output_values_and_blindings.iter())
             .map(|(value, blinding)| (*value, *blinding))
-            .collect();
-
-        // The implicit fee output is omitted from the range proof because it is known.
-
-        let (values, blindings): (Vec<_>, Vec<_>) = values_and_blindings.into_iter().unzip();
+            .unzip();
         generate_range_proofs(&values, &blindings, rng).map_err(|_e| Error::RangeProofError)?
     };
 
@@ -364,7 +362,7 @@ fn extend_message(
     for commitment in pseudo_output_commitments {
         extended_message.extend_from_slice(commitment.as_ref());
     }
-    extended_message.extend_from_slice(&range_proof_bytes);
+    extended_message.extend_from_slice(range_proof_bytes);
     extended_message
 }
 

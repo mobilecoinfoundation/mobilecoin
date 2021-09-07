@@ -75,7 +75,7 @@ fn main() {
 
             log::info!(logger, "Opening watcher db at {:?}.", watcher_db_path);
             let watcher_db = create_or_open_rw_watcher_db(
-                &watcher_db_path,
+                watcher_db_path,
                 &transactions_fetcher.source_urls,
                 logger.clone(),
             )

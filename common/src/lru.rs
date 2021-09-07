@@ -244,7 +244,7 @@ impl<'a, K, V> Iterator for LruCacheIterator<'a, K, V> {
             self.pos += 1;
 
             if let Some((ref k, ref v)) = entry {
-                return Some((&k, &v));
+                return Some((k, v));
             }
         }
     }
@@ -283,7 +283,7 @@ impl<'a, K, V> Iterator for LruCacheMutIterator<'a, K, V> {
             self.pos += 1;
 
             if let Some((ref k, ref mut v)) = entry.as_mut() {
-                return Some((&k, v));
+                return Some((k, v));
             }
         }
     }

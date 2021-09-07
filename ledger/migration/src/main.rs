@@ -169,13 +169,13 @@ fn construct_block_number_by_tx_out_index_from_existing_data(
     // After the database has been created, populate it with the existing data.
     let mut db_txn = env.begin_rw_txn()?;
 
-    let num_blocks = key_bytes_to_u64(&db_txn.get(counts_db, &NUM_BLOCKS_KEY)?);
+    let num_blocks = key_bytes_to_u64(db_txn.get(counts_db, &NUM_BLOCKS_KEY)?);
 
     let mut percents: u64 = 0;
     for block_num in 0..num_blocks {
         // Get information about the TxOuts in the block.
         let bytes = db_txn.get(tx_outs_by_block_db, &u64_to_key_bytes(block_num))?;
-        let tx_outs_by_block: TxOutsByBlockValue = decode(&bytes)?;
+        let tx_outs_by_block: TxOutsByBlockValue = decode(bytes)?;
 
         log::trace!(
             logger,

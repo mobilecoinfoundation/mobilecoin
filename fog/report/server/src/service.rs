@@ -128,7 +128,7 @@ impl<R: ReportDb + Clone + Send + Sync> ReportApi for Service<R> {
                 self.build_response()
                     .map(ProtobufReportResponse::from)
                     .map_err(|e| e.into_rpc_status(logger)),
-                &logger,
+                logger,
             )
         })
     }

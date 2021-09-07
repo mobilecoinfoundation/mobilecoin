@@ -302,7 +302,7 @@ macro_rules! impl_sgx_newtype_for_bytestruct {
                     return Err($crate::traits::EncodingError::InvalidOutputLength);
                 }
 
-                &dest[..$size].copy_from_slice(&src.$fieldname[..]);
+                dest[..$size].copy_from_slice(&src.$fieldname[..]);
                 Ok($size)
             }
         }
@@ -316,7 +316,7 @@ macro_rules! impl_sgx_newtype_for_bytestruct {
                 }
 
                 let mut retval = $wrapper::default();
-                &(retval.0).$fieldname[..].copy_from_slice(&src[..$size]);
+                (retval.0).$fieldname[..].copy_from_slice(&src[..$size]);
                 Ok(retval)
             }
         }
@@ -330,7 +330,7 @@ macro_rules! impl_sgx_newtype_for_bytestruct {
                 }
 
                 let mut retval = $wrapper::default();
-                &(retval.0).$fieldname[..].copy_from_slice(&src[..$size]);
+                (retval.0).$fieldname[..].copy_from_slice(&src[..$size]);
                 Ok(retval)
             }
         }

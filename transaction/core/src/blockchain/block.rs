@@ -132,10 +132,10 @@ impl Block {
         let contents_hash = block_contents.hash();
         let id = compute_block_id(
             version,
-            &parent_id,
+            parent_id,
             index,
             cumulative_txo_count,
-            &root_element,
+            root_element,
             &contents_hash,
         );
 

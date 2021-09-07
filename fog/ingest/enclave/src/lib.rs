@@ -110,7 +110,7 @@ impl IngestSgxEnclave {
         Ok(make_variable_length_ecall(
             self.eid,
             ingest_enclave_call,
-            &inbuf,
+            inbuf,
         )?)
     }
 }

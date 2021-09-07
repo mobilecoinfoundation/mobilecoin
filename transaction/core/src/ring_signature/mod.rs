@@ -6,7 +6,7 @@ extern crate alloc;
 
 use crate::domain_separators::HASH_TO_POINT_DOMAIN_TAG;
 use blake2::{Blake2b, Digest};
-use bulletproofs::{BulletproofGens, PedersenGens};
+use bulletproofs_og::{BulletproofGens, PedersenGens};
 pub use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint};
 pub use curve_scalar::*;

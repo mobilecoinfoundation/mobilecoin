@@ -139,7 +139,7 @@ impl<S: MetadataStoreSettings> MetadataVersion<S> {
 
     /// Check if a given version is compatible with the latest version.
     pub fn is_compatible_with_latest(&self) -> Result<(), MetadataStoreError> {
-        S::is_compatible_with_latest(&self)
+        S::is_compatible_with_latest(self)
     }
 }
 
@@ -181,10 +181,10 @@ impl<S: MetadataStoreSettings> MetadataStore<S> {
     /// Open an existing MetadadataStore, or create a default one if it does not
     /// exist.
     pub fn open_or_create(env: &Environment) -> Result<Self, MetadataStoreError> {
-        Self::new(&env).or_else(|err| {
+        Self::new(env).or_else(|err| {
             if err == MetadataStoreError::Lmdb(lmdb::Error::NotFound) {
-                Self::create(&env)?;
-                Self::new(&env)
+                Self::create(env)?;
+                Self::new(env)
             } else {
                 Err(err)
             }

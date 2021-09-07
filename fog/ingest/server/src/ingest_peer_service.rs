@@ -113,7 +113,7 @@ where
     fn get_status(&mut self, ctx: RpcContext, _request: Empty, sink: UnarySink<IngestSummary>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(ctx, sink, self.get_status_impl(), &logger)
+            send_result(ctx, sink, self.get_status_impl(), logger)
         })
     }
 
@@ -125,7 +125,7 @@ where
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(ctx, sink, self.set_peers_impl(request, &logger), &logger)
+            send_result(ctx, sink, self.set_peers_impl(request, logger), logger)
         })
     }
 
@@ -140,8 +140,8 @@ where
             send_result(
                 ctx,
                 sink,
-                self.get_ingress_private_key_impl(request, &logger),
-                &logger,
+                self.get_ingress_private_key_impl(request, logger),
+                logger,
             )
         })
     }
@@ -156,8 +156,8 @@ where
             send_result(
                 ctx,
                 sink,
-                self.set_ingress_private_key_impl(request, &logger),
-                &logger,
+                self.set_ingress_private_key_impl(request, logger),
+                logger,
             )
         })
     }

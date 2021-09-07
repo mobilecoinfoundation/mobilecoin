@@ -11,7 +11,7 @@
 
 use core::convert::TryInto;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
-pub use schnorrkel::{Signature, SignatureError, SIGNATURE_LENGTH};
+pub use schnorrkel_og::{Signature, SignatureError, SIGNATURE_LENGTH};
 
 /// Create a deterministic Schnorrkel signature
 ///

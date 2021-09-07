@@ -133,7 +133,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
-                return send_result(ctx, sink, err.into(), &logger);
+                return send_result(ctx, sink, err.into(), logger);
             }
 
             // TODO: Use the prost message directly, once available
@@ -141,7 +141,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
                 Ok((response, _)) => {
                     let mut result = attest::AuthMessage::new();
                     result.set_data(response.into());
-                    send_result(ctx, sink, Ok(result), &logger);
+                    send_result(ctx, sink, Ok(result), logger);
                 }
                 Err(client_error) => {
                     // This is debug because there's no requirement on the remote party to trigger
@@ -157,9 +157,9 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
                         Err(rpc_permissions_error(
                             "client_auth",
                             format!("Permission denied: {}", client_error),
-                            &logger,
+                            logger,
                         )),
-                        &logger,
+                        logger,
                     );
                 }
             }
@@ -175,10 +175,10 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewApi for FogViewSe
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
-                return send_result(ctx, sink, err.into(), &logger);
+                return send_result(ctx, sink, err.into(), logger);
             }
 
-            send_result(ctx, sink, self.query_impl(request), &logger)
+            send_result(ctx, sink, self.query_impl(request), logger)
         })
     }
 }

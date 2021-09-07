@@ -142,7 +142,7 @@ impl BlockDataStore {
             Err(err) => Err(err.into()),
         }?;
 
-        let stored_block_data: StoredBlockData = decode(&stored_block_data_bytes)?;
+        let stored_block_data: StoredBlockData = decode(stored_block_data_bytes)?;
 
         let block = self.get_block_by_hash(db_txn, &stored_block_data.block_hash)?;
         let block_contents =

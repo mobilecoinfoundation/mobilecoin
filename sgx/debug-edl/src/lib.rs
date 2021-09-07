@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! Enclave EDL for the sgx_panic crate.
+//! Enclave EDL for the sgx_debug crate.
 
 #![no_std]
 

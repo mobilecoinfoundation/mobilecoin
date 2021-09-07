@@ -730,7 +730,7 @@ fn get_proof_of_membership(
         .map_err(|err| format!("Failed getting membership proofs: {}", err))?;
 
     // Return JSON response
-    let outputs_and_proofs: Vec<(JsonTxOut, JsonTxOutMembershipProof)> =
+    let (outputs, membership_proofs): (Vec<JsonTxOut>, Vec<JsonTxOutMembershipProof>) =
         get_membership_proofs_response
             .get_output_list()
             .iter()
@@ -739,10 +739,7 @@ fn get_proof_of_membership(
                 let proof = JsonTxOutMembershipProof::from(tx_out_with_proof.get_proof());
                 (tx_out, proof)
             })
-            .collect();
-
-    let (outputs, membership_proofs): (Vec<JsonTxOut>, Vec<JsonTxOutMembershipProof>) =
-        outputs_and_proofs.into_iter().unzip();
+            .unzip();
 
     let response = JsonMembershipProofResponse {
         outputs,
@@ -775,18 +772,16 @@ fn get_mixins(
         .get_mixins(&get_mixins_request)
         .map_err(|err| format!("Failed getting mixins: {}", err))?;
 
-    let mixins_and_proofs: Vec<(JsonTxOut, JsonTxOutMembershipProof)> = get_mixins_response
-        .get_mixins()
-        .iter()
-        .map(|tx_out_with_proof| {
-            let tx_out = JsonTxOut::from(tx_out_with_proof.get_output());
-            let proof = JsonTxOutMembershipProof::from(tx_out_with_proof.get_proof());
-            (tx_out, proof)
-        })
-        .collect();
-
     let (mixins, membership_proofs): (Vec<JsonTxOut>, Vec<JsonTxOutMembershipProof>) =
-        mixins_and_proofs.into_iter().unzip();
+        get_mixins_response
+            .get_mixins()
+            .iter()
+            .map(|tx_out_with_proof| {
+                let tx_out = JsonTxOut::from(tx_out_with_proof.get_output());
+                let proof = JsonTxOutMembershipProof::from(tx_out_with_proof.get_proof());
+                (tx_out, proof)
+            })
+            .unzip();
 
     let response = JsonMixinResponse {
         mixins,

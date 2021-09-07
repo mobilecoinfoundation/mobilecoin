@@ -165,7 +165,7 @@ impl TestClient {
         let retry_wait = self.consensus_wait / self.retry_attempts;
         let mut counter = 0usize;
         loop {
-            match client.is_transaction_present(&transaction)? {
+            match client.is_transaction_present(transaction)? {
                 TransactionStatus::Appeared(block_index) => return Ok(block_index),
                 TransactionStatus::Expired => panic!("Transaction was not accepted!"),
                 TransactionStatus::Unknown => {}

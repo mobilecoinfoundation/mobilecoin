@@ -139,7 +139,7 @@ where
     ) -> (Self, <Self::KexEphemeralPrivate as KexPrivate>::Secret) {
         let our_privkey = <Self::KexEphemeralPrivate as FromRandom>::from_random(csprng);
         let our_pubkey: Self = (&our_privkey).into();
-        let shared_secret = our_privkey.key_exchange(&self);
+        let shared_secret = our_privkey.key_exchange(self);
         (our_pubkey, shared_secret)
     }
 }

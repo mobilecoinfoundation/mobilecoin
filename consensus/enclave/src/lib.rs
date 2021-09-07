@@ -67,7 +67,7 @@ impl ConsensusServiceSgxEnclave {
         };
 
         let (sealed_key, features) = sgx_enclave
-            .enclave_init(self_peer_id, self_client_id, &sealed_key, minimum_fee)
+            .enclave_init(self_peer_id, self_client_id, sealed_key, minimum_fee)
             .expect("enclave_init failed");
 
         (sgx_enclave, sealed_key, features)
@@ -78,7 +78,7 @@ impl ConsensusServiceSgxEnclave {
         Ok(make_variable_length_ecall(
             self.enclave.geteid(),
             mobileenclave_call,
-            &inbuf,
+            inbuf,
         )?)
     }
 }

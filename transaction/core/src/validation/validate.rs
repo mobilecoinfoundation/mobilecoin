@@ -38,7 +38,7 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_number_of_outputs(&tx.prefix, MAX_OUTPUTS)?;
 
-    validate_memos_exist(&tx)?;
+    validate_memos_exist(tx)?;
 
     validate_ring_sizes(&tx.prefix, RING_SIZE)?;
 
@@ -48,15 +48,15 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_inputs_are_sorted(&tx.prefix)?;
 
-    validate_membership_proofs(&tx.prefix, &root_proofs)?;
+    validate_membership_proofs(&tx.prefix, root_proofs)?;
 
-    validate_signature(&tx, csprng)?;
+    validate_signature(tx, csprng)?;
 
-    validate_transaction_fee(&tx, minimum_fee)?;
+    validate_transaction_fee(tx, minimum_fee)?;
 
-    validate_key_images_are_unique(&tx)?;
+    validate_key_images_are_unique(tx)?;
 
-    validate_outputs_public_keys_are_unique(&tx)?;
+    validate_outputs_public_keys_are_unique(tx)?;
 
     validate_tombstone(current_block_index, tx.prefix.tombstone_block)?;
 
@@ -322,7 +322,7 @@ fn validate_membership_proofs(
 
     // Validate the membership proof for each TxOut used as an input ring element.
     for tx_out_with_proofs in tx_outs_with_proofs {
-        match derive_proof_at_index(&tx_out_with_proofs.root_proof) {
+        match derive_proof_at_index(tx_out_with_proofs.root_proof) {
             Err(_e) => {
                 return Err(TransactionValidationError::InvalidLedgerContext);
             }

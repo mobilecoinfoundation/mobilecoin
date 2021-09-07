@@ -1284,7 +1284,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .iter()
             .map(|compressed_tx_public_key| {
                 self.ledger_db
-                    .get_tx_out_index_by_public_key(&compressed_tx_public_key)
+                    .get_tx_out_index_by_public_key(compressed_tx_public_key)
                     .and_then(|txo_index| self.ledger_db.get_block_index_by_tx_out_index(txo_index))
             })
             .filter_map(Result::ok)
@@ -1342,7 +1342,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         // land in the same block.
         let key_image_found: Vec<bool> = key_images
             .iter()
-            .map(|key_image| block_contents.key_images.contains(&key_image))
+            .map(|key_image| block_contents.key_images.contains(key_image))
             .collect::<Vec<bool>>();
 
         // If all key images are in the block, the transaction was completed.
@@ -1456,7 +1456,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                                 .copy_from_slice(request.get_receipt().get_confirmation_number());
                             TxOutConfirmationNumber::from(confirmation_bytes)
                         };
-                        if !confirmation_number.validate(&tx_public_key, &view_private_key) {
+                        if !confirmation_number.validate(&tx_public_key, view_private_key) {
                             // If the confirmation number is invalid, this means that the
                             // transaction did get added to the ledger
                             // but the party constructing the receipt failed
@@ -1791,7 +1791,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Re-encrypt data using the new password.
         self.mobilecoind_db
-            .re_encrypt(&request.get_password())
+            .re_encrypt(request.get_password())
             .map_err(|err| rpc_internal_error("mobilecoind_db.re_encrypt", err, &self.logger))?;
 
         log::info!(self.logger, "DB encryption password updated successfully.");
@@ -1811,7 +1811,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
 
         self.mobilecoind_db
-            .check_and_store_password(&request.get_password())
+            .check_and_store_password(request.get_password())
             .map_err(|err| {
                 rpc_internal_error("mobilecoind_db.check_and_store_password", err, &self.logger)
             })?;

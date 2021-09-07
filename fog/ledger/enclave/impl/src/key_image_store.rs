@@ -91,7 +91,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> KeyImageStore<OS
     ) -> Result<(), AddRecordsError> {
         let mut value = A8Bytes::<ValueSize>::default();
         let mut key = A8Bytes::<KeySize>::default(); // key used to add to the oram for key image
-        key.clone_from_slice(&key_image.as_ref());
+        key.clone_from_slice(key_image.as_ref());
         // Flip the first byte of key image, when used as a key in the oblivious
         // map. This is because we will use key image as a key in the map,
         // but the map does not support all zeroes as a key. All zeroes is a
@@ -137,7 +137,7 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> KeyImageStore<OS
         };
 
         let mut key = A8Bytes::<KeySize>::default(); // key used to query the oram for key image
-        key.clone_from_slice(&key_image.as_ref());
+        key.clone_from_slice(key_image.as_ref());
         // Flip the first byte of key image, when used as a key in the oblivious
         // map. This is because we will use key image as a key in the map,
         // but the map does not support all zeroes as a key. All zeroes is a

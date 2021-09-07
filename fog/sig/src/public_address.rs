@@ -42,7 +42,7 @@ impl Verifier for PublicAddress {
 
         // Verify the chain and signature over the resulting authority
         self.verify_authority(
-            &certs.verified_root()?.subject_public_key_info().spki(),
+            certs.verified_root()?.subject_public_key_info().spki(),
             &authority_sig,
         )
         .map_err(Error::Authority)?;

@@ -124,13 +124,13 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
 
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
-                return send_result(ctx, sink, err.into(), &logger);
+                return send_result(ctx, sink, err.into(), logger);
             }
 
             let resp = self
                 .get_last_block_info_helper()
                 .map_err(|_| RpcStatus::new(RpcStatusCode::INTERNAL));
-            send_result(ctx, sink, resp, &logger);
+            send_result(ctx, sink, resp, logger);
         });
     }
 
@@ -145,7 +145,7 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
 
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
-                return send_result(ctx, sink, err.into(), &logger);
+                return send_result(ctx, sink, err.into(), logger);
             }
 
             log::trace!(
@@ -158,7 +158,7 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
             let resp = self
                 .get_blocks_helper(request.offset, request.limit)
                 .map_err(|_| RpcStatus::new(RpcStatusCode::INTERNAL));
-            send_result(ctx, sink, resp, &logger);
+            send_result(ctx, sink, resp, logger);
         });
     }
 }

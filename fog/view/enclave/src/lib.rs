@@ -106,7 +106,7 @@ impl SgxViewEnclave {
         Ok(make_variable_length_ecall(
             self.eid(),
             ecall::viewenclave_call,
-            &inbuf,
+            inbuf,
         )?)
     }
 }

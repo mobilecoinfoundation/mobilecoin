@@ -492,9 +492,8 @@ where
                     let encrypted_key_bytes = &msg[offset..(offset + text_size)];
                     offset += text_size;
 
-                    let decrypted_key_bytes = self
-                        .symmetric_state
-                        .decrypt_and_hash(&encrypted_key_bytes)?;
+                    let decrypted_key_bytes =
+                        self.symmetric_state.decrypt_and_hash(encrypted_key_bytes)?;
                     let pubkey = KexAlgo::Public::try_from(&decrypted_key_bytes[..])
                         .map_err(|_e| HandshakeError::KeyParse)?;
                     self.remote_identity = Some(pubkey);

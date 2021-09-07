@@ -2,7 +2,7 @@
 
 extern crate alloc;
 use alloc::vec::Vec;
-use bulletproofs::RangeProof;
+use bulletproofs_og::RangeProof;
 use curve25519_dalek::{ristretto::CompressedRistretto, scalar::Scalar};
 use merlin::Transcript;
 use rand_core::{CryptoRng, RngCore};

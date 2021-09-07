@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-#![feature(external_doc)]
-#![doc(include = "../README.md")]
+#![doc = include_str!("../README.md")]
 
 use mc_util_build_script::Environment;
 use std::{ffi::OsStr, fs, path::PathBuf};
@@ -32,7 +31,7 @@ pub fn compile_protos_and_generate_mod_rs(proto_dirs: &[&str], proto_files: &[&s
         .expect("failed reading output directory")
         .filter_map(|res| res.map(|e| e.path()).ok())
         .filter_map(|path| {
-            if path.extension() == Some(&OsStr::new("rs")) {
+            if path.extension() == Some(OsStr::new("rs")) {
                 Some(format!(
                     "pub mod {};",
                     path.file_stem().unwrap().to_str().unwrap()

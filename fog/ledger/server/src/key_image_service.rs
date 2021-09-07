@@ -113,10 +113,10 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogKeyImageApi for KeyImageServic
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
-                return send_result(ctx, sink, err.into(), &logger);
+                return send_result(ctx, sink, err.into(), logger);
             }
 
-            send_result(ctx, sink, self.check_key_images_auth(request), &logger)
+            send_result(ctx, sink, self.check_key_images_auth(request), logger)
         })
     }
 
@@ -124,13 +124,13 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogKeyImageApi for KeyImageServic
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
-                return send_result(ctx, sink, err.into(), &logger);
+                return send_result(ctx, sink, err.into(), logger);
             }
 
             // TODO: Use the prost message directly, once available
             match self.enclave.client_accept(request.into()) {
                 Ok((response, _session_id)) => {
-                    send_result(ctx, sink, Ok(response.into()), &logger);
+                    send_result(ctx, sink, Ok(response.into()), logger);
                 }
                 Err(client_error) => {
                     // This is debug because there's no requirement on the remote party to trigger
@@ -147,9 +147,9 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> FogKeyImageApi for KeyImageServic
                         Err(rpc_permissions_error(
                             "client_auth",
                             "Permission denied",
-                            &logger,
+                            logger,
                         )),
-                        &logger,
+                        logger,
                     );
                 }
             }

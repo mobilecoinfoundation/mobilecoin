@@ -45,7 +45,7 @@ pub extern "C" fn mc_bip39_entropy_from_mnemonic(
                 .into_mut()
                 .as_slice_mut_of_len(entropy.len())
                 .expect("out_entropy length is insufficient");
-            out_entropy.copy_from_slice(&entropy);
+            out_entropy.copy_from_slice(entropy);
         }
         Ok(ssize_t::ffi_try_from(entropy.len())
             .expect("entropy.len() could not be converted to ssize_t"))

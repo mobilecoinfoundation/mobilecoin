@@ -108,10 +108,10 @@ impl<L: Ledger + Clone> FogBlockApi for BlockService<L> {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
-                return send_result(ctx, sink, err.into(), &logger);
+                return send_result(ctx, sink, err.into(), logger);
             }
 
-            send_result(ctx, sink, self.get_blocks_impl(request), &logger)
+            send_result(ctx, sink, self.get_blocks_impl(request), logger)
         })
     }
 }

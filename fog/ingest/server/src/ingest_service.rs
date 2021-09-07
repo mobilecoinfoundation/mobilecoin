@@ -186,14 +186,14 @@ where
     fn get_status(&mut self, ctx: RpcContext, _request: Empty, sink: UnarySink<IngestSummary>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(ctx, sink, self.get_status_impl(), &logger)
+            send_result(ctx, sink, self.get_status_impl(), logger)
         })
     }
 
     fn new_keys(&mut self, ctx: RpcContext, _request: Empty, sink: UnarySink<IngestSummary>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(ctx, sink, self.new_keys_impl(&logger), &logger)
+            send_result(ctx, sink, self.new_keys_impl(logger), logger)
         })
     }
 
@@ -208,8 +208,8 @@ where
             send_result(
                 ctx,
                 sink,
-                self.set_pubkey_expiry_window_impl(request, &logger),
-                &logger,
+                self.set_pubkey_expiry_window_impl(request, logger),
+                logger,
             )
         })
     }
@@ -222,28 +222,28 @@ where
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(ctx, sink, self.set_peers_impl(request, &logger), &logger)
+            send_result(ctx, sink, self.set_peers_impl(request, logger), logger)
         })
     }
 
     fn activate(&mut self, ctx: RpcContext, request: Empty, sink: UnarySink<IngestSummary>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(ctx, sink, self.activate_impl(request, &logger), &logger)
+            send_result(ctx, sink, self.activate_impl(request, logger), logger)
         })
     }
 
     fn retire(&mut self, ctx: RpcContext, request: Empty, sink: UnarySink<IngestSummary>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(ctx, sink, self.retire_impl(request, &logger), &logger)
+            send_result(ctx, sink, self.retire_impl(request, logger), logger)
         })
     }
 
     fn unretire(&mut self, ctx: RpcContext, request: Empty, sink: UnarySink<IngestSummary>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(ctx, sink, self.unretire_impl(request, &logger), &logger)
+            send_result(ctx, sink, self.unretire_impl(request, logger), logger)
         })
     }
 
@@ -258,8 +258,8 @@ where
             send_result(
                 ctx,
                 sink,
-                self.report_lost_ingress_key_impl(request, &logger),
-                &logger,
+                self.report_lost_ingress_key_impl(request, logger),
+                logger,
             )
         })
     }
@@ -272,12 +272,7 @@ where
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(
-                ctx,
-                sink,
-                self.get_missed_block_ranges_impl(&logger),
-                &logger,
-            )
+            send_result(ctx, sink, self.get_missed_block_ranges_impl(logger), logger)
         })
     }
 }

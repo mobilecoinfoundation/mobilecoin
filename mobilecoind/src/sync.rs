@@ -318,7 +318,7 @@ fn sync_monitor(
 
         // Match tx outs into UTXOs.
         let utxos = match_tx_outs_into_utxos(
-            &mobilecoind_db,
+            mobilecoind_db,
             &block_contents.outputs,
             monitor_id,
             &monitor_data,

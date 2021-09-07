@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-#![feature(external_doc)]
-#![doc(include = "../README.md")]
+#![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
 

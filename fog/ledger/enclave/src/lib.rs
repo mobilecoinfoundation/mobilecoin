@@ -118,7 +118,7 @@ impl LedgerSgxEnclave {
         Ok(make_variable_length_ecall(
             self.eid,
             ledger_enclave_call,
-            &inbuf,
+            inbuf,
         )?)
     }
 }

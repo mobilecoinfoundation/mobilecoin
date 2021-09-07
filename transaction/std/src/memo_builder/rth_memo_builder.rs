@@ -162,7 +162,7 @@ impl MemoBuilder for RTHMemoBuilder {
         Ok(if let Some(cred) = &self.sender_cred {
             if let Some(payment_request_id) = self.payment_request_id {
                 AuthenticatedSenderWithPaymentRequestIdMemo::new(
-                    &cred,
+                    cred,
                     recipient.view_public_key(),
                     &memo_context.tx_public_key.into(),
                     payment_request_id,
@@ -170,7 +170,7 @@ impl MemoBuilder for RTHMemoBuilder {
                 .into()
             } else {
                 AuthenticatedSenderMemo::new(
-                    &cred,
+                    cred,
                     recipient.view_public_key(),
                     &memo_context.tx_public_key.into(),
                 )

@@ -12,7 +12,7 @@ displaydoc = { version = "0.2", default-features = false }
 generic-array = "0.14"
 rand_core = { version = "0.6", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
-subtle = { version = "2.2", default-features = false, features = ["i128"] }
+subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
 
 [dev-dependencies]
 mc-util-test-helper = { path = "../../util/test-helper" }

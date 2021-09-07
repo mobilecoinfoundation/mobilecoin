@@ -348,12 +348,12 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
 
     assert_eq!(ingestable_ranges[0].id, invoc_id1);
     assert_eq!(ingestable_ranges[0].start_block, 0);
-    assert_eq!(ingestable_ranges[0].decommissioned, false);
+    assert!(!ingestable_ranges[0].decommissioned);
     assert_eq!(ingestable_ranges[0].last_ingested_block, None);
 
     assert_eq!(ingestable_ranges[1].id, invoc_id2);
     assert_eq!(ingestable_ranges[1].start_block, 10);
-    assert_eq!(ingestable_ranges[1].decommissioned, false);
+    assert!(!ingestable_ranges[1].decommissioned);
     assert_eq!(ingestable_ranges[1].last_ingested_block, None);
 
     // Add two blocks to invoc_id1, advancing its last_ingested_block.
@@ -368,12 +368,12 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
 
     assert_eq!(ingestable_ranges[0].id, invoc_id1);
     assert_eq!(ingestable_ranges[0].start_block, 0);
-    assert_eq!(ingestable_ranges[0].decommissioned, false);
+    assert!(!ingestable_ranges[0].decommissioned);
     assert_eq!(ingestable_ranges[0].last_ingested_block, Some(1));
 
     assert_eq!(ingestable_ranges[1].id, invoc_id2);
     assert_eq!(ingestable_ranges[1].start_block, 10);
-    assert_eq!(ingestable_ranges[1].decommissioned, false);
+    assert!(!ingestable_ranges[1].decommissioned);
     assert_eq!(ingestable_ranges[1].last_ingested_block, None);
 
     // Decommission invoc_id1
@@ -384,12 +384,12 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
 
     assert_eq!(ingestable_ranges[0].id, invoc_id1);
     assert_eq!(ingestable_ranges[0].start_block, 0);
-    assert_eq!(ingestable_ranges[0].decommissioned, true);
+    assert!(ingestable_ranges[0].decommissioned);
     assert_eq!(ingestable_ranges[0].last_ingested_block, Some(1));
 
     assert_eq!(ingestable_ranges[1].id, invoc_id2);
     assert_eq!(ingestable_ranges[1].start_block, 10);
-    assert_eq!(ingestable_ranges[1].decommissioned, false);
+    assert!(!ingestable_ranges[1].decommissioned);
     assert_eq!(ingestable_ranges[1].last_ingested_block, None);
 
     // Check if we can see an event for that.
@@ -423,12 +423,12 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
 
     assert_eq!(ingestable_ranges[0].id, invoc_id1);
     assert_eq!(ingestable_ranges[0].start_block, 0);
-    assert_eq!(ingestable_ranges[0].decommissioned, true);
+    assert!(ingestable_ranges[0].decommissioned);
     assert_eq!(ingestable_ranges[0].last_ingested_block, Some(1));
 
     assert_eq!(ingestable_ranges[1].id, invoc_id2);
     assert_eq!(ingestable_ranges[1].start_block, 10);
-    assert_eq!(ingestable_ranges[1].decommissioned, false);
+    assert!(!ingestable_ranges[1].decommissioned);
     assert_eq!(ingestable_ranges[1].last_ingested_block, Some(12));
 
     // Decommission by replacing it with a newer ingest invocation.
@@ -446,17 +446,17 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
 
     assert_eq!(ingestable_ranges[0].id, invoc_id1);
     assert_eq!(ingestable_ranges[0].start_block, 0);
-    assert_eq!(ingestable_ranges[0].decommissioned, true);
+    assert!(ingestable_ranges[0].decommissioned);
     assert_eq!(ingestable_ranges[0].last_ingested_block, Some(1));
 
     assert_eq!(ingestable_ranges[1].id, invoc_id2);
     assert_eq!(ingestable_ranges[1].start_block, 10);
-    assert_eq!(ingestable_ranges[1].decommissioned, true);
+    assert!(ingestable_ranges[1].decommissioned);
     assert_eq!(ingestable_ranges[1].last_ingested_block, Some(12));
 
     assert_eq!(ingestable_ranges[2].id, invoc_id3);
     assert_eq!(ingestable_ranges[2].start_block, 100);
-    assert_eq!(ingestable_ranges[2].decommissioned, false);
+    assert!(!ingestable_ranges[2].decommissioned);
     assert_eq!(ingestable_ranges[2].last_ingested_block, None);
 
     let (user_events, _next_start_from_user_event_id) = db.search_user_events(0).unwrap();

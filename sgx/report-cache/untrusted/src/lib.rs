@@ -216,7 +216,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
                         self.logger,
                         "IAS requested TCB update, attempting to update..."
                     );
-                    QuotingEnclave::update_tcb(&platform_info_blob)?;
+                    QuotingEnclave::update_tcb(platform_info_blob)?;
                     log::debug!(
                         self.logger,
                         "TCB update complete, restarting reporting process"

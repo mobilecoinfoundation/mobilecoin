@@ -10,7 +10,6 @@
 // Alloc feature must be enabled to get APIs associated to catching panics
 // and rethrowing them, because in Rust those APIs use the Box type.
 #![feature(lang_items)] // for eh_personality
-#![feature(raw)]
 #![feature(thread_local)]
 #![feature(unwind_attributes)]
 // Enable "untagged unions" when we have alloc feature, used in panicking::try
@@ -49,14 +48,12 @@ mod panicking;
 ///            at data_ptr and vtable_ptr
 ///
 /// panic_strategy module must also provide `eh_personality` lang item
-///
 #[cfg_attr(feature = "panic_abort", path = "panic_abort/mod.rs")]
 mod panic_strategy;
 
 /// This function is meant to be equivalent to std::thread::panicking()
 /// Returns true if the thread is currently (unwinding due to) a panic, false
 /// otherwise. This is cheap to call, works by checking a thread local counter.
-///
 pub use panicking::thread_panicking;
 
 /// Invokes a closure, capturing the cause of an unwinding panic if one occurs.
@@ -83,9 +80,8 @@ pub use panicking::thread_panicking;
 /// Rust is not always implemented via unwinding, but can be implemented by
 /// aborting the process as well. This function *only* catches unwinding panics,
 /// not those that abort the process.
-///
 #[cfg(feature = "alloc")]
-pub fn catch_unwind<F: FnOnce() -> R /*+ UnwindSafe*/, R>(
+pub fn catch_unwind<F: FnOnce() -> R /* + UnwindSafe */, R>(
     f: F,
 ) -> Result<R, Box<dyn Any + Send + 'static>> {
     unsafe { panicking::try_closure(f) }
@@ -103,7 +99,6 @@ pub fn catch_unwind<F: FnOnce() -> R /*+ UnwindSafe*/, R>(
 /// may be implemented by aborting the process. If this function is called when
 /// panics are implemented this way then this function will abort the process,
 /// not trigger an unwind.
-///
 #[cfg(feature = "alloc")]
 pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
     panicking::rethrow(payload)

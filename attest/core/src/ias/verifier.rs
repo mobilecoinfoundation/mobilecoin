@@ -708,7 +708,7 @@ impl MrEnclaveVerifier {
 
 impl From<Signature> for MrEnclaveVerifier {
     fn from(src: Signature) -> Self {
-        Self::new(src.mrenclave().clone().into())
+        Self::new(MrEnclave::from(*(src.mrenclave())))
     }
 }
 
