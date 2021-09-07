@@ -557,11 +557,12 @@ mod tests {
         get_tx_out_shared_secret,
         memo::MemoPayload,
         ring_signature::SignatureRctBulletproofs,
+        subaddress_matches_tx_out,
         tx::{Tx, TxIn, TxOut, TxPrefix},
         Amount,
     };
     use alloc::vec::Vec;
-    use mc_account_keys::AccountKey;
+    use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
     use prost::Message;
@@ -722,6 +723,10 @@ mod tests {
                 MemoPayload::default(),
                 "decrypt_memo should produce an empty memo on old TxOut's"
             );
+            assert!(
+                subaddress_matches_tx_out(&bob, DEFAULT_SUBADDRESS_INDEX, &tx_out).unwrap(),
+                "TxOut didn't belong to default subaddress"
+            );
         }
 
         {
@@ -750,6 +755,43 @@ mod tests {
                 tx_out.decrypt_memo(&ss),
                 memo_val,
                 "memo did not round trip"
+            );
+            assert!(
+                subaddress_matches_tx_out(&bob, DEFAULT_SUBADDRESS_INDEX, &tx_out).unwrap(),
+                "TxOut didn't belong to default subaddress"
+            );
+        }
+
+        {
+            let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+
+            let memo_val = MemoPayload::new([4u8; 2], [9u8; 44]);
+            // A tx out with a memo
+            let tx_out = TxOut::new_with_memo(
+                13u64,
+                &bob.change_subaddress(),
+                &tx_private_key,
+                Default::default(),
+                |_| Ok(memo_val.clone()),
+            )
+            .unwrap();
+
+            assert!(
+                tx_out.e_memo.is_some(),
+                "All TxOut (except preexisting) should have a memo"
+            );
+            let ss = get_tx_out_shared_secret(
+                bob.view_private_key(),
+                &RistrettoPublic::try_from(&tx_out.public_key).unwrap(),
+            );
+            assert_eq!(
+                tx_out.decrypt_memo(&ss),
+                memo_val,
+                "memo did not round trip"
+            );
+            assert!(
+                subaddress_matches_tx_out(&bob, CHANGE_SUBADDRESS_INDEX, &tx_out).unwrap(),
+                "TxOut didn't belong to change subaddress"
             );
         }
     }
