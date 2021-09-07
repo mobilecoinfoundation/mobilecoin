@@ -79,7 +79,7 @@ aarch64-apple-ios aarch64-apple-ios-sim aarch64-apple-ios-macabi: LD_ARCH = arm6
 x86_64-apple-ios-macabi aarch64-apple-ios-sim aarch64-apple-ios-macabi: CARGO_BUILD_FLAGS += -Zbuild-std
 
 $(ARCHS_IOS):
-	$(CARGO_ENV_FLAGS) $(CARGO) build --package $(CARGO_PACKAGE) --target $@ $(CARGO_BUILD_FLAGS) -vv
+	$(CARGO_ENV_FLAGS) $(CARGO) build --package $(CARGO_PACKAGE) --target $@ $(CARGO_BUILD_FLAGS)
 
 	@# Extract object files from static archive.
 	@cd $(CARGO_TARGET_DIR)/$@/$(BUILD_CONFIG_FOLDER) && \
