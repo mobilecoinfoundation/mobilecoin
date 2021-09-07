@@ -50,7 +50,7 @@ use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResu
 use mc_transaction_core::{
     constants::MINIMUM_FEE,
     membership_proofs::compute_implied_merkle_root,
-    onetime_keys::{create_onetime_public_key, create_shared_secret, create_tx_public_key},
+    onetime_keys::{create_shared_secret, create_tx_public_key, create_tx_target_key},
     ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
@@ -602,7 +602,7 @@ fn mint_aggregate_fee(
 ) -> Result<TxOut> {
     // Create a single TxOut
     let fee_output: TxOut = {
-        let target_key = create_onetime_public_key(tx_private_key, fee_recipient).into();
+        let target_key = create_tx_target_key(tx_private_key, fee_recipient).into();
         let public_key =
             create_tx_public_key(tx_private_key, fee_recipient.spend_public_key()).into();
 

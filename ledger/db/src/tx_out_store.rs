@@ -826,7 +826,7 @@ pub mod tx_out_store_tests {
         for _i in 0..num_tx_outs {
             let tx_private_key = RistrettoPrivate::from_random(&mut rng);
             let target_key =
-                create_onetime_public_key(&tx_private_key, &recipient_account.default_subaddress());
+                create_tx_target_key(&tx_private_key, &recipient_account.default_subaddress());
             let public_key = create_tx_public_key(
                 &tx_private_key,
                 recipient_account.default_subaddress().spend_public_key(),
