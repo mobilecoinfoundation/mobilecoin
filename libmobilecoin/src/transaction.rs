@@ -28,10 +28,11 @@ pub struct McTxOutAmount {
 ///
 /// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
 #[no_mangle]
-pub extern "C" fn mc_tx_out_shared_secret(
+pub extern "C" fn mc_tx_out_reconstruct_commitment(
+    tx_out_amount: FfiRefPtr<McTxOutAmount>,
     tx_out_public_key: FfiRefPtr<McBuffer>,
     view_private_key: FfiRefPtr<McBuffer>,
-    out_tx_out_shared_secret: FfiMutPtr<McMutableBuffer>,
+    out_tx_out_commitment: FfiMutPtr<McMutableBuffer>,
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>
 ) -> bool {
     ffi_boundary_with_error(out_error, || {
@@ -42,12 +43,18 @@ pub extern "C" fn mc_tx_out_shared_secret(
 
         let shared_secret = get_tx_out_shared_secret(&view_private_key, &tx_out_public_key);
         
-        let out_tx_out_shared_secret = out_tx_out_shared_secret
+        let value =
+            (tx_out_amount.masked_value as u64) ^ get_value_mask(&shared_secret);
+
+        let amount: Amount = Amount::new(value, &shared_secret)
+            .expect("could not create amount object");
+
+        let out_tx_out_commitment = out_tx_out_commitment
             .into_mut()
             .as_slice_mut_of_len(RistrettoPublic::size())
-            .expect("out_tx_out_shared_secret length is insufficient");
+            .expect("out_tx_out_commitment length is insufficient");
 
-        out_tx_out_shared_secret.copy_from_slice(&shared_secret.to_bytes());
+        out_tx_out_commitment.copy_from_slice(&amount.commitment.to_bytes());
         Ok(())
     })
 }

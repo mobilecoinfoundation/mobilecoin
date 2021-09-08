@@ -585,9 +585,10 @@ bool mc_slip10_account_private_keys_from_mnemonic(FfiStr mnemonic,
  *
  * * `LibMcError::InvalidInput`
  */
-bool mc_tx_out_shared_secret(FfiRefPtr<McBuffer> tx_out_public_key,
+bool mc_tx_out_reconstruct_commitment(FfiRefPtr<McTxOutAmount> tx_out_amount,
+                             FfiRefPtr<McBuffer> tx_out_public_key,
                              FfiRefPtr<McBuffer> view_private_key,
-                             FfiMutPtr<McMutableBuffer> out_tx_out_shared_secret,
+                             FfiMutPtr<McMutableBuffer> out_tx_out_commitment,
                              FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 /**

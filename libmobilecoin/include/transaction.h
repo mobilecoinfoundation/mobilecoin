@@ -27,10 +27,16 @@ typedef struct _McTransactionBuilder McTransactionBuilder;
 /// # Preconditions
 ///
 /// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
-bool mc_tx_out_shared_secret(
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+/// * `LibMcError::TransactionCrypto`
+bool mc_tx_out_reconstruct_commitment(
+  const McTxOutAmount* MC_NONNULL tx_out_amount,
   const McBuffer* MC_NONNULL tx_out_public_key,
   const McBuffer* MC_NONNULL view_private_key,
-  McMutableBuffer* MC_NONNULL out_subaddress_spend_public_key,
+  McMutableBuffer* MC_NONNULL out_commitment,
   McError* MC_NULLABLE * MC_NULLABLE out_error
 )
 MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
