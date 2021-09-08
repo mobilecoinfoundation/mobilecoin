@@ -242,11 +242,10 @@ macro_rules! derive_prost_message_from_repr_bytes {
                         ));
                     }
                     let result = <Self as $crate::ReprBytes>::from_bytes(
-                        (&buf.bytes()[0..expected_size])
+                        buf.copy_to_bytes(expected_size).as_ref()[..]
                             .try_into()
-                            .expect("buffer size arithmetic"),
+                            .expect("Buffer sizing issue"),
                     );
-                    buf.advance(expected_size);
                     *self = result
                         .map_err(|e| $crate::_exports::prost::DecodeError::new(e.to_string()))?;
                     Ok(())
