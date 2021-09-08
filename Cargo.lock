@@ -460,6 +460,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "130aac562c0dd69c56b3b1cc8ffd2e17be31d0b6c25b61c96b76231aa23e39e1"
 
 [[package]]
+name = "bytes"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4872d67bab6358e59559027aa3b9157c53d9358c51423c17554809a8858e0f8"
+
+[[package]]
 name = "cargo-emit"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5721,20 +5727,22 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.6.1"
-source = "git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec#6113789f70b69709820becba4242824b4fb3ffec"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de5e2533f59d08fcf364fd374ebda0692a70bd6d7e66ef97f306f45c6c5d8020"
 dependencies = [
- "bytes 0.5.4",
+ "bytes 1.1.0",
  "prost-derive",
 ]
 
 [[package]]
 name = "prost-derive"
-version = "0.6.1"
-source = "git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec#6113789f70b69709820becba4242824b4fb3ffec"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "600d2f334aa05acb02a755e217ef1ab6dea4d51b58b7846588b747edec04efba"
 dependencies = [
  "anyhow",
- "itertools 0.9.0",
+ "itertools 0.10.1",
  "proc-macro2 1.0.24",
  "quote 1.0.9",
  "syn 1.0.67",
