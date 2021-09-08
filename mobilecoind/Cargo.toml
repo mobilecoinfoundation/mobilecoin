@@ -49,7 +49,7 @@ grpcio = "0.9.0"
 hex_fmt = "0.3"
 lmdb-rkv = "0.14.0"
 num_cpus = "1.12"
-prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.8", default-features = false, features = ["prost-derive"] }
 protobuf = "2.22.1"
 reqwest = { version = "0.10", default-features = false, features = ["rustls-tls", "gzip"] }
 rand = "0.8"
