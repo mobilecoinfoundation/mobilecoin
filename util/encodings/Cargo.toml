@@ -8,7 +8,7 @@ description = "Support for various simple encodings (hex strings, base64 strings
 [dependencies]
 mc-util-repr-bytes = { path = "../repr-bytes", default-features = false }
 
-base64 = { version = "0.12", default-features = false }
+base64 = { version = "0.13", default-features = false }
 binascii = "0.1.4"
 displaydoc = { version = "0.2", default-features = false }
 hex = { version = "0.4", default-features = false }

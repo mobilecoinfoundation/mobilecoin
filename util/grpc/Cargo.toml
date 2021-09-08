@@ -15,7 +15,7 @@ mc-util-metrics = { path = "../metrics" }
 mc-util-serial = { path = "../serial", features = ["std"]}
 mc-util-uri = { path = "../uri" }
 
-base64 = "0.12"
+base64 = "0.13"
 cookie = "0.14"
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
