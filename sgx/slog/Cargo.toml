@@ -9,7 +9,7 @@ default = []
 sgx = []
 
 [dependencies]
-cfg-if = "0.1"
+cfg-if = "1.0"
 prost = { version = "0.8", default-features = false, features = ["prost-derive"] }
 
 mc-common = { path = "../../common", default-features = false }

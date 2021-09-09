@@ -687,7 +687,7 @@ dependencies = [
  "binascii",
  "bitflags",
  "cargo-emit",
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "chrono",
  "digest",
  "displaydoc",
@@ -740,7 +740,7 @@ name = "mc-common"
 version = "1.1.2"
 dependencies = [
  "binascii",
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "displaydoc",
  "hashbrown",
  "hex_fmt",
@@ -876,7 +876,7 @@ dependencies = [
 name = "mc-crypto-digestible"
 version = "1.1.2"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "curve25519-dalek",
  "ed25519-dalek",
  "generic-array",
@@ -974,7 +974,7 @@ dependencies = [
 name = "mc-crypto-rand"
 version = "1.1.2"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "getrandom 0.1.14",
  "rand",
  "rand_core",
@@ -1033,7 +1033,7 @@ dependencies = [
 name = "mc-sgx-compat"
 version = "1.1.2"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "mc-sgx-alloc",
  "mc-sgx-debug",
  "mc-sgx-panic",
@@ -1095,7 +1095,7 @@ dependencies = [
 name = "mc-sgx-slog"
 version = "1.1.2"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "mc-common",
  "mc-sgx-build",
  "prost",
