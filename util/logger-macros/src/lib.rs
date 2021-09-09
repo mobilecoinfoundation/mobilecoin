@@ -33,12 +33,12 @@ fn test_with_logger_impl(item: TokenStream) -> Result<TokenStream> {
         }
     };
 
-    let orig_ident = original_fn.ident.clone();
-    let orig_name = original_fn.ident.to_string();
+    let orig_ident = original_fn.sig.ident.clone();
+    let orig_name = original_fn.sig.ident.to_string();
 
-    let new_name = format!("__wrapped_{}", original_fn.ident.to_string());
-    original_fn.ident = syn::Ident::new(&new_name[..], original_fn.ident.span());
-    let new_ident = original_fn.ident.clone();
+    let new_name = format!("__wrapped_{}", original_fn.sig.ident.to_string());
+    original_fn.sig.ident = syn::Ident::new(&new_name[..], original_fn.sig.ident.span());
+    let new_ident = original_fn.sig.ident.clone();
 
     let mut new_fn: syn::ItemFn = parse_quote! {
         #[test]
@@ -86,12 +86,12 @@ fn bench_with_logger_impl(item: TokenStream) -> Result<TokenStream> {
         }
     };
 
-    let orig_ident = original_fn.ident.clone();
-    let orig_name = original_fn.ident.to_string();
+    let orig_ident = original_fn.sig.ident.clone();
+    let orig_name = original_fn.sig.ident.to_string();
 
-    let new_name = format!("__wrapped_{}", original_fn.ident.to_string());
-    original_fn.ident = syn::Ident::new(&new_name[..], original_fn.ident.span());
-    let new_ident = original_fn.ident.clone();
+    let new_name = format!("__wrapped_{}", original_fn.sig.ident.to_string());
+    original_fn.sig.ident = syn::Ident::new(&new_name[..], original_fn.sig.ident.span());
+    let new_ident = original_fn.sig.ident.clone();
 
     let mut new_fn: syn::ItemFn = parse_quote! {
         #[bench]
