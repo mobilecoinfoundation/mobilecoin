@@ -9,7 +9,7 @@ mc-common = { path = "../../common", default-features = false }
 mc-util-host-cert = { path = "../../util/host-cert", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys" }
 
-base64 = "0.12"
+base64 = "0.13"
 displaydoc = { version = "0.2", default-features = false }
 ed25519 = { version = "1.0.1", default-features = false, features = ["serde"] }
 hex = "0.4"

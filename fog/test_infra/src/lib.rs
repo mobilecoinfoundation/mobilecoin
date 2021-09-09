@@ -163,7 +163,7 @@ pub fn test_block<T: RngCore + CryptoRng, C: FogViewConnection>(
     // Make the users poll for transactions, until their num blocks matches
     // ledger_db, or we time out
     {
-        let mut retries = 60;
+        let mut retries = 200;
         loop {
             let user_num_blocks = users.poll(view);
             if user_num_blocks
