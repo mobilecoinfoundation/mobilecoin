@@ -63,12 +63,15 @@ fn create_stderr_logger() -> slog::Fuse<slog_async::Async> {
 /// Create a GELF (https://docs.graylog.org/en/3.0/pages/gelf.html) logger.
 fn create_gelf_logger() -> Option<slog::Fuse<slog_async::Async>> {
     env::var("MC_LOG_GELF").ok().map(|remote_host_port| {
-        let local_hostname = hostname::get_hostname().unwrap();
+        let local_hostname = hostname::get().expect("Could not retrieve hostname");
 
         let drain = slog_envlogger::new(
-            Gelf::new(&local_hostname, &remote_host_port[..])
-                .expect("failed creating Gelf logger for")
-                .fuse(),
+            Gelf::new(
+                local_hostname.to_str().expect("Invalid UTF-8 in hostname"),
+                &remote_host_port[..],
+            )
+            .expect("failed creating Gelf logger for")
+            .fuse(),
         );
 
         slog_async::Async::new(drain)
