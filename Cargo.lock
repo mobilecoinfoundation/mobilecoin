@@ -2769,7 +2769,7 @@ dependencies = [
 name = "mc-consensus-service"
 version = "1.1.2"
 dependencies = [
- "base64 0.12.3",
+ "base64 0.13.0",
  "chrono",
  "curve25519-dalek",
  "displaydoc",
@@ -3612,7 +3612,7 @@ dependencies = [
 name = "mc-fog-report-cli"
 version = "1.1.0"
 dependencies = [
- "base64 0.12.3",
+ "base64 0.13.0",
  "binascii",
  "grpcio",
  "mc-account-keys",
@@ -4734,7 +4734,7 @@ dependencies = [
 name = "mc-util-encodings"
 version = "1.1.2"
 dependencies = [
- "base64 0.12.3",
+ "base64 0.13.0",
  "binascii",
  "displaydoc",
  "hex 0.4.2",
@@ -4778,7 +4778,7 @@ dependencies = [
 name = "mc-util-grpc"
 version = "1.1.2"
 dependencies = [
- "base64 0.12.3",
+ "base64 0.13.0",
  "cookie 0.14.3",
  "displaydoc",
  "futures 0.3.8",
@@ -4938,7 +4938,7 @@ dependencies = [
 name = "mc-util-uri"
 version = "1.1.2"
 dependencies = [
- "base64 0.12.3",
+ "base64 0.13.0",
  "displaydoc",
  "ed25519",
  "hex 0.4.2",
