@@ -34,7 +34,7 @@ mc-util-metrics = { path = "../../util/metrics" }
 mc-util-serial = { path = "../../util/serial" }
 mc-util-uri = { path = "../../util/uri" }
 
-base64 = "0.12"
+base64 = "0.13"
 chrono = "0.4"
 displaydoc = { version = "0.2", default-features = false }
 fs_extra = "1.1"
