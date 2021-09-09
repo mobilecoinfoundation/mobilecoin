@@ -6,7 +6,7 @@ edition = "2018"
 
 # All dependencies are optional
 [dependencies]
-cfg-if = "0.1"
+cfg-if = "1.0"
 mc-sgx-alloc = { path = "../alloc", optional = true }
 mc-sgx-panic = { path = "../panic", optional = true }
 mc-sgx-sync = { path = "../sync", optional = true }
