@@ -214,7 +214,7 @@ mod test {
     use mc_transaction_core::{
         encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
         membership_proofs::Range,
-        onetime_keys::{create_shared_secret, create_tx_public_key, create_tx_target_key},
+        onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
         Amount,
     };
@@ -236,8 +236,8 @@ mod test {
         for output_index in 0..num_tx_outs {
             let recipient_account_default_subaddress = recipient_account.default_subaddress();
             let target_key =
-                create_tx_target_key(&tx_secret_key, &recipient_account_default_subaddress);
-            let public_key = create_tx_public_key(
+                create_tx_out_target_key(&tx_secret_key, &recipient_account_default_subaddress);
+            let public_key = create_tx_out_public_key(
                 &tx_secret_key,
                 recipient_account_default_subaddress.spend_public_key(),
             );

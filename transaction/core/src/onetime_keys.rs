@@ -96,7 +96,7 @@ fn hash_to_scalar(point: RistrettoPoint) -> Scalar {
 /// * `tx_private_key` - The output's tx_private_key `r`. Must be unique for
 ///   each output.
 /// * `recipient` - The recipient subaddress `(C,D)`.
-pub fn create_tx_target_key(
+pub fn create_tx_out_target_key(
     tx_private_key: &RistrettoPrivate,
     recipient: &PublicAddress,
 ) -> RistrettoPublic {
@@ -111,17 +111,18 @@ pub fn create_tx_target_key(
     RistrettoPublic::from(Hs * G + D)
 }
 
-/// Creates the `tx_public_key = r * D` for an output sent to subaddress (C, D).
+/// Creates the `tx_out_public_key = r * D` for an output sent to subaddress (C,
+/// D).
 ///
 /// # Arguments
 /// * `tx_private_key` - The transaction private key `r`. Must be unique for
 ///   each output.
 /// * `recipient_spend_key` - The recipient's public subaddress spend key `D`.
-pub fn create_tx_public_key(
-    tx_private_key: &RistrettoPrivate,
+pub fn create_tx_out_public_key(
+    tx_out_private_key: &RistrettoPrivate,
     recipient_spend_key: &RistrettoPublic,
 ) -> RistrettoPublic {
-    let r: &Scalar = tx_private_key.as_ref();
+    let r: &Scalar = tx_out_private_key.as_ref();
     let D = recipient_spend_key.as_ref();
     RistrettoPublic::from(r * D)
 }
@@ -184,7 +185,7 @@ pub fn view_key_matches_output(
 /// This assumes that the output belongs to the provided private keys.
 ///
 /// # Arguments
-/// * `tx_public_key` - The output's tx_public_key `R`.
+/// * `tx_out_public_key` - The output's tx_public_key `R`.
 /// * `view_private_key` - A private view key `a`.
 /// * `subaddress_spend_private_key` - A private spend key `d = Hs(a || i) + b`.
 pub fn recover_onetime_private_key(
@@ -230,8 +231,8 @@ mod tests {
         tx_private_key: &RistrettoPrivate,
         recipient: &PublicAddress,
     ) -> (RistrettoPublic, RistrettoPublic) {
-        let tx_target_key = create_tx_target_key(&tx_private_key, recipient);
-        let tx_public_key = create_tx_public_key(&tx_private_key, recipient.spend_public_key());
+        let tx_target_key = create_tx_out_target_key(&tx_private_key, recipient);
+        let tx_public_key = create_tx_out_public_key(&tx_private_key, recipient.spend_public_key());
         (tx_target_key, tx_public_key)
     }
 
@@ -293,7 +294,7 @@ mod tests {
         let recipient_spend_key = RistrettoPublic::from(D);
         assert_eq!(
             expected,
-            create_tx_public_key(&tx_private_key, &recipient_spend_key)
+            create_tx_out_public_key(&tx_private_key, &recipient_spend_key)
         );
     }
 

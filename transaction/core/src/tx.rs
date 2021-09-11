@@ -21,7 +21,7 @@ use crate::{
     get_tx_out_shared_secret,
     membership_proofs::Range,
     memo::{EncryptedMemo, MemoPayload},
-    onetime_keys::{create_shared_secret, create_tx_public_key, create_tx_target_key},
+    onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
     ring_signature::{KeyImage, SignatureRctBulletproofs},
     CompressedCommitment, NewMemoError, NewTxError,
 };
@@ -316,8 +316,8 @@ impl TxOut {
         hint: EncryptedFogHint,
         memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
     ) -> Result<Self, NewTxError> {
-        let target_key = create_tx_target_key(tx_private_key, recipient).into();
-        let public_key = create_tx_public_key(tx_private_key, recipient.spend_public_key());
+        let target_key = create_tx_out_target_key(tx_private_key, recipient).into();
+        let public_key = create_tx_out_public_key(tx_private_key, recipient.spend_public_key());
 
         let shared_secret = create_shared_secret(recipient.view_public_key(), tx_private_key);
 
