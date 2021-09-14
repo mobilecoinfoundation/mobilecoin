@@ -334,7 +334,7 @@ impl TxOut {
             target_key,
             public_key: public_key.into(),
             e_fog_hint: hint,
-            e_memo: e_memo,
+            e_memo,
         })
     }
 
