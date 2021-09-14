@@ -6,8 +6,7 @@ use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{ReprBytes, RistrettoPrivate, RistrettoPublic};
 use mc_fog_report_validation::FogResolver;
 use mc_transaction_core::{
-    get_value_mask,
-    get_tx_out_shared_secret,
+    get_tx_out_shared_secret, get_value_mask,
     onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
     ring_signature::KeyImage,
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
@@ -33,7 +32,7 @@ pub extern "C" fn mc_tx_out_reconstruct_commitment(
     tx_out_public_key: FfiRefPtr<McBuffer>,
     view_private_key: FfiRefPtr<McBuffer>,
     out_tx_out_commitment: FfiMutPtr<McMutableBuffer>,
-    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
 ) -> bool {
     ffi_boundary_with_error(out_error, || {
         let view_private_key = RistrettoPrivate::try_from_ffi(&view_private_key)
@@ -42,12 +41,10 @@ pub extern "C" fn mc_tx_out_reconstruct_commitment(
         let tx_out_public_key = RistrettoPublic::try_from_ffi(&tx_out_public_key)?;
 
         let shared_secret = get_tx_out_shared_secret(&view_private_key, &tx_out_public_key);
-        
-        let value =
-            (tx_out_amount.masked_value as u64) ^ get_value_mask(&shared_secret);
+        let value = (tx_out_amount.masked_value as u64) ^ get_value_mask(&shared_secret);
 
-        let amount: Amount = Amount::new(value, &shared_secret)
-            .expect("could not create amount object");
+        let amount: Amount =
+            Amount::new(value, &shared_secret).expect("could not create amount object");
 
         let out_tx_out_commitment = out_tx_out_commitment
             .into_mut()
@@ -73,14 +70,12 @@ pub extern "C" fn mc_tx_out_matches_any_subaddress(
         let view_private_key = RistrettoPrivate::try_from_ffi(&view_private_key)
             .expect("view_private_key is not a valid RistrettoPrivate");
 
-
         let mut matches = false;
         if let Ok(public_key) = RistrettoPublic::try_from_ffi(&tx_out_public_key) {
             let shared_secret = get_tx_out_shared_secret(&view_private_key, &public_key);
-            let value =
-                (tx_out_amount.masked_value as u64) ^ get_value_mask(&shared_secret);
-            let amount: Amount = Amount::new(value, &shared_secret)
-                .expect("could not create amount object");
+            let value = (tx_out_amount.masked_value as u64) ^ get_value_mask(&shared_secret);
+            let amount: Amount =
+                Amount::new(value, &shared_secret).expect("could not create amount object");
             matches = amount.get_value(&shared_secret).is_ok()
         }
         *out_matches.into_mut() = matches;
@@ -177,10 +172,11 @@ pub extern "C" fn mc_tx_out_get_value(
         let view_private_key = RistrettoPrivate::try_from_ffi(&view_private_key)?;
 
         let shared_secret = get_tx_out_shared_secret(&view_private_key, &tx_out_public_key);
-        let value =
-            (tx_out_amount.masked_value as u64) ^ get_value_mask(&shared_secret);
+        let value = (tx_out_amount.masked_value as u64) ^ get_value_mask(&shared_secret);
+        let amount: Amount = Amount::new(value, &shared_secret)?;
+        let (val, _blinding) = amount.get_value(&shared_secret)?;
 
-        *out_value.into_mut() = value;
+        *out_value.into_mut() = val;
         Ok(())
     })
 }
