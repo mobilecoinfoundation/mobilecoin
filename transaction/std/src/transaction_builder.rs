@@ -193,14 +193,14 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// Add an output to the transaction, using `fog_hint_address` to construct
     /// the fog hint.
     ///
-    /// Caution: This method should not be used without fully understanding the
-    /// implications.
-    ///
-    /// Receiving a `TxOut` addressed to a different recipient than what's
-    /// contained in the fog hint is normally considered to be a violation
-    /// of convention and is likely to be filtered out silently by the
-    /// client, except in special circumstances where the recipient is expressly
-    /// expecting it.
+    /// This is a private implementation detail, and generally, fog users expect
+    /// that the transactions that they recieve from fog belong to the account
+    /// that they are using. The only known use-case where recipient and
+    /// fog_hint_address are different is when sending change transactions
+    /// to oneself, when oneself is a fog user. Sending the change to the
+    /// main subaddress means that you don't have to hit fog once for the
+    /// main subaddress and once for the change subaddress, so it cuts the
+    /// number of requests in half.
     ///
     /// # Arguments
     /// * `value` - The value of this output, in picoMOB.

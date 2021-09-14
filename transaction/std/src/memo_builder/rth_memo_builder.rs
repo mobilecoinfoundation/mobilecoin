@@ -159,7 +159,7 @@ impl MemoBuilder for RTHMemoBuilder {
             .checked_add(1)
             .ok_or(NewMemoError::LimitsExceeded("num_recipients"))?;
         self.last_recipient = ShortAddressHash::from(recipient);
-        Ok(Some(if let Some(cred) = &self.sender_cred {
+        let payload: MemoPayload = if let Some(cred) = &self.sender_cred {
             if let Some(payment_request_id) = self.payment_request_id {
                 AuthenticatedSenderWithPaymentRequestIdMemo::new(
                     cred,
@@ -178,7 +178,8 @@ impl MemoBuilder for RTHMemoBuilder {
             }
         } else {
             UnusedMemo {}.into()
-        }))
+        };
+        Ok(Some(payload))
     }
 
     /// Build a memo for a change output (to ourselves).
