@@ -174,8 +174,7 @@ pub extern "C" fn mc_tx_out_get_value(
 ) -> bool {
     ffi_boundary_with_error(out_error, || {
         let tx_out_public_key = RistrettoPublic::try_from_ffi(&tx_out_public_key)?;
-        let view_private_key = RistrettoPrivate::try_from_ffi(&view_private_key)
-            .expect("view_private_key is not a valid RistrettoPrivate");
+        let view_private_key = RistrettoPrivate::try_from_ffi(&view_private_key)?;
 
         let shared_secret = get_tx_out_shared_secret(&view_private_key, &tx_out_public_key);
         let value =
