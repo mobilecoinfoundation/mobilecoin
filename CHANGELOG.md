@@ -26,6 +26,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
  - Update `base64` to 0.13.0.
  - Update `bindgen` to 0.58.1.
  - Update `blake2` to 0.9.2.
+ - Update `cc` to 1.0.70.
  - Update `cfg-if` to 1.0.0.
  - Update `cmake` to unreleased github with iOS fixes.
  - Update `curve25519-dalek` to 4.0.0-pre1.
