@@ -115,7 +115,6 @@ RUN wget https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustu
   /root/.cargo/bin/rustup component add \
     clippy \
     llvm-tools-preview \
-    rls \
     rust-analysis \
     rust-src \
     rustfmt && \
