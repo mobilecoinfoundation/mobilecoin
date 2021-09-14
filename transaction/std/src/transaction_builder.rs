@@ -196,10 +196,6 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// Caution: This method should not be used without fully understanding the
     /// implications.
     ///
-    /// Deprecation note: This method will not be public in future versions of
-    /// this crate, we believe the only legitimate use of this is now served
-    /// by add_change_output.
-    ///
     /// Receiving a `TxOut` addressed to a different recipient than what's
     /// contained in the fog hint is normally considered to be a violation
     /// of convention and is likely to be filtered out silently by the
@@ -212,12 +208,12 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// * `fog_hint_address` - The public address used to create the fog hint
     /// * `memo_fn` - The memo function to use (see TxOut::new_with_memo)
     /// * `rng` - RNG used to generate blinding for commitment
-    pub fn add_output_with_fog_hint_address<RNG: CryptoRng + RngCore>(
+    fn add_output_with_fog_hint_address<RNG: CryptoRng + RngCore>(
         &mut self,
         value: u64,
         recipient: &PublicAddress,
         fog_hint_address: &PublicAddress,
-        memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
+        memo_fn: impl FnOnce(MemoContext) -> Result<Option<MemoPayload>, NewMemoError>,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
         let (hint, pubkey_expiry) = create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
@@ -383,7 +379,7 @@ fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
     value: u64,
     recipient: &PublicAddress,
     fog_hint: EncryptedFogHint,
-    memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
+    memo_fn: impl FnOnce(MemoContext) -> Result<Option<MemoPayload>, NewMemoError>,
     rng: &mut RNG,
 ) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
     let private_key = RistrettoPrivate::from_random(rng);
@@ -461,7 +457,13 @@ pub mod transaction_builder_tests {
         rng: &mut RNG,
     ) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
         let (hint, _pubkey_expiry) = create_fog_hint(recipient, fog_resolver, rng)?;
-        create_output_with_fog_hint(value, recipient, hint, |_| Ok(MemoPayload::default()), rng)
+        create_output_with_fog_hint(
+            value,
+            recipient,
+            hint,
+            |_| Ok(Some(MemoPayload::default())),
+            rng,
+        )
     }
 
     /// Creates a ring of of TxOuts.

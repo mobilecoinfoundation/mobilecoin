@@ -41,7 +41,7 @@ use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     Amount, CompressedCommitment,
 };
-use mc_transaction_std::{InputCredentials, RTHMemoBuilder, TransactionBuilder};
+use mc_transaction_std::{InputCredentials, NoMemoBuilder, TransactionBuilder};
 use mc_util_from_random::FromRandom;
 use mc_util_uri::FogUri;
 use protobuf::Message;
@@ -1072,8 +1072,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_init_1jni(
     jni_ffi_call(&env, |env| {
         let fog_resolver: MutexGuard<FogResolver> =
             env.get_rust_field(fog_resolver, RUST_OBJ_FIELD)?;
-        let memo_builder = RTHMemoBuilder::default();
-        // FIXME: Enable recoverable transaction history by configuring memo_builder
+        // TODO: After servers that support memos are deployed, use RTHMemoBuilder here
+        let memo_builder = NoMemoBuilder::default();
         let tx_builder = TransactionBuilder::new(fog_resolver.clone(), memo_builder);
         Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, tx_builder)?)
     })
