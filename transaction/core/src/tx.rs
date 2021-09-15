@@ -289,7 +289,7 @@ impl TxOut {
         hint: EncryptedFogHint,
     ) -> Result<Self, AmountError> {
         TxOut::new_with_memo(value, recipient, tx_private_key, hint, |_| {
-            Ok(MemoPayload::default())
+            Ok(Some(MemoPayload::default()))
         })
         .map_err(|err| match err {
             NewTxError::Amount(err) => err,
@@ -314,7 +314,7 @@ impl TxOut {
         recipient: &PublicAddress,
         tx_private_key: &RistrettoPrivate,
         hint: EncryptedFogHint,
-        memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
+        memo_fn: impl FnOnce(MemoContext) -> Result<Option<MemoPayload>, NewMemoError>,
     ) -> Result<Self, NewTxError> {
         let target_key = create_tx_out_target_key(tx_private_key, recipient).into();
         let public_key = create_tx_out_public_key(tx_private_key, recipient.spend_public_key());
@@ -327,14 +327,14 @@ impl TxOut {
             tx_public_key: &public_key,
         };
         let memo = memo_fn(memo_ctxt).map_err(NewTxError::Memo)?;
-        let e_memo = memo.encrypt(&shared_secret);
+        let e_memo = memo.map(|memo| memo.encrypt(&shared_secret));
 
         Ok(TxOut {
             amount,
             target_key,
             public_key: public_key.into(),
             e_fog_hint: hint,
-            e_memo: Some(e_memo),
+            e_memo,
         })
     }
 
@@ -739,7 +739,7 @@ mod tests {
                 &bob_addr,
                 &tx_private_key,
                 Default::default(),
-                |_| Ok(memo_val.clone()),
+                |_| Ok(Some(memo_val.clone())),
             )
             .unwrap();
 
@@ -772,7 +772,7 @@ mod tests {
                 &bob.change_subaddress(),
                 &tx_private_key,
                 Default::default(),
-                |_| Ok(memo_val.clone()),
+                |_| Ok(Some(memo_val.clone())),
             )
             .unwrap();
 

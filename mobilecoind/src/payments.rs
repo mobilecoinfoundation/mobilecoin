@@ -23,9 +23,7 @@ use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     BlockIndex,
 };
-use mc_transaction_std::{
-    ChangeDestination, EmptyMemoBuilder, InputCredentials, TransactionBuilder,
-};
+use mc_transaction_std::{ChangeDestination, InputCredentials, NoMemoBuilder, TransactionBuilder};
 use mc_util_uri::FogUri;
 use rand::Rng;
 use rayon::prelude::*;
@@ -772,7 +770,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         };
 
         // Create tx_builder.
-        let mut tx_builder = TransactionBuilder::new(fog_resolver, EmptyMemoBuilder::default());
+        let mut tx_builder = TransactionBuilder::new(fog_resolver, NoMemoBuilder::default());
 
         tx_builder
             .set_fee(fee)

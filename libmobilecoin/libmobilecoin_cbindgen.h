@@ -741,13 +741,13 @@ FfiOptOwnedPtr<McData> mc_transaction_builder_add_output(FfiMutPtr<McTransaction
  * * `LibMcError::AttestationVerification`
  * * `LibMcError::InvalidInput`
  */
-FfiOptOwnedPtr<McData> mc_transaction_builder_add_output_with_fog_hint_address(FfiMutPtr<McTransactionBuilder> transaction_builder,
-                                                                               uint64_t amount,
-                                                                               FfiRefPtr<McPublicAddress> recipient_address,
-                                                                               FfiRefPtr<McPublicAddress> fog_hint_address,
-                                                                               FfiOptMutPtr<McRngCallback> rng_callback,
-                                                                               FfiMutPtr<McMutableBuffer> out_tx_out_confirmation_number,
-                                                                               FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+FfiOptOwnedPtr<McData> mc_transaction_builder_add_output_with_fog_hint_address(FfiMutPtr<McTransactionBuilder> _transaction_builder,
+                                                                               uint64_t _amount,
+                                                                               FfiRefPtr<McPublicAddress> _recipient_address,
+                                                                               FfiRefPtr<McPublicAddress> _fog_hint_address,
+                                                                               FfiOptMutPtr<McRngCallback> _rng_callback,
+                                                                               FfiMutPtr<McMutableBuffer> _out_tx_out_confirmation_number,
+                                                                               FfiOptMutPtr<FfiOptOwnedPtr<McError>> _out_error);
 
 /**
  * # Preconditions

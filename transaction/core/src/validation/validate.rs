@@ -38,7 +38,9 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_number_of_outputs(&tx.prefix, MAX_OUTPUTS)?;
 
-    validate_memos_exist(tx)?;
+    // Bring this back in Issue #905 (Make memos mandatory)
+    // https://github.com/mobilecoinfoundation/mobilecoin/issues/905
+    // validate_memos_exist(tx)?;
 
     validate_ring_sizes(&tx.prefix, RING_SIZE)?;
 
@@ -194,6 +196,12 @@ fn validate_outputs_public_keys_are_unique(tx: &Tx) -> TransactionValidationResu
 }
 
 /// All outputs have a memo (old-style TxOuts are rejected)
+///
+/// Note: This is only under test for now, and can become live
+/// at the time that we address mobilecoinfoundation/mobilecoin/issues/905
+/// "make memos mandatory". See MCIP #0003 for discussion of interim period
+/// during which memos are optional.
+#[cfg(test)]
 fn validate_memos_exist(tx: &Tx) -> TransactionValidationResult<()> {
     if tx
         .prefix

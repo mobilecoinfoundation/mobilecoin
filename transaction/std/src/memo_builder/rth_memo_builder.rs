@@ -146,7 +146,7 @@ impl MemoBuilder for RTHMemoBuilder {
         value: u64,
         recipient: &PublicAddress,
         memo_context: MemoContext,
-    ) -> Result<MemoPayload, NewMemoError> {
+    ) -> Result<Option<MemoPayload>, NewMemoError> {
         if self.wrote_destination_memo {
             return Err(NewMemoError::OutputsAfterChange);
         }
@@ -159,7 +159,7 @@ impl MemoBuilder for RTHMemoBuilder {
             .checked_add(1)
             .ok_or(NewMemoError::LimitsExceeded("num_recipients"))?;
         self.last_recipient = ShortAddressHash::from(recipient);
-        Ok(if let Some(cred) = &self.sender_cred {
+        let payload: MemoPayload = if let Some(cred) = &self.sender_cred {
             if let Some(payment_request_id) = self.payment_request_id {
                 AuthenticatedSenderWithPaymentRequestIdMemo::new(
                     cred,
@@ -178,7 +178,8 @@ impl MemoBuilder for RTHMemoBuilder {
             }
         } else {
             UnusedMemo {}.into()
-        })
+        };
+        Ok(Some(payload))
     }
 
     /// Build a memo for a change output (to ourselves).
@@ -187,9 +188,9 @@ impl MemoBuilder for RTHMemoBuilder {
         _value: u64,
         _change_destination: &ChangeDestination,
         _memo_context: MemoContext,
-    ) -> Result<MemoPayload, NewMemoError> {
+    ) -> Result<Option<MemoPayload>, NewMemoError> {
         if !self.destination_memo_enabled {
-            return Ok(UnusedMemo {}.into());
+            return Ok(Some(UnusedMemo {}.into()));
         }
         if self.wrote_destination_memo {
             return Err(NewMemoError::MultipleChangeOutputs);
@@ -202,7 +203,7 @@ impl MemoBuilder for RTHMemoBuilder {
             Ok(mut d_memo) => {
                 self.wrote_destination_memo = true;
                 d_memo.set_num_recipients(self.num_recipients);
-                Ok(d_memo.into())
+                Ok(Some(d_memo.into()))
             }
             Err(err) => match err {
                 DestinationMemoError::FeeTooLarge => Err(NewMemoError::LimitsExceeded("fee")),
