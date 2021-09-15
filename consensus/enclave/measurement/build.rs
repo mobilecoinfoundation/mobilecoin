@@ -10,10 +10,10 @@ use std::{env::var, path::PathBuf};
 
 // Changing this version is a breaking change, you must update the crate version
 // if you do.
-const SGX_VERSION: &str = "2.13.103.1";
+const SGX_VERSION: &str = "2.14.100.2";
 
 const CONSENSUS_ENCLAVE_PRODUCT_ID: u16 = 1;
-const CONSENSUS_ENCLAVE_SECURITY_VERSION: u16 = 2;
+const CONSENSUS_ENCLAVE_SECURITY_VERSION: u16 = 3;
 const CONSENSUS_ENCLAVE_NAME: &str = "consensus-enclave";
 const CONSENSUS_ENCLAVE_DIR: &str = "../trusted";
 

@@ -7,6 +7,61 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ## [Unreleased]
 
+### Added
+
+ - Encrypted Memos ([MCIP #3](https://github.com/mobilecoinfoundation/mcips/pull/3))
+ - Recoverable Transaction History ([MCIP #4](https://github.com/mobilecoinfoundation/mcips/pull/4))
+ - Consensus/Fog repository merge
+
+### Changed
+
+ - Updated SGX to 2.14
+ - Lock enclave no-debug mode when building for IAS production.
+ - Update Rust toolchain to `nightly-2021-07-21`.
+
+#### Rust Dependencies
+
+ - Update `aead` to 0.4.1.
+ - Update `aes-gcm` to 0.9.2.
+ - Update `base64` to 0.13.0.
+ - Update `bindgen` to 0.58.1.
+ - Update `blake2` to 0.9.2.
+ - Update `cc` to 1.0.70.
+ - Update `cfg-if` to 1.0.0.
+ - Update `cmake` to unreleased github with iOS fixes.
+ - Update `curve25519-dalek` to 4.0.0-pre1.
+ - Update `displaydoc` to 0.2.3.
+ - Update `hashbrown` to 0.11.2.
+ - Update `hmac` to 0.11.0.
+ - Update `hostname` to 0.3.1.
+ - Update `packed_simd_2` to unreleased github with nightly fixes.
+ - Update `proc-macros2` to 1.0.29.
+ - Update `quote` to 1.0.9.
+ - Update `rocket` to 0.4.10.
+ - Update `semver` to 1.0.4.
+ - Update `sha2` to 0.9.5.
+ - Update `subtle` to 2.4.1.
+ - Update `syn` to 1.0.67.
+ - Remove `failure` in favor of `displaydoc`.
+
+#### Rust Crate Forks
+
+ - Fork `bulletproofs` to `bulletproofs-og` to use dalek upstream, fix clippy issues from upstream.
+ - Fork `cpufeatures` to disable `CPUID` usage, use fork in enclaves (cargo bug prevents upstreaming).
+ - Fork `schnorrkel` to `schnorrkel-og`, to use dalek upstream.
+ - Fork `aes-gcm` to `mc-oblivious-aes-gcm` for oblivious decryption support, use where necessary.
+
+ - Update `cmake` fork to fix iOS builds.
+ - Update `datatest` to support newer rust nightlies.
+ - Update `ed25519-dalek` fork to support new rust nightlies.
+ - Update `grpcio` fork to 0.9 base.
+ - Update `mbedtls`, `mbedtls-sys` forks to support newer rust nightlies.
+ - Update `x25519-dalek` fork to support newer rust nightlies.
+
+ - Unfork `aes-gcm` and update to 0.9.2, use forked `mc-oblivious-aes-gcm` crate in the Fog hint decryption routines.
+ - Unfork `cpuid-bool`, not used anymore
+ - Unfork `prost` and update to 0.8.0.
+
 ## [1.1.1] - 2021-08-16
 
 ### Changed

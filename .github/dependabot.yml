@@ -4,4 +4,24 @@ updates:
   directory: "/"
   schedule:
     interval: daily
-  open-pull-requests-limit: 5
+  open-pull-requests-limit: 10
+- package-ecosystem: cargo
+  directory: "/consensus/enclave/trusted/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+- package-ecosystem: cargo
+  directory: "/fog/ingest/enclave/trusted/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+- package-ecosystem: cargo
+  directory: "/fog/ledger/enclave/trusted/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+- package-ecosystem: cargo
+  directory: "/fog/view/enclave/trusted/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
