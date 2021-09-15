@@ -118,7 +118,6 @@ typedef struct McTxOutAmount {
   /**
    * 32-byte `CompressedCommitment`
    */
-  FfiRefPtr<McBuffer> commitment;
   uint64_t masked_value;
 } McTxOutAmount;
 
@@ -577,6 +576,17 @@ bool mc_slip10_account_private_keys_from_mnemonic(FfiStr mnemonic,
                                                   FfiMutPtr<McMutableBuffer> out_view_private_key,
                                                   FfiMutPtr<McMutableBuffer> out_spend_private_key,
                                                   FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
+ */
+bool mc_tx_out_reconstruct_commitment(FfiRefPtr<McTxOutAmount> tx_out_amount,
+                                      FfiRefPtr<McBuffer> tx_out_public_key,
+                                      FfiRefPtr<McBuffer> view_private_key,
+                                      FfiMutPtr<McMutableBuffer> out_tx_out_commitment,
+                                      FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 /**
  * # Preconditions
