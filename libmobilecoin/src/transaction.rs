@@ -42,8 +42,7 @@ pub extern "C" fn mc_tx_out_reconstruct_commitment(
         let shared_secret = get_tx_out_shared_secret(&view_private_key, &tx_out_public_key);
         let value = (tx_out_amount.masked_value as u64) ^ get_value_mask(&shared_secret);
 
-        let amount: Amount =
-            Amount::new(value, &shared_secret).expect("could not create amount object");
+        let amount: Amount = Amount::new(value, &shared_secret)?;
 
         let out_tx_out_commitment = out_tx_out_commitment
             .into_mut()
