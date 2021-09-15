@@ -35,7 +35,7 @@ mc-util-uri = { path = "../util/uri" }
 mc-api = { path = "../api" }
 
 # third-party
-aes-gcm = { version = "0.9.2", default-features = false }
+aes-gcm = { version = "0.9.3", default-features = false }
 anyhow = "1.0"
 displaydoc = { version = "0.2", default-features = false }
 jni = { version = "0.16.0", default-features = false }
