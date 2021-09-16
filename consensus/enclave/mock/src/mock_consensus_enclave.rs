@@ -23,7 +23,7 @@ use mockall::*;
 
 mock! {
     pub ConsensusEnclave {} // This is used to generate a MockConsensusEnclave struct.
-    trait ConsensusEnclave {
+    impl ConsensusEnclave for ConsensusEnclave {
         fn enclave_init(
             &self,
             self_peer_id: &ResponderId,
@@ -79,7 +79,7 @@ mock! {
         ) -> ConsensusEnclaveResult<(Block, BlockContents, BlockSignature)>;
     }
 
-    trait ReportableEnclave {
+    impl ReportableEnclave for ConsensusEnclave {
         fn new_ereport(&self, qe_info: TargetInfo) -> SgxReportResult<(Report, QuoteNonce)>;
 
         fn verify_quote(&self, quote: Quote, qe_report: Report) -> SgxReportResult<IasNonce>;

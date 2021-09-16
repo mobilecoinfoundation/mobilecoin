@@ -15,7 +15,7 @@ ed25519 = { version = "1.0.1", default-features = false, features = ["serde"] }
 hex = "0.4"
 percent-encoding = "2.1.0"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-url = "2.1"
+url = "2.2"
 
 [dev-dependencies]
 mc-util-from-random = { path = "../../util/from-random" }
