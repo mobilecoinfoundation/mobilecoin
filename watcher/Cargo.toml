@@ -41,7 +41,7 @@ rayon = "1.2"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 structopt = "0.3"
 toml = "0.5"
-url = "2.1"
+url = "2.2"
 
 [dev-dependencies]
 mc-account-keys = { path = "../account-keys" }
