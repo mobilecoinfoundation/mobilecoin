@@ -1,15 +1,43 @@
 version: 2
 updates:
 - package-ecosystem: cargo
-  directory:
-    - "/"
-    - "/consensus/enclave/trusted/"
-    - "/fog/ingest/enclave/trusted/"
-    - "/fog/ledger/enclave/trusted/"
-    - "/fog/view/enclave/trusted/"
+  directory: "/"
   schedule:
     interval: daily
   open-pull-requests-limit: 10
   reviewers:
+    - "mobilecoinfoundation/eng"
     - "mobilecoinfoundation/eng/consensus"
+    - "mobilecoinfoundation/eng/fog"
+- package-ecosystem: cargo
+  directory: "/consensus/enclave/trusted/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  reviewers:
+    - "mobilecoinfoundation/eng"
+    - "mobilecoinfoundation/eng/consensus"
+- package-ecosystem: cargo
+  directory: "/fog/ingest/enclave/trusted/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  reviewers:
+    - "mobilecoinfoundation/eng"
+    - "mobilecoinfoundation/eng/fog"
+- package-ecosystem: cargo
+  directory: "/fog/ledger/enclave/trusted/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  reviewers:
+    - "mobilecoinfoundation/eng"
+    - "mobilecoinfoundation/eng/fog"
+- package-ecosystem: cargo
+  directory: "/fog/view/enclave/trusted/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  reviewers:
+    - "mobilecoinfoundation/eng"
     - "mobilecoinfoundation/eng/fog"
