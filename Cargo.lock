@@ -2333,7 +2333,7 @@ dependencies = [
  "prost",
  "rand 0.8.3",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "subtle 2.4.1",
  "tempdir",
  "zeroize",
@@ -2458,7 +2458,7 @@ dependencies = [
  "mc-util-from-random",
  "prost",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "serde",
  "sha2 0.9.5",
 ]
@@ -2509,7 +2509,7 @@ dependencies = [
  "pem",
  "prost",
  "rand 0.8.3",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "rjson",
  "serde",
  "sha2 0.9.5",
@@ -2625,7 +2625,7 @@ dependencies = [
  "mc-util-serial",
  "mc-util-uri",
  "rand 0.8.3",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "retry",
  "secrecy",
  "sha2 0.9.5",
@@ -2736,7 +2736,7 @@ dependencies = [
  "prost",
  "rand 0.8.3",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
 ]
 
 [[package]]
@@ -2767,7 +2767,7 @@ dependencies = [
  "mc-util-serial",
  "mockall",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
 ]
 
 [[package]]
@@ -2787,7 +2787,7 @@ dependencies = [
  "mockall",
  "pretty_assertions",
  "rand 0.8.3",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "serde",
  "serde_json",
  "serial_test",
@@ -2852,7 +2852,7 @@ dependencies = [
  "protobuf",
  "rand 0.8.3",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "rayon",
  "retry",
  "serde",
@@ -2975,7 +2975,7 @@ dependencies = [
  "mc-util-test-helper",
  "pem",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "schnorrkel-og",
  "semver 1.0.4",
  "serde",
@@ -3014,7 +3014,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-util-from-random",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "secrecy",
  "serde",
  "sha2 0.9.5",
@@ -3030,7 +3030,7 @@ dependencies = [
  "getrandom 0.1.14",
  "rand 0.8.3",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
 ]
 
 [[package]]
@@ -3042,7 +3042,7 @@ dependencies = [
  "mc-util-test-helper",
  "merlin",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "schnorrkel-og",
 ]
 
@@ -3335,7 +3335,7 @@ dependencies = [
  "mc-watcher-api",
  "protobuf",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "retry",
  "serde",
  "serde_json",
@@ -3814,7 +3814,7 @@ dependencies = [
  "mc-util-from-random",
  "pem",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "signature",
  "x509-signature",
 ]
@@ -3826,7 +3826,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-util-from-random",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "signature",
 ]
 
@@ -3841,7 +3841,7 @@ dependencies = [
  "mc-fog-report-types",
  "mc-util-from-random",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "signature",
 ]
 
@@ -3915,7 +3915,7 @@ dependencies = [
  "mc-watcher",
  "mc-watcher-api",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "serde",
  "serde_json",
  "structopt",
@@ -4092,7 +4092,7 @@ dependencies = [
  "mc-util-test-helper",
  "mc-watcher-api",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "serde",
  "zeroize",
 ]
@@ -4424,7 +4424,7 @@ dependencies = [
  "mockall",
  "protobuf",
  "rand 0.8.3",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "retry",
  "serde",
 ]
@@ -4447,7 +4447,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-uri",
  "rand 0.8.3",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "retry",
  "sha2 0.9.5",
 ]
@@ -4659,7 +4659,7 @@ dependencies = [
  "prost",
  "rand 0.8.3",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "serde",
  "sha2 0.9.5",
  "subtle 2.4.1",
@@ -4810,7 +4810,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-keyfile",
  "rand 0.8.3",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "serde",
  "structopt",
  "tempdir",
@@ -4886,7 +4886,7 @@ dependencies = [
  "mc-util-serial",
  "pem",
  "rand 0.8.3",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "serde",
  "serde_json",
  "structopt",
@@ -4963,7 +4963,7 @@ dependencies = [
  "mc-common",
  "rand 0.8.3",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "structopt",
 ]
 
@@ -4990,7 +4990,7 @@ dependencies = [
  "mc-util-host-cert",
  "percent-encoding 2.1.0",
  "rand 0.8.3",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "serde",
  "url 2.2.2",
 ]
@@ -5026,7 +5026,7 @@ dependencies = [
  "mc-watcher-api",
  "prost",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
  "rayon",
  "serde",
  "serial_test",
@@ -5910,7 +5910,7 @@ dependencies = [
  "libc",
  "rand_chacha 0.3.0",
  "rand_core 0.6.2",
- "rand_hc 0.3.0",
+ "rand_hc 0.3.1",
 ]
 
 [[package]]
@@ -5977,9 +5977,9 @@ dependencies = [
 
 [[package]]
 name = "rand_hc"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3190ef7066a446f2e7f42e239d161e905420ccab01eb967c9eb27d21b2322a73"
+checksum = "d51e9f596de227fda2ea6c84607f5558e196eeaf43c986b724ba4fb8fdf497e7"
 dependencies = [
  "rand_core 0.6.2",
 ]
