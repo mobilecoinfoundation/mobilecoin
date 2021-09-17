@@ -27,7 +27,7 @@ extern "C" fn handle_sigchld(_: libc::c_int) {
 
     // Reap the child
     if let Err(err) = waitpid(Pid::from_raw(-1), None) {
-        let mut buf = ArrayString::<[u8; 512]>::new();
+        let mut buf = ArrayString::<512>::new();
         writeln!(
             &mut buf,
             "[main] waitpid() failed, could not reap child: {}",
