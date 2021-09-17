@@ -3,6 +3,7 @@
 use displaydoc::Display;
 use mc_consensus_enclave::Error as ConsensusEnclaveError;
 use mc_ledger_db::Error as LedgerDbError;
+use mc_sgx_report_cache_api::Error as ReportCacheError;
 use mc_transaction_core::{tx::TxHash, validation::TransactionValidationError};
 
 #[derive(Clone, Debug, Display)]
@@ -18,6 +19,9 @@ pub enum TxManagerError {
 
     /// Ledger error: {0}
     LedgerDb(LedgerDbError),
+
+    /// Report Cache error: {0}
+    ReportCache(ReportCacheError),
 }
 
 impl From<ConsensusEnclaveError> for TxManagerError {
@@ -39,6 +43,12 @@ impl From<TransactionValidationError> for TxManagerError {
 impl From<LedgerDbError> for TxManagerError {
     fn from(err: LedgerDbError) -> Self {
         Self::LedgerDb(err)
+    }
+}
+
+impl From<ReportCacheError> for TxManagerError {
+    fn from(err: ReportCacheError) -> Self {
+        Self::ReportCache(err)
     }
 }
 

@@ -266,7 +266,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
 
                 let start = Instant::now();
                 ledger_db
-                    .append_block(block, block_contents, None)
+                    .append_block(block, block_contents, None, None)
                     .expect("Adding block failed");
                 // Poll for a change in recovery_db highest_known_block_index
                 loop {

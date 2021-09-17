@@ -2,7 +2,7 @@
 
 //! The watcher database
 
-use crate::{block_data_store::BlockDataStore, error::WatcherDBError};
+use crate::{block_data_store::ArchiveBlockStore, error::WatcherDBError};
 
 use mc_attest_core::VerificationReport;
 use mc_common::{
@@ -11,7 +11,8 @@ use mc_common::{
 };
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::Ed25519Public;
-use mc_transaction_core::{BlockData, BlockIndex, BlockSignature};
+use mc_ledger_types::ArchiveBlock;
+use mc_transaction_core::{BlockIndex, BlockSignature};
 use mc_util_lmdb::{MetadataStore, MetadataStoreSettings};
 use mc_util_repr_bytes::ReprBytes;
 use mc_util_serial::{decode, encode, Message};
@@ -114,8 +115,8 @@ pub struct WatcherDB {
     /// LMDB Environment (database).
     env: Arc<Environment>,
 
-    /// BlockData store.
-    block_data_store: BlockDataStore,
+    /// ArchiveBlock store.
+    block_data_store: ArchiveBlockStore,
 
     /// Signature store.
     block_signatures: Database,
@@ -192,7 +193,7 @@ impl WatcherDB {
         let last_synced = env.open_db(Some(LAST_SYNCED_DB_NAME))?;
         let config = env.open_db(Some(CONFIG_DB_NAME))?;
 
-        let block_data_store = BlockDataStore::new(env.clone(), logger.clone())?;
+        let block_data_store = ArchiveBlockStore::new(env.clone(), logger.clone())?;
 
         Ok(WatcherDB {
             env,
@@ -248,7 +249,7 @@ impl WatcherDB {
         env.create_db(Some(LAST_SYNCED_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(CONFIG_DB_NAME), DatabaseFlags::DUP_SORT)?;
 
-        BlockDataStore::create(env)?;
+        ArchiveBlockStore::create(env)?;
 
         Ok(())
     }
@@ -259,12 +260,12 @@ impl WatcherDB {
         self.get_config_urls_with_txn(&db_txn)
     }
 
-    /// Store BlockData for a URL at a given block index (the block index comes
-    /// from the BlockData).
+    /// Store ArchiveBlock for a URL at a given block index (the block index
+    /// comes from the ArchiveBlock).
     pub fn add_block_data(
         &self,
         src_url: &Url,
-        block_data: &BlockData,
+        block_data: &ArchiveBlock,
     ) -> Result<(), WatcherDBError> {
         if !self.write_allowed {
             return Err(WatcherDBError::ReadOnly);
@@ -626,24 +627,24 @@ impl WatcherDB {
         Ok(results)
     }
 
-    /// Get BlockData for a given block index provided by a specific tx source
-    /// url.
+    /// Get ArchiveBlock for a given block index provided by a specific tx
+    /// source url.
     pub fn get_block_data(
         &self,
         src_url: &Url,
         block_index: BlockIndex,
-    ) -> Result<BlockData, WatcherDBError> {
+    ) -> Result<ArchiveBlock, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
         self.block_data_store
             .get_block_data(&db_txn, src_url, block_index)
     }
 
-    /// Get all known BlockDatas for a given block index, mapped by tx source
+    /// Get all known ArchiveBlocks for a given block index, mapped by tx source
     /// url.
     pub fn get_block_data_map(
         &self,
         block_index: BlockIndex,
-    ) -> Result<HashMap<Url, BlockData>, WatcherDBError> {
+    ) -> Result<HashMap<Url, ArchiveBlock>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
         self.block_data_store
             .get_block_data_map(&db_txn, block_index)
@@ -1871,7 +1872,7 @@ pub mod tests {
             let block_datas = blocks
                 .iter()
                 .map(|(block, contents)| {
-                    BlockData::new(
+                    ArchiveBlock::new(
                         block.clone(),
                         contents.clone(),
                         Some(
@@ -1881,6 +1882,7 @@ pub mod tests {
                             )
                             .unwrap(),
                         ),
+                        None,
                     )
                 })
                 .collect::<Vec<_>>();

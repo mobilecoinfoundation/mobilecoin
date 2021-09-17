@@ -16,6 +16,7 @@ use mc_common::{
 use mc_consensus_enclave::{
     ConsensusEnclave, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
+use mc_ledger_types::VerificationReport;
 use mc_transaction_core::{
     constants::MAX_TRANSACTIONS_PER_BLOCK,
     tx::{TxHash, TxOutMembershipProof},
@@ -253,7 +254,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         &self,
         tx_hashes: &[TxHash],
         parent_block: &Block,
-    ) -> TxManagerResult<(Block, BlockContents, BlockSignature)> {
+    ) -> TxManagerResult<(Block, BlockContents, BlockSignature, VerificationReport)> {
         let cache = self.lock_cache();
 
         // Split `tx_hashes` into a list of found hashes and missing ones. This allows
@@ -295,7 +296,10 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         // The enclave cannot provide a timestamp, so this happens in untrusted.
         signature.set_signed_at(chrono::Utc::now().timestamp() as u64);
 
-        Ok((block, block_contents, signature))
+        // Get the report which underlies the signature
+        let verification_report = self.enclave.get_ias_report()?;
+
+        Ok((block, block_contents, signature, verification_report))
     }
 
     /// Creates a message containing a set of transactions that are encrypted
@@ -773,6 +777,11 @@ mod tests {
             expected_block_signature.clone(),
         )));
 
+        mock_enclave
+            .expect_get_ias_report()
+            .times(1)
+            .return_const(Ok(Default::default()));
+
         let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger);
 
         // All transactions must be in the cache.
@@ -785,7 +794,7 @@ mod tests {
         }
 
         match tx_manager.tx_hashes_to_block(&tx_hashes, &parent_block) {
-            Ok((block, block_contents, block_signature)) => {
+            Ok((block, block_contents, block_signature, _report)) => {
                 assert_eq!(block, expected_block);
                 assert_eq!(block_contents, expected_block_contents);
                 // The signed_at field of the signature should be non-zero.
@@ -822,7 +831,7 @@ mod tests {
         tx_hashes.insert(2, not_in_cache.clone());
 
         match tx_manager.tx_hashes_to_block(&tx_hashes, &parent_block) {
-            Ok((_block, _block_contents, _block_signature)) => {
+            Ok((_block, _block_contents, _block_signature, _report)) => {
                 panic!();
             }
             Err(TxManagerError::NotInCache(hashes)) => {
@@ -951,7 +960,7 @@ mod tests {
         // Attempting to assemble a block without duplicates or missing transactions
         // should succeed.
         // TODO: Right now this relies on ConsensusServiceMockEnclave::form_block
-        let (block, block_contents, _signature) = tx_manager
+        let (block, block_contents, _signature, _report) = tx_manager
             .tx_hashes_to_block(&[hash_tx_zero, hash_tx_one], &parent_block)
             .expect("failed assembling block");
         assert_eq!(

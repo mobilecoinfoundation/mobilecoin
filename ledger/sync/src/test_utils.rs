@@ -3,7 +3,8 @@
 use crate::{TransactionFetcherError, TransactionsFetcher};
 use mc_common::ResponderId;
 use mc_ledger_db::Ledger;
-use mc_transaction_core::{Block, BlockData};
+use mc_ledger_types::ArchiveBlock;
+use mc_transaction_core::Block;
 
 impl TransactionFetcherError for String {}
 
@@ -25,7 +26,7 @@ impl<L: Ledger + Sync> TransactionsFetcher for MockTransactionsFetcher<L> {
         &self,
         _safe_responder_ids: &[ResponderId],
         block: &Block,
-    ) -> Result<BlockData, Self::Error> {
+    ) -> Result<ArchiveBlock, Self::Error> {
         self.ledger
             .get_block_data(block.index)
             .map_err(|e| format!("Error getting data for block #{}: {:?}", block.index, e))

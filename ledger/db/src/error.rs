@@ -1,11 +1,13 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use displaydoc::Display;
+use mc_attest_core::VerifyError;
 use mc_transaction_core::{membership_proofs::RangeError, BlockID, BlockIndex};
+use mc_util_encodings::Error as EncodingError;
 use mc_util_lmdb::MetadataStoreError;
 
 /// A Ledger error kind.
-#[derive(Debug, Eq, PartialEq, Clone, Display)]
+#[derive(Debug, PartialEq, Clone, Display)]
 pub enum Error {
     /// NotFound
     NotFound,
@@ -63,6 +65,12 @@ pub enum Error {
 
     /// Metadata store: {0}
     MetadataStore(MetadataStoreError),
+
+    /// Verify: {0}
+    Verify(VerifyError),
+
+    /// Encoding: {0}
+    Encoding(EncodingError),
 }
 
 impl From<lmdb::Error> for Error {
@@ -108,5 +116,17 @@ impl From<RangeError> for Error {
 impl From<MetadataStoreError> for Error {
     fn from(src: MetadataStoreError) -> Self {
         Self::MetadataStore(src)
+    }
+}
+
+impl From<VerifyError> for Error {
+    fn from(src: VerifyError) -> Self {
+        Self::Verify(src)
+    }
+}
+
+impl From<EncodingError> for Error {
+    fn from(src: EncodingError) -> Self {
+        Self::Encoding(src)
     }
 }

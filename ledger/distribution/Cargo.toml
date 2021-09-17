@@ -12,6 +12,7 @@ path = "src/main.rs"
 mc-api = { path = "../../api" }
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-ledger-db = { path = "../../ledger/db" }
+mc-ledger-types = { path = "../../ledger/types" }
 mc-transaction-core = { path = "../../transaction/core" }
 
 dirs = "2.0"

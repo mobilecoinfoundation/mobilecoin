@@ -9,7 +9,8 @@ use crate::uri::{Destination, Uri};
 use mc_api::{block_num_to_s3block_path, blockchain, merged_block_num_to_s3block_path};
 use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_transaction_core::{BlockData, BlockIndex};
+use mc_ledger_types::ArchiveBlock;
+use mc_transaction_core::BlockIndex;
 use protobuf::Message;
 use rusoto_core::{Region, RusotoError};
 use rusoto_s3::{PutObjectError, PutObjectRequest, S3Client, S3};
@@ -18,8 +19,8 @@ use std::{fs, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 
 pub trait BlockHandler {
-    fn write_single_block(&mut self, block_data: &BlockData);
-    fn write_multiple_blocks(&mut self, blocks_data: &[BlockData]);
+    fn write_single_block(&mut self, block_data: &ArchiveBlock);
+    fn write_multiple_blocks(&mut self, blocks_data: &[ArchiveBlock]);
 }
 
 /// Block to start syncing from.
@@ -143,7 +144,7 @@ impl S3BlockWriter {
 }
 
 impl BlockHandler for S3BlockWriter {
-    fn write_single_block(&mut self, block_data: &BlockData) {
+    fn write_single_block(&mut self, block_data: &ArchiveBlock) {
         log::info!(
             self.logger,
             "S3: Handling block {}",
@@ -169,7 +170,7 @@ impl BlockHandler for S3BlockWriter {
         );
     }
 
-    fn write_multiple_blocks(&mut self, blocks_data: &[BlockData]) {
+    fn write_multiple_blocks(&mut self, blocks_data: &[ArchiveBlock]) {
         assert!(blocks_data.len() >= 2);
 
         let first_block_index = blocks_data[0].block().index;
@@ -221,7 +222,7 @@ impl LocalBlockWriter {
 }
 
 impl BlockHandler for LocalBlockWriter {
-    fn write_single_block(&mut self, block_data: &BlockData) {
+    fn write_single_block(&mut self, block_data: &ArchiveBlock) {
         log::info!(
             self.logger,
             "Local: Handling block {}",
@@ -251,7 +252,7 @@ impl BlockHandler for LocalBlockWriter {
         });
     }
 
-    fn write_multiple_blocks(&mut self, blocks_data: &[BlockData]) {
+    fn write_multiple_blocks(&mut self, blocks_data: &[ArchiveBlock]) {
         assert!(blocks_data.len() >= 2);
 
         let first_block_index = blocks_data[0].block().index;

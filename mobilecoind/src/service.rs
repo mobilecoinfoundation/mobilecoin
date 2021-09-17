@@ -3597,7 +3597,7 @@ mod test {
                 &block_contents,
             );
             ledger_db
-                .append_block(&new_block, &block_contents, None)
+                .append_block(&new_block, &block_contents, None, None)
                 .unwrap();
 
             // Use bip39 entropy to construct AccountKey.

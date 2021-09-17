@@ -2,22 +2,24 @@
 
 use crate::Error;
 use mc_common::Hash;
-use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public};
+use mc_ledger_types::{ArchiveBlock, VerificationReport};
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockIndex, BlockSignature,
+    Block, BlockContents, BlockIndex, BlockSignature,
 };
 use mockall::*;
 
 #[automock]
 pub trait Ledger: Send {
     /// Appends a block along with transactions.
-    fn append_block(
+    fn append_block<'a>(
         &mut self,
         block: &Block,
         block_contents: &BlockContents,
-        signature: Option<BlockSignature>,
+        signature: Option<&'a BlockSignature>,
+        verification_report: Option<&'a VerificationReport>,
     ) -> Result<(), Error>;
 
     /// Get the total number of blocks in the ledger.
@@ -32,9 +34,19 @@ pub trait Ledger: Send {
     /// Gets a block signature by its index in the blockchain.
     fn get_block_signature(&self, block_number: BlockIndex) -> Result<BlockSignature, Error>;
 
+    /// Gets an attestation verification report by signer.
+    fn get_verification_report_by_signer(
+        &self,
+        signer: &Ed25519Public,
+    ) -> Result<VerificationReport, Error>;
+
     /// Gets a block and all of its associated data by its index in the
     /// blockchain.
-    fn get_block_data(&self, block_number: BlockIndex) -> Result<BlockData, Error>;
+    ///
+    /// Note: This omits the verification report, because that is large and
+    /// often not needed. Fetch separately using
+    /// get_verification_report_by_signer.
+    fn get_block_data(&self, block_number: BlockIndex) -> Result<ArchiveBlock, Error>;
 
     /// Gets block index by a TxOut global index.
     fn get_block_index_by_tx_out_index(&self, tx_out_index: u64) -> Result<BlockIndex, Error>;

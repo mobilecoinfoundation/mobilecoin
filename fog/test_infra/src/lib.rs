@@ -157,7 +157,7 @@ pub fn test_block<T: RngCore + CryptoRng, C: FogViewConnection>(
         (block, block_contents)
     };
     ledger_db
-        .append_block(&block, &block_contents, None)
+        .append_block(&block, &block_contents, None, None)
         .unwrap_or_else(|err| panic!("failed appending block {:?}: {:?}", block, err));
 
     // Make the users poll for transactions, until their num blocks matches

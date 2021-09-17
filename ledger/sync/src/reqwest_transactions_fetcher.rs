@@ -12,7 +12,8 @@ use mc_common::{
     lru::LruCache,
     ResponderId,
 };
-use mc_transaction_core::{Block, BlockData, BlockIndex};
+use mc_ledger_types::ArchiveBlock;
+use mc_transaction_core::{Block, BlockIndex};
 use protobuf::Message;
 use reqwest::Error as ReqwestError;
 use std::{
@@ -79,9 +80,9 @@ pub struct ReqwestTransactionsFetcher {
     /// The most recently used URL index (in `source_urls`).
     source_index_counter: Arc<AtomicU64>,
 
-    /// Cache mapping a `BlockIndex` to `BlockData`, filled by merged blocks
+    /// Cache mapping a `BlockIndex` to `ArchiveBlock`, filled by merged blocks
     /// when possible.
-    blocks_cache: Arc<Mutex<LruCache<BlockIndex, BlockData>>>,
+    blocks_cache: Arc<Mutex<LruCache<BlockIndex, ArchiveBlock>>>,
 
     /// Merged blocks bucket sizes to attempt fetching.
     merged_blocks_bucket_sizes: Vec<u64>,
@@ -140,10 +141,13 @@ impl ReqwestTransactionsFetcher {
         self.merged_blocks_bucket_sizes = bucket_sizes.to_vec();
     }
 
-    pub fn block_from_url(&self, url: &Url) -> Result<BlockData, ReqwestTransactionsFetcherError> {
+    pub fn block_from_url(
+        &self,
+        url: &Url,
+    ) -> Result<ArchiveBlock, ReqwestTransactionsFetcherError> {
         let archive_block: blockchain::ArchiveBlock = self.fetch_protobuf_object(url)?;
 
-        let block_data = BlockData::try_from(&archive_block).map_err(|err| {
+        let block_data = ArchiveBlock::try_from(&archive_block).map_err(|err| {
             ReqwestTransactionsFetcherError::InvalidBlockReceived(url.to_string(), err.to_string())
         })?;
 
@@ -154,17 +158,17 @@ impl ReqwestTransactionsFetcher {
     pub fn blocks_from_url(
         &self,
         url: &Url,
-    ) -> Result<Vec<BlockData>, ReqwestTransactionsFetcherError> {
+    ) -> Result<Vec<ArchiveBlock>, ReqwestTransactionsFetcherError> {
         let archive_blocks: blockchain::ArchiveBlocks = self.fetch_protobuf_object(url)?;
 
-        Vec::<BlockData>::try_from(&archive_blocks).map_err(|err| {
+        Vec::<ArchiveBlock>::try_from(&archive_blocks).map_err(|err| {
             ReqwestTransactionsFetcherError::InvalidBlockReceived(url.to_string(), err.to_string())
         })
     }
 
     pub fn get_origin_block_and_transactions(
         &self,
-    ) -> Result<BlockData, ReqwestTransactionsFetcherError> {
+    ) -> Result<ArchiveBlock, ReqwestTransactionsFetcherError> {
         self.get_block_data_by_index(0, None)
     }
 
@@ -202,7 +206,7 @@ impl ReqwestTransactionsFetcher {
         &self,
         block_index: BlockIndex,
         expected_block: Option<&Block>,
-    ) -> Option<BlockData> {
+    ) -> Option<ArchiveBlock> {
         // Sanity test.
         if let Some(expected_block) = expected_block {
             assert_eq!(block_index, expected_block.index);
@@ -256,7 +260,7 @@ impl ReqwestTransactionsFetcher {
         &self,
         block_index: BlockIndex,
         expected_block: Option<&Block>,
-    ) -> Result<BlockData, ReqwestTransactionsFetcherError> {
+    ) -> Result<ArchiveBlock, ReqwestTransactionsFetcherError> {
         // Try and see if we can get this block from our cache.
         if let Some(cached_block_data) = self.get_cached_block_data(block_index, expected_block) {
             return Ok(cached_block_data);
@@ -363,7 +367,7 @@ impl TransactionsFetcher for ReqwestTransactionsFetcher {
         &self,
         _safe_responder_ids: &[ResponderId],
         block: &Block,
-    ) -> Result<BlockData, Self::Error> {
+    ) -> Result<ArchiveBlock, Self::Error> {
         self.get_block_data_by_index(block.index, Some(block))
     }
 }

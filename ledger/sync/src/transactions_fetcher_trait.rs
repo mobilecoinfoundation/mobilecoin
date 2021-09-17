@@ -4,7 +4,8 @@
 //! `LedgerSyncService` for fetching transaction data.
 
 use mc_common::ResponderId;
-use mc_transaction_core::{Block, BlockData};
+use mc_ledger_types::ArchiveBlock;
+use mc_transaction_core::Block;
 use std::fmt::Debug;
 
 pub trait TransactionFetcherError: Debug + Send + Sync {}
@@ -25,5 +26,5 @@ pub trait TransactionsFetcher: Sized + Sync + Send {
         &self,
         safe_responder_ids: &[ResponderId],
         block: &Block,
-    ) -> Result<BlockData, Self::Error>;
+    ) -> Result<ArchiveBlock, Self::Error>;
 }

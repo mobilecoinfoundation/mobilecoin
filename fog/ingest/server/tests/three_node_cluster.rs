@@ -18,12 +18,13 @@ use mc_fog_sql_recovery_db::{test_utils::SqlRecoveryDbTestContext, SqlRecoveryDb
 use mc_fog_test_infra::get_enclave_path;
 use mc_fog_uri::{FogIngestUri, IngestPeerUri};
 use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_types::ArchiveBlock;
 use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     membership_proofs::Range,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Amount, Block, BlockContents, BlockData, BlockSignature, BLOCK_VERSION,
+    Amount, Block, BlockContents, BlockSignature, BLOCK_VERSION,
 };
 use mc_util_from_random::FromRandom;
 use mc_watcher::watcher_db::WatcherDB;
@@ -138,10 +139,10 @@ fn add_test_block<T: RngCore + CryptoRng>(ledger: &mut LedgerDB, watcher: &Watch
     );
 
     ledger
-        .append_block(&block, &block_contents, None)
+        .append_block(&block, &block_contents, None, None)
         .expect("Could not append block");
 
-    let block_data = BlockData::new(block, block_contents, Some(block_sig.clone()));
+    let block_data = ArchiveBlock::new(block, block_contents, Some(block_sig.clone()), None);
 
     watcher
         .add_block_data(&tx_source_url, &block_data)
@@ -231,7 +232,7 @@ fn three_node_cluster_activation_retiry(logger: Logger) {
     };
     let origin_block = Block::new_origin_block(&origin_txo);
     ledger
-        .append_block(&origin_block, &origin_contents, None)
+        .append_block(&origin_block, &origin_contents, None, None)
         .expect("failed writing initial transactions");
 
     // there will be 3 peers in the cluster
@@ -444,7 +445,7 @@ fn three_node_cluster_fencing(logger: Logger) {
     };
     let origin_block = Block::new_origin_block(&origin_txo);
     ledger
-        .append_block(&origin_block, &origin_contents, None)
+        .append_block(&origin_block, &origin_contents, None, None)
         .expect("failed writing initial transactions");
 
     // Do three repetitions of the whole thing

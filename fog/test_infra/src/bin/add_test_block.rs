@@ -31,13 +31,14 @@ use mc_common::logger::create_root_logger;
 use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate, RistrettoPublic};
 use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_types::ArchiveBlock;
 use mc_transaction_core::{
     fog_hint::FogHint,
     membership_proofs::Range,
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Block, BlockContents, BlockData, BlockSignature, BLOCK_VERSION,
+    Block, BlockContents, BlockSignature, BLOCK_VERSION,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;
@@ -211,10 +212,10 @@ fn main() {
         );
 
         ledger
-            .append_block(&block, &block_contents, None)
+            .append_block(&block, &block_contents, None, None)
             .expect("Could not append block");
 
-        let block_data = BlockData::new(block, block_contents, Some(block_sig.clone()));
+        let block_data = ArchiveBlock::new(block, block_contents, Some(block_sig.clone()), None);
 
         watcher
             .add_block_data(&tx_source_url, &block_data)

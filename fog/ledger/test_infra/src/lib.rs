@@ -5,17 +5,18 @@
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
 use mc_common::{HashMap, ResponderId};
-use mc_crypto_keys::{CompressedRistrettoPublic, X25519Public};
+use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, X25519Public};
 use mc_fog_ledger_enclave::{
     GetOutputsResponse, LedgerEnclave, OutputContext, Result as EnclaveResult,
 };
 use mc_fog_ledger_enclave_api::{KeyImageData, UntrustedKeyImageQueryResponse};
 use mc_ledger_db::{Error, Ledger};
+use mc_ledger_types::ArchiveBlock;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockSignature,
+    Block, BlockContents, BlockSignature,
 };
 
 #[derive(Default, Clone)]
@@ -96,7 +97,8 @@ impl Ledger for MockLedger {
         &mut self,
         _block: &Block,
         _transactions: &BlockContents,
-        _signature: Option<BlockSignature>,
+        _signature: Option<&BlockSignature>,
+        _report: Option<&VerificationReport>,
     ) -> Result<(), Error> {
         unimplemented!()
     }
@@ -113,7 +115,7 @@ impl Ledger for MockLedger {
         unimplemented!()
     }
 
-    fn get_block_data(&self, _block_number: u64) -> Result<BlockData, Error> {
+    fn get_block_data(&self, _block_number: u64) -> Result<ArchiveBlock, Error> {
         unimplemented!()
     }
 
@@ -177,6 +179,13 @@ impl Ledger for MockLedger {
     }
 
     fn get_block_index_by_tx_out_index(&self, _tx_out_index: u64) -> Result<u64, Error> {
+        unimplemented!()
+    }
+
+    fn get_verification_report_by_signer(
+        &self,
+        _signer: &Ed25519Public,
+    ) -> Result<VerificationReport, Error> {
         unimplemented!()
     }
 }

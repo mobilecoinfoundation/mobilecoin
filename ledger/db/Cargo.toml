@@ -11,10 +11,13 @@ test_utils = ["rand"]
 migration_support = []
 
 [dependencies]
+mc-attest-core = { path = "../../attest/core" }
 mc-account-keys = { path = "../../account-keys" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../crypto/keys" }
+mc-ledger-types =  { path = "../types" }
 mc-transaction-core = { path = "../../transaction/core" }
+mc-util-encodings = { path = "../../util/encodings" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-lmdb = { path = "../../util/lmdb" }
 mc-util-metrics = { path = "../../util/metrics" }

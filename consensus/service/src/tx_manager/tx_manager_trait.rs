@@ -4,6 +4,7 @@ use crate::tx_manager::TxManagerResult;
 use mc_attest_enclave_api::{EnclaveMessage, PeerSession};
 use mc_common::HashSet;
 use mc_consensus_enclave::{TxContext, WellFormedEncryptedTx};
+use mc_ledger_types::VerificationReport;
 use mc_transaction_core::{tx::TxHash, Block, BlockContents, BlockSignature};
 
 #[cfg(test)]
@@ -40,7 +41,7 @@ pub trait TxManager: Send {
         &self,
         tx_hashes: &[TxHash],
         parent_block: &Block,
-    ) -> TxManagerResult<(Block, BlockContents, BlockSignature)>;
+    ) -> TxManagerResult<(Block, BlockContents, BlockSignature, VerificationReport)>;
 
     /// Creates a message containing a set of transactions that are encrypted
     /// for a peer.

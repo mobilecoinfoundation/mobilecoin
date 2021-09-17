@@ -202,7 +202,7 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
         );
 
         for (block, contents) in blocks_and_contents {
-            self.ledger.append_block(block, contents, None)?;
+            self.ledger.append_block(block, contents, None, None)?;
         }
 
         Ok(())

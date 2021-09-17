@@ -538,7 +538,7 @@ impl<
             .ledger
             .get_block(num_blocks - 1)
             .expect("Ledger must contain a block.");
-        let (block, block_contents, signature) = self
+        let (block, block_contents, signature, verification_report) = self
             .tx_manager
             .tx_hashes_to_block(&externalized, &parent_block)
             .unwrap_or_else(|e| panic!("Failed to build block from {:?}: {:?}", externalized, e));
@@ -552,7 +552,12 @@ impl<
         );
 
         self.ledger
-            .append_block(&block, &block_contents, Some(signature))
+            .append_block(
+                &block,
+                &block_contents,
+                Some(&signature),
+                Some(&verification_report),
+            )
             .expect("failed appending block");
 
         counters::TX_EXTERNALIZED_COUNT.inc_by(externalized.len() as i64);

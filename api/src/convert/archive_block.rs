@@ -1,13 +1,13 @@
 //! Convert to/from blockchain::ArchiveBlock
 
-use crate::{blockchain, convert::ConversionError};
+use crate::{blockchain, convert::ConversionError, external};
 use mc_transaction_core::compute_block_id;
 use protobuf::RepeatedField;
 use std::convert::TryFrom;
 
-/// Convert mc_transaction_core::BlockData --> blockchain::ArchiveBlock.
-impl From<&mc_transaction_core::BlockData> for blockchain::ArchiveBlock {
-    fn from(src: &mc_transaction_core::BlockData) -> Self {
+/// Convert mc_ledger_types::ArchiveBlock --> blockchain::ArchiveBlock.
+impl From<&mc_ledger_types::ArchiveBlock> for blockchain::ArchiveBlock {
+    fn from(src: &mc_ledger_types::ArchiveBlock) -> Self {
         let bc_block = blockchain::Block::from(src.block());
         let bc_block_contents = blockchain::BlockContents::from(src.contents());
 
@@ -20,6 +20,11 @@ impl From<&mc_transaction_core::BlockData> for blockchain::ArchiveBlock {
             archive_block_v1.set_signature(bc_signature);
         }
 
+        if let Some(report) = src.verification_report() {
+            let ext_report = external::VerificationReport::from(report);
+            archive_block_v1.set_verification_report(ext_report);
+        }
+
         let mut archive_block = blockchain::ArchiveBlock::new();
         archive_block.set_v1(archive_block_v1);
 
@@ -27,8 +32,8 @@ impl From<&mc_transaction_core::BlockData> for blockchain::ArchiveBlock {
     }
 }
 
-/// Convert from blockchain::ArchiveBlock --> mc_transaction_core::BlockData
-impl TryFrom<&blockchain::ArchiveBlock> for mc_transaction_core::BlockData {
+/// Convert from blockchain::ArchiveBlock --> mc_ledger_types::ArchiveBlock
+impl TryFrom<&blockchain::ArchiveBlock> for mc_ledger_types::ArchiveBlock {
     type Error = ConversionError;
 
     fn try_from(src: &blockchain::ArchiveBlock) -> Result<Self, Self::Error> {
@@ -58,17 +63,25 @@ impl TryFrom<&blockchain::ArchiveBlock> for mc_transaction_core::BlockData {
             return Err(ConversionError::InvalidContents);
         }
 
-        Ok(mc_transaction_core::BlockData::new(
+        let avr = src
+            .get_v1()
+            .verification_report
+            .as_ref()
+            .map(mc_ledger_types::VerificationReport::try_from)
+            .transpose()?;
+
+        Ok(mc_ledger_types::ArchiveBlock::new(
             block,
             block_contents,
             signature,
+            avr,
         ))
     }
 }
 
-/// Convert &[mc_transaction_core::BlockData] -> blockchain::ArchiveBlocks
-impl From<&[mc_transaction_core::BlockData]> for blockchain::ArchiveBlocks {
-    fn from(src: &[mc_transaction_core::BlockData]) -> Self {
+/// Convert &[mc_ledger_types::ArchiveBlock] -> blockchain::ArchiveBlocks
+impl From<&[mc_ledger_types::ArchiveBlock]> for blockchain::ArchiveBlocks {
+    fn from(src: &[mc_ledger_types::ArchiveBlock]) -> Self {
         let mut archive_blocks = blockchain::ArchiveBlocks::new();
         archive_blocks.set_blocks(RepeatedField::from_vec(
             src.iter().map(blockchain::ArchiveBlock::from).collect(),
@@ -78,15 +91,15 @@ impl From<&[mc_transaction_core::BlockData]> for blockchain::ArchiveBlocks {
     }
 }
 
-/// Convert blockchain::ArchiveBlocks -> Vec<mc_transaction_core::BlockData>
-impl TryFrom<&blockchain::ArchiveBlocks> for Vec<mc_transaction_core::BlockData> {
+/// Convert blockchain::ArchiveBlocks -> Vec<mc_ledger_types::ArchiveBlock>
+impl TryFrom<&blockchain::ArchiveBlocks> for Vec<mc_ledger_types::ArchiveBlock> {
     type Error = ConversionError;
 
     fn try_from(src: &blockchain::ArchiveBlocks) -> Result<Self, Self::Error> {
         let blocks_data = src
             .get_blocks()
             .iter()
-            .map(mc_transaction_core::BlockData::try_from)
+            .map(mc_ledger_types::ArchiveBlock::try_from)
             .collect::<Result<Vec<_>, ConversionError>>()?;
 
         if blocks_data.len() > 1 {
@@ -117,17 +130,18 @@ impl TryFrom<&blockchain::ArchiveBlocks> for Vec<mc_transaction_core::BlockData>
 mod tests {
     use super::*;
     use mc_crypto_keys::{Ed25519Private, RistrettoPublic};
+    use mc_ledger_types::ArchiveBlock;
     use mc_transaction_core::{
         encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN,
         membership_proofs::Range,
         ring_signature::KeyImage,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-        Amount, Block, BlockContents, BlockData, BlockID, BlockSignature,
+        Amount, Block, BlockContents, BlockID, BlockSignature,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 
-    fn generate_test_blocks_data(num_blocks: u64) -> Vec<BlockData> {
+    fn generate_test_blocks_data(num_blocks: u64) -> Vec<ArchiveBlock> {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut blocks_data = Vec::new();
         let mut last_block: Option<Block> = None;
@@ -165,7 +179,7 @@ mod tests {
             let signature =
                 BlockSignature::from_block_and_keypair(&block, &(signer.into())).unwrap();
 
-            let block_data = BlockData::new(block, block_contents, Some(signature));
+            let block_data = ArchiveBlock::new(block, block_contents, Some(signature), None);
             blocks_data.push(block_data);
         }
 
@@ -173,11 +187,11 @@ mod tests {
     }
 
     #[test]
-    // mc_transaction_core::BlockData <--> blockchain::ArchiveBlock
+    // mc_ledger_types::ArchiveBlock <--> blockchain::ArchiveBlock
     fn test_archive_block() {
         let block_data = generate_test_blocks_data(1).pop().unwrap();
 
-        // mc_transaction_core::BlockData -> blockchain::ArchiveBlock
+        // mc_ledger_types::ArchiveBlock -> blockchain::ArchiveBlock
         let archive_block = blockchain::ArchiveBlock::from(&block_data);
         assert_eq!(
             block_data.block(),
@@ -192,8 +206,8 @@ mod tests {
             BlockSignature::try_from(archive_block.get_v1().get_signature()).unwrap()
         );
 
-        // blockchain::ArchiveBlock -> mc_transaction_core::BlockData
-        let block_data2 = BlockData::try_from(&archive_block).unwrap();
+        // blockchain::ArchiveBlock -> mc_ledger_types::ArchiveBlock
+        let block_data2 = ArchiveBlock::try_from(&archive_block).unwrap();
         assert_eq!(block_data, block_data2);
     }
 
@@ -203,7 +217,7 @@ mod tests {
     fn try_from_blockchain_archive_block_rejects_invalid() {
         let block_data = generate_test_blocks_data(1).pop().unwrap();
 
-        // ArchiveBlock with invalid signature cannot be converted back to BlockData
+        // ArchiveBlock with invalid signature cannot be converted back to ArchiveBlock
         let mut archive_block = blockchain::ArchiveBlock::from(&block_data);
         archive_block
             .mut_v1()
@@ -211,11 +225,11 @@ mod tests {
             .mut_signature()
             .mut_data()[0] += 1;
         assert_eq!(
-            BlockData::try_from(&archive_block),
+            ArchiveBlock::try_from(&archive_block),
             Err(ConversionError::InvalidSignature)
         );
 
-        // ArchiveBlock with invalid contents cannot be converted back to BlockData
+        // ArchiveBlock with invalid contents cannot be converted back to ArchiveBlock
         let mut archive_block = blockchain::ArchiveBlock::from(&block_data);
         archive_block
             .mut_v1()
@@ -223,17 +237,17 @@ mod tests {
             .mut_key_images()
             .clear();
         assert_eq!(
-            BlockData::try_from(&archive_block),
+            ArchiveBlock::try_from(&archive_block),
             Err(ConversionError::InvalidContents)
         );
     }
 
     #[test]
-    // Vec<mc_transaction_core::BlockData> <--> blockchain::ArchiveBlocks
+    // Vec<mc_ledger_types::ArchiveBlock> <--> blockchain::ArchiveBlocks
     fn test_archive_blocks() {
         let blocks_data = generate_test_blocks_data(10);
 
-        // Vec<mc_transaction_core::BlockData> -> blockchain::ArchiveBlocks
+        // Vec<mc_ledger_types::ArchiveBlock> -> blockchain::ArchiveBlocks
         let archive_blocks = blockchain::ArchiveBlocks::from(&blocks_data[..]);
         for (i, block_data) in blocks_data.iter().enumerate() {
             let archive_block = &archive_blocks.get_blocks()[i];
@@ -251,13 +265,13 @@ mod tests {
             );
         }
 
-        // blockchain::ArchiveBlocks -> Vec<mc_transaction_core::BlockData>
-        let blocks_data2 = Vec::<BlockData>::try_from(&archive_blocks).unwrap();
+        // blockchain::ArchiveBlocks -> Vec<mc_ledger_types::ArchiveBlock>
+        let blocks_data2 = Vec::<ArchiveBlock>::try_from(&archive_blocks).unwrap();
         assert_eq!(blocks_data, blocks_data2);
     }
 
     #[test]
-    // blockchain::ArchiveBlocks -> Vec<mc_transaction_core::BlockData> should fail
+    // blockchain::ArchiveBlocks -> Vec<mc_ledger_types::ArchiveBlock> should fail
     // if the blocks to not form a chain.
     fn test_try_from_blockchain_archive_blocks_rejects_invalid() {
         let blocks_data = generate_test_blocks_data(10);
@@ -265,7 +279,7 @@ mod tests {
         archive_blocks.mut_blocks().remove(5);
 
         assert_eq!(
-            Vec::<BlockData>::try_from(&archive_blocks),
+            Vec::<ArchiveBlock>::try_from(&archive_blocks),
             Err(ConversionError::InvalidContents),
         );
     }

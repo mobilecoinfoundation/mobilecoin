@@ -98,7 +98,8 @@ pub fn bootstrap_ledger(
     }
 
     for (block, block_contents) in blocks_and_contents {
-        db.append_block(&block, &block_contents, None).unwrap();
+        db.append_block(&block, &block_contents, None, None)
+            .unwrap();
     }
 
     // Write conf.json

@@ -2392,6 +2392,7 @@ dependencies = [
  "mc-attest-core",
  "mc-crypto-keys",
  "mc-crypto-x509-test-vectors",
+ "mc-ledger-types",
  "mc-test-vectors-b58-encodings",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
@@ -2804,9 +2805,11 @@ dependencies = [
  "mc-crypto-keys",
  "mc-ledger-db",
  "mc-ledger-sync",
+ "mc-ledger-types",
  "mc-peers",
  "mc-peers-test-utils",
  "mc-sgx-build",
+ "mc-sgx-report-cache-api",
  "mc-sgx-report-cache-untrusted",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
@@ -3292,6 +3295,7 @@ dependencies = [
  "mc-fog-types",
  "mc-fog-uri",
  "mc-ledger-db",
+ "mc-ledger-types",
  "mc-sgx-report-cache-api",
  "mc-sgx-report-cache-untrusted",
  "mc-transaction-core",
@@ -3502,6 +3506,7 @@ dependencies = [
  "mc-fog-ledger-enclave-api",
  "mc-fog-types",
  "mc-ledger-db",
+ "mc-ledger-types",
  "mc-sgx-report-cache-api",
  "mc-transaction-core",
 ]
@@ -3878,6 +3883,7 @@ dependencies = [
  "mc-fog-types",
  "mc-fog-view-protocol",
  "mc-ledger-db",
+ "mc-ledger-types",
  "mc-transaction-core",
  "mc-util-build-info",
  "mc-util-from-random",
@@ -4123,11 +4129,14 @@ dependencies = [
  "lazy_static",
  "lmdb-rkv",
  "mc-account-keys",
+ "mc-attest-core",
  "mc-common",
  "mc-crypto-keys",
  "mc-crypto-rand",
+ "mc-ledger-types",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
+ "mc-util-encodings",
  "mc-util-from-random",
  "mc-util-lmdb",
  "mc-util-metrics",
@@ -4148,6 +4157,7 @@ dependencies = [
  "mc-api",
  "mc-common",
  "mc-ledger-db",
+ "mc-ledger-types",
  "mc-transaction-core",
  "protobuf",
  "retry",
@@ -4199,6 +4209,7 @@ dependencies = [
  "mc-consensus-enclave-measurement",
  "mc-consensus-scp",
  "mc-ledger-db",
+ "mc-ledger-types",
  "mc-peers-test-utils",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
@@ -4211,6 +4222,18 @@ dependencies = [
  "serde",
  "tempdir",
  "url 2.1.1",
+]
+
+[[package]]
+name = "mc-ledger-types"
+version = "1.1.0"
+dependencies = [
+ "displaydoc",
+ "mc-attest-core",
+ "mc-transaction-core",
+ "mc-watcher-api",
+ "prost",
+ "serde",
 ]
 
 [[package]]
@@ -4985,6 +5008,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-ledger-db",
  "mc-ledger-sync",
+ "mc-ledger-types",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-util-from-random",

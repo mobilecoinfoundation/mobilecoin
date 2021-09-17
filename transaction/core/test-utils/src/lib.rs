@@ -224,7 +224,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
         };
 
         ledger
-            .append_block(&block, &block_contents, None)
+            .append_block(&block, &block_contents, None, None)
             .expect("failed writing initial transactions");
 
         blocks.push(block.clone());

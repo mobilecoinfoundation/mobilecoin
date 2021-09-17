@@ -74,6 +74,9 @@ message ArchiveBlockV1 {
 
     // Block signature, when available.
     BlockSignature signature = 3;
+
+    // Attestation Verification Report, when available
+    external.VerificationReport verification_report = 4;
 }
 
 // An archived block.

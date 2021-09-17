@@ -20,6 +20,7 @@ mc-connection = { path = "../connection" }
 mc-crypto-digestible = { path = "../crypto/digestible" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-ledger-db = { path = "../ledger/db" }
+mc-ledger-types = { path = "../ledger/types" }
 mc-ledger-sync = { path = "../ledger/sync" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }

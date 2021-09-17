@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 /// An enumeration of errors which can be returned by the methods of the
 /// `ReportableEnclave` trait.
-#[derive(Debug, Display, Deserialize, Serialize)]
+#[derive(Debug, Display, Deserialize, Serialize, Clone)]
 pub enum Error {
     /// Attest enclave error: {0}
     AttestEnclave(AttestEnclaveError),

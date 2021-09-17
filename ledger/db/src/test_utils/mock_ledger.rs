@@ -3,11 +3,12 @@
 use crate::{Error, Ledger};
 use mc_account_keys::AccountKey;
 use mc_common::{HashMap, HashSet};
-use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
+use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, RistrettoPrivate};
+use mc_ledger_types::{ArchiveBlock, VerificationReport};
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockID, BlockSignature, BLOCK_VERSION,
+    Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION,
 };
 use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, SeedableRng};
@@ -24,6 +25,7 @@ pub struct MockLedgerInner {
     pub membership_proofs: HashMap<u64, TxOutMembershipProof>,
     pub key_images_by_block_number: HashMap<u64, Vec<KeyImage>>,
     pub key_images: HashMap<KeyImage, u64>,
+    pub avr_by_signer: HashMap<Ed25519Public, VerificationReport>,
 }
 
 #[derive(Clone)]
@@ -85,7 +87,8 @@ impl Ledger for MockLedger {
         &mut self,
         block: &Block,
         block_contents: &BlockContents,
-        _signature: Option<BlockSignature>,
+        _signature: Option<&BlockSignature>,
+        _report: Option<&VerificationReport>,
     ) -> Result<(), Error> {
         assert_eq!(block.index, self.num_blocks().unwrap());
         self.set_block(block, block_contents);
@@ -120,11 +123,11 @@ impl Ledger for MockLedger {
         Err(Error::NotFound)
     }
 
-    fn get_block_data(&self, block_number: u64) -> Result<BlockData, Error> {
+    fn get_block_data(&self, block_number: u64) -> Result<ArchiveBlock, Error> {
         let block = self.get_block(block_number)?;
         let contents = self.get_block_contents(block_number)?;
         let signature = self.get_block_signature(block_number).ok();
-        Ok(BlockData::new(block, contents, signature))
+        Ok(ArchiveBlock::new(block, contents, signature, None))
     }
 
     /// Gets block index by a TxOut global index.
@@ -185,6 +188,18 @@ impl Ledger for MockLedger {
                     .ok_or(Error::NotFound)
             })
             .collect()
+    }
+
+    fn get_verification_report_by_signer(
+        &self,
+        signer: &Ed25519Public,
+    ) -> Result<VerificationReport, Error> {
+        let inner = self.lock();
+        inner
+            .avr_by_signer
+            .get(signer)
+            .cloned()
+            .ok_or(Error::NotFound)
     }
 }
 

@@ -11,7 +11,8 @@ use mc_api::block_num_to_s3block_path;
 use mc_common::logger::{log, Logger};
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::ReqwestTransactionsFetcher;
-use mc_transaction_core::{BlockData, BlockIndex};
+use mc_ledger_types::ArchiveBlock;
+use mc_transaction_core::BlockIndex;
 
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
@@ -51,7 +52,8 @@ impl Watcher {
     ///   data
     /// * `transactions_fetcher` - The transaction fetcher used to fetch blocks
     ///   from watched source URLs
-    /// * `store_block_data` - The fetched BlockData objects into the database
+    /// * `store_block_data` - The fetched ArchiveBlock objects into the
+    ///   database
     /// * `logger` - Logger
     pub fn new(
         watcher_db: WatcherDB,
@@ -219,7 +221,7 @@ impl Watcher {
 fn parallel_fetch_blocks(
     url_to_block_index: HashMap<Url, BlockIndex>,
     transactions_fetcher_by_url: Arc<HashMap<Url, ReqwestTransactionsFetcher>>,
-) -> Result<HashMap<Url, (u64, Result<BlockData, WatcherError>)>, WatcherError> {
+) -> Result<HashMap<Url, (u64, Result<ArchiveBlock, WatcherError>)>, WatcherError> {
     Ok(HashMap::from_iter(
         url_to_block_index
             .into_par_iter()
