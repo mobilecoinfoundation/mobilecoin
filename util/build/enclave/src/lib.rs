@@ -389,7 +389,9 @@ impl Builder {
             if package.source.is_none() {
                 // package.manifest_path has form foo/Cargo.toml, we want to take parent
                 // so that we walk the directory containing Cargo.toml
-                package.manifest_path.parent().map(rerun_if_path_changed);
+                if let Some(utf8_path) = package.manifest_path.parent() {
+                    rerun_if_path_changed(utf8_path.as_std_path());
+                }
             }
         }
 
