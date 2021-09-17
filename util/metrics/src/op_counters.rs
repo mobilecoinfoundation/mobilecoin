@@ -93,9 +93,7 @@ impl OpMetrics {
 
     #[inline]
     pub fn inc_by(&self, op: &str, v: usize) {
-        // The underlying method is expecting i64, but most of the types
-        // we're going to log are `u64` or `usize`.
-        self.counters.with_label_values(&[op]).inc_by(v as i64);
+        self.counters.with_label_values(&[op]).inc_by(v as u64);
     }
 
     #[inline]

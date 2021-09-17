@@ -294,7 +294,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
 
                     // Update metrics.
                     counters::BLOCKS_FETCHED_COUNT.inc();
-                    counters::TXOS_FETCHED_COUNT.inc_by(num_tx_outs as i64);
+                    counters::TXOS_FETCHED_COUNT.inc_by(num_tx_outs as u64);
 
                     // Block if we have queued up enough records for now.
                     // (Until the enclave thread drains the queue).
