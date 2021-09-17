@@ -555,7 +555,7 @@ impl<
             .append_block(&block, &block_contents, Some(signature))
             .expect("failed appending block");
 
-        counters::TX_EXTERNALIZED_COUNT.inc_by(externalized.len() as i64);
+        counters::TX_EXTERNALIZED_COUNT.inc_by(externalized.len() as u64);
 
         // Update current slot index.
         self.current_slot_index = {

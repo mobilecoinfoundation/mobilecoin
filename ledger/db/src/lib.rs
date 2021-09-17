@@ -177,7 +177,7 @@ impl Ledger for LedgerDB {
 
         self.metrics
             .txo_written_count
-            .inc_by(block_contents.outputs.len() as i64);
+            .inc_by(block_contents.outputs.len() as u64);
         self.metrics
             .num_txos
             .add(block_contents.outputs.len() as i64);
