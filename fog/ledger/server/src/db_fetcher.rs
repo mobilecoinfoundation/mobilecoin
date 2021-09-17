@@ -210,7 +210,7 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
                 Ok(info) => {
                     // Update metrics
                     counters::BLOCKS_ADDED_COUNT.inc();
-                    counters::KEY_IMAGES_FETCHED_COUNT.inc_by(num_records as i64);
+                    counters::KEY_IMAGES_FETCHED_COUNT.inc_by(num_records as u64);
                     OperationResult::Ok(info)
                 }
                 Err(err) => {
