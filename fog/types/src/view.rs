@@ -3,7 +3,7 @@
 use crate::common::BlockRange;
 use alloc::vec::Vec;
 use core::convert::TryFrom;
-use crc::crc32;
+use crc::Crc;
 use displaydoc::Display;
 use mc_crypto_keys::{CompressedRistrettoPublic, KeyError, RistrettoPrivate, RistrettoPublic};
 use mc_transaction_core::{
@@ -253,7 +253,10 @@ impl TxOutRecord {
         } else if self.tx_out_amount_commitment_data.len() == 32 {
             // If we are provided with a commitment, then we should compute crc32 of it and
             // discard those bytes, in order to unify early to one code path.
-            Ok(crc32::checksum_ieee(&self.tx_out_amount_commitment_data))
+            Ok(
+                Crc::<u32>::new(&crc::CRC_32_ISO_HDLC)
+                    .checksum(&self.tx_out_amount_commitment_data),
+            )
         } else {
             // This is a malformed record
             Err(KeyError::LengthMismatch(
@@ -306,9 +309,8 @@ impl core::convert::From<&TxOut> for FogTxOut {
             target_key: src.target_key,
             public_key: src.public_key,
             amount_masked_value: src.amount.masked_value,
-            amount_commitment_data_crc32: crc32::checksum_ieee(
-                src.amount.commitment.point.as_bytes(),
-            ),
+            amount_commitment_data_crc32: Crc::<u32>::new(&crc::CRC_32_ISO_HDLC)
+                .checksum(src.amount.commitment.point.as_bytes()),
             e_memo: src.e_memo,
         }
     }
@@ -345,7 +347,7 @@ impl FogTxOut {
 
         // Check that the crc32 of amount compressed commitment matches
         if self.amount_commitment_data_crc32
-            != crc32::checksum_ieee(amount.commitment.point.as_bytes())
+            != Crc::<u32>::new(&crc::CRC_32_ISO_HDLC).checksum(amount.commitment.point.as_bytes())
         {
             return Err(FogTxOutError::ChecksumMismatch);
         }
