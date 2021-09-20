@@ -4,7 +4,7 @@
 //! cut-and-paste.
 
 use crate::printable;
-use crc::crc32;
+use crc::Crc;
 use displaydoc::Display;
 use protobuf::Message;
 
@@ -31,7 +31,9 @@ pub enum Error {
 /// Since this is public information with a possibility of transcription
 /// failure, a checksum is more appropriate than a hash function
 fn calculate_checksum(data: &[u8]) -> [u8; 4] {
-    crc32::checksum_ieee(data).to_le_bytes()
+    Crc::<u32>::new(&crc::CRC_32_ISO_HDLC)
+        .checksum(data)
+        .to_le_bytes()
 }
 
 /// The B58 wrapper supports encoding the protocol buffer bytes as a b58
