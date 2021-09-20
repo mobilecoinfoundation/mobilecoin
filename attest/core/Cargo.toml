@@ -60,7 +60,7 @@ rand_hc = "0.3"
 [build-dependencies]
 mc-sgx-build =  { path = "../../sgx/build" }
 
-cargo-emit = "0.1"
+cargo-emit = "0.2"
 chrono = "0.4"
 hex = "0.4"
 lazy_static = "1.4"
