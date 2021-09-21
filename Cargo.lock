@@ -3435,7 +3435,7 @@ dependencies = [
 name = "mc-fog-ledger-enclave-edl"
 version = "1.1.0"
 dependencies = [
- "cargo-emit 0.1.1",
+ "cargo-emit 0.2.1",
  "mc-util-build-script",
 ]
 
