@@ -9,7 +9,7 @@ readme = "README.md"
 [dependencies]
 mc-util-build-script = { path = "../script" }
 
-cargo-emit = "0.1.1"
+cargo-emit = "0.2.1"
 cc = "1.0"
 displaydoc = { version = "0.2", default-features = false }
 pkg-config = "0.3"
