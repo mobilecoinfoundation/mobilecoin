@@ -313,11 +313,10 @@ class Client(object):
         request = GetBlockRequest(block=block)
         return self.stub.GetBlock(request)
 
-    def get_tx_status_as_sender(self, sender_tx_receipt):
+    def get_tx_status_as_sender(self, submit_response):
         """ Check if a key image appears in the ledger.
         """
-        request = GetTxStatusAsSenderRequest(receipt=sender_tx_receipt)
-        return self.stub.GetTxStatusAsSender(request)
+        return self.stub.GetTxStatusAsSender(submit_response)
 
     def get_tx_status_as_receiver(self, receiver_tx_receipt):
         """ Check if a transaction public key appears in the ledger.

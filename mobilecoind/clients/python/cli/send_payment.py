@@ -126,12 +126,12 @@ if __name__ == '__main__':
     receiver = mobilecoind.parse_address_code(recipient_address_code).receiver
     outlays = [{'value': value_to_send_picoMOB, 'receiver': receiver}]
     tx_proposal = mobilecoind.generate_tx(sender_monitor_id, args.sender_subaddress, tx_list, outlays).tx_proposal
-    sender_tx_receipt = mobilecoind.submit_tx(tx_proposal).sender_tx_receipt
+    submit_response = mobilecoind.submit_tx(tx_proposal)
     # Wait for the transaction to clear
     tx_status = mobilecoin.TxStatus.Unknown
     while tx_status == mobilecoin.TxStatus.Unknown:
         time.sleep(TX_RECEIPT_CHECK_INTERVAL_SECONDS)
-        tx_status = mobilecoind.get_tx_status_as_sender(sender_tx_receipt).status
+        tx_status = mobilecoind.get_tx_status_as_sender(submit_response).status
         print("Transaction status: {}".format(mobilecoin.parse_tx_status(tx_status)))
 
     # print summary
