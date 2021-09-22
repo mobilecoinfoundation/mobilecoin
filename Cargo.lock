@@ -4670,7 +4670,7 @@ dependencies = [
  "sha2 0.9.5",
  "subtle 2.4.1",
  "tempdir",
- "time 0.1.43",
+ "time 0.2.22",
  "zeroize",
 ]
 
