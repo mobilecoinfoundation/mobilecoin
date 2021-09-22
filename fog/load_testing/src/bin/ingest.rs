@@ -331,7 +331,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
                 if block.index > 0 {
                     for src_url in watcher.get_config_urls().unwrap().iter() {
                         let mut block_signature =
-                            BlockSignature::from_block_and_keypair(&block, &signer)
+                            BlockSignature::from_block_and_keypair(block, &signer)
                                 .expect("Could not create block signature from keypair");
                         block_signature.set_signed_at(block.index);
                         watcher
