@@ -8,4 +8,4 @@ links = "consensus_enclave_edl"
 [build-dependencies]
 mc-util-build-script = { path = "../../../util/build/script" }
 
-cargo-emit = "0.1"
+cargo-emit = "0.2"

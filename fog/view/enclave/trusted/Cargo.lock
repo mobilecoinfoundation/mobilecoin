@@ -231,6 +231,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4d1d6b8077d27443822a547d1ef816eadd2dc4a75de9105aff614192729cf6d3"
 
 [[package]]
+name = "cargo-emit"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1582e1c9e755dd6ad6b224dcffb135d199399a4568d454bd89fe515ca8425695"
+
+[[package]]
 name = "cc"
 version = "1.0.70"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -724,7 +730,7 @@ name = "mc-attest-ake"
 version = "1.1.2"
 dependencies = [
  "aead",
- "cargo-emit",
+ "cargo-emit 0.1.1",
  "digest",
  "displaydoc",
  "mc-attest-core",
@@ -743,7 +749,7 @@ version = "1.1.2"
 dependencies = [
  "binascii",
  "bitflags",
- "cargo-emit",
+ "cargo-emit 0.2.1",
  "cfg-if 1.0.0",
  "chrono",
  "digest",
@@ -970,7 +976,7 @@ dependencies = [
 name = "mc-fog-ocall-oram-storage-edl"
 version = "1.1.0"
 dependencies = [
- "cargo-emit",
+ "cargo-emit 0.2.1",
 ]
 
 [[package]]
@@ -1048,7 +1054,7 @@ dependencies = [
 name = "mc-fog-view-enclave-edl"
 version = "1.1.0"
 dependencies = [
- "cargo-emit",
+ "cargo-emit 0.2.1",
  "mc-util-build-script",
 ]
 
@@ -1078,7 +1084,7 @@ dependencies = [
 name = "mc-fog-view-enclave-trusted"
 version = "1.1.0"
 dependencies = [
- "cargo-emit",
+ "cargo-emit 0.2.1",
  "lazy_static",
  "mbedtls",
  "mbedtls-sys-auto",
@@ -1193,7 +1199,7 @@ dependencies = [
 name = "mc-sgx-compat-edl"
 version = "1.1.2"
 dependencies = [
- "cargo-emit",
+ "cargo-emit 0.2.1",
  "mc-sgx-debug-edl",
  "mc-sgx-panic-edl",
 ]
@@ -1214,7 +1220,7 @@ version = "1.1.2"
 name = "mc-sgx-debug-edl"
 version = "1.1.2"
 dependencies = [
- "cargo-emit",
+ "cargo-emit 0.2.1",
 ]
 
 [[package]]
@@ -1232,7 +1238,7 @@ version = "1.1.2"
 name = "mc-sgx-panic-edl"
 version = "1.1.2"
 dependencies = [
- "cargo-emit",
+ "cargo-emit 0.2.1",
 ]
 
 [[package]]
@@ -1268,7 +1274,7 @@ dependencies = [
 name = "mc-sgx-slog-edl"
 version = "1.1.2"
 dependencies = [
- "cargo-emit",
+ "cargo-emit 0.2.1",
 ]
 
 [[package]]
@@ -1318,7 +1324,7 @@ dependencies = [
 name = "mc-util-build-script"
 version = "1.1.2"
 dependencies = [
- "cargo-emit",
+ "cargo-emit 0.2.1",
  "displaydoc",
  "lazy_static",
  "url",
@@ -1329,7 +1335,7 @@ dependencies = [
 name = "mc-util-build-sgx"
 version = "1.1.2"
 dependencies = [
- "cargo-emit",
+ "cargo-emit 0.2.1",
  "cc",
  "displaydoc",
  "mc-util-build-script",
@@ -1468,9 +1474,9 @@ checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
 name = "pkg-config"
-version = "0.3.17"
+version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05da548ad6865900e60eaba7f589cc0783590a92e940c26953ff81ddbab2d677"
+checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 
 [[package]]
 name = "polyval"
