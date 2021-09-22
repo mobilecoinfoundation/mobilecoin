@@ -5,8 +5,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub mod sig_child_handler;
-
 /// Try to find the binary file, searching in whatever places make sense
 /// for our infrastructure.
 pub fn get_bin_path(filename: &str) -> PathBuf {

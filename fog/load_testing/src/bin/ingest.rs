@@ -13,20 +13,21 @@
 
 use grpcio::{ChannelBuilder, Error as GrpcioError};
 use mc_account_keys::AccountKey;
-use mc_common::{
-    logger::{log, Logger},
-    ResponderId,
-};
+use mc_common::logger::{log, Logger};
+use mc_crypto_keys::Ed25519Pair;
 use mc_crypto_rand::McRng;
-use mc_fog_load_testing::{get_bin_path, sig_child_handler};
+use mc_fog_ingest_client::FogIngestGrpcClient;
+use mc_fog_load_testing::get_bin_path;
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
-use mc_fog_uri::{FogIngestUri, IngestPeerUri};
+use mc_fog_uri::{ConnectionUri, FogIngestUri, IngestPeerUri};
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_transaction_core::{Block, BlockContents};
+use mc_transaction_core::{Block, BlockContents, BlockSignature};
+use mc_util_from_random::FromRandom;
 use mc_util_grpc::{admin_grpc::AdminApiClient, ConnectionUriGrpcioChannel, Empty};
 use mc_util_uri::AdminUri;
 use mc_watcher::watcher_db::WatcherDB;
+use rand::thread_rng;
 use retry::{delay, retry, OperationResult};
 use std::{
     path::Path,
@@ -113,11 +114,43 @@ impl core::fmt::Display for TestResult {
     }
 }
 
+pub struct AutoKillChild(pub std::process::Child);
+
+impl AutoKillChild {
+    pub fn assert_not_stopped(&mut self) {
+        match self.0.try_wait() {
+            Ok(Some(stat)) => {
+                panic!("child stopped unexpectedly: status: {}", stat)
+            }
+            Ok(None) => {}
+            Err(err) => {
+                panic!("error getting child status: {}", err)
+            }
+        }
+    }
+}
+
+impl Drop for AutoKillChild {
+    fn drop(&mut self) {
+        if let Err(err) = self.0.kill() {
+            // Invalid input means the process is already dead, and we don't have to kill
+            // it. Anything else means that killing it failed somehow
+            if err.kind() != std::io::ErrorKind::InvalidInput {
+                panic!("Could not send SIGKILL to child: {}", err)
+            }
+        }
+
+        self.0.wait().expect("Could not reap child");
+    }
+}
+
 fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logger) -> TestResult {
     let mut test_results = TestResult {
         params: test_params.clone(),
         ..Default::default()
     };
+
+    let signer = Ed25519Pair::from_random(&mut thread_rng());
 
     {
         // First make grpcio env
@@ -128,8 +161,6 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         let base_port = 3050;
         let ingest_client_port = base_port + 4;
         let ingest_peer_port = base_port + 5;
-        let local_node_id =
-            ResponderId::from_str(&format!("127.0.0.1:{}", ingest_client_port)).unwrap();
         let client_listen_uri = FogIngestUri::from_str(&format!(
             "insecure-fog-ingest://127.0.0.1:{}",
             ingest_client_port
@@ -138,6 +169,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         let peer_listen_uri =
             IngestPeerUri::from_str(&format!("insecure-igp://127.0.0.1:{}", ingest_peer_port))
                 .unwrap();
+        let local_node_id = peer_listen_uri.responder_id().unwrap();
 
         let admin_listen_uri = AdminUri::from_str("insecure-mca://127.0.0.1:8003/").unwrap();
 
@@ -152,6 +184,12 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         let watcher_db_path =
             TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
         WatcherDB::create(watcher_db_path.path()).unwrap();
+        let watcher = WatcherDB::open_rw(
+            watcher_db_path.path(),
+            &["http://bash.org".parse().unwrap()],
+            logger.clone(),
+        )
+        .unwrap();
 
         // Set up a fresh ledger db.
         let ledger_db_path =
@@ -184,23 +222,27 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
             .args(&["--ias-spid", &"0".repeat(32)])
             .args(&["--ias-api-key", &"0".repeat(32)])
             .args(&["--local-node-id", &local_node_id.to_string()])
+            .args(&["--peers", &peer_listen_uri.to_string()])
             .args(&["--state-file", state_file_path.to_str().unwrap()])
             .args(&["--admin-listen-uri", &admin_listen_uri.to_string()])
             .args(&["--user-capacity", &test_params.user_capacity.to_string()]);
 
         log::info!(logger, "Spawning ingest server: {:?}", command);
 
-        sig_child_handler::exit_on_sigchld(true);
-        let mut ingest_server = command.spawn().expect("Could not spawn ingest server");
+        let mut ingest_server =
+            AutoKillChild(command.spawn().expect("Could not spawn ingest server"));
 
         // Wait for admin api to be reachable
         {
             let admin_client = {
-                let ch = ChannelBuilder::new(grpcio_env).connect_to_uri(&admin_listen_uri, &logger);
+                let ch = ChannelBuilder::new(grpcio_env.clone())
+                    .connect_to_uri(&admin_listen_uri, &logger);
                 AdminApiClient::new(ch)
             };
 
             let info = retry(delay::Fixed::from_millis(5000), || {
+                ingest_server.assert_not_stopped();
+
                 match admin_client.get_info(&Empty::default()) {
                     Ok(info) => OperationResult::Ok(info),
                     Err(GrpcioError::RpcFailure(err)) => {
@@ -218,6 +260,21 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
                 info.build_info_json,
                 info.config_json
             );
+        }
+
+        // Tell server to activate
+        {
+            let ingest_client = FogIngestGrpcClient::new(
+                client_listen_uri,
+                Duration::from_secs(30),
+                grpcio_env,
+                logger.clone(),
+            );
+            ingest_client
+                .activate()
+                .expect("Could not activate ingest server");
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            ingest_server.assert_not_stopped();
         }
 
         // Measure process_txs load
@@ -268,6 +325,33 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
                 ledger_db
                     .append_block(block, block_contents, None)
                     .expect("Adding block failed");
+
+                // Add the timestamp information to watcher for this block index - note watcher
+                // does not allow signatures for block 0.
+                if block.index > 0 {
+                    for src_url in watcher.get_config_urls().unwrap().iter() {
+                        let mut block_signature =
+                            BlockSignature::from_block_and_keypair(&block, &signer)
+                                .expect("Could not create block signature from keypair");
+                        block_signature.set_signed_at(block.index);
+                        watcher
+                            .add_block_signature(
+                                src_url,
+                                block.index,
+                                block_signature,
+                                format!("00/{}", block.index),
+                            )
+                            .expect("Could not add block signature");
+                    }
+                }
+                // Sanity check that watcher is behaving correctly
+                assert_eq!(
+                    watcher
+                        .highest_common_block()
+                        .expect("Could not get highest common block"),
+                    block.index,
+                );
+
                 // Poll for a change in recovery_db highest_known_block_index
                 loop {
                     if recovery_db
@@ -281,6 +365,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
                     if start.elapsed() >= std::time::Duration::from_secs(60) {
                         panic!("Time exceeded 30 seconds");
                     }
+                    ingest_server.assert_not_stopped();
                 }
                 let elapsed = start.elapsed();
                 timings.push(elapsed);
@@ -298,13 +383,6 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
             test_results.num_txs_added = CHUNK_SIZE;
             test_results.process_tx_timings = stats;
         }
-
-        sig_child_handler::exit_on_sigchld(false);
-
-        // Note: Child is reaped in sigchld handler, we dont need to wait for it
-        ingest_server
-            .kill()
-            .expect("Could not send SIGKILL to ingest server");
     }
     // grpcio detaches all its threads and does not join them :(
     // we opened a PR here: https://github.com/tikv/grpc-rs/pull/455
@@ -330,8 +408,6 @@ fn main() {
     mc_common::setup_panic_handler();
 
     let opt = LoadTestOptions::from_args();
-
-    sig_child_handler::setup_handler();
 
     // Reduce log level maybe?
     let logger = mc_common::logger::create_root_logger();
