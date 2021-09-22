@@ -122,12 +122,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 
 [[package]]
-name = "arrayvec"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be4dc07131ffa69b8072d35f5007352af944213cde02545e2103680baed38fcd"
-
-[[package]]
 name = "async-compression"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -328,7 +322,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8fb2d74254a3a0b5cac33ac9f8ed0e44aa50378d9dbb2e5d83bd21ed1dc2c8a"
 dependencies = [
  "arrayref",
- "arrayvec 0.5.2",
+ "arrayvec",
  "constant_time_eq",
 ]
 
@@ -3545,9 +3539,7 @@ dependencies = [
 name = "mc-fog-load-testing"
 version = "1.1.0"
 dependencies = [
- "arrayvec 0.7.1",
  "grpcio",
- "libc",
  "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",
@@ -3566,7 +3558,7 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-uri",
  "mc-watcher",
- "nix",
+ "rand 0.8.3",
  "retry",
  "structopt",
  "tempdir",
@@ -5269,19 +5261,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nix"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf1e25ee6b412c2a1e3fcb6a4499a5c1bfe7f43e014bdce9a6b6666e5aa2d187"
-dependencies = [
- "bitflags",
- "cc",
- "cfg-if 1.0.0",
- "libc",
- "memoffset 0.6.4",
-]
-
-[[package]]
 name = "nom"
 version = "5.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6421,7 +6400,7 @@ version = "0.10.2"
 source = "git+https://github.com/mobilecoinfoundation/schnorrkel.git?rev=9b48418556b0af476be2313309bc5a23fb8b351d#9b48418556b0af476be2313309bc5a23fb8b351d"
 dependencies = [
  "arrayref",
- "arrayvec 0.5.2",
+ "arrayvec",
  "curve25519-dalek",
  "merlin",
  "rand_core 0.6.2",
