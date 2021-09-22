@@ -3033,7 +3033,7 @@ name = "mc-crypto-rand"
 version = "1.1.2"
 dependencies = [
  "cfg-if 1.0.0",
- "getrandom 0.1.14",
+ "getrandom 0.2.2",
  "rand 0.8.3",
  "rand_core 0.6.2",
  "rand_hc 0.3.1",
