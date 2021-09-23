@@ -779,9 +779,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-channel"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dca26ee1f8d361640700bde38b2c37d8c22b3ce2d360e1fc1c74ea4b0aa7d775"
+checksum = "06ed27e177f16d65f0f0c22a213e17c696ace5dd64b14258b52f9417ccb52db4"
 dependencies = [
  "cfg-if 1.0.0",
  "crossbeam-utils 0.8.5",
@@ -2783,7 +2783,7 @@ name = "mc-consensus-scp"
 version = "1.1.2"
 dependencies = [
  "bigint",
- "crossbeam-channel 0.5.0",
+ "crossbeam-channel 0.5.1",
  "maplit",
  "mc-common",
  "mc-crypto-digestible",
@@ -3124,7 +3124,7 @@ dependencies = [
 name = "mc-fog-distribution"
 version = "1.1.0"
 dependencies = [
- "crossbeam-channel 0.5.0",
+ "crossbeam-channel 0.5.1",
  "curve25519-dalek",
  "grpcio",
  "lazy_static",
@@ -4222,7 +4222,7 @@ dependencies = [
 name = "mc-ledger-sync"
 version = "1.1.2"
 dependencies = [
- "crossbeam-channel 0.5.0",
+ "crossbeam-channel 0.5.1",
  "displaydoc",
  "grpcio",
  "mc-account-keys",
@@ -4254,7 +4254,7 @@ version = "1.1.2"
 dependencies = [
  "aes-gcm",
  "blake2",
- "crossbeam-channel 0.5.0",
+ "crossbeam-channel 0.5.1",
  "displaydoc",
  "grpcio",
  "hex",
@@ -4406,7 +4406,7 @@ dependencies = [
 name = "mc-peers"
 version = "1.1.2"
 dependencies = [
- "crossbeam-channel 0.5.0",
+ "crossbeam-channel 0.5.1",
  "displaydoc",
  "ed25519",
  "grpcio",
@@ -4578,7 +4578,7 @@ dependencies = [
 name = "mc-slam"
 version = "1.1.2"
 dependencies = [
- "crossbeam-channel 0.5.0",
+ "crossbeam-channel 0.5.1",
  "curve25519-dalek",
  "grpcio",
  "lazy_static",
@@ -4922,7 +4922,7 @@ dependencies = [
 name = "mc-util-metered-channel"
 version = "1.1.2"
 dependencies = [
- "crossbeam-channel 0.5.0",
+ "crossbeam-channel 0.5.1",
  "mc-util-metrics",
 ]
 
@@ -5975,7 +5975,7 @@ version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d78120e2c850279833f1dd3582f730c4ab53ed95aeaaaa862a2a5c71b1656d8e"
 dependencies = [
- "crossbeam-channel 0.5.0",
+ "crossbeam-channel 0.5.1",
  "crossbeam-deque 0.8.1",
  "crossbeam-utils 0.8.5",
  "lazy_static",
