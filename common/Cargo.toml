@@ -66,7 +66,7 @@ mc-util-build-info = { path = "../util/build/info", optional = true }
 hostname = { version = "0.3.1", optional = true }
 lazy_static = { version = "1.4", optional = true }
 sentry = { version = "0.18", optional = true, default-features = false, features = ["with_client_implementation", "with_reqwest_transport", "with_panic", "with_failure", "with_device_info", "with_rust_info", "with_rustls"] }
-slog-async = { version = "2.3", optional = true }
+slog-async = { version = "2.7", optional = true }
 slog-atomic = { version = "3.1", optional = true }
 slog-envlogger = { version = "2.1", optional = true }
 slog-gelf = { version = "0.1", optional = true }
