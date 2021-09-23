@@ -14,7 +14,7 @@ name = "mc-crypto-x509-test-vectors"
 path = "src/main.rs"
 
 [build-dependencies]
-cargo-emit = "0.1.1"
+cargo-emit = "0.2.1"
 mc-util-build-script = { path = "../../../util/build/script" }
 
 [dependencies]

@@ -11,7 +11,7 @@ mc-util-build-script = { path = "../script" }
 mc-util-build-sgx = { path = "../sgx" }
 mc-sgx-css = { path = "../../../sgx/css" }
 
-cargo-emit = "0.1.1"
+cargo-emit = "0.2.1"
 cargo_metadata = "0.14"
 displaydoc = { version = "0.2", default-features = false }
 mbedtls = "0.8.1"

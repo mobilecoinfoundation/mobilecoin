@@ -20,4 +20,4 @@ mc-util-build-enclave = { path = "../../../../util/build/enclave" }
 mc-util-build-script = { path = "../../../../util/build/script" }
 mc-util-build-sgx = { path = "../../../../util/build/sgx" }
 
-cargo-emit = "0.1"
+cargo-emit = "0.2"

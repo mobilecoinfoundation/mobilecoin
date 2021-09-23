@@ -467,12 +467,6 @@ dependencies = [
 
 [[package]]
 name = "cargo-emit"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d1d6b8077d27443822a547d1ef816eadd2dc4a75de9105aff614192729cf6d3"
-
-[[package]]
-name = "cargo-emit"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1582e1c9e755dd6ad6b224dcffb135d199399a4568d454bd89fe515ca8425695"
@@ -2425,7 +2419,7 @@ name = "mc-api"
 version = "1.1.2"
 dependencies = [
  "bs58",
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "crc",
  "curve25519-dalek",
  "datatest",
@@ -2459,7 +2453,7 @@ version = "1.1.2"
 dependencies = [
  "aead",
  "aes-gcm",
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "digest 0.9.0",
  "displaydoc",
  "mc-attest-core",
@@ -2482,7 +2476,7 @@ name = "mc-attest-api"
 version = "1.1.2"
 dependencies = [
  "aead",
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "digest 0.9.0",
  "futures 0.3.17",
  "grpcio",
@@ -2502,7 +2496,7 @@ dependencies = [
  "binascii",
  "bincode",
  "bitflags",
- "cargo-emit 0.2.1",
+ "cargo-emit",
  "cfg-if 1.0.0",
  "chrono",
  "digest 0.9.0",
@@ -2660,7 +2654,7 @@ dependencies = [
 name = "mc-consensus-api"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "futures 0.3.17",
  "grpcio",
  "mc-api",
@@ -2675,7 +2669,7 @@ dependencies = [
 name = "mc-consensus-enclave"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",
@@ -2717,7 +2711,7 @@ dependencies = [
 name = "mc-consensus-enclave-edl"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
  "mc-util-build-script",
 ]
 
@@ -2725,7 +2719,7 @@ dependencies = [
 name = "mc-consensus-enclave-impl"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
  "hex",
  "mbedtls",
  "mc-account-keys",
@@ -2757,7 +2751,7 @@ dependencies = [
 name = "mc-consensus-enclave-measurement"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "mc-attest-core",
  "mc-sgx-css",
  "mc-util-build-enclave",
@@ -3064,7 +3058,7 @@ dependencies = [
 name = "mc-crypto-x509-test-vectors"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "mc-crypto-keys",
  "mc-util-build-script",
  "pem",
@@ -3098,7 +3092,7 @@ dependencies = [
 name = "mc-fog-api"
 version = "1.1.0"
 dependencies = [
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "displaydoc",
  "futures 0.3.17",
  "grpcio",
@@ -3205,7 +3199,7 @@ dependencies = [
 name = "mc-fog-ingest-enclave"
 version = "1.1.0"
 dependencies = [
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "criterion",
  "mc-attest-core",
  "mc-attest-enclave-api",
@@ -3255,7 +3249,7 @@ dependencies = [
 name = "mc-fog-ingest-enclave-edl"
 version = "1.1.0"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
  "mc-util-build-script",
 ]
 
@@ -3296,7 +3290,7 @@ dependencies = [
 name = "mc-fog-ingest-enclave-measurement"
 version = "1.1.0"
 dependencies = [
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "mc-attest-core",
  "mc-sgx-css",
  "mc-util-build-enclave",
@@ -3397,7 +3391,7 @@ dependencies = [
 name = "mc-fog-ledger-enclave"
 version = "1.1.0"
 dependencies = [
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",
@@ -3443,7 +3437,7 @@ dependencies = [
 name = "mc-fog-ledger-enclave-edl"
 version = "1.1.0"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
  "mc-util-build-script",
 ]
 
@@ -3474,7 +3468,7 @@ dependencies = [
 name = "mc-fog-ledger-enclave-measurement"
 version = "1.1.0"
 dependencies = [
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "mc-attest-core",
  "mc-sgx-css",
  "mc-util-build-enclave",
@@ -3582,7 +3576,7 @@ dependencies = [
 name = "mc-fog-ocall-oram-storage-edl"
 version = "1.1.0"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
 ]
 
 [[package]]
@@ -3638,7 +3632,7 @@ dependencies = [
 name = "mc-fog-report-api"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "futures 0.3.17",
  "grpcio",
  "mc-api",
@@ -3771,7 +3765,7 @@ dependencies = [
 name = "mc-fog-sample-paykit"
 version = "1.1.0"
 dependencies = [
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "displaydoc",
  "futures 0.3.17",
  "grpcio",
@@ -3979,7 +3973,7 @@ dependencies = [
 name = "mc-fog-view-enclave"
 version = "1.1.0"
 dependencies = [
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "criterion",
  "mc-attest-core",
  "mc-attest-enclave-api",
@@ -4031,7 +4025,7 @@ dependencies = [
 name = "mc-fog-view-enclave-edl"
 version = "1.1.0"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
  "mc-util-build-script",
 ]
 
@@ -4061,7 +4055,7 @@ dependencies = [
 name = "mc-fog-view-enclave-measurement"
 version = "1.1.0"
 dependencies = [
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "mc-attest-core",
  "mc-sgx-css",
  "mc-util-build-enclave",
@@ -4318,7 +4312,7 @@ dependencies = [
 name = "mc-mobilecoind-api"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "futures 0.3.17",
  "grpcio",
  "hex_fmt",
@@ -4486,7 +4480,7 @@ dependencies = [
 name = "mc-sgx-compat-edl"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
  "mc-sgx-debug-edl",
  "mc-sgx-panic-edl",
 ]
@@ -4512,14 +4506,14 @@ dependencies = [
 name = "mc-sgx-debug-edl"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
 ]
 
 [[package]]
 name = "mc-sgx-panic-edl"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
 ]
 
 [[package]]
@@ -4562,7 +4556,7 @@ dependencies = [
 name = "mc-sgx-slog-edl"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
 ]
 
 [[package]]
@@ -4734,7 +4728,7 @@ dependencies = [
 name = "mc-util-build-enclave"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "cargo_metadata 0.14.0",
  "displaydoc",
  "mbedtls",
@@ -4765,7 +4759,7 @@ dependencies = [
 name = "mc-util-build-script"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
  "displaydoc",
  "lazy_static",
  "url 2.2.2",
@@ -4776,7 +4770,7 @@ dependencies = [
 name = "mc-util-build-sgx"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
  "cc",
  "displaydoc",
  "mc-util-build-script",
