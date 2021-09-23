@@ -769,16 +769,6 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-channel"
-version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b153fe7cbef478c567df0f972e02e6d736db11affe43dfc9c56a9374d1adfb87"
-dependencies = [
- "crossbeam-utils 0.7.2",
- "maybe-uninit",
-]
-
-[[package]]
-name = "crossbeam-channel"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06ed27e177f16d65f0f0c22a213e17c696ace5dd64b14258b52f9417ccb52db4"
@@ -2789,7 +2779,7 @@ name = "mc-consensus-scp"
 version = "1.1.2"
 dependencies = [
  "bigint",
- "crossbeam-channel 0.5.1",
+ "crossbeam-channel",
  "maplit",
  "mc-common",
  "mc-crypto-digestible",
@@ -3130,7 +3120,7 @@ dependencies = [
 name = "mc-fog-distribution"
 version = "1.1.0"
 dependencies = [
- "crossbeam-channel 0.5.1",
+ "crossbeam-channel",
  "curve25519-dalek",
  "grpcio",
  "lazy_static",
@@ -4228,7 +4218,7 @@ dependencies = [
 name = "mc-ledger-sync"
 version = "1.1.2"
 dependencies = [
- "crossbeam-channel 0.5.1",
+ "crossbeam-channel",
  "displaydoc",
  "grpcio",
  "mc-account-keys",
@@ -4260,7 +4250,7 @@ version = "1.1.2"
 dependencies = [
  "aes-gcm",
  "blake2",
- "crossbeam-channel 0.5.1",
+ "crossbeam-channel",
  "displaydoc",
  "grpcio",
  "hex",
@@ -4412,7 +4402,7 @@ dependencies = [
 name = "mc-peers"
 version = "1.1.2"
 dependencies = [
- "crossbeam-channel 0.5.1",
+ "crossbeam-channel",
  "displaydoc",
  "ed25519",
  "grpcio",
@@ -4584,7 +4574,7 @@ dependencies = [
 name = "mc-slam"
 version = "1.1.2"
 dependencies = [
- "crossbeam-channel 0.5.1",
+ "crossbeam-channel",
  "curve25519-dalek",
  "grpcio",
  "lazy_static",
@@ -4928,7 +4918,7 @@ dependencies = [
 name = "mc-util-metered-channel"
 version = "1.1.2"
 dependencies = [
- "crossbeam-channel 0.5.1",
+ "crossbeam-channel",
  "mc-util-metrics",
 ]
 
@@ -5981,7 +5971,7 @@ version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d78120e2c850279833f1dd3582f730c4ab53ed95aeaaaa862a2a5c71b1656d8e"
 dependencies = [
- "crossbeam-channel 0.5.1",
+ "crossbeam-channel",
  "crossbeam-deque 0.8.1",
  "crossbeam-utils 0.8.5",
  "lazy_static",
@@ -6736,11 +6726,11 @@ checksum = "8347046d4ebd943127157b94d63abb990fcf729dc4e9978927fdf4ac3c998d06"
 
 [[package]]
 name = "slog-async"
-version = "2.5.0"
+version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51b3336ce47ce2f96673499fc07eb85e3472727b9a7a2959964b002c2ce8fbbb"
+checksum = "766c59b252e62a34651412870ff55d8c4e6d04df19b43eecb2703e417b097ffe"
 dependencies = [
- "crossbeam-channel 0.4.4",
+ "crossbeam-channel",
  "slog",
  "take_mut",
  "thread_local",
