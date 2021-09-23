@@ -31,7 +31,7 @@ mc-fog-recovery-db-iface = { path = "../recovery_db_iface" }
 mc-fog-types = { path = "../types" }
 
 chrono = "0.4"
-diesel = { version = "1.4.5", features = ["chrono", "postgres", "r2d2"] }
+diesel = { version = "1.4.8", features = ["chrono", "postgres", "r2d2"] }
 diesel-derive-enum = { version = "1", features = ["postgres"] }
 diesel_migrations = { version = "1.4.0", features = ["postgres"] }
 displaydoc = { version = "0.2", default-features = false }
@@ -57,4 +57,4 @@ tempdir = "0.3"
 
 [build-dependencies]
 # clippy fails to run without this.
-diesel = { version = "1.4.5", features = ["chrono", "postgres", "r2d2"] }
+diesel = { version = "1.4.8", features = ["chrono", "postgres", "r2d2"] }
