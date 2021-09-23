@@ -226,12 +226,6 @@ checksum = "c4872d67bab6358e59559027aa3b9157c53d9358c51423c17554809a8858e0f8"
 
 [[package]]
 name = "cargo-emit"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d1d6b8077d27443822a547d1ef816eadd2dc4a75de9105aff614192729cf6d3"
-
-[[package]]
-name = "cargo-emit"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1582e1c9e755dd6ad6b224dcffb135d199399a4568d454bd89fe515ca8425695"
@@ -728,7 +722,7 @@ name = "mc-attest-ake"
 version = "1.1.2"
 dependencies = [
  "aead",
- "cargo-emit 0.1.1",
+ "cargo-emit",
  "digest",
  "displaydoc",
  "mc-attest-core",
@@ -747,7 +741,7 @@ version = "1.1.2"
 dependencies = [
  "binascii",
  "bitflags",
- "cargo-emit 0.2.1",
+ "cargo-emit",
  "cfg-if 1.0.0",
  "chrono",
  "digest",
@@ -992,7 +986,7 @@ dependencies = [
 name = "mc-fog-ledger-enclave-edl"
 version = "1.1.0"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
  "mc-util-build-script",
 ]
 
@@ -1023,7 +1017,7 @@ dependencies = [
 name = "mc-fog-ledger-enclave-trusted"
 version = "1.1.0"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
  "lazy_static",
  "mbedtls",
  "mbedtls-sys-auto",
@@ -1053,7 +1047,7 @@ dependencies = [
 name = "mc-fog-ocall-oram-storage-edl"
 version = "1.1.0"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
 ]
 
 [[package]]
@@ -1190,7 +1184,7 @@ version = "1.1.2"
 name = "mc-sgx-debug-edl"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
 ]
 
 [[package]]
@@ -1208,7 +1202,7 @@ version = "1.1.2"
 name = "mc-sgx-panic-edl"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
 ]
 
 [[package]]
@@ -1244,7 +1238,7 @@ dependencies = [
 name = "mc-sgx-slog-edl"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
 ]
 
 [[package]]
@@ -1294,7 +1288,7 @@ dependencies = [
 name = "mc-util-build-script"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
  "displaydoc",
  "lazy_static",
  "url",
@@ -1305,7 +1299,7 @@ dependencies = [
 name = "mc-util-build-sgx"
 version = "1.1.2"
 dependencies = [
- "cargo-emit 0.2.1",
+ "cargo-emit",
  "cc",
  "displaydoc",
  "mc-util-build-script",
