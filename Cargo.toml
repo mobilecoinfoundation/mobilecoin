@@ -41,6 +41,7 @@ members = [
     "enclave-boundary",
     "fog/api",
     "fog/distribution",
+    "fog/enclave_connection",
     "fog/ingest/client",
     "fog/ingest/enclave",
     "fog/ingest/enclave/api",
