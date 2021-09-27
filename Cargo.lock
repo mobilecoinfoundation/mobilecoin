@@ -1131,11 +1131,10 @@ dependencies = [
 
 [[package]]
 name = "dirs"
-version = "2.0.2"
+version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13aea89a5c93364a98e9b37b2fa237effbb694d5cfe01c5b70941f7eb087d5e3"
+checksum = "ca3aa72a6f96ea37bbc5aa912f6788242832f75369bdfdadcb0e38423f100059"
 dependencies = [
- "cfg-if 0.1.10",
  "dirs-sys",
 ]
 
@@ -1151,13 +1150,12 @@ dependencies = [
 
 [[package]]
 name = "dirs-sys"
-version = "0.3.4"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afa0b23de8fd801745c471deffa6e12d248f962c9fd4b4c33787b055599bde7b"
+checksum = "03d86534ed367a67548dc68113a0f5db55432fdfbb6e6f9d77704397d95d5780"
 dependencies = [
- "cfg-if 0.1.10",
  "libc",
- "redox_users 0.3.4",
+ "redox_users 0.4.0",
  "winapi 0.3.9",
 ]
 
@@ -3308,7 +3306,7 @@ dependencies = [
 name = "mc-fog-ingest-server"
 version = "1.1.0"
 dependencies = [
- "dirs 2.0.2",
+ "dirs 4.0.0",
  "displaydoc",
  "futures 0.3.17",
  "grpcio",
@@ -4184,7 +4182,7 @@ dependencies = [
 name = "mc-ledger-distribution"
 version = "1.1.2"
 dependencies = [
- "dirs 2.0.2",
+ "dirs 4.0.0",
  "displaydoc",
  "mc-api",
  "mc-common",

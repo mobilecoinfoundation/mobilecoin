@@ -14,7 +14,7 @@ mc-common = { path = "../../common", features = ["loggers"] }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }
 
-dirs = "2.0"
+dirs = "4.0"
 displaydoc = "0.2"
 protobuf = "2.22.1"
 retry = "1.3"
