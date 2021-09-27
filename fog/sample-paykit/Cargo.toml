@@ -61,4 +61,4 @@ mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-util-build-grpc = { path = "../../util/build/grpc" }
 mc-util-build-script = { path = "../../util/build/script" }
 
-cargo-emit = "0.1.1"
+cargo-emit = "0.2.1"

@@ -30,7 +30,7 @@ curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features
 mc-util-build-grpc = { path = "../util/build/grpc" }
 mc-util-build-script = { path = "../util/build/script" }
 
-cargo-emit = "0.1.1"
+cargo-emit = "0.2.1"
 
 [dev-dependencies]
 mc-crypto-x509-test-vectors = { path = "../crypto/x509/test-vectors" }

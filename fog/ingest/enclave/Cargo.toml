@@ -40,7 +40,7 @@ criterion = "0.3"
 mc-util-build-sgx = { path = "../../../util/build/sgx" }
 mc-util-build-script = { path = "../../../util/build/script" }
 
-cargo-emit = "0.1.1"
+cargo-emit = "0.2.1"
 pkg-config = "0.3"
 
 [[bench]]
