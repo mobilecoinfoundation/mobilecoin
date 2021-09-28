@@ -9,6 +9,6 @@ chrono = "0.4"
 mc-common = { path = "../../common", features = ["log"] }
 grpcio = "0.9.0"
 lazy_static = "1.4"
-prometheus = "0.12"
+prometheus = "0.13"
 protobuf = "2.22.1"
 serde_json = "1.0"
