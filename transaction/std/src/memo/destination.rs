@@ -36,15 +36,16 @@ pub struct DestinationMemo {
     /// scenario.
     fee: u64,
     /// The sum of all outlays of the transaction (in picomob)
-    /// Here outlay means, sum of amounts of outputs that are not change and
-    /// are not the transaction fee.
+    /// Here outlay means, the total amount that is deducted from the sender's
+    /// balance because of this transaction. This includes outgoing payments,
+    /// and the transaction fee, and does not include any change amounts.
+    ///
     /// For a typical transaction with one recipient, this refers to the amount
-    /// of a single TxOut.
+    /// of a single TxOut, plus the fee.
     ///
     /// This memo is attached to the change TxOut of the transaction, and from
     /// the amount of that, and this memo, the owner can determine the sum of
-    /// the inputs spent in the transaction by adding change + fee +
-    /// total_outlay
+    /// the inputs spent in the transaction by adding change + total_outlay
     ///
     /// Note: It is technically possible the total outlay is not representable
     /// as a u64. In that case, the memo builder is responsible to signal an
