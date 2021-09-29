@@ -38,7 +38,7 @@ mc-sgx-types = { path = "../../../sgx/types" }
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
 mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps", "aesni", "force_aesni_support", "rdrand"] }
 mbedtls-sys-auto = { version = "2.26.1", default-features = false, features = ["custom_threading"] }
-sha2 = { version = "0.9.5", default-features = false }
+sha2 = { version = "0.9.8", default-features = false }
 
 [build-dependencies]
 mc-util-build-script = { path = "../../../util/build/script" }
@@ -61,7 +61,7 @@ overflow-checks = false
 bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "675330c754f28876dbf94fc303fe73666cf8f8f4" }
 
 # Patched to disable the cpuid instruction because that is incompatible with our sgx builds.
-cpufeatures = { git = "https://github.com/mobilecoinfoundation/RustCrypto-utils.git", rev = "9a22d2a3e5b829277cc05f4833751dd86c155218" }
+cpufeatures = { git = "https://github.com/mobilecoinfoundation/RustCrypto-utils.git", rev = "9881a8f8aeb869ccdbefacfc19c7e5d2ef1ffb55" }
 
 # Fix issues with recent nightlies, bump curve25519-dalek version
 ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "78bdc2a0b0af852cb4e47a0ca9be74bdf77c57b6" }
