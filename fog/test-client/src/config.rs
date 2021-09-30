@@ -13,7 +13,7 @@ pub const TEST_FOG_REPORT_ID: &str = "";
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "test-client", about = "Test client for Fog infrastructure.")]
-pub struct Config {
+pub struct TestClientConfig {
     /// Account key directory.
     #[structopt(long)]
     pub key_dir: PathBuf,
@@ -50,7 +50,7 @@ pub struct Config {
     pub transfer_amount: u64,
 }
 
-impl Config {
+impl TestClientConfig {
     pub fn load_accounts(&self, logger: &Logger) -> Vec<AccountKey> {
         // Load key_dir or read from bootstrap keys.
         let key_dir: String = self.key_dir.clone().to_str().unwrap().to_string();
