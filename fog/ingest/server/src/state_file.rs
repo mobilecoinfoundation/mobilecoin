@@ -57,4 +57,12 @@ impl StateFile {
         file.write_all(&proto_data)?;
         file.sync_all()
     }
+
+    /// Rename the statefile to "backup". This is done if loading the statefile
+    /// fails, in order to prevent a crash loop.
+    pub fn move_to_bak(&self) -> Result<()> {
+        let bak = self.file_path.with_extension("bak");
+        std::fs::rename(&self.file_path, &bak)?;
+        Ok(())
+    }
 }

@@ -3205,6 +3205,7 @@ version = "1.1.0"
 dependencies = [
  "cargo-emit",
  "criterion",
+ "displaydoc",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",
