@@ -17,7 +17,7 @@ use mc_util_uri::ConsensusClientUri;
 use more_asserts::assert_gt;
 use std::{
     thread,
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, Instant},
 };
 
 pub struct TestClient {
@@ -272,7 +272,7 @@ impl TestClient {
 
         log::debug!(self.logger, "Generating and testing transactions");
 
-        let start_time = SystemTime::now();
+        let start_time = Instant::now();
         for ti in 0..self.transactions as usize {
             log::debug!(self.logger, "Transation: {:?}", ti);
             // Rust doesn't allow multiple mutable borrows to vector contents.
@@ -384,10 +384,7 @@ impl TestClient {
             self.logger,
             "{} transactions took {}s",
             self.transactions,
-            start_time
-                .elapsed()
-                .expect("Could not get elapsed time")
-                .as_secs()
+            start_time.elapsed().as_secs()
         );
         Ok(())
     }

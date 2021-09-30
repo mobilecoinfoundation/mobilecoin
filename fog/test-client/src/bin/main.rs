@@ -4,7 +4,9 @@
 
 use mc_common::logger::{create_app_logger, o};
 
-use mc_fog_test_client::{config::Config, error::TestClientError, test_client::TestClient};
+use mc_fog_test_client::{
+    config::TestClientConfig, error::TestClientError, test_client::TestClient,
+};
 
 use structopt::StructOpt;
 
@@ -12,7 +14,7 @@ fn main() {
     mc_common::setup_panic_handler();
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
-    let config = Config::from_args();
+    let config = TestClientConfig::from_args();
 
     let account_keys = config.load_accounts(&logger);
 
