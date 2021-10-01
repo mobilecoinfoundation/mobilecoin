@@ -3925,15 +3925,24 @@ dependencies = [
 name = "mc-fog-test-client"
 version = "1.2.0-pre0"
 dependencies = [
+ "displaydoc",
+ "grpcio",
+ "lazy_static",
  "mc-account-keys",
  "mc-common",
  "mc-crypto-rand",
  "mc-fog-sample-paykit",
+ "mc-fog-uri",
  "mc-transaction-core",
  "mc-transaction-std",
+ "mc-util-grpc",
  "mc-util-keyfile",
+ "mc-util-metrics",
  "mc-util-uri",
  "more-asserts",
+ "once_cell",
+ "serde",
+ "serde_json",
  "structopt",
 ]
 

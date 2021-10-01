@@ -1,13 +1,17 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! Test Client
+//! The TestClient supports two use-cases:
+//! - End-to-end testing (used in continuous deployment)
+//! - Fog canary (sends transactions in prod to alert if it fails, and collect
+//!   timings)
 
-use crate::error::TestClientError;
+use crate::{counters, error::TestClientError};
 
 use mc_account_keys::ShortAddressHash;
 use mc_common::logger::{log, Logger};
 use mc_crypto_rand::McRng;
 use mc_fog_sample_paykit::{AccountKey, Client, ClientBuilder, TransactionStatus, Tx};
+use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_transaction_core::{
     constants::{MINIMUM_FEE, RING_SIZE},
     BlockIndex,
@@ -15,72 +19,108 @@ use mc_transaction_core::{
 use mc_transaction_std::MemoType;
 use mc_util_uri::ConsensusClientUri;
 use more_asserts::assert_gt;
+use once_cell::sync::OnceCell;
+use serde::Serialize;
 use std::{
-    thread,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
+    thread::JoinHandle,
     time::{Duration, Instant},
 };
 
+/// Policy for different kinds of timeouts.
+/// In acceptance testing, we want to fail fast if things take too long.
+/// When measuring prod, we usually don't.
+#[derive(Debug, Clone, Serialize)]
+pub struct TestClientPolicy {
+    /// Whether to fail fast if a deadline is passed. In the test client, we
+    /// want this, and in the canary, we don't, because we want to continue
+    /// measuring the time it takes.
+    pub fail_fast_on_deadline: bool,
+    /// An amount of time to wait for a submitted Tx to land before returning an
+    /// error
+    pub tx_submit_deadline: Duration,
+    /// An amount of time to wait for a submitted Tx to be recieved before
+    /// returning an error
+    pub tx_receive_deadline: Duration,
+    /// An amount of time to wait before running the double spend test
+    pub double_spend_wait: Duration,
+    /// An amount of time to backoff before polling again, when polling fog
+    /// servers
+    pub polling_wait: Duration,
+    /// A transaction amount to send
+    pub transfer_amount: u64,
+    /// Whether to test RTH memos
+    pub test_rth_memos: bool,
+}
+
+impl Default for TestClientPolicy {
+    fn default() -> Self {
+        Self {
+            fail_fast_on_deadline: false,
+            tx_submit_deadline: Duration::from_secs(10),
+            tx_receive_deadline: Duration::from_secs(10),
+            double_spend_wait: Duration::from_secs(10),
+            polling_wait: Duration::from_millis(50),
+            transfer_amount: MINIMUM_FEE,
+            test_rth_memos: false,
+        }
+    }
+}
+
+/// An object which can run test transfers
 pub struct TestClient {
-    consensus_wait: Duration,
-    ledger_sync_wait: Duration,
-    transactions: usize,
-    transfer_amount: u64,
+    policy: TestClientPolicy,
     account_keys: Vec<AccountKey>,
     consensus_uris: Vec<ConsensusClientUri>,
-    fog_ledger: String,
-    fog_view: String,
-    retry_attempts: u32,
+    fog_ledger: FogLedgerUri,
+    fog_view: FogViewUri,
     logger: Logger,
 }
 
 impl TestClient {
+    /// Create a new test client object
+    ///
+    /// Arguments:
+    /// * policy: The test client policy, which includes a bunch of timing
+    ///   configurations
+    /// * account_keys: The account private keys to use for the test. Should be
+    ///   at least two.
+    /// * consensus_uris: The various consensus uris to hit as part of the test.
+    /// * fog_ledger: The uri for the fog ledger service
+    /// * fog_view: The uri for the fog view service
+    /// * logger: Logger to use
     pub fn new(
+        policy: TestClientPolicy,
         account_keys: Vec<AccountKey>,
         consensus_uris: Vec<ConsensusClientUri>,
-        fog_ledger: String,
-        fog_view: String,
+        fog_ledger: FogLedgerUri,
+        fog_view: FogViewUri,
         logger: Logger,
     ) -> Self {
         Self {
-            consensus_wait: Duration::from_secs(10),
-            ledger_sync_wait: Duration::from_secs(10),
-            transactions: 10,
-            transfer_amount: std::u64::MAX,
+            policy,
             account_keys,
             consensus_uris,
             fog_ledger,
             fog_view,
-            retry_attempts: 100,
             logger,
         }
     }
 
-    pub fn consensus_wait(&mut self, val: Duration) -> &mut Self {
-        self.consensus_wait = val;
-        self
-    }
-
-    pub fn ledger_sync_wait(&mut self, val: Duration) -> &mut Self {
-        self.ledger_sync_wait = val;
-        self
-    }
-
-    pub fn transactions(&mut self, val: usize) -> &mut Self {
-        self.transactions = val;
-        self
-    }
-
-    pub fn transfer_amount(&mut self, val: u64) -> &mut Self {
-        self.transfer_amount = val;
-        self
-    }
-
-    pub fn build_clients(&self, client_count: usize) -> Vec<Client> {
+    /// Build the clients
+    ///
+    /// Arguments:
+    /// * client count: the number of clients to build. Need at least two for
+    ///   the test to work
+    pub fn build_clients(&self, client_count: usize) -> Vec<Arc<Mutex<Client>>> {
         let mut clients = Vec::new();
         // Need at least 2 clients to send transactions to each other.
         assert_gt!(client_count, 1);
 
-        // Build an address book for each client
+        // Build an address book for each client (for memos)
         let address_book: Vec<_> = self
             .account_keys
             .iter()
@@ -105,27 +145,29 @@ impl TestClient {
             .ring_size(RING_SIZE)
             .address_book(address_book.clone())
             .build();
-            clients.push(client);
+            clients.push(Arc::new(Mutex::new(client)));
         }
         clients
     }
 
+    /// Conduct a transfer between two clients, according to the policy
     pub fn transfer(
         &self,
         source_client: &mut Client,
         target_client: &mut Client,
     ) -> Result<Tx, TestClientError> {
         let target_address = target_client.get_account_key().default_subaddress();
-        // Override report url
         log::debug!(
             self.logger,
             "Attempting to transfer {} ({})",
-            self.transfer_amount,
+            self.policy.transfer_amount,
             source_client.consensus_service_address()
         );
 
         // First do a balance check to flush out any spent txos
-        source_client.check_balance()?;
+        source_client
+            .check_balance()
+            .map_err(TestClientError::CheckBalance)?;
 
         let mut rng = McRng::default();
         assert!(target_address.fog_report_url().is_some());
@@ -133,13 +175,12 @@ impl TestClient {
         // Get the current fee from consensus
         let fee = source_client.get_fee().unwrap_or(MINIMUM_FEE);
 
-        let transaction = source_client.build_transaction(
-            self.transfer_amount,
-            &target_address,
-            &mut rng,
-            fee,
-        )?;
-        source_client.send_transaction(&transaction)?;
+        let transaction = source_client
+            .build_transaction(self.policy.transfer_amount, &target_address, &mut rng, fee)
+            .map_err(TestClientError::BuildTx)?;
+        source_client
+            .send_transaction(&transaction)
+            .map_err(TestClientError::SubmitTx)?;
         Ok(transaction)
     }
 
@@ -161,27 +202,35 @@ impl TestClient {
         transaction: &Tx,
     ) -> Result<BlockIndex, TestClientError> {
         // Wait until ledger server can see all of these key images
-        let deadline = Instant::now() + self.consensus_wait;
-        let retry_wait = self.consensus_wait / self.retry_attempts;
-        let mut counter = 0usize;
+        let mut deadline = Some(Instant::now() + self.policy.tx_submit_deadline);
         loop {
-            match client.is_transaction_present(transaction)? {
+            match client
+                .is_transaction_present(transaction)
+                .map_err(TestClientError::ConfirmTx)?
+            {
                 TransactionStatus::Appeared(block_index) => return Ok(block_index),
-                TransactionStatus::Expired => panic!("Transaction was not accepted!"),
+                TransactionStatus::Expired => return Err(TestClientError::TxExpired),
                 TransactionStatus::Unknown => {}
             }
-            if Instant::now() > deadline {
-                return Err(TestClientError::SubmittedTxTimeout);
-            }
-            counter += 1;
+            deadline = if let Some(deadline) = deadline {
+                if Instant::now() > deadline {
+                    counters::TX_CONFIRMED_DEADLINE_EXCEEDED_COUNT.inc();
+                    if self.policy.fail_fast_on_deadline {
+                        return Err(TestClientError::SubmittedTxTimeout);
+                    }
+                    None
+                } else {
+                    Some(deadline)
+                }
+            } else {
+                None
+            };
             log::info!(
                 self.logger,
-                "Retry {}/{}: Checking transaction again after {:?}...",
-                counter,
-                self.retry_attempts,
-                retry_wait
+                "Checking transaction again after {:?}...",
+                self.policy.polling_wait
             );
-            thread::sleep(retry_wait);
+            std::thread::sleep(self.policy.polling_wait);
         }
     }
 
@@ -201,9 +250,12 @@ impl TestClient {
         expected_balance: u64,
     ) -> Result<(), TestClientError> {
         let start = Instant::now();
-        let retry_wait = self.consensus_wait / self.retry_attempts;
-        for i in 0..self.retry_attempts {
-            let (new_balance, new_block_count) = client.check_balance()?;
+        let mut deadline = Some(start + self.policy.tx_receive_deadline);
+
+        loop {
+            let (new_balance, new_block_count) = client
+                .check_balance()
+                .map_err(TestClientError::CheckBalance)?;
 
             // Wait for client cursor to include the index where the transaction landed.
             if u64::from(new_block_count) > block_index {
@@ -220,25 +272,38 @@ impl TestClient {
                     expected_balance,
                     new_balance
                 );
-                assert_eq!(expected_balance, new_balance);
+                if expected_balance != new_balance {
+                    return Err(TestClientError::BadBalance(expected_balance, new_balance));
+                }
                 log::info!(self.logger, "Successful transfer");
                 return Ok(());
             }
+            deadline = if let Some(deadline) = deadline {
+                if Instant::now() > deadline {
+                    counters::TX_RECEIVED_DEADLINE_EXCEEDED_COUNT.inc();
+                    if self.policy.fail_fast_on_deadline {
+                        return Err(TestClientError::TxTimeout);
+                    }
+                    None
+                } else {
+                    Some(deadline)
+                }
+            } else {
+                None
+            };
+
             log::trace!(
                 self.logger,
-                "Attempt {}/{}: num_blocks = {} but tx expected in block index = {}, retry in {:?}...",
-                i + 1,
-                self.retry_attempts,
+                "num_blocks = {} but tx expected in block index = {}, retry in {:?}...",
                 new_block_count,
                 block_index,
-                retry_wait
+                self.policy.polling_wait
             );
-            thread::sleep(retry_wait);
+            std::thread::sleep(self.policy.polling_wait);
         }
-        Err(TestClientError::TxTimeout)
     }
 
-    /// Attempt a double spend on the transaction.
+    /// Attempt a double spend on the given transaction.
     pub fn attempt_double_spend(
         &self,
         client: &mut Client,
@@ -249,7 +314,7 @@ impl TestClient {
         //       This test is a little ambiguous because it is testing that
         //       the transaction cannot even be sent, not just that it fails to
         //       pass consensus.
-        thread::sleep(self.ledger_sync_wait);
+        std::thread::sleep(self.policy.double_spend_wait);
         match client.send_transaction(transaction) {
             Ok(_) => {
                 log::error!(
@@ -265,127 +330,410 @@ impl TestClient {
         }
     }
 
-    pub fn run_test(&self) -> Result<(), TestClientError> {
+    /// Conduct a test transfer from source client to target client
+    ///
+    /// Arguments:
+    /// * source_client: The client to send from
+    /// * source_client_index: The index of this client in the list of clients
+    ///   (for debugging info)
+    /// * target_client: The client to receive the Tx
+    /// * target_client_index: The index of this client in the list of clients
+    ///   (for debugging info)
+    pub fn test_transfer(
+        &self,
+        source_client: Arc<Mutex<Client>>,
+        source_client_index: usize,
+        target_client: Arc<Mutex<Client>>,
+        target_client_index: usize,
+    ) -> Result<Tx, TestClientError> {
+        let mut source_client_lk = source_client.lock().expect("mutex poisoned");
+        let mut target_client_lk = target_client.lock().expect("mutex poisoned");
+        let src_address_hash =
+            ShortAddressHash::from(&source_client_lk.get_account_key().default_subaddress());
+        let tgt_address_hash =
+            ShortAddressHash::from(&target_client_lk.get_account_key().default_subaddress());
+        let (src_balance, src_cursor) = source_client_lk
+            .check_balance()
+            .map_err(TestClientError::CheckBalance)?;
+        log::info!(
+            self.logger,
+            "client {} has a balance of {} after {} blocks",
+            source_client_index,
+            src_balance,
+            src_cursor
+        );
+        let (tgt_balance, tgt_cursor) = target_client_lk
+            .check_balance()
+            .map_err(TestClientError::CheckBalance)?;
+        log::info!(
+            self.logger,
+            "client {} has a balance of {} after {} blocks",
+            target_client_index,
+            tgt_balance,
+            tgt_cursor
+        );
+        if src_balance == 0 || tgt_balance == 0 {
+            return Err(TestClientError::ZeroBalance);
+        }
+
+        let fee = source_client_lk.get_fee().unwrap_or(MINIMUM_FEE);
+        let transaction = self.transfer(&mut source_client_lk, &mut target_client_lk)?;
+
+        let start = Instant::now();
+
+        drop(target_client_lk);
+        let mut receive_tx_worker = ReceiveTxWorker::new(
+            target_client,
+            tgt_balance,
+            tgt_balance + self.policy.transfer_amount,
+            self.policy.clone(),
+            Some(src_address_hash),
+            self.logger.clone(),
+        );
+
+        // Wait for key images to land in ledger server
+        let transaction_appeared =
+            self.ensure_transaction_is_accepted(&mut source_client_lk, &transaction)?;
+
+        counters::TX_CONFIRMED_TIME.observe(start.elapsed().as_secs_f64());
+
+        // Tell the receive tx worker in what block the transaction appeared
+        receive_tx_worker.relay_tx_appeared(transaction_appeared);
+
+        // Wait for tx to land in fog view server
+        // This test will be as flakey as the accessibility/fees of consensus
+        log::info!(self.logger, "Checking balance for source");
+        self.ensure_expected_balance_after_block(
+            &mut source_client_lk,
+            transaction_appeared,
+            src_balance - self.policy.transfer_amount - fee,
+        )?;
+
+        // Wait for receive tx worker to successfully get the transaction
+        receive_tx_worker.join()?;
+
+        if self.policy.test_rth_memos {
+            // Ensure source client got a destination memo, as expected for recoverable
+            // transcation history
+            match source_client_lk.get_last_memo() {
+                Ok(Some(memo)) => {
+                    match memo {
+                        MemoType::Destination(memo) => {
+                            if memo.get_total_outlay() != self.policy.transfer_amount + fee {
+                                log::error!(self.logger, "Destination memo had wrong total outlay, found {}, expected {}", memo.get_total_outlay(), self.policy.transfer_amount + fee);
+                                return Err(TestClientError::UnexpectedMemo);
+                            }
+                            if memo.get_fee() != fee {
+                                log::error!(
+                                    self.logger,
+                                    "Destination memo had wrong fee, found {}, expected {}",
+                                    memo.get_fee(),
+                                    fee
+                                );
+                                return Err(TestClientError::UnexpectedMemo);
+                            }
+                            if memo.get_num_recipients() != 1 {
+                                log::error!(self.logger, "Destination memo had wrong num_recipients, found {}, expected 1", memo.get_num_recipients());
+                                return Err(TestClientError::UnexpectedMemo);
+                            }
+                            if *memo.get_address_hash() != tgt_address_hash {
+                                log::error!(self.logger, "Destination memo had wrong address hash, found {:?}, expected {:?}", memo.get_address_hash(), tgt_address_hash);
+                                return Err(TestClientError::UnexpectedMemo);
+                            }
+                        }
+                        _ => {
+                            log::error!(self.logger, "Source Client: Unexpected memo type");
+                            return Err(TestClientError::UnexpectedMemo);
+                        }
+                    }
+                }
+                Ok(None) => {
+                    log::error!(self.logger, "Source Client: Missing memo");
+                    return Err(TestClientError::UnexpectedMemo);
+                }
+                Err(err) => {
+                    log::error!(self.logger, "Source Client: Memo error: {}", err);
+                    return Err(TestClientError::InvalidMemo);
+                }
+            }
+        }
+        Ok(transaction)
+    }
+
+    /// Run a test that lasts a fixed duration and fails fast on an error
+    ///
+    /// Arguments:
+    /// * num_transactions: The number of transactions to run
+    pub fn run_test(&self, num_transactions: usize) -> Result<(), TestClientError> {
         let client_count = self.account_keys.len() as usize;
+        assert!(client_count > 1);
         log::debug!(self.logger, "Creating {} clients", client_count);
-        let mut clients = self.build_clients(client_count);
+        let clients = self.build_clients(client_count);
 
         log::debug!(self.logger, "Generating and testing transactions");
 
         let start_time = Instant::now();
-        for ti in 0..self.transactions as usize {
+        for ti in 0..num_transactions {
             log::debug!(self.logger, "Transation: {:?}", ti);
-            // Rust doesn't allow multiple mutable borrows to vector contents.
-            let split_index = ti % (client_count - 1) + 1;
-            let (head, tail) = clients.split_at_mut(split_index);
-            let source_client: &mut Client = &mut head[split_index - 1];
-            let target_client: &mut Client = &mut tail[0];
 
-            let (src_balance, src_cursor) = source_client.check_balance()?;
-            log::info!(
-                self.logger,
-                "client {} ({}) has a balance of {} after {} blocks",
-                split_index,
-                source_client.get_b58_address(),
-                src_balance,
-                src_cursor
-            );
-            let (tgt_balance, tgt_cursor) = target_client.check_balance()?;
-            log::info!(
-                self.logger,
-                "client {} ({}) has a balance of {} after {} blocks",
-                split_index + 1,
-                target_client.get_b58_address(),
-                tgt_balance,
-                tgt_cursor
-            );
-            assert!(src_balance > 0);
-            assert!(tgt_balance > 0);
+            let source_index = ti % client_count;
+            let target_index = (ti + 1) % client_count;
+            let source_client = clients[source_index].clone();
+            let target_client = clients[target_index].clone();
 
-            let fee = source_client.get_fee().unwrap_or(MINIMUM_FEE);
-            let transaction = self.transfer(source_client, target_client)?;
-
-            // Wait for key images to land in ledger server
-            let transaction_appeared =
-                self.ensure_transaction_is_accepted(source_client, &transaction)?;
-
-            // Wait for tx to land in fog view server
-            // This test will be as flakey as the accessibility/fees of consensus
-            log::info!(self.logger, "Checking balance for source");
-            self.ensure_expected_balance_after_block(
-                source_client,
-                transaction_appeared,
-                src_balance - self.transfer_amount - fee,
-            )?;
-            log::info!(self.logger, "Checking balance for target");
-            self.ensure_expected_balance_after_block(
+            let transaction = self.test_transfer(
+                source_client.clone(),
+                source_index,
                 target_client,
-                transaction_appeared,
-                tgt_balance + self.transfer_amount,
+                target_index,
             )?;
-
-            // Ensure source client got a destination memo, as expected for recoverable
-            // transcation history
-            match source_client.get_last_memo() {
-                Ok(Some(memo)) => match memo {
-                    MemoType::Destination(memo) => {
-                        assert_eq!(memo.get_total_outlay(), self.transfer_amount + fee);
-                        assert_eq!(memo.get_fee(), fee);
-                        assert_eq!(memo.get_num_recipients(), 1);
-                        assert_eq!(
-                            *memo.get_address_hash(),
-                            ShortAddressHash::from(
-                                &target_client.get_account_key().default_subaddress()
-                            )
-                        );
-                    }
-                    _ => {
-                        panic!("unexpected memo type")
-                    }
-                },
-                Ok(None) => {
-                    panic!("source client didn't find destination memo");
-                }
-                Err(err) => {
-                    panic!("source client memo error: {}", err);
-                }
-            }
-
-            // Ensure target client got a sender memo, as expected for recoverable
-            // transcation history
-            match target_client.get_last_memo() {
-                Ok(Some(memo)) => match memo {
-                    MemoType::AuthenticatedSender(memo) => {
-                        assert_eq!(
-                            memo.sender_address_hash(),
-                            ShortAddressHash::from(
-                                &source_client.get_account_key().default_subaddress()
-                            )
-                        );
-                    }
-                    _ => {
-                        panic!("unexpected memo type")
-                    }
-                },
-                Ok(None) => {
-                    panic!("target client didn't find sender memo");
-                }
-                Err(err) => {
-                    panic!("target client memo error: {}", err);
-                }
-            }
 
             // Attempt double spend on the last transaction. This is an expensive test.
-            if ti == self.transactions - 1 {
-                self.attempt_double_spend(source_client, &transaction)?;
+            if ti == num_transactions - 1 {
+                let mut source_client_lk = source_client.lock().expect("mutex poisoned");
+                self.attempt_double_spend(&mut source_client_lk, &transaction)?;
             }
         }
         log::debug!(
             self.logger,
             "{} transactions took {}s",
-            self.transactions,
+            num_transactions,
             start_time.elapsed().as_secs()
         );
         Ok(())
+    }
+
+    /// Run test transactions continuously, handling errors by incrementing
+    /// prometheus counters
+    ///
+    /// Arguments:
+    /// * period: The amount of time we wait between test transfers
+    pub fn run_continuously(&self, period: Duration) {
+        let client_count = self.account_keys.len() as usize;
+        assert!(client_count > 1);
+        log::debug!(self.logger, "Creating {} clients", client_count);
+        let clients = self.build_clients(client_count);
+
+        log::debug!(self.logger, "Generating and testing transactions");
+
+        let mut ti = 0usize;
+        loop {
+            log::debug!(self.logger, "Transaction: {:?}", ti);
+
+            let source_index = ti % client_count;
+            let target_index = (ti + 1) % client_count;
+            let source_client = clients[source_index].clone();
+            let target_client = clients[target_index].clone();
+
+            match self.test_transfer(source_client, source_index, target_client, target_index) {
+                Ok(_) => {
+                    counters::TX_SUCCESS_COUNT.inc();
+                }
+                Err(TestClientError::ZeroBalance) => {
+                    counters::ZERO_BALANCE_COUNT.inc();
+                }
+                Err(TestClientError::TxExpired) => {
+                    counters::TX_EXPIRED_COUNT.inc();
+                }
+                Err(TestClientError::SubmittedTxTimeout) => {
+                    counters::CONFIRM_TX_TIMEOUT_COUNT.inc();
+                }
+                Err(TestClientError::TxTimeout) => {
+                    counters::RECEIVE_TX_TIMEOUT_COUNT.inc();
+                }
+                Err(TestClientError::BadBalance(_, _)) => {
+                    counters::BAD_BALANCE_COUNT.inc();
+                }
+                Err(TestClientError::DoubleSpend) => {
+                    counters::TX_DOUBLE_SPEND_COUNT.inc();
+                }
+                Err(TestClientError::UnexpectedMemo) => {
+                    counters::TX_UNEXPECTED_MEMO_COUNT.inc();
+                }
+                Err(TestClientError::InvalidMemo) => {
+                    counters::TX_INVALID_MEMO_COUNT.inc();
+                }
+                Err(TestClientError::CheckBalance(err)) => {
+                    log::error!(self.logger, "Check Balance: {}", err);
+                    counters::CHECK_BALANCE_ERROR_COUNT.inc();
+                }
+                Err(TestClientError::BuildTx(err)) => {
+                    log::error!(self.logger, "Build Tx: {}", err);
+                    counters::BUILD_TX_ERROR_COUNT.inc();
+                }
+                Err(TestClientError::SubmitTx(err)) => {
+                    log::error!(self.logger, "Submit Tx: {}", err);
+                    counters::SUBMIT_TX_ERROR_COUNT.inc();
+                }
+
+                Err(TestClientError::ConfirmTx(err)) => {
+                    log::error!(self.logger, "Confirm Tx: {}", err);
+                    counters::CONFIRM_TX_ERROR_COUNT.inc();
+                }
+            }
+
+            ti += 1;
+            std::thread::sleep(period);
+        }
+    }
+}
+
+/// Helper struct: A thread to check balance continuously on the target client
+/// This allows us accurately measure both TX confirmation time and TX receipt
+/// time, simultaneously
+pub struct ReceiveTxWorker {
+    /// Handle to worker thread which is blocking on target client getting the
+    /// right balance, or an error
+    join_handle: Option<JoinHandle<Result<(), TestClientError>>>,
+    /// A flag to tell the worker thread to bail early because we failed
+    bail: Arc<AtomicBool>,
+    /// A "lazy option" with which we can tell the worker thread in what block
+    /// the Tx landed, to help it detect if target client has failed.
+    tx_appeared_relay: Arc<OnceCell<BlockIndex>>,
+}
+
+impl ReceiveTxWorker {
+    /// Create and start a new Receive Tx worker thread
+    ///
+    /// Arguments:
+    /// * client: The receiving client to check
+    /// * current balance: The current balance of that client
+    /// * expected balance: The expected balance after the Tx is received
+    /// * policy: The test client policy object
+    /// * expected_memo_contents: Optional short address hash matching the
+    ///   sender's account
+    /// * logger
+    pub fn new(
+        client: Arc<Mutex<Client>>,
+        current_balance: u64,
+        expected_balance: u64,
+        policy: TestClientPolicy,
+        expected_memo_contents: Option<ShortAddressHash>,
+        logger: Logger,
+    ) -> Self {
+        let bail = Arc::new(AtomicBool::default());
+        let tx_appeared_relay = Arc::new(OnceCell::<BlockIndex>::default());
+
+        let thread_bail = bail.clone();
+        let thread_relay = tx_appeared_relay.clone();
+
+        let join_handle = Some(std::thread::spawn(
+            move || -> Result<(), TestClientError> {
+                let mut client = client.lock().expect("Could not lock client");
+                let start = Instant::now();
+                let mut deadline = Some(start + policy.tx_receive_deadline);
+
+                loop {
+                    if thread_bail.load(Ordering::SeqCst) {
+                        return Ok(());
+                    }
+
+                    let (new_balance, new_block_count) = client
+                        .check_balance()
+                        .map_err(TestClientError::CheckBalance)?;
+
+                    if new_balance == expected_balance {
+                        counters::TX_RECEIVED_TIME.observe(start.elapsed().as_secs_f64());
+
+                        if policy.test_rth_memos {
+                            // Ensure target client got a sender memo, as expected for recoverable
+                            // transcation history
+                            match client.get_last_memo() {
+                                Ok(Some(memo)) => match memo {
+                                    MemoType::AuthenticatedSender(memo) => {
+                                        if let Some(hash) = expected_memo_contents {
+                                            if memo.sender_address_hash() != hash {
+                                                log::error!(logger, "Target Client: Unexpected address hash: {:?} != {:?}", memo.sender_address_hash(), hash);
+                                                return Err(TestClientError::UnexpectedMemo);
+                                            }
+                                        }
+                                    }
+                                    _ => {
+                                        log::error!(logger, "Target Client: Unexpected memo type");
+                                        return Err(TestClientError::UnexpectedMemo);
+                                    }
+                                },
+                                Ok(None) => {
+                                    log::error!(logger, "Target Client: Missing memo");
+                                    return Err(TestClientError::UnexpectedMemo);
+                                }
+                                Err(err) => {
+                                    log::error!(logger, "Target Client: Memo parse error: {}", err);
+                                    return Err(TestClientError::InvalidMemo);
+                                }
+                            }
+                        }
+                        return Ok(());
+                    } else if new_balance != current_balance {
+                        return Err(TestClientError::BadBalance(expected_balance, new_balance));
+                    }
+
+                    if let Some(tx_appeared) = thread_relay.get() {
+                        // If the other thread told us the Tx appeared in a certain block, and
+                        // we are past that block and still don't have expected balance,
+                        // then we have a bad balance and can bail out
+                        if u64::from(new_block_count) > *tx_appeared {
+                            return Err(TestClientError::BadBalance(expected_balance, new_balance));
+                        }
+                    }
+
+                    deadline = if let Some(deadline) = deadline {
+                        if Instant::now() > deadline {
+                            counters::TX_RECEIVED_DEADLINE_EXCEEDED_COUNT.inc();
+                            if policy.fail_fast_on_deadline {
+                                return Err(TestClientError::TxTimeout);
+                            }
+                            None
+                        } else {
+                            Some(deadline)
+                        }
+                    } else {
+                        None
+                    };
+
+                    std::thread::sleep(policy.polling_wait);
+                }
+            },
+        ));
+
+        Self {
+            bail,
+            tx_appeared_relay,
+            join_handle,
+        }
+    }
+
+    /// Inform the worker thread in which block the transaction landed.
+    /// This helps it to detect an error state in which that block already
+    /// passed and we didn't find the money (perhaps fog is broken)
+    ///
+    /// Arguments:
+    /// * index: The block index in which the Tx landed
+    pub fn relay_tx_appeared(&mut self, index: BlockIndex) {
+        self.tx_appeared_relay
+            .set(index)
+            .expect("value was already relayed");
+    }
+
+    /// Join the worker thread and return its error (or ok) status
+    pub fn join(mut self) -> Result<(), TestClientError> {
+        self.join_handle
+            .take()
+            .expect("Missing join handle")
+            .join()
+            .expect("Could not join worker thread")
+    }
+}
+
+impl Drop for ReceiveTxWorker {
+    fn drop(&mut self) {
+        // This test is needed because the user may call join, which will then drop
+        // self.
+        if let Some(handle) = self.join_handle.take() {
+            // We store bail as true in this case, because for instance, if submitting the
+            // Tx failed, then the target client balance will never change.
+            self.bail.store(true, Ordering::SeqCst);
+            let _ = handle.join();
+        }
     }
 }

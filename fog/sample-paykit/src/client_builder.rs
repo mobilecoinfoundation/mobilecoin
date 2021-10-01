@@ -16,12 +16,9 @@ use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_transaction_core::constants::RING_SIZE;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 /// Builder object which helps to initialize the sample paykit
-/// TODO: FOG-219 This is very messy right now, due to a lot of old tech debt.
-/// It's possible that the entire builder object should go away, since the scope
-/// of sample paykit has been reduced so much.
 pub struct ClientBuilder {
     // Required
     uri: ConsensusClientUri,
@@ -31,23 +28,20 @@ pub struct ClientBuilder {
     // Optional, has sane defaults
     ring_size: usize,
 
-    fog_view: String,
+    // Uris to fog services
+    fog_view_address: FogViewUri,
+    ledger_server_address: FogLedgerUri,
 
-    // Ledger Server Details
-    ledger_server_address: String,
-
-    // Address book
+    // Address book, for memos
     address_book: Vec<PublicAddress>,
 }
 
-// FIXME: ledger_server_address should be split into key_image_server and
-// merkle_proof_server
 impl ClientBuilder {
     /// Create a new client builder object
     pub fn new(
         uri: ConsensusClientUri,
-        fog_view_address: String,
-        ledger_server_address: String,
+        fog_view_address: FogViewUri,
+        ledger_server_address: FogLedgerUri,
         key: AccountKey,
         logger: Logger,
     ) -> Self {
@@ -56,7 +50,7 @@ impl ClientBuilder {
             key,
             logger,
             ring_size: RING_SIZE,
-            fog_view: fog_view_address,
+            fog_view_address,
             ledger_server_address,
             address_book: Default::default(),
         }
@@ -162,10 +156,12 @@ impl ClientBuilder {
 
         log::debug!(self.logger, "Fog view attestation verifier: {:?}", verifier);
 
-        let client_uri = FogViewUri::from_str(&self.fog_view)
-            .unwrap_or_else(|e| panic!("Could not parse client uri: {}: {:?}", self.fog_view, e));
-
-        FogViewGrpcClient::new(client_uri, verifier, grpc_env, self.logger.clone())
+        FogViewGrpcClient::new(
+            self.fog_view_address.clone(),
+            verifier,
+            grpc_env,
+            self.logger.clone(),
+        )
     }
 
     // Build a Fog Ledger connection.
@@ -192,27 +188,24 @@ impl ClientBuilder {
             verifier
         );
 
-        let client_uri = FogLedgerUri::from_str(&self.ledger_server_address).unwrap_or_else(|e| {
-            panic!(
-                "Could not parse client uri: {}: {:?}",
-                self.ledger_server_address, e
-            )
-        });
-
         (
             FogMerkleProofGrpcClient::new(
-                client_uri.clone(),
+                self.ledger_server_address.clone(),
                 verifier.clone(),
                 grpc_env.clone(),
                 self.logger.clone(),
             ),
             FogKeyImageGrpcClient::new(
-                client_uri.clone(),
+                self.ledger_server_address.clone(),
                 verifier,
                 grpc_env.clone(),
                 self.logger.clone(),
             ),
-            FogUntrustedLedgerGrpcClient::new(client_uri, grpc_env, self.logger.clone()),
+            FogUntrustedLedgerGrpcClient::new(
+                self.ledger_server_address.clone(),
+                grpc_env,
+                self.logger.clone(),
+            ),
         )
     }
 }
