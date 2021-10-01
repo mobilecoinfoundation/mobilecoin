@@ -27,6 +27,7 @@ use mc_util_repr_bytes::{
 };
 use rand_core::{CryptoRng, RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
+use subtle::{Choice, ConstantTimeEq};
 use schnorrkel_og::{
     context::attach_rng, PublicKey as SchnorrkelPublic, SecretKey as SchnorrkelPrivate,
     Signature as SchnorrkelSignature, SignatureError as SchnorrkelError, SIGNATURE_LENGTH,
@@ -183,6 +184,12 @@ impl KexPrivate for RistrettoPrivate {
 
 impl PrivateKey for RistrettoPrivate {
     type Public = RistrettoPublic;
+}
+
+impl ConstantTimeEq for RistrettoPrivate {
+    fn ct_eq(&self, other: &Self) -> Choice { 
+        self.0.ct_eq(&other.0)
+    }
 }
 
 /// A private ristretto key which is ephemeral, should never be copied,
