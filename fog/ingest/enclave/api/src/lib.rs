@@ -66,10 +66,11 @@ pub trait IngestEnclave: ReportableEnclave {
 
     /// Set the private key of the enclave, encrypted by the peer for this
     /// enclave
+    /// The returned bool indicates if the private key changed or not.
     fn set_ingress_private_key(
         &self,
         msg: EnclaveMessage<PeerSession>,
-    ) -> Result<(RistrettoPublic, SealedIngestKey)>;
+    ) -> Result<(RistrettoPublic, SealedIngestKey, bool)>;
 
     /// Retrieve the current KexRngPubkey for the enclave. This corresponds to
     /// the egress key.

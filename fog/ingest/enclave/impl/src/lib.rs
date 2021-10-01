@@ -40,7 +40,7 @@ use mc_fog_types::{
     ingest::TxsForIngest,
     view::{FogTxOut, FogTxOutMetadata, TxOutRecord},
 };
-use mc_oblivious_traits::ORAMStorageCreator;
+use mc_oblivious_traits::{subtle::ConstantTimeEq, ORAMStorageCreator};
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::fog_hint::FogHint;
@@ -252,19 +252,21 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> IngestEnclave
     fn set_ingress_private_key(
         &self,
         msg: EnclaveMessage<PeerSession>,
-    ) -> Result<(RistrettoPublic, SealedIngestKey)> {
+    ) -> Result<(RistrettoPublic, SealedIngestKey, bool)> {
         let key = self.ake.peer_decrypt(msg)?;
         let new_priv_key = RistrettoPrivate::try_from(&key[..])?;
         let new_pubkey = RistrettoPublic::from(&new_priv_key);
 
         let sealed_key = seal_private_key(&new_priv_key)?;
+        let did_private_key_change: bool;
 
         {
             let mut lock = self.ake.get_identity().private_key.lock()?;
+            did_private_key_change = !bool::from(lock.ct_eq(&new_priv_key));
             *lock = new_priv_key;
         }
 
-        Ok((new_pubkey, sealed_key))
+        Ok((new_pubkey, sealed_key, did_private_key_change))
     }
 
     fn get_kex_rng_pubkey(&self) -> Result<KexRngPubkey> {

@@ -188,7 +188,7 @@ impl IngestEnclave for IngestSgxEnclave {
     fn set_ingress_private_key(
         &self,
         msg: EnclaveMessage<PeerSession>,
-    ) -> Result<(RistrettoPublic, SealedIngestKey)> {
+    ) -> Result<(RistrettoPublic, SealedIngestKey, bool)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::SetIngressPrivateKey(msg))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
