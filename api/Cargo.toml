@@ -43,6 +43,6 @@ mc-util-test-vector = { path = "../util/test-vector" }
 
 datatest = "0.6.4"
 generic-array = "0.14"
-pem = "0.8"
+pem = "1.0"
 prost = { version = "0.8", default-features = false }
 rand = "0.8"
