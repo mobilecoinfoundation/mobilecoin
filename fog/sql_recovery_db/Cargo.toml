@@ -49,7 +49,7 @@ mc-fog-test-infra = { path = "../test_infra" }
 mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
-pem = "0.8"
+pem = "1.0"
 rand = "0.8"
 # Note: tempdir is deprecated, but tempfile doesn't build because it depends
 # on the wrong version of rand.
