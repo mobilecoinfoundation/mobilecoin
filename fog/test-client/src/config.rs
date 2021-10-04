@@ -3,10 +3,9 @@
 //! Configuration parameters for the test client binary
 
 use mc_common::logger::{log, Logger};
+use mc_fog_sample_paykit::AccountKey;
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_util_uri::{AdminUri, ConsensusClientUri};
-
-use mc_fog_sample_paykit::AccountKey;
 
 use serde::Serialize;
 use std::{path::PathBuf, str::FromStr, time::Duration};
@@ -18,15 +17,21 @@ use structopt::StructOpt;
 pub struct TestClientConfig {
     /// A URI to host the prometheus data at.
     ///
-    /// If provided, then we continuously send test transfers and publish
-    /// metrics, via the grpc admin API endpoint hosted at this URI.
+    /// Prometheus data includes number of successes and failure, and histograms
+    /// of transaction clearing and finality times.
+    #[structopt(long)]
+    pub admin_listen_uri: Option<AdminUri>,
+
+    /// If set, then we continuously send test transfers.
     ///
     /// The frequency of transactions can be configured with "transfer_period".
     ///
     /// When running continuously, num_transactions is ignored, and we do not
     /// fail fast when deadlines are exceeded.
+    ///
+    /// You should usually set `admin_listen_uri` when you use this
     #[structopt(long)]
-    pub admin_listen_uri: Option<AdminUri>,
+    pub continuous: bool,
 
     /// Account key directory.
     #[structopt(long)]
@@ -71,6 +76,22 @@ pub struct TestClientConfig {
     /// Amount to transfer per transaction
     #[structopt(long, default_value = "20")]
     pub transfer_amount: u64,
+
+    /// Consensus enclave CSS file (overriding the build-time CSS)
+    #[structopt(long)]
+    pub consensus_enclave_css: Option<String>,
+
+    /// Fog ingest enclave CSS file (overriding the build-time CSS)
+    #[structopt(long)]
+    pub fog_ingest_enclave_css: Option<String>,
+
+    /// Fog ledger enclave CSS file (overriding the build-time CSS)
+    #[structopt(long)]
+    pub fog_ledger_enclave_css: Option<String>,
+
+    /// Fog view enclave CSS file (overriding the build-time CSS)
+    #[structopt(long)]
+    pub fog_view_enclave_css: Option<String>,
 }
 
 impl TestClientConfig {

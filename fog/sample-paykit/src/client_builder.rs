@@ -5,7 +5,7 @@
 use crate::client::Client;
 use grpcio::EnvBuilder;
 use mc_account_keys::{AccountKey, PublicAddress};
-use mc_attest_core::{Verifier, DEBUG_ENCLAVE};
+use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{log, o, Logger};
 use mc_connection::{HardcodedCredentialsProvider, ThickClient};
 use mc_fog_ledger_connection::{
@@ -14,6 +14,7 @@ use mc_fog_ledger_connection::{
 use mc_fog_report_connection::GrpcFogReportConnection;
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_fog_view_connection::FogViewGrpcClient;
+use mc_sgx_css::Signature;
 use mc_transaction_core::constants::RING_SIZE;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::sync::Arc;
@@ -34,6 +35,12 @@ pub struct ClientBuilder {
 
     // Address book, for memos
     address_book: Vec<PublicAddress>,
+
+    // Optional sigstructs for attested services
+    consensus_sigstruct: Option<Signature>,
+    fog_ingest_sigstruct: Option<Signature>,
+    fog_ledger_sigstruct: Option<Signature>,
+    fog_view_sigstruct: Option<Signature>,
 }
 
 impl ClientBuilder {
@@ -53,6 +60,10 @@ impl ClientBuilder {
             fog_view_address,
             ledger_server_address,
             address_book: Default::default(),
+            consensus_sigstruct: None,
+            fog_ingest_sigstruct: None,
+            fog_ledger_sigstruct: None,
+            fog_view_sigstruct: None,
         }
     }
 
@@ -67,6 +78,34 @@ impl ClientBuilder {
     pub fn address_book(self, address_book: Vec<PublicAddress>) -> Self {
         let mut retval = self;
         retval.address_book = address_book;
+        retval
+    }
+
+    /// Sets the consensus sigstruct
+    pub fn consensus_sig(self, sig: Option<Signature>) -> Self {
+        let mut retval = self;
+        retval.consensus_sigstruct = sig;
+        retval
+    }
+
+    /// Sets the fog ingest sigstruct
+    pub fn fog_ingest_sig(self, sig: Option<Signature>) -> Self {
+        let mut retval = self;
+        retval.fog_ingest_sigstruct = sig;
+        retval
+    }
+
+    /// Sets the fog ledger sigstruct
+    pub fn fog_ledger_sig(self, sig: Option<Signature>) -> Self {
+        let mut retval = self;
+        retval.fog_ledger_sigstruct = sig;
+        retval
+    }
+
+    /// Sets the fog view sigstruct
+    pub fn fog_view_sig(self, sig: Option<Signature>) -> Self {
+        let mut retval = self;
+        retval.fog_view_sigstruct = sig;
         retval
     }
 
@@ -88,13 +127,7 @@ impl ClientBuilder {
         let (fog_merkle_proof, fog_key_image, fog_untrusted) =
             self.build_fog_ledger_server_conns(grpc_env.clone());
 
-        let verifier = {
-            let mr_signer_verifier = mc_consensus_enclave_measurement::get_mr_signer_verifier(None);
-
-            let mut verifier = Verifier::default();
-            verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
-            verifier
-        };
+        let verifier = self.get_consensus_verifier();
 
         log::debug!(
             self.logger,
@@ -111,19 +144,12 @@ impl ClientBuilder {
         )
         .expect("ThickClient::new returned an error");
 
-        let fog_verifier = {
-            let mr_signer_verifier =
-                mc_fog_ingest_enclave_measurement::get_mr_signer_verifier(None);
-
-            let mut verifier = Verifier::default();
-            verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
-            verifier
-        };
+        let fog_ingest_verifier = self.get_fog_ingest_verifier();
 
         log::debug!(
             self.logger,
             "Fog ingest attestation verifier: {:?}",
-            fog_verifier
+            fog_ingest_verifier
         );
 
         let fog_report_conn = GrpcFogReportConnection::new(grpc_env, self.logger.clone());
@@ -134,7 +160,7 @@ impl ClientBuilder {
             fog_merkle_proof,
             fog_key_image,
             fog_report_conn,
-            fog_verifier,
+            fog_ingest_verifier,
             fog_untrusted,
             self.ring_size,
             self.key.clone(),
@@ -146,13 +172,7 @@ impl ClientBuilder {
     // Build a Fog View connection, taking into account acct_host_override
     // and default port
     fn build_fog_view_conn(&self, grpc_env: Arc<grpcio::Environment>) -> FogViewGrpcClient {
-        let verifier = {
-            let mr_signer_verifier = mc_fog_view_enclave_measurement::get_mr_signer_verifier(None);
-
-            let mut verifier = Verifier::default();
-            verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
-            verifier
-        };
+        let verifier = self.get_fog_view_verifier();
 
         log::debug!(self.logger, "Fog view attestation verifier: {:?}", verifier);
 
@@ -173,14 +193,7 @@ impl ClientBuilder {
         FogKeyImageGrpcClient,
         FogUntrustedLedgerGrpcClient,
     ) {
-        let verifier = {
-            let mr_signer_verifier =
-                mc_fog_ledger_enclave_measurement::get_mr_signer_verifier(None);
-
-            let mut verifier = Verifier::default();
-            verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
-            verifier
-        };
+        let verifier = self.get_fog_ledger_verifier();
 
         log::debug!(
             self.logger,
@@ -207,5 +220,81 @@ impl ClientBuilder {
                 self.logger.clone(),
             ),
         )
+    }
+
+    // Get consensus verifier (dynamic or build time, MRSIGNER)
+    fn get_consensus_verifier(&self) -> Verifier {
+        let mr_signer_verifier = if let Some(signature) = self.consensus_sigstruct.as_ref() {
+            let mut mr_signer_verifier = MrSignerVerifier::new(
+                signature.mrsigner().into(),
+                signature.product_id(),
+                signature.version(),
+            );
+            mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334"]);
+            mr_signer_verifier
+        } else {
+            mc_consensus_enclave_measurement::get_mr_signer_verifier(None)
+        };
+
+        let mut verifier = Verifier::default();
+        verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
+        verifier
+    }
+
+    // Get fog ingest verifier (dynamic or build time, MRSIGNER)
+    fn get_fog_ingest_verifier(&self) -> Verifier {
+        let mr_signer_verifier = if let Some(signature) = self.fog_ingest_sigstruct.as_ref() {
+            let mut mr_signer_verifier = MrSignerVerifier::new(
+                signature.mrsigner().into(),
+                signature.product_id(),
+                signature.version(),
+            );
+            mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334"]);
+            mr_signer_verifier
+        } else {
+            mc_fog_ingest_enclave_measurement::get_mr_signer_verifier(None)
+        };
+
+        let mut verifier = Verifier::default();
+        verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
+        verifier
+    }
+
+    // Get fog ledger verifier (dynamic or build time, MRSIGNER)
+    fn get_fog_ledger_verifier(&self) -> Verifier {
+        let mr_signer_verifier = if let Some(signature) = self.fog_ledger_sigstruct.as_ref() {
+            let mut mr_signer_verifier = MrSignerVerifier::new(
+                signature.mrsigner().into(),
+                signature.product_id(),
+                signature.version(),
+            );
+            mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334"]);
+            mr_signer_verifier
+        } else {
+            mc_fog_ledger_enclave_measurement::get_mr_signer_verifier(None)
+        };
+
+        let mut verifier = Verifier::default();
+        verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
+        verifier
+    }
+
+    // Get fog view verifier (dynamic or build time, MRSIGNER)
+    fn get_fog_view_verifier(&self) -> Verifier {
+        let mr_signer_verifier = if let Some(signature) = self.fog_view_sigstruct.as_ref() {
+            let mut mr_signer_verifier = MrSignerVerifier::new(
+                signature.mrsigner().into(),
+                signature.product_id(),
+                signature.version(),
+            );
+            mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334"]);
+            mr_signer_verifier
+        } else {
+            mc_fog_view_enclave_measurement::get_mr_signer_verifier(None)
+        };
+
+        let mut verifier = Verifier::default();
+        verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
+        verifier
     }
 }

@@ -12,6 +12,7 @@ use mc_common::logger::{log, Logger};
 use mc_crypto_rand::McRng;
 use mc_fog_sample_paykit::{AccountKey, Client, ClientBuilder, TransactionStatus, Tx};
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
+use mc_sgx_css::Signature;
 use mc_transaction_core::{
     constants::{MINIMUM_FEE, RING_SIZE},
     BlockIndex,
@@ -77,6 +78,10 @@ pub struct TestClient {
     consensus_uris: Vec<ConsensusClientUri>,
     fog_ledger: FogLedgerUri,
     fog_view: FogViewUri,
+    consensus_sig: Option<Signature>,
+    fog_ingest_sig: Option<Signature>,
+    fog_ledger_sig: Option<Signature>,
+    fog_view_sig: Option<Signature>,
     logger: Logger,
 }
 
@@ -107,7 +112,39 @@ impl TestClient {
             fog_ledger,
             fog_view,
             logger,
+            consensus_sig: None,
+            fog_ingest_sig: None,
+            fog_ledger_sig: None,
+            fog_view_sig: None,
         }
+    }
+
+    /// Set the consensus sigstruct used by the clients
+    pub fn consensus_sigstruct(self, sig: Option<Signature>) -> Self {
+        let mut retval = self;
+        retval.consensus_sig = sig;
+        retval
+    }
+
+    /// Set the fog ingest sigstruct used by the clients
+    pub fn fog_ingest_sigstruct(self, sig: Option<Signature>) -> Self {
+        let mut retval = self;
+        retval.fog_ingest_sig = sig;
+        retval
+    }
+
+    /// Set the fog ledger sigstruct used by the clients
+    pub fn fog_ledger_sigstruct(self, sig: Option<Signature>) -> Self {
+        let mut retval = self;
+        retval.fog_ledger_sig = sig;
+        retval
+    }
+
+    /// Set the fog view sigstruct used by the clients
+    pub fn fog_view_sigstruct(self, sig: Option<Signature>) -> Self {
+        let mut retval = self;
+        retval.fog_view_sig = sig;
+        retval
     }
 
     /// Build the clients
@@ -115,7 +152,7 @@ impl TestClient {
     /// Arguments:
     /// * client count: the number of clients to build. Need at least two for
     ///   the test to work
-    pub fn build_clients(&self, client_count: usize) -> Vec<Arc<Mutex<Client>>> {
+    fn build_clients(&self, client_count: usize) -> Vec<Arc<Mutex<Client>>> {
         let mut clients = Vec::new();
         // Need at least 2 clients to send transactions to each other.
         assert_gt!(client_count, 1);
@@ -144,6 +181,10 @@ impl TestClient {
             )
             .ring_size(RING_SIZE)
             .address_book(address_book.clone())
+            .consensus_sig(self.consensus_sig.clone())
+            .fog_ingest_sig(self.fog_ingest_sig.clone())
+            .fog_ledger_sig(self.fog_ledger_sig.clone())
+            .fog_view_sig(self.fog_view_sig.clone())
             .build();
             clients.push(Arc::new(Mutex::new(client)));
         }
@@ -151,7 +192,7 @@ impl TestClient {
     }
 
     /// Conduct a transfer between two clients, according to the policy
-    pub fn transfer(
+    fn transfer(
         &self,
         source_client: &mut Client,
         target_client: &mut Client,
@@ -196,7 +237,7 @@ impl TestClient {
     ///
     /// Returns:
     /// * A block index in which the transaction landed, or a test client error.
-    pub fn ensure_transaction_is_accepted(
+    fn ensure_transaction_is_accepted(
         &self,
         client: &mut Client,
         transaction: &Tx,
@@ -243,7 +284,7 @@ impl TestClient {
     ///   in the balance
     /// * expected_balance: The expected balance to compute after this
     ///   block_index is included
-    pub fn ensure_expected_balance_after_block(
+    fn ensure_expected_balance_after_block(
         &self,
         client: &mut Client,
         block_index: BlockIndex,
@@ -304,7 +345,7 @@ impl TestClient {
     }
 
     /// Attempt a double spend on the given transaction.
-    pub fn attempt_double_spend(
+    fn attempt_double_spend(
         &self,
         client: &mut Client,
         transaction: &Tx,
@@ -339,7 +380,7 @@ impl TestClient {
     /// * target_client: The client to receive the Tx
     /// * target_client_index: The index of this client in the list of clients
     ///   (for debugging info)
-    pub fn test_transfer(
+    fn test_transfer(
         &self,
         source_client: Arc<Mutex<Client>>,
         source_client_index: usize,

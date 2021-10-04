@@ -4,12 +4,14 @@
 
 use mc_common::logger::{create_app_logger, log, o};
 
+use core::convert::TryFrom;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_fog_test_client::{
     config::TestClientConfig,
     error::TestClientError,
     test_client::{TestClient, TestClientPolicy},
 };
+use mc_sgx_css::Signature;
 use mc_util_grpc::AdminServer;
 use serde::Serialize;
 use std::sync::Arc;
@@ -27,25 +29,48 @@ fn main() {
 
     let config = TestClientConfig::from_args();
 
+    // Set up test client policy taking into account the runtime config values
+    let policy = TestClientPolicy {
+        // Don't fail fast when running continuously, we want to keep measuring after the deadline
+        fail_fast_on_deadline: !config.continuous,
+        // Don't test RTH memos when running continuously, because we haven't deployed that yet
+        test_rth_memos: !config.continuous,
+        tx_submit_deadline: config.consensus_wait,
+        tx_receive_deadline: config.consensus_wait,
+        double_spend_wait: config.ledger_sync_wait,
+        transfer_amount: config.transfer_amount,
+        ..Default::default()
+    };
+
     let account_keys = config.load_accounts(&logger);
 
-    if let Some(admin_listen_uri) = config.admin_listen_uri.as_ref() {
-        log::info!(
-            logger,
-            "Test client will continuously transfer every {:?} seconds and host prometheus metrics",
-            config.transfer_period
-        );
+    // Load any css from disk
+    let consensus_sigstruct = config
+        .consensus_enclave_css
+        .as_ref()
+        .map(load_css_file)
+        .transpose()
+        .expect("loading css failed");
+    let fog_ingest_sigstruct = config
+        .fog_ingest_enclave_css
+        .as_ref()
+        .map(load_css_file)
+        .transpose()
+        .expect("loading css failed");
+    let fog_ledger_sigstruct = config
+        .fog_ledger_enclave_css
+        .as_ref()
+        .map(load_css_file)
+        .transpose()
+        .expect("loading css failed");
+    let fog_view_sigstruct = config
+        .fog_view_enclave_css
+        .as_ref()
+        .map(load_css_file)
+        .transpose()
+        .expect("loading css failed");
 
-        let policy = TestClientPolicy {
-            fail_fast_on_deadline: false,
-            test_rth_memos: false,
-            tx_submit_deadline: config.consensus_wait,
-            tx_receive_deadline: config.consensus_wait,
-            double_spend_wait: config.ledger_sync_wait,
-            transfer_amount: config.transfer_amount,
-            ..Default::default()
-        };
-
+    let admin_server = config.admin_listen_uri.as_ref().map(|admin_listen_uri| {
         let json_data = JsonData {
             config: config.clone(),
             policy: policy.clone(),
@@ -56,7 +81,7 @@ fn main() {
                 RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("{:?}", err))
             })
         });
-        let _admin_server = AdminServer::start(
+        AdminServer::start(
             None,
             admin_listen_uri,
             "Fog Test Client".to_owned(),
@@ -65,6 +90,21 @@ fn main() {
             logger.clone(),
         )
         .expect("Failed starting admin server");
+    });
+
+    if config.continuous {
+        log::info!(
+            logger,
+            "Test client will continuously transfer every {:?} seconds",
+            config.transfer_period
+        );
+
+        if admin_server.is_none() {
+            log::warn!(
+                logger,
+                "Admin server not configured, prometheus metrics will not be available"
+            );
+        }
 
         TestClient::new(
             policy,
@@ -74,6 +114,10 @@ fn main() {
             config.fog_view,
             logger,
         )
+        .consensus_sigstruct(consensus_sigstruct)
+        .fog_ingest_sigstruct(fog_ingest_sigstruct)
+        .fog_ledger_sigstruct(fog_ledger_sigstruct)
+        .fog_view_sigstruct(fog_view_sigstruct)
         .run_continuously(config.transfer_period);
     } else {
         log::info!(
@@ -81,16 +125,6 @@ fn main() {
             "Test client will run {} test transfers and stop",
             config.num_transactions
         );
-
-        let policy = TestClientPolicy {
-            fail_fast_on_deadline: true,
-            test_rth_memos: true,
-            tx_submit_deadline: config.consensus_wait,
-            tx_receive_deadline: config.consensus_wait,
-            double_spend_wait: config.ledger_sync_wait,
-            transfer_amount: config.transfer_amount,
-            ..Default::default()
-        };
 
         match TestClient::new(
             policy,
@@ -100,6 +134,10 @@ fn main() {
             config.fog_view,
             logger,
         )
+        .consensus_sigstruct(consensus_sigstruct)
+        .fog_ingest_sigstruct(fog_ingest_sigstruct)
+        .fog_ledger_sigstruct(fog_ledger_sigstruct)
+        .fog_view_sigstruct(fog_view_sigstruct)
         .run_test(config.num_transactions)
         {
             Ok(()) => println!("All tests passed"),
@@ -110,4 +148,12 @@ fn main() {
             Err(e) => panic!("Unexpected error {:?}", e),
         }
     }
+}
+
+fn load_css_file(filename: &String) -> Result<Signature, String> {
+    let bytes = std::fs::read(filename)
+        .map_err(|err| format!("Failed reading file '{}': {}", filename, err))?;
+    let signature = Signature::try_from(&bytes[..])
+        .map_err(|err| format!("Failed parsing CSS file '{}': {}", filename, err))?;
+    Ok(signature)
 }
