@@ -527,48 +527,50 @@ impl TestClient {
 
             match self.test_transfer(source_client, source_index, target_client, target_index) {
                 Ok(_) => {
+                    log::info!(self.logger, "Transfer succeeded");
                     counters::TX_SUCCESS_COUNT.inc();
                 }
-                Err(TestClientError::ZeroBalance) => {
-                    counters::ZERO_BALANCE_COUNT.inc();
-                }
-                Err(TestClientError::TxExpired) => {
-                    counters::TX_EXPIRED_COUNT.inc();
-                }
-                Err(TestClientError::SubmittedTxTimeout) => {
-                    counters::CONFIRM_TX_TIMEOUT_COUNT.inc();
-                }
-                Err(TestClientError::TxTimeout) => {
-                    counters::RECEIVE_TX_TIMEOUT_COUNT.inc();
-                }
-                Err(TestClientError::BadBalance(_, _)) => {
-                    counters::BAD_BALANCE_COUNT.inc();
-                }
-                Err(TestClientError::DoubleSpend) => {
-                    counters::TX_DOUBLE_SPEND_COUNT.inc();
-                }
-                Err(TestClientError::UnexpectedMemo) => {
-                    counters::TX_UNEXPECTED_MEMO_COUNT.inc();
-                }
-                Err(TestClientError::InvalidMemo) => {
-                    counters::TX_INVALID_MEMO_COUNT.inc();
-                }
-                Err(TestClientError::CheckBalance(err)) => {
-                    log::error!(self.logger, "Check Balance: {}", err);
-                    counters::CHECK_BALANCE_ERROR_COUNT.inc();
-                }
-                Err(TestClientError::BuildTx(err)) => {
-                    log::error!(self.logger, "Build Tx: {}", err);
-                    counters::BUILD_TX_ERROR_COUNT.inc();
-                }
-                Err(TestClientError::SubmitTx(err)) => {
-                    log::error!(self.logger, "Submit Tx: {}", err);
-                    counters::SUBMIT_TX_ERROR_COUNT.inc();
-                }
-
-                Err(TestClientError::ConfirmTx(err)) => {
-                    log::error!(self.logger, "Confirm Tx: {}", err);
-                    counters::CONFIRM_TX_ERROR_COUNT.inc();
+                Err(err) => {
+                    log::error!(self.logger, "Transfer failed: {}", err);
+                    counters::TX_FAILURE_COUNT.inc();
+                    match err {
+                        TestClientError::ZeroBalance => {
+                            counters::ZERO_BALANCE_COUNT.inc();
+                        }
+                        TestClientError::TxExpired => {
+                            counters::TX_EXPIRED_COUNT.inc();
+                        }
+                        TestClientError::SubmittedTxTimeout => {
+                            counters::CONFIRM_TX_TIMEOUT_COUNT.inc();
+                        }
+                        TestClientError::TxTimeout => {
+                            counters::RECEIVE_TX_TIMEOUT_COUNT.inc();
+                        }
+                        TestClientError::BadBalance(_, _) => {
+                            counters::BAD_BALANCE_COUNT.inc();
+                        }
+                        TestClientError::DoubleSpend => {
+                            counters::TX_DOUBLE_SPEND_COUNT.inc();
+                        }
+                        TestClientError::UnexpectedMemo => {
+                            counters::TX_UNEXPECTED_MEMO_COUNT.inc();
+                        }
+                        TestClientError::InvalidMemo => {
+                            counters::TX_INVALID_MEMO_COUNT.inc();
+                        }
+                        TestClientError::CheckBalance(_) => {
+                            counters::CHECK_BALANCE_ERROR_COUNT.inc();
+                        }
+                        TestClientError::BuildTx(_) => {
+                            counters::BUILD_TX_ERROR_COUNT.inc();
+                        }
+                        TestClientError::SubmitTx(_) => {
+                            counters::SUBMIT_TX_ERROR_COUNT.inc();
+                        }
+                        TestClientError::ConfirmTx(_) => {
+                            counters::CONFIRM_TX_ERROR_COUNT.inc();
+                        }
+                    }
                 }
             }
 
