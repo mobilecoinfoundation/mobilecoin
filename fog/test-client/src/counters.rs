@@ -45,10 +45,10 @@ lazy_static::lazy_static! {
     /// Number of times that we observed a successful double-spend
     pub static ref TX_DOUBLE_SPEND_COUNT: IntCounter = OP_COUNTERS.counter("tx_double_spend_count");
 
-    /// Number of times that the test failed because we observed an unexpected memo value
+    /// Number of times that the test failed because we observed an unexpected memo value, e.g. wrong address or amount
     pub static ref TX_UNEXPECTED_MEMO_COUNT: IntCounter = OP_COUNTERS.counter("tx_unexpected_memo_count");
 
-    /// Number of times that the test failed because we observed an invalid memo
+    /// Number of times that the test failed because we observed an invalid memo, e.g. parse or validation failed
     pub static ref TX_INVALID_MEMO_COUNT: IntCounter = OP_COUNTERS.counter("tx_invalid_memo_count");
 
     /// Number of times that the test failed because a balance check operation failed

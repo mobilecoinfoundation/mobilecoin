@@ -493,7 +493,7 @@ impl TestClient {
                     return Err(TestClientError::UnexpectedMemo);
                 }
                 Err(err) => {
-                    log::error!(self.logger, "Source Client: Memo error: {}", err);
+                    log::error!(self.logger, "Source Client: Memo parse error: {}", err);
                     return Err(TestClientError::InvalidMemo);
                 }
             }
