@@ -25,7 +25,7 @@ lazy_static::lazy_static! {
 
     /// Number of times that a transfer was not successful
     /// This is the sum of all of the more specific failure mode counters
-    pub static ref TX_FAILURE_COUNT: IntCounter = OP_COUNTERS.counter("tx_success_count");
+    pub static ref TX_FAILURE_COUNT: IntCounter = OP_COUNTERS.counter("tx_failure_count");
 
     /// Number of times that the transfer failed because the submitted transaction expired (tombstone block)
     pub static ref TX_EXPIRED_COUNT: IntCounter = OP_COUNTERS.counter("tx_expired_count");
