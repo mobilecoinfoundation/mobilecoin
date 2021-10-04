@@ -150,6 +150,7 @@ fn main() {
     }
 }
 
+#[allow(clippy::ptr_arg)]
 fn load_css_file(filename: &String) -> Result<Signature, String> {
     let bytes = std::fs::read(filename)
         .map_err(|err| format!("Failed reading file '{}': {}", filename, err))?;
