@@ -27,13 +27,13 @@ use mc_util_repr_bytes::{
 };
 use rand_core::{CryptoRng, RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
-use subtle::{Choice, ConstantTimeEq};
 use schnorrkel_og::{
     context::attach_rng, PublicKey as SchnorrkelPublic, SecretKey as SchnorrkelPrivate,
     Signature as SchnorrkelSignature, SignatureError as SchnorrkelError, SIGNATURE_LENGTH,
 };
 use serde::{Deserialize, Serialize};
 use signature::{Error as SignatureError, Error};
+use subtle::{Choice, ConstantTimeEq};
 use zeroize::Zeroize;
 
 /// A Ristretto-format private scalar
@@ -187,7 +187,7 @@ impl PrivateKey for RistrettoPrivate {
 }
 
 impl ConstantTimeEq for RistrettoPrivate {
-    fn ct_eq(&self, other: &Self) -> Choice { 
+    fn ct_eq(&self, other: &Self) -> Choice {
         self.0.ct_eq(&other.0)
     }
 }
