@@ -81,7 +81,7 @@ mod tests {
     fn setup() -> (PublicAddress, Vec<Vec<u8>>, Ed25519Pair) {
         // load, parse, and verify the x509 test vector
         let (pem_chain, keypair) = mc_crypto_x509_test_vectors::ok_rsa_chain_25519_leaf();
-        let der_chain = pem::parse_many(pem_chain);
+        let der_chain = pem::parse_many(pem_chain).expect("Could not parse PEM chain");
         let x509_chain = der_chain.iter_x509().collect::<Vec<X509Certificate>>();
 
         let mut csprng = Hc128Rng::seed_from_u64(0);
