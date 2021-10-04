@@ -934,6 +934,7 @@ dependencies = [
  "serde",
  "sha2",
  "signature",
+ "subtle",
  "x25519-dalek",
  "zeroize",
 ]
