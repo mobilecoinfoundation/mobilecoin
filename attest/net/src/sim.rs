@@ -2,7 +2,7 @@
 
 //! An implementation of the IAS client for simulation purposes
 
-use crate::traits::{Error, RaClient, Result};
+use crate::traits::{RaClient, Result};
 use alloc::sync::Arc;
 use mbedtls::{
     hash::Type as HashType,
@@ -104,7 +104,7 @@ impl RaClient for SimClient {
 
         let sig = VerificationSignature::from(signature);
         let chain = pem::parse_many(IAS_SIM_SIGNING_CHAIN.as_bytes())?
-            .iter()
+            .into_iter()
             .map(|p| p.contents)
             .collect();
 
