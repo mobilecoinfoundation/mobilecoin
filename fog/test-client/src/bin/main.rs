@@ -70,6 +70,8 @@ fn main() {
         .transpose()
         .expect("loading css failed");
 
+    // Start an admin server to publish prometheus metrics, if admin_listen_uri is
+    // given
     let admin_server = config.admin_listen_uri.as_ref().map(|admin_listen_uri| {
         let json_data = JsonData {
             config: config.clone(),
@@ -92,6 +94,21 @@ fn main() {
         .expect("Failed starting admin server");
     });
 
+    // Initialize test_client
+    let test_client = TestClient::new(
+        policy,
+        account_keys,
+        config.consensus_config.consensus_validators,
+        config.fog_ledger,
+        config.fog_view,
+        logger.clone(),
+    )
+    .consensus_sigstruct(consensus_sigstruct)
+    .fog_ingest_sigstruct(fog_ingest_sigstruct)
+    .fog_ledger_sigstruct(fog_ledger_sigstruct)
+    .fog_view_sigstruct(fog_view_sigstruct);
+
+    // Run continuously or run as a fixed length test, according to config
     if config.continuous {
         log::info!(
             logger,
@@ -106,19 +123,7 @@ fn main() {
             );
         }
 
-        TestClient::new(
-            policy,
-            account_keys,
-            config.consensus_config.consensus_validators,
-            config.fog_ledger,
-            config.fog_view,
-            logger,
-        )
-        .consensus_sigstruct(consensus_sigstruct)
-        .fog_ingest_sigstruct(fog_ingest_sigstruct)
-        .fog_ledger_sigstruct(fog_ledger_sigstruct)
-        .fog_view_sigstruct(fog_view_sigstruct)
-        .run_continuously(config.transfer_period);
+        test_client.run_continuously(config.transfer_period);
     } else {
         log::info!(
             logger,
@@ -126,20 +131,7 @@ fn main() {
             config.num_transactions
         );
 
-        match TestClient::new(
-            policy,
-            account_keys,
-            config.consensus_config.consensus_validators,
-            config.fog_ledger,
-            config.fog_view,
-            logger,
-        )
-        .consensus_sigstruct(consensus_sigstruct)
-        .fog_ingest_sigstruct(fog_ingest_sigstruct)
-        .fog_ledger_sigstruct(fog_ledger_sigstruct)
-        .fog_view_sigstruct(fog_view_sigstruct)
-        .run_test(config.num_transactions)
-        {
+        match test_client.run_test(config.num_transactions) {
             Ok(()) => println!("All tests passed"),
             Err(TestClientError::TxTimeout) => panic!(
                 "Transactions could not clear in {:?} seconds",
@@ -150,6 +142,8 @@ fn main() {
     }
 }
 
+// Note: clippy exception is needed because to use with `Option::<&String>::map`
+// the function argument cannot be `&str` or it will fail type checking.
 #[allow(clippy::ptr_arg)]
 fn load_css_file(filename: &String) -> Result<Signature, String> {
     let bytes = std::fs::read(filename)
