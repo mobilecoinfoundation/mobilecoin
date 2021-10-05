@@ -5,12 +5,14 @@
 use displaydoc::Display;
 use mc_attest_core::{EpidGroupId, IasNonce, Quote, QuoteError, SigRL, VerificationReport};
 use mc_util_encodings::Error as EncodingError;
+use pem::PemError;
 use reqwest::{header::ToStrError, Error as ReqwestError};
-use std::result::Result as StdResult;
+use std::{result::Result as StdResult, str::Utf8Error};
 
 /// An enumeration of potential client errors when communicating with a
 /// remote attestation service.
 #[derive(Debug, Display)]
+#[non_exhaustive]
 pub enum Error {
     /// There was an error while handling a quote object
     Quote(QuoteError),
@@ -20,7 +22,7 @@ pub enum Error {
     Encoding(EncodingError),
     /// There is no signature header in the verification report response
     MissingSignatureError,
-    /// A header header string could not be parsed: {0}
+    /// A header string could not be parsed: {0}
     ToStrError(ToStrError),
     /**
      * The verification report response did not include any signing
@@ -29,11 +31,13 @@ pub enum Error {
     MissingSigningCertsError,
     /**
      * The verification report response did not contain valid PEM for it's
-     * signing certificates
+     * signing certificates: {0:?}
      */
-    BadSigningCertsError,
+    BadSigningCertsError(PemError),
     /// The given API key is not a valid header value
     BadApiKey,
+    /// The signing certs contained invalid UTF-8
+    InvalidSigningCertsString(Utf8Error),
 }
 
 /// Automatically wrap mc_util_encodings::EncodingError into an RaClientError.
@@ -61,6 +65,18 @@ impl From<ReqwestError> for Error {
 impl From<ToStrError> for Error {
     fn from(src: ToStrError) -> Error {
         Error::ToStrError(src)
+    }
+}
+
+impl From<PemError> for Error {
+    fn from(src: PemError) -> Self {
+        Error::BadSigningCertsError(src)
+    }
+}
+
+impl From<Utf8Error> for Error {
+    fn from(src: Utf8Error) -> Self {
+        Error::InvalidSigningCertsString(src)
     }
 }
 

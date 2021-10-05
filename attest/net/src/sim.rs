@@ -14,7 +14,6 @@ use mc_attest_core::{
     IAS_SIM_SIGNING_CHAIN, IAS_SIM_SIGNING_KEY,
 };
 use mc_util_encodings::ToBase64;
-use pem::parse_many;
 use serde_json::json;
 use sha2::{digest::Digest, Sha256};
 
@@ -104,9 +103,9 @@ impl RaClient for SimClient {
         signature.truncate(bytes_signed);
 
         let sig = VerificationSignature::from(signature);
-        let chain: Vec<Vec<u8>> = parse_many(IAS_SIM_SIGNING_CHAIN.as_bytes())
-            .iter()
-            .map(|p| p.contents.clone())
+        let chain = pem::parse_many(IAS_SIM_SIGNING_CHAIN.as_bytes())?
+            .into_iter()
+            .map(|p| p.contents)
             .collect();
 
         Ok(VerificationReport {

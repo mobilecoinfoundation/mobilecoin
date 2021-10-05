@@ -183,7 +183,7 @@ mod test {
     fn valid_chain() {
         let (pem_string, pair) = test_vectors::ok_rsa_chain_25519_leaf();
 
-        let cert_ders = pem::parse_many(pem_string);
+        let cert_ders = pem::parse_many(pem_string).expect("Could not parse PEM input");
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
 
         assert_eq!(
@@ -207,7 +207,7 @@ mod test {
     fn depth10_chain() {
         let (pem_string, pair) = test_vectors::ok_rsa_chain_depth_10();
 
-        let cert_ders = pem::parse_many(pem_string);
+        let cert_ders = pem::parse_many(pem_string).expect("Could not parse PEM input");
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
 
         assert_eq!(
@@ -231,7 +231,7 @@ mod test {
     fn tree_not_chain() {
         let pem_string = test_vectors::ok_rsa_tree();
 
-        let cert_ders = pem::parse_many(pem_string);
+        let cert_ders = pem::parse_many(pem_string).expect("Could not parse PEM input");
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
         let err = certs
             .verify_chain()
@@ -246,7 +246,7 @@ mod test {
     fn missing_head() {
         let (pem_string, _pair) = test_vectors::fail_missing_head();
 
-        let cert_ders = pem::parse_many(pem_string);
+        let cert_ders = pem::parse_many(pem_string).expect("Could not parse PEM input");
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
         let err = certs
             .verify_chain()
@@ -260,7 +260,7 @@ mod test {
     fn missing_link() {
         let (pem_string, _pair) = test_vectors::fail_missing_link();
 
-        let cert_ders = pem::parse_many(pem_string);
+        let cert_ders = pem::parse_many(pem_string).expect("Could not parse PEM input");
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
         let err = certs
             .verify_chain()
@@ -274,7 +274,7 @@ mod test {
     fn too_soon() {
         let (pem_string, _pair) = test_vectors::fail_leaf_too_soon();
 
-        let cert_ders = pem::parse_many(pem_string);
+        let cert_ders = pem::parse_many(pem_string).expect("Could not parse PEM input");
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
         let err = certs
             .verify_chain()
@@ -289,7 +289,7 @@ mod test {
     fn expired() {
         let (pem_string, _pair) = test_vectors::fail_leaf_expired();
 
-        let cert_ders = pem::parse_many(pem_string);
+        let cert_ders = pem::parse_many(pem_string).expect("Could not parse PEM input");
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
         let err = certs
             .verify_chain()

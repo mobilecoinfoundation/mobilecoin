@@ -101,14 +101,12 @@ impl Materials {
 
     /// Construct from a PEM chain and a keypair
     pub fn from_pem_keypair(pem_chain: String, signing_keypair: Ed25519Pair) -> Result<Self> {
-        // Load the chain and private key from disk and parse them
-        let pem_chain = pem::parse_many(pem_chain);
-
         // Convert the PEM chain into the DER chain we want to use
-        let chain = pem_chain
+        let chain = pem::parse_many(pem_chain)
+            .expect("Could not parse PEM chain")
             .into_iter()
             .map(|pem| pem.contents)
-            .collect::<Vec<Vec<u8>>>();
+            .collect();
 
         Self::from_ders_keypair(chain, signing_keypair)
     }
