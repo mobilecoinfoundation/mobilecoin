@@ -15,7 +15,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ### Changed
 
- - Updated SGX to 2.14
+ - Updated SGX to 2.15
  - Lock enclave no-debug mode when building for IAS production.
  - Update Rust toolchain to `nightly-2021-07-21`.
 
