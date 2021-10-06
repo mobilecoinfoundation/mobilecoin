@@ -31,7 +31,7 @@ use mc_common::ResponderId;
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic, X25519};
 use mc_crypto_rand::McRng;
-use mc_fog_kex_rng::{BufferedRng, KexRngPubkey, NewFromKex, VersionedKexRng};
+use mc_fog_kex_rng::{BufferedRng, KexRngPubkey, NewFromKex, StoredRng, VersionedKexRng};
 use mc_fog_report_types::{Report, ReportResponse};
 use mc_fog_report_validation::{FogReportResponses, FogResolver};
 use mc_transaction_core::{
@@ -639,6 +639,41 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_ClientKexRng_init_1jni(
 
         Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, kexrng)?)
     })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_ClientKexRng_init_1from_1stored_1rng_1protobuf_1bytes(
+    env: JNIEnv,
+    obj: JObject,
+    bytes: jbyteArray,
+) {
+    jni_ffi_call(&env, |env| {
+        let protobuf_bytes = env.convert_byte_array(bytes)?;
+        let stored_rng: StoredRng = mc_util_serial::decode(&protobuf_bytes)?;
+
+        let versioned_kex_rng: VersionedKexRng = VersionedKexRng::try_from(stored_rng)?;
+
+        Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, versioned_kex_rng)?)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_ClientKexRng_get_1stored_1rng_1protobuf_1bytes(
+    env: JNIEnv,
+    obj: JObject,
+) -> jbyteArray {
+    jni_ffi_call_or(
+        || Ok(JObject::null().into_inner()),
+        &env,
+        |env| {
+            let versioned_kex_rng: MutexGuard<VersionedKexRng> =
+                env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            let stored_rng: StoredRng = versioned_kex_rng.clone().into();
+            let bytes = mc_util_serial::encode(&stored_rng);
+
+            Ok(env.byte_array_from_slice(&bytes)?)
+        },
+    )
 }
 
 #[no_mangle]
