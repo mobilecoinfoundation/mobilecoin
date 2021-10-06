@@ -2992,6 +2992,7 @@ dependencies = [
  "serde_json",
  "sha2 0.9.8",
  "signature",
+ "subtle 2.4.1",
  "tempdir",
  "x25519-dalek",
  "zeroize",
