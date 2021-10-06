@@ -33,6 +33,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPubli
 use mc_crypto_rand::McRng;
 use mc_fog_ingest_enclave_api::{
     Error, IngestEnclave, IngestEnclaveInitParams, Result, SealedIngestKey,
+    SetIngressPrivateKeyResult,
 };
 use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_recovery_db_iface::ETxOutRecord;
@@ -252,21 +253,25 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> IngestEnclave
     fn set_ingress_private_key(
         &self,
         msg: EnclaveMessage<PeerSession>,
-    ) -> Result<(RistrettoPublic, SealedIngestKey, bool)> {
+    ) -> Result<SetIngressPrivateKeyResult> {
         let key = self.ake.peer_decrypt(msg)?;
-        let new_priv_key = RistrettoPrivate::try_from(&key[..])?;
-        let new_pubkey = RistrettoPublic::from(&new_priv_key);
+        let new_private_key = RistrettoPrivate::try_from(&key[..])?;
+        let new_public_key = RistrettoPublic::from(&new_private_key);
 
-        let sealed_key = seal_private_key(&new_priv_key)?;
+        let sealed_key = seal_private_key(&new_private_key)?;
         let did_private_key_change: bool;
 
         {
             let mut lock = self.ake.get_identity().private_key.lock()?;
-            did_private_key_change = !bool::from(lock.ct_eq(&new_priv_key));
-            *lock = new_priv_key;
+            did_private_key_change = !bool::from(lock.ct_eq(&new_private_key));
+            *lock = new_private_key;
         }
 
-        Ok((new_pubkey, sealed_key, did_private_key_change))
+        Ok(SetIngressPrivateKeyResult {
+            new_public_key,
+            sealed_key,
+            did_private_key_change,
+        })
     }
 
     fn get_kex_rng_pubkey(&self) -> Result<KexRngPubkey> {

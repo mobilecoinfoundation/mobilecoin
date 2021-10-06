@@ -17,7 +17,7 @@ use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, P
 use mc_common::ResponderId;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic, X25519Public};
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;
-use mc_fog_ingest_enclave_api::EnclaveCall;
+use mc_fog_ingest_enclave_api::{EnclaveCall, SetIngressPrivateKeyResult};
 use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_recovery_db_iface::ETxOutRecord;
 use mc_fog_types::ingest::TxsForIngest;
@@ -188,7 +188,7 @@ impl IngestEnclave for IngestSgxEnclave {
     fn set_ingress_private_key(
         &self,
         msg: EnclaveMessage<PeerSession>,
-    ) -> Result<(RistrettoPublic, SealedIngestKey, bool)> {
+    ) -> Result<SetIngressPrivateKeyResult> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::SetIngressPrivateKey(msg))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

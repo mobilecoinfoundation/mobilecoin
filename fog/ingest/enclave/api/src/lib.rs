@@ -25,11 +25,24 @@ use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_types::{ingest::TxsForIngest, ETxOutRecord};
 use mc_sgx_report_cache_api::ReportableEnclave;
 
+use serde::{Deserialize, Serialize};
+
 /// A generic result type for enclave calls
 pub type Result<T> = StdResult<T, Error>;
 
 /// Type representing the sealed ingest private key
 pub type SealedIngestKey = Vec<u8>;
+
+/// The result returned from the set_ingress_private_key function.
+#[derive(Deserialize, Serialize)]
+pub struct SetIngressPrivateKeyResult {
+    /// The new public key derived from the new private key that's being set.
+    pub new_public_key: RistrettoPublic,
+    /// The private key that gets sealed.
+    pub sealed_key: SealedIngestKey,
+    /// Indicates whether or not the private key changed.
+    pub did_private_key_change: bool,
+}
 
 /// The API of the ingest enclave
 pub trait IngestEnclave: ReportableEnclave {
@@ -66,11 +79,10 @@ pub trait IngestEnclave: ReportableEnclave {
 
     /// Set the private key of the enclave, encrypted by the peer for this
     /// enclave
-    /// The returned bool indicates if the private key changed or not.
     fn set_ingress_private_key(
         &self,
         msg: EnclaveMessage<PeerSession>,
-    ) -> Result<(RistrettoPublic, SealedIngestKey, bool)>;
+    ) -> Result<SetIngressPrivateKeyResult>;
 
     /// Retrieve the current KexRngPubkey for the enclave. This corresponds to
     /// the egress key.

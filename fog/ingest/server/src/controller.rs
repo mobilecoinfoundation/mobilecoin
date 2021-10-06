@@ -209,9 +209,9 @@ where
             return Err(Error::ServerNotIdle);
         }
 
-        let (_, _, did_private_key_change) = self.enclave.set_ingress_private_key(msg)?;
+        let set_ingress_private_key_result = self.enclave.set_ingress_private_key(msg)?;
 
-        if did_private_key_change {
+        if set_ingress_private_key_result.did_private_key_change {
             // Seal the new private keys we ended up with to disk
             *self.last_sealed_key.lock().unwrap() = None;
             self.write_state_file_inner(&mut state);
@@ -821,8 +821,12 @@ where
         let msg = connection.get_ingress_private_key()?;
 
         log::info!(self.logger, "Setting new private key on local enclave");
-        let (pubkey, _, _) = self.enclave.set_ingress_private_key(msg.into())?;
-        log::info!(self.logger, "Key successfully set in enclave: {}", pubkey);
+        let set_ingress_private_key_result = self.enclave.set_ingress_private_key(msg.into())?;
+        log::info!(
+            self.logger,
+            "Key successfully set in enclave: {}",
+            set_ingress_private_key_result.new_public_key
+        );
 
         *self.last_sealed_key.lock().unwrap() = None;
         self.write_state_file_inner(&mut state);
