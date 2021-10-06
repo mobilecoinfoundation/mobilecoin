@@ -110,7 +110,7 @@ elif [[ -n "$diff" ]]; then
 		echo "Do you want to fix all these files automatically? (y/N) "
 		read YESNO
 		if [[ -n "$YESNO" ]] && [[ "$(echo "${YESNO:0:1}" | tr '[[:lower:]]' '[[:upper:]]')" = "Y" ]]; then
-			echo -e "$diff" | while read file; do
+			echo -e "$diff" | sort -u | while read file; do
 				$CARGOFMT $file
 			done
 			echo "You should attempt this commit again to pick up these changes."
