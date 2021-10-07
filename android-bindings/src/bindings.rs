@@ -1336,7 +1336,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_Util_attest_1verify_1report(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_com_mobilecoin_lib_Util_versioned_1crypto_1box_1decrypt(
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_DefaultVersionedCryptoBox_versioned_1crypto_1box_1decrypt(
     env: JNIEnv,
     _obj: JObject,
     key: JObject,
