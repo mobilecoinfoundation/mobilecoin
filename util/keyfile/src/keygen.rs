@@ -4,7 +4,7 @@
 //! corresponding to `mc_account_keys::RootIdentity`, and
 //! `mc_account_keys::PublicAddress` respectively.
 
-use crate::{read_keyfile, read_pubfile, write_keyfile, write_pubfile};
+use crate::{read_keyfile, read_pubfile, write_b58pubfile, write_keyfile, write_pubfile};
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use rand::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;
@@ -19,14 +19,14 @@ pub fn write_keyfiles<P: AsRef<Path>>(
     root_id: &RootIdentity,
 ) -> Result<(), std::io::Error> {
     let acct_key = AccountKey::from(root_id);
+    let addr = acct_key.default_subaddress();
 
     fs::create_dir_all(&path)?;
 
     write_keyfile(path.as_ref().join(name).with_extension("json"), root_id)?;
-    write_pubfile(
-        path.as_ref().join(name).with_extension("pub"),
-        &acct_key.default_subaddress(),
-    )?;
+    write_pubfile(path.as_ref().join(name).with_extension("pub"), &addr)?;
+    write_keyfile(path.as_ref().join(name).with_extension("json"), root_id)?;
+    write_b58pubfile(path.as_ref().join(name).with_extension("b58pub"), &addr)?;
     Ok(())
 }
 

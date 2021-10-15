@@ -4887,12 +4887,15 @@ version = "1.1.2"
 name = "mc-util-keyfile"
 version = "1.1.2"
 dependencies = [
+ "bs58",
  "hex",
  "mc-account-keys",
+ "mc-api",
  "mc-crypto-rand",
  "mc-util-from-random",
  "mc-util-serial",
  "pem",
+ "protobuf",
  "rand 0.8.4",
  "rand_hc 0.3.1",
  "serde",
