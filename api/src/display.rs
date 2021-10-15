@@ -27,6 +27,8 @@ pub enum Error {
     InsufficientBytes(usize),
 }
 
+impl std::error::Error for Error {}
+
 /// A little-endian IEEE CRC32 checksum is prepended to payloads.
 /// Since this is public information with a possibility of transcription
 /// failure, a checksum is more appropriate than a hash function

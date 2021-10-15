@@ -25,7 +25,6 @@ pub fn write_keyfiles<P: AsRef<Path>>(
 
     write_keyfile(path.as_ref().join(name).with_extension("json"), root_id)?;
     write_pubfile(path.as_ref().join(name).with_extension("pub"), &addr)?;
-    write_keyfile(path.as_ref().join(name).with_extension("json"), root_id)?;
     write_b58pubfile(path.as_ref().join(name).with_extension("b58pub"), &addr)?;
     Ok(())
 }

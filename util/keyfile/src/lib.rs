@@ -8,7 +8,6 @@ pub mod keygen;
 use json_format::RootIdentityJson;
 use mc_account_keys::{PublicAddress, RootIdentity};
 use mc_api::printable::PrintableWrapper;
-use protobuf::Message as ProtobufMessage;
 use std::{convert::TryInto, fs::File, io::prelude::*, path::Path};
 
 /// Write user root identity to disk
@@ -69,10 +68,9 @@ pub fn write_b58pubfile<P: AsRef<Path>>(
     let mut wrapper = PrintableWrapper::new();
     wrapper.set_public_address(addr.into());
 
-    let data = wrapper.write_to_bytes().map_err(to_io_error)?;
-    let data = bs58::encode(data).into_vec();
+    let data = wrapper.b58_encode().map_err(to_io_error)?;
 
-    File::create(path)?.write_all(&data)?;
+    File::create(path)?.write_all(data.as_ref())?;
     Ok(())
 }
 
@@ -86,22 +84,20 @@ pub fn read_b58pubfile_data<R: std::io::Read>(
     buffer: &mut R,
 ) -> Result<PublicAddress, std::io::Error> {
     let data = {
-        let mut data = Vec::new();
-        buffer.read_to_end(&mut data)?;
+        let mut data = String::new();
+        buffer.read_to_string(&mut data)?;
         data
     };
-    let data = bs58::decode(data).into_vec().map_err(to_io_error)?;
-    let result = PrintableWrapper::parse_from_bytes(&data).map_err(to_io_error)?;
-    if !result.has_public_address() {
+
+    let wrapper = PrintableWrapper::b58_decode(data).map_err(to_io_error)?;
+
+    if !wrapper.has_public_address() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
             "Printable Wrapper did not contain public address",
         ));
     }
-    Ok(result
-        .get_public_address()
-        .try_into()
-        .map_err(to_io_error)?)
+    wrapper.get_public_address().try_into().map_err(to_io_error)
 }
 
 fn to_io_error<E: 'static + std::error::Error + Send + Sync>(err: E) -> std::io::Error {
