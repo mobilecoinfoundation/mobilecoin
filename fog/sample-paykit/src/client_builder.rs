@@ -9,7 +9,8 @@ use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{log, o, Logger};
 use mc_connection::{HardcodedCredentialsProvider, ThickClient};
 use mc_fog_ledger_connection::{
-    FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
+    FogBlockGrpcClient, FogKeyImageGrpcClient, FogMerkleProofGrpcClient,
+    FogUntrustedLedgerGrpcClient,
 };
 use mc_fog_report_connection::GrpcFogReportConnection;
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
@@ -135,7 +136,7 @@ impl ClientBuilder {
             "About to start LedgerServerConn to {:?}",
             self.ledger_server_address.clone()
         );
-        let (fog_merkle_proof, fog_key_image, fog_untrusted) =
+        let (fog_merkle_proof, fog_key_image, fog_untrusted, fog_block) =
             self.build_fog_ledger_server_conns(grpc_env.clone());
 
         let verifier = self.get_consensus_verifier();
@@ -170,6 +171,7 @@ impl ClientBuilder {
             fog_view_client,
             fog_merkle_proof,
             fog_key_image,
+            fog_block,
             fog_report_conn,
             fog_ingest_verifier,
             fog_untrusted,
@@ -204,6 +206,7 @@ impl ClientBuilder {
         FogMerkleProofGrpcClient,
         FogKeyImageGrpcClient,
         FogUntrustedLedgerGrpcClient,
+        FogBlockGrpcClient,
     ) {
         let verifier = self.get_fog_ledger_verifier();
 
@@ -227,6 +230,11 @@ impl ClientBuilder {
                 self.logger.clone(),
             ),
             FogUntrustedLedgerGrpcClient::new(
+                self.ledger_server_address.clone(),
+                grpc_env.clone(),
+                self.logger.clone(),
+            ),
+            FogBlockGrpcClient::new(
                 self.ledger_server_address.clone(),
                 grpc_env,
                 self.logger.clone(),

@@ -14,9 +14,10 @@ use mc_common::{
 };
 use mc_crypto_keys::RistrettoPublic;
 use mc_fog_ledger_connection::{
-    Error as LedgerConnectionError, FogKeyImageGrpcClient, KeyImageResultExtension,
+    Error as LedgerConnectionError, FogBlockGrpcClient, FogKeyImageGrpcClient,
+    KeyImageResultExtension,
 };
-use mc_fog_types::{view::TxOutRecord, BlockCount};
+};
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_fog_view_protocol::{FogViewConnection, UserPrivate, UserRngSet};
 use mc_transaction_core::{
@@ -346,7 +347,11 @@ impl CachedTxData {
     /// Poll for new txo data, given fog view connection object
     ///
     /// This is called when doing a balance check
-    pub fn poll_fog_for_txos(&mut self, fog_view_client: &mut FogViewGrpcClient) -> Result<()> {
+    pub fn poll_fog_for_txos(
+        &mut self,
+        fog_view_client: &mut FogViewGrpcClient,
+        _fog_block_client: &mut FogBlockGrpcClient,
+    ) -> Result<()> {
         let old_rng_num_blocks = self.rng_set.get_highest_processed_block_count();
         // Do the fog view protocol, log any errors, and consume any new transactions
         // TODO: Query FogLedger for the _new_missed_block_ranges, convert the
@@ -523,12 +528,13 @@ impl CachedTxData {
         &mut self,
         fog_view_client: &mut FogViewGrpcClient,
         key_image_client: &mut FogKeyImageGrpcClient,
+        fog_block_client: &mut FogBlockGrpcClient,
     ) -> Result<()> {
         let old_num_blocks = self.get_num_blocks();
         let old_key_image_data_completeness = self.key_image_data_completeness;
         let old_rng_num_blocks = self.rng_set.get_highest_processed_block_count();
 
-        self.poll_fog_for_txos(fog_view_client)?;
+        self.poll_fog_for_txos(fog_view_client, fog_block_client)?;
         self.poll_fog_for_key_images(key_image_client)?;
 
         let new_num_blocks = self.get_num_blocks();

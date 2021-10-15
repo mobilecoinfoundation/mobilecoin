@@ -21,8 +21,8 @@ use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_fog_api::ledger::TxOutResultCode;
 use mc_fog_ledger_connection::{
-    FogKeyImageGrpcClient, FogMerkleProofGrpcClient, FogUntrustedLedgerGrpcClient,
-    OutputResultExtension,
+    FogBlockGrpcClient, FogKeyImageGrpcClient, FogMerkleProofGrpcClient,
+    FogUntrustedLedgerGrpcClient, OutputResultExtension,
 };
 use mc_fog_report_connection::GrpcFogReportConnection;
 use mc_fog_report_validation::{FogPubkeyResolver, FogResolver};
@@ -53,6 +53,7 @@ pub struct Client {
     fog_view: FogViewGrpcClient,
     fog_merkle_proof: FogMerkleProofGrpcClient,
     fog_key_image: FogKeyImageGrpcClient,
+    fog_block: FogBlockGrpcClient,
     fog_report_conn: GrpcFogReportConnection,
     fog_verifier: Verifier,
     fog_untrusted: FogUntrustedLedgerGrpcClient,
@@ -78,6 +79,7 @@ impl Client {
         fog_view: FogViewGrpcClient,
         fog_merkle_proof: FogMerkleProofGrpcClient,
         fog_key_image: FogKeyImageGrpcClient,
+        fog_block: FogBlockGrpcClient,
         fog_report_conn: GrpcFogReportConnection,
         fog_verifier: Verifier,
         fog_untrusted: FogUntrustedLedgerGrpcClient,
@@ -94,6 +96,7 @@ impl Client {
             fog_view,
             fog_merkle_proof,
             fog_key_image,
+            fog_block,
             fog_report_conn,
             fog_verifier,
             fog_untrusted,
@@ -137,8 +140,11 @@ impl Client {
     ///   balance
     pub fn check_balance(&mut self) -> Result<(u64, BlockCount)> {
         mc_common::trace_time!(self.logger, "MobileCoinClient.get_balance");
-        self.tx_data
-            .poll_fog(&mut self.fog_view, &mut self.fog_key_image)?;
+        self.tx_data.poll_fog(
+            &mut self.fog_view,
+            &mut self.fog_key_image,
+            &mut self.fog_block,
+        )?;
         Ok(self.compute_balance())
     }
 
