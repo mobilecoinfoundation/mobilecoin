@@ -36,8 +36,8 @@ use mc_transaction_core::{
     BlockIndex,
 };
 use mc_transaction_std::{
-    ChangeDestination, InputCredentials, MemoType, RTHMemoBuilder, SenderMemoCredential,
-    TransactionBuilder,
+    ChangeDestination, InputCredentials, MemoType, NoMemoBuilder, RTHMemoBuilder,
+    SenderMemoCredential, TransactionBuilder,
 };
 use mc_util_uri::{ConnectionUri, FogUri};
 use rand::Rng;
@@ -65,6 +65,9 @@ pub struct Client {
     /// tombstone block when generating a new transaction.
     new_tx_block_attempts: u16,
 
+    /// Whether to use RTH memos. For backwards compat, we can turn memos off.
+    use_rth_memos: bool,
+
     logger: Logger,
 }
 
@@ -81,6 +84,7 @@ impl Client {
         ring_size: usize,
         account_key: AccountKey,
         address_book: Vec<PublicAddress>,
+        use_rth_memos: bool,
         logger: Logger,
     ) -> Self {
         let tx_data = CachedTxData::new(account_key.clone(), address_book, logger.clone());
@@ -97,6 +101,7 @@ impl Client {
             account_key,
             tx_data,
             new_tx_block_attempts: DEFAULT_NEW_TX_BLOCK_ATTEMPTS,
+            use_rth_memos,
             logger,
         }
     }
@@ -323,6 +328,7 @@ impl Client {
             target_address,
             tombstone_block,
             fog_resolver,
+            self.use_rth_memos,
             rng,
             &self.logger,
             fee,
@@ -529,6 +535,7 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     target_address: &PublicAddress,
     tombstone_block: BlockIndex,
     fog_resolver: FPR,
+    use_rth_memos: bool,
     rng: &mut T,
     logger: &Logger,
     fee: u64,
@@ -543,11 +550,17 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
         return Err(Error::RingsForInput(rings.len(), inputs.len()));
     }
 
-    let mut memo_builder = RTHMemoBuilder::default();
-    memo_builder.set_sender_credential(SenderMemoCredential::from(source_account_key));
-    memo_builder.enable_destination_memo();
+    // Use the RTHMemoBuilder if memos are enabled, NoMemoBuilder otherwise
+    let mut tx_builder = if use_rth_memos {
+        let mut memo_builder = RTHMemoBuilder::default();
+        memo_builder.set_sender_credential(SenderMemoCredential::from(source_account_key));
+        memo_builder.enable_destination_memo();
 
-    let mut tx_builder = TransactionBuilder::new(fog_resolver, memo_builder);
+        TransactionBuilder::new(fog_resolver, memo_builder)
+    } else {
+        let memo_builder = NoMemoBuilder::default();
+        TransactionBuilder::new(fog_resolver, memo_builder)
+    };
     tx_builder.set_fee(fee)?;
 
     let input_amount = inputs.iter().fold(0, |acc, (txo, _)| acc + txo.value);
@@ -779,6 +792,7 @@ mod test_build_transaction_helper {
             &recipient_account_key.default_subaddress(),
             super::BlockIndex::max_value(),
             fake_acct_resolver,
+            true,
             &mut rng,
             &logger,
             MINIMUM_FEE,

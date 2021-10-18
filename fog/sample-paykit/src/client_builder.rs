@@ -29,6 +29,9 @@ pub struct ClientBuilder {
     // Optional, has sane defaults
     ring_size: usize,
 
+    // Whether to use memos. For backwards compat, turn this off
+    use_rth_memos: bool,
+
     // Uris to fog services
     fog_view_address: FogViewUri,
     ledger_server_address: FogLedgerUri,
@@ -57,6 +60,7 @@ impl ClientBuilder {
             key,
             logger,
             ring_size: RING_SIZE,
+            use_rth_memos: true,
             fog_view_address,
             ledger_server_address,
             address_book: Default::default(),
@@ -71,6 +75,13 @@ impl ClientBuilder {
     pub fn ring_size(self, ring_size: usize) -> Self {
         let mut retval = self;
         retval.ring_size = ring_size;
+        retval
+    }
+
+    /// Sets whether or not to use memos
+    pub fn use_rth_memos(self, flag: bool) -> Self {
+        let mut retval = self;
+        retval.use_rth_memos = flag;
         retval
     }
 
@@ -165,6 +176,7 @@ impl ClientBuilder {
             self.ring_size,
             self.key.clone(),
             self.address_book.clone(),
+            self.use_rth_memos,
             self.logger.clone(),
         )
     }

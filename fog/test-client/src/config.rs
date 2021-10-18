@@ -92,6 +92,10 @@ pub struct TestClientConfig {
     /// Fog view enclave CSS file (overriding the build-time CSS)
     #[structopt(long)]
     pub fog_view_enclave_css: Option<String>,
+
+    /// Whether to turn off memos, for backwards compatibility
+    #[structopt(long)]
+    pub no_memos: bool,
 }
 
 impl TestClientConfig {

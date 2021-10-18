@@ -33,8 +33,8 @@ fn main() {
     let policy = TestClientPolicy {
         // Don't fail fast when running continuously, we want to keep measuring after the deadline
         fail_fast_on_deadline: !config.continuous,
-        // Don't test RTH memos when running continuously, because we haven't deployed that yet
-        test_rth_memos: !config.continuous,
+        // Don't test RTH memos when passed --no_memos
+        test_rth_memos: !config.no_memos,
         tx_submit_deadline: config.consensus_wait,
         tx_receive_deadline: config.consensus_wait,
         double_spend_wait: config.ledger_sync_wait,

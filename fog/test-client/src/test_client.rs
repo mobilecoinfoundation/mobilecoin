@@ -180,6 +180,7 @@ impl TestClient {
                 self.logger.clone(),
             )
             .ring_size(RING_SIZE)
+            .use_rth_memos(self.policy.test_rth_memos)
             .address_book(address_book.clone())
             .consensus_sig(self.consensus_sig.clone())
             .fog_ingest_sig(self.fog_ingest_sig.clone())
