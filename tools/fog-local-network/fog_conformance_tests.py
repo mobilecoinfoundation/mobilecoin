@@ -954,6 +954,70 @@ class FogConformanceTest:
         ])
 
         #######################################################################
+        # Test what happens when Fog Ingest misses blocks.
+        #######################################################################
+        print(
+            "Stopping fog ingest server. (This is 'fog_ingest2' since 'fog_ingest1' has been retired)."
+        )
+        self.fog_ingest2.stop()
+        self.fog_ingest2.remove_state_file()
+
+        # While the fog ingest server is stopped, add block 11 to ledger.
+        # Give 5 to everyone
+        # Take 3 from 0.
+        credits11 = [
+            { 'account': 0, 'amount': 5 },
+            { 'account': 1, 'amount': 5 },
+            { 'account': 2, 'amount': 5 },
+            { 'account': 3, 'amount': 5 },
+            { 'account': 4, 'amount': 5 },
+        ]
+        key_images11 = [block10_key_images[0]]
+        print("Key images spent in Block 11: ", key_images11)
+
+        block11_key_images = ledger2.add_block(credits11, key_images11, fog_pubkey)
+
+        print("Key images for new transactions in Block 11: ",
+              block11_key_images)
+        time.sleep(1)
+
+        self.multi_balance_checker.balance_check("from11a", [
+            [{11: 17, 12: 19}, [11]],
+            [{11: 15, 12: 20}, [11]],
+            [{11: 7, 12: 12}, [11]],
+            [{11: 7, 12: 12}, [11]],
+            [{11: 16, 12: 21}, [11]],
+        ])
+
+        # Restart fog ingest after the block has been added to the ledger.
+        self.fog_ingest2.start()
+        print("Giving ingest2 some time for RPC to wake up...")
+        time.sleep(10 if self.release else 30)
+
+        # Tell the second ingest server to activate.
+        # This enables Ingest to learn from Ledger that the new highest block
+        # count is 12.
+        status = self.fog_ingest2.activate()
+        assert status["mode"] == "Active"
+
+        self.fog_ingest2.report_lost_ingress_key(fog_pubkey)
+        new_fog_pubkey = subprocess.check_output(f"cd {FOG_PROJECT_DIR} && exec {target_dir(self.release)}/fog-report-cli --public-address {keyfile} --retry-seconds={FOG_REPORT_RETRY_SECONDS}", shell = True).decode("utf-8")
+        assert new_fog_pubkey != fog_pubkey
+        # Add the block to the restarted ingest. While ingest won't scan the
+        # TxOuts in the block because it is using a new fog pubkey, it's required
+        # because it makes sure that ingest updates the current highest block
+        # that's been processed.
+        ledger1.add_block(credits11, key_images11, fog_pubkey)
+
+        self.multi_balance_checker.balance_check("from11b", [
+            [{11: 17, 12: 19}, [12]],
+            [{11: 15, 12: 20}, [12]],
+            [{11: 7, 12: 12}, [12]],
+            [{11: 7, 12: 12}, [12]],
+            [{11: 16, 12: 21}, [12]],
+        ])
+
+        #######################################################################
         # Done
         #######################################################################
 
