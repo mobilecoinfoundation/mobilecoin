@@ -24,6 +24,8 @@
 
 #define LIB_MC_ERROR_CODE_TRANSACTION_CRYPTO 400
 
+#define LIB_MC_ERROR_CODE_FOG_PUBKEY 500
+
 typedef struct AttestAke AttestAke;
 
 typedef struct McFogResolver McFogResolver;
@@ -94,6 +96,26 @@ typedef struct McRngCallback {
   FfiOptMutPtr<void> context;
 } McRngCallback;
 
+typedef FullyValidatedFogPubkey McFullyValidatedFogPubkey;
+
+typedef struct McPublicAddressFogInfo {
+  FfiStr report_url;
+  FfiStr report_id;
+  FfiRefPtr<McBuffer> authority_sig;
+} McPublicAddressFogInfo;
+
+typedef struct McPublicAddress {
+  /**
+   * 32-byte `CompressedRistrettoPublic`
+   */
+  FfiRefPtr<McBuffer> view_public_key;
+  /**
+   * 32-byte `CompressedRistrettoPublic`
+   */
+  FfiRefPtr<McBuffer> spend_public_key;
+  FfiOptRefPtr<McPublicAddressFogInfo> fog_info;
+} McPublicAddress;
+
 typedef VersionedKexRng McFogRng;
 
 typedef struct McAccountKeyFogInfo {
@@ -122,24 +144,6 @@ typedef struct McTxOutAmount {
 } McTxOutAmount;
 
 typedef struct Option_TransactionBuilder_FogResolver McTransactionBuilder;
-
-typedef struct McPublicAddressFogInfo {
-  FfiStr report_url;
-  FfiStr report_id;
-  FfiRefPtr<McBuffer> authority_sig;
-} McPublicAddressFogInfo;
-
-typedef struct McPublicAddress {
-  /**
-   * 32-byte `CompressedRistrettoPublic`
-   */
-  FfiRefPtr<McBuffer> view_public_key;
-  /**
-   * 32-byte `CompressedRistrettoPublic`
-   */
-  FfiRefPtr<McBuffer> spend_public_key;
-  FfiOptRefPtr<McPublicAddressFogInfo> fog_info;
-} McPublicAddress;
 
 void mc_data_free(FfiOptOwnedPtr<McData> data);
 
@@ -451,6 +455,10 @@ FfiOptOwnedPtr<McFogResolver> mc_fog_resolver_create(FfiRefPtr<McVerifier> fog_r
 
 void mc_fog_resolver_free(FfiOptOwnedPtr<McFogResolver> fog_resolver);
 
+FfiOptOwnedPtr<McFullyValidatedFogPubkey> mc_fog_resolver_get_fog_pubkey(FfiRefPtr<McFogResolver> fog_resolver,
+                                                                         FfiRefPtr<McPublicAddress> recipient,
+                                                                         FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
 /**
  * # Preconditions
  *
@@ -465,6 +473,13 @@ bool mc_fog_resolver_add_report_response(FfiMutPtr<McFogResolver> fog_resolver,
                                          FfiStr report_url,
                                          FfiRefPtr<McBuffer> report_response,
                                          FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+void mc_fully_validated_fog_pubkey_free(FfiOptOwnedPtr<McFullyValidatedFogPubkey> fully_validated_fog_pubkey);
+
+void mc_fully_validated_fog_pubkey_get_pubkey(FfiRefPtr<McFullyValidatedFogPubkey> fully_validated_fog_pubkey,
+                                              FfiMutPtr<McMutableBuffer> out_pubkey);
+
+uint64_t mc_fully_validated_fog_pubkey_get_pubkey_expiry(FfiRefPtr<McFullyValidatedFogPubkey> fully_validated_fog_pubkey);
 
 /**
  * # Preconditions

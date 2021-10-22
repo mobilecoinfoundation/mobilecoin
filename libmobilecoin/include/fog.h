@@ -71,8 +71,6 @@ uint64_t mc_fully_validated_fog_pubkey_get_pubkey_expiry(
     const McFullyValidatedFogPubkey* MC_NONNULL fully_validated_fog_pubkey
 );
 
-
-
 /* ==== McFogRng ==== */
 
 /// # Preconditions
