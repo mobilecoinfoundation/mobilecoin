@@ -1,0 +1,3 @@
+[submodule "libmobilecoin/rust-bitcode"]
+	path = libmobilecoin/rust-bitcode
+	url = git@github.com:mobilecoinofficial/rust-bitcode.git

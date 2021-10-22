@@ -11,9 +11,12 @@ export IAS_MODE ?= DEV
 
 ### Build Configuration
 
-CARGO_PROFILE ?= release
+CARGO_PROFILE ?= mobile-release
 CARGO_BUILD_FLAGS ?=
 CARGO_TARGET_DIR ?= ../target
+RUST_BITCODE_DIR ?= rust-bitcode
+
+$(info CARGO_PROFILE)
 
 ### Toolchain
 
@@ -33,17 +36,26 @@ endif
 ### Local Variables
 
 CARGO_PACKAGE = libmobilecoin
-ARCHS_IOS = aarch64-apple-ios-sim aarch64-apple-ios-macabi aarch64-apple-ios x86_64-apple-ios-macabi x86_64-apple-ios x86_64-apple-darwin
+ARCHS_IOS = aarch64-apple-ios-sim aarch64-apple-ios-macabi aarch64-apple-ios x86_64-apple-ios-macabi x86_64-apple-ios
 IOS_LIB = libmobilecoin.a
-IOS_LIB_STRIPPED = libmobilecoin_stripped.a
 IOS_C_HEADERS = include/*
+
+RUST_COMMIT = 4e282795d
+RUST_COMMIT_NAME = nightly-2021-08-01
+SWIFT_VERSION = 5.3.2
 
 ### Helper Function
 
 define BINARY_copy
-	mkdir -p out/ios/target/$(1)/release
-	cp $(CARGO_TARGET_DIR)/$(1)/release/libmobilecoin_stripped.a out/ios/target/$(1)/release;
+	mkdir -p out/ios/target/$(1)/${CARGO_PROFILE}
+	cp $(CARGO_TARGET_DIR)/$(1)/${CARGO_PROFILE}/libmobilecoin.a out/ios/target/$(1)/${CARGO_PROFILE};
 endef
+
+define TOOLCHAIN_search
+endef
+
+DOT:= .
+DASH:= -
 
 ####################################
 ############## Targets #############
@@ -63,10 +75,13 @@ ios: out/ios/$(IOS_LIB)
 
 CARGO_BUILD_FLAGS += --lib -Z avoid-dev-deps
 ifeq ($(CARGO_PROFILE),release)
-  BUILD_CONFIG_FOLDER = release
+  BUILD_CONFIG_FOLDER = ${CARGO_PROFILE}
   CARGO_BUILD_FLAGS += --release
-else
+else ifeq ($(CARGO_PROFILE),debug)
   BUILD_CONFIG_FOLDER = debug
+else
+  BUILD_CONFIG_FOLDER = ${CARGO_PROFILE}
+  CARGO_BUILD_FLAGS += -Z unstable-options --profile ${CARGO_PROFILE}
 endif
 
 .PHONY: $(ARCHS_IOS)
@@ -76,35 +91,23 @@ x86_64-apple-ios aarch64-apple-ios: CARGO_ENV_FLAGS += CXXFLAGS="-DPB_NO_PACKED_
 x86_64-apple-ios x86_64-apple-ios-macabi x86_64-apple-darwin: LD_ARCH = x86_64
 aarch64-apple-ios aarch64-apple-ios-sim aarch64-apple-ios-macabi: LD_ARCH = arm64
 
-x86_64-apple-ios-macabi aarch64-apple-ios-sim aarch64-apple-ios-macabi: CARGO_BUILD_FLAGS += -Zbuild-std
-
 $(ARCHS_IOS):
-	$(CARGO_ENV_FLAGS) $(CARGO) build --package $(CARGO_PACKAGE) --target $@ $(CARGO_BUILD_FLAGS)
+	$(info "Compiling/Installing Rust $(RUST_COMMIT_NAME) toolchain")
+	$(info "from commit - $(RUST_COMMIT)")
+	$(info "for target - $@")
+	$(info "with LLVM matching swift version - $(SWIFT_VERSION)")
 
-	@# Extract object files from static archive.
-	@cd $(CARGO_TARGET_DIR)/$@/$(BUILD_CONFIG_FOLDER) && \
-		rm -rf extracted 2>/dev/null; \
-		mkdir -p extracted
-	cd $(CARGO_TARGET_DIR)/$@/$(BUILD_CONFIG_FOLDER)/extracted && \
-		ar -t ../$(IOS_LIB) \
-			| grep '\.o$$' \
-			| xargs ar -x ../$(IOS_LIB)
+	@TOOLCHAIN_INSTALLED=$(shell rustup toolchain list | grep "ios-$@-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION))" | wc -l | awk '{$$1=$$1;print}'); \
+		if [ "$$TOOLCHAIN_INSTALLED" == "1" ]; then \
+        echo "Toolchain installed"; \
+    else \
+      echo "Installing toolchain"; \
+			cd rust-bitcode && \
+				build-install.sh -t $@ -l $(SWIFT_VERSION) -r $(RUST_COMMIT) -n $(RUST_COMMIT_NAME); \
+    fi
 
-	@# Create list of libmobilecoin symbols.
-	cd $(CARGO_TARGET_DIR)/$@/$(BUILD_CONFIG_FOLDER) && \
-		rust-nm -jgU extracted/mobilecoin*.mobilecoin.*.o -s __TEXT __text \
-			| grep '\<_mc_' \
-			> exported-symbols.def
+	$(CARGO_ENV_FLAGS) $(CARGO) +ios-$@-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION)) build --package $(CARGO_PACKAGE) --target $@ $(CARGO_BUILD_FLAGS)
 
-	@# Link extracted object files back into static arch. Removes all symbols not needed
-	@# by exported libmobilecoin symbols.
-	@cd $(CARGO_TARGET_DIR)/$@/$(BUILD_CONFIG_FOLDER) && \
-		rm -f $(IOS_LIB_STRIPPED) || true
-	cd $(CARGO_TARGET_DIR)/$@/$(BUILD_CONFIG_FOLDER) && \
-		ld -r -arch $(LD_ARCH) -x -keep_private_externs \
-			-exported_symbols_list exported-symbols.def \
-			-o $(IOS_LIB_STRIPPED) \
-			extracted/*.o
 
 .PHONY: out/ios/$(IOS_LIB)
 out/ios/$(IOS_LIB): $(ARCHS_IOS)
