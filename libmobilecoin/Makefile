@@ -59,8 +59,8 @@ define TOOLCHAIN_install
 	     			wc -l | \
 	     			awk '{$$1=$$1;print}' | \
 	     			grep '1'), \
-	  @echo "toolchain already installed", \
-    @echo "toolchain not already installed"; \
+	  @echo "toolchain ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION)) already installed", \
+    @echo "toolchain ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION)) not installed"; \
 		$(info "Compiling & Installing Rust $(RUST_COMMIT_NAME) toolchain") \
 		$(info "with LLVM matching swift version - $(SWIFT_VERSION)") \
 		$(info "from `rust` commit - $(RUST_COMMIT)") \
@@ -108,8 +108,8 @@ x86_64-apple-ios x86_64-apple-ios-macabi x86_64-apple-darwin: LD_ARCH = x86_64
 aarch64-apple-ios aarch64-apple-ios-sim aarch64-apple-ios-macabi: LD_ARCH = arm64
 
 $(ARCHS_IOS):
-	
 	$(call TOOLCHAIN_install,$@)
+	$(CARGO_ENV_FLAGS) $(CARGO) +ios-$@-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION)) build --package $(CARGO_PACKAGE) --target $@ $(CARGO_BUILD_FLAGS)
 
 
 .PHONY: out/ios/$(IOS_LIB)
