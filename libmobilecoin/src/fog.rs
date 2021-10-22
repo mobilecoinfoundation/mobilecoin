@@ -74,8 +74,8 @@ pub extern "C" fn mc_fog_resolver_add_report_response(
     ffi_boundary_with_error(out_error, || {
         let report_url =
             <&str>::try_from_ffi(report_url).expect("report_url isn't a valid C string");
-        let report_url =
-            FogUri::from_str(report_url).expect("report_url isn't a valid Fog report uri");
+        let report_url = FogUri::from_str(report_url)
+            .map_err(|err| LibMcError::InvalidInput(err.to_string()))?;
         let report_url = report_url.to_string();
         let report_response = mc_util_serial::decode(report_response.as_slice())?;
 
