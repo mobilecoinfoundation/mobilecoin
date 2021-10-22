@@ -33,7 +33,8 @@ void mc_fog_resolver_free(
 
 McFullyValidatedFogPubkey* MC_NULLABLE mc_fog_resolver_get_fog_pubkey(
     const McFogResolver* MC_NONNULL fog_resolver,
-    const McPublicAddress* MC_NONNULL recipient
+    const McPublicAddress* MC_NONNULL recipient,
+    McError* MC_NULLABLE * MC_NULLABLE out_error
 )
 MC_ATTRIBUTE_NONNULL(1, 2);
 

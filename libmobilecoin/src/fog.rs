@@ -43,19 +43,19 @@ pub extern "C" fn mc_fog_resolver_free(fog_resolver: FfiOptOwnedPtr<McFogResolve
 pub extern "C" fn mc_fog_resolver_get_fog_pubkey(
     fog_resolver: FfiRefPtr<McFogResolver>,
     recipient: FfiRefPtr<McPublicAddress>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
 ) -> FfiOptOwnedPtr<McFullyValidatedFogPubkey> {
-    ffi_boundary(|| {
+    ffi_boundary_with_error(out_error, || {
         // It is safe to add an expect here (which should never occur) because
         // fogReportUrl is already checked in mc_fog_resolver_add_report_response
         // to be convertible to FogUri
         let fog_resolver = FogResolver::new(fog_resolver.0.clone(), &fog_resolver.1)
             .expect("FogResolver could not be constructed from the provided materials");
 
-        let recipient = PublicAddress::try_from_ffi(&recipient)
-            .expect("recipient is not a valid PublicAddress");
-        let fully_validated_fog_pubkey = fog_resolver.get_fog_pubkey(&recipient).expect("TODO");
+        let recipient = PublicAddress::try_from_ffi(&recipient)?;
+        let fully_validated_fog_pubkey = fog_resolver.get_fog_pubkey(&recipient)?;
 
-        fully_validated_fog_pubkey
+        Ok(fully_validated_fog_pubkey)
     })
 }
 

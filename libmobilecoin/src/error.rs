@@ -30,6 +30,7 @@ pub enum LibMcError {
 
     /// Invalid input: {0}
     InvalidInput(String),
+
     /// Invalid output: {0}
     InvalidOutput(String),
 
@@ -38,13 +39,18 @@ pub enum LibMcError {
 
     /// Authenticated encryption failure: {0}
     Aead(String),
+
     /// Cipher error: {0}
     Cipher(String),
+
     /// Unsupported CryptoBox version: {0}
     UnsupportedCryptoBoxVersion(String),
 
     /// Transaction cryptography error: {0}
     TransactionCrypto(String),
+
+    /// Fog pubkey error: {0},
+    FogPubkey(String),
 }
 
 mod error_codes {
@@ -63,6 +69,8 @@ mod error_codes {
     pub const LIB_MC_ERROR_CODE_UNSUPPORTED_CRYPTO_BOX_VERSION: c_int = 302;
 
     pub const LIB_MC_ERROR_CODE_TRANSACTION_CRYPTO: c_int = 400;
+
+    pub const LIB_MC_ERROR_CODE_FOG_PUBKEY: c_int = 500;
 }
 
 impl LibMcError {
@@ -82,6 +90,7 @@ impl LibMcError {
                 LIB_MC_ERROR_CODE_UNSUPPORTED_CRYPTO_BOX_VERSION
             }
             LibMcError::TransactionCrypto(_) => LIB_MC_ERROR_CODE_TRANSACTION_CRYPTO,
+            LibMcError::FogPubkey(_) => LIB_MC_ERROR_CODE_FOG_PUBKEY,
         }
     }
 
@@ -169,6 +178,22 @@ impl From<TxBuilderError> for LibMcError {
             LibMcError::AttestationVerificationFailed(format!("{:?}", err))
         } else {
             LibMcError::InvalidInput(format!("{:?}", err))
+        }
+    }
+}
+
+impl From<FogPubkeyError> for LibMcError {
+    fn from(err: FogPubkeyError) -> Self {
+        match err {
+            FogPubkeyError::NoFogReportUrl
+            | FogPubkeyError::Url(_)
+            | FogPubkeyError::Deserialization(_) => LibMcError::InvalidInput(err.to_string()),
+
+            FogPubkeyError::IngestReport(IngestReportError::Verifier(
+                VerifierError::Verification(_),
+            )) => LibMcError::AttestationVerificationFailed(err.to_string()),
+
+            _ => LibMcError::FogPubkey(err.to_string()),
         }
     }
 }
