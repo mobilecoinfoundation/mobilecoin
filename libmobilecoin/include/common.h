@@ -54,6 +54,8 @@ typedef enum MC_ATTRIBUTE_ENUM_CLOSED {
   McErrorCodeUnsupportedCryptoBoxVersion = 302,
 
   McErrorCodeTransactionCrypto = 400,
+
+  McErrorCodeFogPubkey = 500,
 } McErrorCode;
 
 /* ==== McError ==== */
