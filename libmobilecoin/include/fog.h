@@ -16,6 +16,8 @@ extern "C" {
 
 typedef struct _McFogResolver McFogResolver;
 
+typedef struct _McFullyValidatedFogPubkey McFullyValidatedFogPubkey;
+
 typedef struct _McFogRng McFogRng;
 
 /* ==== McFogResolver ==== */
@@ -28,6 +30,12 @@ MC_ATTRIBUTE_NONNULL(1);
 void mc_fog_resolver_free(
   McFogResolver* MC_NULLABLE fog_resolver
 );
+
+McFullyValidatedFogPubkey* MC_NULLABLE mc_fog_resolver_get_fog_pubkey(
+    const McFogResolver* MC_NONNULL fog_resolver,
+    const McPublicAddress* MC_NONNULL recipient
+)
+MC_ATTRIBUTE_NONNULL(1, 2);
 
 /// # Preconditions
 ///
@@ -43,6 +51,26 @@ bool mc_fog_resolver_add_report_response(
   McError* MC_NULLABLE * MC_NULLABLE out_error
 )
 MC_ATTRIBUTE_NONNULL(1, 2, 3);
+
+/* ==== McFullyValidatedFogPubkey ==== */
+
+void mc_fully_validated_fog_pubkey_free(
+    McFullyValidatedFogPubkey* MC_NULLABLE fully_validated_fog_pubkey
+);
+
+/// # Preconditions
+///
+/// * `out_pubkey` - length must be >= 32.
+bool mc_fully_validated_fog_pubkey_get_pubkey(
+    const McFullyValidatedFogPubkey* MC_NONNULL fully_validated_fog_pubkey,
+    McMutableBuffer* MC_NONNULL out_pubkey
+);
+
+uint64_t mc_fully_validated_fog_pubkey_get_pubkey_expiry(
+    const McFullyValidatedFogPubkey* MC_NONNULL fully_validated_fog_pubkey
+);
+
+
 
 /* ==== McFogRng ==== */
 

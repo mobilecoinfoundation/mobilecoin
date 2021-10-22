@@ -1,12 +1,15 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use crate::{attest::McVerifier, common::*, LibMcError};
+use crate::{attest::McVerifier, common::*, keys::McPublicAddress, LibMcError};
 use core::convert::TryFrom;
 use libc::ssize_t;
+use mc_account_keys::PublicAddress;
 use mc_attest_core::Verifier;
-use mc_crypto_keys::RistrettoPrivate;
+use mc_crypto_keys::{ReprBytes, RistrettoPrivate, RistrettoPublic};
 use mc_fog_kex_rng::{BufferedRng, KexRngPubkey, NewFromKex, StoredRng, VersionedKexRng};
-use mc_fog_report_validation::FogReportResponses;
+use mc_fog_report_validation::{
+    FogPubkeyResolver, FogReportResponses, FogResolver, FullyValidatedFogPubkey,
+};
 use mc_util_ffi::*;
 use mc_util_serial::Message;
 use mc_util_uri::FogUri;
@@ -33,6 +36,26 @@ pub extern "C" fn mc_fog_resolver_create(
 pub extern "C" fn mc_fog_resolver_free(fog_resolver: FfiOptOwnedPtr<McFogResolver>) {
     ffi_boundary(|| {
         let _ = fog_resolver;
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn mc_fog_resolver_get_fog_pubkey(
+    fog_resolver: FfiRefPtr<McFogResolver>,
+    recipient: FfiRefPtr<McPublicAddress>,
+) -> FfiOptOwnedPtr<McFullyValidatedFogPubkey> {
+    ffi_boundary(|| {
+        // It is safe to add an expect here (which should never occur) because
+        // fogReportUrl is already checked in mc_fog_resolver_add_report_response
+        // to be convertible to FogUri
+        let fog_resolver = FogResolver::new(fog_resolver.0.clone(), &fog_resolver.1)
+            .expect("FogResolver could not be constructed from the provided materials");
+
+        let recipient = PublicAddress::try_from_ffi(&recipient)
+            .expect("recipient is not a valid PublicAddress");
+        let fully_validated_fog_pubkey = fog_resolver.get_fog_pubkey(&recipient).expect("TODO");
+
+        fully_validated_fog_pubkey
     })
 }
 
@@ -65,6 +88,42 @@ pub extern "C" fn mc_fog_resolver_add_report_response(
             .insert(report_url, report_response);
         Ok(())
     })
+}
+
+/* ==== McFullyValidatedFogPubkey ==== */
+
+pub type McFullyValidatedFogPubkey = FullyValidatedFogPubkey;
+impl_into_ffi!(FullyValidatedFogPubkey);
+
+#[no_mangle]
+pub extern "C" fn mc_fully_validated_fog_pubkey_free(
+    fully_validated_fog_pubkey: FfiOptOwnedPtr<McFullyValidatedFogPubkey>,
+) {
+    ffi_boundary(|| {
+        let _ = fully_validated_fog_pubkey;
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn mc_fully_validated_fog_pubkey_get_pubkey(
+    fully_validated_fog_pubkey: FfiRefPtr<McFullyValidatedFogPubkey>,
+    out_pubkey: FfiMutPtr<McMutableBuffer>,
+) {
+    ffi_boundary(|| {
+        let out_pubkey = out_pubkey
+            .into_mut()
+            .as_slice_mut_of_len(RistrettoPublic::size())
+            .expect("out_pubkey length is insufficient");
+
+        out_pubkey.copy_from_slice(&fully_validated_fog_pubkey.pubkey.to_bytes())
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn mc_fully_validated_fog_pubkey_get_pubkey_expiry(
+    fully_validated_fog_pubkey: FfiRefPtr<McFullyValidatedFogPubkey>,
+) -> u64 {
+    ffi_boundary(|| fully_validated_fog_pubkey.pubkey_expiry)
 }
 
 /* ==== McFogRng ==== */
