@@ -16,9 +16,7 @@ CARGO_BUILD_FLAGS ?=
 CARGO_TARGET_DIR ?= ../target
 RUST_BITCODE_DIR ?= rust-bitcode
 
-$(info CARGO_PROFILE)
-
-$(info CARGO_PROFILE)
+$(info profile: $(CARGO_PROFILE))
 
 ### Toolchain
 
