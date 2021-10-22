@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-types"
-version = "1.1.0"
+version = "1.2.0-pre0"
 authors = ["MobileCoin"]
 edition = "2018"
 license = "GPL-3.0"
@@ -17,7 +17,7 @@ mc-fog-kex-rng = { path = "../kex_rng" }
 # third-party
 crc = { version = "2.0.0", default-features = false }
 displaydoc = { version = "0.2", default-features = false }
-prost = { version = "0.8", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.9", default-features = false, features = ["prost-derive"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]

@@ -19,8 +19,10 @@ use std::{collections::BTreeSet, fmt::Display};
 /// the blockchain and publishing fog reports
 ///
 /// Idle -> Active: This transition happens when the server is asked to start
-/// via grpc Active -> Idle: This transition happens when we try to publish a
-/// report after scanning a block,                 and learn that the key is
+/// via grpc
+///
+/// Active -> Idle: This transition happens when we try to publish a
+/// report after scanning a block, and learn that the key is
 /// marked "retired" and the pubkey_expiry block has already
 /// been scanned, so there is nothing more to do with this key.
 #[derive(Copy, Clone, Display, Debug, PartialEq, Eq)]
@@ -79,14 +81,16 @@ impl IngestControllerState {
     /// Initialize ingest controller state from config, and a logger
     pub fn new(config: &IngestServerConfig, logger: Logger) -> Self {
         let peers = config.peers.clone();
-        Self {
+        let result = Self {
             mode: IngestMode::Idle,
             next_block_index: 0, // this is set when the server activates, based on DB's
             pubkey_expiry_window: config.pubkey_expiry_window,
             ingest_invocation_id: None,
             peers,
             logger,
-        }
+        };
+        result.update_metrics();
+        result
     }
 
     /// Are we in the idle mode
@@ -255,6 +259,11 @@ impl IngestControllerState {
         );
         self.mode = mode;
 
+        self.update_metrics()
+    }
+
+    /// Updates the server-wide metrics related to the mode
+    fn update_metrics(&self) {
         match self.mode {
             IngestMode::Idle => {
                 counters::MODE_IS_IDLE.set(1);

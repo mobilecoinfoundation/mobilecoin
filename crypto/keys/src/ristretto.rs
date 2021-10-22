@@ -33,6 +33,7 @@ use schnorrkel_og::{
 };
 use serde::{Deserialize, Serialize};
 use signature::{Error as SignatureError, Error};
+use subtle::{Choice, ConstantTimeEq};
 use zeroize::Zeroize;
 
 /// A Ristretto-format private scalar
@@ -183,6 +184,12 @@ impl KexPrivate for RistrettoPrivate {
 
 impl PrivateKey for RistrettoPrivate {
     type Public = RistrettoPublic;
+}
+
+impl ConstantTimeEq for RistrettoPrivate {
+    fn ct_eq(&self, other: &Self) -> Choice {
+        self.0.ct_eq(&other.0)
+    }
 }
 
 /// A private ristretto key which is ephemeral, should never be copied,

@@ -18,6 +18,8 @@ RUST_BITCODE_DIR ?= rust-bitcode
 
 $(info CARGO_PROFILE)
 
+$(info CARGO_PROFILE)
+
 ### Toolchain
 
 CARGO ?= cargo
@@ -49,9 +51,6 @@ SWIFT_VERSION = 5.3.2
 define BINARY_copy
 	mkdir -p out/ios/target/$(1)/${CARGO_PROFILE}
 	cp $(CARGO_TARGET_DIR)/$(1)/${CARGO_PROFILE}/libmobilecoin.a out/ios/target/$(1)/${CARGO_PROFILE};
-endef
-
-define TOOLCHAIN_search
 endef
 
 DOT:= .

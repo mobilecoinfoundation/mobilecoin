@@ -10,7 +10,6 @@ use mc_attest_core::{
 };
 use mc_common::logger::global_log;
 use mc_util_encodings::{FromBase64, FromHex, ToBase64};
-use pem::parse_many;
 use percent_encoding::percent_decode;
 use reqwest::{
     blocking::Client,
@@ -109,17 +108,14 @@ impl RaClient for IasClient {
             headers
                 .get(IAS_SIGNING_CERTS)
                 .ok_or(Error::MissingSigningCertsError)?
-                .to_str()
-                .map_err(|_e| Error::BadSigningCertsError)?
+                .to_str()?
                 .as_bytes(),
         )
-        .decode_utf8()
-        .map_err(|_e| Error::BadSigningCertsError)?;
+        .decode_utf8()?;
 
-        // It would be nice to eliminate the double-copy here, but... meh.
-        let chain: Vec<Vec<u8>> = parse_many(pem_str.as_bytes())
-            .iter()
-            .map(|p| p.contents.clone())
+        let chain = pem::parse_many(pem_str.as_bytes())?
+            .into_iter()
+            .map(|p| p.contents)
             .collect();
         let http_body = response.text()?;
 

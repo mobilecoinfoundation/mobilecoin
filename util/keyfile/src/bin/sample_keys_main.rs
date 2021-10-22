@@ -19,6 +19,10 @@ struct Config {
 
     /// Fog Authority subjectPublicKeyInfo, loaded from a PEM root certificate
     #[structopt(long = "fog-authority-root", parse(try_from_str=load_spki_from_pemfile))]
+    pub fog_authority_root: Option<VecBytes>,
+
+    /// Fog Authority subjectPublicKeyInfo, encoded in base 64
+    #[structopt(long = "fog-authority-spki", parse(try_from_str=decode_base64))]
     pub fog_authority_spki: Option<VecBytes>,
 
     /// Number of user keys to generate.
@@ -47,6 +51,11 @@ fn load_spki_from_pemfile(src: &str) -> Result<VecBytes, String> {
     .map(|cert| cert.subject_public_key_info().spki().to_vec())
 }
 
+/// Given the spki bytes as base64, decode them
+fn decode_base64(src: &str) -> Result<VecBytes, String> {
+    base64::decode(src).map_err(|e| e.to_string())
+}
+
 fn main() {
     let config = Config::from_args();
 
@@ -55,6 +64,16 @@ fn main() {
         .clone()
         .unwrap_or_else(|| std::env::current_dir().unwrap().join("keys"));
 
+    let spki = config
+        .fog_authority_root
+        .as_ref()
+        .or_else(|| config.fog_authority_spki.as_ref())
+        .cloned();
+
+    if config.fog_report_url.is_some() && spki.is_none() {
+        panic!("Fog report url was passed, so fog is enabled, but no fog authority spki was provided. This is needed for the fog authority signature scheme. Use --fog-authority-root to pass a .pem file or --fog-authority-spki to pass base64 encoded bytes specifying this")
+    }
+
     println!("Writing {} keys to {:?}", config.num, path);
 
     mc_util_keyfile::keygen::write_default_keyfiles(
@@ -62,7 +81,7 @@ fn main() {
         config.num,
         config.fog_report_url.as_deref(),
         config.fog_report_id.as_deref(),
-        config.fog_authority_spki.as_deref(),
+        spki.as_deref(),
         config.seed.unwrap_or(mc_util_keyfile::keygen::DEFAULT_SEED),
     )
     .unwrap();
