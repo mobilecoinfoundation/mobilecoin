@@ -459,6 +459,10 @@ FfiOptOwnedPtr<McFullyValidatedFogPubkey> mc_fog_resolver_get_fog_pubkey(FfiRefP
                                                                          FfiRefPtr<McPublicAddress> recipient,
                                                                          FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
+FfiOptOwnedPtr<McFullyValidatedFogPubkey> mc_fog_resolver_get_fog_pubkey_from_protobuf_public_address(FfiRefPtr<McFogResolver> fog_resolver,
+                                                                                                      FfiRefPtr<McBuffer> recipient_protobuf,
+                                                                                                      FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
 /**
  * # Preconditions
  *

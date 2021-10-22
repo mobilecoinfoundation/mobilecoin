@@ -38,6 +38,13 @@ McFullyValidatedFogPubkey* MC_NULLABLE mc_fog_resolver_get_fog_pubkey(
 )
 MC_ATTRIBUTE_NONNULL(1, 2);
 
+McFullyValidatedFogPubkey* MC_NULLABLE mc_fog_resolver_get_fog_pubkey_from_protobuf_public_address(
+    const McFogResolver* MC_NONNULL fog_resolver,
+    const McBuffer* MC_NONNULL recipient_protobuf,
+    McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2);
+
 /// # Preconditions
 ///
 /// * `report_url` - must be a nul-terminated C string containing a valid Fog report uri.
