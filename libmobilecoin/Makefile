@@ -51,6 +51,10 @@ define BINARY_copy
 	cp $(CARGO_TARGET_DIR)/$(1)/${CARGO_PROFILE}/libmobilecoin.a out/ios/target/$(1)/${CARGO_PROFILE};
 endef
 
+define TOOLCHAIN_install
+	$(if $(shell rustup toolchain list | grep "ios-$@-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION))" | wc -l | awk '{$$1=$$1;print}' | grep '1'), @echo installed, @echo not installed)
+endef
+
 DOT:= .
 DASH:= -
 
