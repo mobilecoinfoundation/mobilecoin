@@ -55,18 +55,18 @@ endef
 define TOOLCHAIN_install	
 	$(if \
 		$(shell rustup toolchain list | \
-		   			grep "ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION))" | \
-	     			wc -l | \
-	     			awk '{$$1=$$1;print}' | \
-	     			grep '1'), \
-	  @echo "toolchain ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION)) already installed", \
-    @echo "toolchain ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION)) not installed"; \
+		  		grep "ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION))" | \
+	    		wc -l | \
+	    		awk '{$$1=$$1;print}' | \
+	    		grep '1'), \
+		@echo "toolchain ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION)) already installed", \
+		@echo "toolchain ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION)) not installed"; \
 		$(info "Compiling & Installing Rust $(RUST_COMMIT_NAME) toolchain") \
 		$(info "with LLVM matching swift version - $(SWIFT_VERSION)") \
 		$(info "from `rust` commit - $(RUST_COMMIT)") \
 		$(info "for build-target - $(1)") \
 		cd rust-bitcode && \
-			build-install.sh -t $@ -l $(SWIFT_VERSION) -r $(RUST_COMMIT) -n $(RUST_COMMIT_NAME); \
+		build-install.sh -t $@ -l $(SWIFT_VERSION) -r $(RUST_COMMIT) -n $(RUST_COMMIT_NAME); \
 	)
 endef
 
