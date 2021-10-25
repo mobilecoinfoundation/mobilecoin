@@ -431,7 +431,7 @@ commands:
           name: make LibMobileCoin Archive
           working_directory: libmobilecoin
           command: |
-            git submodule sync --recursive && git submodule update --recursive --init
+            git submodule update --recursive --init
             make
 
   fetch-submodules:
