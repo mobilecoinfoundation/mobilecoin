@@ -66,7 +66,7 @@ define TOOLCHAIN_install
 		$(info "from `rust` commit - $(RUST_COMMIT)") \
 		$(info "for build-target - $(1)") \
 		cd rust-bitcode && \
-		build-install.sh -t $@ -l $(SWIFT_VERSION) -r $(RUST_COMMIT) -n $(RUST_COMMIT_NAME); \
+		./build-install.sh -t $@ -l $(SWIFT_VERSION) -r $(RUST_COMMIT) -n $(RUST_COMMIT_NAME); \
 	)
 endef
 
