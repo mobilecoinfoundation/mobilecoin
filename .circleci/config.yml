@@ -434,12 +434,6 @@ commands:
             git submodule update --recursive --init
             make
 
-  fetch-submodules:
-    steps:
-      - run:
-          name: Fetch git submodules
-          command: git submodule update --init --recursive
-
   generate-docs:
     steps:
       - run:
@@ -663,5 +657,5 @@ workflows:
           name: build-libmobilecoin-archive-macos-xcode-<< matrix.xcode-version >>
           matrix:
             parameters:
-              xcode-version: ["12.5.1", *default-xcode-version]
+              xcode-version: ["11.7.0", *default-xcode-version]
           filters: { branches: { ignore: /^deploy\/.*/ } }
