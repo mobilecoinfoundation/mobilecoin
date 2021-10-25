@@ -425,6 +425,13 @@ commands:
           working_directory: libmobilecoin
           command: make cbindgen
 
+  make-libmobilecoin:
+    steps:
+      - run:
+          name: make LibMobileCoin Archive
+          working_directory: libmobilecoin
+          command: make
+
   generate-docs:
     steps:
       - run:
@@ -588,6 +595,28 @@ jobs:
           steps: [ save-sccache-cache, save-cargo-cache, save-homebrew-cache ]
       - post-build
 
+  # Build libmobilecoin.a using macOS
+  build-libmobilecoin-archive-macos:
+    parameters:
+      xcode-version: { type: string, default: *default-xcode-version }
+    executor:
+      name: macos
+      xcode-version: << parameters.xcode-version >>
+    environment:
+      <<: *default-build-environment
+      OPENSSL_BIN: /usr/local/opt/openssl/bin/openssl
+      SCCACHE_CACHE_SIZE: 450M
+      RUSTFLAGS: -D warnings -C target-cpu=penryn
+      CONSENSUS_ENCLAVE_CSS: /Users/distiller/project/sgx/css/src/valid.css
+    steps:
+      - prepare-for-build: { os: macos }
+      - make-libmobilecoin
+      - check-dirty-git
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ save-sccache-cache, save-cargo-cache ]
+      - post-build
+
 workflows:
   version: 2
   # Build and run tests on a single container
@@ -619,4 +648,12 @@ workflows:
           matrix:
             parameters:
               xcode-version: ["11.7.0", *default-xcode-version]
+          filters: { branches: { ignore: /^deploy\/.*/ } }
+
+      # Build archive using macOS
+      - build-libmobilecoin-archive-macos:
+          name: build-libmobilecoin-archive-macos-xcode-<< matrix.xcode-version >>
+          matrix:
+            parameters:
+              xcode-version: ["12.5.1", *default-xcode-version]
           filters: { branches: { ignore: /^deploy\/.*/ } }
