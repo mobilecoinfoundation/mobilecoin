@@ -430,7 +430,9 @@ commands:
       - run:
           name: make LibMobileCoin Archive
           working_directory: libmobilecoin
-          command: make
+          command: |
+            git submodule sync --recursive && git submodule update --recursive --init
+            make
 
   fetch-submodules:
     steps:
@@ -616,7 +618,6 @@ jobs:
       CONSENSUS_ENCLAVE_CSS: /Users/distiller/project/sgx/css/src/valid.css
     steps:
       - prepare-for-build: { os: macos }
-      - fetch-submodules
       - make-libmobilecoin
       - check-dirty-git
       - when:
