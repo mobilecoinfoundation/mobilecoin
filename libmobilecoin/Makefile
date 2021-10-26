@@ -37,6 +37,10 @@ endif
 
 CARGO_PACKAGE = libmobilecoin
 ARCHS_IOS = aarch64-apple-ios-sim aarch64-apple-ios-macabi aarch64-apple-ios x86_64-apple-ios-macabi x86_64-apple-ios
+
+# legacy archs use l_ prefix
+LEGACY_ARCHS_IOS = l_aarch64-apple-ios-sim l_aarch64-apple-ios-macabi l_aarch64-apple-ios l_x86_64-apple-ios-macabi l_x86_64-apple-ios l_x86_64-apple-darwin
+
 IOS_LIB = libmobilecoin.a
 IOS_C_HEADERS = include/*
 
@@ -47,8 +51,8 @@ SWIFT_VERSION = 5.3.2
 ### Helper Function
 
 define BINARY_copy
-	mkdir -p out/ios/target/$(1)/${CARGO_PROFILE}
-	cp $(CARGO_TARGET_DIR)/$(1)/${CARGO_PROFILE}/libmobilecoin.a out/ios/target/$(1)/${CARGO_PROFILE};
+	mkdir -p out/ios/$(2)/$(1)/${CARGO_PROFILE}
+	cp $(CARGO_TARGET_DIR)/$(1)/${CARGO_PROFILE}/libmobilecoin.a out/ios/$(2)/$(1)/${CARGO_PROFILE};
 endef
 
 # First argument $(1) is a build-target
@@ -78,16 +82,22 @@ DASH:= -
 ####################################
 
 .PHONY: all
-all: setup ios
+all: ios
 
-.PHONY: setup
-setup:
+.PHONY: ios
+ios: out/ios/target
+
+.PHONY: legacy
+legacy: legacy_setup legacy_ios
+
+.PHONY: legacy_setup
+legacy_setup:
 	rustup target add x86_64-apple-ios aarch64-apple-ios x86_64-apple-darwin
 	rustup component add llvm-tools-preview rust-src
 	rustup run --install stable cargo install cargo-binutils
 
-.PHONY: ios
-ios: out/ios/$(IOS_LIB)
+.PHONY: legacy_ios
+legacy_ios: out/ios/legacy
 
 CARGO_BUILD_FLAGS += --lib -Z avoid-dev-deps
 ifeq ($(CARGO_PROFILE),release)
@@ -100,25 +110,40 @@ else
   CARGO_BUILD_FLAGS += -Z unstable-options --profile ${CARGO_PROFILE}
 endif
 
+LEGACY_CARGO_BUILD_FLAGS = $(CARGO_BUILD_FLAGS) 
+
 .PHONY: $(ARCHS_IOS)
 x86_64-apple-ios aarch64-apple-ios: CARGO_ENV_FLAGS += CFLAGS="-DPB_NO_PACKED_STRUCTS=1"
 x86_64-apple-ios aarch64-apple-ios: CARGO_ENV_FLAGS += CXXFLAGS="-DPB_NO_PACKED_STRUCTS=1"
-
-x86_64-apple-ios x86_64-apple-ios-macabi x86_64-apple-darwin: LD_ARCH = x86_64
-aarch64-apple-ios aarch64-apple-ios-sim aarch64-apple-ios-macabi: LD_ARCH = arm64
-
 $(ARCHS_IOS):
 	$(call TOOLCHAIN_install,$@)
 	$(CARGO_ENV_FLAGS) $(CARGO) +ios-$@-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION)) build --package $(CARGO_PACKAGE) --target $@ $(CARGO_BUILD_FLAGS)
 
 
-.PHONY: out/ios/$(IOS_LIB)
-out/ios/$(IOS_LIB): $(ARCHS_IOS)
+.PHONY: out/ios/target
+out/ios/target: $(ARCHS_IOS)
 	mkdir -p out/ios
-	$(foreach arch,$^,$(call BINARY_copy,$(arch)))
+	$(foreach arch,$^,$(call BINARY_copy,$(arch),target))
 
 	mkdir -p out/ios/include
 	cp $(IOS_C_HEADERS) out/ios/include
+
+
+.PHONY: $(LEGACY_ARCHS_IOS)
+l_x86_64-apple-ios l_aarch64-apple-ios: CARGO_ENV_FLAGS += CFLAGS="-DPB_NO_PACKED_STRUCTS=1"
+l_x86_64-apple-ios l_aarch64-apple-ios: CARGO_ENV_FLAGS += CXXFLAGS="-DPB_NO_PACKED_STRUCTS=1"
+l_x86_64-apple-ios-macabi l_aarch64-apple-ios-sim l_aarch64-apple-ios-macabi: LEGACY_CARGO_BUILD_FLAGS += -Zbuild-std
+$(LEGACY_ARCHS_IOS):
+	$(CARGO_ENV_FLAGS) $(CARGO) build --package $(CARGO_PACKAGE) --target $(subst l_,,$@) $(LEGACY_CARGO_BUILD_FLAGS)
+
+.PHONY: out/ios/legacy
+out/ios/legacy: $(LEGACY_ARCHS_IOS)
+	mkdir -p out/ios/legacy
+	$(foreach arch,$^,$(call BINARY_copy,$(subst l_,,$(arch)),legacy))
+
+	mkdir -p out/ios/include
+	cp $(IOS_C_HEADERS) out/ios/include
+
 
 .PHONY: clean
 clean:
