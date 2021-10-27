@@ -68,4 +68,8 @@ pub enum IngestConfigCommand {
 
     /// Gets the list of reported missed block ranges.
     GetMissedBlockRanges,
+
+    /// Retrieves a private key from a remote ingest enclave and sets it as
+    /// the current enclaves's private key.
+    SyncKeysFromRemote { peer_uri: String },
 }

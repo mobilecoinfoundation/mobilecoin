@@ -51,6 +51,10 @@ fn main() -> ClientResult<()> {
         IngestConfigCommand::GetMissedBlockRanges => {
             get_missed_block_ranges(&logger, &ingest_client)
         }
+
+        IngestConfigCommand::SyncKeysFromRemote { peer_uri } => {
+            sync_keys_from_remote(&logger, &ingest_client, peer_uri)
+        }
     }
 }
 
@@ -148,6 +152,19 @@ fn get_missed_block_ranges(
             .collect::<Vec<_>>())
     );
 
+    Ok(())
+}
+
+fn sync_keys_from_remote(
+    logger: &Logger,
+    ingest_client: &FogIngestGrpcClient,
+    peer_uri: String,
+) -> ClientResult<()> {
+    let status = ingest_client
+        .sync_keys_from_remote(peer_uri)
+        .expect("rpc failed");
+    log::info!(logger, "Done, status: {:?}", status);
+    println!("{}", ingest_summary_to_json(&status));
     Ok(())
 }
 
