@@ -135,10 +135,28 @@ impl CachedTxData {
     /// then we would have to track if we did that. Then this `min`
     /// expression would also take the min of outstanding missed blocks.
     pub fn get_num_blocks(&self) -> BlockCount {
-        min(
-            self.rng_set.get_highest_processed_block_count(),
-            self.key_image_data_completeness,
-        )
+        if self.missed_block_ranges.is_empty() {
+            min(
+                self.rng_set.get_highest_processed_block_count(),
+                self.key_image_data_completeness,
+            )
+        } else {
+            *vec![
+                self.rng_set.get_highest_processed_block_count(),
+                self.key_image_data_completeness,
+                BlockCount::from(
+                    self.missed_block_ranges
+                        .iter()
+                        .map(|block_range| block_range.start_block)
+                        .min()
+                        .unwrap()
+                        + 1,
+                ),
+            ]
+            .iter()
+            .min()
+            .unwrap()
+        }
     }
 
     /// Get the latest_global_txo_count.
@@ -387,6 +405,15 @@ impl CachedTxData {
             "Adding {} missed blocks ranges to the missed block ranges queue",
             new_missed_block_ranges.len(),
         );
+
+        for missed_block_range in &new_missed_block_ranges {
+            log::trace!(
+                self.logger,
+                "Missed Block start: {}, end: {}",
+                missed_block_range.start_block,
+                missed_block_range.end_block,
+            );
+        }
 
         self.missed_block_ranges.extend(new_missed_block_ranges);
         let fog_common_block_ranges: Vec<fog_common::BlockRange> =
