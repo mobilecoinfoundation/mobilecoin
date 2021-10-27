@@ -174,6 +174,19 @@ where
 
         Ok(response)
     }
+
+    /// Retrieves a private key from a remote encalve and then sets it as the
+    /// current enclave's private key.
+    pub fn sync_keys_from_remote_impl(
+        &mut self,
+        request: SyncKeysFromRemoteRequest,
+        logger: &Logger,
+    ) -> Result<IngestSummary, RpcStatus> {
+        let peer_uri = IngestPeerUri::from_str(request.get_peer_uri()).unwrap();
+        self.controller
+            .sync_keys_from_remote(&peer_uri)
+            .map_err(|err| rpc_database_err(err, logger))
+    }
 }
 
 impl<
@@ -273,6 +286,23 @@ where
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(ctx, sink, self.get_missed_block_ranges_impl(logger), logger)
+        })
+    }
+
+    fn sync_keys_from_remote(
+        &mut self,
+        ctx: RpcContext,
+        request: SyncKeysFromRemoteRequest,
+        sink: UnarySink<IngestSummary>,
+    ) {
+        let _timer = SVC_COUNTERS.req(&ctx);
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            send_result(
+                ctx,
+                sink,
+                self.sync_keys_from_remote_impl(request, logger),
+                logger,
+            )
         })
     }
 }
