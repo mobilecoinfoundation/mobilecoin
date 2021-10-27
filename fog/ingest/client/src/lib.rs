@@ -9,7 +9,9 @@ use mc_common::logger::{log, o, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::{
     empty::Empty,
-    ingest::{ReportLostIngressKeyRequest, SetPubkeyExpiryWindowRequest},
+    ingest::{
+        ReportLostIngressKeyRequest, SetPubkeyExpiryWindowRequest, SyncKeysFromRemoteRequest,
+    },
     ingest_common::{IngestSummary, SetPeersRequest},
     ingest_grpc::AccountIngestApiClient,
 };
@@ -170,6 +172,18 @@ impl FogIngestGrpcClient {
             .iter()
             .map(|range| BlockRange::new(range.start_block, range.end_block))
             .collect())
+    }
+
+    pub fn sync_keys_from_remote(&self, peer_uri: String) -> ClientResult<IngestSummary> {
+        log::trace!(self.logger, "sync_keys_from_remote()");
+        let mut req = SyncKeysFromRemoteRequest::new();
+        req.set_peer_uri(peer_uri);
+
+        retry(self.get_retries(), || -> Result<_, Error> {
+            Ok(self
+                .ingest_api_client
+                .sync_keys_from_remote_opt(&req, self.creds.call_option()?)?)
+        })
     }
 
     // The retry crate works by taking an iterator over durations, and a closure
