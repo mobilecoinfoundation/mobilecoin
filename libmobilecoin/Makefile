@@ -75,6 +75,9 @@ define TOOLCHAIN_install
 	)
 endef
 
+define RUSTBITCODE_init	
+endef
+
 DOT:= .
 DASH:= -
 
@@ -86,12 +89,12 @@ DASH:= -
 all: setup ios
 
 .PHONY: setup
-setup: rust-bitcode
+setup: 
 	mkdir -p rust-bitcode
-	cd rust-bitcode
-	git init
-	git remote add origin git@github.com:mobilecoinofficial/rust-bitcode 
-	git fetch --depth 1 origin a49da0265778fce5dd6521ba609b4c1d0a0959ad
+	cd rust-bitcode && \
+	git init && \
+	git remote add origin git@github.com:mobilecoinofficial/rust-bitcode; \
+	git fetch --depth 1 origin a49da0265778fce5dd6521ba609b4c1d0a0959ad;
 	
 .PHONY: ios
 ios: out/ios/target
