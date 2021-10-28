@@ -83,8 +83,16 @@ DASH:= -
 ####################################
 
 .PHONY: all
-all: ios
+all: setup ios
 
+.PHONY: setup
+setup: rust-bitcode
+	mkdir -p rust-bitcode
+	cd rust-bitcode
+	git init
+	git remote add origin git@github.com:mobilecoinofficial/rust-bitcode 
+	git fetch --depth 1 origin a49da0265778fce5dd6521ba609b4c1d0a0959ad
+	
 .PHONY: ios
 ios: out/ios/target
 
