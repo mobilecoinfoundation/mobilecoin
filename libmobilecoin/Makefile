@@ -94,7 +94,8 @@ setup:
 	cd rust-bitcode && \
 	git init && \
 	git remote add origin git@github.com:mobilecoinofficial/rust-bitcode; \
-	git fetch --depth 1 origin a49da0265778fce5dd6521ba609b4c1d0a0959ad;
+	git fetch --depth 1 origin a49da0265778fce5dd6521ba609b4c1d0a0959ad; \
+	git checkout FETCH_HEAD;
 	
 .PHONY: ios
 ios: out/ios/target
