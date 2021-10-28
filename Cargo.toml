@@ -165,6 +165,10 @@ inherits = "release"
 debug = false
 lto = true
 
+[profile.mobile-release]
+inherits = "mobile"
+codegen-units = 1
+
 # Skip the need for LD_LIBRARY_PATH in `cargo test`
 [profile.test]
 rpath = true
