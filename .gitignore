@@ -76,4 +76,4 @@ mobilecoind/clients/python/mob_client/blockchain_pb2.py
 *.css
 
 # libmobilecoin/rust-bitcode build
-libmobilecoin/build
+libmobilecoin/rust-bitcode
