@@ -13,6 +13,21 @@ path = "src/lib.rs"
 name = "fog_ingest_client"
 path = "src/main.rs"
 
+[dev-dependencies]
+mc-attest-net = { path = "../../../attest/net" }
+mc-fog-ingest-server = { path = "../server" }
+mc-fog-test-infra = { path = "../../test_infra" }
+mc-fog-ingest-enclave = { path = "../enclave" }
+mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
+mc-ledger-db = { path = "../../../ledger/db" }
+mc-watcher = { path = "../../../watcher" }
+
+# third party
+assert_cmd = "2.0.2"
+tempdir = "0.3"
+maplit = "1"
+predicates = "1"
+
 [dependencies]
 # third party
 displaydoc = { version = "0.2", default-features = false }
