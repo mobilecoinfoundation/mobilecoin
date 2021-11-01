@@ -50,14 +50,18 @@ impl EnclaveGrpcChannel for view_grpc::FogViewApiClient {
         msg: &attest::AuthMessage,
         call_option: CallOption,
     ) -> Result<(Option<Metadata>, attest::AuthMessage, Option<Metadata>), grpcio::Error> {
-        <Self>::auth_full(self, msg, call_option)
+        let mut receiver = <Self>::auth_async_opt(self, msg, call_option)?;
+        let (header, message, trailer) = receiver.receive_sync()?;
+        Ok((Some(header), message, Some(trailer)))
     }
     fn enclave_request(
         &mut self,
         msg: &attest::Message,
         call_option: CallOption,
     ) -> Result<(Option<Metadata>, attest::Message, Option<Metadata>), grpcio::Error> {
-        <Self>::query_full(self, msg, call_option)
+        let mut receiver = <Self>::query_async_opt(self, msg, call_option)?;
+        let (header, message, trailer) = receiver.receive_sync()?;
+        Ok((Some(header), message, Some(trailer)))
     }
 }
 
@@ -67,14 +71,18 @@ impl EnclaveGrpcChannel for ledger_grpc::FogKeyImageApiClient {
         msg: &attest::AuthMessage,
         call_option: CallOption,
     ) -> Result<(Option<Metadata>, attest::AuthMessage, Option<Metadata>), grpcio::Error> {
-        <Self>::auth_full(self, msg, call_option)
+        let mut receiver = <Self>::auth_async_opt(self, msg, call_option)?;
+        let (header, message, trailer) = receiver.receive_sync()?;
+        Ok((Some(header), message, Some(trailer)))
     }
     fn enclave_request(
         &mut self,
         msg: &attest::Message,
         call_option: CallOption,
     ) -> Result<(Option<Metadata>, attest::Message, Option<Metadata>), grpcio::Error> {
-        <Self>::check_key_images_full(self, msg, call_option)
+        let mut receiver = <Self>::check_key_images_async_opt(self, msg, call_option)?;
+        let (header, message, trailer) = receiver.receive_sync()?;
+        Ok((Some(header), message, Some(trailer)))
     }
 }
 
@@ -84,13 +92,17 @@ impl EnclaveGrpcChannel for ledger_grpc::FogMerkleProofApiClient {
         msg: &attest::AuthMessage,
         call_option: CallOption,
     ) -> Result<(Option<Metadata>, attest::AuthMessage, Option<Metadata>), grpcio::Error> {
-        <Self>::auth_full(self, msg, call_option)
+        let mut receiver = <Self>::auth_async_opt(self, msg, call_option)?;
+        let (header, message, trailer) = receiver.receive_sync()?;
+        Ok((Some(header), message, Some(trailer)))
     }
     fn enclave_request(
         &mut self,
         msg: &attest::Message,
         call_option: CallOption,
     ) -> Result<(Option<Metadata>, attest::Message, Option<Metadata>), grpcio::Error> {
-        <Self>::get_outputs_full(self, msg, call_option)
+        let mut receiver = <Self>::get_outputs_async_opt(self, msg, call_option)?;
+        let (header, message, trailer) = receiver.receive_sync()?;
+        Ok((Some(header), message, Some(trailer)))
     }
 }

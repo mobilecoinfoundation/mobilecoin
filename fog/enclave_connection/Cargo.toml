@@ -21,5 +21,5 @@ mc-util-uri = { path = "../../util/uri" }
 aes-gcm = "0.9.4"
 cookie = "0.15"
 displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.9.0"
+grpcio = "0.9.1"
 sha2 = "0.9.8"

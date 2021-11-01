@@ -27,7 +27,7 @@ mc-util-uri = { path = "../util/uri" }
 crossbeam-channel = "0.5"
 ed25519 = { version = "1.2.0", default-features = false, features = ["serde"] }
 displaydoc = "0.2"
-grpcio = "0.9.0"
+grpcio = "0.9.1"
 mockall = "0.10.2"
 protobuf = "2.22.1"
 retry = "1.3"

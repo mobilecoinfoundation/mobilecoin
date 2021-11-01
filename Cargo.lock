@@ -263,6 +263,25 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
+version = "0.57.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd4865004a46a0aafb2a0a5eb19d3c9fc46ee5f063a6cfc605c69ac9ecf5263d"
+dependencies = [
+ "bitflags",
+ "cexpr",
+ "clang-sys",
+ "lazy_static",
+ "lazycell",
+ "peeking_take_while",
+ "proc-macro2 1.0.30",
+ "quote 1.0.10",
+ "regex",
+ "rustc-hash",
+ "shlex 0.1.1",
+]
+
+[[package]]
+name = "bindgen"
 version = "0.58.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f8523b410d7187a43085e7e064416ea32ded16bd0a4e6fc025e21616d01258f"
@@ -281,7 +300,7 @@ dependencies = [
  "regex",
  "rustc-hash",
  "shlex 1.0.0",
- "which",
+ "which 3.1.1",
 ]
 
 [[package]]
@@ -381,9 +400,9 @@ checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
 
 [[package]]
 name = "boringssl-src"
-version = "0.3.0+688fc5c"
+version = "0.4.0+fc44652"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f901accdf830d2ea2f4e27f923a5e1125cd8b1a39ab578b9db1a42d578a6922b"
+checksum = "6d18bd83b61376467d04a8e573250b7f36e4b7b015224ec998c1f5009b33bfdd"
 dependencies = [
  "cmake",
 ]
@@ -1609,8 +1628,8 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
 name = "grpcio"
-version = "0.9.0"
-source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=10ba9f8f4546916c7e7532c4d1c6cdcf5df62553#10ba9f8f4546916c7e7532c4d1c6cdcf5df62553"
+version = "0.9.1"
+source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=542d9b6b1d32029e25486a59bd566fb6607b1fd5#542d9b6b1d32029e25486a59bd566fb6607b1fd5"
 dependencies = [
  "futures 0.3.17",
  "grpcio-sys",
@@ -1623,17 +1642,17 @@ dependencies = [
 [[package]]
 name = "grpcio-compiler"
 version = "0.9.0"
-source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=10ba9f8f4546916c7e7532c4d1c6cdcf5df62553#10ba9f8f4546916c7e7532c4d1c6cdcf5df62553"
+source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=ee85deb14bbc443700e24bd4ac18b98e120ed03c#ee85deb14bbc443700e24bd4ac18b98e120ed03c"
 dependencies = [
  "protobuf",
 ]
 
 [[package]]
 name = "grpcio-sys"
-version = "0.9.0+1.38.0"
-source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=10ba9f8f4546916c7e7532c4d1c6cdcf5df62553#10ba9f8f4546916c7e7532c4d1c6cdcf5df62553"
+version = "0.9.1+1.41.0"
+source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=542d9b6b1d32029e25486a59bd566fb6607b1fd5#542d9b6b1d32029e25486a59bd566fb6607b1fd5"
 dependencies = [
- "bindgen",
+ "bindgen 0.57.0",
  "boringssl-src",
  "cc",
  "cmake",
@@ -2335,7 +2354,7 @@ name = "mbedtls-sys-auto"
 version = "2.26.1"
 source = "git+https://github.com/mobilecoinofficial/rust-mbedtls.git?rev=ce4cf3e4814e92734434c7deaa59d649d43f442d#ce4cf3e4814e92734434c7deaa59d649d43f442d"
 dependencies = [
- "bindgen",
+ "bindgen 0.58.1",
  "cc",
  "cfg-if 1.0.0",
  "cmake",
@@ -2647,6 +2666,7 @@ dependencies = [
  "aes-gcm",
  "cookie 0.15.1",
  "displaydoc",
+ "futures 0.3.17",
  "grpcio",
  "mc-attest-ake",
  "mc-attest-api",
@@ -5825,17 +5845,18 @@ dependencies = [
 
 [[package]]
 name = "protoc"
-version = "2.14.0"
+version = "2.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "349d80967ee438cd03ccd236d548d4dcd5f2d9349acda206bef1490a826165d3"
+checksum = "ace5c4ea0e4b0381eb37837e070182b7ab491445e2d5ea2201d861f2b2f94f82"
 dependencies = [
  "log 0.4.11",
+ "which 4.0.2",
 ]
 
 [[package]]
 name = "protoc-grpcio"
-version = "2.0.0"
-source = "git+https://github.com/mobilecoinofficial/protoc-grpcio?rev=9e63f09ec408722f731c9cb60bf06c3d46bcabec#9e63f09ec408722f731c9cb60bf06c3d46bcabec"
+version = "3.0.0"
+source = "git+https://github.com/mobilecoinofficial/protoc-grpcio?rev=3a26abb1b83a693b6cfb5b38053a42cc9a757f9e#3a26abb1b83a693b6cfb5b38053a42cc9a757f9e"
 dependencies = [
  "failure",
  "grpcio-compiler",
@@ -7940,6 +7961,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d011071ae14a2f6671d0b74080ae0cd8ebf3a6f8c9589a2cd45f23126fe29724"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "which"
+version = "4.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87c14ef7e1b8b8ecfc75d5eca37949410046e66f15d185c01d70824f1f8111ef"
+dependencies = [
+ "libc",
+ "thiserror",
 ]
 
 [[package]]

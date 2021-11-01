@@ -7,4 +7,4 @@ edition = "2018"
 [dependencies]
 mc-util-build-script = { path = "../../build/script" }
 
-protoc-grpcio = "2.0.0"
+protoc-grpcio = "3.0.0"

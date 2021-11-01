@@ -254,15 +254,16 @@ impl<CP: CredentialsProvider> AttestedConnection for ThickClient<CP> {
         // Do the gRPC Call
         let (header, auth_response_msg, trailer) =
             self.authenticated_call(|this, call_option| -> StdResult<_, Self::Error> {
-                Ok(this
+                let mut receiver = this
                     .attested_api_client
-                    .auth_full(&auth_request_output.into(), call_option)?)
+                    .auth_async_opt(&auth_request_output.into(), call_option)?;
+                Ok(receiver.receive_sync()?)
             })?;
 
         // Update cookies from server-sent metadata
         if let Err(e) = self
             .cookies
-            .update_from_server_metadata(header.as_ref(), trailer.as_ref())
+            .update_from_server_metadata(Some(&header), Some(&trailer))
         {
             log::warn!(
                 self.logger,
@@ -303,14 +304,15 @@ impl<CP: CredentialsProvider> BlockchainConnection for ThickClient<CP> {
         request.set_limit(limit);
 
         self.authenticated_attested_call(|this, call_option| {
-            let (header, message, trailer) = this
+            let mut receiver = this
                 .blockchain_api_client
-                .get_blocks_full(&request, call_option)?;
+                .get_blocks_async_opt(&request, call_option)?;
+            let (header, message, trailer) = receiver.receive_sync()?;
 
             // Update cookies from server-sent metadata
             if let Err(e) = this
                 .cookies
-                .update_from_server_metadata(header.as_ref(), trailer.as_ref())
+                .update_from_server_metadata(Some(&header), Some(&trailer))
             {
                 log::warn!(
                     this.logger,
@@ -336,14 +338,15 @@ impl<CP: CredentialsProvider> BlockchainConnection for ThickClient<CP> {
         request.set_limit(limit);
 
         self.authenticated_attested_call(|this, call_option| {
-            let (header, message, trailer) = this
+            let mut receiver = this
                 .blockchain_api_client
-                .get_blocks_full(&request, call_option)?;
+                .get_blocks_async_opt(&request, call_option)?;
+            let (header, message, trailer) = receiver.receive_sync()?;
 
             // Update cookies from server-sent metadata
             if let Err(e) = this
                 .cookies
-                .update_from_server_metadata(header.as_ref(), trailer.as_ref())
+                .update_from_server_metadata(Some(&header), Some(&trailer))
             {
                 log::warn!(
                     this.logger,
@@ -365,14 +368,15 @@ impl<CP: CredentialsProvider> BlockchainConnection for ThickClient<CP> {
 
         Ok(self
             .authenticated_attested_call(|this, call_option| {
-                let (header, message, trailer) = this
+                let mut receiver = this
                     .blockchain_api_client
-                    .get_last_block_info_full(&Empty::new(), call_option)?;
+                    .get_last_block_info_async_opt(&Empty::new(), call_option)?;
+                let (header, message, trailer) = receiver.receive_sync()?;
 
                 // Update cookies from server-sent metadata
                 if let Err(e) = this
                     .cookies
-                    .update_from_server_metadata(header.as_ref(), trailer.as_ref())
+                    .update_from_server_metadata(Some(&header), Some(&trailer))
                 {
                     log::warn!(
                         this.logger,
@@ -390,14 +394,15 @@ impl<CP: CredentialsProvider> BlockchainConnection for ThickClient<CP> {
         trace_time!(self.logger, "ThickClient::fetch_block_height");
 
         let block_info = self.authenticated_attested_call(|this, call_option| {
-            let (header, message, trailer) = this
+            let mut receiver = this
                 .blockchain_api_client
-                .get_last_block_info_full(&Empty::new(), call_option)?;
+                .get_last_block_info_async_opt(&Empty::new(), call_option)?;
+            let (header, message, trailer) = receiver.receive_sync()?;
 
             // Update cookies from server-sent metadata
             if let Err(e) = this
                 .cookies
-                .update_from_server_metadata(header.as_ref(), trailer.as_ref())
+                .update_from_server_metadata(Some(&header), Some(&trailer))
             {
                 log::warn!(
                     this.logger,
@@ -436,14 +441,15 @@ impl<CP: CredentialsProvider> UserTxConnection for ThickClient<CP> {
         msg.set_data(tx_ciphertext);
 
         let resp = self.authenticated_attested_call(|this, call_option| {
-            let (header, message, trailer) = this
+            let mut receiver = this
                 .consensus_client_api_client
-                .client_tx_propose_full(&msg, call_option)?;
+                .client_tx_propose_async_opt(&msg, call_option)?;
+            let (header, message, trailer) = receiver.receive_sync()?;
 
             // Update cookies from server-sent metadata
             if let Err(e) = this
                 .cookies
-                .update_from_server_metadata(header.as_ref(), trailer.as_ref())
+                .update_from_server_metadata(Some(&header), Some(&trailer))
             {
                 log::warn!(
                     this.logger,
