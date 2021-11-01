@@ -26,7 +26,7 @@ mc-watcher = { path = "../../../watcher" }
 assert_cmd = "2.0.2"
 tempdir = "0.3"
 maplit = "1"
-predicates = "1"
+predicates = "2"
 
 [dependencies]
 # third party
