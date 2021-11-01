@@ -61,6 +61,11 @@ service AccountIngestAPI {
 
     /// Get list of missed block ranges.
     rpc GetMissedBlockRanges(google.protobuf.Empty) returns (GetMissedBlockRangesResponse) {}
+
+    /// Establishes a peer connection to another ingest enclave, requests the
+    /// peer's private key, and then sets it as the current enclave's private
+    /// key.
+    rpc SyncKeysFromRemote(SyncKeysFromRemoteRequest) returns (ingest_common.IngestSummary) {}
 }
 
 message ReportLostIngressKeyRequest {
@@ -83,4 +88,10 @@ message SetPubkeyExpiryWindowRequest {
     /// all fog ingest servers crash without retiring completely, and the ingress private key is lost,
     /// more data must be downloaded by the clients and scanned to recover their balances.
     uint64 pubkey_expiry_window = 1;
+}
+
+message SyncKeysFromRemoteRequest {
+    /// The uri for the server that will report the private key that will  be
+    /// synced.
+    string peer_uri = 1;
 }
