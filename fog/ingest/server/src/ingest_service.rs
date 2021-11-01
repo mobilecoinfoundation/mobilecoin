@@ -182,7 +182,9 @@ where
         request: SyncKeysFromRemoteRequest,
         logger: &Logger,
     ) -> Result<IngestSummary, RpcStatus> {
-        let peer_uri = IngestPeerUri::from_str(request.get_peer_uri()).unwrap();
+        let peer_uri = IngestPeerUri::from_str(request.get_peer_uri())
+            .map_err(|err| rpc_invalid_arg_error("invalid peer uri", err, logger))?;
+
         self.controller
             .sync_keys_from_remote(&peer_uri)
             .map_err(|err| rpc_database_err(err, logger))
