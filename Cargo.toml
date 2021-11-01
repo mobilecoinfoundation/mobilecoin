@@ -189,7 +189,7 @@ ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.g
 
 # grpcio patched with metadata
 grpcio = { git = "https://github.com/mobilecoinofficial/grpc-rs", rev = "542d9b6b1d32029e25486a59bd566fb6607b1fd5" }
-protoc-grpcio = { git = "https://github.com/mobilecoinofficial/protoc-grpcio", rev = "3a26abb1b83a693b6cfb5b38053a42cc9a757f9e" }
+protoc-grpcio = { git = "https://github.com/mobilecoinofficial/protoc-grpcio", rev = "beb5271379e9e53bfeda38857a0def9e30b21655" }
 
 # mbedtls patched to allow certificate verification with a profile
 mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "ce4cf3e4814e92734434c7deaa59d649d43f442d" }

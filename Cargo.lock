@@ -273,7 +273,7 @@ dependencies = [
  "lazy_static",
  "lazycell",
  "peeking_take_while",
- "proc-macro2 1.0.30",
+ "proc-macro2 1.0.32",
  "quote 1.0.10",
  "regex",
  "rustc-hash",
@@ -1641,8 +1641,9 @@ dependencies = [
 
 [[package]]
 name = "grpcio-compiler"
-version = "0.9.0"
-source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=ee85deb14bbc443700e24bd4ac18b98e120ed03c#ee85deb14bbc443700e24bd4ac18b98e120ed03c"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1f1abac9f330ac9ee0950220c10eea84d66479cede4836f0b924407fecf093c"
 dependencies = [
  "protobuf",
 ]
@@ -5856,7 +5857,8 @@ dependencies = [
 [[package]]
 name = "protoc-grpcio"
 version = "3.0.0"
-source = "git+https://github.com/mobilecoinofficial/protoc-grpcio?rev=3a26abb1b83a693b6cfb5b38053a42cc9a757f9e#3a26abb1b83a693b6cfb5b38053a42cc9a757f9e"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "980d0ed845138df84f72beb72faf6d726c70c99d0debb2b5e1e7dee61f853df7"
 dependencies = [
  "failure",
  "grpcio-compiler",
@@ -8106,3 +8108,8 @@ dependencies = [
  "syn 1.0.81",
  "synstructure",
 ]
+
+[[patch.unused]]
+name = "protoc-grpcio"
+version = "2.0.0"
+source = "git+https://github.com/mobilecoinofficial/protoc-grpcio?rev=beb5271379e9e53bfeda38857a0def9e30b21655#beb5271379e9e53bfeda38857a0def9e30b21655"
