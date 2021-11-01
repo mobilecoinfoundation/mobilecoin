@@ -23,7 +23,9 @@ use mc_fog_api::{
     report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_report,
 };
 use mc_fog_ingest_enclave::{Error as EnclaveError, IngestEnclave, IngestSgxEnclave};
-use mc_fog_recovery_db_iface::{IngressPublicKeyStatus, RecoveryDb, ReportData, ReportDb};
+use mc_fog_recovery_db_iface::{
+    IngressPublicKeyRecord, IngressPublicKeyStatus, RecoveryDb, ReportData, ReportDb,
+};
 use mc_fog_types::{common::BlockRange, ingest::TxsForIngest};
 use mc_fog_uri::IngestPeerUri;
 use mc_sgx_report_cache_api::ReportableEnclave;
@@ -1427,5 +1429,20 @@ where
         }
 
         Ok(())
+    }
+
+    /// Returns a vector of ingress key records. Filters the results according
+    /// to the parameters.
+    pub fn get_ingress_key_records(
+        &self,
+        start_block_at_least: u64,
+        should_include_lost_keys: bool,
+        should_include_retired_keys: bool,
+    ) -> Result<Vec<IngressPublicKeyRecord>, <DB as RecoveryDb>::Error> {
+        self.recovery_db.get_ingress_key_records(
+            start_block_at_least,
+            should_include_lost_keys,
+            should_include_retired_keys,
+        )
     }
 }
