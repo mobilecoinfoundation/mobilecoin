@@ -91,7 +91,7 @@ fn main() {
             Some(get_config_json),
             logger.clone(),
         )
-        .expect("Failed starting admin server");
+        .expect("Failed starting admin server")
     });
 
     // Initialize test_client
