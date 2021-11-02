@@ -32,6 +32,9 @@ pub enum TxOutMatchingError {
 
     /// Error decompressing FogTxOut: {0}
     FogTxOut(FogTxOutError),
+
+    /// Subaddress not found
+    SubaddressNotFound,
 }
 
 impl From<AmountError> for TxOutMatchingError {

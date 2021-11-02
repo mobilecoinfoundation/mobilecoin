@@ -3811,6 +3811,7 @@ dependencies = [
  "grpcio",
  "link-cplusplus",
  "mc-account-keys",
+ "mc-api",
  "mc-attest-core",
  "mc-common",
  "mc-connection",

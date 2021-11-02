@@ -284,16 +284,18 @@ impl TestClient {
             let (src_balance, src_cursor) = source_client.check_balance()?;
             log::info!(
                 self.logger,
-                "client {} has a balance of {} after {} blocks",
+                "client {} ({}) has a balance of {} after {} blocks",
                 split_index,
+                source_client.get_b58_address(),
                 src_balance,
                 src_cursor
             );
             let (tgt_balance, tgt_cursor) = target_client.check_balance()?;
             log::info!(
                 self.logger,
-                "client {} has a balance of {} after {} blocks",
+                "client {} ({}) has a balance of {} after {} blocks",
                 split_index + 1,
+                target_client.get_b58_address(),
                 tgt_balance,
                 tgt_cursor
             );
