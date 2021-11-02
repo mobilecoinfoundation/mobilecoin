@@ -659,8 +659,11 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
 mod test_build_transaction_helper {
     use super::*;
     use core::result::Result as StdResult;
-    use mc_account_keys::{AccountKey, PublicAddress};
-    use mc_common::logger::{test_with_logger, Logger};
+    use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
+    use mc_common::{
+        logger::{test_with_logger, Logger},
+        HashMap,
+    };
     use mc_fog_report_validation::{FogPubkeyError, FullyValidatedFogPubkey};
     use mc_fog_types::view::{FogTxOut, FogTxOutMetadata, TxOutRecord};
     use mc_transaction_core::{
@@ -669,6 +672,7 @@ mod test_build_transaction_helper {
     };
     use mc_transaction_core_test_utils::get_outputs;
     use rand::{rngs::StdRng, SeedableRng};
+    use std::iter::FromIterator;
 
     // Mock of FogPubkeyResolver
     struct FakeAcctResolver {}
@@ -711,7 +715,19 @@ mod test_build_transaction_helper {
                     let meta = FogTxOutMetadata::default();
                     let txo_record = TxOutRecord::new(fog_tx_out, meta);
 
-                    let owned_tx_out = OwnedTxOut::new(txo_record, &sender_account_key).unwrap();
+                    let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key).unwrap();
+                    let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+
+                    let subaddress_spk = recover_public_subaddress_spend_key(
+                        sender_account_key.view_private_key(),
+                        &tx_out_target_key,
+                        &tx_public_key,
+                    );
+                    let spsk_to_index =
+                        HashMap::from_iter(vec![(subaddress_spk, DEFAULT_SUBADDRESS_INDEX)]);
+
+                    let owned_tx_out =
+                        OwnedTxOut::new(txo_record, &sender_account_key, &spsk_to_index).unwrap();
 
                     let proof = TxOutMembershipProof::new(0, 0, Default::default());
 
