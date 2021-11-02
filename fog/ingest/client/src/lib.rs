@@ -10,7 +10,8 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::{
     empty::Empty,
     ingest::{
-        ReportLostIngressKeyRequest, SetPubkeyExpiryWindowRequest, SyncKeysFromRemoteRequest,
+        GetIngressKeyRecordsRequest, IngressPublicKeyRecord, ReportLostIngressKeyRequest,
+        SetPubkeyExpiryWindowRequest, SyncKeysFromRemoteRequest,
     },
     ingest_common::{IngestSummary, SetPeersRequest},
     ingest_grpc::AccountIngestApiClient,
@@ -184,6 +185,28 @@ impl FogIngestGrpcClient {
                 .ingest_api_client
                 .sync_keys_from_remote_opt(&req, self.creds.call_option()?)?)
         })
+    }
+
+    pub fn get_ingress_key_records(
+        &self,
+        start_block_at_least: u64,
+        should_include_lost_keys: bool,
+        should_include_retired_keys: bool,
+    ) -> ClientResult<Vec<IngressPublicKeyRecord>> {
+        log::trace!(self.logger, "get_ingress_key_records()");
+
+        let mut req = GetIngressKeyRecordsRequest::new();
+        req.set_start_block_at_least(start_block_at_least);
+        req.set_should_include_lost_keys(should_include_lost_keys);
+        req.set_should_include_retired_keys(should_include_retired_keys);
+
+        let resp = retry(self.get_retries(), || -> Result<_, Error> {
+            Ok(self
+                .ingest_api_client
+                .get_ingress_key_records_opt(&req, self.creds.call_option()?)?)
+        })?;
+
+        Ok(resp.get_records().to_vec())
     }
 
     // The retry crate works by taking an iterator over durations, and a closure
