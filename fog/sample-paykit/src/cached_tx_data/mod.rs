@@ -36,6 +36,9 @@ pub use memo_handler::{MemoHandler, MemoHandlerError};
 const MAX_INPUTS: usize = mc_transaction_core::constants::MAX_INPUTS as usize;
 
 /// Highest subaddress index we support.
+/// If TxOut's are found which belong to us but at an unsupported subaddress index, this will be detected,
+/// and a "SubaddressNotFound" error will be returned, and the client will not spend this TxOut, and the
+/// balance of this account will not reflect such TxOut's.
 /// This has to cover at least the default and change subaddress indexes.
 const MAX_SUBADDRESS_INDEX: u64 = CHANGE_SUBADDRESS_INDEX;
 
