@@ -7,7 +7,7 @@ use core::{
     result::Result as StdResult,
 };
 use displaydoc::Display;
-use mc_account_keys::{AccountKey, PublicAddress};
+use mc_account_keys::{AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -21,8 +21,11 @@ use mc_fog_types::{view::TxOutRecord, BlockCount};
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_fog_view_protocol::{FogViewConnection, UserPrivate, UserRngSet};
 use mc_transaction_core::{
-    get_tx_out_shared_secret, onetime_keys::recover_onetime_private_key, ring_signature::KeyImage,
-    tx::TxOut, BlockIndex,
+    get_tx_out_shared_secret,
+    onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
+    ring_signature::KeyImage,
+    tx::TxOut,
+    BlockIndex,
 };
 use mc_transaction_std::MemoType;
 use std::collections::BTreeMap;
@@ -32,6 +35,10 @@ pub use memo_handler::{MemoHandler, MemoHandlerError};
 
 const MAX_INPUTS: usize = mc_transaction_core::constants::MAX_INPUTS as usize;
 
+/// Highest subaddress index we support.
+/// This has to cover at least the default and change subaddress indexes.
+const MAX_SUBADDRESS_INDEX: u64 = CHANGE_SUBADDRESS_INDEX;
+
 /// This object keeps track of all TxOut's that are known to be ours, and which
 /// have been spent. It allows to check the current balance of the account, and
 /// to find suitable inputs for a new transaction.
@@ -40,6 +47,8 @@ const MAX_INPUTS: usize = mc_transaction_core::constants::MAX_INPUTS as usize;
 /// balance data.
 #[derive(Clone)]
 pub struct CachedTxData {
+    /// The account key we are tracking tx data for.
+    account_key: AccountKey,
     /// The UserRngSet. This is state related to conducting the fog-view
     /// protocol, which produces TxOut objects. The rng_set also exposes the
     /// `num_blocks()` value which tells us to what block we are guaranteed to
@@ -74,19 +83,27 @@ pub struct CachedTxData {
     latest_global_txo_count: u64,
     /// A memo handler which attempts to decrypt memos and validate them
     memo_handler: MemoHandler,
+    /// A pre-calculated map of subaddress public spend key to subaddress index.
+    spsk_to_index: HashMap<RistrettoPublic, u64>,
     /// A logger object
     logger: Logger,
 }
 
 impl CachedTxData {
     /// Create a new CachedTxData object
-    pub fn new(address_book: Vec<PublicAddress>, logger: Logger) -> Self {
+    pub fn new(account_key: AccountKey, address_book: Vec<PublicAddress>, logger: Logger) -> Self {
+        let spsk_to_index = (0..=MAX_SUBADDRESS_INDEX)
+            .map(|index| (*account_key.subaddress(index).spend_public_key(), index))
+            .collect();
+
         Self {
+            account_key,
             rng_set: UserRngSet::default(),
             owned_tx_outs: Default::default(),
             key_image_data_completeness: BlockCount::MAX,
             latest_global_txo_count: 0,
             memo_handler: MemoHandler::new(address_book, logger.clone()),
+            spsk_to_index,
             logger,
         }
     }
@@ -275,12 +292,11 @@ impl CachedTxData {
     pub fn consume_new_txo_records<Iter: Iterator<Item = TxOutRecord>>(
         &mut self,
         records: Iter,
-        account_key: &AccountKey,
     ) -> Vec<TxOutMatchingError> {
         let mut errors = Vec::new();
 
         for record in records {
-            match OwnedTxOut::new(record, account_key) {
+            match OwnedTxOut::new(record, &self.account_key, &self.spsk_to_index) {
                 Ok(otxo) => {
                     // Insert into owned_tx_outs
                     log::trace!(
@@ -312,7 +328,8 @@ impl CachedTxData {
                         }
                     }
                     // Handle memo
-                    self.memo_handler.handle_memo(&otxo.tx_out, account_key);
+                    self.memo_handler
+                        .handle_memo(&otxo.tx_out, &self.account_key);
                 }
                 Err(err) => {
                     errors.push(err);
@@ -326,15 +343,11 @@ impl CachedTxData {
     /// Poll for new txo data, given fog view connection object
     ///
     /// This is called when doing a balance check
-    pub fn poll_fog_for_txos(
-        &mut self,
-        fog_view_client: &mut FogViewGrpcClient,
-        account_key: &AccountKey,
-    ) -> Result<()> {
+    pub fn poll_fog_for_txos(&mut self, fog_view_client: &mut FogViewGrpcClient) -> Result<()> {
         let old_rng_num_blocks = self.rng_set.get_highest_processed_block_count();
         // Do the fog view protocol, log any errors, and consume any new transactions
         let (txo_records, errors) =
-            fog_view_client.poll(&mut self.rng_set, &UserPrivate::from(account_key));
+            fog_view_client.poll(&mut self.rng_set, &UserPrivate::from(&self.account_key));
 
         log::trace!(
             self.logger,
@@ -360,7 +373,7 @@ impl CachedTxData {
                 }
             }
 
-            let errors = self.consume_new_txo_records(txo_records.into_iter(), account_key);
+            let errors = self.consume_new_txo_records(txo_records.into_iter());
             for err in errors {
                 // Note: this could be caused by a griefing attack, but isn't normally expected
                 log::warn!(
@@ -504,13 +517,12 @@ impl CachedTxData {
         &mut self,
         fog_view_client: &mut FogViewGrpcClient,
         key_image_client: &mut FogKeyImageGrpcClient,
-        account_key: &AccountKey,
     ) -> Result<()> {
         let old_num_blocks = self.get_num_blocks();
         let old_key_image_data_completeness = self.key_image_data_completeness;
         let old_rng_num_blocks = self.rng_set.get_highest_processed_block_count();
 
-        self.poll_fog_for_txos(fog_view_client, account_key)?;
+        self.poll_fog_for_txos(fog_view_client)?;
         self.poll_fog_for_key_images(key_image_client)?;
 
         let new_num_blocks = self.get_num_blocks();
@@ -575,6 +587,8 @@ pub struct OwnedTxOut {
     /// The value of the TxOut, computed when we matched this tx_out
     /// successfully against our account key.
     pub value: u64,
+    // The subaddress index this tx_out was sent to.
+    pub subaddress_index: u64,
     /// The key image that we computed when matching this tx_out against our
     /// account key.
     pub key_image: KeyImage,
@@ -592,7 +606,11 @@ impl OwnedTxOut {
     // view_key_matches_output function At time of writing this is not used by
     // mobilecoind or other mobilecoin rust code, but it is used by the swift sdk,
     // so we need to backport that into the rust sample paykit.
-    pub fn new(rec: TxOutRecord, account_key: &AccountKey) -> StdResult<Self, TxOutMatchingError> {
+    pub fn new(
+        rec: TxOutRecord,
+        account_key: &AccountKey,
+        spsk_to_index: &HashMap<RistrettoPublic, u64>,
+    ) -> StdResult<Self, TxOutMatchingError> {
         // Reconstitute FogTxOut from the "flattened" data in TxOutRecord
         let fog_tx_out = rec.get_fog_tx_out()?;
 
@@ -606,11 +624,24 @@ impl OwnedTxOut {
             get_tx_out_shared_secret(account_key.view_private_key(), &decompressed_tx_pub);
         let (value, _blinding) = tx_out.amount.get_value(&shared_secret)?;
 
+        // Calculate the subaddress spend public key for tx_out.
+        let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key)?;
+        let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key)?;
+
+        let subaddress_spk = recover_public_subaddress_spend_key(
+            account_key.view_private_key(),
+            &tx_out_target_key,
+            &tx_public_key,
+        );
+        let subaddress_index = spsk_to_index
+            .get(&subaddress_spk)
+            .ok_or(TxOutMatchingError::SubaddressNotFound)?;
+
         // This is the part where we compute the key image from the one-time private key
         let onetime_private_key = recover_onetime_private_key(
             &decompressed_tx_pub,
             account_key.view_private_key(),
-            &account_key.default_subaddress_spend_private(),
+            &account_key.subaddress_spend_private(*subaddress_index),
         );
         let key_image = KeyImage::from(&onetime_private_key);
 
@@ -624,6 +655,7 @@ impl OwnedTxOut {
             tx_out,
             key_image,
             value,
+            subaddress_index: *subaddress_index,
             status,
         })
     }

@@ -83,7 +83,7 @@ impl Client {
         address_book: Vec<PublicAddress>,
         logger: Logger,
     ) -> Self {
-        let tx_data = CachedTxData::new(address_book, logger.clone());
+        let tx_data = CachedTxData::new(account_key.clone(), address_book, logger.clone());
 
         Client {
             consensus_service_conn,
@@ -132,11 +132,8 @@ impl Client {
     ///   balance
     pub fn check_balance(&mut self) -> Result<(u64, BlockCount)> {
         mc_common::trace_time!(self.logger, "MobileCoinClient.get_balance");
-        self.tx_data.poll_fog(
-            &mut self.fog_view,
-            &mut self.fog_key_image,
-            &self.account_key,
-        )?;
+        self.tx_data
+            .poll_fog(&mut self.fog_view, &mut self.fog_key_image)?;
         Ok(self.compute_balance())
     }
 
@@ -390,6 +387,8 @@ impl Client {
 
         log::info!(self.logger, "Retrieved {} TXOs", outputs_and_proofs.len());
 
+        assert_eq!(outputs_and_proofs.len(), inputs.len());
+
         // This is where we replace the TxOut object with the one we got from fog ledger
         Ok(outputs_and_proofs
             .into_iter()
@@ -496,6 +495,16 @@ impl Client {
     pub fn get_fee(&mut self) -> Result<u64> {
         Ok(self.consensus_service_conn.fetch_block_info()?.minimum_fee)
     }
+
+    /// Get the public b58 address for this client
+    pub fn get_b58_address(&self) -> String {
+        let public_address = self.account_key.default_subaddress();
+
+        let mut wrapper = mc_api::printable::PrintableWrapper::new();
+        wrapper.set_public_address((&public_address).into());
+
+        wrapper.b58_encode().unwrap()
+    }
 }
 
 /// Builds a transaction that spends `inputs`, sends `amount` to the recipient,
@@ -598,17 +607,19 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
         let onetime_private_key = recover_onetime_private_key(
             &RistrettoPublic::try_from(&input_txo.tx_out.public_key)?,
             source_account_key.view_private_key(),
-            &source_account_key.default_subaddress_spend_private(),
+            &source_account_key.subaddress_spend_private(input_txo.subaddress_index),
         );
 
         let key_image = KeyImage::from(&onetime_private_key);
+        assert_eq!(key_image, input_txo.key_image);
         log::trace!(
             logger,
-            "Adding input: ring {:?}, utxo index {:?}, key image {:?}, pubkey {:?}",
+            "Adding input: ring {:?}, utxo index {:?}, key image {:?}, pubkey {:?}, subaddress index {}",
             ring,
             real_key_index,
             key_image,
-            input_txo.tx_out.public_key
+            input_txo.tx_out.public_key,
+            input_txo.subaddress_index,
         );
 
         let ring_len = ring.len();
