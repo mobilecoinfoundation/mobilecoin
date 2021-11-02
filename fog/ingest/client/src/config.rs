@@ -72,4 +72,21 @@ pub enum IngestConfigCommand {
     /// Retrieves a private key from a remote ingest enclave and sets it as
     /// the current enclaves's private key.
     SyncKeysFromRemote { peer_uri: String },
+
+    ///  Retrieves the ingress public keys for the entire system (as opposed to
+    ///  those of a single IngestServer) and filters according to the provided
+    ///  parameters.
+    GetIngressPublicKeyRecords {
+        /// Ingress keys are "started" at certain blocks. Only ingress keys that
+        /// are "started"  at this block index will be included in the response.
+        #[structopt(short = "s", long = "start-block-at-least")]
+        start_block_at_least: u64,
+        /// If true the response will include ingress keys that have been lost.
+        #[structopt(short = "l", long = "include-lost")]
+        should_include_lost_keys: bool,
+        /// If true the response will include ingress keys that have been
+        /// retired.
+        #[structopt(short = "r", long = "include-retired")]
+        should_include_retired_keys: bool,
+    },
 }
