@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "addr2line"
-version = "0.17.0"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9ecd88a8c8378ca913a680cd98f0f13ac67383d35993f86c90a70e3f137816b"
+checksum = "e7a2e47a1fbe209ee101dd6d61285226744c6c8d3c21c8dc878ba6cb9f467f3a"
 dependencies = [
  "gimli",
 ]
@@ -170,9 +170,9 @@ checksum = "f8aac770f1885fd7e387acedd76065302551364496e46b3dd00860b2f8359b9d"
 
 [[package]]
 name = "backtrace"
-version = "0.3.63"
+version = "0.3.59"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "321629d8ba6513061f26707241fa9bc89524ff1cd7a915a97ef0c62c666ce1b6"
+checksum = "4717cfcbfaa661a0fd48f8453951837ae7e8f81e481fbb136e3202d72805a744"
 dependencies = [
  "addr2line",
  "cc",
@@ -1600,9 +1600,9 @@ dependencies = [
 
 [[package]]
 name = "gimli"
-version = "0.26.0"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81a03ce013ffccead76c11a15751231f777d9295b845cc1266ed4d34fcbd7977"
+checksum = "0e4075386626662786ddb0ec9081e7c7eeb1ba31951f447ca780ef9f5d568189"
 
 [[package]]
 name = "glob"
@@ -2157,9 +2157,9 @@ checksum = "b294d6fa9ee409a054354afc4352b0b9ef7ca222c69b8812cbea9e7d2bf3783f"
 
 [[package]]
 name = "libc"
-version = "0.2.106"
+version = "0.2.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a60553f9a9e039a333b4e9b20573b9e9b9c0bb3a11e201ccc48ef4283456d673"
+checksum = "869d572136620d55835903746bcb5cdc54cb2851fd0aeec53220b4bb65ef3013"
 
 [[package]]
 name = "libloading"
@@ -3227,17 +3227,20 @@ dependencies = [
  "mc-fog-api",
  "mc-fog-ingest-enclave",
  "mc-fog-ingest-server",
+ "mc-fog-recovery-db-iface",
  "mc-fog-sql-recovery-db",
  "mc-fog-test-infra",
  "mc-fog-types",
  "mc-fog-uri",
  "mc-ledger-db",
+ "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-keyfile",
  "mc-util-uri",
  "mc-watcher",
  "predicates 2.0.3",
  "protobuf",
+ "rand 0.8.4",
  "retry",
  "serde_json",
  "structopt",
@@ -3840,7 +3843,6 @@ dependencies = [
  "mc-fog-view-connection",
  "mc-fog-view-enclave-measurement",
  "mc-fog-view-protocol",
- "mc-sgx-css",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-transaction-std",
@@ -3935,25 +3937,15 @@ dependencies = [
 name = "mc-fog-test-client"
 version = "1.2.0-pre0"
 dependencies = [
- "displaydoc",
- "grpcio",
- "lazy_static",
  "mc-account-keys",
  "mc-common",
  "mc-crypto-rand",
  "mc-fog-sample-paykit",
- "mc-fog-uri",
- "mc-sgx-css",
  "mc-transaction-core",
  "mc-transaction-std",
- "mc-util-grpc",
  "mc-util-keyfile",
- "mc-util-metrics",
  "mc-util-uri",
  "more-asserts",
- "once_cell",
- "serde",
- "serde_json",
  "structopt",
 ]
 
@@ -4952,7 +4944,6 @@ dependencies = [
  "mc-crypto-rand",
  "mc-util-from-random",
  "mc-util-serial",
- "mc-util-test-helper",
  "pem",
  "rand 0.8.4",
  "rand_hc 0.3.1",
@@ -5299,7 +5290,7 @@ dependencies = [
  "fragile",
  "lazy_static",
  "mockall_derive",
- "predicates 1.0.8",
+ "predicates 1.0.5",
  "predicates-tree",
 ]
 
@@ -5408,12 +5399,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.27.1"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67ac1d3f9a1d3616fd9a60c8d74296f22406a238b6a72f5cc1e6f314df4ffbf9"
-dependencies = [
- "memchr",
-]
+checksum = "1a5b3dd1c072ee7963717671d1ca129f1048fda25edea6b752bfc71ac8854170"
 
 [[package]]
 name = "once_cell"
@@ -5669,9 +5657,9 @@ dependencies = [
 
 [[package]]
 name = "predicates"
-version = "1.0.8"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f49cfaf7fdaa3bfacc6fa3e7054e65148878354a5cfddcf661df4c851f8021df"
+checksum = "96bfead12e90dccead362d62bb2c90a5f6fc4584963645bc7f71a735e0b0735a"
 dependencies = [
  "difference",
  "float-cmp 0.8.0",
