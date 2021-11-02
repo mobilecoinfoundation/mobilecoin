@@ -299,7 +299,7 @@ impl UtxoStore {
 
         for key_image in removed_key_images.iter() {
             let utxo_id = UtxoId::from(key_image);
-            log::info!(self.logger, "removing utxo for key image {:?}", key_image);
+            log::debug!(self.logger, "removing utxo for key image {:?}", key_image);
 
             removed_utxos.push(self.get_utxo_by_id(db_txn, &utxo_id)?);
 
