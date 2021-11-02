@@ -604,11 +604,6 @@ pub struct OwnedTxOut {
 impl OwnedTxOut {
     /// Try to decrypt a TxOutRecord by view-key matching it, producing an
     /// OwnedTxOut or an error
-    //
-    // FIXME: FOG-237 Confirm that this subaddress matched the tx. Should use
-    // view_key_matches_output function At time of writing this is not used by
-    // mobilecoind or other mobilecoin rust code, but it is used by the swift sdk,
-    // so we need to backport that into the rust sample paykit.
     pub fn new(
         rec: TxOutRecord,
         account_key: &AccountKey,
