@@ -365,7 +365,16 @@ commands:
       - run:
           name: Run fog tests
           command: |
+            # tell the operating system to remove the file size limit on core dump files
+            ulimit -c unlimited
             cargo test --package "mc-fog-*" -j 4 --frozen --no-fail-fast
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_artifacts:
+          path: /tmp/core_dumps
 
   # A job that runs the fog-conformance-tests, building things in debug mode
   # Note: If we bring back the run-parallel-tests stuff, we could make this use --skip-build,
