@@ -2331,4 +2331,178 @@ mod tests {
             }]
         );
     }
+
+    #[test_with_logger]
+    fn test_get_ingress_key_records_should_not_include_retired_keys_does_not_return_retired_keys(
+        logger: Logger,
+    ) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+
+        // At first, there are no records.
+        assert_eq!(
+            db.get_ingress_key_records(
+                0, /* should_include_lost_keys= */ false,
+                /* should_include_retired_keys */ true
+            )
+            .unwrap(),
+            vec![],
+        );
+
+        // Add an ingress key and see that we can retreive it.
+        let ingress_key1 = CompressedRistrettoPublic::from_random(&mut rng);
+        db.new_ingress_key(&ingress_key1, 123).unwrap();
+
+        assert_eq!(
+            db.get_ingress_key_records(
+                0, /* should_include_lost_keys= */ true,
+                /* should_include_retired_keys */ true
+            )
+            .unwrap(),
+            vec![IngressPublicKeyRecord {
+                key: ingress_key1.clone(),
+                status: IngressPublicKeyStatus {
+                    start_block: 123,
+                    pubkey_expiry: 0,
+                    retired: false,
+                    lost: false,
+                },
+                last_scanned_block: None,
+            }],
+        );
+        db.retire_ingress_key(&ingress_key1, true).unwrap();
+        assert_eq!(
+            db.get_ingress_key_records(
+                0, /* should_include_lost_keys= */ true,
+                /* should_include_retired_keys */ false
+            )
+            .unwrap()
+            .len(),
+            0
+        );
+    }
+
+    #[test_with_logger]
+    fn test_get_ingress_key_records_should_not_include_lost_keys_does_not_return_lost_keys(
+        logger: Logger,
+    ) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+
+        // At first, there are no records.
+        assert_eq!(
+            db.get_ingress_key_records(
+                0, /* should_include_lost_keys= */ false,
+                /* should_include_retired_keys */ true
+            )
+            .unwrap(),
+            vec![],
+        );
+
+        // Add an ingress key and see that we can retreive it.
+        let ingress_key1 = CompressedRistrettoPublic::from_random(&mut rng);
+        db.new_ingress_key(&ingress_key1, 123).unwrap();
+
+        assert_eq!(
+            db.get_ingress_key_records(
+                0, /* should_include_lost_keys= */ true,
+                /* should_include_retired_keys */ true
+            )
+            .unwrap(),
+            vec![IngressPublicKeyRecord {
+                key: ingress_key1.clone(),
+                status: IngressPublicKeyStatus {
+                    start_block: 123,
+                    pubkey_expiry: 0,
+                    retired: false,
+                    lost: false,
+                },
+                last_scanned_block: None,
+            }],
+        );
+
+        db.report_lost_ingress_key(ingress_key1).unwrap();
+        assert_eq!(
+            db.get_ingress_key_records(
+                0, /* should_include_lost_keys= */ false,
+                /* should_include_retired_keys */ true
+            )
+            .unwrap()
+            .len(),
+            0
+        );
+    }
+
+    #[test_with_logger]
+    fn test_get_ingress_key_records_should_not_include_lost_keys_or_retired_keys_does_not_return_lost_keys_or_retired_keys(
+        logger: Logger,
+    ) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+
+        // At first, there are no records.
+        assert_eq!(
+            db.get_ingress_key_records(
+                0, /* should_include_lost_keys= */ false,
+                /* should_include_retired_keys */ true
+            )
+            .unwrap(),
+            vec![],
+        );
+
+        // Add an ingress key and see that we can retreive it.
+        let ingress_key1 = CompressedRistrettoPublic::from_random(&mut rng);
+        db.new_ingress_key(&ingress_key1, 123).unwrap();
+
+        let ingress_key2 = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&ingress_key2, 456).unwrap();
+
+        assert_eq!(
+            HashSet::<IngressPublicKeyRecord>::from_iter(
+                db.get_ingress_key_records(
+                    0, /* should_include_lost_keys= */ true,
+                    /* should_include_retired_keys */ true
+                )
+                .unwrap()
+            ),
+            HashSet::<IngressPublicKeyRecord>::from_iter(vec![
+                IngressPublicKeyRecord {
+                    key: ingress_key1.clone(),
+                    status: IngressPublicKeyStatus {
+                        start_block: 123,
+                        pubkey_expiry: 0,
+                        retired: false,
+                        lost: false,
+                    },
+                    last_scanned_block: None,
+                },
+                IngressPublicKeyRecord {
+                    key: ingress_key2.clone(),
+                    status: IngressPublicKeyStatus {
+                        start_block: 456,
+                        pubkey_expiry: 0,
+                        retired: false,
+                        lost: false,
+                    },
+                    last_scanned_block: None,
+                }
+            ]),
+        );
+
+        db.retire_ingress_key(&ingress_key1, true).unwrap();
+        db.report_lost_ingress_key(ingress_key2).unwrap();
+
+        assert_eq!(
+            db.get_ingress_key_records(
+                0, /* should_include_lost_keys= */ false,
+                /* should_include_retired_keys */ false
+            )
+            .unwrap()
+            .len(),
+            0
+        );
+    }
 }
