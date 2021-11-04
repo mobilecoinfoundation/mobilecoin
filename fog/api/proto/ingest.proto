@@ -70,7 +70,7 @@ service AccountIngestAPI {
     /// Retrieves the entire system's ingress public keys. This means that the
     /// keys that aren't associated with the particular ingest server instance
     /// fulfilling this request will be returned. The returned ingress public
-    /// keys are  filtered according to teh GetIngressKeyRecordsRequest parameters.
+    /// keys are filtered according to the GetIngressKeyRecordsRequest parameters.
     rpc GetIngressKeyRecords(GetIngressKeyRecordsRequest) returns (GetIngressKeyRecordsResponse) {}
 }
 
