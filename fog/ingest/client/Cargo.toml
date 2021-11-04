@@ -21,8 +21,8 @@ mc-fog-ingest-enclave = { path = "../enclave" }
 mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
 mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
 mc-ledger-db = { path = "../../../ledger/db" }
-mc-watcher = { path = "../../../watcher" }
 mc-util-from-random = { path = "../../../util/from-random" }
+mc-watcher = { path = "../../../watcher" }
 
 # third party
 assert_cmd = "2.0.2"
