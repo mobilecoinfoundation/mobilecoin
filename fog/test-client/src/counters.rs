@@ -12,8 +12,8 @@ use mc_util_metrics::{register_histogram, Histogram, IntCounter, OpMetrics};
 // collect more data and have more of an idea of how long it usually takes and
 // where it is interesting to get more resolution.
 const TX_TIME_BUCKETS: &[f64] = &[
-    0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
-    13.0, 14.0, 15.0,
+    0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0,
+    14.0, 15.0,
 ];
 
 lazy_static::lazy_static! {
