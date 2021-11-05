@@ -3840,6 +3840,7 @@ dependencies = [
  "mc-fog-view-connection",
  "mc-fog-view-enclave-measurement",
  "mc-fog-view-protocol",
+ "mc-sgx-css",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-transaction-std",
@@ -3934,15 +3935,25 @@ dependencies = [
 name = "mc-fog-test-client"
 version = "1.2.0-pre0"
 dependencies = [
+ "displaydoc",
+ "grpcio",
+ "lazy_static",
  "mc-account-keys",
  "mc-common",
  "mc-crypto-rand",
  "mc-fog-sample-paykit",
+ "mc-fog-uri",
+ "mc-sgx-css",
  "mc-transaction-core",
  "mc-transaction-std",
+ "mc-util-grpc",
  "mc-util-keyfile",
+ "mc-util-metrics",
  "mc-util-uri",
  "more-asserts",
+ "once_cell",
+ "serde",
+ "serde_json",
  "structopt",
 ]
 

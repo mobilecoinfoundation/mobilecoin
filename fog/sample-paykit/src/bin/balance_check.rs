@@ -17,6 +17,7 @@
 use mc_account_keys::AccountKey;
 use mc_common::logger::{create_root_logger, log};
 use mc_fog_sample_paykit::ClientBuilder;
+use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_util_uri::ConsensusClientUri;
 use serde_json::json;
 use std::{
@@ -36,11 +37,11 @@ struct Config {
 
     /// Ledger server URI
     #[structopt(long)]
-    pub ledger_uri: String,
+    pub ledger_uri: FogLedgerUri,
 
     /// View server URI
     #[structopt(long)]
-    pub view_uri: String,
+    pub view_uri: FogViewUri,
 }
 
 fn main() {
