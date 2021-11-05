@@ -31,7 +31,7 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_recovery_db_iface::{
     AddBlockDataStatus, FogUserEvent, IngestInvocationId, IngressPublicKeyRecord,
-    IngressPublicKeyStatus, RecoveryDb, ReportData, ReportDb,
+    IngressPublicKeyRecordFilters, IngressPublicKeyStatus, RecoveryDb, ReportData, ReportDb,
 };
 use mc_fog_types::{
     common::BlockRange,
@@ -247,8 +247,7 @@ impl RecoveryDb for SqlRecoveryDb {
     fn get_ingress_key_records(
         &self,
         start_block_at_least: u64,
-        should_include_lost_keys: bool,
-        should_include_retired_keys: bool,
+        ingress_public_key_record_filters: IngressPublicKeyRecordFilters,
     ) -> Result<Vec<IngressPublicKeyRecord>, Error> {
         let conn = self.pool.get()?;
 
@@ -270,11 +269,11 @@ impl RecoveryDb for SqlRecoveryDb {
             // clauses can be added to this query.
             .into_boxed();
 
-        if !should_include_lost_keys {
+        if !ingress_public_key_record_filters.should_include_lost_keys {
             // Adds this filter to the existing query (rather than replacing it).
             query = query.filter(dsl::lost.eq(false));
         }
-        if !should_include_retired_keys {
+        if !ingress_public_key_record_filters.should_include_retired_keys {
             // Adds this filter to the existing query (rather than replacing it).
             query = query.filter(dsl::retired.eq(false));
         }
@@ -2041,8 +2040,11 @@ mod tests {
         // At first, there are no records.
         assert_eq!(
             db.get_ingress_key_records(
-                0, /* should_include_lost_keys= */ true,
-                /* should_include_retired_keys */ true
+                0,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: true,
+                    should_include_retired_keys: true
+                }
             )
             .unwrap(),
             vec![],
@@ -2054,8 +2056,11 @@ mod tests {
 
         assert_eq!(
             db.get_ingress_key_records(
-                0, /* should_include_lost_keys= */ true,
-                /* should_include_retired_keys */ true
+                0,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: true,
+                    should_include_retired_keys: true
+                }
             )
             .unwrap(),
             vec![IngressPublicKeyRecord {
@@ -2077,8 +2082,11 @@ mod tests {
         assert_eq!(
             HashSet::<IngressPublicKeyRecord>::from_iter(
                 db.get_ingress_key_records(
-                    0, /* should_include_lost_keys= */ true,
-                    /* should_include_retired_keys */ true
+                    0,
+                    IngressPublicKeyRecordFilters {
+                        should_include_lost_keys: true,
+                        should_include_retired_keys: true
+                    }
                 )
                 .unwrap()
             ),
@@ -2119,8 +2127,11 @@ mod tests {
             assert_eq!(
                 HashSet::<IngressPublicKeyRecord>::from_iter(
                     db.get_ingress_key_records(
-                        0, /* should_include_lost_keys= */ true,
-                        /* should_include_retired_keys */ true
+                        0,
+                        IngressPublicKeyRecordFilters {
+                            should_include_lost_keys: true,
+                            should_include_retired_keys: true
+                        }
                     )
                     .unwrap()
                 ),
@@ -2156,8 +2167,11 @@ mod tests {
         assert_eq!(
             HashSet::<IngressPublicKeyRecord>::from_iter(
                 db.get_ingress_key_records(
-                    0, /* should_include_lost_keys= */ true,
-                    /* should_include_retired_keys */ true
+                    0,
+                    IngressPublicKeyRecordFilters {
+                        should_include_lost_keys: true,
+                        should_include_retired_keys: true
+                    }
                 )
                 .unwrap()
             ),
@@ -2191,8 +2205,11 @@ mod tests {
         assert_eq!(
             HashSet::<IngressPublicKeyRecord>::from_iter(
                 db.get_ingress_key_records(
-                    0, /* should_include_lost_keys= */ true,
-                    /* should_include_retired_keys */ true
+                    0,
+                    IngressPublicKeyRecordFilters {
+                        should_include_lost_keys: true,
+                        should_include_retired_keys: true
+                    }
                 )
                 .unwrap()
             ),
@@ -2235,8 +2252,11 @@ mod tests {
         assert_eq!(
             HashSet::<IngressPublicKeyRecord>::from_iter(
                 db.get_ingress_key_records(
-                    0, /* should_include_lost_keys= */ true,
-                    /* should_include_retired_keys */ true
+                    0,
+                    IngressPublicKeyRecordFilters {
+                        should_include_lost_keys: true,
+                        should_include_retired_keys: true
+                    }
                 )
                 .unwrap()
             ),
@@ -2282,8 +2302,11 @@ mod tests {
             assert_eq!(
                 HashSet::<IngressPublicKeyRecord>::from_iter(
                     db.get_ingress_key_records(
-                        0, /* should_include_lost_keys= */ true,
-                        /* should_include_retired_keys */ true
+                        0,
+                        IngressPublicKeyRecordFilters {
+                            should_include_lost_keys: true,
+                            should_include_retired_keys: true
+                        }
                     )
                     .unwrap()
                 ),
@@ -2315,8 +2338,11 @@ mod tests {
         // start_block_at_least filtering works as expected.
         assert_eq!(
             db.get_ingress_key_records(
-                400, /* should_include_lost_keys= */ true,
-                /* should_include_retired_keys */ true
+                400,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: true,
+                    should_include_retired_keys: true
+                }
             )
             .unwrap(),
             vec![IngressPublicKeyRecord {
@@ -2343,8 +2369,11 @@ mod tests {
         // At first, there are no records.
         assert_eq!(
             db.get_ingress_key_records(
-                0, /* should_include_lost_keys= */ false,
-                /* should_include_retired_keys */ true
+                0,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: true
+                }
             )
             .unwrap(),
             vec![],
@@ -2356,8 +2385,11 @@ mod tests {
 
         assert_eq!(
             db.get_ingress_key_records(
-                0, /* should_include_lost_keys= */ true,
-                /* should_include_retired_keys */ true
+                0,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: true,
+                    should_include_retired_keys: true
+                }
             )
             .unwrap(),
             vec![IngressPublicKeyRecord {
@@ -2374,8 +2406,11 @@ mod tests {
         db.retire_ingress_key(&ingress_key1, true).unwrap();
         assert_eq!(
             db.get_ingress_key_records(
-                0, /* should_include_lost_keys= */ true,
-                /* should_include_retired_keys */ false
+                0,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: true,
+                    should_include_retired_keys: false
+                }
             )
             .unwrap()
             .len(),
@@ -2394,8 +2429,11 @@ mod tests {
         // At first, there are no records.
         assert_eq!(
             db.get_ingress_key_records(
-                0, /* should_include_lost_keys= */ false,
-                /* should_include_retired_keys */ true
+                0,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: true
+                }
             )
             .unwrap(),
             vec![],
@@ -2407,8 +2445,11 @@ mod tests {
 
         assert_eq!(
             db.get_ingress_key_records(
-                0, /* should_include_lost_keys= */ true,
-                /* should_include_retired_keys */ true
+                0,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: true,
+                    should_include_retired_keys: true
+                }
             )
             .unwrap(),
             vec![IngressPublicKeyRecord {
@@ -2426,8 +2467,11 @@ mod tests {
         db.report_lost_ingress_key(ingress_key1).unwrap();
         assert_eq!(
             db.get_ingress_key_records(
-                0, /* should_include_lost_keys= */ false,
-                /* should_include_retired_keys */ true
+                0,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: true
+                }
             )
             .unwrap()
             .len(),
@@ -2446,8 +2490,11 @@ mod tests {
         // At first, there are no records.
         assert_eq!(
             db.get_ingress_key_records(
-                0, /* should_include_lost_keys= */ false,
-                /* should_include_retired_keys */ true
+                0,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: true
+                }
             )
             .unwrap(),
             vec![],
@@ -2463,8 +2510,11 @@ mod tests {
         assert_eq!(
             HashSet::<IngressPublicKeyRecord>::from_iter(
                 db.get_ingress_key_records(
-                    0, /* should_include_lost_keys= */ true,
-                    /* should_include_retired_keys */ true
+                    0,
+                    IngressPublicKeyRecordFilters {
+                        should_include_lost_keys: true,
+                        should_include_retired_keys: true
+                    }
                 )
                 .unwrap()
             ),
@@ -2497,8 +2547,11 @@ mod tests {
 
         assert_eq!(
             db.get_ingress_key_records(
-                0, /* should_include_lost_keys= */ false,
-                /* should_include_retired_keys */ false
+                0,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: false
+                }
             )
             .unwrap()
             .len(),

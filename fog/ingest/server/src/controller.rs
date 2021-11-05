@@ -24,7 +24,8 @@ use mc_fog_api::{
 };
 use mc_fog_ingest_enclave::{Error as EnclaveError, IngestEnclave, IngestSgxEnclave};
 use mc_fog_recovery_db_iface::{
-    IngressPublicKeyRecord, IngressPublicKeyStatus, RecoveryDb, ReportData, ReportDb,
+    IngressPublicKeyRecord, IngressPublicKeyRecordFilters, IngressPublicKeyStatus, RecoveryDb,
+    ReportData, ReportDb,
 };
 use mc_fog_types::{common::BlockRange, ingest::TxsForIngest};
 use mc_fog_uri::IngestPeerUri;
@@ -1441,8 +1442,10 @@ where
     ) -> Result<Vec<IngressPublicKeyRecord>, <DB as RecoveryDb>::Error> {
         self.recovery_db.get_ingress_key_records(
             start_block_at_least,
-            should_include_lost_keys,
-            should_include_retired_keys,
+            IngressPublicKeyRecordFilters {
+                should_include_lost_keys: should_include_lost_keys,
+                should_include_retired_keys: should_include_retired_keys,
+            },
         )
     }
 }

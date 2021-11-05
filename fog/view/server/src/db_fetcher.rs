@@ -216,8 +216,11 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
         let _metrics_timer = counters::LOAD_INGRESS_KEYS_TIME.start_timer();
 
         match self.db.get_ingress_key_records(
-            0, /* should_include_lost_keys= */ true,
-            /* should_include_retired_keys */ true,
+            0,
+            IngressKeyRecordFilters {
+                should_include_lost_keys: true,
+                should_include_retired_keys: true,
+            },
         ) {
             Ok(records) => {
                 log::trace!(self.logger, "get_ingress_key_records: {:?}", records);
