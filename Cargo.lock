@@ -4941,6 +4941,7 @@ dependencies = [
  "mc-crypto-rand",
  "mc-util-from-random",
  "mc-util-serial",
+ "mc-util-test-helper",
  "pem",
  "rand 0.8.4",
  "rand_hc 0.3.1",
