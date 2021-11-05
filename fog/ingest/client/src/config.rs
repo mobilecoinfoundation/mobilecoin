@@ -79,7 +79,7 @@ pub enum IngestConfigCommand {
     GetIngressPublicKeyRecords {
         /// Ingress keys are "started" at certain blocks. Only ingress keys that
         /// are "started"  at this block index will be included in the response.
-        #[structopt(short = "s", long = "start-block-at-least")]
+        #[structopt(default_value, short = "s", long = "start-block-at-least")]
         start_block_at_least: u64,
         /// If true the response will include ingress keys that have been lost.
         #[structopt(short = "l", long = "include-lost")]
