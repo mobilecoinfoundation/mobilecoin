@@ -1443,8 +1443,8 @@ where
         self.recovery_db.get_ingress_key_records(
             start_block_at_least,
             IngressPublicKeyRecordFilters {
-                should_include_lost_keys: should_include_lost_keys,
-                should_include_retired_keys: should_include_retired_keys,
+                should_include_lost_keys,
+                should_include_retired_keys,
             },
         )
     }
