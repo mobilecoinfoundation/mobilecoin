@@ -12,8 +12,8 @@ use mc_util_metrics::{register_histogram, Histogram, IntCounter, OpMetrics};
 // collect more data and have more of an idea of how long it usually takes and
 // where it is interesting to get more resolution.
 const TX_TIME_BUCKETS: &[f64] = &[
-    0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0,
-    14.0, 15.0,
+    1.0, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 9.0, 10.0, 12.0, 14.0,
+    16.0, 18.0, 20.0,
 ];
 
 lazy_static::lazy_static! {
@@ -22,11 +22,11 @@ lazy_static::lazy_static! {
 
     /// Time in seconds that it takes for the source client to observe that a submitted transaction landed in the blockchain (timer starts immediately after submission)
     pub static ref TX_CONFIRMED_TIME: Histogram =
-        register_histogram!("tx_confirmed_time", "Time for source client to observe that submitted transaction landed in blockchain", TX_TIME_BUCKETS.to_vec()).unwrap();
+        register_histogram!("fog_test_client_tx_confirmed_time", "Time for source client to observe that submitted transaction landed in blockchain", TX_TIME_BUCKETS.to_vec()).unwrap();
 
     /// Time in seconds that it takes for the target client to observe the received transfer (timer starts immediately after submission)
     pub static ref TX_RECEIVED_TIME: Histogram =
-        register_histogram!("tx_received_time", "Time for target client to observe received transfer", TX_TIME_BUCKETS.to_vec()).unwrap();
+        register_histogram!("fog_test_client_tx_received_time", "Time for target client to observe received transfer", TX_TIME_BUCKETS.to_vec()).unwrap();
 
     /// Number of times that TX_CONFIRMED_TIME exceeded the configured deadline
     pub static ref TX_CONFIRMED_DEADLINE_EXCEEDED_COUNT: IntCounter = OP_COUNTERS.counter("tx_confirmed_deadline_exceeded_count");
