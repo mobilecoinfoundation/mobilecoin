@@ -5,7 +5,7 @@
 use crate::{block_tracker::BlockTracker, counters};
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_fog_recovery_db_iface::{IngressPublicKeyRecord, RecoveryDb};
+use mc_fog_recovery_db_iface::{IngressPublicKeyRecord, IngressPublicKeyRecordFilters, RecoveryDb};
 use mc_fog_types::ETxOutRecord;
 use std::{
     sync::{
@@ -217,7 +217,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
 
         match self.db.get_ingress_key_records(
             0,
-            IngressKeyRecordFilters {
+            IngressPublicKeyRecordFilters {
                 should_include_lost_keys: true,
                 should_include_retired_keys: true,
             },
