@@ -2,6 +2,7 @@
 # Copyright (c) 2018-2021 MobileCoin Inc.
 
 import argparse
+import itertools
 import json
 import os
 import shutil
@@ -12,6 +13,8 @@ import grpc
 
 import remote_wallet_pb2
 import remote_wallet_pb2_grpc
+
+from multiprocessing.pool import ThreadPool
 
 from local_fog import *
 
@@ -258,6 +261,7 @@ class MultiBalanceChecker:
         self.override_remote_wallet_fog_uri = override_remote_wallet_fog_uri
 
         self.steps = []
+        self.thread_pool = ThreadPool()
 
     def __enter__(self):
         return self
@@ -279,17 +283,19 @@ class MultiBalanceChecker:
         assert len(acceptable_answers_per_wallet) == self.NUM_WALLETS
 
         print(f'{step_name}: Performing fresh balance checks')
-        new_wallets = [
-            self._fresh_balance_check(step_name, wallet_num, acceptable_balances, expected_eventual_block_count)
-            for wallet_num, (acceptable_balances, expected_eventual_block_count) in enumerate(acceptable_answers_per_wallet)
-        ]
+        # The lambda we will pass to thread-pool
+        # input should be: (wallet_num, (acceptable_answers, expected_eventual_block_count))
+        map_fn = lambda args: self._fresh_balance_check(step_name, args[0], args[1][0], args[1][1])
+        new_wallets = self.thread_pool.map(map_fn, enumerate(acceptable_answers_per_wallet))
 
         if self.steps and not self.skip_followup_balance_checks:
-            print(f'{step_name}: Performing followup balance checks')
-            for wallets in self.steps:
-                for wallet, (acceptable_balances, expected_eventual_block_count) in zip(wallets, acceptable_answers_per_wallet):
-                    print(f'{step_name}: Followup balane check on {wallet.name} {wallet.key_num}...')
-                    self._follow_up_balance_check(wallet, acceptable_balances, expected_eventual_block_count)
+            # The lambda we will pass to thread-pool
+            #    print(f'{step_name}: Follow up balance check on {wallet.name} {wallet.key_num}...')
+            map_fn = lambda args: self._follow_up_balance_check(args[0], args[1][0], args[1][1])
+
+            print(f'{step_name}: Performing follow up balance checks')
+            iterables = [zip(wallets, acceptable_answers_per_wallet) for wallets in self.steps]
+            self.thread_pool.map(map_fn, itertools.chain.from_iterable(iterables))
 
         self.steps.append(new_wallets)
 
