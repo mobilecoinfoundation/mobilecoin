@@ -8,6 +8,12 @@ use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_sgx_report_cache_untrusted::REPORT_REFRESH_INTERVAL;
 use mc_transaction_core::BlockIndex;
 use mc_watcher::watcher_db::WatcherDB;
+use opentelemetry::{
+    global,
+    global::BoxedTracer,
+    trace::{Span, SpanKind, TraceId, Tracer},
+    Key,
+};
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -16,6 +22,12 @@ use std::{
     thread::JoinHandle,
     time::{Duration, Instant},
 };
+
+fn tracer() -> BoxedTracer {
+    global::tracer_with_version("mc-fog-ingest-server", env!("CARGO_PKG_VERSION"))
+}
+const OT_BLOCK_INDEX_KEY: Key =
+    Key::from_static_str("mobilecoin.com/mc-fog-ingest-server/block-index");
 
 /// The ingest worker is a thread responsible for driving the polling loop which
 /// checks if there are new blocks in the ledger to be processed
@@ -84,6 +96,8 @@ impl IngestWorker {
                         continue;
                     }
 
+                    let start_time = std::time::SystemTime::now();
+
                     match db.get_block_data(next_block_index) {
                         Err(LedgerError::NotFound) => {
                             if let Some(rec) = &mut last_not_found_log {
@@ -126,15 +140,31 @@ impl IngestWorker {
                                 log::warn!(logger, "Failed updating ledger db metrics: {}", err);
                             }
 
-                            // Get the timestamp for the block.
-                            let timestamp =
-                                watcher.poll_block_timestamp(next_block_index, watcher_timeout);
+                            let tracer = tracer();
 
-                            controller.process_next_block(
-                                block_data.block(),
-                                block_data.contents(),
-                                timestamp,
-                            );
+                            let mut span = tracer
+                                .span_builder("poll_block")
+                                .with_kind(SpanKind::Server)
+                                .with_start_time(start_time)
+                                .with_trace_id(TraceId::from_u128(
+                                    0x1000000000000 + next_block_index as u128,
+                                ))
+                                .start(&tracer);
+
+                            span.set_attribute(OT_BLOCK_INDEX_KEY.i64(next_block_index as i64));
+
+                            // Get the timestamp for the block.
+                            let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
+                                watcher.poll_block_timestamp(next_block_index, watcher_timeout)
+                            });
+
+                            tracer.in_span("process_next_block", |_cx| {
+                                controller.process_next_block(
+                                    block_data.block(),
+                                    block_data.contents(),
+                                    timestamp,
+                                );
+                            });
                         }
                     }
                 }

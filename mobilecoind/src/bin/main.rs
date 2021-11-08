@@ -31,7 +31,9 @@ fn main() {
 
     let _tracer = opentelemetry_jaeger::new_pipeline()
         .with_service_name("mobilecoind")
-        .with_collector_endpoint("http://34.133.197.146:14268/api/traces")
+        //.with_collector_endpoint("http://34.133.197.146:14268/api/traces")
+        //.with_collector_endpoint("http://google.com")
+        .with_agent_endpoint("34.133.197.146:6831")
         .with_tags(vec![KeyValue::new(
             "hostname",
             local_hostname
