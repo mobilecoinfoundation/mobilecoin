@@ -10,6 +10,7 @@ use mc_mobilecoind::{
     config::Config, database::Database, payments::TransactionsManager, service::Service,
 };
 use mc_watcher::{watcher::WatcherSyncThread, watcher_db::create_or_open_rw_watcher_db};
+use opentelemetry::KeyValue;
 use std::{
     path::Path,
     sync::{Arc, RwLock},
@@ -26,6 +27,21 @@ fn main() {
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
+    let local_hostname = hostname::get().expect("Could not retrieve hostname");
+
+    let _tracer = opentelemetry_jaeger::new_pipeline()
+        .with_service_name("mobilecoind")
+        .with_collector_endpoint("http://34.133.197.146:14268/api/traces")
+        .with_tags(vec![KeyValue::new(
+            "hostname",
+            local_hostname
+                .to_str()
+                .expect("local_hostname.to_str")
+                .to_owned(),
+        )])
+        .install_simple()
+        .expect("oh oh");
+
     let mut mr_signer_verifier =
         MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
     mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
@@ -34,6 +50,15 @@ fn main() {
     verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
     log::debug!(logger, "Verifier: {:?}", verifier);
+
+    /*{
+        let mut span = _tracer.start_with_context("hello", parent_cx);
+        span.add_event("handling this...".to_string(), Vec::new());
+
+        println!("trace id: {:?}", span.span_context().trace_id().to_hex());
+
+        span.end()
+    }*/
 
     // Create peer manager.
     let peer_manager = config.peers_config.create_peer_manager(verifier, &logger);

@@ -21,6 +21,12 @@ use mc_transaction_core::{
     compute_block_id, ring_signature::KeyImage, Block, BlockContents, BlockID, BlockIndex,
 };
 use mc_util_uri::ConnectionUri;
+use opentelemetry::{
+    global,
+    global::BoxedTracer,
+    trace::{TraceContextExt, Tracer},
+    Key,
+};
 use retry::delay::Fibonacci;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
@@ -35,6 +41,13 @@ const DEFAULT_GET_TRANSACTIONS_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Maximal amount of concurrent get_block_contents calls to allow.
 const MAX_CONCURRENT_GET_BLOCK_CONTENTS_CALLS: usize = 50;
+
+const OT_NUM_BLOCKS: Key = Key::from_static_str("mobilecoin.com/mc-ledger-sync/num_blocks");
+
+// OpenTelemetry tracer for this module.
+fn tracer() -> BoxedTracer {
+    global::tracer_with_version("mc-ledger-sync-service", env!("CARGO_PKG_VERSION"))
+}
 
 pub struct LedgerSyncService<L: Ledger, BC: BlockchainConnection, TF: TransactionsFetcher> {
     ledger: L,
@@ -256,81 +269,88 @@ impl<
         limit: u32,
     ) -> Result<(), LedgerSyncError> {
         trace_time!(self.logger, "attempt_ledger_sync");
+        tracer().in_span("attempt_ledger_sync", |_cx| {
+            let (responder_ids, _, potentially_safe_blocks) = self
+                .get_potentially_safe_blocks(network_state, limit)
+                .ok_or(LedgerSyncError::NoSafeBlocks)?;
 
-        let (responder_ids, _, potentially_safe_blocks) = self
-            .get_potentially_safe_blocks(network_state, limit)
-            .ok_or(LedgerSyncError::NoSafeBlocks)?;
+            if potentially_safe_blocks.is_empty() {
+                return Err(LedgerSyncError::EmptyBlockVec);
+            }
 
-        if potentially_safe_blocks.is_empty() {
-            return Err(LedgerSyncError::EmptyBlockVec);
-        }
+            let num_potentially_safe_blocks = potentially_safe_blocks.len();
 
-        let num_potentially_safe_blocks = potentially_safe_blocks.len();
+            // Get transactions.
+            let block_index_to_opt_transactions: BTreeMap<BlockIndex, Option<BlockContents>> =
+                get_block_contents(
+                    self.transactions_fetcher.clone(),
+                    &responder_ids,
+                    &potentially_safe_blocks,
+                    self.get_transactions_timeout,
+                    &self.logger,
+                );
 
-        // Get transactions.
-        let block_index_to_opt_transactions: BTreeMap<BlockIndex, Option<BlockContents>> =
-            get_block_contents(
-                self.transactions_fetcher.clone(),
-                &responder_ids,
-                &potentially_safe_blocks,
-                self.get_transactions_timeout,
-                &self.logger,
-            );
+            let mut blocks_and_contents: Vec<(Block, BlockContents)> = Vec::new();
 
-        let mut blocks_and_contents: Vec<(Block, BlockContents)> = Vec::new();
+            {
+                // Populate `blocks_with_transactions`. This just returns all (block,
+                // transactions) until it reaches a None.
+                let mut block_index_to_transactions: BTreeMap<BlockIndex, BlockContents> =
+                    block_index_to_opt_transactions
+                        .into_iter()
+                        .take_while(|(_block_index, transactions_opt)| transactions_opt.is_some())
+                        .map(|(block_index, transactions_opt)| {
+                            (block_index, transactions_opt.unwrap())
+                        })
+                        .collect();
 
-        {
-            // Populate `blocks_with_transactions`. This just returns all (block,
-            // transactions) until it reaches a None.
-            let mut block_index_to_transactions: BTreeMap<BlockIndex, BlockContents> =
-                block_index_to_opt_transactions
+                let block_index_to_block: BTreeMap<BlockIndex, Block> = potentially_safe_blocks
                     .into_iter()
-                    .take_while(|(_block_index, transactions_opt)| transactions_opt.is_some())
-                    .map(|(block_index, transactions_opt)| (block_index, transactions_opt.unwrap()))
+                    .map(|block| (block.index, block))
                     .collect();
 
-            let block_index_to_block: BTreeMap<BlockIndex, Block> = potentially_safe_blocks
-                .into_iter()
-                .map(|block| (block.index, block))
-                .collect();
-
-            // Join blocks and transactions, allowing for the possibility that transactions
-            // may not be available for some blocks due to failed network requests for
-            // transactions.
-            for (block_index, block) in block_index_to_block {
-                if let Some(block_contents) = block_index_to_transactions.remove(&block_index) {
-                    blocks_and_contents.push((block, block_contents));
-                } else {
-                    log::error!(self.logger, "No transactions for block {:?}", block);
-                    break;
+                // Join blocks and transactions, allowing for the possibility that transactions
+                // may not be available for some blocks due to failed network requests for
+                // transactions.
+                for (block_index, block) in block_index_to_block {
+                    if let Some(block_contents) = block_index_to_transactions.remove(&block_index) {
+                        blocks_and_contents.push((block, block_contents));
+                    } else {
+                        log::error!(self.logger, "No transactions for block {:?}", block);
+                        break;
+                    }
                 }
             }
-        }
 
-        if blocks_and_contents.is_empty() {
-            log::error!(
-                self.logger,
-                "Identified {} safe blocks but was unable to get block contents.",
-                num_potentially_safe_blocks,
+            if blocks_and_contents.is_empty() {
+                log::error!(
+                    self.logger,
+                    "Identified {} safe blocks but was unable to get block contents.",
+                    num_potentially_safe_blocks,
+                );
+                return Err(LedgerSyncError::NoTransactionData);
+            }
+
+            // Process safe blocks.
+            log::trace!(
+                &self.logger,
+                "Identifying safe blocks out of {} blocks",
+                blocks_and_contents.len()
             );
-            return Err(LedgerSyncError::NoTransactionData);
-        }
+            if let Ok(safe_blocks) =
+                identify_safe_blocks(&self.ledger, &blocks_and_contents, &self.logger)
+            {
+                tracer().in_span("append_safe_blocks", |cx| {
+                    cx.span()
+                        .set_attribute(OT_NUM_BLOCKS.i64(safe_blocks.len() as i64));
+                    self.append_safe_blocks(&safe_blocks)
+                })?;
+            } else {
+                log::info!(self.logger, "No safe blocks.");
+            }
 
-        // Process safe blocks.
-        log::trace!(
-            &self.logger,
-            "Identifying safe blocks out of {} blocks",
-            blocks_and_contents.len()
-        );
-        if let Ok(safe_blocks) =
-            identify_safe_blocks(&self.ledger, &blocks_and_contents, &self.logger)
-        {
-            self.append_safe_blocks(&safe_blocks)?;
-        } else {
-            log::info!(self.logger, "No safe blocks.");
-        }
-
-        Ok(())
+            Ok(())
+        })
     }
 }
 
