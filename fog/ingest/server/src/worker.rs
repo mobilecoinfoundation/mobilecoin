@@ -11,7 +11,7 @@ use mc_watcher::watcher_db::WatcherDB;
 use opentelemetry::{
     global,
     global::BoxedTracer,
-    trace::{Span, SpanKind, TraceId, Tracer},
+    trace::{mark_span_as_active, Span, SpanKind, TraceId, Tracer},
     Key,
 };
 use std::{
@@ -147,11 +147,13 @@ impl IngestWorker {
                                 .with_kind(SpanKind::Server)
                                 .with_start_time(start_time)
                                 .with_trace_id(TraceId::from_u128(
-                                    0x1000000000000 + next_block_index as u128,
+                                    0x2000000000000 + next_block_index as u128,
                                 ))
                                 .start(&tracer);
 
                             span.set_attribute(OT_BLOCK_INDEX_KEY.i64(next_block_index as i64));
+
+                            let _active = mark_span_as_active(span);
 
                             // Get the timestamp for the block.
                             let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
