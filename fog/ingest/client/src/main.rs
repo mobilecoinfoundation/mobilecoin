@@ -55,6 +55,18 @@ fn main() -> ClientResult<()> {
         IngestConfigCommand::SyncKeysFromRemote { peer_uri } => {
             sync_keys_from_remote(&logger, &ingest_client, peer_uri)
         }
+
+        IngestConfigCommand::GetIngressPublicKeyRecords {
+            start_block_at_least,
+            should_include_lost_keys,
+            should_include_retired_keys,
+        } => get_ingress_key_records(
+            &logger,
+            &ingest_client,
+            start_block_at_least,
+            should_include_lost_keys,
+            should_include_retired_keys,
+        ),
     }
 }
 
@@ -165,6 +177,42 @@ fn sync_keys_from_remote(
         .expect("rpc failed");
     log::info!(logger, "Done, status: {:?}", status);
     println!("{}", ingest_summary_to_json(&status));
+    Ok(())
+}
+
+fn get_ingress_key_records(
+    logger: &Logger,
+    ingest_client: &FogIngestGrpcClient,
+    start_block_at_least: u64,
+    should_include_lost_keys: bool,
+    should_include_retired_keys: bool,
+) -> ClientResult<()> {
+    let ingress_key_records = ingest_client
+        .get_ingress_key_records(
+            start_block_at_least,
+            should_include_lost_keys,
+            should_include_retired_keys,
+        )
+        .expect("Failed getting ingress key records");
+
+    log::info!(logger, "Ingress keys successfully retrieved");
+    println!(
+        "{}",
+        json!(ingress_key_records
+            .iter()
+            .map(|record| {
+                json!({
+                    "ingress_public_key": hex::encode(record.get_ingress_public_key().get_data()),
+                    "start_block": record.start_block,
+                    "pubkey_expiry": record.pubkey_expiry,
+                    "retired": record.retired,
+                    "lost": record.lost,
+                    "last_scanned_block": record.last_scanned_block
+                })
+            })
+            .collect::<Vec<_>>())
+    );
+
     Ok(())
 }
 

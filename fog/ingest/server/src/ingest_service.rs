@@ -4,6 +4,7 @@
 
 use crate::{controller::IngestController, error::IngestServiceError};
 use grpcio::{RpcContext, RpcStatus, UnarySink};
+use mc_api::external;
 use mc_attest_net::RaClient;
 use mc_common::logger::Logger;
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -189,6 +190,49 @@ where
             .sync_keys_from_remote(&peer_uri)
             .map_err(|err| rpc_database_err(err, logger))
     }
+
+    /// Retrieves the ingress public keys and filters according to the request's
+    /// parameters.
+    pub fn get_ingress_key_records_impl(
+        &self,
+        request: GetIngressKeyRecordsRequest,
+        logger: &Logger,
+    ) -> Result<GetIngressKeyRecordsResponse, RpcStatus> {
+        let ingress_key_records = self
+            .controller
+            .get_ingress_key_records(
+                request.start_block_at_least,
+                request.should_include_lost_keys,
+                request.should_include_retired_keys,
+            )
+            .map_err(|err| rpc_precondition_error("get_ingress_key_records", err, logger))?;
+
+        let mut response = GetIngressKeyRecordsResponse::new();
+        response.set_records(RepeatedField::from_vec(
+            ingress_key_records
+                .iter()
+                .map(|record| {
+                    let mut proto_ingress_public_key_record = IngressPublicKeyRecord::new();
+
+                    let ingress_public_key = external::CompressedRistretto::from(&record.key);
+                    proto_ingress_public_key_record.set_ingress_public_key(ingress_public_key);
+
+                    proto_ingress_public_key_record.set_start_block(record.status.start_block);
+                    proto_ingress_public_key_record.set_pubkey_expiry(record.status.pubkey_expiry);
+                    proto_ingress_public_key_record.set_retired(record.status.retired);
+                    proto_ingress_public_key_record.set_lost(record.status.lost);
+
+                    if let Some(last_scanned_block) = record.last_scanned_block {
+                        proto_ingress_public_key_record.set_last_scanned_block(last_scanned_block);
+                    }
+
+                    proto_ingress_public_key_record
+                })
+                .collect(),
+        ));
+
+        Ok(response)
+    }
 }
 
 impl<
@@ -303,6 +347,23 @@ where
                 ctx,
                 sink,
                 self.sync_keys_from_remote_impl(request, logger),
+                logger,
+            )
+        })
+    }
+
+    fn get_ingress_key_records(
+        &mut self,
+        ctx: RpcContext,
+        request: GetIngressKeyRecordsRequest,
+        sink: UnarySink<GetIngressKeyRecordsResponse>,
+    ) {
+        let _timer = SVC_COUNTERS.req(&ctx);
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            send_result(
+                ctx,
+                sink,
+                self.get_ingress_key_records_impl(request, logger),
                 logger,
             )
         })

@@ -22,6 +22,15 @@ pub use types::{
     IngressPublicKeyStatus, ReportData,
 };
 
+/// Contains fields that are used as filters in  queries for ingress keys.
+pub struct IngressPublicKeyRecordFilters {
+    /// If set to true, the query will include ingress keys that are lost.
+    pub should_include_lost_keys: bool,
+
+    /// If set to true, the query will include ingress keys that are retired.
+    pub should_include_retired_keys: bool,
+}
+
 /// A generic error type for recovery db operations
 pub trait RecoveryDbError: Debug + Display + Send + Sync {}
 impl<T> RecoveryDbError for T where T: Debug + Display + Send + Sync {}
@@ -84,6 +93,7 @@ pub trait RecoveryDb {
     fn get_ingress_key_records(
         &self,
         start_block_at_least: u64,
+        ingress_public_key_record_filters: IngressPublicKeyRecordFilters,
     ) -> Result<Vec<IngressPublicKeyRecord>, Self::Error>;
 
     /// Adds a new ingest invocation to the database, optionally decommissioning

@@ -5,7 +5,7 @@
 use crate::{block_tracker::BlockTracker, counters};
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_fog_recovery_db_iface::{IngressPublicKeyRecord, RecoveryDb};
+use mc_fog_recovery_db_iface::{IngressPublicKeyRecord, IngressPublicKeyRecordFilters, RecoveryDb};
 use mc_fog_types::ETxOutRecord;
 use std::{
     sync::{
@@ -215,7 +215,13 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
     fn load_ingress_keys(&self) {
         let _metrics_timer = counters::LOAD_INGRESS_KEYS_TIME.start_timer();
 
-        match self.db.get_ingress_key_records(0) {
+        match self.db.get_ingress_key_records(
+            0,
+            IngressPublicKeyRecordFilters {
+                should_include_lost_keys: true,
+                should_include_retired_keys: true,
+            },
+        ) {
             Ok(records) => {
                 log::trace!(self.logger, "get_ingress_key_records: {:?}", records);
 

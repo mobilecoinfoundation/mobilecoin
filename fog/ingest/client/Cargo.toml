@@ -18,8 +18,10 @@ mc-attest-net = { path = "../../../attest/net" }
 mc-fog-ingest-server = { path = "../server" }
 mc-fog-test-infra = { path = "../../test_infra" }
 mc-fog-ingest-enclave = { path = "../enclave" }
+mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
 mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
 mc-ledger-db = { path = "../../../ledger/db" }
+mc-util-from-random = { path = "../../../util/from-random" }
 mc-watcher = { path = "../../../watcher" }
 
 # third party
@@ -27,6 +29,7 @@ assert_cmd = "2.0.2"
 tempdir = "0.3"
 maplit = "1"
 predicates = "2"
+rand = "0.8"
 
 [dependencies]
 # third party
