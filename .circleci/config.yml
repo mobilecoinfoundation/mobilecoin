@@ -385,7 +385,7 @@ commands:
       - store_artifacts:
           path: /tmp/core_dumps
 
-  # A job that runs the fog-conformance-tests, building things in debug mode
+  # A job that runs the fog-conformance-tests, building things in release mode
   # Note: If we bring back the run-parallel-tests stuff, we could make this use --skip-build,
   # and consume the build targets built in earlier step perhaps
   run-fog-conformance-tests-release:
