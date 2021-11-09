@@ -16,6 +16,7 @@ use mc_fog_sample_paykit::{
     remote_wallet_grpc::{create_remote_wallet_api, RemoteWalletApi},
     Client, ClientBuilder,
 };
+use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, send_result, ConnectionUriGrpcioServer,
 };
@@ -92,13 +93,19 @@ impl RemoteWalletService {
         let fog_uri = request.get_fog_uri();
         let (fog_view_uri, fog_ledger_uri) = if fog_uri.starts_with("fog://") {
             (
-                fog_uri.replace("fog://", "fog-view://"),
-                fog_uri.replace("fog://", "fog-ledger://"),
+                FogViewUri::from_str(&fog_uri.replace("fog://", "fog-view://"))
+                    .expect("Could not parse fog view uri"),
+                FogLedgerUri::from_str(&fog_uri.replace("fog://", "fog-ledger://"))
+                    .expect("Could not parse fog ledger uri"),
             )
         } else if fog_uri.starts_with("insecure-fog://") {
             (
-                fog_uri.replace("insecure-fog://", "insecure-fog-view://"),
-                fog_uri.replace("insecure-fog://", "insecure-fog-ledger://"),
+                FogViewUri::from_str(&fog_uri.replace("insecure-fog://", "insecure-fog-view://"))
+                    .expect("Could not parse fog view uri"),
+                FogLedgerUri::from_str(
+                    &fog_uri.replace("insecure-fog://", "insecure-fog-ledger://"),
+                )
+                .expect("Could not parse fog ledger uri"),
             )
         } else {
             return Err(rpc_internal_error(

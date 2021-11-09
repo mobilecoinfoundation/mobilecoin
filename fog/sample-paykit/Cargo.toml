@@ -17,6 +17,7 @@ path = "src/bin/sample_paykit_remote_wallet.rs"
 [dependencies]
 # mobilecoin
 mc-account-keys = { path = "../../account-keys" }
+mc-api = { path = "../../api" }
 mc-attest-core = { path = "../../attest/core" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
@@ -24,6 +25,7 @@ mc-consensus-api = { path = "../../consensus/api" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-rand = { path = "../../crypto/rand" }
+mc-sgx-css = { path = "../../sgx/css" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-std = { path = "../../transaction/std" }
 mc-util-grpc = { path = "../../util/grpc" }

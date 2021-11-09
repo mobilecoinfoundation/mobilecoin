@@ -9,7 +9,10 @@ use crate::{
 };
 
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
-use mc_common::{logger::Logger, HashMap};
+use mc_common::{
+    logger::{log, Logger},
+    HashMap,
+};
 use mc_transaction_core::{ring_signature::KeyImage, tx::TxOut};
 use mc_util_serial::Message;
 use std::{convert::TryFrom, sync::Arc};
@@ -296,6 +299,7 @@ impl UtxoStore {
 
         for key_image in removed_key_images.iter() {
             let utxo_id = UtxoId::from(key_image);
+            log::debug!(self.logger, "removing utxo for key image {:?}", key_image);
 
             removed_utxos.push(self.get_utxo_by_id(db_txn, &utxo_id)?);
 

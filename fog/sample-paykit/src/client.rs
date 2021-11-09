@@ -36,8 +36,8 @@ use mc_transaction_core::{
     BlockIndex,
 };
 use mc_transaction_std::{
-    ChangeDestination, InputCredentials, MemoType, RTHMemoBuilder, SenderMemoCredential,
-    TransactionBuilder,
+    ChangeDestination, InputCredentials, MemoType, NoMemoBuilder, RTHMemoBuilder,
+    SenderMemoCredential, TransactionBuilder,
 };
 use mc_util_uri::{ConnectionUri, FogUri};
 use rand::Rng;
@@ -65,6 +65,9 @@ pub struct Client {
     /// tombstone block when generating a new transaction.
     new_tx_block_attempts: u16,
 
+    /// Whether to use RTH memos. For backwards compat, we can turn memos off.
+    use_rth_memos: bool,
+
     logger: Logger,
 }
 
@@ -81,9 +84,10 @@ impl Client {
         ring_size: usize,
         account_key: AccountKey,
         address_book: Vec<PublicAddress>,
+        use_rth_memos: bool,
         logger: Logger,
     ) -> Self {
-        let tx_data = CachedTxData::new(address_book, logger.clone());
+        let tx_data = CachedTxData::new(account_key.clone(), address_book, logger.clone());
 
         Client {
             consensus_service_conn,
@@ -97,6 +101,7 @@ impl Client {
             account_key,
             tx_data,
             new_tx_block_attempts: DEFAULT_NEW_TX_BLOCK_ATTEMPTS,
+            use_rth_memos,
             logger,
         }
     }
@@ -132,11 +137,8 @@ impl Client {
     ///   balance
     pub fn check_balance(&mut self) -> Result<(u64, BlockCount)> {
         mc_common::trace_time!(self.logger, "MobileCoinClient.get_balance");
-        self.tx_data.poll_fog(
-            &mut self.fog_view,
-            &mut self.fog_key_image,
-            &self.account_key,
-        )?;
+        self.tx_data
+            .poll_fog(&mut self.fog_view, &mut self.fog_key_image)?;
         Ok(self.compute_balance())
     }
 
@@ -326,6 +328,7 @@ impl Client {
             target_address,
             tombstone_block,
             fog_resolver,
+            self.use_rth_memos,
             rng,
             &self.logger,
             fee,
@@ -389,6 +392,8 @@ impl Client {
             .collect();
 
         log::info!(self.logger, "Retrieved {} TXOs", outputs_and_proofs.len());
+
+        assert_eq!(outputs_and_proofs.len(), inputs.len());
 
         // This is where we replace the TxOut object with the one we got from fog ledger
         Ok(outputs_and_proofs
@@ -496,6 +501,16 @@ impl Client {
     pub fn get_fee(&mut self) -> Result<u64> {
         Ok(self.consensus_service_conn.fetch_block_info()?.minimum_fee)
     }
+
+    /// Get the public b58 address for this client
+    pub fn get_b58_address(&self) -> String {
+        let public_address = self.account_key.default_subaddress();
+
+        let mut wrapper = mc_api::printable::PrintableWrapper::new();
+        wrapper.set_public_address((&public_address).into());
+
+        wrapper.b58_encode().unwrap()
+    }
 }
 
 /// Builds a transaction that spends `inputs`, sends `amount` to the recipient,
@@ -520,6 +535,7 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     target_address: &PublicAddress,
     tombstone_block: BlockIndex,
     fog_resolver: FPR,
+    use_rth_memos: bool,
     rng: &mut T,
     logger: &Logger,
     fee: u64,
@@ -534,11 +550,17 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
         return Err(Error::RingsForInput(rings.len(), inputs.len()));
     }
 
-    let mut memo_builder = RTHMemoBuilder::default();
-    memo_builder.set_sender_credential(SenderMemoCredential::from(source_account_key));
-    memo_builder.enable_destination_memo();
+    // Use the RTHMemoBuilder if memos are enabled, NoMemoBuilder otherwise
+    let mut tx_builder = if use_rth_memos {
+        let mut memo_builder = RTHMemoBuilder::default();
+        memo_builder.set_sender_credential(SenderMemoCredential::from(source_account_key));
+        memo_builder.enable_destination_memo();
 
-    let mut tx_builder = TransactionBuilder::new(fog_resolver, memo_builder);
+        TransactionBuilder::new(fog_resolver, memo_builder)
+    } else {
+        let memo_builder = NoMemoBuilder::default();
+        TransactionBuilder::new(fog_resolver, memo_builder)
+    };
     tx_builder.set_fee(fee)?;
 
     let input_amount = inputs.iter().fold(0, |acc, (txo, _)| acc + txo.value);
@@ -598,17 +620,19 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
         let onetime_private_key = recover_onetime_private_key(
             &RistrettoPublic::try_from(&input_txo.tx_out.public_key)?,
             source_account_key.view_private_key(),
-            &source_account_key.default_subaddress_spend_private(),
+            &source_account_key.subaddress_spend_private(input_txo.subaddress_index),
         );
 
         let key_image = KeyImage::from(&onetime_private_key);
+        assert_eq!(key_image, input_txo.key_image);
         log::trace!(
             logger,
-            "Adding input: ring {:?}, utxo index {:?}, key image {:?}, pubkey {:?}",
+            "Adding input: ring {:?}, utxo index {:?}, key image {:?}, pubkey {:?}, subaddress index {}",
             ring,
             real_key_index,
             key_image,
-            input_txo.tx_out.public_key
+            input_txo.tx_out.public_key,
+            input_txo.subaddress_index,
         );
 
         let ring_len = ring.len();
@@ -648,8 +672,11 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
 mod test_build_transaction_helper {
     use super::*;
     use core::result::Result as StdResult;
-    use mc_account_keys::{AccountKey, PublicAddress};
-    use mc_common::logger::{test_with_logger, Logger};
+    use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
+    use mc_common::{
+        logger::{test_with_logger, Logger},
+        HashMap,
+    };
     use mc_fog_report_validation::{FogPubkeyError, FullyValidatedFogPubkey};
     use mc_fog_types::view::{FogTxOut, FogTxOutMetadata, TxOutRecord};
     use mc_transaction_core::{
@@ -658,6 +685,7 @@ mod test_build_transaction_helper {
     };
     use mc_transaction_core_test_utils::get_outputs;
     use rand::{rngs::StdRng, SeedableRng};
+    use std::iter::FromIterator;
 
     // Mock of FogPubkeyResolver
     struct FakeAcctResolver {}
@@ -700,7 +728,19 @@ mod test_build_transaction_helper {
                     let meta = FogTxOutMetadata::default();
                     let txo_record = TxOutRecord::new(fog_tx_out, meta);
 
-                    let owned_tx_out = OwnedTxOut::new(txo_record, &sender_account_key).unwrap();
+                    let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key).unwrap();
+                    let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+
+                    let subaddress_spk = recover_public_subaddress_spend_key(
+                        sender_account_key.view_private_key(),
+                        &tx_out_target_key,
+                        &tx_public_key,
+                    );
+                    let spsk_to_index =
+                        HashMap::from_iter(vec![(subaddress_spk, DEFAULT_SUBADDRESS_INDEX)]);
+
+                    let owned_tx_out =
+                        OwnedTxOut::new(txo_record, &sender_account_key, &spsk_to_index).unwrap();
 
                     let proof = TxOutMembershipProof::new(0, 0, Default::default());
 
@@ -752,6 +792,7 @@ mod test_build_transaction_helper {
             &recipient_account_key.default_subaddress(),
             super::BlockIndex::max_value(),
             fake_acct_resolver,
+            true,
             &mut rng,
             &logger,
             MINIMUM_FEE,

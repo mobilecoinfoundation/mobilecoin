@@ -338,6 +338,8 @@ commands:
       - run:
           name: Run mobilecoin tests
           command: |
+            # tell the operating system to remove the file size limit on core dump files
+            ulimit -c unlimited
             mkdir -p /tmp/mc-test-results
 
             # Run tests, then convert the cargo json results into junit xml format.
@@ -358,6 +360,13 @@ commands:
                     | cargo2junit > /tmp/mc-test-results/results.xml \
                     || true
                 }
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_artifacts:
+          path: /tmp/core_dumps
 
   # FIXME: Figure out why the parallel tests stuff using cargo2junit isn't working in the cloud for fog, maybe a memory limit issue?
   run-fog-tests:
@@ -365,7 +374,16 @@ commands:
       - run:
           name: Run fog tests
           command: |
+            # tell the operating system to remove the file size limit on core dump files
+            ulimit -c unlimited
             cargo test --package "mc-fog-*" -j 4 --frozen --no-fail-fast
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_artifacts:
+          path: /tmp/core_dumps
 
   # A job that runs the fog-conformance-tests, building things in debug mode
   # Note: If we bring back the run-parallel-tests stuff, we could make this use --skip-build,
@@ -375,6 +393,8 @@ commands:
       - run:
           name: fog_conformance_tests.py
           command: |
+            # tell the operating system to remove the file size limit on core dump files
+            ulimit -c unlimited
             openssl genrsa -out Enclave_private.pem -3 3072
             export CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
             export INGEST_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
@@ -391,6 +411,13 @@ commands:
             cd ../..
 
             python ./tools/fog-local-network/fog_conformance_tests.py
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_artifacts:
+          path: /tmp/core_dumps
 
   post-build:
     steps:

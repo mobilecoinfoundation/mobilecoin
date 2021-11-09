@@ -50,6 +50,10 @@ struct IngestServerSetUpData {
     /// line program and sync the ingress public key from the primary ingest
     /// server.
     _backup_ingest_server: IngestServer<AttestClient, SqlRecoveryDb>,
+    /// The db context that is used to created the RecoveryDb. This must be
+    /// included here to ensure that the RecoveryDb is not dropped at the end
+    /// of the set up method.
+    _db_test_context: SqlRecoveryDbTestContext,
     /// The url that can be used to address the backup ingest server of grpc.
     backup_ingest_server_client_uri: String,
     /// The url that can be used to address by a peer ingest server to
@@ -176,6 +180,7 @@ fn set_up_ingest_servers(logger: Logger) -> IngestServerSetUpData {
     return IngestServerSetUpData {
         _primary_ingest_server: primary_ingest_server,
         _backup_ingest_server: backup_ingest_server,
+        _db_test_context: db_test_context,
         backup_ingest_server_client_uri: backup_ingest_server_client_uri_str.to_owned(),
         primary_ingest_server_peer_uri: primary_ingest_server_peer_uri_str.to_owned(),
         primary_ingest_server_ingress_pubkey: primary_ingest_server_ingress_pubkey.clone(),
