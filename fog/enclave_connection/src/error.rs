@@ -25,10 +25,7 @@ pub enum Error {
 
 impl Error {
     pub fn should_retry(&self) -> bool {
-        match self {
-            Error::Rpc(_) | Error::Ake(_) | Error::Cipher(_) => true,
-            _ => false,
-        }
+        matches!(self, Error::Rpc(_) | Error::Ake(_))
     }
 }
 
