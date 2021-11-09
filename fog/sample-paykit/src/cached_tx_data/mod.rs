@@ -13,7 +13,6 @@ use mc_common::{
     HashMap,
 };
 use mc_crypto_keys::RistrettoPublic;
-use mc_fog_enclave_connection::Error as EnclaveConnectionError;
 use mc_fog_ledger_connection::{
     Error as LedgerConnectionError, FogKeyImageGrpcClient, KeyImageResultExtension,
 };
@@ -489,7 +488,7 @@ impl CachedTxData {
                     }
                 }
             }
-            Err(err @ LedgerConnectionError::Connection(EnclaveConnectionError::Rpc(_))) => {
+            Err(err @ LedgerConnectionError::Connection(_)) => {
                 log::info!(self.logger, "Check key images failed due to {}", err);
                 return Err(err.into());
             }

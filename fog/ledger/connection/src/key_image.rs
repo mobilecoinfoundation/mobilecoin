@@ -13,6 +13,7 @@ use mc_fog_types::ledger::{
 use mc_fog_uri::FogLedgerUri;
 use mc_transaction_core::{ring_signature::KeyImage, BlockIndex};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
+use retry::{delay::Fixed, retry};
 use std::sync::Arc;
 
 /// An attested connection to the Fog Key Image service.
@@ -54,8 +55,9 @@ impl FogKeyImageGrpcClient {
                 .collect(),
         };
 
-        let response: CheckKeyImagesResponse =
-            self.conn.encrypted_enclave_request(&request, &[])?;
+        let response: CheckKeyImagesResponse = retry(Fixed::from_millis(100).take(5), || {
+            self.conn.retriable_encrypted_enclave_request(&request, &[])
+        })?;
 
         Ok(response)
     }

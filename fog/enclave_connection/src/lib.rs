@@ -20,6 +20,7 @@ use mc_crypto_keys::X25519;
 use mc_crypto_rand::McRng;
 use mc_util_grpc::{BasicCredentials, GrpcCookieStore};
 use mc_util_uri::ConnectionUri;
+use retry::OperationResult;
 use sha2::Sha512;
 
 mod error;
@@ -233,6 +234,29 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> EnclaveConnection<U, G> {
             let plaintext_bytes = attest_cipher.decrypt(message.get_aad(), message.get_data())?;
             let plaintext_response: ResponseMessage = mc_util_serial::decode(&plaintext_bytes)?;
             Ok(plaintext_response)
+        }
+    }
+
+    /// Same as encrypted_enclave_request, but convert result to an
+    /// OperationResult for use with the retry crate
+    pub fn retriable_encrypted_enclave_request<
+        RequestMessage: mc_util_serial::Message,
+        ResponseMessage: mc_util_serial::Message + Default,
+    >(
+        &mut self,
+        plaintext_request: &RequestMessage,
+        aad: &[u8],
+    ) -> OperationResult<ResponseMessage, Error> {
+        match self.encrypted_enclave_request(plaintext_request, aad) {
+            Ok(value) => OperationResult::Ok(value),
+            Err(err) => {
+                if err.should_retry() {
+                    log::debug!(self.logger, "retriable enclave connection error: {}", err);
+                    OperationResult::Retry(err)
+                } else {
+                    OperationResult::Err(err)
+                }
+            }
         }
     }
 }

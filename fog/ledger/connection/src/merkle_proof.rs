@@ -11,6 +11,7 @@ use mc_fog_types::ledger::{GetOutputsRequest, GetOutputsResponse, OutputResult};
 use mc_fog_uri::FogLedgerUri;
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
+use retry::{delay::Fixed, retry};
 use std::sync::Arc;
 
 /// An attested connection to the Fog Merkle Proof service.
@@ -48,7 +49,9 @@ impl FogMerkleProofGrpcClient {
             merkle_root_block,
         };
 
-        let response: GetOutputsResponse = self.conn.encrypted_enclave_request(&request, &[])?;
+        let response: GetOutputsResponse = retry(Fixed::from_millis(100).take(5), || {
+            self.conn.retriable_encrypted_enclave_request(&request, &[])
+        })?;
 
         Ok(response)
     }
