@@ -410,7 +410,9 @@ where
         }
 
         // Grab whatever fetched records have shown up since the last time we ran.
+        let fetch_start = std::time::SystemTime::now();
         let fetched_records_list = self.db_fetcher.get_pending_fetched_records();
+        let fetch_end = std::time::SystemTime::now();
 
         for fetched_records in fetched_records_list.into_iter() {
             // Early exit if stop as requested.
@@ -420,6 +422,19 @@ where
 
             // Insert the records into the enclave.
             let tracer = tracer();
+
+            let mut span = tracer
+                .span_builder("fetch_records_list")
+                .with_kind(SpanKind::Server)
+                .with_trace_id(TraceId::from_u128(
+                    0x3000000000000 + fetched_records.block_index as u128,
+                ))
+                .with_start_time(fetch_start)
+                .with_end_time(fetch_end)
+                .start(&tracer);
+            span.set_attribute(OT_BLOCK_INDEX_KEY.i64(fetched_records.block_index as i64));
+            span.end();
+
             let mut span = tracer
                 .span_builder("add_records_to_enclave")
                 .with_kind(SpanKind::Server)
