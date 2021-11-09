@@ -8,6 +8,7 @@ use mc_fog_sql_recovery_db::SqlRecoveryDb;
 use mc_fog_view_enclave::{SgxViewEnclave, ENCLAVE_FILE};
 use mc_fog_view_server::{config::MobileAcctViewConfig, server::ViewServer};
 use mc_util_grpc::AdminServer;
+use opentelemetry::KeyValue;
 use std::{env, sync::Arc};
 use structopt::StructOpt;
 
@@ -24,6 +25,21 @@ fn main() {
         logger.clone(),
     )
     .expect("Failed connecting to database");
+
+    let local_hostname = hostname::get().expect("Could not retrieve hostname");
+    let _tracer = opentelemetry_jaeger::new_pipeline()
+        .with_service_name("fog-view")
+        //.with_collector_endpoint("http://34.133.197.146:14268/api/traces")
+        .with_agent_endpoint("34.133.197.146:6831")
+        .with_tags(vec![KeyValue::new(
+            "hostname",
+            local_hostname
+                .to_str()
+                .expect("local_hostname.to_str")
+                .to_owned(),
+        )])
+        .install_simple()
+        .expect("oh oh");
 
     let enclave_path = env::current_exe()
         .expect("Could not get the path of our executable")

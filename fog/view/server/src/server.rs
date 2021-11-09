@@ -25,6 +25,12 @@ use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
     AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, TokenAuthenticator,
 };
+use opentelemetry::{
+    global,
+    global::BoxedTracer,
+    trace::{Span, SpanKind, TraceId, Tracer},
+    Key,
+};
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -362,6 +368,12 @@ pub enum WorkerTickResult {
     Sleep,
 }
 
+fn tracer() -> BoxedTracer {
+    global::tracer_with_version("mc-fog-ingest-server", env!("CARGO_PKG_VERSION"))
+}
+const OT_BLOCK_INDEX_KEY: Key =
+    Key::from_static_str("mobilecoin.com/mc-fog-ingest-server/block-index");
+
 impl<E, DB> DbPollThreadWorker<E, DB>
 where
     E: ViewEnclaveProxy,
@@ -399,6 +411,7 @@ where
 
         // Grab whatever fetched records have shown up since the last time we ran.
         let fetched_records_list = self.db_fetcher.get_pending_fetched_records();
+
         for fetched_records in fetched_records_list.into_iter() {
             // Early exit if stop as requested.
             if self.stop_requested.load(Ordering::SeqCst) {
@@ -406,11 +419,24 @@ where
             }
 
             // Insert the records into the enclave.
+            let tracer = tracer();
+            let mut span = tracer
+                .span_builder("add_records_to_enclave")
+                .with_kind(SpanKind::Server)
+                .with_trace_id(TraceId::from_u128(
+                    0x3000000000000 + fetched_records.block_index as u128,
+                ))
+                .start(&tracer);
+
+            span.set_attribute(OT_BLOCK_INDEX_KEY.i64(fetched_records.block_index as i64));
+
             self.add_records_to_enclave(
                 fetched_records.ingress_key,
                 fetched_records.block_index,
                 fetched_records.records,
             );
+
+            span.end();
         }
 
         // Figure out the highest fully processed block count and put that in the shared
