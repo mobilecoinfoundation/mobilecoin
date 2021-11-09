@@ -208,7 +208,7 @@ impl UserPool {
         for (ref upriv, ref mut udata) in self.users.iter_mut() {
             let initial_num_blocks = udata.rngs.get_highest_processed_block_count();
 
-            let (mut txos, errors) = view_node.poll(&mut udata.rngs, upriv);
+            let (mut txos, _missed_block_ranges, errors) = view_node.poll(&mut udata.rngs, upriv);
             if !errors.is_empty() {
                 global_log::error!("Unexpected errors when polling account server");
                 for err in errors {

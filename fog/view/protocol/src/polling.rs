@@ -25,6 +25,7 @@ use mc_common::HashSet;
 use mc_crypto_keys::KeyError;
 use mc_fog_kex_rng::BufferedRng;
 use mc_fog_types::{
+    common::BlockRange,
     view::{QueryResponse, TxOutRecord},
     BlockCount,
 };
@@ -59,12 +60,19 @@ pub trait FogViewConnection {
         &mut self,
         user_rng_set: &mut UserRngSet,
         upriv: &UserPrivate,
-    ) -> (Vec<TxOutRecord>, Vec<TxOutPollingError<Self::Error>>) {
+    ) -> (
+        Vec<TxOutRecord>,
+        Vec<BlockRange>,
+        Vec<TxOutPollingError<Self::Error>>,
+    ) {
         // Buffer for errors encountered.
         // It's not considered acceptable that one error can cause the whole process
         // fail, instead we get as many hits as we can and return any new txs as
         // well as any errors.
         let mut errs = Vec::<TxOutPollingError<Self::Error>>::new();
+
+        // Block ranges for which Fog Ingest did not process a user's TxOuts.
+        let mut missed_block_ranges = Vec::<BlockRange>::new();
 
         // Update seeds, get block count
         let mut new_highest_processed_block_count = {
@@ -79,7 +87,7 @@ pub trait FogViewConnection {
                 // If there's a connection error it's probably unrecoverable and we should not loop
                 // There are retries in the FogClient class
                 Err(err) => {
-                    return (vec![], vec![err]);
+                    return (vec![], vec![], vec![err]);
                 }
                 Ok(result) => {
                     // TODO: Handle decommissioning of ingest invocations
@@ -89,6 +97,10 @@ pub trait FogViewConnection {
                             errs.push(TxOutPollingError::from(err));
                         }
                     }
+
+                    // Missed block ranges are reported once, so we can add
+                    // directly without fear of repeating ranges.
+                    missed_block_ranges.extend(result.missed_block_ranges);
 
                     user_rng_set
                         .set_next_start_from_user_event_id(result.next_start_from_user_event_id);
@@ -147,7 +159,7 @@ pub trait FogViewConnection {
                     // If there's a connection error it's probly unrecoverable and we should not
                     // loop There are retries in the FogClient class
                     errs.push(TxOutPollingError::Conn(err));
-                    return (results, errs);
+                    return (results, missed_block_ranges, errs);
                 }
             };
 
@@ -191,6 +203,9 @@ pub trait FogViewConnection {
             if request_multiplier >= 1000 {
                 request_multiplier = 1000;
             }
+            // Missed block ranges are reported once, so we can add
+            // directly without fear of repeating ranges.
+            missed_block_ranges.extend(resp.missed_block_ranges);
         }
 
         // Don't update the num_blocks value in reverse. If this time the servers
@@ -202,7 +217,7 @@ pub trait FogViewConnection {
         {
             user_rng_set.set_highest_processed_block_count(new_highest_processed_block_count);
         }
-        (results, errs)
+        (results, missed_block_ranges, errs)
     }
 }
 
