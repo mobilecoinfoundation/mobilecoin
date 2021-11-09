@@ -141,7 +141,7 @@ impl CachedTxData {
                 self.key_image_data_completeness,
             )
         } else {
-            *vec![
+            *[
                 self.rng_set.get_highest_processed_block_count(),
                 self.key_image_data_completeness,
                 BlockCount::from(
