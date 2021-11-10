@@ -36,7 +36,7 @@ use mc_transaction_std::MemoType;
 use opentelemetry::{
     global,
     global::BoxedTracer,
-    trace::{Span, SpanKind, TraceId, Tracer},
+    trace::{TraceContextExt, Tracer},
     Key,
 };
 use std::collections::{BTreeMap, HashSet};
@@ -45,7 +45,8 @@ mod memo_handler;
 pub use memo_handler::{MemoHandler, MemoHandlerError};
 
 const MAX_INPUTS: usize = mc_transaction_core::constants::MAX_INPUTS as usize;
-const OT_BLOCK_INDEX_KEY: Key = Key::from_static_str("mobilecoin.com/sample_paykit/block_index");
+//const OT_BLOCK_INDEX_KEY: Key =
+// Key::from_static_str("mobilecoin.com/sample_paykit/block_index");
 const OT_NUM_TXOS_KEY: Key = Key::from_static_str("mobilecoin.com/sample_paykit/num_txos");
 
 fn tracer() -> BoxedTracer {
@@ -738,17 +739,24 @@ impl CachedTxData {
         let old_key_image_data_completeness = self.key_image_data_completeness;
         let old_rng_num_blocks = self.rng_set.get_highest_processed_block_count();
 
-        let poll_txo_start = std::time::SystemTime::now();
-        let num_txos = self.poll_fog_for_txos(fog_view_client, fog_block_client)?;
-        let poll_txo_end = std::time::SystemTime::now();
+        let tracer = tracer();
 
-        let poll_key_image_start = std::time::SystemTime::now();
-        self.poll_fog_for_key_images(key_image_client)?;
-        let poll_key_images_end = std::time::SystemTime::now();
+        tracer.in_span("poll_fog_for_txos", |cx| -> Result<()> {
+            let num_txos = self.poll_fog_for_txos(fog_view_client, fog_block_client)?;
+            cx.span()
+                .set_attribute(OT_NUM_TXOS_KEY.i64(num_txos as i64));
+
+            Ok(())
+        })?;
+
+        tracer.in_span("poll_fog_for_key_images", |_cx| -> Result<()> {
+            self.poll_fog_for_key_images(key_image_client)?;
+            Ok(())
+        })?;
 
         let new_num_blocks = self.get_num_blocks();
 
-        let block_index = u64::from(new_num_blocks) - 1;
+        /*let block_index = u64::from(new_num_blocks) - 1;
 
         let tracer = tracer();
         let mut span = tracer
@@ -770,7 +778,7 @@ impl CachedTxData {
             .with_trace_id(TraceId::from_u128(0x4000000000000 + block_index as u128))
             .start(&tracer);
         span.set_attribute(OT_BLOCK_INDEX_KEY.i64(block_index as i64));
-        span.end_with_timestamp(poll_key_images_end);
+        span.end_with_timestamp(poll_key_images_end);*/
 
         log::trace!(self.logger, "After polling fog num_blocks changed: {} -> {}, key_image_data_completeness changed: {} -> {}, rng_num_blocks changed: {} -> {}", old_num_blocks, new_num_blocks, old_key_image_data_completeness, self.key_image_data_completeness, old_rng_num_blocks, self.rng_set.get_highest_processed_block_count());
         if old_num_blocks > new_num_blocks {

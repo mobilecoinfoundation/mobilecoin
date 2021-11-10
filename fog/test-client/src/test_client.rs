@@ -25,7 +25,7 @@ use opentelemetry::{
     global,
     global::BoxedTracer,
     trace::{Span, SpanKind, TraceId, Tracer},
-    Key,
+    Context, Key,
 };
 use serde::Serialize;
 use std::{
@@ -218,9 +218,12 @@ impl TestClient {
         );
 
         // First do a balance check to flush out any spent txos
-        source_client
-            .check_balance()
-            .map_err(TestClientError::CheckBalance)?;
+        let tracer = tracer();
+        tracer.in_span("pre_transfer_balance_check", |_cx| {
+            source_client
+                .check_balance()
+                .map_err(TestClientError::CheckBalance)
+        })?;
 
         let mut rng = McRng::default();
         assert!(target_address.fog_report_url().is_some());
@@ -254,37 +257,40 @@ impl TestClient {
         client: &mut Client,
         transaction: &Tx,
     ) -> Result<BlockIndex, TestClientError> {
-        // Wait until ledger server can see all of these key images
-        let mut deadline = Some(Instant::now() + self.policy.tx_submit_deadline);
-        loop {
-            match client
-                .is_transaction_present(transaction)
-                .map_err(TestClientError::ConfirmTx)?
-            {
-                TransactionStatus::Appeared(block_index) => return Ok(block_index),
-                TransactionStatus::Expired => return Err(TestClientError::TxExpired),
-                TransactionStatus::Unknown => {}
-            }
-            deadline = if let Some(deadline) = deadline {
-                if Instant::now() > deadline {
-                    counters::TX_CONFIRMED_DEADLINE_EXCEEDED_COUNT.inc();
-                    if self.policy.fail_fast_on_deadline {
-                        return Err(TestClientError::SubmittedTxTimeout);
-                    }
-                    None
-                } else {
-                    Some(deadline)
+        let tracer = tracer();
+        tracer.in_span("ensure_transaction_is_accepted", |_cx| {
+            // Wait until ledger server can see all of these key images
+            let mut deadline = Some(Instant::now() + self.policy.tx_submit_deadline);
+            loop {
+                match client
+                    .is_transaction_present(transaction)
+                    .map_err(TestClientError::ConfirmTx)?
+                {
+                    TransactionStatus::Appeared(block_index) => return Ok(block_index),
+                    TransactionStatus::Expired => return Err(TestClientError::TxExpired),
+                    TransactionStatus::Unknown => {}
                 }
-            } else {
-                None
-            };
-            log::info!(
-                self.logger,
-                "Checking transaction again after {:?}...",
-                self.policy.polling_wait
-            );
-            std::thread::sleep(self.policy.polling_wait);
-        }
+                deadline = if let Some(deadline) = deadline {
+                    if Instant::now() > deadline {
+                        counters::TX_CONFIRMED_DEADLINE_EXCEEDED_COUNT.inc();
+                        if self.policy.fail_fast_on_deadline {
+                            return Err(TestClientError::SubmittedTxTimeout);
+                        }
+                        None
+                    } else {
+                        Some(deadline)
+                    }
+                } else {
+                    None
+                };
+                log::info!(
+                    self.logger,
+                    "Checking transaction again after {:?}...",
+                    self.policy.polling_wait
+                );
+                std::thread::sleep(self.policy.polling_wait);
+            }
+        })
     }
 
     /// Ensure that after all fog servers have caught up and the client has data
@@ -399,50 +405,59 @@ impl TestClient {
         target_client: Arc<Mutex<Client>>,
         target_client_index: usize,
     ) -> Result<Tx, TestClientError> {
+        let tracer = tracer();
+
         let mut source_client_lk = source_client.lock().expect("mutex poisoned");
         let mut target_client_lk = target_client.lock().expect("mutex poisoned");
         let src_address_hash =
             ShortAddressHash::from(&source_client_lk.get_account_key().default_subaddress());
         let tgt_address_hash =
             ShortAddressHash::from(&target_client_lk.get_account_key().default_subaddress());
-        let (src_balance, src_cursor) = source_client_lk
-            .check_balance()
-            .map_err(TestClientError::CheckBalance)?;
-        log::info!(
-            self.logger,
-            "client {} has a balance of {} after {} blocks",
-            source_client_index,
-            src_balance,
-            src_cursor
-        );
-        let (tgt_balance, tgt_cursor) = target_client_lk
-            .check_balance()
-            .map_err(TestClientError::CheckBalance)?;
-        log::info!(
-            self.logger,
-            "client {} has a balance of {} after {} blocks",
-            target_client_index,
-            tgt_balance,
-            tgt_cursor
-        );
-        if src_balance == 0 || tgt_balance == 0 {
-            return Err(TestClientError::ZeroBalance);
-        }
+
+        let (src_balance, tgt_balance) = tracer.in_span(
+            "test_transfer_pre_checks",
+            |_cx| -> Result<(u64, u64), TestClientError> {
+                let (src_balance, src_cursor) = source_client_lk
+                    .check_balance()
+                    .map_err(TestClientError::CheckBalance)?;
+                log::info!(
+                    self.logger,
+                    "client {} has a balance of {} after {} blocks",
+                    source_client_index,
+                    src_balance,
+                    src_cursor
+                );
+                let (tgt_balance, tgt_cursor) = target_client_lk
+                    .check_balance()
+                    .map_err(TestClientError::CheckBalance)?;
+                log::info!(
+                    self.logger,
+                    "client {} has a balance of {} after {} blocks",
+                    target_client_index,
+                    tgt_balance,
+                    tgt_cursor
+                );
+                if src_balance == 0 || tgt_balance == 0 {
+                    return Err(TestClientError::ZeroBalance);
+                }
+
+                Ok((src_balance, tgt_balance))
+            },
+        )?;
 
         let fee = source_client_lk.get_fee().unwrap_or(MINIMUM_FEE);
         let transfer_start = std::time::SystemTime::now();
         let (transaction, block_count) =
             self.transfer(&mut source_client_lk, &mut target_client_lk)?;
 
-        let tracer = tracer();
         let mut span = tracer
             .span_builder("test_iteration")
             .with_kind(SpanKind::Server)
             .with_start_time(transfer_start)
             .with_trace_id(TraceId::from_u128(0x4000000000000 + block_count as u128))
             .start(&tracer);
-
-        span.set_attribute(OT_BLOCK_INDEX_KEY.i64(transaction_appeared as i64));
+        span.set_attribute(OT_BLOCK_INDEX_KEY.i64(block_count as i64));
+        let _active = opentelemetry::trace::mark_span_as_active(span);
 
         let start = Instant::now();
 
@@ -454,14 +469,17 @@ impl TestClient {
             self.policy.clone(),
             Some(src_address_hash),
             self.logger.clone(),
+            Context::current(),
         );
 
         // Wait for key images to land in ledger server
-        let ensure_start = std::time::SystemTime::now();
+        //let ensure_start = std::time::SystemTime::now();
         let transaction_appeared =
             self.ensure_transaction_is_accepted(&mut source_client_lk, &transaction)?;
 
-        let mut span = tracer
+        span.set_attribute(OT_BLOCK_INDEX_KEY.i64(transaction_appeared as i64));
+
+        /*let mut span = tracer
             .span_builder("ensure_transaction_is_accepted")
             .with_kind(SpanKind::Server)
             .with_start_time(ensure_start)
@@ -471,7 +489,7 @@ impl TestClient {
             .start(&tracer);
 
         span.set_attribute(OT_BLOCK_INDEX_KEY.i64(transaction_appeared as i64));
-        span.end();
+        span.end();*/
 
         counters::TX_CONFIRMED_TIME.observe(start.elapsed().as_secs_f64());
 
@@ -481,11 +499,13 @@ impl TestClient {
         // Wait for tx to land in fog view server
         // This test will be as flakey as the accessibility/fees of consensus
         log::info!(self.logger, "Checking balance for source");
-        self.ensure_expected_balance_after_block(
-            &mut source_client_lk,
-            transaction_appeared,
-            src_balance - self.policy.transfer_amount - fee,
-        )?;
+        tracer.in_span("ensure_expected_balance_after_block", |_cx| {
+            self.ensure_expected_balance_after_block(
+                &mut source_client_lk,
+                transaction_appeared,
+                src_balance - self.policy.transfer_amount - fee,
+            )
+        })?;
 
         // Wait for receive tx worker to successfully get the transaction
         receive_tx_worker.join()?;
@@ -690,6 +710,7 @@ impl ReceiveTxWorker {
         policy: TestClientPolicy,
         expected_memo_contents: Option<ShortAddressHash>,
         logger: Logger,
+        parent_context: Context,
     ) -> Self {
         let bail = Arc::new(AtomicBool::default());
         let tx_appeared_relay = Arc::new(OnceCell::<BlockIndex>::default());
@@ -703,7 +724,18 @@ impl ReceiveTxWorker {
                 let start = Instant::now();
                 let mut deadline = Some(start + policy.tx_receive_deadline);
 
-                let ensure_start = std::time::SystemTime::now();
+                // let ensure_start = std::time::SystemTime::now();
+
+                let tracer = tracer();
+                let span = tracer
+                    .span_builder("fog_view_received")
+                    .with_kind(SpanKind::Server)
+                    /*.with_trace_id(TraceId::from_u128(
+                        0x4000000000000 + block_index as u128,
+                    ))*/
+                    .with_parent_context(parent_context)
+                    .start(&tracer);
+                let _active = opentelemetry::trace::mark_span_as_active(span);
 
                 loop {
                     if thread_bail.load(Ordering::SeqCst) {
@@ -717,21 +749,9 @@ impl ReceiveTxWorker {
                     if new_balance == expected_balance {
                         counters::TX_RECEIVED_TIME.observe(start.elapsed().as_secs_f64());
 
-                        let block_index = u64::from(new_block_count) - 1;
+                        //let block_index = u64::from(new_block_count) - 1;
 
-                        let tracer = tracer();
-                        let mut span = tracer
-                            .span_builder("fog_view_received")
-                            .with_kind(SpanKind::Server)
-                            .with_start_time(ensure_start)
-                            .with_trace_id(TraceId::from_u128(
-                                0x4000000000000 + block_index as u128,
-                            ))
-                            .start(&tracer);
-
-                        span.set_attribute(OT_BLOCK_INDEX_KEY.i64(block_index as i64));
-                        span.end();
-
+                        //let tracer = tracer();
                         if policy.test_rth_memos {
                             // Ensure target client got a sender memo, as expected for recoverable
                             // transcation history
