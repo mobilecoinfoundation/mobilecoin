@@ -409,8 +409,11 @@ impl CachedTxData {
         }
 
         self.missed_block_ranges.extend(new_missed_block_ranges);
-        let fog_common_block_ranges: Vec<fog_common::BlockRange> =
-            CachedTxData::convert_block_ranges(&self.missed_block_ranges);
+        let fog_common_block_ranges: Vec<fog_common::BlockRange> = self
+            .missed_block_ranges
+            .iter()
+            .map(fog_common::BlockRange::from)
+            .collect::<Vec<_>>();
         match fog_block_client.get_missed_block_ranges(fog_common_block_ranges) {
             Ok(block_response) => {
                 let tx_out_records_from_missed_blocks: Vec<TxOutRecord> =
@@ -556,21 +559,6 @@ impl CachedTxData {
         }
 
         tx_out_records
-    }
-
-    fn convert_block_ranges(
-        common_block_ranges: &[common::BlockRange],
-    ) -> Vec<fog_common::BlockRange> {
-        common_block_ranges
-            .iter()
-            .map(|common_block_range| {
-                let mut fog_common_block_range = fog_common::BlockRange::new();
-                fog_common_block_range.start_block = common_block_range.start_block;
-                fog_common_block_range.end_block = common_block_range.end_block;
-
-                fog_common_block_range
-            })
-            .collect::<Vec<fog_common::BlockRange>>()
     }
 
     /// Poll for new key image data, given fog key image connection object
