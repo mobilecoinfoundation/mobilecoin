@@ -385,10 +385,10 @@ commands:
       - store_artifacts:
           path: /tmp/core_dumps
 
-  # A job that runs the fog-conformance-tests, building things in debug mode
+  # A job that runs the fog-conformance-tests, building things in release mode
   # Note: If we bring back the run-parallel-tests stuff, we could make this use --skip-build,
   # and consume the build targets built in earlier step perhaps
-  run-fog-conformance-tests-debug:
+  run-fog-conformance-tests-release:
     steps:
       - run:
           name: fog_conformance_tests.py
@@ -410,7 +410,7 @@ commands:
             ./build.sh
             cd ../..
 
-            python ./tools/fog-local-network/fog_conformance_tests.py
+            python ./tools/fog-local-network/fog_conformance_tests.py --release
       - run:
           command: |
             mkdir -p /tmp/core_dumps
@@ -514,7 +514,7 @@ jobs:
       <<: *default-build-environment
     steps:
       - prepare-for-build
-      - run-fog-conformance-tests-debug
+      - run-fog-conformance-tests-release
 
   # Build and lint in debug mode
   build-and-lint-debug:
