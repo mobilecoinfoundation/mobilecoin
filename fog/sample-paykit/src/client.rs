@@ -40,11 +40,22 @@ use mc_transaction_std::{
     SenderMemoCredential, TransactionBuilder,
 };
 use mc_util_uri::{ConnectionUri, FogUri};
+use opentelemetry::{
+    global,
+    global::BoxedTracer,
+    trace::{Span, SpanKind, TraceId, Tracer},
+    Key,
+};
 use rand::Rng;
 
 /// Default number of blocks used for calculating transaction tombstone block
 /// number. See `new_tx_block_attempts` below.
 const DEFAULT_NEW_TX_BLOCK_ATTEMPTS: u16 = 50;
+
+const OT_BLOCK_INDEX_KEY: Key = Key::from_static_str("mobilecoin.com/sample_paykit/block_index");
+fn tracer() -> BoxedTracer {
+    global::tracer_with_version("mc-sample-paykit", env!("CARGO_PKG_VERSION"))
+}
 
 /// Represents the entire sample paykit object, capable of balance checks and
 /// sending transactions
@@ -177,9 +188,22 @@ impl Client {
     /// "is_transaction_accepted". Then, perform another balance check to
     /// get refreshed key image data before attempting to create another
     /// transaction.
-    pub fn send_transaction(&mut self, transaction: &Tx) -> Result<()> {
-        self.consensus_service_conn.propose_tx(transaction)?;
-        Ok(())
+    pub fn send_transaction(&mut self, transaction: &Tx) -> Result<u64> {
+        let start_time = std::time::SystemTime::now();
+        let block_count = self.consensus_service_conn.propose_tx(transaction)?;
+
+        let tracer = tracer();
+        let mut span = tracer
+            .span_builder("send_transaction")
+            .with_kind(SpanKind::Server)
+            .with_start_time(start_time)
+            .with_trace_id(TraceId::from_u128(0x4000000000000 + block_count as u128))
+            .start(&tracer);
+
+        span.set_attribute(OT_BLOCK_INDEX_KEY.i64(block_count as i64));
+        span.end();
+
+        Ok(block_count)
     }
 
     /// Check if a transaction has appeared in the ledger, by checking if one of

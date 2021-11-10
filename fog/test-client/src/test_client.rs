@@ -21,6 +21,12 @@ use mc_transaction_std::MemoType;
 use mc_util_uri::ConsensusClientUri;
 use more_asserts::assert_gt;
 use once_cell::sync::OnceCell;
+use opentelemetry::{
+    global,
+    global::BoxedTracer,
+    trace::{Span, SpanKind, TraceId, Tracer},
+    Key,
+};
 use serde::Serialize;
 use std::{
     sync::{
@@ -30,6 +36,11 @@ use std::{
     thread::JoinHandle,
     time::{Duration, Instant},
 };
+
+const OT_BLOCK_INDEX_KEY: Key = Key::from_static_str("mobilecoin.com/test_client/block_index");
+fn tracer() -> BoxedTracer {
+    global::tracer_with_version("mc-test-client", env!("CARGO_PKG_VERSION"))
+}
 
 /// Policy for different kinds of timeouts.
 /// In acceptance testing, we want to fail fast if things take too long.
@@ -197,7 +208,7 @@ impl TestClient {
         &self,
         source_client: &mut Client,
         target_client: &mut Client,
-    ) -> Result<Tx, TestClientError> {
+    ) -> Result<(Tx, u64), TestClientError> {
         let target_address = target_client.get_account_key().default_subaddress();
         log::debug!(
             self.logger,
@@ -220,10 +231,10 @@ impl TestClient {
         let transaction = source_client
             .build_transaction(self.policy.transfer_amount, &target_address, &mut rng, fee)
             .map_err(TestClientError::BuildTx)?;
-        source_client
+        let block_count = source_client
             .send_transaction(&transaction)
             .map_err(TestClientError::SubmitTx)?;
-        Ok(transaction)
+        Ok((transaction, block_count))
     }
 
     /// Waits for a transaction to be accepted by the network
@@ -419,7 +430,19 @@ impl TestClient {
         }
 
         let fee = source_client_lk.get_fee().unwrap_or(MINIMUM_FEE);
-        let transaction = self.transfer(&mut source_client_lk, &mut target_client_lk)?;
+        let transfer_start = std::time::SystemTime::now();
+        let (transaction, block_count) =
+            self.transfer(&mut source_client_lk, &mut target_client_lk)?;
+
+        let tracer = tracer();
+        let mut span = tracer
+            .span_builder("test_iteration")
+            .with_kind(SpanKind::Server)
+            .with_start_time(transfer_start)
+            .with_trace_id(TraceId::from_u128(0x4000000000000 + block_count as u128))
+            .start(&tracer);
+
+        span.set_attribute(OT_BLOCK_INDEX_KEY.i64(transaction_appeared as i64));
 
         let start = Instant::now();
 
@@ -434,8 +457,21 @@ impl TestClient {
         );
 
         // Wait for key images to land in ledger server
+        let ensure_start = std::time::SystemTime::now();
         let transaction_appeared =
             self.ensure_transaction_is_accepted(&mut source_client_lk, &transaction)?;
+
+        let mut span = tracer
+            .span_builder("ensure_transaction_is_accepted")
+            .with_kind(SpanKind::Server)
+            .with_start_time(ensure_start)
+            .with_trace_id(TraceId::from_u128(
+                0x4000000000000 + transaction_appeared as u128,
+            ))
+            .start(&tracer);
+
+        span.set_attribute(OT_BLOCK_INDEX_KEY.i64(transaction_appeared as i64));
+        span.end();
 
         counters::TX_CONFIRMED_TIME.observe(start.elapsed().as_secs_f64());
 
@@ -667,6 +703,8 @@ impl ReceiveTxWorker {
                 let start = Instant::now();
                 let mut deadline = Some(start + policy.tx_receive_deadline);
 
+                let ensure_start = std::time::SystemTime::now();
+
                 loop {
                     if thread_bail.load(Ordering::SeqCst) {
                         return Ok(());
@@ -678,6 +716,21 @@ impl ReceiveTxWorker {
 
                     if new_balance == expected_balance {
                         counters::TX_RECEIVED_TIME.observe(start.elapsed().as_secs_f64());
+
+                        let block_index = u64::from(new_block_count) - 1;
+
+                        let tracer = tracer();
+                        let mut span = tracer
+                            .span_builder("fog_view_received")
+                            .with_kind(SpanKind::Server)
+                            .with_start_time(ensure_start)
+                            .with_trace_id(TraceId::from_u128(
+                                0x4000000000000 + block_index as u128,
+                            ))
+                            .start(&tracer);
+
+                        span.set_attribute(OT_BLOCK_INDEX_KEY.i64(block_index as i64));
+                        span.end();
 
                         if policy.test_rth_memos {
                             // Ensure target client got a sender memo, as expected for recoverable

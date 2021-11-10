@@ -433,7 +433,7 @@ where
                 .with_end_time(fetch_end)
                 .start(&tracer);
             span.set_attribute(OT_BLOCK_INDEX_KEY.i64(fetched_records.block_index as i64));
-            span.end();
+            span.end_with_timestamp(fetch_end);
 
             let mut span = tracer
                 .span_builder("add_records_to_enclave")
