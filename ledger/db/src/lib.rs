@@ -171,7 +171,7 @@ impl Ledger for LedgerDB {
         let mut span = tracer
             .span_builder("append_block")
             .with_kind(SpanKind::Server)
-            .with_trace_id(TraceId::from_u128(0x4000000000000 + block.index as u128))
+            .with_trace_id(TraceId::from_u128(0x5000000000000 + block.index as u128))
             .start(&tracer);
 
         span.set_attribute(OT_BLOCK_INDEX_KEY.i64(block.index as i64));

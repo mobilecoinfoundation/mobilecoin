@@ -769,7 +769,7 @@ impl CachedTxData {
             .with_kind(SpanKind::Server)
             .with_start_time(poll_txo_start)
             .with_end_time(poll_txo_end)
-            .with_trace_id(TraceId::from_u128(0x4000000000000 + block_index as u128))
+            .with_trace_id(TraceId::from_u128(0x5000000000000 + block_index as u128))
             .start(&tracer);
         span.set_attribute(OT_BLOCK_INDEX_KEY.i64(block_index as i64));
         span.set_attribute(OT_NUM_TXOS_KEY.i64(num_txos as i64));
@@ -780,7 +780,7 @@ impl CachedTxData {
             .with_kind(SpanKind::Server)
             .with_start_time(poll_key_image_start)
             .with_end_time(poll_key_images_end)
-            .with_trace_id(TraceId::from_u128(0x4000000000000 + block_index as u128))
+            .with_trace_id(TraceId::from_u128(0x5000000000000 + block_index as u128))
             .start(&tracer);
         span.set_attribute(OT_BLOCK_INDEX_KEY.i64(block_index as i64));
         span.end_with_timestamp(poll_key_images_end);*/
