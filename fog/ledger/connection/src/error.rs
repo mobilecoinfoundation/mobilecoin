@@ -2,6 +2,7 @@
 
 use displaydoc::Display;
 use protobuf::error::ProtobufError;
+use retry::Error as RetryError;
 
 use mc_api::ConversionError;
 
@@ -11,7 +12,7 @@ use mc_fog_enclave_connection::Error as EnclaveConnectionError;
 #[derive(Debug, Display)]
 pub enum Error {
     /// Enclave Connection Error: {0}
-    Connection(EnclaveConnectionError),
+    Connection(RetryError<EnclaveConnectionError>),
     /// Protobuf Error: {0}
     Protobuf(ProtobufError),
     /// Deserialization failed
@@ -22,8 +23,8 @@ pub enum Error {
     Grpc(grpcio::Error),
 }
 
-impl From<EnclaveConnectionError> for Error {
-    fn from(err: EnclaveConnectionError) -> Self {
+impl From<RetryError<EnclaveConnectionError>> for Error {
+    fn from(err: RetryError<EnclaveConnectionError>) -> Self {
         Error::Connection(err)
     }
 }

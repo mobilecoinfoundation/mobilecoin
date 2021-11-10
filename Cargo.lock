@@ -3207,6 +3207,7 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-serial",
  "mc-util-uri",
+ "retry",
  "sha2 0.9.8",
 ]
 
@@ -3437,6 +3438,7 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-uri",
  "protobuf",
+ "retry",
 ]
 
 [[package]]
@@ -4031,6 +4033,7 @@ dependencies = [
  "mc-fog-view-protocol",
  "mc-util-grpc",
  "mc-util-serial",
+ "retry",
 ]
 
 [[package]]

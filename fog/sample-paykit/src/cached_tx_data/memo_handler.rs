@@ -60,7 +60,7 @@ impl MemoHandler {
         let memo_payload = tx_out.decrypt_memo(&shared_secret);
 
         let memo_type = MemoType::try_from(&memo_payload)?;
-        log::info!(self.logger, "Obtained a memo: {:?}", memo_type);
+        log::trace!(self.logger, "Obtained a memo: {:?}", memo_type);
         match memo_type.clone() {
             MemoType::Unused(_) => Ok(None),
             MemoType::AuthenticatedSender(memo) => {
