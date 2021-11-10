@@ -94,7 +94,7 @@ pub struct CachedTxData {
     memo_handler: MemoHandler,
     /// A pre-calculated map of subaddress public spend key to subaddress index.
     spsk_to_index: HashMap<RistrettoPublic, u64>,
-    /// BlockRanges that Fog View has reported as missed.
+    /// BlockRanges that Fog View has reported as missed, that we have not yet completely downloaded.
     missed_block_ranges: Vec<common::BlockRange>,
     /// A logger object
     logger: Logger,
