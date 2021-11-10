@@ -22,4 +22,5 @@ mc-fog-view-protocol = { path = "../protocol" }
 
 # third-party
 grpcio = "0.9.0"
+opentelemetry = "0.16"
 retry = "1.3"

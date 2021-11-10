@@ -13,7 +13,12 @@ use mc_fog_uri::FogViewUri;
 use mc_fog_view_protocol::FogViewConnection;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use retry::{delay::Fixed, retry, Error as RetryError};
+use opentelemetry::{global, global::BoxedTracer, trace::Tracer};
 use std::sync::Arc;
+
+fn tracer() -> BoxedTracer {
+    global::tracer_with_version("mc-fog-view-connection", env!("CARGO_PKG_VERSION"))
+}
 
 pub struct FogViewGrpcClient {
     conn: EnclaveConnection<FogViewUri, view_grpc::FogViewApiClient>,
@@ -44,26 +49,27 @@ impl FogViewConnection for FogViewGrpcClient {
         start_from_block_index: u64,
         search_keys: Vec<Vec<u8>>,
     ) -> Result<QueryResponse, Self::Error> {
-        trace_time!(self.logger, "FogViewGrpcClient::request");
+        tracer().in_span("fog_view_grpc_request", |_cx_| {
+            trace_time!(self.logger, "FogViewGrpcClient::request");
 
-        log::trace!(
-            self.logger,
-            "request: start_from_user_event_id={} start_from_block_index={} num_search_keys={}",
-            start_from_user_event_id,
-            start_from_block_index,
-            search_keys.len()
-        );
+            log::trace!(
+                self.logger,
+                "request: start_from_user_event_id={} start_from_block_index={} num_search_keys={}",
+                start_from_user_event_id,
+                start_from_block_index,
+                search_keys.len()
+            );
 
-        let req = QueryRequest {
-            get_txos: search_keys,
-        };
+            let req = QueryRequest {
+                get_txos: search_keys,
+            };
 
-        let req_aad = QueryRequestAAD {
-            start_from_user_event_id,
-            start_from_block_index,
-        };
+            let req_aad = QueryRequestAAD {
+                start_from_user_event_id,
+                start_from_block_index,
+            };
 
-        let aad_bytes = mc_util_serial::encode(&req_aad);
+            let aad_bytes = mc_util_serial::encode(&req_aad);
 
         retry(Fixed::from_millis(100).take(5), || {
             self.conn
