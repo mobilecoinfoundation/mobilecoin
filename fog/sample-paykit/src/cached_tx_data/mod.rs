@@ -560,19 +560,17 @@ impl CachedTxData {
                         // will fail for the majority of TxOutRecords from these
                         // missed blocks, then view key scanning failed, which
                         // means that the user doesn't own this TxOut. Do this
-                        // here before adding it to the reutrned TxOutRecord to
-                        // prevent unnecssary logs to be emitted when the
-                        // TxOutRecords are consumed.
-                        match OwnedTxOut::new(
+                        // here before adding it to the returned TxOutRecord
+                        // vector to prevent unnecssary logs to be emitted when
+                        // the TxOutRecords are consumed.
+                        if OwnedTxOut::new(
                             tx_out_record.clone(),
                             &self.account_key,
                             &self.spsk_to_index,
-                        ) {
-                            Ok(_) => tx_out_records.push(tx_out_record),
-                            // Don't add this error to the errors vector because
-                            // there will be a lot and they are expected. We do
-                            // not want to report this to the test operator.
-                            Err(_) => (),
+                        )
+                        .is_ok()
+                        {
+                            tx_out_records.push(tx_out_record);
                         }
                     }
                     Err(error) => {
