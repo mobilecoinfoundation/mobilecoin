@@ -1003,7 +1003,7 @@ class FogConformanceTest:
         self.fog_ingest2.report_lost_ingress_key(fog_pubkey)
         new_fog_pubkey = subprocess.check_output(f"cd {FOG_PROJECT_DIR} && exec {target_dir(self.release)}/fog-report-cli --public-address {keyfile} --retry-seconds={FOG_REPORT_RETRY_SECONDS}", shell = True).decode("utf-8")
         assert new_fog_pubkey != fog_pubkey
-        # Add the block to the restarted ingest. While ingest won't scan the
+        # Add the block to the restarted ingest. While ingest won't successfully decode the hints in
         # TxOuts in the block because it is using a new fog pubkey, it's required
         # because it makes sure that ingest updates the current highest block
         # that's been processed.
