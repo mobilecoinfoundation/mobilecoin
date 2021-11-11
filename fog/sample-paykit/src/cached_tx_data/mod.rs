@@ -141,7 +141,7 @@ impl CachedTxData {
             .iter()
             .map(|block_range| BlockCount::from(block_range.start_block + 1))
             .min()
-            .unwrap_or_else(|| BlockCount::MAX);
+            .unwrap_or(BlockCount::MAX);
         *[
             self.rng_set.get_highest_processed_block_count(),
             self.key_image_data_completeness,
