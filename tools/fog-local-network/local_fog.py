@@ -107,6 +107,9 @@ class FogIngest:
         print(f'Starting admin http gateway for fog ingest: {cmd}')
         self.admin_http_gateway_process = subprocess.Popen(cmd, shell=True)
 
+    def remove_state_file(self):
+        os.remove(self.state_file_path)
+
     def stop(self):
         if self.ingest_server_process and self.ingest_server_process.poll() is None:
             self.ingest_server_process.terminate()
@@ -166,6 +169,16 @@ class FogIngest:
         print(cmd)
         result = subprocess.check_output(cmd, shell=True)
         return json.loads(result)
+
+    def report_lost_ingress_key(self, lost_key):
+        cmd = ' '.join([
+            f'exec {FOG_PROJECT_DIR}/{target_dir(self.release)}/fog_ingest_client',
+            f'--uri insecure-fog-ingest://localhost:{self.client_port}',
+            'report-lost-ingress-key',
+            f"-k '{lost_key}'",
+        ])
+        print(cmd)
+        result = subprocess.run(cmd, stderr=subprocess.STDOUT, shell=True)
 
 
 class FogView:

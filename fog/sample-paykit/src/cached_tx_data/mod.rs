@@ -13,10 +13,16 @@ use mc_common::{
     HashMap,
 };
 use mc_crypto_keys::RistrettoPublic;
+use mc_fog_api::{fog_common, ledger};
 use mc_fog_ledger_connection::{
-    Error as LedgerConnectionError, FogKeyImageGrpcClient, KeyImageResultExtension,
+    Error as LedgerConnectionError, FogBlockGrpcClient, FogKeyImageGrpcClient,
+    KeyImageResultExtension,
 };
-use mc_fog_types::{view::TxOutRecord, BlockCount};
+use mc_fog_types::{
+    common,
+    view::{FogTxOut, FogTxOutMetadata, TxOutRecord},
+    BlockCount,
+};
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_fog_view_protocol::{FogViewConnection, UserPrivate, UserRngSet};
 use mc_transaction_core::{
@@ -27,7 +33,7 @@ use mc_transaction_core::{
     BlockIndex,
 };
 use mc_transaction_std::MemoType;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 mod memo_handler;
 pub use memo_handler::{MemoHandler, MemoHandlerError};
@@ -88,6 +94,9 @@ pub struct CachedTxData {
     memo_handler: MemoHandler,
     /// A pre-calculated map of subaddress public spend key to subaddress index.
     spsk_to_index: HashMap<RistrettoPublic, u64>,
+    /// BlockRanges that Fog View has reported as missed, that we have not yet
+    /// completely downloaded.
+    missed_block_ranges: Vec<common::BlockRange>,
     /// A logger object
     logger: Logger,
 }
@@ -107,6 +116,7 @@ impl CachedTxData {
             latest_global_txo_count: 0,
             memo_handler: MemoHandler::new(address_book, logger.clone()),
             spsk_to_index,
+            missed_block_ranges: Vec::new(),
             logger,
         }
     }
@@ -126,10 +136,20 @@ impl CachedTxData {
     /// then we would have to track if we did that. Then this `min`
     /// expression would also take the min of outstanding missed blocks.
     pub fn get_num_blocks(&self) -> BlockCount {
-        min(
+        let missing_block_limit = self
+            .missed_block_ranges
+            .iter()
+            .map(|block_range| BlockCount::from(block_range.start_block + 1))
+            .min()
+            .unwrap_or(BlockCount::MAX);
+        *[
             self.rng_set.get_highest_processed_block_count(),
             self.key_image_data_completeness,
-        )
+            missing_block_limit,
+        ]
+        .iter()
+        .min()
+        .unwrap()
     }
 
     /// Get the latest_global_txo_count.
@@ -346,10 +366,14 @@ impl CachedTxData {
     /// Poll for new txo data, given fog view connection object
     ///
     /// This is called when doing a balance check
-    pub fn poll_fog_for_txos(&mut self, fog_view_client: &mut FogViewGrpcClient) -> Result<()> {
+    pub fn poll_fog_for_txos(
+        &mut self,
+        fog_view_client: &mut FogViewGrpcClient,
+        fog_block_client: &mut FogBlockGrpcClient,
+    ) -> Result<()> {
         let old_rng_num_blocks = self.rng_set.get_highest_processed_block_count();
         // Do the fog view protocol, log any errors, and consume any new transactions
-        let (txo_records, errors) =
+        let (mut txo_records, new_missed_block_ranges, errors) =
             fog_view_client.poll(&mut self.rng_set, &UserPrivate::from(&self.account_key));
 
         log::trace!(
@@ -369,6 +393,48 @@ impl CachedTxData {
             log::error!(self.logger, "Fog view protocol error: {}", err);
         }
 
+        log::debug!(
+            self.logger,
+            "Adding {} missed blocks ranges to the missed block ranges queue",
+            new_missed_block_ranges.len(),
+        );
+
+        for missed_block_range in &new_missed_block_ranges {
+            log::trace!(
+                self.logger,
+                "Missed Block start: {}, end: {}",
+                missed_block_range.start_block,
+                missed_block_range.end_block,
+            );
+        }
+
+        self.missed_block_ranges.extend(new_missed_block_ranges);
+        let fog_common_block_ranges: Vec<fog_common::BlockRange> = self
+            .missed_block_ranges
+            .iter()
+            .map(fog_common::BlockRange::from)
+            .collect::<Vec<_>>();
+        match fog_block_client.get_missed_block_ranges(fog_common_block_ranges) {
+            Ok(block_response) => {
+                let tx_out_records_from_missed_blocks: Vec<TxOutRecord> =
+                    self.create_tx_out_records(&block_response);
+                txo_records.extend(tx_out_records_from_missed_blocks);
+                let updated_missed_block_ranges =
+                    CachedTxData::calculate_updated_missed_block_ranges(
+                        &self.missed_block_ranges,
+                        &block_response.blocks.into_vec(),
+                    );
+                self.missed_block_ranges = updated_missed_block_ranges;
+            }
+            Err(err) => {
+                log::error!(
+                    self.logger,
+                    "Fog Ledger retrieving BlockResponse from missed block ranges error: {}",
+                    err
+                );
+            }
+        };
+
         if !txo_records.is_empty() {
             for rec in &txo_records {
                 if rec.block_index < u64::from(old_rng_num_blocks) {
@@ -387,6 +453,138 @@ impl CachedTxData {
             }
         }
         Ok(())
+    }
+
+    /// Determines the new missed block ranges given the blocks that are
+    /// retrieved in the BlockData object.
+    fn calculate_updated_missed_block_ranges(
+        missed_block_ranges: &[common::BlockRange],
+        block_data: &[ledger::BlockData],
+    ) -> Vec<common::BlockRange> {
+        // Transforms the missed BlockRanges into a set of missed block
+        // indices.
+        let mut missed_block_indices =
+            CachedTxData::create_missed_block_indices(missed_block_ranges);
+
+        for block_datum in block_data {
+            missed_block_indices.remove(&block_datum.index);
+        }
+
+        // Sort the indices in order to create the fewest amount of block
+        // ranges possible in the iteration step below.
+        let mut missed_block_indices_sorted: Vec<u64> =
+            missed_block_indices.into_iter().collect::<Vec<_>>();
+        missed_block_indices_sorted.sort_unstable();
+
+        let mut updated_missed_block_ranges: Vec<common::BlockRange> = Vec::new();
+
+        if missed_block_indices_sorted.is_empty() {
+            return updated_missed_block_ranges;
+        }
+
+        if missed_block_indices_sorted.len() == 1 {
+            let first_block_index = missed_block_indices_sorted[0];
+            updated_missed_block_ranges.push(common::BlockRange {
+                start_block: first_block_index,
+                end_block: first_block_index + 1,
+            });
+            return updated_missed_block_ranges;
+        }
+
+        let mut start_block_index = missed_block_indices_sorted[0];
+        let mut i: usize = 0;
+        // This loop looks at each adjacent pair in the vector and checks if
+        // they differ by more than 1.
+        while i + 1 < missed_block_indices_sorted.len() {
+            let first_block_index = missed_block_indices_sorted[i];
+            let second_block_index = missed_block_indices_sorted[i + 1];
+            // We've found a gap in indices, so the current range is complete
+            // and should be added.
+            if second_block_index - first_block_index > 1 {
+                let block_range = common::BlockRange {
+                    start_block: start_block_index,
+                    end_block: first_block_index + 1,
+                };
+                updated_missed_block_ranges.push(block_range);
+                start_block_index = second_block_index;
+            }
+
+            i += 1;
+        }
+
+        let last_block_index = missed_block_indices_sorted.last().unwrap();
+        let last_block_range = common::BlockRange {
+            start_block: start_block_index,
+            end_block: last_block_index + 1,
+        };
+
+        updated_missed_block_ranges.push(last_block_range);
+
+        updated_missed_block_ranges
+    }
+
+    fn create_missed_block_indices(missed_block_ranges: &[common::BlockRange]) -> HashSet<u64> {
+        let mut missed_block_indices: HashSet<u64> = HashSet::new();
+        for missed_block_range in missed_block_ranges {
+            for missed_block_index in missed_block_range.start_block..missed_block_range.end_block {
+                missed_block_indices.insert(missed_block_index);
+            }
+        }
+
+        missed_block_indices
+    }
+
+    // Converts a ledger::BlockResponses to a Vec<TxOutRecord>.
+    fn create_tx_out_records(&self, block_response: &ledger::BlockResponse) -> Vec<TxOutRecord> {
+        let mut tx_out_records: Vec<TxOutRecord> = Vec::new();
+
+        for block_data in &block_response.blocks {
+            let number_of_tx_outs_in_block = block_data.outputs.len() as u64;
+            let first_tx_out_global_index =
+                block_data.global_txo_count - number_of_tx_outs_in_block;
+
+            for (i, external_tx_out) in block_data.outputs.iter().enumerate() {
+                match TxOut::try_from(external_tx_out) {
+                    Ok(tx_out) => {
+                        let fog_tx_out: FogTxOut = FogTxOut::from(&tx_out);
+
+                        let fog_tx_out_metadata: FogTxOutMetadata = FogTxOutMetadata {
+                            global_index: first_tx_out_global_index + i as u64,
+                            block_index: block_data.index,
+                            timestamp: block_data.timestamp,
+                        };
+
+                        let tx_out_record: TxOutRecord =
+                            TxOutRecord::new(fog_tx_out, fog_tx_out_metadata);
+                        // Try to create an OwnedTxOut. If this fails, and it
+                        // will fail for the majority of TxOutRecords from these
+                        // missed blocks, then view key scanning failed, which
+                        // means that the user doesn't own this TxOut. Do this
+                        // here before adding it to the returned TxOutRecord
+                        // vector to prevent unnecssary logs to be emitted when
+                        // the TxOutRecords are consumed.
+                        if OwnedTxOut::new(
+                            tx_out_record.clone(),
+                            &self.account_key,
+                            &self.spsk_to_index,
+                        )
+                        .is_ok()
+                        {
+                            tx_out_records.push(tx_out_record);
+                        }
+                    }
+                    Err(error) => {
+                        log::warn!(
+                            self.logger,
+                            "TxOut could not be created from external.TxOut: {}",
+                            error
+                        );
+                    }
+                }
+            }
+        }
+
+        tx_out_records
     }
 
     /// Poll for new key image data, given fog key image connection object
@@ -520,12 +718,13 @@ impl CachedTxData {
         &mut self,
         fog_view_client: &mut FogViewGrpcClient,
         key_image_client: &mut FogKeyImageGrpcClient,
+        fog_block_client: &mut FogBlockGrpcClient,
     ) -> Result<()> {
         let old_num_blocks = self.get_num_blocks();
         let old_key_image_data_completeness = self.key_image_data_completeness;
         let old_rng_num_blocks = self.rng_set.get_highest_processed_block_count();
 
-        self.poll_fog_for_txos(fog_view_client)?;
+        self.poll_fog_for_txos(fog_view_client, fog_block_client)?;
         self.poll_fog_for_key_images(key_image_client)?;
 
         let new_num_blocks = self.get_num_blocks();
@@ -1053,5 +1252,169 @@ mod tests {
             input_selection_heuristic(&inputs, 42, 4),
             Err(InputSelectionError::InsufficientFunds)
         );
+    }
+
+    #[test]
+    fn calculate_updated_missed_block_ranges_empty_missed_block_ranges_returns_empty_vector() {
+        let empty_missed_block_ranges = vec![];
+        let empty_block_data = vec![];
+
+        let updated_missed_block_ranges = CachedTxData::calculate_updated_missed_block_ranges(
+            &empty_missed_block_ranges,
+            &empty_block_data,
+        );
+
+        assert!(updated_missed_block_ranges.is_empty())
+    }
+
+    #[test]
+    fn calculate_updated_missed_block_ranges_all_block_indices_retrieved_returns_empty_vector() {
+        let first_index: u64 = 0;
+        let final_index: u64 = 4;
+        let missed_block_range = common::BlockRange::new(first_index, final_index + 1);
+        let missed_block_ranges = vec![missed_block_range];
+
+        let mut block_data = vec![];
+        for index in first_index..final_index + 1 {
+            let mut block_datum = ledger::BlockData::new();
+            block_datum.index = index;
+            block_data.push(block_datum);
+        }
+
+        let updated_missed_block_ranges =
+            CachedTxData::calculate_updated_missed_block_ranges(&missed_block_ranges, &block_data);
+
+        assert!(updated_missed_block_ranges.is_empty())
+    }
+
+    #[test]
+    fn calculate_updated_missed_block_ranges_one_missed_index_returns_one_block_range() {
+        let first_index: u64 = 134;
+        let final_index: u64 = 134;
+        let missed_block_range = common::BlockRange::new(first_index, final_index + 1);
+        let missed_block_ranges = vec![missed_block_range];
+
+        let block_data = vec![];
+
+        let updated_missed_block_ranges =
+            CachedTxData::calculate_updated_missed_block_ranges(&missed_block_ranges, &block_data);
+
+        assert_eq!(updated_missed_block_ranges.len(), 1);
+        let updated_missed_block_range = &updated_missed_block_ranges[0];
+        assert_eq!(updated_missed_block_range.start_block, first_index);
+        assert_eq!(updated_missed_block_range.end_block, final_index + 1);
+    }
+
+    #[test]
+    fn calculate_updated_missed_block_ranges_all_block_indices_not_retrieved_returns_one_block_range(
+    ) {
+        let first_index: u64 = 0;
+        let final_index: u64 = 4;
+        let missed_block_range = common::BlockRange::new(first_index, final_index + 1);
+        let missed_block_ranges = vec![missed_block_range];
+        let block_data = vec![];
+
+        let updated_missed_block_ranges =
+            CachedTxData::calculate_updated_missed_block_ranges(&missed_block_ranges, &block_data);
+
+        assert_eq!(updated_missed_block_ranges.len(), 1);
+        let updated_missed_block_range = &updated_missed_block_ranges[0];
+        assert_eq!(updated_missed_block_range.start_block, 0);
+        assert_eq!(updated_missed_block_range.end_block, 5);
+    }
+
+    #[test]
+    fn calculate_updated_missed_block_ranges_does_not_cover_all_indices_returns_block_range_with_indices(
+    ) {
+        let first_index: u64 = 2;
+        let final_index: u64 = 6;
+        let missed_block_range = common::BlockRange::new(first_index, final_index + 1);
+        let missed_block_ranges = vec![missed_block_range];
+
+        let mut block_data = vec![];
+        for index in first_index..final_index - 1 {
+            let mut block_datum = ledger::BlockData::new();
+            block_datum.index = index;
+            block_data.push(block_datum);
+        }
+
+        let updated_missed_block_ranges =
+            CachedTxData::calculate_updated_missed_block_ranges(&missed_block_ranges, &block_data);
+
+        assert_eq!(updated_missed_block_ranges.len(), 1);
+        let updated_missed_block_range = &updated_missed_block_ranges[0];
+        assert_eq!(updated_missed_block_range.start_block, final_index - 1);
+        assert_eq!(updated_missed_block_range.end_block, final_index + 1);
+    }
+
+    #[test]
+    fn calculate_updated_missed_block_ranges_multiple_indices_returns_block_range_with_indices() {
+        let indices = vec![(5, 11), (34, 40), (1, 3)];
+        let mut missed_block_ranges = Vec::new();
+
+        for (start_block, end_block) in indices.iter() {
+            let missed_block_range = common::BlockRange::new(*start_block, *end_block);
+            missed_block_ranges.push(missed_block_range);
+        }
+
+        let retrieved_block_indices = vec![5, 6, 7, 8, 35, 38, 39, 40, 1, 2];
+        let mut block_data = vec![];
+        for index in retrieved_block_indices {
+            let mut block_datum = ledger::BlockData::new();
+            block_datum.index = index;
+            block_data.push(block_datum);
+        }
+
+        let updated_missed_block_ranges =
+            CachedTxData::calculate_updated_missed_block_ranges(&missed_block_ranges, &block_data);
+
+        assert_eq!(updated_missed_block_ranges.len(), 3);
+
+        let first_updated_missed_block_range = &updated_missed_block_ranges[0];
+        assert_eq!(first_updated_missed_block_range.start_block, 9);
+        assert_eq!(first_updated_missed_block_range.end_block, 11);
+
+        let second_updated_missed_block_range = &updated_missed_block_ranges[1];
+        assert_eq!(second_updated_missed_block_range.start_block, 34);
+        assert_eq!(second_updated_missed_block_range.end_block, 35);
+
+        let third_updated_missed_block_range = &updated_missed_block_ranges[2];
+        assert_eq!(third_updated_missed_block_range.start_block, 36);
+        assert_eq!(third_updated_missed_block_range.end_block, 38);
+    }
+
+    #[test]
+    fn calculate_updated_missed_block_ranges_two_disjoint_indices_not_retrieved_returns_two_block_ranges(
+    ) {
+        let first_index: u64 = 0;
+        let final_index: u64 = 10;
+        let missed_block_range = common::BlockRange::new(first_index, final_index + 1);
+        let missed_block_ranges = vec![missed_block_range];
+        let mut block_data = vec![];
+
+        let first_unretrieved_index = 3;
+        let second_unretrieved_index = 7;
+
+        for index in first_index..final_index + 1 {
+            if index == first_unretrieved_index || index == second_unretrieved_index {
+                continue;
+            }
+            let mut block_datum = ledger::BlockData::new();
+            block_datum.index = index;
+            block_data.push(block_datum);
+        }
+
+        let updated_missed_block_ranges =
+            CachedTxData::calculate_updated_missed_block_ranges(&missed_block_ranges, &block_data);
+
+        assert_eq!(updated_missed_block_ranges.len(), 2);
+
+        let first_updated_missed_block_range = &updated_missed_block_ranges[0];
+        assert_eq!(first_updated_missed_block_range.start_block, 3);
+        assert_eq!(first_updated_missed_block_range.end_block, 4);
+
+        let second_updated_missed_block_range = &updated_missed_block_ranges[1];
+        assert_eq!(second_updated_missed_block_range.start_block, 7);
+        assert_eq!(second_updated_missed_block_range.end_block, 8);
     }
 }

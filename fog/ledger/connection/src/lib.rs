@@ -3,6 +3,9 @@
 //! Rust objects wrapping the grpc interface
 
 #![deny(missing_docs)]
+mod block;
+pub use block::FogBlockGrpcClient;
+
 mod error;
 pub use error::Error;
 
