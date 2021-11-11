@@ -417,7 +417,7 @@ impl CachedTxData {
         match fog_block_client.get_missed_block_ranges(fog_common_block_ranges) {
             Ok(block_response) => {
                 let tx_out_records_from_missed_blocks: Vec<TxOutRecord> =
-                    CachedTxData::create_tx_out_records(&block_response);
+                    self.create_tx_out_records(&block_response);
                 txo_records.extend(tx_out_records_from_missed_blocks);
                 let updated_missed_block_ranges =
                     CachedTxData::calculate_updated_missed_block_ranges(
@@ -535,7 +535,7 @@ impl CachedTxData {
     }
 
     // Converts a ledger::BlockResponses to a Vec<TxOutRecord>.
-    fn create_tx_out_records(block_response: &ledger::BlockResponse) -> Vec<TxOutRecord> {
+    fn create_tx_out_records(&self, block_response: &ledger::BlockResponse) -> Vec<TxOutRecord> {
         let mut tx_out_records: Vec<TxOutRecord> = Vec::new();
 
         for block_data in &block_response.blocks {
@@ -554,7 +554,20 @@ impl CachedTxData {
                 };
 
                 let tx_out_record: TxOutRecord = TxOutRecord::new(fog_tx_out, fog_tx_out_metadata);
-                tx_out_records.push(tx_out_record);
+                // Try to create an OwnedTxOut. If this fails, and it will fail
+                // for the majority of TxOutRecords from these missed blocks,
+                // then view key scanning failed, which means that the user
+                // doesn't own this TxOut. Do this here before adding it to the
+                // reutrned TxOutRecord to prevent unnecssary logs to be emitted
+                // when the TxOutRecords are consumed.
+                match OwnedTxOut::new(
+                    tx_out_record.clone(),
+                    &self.account_key,
+                    &self.spsk_to_index,
+                ) {
+                    Ok(_) => tx_out_records.push(tx_out_record),
+                    Err(_) => (),
+                }
             }
         }
 
