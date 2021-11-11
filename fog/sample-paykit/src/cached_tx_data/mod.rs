@@ -393,7 +393,7 @@ impl CachedTxData {
             log::error!(self.logger, "Fog view protocol error: {}", err);
         }
 
-        log::trace!(
+        log::debug!(
             self.logger,
             "Adding {} missed blocks ranges to the missed block ranges queue",
             new_missed_block_ranges.len(),
