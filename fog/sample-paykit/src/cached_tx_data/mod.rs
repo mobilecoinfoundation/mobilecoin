@@ -493,10 +493,11 @@ impl CachedTxData {
 
         let mut start_block_index = missed_block_indices_sorted[0];
         let mut i: usize = 0;
-        let mut j: usize = 1;
-        while j < missed_block_indices_sorted.len() {
+        // This loop looks at each adjacent pair in the vector and checks if
+        // they differ by more than 1.
+        while i + 1 < missed_block_indices_sorted.len() {
             let first_block_index = missed_block_indices_sorted[i];
-            let second_block_index = missed_block_indices_sorted[j];
+            let second_block_index = missed_block_indices_sorted[i + 1];
             // We've found a gap in indices, so the current range is complete
             // and should be added.
             if second_block_index - first_block_index > 1 {
@@ -509,7 +510,6 @@ impl CachedTxData {
             }
 
             i += 1;
-            j += 1;
         }
 
         let last_block_index = missed_block_indices_sorted.last().unwrap();
