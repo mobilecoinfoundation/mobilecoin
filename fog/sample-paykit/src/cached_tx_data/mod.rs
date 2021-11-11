@@ -544,29 +544,44 @@ impl CachedTxData {
                 block_data.global_txo_count - number_of_tx_outs_in_block;
 
             for (i, external_tx_out) in block_data.outputs.iter().enumerate() {
-                let tx_out: TxOut = TxOut::try_from(external_tx_out).unwrap();
-                let fog_tx_out: FogTxOut = FogTxOut::from(&tx_out);
+                match TxOut::try_from(external_tx_out) {
+                    Ok(tx_out) => {
+                        let fog_tx_out: FogTxOut = FogTxOut::from(&tx_out);
 
-                let fog_tx_out_metadata: FogTxOutMetadata = FogTxOutMetadata {
-                    global_index: first_tx_out_global_index + i as u64,
-                    block_index: block_data.index,
-                    timestamp: block_data.timestamp,
-                };
+                        let fog_tx_out_metadata: FogTxOutMetadata = FogTxOutMetadata {
+                            global_index: first_tx_out_global_index + i as u64,
+                            block_index: block_data.index,
+                            timestamp: block_data.timestamp,
+                        };
 
-                let tx_out_record: TxOutRecord = TxOutRecord::new(fog_tx_out, fog_tx_out_metadata);
-                // Try to create an OwnedTxOut. If this fails, and it will fail
-                // for the majority of TxOutRecords from these missed blocks,
-                // then view key scanning failed, which means that the user
-                // doesn't own this TxOut. Do this here before adding it to the
-                // reutrned TxOutRecord to prevent unnecssary logs to be emitted
-                // when the TxOutRecords are consumed.
-                match OwnedTxOut::new(
-                    tx_out_record.clone(),
-                    &self.account_key,
-                    &self.spsk_to_index,
-                ) {
-                    Ok(_) => tx_out_records.push(tx_out_record),
-                    Err(_) => (),
+                        let tx_out_record: TxOutRecord =
+                            TxOutRecord::new(fog_tx_out, fog_tx_out_metadata);
+                        // Try to create an OwnedTxOut. If this fails, and it
+                        // will fail for the majority of TxOutRecords from these
+                        // missed blocks, then view key scanning failed, which
+                        // means that the user doesn't own this TxOut. Do this
+                        // here before adding it to the reutrned TxOutRecord to
+                        // prevent unnecssary logs to be emitted when the
+                        // TxOutRecords are consumed.
+                        match OwnedTxOut::new(
+                            tx_out_record.clone(),
+                            &self.account_key,
+                            &self.spsk_to_index,
+                        ) {
+                            Ok(_) => tx_out_records.push(tx_out_record),
+                            // Don't add this error to the errors vector because
+                            // there will be a lot and they are expected. We do
+                            // not want to report this to the test operator.
+                            Err(_) => (),
+                        }
+                    }
+                    Err(error) => {
+                        log::warn!(
+                            self.logger,
+                            "TxOut could not be created from external.TxOut: {}",
+                            error
+                        );
+                    }
                 }
             }
         }
