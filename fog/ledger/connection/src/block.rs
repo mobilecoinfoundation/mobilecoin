@@ -9,7 +9,7 @@ use mc_util_grpc::{BasicCredentials, ConnectionUriGrpcioChannel};
 use protobuf::RepeatedField;
 use std::sync::Arc;
 
-/// An attested connection to the Fog Block service.
+/// A unattested connection to the Fog Block service.
 pub struct FogBlockGrpcClient {
     #[allow(unused)]
     uri: FogLedgerUri,
