@@ -41,6 +41,7 @@ use mc_fog_types::{
 use mc_transaction_core::Block;
 use prost::Message;
 use proto_types::ProtoIngestedBlockData;
+use std::cmp::max;
 
 pub use error::Error;
 
@@ -176,6 +177,13 @@ impl SqlRecoveryDb {
             )))
         }
     }
+
+    fn get_highest_known_block_index_impl(&self, conn: &PgConnection) -> Result<Option<u64>, Error> {
+        Ok(schema::ingested_blocks::dsl::ingested_blocks
+            .select(diesel::dsl::max(schema::ingested_blocks::dsl::block_number))
+            .first::<Option<i64>>(conn)?
+            .map(|val| val as u64))
+    }
 }
 
 /// See trait `fog_recovery_db_iface::RecoveryDb` for documentation.
@@ -193,23 +201,38 @@ impl RecoveryDb for SqlRecoveryDb {
     fn new_ingress_key(
         &self,
         key: &CompressedRistrettoPublic,
-        start_block: u64,
-    ) -> Result<bool, Error> {
+        start_block_count: u64,
+    ) -> Result<u64, Error> {
         let conn = self.pool.get()?;
-        let obj = models::NewIngressKey {
-            ingress_public_key: (*key).into(),
-            start_block: start_block as i64,
-            pubkey_expiry: 0,
-            retired: false,
-            lost: false,
-        };
+        conn.build_transaction().read_write().run(|| -> Result<u64, Error> {
+            let highest_known_block_count: u64 = match self.get_highest_known_block_index_impl(&conn) {
+                Ok(block_index) => block_index.unwrap_or(0) + 1,
+                Err(_) => 0,
+            };
 
-        let inserted_row_count = diesel::insert_into(schema::ingress_keys::table)
-            .values(&obj)
-            .on_conflict_do_nothing()
-            .execute(&conn)?;
+            let accepted_start_block_count = max(start_block_count, highest_known_block_count);
+            let obj = models::NewIngressKey {
+                ingress_public_key: (*key).into(),
+                start_block: accepted_start_block_count as i64,
+                pubkey_expiry: 0,
+                retired: false,
+                lost: false,
+            };
 
-        Ok(inserted_row_count > 0)
+            let inserted_row_count = diesel::insert_into(schema::ingress_keys::table)
+                .values(&obj)
+                .on_conflict_do_nothing()
+                .execute(&conn)?;
+
+            if inserted_row_count > 0 {
+                Ok(accepted_start_block_count)
+            } else {
+                Err(Error::IngressKeyUnsuccessfulInsert(format!(
+                    "Unable to insert ingress key: {:?}",
+                    key
+                )))
+            }
+        })
     }
 
     fn retire_ingress_key(
@@ -913,12 +936,9 @@ impl RecoveryDb for SqlRecoveryDb {
     /// Get the highest block index for which we have any data at all.
     fn get_highest_known_block_index(&self) -> Result<Option<u64>, Self::Error> {
         let conn = self.pool.get()?;
-
-        Ok(schema::ingested_blocks::dsl::ingested_blocks
-            .select(diesel::dsl::max(schema::ingested_blocks::dsl::block_number))
-            .first::<Option<i64>>(&conn)?
-            .map(|val| val as u64))
+        self.get_highest_known_block_index_impl(&conn)
     }
+
 }
 
 /// See trait `fog_recovery_db_iface::ReportDb` for documentation.
@@ -2557,5 +2577,148 @@ mod tests {
             .len(),
             0
         );
+    }
+
+    #[test_with_logger]
+    fn test_new_ingress_key_no_blocks_added_accepted_block_count_is_proposed_start_block(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+
+        let proposed_start_block = 120;
+        let ingress_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        let accepted_start_block = db.new_ingress_key(&ingress_key, proposed_start_block).unwrap();
+
+        assert_eq!(accepted_start_block, proposed_start_block);
+
+        // Ensures that the accepted start block is recorded in the db.
+        let ingress_key_status = db.get_ingress_key_status(&ingress_key).unwrap().unwrap();
+        assert_eq!(accepted_start_block , ingress_key_status.start_block);
+    }
+
+    #[test_with_logger]
+    fn test_new_ingress_key_proposed_lower_than_highest_known_accepts_highest_known_block_count(
+        logger: Logger,
+    ) {
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let original_ingress_key =
+            CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&original_ingress_key, 0).unwrap();
+        let num_txs = 1;
+        let invoc_id = db
+            .new_ingest_invocation(
+                None,
+                &original_ingress_key,
+                &random_kex_rng_pubkey(&mut rng),
+                123,
+            )
+            .unwrap();
+
+        // Add the 11th block to the DB. This will serve as the highest known
+        // block index.
+        let highest_known_block_index = 10;
+        let highest_known_block_count = highest_known_block_index + 1;
+        let (block, records) = random_block(&mut rng, highest_known_block_index, num_txs);
+        db.add_block_data(&invoc_id, &block, 0, &records).unwrap();
+
+        let proposed_start_block_count = 8;
+        let mut rng_2: StdRng = SeedableRng::from_seed([127u8; 32]);
+        let new_ingress_key =
+            CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng_2));
+        let accepted_start_block = db
+            .new_ingress_key(&new_ingress_key, proposed_start_block_count)
+            .unwrap();
+
+        assert_eq!(accepted_start_block, highest_known_block_count);
+        
+        // Ensures that the accepted start block is recorded in the db.
+        let ingress_key_status = db.get_ingress_key_status(&new_ingress_key).unwrap().unwrap();
+        assert_eq!(accepted_start_block, ingress_key_status.start_block);
+    }
+
+    #[test_with_logger]
+    fn test_new_ingress_key_proposed_higher_than_highest_known_accepts_proposed(
+        logger: Logger,
+    ) {
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let original_ingress_key =
+            CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&original_ingress_key, 0).unwrap();
+        let num_txs = 1;
+        let invoc_id = db
+            .new_ingest_invocation(
+                None,
+                &original_ingress_key,
+                &random_kex_rng_pubkey(&mut rng),
+                123,
+            )
+            .unwrap();
+
+        // Add the 11th block to the DB. This will serve as the highest known
+        // block index.
+        let highest_known_block_index = 10;
+        let (block, records) = random_block(&mut rng, highest_known_block_index, num_txs);
+        db.add_block_data(&invoc_id, &block, 0, &records).unwrap();
+
+        let proposed_start_block_count = 11;
+        let mut rng_2: StdRng = SeedableRng::from_seed([127u8; 32]);
+        let new_ingress_key =
+            CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng_2));
+        let accepted_start_block = db
+            .new_ingress_key(&new_ingress_key, proposed_start_block_count)
+            .unwrap();
+
+        assert_eq!(accepted_start_block, proposed_start_block_count);
+        
+        // Ensures that the accepted start block is recorded in the db.
+        let ingress_key_status = db.get_ingress_key_status(&new_ingress_key).unwrap().unwrap();
+        assert_eq!(accepted_start_block, ingress_key_status.start_block);
+    }
+
+    #[test_with_logger]
+    fn test_new_ingress_key_proposed_one_more_than_highest_known_accepts_proposed(
+        logger: Logger,
+    ) {
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let original_ingress_key =
+            CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&original_ingress_key, 0).unwrap();
+        let num_txs = 1;
+        let invoc_id = db
+            .new_ingest_invocation(
+                None,
+                &original_ingress_key,
+                &random_kex_rng_pubkey(&mut rng),
+                123,
+            )
+            .unwrap();
+
+        // Add the 11th block to the DB. This will serve as the highest known
+        // block index.
+        let highest_known_block_index = 10;
+        let highest_known_block_count = highest_known_block_index + 1;
+        let (block, records) = random_block(&mut rng, highest_known_block_index, num_txs);
+        db.add_block_data(&invoc_id, &block, 0, &records).unwrap();
+
+        // Choose 10 to ensure that off by one error is accounted for. 
+        let proposed_start_block_count = 10;
+        let mut rng_2: StdRng = SeedableRng::from_seed([127u8; 32]);
+        let new_ingress_key =
+            CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng_2));
+        let accepted_start_block = db
+            .new_ingress_key(&new_ingress_key, proposed_start_block_count)
+            .unwrap();
+
+        assert_eq!(accepted_start_block, highest_known_block_count);
+        
+        // Ensures that the accepted start block is recorded in the db.
+        let ingress_key_status = db.get_ingress_key_status(&new_ingress_key).unwrap().unwrap();
+        assert_eq!(accepted_start_block, ingress_key_status.start_block);
     }
 }
