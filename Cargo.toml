@@ -88,6 +88,7 @@ members = [
     "fog/view/load-test",
     "fog/view/protocol",
     "fog/view/server",
+    "go-grpc-gateway/testing",
     "ledger/db",
     "ledger/distribution",
     "ledger/from-archive",

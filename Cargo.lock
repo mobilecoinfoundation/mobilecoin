@@ -1617,6 +1617,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
+name = "go-grpc-gateway-testing"
+version = "1.0.0"
+dependencies = [
+ "displaydoc",
+ "futures 0.3.17",
+ "grpcio",
+ "mc-attest-core",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-fog-report-api",
+ "mc-fog-report-types",
+ "mc-util-grpc",
+ "mc-util-metrics",
+ "mc-util-uri",
+ "serde",
+ "structopt",
+]
+
+[[package]]
 name = "grpcio"
 version = "0.9.0"
 source = "git+https://github.com/mobilecoinofficial/grpc-rs?rev=10ba9f8f4546916c7e7532c4d1c6cdcf5df62553#10ba9f8f4546916c7e7532c4d1c6cdcf5df62553"
