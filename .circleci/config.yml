@@ -629,7 +629,6 @@ jobs:
       <<: *default-environment
     steps:
       - checkout
-      - post-checkout
       - run:
           name: go build
           command: cd go-grpc-gateway && ./install_tools.sh && ./build.sh
