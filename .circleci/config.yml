@@ -468,7 +468,7 @@ commands:
             export LEDGER_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
             export VIEW_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
 
-            cargo run -p mc-util-keyfile --bin sample-keys --release --manifest-path ../Cargo.toml -- --num 10 --fog-report-url 'insecure-fog://localhost:6200'
+            cargo run -p mc-util-keyfile --bin sample-keys --release -- --num 10 --fog-report-url 'insecure-fog://localhost:6200'
             cargo run mc-util-generate-sample-ledger --release -- --txs 10
 
             SGX_MODE=SW IAS_MODE=DEV \
