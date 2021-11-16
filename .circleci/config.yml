@@ -451,6 +451,80 @@ commands:
       - store_artifacts:
           path: /tmp/core_dumps
 
+  # A job that runs the fog-local-network script, building things in release mode
+  # This is the only test in the system that tests that change outputs are spendable.
+  # The test ensures this because fog distro is set to only give one tx out per account,
+  # so the test client eventually is forced to spend change.
+  run-fog-local-network-tests-release:
+    steps:
+      - run:
+          name: fog_local_network
+          command: |
+            # tell the operating system to remove the file size limit on core dump files
+            ulimit -c unlimited
+            openssl genrsa -out Enclave_private.pem -3 3072
+            export CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+            export INGEST_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+            export LEDGER_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+            export VIEW_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+
+            cargo run -p mc-util-keyfile --bin sample-keys --release --manifest-path ../Cargo.toml -- --num 10 --fog-report-url 'insecure-fog://localhost:6200'
+            cargo run mc-util-generate-sample-ledger --release -- --txs 10
+
+            SGX_MODE=SW IAS_MODE=DEV \
+            MC_LOG="trace,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
+            GRAFANA_PASSWORD="... (get this from a team member, optional) \"
+            LOGSTASH_HOST="... (get this from a team member, optional)" \
+            LOG_BRANCH=eran-local \
+            LEDGER_BASE=$(pwd)/ledger \
+            IAS_SPID="..." \
+            IAS_API_KEY="..." \
+            python3 ../tools/fog-local-network/fog_local_network.py --network-type dense5
+
+            sleep 10
+
+            cargo run -p mc-util-keyfile --bin sample-keys --release -- --num 10 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $(../target/release/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head)
+
+            SGX_MODE=SW IAS_MODE=DEV MC_LOG=debug \
+            INGEST_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
+            LEDGER_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
+            VIEW_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
+            CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
+                cargo run -p mc-fog-distribution --release -- \
+                --sample-data-dir . \
+                --peer insecure-mc://localhost:3200/ \
+                --peer insecure-mc://localhost:3201/ \
+                --peer insecure-mc://localhost:3202/ \
+                --peer insecure-mc://localhost:3203/ \
+                --peer insecure-mc://localhost:3204/ \
+                --num-tx-to-send 1
+
+            SGX_MODE=SW IAS_MODE=DEV MC_LOG=trace \
+            INGEST_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
+            LEDGER_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
+            VIEW_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
+            CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
+                cargo run -p mc-fog-test-client -- \
+                --consensus insecure-mc://localhost:3200/ \
+                --consensus insecure-mc://localhost:3201/ \
+                --consensus insecure-mc://localhost:3202/ \
+                --consensus insecure-mc://localhost:3203/ \
+                --consensus insecure-mc://localhost:3204/ \
+                --num-clients 4 \
+                --num-transactions 32 \
+                --consensus-wait 300 \
+                --transfer-amount 20 \
+                --fog-view insecure-fog-view://localhost:8200 \
+                --fog-ledger insecure-fog-ledger://localhost:8200 \
+                --key-dir $(pwd)/fog_keys
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_artifacts:
+          path: /tmp/core_dumps
+
   post-build:
     steps:
       - record-sccache-cache-stats
@@ -583,6 +657,15 @@ jobs:
     steps:
       - prepare-for-build
       - run-fog-conformance-tests-release
+
+  # Run fog conformance tests on a single container
+  run-fog-local-network-tests:
+    executor: build-executor
+    environment:
+      <<: *default-build-environment
+    steps:
+      - prepare-for-build
+      - run-fog-local-network-tests-release
 
   # Build and lint in debug mode
   build-and-lint-debug:
@@ -729,6 +812,10 @@ workflows:
 
       # run fog conformance tests
       - run-fog-conformance-tests:
+          filters: { branches: { ignore: /^deploy\/.*/ } }
+
+      # run fog local network tests
+      - run-fog-local-network-tests:
           filters: { branches: { ignore: /^deploy\/.*/ } }
 
       # Build everything in debug
