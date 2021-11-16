@@ -476,6 +476,13 @@ commands:
               exit 1
             fi
 
+  lint-go:
+    steps:
+      - run:
+          name: Lint/fmt
+          command: |
+            cd go-grpc-gateway && ./lint.sh
+
 jobs:
   # Run mobilecoin tests on a single container
   run-mc-tests:
@@ -615,6 +622,29 @@ jobs:
           steps: [ save-sccache-cache, save-cargo-cache, save-homebrew-cache ]
       - post-build
 
+  # Build and test go code
+  build-and-test-go:
+    executor: build-executor
+    environment:
+      <<: *default-build-environment
+    steps:
+      - checkout
+      - prepare-for-build
+      - run:
+          name: go build
+          command: cd go-grpc-gateway && ./install_tools.sh && ./build.sh
+      - check-dirty-git
+      - lint-go
+      - check-dirty-git
+      - run:
+          name: cargo build
+          command: cd go-grpc-gateway/testing && cargo build --locked
+      - run:
+          name: curl test
+          command: cd go-grpc-gateway && ./test.sh
+      - check-dirty-git
+      - post-build
+
 workflows:
   version: 2
   # Build and run tests on a single container
@@ -646,4 +676,8 @@ workflows:
           matrix:
             parameters:
               xcode-version: ["11.7.0", *default-xcode-version]
+          filters: { branches: { ignore: /^deploy\/.*/ } }
+
+      # Run tests on a single container
+      - build-and-test-go:
           filters: { branches: { ignore: /^deploy\/.*/ } }

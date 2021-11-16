@@ -72,6 +72,10 @@ mobilecoind/clients/python/env/
 mobilecoind/clients/python/mob_client/blockchain_pb2.py
 *.pyc
 
+# fog conformance test python stuff
+env/
+tools/fog-local-network/*_pb2*.py
+
 # css files (should not be committed)
 *.css
 
