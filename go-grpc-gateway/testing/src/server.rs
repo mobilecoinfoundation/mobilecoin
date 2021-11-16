@@ -23,7 +23,7 @@ impl Server {
 
         let service = Service::new(logger.clone());
 
-        let report_service = report_grpc::create_report_api(service.clone());
+        let report_service = report_grpc::create_report_api(service);
         log::debug!(logger, "Constructed Report GRPC Service");
 
         // Health check service

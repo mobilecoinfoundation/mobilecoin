@@ -44,7 +44,7 @@ impl ReportApi for Service {
                 sink,
                 self.build_report_response()
                     .map(ProtobufReportResponse::from),
-                &logger,
+                logger,
             )
         })
     }
