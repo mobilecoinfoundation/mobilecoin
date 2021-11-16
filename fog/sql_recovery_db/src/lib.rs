@@ -178,7 +178,7 @@ impl SqlRecoveryDb {
         }
     }
 
-    fn get_highest_known_block_index_impl(&self, conn: &PgConnection) -> Result<Option<u64>, Error> {
+    fn get_highest_known_block_index_impl(conn: &PgConnection) -> Result<Option<u64>, Error> {
         Ok(schema::ingested_blocks::dsl::ingested_blocks
             .select(diesel::dsl::max(schema::ingested_blocks::dsl::block_number))
             .first::<Option<i64>>(conn)?
@@ -205,7 +205,7 @@ impl RecoveryDb for SqlRecoveryDb {
     ) -> Result<u64, Error> {
         let conn = self.pool.get()?;
         conn.build_transaction().read_write().run(|| -> Result<u64, Error> {
-            let highest_known_block_count: u64 = match self.get_highest_known_block_index_impl(&conn) {
+            let highest_known_block_count: u64 = match SqlRecoveryDb::get_highest_known_block_index_impl(&conn) {
                 Ok(block_index) => block_index.unwrap_or(0) + 1,
                 Err(_) => 0,
             };
@@ -936,7 +936,7 @@ impl RecoveryDb for SqlRecoveryDb {
     /// Get the highest block index for which we have any data at all.
     fn get_highest_known_block_index(&self) -> Result<Option<u64>, Self::Error> {
         let conn = self.pool.get()?;
-        self.get_highest_known_block_index_impl(&conn)
+        SqlRecoveryDb::get_highest_known_block_index_impl(&conn)
     }
 
 }
