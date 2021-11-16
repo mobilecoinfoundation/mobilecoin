@@ -16,6 +16,7 @@ use mc_consensus_service::{
     validators::DefaultTxManagerUntrustedInterfaces,
 };
 use mc_ledger_db::LedgerDB;
+use opentelemetry::KeyValue;
 use std::{
     env,
     fs::File,
@@ -31,6 +32,23 @@ fn main() -> Result<(), ConsensusServiceError> {
 
     let config = Config::from_args();
     let local_node_id = config.node_id();
+
+    let local_hostname = hostname::get().expect("Could not retrieve hostname");
+
+    let _tracer = opentelemetry_jaeger::new_pipeline()
+        .with_service_name("consensus-service")
+        //.with_collector_endpoint("http://34.133.197.146:14268/api/traces")
+        //.with_collector_endpoint("http://google.com")
+        .with_agent_endpoint("34.133.197.146:6831")
+        .with_tags(vec![KeyValue::new(
+            "hostname",
+            local_hostname
+                .to_str()
+                .expect("local_hostname.to_str")
+                .to_owned(),
+        )])
+        .install_simple()
+        .expect("oh oh");
 
     let (logger, _global_logger_guard) = create_app_logger(o!(
         "mc.local_node_id" => local_node_id.responder_id.to_string(),
