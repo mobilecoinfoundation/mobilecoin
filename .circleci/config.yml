@@ -626,9 +626,10 @@ jobs:
   build-and-test-go:
     executor: build-executor
     environment:
-      <<: *default-environment
+      <<: *default-build-environment
     steps:
       - checkout
+      - prepare-for-build
       - run:
           name: go build
           command: cd go-grpc-gateway && ./install_tools.sh && ./build.sh
@@ -642,6 +643,7 @@ jobs:
           name: curl test
           command: cd go-grpc-gateway && ./test.sh
       - check-dirty-git
+      - post-build
 
 workflows:
   version: 2
