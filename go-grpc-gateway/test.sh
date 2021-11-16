@@ -32,12 +32,12 @@ pid=$!
 sleep 1
 
 # Spawn grpc proxy
-./grpc-proxy -grpc-insecure -grpc-server-endpoint localhost:3000 -http-server-listen :80 -logtostderr &
+./grpc-proxy -grpc-insecure -grpc-server-endpoint localhost:3000 -http-server-listen :8080 -logtostderr &
 pid2=$!
 
 sleep 5
 
-result=$(curl -XPOST -H "Content-Type: application/json" http://localhost/report.ReportAPI/GetReports -d "{}")
+result=$(curl -XPOST -H "Content-Type: application/json" http://localhost:8080/report.ReportAPI/GetReports -d "{}")
 expected="{\"reports\":[],\"chain\":[],\"signature\":\"AAEAAQ==\"}"
 
 normalized_result=$(echo "$result" | jq -c .)
@@ -50,7 +50,7 @@ if [ "$normalized_result" != "$expected" ]; then
     exit 1
 fi
 
-result=$(curl -XPOST -H "Content-Type: application/x-protobuf" http://localhost/report.ReportAPI/GetReports -d "")
+result=$(curl -XPOST -H "Content-Type: application/x-protobuf" http://localhost:8080/report.ReportAPI/GetReports -d "")
 expected=$(echo -e "\\032\\004\\001\\001")
 if [ "$result" != "$expected" ]; then
     set +x
