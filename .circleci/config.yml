@@ -670,10 +670,6 @@ workflows:
       - android-bindings:
           filters: { branches: { ignore: /^deploy\/.*/ } }
 
-      # build/publish android bindings
-      - android-bindings:
-          filters: { branches: { ignore: /^deploy\/.*/ } }
-
       # Build using macOS
       - build-macos:
           name: build-macos-xcode-<< matrix.xcode-version >>
