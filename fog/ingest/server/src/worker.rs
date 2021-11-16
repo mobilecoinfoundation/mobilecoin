@@ -147,7 +147,7 @@ impl IngestWorker {
                                 .with_kind(SpanKind::Server)
                                 .with_start_time(start_time)
                                 .with_trace_id(TraceId::from_u128(
-                                    0x5000000000000 + next_block_index as u128,
+                                    0x6000000000000 + next_block_index as u128,
                                 ))
                                 .start(&tracer);
 

@@ -427,7 +427,7 @@ where
                 .span_builder("fetch_records_list")
                 .with_kind(SpanKind::Server)
                 .with_trace_id(TraceId::from_u128(
-                    0x5000000000000 + fetched_records.block_index as u128,
+                    0x6000000000000 + fetched_records.block_index as u128,
                 ))
                 .with_start_time(fetch_start)
                 .with_end_time(fetch_end)
@@ -439,7 +439,7 @@ where
                 .span_builder("add_records_to_enclave")
                 .with_kind(SpanKind::Server)
                 .with_trace_id(TraceId::from_u128(
-                    0x5000000000000 + fetched_records.block_index as u128,
+                    0x6000000000000 + fetched_records.block_index as u128,
                 ))
                 .start(&tracer);
 
