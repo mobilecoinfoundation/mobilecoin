@@ -680,4 +680,4 @@ workflows:
 
       # Run tests on a single container
       - build-and-test-go:
-          filters: { branches: { ignore: /^deploy\/.*/ } }      
+          filters: { branches: { ignore: /^deploy\/.*/ } }
