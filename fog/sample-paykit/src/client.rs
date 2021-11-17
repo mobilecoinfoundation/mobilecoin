@@ -197,7 +197,7 @@ impl Client {
             .span_builder("send_transaction")
             .with_kind(SpanKind::Server)
             .with_start_time(start_time)
-            .with_trace_id(TraceId::from_u128(0x6000000000000 + block_count as u128))
+            .with_trace_id(TraceId::from_u128(0x7000000000000 + block_count as u128))
             .start(&tracer);
 
         span.set_attribute(OT_BLOCK_INDEX_KEY.i64(block_count as i64));

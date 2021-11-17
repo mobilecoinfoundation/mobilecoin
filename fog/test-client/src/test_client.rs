@@ -454,7 +454,7 @@ impl TestClient {
             .span_builder("test_iteration")
             .with_kind(SpanKind::Server)
             .with_start_time(transfer_start)
-            .with_trace_id(TraceId::from_u128(0x6000000000000 + block_count as u128))
+            .with_trace_id(TraceId::from_u128(0x7000000000000 + block_count as u128))
             .start(&tracer);
         span.set_attribute(OT_BLOCK_INDEX_KEY.i64(block_count as i64));
         let _active = opentelemetry::trace::mark_span_as_active(span);
@@ -484,7 +484,7 @@ impl TestClient {
             .with_kind(SpanKind::Server)
             .with_start_time(ensure_start)
             .with_trace_id(TraceId::from_u128(
-                0x6000000000000 + transaction_appeared as u128,
+                0x7000000000000 + transaction_appeared as u128,
             ))
             .start(&tracer);
 
@@ -731,7 +731,7 @@ impl ReceiveTxWorker {
                     .span_builder("fog_view_received")
                     .with_kind(SpanKind::Server)
                     /*.with_trace_id(TraceId::from_u128(
-                        0x6000000000000 + block_index as u128,
+                        0x7000000000000 + block_index as u128,
                     ))*/
                     .with_parent_context(parent_context)
                     .start(&tracer);

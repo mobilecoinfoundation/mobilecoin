@@ -524,7 +524,7 @@ impl<
             .span_builder("complete_current_slot")
             .with_kind(SpanKind::Server)
             .with_trace_id(TraceId::from_u128(
-                0x6000000000000 + self.current_slot_index as u128,
+                0x7000000000000 + self.current_slot_index as u128,
             ))
             .start(&tracer);
         let _active = opentelemetry::trace::mark_span_as_active(span);
