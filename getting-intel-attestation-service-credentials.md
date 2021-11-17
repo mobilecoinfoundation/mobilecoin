@@ -56,6 +56,39 @@ sgx/report-cache/untrusted/src/lib.rs:186
 
 
 
+If your attestation fails, the consensus service will crash.
+
+{% hint style="info" %}
+You can see the output of the attestation, if your log level is set to debug, via setting the environment variable RUST\_LOG=debug.
+{% endhint %}
+
+The attestation output looks like the following for a SW\_HARDENING\_NEEDED response:
+
+```
+2020-09-23 14:08:31.155812272 UTC DEBG Quote verified by remote attestation service// Some code
+VerificationReport { sig: VerificationSignature([...]), chain: [[...]], http_body:
+"{\"nonce\":\"8c048a88269c9b65afead6485cf637ea\",\"id\":\"2418167485367160266948346
+47818919791828\",\"timestamp\":\"2020-09-23T14:08:31.099517\",\"version\":4,\"epidP
+seudonym\":\"gKH0dexEpYfuyaGgaKKWmH4VJ8r0L3af1W//p6ya+WaN9BAlSW1Gj3NOWvrQIEAyLCof3f
+wS9pkLnZrYk3CXQMSVKQF9q6j4TSTYdC8OicjpaV9nYrAdYWJ9rf3vxtshavmGUP58xTtknFQOxncAsjzn2
+maqbm4xhqCrMkzs0fY=\",\"advisoryURL\":\"https://security-center.intel.com\",\"advis
+oryIDs\":[\"INTEL-SA-00334\"],\"isvEnclaveQuoteStatus\":\"SW_HARDENING_NEEDED\",\"i
+svEnclaveQuoteBody\":\"AgABAMYLAAALAAoAAAAAAL3lg34HPOkq5u/y0l94xuMAAAAAAAAAAAAAAAAA
+AAAADw8DBf+ABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAAAAAAAHAAA
+AAAAAAEnz6eX7smjqAMeFV/sb1O+hM1VaRd4uow0/7gREPHmvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAC/f6lXpqlKy1iIUbyHZ+DKV3BsefT8Kqa8uZMBLDw4bAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAEAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAABoVXGssD3gYgQ3Gv3zt+rbG9e6ZxZPexmk4vFhAuK0EAYbh4AJHgKTfIWJYeXcJek9l7
+rISY1aKIMRzJMqixbn\"}" }..., mc.enclave_type: 
+mc_consensus_enclave::ConsensusServiceSgxEnclave, mc.local_node_id: 
+peer1.prod.mobilecoin.com:443, mc.app: consensus-service, mc.local_node_id:
+peer1.prod.mobilecoin.com:443, mc.module: mc_sgx_report_cache_untrusted, mc.src:
+sgx/report-cache/untrusted/src/lib.rs:176
+```
+
+
+
 
 
 &#x20;
