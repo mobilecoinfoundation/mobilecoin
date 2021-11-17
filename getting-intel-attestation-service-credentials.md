@@ -44,6 +44,18 @@ You also will need to provide the following environment variables in order to ge
 
 The following example log output contains measurement values:
 
+```
+2020-09-23 14:08:31.155881673 UTC INFO Measurements: MrEnclave: 
+49f3e9e5fbb268ea00c78557fb1bd4efa133555a45de2ea30d3fee04443c79af MrSigner:
+bf7fa957a6a94acb588851bc8767e0ca57706c79f4fc2aa6bcb993012c3c386c, mc.enclave_type:
+mc_consensus_enclave::ConsensusServiceSgxEnclave, mc.local_node_id:
+peer1.prod.mobilecoin.com:443, mc.app: consensus-service, mc.local_node_id:
+peer1.prod.mobilecoin.com:443, mc.module: mc_sgx_report_cache_untrusted, mc.src:
+sgx/report-cache/untrusted/src/lib.rs:186
+```
+
+
+
 
 
 &#x20;
