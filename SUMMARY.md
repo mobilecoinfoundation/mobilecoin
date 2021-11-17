@@ -11,3 +11,7 @@
 ## Common Tasks
 
 * [About Common Tasks](common-tasks/about-common-tasks.md)
+
+***
+
+* [Understanding the Consensus Server](understanding-the-consensus-server.md)
