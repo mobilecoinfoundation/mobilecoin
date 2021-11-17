@@ -30,3 +30,5 @@
   * [Running the Node in a Container (Preferred Method)](running-the-node/running-the-node-in-a-container-preferred-method/README.md)
     * [Environment Variables: How to Configure Your Node](running-the-node/running-the-node-in-a-container-preferred-method/environment-variables-how-to-configure-your-node.md)
     * [Run It!](running-the-node/running-the-node-in-a-container-preferred-method/run-it.md)
+  * [Using Your Own Binaries (Without Docker)](running-the-node/using-your-own-binaries-without-docker/README.md)
+    * [Run It!](running-the-node/using-your-own-binaries-without-docker/run-it.md)
