@@ -34,3 +34,5 @@
     * [Run It!](running-the-node/using-your-own-binaries-without-docker/run-it.md)
 * [Upgrading the Enclave](upgrading-the-enclave/README.md)
   * [Unacceptable Degradation of Service](upgrading-the-enclave/unacceptable-degradation-of-service.md)
+  * [Uneven Node Block Heights](upgrading-the-enclave/uneven-node-block-heights.md)
+  * [Monitoring](upgrading-the-enclave/monitoring.md)
