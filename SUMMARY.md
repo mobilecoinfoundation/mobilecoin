@@ -36,3 +36,4 @@
   * [Unacceptable Degradation of Service](upgrading-the-enclave/unacceptable-degradation-of-service.md)
   * [Uneven Node Block Heights](upgrading-the-enclave/uneven-node-block-heights.md)
   * [Monitoring](upgrading-the-enclave/monitoring.md)
+* [Configuring your Node](configuring-your-node.md)
