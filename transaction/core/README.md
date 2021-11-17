@@ -12,7 +12,7 @@ This crate provides a `no_std` implementation of the MobileCoin transaction.
 
 ### References
 
-* [CryptoNote Whitepaper](https://cryptonote.org/whitepaper.pdf)
+* [CryptoNote Whitepaper](https://bytecoin.org/old/whitepaper.pdf)
 * [CryptoNote One Time Addresses](https://cryptonote.org/cns/cns007.txt)
 * [Ring Signatures: How to Leak a Secret](https://www.iacr.org/archive/asiacrypt2001/22480554.pdf)
 * [Ring Confidential Transactions](https://eprint.iacr.org/2015/1098.pdf)
