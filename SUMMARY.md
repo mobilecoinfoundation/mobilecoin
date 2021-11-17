@@ -14,4 +14,5 @@
 
 ***
 
-* [Understanding the Consensus Server](understanding-the-consensus-server.md)
+* [Understanding the Consensus Server](understanding-the-consensus-server/README.md)
+  * [Secure Enclaves](understanding-the-consensus-server/secure-enclaves.md)
