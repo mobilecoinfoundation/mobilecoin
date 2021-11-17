@@ -12,21 +12,21 @@ Approval can take up to two weeks.
 
 **Step 3:** Once you log in at the Trusted Portal, this landing page displays. Click on the Intel SGX Attestation Service link to create an EPID subscription.
 
-![The Intel SGX Attestation Service link to create an EPID subscription.](<.gitbook/assets/intel cert.jpg>)
+![The Intel SGX Attestation Service link to create an EPID subscription.](<../.gitbook/assets/intel cert.jpg>)
 
 **Step 4:** After you select the Intel Attestation Service, click on the Subscribe Linkable blue button (under the Production Access section.)
 
-![How to subscribe.](<.gitbook/assets/subscribe linkable.jpg>)
+![How to subscribe.](<../.gitbook/assets/subscribe linkable.jpg>)
 
 **Step 5: **Manage your Subscriptions: Click on your username and select Manage Subscriptions to see existing subscriptions. The values of the environment variables are available in this section, as mentioned in Step 6, which are required for the consensus service on start-up.
 
-![Click on Manage Subscriptions to see existing subscriptions.](<.gitbook/assets/manage subscriptions.jpg>)
+![Click on Manage Subscriptions to see existing subscriptions.](<../.gitbook/assets/manage subscriptions.jpg>)
 
 {% hint style="info" %}
 On this page, you also can navigate to the Analytics Reports, as shown here, of your attestation requests by clicking on the **Analytics reports** button.&#x20;
 {% endhint %}
 
-![This analytics report shows the usage and health.](<.gitbook/assets/analytics reports.jpg>)
+![This analytics report shows the usage and health.](<../.gitbook/assets/analytics reports.jpg>)
 
 **Step 6:** Running the Consensus Server with attestation credentials: Provide the following environment variables when running the consensus service:&#x20;
 

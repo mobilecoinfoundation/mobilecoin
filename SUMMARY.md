@@ -19,4 +19,6 @@
 * [Prerequisites](prerequisites/README.md)
   * [IAS Account](prerequisites/ias-account.md)
   * [SGX-Enabled Machine](prerequisites/sgx-enabled-machine.md)
-* [Getting Intel Attestation Service Credentials](getting-intel-attestation-service-credentials.md)
+* [Getting Intel Attestation Service Credentials](getting-intel-attestation-service-credentials/README.md)
+  * [Quote Status Responses](getting-intel-attestation-service-credentials/quote-status-responses.md)
+  * [Validating the Attestation](getting-intel-attestation-service-credentials/validating-the-attestation.md)
