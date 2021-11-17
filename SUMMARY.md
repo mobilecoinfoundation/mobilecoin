@@ -26,5 +26,6 @@
   * [Provisioning with Azure](sgx-provisioning/provisioning-with-azure.md)
   * [Downloading the Consensus Server Software](sgx-provisioning/downloading-the-consensus-server-software/README.md)
     * [Downloading the Pre-Built Container from Docker Hub](sgx-provisioning/downloading-the-consensus-server-software/downloading-the-pre-built-container-from-docker-hub.md)
-    * [Running the Node](sgx-provisioning/downloading-the-consensus-server-software/running-the-node.md)
-* [Running the Node](running-the-node.md)
+* [Running the Node](running-the-node/README.md)
+  * [Running the Node in a Container (Preferred Method)](running-the-node/running-the-node-in-a-container-preferred-method/README.md)
+    * [Environment Variables: How to Configure Your Node](running-the-node/running-the-node-in-a-container-preferred-method/environment-variables-how-to-configure-your-node.md)
