@@ -463,36 +463,28 @@ commands:
             # tell the operating system to remove the file size limit on core dump files
             ulimit -c unlimited
             openssl genrsa -out Enclave_private.pem -3 3072
+            export SGX_MODE=SW
+            export IAS_MODE=DEV
             export CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
             export INGEST_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
             export LEDGER_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
             export VIEW_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+            export MC_LOG=debug
 
             cargo build -p mc-util-keyfile -p mc-util-generate-sample-ledger -p mc-crypto-x509-test-vectors -p mc-fog-distribution -p mc-fog-test-client --release
-            export FOG_AUTHORITY_ROOT=$(target/release/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head)
+            export FOG_AUTHORITY_ROOT=$(./target/release/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head)
             ./target/release/sample-keys --num 10 --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $FOG_AUTHORITY_ROOT
             ./target/release/generate-sample-ledger --txs 10
 
-            SGX_MODE=SW IAS_MODE=DEV \
-            MC_LOG="trace,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
-            GRAFANA_PASSWORD="... (get this from a team member, optional) \"
-            LOGSTASH_HOST="... (get this from a team member, optional)" \
-            LOG_BRANCH=eran-local \
+            MC_LOG="debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
             LEDGER_BASE=$(pwd)/ledger \
-            IAS_SPID="..." \
-            IAS_API_KEY="..." \
             python3 tools/fog-local-network/fog_local_network.py --network-type dense5
 
             sleep 10
 
             ./target/release/sample-keys --num 10 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $FOG_AUTHORITY_ROOT
 
-            SGX_MODE=SW IAS_MODE=DEV MC_LOG=debug \
-            INGEST_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
-            LEDGER_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
-            VIEW_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
-            CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
-                ./target/release/fog-distribution \
+            ./target/release/fog-distribution \
                 --sample-data-dir . \
                 --peer insecure-mc://localhost:3200/ \
                 --peer insecure-mc://localhost:3201/ \
@@ -501,12 +493,7 @@ commands:
                 --peer insecure-mc://localhost:3204/ \
                 --num-tx-to-send 1
 
-            SGX_MODE=SW IAS_MODE=DEV MC_LOG=trace \
-            INGEST_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
-            LEDGER_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
-            VIEW_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
-            CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/../Enclave_private.pem \
-                ./target/release/test_client \
+            ./target/release/test_client \
                 --consensus insecure-mc://localhost:3200/ \
                 --consensus insecure-mc://localhost:3201/ \
                 --consensus insecure-mc://localhost:3202/ \
