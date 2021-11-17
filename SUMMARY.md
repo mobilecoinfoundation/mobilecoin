@@ -15,5 +15,8 @@
 ***
 
 * [Understanding the Consensus Server](understanding-the-consensus-server/README.md)
-  * [Secure Enclaves](understanding-the-consensus-server/secure-enclaves/README.md)
-    * [Trusted Enclave and CSS](understanding-the-consensus-server/secure-enclaves/trusted-enclave-and-css.md)
+  * [Secure Enclaves](understanding-the-consensus-server/secure-enclaves.md)
+* [Prerequisites](prerequisites/README.md)
+  * [IAS Account](prerequisites/ias-account.md)
+  * [SGX-Enabled Machine](prerequisites/sgx-enabled-machine.md)
+* [Getting Intel Attestation Service Credentials](getting-intel-attestation-service-credentials.md)
