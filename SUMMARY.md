@@ -51,3 +51,6 @@
   * [Send Transaction](verifying-transactions-are-working-correctly/send-transaction.md)
   * [Use the Python API to Check Balance and Send Transactions](verifying-transactions-are-working-correctly/use-the-python-api-to-check-balance-and-send-transactions.md)
   * [Verify Nodes are Participating in Consensus](verifying-transactions-are-working-correctly/verify-nodes-are-participating-in-consensus.md)
+* [Common Errors and Alerts](common-errors-and-alerts/README.md)
+  * [Common Errors](common-errors-and-alerts/common-errors.md)
+  * [Alerts](common-errors-and-alerts/alerts.md)
