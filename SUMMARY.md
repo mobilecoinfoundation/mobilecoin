@@ -46,3 +46,8 @@
   * [Obtaining the Origin Block](configuring-your-node/obtaining-the-origin-block.md)
   * [Updating Your Network Configuration](configuring-your-node/updating-your-network-configuration.md)
 * [Attesting to the Consensus Server](attesting-to-the-consensus-server.md)
+* [Proposing Transactions](proposing-transactions.md)
+* [Verifying Transactions are Working Correctly](verifying-transactions-are-working-correctly/README.md)
+  * [Send Transaction](verifying-transactions-are-working-correctly/send-transaction.md)
+  * [Use the Python API to Check Balance and Send Transactions](verifying-transactions-are-working-correctly/use-the-python-api-to-check-balance-and-send-transactions.md)
+  * [Verify Nodes are Participating in Consensus](verifying-transactions-are-working-correctly/verify-nodes-are-participating-in-consensus.md)
