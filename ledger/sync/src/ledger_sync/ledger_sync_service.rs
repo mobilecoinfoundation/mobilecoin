@@ -20,13 +20,8 @@ use mc_ledger_db::Ledger;
 use mc_transaction_core::{
     compute_block_id, ring_signature::KeyImage, Block, BlockContents, BlockID, BlockIndex,
 };
+use mc_util_telemetry::{telemetry_static_key, tracer, Key, TraceContextExt, Tracer};
 use mc_util_uri::ConnectionUri;
-use opentelemetry::{
-    global,
-    global::BoxedTracer,
-    trace::{TraceContextExt, Tracer},
-    Key,
-};
 use retry::delay::Fibonacci;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
@@ -42,12 +37,8 @@ const DEFAULT_GET_TRANSACTIONS_TIMEOUT: Duration = Duration::from_secs(30);
 /// Maximal amount of concurrent get_block_contents calls to allow.
 const MAX_CONCURRENT_GET_BLOCK_CONTENTS_CALLS: usize = 50;
 
-const OT_NUM_BLOCKS: Key = Key::from_static_str("mobilecoin.com/mc-ledger-sync/num_blocks");
-
-// OpenTelemetry tracer for this module.
-fn tracer() -> BoxedTracer {
-    global::tracer_with_version("mc-ledger-sync-service", env!("CARGO_PKG_VERSION"))
-}
+/// Telemetry metadata: number of blocks appended to the local ledger.
+const TELEMETRY_NUM_BLOCKS_APPENDED: Key = telemetry_static_key!("num_blocks_appended");
 
 pub struct LedgerSyncService<L: Ledger, BC: BlockchainConnection, TF: TransactionsFetcher> {
     ledger: L,
@@ -269,7 +260,7 @@ impl<
         limit: u32,
     ) -> Result<(), LedgerSyncError> {
         trace_time!(self.logger, "attempt_ledger_sync");
-        tracer().in_span("attempt_ledger_sync", |_cx| {
+        tracer!().in_span("attempt_ledger_sync", |_cx| {
             let (responder_ids, _, potentially_safe_blocks) = self
                 .get_potentially_safe_blocks(network_state, limit)
                 .ok_or(LedgerSyncError::NoSafeBlocks)?;
@@ -340,9 +331,9 @@ impl<
             if let Ok(safe_blocks) =
                 identify_safe_blocks(&self.ledger, &blocks_and_contents, &self.logger)
             {
-                tracer().in_span("append_safe_blocks", |cx| {
+                tracer!().in_span("append_safe_blocks", |cx| {
                     cx.span()
-                        .set_attribute(OT_NUM_BLOCKS.i64(safe_blocks.len() as i64));
+                        .set_attribute(TELEMETRY_NUM_BLOCKS_APPENDED.i64(safe_blocks.len() as i64));
                     self.append_safe_blocks(&safe_blocks)
                 })?;
             } else {

@@ -19,13 +19,13 @@ mc-consensus-scp = { path = "../../consensus/scp" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
+mc-util-telemetry = { path = "../../util/telemetry" }
 mc-util-uri = { path = "../../util/uri" }
 
 crossbeam-channel = "0.5"
 displaydoc = "0.2"
 grpcio = "0.9.0"
 mockall = "0.10.2"
-opentelemetry = "0.16"
 protobuf = "2.22.1"
 rand = "0.8"
 reqwest = { version = "0.10" , features = ["rustls-tls"], default_features = false }
