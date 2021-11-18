@@ -610,7 +610,7 @@ checksum = "7ffc5c5338469d4d3ea17d269fa8ea3512ad247247c30bd2df69e68309ed0a08"
 [[package]]
 name = "mbedtls"
 version = "0.8.1"
-source = "git+https://github.com/mobilecoinofficial/rust-mbedtls.git?rev=ce4cf3e4814e92734434c7deaa59d649d43f442d#ce4cf3e4814e92734434c7deaa59d649d43f442d"
+source = "git+https://github.com/mobilecoinofficial/rust-mbedtls.git?rev=d6fc73168cf607c479ae7a4f7d6467005feacc53#d6fc73168cf607c479ae7a4f7d6467005feacc53"
 dependencies = [
  "bitflags",
  "byteorder",
@@ -629,7 +629,7 @@ dependencies = [
 [[package]]
 name = "mbedtls-sys-auto"
 version = "2.26.1"
-source = "git+https://github.com/mobilecoinofficial/rust-mbedtls.git?rev=ce4cf3e4814e92734434c7deaa59d649d43f442d#ce4cf3e4814e92734434c7deaa59d649d43f442d"
+source = "git+https://github.com/mobilecoinofficial/rust-mbedtls.git?rev=d6fc73168cf607c479ae7a4f7d6467005feacc53#d6fc73168cf607c479ae7a4f7d6467005feacc53"
 dependencies = [
  "bindgen",
  "cc",
