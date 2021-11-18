@@ -1,5 +1,7 @@
 # Common Errors
 
+
+
 | Common Error                           | Error Message                                                                                                                                                                                                                                                                                                | Solution                                                                                              |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
 | Attestation                            | “ConsensusEnclave::peer\_accept failed: Attested AKE error: Handshake error: The IAS report could not be verified: Error verifying the quote contents: The quote could not be verified: The quote's report could not be verified”                                                                            | “Verifying your MRENCLAVE value, and software version”                                                |
