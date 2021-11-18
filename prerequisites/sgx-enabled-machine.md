@@ -1,3 +1,3 @@
 # SGX-Enabled Machine
 
-See SGX Provisioning
+See [SGX Provisioning](../sgx-provisioning/).
