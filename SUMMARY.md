@@ -44,4 +44,5 @@
   * [Signing Consensus Messages](configuring-your-node/signing-consensus-messages.md)
   * [Distributing Ledger Contents to S3 Archive](configuring-your-node/distributing-ledger-contents-to-s3-archive.md)
   * [Obtaining the Origin Block](configuring-your-node/obtaining-the-origin-block.md)
-  * [Updating Your Node](configuring-your-node/updating-your-node.md)
+  * [Updating Your Network Configuration](configuring-your-node/updating-your-network-configuration.md)
+* [Attesting to the Consensus Server](attesting-to-the-consensus-server.md)
