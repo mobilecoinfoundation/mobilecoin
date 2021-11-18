@@ -2,17 +2,10 @@
 
 //! OpenTelemetry wrappers and helper utilities.
 
-//     global,
-//     global::BoxedTracer,
-//     sdk,
-//     trace::{TraceContextExt, Tracer},
-// }
-
-use opentelemetry::ContextGuard;
 pub use opentelemetry::{
     global::tracer_with_version,
-    trace::{SpanKind, TraceContextExt, TraceId, Tracer},
-    Key,
+    trace::{mark_span_as_active, Span, SpanBuilder, SpanKind, TraceContextExt, TraceId, Tracer},
+    Context, Key,
 };
 
 #[macro_export]
@@ -34,21 +27,31 @@ macro_rules! telemetry_static_key {
     };
 }
 
+/// A utility method to create a predictable trace ID out of a block index.
+/// This is used to group traces by block index.
 pub fn block_index_to_trace_id(block_index: u64) -> TraceId {
     TraceId::from_u128(0x7000000000000 + block_index as u128)
 }
 
-pub fn create_block_span<T: Tracer>(
+/// Create a SpanBuilder and attack the trace ID to a specific block index.
+pub fn block_span_builder<T: Tracer>(
     tracer: &T,
     span_name: &'static str,
     block_index: u64,
-) -> ContextGuard {
-    let span = tracer
+) -> SpanBuilder {
+    tracer
         .span_builder(span_name)
         .with_kind(SpanKind::Server)
         .with_trace_id(block_index_to_trace_id(block_index))
-        .start(tracer);
-    opentelemetry::trace::mark_span_as_active(span)
+}
+
+/// Start a span tied to a specific block index.
+pub fn start_block_span<T: Tracer>(
+    tracer: &T,
+    span_name: &'static str,
+    block_index: u64,
+) -> T::Span {
+    block_span_builder(tracer, span_name, block_index).start(tracer)
 }
 
 cfg_if::cfg_if! {

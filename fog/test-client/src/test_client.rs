@@ -18,15 +18,13 @@ use mc_transaction_core::{
     BlockIndex,
 };
 use mc_transaction_std::MemoType;
+use mc_util_telemetry::{
+    block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Context, Key, Span,
+    SpanKind, Tracer,
+};
 use mc_util_uri::ConsensusClientUri;
 use more_asserts::assert_gt;
 use once_cell::sync::OnceCell;
-use opentelemetry::{
-    global,
-    global::BoxedTracer,
-    trace::{Span, SpanKind, TraceId, Tracer},
-    Context, Key,
-};
 use serde::Serialize;
 use std::{
     sync::{
@@ -37,10 +35,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-const OT_BLOCK_INDEX_KEY: Key = Key::from_static_str("mobilecoin.com/test_client/block_index");
-fn tracer() -> BoxedTracer {
-    global::tracer_with_version("mc-test-client", env!("CARGO_PKG_VERSION"))
-}
+/// Telemetry: block index currently being worked on
+const TELEMETRY_BLOCK_INDEX_KEY: Key =
+    telemetry_static_key!("mobilecoin.com/test_client/block_index");
 
 /// Policy for different kinds of timeouts.
 /// In acceptance testing, we want to fail fast if things take too long.
@@ -218,7 +215,7 @@ impl TestClient {
         );
 
         // First do a balance check to flush out any spent txos
-        let tracer = tracer();
+        let tracer = tracer!();
         tracer.in_span("pre_transfer_balance_check", |_cx| {
             source_client
                 .check_balance()
@@ -257,7 +254,7 @@ impl TestClient {
         client: &mut Client,
         transaction: &Tx,
     ) -> Result<BlockIndex, TestClientError> {
-        let tracer = tracer();
+        let tracer = tracer!();
         tracer.in_span("ensure_transaction_is_accepted", |_cx| {
             // Wait until ledger server can see all of these key images
             let mut deadline = Some(Instant::now() + self.policy.tx_submit_deadline);
@@ -405,7 +402,7 @@ impl TestClient {
         target_client: Arc<Mutex<Client>>,
         target_client_index: usize,
     ) -> Result<Tx, TestClientError> {
-        let tracer = tracer();
+        let tracer = tracer!();
 
         let mut source_client_lk = source_client.lock().expect("mutex poisoned");
         let mut target_client_lk = target_client.lock().expect("mutex poisoned");
@@ -450,14 +447,11 @@ impl TestClient {
         let (transaction, block_count) =
             self.transfer(&mut source_client_lk, &mut target_client_lk)?;
 
-        let mut span = tracer
-            .span_builder("test_iteration")
-            .with_kind(SpanKind::Server)
+        let mut span = block_span_builder(&tracer, "test_iteration", block_count)
             .with_start_time(transfer_start)
-            .with_trace_id(TraceId::from_u128(0x7000000000000 + block_count as u128))
             .start(&tracer);
-        span.set_attribute(OT_BLOCK_INDEX_KEY.i64(block_count as i64));
-        let _active = opentelemetry::trace::mark_span_as_active(span);
+        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(block_count as i64));
+        let _active = mark_span_as_active(span);
 
         let start = Instant::now();
 
@@ -724,18 +718,13 @@ impl ReceiveTxWorker {
                 let start = Instant::now();
                 let mut deadline = Some(start + policy.tx_receive_deadline);
 
-                // let ensure_start = std::time::SystemTime::now();
-
-                let tracer = tracer();
+                let tracer = tracer!();
                 let span = tracer
                     .span_builder("fog_view_received")
                     .with_kind(SpanKind::Server)
-                    /*.with_trace_id(TraceId::from_u128(
-                        0x7000000000000 + block_index as u128,
-                    ))*/
                     .with_parent_context(parent_context)
                     .start(&tracer);
-                let _active = opentelemetry::trace::mark_span_as_active(span);
+                let _active = mark_span_as_active(span);
 
                 loop {
                     if thread_bail.load(Ordering::SeqCst) {

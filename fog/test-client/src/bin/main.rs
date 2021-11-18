@@ -27,20 +27,8 @@ fn main() {
 
     let config = TestClientConfig::from_args();
 
-    let _tracer = opentelemetry_jaeger::new_pipeline()
-        .with_service_name("test_client")
-        //.with_collector_endpoint("http://34.133.197.146:14268/api/traces")
-        //.with_collector_endpoint("http://google.com")
-        .with_agent_endpoint("34.133.197.146:6831")
-        /*.with_tags(vec![KeyValue::new(
-            "hostname",
-            local_hostname
-                .to_str()
-                .expect("local_hostname.to_str")
-                .to_owned(),
-        )])*/
-        .install_simple()
-        .expect("oh oh");
+    let _tracer = mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
+        .expect("Failed setting telemetry tracer");
 
     // Set up test client policy taking into account the runtime config values
     let policy = TestClientPolicy {
