@@ -42,3 +42,6 @@
     * [Defining a Consensus Quorum Set](configuring-your-node/configuring-your-node-to-connect-with-trusted-peers/defining-a-consensus-quorum-set.md)
     * [Obtaining Ledger Contents from S3 Archive for Catchup](configuring-your-node/configuring-your-node-to-connect-with-trusted-peers/obtaining-ledger-contents-from-s3-archive-for-catchup.md)
   * [Signing Consensus Messages](configuring-your-node/signing-consensus-messages.md)
+  * [Distributing Ledger Contents to S3 Archive](configuring-your-node/distributing-ledger-contents-to-s3-archive.md)
+  * [Obtaining the Origin Block](configuring-your-node/obtaining-the-origin-block.md)
+  * [Updating Your Node](configuring-your-node/updating-your-node.md)
