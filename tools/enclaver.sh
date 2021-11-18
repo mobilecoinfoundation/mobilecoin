@@ -3,10 +3,14 @@
 # Usage:
 # ./tools/enclaver.sh test.mobilecoin.com
 #
-# Set the NETWORK environment variable which ./tools/download_sigstruct.sh 
-# uses to get the `.css` files for Consensus, Ingest, Ledger, and View
+# First:
+#   Sets the NETWORK environment variable for ./tools/download_sigstruct.sh 
+#   which downloads the `.css` files for Consensus, Ingest, Ledger, and View
 #
-# MrEnclave values are printed to stdout. Example output:
+# Then:
+#   Compile/run mc-sgx-css-dump to compute and print MrEnclave values to stdout
+#
+# Example usage:
 #
 # $ ./tools/enclaver.sh test.mobilecoin.com
 #
