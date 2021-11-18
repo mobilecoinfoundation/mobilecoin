@@ -6,5 +6,5 @@ The MobileCoin Consensus Service facilitates transactions between MobileCoin use
 * Built from source code.
 
 {% hint style="info" %}
-We prefer that you run the container over downloading the software on your own because we have developed ...
+We prefer that you run the container over downloading the software on your own because we have developed the software with best practices in mind.
 {% endhint %}
