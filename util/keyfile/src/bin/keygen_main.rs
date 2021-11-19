@@ -2,8 +2,7 @@
 
 //! A CLI tool for generating individual MobileCoin identities
 
-use mc_account_keys::{RootEntropy, RootIdentity};
-use mc_util_keyfile::config::Config;
+use mc_util_keyfile::{config::Config, Slip10IdentityJson};
 use structopt::StructOpt;
 
 fn main() {
@@ -15,10 +14,10 @@ fn main() {
 
     let fog_url = config.acct.clone();
     let name = config.name.clone();
-    let root_entropy = config.get_root_entropy();
+    let entropy = config.get_root_entropy();
 
-    let id = RootIdentity {
-        root_entropy: RootEntropy::from(&root_entropy),
+    let id = Slip10IdentityJson {
+        slip10_key: entropy,
         fog_report_url: fog_url.unwrap_or_default(),
         fog_report_id: Default::default(),
         fog_authority_spki: Default::default(),
