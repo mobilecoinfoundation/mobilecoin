@@ -21,6 +21,7 @@ use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_util_uri::ConsensusClientUri;
 use serde_json::json;
 use std::{
+    convert::TryFrom,
     io::{ErrorKind, Read},
     path::PathBuf,
     str::FromStr,
@@ -52,7 +53,8 @@ fn main() {
 
     let root_identity =
         mc_util_keyfile::read_keyfile(config.keyfile).expect("Could not read private key file");
-    let account_key = AccountKey::from(&root_identity);
+    let account_key = AccountKey::try_from(&root_identity)
+        .expect("Could not convert private key file to account key");
 
     // Note: The balance check program is not supposed to submit anything to
     // consensus or talk to consensus, so this is just a dummy value

@@ -25,6 +25,7 @@ path = "src/bin/read_pubfile.rs"
 
 [dependencies]
 mc-account-keys = { path = "../../account-keys" }
+mc-account-keys-slip10 = { path = "../../account-keys/slip10" }
 mc-api = { path = "../../api" }
 mc-crypto-rand = { path = "../../crypto/rand" }
 mc-util-from-random = { path = "../../util/from-random" }
