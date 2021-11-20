@@ -32,8 +32,8 @@ service RemoteWalletApi {
 }
 
 message FreshBalanceCheckRequest {
-    /// Root entropy for the account the new client will be using.
-    bytes root_entropy = 1;
+    /// Slip10 key for the account the new client will be using.
+    bytes slip10_key = 1;
 
     /// FOG URI (should have view and ledger servers accessible).
     string fog_uri = 2;
