@@ -54,7 +54,7 @@ impl Slip10IdentityJson {
 impl TryFrom<&Slip10IdentityJson> for AccountKey {
     type Error = AccountKeyError;
     fn try_from(src: &Slip10IdentityJson) -> Result<AccountKey, AccountKeyError> {
-        Slip10Key::from(src.slip10_key.clone()).try_into_account_key(
+        Slip10Key::from(src.slip10_key).try_into_account_key(
             &src.fog_report_url,
             &src.fog_report_id,
             &src.fog_authority_spki,
