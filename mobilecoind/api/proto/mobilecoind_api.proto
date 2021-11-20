@@ -26,7 +26,7 @@ service MobilecoindAPI {
     rpc GenerateRootEntropy (google.protobuf.Empty) returns (GenerateRootEntropyResponse) {}
     rpc GenerateMnemonic (google.protobuf.Empty) returns (GenerateMnemonicResponse) {}
     rpc GetAccountKeyFromRootEntropy (GetAccountKeyFromRootEntropyRequest) returns (GetAccountKeyResponse) {}
-    rpc GetAccountKeyFromSlip10 (GetAccountKeyFromRootEntropyRequest) returns (GetAccountKeyResponse) {}
+    rpc GetAccountKeyFromSlip10 (GetAccountKeyFromSlip10Request) returns (GetAccountKeyResponse) {}
     rpc GetAccountKeyFromMnemonic (GetAccountKeyFromMnemonicRequest) returns (GetAccountKeyResponse) {}
     rpc GetPublicAddress (GetPublicAddressRequest) returns (GetPublicAddressResponse) {}
 
