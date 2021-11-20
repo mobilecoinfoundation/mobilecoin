@@ -76,12 +76,16 @@ impl RemoteWalletService {
         &self,
         request: FreshBalanceCheckRequest,
     ) -> Result<BalanceCheckResponse, RpcStatus> {
-        let root_entropy = RootEntropy::try_from(&request.root_entropy[..])
-            .map_err(|err| rpc_invalid_arg_error("root_entropy", err, &self.logger))?;
+        let id = Slip10Identity {
+            slip10_key: request
+                .slip10_key
+                .try_into()
+                .map_err(|err| rpc_invalid_arg_error("slip10 key", err, &self.logger))?,
+            ..Default::Default()
+        };
 
-        let root_identity = RootIdentity::from(&root_entropy);
-
-        let account_key = AccountKey::from(&root_identity);
+        let account_key = AccountKey::try_from(&id)
+            .map_err(|err| rpc_invalid_arg_error("could not build account key", err, &self.logger));
 
         // Note: The balance check program is not supposed to submit anything to
         // consensus or talk to consensus, so this is just a dummy value
