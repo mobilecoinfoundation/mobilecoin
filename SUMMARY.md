@@ -56,3 +56,7 @@
 
 * [Common Errors](common-errors-and-alerts/common-errors.md)
 * [Common Alerts](common-errors-and-alerts/common-alerts.md)
+
+## Glossary
+
+* [Glossary](glossary/glossary.md)
