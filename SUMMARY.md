@@ -60,3 +60,7 @@
 ## Glossary
 
 * [Glossary](glossary/glossary.md)
+
+## Frequently Asked Questions (FAQs)
+
+* [FAQs](frequently-asked-questions-faqs/faqs.md)
