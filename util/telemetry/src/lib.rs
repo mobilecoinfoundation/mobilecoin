@@ -72,7 +72,7 @@ cfg_if::cfg_if! {
             HostnameToString,
         }
 
-        pub fn setup_default_tracer(service_name: &str) -> Result<sdk::trace::Tracer, Error> {
+        pub fn setup_default_tracer_with_tags(service_name: &str, extra_tags: &[(&'static str, String)]) -> Result<sdk::trace::Tracer, Error> {
             let local_hostname = hostname::get().map_err(Error::GetHostname)?;
 
             let mut pipeline = opentelemetry_jaeger::new_pipeline().with_service_name(service_name);
@@ -81,16 +81,25 @@ cfg_if::cfg_if! {
                 pipeline = pipeline.with_agent_endpoint(endpoint);
             }
 
+            let mut tags = vec![KeyValue::new(
+                "hostname",
+                local_hostname
+                    .to_str()
+                    .ok_or(Error::HostnameToString)?
+                    .to_owned(),
+            )];
+            for (key, value) in extra_tags.into_iter().cloned() {
+                tags.push(KeyValue::new(key, value));
+            }
+
             pipeline
-                .with_tags(vec![KeyValue::new(
-                    "hostname",
-                    local_hostname
-                        .to_str()
-                        .ok_or(Error::HostnameToString)?
-                        .to_owned(),
-                )])
+                .with_tags(tags)
                 .install_simple()
                 .map_err(Error::Trace)
+        }
+
+        pub fn setup_default_tracer(service_name: &str) -> Result<sdk::trace::Tracer, Error> {
+            setup_default_tracer_with_tags(service_name, &[])
         }
     }
 }

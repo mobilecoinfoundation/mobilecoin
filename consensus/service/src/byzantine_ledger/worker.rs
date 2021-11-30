@@ -26,11 +26,7 @@ use mc_peers::{
 };
 use mc_transaction_core::tx::TxHash;
 use mc_util_metered_channel::Receiver;
-use opentelemetry::{
-    global,
-    global::BoxedTracer,
-    trace::{SpanKind, TraceId, Tracer},
-};
+use mc_util_telemetry::{mark_span_as_active, start_block_span, tracer, Tracer};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     cmp::min,
@@ -42,10 +38,6 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-
-fn tracer() -> BoxedTracer {
-    global::tracer_with_version("mc-consensus-service", env!("CARGO_PKG_VERSION"))
-}
 
 /// Default number of consensus messages to process per batch.
 const CONSENSUS_MSG_BATCH_SIZE: usize = 5;
@@ -518,16 +510,10 @@ impl<
     }
 
     fn complete_current_slot(&mut self, externalized: Vec<TxHash>) {
-        let tracer = tracer();
+        let tracer = tracer!();
 
-        let span = tracer
-            .span_builder("complete_current_slot")
-            .with_kind(SpanKind::Server)
-            .with_trace_id(TraceId::from_u128(
-                0x7000000000000 + self.current_slot_index as u128,
-            ))
-            .start(&tracer);
-        let _active = opentelemetry::trace::mark_span_as_active(span);
+        let span = start_block_span(&tracer, "complete_current_slot", self.current_slot_index);
+        let _active = mark_span_as_active(span);
 
         // Update pending value processing time metrics.
         for tx_hash in externalized.iter() {

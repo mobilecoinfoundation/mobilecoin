@@ -2911,6 +2911,7 @@ dependencies = [
  "mc-util-metrics",
  "mc-util-parse",
  "mc-util-serial",
+ "mc-util-telemetry",
  "mc-util-uri",
  "mockall",
  "once_cell",
