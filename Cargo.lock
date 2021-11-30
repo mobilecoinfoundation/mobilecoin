@@ -4264,6 +4264,7 @@ dependencies = [
  "mc-util-lmdb",
  "mc-util-metrics",
  "mc-util-serial",
+ "mc-util-telemetry",
  "mockall",
  "prost",
  "rand 0.8.4",

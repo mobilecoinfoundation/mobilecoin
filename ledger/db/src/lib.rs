@@ -30,13 +30,10 @@ use mc_transaction_core::{
 };
 use mc_util_lmdb::MetadataStoreSettings;
 use mc_util_serial::{decode, encode, Message};
-use metrics::LedgerMetrics;
-use opentelemetry::{
-    global,
-    global::BoxedTracer,
-    trace::{Span, SpanKind, TraceId, Tracer},
-    Context, Key,
+use mc_util_telemetry::{
+    mark_span_as_active, start_block_span, telemetry_static_key, tracer, Key, Span,
 };
+use metrics::LedgerMetrics;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -64,10 +61,9 @@ pub const BLOCK_NUMBER_BY_TX_OUT_INDEX: &str = "ledger_db:block_number_by_tx_out
 pub const NUM_BLOCKS_KEY: &str = "num_blocks";
 
 /// OpenTelemetry keys
-const OT_BLOCK_INDEX_KEY: Key = Key::from_static_str("mobilecoin.com/mc-ledger-db/block-index");
-const OT_NUM_KEY_IMAGES_KEY: Key =
-    Key::from_static_str("mobilecoin.com/mc-ledger-db/num-key-images");
-const OT_NUM_TXOS_KEY: Key = Key::from_static_str("mobilecoin.com/mc-ledger-db/num-txos");
+const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
+const TELEMETRY_NUM_KEY_IMAGES_KEY: Key = telemetry_static_key!("num-key-images");
+const TELEMETRY_NUM_TXOS_KEY: Key = telemetry_static_key!("num-txos");
 
 /// Metadata store settings that are used for version control.
 #[derive(Clone, Default, Debug)]
@@ -165,25 +161,15 @@ impl Ledger for LedgerDB {
     ) -> Result<(), Error> {
         let start_time = Instant::now();
 
-        let tracer = self.tracer();
-        let _ctx = Context::new().attach();
+        let tracer = tracer!();
 
-        let mut span = tracer
-            .span_builder("append_block")
-            .with_kind(SpanKind::Server)
-            .with_trace_id(TraceId::from_u128(0x7000000000000 + block.index as u128))
-            .start(&tracer);
-
-        span.set_attribute(OT_BLOCK_INDEX_KEY.i64(block.index as i64));
-        span.set_attribute(OT_NUM_KEY_IMAGES_KEY.i64(block_contents.key_images.len() as i64));
-        span.set_attribute(OT_NUM_TXOS_KEY.i64(block_contents.outputs.len() as i64));
-        /*let tracer = self.tracer();
-
-        tracer.in_span("append_block", |cx| {
-            let span = cx.span();
-            span.set_attribute(OT_BLOCK_INDEX_KEY.i64(block.index as i64));
-            span.set_attribute(OT_NUM_KEY_IMAGES_KEY.i64(block_contents.key_images.len() as i64));
-            span.set_attribute(OT_NUM_TXOS_KEY.i64(block_contents.outputs.len() as i64));*/
+        let mut span = start_block_span(&tracer, "append_block", block.index);
+        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(block.index as i64));
+        span.set_attribute(
+            TELEMETRY_NUM_KEY_IMAGES_KEY.i64(block_contents.key_images.len() as i64),
+        );
+        span.set_attribute(TELEMETRY_NUM_TXOS_KEY.i64(block_contents.outputs.len() as i64));
+        let _active = mark_span_as_active(span);
 
         // Note: This function must update every LMDB database managed by LedgerDB.
         let mut db_transaction = self.env.begin_rw_txn()?;
@@ -219,10 +205,7 @@ impl Ledger for LedgerDB {
         let file_size = self.db_file_size().unwrap_or(0);
         self.metrics.db_file_size.set(file_size as i64);
 
-        span.end();
-
         Ok(())
-        //})
     }
 
     /// Get the total number of Blocks in the ledger.
@@ -716,10 +699,6 @@ impl LedgerDB {
         let signature_bytes = db_transaction.get(self.block_signatures, &key)?;
         let signature = decode(signature_bytes)?;
         Ok(signature)
-    }
-
-    fn tracer(&self) -> BoxedTracer {
-        global::tracer_with_version("mc-ledger-db", env!("CARGO_PKG_VERSION"))
     }
 }
 
