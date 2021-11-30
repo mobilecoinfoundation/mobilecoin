@@ -39,23 +39,15 @@ use mc_transaction_std::{
     ChangeDestination, InputCredentials, MemoType, NoMemoBuilder, RTHMemoBuilder,
     SenderMemoCredential, TransactionBuilder,
 };
+use mc_util_telemetry::{block_span_builder, telemetry_static_key, tracer, Key, Span};
 use mc_util_uri::{ConnectionUri, FogUri};
-use opentelemetry::{
-    global,
-    global::BoxedTracer,
-    trace::{Span, SpanKind, TraceId, Tracer},
-    Key,
-};
 use rand::Rng;
 
 /// Default number of blocks used for calculating transaction tombstone block
 /// number. See `new_tx_block_attempts` below.
 const DEFAULT_NEW_TX_BLOCK_ATTEMPTS: u16 = 50;
 
-const OT_BLOCK_INDEX_KEY: Key = Key::from_static_str("mobilecoin.com/sample_paykit/block_index");
-fn tracer() -> BoxedTracer {
-    global::tracer_with_version("mc-sample-paykit", env!("CARGO_PKG_VERSION"))
-}
+const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block_index");
 
 /// Represents the entire sample paykit object, capable of balance checks and
 /// sending transactions
@@ -192,15 +184,12 @@ impl Client {
         let start_time = std::time::SystemTime::now();
         let block_count = self.consensus_service_conn.propose_tx(transaction)?;
 
-        let tracer = tracer();
-        let mut span = tracer
-            .span_builder("send_transaction")
-            .with_kind(SpanKind::Server)
+        let tracer = tracer!();
+        let mut span = block_span_builder(&tracer, "send_transaction", block_count)
             .with_start_time(start_time)
-            .with_trace_id(TraceId::from_u128(0x7000000000000 + block_count as u128))
             .start(&tracer);
 
-        span.set_attribute(OT_BLOCK_INDEX_KEY.i64(block_count as i64));
+        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(block_count as i64));
         span.end();
 
         Ok(block_count)
@@ -240,7 +229,7 @@ impl Client {
                             CompressedRistrettoPublic::try_from(external_compressed_ristretto)
                         {
                             if this_pubkey == public_key {
-                                const NOT_FOUND: u32 = TxOutResultCode::NotFound as u32;
+                                const NTELEMETRY_FOUND: u32 = TxOutResultCode::NotFound as u32;
                                 const FOUND: u32 = TxOutResultCode::Found as u32;
                                 const MALFORMED_REQUEST: u32 =
                                     TxOutResultCode::MalformedRequest as u32;
@@ -261,7 +250,7 @@ impl Client {
                                     DATABASE_ERROR => {
                                         return Ok(TransactionStatus::Unknown);
                                     }
-                                    NOT_FOUND => {
+                                    NTELEMETRY_FOUND => {
                                         // Note: A transaction must appear BEFORE the
                                         // tombstone_block,
                                         // it cannot appear in the tombstone block.

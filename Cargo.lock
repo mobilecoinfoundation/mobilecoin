@@ -3878,6 +3878,7 @@ dependencies = [
  "mc-util-build-script",
  "mc-util-grpc",
  "mc-util-keyfile",
+ "mc-util-telemetry",
  "mc-util-uri",
  "protobuf",
  "rand 0.8.4",
