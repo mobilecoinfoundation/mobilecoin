@@ -74,12 +74,9 @@ cfg_if::cfg_if! {
 
         pub fn setup_default_tracer_with_tags(service_name: &str, extra_tags: &[(&'static str, String)]) -> Result<sdk::trace::Tracer, Error> {
             let local_hostname = hostname::get().map_err(Error::GetHostname)?;
-
-            let mut pipeline = opentelemetry_jaeger::new_pipeline().with_service_name(service_name);
-
-            if let Ok(endpoint) = env::var("MC_JAEGER_AGENT") {
-                pipeline = pipeline.with_agent_endpoint(endpoint);
-            }
+            // TODO
+            env::set_var("OTEL_EXPORTER_JAEGER_AGENT_HOST", "34.133.197.146");
+            env::set_var("OTEL_EXPORTER_JAEGER_AGENT_PORT", "6831");
 
             let mut tags = vec![KeyValue::new(
                 "hostname",
@@ -92,7 +89,8 @@ cfg_if::cfg_if! {
                 tags.push(KeyValue::new(key, value));
             }
 
-            pipeline
+            opentelemetry_jaeger::new_pipeline()
+                .with_service_name(service_name)
                 .with_tags(tags)
                 .install_simple()
                 .map_err(Error::Trace)
