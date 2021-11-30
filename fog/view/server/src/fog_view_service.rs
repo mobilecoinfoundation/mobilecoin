@@ -14,12 +14,8 @@ use mc_util_grpc::{
     Authenticator,
 };
 use mc_util_metrics::SVC_COUNTERS;
-use opentelemetry::{global, global::BoxedTracer, trace::Tracer};
+use mc_util_telemetry::{tracer, Tracer};
 use std::sync::{Arc, Mutex};
-
-fn tracer() -> BoxedTracer {
-    global::tracer_with_version("mc-fog-view-service", env!("CARGO_PKG_VERSION"))
-}
 
 #[derive(Clone)]
 pub struct FogViewService<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> {
@@ -61,7 +57,7 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
     /// Unwrap and forward to enclave
     pub fn query_impl(&mut self, request: attest::Message) -> Result<attest::Message, RpcStatus> {
         log::trace!(self.logger, "Getting encrypted request");
-        let tracer = tracer();
+        let tracer = tracer!();
 
         tracer.in_span("query_impl", |_cx| {
             // Attempt and deserialize the untrusted portion of this request.

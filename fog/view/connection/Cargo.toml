@@ -11,6 +11,7 @@ mc-attest-core = { path = "../../../attest/core" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-util-grpc = { path = "../../../util/grpc" }
+mc-util-telemetry = { path = "../../../util/telemetry" }
 mc-util-serial = { path = "../../../util/serial" }
 
 # fog
@@ -22,5 +23,4 @@ mc-fog-view-protocol = { path = "../protocol" }
 
 # third-party
 grpcio = "0.9.0"
-opentelemetry = "0.16"
 retry = "1.3"
