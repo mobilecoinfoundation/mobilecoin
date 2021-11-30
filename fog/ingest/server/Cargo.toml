@@ -16,11 +16,8 @@ displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.9.0"
 hex = "0.4"
-hostname = "0.3.1"
 itertools = "0.10"
 lazy_static = "1.4"
-opentelemetry = "0.16"
-opentelemetry-jaeger = { version = "0.15", features = ["collector_client", "isahc"] }
 protobuf = "2.22.1"
 retry = "1.3"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
@@ -44,6 +41,7 @@ mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-metrics = { path = "../../../util/metrics" }
 mc-util-parse = { path = "../../../util/parse" }
 mc-util-serial = { path = "../../../util/serial" }
+mc-util-telemetry = { path = "../../../util/telemetry", features = ["jaeger"] }
 mc-util-uri = { path = "../../../util/uri" }
 mc-watcher = { path = "../../../watcher" }
 mc-watcher-api = { path = "../../../watcher/api" }

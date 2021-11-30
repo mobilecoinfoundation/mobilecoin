@@ -15,7 +15,6 @@ use mc_fog_sql_recovery_db::SqlRecoveryDb;
 use mc_ledger_db::LedgerDB;
 use mc_util_grpc::AdminServer;
 use mc_watcher::watcher_db::WatcherDB;
-use opentelemetry::KeyValue;
 use std::{env, sync::Arc};
 use structopt::StructOpt;
 
@@ -27,20 +26,8 @@ fn main() {
         o!("mc.local_node_id" => config.local_node_id.to_string()),
     );
 
-    let local_hostname = hostname::get().expect("Could not retrieve hostname");
-    let _tracer = opentelemetry_jaeger::new_pipeline()
-        .with_service_name("fog-ingest")
-        //.with_collector_endpoint("http://34.133.197.146:14268/api/traces")
-        .with_agent_endpoint("34.133.197.146:6831")
-        .with_tags(vec![KeyValue::new(
-            "hostname",
-            local_hostname
-                .to_str()
-                .expect("local_hostname.to_str")
-                .to_owned(),
-        )])
-        .install_simple()
-        .expect("oh oh");
+    let _tracer = mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
+        .expect("Failed setting telemetry tracer");
 
     // Get path to our state file.
     let state_file_path = config.state_file.clone().unwrap_or_else(|| {
