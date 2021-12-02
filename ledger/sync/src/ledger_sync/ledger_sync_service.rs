@@ -20,14 +20,16 @@ use mc_ledger_db::Ledger;
 use mc_transaction_core::{
     compute_block_id, ring_signature::KeyImage, Block, BlockContents, BlockID, BlockIndex,
 };
-use mc_util_telemetry::{telemetry_static_key, tracer, Key, TraceContextExt, Tracer};
+use mc_util_telemetry::{
+    block_span_builder, telemetry_static_key, tracer, Context, Key, Span, TraceContextExt, Tracer,
+};
 use mc_util_uri::ConnectionUri;
 use retry::delay::Fibonacci;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     sync::{Arc, Condvar, Mutex},
     thread,
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime},
 };
 
 /// Maximal amount to allow for getting block and transaction data.
@@ -206,7 +208,29 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
         );
 
         for (block, contents) in blocks_and_contents {
+            let append_block_start = SystemTime::now();
             self.ledger.append_block(block, contents, None)?;
+            let append_block_end = SystemTime::now();
+
+            // HACK: `append_block` reports a span but does not tie it to a specific
+            // block-derived trace ID. This is useful, since this allows the
+            // repeated append_block calls to be grouped under the parent
+            // span of append_safe_blocks.
+            // However, we also want to know when various services have appended a specific
+            // block as part of the block-level trace, so to work around that we
+            // are recording another span that is purposefully not tied
+            // to the current tracing context, but instead uses a fresh context so that it
+            // could be tied to the block trace.
+            {
+                let tracer = tracer!();
+                let _ctx = Context::new().attach(); // This is what detaches us from the parent context created by the caller of
+                                                    // `append_safe_blocks`.
+                let mut span = block_span_builder(&tracer, "append_block", block.index)
+                    .with_start_time(append_block_start)
+                    .with_end_time(append_block_end)
+                    .start(&tracer);
+                span.end_with_timestamp(append_block_end);
+            }
         }
 
         Ok(())
