@@ -40,7 +40,7 @@ mod memo_handler;
 pub use memo_handler::{MemoHandler, MemoHandlerError};
 
 const MAX_INPUTS: usize = mc_transaction_core::constants::MAX_INPUTS as usize;
-const TELEMETRY_NUM_TXOS_KEY: Key = telemetry_static_key!("num_txos");
+const TELEMETRY_NUM_TXOS_KEY: Key = telemetry_static_key!("num-txos");
 
 /// Highest subaddress index we support.
 /// If TxOut's are found which belong to us but at an unsupported subaddress

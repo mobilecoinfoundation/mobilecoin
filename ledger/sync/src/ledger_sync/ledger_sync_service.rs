@@ -38,7 +38,7 @@ const DEFAULT_GET_TRANSACTIONS_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_CONCURRENT_GET_BLOCK_CONTENTS_CALLS: usize = 50;
 
 /// Telemetry metadata: number of blocks appended to the local ledger.
-const TELEMETRY_NUM_BLOCKS_APPENDED: Key = telemetry_static_key!("num_blocks_appended");
+const TELEMETRY_NUM_BLOCKS_APPENDED: Key = telemetry_static_key!("num-blocks-appended");
 
 pub struct LedgerSyncService<L: Ledger, BC: BlockchainConnection, TF: TransactionsFetcher> {
     ledger: L,

@@ -47,7 +47,7 @@ use rand::Rng;
 /// number. See `new_tx_block_attempts` below.
 const DEFAULT_NEW_TX_BLOCK_ATTEMPTS: u16 = 50;
 
-const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block_index");
+const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
 
 /// Represents the entire sample paykit object, capable of balance checks and
 /// sending transactions

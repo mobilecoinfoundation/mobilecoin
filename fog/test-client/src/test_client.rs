@@ -36,8 +36,7 @@ use std::{
 };
 
 /// Telemetry: block index currently being worked on
-const TELEMETRY_BLOCK_INDEX_KEY: Key =
-    telemetry_static_key!("mobilecoin.com/test_client/block_index");
+const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
 
 /// Policy for different kinds of timeouts.
 /// In acceptance testing, we want to fail fast if things take too long.
