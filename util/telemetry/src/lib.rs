@@ -94,7 +94,7 @@ cfg_if::cfg_if! {
                     .ok_or(Error::HostnameToString)?
                     .to_owned(),
             )];
-            for (key, value) in extra_tags.into_iter().cloned() {
+            for (key, value) in extra_tags.iter().cloned() {
                 tags.push(KeyValue::new(key, value));
             }
 
