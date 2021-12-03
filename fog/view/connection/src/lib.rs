@@ -12,10 +12,9 @@ use mc_fog_types::view::{QueryRequest, QueryRequestAAD, QueryResponse};
 use mc_fog_uri::FogViewUri;
 use mc_fog_view_protocol::FogViewConnection;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
+use mc_util_telemetry::{tracer, Tracer};
 use retry::{delay::Fixed, retry, Error as RetryError};
 use std::sync::Arc;
-use mc_util_telemetry::{tracer, Tracer};
-
 
 pub struct FogViewGrpcClient {
     conn: EnclaveConnection<FogViewUri, view_grpc::FogViewApiClient>,
@@ -68,9 +67,10 @@ impl FogViewConnection for FogViewGrpcClient {
 
             let aad_bytes = mc_util_serial::encode(&req_aad);
 
-        retry(Fixed::from_millis(100).take(5), || {
-            self.conn
-                .retriable_encrypted_enclave_request(&req, &aad_bytes)
+            retry(Fixed::from_millis(100).take(5), || {
+                self.conn
+                    .retriable_encrypted_enclave_request(&req, &aad_bytes)
+            })
         })
     }
 }

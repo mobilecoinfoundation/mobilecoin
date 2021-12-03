@@ -466,23 +466,10 @@ impl TestClient {
         );
 
         // Wait for key images to land in ledger server
-        //let ensure_start = std::time::SystemTime::now();
         let transaction_appeared =
             self.ensure_transaction_is_accepted(&mut source_client_lk, &transaction)?;
 
         span.set_attribute(OT_BLOCK_INDEX_KEY.i64(transaction_appeared as i64));
-
-        /*let mut span = tracer
-            .span_builder("ensure_transaction_is_accepted")
-            .with_kind(SpanKind::Server)
-            .with_start_time(ensure_start)
-            .with_trace_id(TraceId::from_u128(
-                0x7000000000000 + transaction_appeared as u128,
-            ))
-            .start(&tracer);
-
-        span.set_attribute(OT_BLOCK_INDEX_KEY.i64(transaction_appeared as i64));
-        span.end();*/
 
         counters::TX_CONFIRMED_TIME.observe(start.elapsed().as_secs_f64());
 
@@ -737,9 +724,6 @@ impl ReceiveTxWorker {
                     if new_balance == expected_balance {
                         counters::TX_RECEIVED_TIME.observe(start.elapsed().as_secs_f64());
 
-                        //let block_index = u64::from(new_block_count) - 1;
-
-                        //let tracer = tracer();
                         if policy.test_rth_memos {
                             // Ensure target client got a sender memo, as expected for recoverable
                             // transcation history

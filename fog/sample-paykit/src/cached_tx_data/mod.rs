@@ -377,7 +377,7 @@ impl CachedTxData {
         let old_rng_num_blocks = self.rng_set.get_highest_processed_block_count();
         // Do the fog view protocol, log any errors, and consume any new transactions
 
-        let (txo_records, new_missed_block_ranges, errors) =
+        let (mut txo_records, new_missed_block_ranges, errors) =
             fog_view_client.poll(&mut self.rng_set, &UserPrivate::from(&self.account_key));
 
         log::trace!(

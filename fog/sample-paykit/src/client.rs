@@ -229,7 +229,7 @@ impl Client {
                             CompressedRistrettoPublic::try_from(external_compressed_ristretto)
                         {
                             if this_pubkey == public_key {
-                                const NTELEMETRY_FOUND: u32 = TxOutResultCode::NotFound as u32;
+                                const NOT_FOUND: u32 = TxOutResultCode::NotFound as u32;
                                 const FOUND: u32 = TxOutResultCode::Found as u32;
                                 const MALFORMED_REQUEST: u32 =
                                     TxOutResultCode::MalformedRequest as u32;
@@ -250,7 +250,7 @@ impl Client {
                                     DATABASE_ERROR => {
                                         return Ok(TransactionStatus::Unknown);
                                     }
-                                    NTELEMETRY_FOUND => {
+                                    NOT_FOUND => {
                                         // Note: A transaction must appear BEFORE the
                                         // tombstone_block,
                                         // it cannot appear in the tombstone block.
