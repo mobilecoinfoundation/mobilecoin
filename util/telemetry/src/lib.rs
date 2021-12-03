@@ -35,10 +35,11 @@ pub const BLOCK_INDEX_TRACE_ID_MAGIC: u128 = 0x424c4b4944;
 /// This is used to group traces by block index.
 pub fn block_index_to_trace_id(block_index: u64) -> TraceId {
     // Generate a predicatable trace id out of the block index.
-    // Jaeger displays only the first 7 characters of a trace id and thats where we want our block index to land.
-    // 7 hex characters represent 28 bits being displayed, leaving us with 100 bits that need to go to to the right of it.
+    // Jaeger displays only the first 7 characters of a trace id and thats where we
+    // want our block index to land. 7 hex characters represent 28 bits being
+    // displayed, leaving us with 100 bits that need to go to to the right of it.
     // Each character represents 4 bits of the trace id.
-   TraceId::from_u128((block_index as u128) << 100 | BLOCK_INDEX_TRACE_ID_MAGIC)
+    TraceId::from_u128((block_index as u128) << 100 | BLOCK_INDEX_TRACE_ID_MAGIC)
 }
 
 /// Create a SpanBuilder and attack the trace ID to a specific block index.
