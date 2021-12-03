@@ -469,8 +469,6 @@ impl TestClient {
         let transaction_appeared =
             self.ensure_transaction_is_accepted(&mut source_client_lk, &transaction)?;
 
-        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(transaction_appeared as i64));
-
         counters::TX_CONFIRMED_TIME.observe(start.elapsed().as_secs_f64());
 
         // Tell the receive tx worker in what block the transaction appeared
