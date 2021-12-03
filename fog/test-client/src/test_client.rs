@@ -199,7 +199,9 @@ impl TestClient {
         clients
     }
 
-    /// Conduct a transfer between two clients, according to the policy
+    /// Conduct a transfer between two clients, according to the policy.
+    /// Returns the transaction and the block count of the node it was submitted
+    /// to.
     fn transfer(
         &self,
         source_client: &mut Client,
