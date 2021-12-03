@@ -104,9 +104,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
             EnclaveError::ProstDecode => {
                 rpc_invalid_arg_error(context, "Prost decode failed", &self.logger)
             }
-            EnclaveError::Attest(err) => {
-                rpc_permissions_error(context, err, &self.logger)
-            }
+            EnclaveError::Attest(err) => rpc_permissions_error(context, err, &self.logger),
             other => rpc_internal_error(context, format!("{}", &other), &self.logger),
         }
     }
