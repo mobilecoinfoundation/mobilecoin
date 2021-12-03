@@ -97,12 +97,14 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
 
     // Helper function that is common
     fn enclave_err_to_rpc_status(&self, context: &str, src: EnclaveError) -> RpcStatus {
-        // Treat prost-decode error as an invalid arg, everything else is an internal
-        // error
+        // Treat prost-decode error as an invalid arg,
+        // treat attest error as permission denied,
+        // everything else is an internal error
         match src {
             EnclaveError::ProstDecode => {
                 rpc_invalid_arg_error(context, "Prost decode failed", &self.logger)
             }
+            EnclaveError::Attest(err) => rpc_permissions_error(context, err, &self.logger),
             other => rpc_internal_error(context, format!("{}", &other), &self.logger),
         }
     }

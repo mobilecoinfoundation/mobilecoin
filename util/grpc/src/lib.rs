@@ -40,7 +40,7 @@ pub use crate::{
 
 use futures::prelude::*;
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
-use mc_common::logger::{log, o, Logger};
+use mc_common::logger::{log, o, Level, Logger};
 use mc_util_metrics::SVC_COUNTERS;
 use rand::Rng;
 use std::{
@@ -75,23 +75,38 @@ pub fn send_result<T>(
     SVC_COUNTERS.resp(&ctx, success);
 }
 
+macro_rules! report_err_with_code(
+    ($context:expr, $err:expr, $code:expr, $logger:expr, $log_level:expr) => {{
+        let err_str = format!("{}: {}", $context, $err);
+        log::log!($logger, $log_level, "", "{}", err_str);
+        RpcStatus::with_message($code, err_str)
+    }}
+);
+
 /// The most common context strings for `report_err_with_code` are `Enclave
 /// Error` and database error
 #[inline]
 pub fn rpc_enclave_err<E: Display>(err: E, logger: &Logger) -> RpcStatus {
     // Return permission denied if there's anything wrong with the enclave, to force
     // re-attestation.
-    report_err_with_code(
+    report_err_with_code!(
         "Enclave Error",
         err,
         RpcStatusCode::PERMISSION_DENIED,
         logger,
+        Level::Warning
     )
 }
 
 #[inline]
 pub fn rpc_database_err<E: Display>(err: E, logger: &Logger) -> RpcStatus {
-    report_err_with_code("Database Error", err, RpcStatusCode::INTERNAL, logger)
+    report_err_with_code!(
+        "Database Error",
+        err,
+        RpcStatusCode::INTERNAL,
+        logger,
+        Level::Error
+    )
 }
 
 /// More general helpers which reduces boilerplate when reporting errors that
@@ -104,7 +119,7 @@ pub fn rpc_internal_error<S: Display, E: Display>(
     err: E,
     logger: &Logger,
 ) -> RpcStatus {
-    report_err_with_code(context, err, RpcStatusCode::INTERNAL, logger)
+    report_err_with_code!(context, err, RpcStatusCode::INTERNAL, logger, Level::Error)
 }
 
 #[inline]
@@ -113,7 +128,13 @@ pub fn rpc_invalid_arg_error<S: Display, E: Display>(
     err: E,
     logger: &Logger,
 ) -> RpcStatus {
-    report_err_with_code(context, err, RpcStatusCode::INVALID_ARGUMENT, logger)
+    report_err_with_code!(
+        context,
+        err,
+        RpcStatusCode::INVALID_ARGUMENT,
+        logger,
+        Level::Info
+    )
 }
 
 #[inline]
@@ -122,7 +143,13 @@ pub fn rpc_permissions_error<S: Display, E: Display>(
     err: E,
     logger: &Logger,
 ) -> RpcStatus {
-    report_err_with_code(context, err, RpcStatusCode::PERMISSION_DENIED, logger)
+    report_err_with_code!(
+        context,
+        err,
+        RpcStatusCode::PERMISSION_DENIED,
+        logger,
+        Level::Info
+    )
 }
 
 #[inline]
@@ -131,7 +158,13 @@ pub fn rpc_out_of_range_error<S: Display, E: Display>(
     err: E,
     logger: &Logger,
 ) -> RpcStatus {
-    report_err_with_code(context, err, RpcStatusCode::OUT_OF_RANGE, logger)
+    report_err_with_code!(
+        context,
+        err,
+        RpcStatusCode::OUT_OF_RANGE,
+        logger,
+        Level::Info
+    )
 }
 
 #[inline]
@@ -140,19 +173,13 @@ pub fn rpc_precondition_error<S: Display, E: Display>(
     err: E,
     logger: &Logger,
 ) -> RpcStatus {
-    report_err_with_code(context, err, RpcStatusCode::FAILED_PRECONDITION, logger)
-}
-
-#[inline]
-pub fn report_err_with_code<S: Display, E: Display>(
-    context: S,
-    err: E,
-    code: RpcStatusCode,
-    logger: &Logger,
-) -> RpcStatus {
-    let err_str = format!("{}: {}", context, err);
-    log::error!(logger, "{}", err_str);
-    RpcStatus::with_message(code, err_str)
+    report_err_with_code!(
+        context,
+        err,
+        RpcStatusCode::FAILED_PRECONDITION,
+        logger,
+        Level::Info
+    )
 }
 
 /// Converts a serialization Error to an RpcStatus error.

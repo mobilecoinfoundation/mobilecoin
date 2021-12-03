@@ -18,12 +18,12 @@
 /// Expose the standard crit! debug! error! etc macros from slog
 /// (those are the ones that accept a Logger instance)
 pub mod log {
-    pub use slog::{crit, debug, error, info, trace, warn};
+    pub use slog::{crit, debug, error, info, log, trace, warn};
 }
 
 /// Expose slog and select useful primitives.
 pub use slog;
-pub use slog::{o, FnValue, Logger, PushFnValue};
+pub use slog::{o, FnValue, Level, Logger, PushFnValue};
 
 /// Create a logger that discards everything.
 pub fn create_null_logger() -> Logger {
