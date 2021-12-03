@@ -365,6 +365,7 @@ pub enum WorkerTickResult {
     Sleep,
 }
 
+/// Telemetry: block indes currently being worked on.
 const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
 
 impl<E, DB> DbPollThreadWorker<E, DB>

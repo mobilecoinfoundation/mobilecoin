@@ -26,8 +26,11 @@ fn main() {
         o!("mc.local_node_id" => config.local_node_id.to_string()),
     );
 
-    let _tracer = mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
-        .expect("Failed setting telemetry tracer");
+    let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
+        env!("CARGO_PKG_NAME"),
+        &[("local_node_id", config.local_node_id.to_string())],
+    )
+    .expect("Failed setting telemetry tracer");
 
     // Get path to our state file.
     let state_file_path = config.state_file.clone().unwrap_or_else(|| {

@@ -20,6 +20,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+/// Telemetry: block index currently being worked on.
 const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
 
 /// The ingest worker is a thread responsible for driving the polling loop which

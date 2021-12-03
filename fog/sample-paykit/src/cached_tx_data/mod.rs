@@ -40,6 +40,8 @@ mod memo_handler;
 pub use memo_handler::{MemoHandler, MemoHandlerError};
 
 const MAX_INPUTS: usize = mc_transaction_core::constants::MAX_INPUTS as usize;
+
+/// Telemetry: Number of txos returned from query.
 const TELEMETRY_NUM_TXOS_KEY: Key = telemetry_static_key!("num-txos");
 
 /// Highest subaddress index we support.
