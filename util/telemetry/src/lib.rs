@@ -67,7 +67,6 @@ cfg_if::cfg_if! {
     if #[cfg(feature = "jaeger")] {
         use displaydoc::Display;
         use opentelemetry::{trace::TraceError, KeyValue, sdk};
-        use std::env;
 
         #[derive(Debug, Display)]
         pub enum Error {
