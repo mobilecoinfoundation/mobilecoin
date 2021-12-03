@@ -195,7 +195,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             self.untrusted.is_valid(context)?;
             Ok(())
         } else {
-            log::error!(
+            log::warn!(
                 self.logger,
                 "attempting to validate non-existent tx hash {:?}",
                 tx_hash
