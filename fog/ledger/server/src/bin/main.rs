@@ -23,6 +23,15 @@ fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
     let config = LedgerServerConfig::from_args();
 
+    let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
+        env!("CARGO_PKG_NAME"),
+        &[(
+            "client_responser_id",
+            config.client_responder_id.to_string(),
+        )],
+    )
+    .expect("Failed setting telemetry tracer");
+
     let enclave_path = env::current_exe()
         .expect("Could not get the path of our executable")
         .with_file_name(ENCLAVE_FILE);

@@ -3590,6 +3590,7 @@ dependencies = [
  "mc-util-metrics",
  "mc-util-parse",
  "mc-util-serial",
+ "mc-util-telemetry",
  "mc-util-test-helper",
  "mc-util-uri",
  "mc-watcher",

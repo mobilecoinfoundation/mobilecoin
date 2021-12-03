@@ -17,7 +17,7 @@ use std::{
         Arc,
     },
     thread::JoinHandle,
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime},
 };
 
 /// Telemetry: block index currently being worked on.
@@ -90,7 +90,7 @@ impl IngestWorker {
                         continue;
                     }
 
-                    let start_time = std::time::SystemTime::now();
+                    let start_time = SystemTime::now();
 
                     match db.get_block_data(next_block_index) {
                         Err(LedgerError::NotFound) => {
@@ -134,6 +134,7 @@ impl IngestWorker {
                                 log::warn!(logger, "Failed updating ledger db metrics: {}", err);
                             }
 
+                            // Tracing
                             let tracer = tracer!();
 
                             let mut span =
