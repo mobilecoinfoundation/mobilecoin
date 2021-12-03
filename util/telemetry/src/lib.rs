@@ -81,10 +81,6 @@ cfg_if::cfg_if! {
         }
 
         pub fn setup_default_tracer_with_tags(service_name: &str, extra_tags: &[(&'static str, String)]) -> Result<sdk::trace::Tracer, Error> {
-            // TODO
-            std::env::set_var("OTEL_EXPORTER_JAEGER_AGENT_HOST", "34.133.197.146");
-            std::env::set_var("OTEL_EXPORTER_JAEGER_AGENT_PORT", "6831");
-
             let local_hostname = hostname::get().map_err(Error::GetHostname)?;
 
             let mut tags = vec![KeyValue::new(
