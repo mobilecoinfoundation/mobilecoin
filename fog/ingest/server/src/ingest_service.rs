@@ -236,6 +236,7 @@ where
                 request.start_block_at_least,
                 request.should_include_lost_keys,
                 request.should_include_retired_keys,
+                request.should_only_include_unexpired_keys,
             )
             .map_err(|err| rpc_precondition_error("get_ingress_key_records", err, logger))?;
 
