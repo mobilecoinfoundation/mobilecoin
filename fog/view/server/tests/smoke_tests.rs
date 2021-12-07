@@ -61,15 +61,15 @@ fn get_test_environment(
 
     let server = {
         let config = ViewConfig {
-            ias_spid: Default::default(),
-            ias_api_key: Default::default(),
             client_responder_id: ResponderId::from_str(&uri.addr()).unwrap(),
             client_listen_uri: uri.clone(),
-            admin_listen_uri: Default::default(),
             client_auth_token_secret: None,
-            client_auth_token_max_lifetime: Default::default(),
             omap_capacity: view_omap_capacity,
-            postgres_params: Default::default(),
+            ias_spid: Default::default(),
+            ias_api_key: Default::default(),
+            admin_listen_uri: Default::default(),
+            client_auth_token_max_lifetime: Default::default(),
+            postgres_config: Default::default(),
         };
 
         let enclave = SgxViewEnclave::new(

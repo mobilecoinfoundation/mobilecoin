@@ -59,22 +59,29 @@ pub const SQL_MAX_ROWS: usize = 5000;
 
 /// SQL recovery DB connection configuration parameters
 #[derive(Debug, Clone, StructOpt, Serialize)]
-pub struct SqlRecoveryDbParams {
-    /// idle timeouts
+pub struct SqlRecoveryDbConnectionConfig {
+    /// The idle timeout used by the connection pool.
+    /// If set, connections will be closed after sitting idle for at most 30
+    /// seconds beyond this duration. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
     #[structopt(long, env, default_value = "60", parse(try_from_str=parse_duration_in_seconds))]
     postgres_idle_timeout: Duration,
-    /// max lifetime
+    /// The maximum lifetime of connections in the pool.
+    /// If set, connections will be closed after existing for at most 30 seconds
+    /// beyond this duration. If a connection reaches its maximum lifetime
+    /// while checked out it will be closed when it is returned to the pool. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
     #[structopt(long, env, default_value = "120", parse(try_from_str=parse_duration_in_seconds))]
     postgres_max_lifetime: Duration,
-    /// connection timeout
+    /// Sets the connection timeout used by the pool.
+    /// The pool will wait this long for a connection to become available before
+    /// returning an error. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
     #[structopt(long, env, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
     postgres_connection_timeout: Duration,
-    /// maximum number of connections in the pool
+    /// The maximum number of connections managed by the pool.
     #[structopt(long, env, default_value = "1")]
     postgres_max_connections: u32,
 }
 
-impl Default for SqlRecoveryDbParams {
+impl Default for SqlRecoveryDbConnectionConfig {
     fn default() -> Self {
         Self {
             postgres_idle_timeout: Duration::from_secs(60),
@@ -102,15 +109,15 @@ impl SqlRecoveryDb {
     /// and connection parameters. The parameters have sane defaults.
     pub fn new_from_url(
         database_url: &str,
-        params: SqlRecoveryDbParams,
+        config: SqlRecoveryDbConnectionConfig,
         logger: Logger,
     ) -> Result<Self, Error> {
         let manager = ConnectionManager::<PgConnection>::new(database_url);
         let pool = Pool::builder()
-            .max_size(params.postgres_max_connections)
-            .idle_timeout(Some(params.postgres_idle_timeout))
-            .max_lifetime(Some(params.postgres_max_lifetime))
-            .connection_timeout(params.postgres_connection_timeout)
+            .max_size(config.postgres_max_connections)
+            .idle_timeout(Some(config.postgres_idle_timeout))
+            .max_lifetime(Some(config.postgres_max_lifetime))
+            .connection_timeout(config.postgres_connection_timeout)
             .test_on_check_out(true)
             .build(manager)?;
         Ok(Self::new(pool, logger))

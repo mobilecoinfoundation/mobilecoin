@@ -4,7 +4,7 @@
 
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
-use mc_fog_sql_recovery_db::SqlRecoveryDbParams;
+use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
 use mc_fog_uri::FogViewUri;
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
@@ -64,5 +64,5 @@ pub struct MobileAcctViewConfig {
 
     /// Postgres config
     #[structopt(flatten)]
-    pub postgres_params: SqlRecoveryDbParams,
+    pub postgres_config: SqlRecoveryDbConnectionConfig,
 }
