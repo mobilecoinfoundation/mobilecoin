@@ -28,6 +28,7 @@ mc-util-encodings = { path = "../../../util/encodings" }
 mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-metrics = { path = "../../../util/metrics" }
+mc-util-parse = { path = "../../../util/parse" }
 mc-util-serial = { path = "../../../util/serial" }
 mc-util-uri = { path = "../../../util/uri" }
 mc-watcher = { path = "../../../watcher" }

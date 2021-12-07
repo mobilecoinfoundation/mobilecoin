@@ -39,9 +39,12 @@ use mc_fog_types::{
     ETxOutRecord,
 };
 use mc_transaction_core::Block;
+use mc_util_parse::parse_duration_in_seconds;
 use prost::Message;
 use proto_types::ProtoIngestedBlockData;
+use serde::Serialize;
 use std::time::Duration;
+use structopt::StructOpt;
 
 pub use error::Error;
 
@@ -53,6 +56,34 @@ pub const SQL_MAX_PARAMS: usize = 65000;
 
 /// Maximal number of rows to insert in one batch.
 pub const SQL_MAX_ROWS: usize = 5000;
+
+/// SQL recovery DB connection configuration parameters
+#[derive(Debug, Clone, StructOpt, Serialize)]
+pub struct SqlRecoveryDbParams {
+    /// idle timeouts
+    #[structopt(long, env, default_value = "60", parse(try_from_str=parse_duration_in_seconds))]
+    postgres_idle_timeout: Duration,
+    /// max lifetime
+    #[structopt(long, env, default_value = "120", parse(try_from_str=parse_duration_in_seconds))]
+    postgres_max_lifetime: Duration,
+    /// connection timeout
+    #[structopt(long, env, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
+    postgres_connection_timeout: Duration,
+    /// maximum number of connections in the pool
+    #[structopt(long, env, default_value = "1")]
+    postgres_max_connections: u32,
+}
+
+impl Default for SqlRecoveryDbParams {
+    fn default() -> Self {
+        Self {
+            postgres_idle_timeout: Duration::from_secs(60),
+            postgres_max_lifetime: Duration::from_secs(120),
+            postgres_connection_timeout: Duration::from_secs(5),
+            postgres_max_connections: 1,
+        }
+    }
+}
 
 /// SQL-backed recovery database.
 #[derive(Clone)]
@@ -67,17 +98,19 @@ impl SqlRecoveryDb {
         Self { pool, logger }
     }
 
-    /// Create a new instance using a database URL. This will create a
-    /// connection pool of size 1. The benefit of doing this is that the
-    /// pool takes care of automatically reconnecting to the database if the
-    /// connection dies.
-    pub fn new_from_url(database_url: &str, logger: Logger) -> Result<Self, Error> {
+    /// Create a new instance using a database URL,
+    /// and connection parameters. The parameters have sane defaults.
+    pub fn new_from_url(
+        database_url: &str,
+        params: SqlRecoveryDbParams,
+        logger: Logger,
+    ) -> Result<Self, Error> {
         let manager = ConnectionManager::<PgConnection>::new(database_url);
         let pool = Pool::builder()
-            .max_size(1)
-            .idle_timeout(Some(Duration::from_secs(60)))
-            .max_lifetime(Some(Duration::from_secs(120)))
-            .connection_timeout(Duration::from_secs(5))
+            .max_size(params.postgres_max_connections)
+            .idle_timeout(Some(params.postgres_idle_timeout))
+            .max_lifetime(Some(params.postgres_max_lifetime))
+            .connection_timeout(params.postgres_connection_timeout)
             .test_on_check_out(true)
             .build(manager)?;
         Ok(Self::new(pool, logger))

@@ -5,14 +5,16 @@
 use mc_common::logger::{log, Logger};
 use mc_fog_sample_paykit::AccountKey;
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
+use mc_util_parse::{load_css_file, parse_duration_in_seconds, CssSignature};
 use mc_util_uri::{AdminUri, ConsensusClientUri};
-
 use serde::Serialize;
-use std::{path::PathBuf, str::FromStr, time::Duration};
+use std::{path::PathBuf, time::Duration};
 use structopt::StructOpt;
 
 /// StructOpt for test-client binary
-#[derive(Debug, StructOpt, Serialize, Clone)]
+///
+/// Serialize is used to create a json summary
+#[derive(Debug, StructOpt, Clone, Serialize)]
 #[structopt(name = "test-client", about = "Test client for Fog infrastructure.")]
 pub struct TestClientConfig {
     /// A URI to host the prometheus data at.
@@ -78,20 +80,24 @@ pub struct TestClientConfig {
     pub transfer_amount: u64,
 
     /// Consensus enclave CSS file (overriding the build-time CSS)
-    #[structopt(long, env)]
-    pub consensus_enclave_css: Option<String>,
+    #[structopt(long, env, parse(try_from_str=load_css_file))]
+    #[serde(skip_serializing)]
+    pub consensus_enclave_css: Option<CssSignature>,
 
     /// Fog ingest enclave CSS file (overriding the build-time CSS)
-    #[structopt(long, env = "INGEST_ENCLAVE_CSS")]
-    pub fog_ingest_enclave_css: Option<String>,
+    #[structopt(long, env = "INGEST_ENCLAVE_CSS", parse(try_from_str=load_css_file))]
+    #[serde(skip_serializing)]
+    pub fog_ingest_enclave_css: Option<CssSignature>,
 
     /// Fog ledger enclave CSS file (overriding the build-time CSS)
-    #[structopt(long, env = "LEDGER_ENCLAVE_CSS")]
-    pub fog_ledger_enclave_css: Option<String>,
+    #[structopt(long, env = "LEDGER_ENCLAVE_CSS", parse(try_from_str=load_css_file))]
+    #[serde(skip_serializing)]
+    pub fog_ledger_enclave_css: Option<CssSignature>,
 
     /// Fog view enclave CSS file (overriding the build-time CSS)
-    #[structopt(long, env = "VIEW_ENCLAVE_CSS")]
-    pub fog_view_enclave_css: Option<String>,
+    #[structopt(long, env = "VIEW_ENCLAVE_CSS", parse(try_from_str=load_css_file))]
+    #[serde(skip_serializing)]
+    pub fog_view_enclave_css: Option<CssSignature>,
 
     /// Whether to turn off memos, for backwards compatibility
     #[structopt(long, env)]
@@ -123,8 +129,4 @@ pub struct ConsensusConfig {
     /// Consensus Validator nodes to connect to.
     #[structopt(long = "consensus", env, required = true, min_values = 1)]
     pub consensus_validators: Vec<ConsensusClientUri>,
-}
-
-fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
-    Ok(Duration::from_secs(u64::from_str(src)?))
 }

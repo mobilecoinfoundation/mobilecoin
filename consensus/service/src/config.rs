@@ -6,11 +6,12 @@ use mc_attest_core::ProviderId;
 use mc_common::{HashMap, HashSet, NodeID, ResponderId};
 use mc_consensus_scp::{QuorumSet, QuorumSetMember};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private};
+use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::{
     AdminUri, ConnectionUri, ConsensusClientUri as ClientUri, ConsensusPeerUri as PeerUri,
 };
 use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, fs, path::PathBuf, str::FromStr, string::String, sync::Arc, time::Duration};
+use std::{fmt::Debug, fs, path::PathBuf, string::String, sync::Arc, time::Duration};
 use structopt::StructOpt;
 
 #[derive(Clone, Debug, StructOpt)]
@@ -112,11 +113,6 @@ fn keypair_from_base64(private_key: &str) -> Result<Arc<Ed25519Pair>, String> {
     let secret_key = Ed25519Private::try_from_der(privkey_bytes.as_slice())
         .map_err(|err| format!("Could not get Ed25519Private from der {:?}", err))?;
     Ok(Arc::new(Ed25519Pair::from(secret_key)))
-}
-
-/// Converts a string containing number of seconds to a Duration object.
-fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
-    Ok(Duration::from_secs(u64::from_str(src)?))
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]

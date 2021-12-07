@@ -69,6 +69,7 @@ fn get_test_environment(
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Default::default(),
             omap_capacity: view_omap_capacity,
+            postgres_params: Default::default(),
         };
 
         let enclave = SgxViewEnclave::new(
