@@ -76,4 +76,10 @@ lazy_static::lazy_static! {
 
     /// Number of times that the test failed because a confirm tx operation failed
     pub static ref CONFIRM_TX_ERROR_COUNT: IntCounter = OP_COUNTERS.counter("confirm_tx_error_count");
+
+    /// The IS_HEALTHY status is false (0) if ANY of the clients failed their most recent transfers.
+    /// It is (1) if NO client has failed their most recent transfer.
+    /// This is updated after every transfer attempt.
+    pub static ref IS_HEATHY: IntCounter = OP_COUNTERS.counter("is_healthy");
+
 }

@@ -11,6 +11,7 @@ use mc_fog_test_client::{
     test_client::{TestClient, TestClientPolicy},
 };
 use mc_util_grpc::AdminServer;
+use mc_util_parse::load_css_file;
 use serde::Serialize;
 use std::sync::Arc;
 use structopt::StructOpt;
@@ -78,16 +79,16 @@ fn main() {
         config.fog_view,
         logger.clone(),
     )
-    .consensus_sigstruct(config.consensus_enclave_css)
-    .fog_ingest_sigstruct(config.fog_ingest_enclave_css)
-    .fog_ledger_sigstruct(config.fog_ledger_enclave_css)
-    .fog_view_sigstruct(config.fog_view_enclave_css);
+    .consensus_sigstruct(config.consensus_enclave_css.map(load_css_file))
+    .fog_ingest_sigstruct(config.ingest_enclave_css.map(load_css_file))
+    .fog_ledger_sigstruct(config.ledger_enclave_css.map(load_css_file))
+    .fog_view_sigstruct(config.view_enclave_css.map(load_css_file));
 
     // Run continuously or run as a fixed length test, according to config
     if config.continuous {
         log::info!(
             logger,
-            "Test client will continuously transfer every {:?} seconds",
+            "One transfer / {:?} seconds",
             config.transfer_period
         );
 
@@ -100,14 +101,10 @@ fn main() {
 
         test_client.run_continuously(config.transfer_period);
     } else {
-        log::info!(
-            logger,
-            "Test client will run {} test transfers and stop",
-            config.num_transactions
-        );
+        log::info!(logger, "Running {} test transfers", config.num_transactions);
 
         match test_client.run_test(config.num_transactions) {
-            Ok(()) => println!("All tests passed"),
+            Ok(()) => log::info!(logger, "All tests passed"),
             Err(TestClientError::TxTimeout) => panic!(
                 "Transactions could not clear in {:?} seconds",
                 config.consensus_wait

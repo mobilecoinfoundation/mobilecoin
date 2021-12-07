@@ -5,7 +5,7 @@
 use mc_common::logger::{log, Logger};
 use mc_fog_sample_paykit::AccountKey;
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
-use mc_util_parse::{load_css_file, parse_duration_in_seconds, CssSignature};
+use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::{AdminUri, ConsensusClientUri};
 use serde::Serialize;
 use std::{path::PathBuf, time::Duration};
@@ -80,24 +80,20 @@ pub struct TestClientConfig {
     pub transfer_amount: u64,
 
     /// Consensus enclave CSS file (overriding the build-time CSS)
-    #[structopt(long, env, parse(try_from_str=load_css_file))]
-    #[serde(skip_serializing)]
-    pub consensus_enclave_css: Option<CssSignature>,
+    #[structopt(long, env)]
+    pub consensus_enclave_css: Option<String>,
 
     /// Fog ingest enclave CSS file (overriding the build-time CSS)
-    #[structopt(long, env = "INGEST_ENCLAVE_CSS", parse(try_from_str=load_css_file))]
-    #[serde(skip_serializing)]
-    pub fog_ingest_enclave_css: Option<CssSignature>,
+    #[structopt(long)]
+    pub ingest_enclave_css: Option<String>,
 
     /// Fog ledger enclave CSS file (overriding the build-time CSS)
-    #[structopt(long, env = "LEDGER_ENCLAVE_CSS", parse(try_from_str=load_css_file))]
-    #[serde(skip_serializing)]
-    pub fog_ledger_enclave_css: Option<CssSignature>,
+    #[structopt(long)]
+    pub ledger_enclave_css: Option<String>,
 
     /// Fog view enclave CSS file (overriding the build-time CSS)
-    #[structopt(long, env = "VIEW_ENCLAVE_CSS", parse(try_from_str=load_css_file))]
-    #[serde(skip_serializing)]
-    pub fog_view_enclave_css: Option<CssSignature>,
+    #[structopt(long)]
+    pub view_enclave_css: Option<String>,
 
     /// Whether to turn off memos, for backwards compatibility
     #[structopt(long, env)]

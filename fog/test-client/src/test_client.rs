@@ -595,6 +595,8 @@ impl TestClient {
         log::debug!(self.logger, "Generating and testing transactions");
 
         let mut ti = 0usize;
+        counters::IS_HEALTHY.set(1);
+        let mut last_failure: Some(usize) = None;
         loop {
             log::debug!(self.logger, "Transaction: {:?}", ti);
 
@@ -607,10 +609,22 @@ impl TestClient {
                 Ok(_) => {
                     log::info!(self.logger, "Transfer succeeded");
                     counters::TX_SUCCESS_COUNT.inc();
+                    // If:
+                    // * there was no previous failure, OR
+                    // * the previous failure was more than client_count ago
+                    // then set status to healthy
+                    if last_failure
+                        .map(|failed| failed + client_count <= ti)
+                        .unwrap_or(true)
+                    {
+                        counters::IS_HEALTHY.set(1);
+                    }
                 }
                 Err(err) => {
                     log::error!(self.logger, "Transfer failed: {}", err);
                     counters::TX_FAILURE_COUNT.inc();
+                    last_failure = Some(ti);
+                    counters::IS_HEALTHY.set(0);
                     match err {
                         TestClientError::ZeroBalance => {
                             counters::ZERO_BALANCE_COUNT.inc();
