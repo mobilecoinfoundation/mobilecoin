@@ -41,6 +41,7 @@ use mc_fog_types::{
 use mc_transaction_core::Block;
 use prost::Message;
 use proto_types::ProtoIngestedBlockData;
+use std::time::Duration;
 
 pub use error::Error;
 
@@ -74,6 +75,9 @@ impl SqlRecoveryDb {
         let manager = ConnectionManager::<PgConnection>::new(database_url);
         let pool = Pool::builder()
             .max_size(1)
+            .idle_timeout(Some(Duration::from_secs(60)))
+            .max_lifetime(Some(Duration::from_secs(120)))
+            .connection_timeout(Duration::from_secs(5))
             .test_on_check_out(true)
             .build(manager)?;
         Ok(Self::new(pool, logger))
