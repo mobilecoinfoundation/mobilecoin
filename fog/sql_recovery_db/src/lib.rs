@@ -208,10 +208,9 @@ impl RecoveryDb for SqlRecoveryDb {
             .read_write()
             .run(|| -> Result<u64, Error> {
                 let highest_known_block_count: u64 =
-                    match SqlRecoveryDb::get_highest_known_block_index_impl(&conn) {
-                        Ok(block_index) => block_index.unwrap_or(0) + 1,
-                        Err(_) => 0,
-                    };
+                    SqlRecoveryDb::get_highest_known_block_index_impl(&conn)?
+                        .map(|index| index + 1)
+                        .unwrap_or(0);
 
                 let accepted_start_block_count = max(start_block_count, highest_known_block_count);
                 let obj = models::NewIngressKey {
@@ -2579,6 +2578,27 @@ mod tests {
             .len(),
             0
         );
+    }
+
+    #[test_with_logger]
+    fn test_new_ingress_key_no_blocks_added_accepted_block_count_is_proposed_start_block_when_zero(
+        logger: Logger,
+    ) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+
+        let proposed_start_block = 0;
+        let ingress_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        let accepted_start_block = db
+            .new_ingress_key(&ingress_key, proposed_start_block)
+            .unwrap();
+
+        assert_eq!(accepted_start_block, proposed_start_block);
+
+        // Ensures that the accepted start block is recorded in the db.
+        let ingress_key_status = db.get_ingress_key_status(&ingress_key).unwrap().unwrap();
+        assert_eq!(accepted_start_block, ingress_key_status.start_block);
     }
 
     #[test_with_logger]
