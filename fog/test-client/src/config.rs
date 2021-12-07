@@ -5,21 +5,23 @@
 use mc_common::logger::{log, Logger};
 use mc_fog_sample_paykit::AccountKey;
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
+use mc_util_parse::{load_css_file, parse_duration_in_seconds, CssSignature};
 use mc_util_uri::{AdminUri, ConsensusClientUri};
-
 use serde::Serialize;
-use std::{path::PathBuf, str::FromStr, time::Duration};
+use std::{path::PathBuf, time::Duration};
 use structopt::StructOpt;
 
 /// StructOpt for test-client binary
-#[derive(Debug, StructOpt, Serialize, Clone)]
+///
+/// Serialize is used to create a json summary
+#[derive(Debug, StructOpt, Clone, Serialize)]
 #[structopt(name = "test-client", about = "Test client for Fog infrastructure.")]
 pub struct TestClientConfig {
     /// A URI to host the prometheus data at.
     ///
     /// Prometheus data includes number of successes and failure, and histograms
     /// of transaction clearing and finality times.
-    #[structopt(long)]
+    #[structopt(long, env)]
     pub admin_listen_uri: Option<AdminUri>,
 
     /// If set, then we continuously send test transfers.
@@ -30,15 +32,15 @@ pub struct TestClientConfig {
     /// fail fast when deadlines are exceeded.
     ///
     /// You should usually set `admin_listen_uri` when you use this
-    #[structopt(long)]
+    #[structopt(long, env)]
     pub continuous: bool,
 
     /// Account key directory.
-    #[structopt(long)]
+    #[structopt(long, env)]
     pub key_dir: PathBuf,
 
     /// Number of clients to load from key directory
-    #[structopt(long, default_value = "6")]
+    #[structopt(long, env, default_value = "6")]
     pub num_clients: usize,
 
     /// Config specific to consensus
@@ -46,55 +48,59 @@ pub struct TestClientConfig {
     pub consensus_config: ConsensusConfig,
 
     /// Fog Ledger service URI
-    #[structopt(long, required = true)]
+    #[structopt(long, required = true, env)]
     pub fog_ledger: FogLedgerUri,
 
     /// Fog View service URI.
-    #[structopt(long)]
+    #[structopt(long, env)]
     pub fog_view: FogViewUri,
 
     /// Seconds to wait for a transaction to clear, before it has exceeded
     /// deadline.
-    #[structopt(long, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
+    #[structopt(long, env, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
     pub consensus_wait: Duration,
 
     /// Seconds to wait for ledger sync on fog
-    #[structopt(long, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
+    #[structopt(long, env, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
     pub ledger_sync_wait: Duration,
 
     /// Number of transactions to attempt (only when not running continuously)
-    #[structopt(long, default_value = "36")]
+    #[structopt(long, env, default_value = "36")]
     pub num_transactions: usize,
 
     /// When running continuously, specifies the length of the pause between
     /// test transfers
     ///
     /// By default the pause is 15 minutes.
-    #[structopt(long, default_value = "900", parse(try_from_str=parse_duration_in_seconds))]
+    #[structopt(long, env, default_value = "900", parse(try_from_str=parse_duration_in_seconds))]
     pub transfer_period: Duration,
 
     /// Amount to transfer per transaction
-    #[structopt(long, default_value = "20")]
+    #[structopt(long, env, default_value = "20")]
     pub transfer_amount: u64,
 
     /// Consensus enclave CSS file (overriding the build-time CSS)
-    #[structopt(long)]
-    pub consensus_enclave_css: Option<String>,
+    #[structopt(long, env, parse(try_from_str=load_css_file))]
+    #[serde(skip_serializing)]
+    pub consensus_enclave_css: Option<CssSignature>,
 
     /// Fog ingest enclave CSS file (overriding the build-time CSS)
-    #[structopt(long)]
-    pub fog_ingest_enclave_css: Option<String>,
+    #[structopt(long, env = "INGEST_ENCLAVE_CSS", parse(try_from_str=load_css_file))]
+    #[serde(skip_serializing)]
+    pub fog_ingest_enclave_css: Option<CssSignature>,
 
     /// Fog ledger enclave CSS file (overriding the build-time CSS)
-    #[structopt(long)]
-    pub fog_ledger_enclave_css: Option<String>,
+    #[structopt(long, env = "LEDGER_ENCLAVE_CSS", parse(try_from_str=load_css_file))]
+    #[serde(skip_serializing)]
+    pub fog_ledger_enclave_css: Option<CssSignature>,
 
     /// Fog view enclave CSS file (overriding the build-time CSS)
-    #[structopt(long)]
-    pub fog_view_enclave_css: Option<String>,
+    #[structopt(long, env = "VIEW_ENCLAVE_CSS", parse(try_from_str=load_css_file))]
+    #[serde(skip_serializing)]
+    pub fog_view_enclave_css: Option<CssSignature>,
 
     /// Whether to turn off memos, for backwards compatibility
-    #[structopt(long)]
+    #[structopt(long, env)]
     pub no_memos: bool,
 }
 
@@ -121,10 +127,6 @@ impl TestClientConfig {
 #[structopt()]
 pub struct ConsensusConfig {
     /// Consensus Validator nodes to connect to.
-    #[structopt(long = "consensus", required = true, min_values = 1)]
+    #[structopt(long = "consensus", env, required = true, min_values = 1)]
     pub consensus_validators: Vec<ConsensusClientUri>,
-}
-
-fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
-    Ok(Duration::from_secs(u64::from_str(src)?))
 }

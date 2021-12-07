@@ -4,14 +4,12 @@
 
 use mc_common::logger::{create_app_logger, log, o};
 
-use core::convert::TryFrom;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_fog_test_client::{
     config::TestClientConfig,
     error::TestClientError,
     test_client::{TestClient, TestClientPolicy},
 };
-use mc_sgx_css::Signature;
 use mc_util_grpc::AdminServer;
 use serde::Serialize;
 use std::sync::Arc;
@@ -43,32 +41,6 @@ fn main() {
     };
 
     let account_keys = config.load_accounts(&logger);
-
-    // Load any css from disk
-    let consensus_sigstruct = config
-        .consensus_enclave_css
-        .as_ref()
-        .map(load_css_file)
-        .transpose()
-        .expect("loading css failed");
-    let fog_ingest_sigstruct = config
-        .fog_ingest_enclave_css
-        .as_ref()
-        .map(load_css_file)
-        .transpose()
-        .expect("loading css failed");
-    let fog_ledger_sigstruct = config
-        .fog_ledger_enclave_css
-        .as_ref()
-        .map(load_css_file)
-        .transpose()
-        .expect("loading css failed");
-    let fog_view_sigstruct = config
-        .fog_view_enclave_css
-        .as_ref()
-        .map(load_css_file)
-        .transpose()
-        .expect("loading css failed");
 
     // Start an admin server to publish prometheus metrics, if admin_listen_uri is
     // given
@@ -103,10 +75,10 @@ fn main() {
         config.fog_view,
         logger.clone(),
     )
-    .consensus_sigstruct(consensus_sigstruct)
-    .fog_ingest_sigstruct(fog_ingest_sigstruct)
-    .fog_ledger_sigstruct(fog_ledger_sigstruct)
-    .fog_view_sigstruct(fog_view_sigstruct);
+    .consensus_sigstruct(config.consensus_enclave_css)
+    .fog_ingest_sigstruct(config.fog_ingest_enclave_css)
+    .fog_ledger_sigstruct(config.fog_ledger_enclave_css)
+    .fog_view_sigstruct(config.fog_view_enclave_css);
 
     // Run continuously or run as a fixed length test, according to config
     if config.continuous {
@@ -140,15 +112,4 @@ fn main() {
             Err(e) => panic!("Unexpected error {:?}", e),
         }
     }
-}
-
-// Note: clippy exception is needed because to use with `Option::<&String>::map`
-// the function argument cannot be `&str` or it will fail type checking.
-#[allow(clippy::ptr_arg)]
-fn load_css_file(filename: &String) -> Result<Signature, String> {
-    let bytes = std::fs::read(filename)
-        .map_err(|err| format!("Failed reading file '{}': {}", filename, err))?;
-    let signature = Signature::try_from(&bytes[..])
-        .map_err(|err| format!("Failed parsing CSS file '{}': {}", filename, err))?;
-    Ok(signature)
 }

@@ -29,6 +29,7 @@ mc-sgx-report-cache-untrusted = { path = "../../sgx/report-cache/untrusted" }
 mc-transaction-core = { path = "../../transaction/core"}
 mc-transaction-std = { path = "../../transaction/std"}
 mc-util-grpc = { path = "../../util/grpc" }
+mc-util-parse = { path = "../../util/parse" }
 mc-util-metered-channel = { path = "../../util/metered-channel" }
 mc-util-metrics = { path = "../../util/metrics" }
 mc-util-serial = { path = "../../util/serial" }

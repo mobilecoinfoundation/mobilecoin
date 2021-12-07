@@ -8,7 +8,6 @@ use crate::{
     counters,
     error::{IngestServiceError as Error, PeerBackupError, RestoreStateError, SetPeersError},
     server::IngestServerConfig,
-    SeqDisplay,
 };
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
 use mc_attest_net::RaClient;
@@ -32,6 +31,7 @@ use mc_fog_uri::IngestPeerUri;
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCache};
 use mc_transaction_core::{Block, BlockContents, BlockIndex};
+use mc_util_parse::SeqDisplay;
 use mc_util_uri::ConnectionUri;
 use std::{
     collections::{BTreeMap, BTreeSet},

@@ -3,13 +3,14 @@
 //! IngestControllerState represents what the ingest server is currently trying
 //! to do
 
-use crate::{counters, server::IngestServerConfig, SeqDisplay};
+use crate::{counters, server::IngestServerConfig};
 use displaydoc::Display;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::ingest_common::{IngestControllerMode, IngestSummary};
 use mc_fog_recovery_db_iface::IngestInvocationId;
 use mc_fog_uri::IngestPeerUri;
 use mc_transaction_core::BlockIndex;
+use mc_util_parse::SeqDisplay;
 use std::{collections::BTreeSet, fmt::Display};
 
 /// The ingest server is, at any time, in one of two modes:
