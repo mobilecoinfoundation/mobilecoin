@@ -47,6 +47,7 @@ fn main() {
     // Open databases.
     let recovery_db = SqlRecoveryDb::new_from_url(
         &std::env::var("DATABASE_URL").expect("DATABASE_URL environment variable missing"),
+        config.postgres_config.clone(),
         logger.clone(),
     )
     .expect("Failed connecting to database");

@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use crate::SqlRecoveryDb;
+use crate::{SqlRecoveryDb, SqlRecoveryDbConnectionConfig};
 use diesel::{prelude::*, PgConnection};
 use diesel_migrations::embed_migrations;
 use mc_common::logger::Logger;
@@ -62,8 +62,12 @@ impl SqlRecoveryDbTestContext {
     }
 
     pub fn get_db_instance(&self) -> SqlRecoveryDb {
-        SqlRecoveryDb::new_from_url(&self.db_url(), self.logger.clone())
-            .expect("failed creating new SqlRecoveryDb")
+        SqlRecoveryDb::new_from_url(
+            &self.db_url(),
+            SqlRecoveryDbConnectionConfig::default(),
+            self.logger.clone(),
+        )
+        .expect("failed creating new SqlRecoveryDb")
     }
 
     pub fn new_conn(&self) -> PgConnection {

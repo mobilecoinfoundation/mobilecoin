@@ -4,10 +4,12 @@
 
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
+use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
 use mc_fog_uri::FogViewUri;
+use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
-use std::{str::FromStr, time::Duration};
+use std::time::Duration;
 use structopt::StructOpt;
 
 #[derive(Clone, Serialize, StructOpt)]
@@ -59,9 +61,8 @@ pub struct MobileAcctViewConfig {
     /// developed.)
     #[structopt(long, default_value = "1048576")]
     pub omap_capacity: u64,
-}
 
-/// Converts a string containing number of seconds to a Duration object.
-fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
-    Ok(Duration::from_secs(u64::from_str(src)?))
+    /// Postgres config
+    #[structopt(flatten)]
+    pub postgres_config: SqlRecoveryDbConnectionConfig,
 }

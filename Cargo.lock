@@ -2909,6 +2909,7 @@ dependencies = [
  "mc-util-logger-macros",
  "mc-util-metered-channel",
  "mc-util-metrics",
+ "mc-util-parse",
  "mc-util-serial",
  "mc-util-uri",
  "mockall",
@@ -3256,6 +3257,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-keyfile",
+ "mc-util-parse",
  "mc-util-uri",
  "mc-watcher",
  "predicates 2.0.3",
@@ -3408,6 +3410,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-metrics",
+ "mc-util-parse",
  "mc-util-serial",
  "mc-util-test-helper",
  "mc-util-uri",
@@ -3585,6 +3588,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-metrics",
+ "mc-util-parse",
  "mc-util-serial",
  "mc-util-test-helper",
  "mc-util-uri",
@@ -3787,6 +3791,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-metrics",
+ "mc-util-parse",
  "mc-util-uri",
  "pem",
  "prost",
@@ -3945,6 +3950,7 @@ dependencies = [
  "mc-fog-types",
  "mc-transaction-core",
  "mc-util-from-random",
+ "mc-util-parse",
  "mc-util-repr-bytes",
  "mc-util-test-helper",
  "pem",
@@ -3952,6 +3958,8 @@ dependencies = [
  "r2d2",
  "rand 0.8.4",
  "rand_core 0.6.3",
+ "serde",
+ "structopt",
  "tempdir",
 ]
 
@@ -3973,6 +3981,7 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-keyfile",
  "mc-util-metrics",
+ "mc-util-parse",
  "mc-util-uri",
  "more-asserts",
  "once_cell",
@@ -4223,6 +4232,7 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-metered-channel",
  "mc-util-metrics",
+ "mc-util-parse",
  "mc-util-serial",
  "mc-util-test-helper",
  "mc-util-uri",
@@ -4373,6 +4383,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-lmdb",
+ "mc-util-parse",
  "mc-util-repr-bytes",
  "mc-util-serial",
  "mc-util-uri",
@@ -5029,6 +5040,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-util-parse"
+version = "1.2.0-pre0"
+dependencies = [
+ "itertools 0.10.1",
+ "mc-sgx-css",
+]
+
+[[package]]
 name = "mc-util-repr-bytes"
 version = "1.2.0-pre0"
 dependencies = [
@@ -5113,6 +5132,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-lmdb",
+ "mc-util-parse",
  "mc-util-repr-bytes",
  "mc-util-serial",
  "mc-util-test-helper",
