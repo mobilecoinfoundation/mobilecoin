@@ -65,17 +65,20 @@ pub struct SqlRecoveryDbConnectionConfig {
     /// seconds beyond this duration. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
     #[structopt(long, env, default_value = "60", parse(try_from_str=parse_duration_in_seconds))]
     postgres_idle_timeout: Duration,
+
     /// The maximum lifetime of connections in the pool.
     /// If set, connections will be closed after existing for at most 30 seconds
     /// beyond this duration. If a connection reaches its maximum lifetime
     /// while checked out it will be closed when it is returned to the pool. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
     #[structopt(long, env, default_value = "120", parse(try_from_str=parse_duration_in_seconds))]
     postgres_max_lifetime: Duration,
+
     /// Sets the connection timeout used by the pool.
     /// The pool will wait this long for a connection to become available before
     /// returning an error. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
     #[structopt(long, env, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
     postgres_connection_timeout: Duration,
+
     /// The maximum number of connections managed by the pool.
     #[structopt(long, env, default_value = "1")]
     postgres_max_connections: u32,
