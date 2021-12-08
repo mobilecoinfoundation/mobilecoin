@@ -1017,7 +1017,7 @@ impl HealthyTracker {
         // * the failure happened at least num_clients ago
         // then set ourselves healthy again
         if self.have_failure.load(Ordering::SeqCst)
-            && self.last_failure.load(Ordering::SeqCst) + self.num_clients >= counter
+            && self.last_failure.load(Ordering::SeqCst) + self.num_clients <= counter
         {
             counters::IS_HEALTHY.set(1);
         }
@@ -1027,6 +1027,7 @@ impl HealthyTracker {
     pub fn announce_failure(&self) {
         self.last_failure
             .store(self.counter.load(Ordering::SeqCst), Ordering::SeqCst);
+        // Store have_failure only after writing to last_failure
         self.have_failure.store(true, Ordering::SeqCst);
         counters::IS_HEALTHY.set(0);
     }
