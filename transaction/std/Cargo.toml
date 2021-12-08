@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
-hmac = { version = "0.11", default-features = false }
+hmac = { version = "0.12", default-features = false }
 prost = { version = "0.9", default-features = false, features = ["prost-derive"] }
 rand = { version = "0.8", default-features = false }
 rand_core = { version = "0.6", default-features = false }
