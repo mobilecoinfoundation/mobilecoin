@@ -87,15 +87,15 @@ pub struct TestClientConfig {
     pub consensus_enclave_css: Option<String>,
 
     /// Fog ingest enclave CSS file (overriding the build-time CSS)
-    #[structopt(long)]
+    #[structopt(long, env)]
     pub ingest_enclave_css: Option<String>,
 
     /// Fog ledger enclave CSS file (overriding the build-time CSS)
-    #[structopt(long)]
+    #[structopt(long, env)]
     pub ledger_enclave_css: Option<String>,
 
     /// Fog view enclave CSS file (overriding the build-time CSS)
-    #[structopt(long)]
+    #[structopt(long, env)]
     pub view_enclave_css: Option<String>,
 
     /// Whether to turn off memos, for backwards compatibility

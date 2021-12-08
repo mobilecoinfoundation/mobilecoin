@@ -79,10 +79,10 @@ fn main() {
         config.fog_view,
         logger.clone(),
     )
-    .consensus_sigstruct(maybe_load_css(config.consensus_enclave_css.as_ref()))
-    .fog_ingest_sigstruct(maybe_load_css(config.ingest_enclave_css.as_ref()))
-    .fog_ledger_sigstruct(maybe_load_css(config.ledger_enclave_css.as_ref()))
-    .fog_view_sigstruct(maybe_load_css(config.view_enclave_css.as_ref()));
+    .consensus_sigstruct(maybe_load_css(&config.consensus_enclave_css))
+    .fog_ingest_sigstruct(maybe_load_css(&config.ingest_enclave_css))
+    .fog_ledger_sigstruct(maybe_load_css(&config.ledger_enclave_css))
+    .fog_view_sigstruct(maybe_load_css(&config.view_enclave_css));
 
     // Run continuously or run as a fixed length test, according to config
     if config.continuous {
@@ -110,6 +110,8 @@ fn main() {
     }
 }
 
-fn maybe_load_css(maybe_file: Option<&String>) -> Option<CssSignature> {
-    maybe_file.map(|x| load_css_file(x).expect("Could not load css file"))
+fn maybe_load_css(maybe_file: &Option<String>) -> Option<CssSignature> {
+    maybe_file
+        .as_ref()
+        .map(|x| load_css_file(x).expect("Could not load css file"))
 }
