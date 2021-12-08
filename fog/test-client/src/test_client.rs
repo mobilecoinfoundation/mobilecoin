@@ -29,7 +29,7 @@ use once_cell::sync::OnceCell;
 use serde::Serialize;
 use std::{
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex,
     },
     thread::JoinHandle,
@@ -91,6 +91,7 @@ pub struct TestClient {
     fog_ledger_sig: Option<Signature>,
     fog_view_sig: Option<Signature>,
     tx_info: Arc<TxInfo>,
+    healthy_tracker: Arc<HealthyTracker>,
     logger: Logger,
 }
 
@@ -115,6 +116,7 @@ impl TestClient {
         logger: Logger,
     ) -> Self {
         let tx_info = Arc::new(Default::default());
+        let healthy_tracker = Arc::new(HealthyTracker::new(account_keys.len()));
         Self {
             policy,
             account_keys,
@@ -127,6 +129,7 @@ impl TestClient {
             fog_ledger_sig: None,
             fog_view_sig: None,
             tx_info,
+            healthy_tracker,
         }
     }
 
@@ -295,7 +298,7 @@ impl TestClient {
                         counters::TX_CONFIRMED_DEADLINE_EXCEEDED_COUNT.inc();
                         // Announce unhealthy status once the deadline is exceeded, even if we don't
                         // fail fast
-                        counters::IS_HEALTHY.set(0);
+                        self.healthy_tracker.announce_failure();
                         log::error!(
                             self.logger,
                             "TX appear deadline ({:?}) was exceeded: {}",
@@ -371,7 +374,7 @@ impl TestClient {
                     counters::TX_RECEIVED_DEADLINE_EXCEEDED_COUNT.inc();
                     // Announce unhealthy status once the deadline is exceeded, even if we don't
                     // fail fast
-                    counters::IS_HEALTHY.set(0);
+                    self.healthy_tracker.announce_failure();
                     log::error!(
                         self.logger,
                         "TX receive deadline ({:?}) was exceeded: {}",
@@ -505,6 +508,7 @@ impl TestClient {
             self.policy.clone(),
             Some(src_address_hash),
             self.tx_info.clone(),
+            self.healthy_tracker.clone(),
             self.logger.clone(),
             Context::current(),
         );
@@ -649,8 +653,6 @@ impl TestClient {
         log::debug!(self.logger, "Generating and testing transactions");
 
         let mut ti = 0usize;
-        counters::IS_HEALTHY.set(1);
-        let mut last_failure: Option<usize> = None;
         loop {
             log::debug!(self.logger, "Transaction: {:?}", ti);
 
@@ -663,22 +665,11 @@ impl TestClient {
                 Ok(_) => {
                     log::info!(self.logger, "Transfer succeeded");
                     counters::TX_SUCCESS_COUNT.inc();
-                    // If:
-                    // * there was no previous failure, OR
-                    // * the previous failure was more than client_count ago
-                    // then set status to healthy
-                    if last_failure
-                        .map(|failed| failed + client_count <= ti)
-                        .unwrap_or(true)
-                    {
-                        counters::IS_HEALTHY.set(1);
-                    }
                 }
                 Err(err) => {
                     log::error!(self.logger, "Transfer failed: {}", err);
                     counters::TX_FAILURE_COUNT.inc();
-                    last_failure = Some(ti);
-                    counters::IS_HEALTHY.set(0);
+                    self.healthy_tracker.announce_failure();
                     match err {
                         TestClientError::ZeroBalance => {
                             counters::ZERO_BALANCE_COUNT.inc();
@@ -721,6 +712,7 @@ impl TestClient {
             }
 
             ti += 1;
+            self.healthy_tracker.set_counter(ti);
             std::thread::sleep(period);
         }
     }
@@ -758,6 +750,7 @@ impl ReceiveTxWorker {
         policy: TestClientPolicy,
         expected_memo_contents: Option<ShortAddressHash>,
         tx_info: Arc<TxInfo>,
+        healthy_tracker: Arc<HealthyTracker>,
         logger: Logger,
         parent_context: Context,
     ) -> Self {
@@ -853,7 +846,7 @@ impl ReceiveTxWorker {
                             counters::TX_RECEIVED_DEADLINE_EXCEEDED_COUNT.inc();
                             // Announce unhealthy status once the deadline is exceeded, even if we
                             // don't fail fast
-                            counters::IS_HEALTHY.set(0);
+                            healthy_tracker.announce_failure();
                             log::error!(
                                 logger,
                                 "TX receive deadline ({:?}) was exceeded: {}",
@@ -987,5 +980,54 @@ impl core::fmt::Display for TxInfo {
             })
             .transpose()?;
         Ok(())
+    }
+}
+
+/// Object which helps tracking the healthy status
+#[derive(Default)]
+pub struct HealthyTracker {
+    // Set to i for the duration of the i'th transfer
+    counter: AtomicUsize,
+    // Whether we have observed any failure
+    have_failure: AtomicBool,
+    // The counter value during the most recent failure
+    last_failure: AtomicUsize,
+    // The number of clients
+    num_clients: usize,
+}
+
+impl HealthyTracker {
+    /// Make a new healthy tracker.
+    /// Sets IS_HEALTHY to true initially.
+    /// Takes num_clients which is the number of successful transfers before we
+    /// consider ourselves healthy again
+    pub fn new(num_clients: usize) -> Self {
+        counters::IS_HEALTHY.set(1);
+        Self {
+            num_clients,
+            ..Default::default()
+        }
+    }
+
+    /// Set the counter value, and maybe update healthy status
+    pub fn set_counter(&self, counter: usize) {
+        self.counter.store(counter, Ordering::SeqCst);
+        // If:
+        // * there is a failure
+        // * the failure happened at least num_clients ago
+        // then set ourselves healthy again
+        if self.have_failure.load(Ordering::SeqCst)
+            && self.last_failure.load(Ordering::SeqCst) + self.num_clients >= counter
+        {
+            counters::IS_HEALTHY.set(1);
+        }
+    }
+
+    /// Announce a failure, which will update the healthy status, and be tracked
+    pub fn announce_failure(&self) {
+        self.last_failure
+            .store(self.counter.load(Ordering::SeqCst), Ordering::SeqCst);
+        self.have_failure.store(true, Ordering::SeqCst);
+        counters::IS_HEALTHY.set(0);
     }
 }
