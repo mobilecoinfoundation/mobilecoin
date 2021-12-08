@@ -14,7 +14,7 @@ mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 
 binascii = "0.1.2"
 subtle = { version = "2", default-features = false }
-digest = { version = "0.9", default-features = false }
+digest = { version = "0.10", default-features = false }
 ed25519 = { version = "1.2.0", default-features = false, features = ["serde"] }
 displaydoc = { version = "0.2", default-features = false }
 hex_fmt = "0.3"
