@@ -81,28 +81,39 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
         // too far in the future.
         validate_tombstone(current_block_index, context.tombstone_block())?;
 
-        // The `key_images` must not have already been spent.
-        let contains_spent_key_image = context
-            .key_images()
-            .iter()
-            .any(|key_image| self.ledger.contains_key_image(key_image).unwrap_or(true));
+        // TODO
+        match &*context {
+            WellFormedTxContext::MobTx(mob_tx_context) => {
+                // The `key_images` must not have already been spent.
+                let contains_spent_key_image = mob_tx_context
+                    .key_images()
+                    .iter()
+                    .any(|key_image| self.ledger.contains_key_image(key_image).unwrap_or(true));
 
-        if contains_spent_key_image {
-            // At least one key image was spent, or the ledger returned an error.
-            return Err(TransactionValidationError::ContainsSpentKeyImage);
-        }
+                if contains_spent_key_image {
+                    // At least one key image was spent, or the ledger returned an error.
+                    return Err(TransactionValidationError::ContainsSpentKeyImage);
+                }
 
-        // The `output_public_keys` must not appear in the ledger.
-        let contains_existing_public_key = context.output_public_keys().iter().any(|public_key| {
-            self.ledger
-                .contains_tx_out_public_key(public_key)
-                .unwrap_or(true)
-        });
-        if contains_existing_public_key {
-            // At least one public key is already in the ledger, or the ledger returned an
-            // error.
-            return Err(TransactionValidationError::ContainsExistingOutputPublicKey);
-        }
+                // The `output_public_keys` must not appear in the ledger.
+                let contains_existing_public_key =
+                    mob_tx_context
+                        .output_public_keys()
+                        .iter()
+                        .any(|public_key| {
+                            self.ledger
+                                .contains_tx_out_public_key(public_key)
+                                .unwrap_or(true)
+                        });
+                if contains_existing_public_key {
+                    // At least one public key is already in the ledger, or the ledger returned an
+                    // error.
+                    return Err(TransactionValidationError::ContainsExistingOutputPublicKey);
+                }
+            }
+
+            WellFormedTxContext::Unused => todo!(),
+        };
 
         // The transaction is valid w.r.t. the current ledger state.
         Ok(())
@@ -140,22 +151,31 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
                 break;
             }
 
-            // Reject a transaction that includes a previously used key image.
-            let key_images: HashSet<&KeyImage> = HashSet::from_iter(candidate.key_images());
-            if !used_key_images.is_disjoint(&key_images) {
-                continue;
-            }
+            // TODO
+            match &**candidate {
+                WellFormedTxContext::MobTx(mob_tx_context) => {
+                    // Reject a transaction that includes a previously used key image.
+                    let key_images: HashSet<&KeyImage> =
+                        HashSet::from_iter(mob_tx_context.key_images());
+                    if !used_key_images.is_disjoint(&key_images) {
+                        continue;
+                    }
 
-            // Reject a transaction that includes a previously used output public key.
-            let output_public_keys = HashSet::from_iter(candidate.output_public_keys());
-            if !used_output_public_keys.is_disjoint(&output_public_keys) {
-                continue;
-            }
+                    // Reject a transaction that includes a previously used output public key.
+                    let output_public_keys =
+                        HashSet::from_iter(mob_tx_context.output_public_keys());
+                    if !used_output_public_keys.is_disjoint(&output_public_keys) {
+                        continue;
+                    }
 
-            // The transaction is allowed.
-            allowed_hashes.push(*candidate.tx_hash());
-            used_key_images.extend(&key_images);
-            used_output_public_keys.extend(&output_public_keys);
+                    // The transaction is allowed.
+                    allowed_hashes.push(*candidate.tx_hash());
+                    used_key_images.extend(&key_images);
+                    used_output_public_keys.extend(&output_public_keys);
+                }
+
+                WellFormedTxContext::Unused => todo!(),
+            };
         }
 
         allowed_hashes

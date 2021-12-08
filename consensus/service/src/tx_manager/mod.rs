@@ -270,16 +270,25 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         let cache_entries = Self::get_cache_entries(&cache, tx_hashes.iter())?;
 
         // Proceed with forming the block.
-        let encrypted_txs_with_proofs = cache_entries
+        // TODO
+        let encrypted_mob_txs = cache_entries.iter().filter_map(|entry| {
+            if let WellFormedTxContext::MobTx(mob_tx_context) = &*entry.context {
+                Some((mob_tx_context, entry.encrypted_tx.clone()))
+            } else {
+                None
+            }
+        });
+
+        let encrypted_txs_with_proofs = encrypted_mob_txs
             .into_iter()
-            .map(|entry| {
+            .map(|(mob_tx_context, encrypted_tx)| {
                 // Highest indices proofs must be w.r.t. the current ledger.
                 // Recreating them here is a crude way to ensure that.
                 let highest_index_proofs: Vec<_> = self
                     .untrusted
-                    .get_tx_out_proof_of_memberships(entry.context.highest_indices())?;
+                    .get_tx_out_proof_of_memberships(mob_tx_context.highest_indices())?;
 
-                Ok((entry.encrypted_tx().clone(), highest_index_proofs))
+                Ok((encrypted_tx, highest_index_proofs))
             })
             .collect::<Result<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>, TxManagerError>>()?;
 

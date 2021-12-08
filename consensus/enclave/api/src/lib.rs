@@ -42,7 +42,7 @@ pub struct WellFormedEncryptedTx(pub Vec<u8>);
 
 /// Tx data we wish to expose to untrusted from well-formed Txs.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
-pub struct WellFormedTxContext {
+pub struct WellFormedMobTxContext {
     /// Fee included in the tx.
     fee: u64,
 
@@ -62,8 +62,8 @@ pub struct WellFormedTxContext {
     output_public_keys: Vec<CompressedRistrettoPublic>,
 }
 
-impl WellFormedTxContext {
-    /// Create a new WellFormedTxContext.
+impl WellFormedMobTxContext {
+    /// Create a new WellFormedMobTxContext.
     pub fn new(
         fee: u64,
         tx_hash: TxHash,
@@ -107,7 +107,7 @@ impl WellFormedTxContext {
     }
 }
 
-impl From<&Tx> for WellFormedTxContext {
+impl From<&Tx> for WellFormedMobTxContext {
     fn from(tx: &Tx) -> Self {
         Self {
             fee: tx.prefix.fee,
@@ -123,7 +123,7 @@ impl From<&Tx> for WellFormedTxContext {
 /// Defines a sort order for transactions in a block.
 /// Transactions are sorted by fee (high to low), then by transaction hash and
 /// any other fields.
-impl Ord for WellFormedTxContext {
+impl Ord for WellFormedMobTxContext {
     fn cmp(&self, other: &Self) -> Ordering {
         if self.fee != other.fee {
             // Sort by fee, descending.
@@ -148,9 +148,38 @@ impl Ord for WellFormedTxContext {
     }
 }
 
-impl PartialOrd for WellFormedTxContext {
-    fn partial_cmp(&self, other: &WellFormedTxContext) -> Option<Ordering> {
+impl PartialOrd for WellFormedMobTxContext {
+    fn partial_cmp(&self, other: &WellFormedMobTxContext) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Ord, PartialOrd, Serialize)]
+pub enum WellFormedTxContext {
+    MobTx(WellFormedMobTxContext),
+    #[allow(dead_code)]
+    Unused,
+}
+
+impl WellFormedTxContext {
+    pub fn tx_hash(&self) -> &TxHash {
+        match self {
+            WellFormedTxContext::MobTx(tx) => tx.tx_hash(),
+            WellFormedTxContext::Unused => todo!(),
+        }
+    }
+
+    pub fn tombstone_block(&self) -> u64 {
+        match self {
+            WellFormedTxContext::MobTx(tx) => tx.tombstone_block(),
+            WellFormedTxContext::Unused => todo!(),
+        }
+    }
+}
+
+impl From<&Tx> for WellFormedTxContext {
+    fn from(tx: &Tx) -> Self {
+        Self::MobTx(WellFormedMobTxContext::from(tx))
     }
 }
 
