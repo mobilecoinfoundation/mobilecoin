@@ -1,5 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+use cargo_emit::rerun_if_env_changed;
 use std::{env, fs, path::PathBuf, process::Command};
 
 fn get_git_commit() -> String {
@@ -34,6 +35,7 @@ fn get_git_commit() -> String {
 
 /// true if env var exist, false if not
 fn env_var_exists(name: &str) -> &'static str {
+    rerun_if_env_changed!(name);
     match env::var(name) {
         Ok(_) => "true",
         Err(env::VarError::NotPresent) => "false",
@@ -41,19 +43,25 @@ fn env_var_exists(name: &str) -> &'static str {
     }
 }
 
+/// read env var, or fallback
+fn env_with_fallback(name: &str, fallback: &str) -> String {
+    rerun_if_env_changed!(name);
+    env::var(name).unwrap_or_else(|_| fallback.to_string())
+}
+
 fn main() {
     // Collect stuff to go in the build info file
     let git_commit = get_git_commit();
-    let profile = env::var("PROFILE").unwrap_or_else(|_| "?".to_string());
-    let debug = env::var("DEBUG").unwrap_or_else(|_| "false".to_string());
-    let opt_level = env::var("OPT_LEVEL").unwrap_or_else(|_| "?".to_string());
+    let profile = env_with_fallback("PROFILE", "?");
+    let debug = env_with_fallback("DEBUG", "false");
+    let opt_level = env_with_fallback("OPT_LEVEL", "?");
     let debug_assertions = env_var_exists("CARGO_CFG_DEBUG_ASSERTIONS").to_string();
-    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_else(|_| "?".to_string());
-    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_else(|_| "?".to_string());
-    let target_feature = env::var("CARGO_CFG_TARGET_FEATURE").unwrap_or_else(|_| "?".to_string());
-    let rustflags = env::var("RUSTFLAGS").unwrap_or_else(|_| "?".to_string());
-    let sgx_mode = env::var("SGX_MODE").unwrap_or_else(|_| "?".to_string());
-    let ias_mode = env::var("IAS_MODE").unwrap_or_else(|_| "?".to_string());
+    let target_arch = env_with_fallback("CARGO_CFG_TARGET_ARCH", "?");
+    let target_os = env_with_fallback("CARGO_CFG_TARGET_OS", "?");
+    let target_feature = env_with_fallback("CARGO_CFG_TARGET_FEATURE", "?");
+    let rustflags = env_with_fallback("RUSTFLAGS", "?");
+    let sgx_mode = env_with_fallback("SGX_MODE", "?");
+    let ias_mode = env_with_fallback("IAS_MODE", "?");
 
     // Format the contents
     let gen_contents = format!(
