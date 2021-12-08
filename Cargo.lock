@@ -4849,6 +4849,7 @@ dependencies = [
 name = "mc-util-build-info"
 version = "1.2.0-pre0"
 dependencies = [
+ "cargo-emit",
  "json",
 ]
 
