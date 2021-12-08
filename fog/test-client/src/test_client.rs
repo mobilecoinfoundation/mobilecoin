@@ -90,6 +90,7 @@ pub struct TestClient {
     fog_ingest_sig: Option<Signature>,
     fog_ledger_sig: Option<Signature>,
     fog_view_sig: Option<Signature>,
+    tx_info: Arc<TxInfo>,
     logger: Logger,
 }
 
@@ -113,6 +114,7 @@ impl TestClient {
         fog_view: FogViewUri,
         logger: Logger,
     ) -> Self {
+        let tx_info = Arc::new(Default::default());
         Self {
             policy,
             account_keys,
@@ -124,6 +126,7 @@ impl TestClient {
             fog_ingest_sig: None,
             fog_ledger_sig: None,
             fog_view_sig: None,
+            tx_info,
         }
     }
 
@@ -200,14 +203,17 @@ impl TestClient {
         clients
     }
 
-    /// Conduct a transfer between two clients, according to the policy.
+    /// Conduct a transfer between two clients, according to the policy
     /// Returns the transaction and the block count of the node it was submitted
     /// to.
+    ///
+    /// This only builds and submits the transaction, it does not confirm it
     fn transfer(
         &self,
         source_client: &mut Client,
         target_client: &mut Client,
     ) -> Result<(Tx, u64), TestClientError> {
+        self.tx_info.clear();
         let target_address = target_client.get_account_key().default_subaddress();
         log::debug!(
             self.logger,
@@ -239,6 +245,7 @@ impl TestClient {
             counters::TX_BUILD_TIME.observe(start.elapsed().as_secs_f64());
             transaction
         };
+        self.tx_info.set_tx(&transaction);
 
         // Scope for send operation
         let block_count = {
@@ -249,6 +256,7 @@ impl TestClient {
             counters::TX_SEND_TIME.observe(start.elapsed().as_secs_f64());
             block_count
         };
+        self.tx_info.set_tx_propose_block_count(block_count);
         Ok((transaction, block_count))
     }
 
@@ -285,6 +293,15 @@ impl TestClient {
                 deadline = if let Some(deadline) = deadline {
                     if Instant::now() > deadline {
                         counters::TX_CONFIRMED_DEADLINE_EXCEEDED_COUNT.inc();
+                        // Announce unhealthy status once the deadline is exceeded, even if we don't
+                        // fail fast
+                        counters::IS_HEALTHY.set(0);
+                        log::error!(
+                            self.logger,
+                            "TX appear deadline ({:?}) was exceeded: {}",
+                            self.policy.tx_receive_deadline,
+                            self.tx_info
+                        );
                         if self.policy.fail_fast_on_deadline {
                             return Err(TestClientError::SubmittedTxTimeout);
                         }
@@ -352,6 +369,15 @@ impl TestClient {
             deadline = if let Some(deadline) = deadline {
                 if Instant::now() > deadline {
                     counters::TX_RECEIVED_DEADLINE_EXCEEDED_COUNT.inc();
+                    // Announce unhealthy status once the deadline is exceeded, even if we don't
+                    // fail fast
+                    counters::IS_HEALTHY.set(0);
+                    log::error!(
+                        self.logger,
+                        "TX receive deadline ({:?}) was exceeded: {}",
+                        self.policy.tx_receive_deadline,
+                        self.tx_info
+                    );
                     if self.policy.fail_fast_on_deadline {
                         return Err(TestClientError::TxTimeout);
                     }
@@ -417,6 +443,7 @@ impl TestClient {
         target_client: Arc<Mutex<Client>>,
         target_client_index: usize,
     ) -> Result<Tx, TestClientError> {
+        self.tx_info.clear();
         let tracer = tracer!();
 
         let mut source_client_lk = source_client.lock().expect("mutex poisoned");
@@ -477,6 +504,7 @@ impl TestClient {
             tgt_balance + self.policy.transfer_amount,
             self.policy.clone(),
             Some(src_address_hash),
+            self.tx_info.clone(),
             self.logger.clone(),
             Context::current(),
         );
@@ -486,14 +514,6 @@ impl TestClient {
             self.ensure_transaction_is_accepted(&mut source_client_lk, &transaction)?;
 
         counters::TX_CONFIRMED_TIME.observe(start.elapsed().as_secs_f64());
-
-        // Arm an object that will log Block Index and Transaction if dropped
-        // and not disarmed first. This happens if there is an error.
-        let mut log_guard = TxLogGuard::new(
-            transaction_appeared,
-            transaction.clone(),
-            self.logger.clone(),
-        );
 
         // Tell the receive tx worker in what block the transaction appeared
         receive_tx_worker.relay_tx_appeared(transaction_appeared);
@@ -516,48 +536,59 @@ impl TestClient {
             // Ensure source client got a destination memo, as expected for recoverable
             // transcation history
             match source_client_lk.get_last_memo() {
-                Ok(Some(memo)) => {
-                    match memo {
-                        MemoType::Destination(memo) => {
-                            if memo.get_total_outlay() != self.policy.transfer_amount + fee {
-                                log::error!(self.logger, "Destination memo had wrong total outlay, found {}, expected {}", memo.get_total_outlay(), self.policy.transfer_amount + fee);
-                                return Err(TestClientError::UnexpectedMemo);
-                            }
-                            if memo.get_fee() != fee {
-                                log::error!(
-                                    self.logger,
-                                    "Destination memo had wrong fee, found {}, expected {}",
-                                    memo.get_fee(),
-                                    fee
-                                );
-                                return Err(TestClientError::UnexpectedMemo);
-                            }
-                            if memo.get_num_recipients() != 1 {
-                                log::error!(self.logger, "Destination memo had wrong num_recipients, found {}, expected 1", memo.get_num_recipients());
-                                return Err(TestClientError::UnexpectedMemo);
-                            }
-                            if *memo.get_address_hash() != tgt_address_hash {
-                                log::error!(self.logger, "Destination memo had wrong address hash, found {:?}, expected {:?}", memo.get_address_hash(), tgt_address_hash);
-                                return Err(TestClientError::UnexpectedMemo);
-                            }
+                Ok(Some(memo)) => match memo {
+                    MemoType::Destination(memo) => {
+                        if memo.get_total_outlay() != self.policy.transfer_amount + fee {
+                            log::error!(self.logger, "Destination memo had wrong total outlay, found {}, expected {}. Tx Info: {}", memo.get_total_outlay(), self.policy.transfer_amount + fee, self.tx_info);
+                            return Err(TestClientError::UnexpectedMemo);
                         }
-                        _ => {
-                            log::error!(self.logger, "Source Client: Unexpected memo type");
+                        if memo.get_fee() != fee {
+                            log::error!(
+                                    self.logger,
+                                    "Destination memo had wrong fee, found {}, expected {}. Tx Info: {}",
+                                    memo.get_fee(),
+                                    fee,
+                                    self.tx_info
+                                );
+                            return Err(TestClientError::UnexpectedMemo);
+                        }
+                        if memo.get_num_recipients() != 1 {
+                            log::error!(self.logger, "Destination memo had wrong num_recipients, found {}, expected 1. TxInfo: {}", memo.get_num_recipients(), self.tx_info);
+                            return Err(TestClientError::UnexpectedMemo);
+                        }
+                        if *memo.get_address_hash() != tgt_address_hash {
+                            log::error!(self.logger, "Destination memo had wrong address hash, found {:?}, expected {:?}. Tx Info: {}", memo.get_address_hash(), tgt_address_hash, self.tx_info);
                             return Err(TestClientError::UnexpectedMemo);
                         }
                     }
-                }
+                    _ => {
+                        log::error!(
+                            self.logger,
+                            "Source Client: Unexpected memo type. Tx Info: {}",
+                            self.tx_info
+                        );
+                        return Err(TestClientError::UnexpectedMemo);
+                    }
+                },
                 Ok(None) => {
-                    log::error!(self.logger, "Source Client: Missing memo");
+                    log::error!(
+                        self.logger,
+                        "Source Client: Missing memo. Tx Info: {}",
+                        self.tx_info
+                    );
                     return Err(TestClientError::UnexpectedMemo);
                 }
                 Err(err) => {
-                    log::error!(self.logger, "Source Client: Memo parse error: {}", err);
+                    log::error!(
+                        self.logger,
+                        "Source Client: Memo parse error: {}. TxInfo: {}",
+                        err,
+                        self.tx_info
+                    );
                     return Err(TestClientError::InvalidMemo);
                 }
             }
         }
-        log_guard.disarm();
         Ok(transaction)
     }
 
@@ -726,6 +757,7 @@ impl ReceiveTxWorker {
         expected_balance: u64,
         policy: TestClientPolicy,
         expected_memo_contents: Option<ShortAddressHash>,
+        tx_info: Arc<TxInfo>,
         logger: Logger,
         parent_context: Context,
     ) -> Self {
@@ -769,22 +801,35 @@ impl ReceiveTxWorker {
                                     MemoType::AuthenticatedSender(memo) => {
                                         if let Some(hash) = expected_memo_contents {
                                             if memo.sender_address_hash() != hash {
-                                                log::error!(logger, "Target Client: Unexpected address hash: {:?} != {:?}", memo.sender_address_hash(), hash);
+                                                log::error!(logger, "Target Client: Unexpected address hash: {:?} != {:?}. TxInfo: {}", memo.sender_address_hash(), hash, tx_info);
                                                 return Err(TestClientError::UnexpectedMemo);
                                             }
                                         }
                                     }
                                     _ => {
-                                        log::error!(logger, "Target Client: Unexpected memo type");
+                                        log::error!(
+                                            logger,
+                                            "Target Client: Unexpected memo type. TxInfo: {}",
+                                            tx_info
+                                        );
                                         return Err(TestClientError::UnexpectedMemo);
                                     }
                                 },
                                 Ok(None) => {
-                                    log::error!(logger, "Target Client: Missing memo");
+                                    log::error!(
+                                        logger,
+                                        "Target Client: Missing memo. TxInfo: {}",
+                                        tx_info
+                                    );
                                     return Err(TestClientError::UnexpectedMemo);
                                 }
                                 Err(err) => {
-                                    log::error!(logger, "Target Client: Memo parse error: {}", err);
+                                    log::error!(
+                                        logger,
+                                        "Target Client: Memo parse error: {}. TxInfo: {}",
+                                        err,
+                                        tx_info
+                                    );
                                     return Err(TestClientError::InvalidMemo);
                                 }
                             }
@@ -806,6 +851,15 @@ impl ReceiveTxWorker {
                     deadline = if let Some(deadline) = deadline {
                         if Instant::now() > deadline {
                             counters::TX_RECEIVED_DEADLINE_EXCEEDED_COUNT.inc();
+                            // Announce unhealthy status once the deadline is exceeded, even if we
+                            // don't fail fast
+                            counters::IS_HEALTHY.set(0);
+                            log::error!(
+                                logger,
+                                "TX receive deadline ({:?}) was exceeded: {}",
+                                policy.tx_receive_deadline,
+                                tx_info
+                            );
                             if policy.fail_fast_on_deadline {
                                 return Err(TestClientError::TxTimeout);
                             }
@@ -864,56 +918,74 @@ impl Drop for ReceiveTxWorker {
     }
 }
 
-/// When a transfer fails, if the Tx was accepted into the blockchain, but not
-/// observed by the recipient within the deadline, we want to log what block it
-/// appeared in, and what are the associated TxOut's, so that we can further
-/// investigate.
-///
-/// We do this by creating a LogGuard object on the stack, and disarming it
-/// before returning success. This ensures that on any error path, it will log
-/// before leaving the test transfer function.
-struct TxLogGuard {
-    /// The block in which the tx was confirmed to have landed
-    tx_landed: BlockIndex,
-    /// The transaction that was submitted
-    tx: Tx,
-    /// Whether we are still armed
-    armed: bool,
-    /// Logger
-    logger: Logger,
+/// An object which tracks info about a Tx as it evolves, for logging context
+/// in case of errors.
+/// This is thread-safe so that we can share it with the receive worker
+#[derive(Default, Debug)]
+pub struct TxInfo {
+    /// The Tx which was submitted
+    tx: Mutex<Option<Tx>>,
+    /// The block cloud returned by propose_tx
+    tx_propose_block_count: Mutex<Option<u64>>,
+    /// The block in which the tx appeared
+    tx_appeared: Mutex<Option<BlockIndex>>,
 }
 
-impl TxLogGuard {
-    pub fn new(tx_landed: BlockIndex, tx: Tx, logger: Logger) -> Self {
-        Self {
-            tx_landed,
-            tx,
-            armed: true,
-            logger,
-        }
+impl TxInfo {
+    /// Clear the TxInfo
+    pub fn clear(&self) {
+        *self.tx.lock().unwrap() = None;
+        *self.tx_propose_block_count.lock().unwrap() = None;
+        *self.tx_appeared.lock().unwrap() = None;
     }
 
-    pub fn disarm(&mut self) {
-        self.armed = false;
+    /// Set the Tx that we are sending (immediately after it is built)
+    pub fn set_tx(&self, tx: &Tx) {
+        *self.tx.lock().unwrap() = Some(tx.clone());
+    }
+
+    /// Set the block count returned by tx_propose (immediately after it is
+    /// known)
+    pub fn set_tx_propose_block_count(&self, count: u64) {
+        *self.tx_propose_block_count.lock().unwrap() = Some(count);
+    }
+
+    /// Set the index in which the tx appeared (immediately after it is known)
+    pub fn set_tx_appeared_block_index(&self, index: BlockIndex) {
+        *self.tx_appeared.lock().unwrap() = Some(index);
     }
 }
 
-impl Drop for TxLogGuard {
-    fn drop(&mut self) {
-        if self.armed {
-            log::error!(
-                self.logger,
-                "Error with submitted Tx accepted in block: {}, TxOut public keys: [{}]",
-                self.tx_landed,
-                HexList(
-                    self.tx
-                        .prefix
-                        .outputs
-                        .iter()
-                        .map(|x| x.public_key.as_bytes())
+impl core::fmt::Display for TxInfo {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        self.tx_propose_block_count
+            .lock()
+            .unwrap()
+            .map(|proposed| {
+                write!(
+                    f,
+                    "Proposed at block index ~{}, ",
+                    proposed.saturating_sub(1)
                 )
-            );
-            self.armed = false;
-        }
+            })
+            .transpose()?;
+        self.tx_appeared
+            .lock()
+            .unwrap()
+            .map(|appeared| write!(f, "Appeared in block index {}, ", appeared))
+            .transpose()?;
+        self.tx
+            .lock()
+            .unwrap()
+            .as_ref()
+            .map(|tx| {
+                write!(
+                    f,
+                    "TxOut public keys: [{}]",
+                    HexList(tx.prefix.outputs.iter().map(|x| x.public_key.as_bytes()))
+                )
+            })
+            .transpose()?;
+        Ok(())
     }
 }

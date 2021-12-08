@@ -56,11 +56,14 @@ pub struct TestClientConfig {
     pub fog_view: FogViewUri,
 
     /// Seconds to wait for a transaction to clear, before it has exceeded
+    /// deadline. The healthy status will be set false if we exceed this
     /// deadline.
     #[structopt(long, env, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
     pub consensus_wait: Duration,
 
     /// Seconds to wait for ledger sync on fog
+    /// This affects the double-spend test but not the continuous mode of
+    /// operation.
     #[structopt(long, env, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
     pub ledger_sync_wait: Duration,
 
