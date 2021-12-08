@@ -38,7 +38,7 @@ mc-fog-types = { path = "../types" }
 mc-fog-view-protocol = { path = "../view/protocol" }
 
 # third party
-digest = "0.9"
+digest = "0.10"
 hex = "0.4"
 rand_core = "0.6"
 rand_hc = "0.3"

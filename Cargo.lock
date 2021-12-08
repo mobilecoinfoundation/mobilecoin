@@ -365,6 +365,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "block-buffer"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1d36a02058e76b040de25a4464ba1c80935655595b661505c8b39b664828b95"
+dependencies = [
+ "generic-array 0.14.4",
+]
+
+[[package]]
 name = "block-padding"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -884,6 +893,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2f4a431c5c9f662e1200b7c7f02c34e91361150e382089a8f2dec3ba680cbda"
 
 [[package]]
+name = "crypto-common"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "567569e659735adb39ff2d4c20600f7cd78be5471f8c58ab162bce3c03fdbc5f"
+dependencies = [
+ "generic-array 0.14.4",
+]
+
+[[package]]
 name = "crypto-mac"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1135,6 +1153,17 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 dependencies = [
+ "generic-array 0.14.4",
+]
+
+[[package]]
+name = "digest"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8549e6bfdecd113b7e221fe60b433087f6957387a20f8118ebca9b12af19143d"
+dependencies = [
+ "block-buffer 0.10.0",
+ "crypto-common",
  "generic-array 0.14.4",
 ]
 
@@ -2510,7 +2539,7 @@ dependencies = [
  "aead",
  "aes-gcm",
  "cargo-emit",
- "digest 0.9.0",
+ "digest 0.10.0",
  "displaydoc",
  "mc-attest-core",
  "mc-attest-net",
@@ -2533,7 +2562,7 @@ version = "1.2.0-pre0"
 dependencies = [
  "aead",
  "cargo-emit",
- "digest 0.9.0",
+ "digest 0.10.0",
  "futures 0.3.17",
  "grpcio",
  "mc-attest-ake",
@@ -2555,7 +2584,7 @@ dependencies = [
  "cargo-emit",
  "cfg-if 1.0.0",
  "chrono",
- "digest 0.9.0",
+ "digest 0.10.0",
  "displaydoc",
  "hex",
  "hex_fmt",
@@ -2954,7 +2983,7 @@ version = "1.2.0-pre0"
 dependencies = [
  "aead",
  "blake2",
- "digest 0.9.0",
+ "digest 0.10.0",
  "displaydoc",
  "hkdf",
  "mc-crypto-keys",
@@ -3026,7 +3055,7 @@ version = "1.2.0-pre0"
 dependencies = [
  "binascii",
  "curve25519-dalek",
- "digest 0.9.0",
+ "digest 0.10.0",
  "displaydoc",
  "ed25519",
  "ed25519-dalek",
@@ -3073,7 +3102,7 @@ version = "1.2.0-pre0"
 dependencies = [
  "aead",
  "aes-gcm",
- "digest 0.9.0",
+ "digest 0.10.0",
  "displaydoc",
  "generic-array 0.14.4",
  "hkdf",
@@ -3995,7 +4024,7 @@ name = "mc-fog-test-infra"
 version = "1.2.0-pre0"
 dependencies = [
  "curve25519-dalek",
- "digest 0.9.0",
+ "digest 0.10.0",
  "hex",
  "mc-account-keys",
  "mc-common",
