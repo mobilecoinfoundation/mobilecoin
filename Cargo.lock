@@ -365,6 +365,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "block-buffer"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1d36a02058e76b040de25a4464ba1c80935655595b661505c8b39b664828b95"
+dependencies = [
+ "generic-array 0.14.4",
+]
+
+[[package]]
 name = "block-padding"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -419,7 +428,7 @@ dependencies = [
  "rand_core 0.6.3",
  "serde",
  "serde_derive",
- "sha3",
+ "sha3 0.9.1",
  "subtle 2.4.1",
 ]
 
@@ -884,6 +893,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2f4a431c5c9f662e1200b7c7f02c34e91361150e382089a8f2dec3ba680cbda"
 
 [[package]]
+name = "crypto-common"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "567569e659735adb39ff2d4c20600f7cd78be5471f8c58ab162bce3c03fdbc5f"
+dependencies = [
+ "generic-array 0.14.4",
+]
+
+[[package]]
 name = "crypto-mac"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1135,6 +1153,17 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 dependencies = [
+ "generic-array 0.14.4",
+]
+
+[[package]]
+name = "digest"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8549e6bfdecd113b7e221fe60b433087f6957387a20f8118ebca9b12af19143d"
+dependencies = [
+ "block-buffer 0.10.0",
+ "crypto-common",
  "generic-array 0.14.4",
 ]
 
@@ -2655,7 +2684,7 @@ dependencies = [
  "scoped_threadpool",
  "sentry",
  "serde",
- "sha3",
+ "sha3 0.10.0",
  "siphasher",
  "slog",
  "slog-async",
@@ -6787,6 +6816,16 @@ dependencies = [
  "digest 0.9.0",
  "keccak",
  "opaque-debug 0.3.0",
+]
+
+[[package]]
+name = "sha3"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31f935e31cf406e8c0e96c2815a5516181b7004ae8c5f296293221e9b1e356bd"
+dependencies = [
+ "digest 0.10.0",
+ "keccak",
 ]
 
 [[package]]
