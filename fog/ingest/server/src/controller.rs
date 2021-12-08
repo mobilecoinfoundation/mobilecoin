@@ -716,11 +716,11 @@ where
                         .map(|x| x + 1)
                         .unwrap_or(0),
                 );
-                if !self.recovery_db.new_ingress_key(&our_pubkey, start_block)? {
-                    return Err(PeerBackupError::CreatingNewIngressKey.into());
-                };
 
-                start_block
+                match self.recovery_db.new_ingress_key(&our_pubkey, start_block) {
+                    Ok(accepted_start_block) => accepted_start_block,
+                    Err(_err) => return Err(PeerBackupError::CreatingNewIngressKey.into()),
+                }
             };
         // This unwrap is okay because we are idle right now.
         state
