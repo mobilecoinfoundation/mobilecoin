@@ -7,6 +7,7 @@
 
 use crate::{counters, error::TestClientError};
 
+use hex_fmt::HexList;
 use mc_account_keys::ShortAddressHash;
 use mc_common::logger::{log, Logger};
 use mc_crypto_rand::McRng;
@@ -229,12 +230,25 @@ impl TestClient {
         // Get the current fee from consensus
         let fee = source_client.get_fee().unwrap_or(MINIMUM_FEE);
 
-        let transaction = source_client
-            .build_transaction(self.policy.transfer_amount, &target_address, &mut rng, fee)
-            .map_err(TestClientError::BuildTx)?;
-        let block_count = source_client
-            .send_transaction(&transaction)
-            .map_err(TestClientError::SubmitTx)?;
+        // Scope for build operation
+        let transaction = {
+            let start = Instant::now();
+            let transaction = source_client
+                .build_transaction(self.policy.transfer_amount, &target_address, &mut rng, fee)
+                .map_err(TestClientError::BuildTx)?;
+            counters::TX_BUILD_TIME.observe(start.elapsed().as_secs_f64());
+            transaction
+        };
+
+        // Scope for send operation
+        let block_count = {
+            let start = Instant::now();
+            let block_count = source_client
+                .send_transaction(&transaction)
+                .map_err(TestClientError::SubmitTx)?;
+            counters::TX_SEND_TIME.observe(start.elapsed().as_secs_f64());
+            block_count
+        };
         Ok((transaction, block_count))
     }
 
@@ -473,6 +487,14 @@ impl TestClient {
 
         counters::TX_CONFIRMED_TIME.observe(start.elapsed().as_secs_f64());
 
+        // Arm an object that will log Block Index and Transaction if dropped
+        // and not disarmed first. This happens if there is an error.
+        let mut log_guard = TxLogGuard::new(
+            transaction_appeared,
+            transaction.clone(),
+            self.logger.clone(),
+        );
+
         // Tell the receive tx worker in what block the transaction appeared
         receive_tx_worker.relay_tx_appeared(transaction_appeared);
 
@@ -535,6 +557,7 @@ impl TestClient {
                 }
             }
         }
+        log_guard.disarm();
         Ok(transaction)
     }
 
@@ -596,7 +619,7 @@ impl TestClient {
 
         let mut ti = 0usize;
         counters::IS_HEALTHY.set(1);
-        let mut last_failure: Some(usize) = None;
+        let mut last_failure: Option<usize> = None;
         loop {
             log::debug!(self.logger, "Transaction: {:?}", ti);
 
@@ -837,6 +860,60 @@ impl Drop for ReceiveTxWorker {
             // Tx failed, then the target client balance will never change.
             self.bail.store(true, Ordering::SeqCst);
             let _ = handle.join();
+        }
+    }
+}
+
+/// When a transfer fails, if the Tx was accepted into the blockchain, but not
+/// observed by the recipient within the deadline, we want to log what block it
+/// appeared in, and what are the associated TxOut's, so that we can further
+/// investigate.
+///
+/// We do this by creating a LogGuard object on the stack, and disarming it
+/// before returning success. This ensures that on any error path, it will log
+/// before leaving the test transfer function.
+struct TxLogGuard {
+    /// The block in which the tx was confirmed to have landed
+    tx_landed: BlockIndex,
+    /// The transaction that was submitted
+    tx: Tx,
+    /// Whether we are still armed
+    armed: bool,
+    /// Logger
+    logger: Logger,
+}
+
+impl TxLogGuard {
+    pub fn new(tx_landed: BlockIndex, tx: Tx, logger: Logger) -> Self {
+        Self {
+            tx_landed,
+            tx,
+            armed: true,
+            logger,
+        }
+    }
+
+    pub fn disarm(&mut self) {
+        self.armed = false;
+    }
+}
+
+impl Drop for TxLogGuard {
+    fn drop(&mut self) {
+        if self.armed {
+            log::error!(
+                self.logger,
+                "Error with submitted Tx accepted in block: {}, TxOut public keys: [{}]",
+                self.tx_landed,
+                HexList(
+                    self.tx
+                        .prefix
+                        .outputs
+                        .iter()
+                        .map(|x| x.public_key.as_bytes())
+                )
+            );
+            self.armed = false;
         }
     }
 }

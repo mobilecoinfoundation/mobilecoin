@@ -11,7 +11,7 @@ use mc_fog_test_client::{
     test_client::{TestClient, TestClientPolicy},
 };
 use mc_util_grpc::AdminServer;
-use mc_util_parse::load_css_file;
+use mc_util_parse::{load_css_file, CssSignature};
 use serde::Serialize;
 use std::sync::Arc;
 use structopt::StructOpt;
@@ -79,23 +79,19 @@ fn main() {
         config.fog_view,
         logger.clone(),
     )
-    .consensus_sigstruct(config.consensus_enclave_css.map(load_css_file))
-    .fog_ingest_sigstruct(config.ingest_enclave_css.map(load_css_file))
-    .fog_ledger_sigstruct(config.ledger_enclave_css.map(load_css_file))
-    .fog_view_sigstruct(config.view_enclave_css.map(load_css_file));
+    .consensus_sigstruct(maybe_load_css(config.consensus_enclave_css.as_ref()))
+    .fog_ingest_sigstruct(maybe_load_css(config.ingest_enclave_css.as_ref()))
+    .fog_ledger_sigstruct(maybe_load_css(config.ledger_enclave_css.as_ref()))
+    .fog_view_sigstruct(maybe_load_css(config.view_enclave_css.as_ref()));
 
     // Run continuously or run as a fixed length test, according to config
     if config.continuous {
-        log::info!(
-            logger,
-            "One transfer / {:?} seconds",
-            config.transfer_period
-        );
+        log::info!(logger, "One tx / {:?}", config.transfer_period);
 
         if admin_server.is_none() {
             log::warn!(
                 logger,
-                "Admin server not configured, prometheus metrics will not be available"
+                "Admin not configured, metrics will not be available"
             );
         }
 
@@ -112,4 +108,8 @@ fn main() {
             Err(e) => panic!("Unexpected error {:?}", e),
         }
     }
+}
+
+fn maybe_load_css(maybe_file: Option<&String>) -> Option<CssSignature> {
+    maybe_file.map(|x| load_css_file(x).expect("Could not load css file"))
 }
