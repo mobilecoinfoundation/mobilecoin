@@ -105,7 +105,7 @@ pub trait UserTxConnection: Connection {
     /// Propose a transaction over the encrypted channel.
     /// Returns the number of blocks in the ledger at the time the call was
     /// received.
-    fn propose_tx(&mut self, tx: &Tx) -> Result<BlockIndex>;
+    fn propose_tx(&mut self, tx: &Tx) -> Result<u64>;
 }
 
 // Retryable connections: these traits exist to allow SyncConnection to extend
