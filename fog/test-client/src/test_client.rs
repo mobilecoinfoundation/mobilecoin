@@ -91,7 +91,7 @@ pub struct TestClient {
     fog_ledger_sig: Option<Signature>,
     fog_view_sig: Option<Signature>,
     tx_info: Arc<TxInfo>,
-    healthy_tracker: Arc<HealthyTracker>,
+    healthy_tracker: Arc<HealthTracker>,
     logger: Logger,
 }
 
@@ -116,7 +116,10 @@ impl TestClient {
         logger: Logger,
     ) -> Self {
         let tx_info = Arc::new(Default::default());
-        let healthy_tracker = Arc::new(HealthyTracker::new(account_keys.len()));
+        // The test client uses accounts_keys.len() many clients in round robin
+        // fashion. If we set the healing time of health tracker to be this number,
+        // then we will heal when every client has successfully transferred again.
+        let healthy_tracker = Arc::new(HealthTracker::new(account_keys.len()));
         Self {
             policy,
             account_keys,
@@ -750,7 +753,7 @@ impl ReceiveTxWorker {
         policy: TestClientPolicy,
         expected_memo_contents: Option<ShortAddressHash>,
         tx_info: Arc<TxInfo>,
-        healthy_tracker: Arc<HealthyTracker>,
+        healthy_tracker: Arc<HealthTracker>,
         logger: Logger,
         parent_context: Context,
     ) -> Self {
@@ -916,95 +919,98 @@ impl Drop for ReceiveTxWorker {
 /// This is thread-safe so that we can share it with the receive worker
 #[derive(Default, Debug)]
 pub struct TxInfo {
+    /// Lock on inner data
+    inner: Mutex<TxInfoInner>,
+}
+
+#[derive(Default, Debug)]
+struct TxInfoInner {
     /// The Tx which was submitted
-    tx: Mutex<Option<Tx>>,
+    tx: Option<Tx>,
     /// The block cloud returned by propose_tx
-    tx_propose_block_count: Mutex<Option<u64>>,
+    tx_propose_block_count: Option<u64>,
     /// The block in which the tx appeared
-    tx_appeared: Mutex<Option<BlockIndex>>,
+    tx_appeared: Option<BlockIndex>,
 }
 
 impl TxInfo {
     /// Clear the TxInfo
     pub fn clear(&self) {
-        *self.tx.lock().unwrap() = None;
-        *self.tx_propose_block_count.lock().unwrap() = None;
-        *self.tx_appeared.lock().unwrap() = None;
+        *self.inner.lock().unwrap() = Default::default();
     }
 
     /// Set the Tx that we are sending (immediately after it is built)
     pub fn set_tx(&self, tx: &Tx) {
-        *self.tx.lock().unwrap() = Some(tx.clone());
+        self.inner.lock().unwrap().tx = Some(tx.clone());
     }
 
     /// Set the block count returned by tx_propose (immediately after it is
     /// known)
     pub fn set_tx_propose_block_count(&self, count: u64) {
-        *self.tx_propose_block_count.lock().unwrap() = Some(count);
+        self.inner.lock().unwrap().tx_propose_block_count = Some(count);
     }
 
     /// Set the index in which the tx appeared (immediately after it is known)
     pub fn set_tx_appeared_block_index(&self, index: BlockIndex) {
-        *self.tx_appeared.lock().unwrap() = Some(index);
+        self.inner.lock().unwrap().tx_appeared = Some(index);
     }
 }
 
 impl core::fmt::Display for TxInfo {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        self.tx_propose_block_count
-            .lock()
-            .unwrap()
-            .map(|proposed| {
-                write!(
-                    f,
-                    "Proposed at block index ~{}, ",
-                    proposed.saturating_sub(1)
-                )
-            })
-            .transpose()?;
-        self.tx_appeared
-            .lock()
-            .unwrap()
-            .map(|appeared| write!(f, "Appeared in block index {}, ", appeared))
-            .transpose()?;
-        self.tx
-            .lock()
-            .unwrap()
-            .as_ref()
-            .map(|tx| {
-                write!(
-                    f,
-                    "TxOut public keys: [{}]",
-                    HexList(tx.prefix.outputs.iter().map(|x| x.public_key.as_bytes()))
-                )
-            })
-            .transpose()?;
+        let guard = self.inner.lock().unwrap();
+        if let Some(proposed) = &guard.tx_propose_block_count {
+            write!(
+                f,
+                "Proposed at block index ~{}, ",
+                proposed.saturating_sub(1)
+            )?;
+        }
+        if let Some(appeared) = &guard.tx_appeared {
+            write!(f, "Appeared in block index {}, ", appeared)?;
+        }
+        if let Some(tx) = &guard.tx {
+            write!(
+                f,
+                "TxOut public keys: [{}]",
+                HexList(tx.prefix.outputs.iter().map(|x| x.public_key.as_bytes()))
+            )?;
+        }
         Ok(())
     }
 }
 
-/// Object which helps tracking the healthy status
+/// Object which manages the IS_HEALTHY gauge
+///
+/// * If a failure is observed, we are unhealthy (immediately)
+/// * If no failure is observed for a long enough time, we are healthy again
+///
+/// The amount of time is the "healing_time" and it is expected to be set
+/// to the number of clients, so that when we go around once in round-robin
+/// fashion and all clients are successful, we are considered healed, and not
+/// before that.
 #[derive(Default)]
-pub struct HealthyTracker {
+pub struct HealthTracker {
     // Set to i for the duration of the i'th transfer
     counter: AtomicUsize,
     // Whether we have observed any failure
     have_failure: AtomicBool,
     // The counter value during the most recent failure
     last_failure: AtomicUsize,
-    // The number of clients
-    num_clients: usize,
+    // Healing time: How many successful transfers needed to forget a failure
+    healing_time: usize,
 }
 
-impl HealthyTracker {
+impl HealthTracker {
     /// Make a new healthy tracker.
     /// Sets IS_HEALTHY to true initially.
-    /// Takes num_clients which is the number of successful transfers before we
-    /// consider ourselves healthy again
-    pub fn new(num_clients: usize) -> Self {
+    ///
+    /// Takes "healing time" which is the number of successful transfers before
+    /// we consider ourselves healthy again
+    pub fn new(healing_time: usize) -> Self {
         counters::IS_HEALTHY.set(1);
         Self {
-            num_clients,
+            healing_time,
             ..Default::default()
         }
     }
@@ -1014,10 +1020,10 @@ impl HealthyTracker {
         self.counter.store(counter, Ordering::SeqCst);
         // If:
         // * there is a failure
-        // * the failure happened at least num_clients ago
+        // * the failure happened at least healing_time ago
         // then set ourselves healthy again
         if self.have_failure.load(Ordering::SeqCst)
-            && self.last_failure.load(Ordering::SeqCst) + self.num_clients <= counter
+            && self.last_failure.load(Ordering::SeqCst) + self.healing_time <= counter
         {
             counters::IS_HEALTHY.set(1);
         }
