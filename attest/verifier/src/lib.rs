@@ -2,31 +2,14 @@
 
 //! Intel Attestation Report Verifier
 
-use alloc::vec;
+#![no_std]
 
-use crate::{
-    error::{IasQuoteError, IasQuoteResult, VerifyError},
-    ias::verify::{VerificationReport, VerificationReportData},
-    nonce::IasNonce,
-    quote::{Quote, QuoteSignType},
-    types::{
-        attributes::Attributes,
-        basename::Basename,
-        config_id::ConfigId,
-        cpu_svn::CpuSecurityVersion,
-        epid_group_id::EpidGroupId,
-        ext_prod_id::ExtendedProductId,
-        family_id::FamilyId,
-        measurement::{MrEnclave, MrSigner},
-        report_body::ReportBody,
-        report_data::ReportDataMask,
-        ConfigSecurityVersion, MiscSelect, ProductId, SecurityVersion,
-    },
-    IAS_SIGNING_ROOT_CERT_PEMS,
-};
+extern crate alloc;
+
 use alloc::{
     borrow::ToOwned,
     string::{String, ToString},
+    vec,
     vec::Vec,
 };
 use core::convert::TryFrom;
@@ -38,11 +21,44 @@ use mbedtls::{
     x509::{Certificate, Profile},
     Error as TlsError,
 };
-
+use mc_attest_core::{
+    Attributes, Basename, ConfigId, ConfigSecurityVersion, CpuSecurityVersion, EpidGroupId,
+    ExtendedProductId, FamilyId, IasNonce, IasQuoteError, IasQuoteResult, MiscSelect, MrEnclave,
+    MrSigner, ProductId, Quote, QuoteSignType, ReportBody, ReportDataMask, SecurityVersion,
+    VerificationReport, VerificationReportData, VerifyError,
+};
 use mc_sgx_css::Signature;
 use mc_sgx_types::SGX_FLAGS_DEBUG;
 use serde::{Deserialize, Serialize};
 use sha2::{digest::Digest, Sha256};
+
+#[cfg(feature = "sgx-sim")]
+pub use crate::ias::sim::{
+    IAS_SIM_MODULUS, IAS_SIM_ROOT_ANCHORS, IAS_SIM_SIGNING_CHAIN, IAS_SIM_SIGNING_KEY,
+};
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "sgx-sim")] {
+        /// Whether or not enclaves should be run and validated in debug mode
+        pub const DEBUG_ENCLAVE: bool = true;
+        /// An array of zero-terminated signing certificate PEM files used as root anchors.
+        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[crate::IAS_SIM_ROOT_ANCHORS];
+    } else if #[cfg(feature = "ias-dev")] {
+        /// Whether or not enclaves should be run and validated in debug mode
+        pub const DEBUG_ENCLAVE: bool = true;
+        /// An array of zero-terminated signing certificate PEM files used as root anchors.
+        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[concat!(include_str!(
+            "../data/Dev_AttestationReportSigningCACert.pem"
+        ), "\0")];
+    } else {
+        /// Debug enclaves in prod mode are not supported.
+        pub const DEBUG_ENCLAVE: bool = false;
+        /// An array of zero-terminated signing certificate PEM files used as root anchors.
+        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[concat!(include_str!(
+            "../data/AttestationReportSigningCACert.pem"
+        ), "\0")];
+    }
+}
 
 /// A trait which can be used to verify an object using pre-configured data
 trait Verify<T>: Clone {

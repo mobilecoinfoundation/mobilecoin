@@ -2514,6 +2514,7 @@ dependencies = [
  "displaydoc",
  "mc-attest-core",
  "mc-attest-net",
+ "mc-attest-verifier",
  "mc-crypto-keys",
  "mc-crypto-noise",
  "mc-util-build-script",
@@ -2559,15 +2560,13 @@ dependencies = [
  "displaydoc",
  "hex",
  "hex_fmt",
- "lazy_static",
- "mbedtls",
- "mbedtls-sys-auto",
  "mc-common",
  "mc-crypto-digestible",
  "mc-crypto-rand",
- "mc-sgx-build",
  "mc-sgx-css",
  "mc-sgx-types",
+ "mc-util-build-script",
+ "mc-util-build-sgx",
  "mc-util-encodings",
  "mc-util-serial",
  "pem",
@@ -2600,6 +2599,7 @@ dependencies = [
  "displaydoc",
  "mbedtls",
  "mc-attest-core",
+ "mc-attest-verifier",
  "mc-common",
  "mc-sgx-build",
  "mc-util-encodings",
@@ -2627,8 +2627,33 @@ name = "mc-attest-untrusted"
 version = "1.2.0-pre0"
 dependencies = [
  "mc-attest-core",
+ "mc-attest-verifier",
  "mc-sgx-build",
  "mc-sgx-types",
+]
+
+[[package]]
+name = "mc-attest-verifier"
+version = "1.2.0-pre0"
+dependencies = [
+ "cargo-emit",
+ "cfg-if 1.0.0",
+ "chrono",
+ "displaydoc",
+ "hex",
+ "lazy_static",
+ "mbedtls",
+ "mbedtls-sys-auto",
+ "mc-attest-core",
+ "mc-common",
+ "mc-sgx-css",
+ "mc-sgx-types",
+ "mc-util-build-script",
+ "mc-util-build-sgx",
+ "rand 0.8.4",
+ "rand_hc 0.3.1",
+ "serde",
+ "sha2 0.9.8",
 ]
 
 [[package]]

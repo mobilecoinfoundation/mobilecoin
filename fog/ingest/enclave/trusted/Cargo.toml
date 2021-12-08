@@ -14,10 +14,10 @@ crate-type = ["staticlib"]
 
 [features]
 sgx-sim = [
-    "mc-attest-core/sgx-sim"
+    "mc-attest-verifier/sgx-sim"
 ]
 ias-dev = [
-    "mc-attest-core/ias-dev"
+    "mc-attest-verifier/ias-dev"
 ]
 
 [dependencies]
@@ -30,6 +30,7 @@ mc-fog-ocall-oram-storage-trusted = { path = "../../../ocall_oram_storage/truste
 
 # mobilecoin
 mc-attest-core = { path = "../../../../attest/core", default-features = false }
+mc-attest-verifier = { path = "../../../../attest/verifier", default-features = false }
 mc-enclave-boundary = { path = "../../../../enclave-boundary" }
 mc-util-serial = { path = "../../../../util/serial"}
 mc-sgx-compat = { path = "../../../../sgx/compat", features = ["sgx"] }

@@ -12,11 +12,12 @@ remote attestation services. As such this only works in untrusted code.
 default = ["network-tests"]
 network-tests = []
 sgx-sim = [
-    "mc-attest-core/sgx-sim",
+    "mc-attest-verifier/sgx-sim",
 ]
 
 [dependencies]
-mc-attest-core = { path = "../../attest/core" }
+mc-attest-core = { path = "../core" }
+mc-attest-verifier = { path = "../verifier", default-features = false }
 mc-common = { path = "../../common", features = ["log"] }
 mc-util-encodings = { path = "../../util/encodings" }
 
