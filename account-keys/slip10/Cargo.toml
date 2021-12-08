@@ -12,7 +12,7 @@ mc-account-keys = { path = "../", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 
 displaydoc = { version = "0.2", default-features = false }
-hkdf = "0.9"
+hkdf = "0.12"
 sha2 = "0.9.8"
 slip10_ed25519 = "0.1"
 tiny-bip39 = "0.8"
