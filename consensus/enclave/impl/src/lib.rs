@@ -37,8 +37,8 @@ use mc_common::{
     ResponderId,
 };
 use mc_consensus_enclave_api::{
-    ConsensusEnclave, Error, FeePublicKey, LocallyEncryptedTx, Result, SealedBlockSigningKey,
-    TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    ConsensusEnclave, Error, FeePublicKey, LocallyEncryptedTx, MobTxContext, Result,
+    SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -316,13 +316,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let key_images: Vec<KeyImage> = tx.key_images();
         let output_public_keys = tx.output_public_keys();
 
-        Ok(TxContext {
+        Ok(TxContext::MobTx(MobTxContext {
             locally_encrypted_tx,
             tx_hash,
             highest_indices,
             key_images,
             output_public_keys,
-        })
+        }))
     }
 
     fn peer_tx_propose(&self, msg: EnclaveMessage<PeerSession>) -> Result<Vec<TxContext>> {
@@ -348,13 +348,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 let key_images: Vec<KeyImage> = tx.key_images();
                 let output_public_keys = tx.output_public_keys();
 
-                Ok(TxContext {
+                Ok(TxContext::MobTx(MobTxContext {
                     locally_encrypted_tx,
                     tx_hash,
                     highest_indices,
                     key_images,
                     output_public_keys,
-                })
+                }))
             })
             .collect()
     }

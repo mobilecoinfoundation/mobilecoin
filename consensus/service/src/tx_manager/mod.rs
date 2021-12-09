@@ -91,7 +91,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManagerImpl<E
 
         // The enclave part of the well-formed check.
         let (well_formed_encrypted_tx, well_formed_tx_context) = self.enclave.tx_is_well_formed(
-            tx_context.locally_encrypted_tx,
+            tx_context.locally_encrypted_tx().clone(),
             current_block_index,
             highest_index_proofs,
         )?;
@@ -145,11 +145,11 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
     /// Insert a transaction into the cache. The transaction must be
     /// well-formed.
     fn insert(&self, tx_context: TxContext) -> TxManagerResult<TxHash> {
-        let tx_hash = tx_context.tx_hash;
+        let tx_hash = tx_context.tx_hash().clone();
 
         {
             let cache = self.lock_cache();
-            if let Some(entry) = cache.get(&tx_context.tx_hash) {
+            if let Some(entry) = cache.get(&tx_hash) {
                 // The transaction is well-formed and is in the cache.
                 return Ok(*entry.context.tx_hash());
             }

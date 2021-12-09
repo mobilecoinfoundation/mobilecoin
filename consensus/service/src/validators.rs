@@ -53,11 +53,13 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
         &self,
         tx_context: &TxContext,
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)> {
+        match tx_context {
+            TxContext::MobTx(mob_tx_context) =>  {
         // The transaction's membership proofs must reference data contained in the
         // ledger. This check could fail if the local ledger is behind the
         // network's consensus ledger.
         let membership_proofs =
-            self.get_tx_out_proof_of_memberships(&tx_context.highest_indices)?;
+            self.get_tx_out_proof_of_memberships(&mob_tx_context.highest_indices)?;
 
         // Note: It is possible that the proofs above are obtained for a different block
         // index as a new block could be written between getting the proofs and
@@ -68,6 +70,10 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
             .map_err(|e| TransactionValidationError::Ledger(e.to_string()))?;
 
         Ok((num_blocks - 1, membership_proofs))
+            },
+
+            TxContext::SomethingElse => todo!(),
+        }
     }
 
     /// Checks if a transaction is valid (see definition at top of this file).

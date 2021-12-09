@@ -209,12 +209,36 @@ mod well_formed_tx_context_tests {
 /// to gather data required for the in-enclave well-formedness test that takes
 /// place in `tx_is_well_formed`.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct TxContext {
+pub struct MobTxContext {
     pub locally_encrypted_tx: LocallyEncryptedTx,
     pub tx_hash: TxHash,
     pub highest_indices: Vec<u64>,
     pub key_images: Vec<KeyImage>,
     pub output_public_keys: Vec<CompressedRistrettoPublic>,
+}
+
+// TODO
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub enum TxContext {
+    MobTx(MobTxContext),
+
+    #[allow(dead_code)]
+    SomethingElse,
+}
+
+impl TxContext {
+    pub fn locally_encrypted_tx(&self) -> &LocallyEncryptedTx {
+        match self {
+            TxContext::MobTx(tx) => &tx.locally_encrypted_tx,
+            TxContext::SomethingElse => todo!(),
+        }
+    }
+    pub fn tx_hash(&self) -> &TxHash {
+        match self {
+            TxContext::MobTx(tx) => &tx.tx_hash,
+            TxContext::SomethingElse => todo!(),
+        }
+    }
 }
 
 pub type SealedBlockSigningKey = Vec<u8>;

@@ -7,8 +7,8 @@ mod mock_consensus_enclave;
 pub use mock_consensus_enclave::MockConsensusEnclave;
 
 pub use mc_consensus_enclave_api::{
-    ConsensusEnclave, ConsensusEnclaveProxy, Error, FeePublicKey, LocallyEncryptedTx, Result,
-    SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    ConsensusEnclave, ConsensusEnclaveProxy, Error, FeePublicKey, LocallyEncryptedTx, MobTxContext,
+    Result, SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
@@ -67,13 +67,13 @@ impl ConsensusServiceMockEnclave {
         let key_images: Vec<KeyImage> = tx.key_images();
         let output_public_keys = tx.output_public_keys();
 
-        TxContext {
+        TxContext::MobTx(MobTxContext {
             locally_encrypted_tx,
             tx_hash,
             highest_indices,
             key_images,
             output_public_keys,
-        }
+        })
     }
 }
 
@@ -179,7 +179,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
     }
 
     fn client_tx_propose(&self, _msg: EnclaveMessage<ClientSession>) -> Result<TxContext> {
-        Ok(TxContext::default())
+        Ok(TxContext::MobTx(MobTxContext::default()))
     }
 
     fn peer_tx_propose(&self, _msg: EnclaveMessage<PeerSession>) -> Result<Vec<TxContext>> {
