@@ -8,8 +8,9 @@ no_std structs used commonly in enclave api's in connection with attestation and
 """
 
 [dependencies]
-mc-attest-core = { path = "../../attest/core", default-features = false }
 mc-attest-ake = { path = "../ake", default-features = false }
+mc-attest-core = { path = "../../attest/core", default-features = false }
+mc-attest-verifier = { path = "../../attest/verifier", default-features = false }
 mc-crypto-noise = { path = "../../crypto/noise", default-features = false }
 mc-sgx-compat = { path = "../../sgx/compat" }
 

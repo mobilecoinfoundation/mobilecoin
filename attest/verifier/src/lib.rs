@@ -6,6 +6,39 @@
 
 extern crate alloc;
 
+mod sim_anchors;
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "sgx-sim")] {
+        /// The build-time generated mock IAS signing root authority
+        pub const IAS_SIM_ROOT_ANCHORS: &str =
+            concat!(include_str!("../data/sim/root_anchor.pem"), "\0");
+        /// The build-time generated mock IAS signing certificate chain
+        pub const IAS_SIM_SIGNING_CHAIN: &str = concat!(include_str!("../data/sim/chain.pem"), "\0");
+        /// The build-time generated mock IAS signing private key
+        pub const IAS_SIM_SIGNING_KEY: &str = concat!(include_str!("../data/sim/signer.key"), "\0");
+
+        /// Whether or not enclaves should be run and validated in debug mode
+        pub const DEBUG_ENCLAVE: bool = true;
+        /// An array of zero-terminated signing certificate PEM files used as root anchors.
+        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[crate::IAS_SIM_ROOT_ANCHORS];
+    } else if #[cfg(feature = "ias-dev")] {
+        /// Whether or not enclaves should be run and validated in debug mode
+        pub const DEBUG_ENCLAVE: bool = true;
+        /// An array of zero-terminated signing certificate PEM files used as root anchors.
+        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[concat!(include_str!(
+            "../data/Dev_AttestationReportSigningCACert.pem"
+        ), "\0")];
+    } else {
+        /// Debug enclaves in prod mode are not supported.
+        pub const DEBUG_ENCLAVE: bool = false;
+        /// An array of zero-terminated signing certificate PEM files used as root anchors.
+        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[concat!(include_str!(
+            "../data/AttestationReportSigningCACert.pem"
+        ), "\0")];
+    }
+}
+
 use alloc::{
     borrow::ToOwned,
     string::{String, ToString},
@@ -31,34 +64,6 @@ use mc_sgx_css::Signature;
 use mc_sgx_types::SGX_FLAGS_DEBUG;
 use serde::{Deserialize, Serialize};
 use sha2::{digest::Digest, Sha256};
-
-#[cfg(feature = "sgx-sim")]
-pub use crate::ias::sim::{
-    IAS_SIM_MODULUS, IAS_SIM_ROOT_ANCHORS, IAS_SIM_SIGNING_CHAIN, IAS_SIM_SIGNING_KEY,
-};
-
-cfg_if::cfg_if! {
-    if #[cfg(feature = "sgx-sim")] {
-        /// Whether or not enclaves should be run and validated in debug mode
-        pub const DEBUG_ENCLAVE: bool = true;
-        /// An array of zero-terminated signing certificate PEM files used as root anchors.
-        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[crate::IAS_SIM_ROOT_ANCHORS];
-    } else if #[cfg(feature = "ias-dev")] {
-        /// Whether or not enclaves should be run and validated in debug mode
-        pub const DEBUG_ENCLAVE: bool = true;
-        /// An array of zero-terminated signing certificate PEM files used as root anchors.
-        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[concat!(include_str!(
-            "../data/Dev_AttestationReportSigningCACert.pem"
-        ), "\0")];
-    } else {
-        /// Debug enclaves in prod mode are not supported.
-        pub const DEBUG_ENCLAVE: bool = false;
-        /// An array of zero-terminated signing certificate PEM files used as root anchors.
-        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[concat!(include_str!(
-            "../data/AttestationReportSigningCACert.pem"
-        ), "\0")];
-    }
-}
 
 /// A trait which can be used to verify an object using pre-configured data
 trait Verify<T>: Clone {

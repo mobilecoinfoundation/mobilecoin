@@ -5,8 +5,8 @@
 
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_api::watcher::TimestampResultCode;
-use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_attest_net::{Client as AttestClient, RaClient};
+use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::{
     logger::{test_with_logger, Logger},
     time::SystemTimeProvider,

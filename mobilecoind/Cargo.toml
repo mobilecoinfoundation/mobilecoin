@@ -17,6 +17,7 @@ mc-account-keys = { path = "../account-keys" }
 mc-account-keys-slip10 = { path = "../account-keys/slip10" }
 mc-api = { path = "../api" }
 mc-attest-core = { path = "../attest/core" }
+mc-attest-verifier = { path = "../attest/verifier" }
 mc-common = { path = "../common", features = ["log"] }
 mc-connection = { path = "../connection" }
 mc-consensus-api = { path = "../consensus/api" }

@@ -11,14 +11,15 @@ use mc_attest_ake::{
     NodeAuthRequestInput, NodeInitiate, Ready, Start, Transition,
 };
 use mc_attest_core::{
-    IasNonce, MrEnclaveVerifier, Nonce, NonceError, Quote, QuoteNonce, Report, ReportData,
-    TargetInfo, VerificationReport, Verifier, DEBUG_ENCLAVE,
+    IasNonce, Nonce, NonceError, Quote, QuoteNonce, Report, ReportData, TargetInfo,
+    VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, PeerAuthRequest,
     PeerAuthResponse, PeerSession, Result,
 };
 use mc_attest_trusted::EnclaveReport;
+use mc_attest_verifier::{MrEnclaveVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::{LruCache, ResponderId};
 use mc_crypto_keys::{X25519Private, X25519Public, X25519};
 use mc_crypto_rand::McRng;

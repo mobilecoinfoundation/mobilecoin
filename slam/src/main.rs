@@ -3,7 +3,7 @@
 use core::{cell::RefCell, convert::TryFrom};
 use lazy_static::lazy_static;
 use mc_account_keys::{AccountKey, PublicAddress};
-use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::{
     logger::{create_app_logger, log, o, Logger},
     HashMap, HashSet, ResponderId,

@@ -7,7 +7,8 @@ use aead::{AeadMut, NewAead};
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 use digest::{BlockInput, FixedOutput, Reset, Update};
-use mc_attest_core::{VerificationReport, Verifier};
+use mc_attest_core::VerificationReport;
+use mc_attest_verifier::Verifier;
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{HandshakeIX, HandshakeNX, HandshakePattern, NoiseCipher, ProtocolName};
 

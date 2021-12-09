@@ -3,7 +3,7 @@
 //! AKE Errors
 
 use displaydoc::Display;
-use mc_attest_core::VerifierError;
+use mc_attest_verifier::Error as VerifierError;
 use mc_crypto_noise::{CipherError, HandshakeError};
 use serde::{Deserialize, Serialize};
 

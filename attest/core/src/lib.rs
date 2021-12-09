@@ -8,8 +8,6 @@
 
 extern crate alloc;
 
-use cfg_if::cfg_if;
-
 mod error;
 mod ias;
 mod nonce;
