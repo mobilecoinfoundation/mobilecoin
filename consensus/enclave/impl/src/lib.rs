@@ -65,23 +65,22 @@ pub const FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG: &str = "mc_fees_output_private_key
 include!(concat!(env!("OUT_DIR"), "/target_features.rs"));
 
 /// A well-formed transaction.
-#[derive(Clone, Eq, PartialEq, Message)]
-pub struct WellFormedTx {
-    /// The actual transaction.
-    #[prost(message, required, tag = "1")]
-    tx: Tx,
-}
-
-impl WellFormedTx {
-    pub fn tx(&self) -> &Tx {
-        &self.tx
-    }
+#[derive(Clone, Eq, PartialEq)]
+pub enum WellFormedTx {
+    MobTx(Tx),
 }
 
 impl From<Tx> for WellFormedTx {
     fn from(tx: Tx) -> Self {
-        Self { tx }
+        Self::MobTx(tx)
     }
+}
+
+// TODO
+#[derive(Message)]
+struct ProstWellFormedTx {
+    #[prost(message, optional, tag = "1")]
+    mob_tx: Option<Tx>,
 }
 
 /// A list of transactions. This is the contents of the encrypted payload
@@ -135,7 +134,15 @@ impl SgxConsensusEnclave {
         well_formed_tx: &WellFormedTx,
         rng: &mut R,
     ) -> Result<WellFormedEncryptedTx> {
-        let well_formed_tx_bytes = mc_util_serial::encode(well_formed_tx);
+        // TODO maybe there's a more efficient way to do this that avoids this copy?
+
+        let prost_well_formed_tx = match well_formed_tx {
+            WellFormedTx::MobTx(tx) => ProstWellFormedTx {
+                mob_tx: Some(tx.clone()),
+            },
+        };
+
+        let well_formed_tx_bytes = mc_util_serial::encode(&prost_well_formed_tx);
 
         Ok(WellFormedEncryptedTx(
             self.well_formed_encrypted_tx_cipher
@@ -147,8 +154,13 @@ impl SgxConsensusEnclave {
     fn decrypt_well_formed_tx(&self, encrypted: &WellFormedEncryptedTx) -> Result<WellFormedTx> {
         let mut cipher = self.well_formed_encrypted_tx_cipher.lock()?;
         let plaintext = cipher.decrypt_bytes(encrypted.0.clone())?;
-        let well_formed_tx: WellFormedTx = mc_util_serial::decode(&plaintext)?;
-        Ok(well_formed_tx)
+        let well_formed_prost_tx: ProstWellFormedTx = mc_util_serial::decode(&plaintext)?;
+
+        if let Some(mob_tx) = well_formed_prost_tx.mob_tx {
+            Ok(WellFormedTx::MobTx(mob_tx))
+        } else {
+            todo!()
+        }
     }
 }
 
@@ -418,13 +430,19 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             return Err(Error::Attest(AttestEnclaveError::NotFound));
         }
 
+        // TODO this needs to handle other tx types, not just MobTx
+
         // Decrypt transactions
         let txs: Result<Vec<Tx>> =
             encrypted_txs
                 .iter()
                 .try_fold(Vec::new(), |mut init, encrypted_tx| {
                     let well_formed_tx = self.decrypt_well_formed_tx(encrypted_tx)?;
-                    init.push(well_formed_tx.tx().clone());
+                    match well_formed_tx {
+                        WellFormedTx::MobTx(mob_tx) => {
+                            init.push(mob_tx);
+                        }
+                    };
                     Ok(init)
                 });
 
@@ -446,10 +464,12 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let transactions_with_proofs = encrypted_txs_with_proofs
             .iter()
             .map(|(encrypted_tx, proofs)| {
-                Ok((
-                    self.decrypt_well_formed_tx(encrypted_tx)?.tx,
-                    proofs.clone(),
-                ))
+                // TODO
+                let well_formed_tx = self.decrypt_well_formed_tx(encrypted_tx)?;
+
+                match well_formed_tx {
+                    WellFormedTx::MobTx(mob_tx) => Ok((mob_tx, proofs.clone())),
+                }
             })
             .collect::<Result<Vec<(Tx, Vec<TxOutMembershipProof>)>>>()?;
 
