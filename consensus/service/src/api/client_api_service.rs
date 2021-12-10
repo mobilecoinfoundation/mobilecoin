@@ -12,6 +12,7 @@ use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
 use mc_common::logger::Logger;
 use mc_consensus_api::{
+    consensus_client::MintRequest,
     consensus_client_grpc::ConsensusClientApi,
     consensus_common::{ProposeTxResponse, ProposeTxResult},
 };
@@ -92,6 +93,36 @@ impl ClientApiService {
         counters::ADD_TX.inc();
         Ok(response)
     }
+
+    // TODO
+    fn handle_proposed_mint_tx(
+        &mut self,
+        mint_request: MintRequest,
+    ) -> Result<ProposeTxResponse, ConsensusGrpcError> {
+        // TODO counters::ADD_TX_INITIATED.inc();
+        let tx_context = self.enclave.client_mint_tx_propose(mint_request.amount)?;
+        let mut response = ProposeTxResponse::new();
+
+        // Cache the transaction. This performs the well-formedness checks.
+        let tx_hash = self.tx_manager.insert(tx_context).map_err(|err| {
+            if let TxManagerError::TransactionValidation(cause) = &err {
+                counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{:?}", cause));
+                let result = ProposeTxResult::from(cause.clone());
+                response.set_result(result);
+            }
+            err
+        })?;
+
+        // Validate the transaction.
+        // This is done here as a courtesy to give clients immediate feedback about the
+        // transaction.
+        self.tx_manager.validate(&tx_hash)?;
+
+        // The transaction can be considered by the network.
+        (*self.propose_tx_callback)(tx_hash, None, None);
+        // TODO counters::ADD_TX.inc();
+        Ok(response)
+    }
 }
 
 impl ConsensusClientApi for ClientApiService {
@@ -126,6 +157,49 @@ impl ConsensusClientApi for ClientApiService {
                 self.handle_proposed_tx(msg)
                     .or_else(ConsensusGrpcError::into)
             };
+
+        result = result.and_then(|mut response| {
+            let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
+            response.set_block_count(num_blocks);
+            Ok(response)
+        });
+
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            send_result(ctx, sink, result, logger)
+        });
+    }
+
+    fn client_mint_tx_propose(
+        &mut self,
+        ctx: RpcContext,
+        mint_request: MintRequest,
+        sink: UnarySink<ProposeTxResponse>,
+    ) {
+        let _timer = SVC_COUNTERS.req(&ctx);
+
+        if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
+            return send_result(ctx, sink, err.into(), &self.logger);
+        }
+
+        let mut result: Result<ProposeTxResponse, RpcStatus> =
+            /*if counters::CUR_NUM_PENDING_VALUES.get() >= PENDING_LIMIT {
+                // This node is over capacity, and is not accepting proposed transaction.
+                if let Err(e) = self.enclave.client_discard_message(msg.into()) {
+                    ConsensusGrpcError::Enclave(e).into()
+                } else {
+                    ConsensusGrpcError::OverCapacity.into()
+                }
+            } else if !(self.is_serving_fn)() {
+                // This node is unable to process transactions (e.g. is syncing its ledger).
+                if let Err(e) = self.enclave.client_discard_message(msg.into()) {
+                    ConsensusGrpcError::Enclave(e).into()
+                } else {
+                    ConsensusGrpcError::NotServing.into()
+                }
+            } else {*/
+                self.handle_proposed_mint_tx(mint_request)
+                    .or_else(ConsensusGrpcError::into);
+        //            };
 
         result = result.and_then(|mut response| {
             let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;

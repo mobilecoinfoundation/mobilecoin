@@ -91,11 +91,17 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         // Transactions
         EnclaveCall::ClientTxPropose(msg) => serialize(&ENCLAVE.client_tx_propose(msg))
             .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
+        EnclaveCall::ClientMintTxPropose(msg) => serialize(&ENCLAVE.client_mint_tx_propose(msg))
+            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
         EnclaveCall::PeerTxPropose(msg) => {
             serialize(&ENCLAVE.peer_tx_propose(msg)).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
         EnclaveCall::TxIsWellFormed(locally_encrypted_tx, block_index, proofs) => {
             serialize(&ENCLAVE.tx_is_well_formed(locally_encrypted_tx, block_index, proofs))
+                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
+        }
+        EnclaveCall::TxIsMintTxWellFormed(locally_encrypted_tx, block_index) => {
+            serialize(&ENCLAVE.tx_is_mint_tx_well_formed(locally_encrypted_tx, block_index))
                 .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
         EnclaveCall::TxsForPeer(txs, aad, peer) => {

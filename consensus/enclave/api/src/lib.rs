@@ -23,7 +23,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, RistrettoPublic, 
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_transaction_core::{
     ring_signature::KeyImage,
-    tx::{Tx, TxHash, TxOutMembershipProof},
+    tx::{MintTx, Tx, TxHash, TxOutMembershipProof},
     Block, BlockContents, BlockSignature,
 };
 use serde::{Deserialize, Serialize};
@@ -154,25 +154,41 @@ impl PartialOrd for WellFormedMobTxContext {
     }
 }
 
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize, Ord, PartialOrd)]
+pub struct WellFormedMintTxContext {
+    pub amount: u64,
+    pub tx_hash: TxHash,
+    pub tombstone_block: u64,
+}
+
+impl From<&MintTx> for WellFormedMintTxContext {
+    fn from(tx: &MintTx) -> Self {
+        Self {
+            tx_hash: tx.tx_hash(),
+            tombstone_block: 5, // TODO
+            amount: tx.amount,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Ord, PartialOrd, Serialize)]
 pub enum WellFormedTxContext {
     MobTx(WellFormedMobTxContext),
-    #[allow(dead_code)]
-    Unused,
+    MintTx(WellFormedMintTxContext),
 }
 
 impl WellFormedTxContext {
     pub fn tx_hash(&self) -> &TxHash {
         match self {
             WellFormedTxContext::MobTx(tx) => tx.tx_hash(),
-            WellFormedTxContext::Unused => todo!(),
+            WellFormedTxContext::MintTx(tx) => &tx.tx_hash,
         }
     }
 
     pub fn tombstone_block(&self) -> u64 {
         match self {
             WellFormedTxContext::MobTx(tx) => tx.tombstone_block(),
-            WellFormedTxContext::Unused => todo!(),
+            WellFormedTxContext::MintTx(tx) => tx.tombstone_block,
         }
     }
 }
@@ -180,6 +196,12 @@ impl WellFormedTxContext {
 impl From<&Tx> for WellFormedTxContext {
     fn from(tx: &Tx) -> Self {
         Self::MobTx(WellFormedMobTxContext::from(tx))
+    }
+}
+
+impl From<&MintTx> for WellFormedTxContext {
+    fn from(tx: &MintTx) -> Self {
+        Self::MintTx(WellFormedMintTxContext::from(tx))
     }
 }
 
@@ -218,25 +240,32 @@ pub struct MobTxContext {
 }
 
 // TODO
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub struct MintTxContext {
+    pub locally_encrypted_tx: LocallyEncryptedTx,
+    pub tx_hash: TxHash,
+    pub amount: u64,
+}
+
+// TODO
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum TxContext {
     MobTx(MobTxContext),
 
-    #[allow(dead_code)]
-    SomethingElse,
+    MintTx(MintTxContext),
 }
 
 impl TxContext {
     pub fn locally_encrypted_tx(&self) -> &LocallyEncryptedTx {
         match self {
             TxContext::MobTx(tx) => &tx.locally_encrypted_tx,
-            TxContext::SomethingElse => todo!(),
+            TxContext::MintTx(tx) => &tx.locally_encrypted_tx,
         }
     }
     pub fn tx_hash(&self) -> &TxHash {
         match self {
             TxContext::MobTx(tx) => &tx.tx_hash,
-            TxContext::SomethingElse => todo!(),
+            TxContext::MintTx(tx) => &tx.tx_hash,
         }
     }
 }
@@ -316,6 +345,9 @@ pub trait ConsensusEnclave: ReportableEnclave {
     /// collect the    information required by `tx_is_well_formed`.
     fn client_tx_propose(&self, msg: EnclaveMessage<ClientSession>) -> Result<TxContext>;
 
+    // TODO
+    fn client_mint_tx_propose(&self, amount: u64) -> Result<TxContext>;
+
     /// Performs the first steps in accepting transactions from a remote peer:
     /// 1) Re-encrypt all txs for the local enclave
     /// 2) Extract context data to be handed back to untrusted so that it could
@@ -330,6 +362,13 @@ pub trait ConsensusEnclave: ReportableEnclave {
         locally_encrypted_tx: LocallyEncryptedTx,
         block_index: u64,
         proofs: Vec<TxOutMembershipProof>,
+    ) -> Result<(WellFormedEncryptedTx, WellFormedTxContext)>;
+
+    // TODO
+    fn tx_is_mint_tx_well_formed(
+        &self,
+        locally_encrypted_tx: LocallyEncryptedTx,
+        block_index: u64,
     ) -> Result<(WellFormedEncryptedTx, WellFormedTxContext)>;
 
     /// Re-encrypt sealed transactions for the given peer session, using the

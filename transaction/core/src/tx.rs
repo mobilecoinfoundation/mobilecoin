@@ -549,6 +549,19 @@ impl ReprBytes for TxOutConfirmationNumber {
 
 derive_prost_message_from_repr_bytes!(TxOutConfirmationNumber);
 
+#[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Message, Digestible)]
+pub struct MintTx {
+    // TODO
+    #[prost(uint64, tag = "1")]
+    pub amount: u64,
+}
+
+impl MintTx {
+    pub fn tx_hash(&self) -> TxHash {
+        TxHash::from(self.digest32::<MerlinTranscript>(b"mobilecoin-mint-tx"))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{

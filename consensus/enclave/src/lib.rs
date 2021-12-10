@@ -4,7 +4,7 @@
 
 pub use mc_consensus_enclave_api::{
     ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeePublicKey, LocallyEncryptedTx,
-    Result, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    MintTxContext, MobTxContext, Result, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 
 use mc_attest_core::{
@@ -207,6 +207,15 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
+    fn client_mint_tx_propose(&self, amount: u64) -> Result<TxContext> {
+        println!("> client_mint_tx_propose");
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::ClientMintTxPropose(amount))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        let ret = mc_util_serial::deserialize(&outbuf[..])?;
+        println!("< client_mint_tx_propose");
+        ret
+    }
+
     fn peer_tx_propose(&self, msg: EnclaveMessage<PeerSession>) -> Result<Vec<TxContext>> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::PeerTxPropose(msg))?;
         let outbuf = self.enclave_call(&inbuf)?;
@@ -228,6 +237,22 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
+    fn tx_is_mint_tx_well_formed(
+        &self,
+        locally_encrypted_tx: LocallyEncryptedTx,
+        block_index: u64,
+    ) -> Result<(WellFormedEncryptedTx, WellFormedTxContext)> {
+        println!("> tx_is_mint_tx_well_formed");
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::TxIsMintTxWellFormed(
+            locally_encrypted_tx,
+            block_index,
+        ))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        let ret = mc_util_serial::deserialize(&outbuf[..])?;
+        println!("< tx_is_mint_tx_well_formed");
+        ret
+    }
+
     fn txs_for_peer(
         &self,
         encrypted_txs: &[WellFormedEncryptedTx],
@@ -239,8 +264,11 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
             aad.to_vec(),
             peer.clone(),
         ))?;
+        println!("> txs_for_peer");
         let outbuf = self.enclave_call(&inbuf)?;
-        mc_util_serial::deserialize(&outbuf[..])?
+        let ret = mc_util_serial::deserialize(&outbuf[..])?;
+        println!("< txs_for_peer");
+        ret
     }
 
     fn form_block(
@@ -252,8 +280,11 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
             parent_block.clone(),
             txs_with_proofs.to_vec(),
         ))?;
+        println!("> form_block");
         let outbuf = self.enclave_call(&inbuf)?;
-        mc_util_serial::deserialize(&outbuf[..])?
+        let ret = mc_util_serial::deserialize(&outbuf[..])?;
+        println!("< form_block");
+        ret
     }
 }
 

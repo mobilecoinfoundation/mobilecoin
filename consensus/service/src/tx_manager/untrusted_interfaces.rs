@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use mc_consensus_enclave::{TxContext, WellFormedTxContext};
+use mc_consensus_enclave::{MobTxContext, WellFormedTxContext};
 use mc_transaction_core::{
     tx::{TxHash, TxOutMembershipProof},
     validation::TransactionValidationResult,
@@ -20,7 +20,7 @@ pub trait UntrustedInterfaces: Send + Sync {
     /// highest index.
     fn well_formed_check(
         &self,
-        tx_context: &TxContext,
+        tx_context: &MobTxContext,
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)>;
 
     /// Checks if a transaction is valid (see definition in validators.rs).

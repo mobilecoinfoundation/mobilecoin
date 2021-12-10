@@ -100,6 +100,9 @@ pub enum EnclaveCall {
     /// client.
     ClientTxPropose(EnclaveMessage<ClientSession>),
 
+    // TODO
+    ClientMintTxPropose(u64),
+
     /// The [ConsensusEnclave::client_discard_message()] method.
     ///
     /// Decrypts an incoming message and discard the data.
@@ -116,6 +119,9 @@ pub enum EnclaveCall {
     /// Provide the missing proofs required to check if a given sealed
     /// transaction is well-formed.
     TxIsWellFormed(LocallyEncryptedTx, u64, Vec<TxOutMembershipProof>),
+
+    // TODO
+    TxIsMintTxWellFormed(LocallyEncryptedTx, u64),
 
     /// The [ConsensusEnclave::txs_for_peer()] method.
     ///

@@ -37,7 +37,7 @@ use mc_common::{
     ResponderId,
 };
 use mc_consensus_enclave_api::{
-    ConsensusEnclave, Error, FeePublicKey, LocallyEncryptedTx, MobTxContext, Result,
+    ConsensusEnclave, Error, FeePublicKey, LocallyEncryptedTx, MintTxContext, MobTxContext, Result,
     SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
@@ -52,7 +52,7 @@ use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
     ring_signature::{KeyImage, Scalar},
-    tx::{Tx, TxOut, TxOutMembershipProof},
+    tx::{MintTx, Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
     Amount, Block, BlockContents, BlockSignature, MemoPayload, BLOCK_VERSION,
 };
@@ -68,6 +68,7 @@ include!(concat!(env!("OUT_DIR"), "/target_features.rs"));
 #[derive(Clone, Eq, PartialEq)]
 pub enum WellFormedTx {
     MobTx(Tx),
+    MintTx(MintTx),
 }
 
 impl From<Tx> for WellFormedTx {
@@ -76,11 +77,20 @@ impl From<Tx> for WellFormedTx {
     }
 }
 
+impl From<MintTx> for WellFormedTx {
+    fn from(tx: MintTx) -> Self {
+        Self::MintTx(tx)
+    }
+}
+
 // TODO
 #[derive(Message)]
 struct ProstWellFormedTx {
     #[prost(message, optional, tag = "1")]
-    mob_tx: Option<Tx>,
+    pub mob_tx: Option<Tx>,
+
+    #[prost(message, optional, tag = "2")]
+    pub mint_tx: Option<MintTx>,
 }
 
 /// A list of transactions. This is the contents of the encrypted payload
@@ -93,6 +103,9 @@ pub struct TxList {
     /// Transactions.
     #[prost(message, repeated, tag = "1")]
     pub txs: Vec<Tx>,
+
+    #[prost(message, repeated, tag = "2")]
+    pub mint_txs: Vec<MintTx>,
 }
 
 /// Internal state of the enclave, including AKE and attestation related as well
@@ -139,6 +152,11 @@ impl SgxConsensusEnclave {
         let prost_well_formed_tx = match well_formed_tx {
             WellFormedTx::MobTx(tx) => ProstWellFormedTx {
                 mob_tx: Some(tx.clone()),
+                ..Default::default()
+            },
+            WellFormedTx::MintTx(mint_tx) => ProstWellFormedTx {
+                mint_tx: Some(mint_tx.clone()),
+                ..Default::default()
             },
         };
 
@@ -158,8 +176,10 @@ impl SgxConsensusEnclave {
 
         if let Some(mob_tx) = well_formed_prost_tx.mob_tx {
             Ok(WellFormedTx::MobTx(mob_tx))
+        } else if let Some(mint_tx) = well_formed_prost_tx.mint_tx {
+            Ok(WellFormedTx::MintTx(mint_tx))
         } else {
-            todo!()
+            panic!("hmm");
         }
     }
 }
@@ -337,38 +357,83 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         }))
     }
 
+    fn client_mint_tx_propose(&self, amount: u64) -> Result<TxContext> {
+        // Try and deserialize.
+        // let tx: Tx = mc_util_serial::decode(&tx_bytes)?;
+        let mint_tx = MintTx { amount };
+
+        let tx_bytes = mc_util_serial::encode(&mint_tx);
+
+        // Convert to TxContext
+        let maybe_locally_encrypted_tx: Result<LocallyEncryptedTx> = {
+            let mut cipher = self.locally_encrypted_tx_cipher.lock()?;
+            let mut rng = McRng::default();
+
+            Ok(LocallyEncryptedTx(cipher.encrypt_bytes(&mut rng, tx_bytes)))
+        };
+        let locally_encrypted_tx = maybe_locally_encrypted_tx?;
+
+        let tx_hash = mint_tx.tx_hash();
+
+        Ok(TxContext::MintTx(MintTxContext {
+            locally_encrypted_tx,
+            tx_hash,
+            amount,
+        }))
+    }
+
     fn peer_tx_propose(&self, msg: EnclaveMessage<PeerSession>) -> Result<Vec<TxContext>> {
         // Try and decrypt the message.
         let data = self.ake.peer_decrypt(msg)?;
 
         // Try and deserialize.
         // Use prost
-        let txs = mc_util_serial::decode::<TxList>(&data)?.txs;
+        let tx_list = mc_util_serial::decode::<TxList>(&data)?;
+
+        let mut contexts = Vec::new();
 
         // Convert to TxContexts
         let mut rng = McRng::default();
-        txs.into_iter()
-            .map(|tx| {
-                let tx_bytes = mc_util_serial::encode(&tx);
-                let maybe_locally_encrypted_tx: Result<LocallyEncryptedTx> = {
-                    let mut cipher = self.locally_encrypted_tx_cipher.lock()?;
-                    Ok(LocallyEncryptedTx(cipher.encrypt_bytes(&mut rng, tx_bytes)))
-                };
-                let locally_encrypted_tx = maybe_locally_encrypted_tx?;
-                let tx_hash = tx.tx_hash();
-                let highest_indices = tx.get_membership_proof_highest_indices();
-                let key_images: Vec<KeyImage> = tx.key_images();
-                let output_public_keys = tx.output_public_keys();
 
-                Ok(TxContext::MobTx(MobTxContext {
-                    locally_encrypted_tx,
-                    tx_hash,
-                    highest_indices,
-                    key_images,
-                    output_public_keys,
-                }))
-            })
-            .collect()
+        for tx in tx_list.txs.iter() {
+            let tx_bytes = mc_util_serial::encode(tx);
+            let maybe_locally_encrypted_tx: Result<LocallyEncryptedTx> = {
+                let mut cipher = self.locally_encrypted_tx_cipher.lock()?;
+                Ok(LocallyEncryptedTx(cipher.encrypt_bytes(&mut rng, tx_bytes)))
+            };
+            let locally_encrypted_tx = maybe_locally_encrypted_tx?;
+            let tx_hash = tx.tx_hash();
+            let highest_indices = tx.get_membership_proof_highest_indices();
+            let key_images: Vec<KeyImage> = tx.key_images();
+            let output_public_keys = tx.output_public_keys();
+
+            contexts.push(TxContext::MobTx(MobTxContext {
+                locally_encrypted_tx,
+                tx_hash,
+                highest_indices,
+                key_images,
+                output_public_keys,
+            }));
+        }
+
+        for tx in tx_list.mint_txs.iter() {
+            let tx_bytes = mc_util_serial::encode(tx);
+            let maybe_locally_encrypted_tx: Result<LocallyEncryptedTx> = {
+                let mut cipher = self.locally_encrypted_tx_cipher.lock()?;
+                Ok(LocallyEncryptedTx(cipher.encrypt_bytes(&mut rng, tx_bytes)))
+            };
+            let locally_encrypted_tx = maybe_locally_encrypted_tx?;
+            let tx_hash = tx.tx_hash();
+            let amount = tx.amount;
+
+            contexts.push(TxContext::MintTx(MintTxContext {
+                locally_encrypted_tx,
+                tx_hash,
+                amount,
+            }));
+        }
+
+        Ok(contexts)
     }
 
     fn tx_is_well_formed(
@@ -415,6 +480,32 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         Ok((well_formed_encrypted_tx, well_formed_tx_context))
     }
 
+    // TODO
+    fn tx_is_mint_tx_well_formed(
+        &self,
+        locally_encrypted_tx: LocallyEncryptedTx,
+        _block_index: u64,
+    ) -> Result<(WellFormedEncryptedTx, WellFormedTxContext)> {
+        // Decrypt the locally encrypted transaction.
+        let decrypted_bytes = self
+            .locally_encrypted_tx_cipher
+            .lock()?
+            .decrypt_bytes(locally_encrypted_tx.0)?;
+
+        let tx: MintTx = mc_util_serial::decode(&decrypted_bytes)?;
+
+        // Validate.
+        let mut csprng = McRng::default();
+        // TODO
+
+        // Convert into a well formed encrypted transaction + context.
+        let well_formed_tx_context = WellFormedTxContext::from(&tx);
+        let well_formed_tx = WellFormedTx::from(tx);
+        let well_formed_encrypted_tx = self.encrypt_well_formed_tx(&well_formed_tx, &mut csprng)?;
+
+        Ok((well_formed_encrypted_tx, well_formed_tx_context))
+    }
+
     fn txs_for_peer(
         &self,
         encrypted_txs: &[WellFormedEncryptedTx],
@@ -442,12 +533,35 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                         WellFormedTx::MobTx(mob_tx) => {
                             init.push(mob_tx);
                         }
+                        WellFormedTx::MintTx(_mint_tx) => {
+                            // TODO
+                        }
+                    };
+                    Ok(init)
+                });
+
+        let mint_txs: Result<Vec<MintTx>> =
+            encrypted_txs
+                .iter()
+                .try_fold(Vec::new(), |mut init, encrypted_tx| {
+                    let well_formed_tx = self.decrypt_well_formed_tx(encrypted_tx)?;
+                    match well_formed_tx {
+                        WellFormedTx::MobTx(_mob_tx) => {
+                            // TODO init.push(mob_tx);
+                        }
+                        WellFormedTx::MintTx(mint_tx) => {
+                            // TODO
+                            init.push(mint_tx);
+                        }
                     };
                     Ok(init)
                 });
 
         // Serialize this for the peer.
-        let serialized_txs = mc_util_serial::encode(&TxList { txs: txs? });
+        let serialized_txs = mc_util_serial::encode(&TxList {
+            txs: txs?,
+            mint_txs: mint_txs?,
+        });
 
         // Encrypt for the peer.
         Ok(self.ake.peer_encrypt(peer, aad, &serialized_txs)?)
@@ -469,6 +583,12 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
                 match well_formed_tx {
                     WellFormedTx::MobTx(mob_tx) => Ok((mob_tx, proofs.clone())),
+                    WellFormedTx::MintTx(mint_tx) => {
+                        // This is where we should do something with the mint transactions.
+                        // We likely need to collect them into a separate list since the handling of MobTxs
+                        // and MintTxs is different.
+                        panic!("todo {:?}", mint_tx);
+                    }
                 }
             })
             .collect::<Result<Vec<(Tx, Vec<TxOutMembershipProof>)>>>()?;

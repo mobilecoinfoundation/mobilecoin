@@ -85,21 +85,42 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManagerImpl<E
     fn is_well_formed(&self, tx_context: TxContext) -> TxManagerResult<CacheEntry> {
         let _metrics_timer = counters::WELL_FORMED_CHECK_TIME.start_timer();
 
-        // The untrusted part of the well-formed check.
-        let (current_block_index, highest_index_proofs) =
-            self.untrusted.well_formed_check(&tx_context)?;
+        match tx_context {
+            TxContext::MobTx(mob_tx_context) => {
+                // The untrusted part of the well-formed check.
+                let (current_block_index, highest_index_proofs) =
+                    self.untrusted.well_formed_check(&mob_tx_context)?;
 
-        // The enclave part of the well-formed check.
-        let (well_formed_encrypted_tx, well_formed_tx_context) = self.enclave.tx_is_well_formed(
-            tx_context.locally_encrypted_tx().clone(),
-            current_block_index,
-            highest_index_proofs,
-        )?;
+                // The enclave part of the well-formed check.
+                let (well_formed_encrypted_tx, well_formed_tx_context) =
+                    self.enclave.tx_is_well_formed(
+                        mob_tx_context.locally_encrypted_tx.clone(),
+                        current_block_index,
+                        highest_index_proofs,
+                    )?;
 
-        Ok(CacheEntry {
-            encrypted_tx: well_formed_encrypted_tx,
-            context: Arc::new(well_formed_tx_context),
-        })
+                Ok(CacheEntry {
+                    encrypted_tx: well_formed_encrypted_tx,
+                    context: Arc::new(well_formed_tx_context),
+                })
+            }
+
+            TxContext::MintTx(mint_tx_context) => {
+                // TODO untrusted checks
+                println!("IS MINT WELL FORMED?");
+                let (well_formed_encrypted_tx, well_formed_tx_context) =
+                    self.enclave.tx_is_mint_tx_well_formed(
+                        mint_tx_context.locally_encrypted_tx.clone(),
+                        1, // TODO current_block_index,
+                    )?;
+                println!("IT IS");
+
+                Ok(CacheEntry {
+                    encrypted_tx: well_formed_encrypted_tx,
+                    context: Arc::new(well_formed_tx_context),
+                })
+            }
+        }
     }
 
     fn lock_cache(&self) -> MutexGuard<HashMap<TxHash, CacheEntry>> {
@@ -155,7 +176,9 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             }
         }
 
+        println!("IS_WELL_FORMED");
         let new_entry = self.is_well_formed(tx_context)?;
+        println!("AND INTO THE CACHE");
 
         {
             let mut cache = self.lock_cache();
@@ -224,7 +247,9 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
 
         if let Some(context) = context_opt {
             let _timer = counters::VALIDATE_TX_TIME.start_timer();
+            println!("UNTRUSTED IS_VALID?");
             self.untrusted.is_valid(context)?;
+            println!("UNTRUSTED IS_VALID!");
             Ok(())
         } else {
             log::warn!(
@@ -249,6 +274,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             .collect::<Vec<_>>();
 
         // Perform the combine operation.
+        println!("COMBINING");
         Ok(self
             .untrusted
             .combine(&tx_contexts, MAX_TRANSACTIONS_PER_BLOCK))
@@ -270,28 +296,31 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         let cache_entries = Self::get_cache_entries(&cache, tx_hashes.iter())?;
 
         // Proceed with forming the block.
-        // TODO
-        let encrypted_mob_txs = cache_entries.iter().filter_map(|entry| {
-            if let WellFormedTxContext::MobTx(mob_tx_context) = &*entry.context {
-                Some((mob_tx_context, entry.encrypted_tx.clone()))
-            } else {
-                None
-            }
-        });
+        let encrypted_txs_with_proofs = cache_entries
+            .iter()
+            .map(|entry| {
+                match &*entry.context {
+                    WellFormedTxContext::MobTx(mob_tx_context) => {
+                        // Highest indices proofs must be w.r.t. the current ledger.
+                        // Recreating them here is a crude way to ensure that.
+                        let highest_index_proofs: Vec<_> = self
+                            .untrusted
+                            .get_tx_out_proof_of_memberships(mob_tx_context.highest_indices())?;
 
-        let encrypted_txs_with_proofs = encrypted_mob_txs
-            .into_iter()
-            .map(|(mob_tx_context, encrypted_tx)| {
-                // Highest indices proofs must be w.r.t. the current ledger.
-                // Recreating them here is a crude way to ensure that.
-                let highest_index_proofs: Vec<_> = self
-                    .untrusted
-                    .get_tx_out_proof_of_memberships(mob_tx_context.highest_indices())?;
+                        Ok((entry.encrypted_tx.clone(), highest_index_proofs))
+                    }
 
-                Ok((encrypted_tx, highest_index_proofs))
+                    WellFormedTxContext::MintTx(_mint_tx_context) => {
+                        // TODO: Hack, mint txs are currently mixed with MobTxs. The enclave is still able
+                        // to separate the two because the encrypted tx is of type WellFormedTx which is an enum.
+                        // However, the way we deal here with the extra context (the highest indices) is janky.
+                        Ok((entry.encrypted_tx.clone(), Vec::new()))
+                    }
+                }
             })
             .collect::<Result<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>, TxManagerError>>()?;
 
+        println!("FORMING BLOCK: {:?}", tx_hashes);
         let (block, block_contents, mut signature) = self
             .enclave
             .form_block(parent_block, &encrypted_txs_with_proofs)?;
@@ -342,7 +371,10 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             .map(|(_, result)| result.unwrap())
             .collect();
 
-        Ok(self.enclave.txs_for_peer(&encrypted_txs, aad, peer)?)
+        println!("TXS FOR PEER?");
+        let ret = self.enclave.txs_for_peer(&encrypted_txs, aad, peer)?;
+        println!("TXS FOR PEER!");
+        Ok(ret)
     }
 
     /// Get the encrypted transaction corresponding to the given hash.

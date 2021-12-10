@@ -23,7 +23,7 @@
 //! and might be renamed in the future to match this.
 
 use crate::tx_manager::UntrustedInterfaces as TxManagerUntrustedInterfaces;
-use mc_consensus_enclave::{TxContext, WellFormedTxContext};
+use mc_consensus_enclave::{MobTxContext, WellFormedTxContext};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{
@@ -51,10 +51,8 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
     /// highest index.
     fn well_formed_check(
         &self,
-        tx_context: &TxContext,
+        mob_tx_context: &MobTxContext,
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)> {
-        match tx_context {
-            TxContext::MobTx(mob_tx_context) =>  {
         // The transaction's membership proofs must reference data contained in the
         // ledger. This check could fail if the local ledger is behind the
         // network's consensus ledger.
@@ -70,10 +68,6 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
             .map_err(|e| TransactionValidationError::Ledger(e.to_string()))?;
 
         Ok((num_blocks - 1, membership_proofs))
-            },
-
-            TxContext::SomethingElse => todo!(),
-        }
     }
 
     /// Checks if a transaction is valid (see definition at top of this file).
@@ -118,7 +112,7 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
                 }
             }
 
-            WellFormedTxContext::Unused => todo!(),
+            WellFormedTxContext::MintTx(_) => {}
         };
 
         // The transaction is valid w.r.t. the current ledger state.
@@ -180,7 +174,10 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
                     used_output_public_keys.extend(&output_public_keys);
                 }
 
-                WellFormedTxContext::Unused => todo!(),
+                WellFormedTxContext::MintTx(_) => {
+                    // The transaction is allowed.
+                    allowed_hashes.push(*candidate.tx_hash());
+                }
             };
         }
 
