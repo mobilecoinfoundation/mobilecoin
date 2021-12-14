@@ -208,12 +208,9 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
     }
 
     fn client_mint_tx_propose(&self, amount: u64) -> Result<TxContext> {
-        println!("> client_mint_tx_propose");
         let inbuf = mc_util_serial::serialize(&EnclaveCall::ClientMintTxPropose(amount))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        let ret = mc_util_serial::deserialize(&outbuf[..])?;
-        println!("< client_mint_tx_propose");
-        ret
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn peer_tx_propose(&self, msg: EnclaveMessage<PeerSession>) -> Result<Vec<TxContext>> {
@@ -242,15 +239,12 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         locally_encrypted_tx: LocallyEncryptedTx,
         block_index: u64,
     ) -> Result<(WellFormedEncryptedTx, WellFormedTxContext)> {
-        println!("> tx_is_mint_tx_well_formed");
         let inbuf = mc_util_serial::serialize(&EnclaveCall::TxIsMintTxWellFormed(
             locally_encrypted_tx,
             block_index,
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        let ret = mc_util_serial::deserialize(&outbuf[..])?;
-        println!("< tx_is_mint_tx_well_formed");
-        ret
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn txs_for_peer(
@@ -264,11 +258,8 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
             aad.to_vec(),
             peer.clone(),
         ))?;
-        println!("> txs_for_peer");
         let outbuf = self.enclave_call(&inbuf)?;
-        let ret = mc_util_serial::deserialize(&outbuf[..])?;
-        println!("< txs_for_peer");
-        ret
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn form_block(
@@ -280,11 +271,8 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
             parent_block.clone(),
             txs_with_proofs.to_vec(),
         ))?;
-        println!("> form_block");
         let outbuf = self.enclave_call(&inbuf)?;
-        let ret = mc_util_serial::deserialize(&outbuf[..])?;
-        println!("< form_block");
-        ret
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 }
 

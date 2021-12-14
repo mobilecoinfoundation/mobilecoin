@@ -7,8 +7,9 @@ mod mock_consensus_enclave;
 pub use mock_consensus_enclave::MockConsensusEnclave;
 
 pub use mc_consensus_enclave_api::{
-    ConsensusEnclave, ConsensusEnclaveProxy, Error, FeePublicKey, LocallyEncryptedTx, MobTxContext,
-    Result, SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    ConsensusEnclave, ConsensusEnclaveProxy, Error, FeePublicKey, LocallyEncryptedTx,
+    MintTxContext, MobTxContext, Result, SealedBlockSigningKey, TxContext, WellFormedEncryptedTx,
+    WellFormedTxContext,
 };
 
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
@@ -26,7 +27,7 @@ use mc_transaction_core::{
     constants::MINIMUM_FEE,
     membership_proofs::compute_implied_merkle_root,
     ring_signature::KeyImage,
-    tx::{Tx, TxOut, TxOutMembershipProof},
+    tx::{MintTx, Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
     Block, BlockContents, BlockSignature, BLOCK_VERSION,
 };
@@ -182,6 +183,10 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         Ok(TxContext::MobTx(MobTxContext::default()))
     }
 
+    fn client_mint_tx_propose(&self, _amount: u64) -> Result<TxContext> {
+        Ok(TxContext::MintTx(MintTxContext::default()))
+    }
+
     fn peer_tx_propose(&self, _msg: EnclaveMessage<PeerSession>) -> Result<Vec<TxContext>> {
         Ok(Vec::default())
     }
@@ -192,7 +197,19 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         _block_index: u64,
         _proofs: Vec<TxOutMembershipProof>,
     ) -> Result<(WellFormedEncryptedTx, WellFormedTxContext)> {
-        let tx = mc_util_serial::decode(&locally_encrypted_tx.0)?;
+        let tx: Tx = mc_util_serial::decode(&locally_encrypted_tx.0)?;
+        let well_formed_encrypted_tx = WellFormedEncryptedTx(locally_encrypted_tx.0);
+        let well_formed_tx_context = WellFormedTxContext::from(&tx);
+
+        Ok((well_formed_encrypted_tx, well_formed_tx_context))
+    }
+
+    fn tx_is_mint_tx_well_formed(
+        &self,
+        locally_encrypted_tx: LocallyEncryptedTx,
+        _block_index: u64,
+    ) -> Result<(WellFormedEncryptedTx, WellFormedTxContext)> {
+        let tx: MintTx = mc_util_serial::decode(&locally_encrypted_tx.0)?;
         let well_formed_encrypted_tx = WellFormedEncryptedTx(locally_encrypted_tx.0);
         let well_formed_tx_context = WellFormedTxContext::from(&tx);
 

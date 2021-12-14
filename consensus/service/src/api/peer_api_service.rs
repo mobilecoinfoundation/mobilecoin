@@ -149,7 +149,7 @@ impl PeerApiService {
 
         // Handle each transaction.
         for tx_context in tx_contexts {
-            let tx_hash = tx_context.tx_hash().clone();
+            let tx_hash = *tx_context.tx_hash();
 
             match self.tx_manager.insert(tx_context) {
                 Ok(tx_hash) => {

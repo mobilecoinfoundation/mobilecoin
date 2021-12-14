@@ -94,7 +94,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManagerImpl<E
                 // The enclave part of the well-formed check.
                 let (well_formed_encrypted_tx, well_formed_tx_context) =
                     self.enclave.tx_is_well_formed(
-                        mob_tx_context.locally_encrypted_tx.clone(),
+                        mob_tx_context.locally_encrypted_tx,
                         current_block_index,
                         highest_index_proofs,
                     )?;
@@ -107,13 +107,11 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManagerImpl<E
 
             TxContext::MintTx(mint_tx_context) => {
                 // TODO untrusted checks
-                println!("IS MINT WELL FORMED?");
                 let (well_formed_encrypted_tx, well_formed_tx_context) =
                     self.enclave.tx_is_mint_tx_well_formed(
-                        mint_tx_context.locally_encrypted_tx.clone(),
+                        mint_tx_context.locally_encrypted_tx,
                         1, // TODO current_block_index,
                     )?;
-                println!("IT IS");
 
                 Ok(CacheEntry {
                     encrypted_tx: well_formed_encrypted_tx,
@@ -166,19 +164,16 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
     /// Insert a transaction into the cache. The transaction must be
     /// well-formed.
     fn insert(&self, tx_context: TxContext) -> TxManagerResult<TxHash> {
-        let tx_hash = tx_context.tx_hash().clone();
-
         {
             let cache = self.lock_cache();
-            if let Some(entry) = cache.get(&tx_hash) {
+            if let Some(entry) = cache.get(tx_context.tx_hash()) {
                 // The transaction is well-formed and is in the cache.
                 return Ok(*entry.context.tx_hash());
             }
         }
 
-        println!("IS_WELL_FORMED");
+        let tx_hash = *tx_context.tx_hash();
         let new_entry = self.is_well_formed(tx_context)?;
-        println!("AND INTO THE CACHE");
 
         {
             let mut cache = self.lock_cache();
@@ -247,9 +242,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
 
         if let Some(context) = context_opt {
             let _timer = counters::VALIDATE_TX_TIME.start_timer();
-            println!("UNTRUSTED IS_VALID?");
             self.untrusted.is_valid(context)?;
-            println!("UNTRUSTED IS_VALID!");
             Ok(())
         } else {
             log::warn!(
@@ -274,7 +267,6 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             .collect::<Vec<_>>();
 
         // Perform the combine operation.
-        println!("COMBINING");
         Ok(self
             .untrusted
             .combine(&tx_contexts, MAX_TRANSACTIONS_PER_BLOCK))
@@ -320,7 +312,6 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             })
             .collect::<Result<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>, TxManagerError>>()?;
 
-        println!("FORMING BLOCK: {:?}", tx_hashes);
         let (block, block_contents, mut signature) = self
             .enclave
             .form_block(parent_block, &encrypted_txs_with_proofs)?;
@@ -346,14 +337,15 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
     ) -> TxManagerResult<EnclaveMessage<PeerSession>> {
         // Split `tx_hashes` into a list of found hashes and missing ones. This allows
         // us to return an error with the entire list of missing hashes.
+        let cache = self.lock_cache();
+
         let (encrypted_txs, not_found) = {
-            let cache = self.lock_cache();
             tx_hashes
                 .iter()
                 .map(|tx_hash| {
                     cache.get(tx_hash).map_or_else(
-                        || (*tx_hash, None),
-                        |entry| (*tx_hash, Some(entry.encrypted_tx().clone())),
+                        || (tx_hash, None),
+                        |entry| (tx_hash, Some(entry.encrypted_tx())),
                     )
                 })
                 .partition::<Vec<_>, _>(|(_tx_hash, result)| result.is_some())
@@ -361,19 +353,19 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
 
         // If we are missing any hashes, return error.
         if !not_found.is_empty() {
-            let not_found_tx_hashes = not_found.into_iter().map(|(tx_hash, _)| tx_hash).collect();
+            let not_found_tx_hashes = not_found.into_iter().map(|(tx_hash, _)| *tx_hash).collect();
             return Err(TxManagerError::NotInCache(not_found_tx_hashes));
         }
 
         // Proceed with producing encrypted txs for the given peer.
         let encrypted_txs: Vec<_> = encrypted_txs
             .into_iter()
-            .map(|(_, result)| result.unwrap())
+            .map(|(_, result)| result.unwrap().clone())
             .collect();
 
-        println!("TXS FOR PEER?");
+        drop(cache);
+
         let ret = self.enclave.txs_for_peer(&encrypted_txs, aad, peer)?;
-        println!("TXS FOR PEER!");
         Ok(ret)
     }
 

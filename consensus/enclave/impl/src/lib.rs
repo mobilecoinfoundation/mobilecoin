@@ -144,18 +144,18 @@ impl SgxConsensusEnclave {
 
     fn encrypt_well_formed_tx<R: RngCore + CryptoRng>(
         &self,
-        well_formed_tx: &WellFormedTx,
+        well_formed_tx: WellFormedTx,
         rng: &mut R,
     ) -> Result<WellFormedEncryptedTx> {
         // TODO maybe there's a more efficient way to do this that avoids this copy?
 
         let prost_well_formed_tx = match well_formed_tx {
             WellFormedTx::MobTx(tx) => ProstWellFormedTx {
-                mob_tx: Some(tx.clone()),
+                mob_tx: Some(tx),
                 ..Default::default()
             },
             WellFormedTx::MintTx(mint_tx) => ProstWellFormedTx {
-                mint_tx: Some(mint_tx.clone()),
+                mint_tx: Some(mint_tx),
                 ..Default::default()
             },
         };
@@ -475,7 +475,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // Convert into a well formed encrypted transaction + context.
         let well_formed_tx_context = WellFormedTxContext::from(&tx);
         let well_formed_tx = WellFormedTx::from(tx);
-        let well_formed_encrypted_tx = self.encrypt_well_formed_tx(&well_formed_tx, &mut csprng)?;
+        let well_formed_encrypted_tx = self.encrypt_well_formed_tx(well_formed_tx, &mut csprng)?;
 
         Ok((well_formed_encrypted_tx, well_formed_tx_context))
     }
@@ -501,7 +501,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // Convert into a well formed encrypted transaction + context.
         let well_formed_tx_context = WellFormedTxContext::from(&tx);
         let well_formed_tx = WellFormedTx::from(tx);
-        let well_formed_encrypted_tx = self.encrypt_well_formed_tx(&well_formed_tx, &mut csprng)?;
+        let well_formed_encrypted_tx = self.encrypt_well_formed_tx(well_formed_tx, &mut csprng)?;
 
         Ok((well_formed_encrypted_tx, well_formed_tx_context))
     }
@@ -585,8 +585,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                     WellFormedTx::MobTx(mob_tx) => Ok((mob_tx, proofs.clone())),
                     WellFormedTx::MintTx(mint_tx) => {
                         // This is where we should do something with the mint transactions.
-                        // We likely need to collect them into a separate list since the handling of MobTxs
-                        // and MintTxs is different.
+                        // We likely need to collect them into a separate list since the handling of
+                        // MobTxs and MintTxs is different.
                         panic!("todo {:?}", mint_tx);
                     }
                 }

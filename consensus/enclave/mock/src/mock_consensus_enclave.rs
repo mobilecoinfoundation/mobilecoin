@@ -56,6 +56,8 @@ mock! {
 
         fn client_tx_propose(&self, msg: EnclaveMessage<ClientSession>) -> ConsensusEnclaveResult<TxContext>;
 
+        fn client_mint_tx_propose(&self, amount: u64) -> ConsensusEnclaveResult<TxContext>;
+
         fn peer_tx_propose(&self, msg: EnclaveMessage<PeerSession>) -> ConsensusEnclaveResult<Vec<TxContext>>;
 
         fn tx_is_well_formed(
@@ -63,6 +65,12 @@ mock! {
             locally_encrypted_tx: LocallyEncryptedTx,
             block_index: u64,
             proofs: Vec<TxOutMembershipProof>,
+        ) -> ConsensusEnclaveResult<(WellFormedEncryptedTx, WellFormedTxContext)>;
+
+        fn tx_is_mint_tx_well_formed(
+            &self,
+            locally_encrypted_tx: LocallyEncryptedTx,
+            block_index: u64,
         ) -> ConsensusEnclaveResult<(WellFormedEncryptedTx, WellFormedTxContext)>;
 
         fn txs_for_peer(
