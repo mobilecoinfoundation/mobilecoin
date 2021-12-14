@@ -2,5 +2,7 @@
 
 #![feature(proc_macro_hygiene, decl_macro)]
 
+pub mod service;
+
 mod error;
 mod worker;
