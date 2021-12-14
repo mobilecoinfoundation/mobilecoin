@@ -6,6 +6,7 @@ syntax = "proto3";
 import "external.proto";
 
 package blockchain;
+option go_package = "mobilecoin/api";
 
 // Block ID.
 message BlockID {

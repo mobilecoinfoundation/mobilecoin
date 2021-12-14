@@ -5,6 +5,7 @@
 syntax = "proto3";
 
 package attest;
+option go_package = "mobilecoin/api";
 
 /// A server-authenticated service for SGX enclaves. The responder is the
 /// attesting enclave, and the client is unauthenticated. When described

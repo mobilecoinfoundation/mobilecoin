@@ -4,6 +4,7 @@
 syntax = "proto3";
 
 package report;
+option go_package = "mobilecoin/api";
 
 import "external.proto";
 
