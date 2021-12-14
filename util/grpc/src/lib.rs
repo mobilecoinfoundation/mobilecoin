@@ -81,7 +81,7 @@ pub fn send_result<T>(
 pub fn rpc_enclave_err<E: Display>(err: E, logger: &Logger) -> RpcStatus {
     // Return permission denied if there's anything wrong with the enclave, to force
     // re-attestation.
-    report_err_with_code(
+    report_warn_with_code(
         "Enclave Error",
         err,
         RpcStatusCode::PERMISSION_DENIED,
@@ -107,22 +107,27 @@ pub fn rpc_internal_error<S: Display, E: Display>(
     report_err_with_code(context, err, RpcStatusCode::INTERNAL, logger)
 }
 
+// Invalid arg is listed at debug level, because it can be triggered by bad
+// clients, and may not indicate an actionable issue with the servers.
 #[inline]
 pub fn rpc_invalid_arg_error<S: Display, E: Display>(
     context: S,
     err: E,
     logger: &Logger,
 ) -> RpcStatus {
-    report_err_with_code(context, err, RpcStatusCode::INVALID_ARGUMENT, logger)
+    report_debug_with_code(context, err, RpcStatusCode::INVALID_ARGUMENT, logger)
 }
 
+// Permissions error is listed at debug level, because it can be triggered by
+// clients in normal operation, and may not indicate an actionable issue with
+// the servers.
 #[inline]
 pub fn rpc_permissions_error<S: Display, E: Display>(
     context: S,
     err: E,
     logger: &Logger,
 ) -> RpcStatus {
-    report_err_with_code(context, err, RpcStatusCode::PERMISSION_DENIED, logger)
+    report_debug_with_code(context, err, RpcStatusCode::PERMISSION_DENIED, logger)
 }
 
 #[inline]
@@ -131,7 +136,7 @@ pub fn rpc_out_of_range_error<S: Display, E: Display>(
     err: E,
     logger: &Logger,
 ) -> RpcStatus {
-    report_err_with_code(context, err, RpcStatusCode::OUT_OF_RANGE, logger)
+    report_debug_with_code(context, err, RpcStatusCode::OUT_OF_RANGE, logger)
 }
 
 #[inline]
@@ -152,6 +157,30 @@ pub fn report_err_with_code<S: Display, E: Display>(
 ) -> RpcStatus {
     let err_str = format!("{}: {}", context, err);
     log::error!(logger, "{}", err_str);
+    RpcStatus::new(code, Some(err_str))
+}
+
+#[inline]
+pub fn report_warn_with_code<S: Display, E: Display>(
+    context: S,
+    err: E,
+    code: RpcStatusCode,
+    logger: &Logger,
+) -> RpcStatus {
+    let err_str = format!("{}: {}", context, err);
+    log::warn!(logger, "{}", err_str);
+    RpcStatus::new(code, Some(err_str))
+}
+
+#[inline]
+pub fn report_debug_with_code<S: Display, E: Display>(
+    context: S,
+    err: E,
+    code: RpcStatusCode,
+    logger: &Logger,
+) -> RpcStatus {
+    let err_str = format!("{}: {}", context, err);
+    log::debug!(logger, "{}", err_str);
     RpcStatus::new(code, Some(err_str))
 }
 
