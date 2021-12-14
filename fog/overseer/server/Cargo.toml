@@ -1,0 +1,44 @@
+[package]
+name = "mc-fog-overseer-server"
+version = "1.2.0-pre0"
+authors = ["MobileCoin"]
+edition = "2018"
+license = "GPL-3.0"
+
+[dependencies]
+# third-party
+displaydoc = { version = "0.2", default-features = false }
+grpcio = "0.9.0"
+retry = "1.3"
+rocket = { version = "0.4.5", default-features = false }
+
+# mc
+mc-api = { path = "../../../api"}
+mc-common = { path = "../../../common", features = ["loggers"] }
+mc-crypto-keys = { path = "../../../crypto/keys"}
+mc-transaction-core = { path = "../../../transaction/core" }
+
+# fog
+mc-fog-api = { path = "../../api" }
+mc-fog-ingest-client = { path = "../../ingest/client" }
+mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
+mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
+mc-fog-uri = { path = "../../uri" }
+
+[dev-dependencies]
+# third-party
+rand_core = "0.6"
+rand_hc = "0.3"
+tempdir = "0.3"
+url = "2.2.2"
+
+# mc
+mc-attest-net = { path = "../../../attest/net" }
+mc-watcher = { path = "../../../watcher" }
+mc-ledger-db = { path = "../../../ledger/db" }
+mc-util-from-random = { path = "../../../util/from-random" }
+
+# fog
+mc-fog-ingest-server = { path = "../../ingest/server" }
+mc-fog-ingest-enclave = { path = "../../ingest/enclave" }
+mc-fog-test-infra = { path = "../../test_infra" }
