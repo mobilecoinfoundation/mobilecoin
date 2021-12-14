@@ -308,14 +308,15 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
     ) -> TxManagerResult<EnclaveMessage<PeerSession>> {
         // Split `tx_hashes` into a list of found hashes and missing ones. This allows
         // us to return an error with the entire list of missing hashes.
+        let cache = self.lock_cache();
+
         let (encrypted_txs, not_found) = {
-            let cache = self.lock_cache();
             tx_hashes
                 .iter()
                 .map(|tx_hash| {
                     cache.get(tx_hash).map_or_else(
-                        || (*tx_hash, None),
-                        |entry| (*tx_hash, Some(entry.encrypted_tx().clone())),
+                        || (tx_hash, None),
+                        |entry| (tx_hash, Some(entry.encrypted_tx())),
                     )
                 })
                 .partition::<Vec<_>, _>(|(_tx_hash, result)| result.is_some())
@@ -323,15 +324,18 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
 
         // If we are missing any hashes, return error.
         if !not_found.is_empty() {
-            let not_found_tx_hashes = not_found.into_iter().map(|(tx_hash, _)| tx_hash).collect();
+            let not_found_tx_hashes = not_found.into_iter().map(|(tx_hash, _)| *tx_hash).collect();
             return Err(TxManagerError::NotInCache(not_found_tx_hashes));
         }
 
         // Proceed with producing encrypted txs for the given peer.
         let encrypted_txs: Vec<_> = encrypted_txs
             .into_iter()
-            .map(|(_, result)| result.unwrap())
+            .map(|(_, result)| result.unwrap().clone())
             .collect();
+
+        // Release the mutex before doing the enclave call.
+        drop(cache);
 
         Ok(self.enclave.txs_for_peer(&encrypted_txs, aad, peer)?)
     }
