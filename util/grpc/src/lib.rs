@@ -83,21 +83,6 @@ macro_rules! report_err_with_code(
     }}
 );
 
-/// The most common context strings for `report_err_with_code` are `Enclave
-/// Error` and database error
-#[inline]
-pub fn rpc_enclave_err<E: Display>(err: E, logger: &Logger) -> RpcStatus {
-    // Return permission denied if there's anything wrong with the enclave, to force
-    // re-attestation.
-    report_err_with_code!(
-        "Enclave Error",
-        err,
-        RpcStatusCode::PERMISSION_DENIED,
-        logger,
-        Level::Warning
-    )
-}
-
 /// Database errors are mapped to "Internal Error" and logged at error level
 #[inline]
 pub fn rpc_database_err<E: Display>(err: E, logger: &Logger) -> RpcStatus {
@@ -197,6 +182,37 @@ pub fn rpc_precondition_error<S: Display, E: Display>(
         RpcStatusCode::FAILED_PRECONDITION,
         logger,
         Level::Info
+    )
+}
+
+/// Unavailable error may be returned if e.g. an rpc call fails but could
+/// succeed if it is retried.
+///
+/// GRPC-core offers the following guidance:
+///
+/// Service implementors can use the following guidelines to decide between
+/// FAILED_PRECONDITION, ABORTED, and UNAVAILABLE:
+/// (a) Use UNAVAILABLE if the client can retry just the failing call.
+/// (b) Use ABORTED if the client should retry at a higher level (e.g., when a
+/// client-specified test-and-set fails, indicating the client should restart a
+/// read-modify-write sequence).
+/// (c) Use FAILED_PRECONDITION if the client should not retry until the system
+/// state has been explicitly fixed. E.g., if an "rmdir" fails because the
+/// directory is non-empty, FAILED_PRECONDITION should be returned since the
+/// client should not retry unless the files are deleted from the directory.
+
+#[inline]
+pub fn rpc_unavailable_error<S: Display, E: Display>(
+    context: S,
+    err: E,
+    logger: &Logger,
+) -> RpcStatus {
+    report_err_with_code!(
+        context,
+        err,
+        RpcStatusCode::UNAVAILABLE,
+        logger,
+        Level::Debug
     )
 }
 

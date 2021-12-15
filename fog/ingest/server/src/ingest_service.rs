@@ -2,7 +2,10 @@
 
 //! Implement the ingest grpc API
 
-use crate::{controller::IngestController, error::IngestServiceError};
+use crate::{
+    controller::IngestController,
+    error::{IngestServiceError, PeerBackupError},
+};
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_api::external;
 use mc_attest_net::RaClient;
@@ -14,11 +17,13 @@ use mc_fog_api::{
     ingest_common::{IngestSummary, SetPeersRequest},
     Empty,
 };
+use mc_fog_ingest_enclave_api::Error as EnclaveError;
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
 use mc_fog_uri::IngestPeerUri;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_util_grpc::{
-    rpc_database_err, rpc_invalid_arg_error, rpc_logger, rpc_precondition_error, send_result,
+    rpc_database_err, rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error,
+    rpc_precondition_error, rpc_unavailable_error, send_result,
 };
 use mc_util_metrics::SVC_COUNTERS;
 use protobuf::RepeatedField;
@@ -65,9 +70,10 @@ where
 
     /// Logic of proto api
     pub fn new_keys_impl(&mut self, logger: &Logger) -> Result<IngestSummary, RpcStatus> {
-        self.controller
-            .new_keys()
-            .map_err(|err| rpc_precondition_error("new_keys", err, logger))?;
+        self.controller.new_keys().map_err(|err| match err {
+            IngestServiceError::ServerNotIdle => rpc_precondition_error("new_keys", err, logger),
+            _ => rpc_internal_error("new_keys", err, logger),
+        })?;
 
         Ok(self.controller.get_ingest_summary())
     }
@@ -113,7 +119,26 @@ where
                     .num_blocks()
                     .map_err(|err| rpc_database_err(err, logger))?,
             )
-            .map_err(|err| rpc_precondition_error("activate", err, logger))?;
+            .map_err(|err| match err {
+                IngestServiceError::ServerNotIdle => {
+                    rpc_precondition_error("activate", err, logger)
+                }
+                IngestServiceError::Connection(_) => rpc_unavailable_error("activate", err, logger),
+                IngestServiceError::Backup(PeerBackupError::Connection(_)) => {
+                    rpc_unavailable_error("activate", err, logger)
+                }
+                IngestServiceError::Backup(PeerBackupError::CreatingNewIngressKey) => {
+                    rpc_unavailable_error("activate", err, logger)
+                }
+                IngestServiceError::Backup(PeerBackupError::AnotherActivePeer(_)) => {
+                    rpc_precondition_error("activate", err, logger)
+                }
+                IngestServiceError::Backup(_) => rpc_internal_error("activate", err, logger),
+                IngestServiceError::Enclave(EnclaveError::Attest(_)) => {
+                    rpc_permissions_error("activate", err, logger)
+                }
+                _ => rpc_internal_error("activate", err, logger),
+            })?;
 
         Ok(self.controller.get_ingest_summary())
     }
@@ -188,7 +213,16 @@ where
 
         self.controller
             .sync_keys_from_remote(&peer_uri)
-            .map_err(|err| rpc_database_err(err, logger))
+            .map_err(|err| match err {
+                IngestServiceError::ServerNotIdle => {
+                    rpc_precondition_error("activate", err, logger)
+                }
+                IngestServiceError::Connection(_) => rpc_unavailable_error("activate", err, logger),
+                IngestServiceError::Enclave(EnclaveError::Attest(_)) => {
+                    rpc_permissions_error("activate", err, logger)
+                }
+                _ => rpc_internal_error("activate", err, logger),
+            })
     }
 
     /// Retrieves the ingress public keys and filters according to the request's

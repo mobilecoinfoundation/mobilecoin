@@ -13,9 +13,13 @@ use mc_fog_api::{
     ingest_peer::*,
     Empty,
 };
+use mc_fog_ingest_enclave_api::Error as EnclaveError;
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
 use mc_fog_uri::IngestPeerUri;
-use mc_util_grpc::{rpc_enclave_err, rpc_invalid_arg_error, rpc_logger, send_result};
+use mc_util_grpc::{
+    rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error,
+    rpc_precondition_error, send_result,
+};
 use mc_util_metrics::SVC_COUNTERS;
 use std::{str::FromStr, sync::Arc};
 
@@ -82,7 +86,7 @@ where
         let (private_key, _) = self
             .controller
             .get_ingress_private_key(peer_session)
-            .map_err(|err| rpc_enclave_err(err, logger))?;
+            .map_err(|err| rpc_internal_error("get ingress private key", err, logger))?;
 
         Ok(private_key.into())
     }
@@ -93,11 +97,19 @@ where
         msg: Message,
         logger: &Logger,
     ) -> Result<IngestSummary, RpcStatus> {
-        log::debug!(&self.logger, "Now getting private key",);
+        log::debug!(&self.logger, "Now setting private key",);
 
         self.controller
             .set_ingress_private_key(msg.into())
-            .map_err(|err| rpc_enclave_err(err, logger))?;
+            .map_err(|err| match err {
+                IngestServiceError::ServerNotIdle => {
+                    rpc_precondition_error("set_ingress_private_key", err, logger)
+                }
+                IngestServiceError::Enclave(EnclaveError::Attest(_)) => {
+                    rpc_permissions_error("set_ingress_private_key", err, logger)
+                }
+                _ => rpc_internal_error("set_ingress_private_key", err, logger),
+            })?;
 
         Ok(self.controller.get_ingest_summary())
     }
