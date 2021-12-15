@@ -4,7 +4,7 @@
 
 use crate::{
     controller::IngestController,
-    error::{IngestServiceError, PeerBackupError},
+    error::{IngestServiceError as Error, PeerBackupError},
 };
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_api::external;
@@ -35,7 +35,7 @@ pub struct IngestService<
     R: RaClient + Send + Sync + 'static,
     DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
 > where
-    IngestServiceError: From<<DB as RecoveryDb>::Error>,
+    Error: From<<DB as RecoveryDb>::Error>,
 {
     controller: Arc<IngestController<R, DB>>,
     ledger_db: LedgerDB,
@@ -47,7 +47,7 @@ impl<
         DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
     > IngestService<R, DB>
 where
-    IngestServiceError: From<<DB as RecoveryDb>::Error>,
+    Error: From<<DB as RecoveryDb>::Error>,
 {
     /// Creates a new ingest node (but does not create sockets and start it
     /// etc.)
@@ -71,7 +71,7 @@ where
     /// Logic of proto api
     pub fn new_keys_impl(&mut self, logger: &Logger) -> Result<IngestSummary, RpcStatus> {
         self.controller.new_keys().map_err(|err| match err {
-            IngestServiceError::ServerNotIdle => rpc_precondition_error("new_keys", err, logger),
+            Error::ServerNotIdle => rpc_precondition_error("new_keys", err, logger),
             _ => rpc_internal_error("new_keys", err, logger),
         })?;
 
@@ -120,20 +120,21 @@ where
                     .map_err(|err| rpc_database_err(err, logger))?,
             )
             .map_err(|err| match err {
-                IngestServiceError::ServerNotIdle => {
+                // These are conditions under which it is incorrect for us to try to activate
+                Error::ServerNotIdle | Error::Backup(PeerBackupError::AnotherActivePeer(_)) => {
                     rpc_precondition_error("activate", err, logger)
                 }
-                IngestServiceError::Connection(_) |  IngestServiceError::Backup(PeerBackupError::Connection(_))  => rpc_unavailable_error("activate", err, logger),
-                IngestServiceError::Backup(PeerBackupError::CreatingNewIngressKey) => {
+                // Return UNAVAILABLE if there is a connection issue, or a retriable error
+                Error::Connection(_)
+                | Error::Backup(PeerBackupError::Connection(_))
+                | Error::Backup(PeerBackupError::CreatingNewIngressKey) => {
                     rpc_unavailable_error("activate", err, logger)
                 }
-                IngestServiceError::Backup(PeerBackupError::AnotherActivePeer(_)) => {
-                    rpc_precondition_error("activate", err, logger)
-                }
-                IngestServiceError::Backup(_) => rpc_internal_error("activate", err, logger),
-                IngestServiceError::Enclave(EnclaveError::Attest(_)) => {
+                // Return PERMISSION_DENIED if there is an attestation error
+                Error::Enclave(EnclaveError::Attest(_)) => {
                     rpc_permissions_error("activate", err, logger)
                 }
+                // return INTERNAL_ERROR for other errors
                 _ => rpc_internal_error("activate", err, logger),
             })?;
 
@@ -211,13 +212,11 @@ where
         self.controller
             .sync_keys_from_remote(&peer_uri)
             .map_err(|err| match err {
-                IngestServiceError::ServerNotIdle => {
+                Error::ServerNotIdle => {
                     rpc_precondition_error("sync_keys_from_remote", err, logger)
                 }
-                IngestServiceError::Connection(_) => {
-                    rpc_unavailable_error("sync_keys_from_remote", err, logger)
-                }
-                IngestServiceError::Enclave(EnclaveError::Attest(_)) => {
+                Error::Connection(_) => rpc_unavailable_error("sync_keys_from_remote", err, logger),
+                Error::Enclave(EnclaveError::Attest(_)) => {
                     rpc_permissions_error("sync_keys_from_remote", err, logger)
                 }
                 _ => rpc_internal_error("sync_keys_from_remote", err, logger),
@@ -273,7 +272,7 @@ impl<
         DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
     > mc_fog_api::ingest_grpc::AccountIngestApi for IngestService<R, DB>
 where
-    IngestServiceError: From<<DB as RecoveryDb>::Error>,
+    Error: From<<DB as RecoveryDb>::Error>,
 {
     fn get_status(&mut self, ctx: RpcContext, _request: Empty, sink: UnarySink<IngestSummary>) {
         let _timer = SVC_COUNTERS.req(&ctx);

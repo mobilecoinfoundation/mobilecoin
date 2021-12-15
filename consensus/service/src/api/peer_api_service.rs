@@ -251,14 +251,11 @@ impl ConsensusPeerApi for PeerApiService {
                         Ok(response)
                     }
 
-                    Err(peer_service_error) => match peer_service_error {
-                        PeerServiceError::Enclave(err) => match err {
-                            Error::Attest(_) => {
-                                Err(rpc_permissions_error("peer_tx_propose", err, logger))
-                            }
-                            _ => Err(rpc_internal_error("peer_tx_propose", err, logger)),
-                        },
-                        err => Err(rpc_internal_error("peer_tx_propose", err, logger)),
+                    Err(err) => match err {
+                        PeerServiceError::Enclave(Error::Attest(_)) => {
+                            Err(rpc_permissions_error("peer_tx_propose", err, logger))
+                        }
+                        _ => Err(rpc_internal_error("peer_tx_propose", err, logger)),
                     },
                 };
 
