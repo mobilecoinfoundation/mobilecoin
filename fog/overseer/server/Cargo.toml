@@ -5,12 +5,18 @@ authors = ["MobileCoin"]
 edition = "2018"
 license = "GPL-3.0"
 
+[[bin]]
+name = "start_overseer_server"
+path = "src/bin/main.rs"
+
 [dependencies]
 # third-party
 displaydoc = { version = "0.2", default-features = false }
 grpcio = "0.9.0"
 retry = "1.3"
 rocket = { version = "0.4.5", default-features = false }
+serde = "1"
+structopt = "0.3"
 
 # mc
 mc-api = { path = "../../../api"}

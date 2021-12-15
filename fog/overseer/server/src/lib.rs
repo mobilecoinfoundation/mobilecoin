@@ -2,6 +2,7 @@
 
 #![feature(proc_macro_hygiene, decl_macro)]
 
+pub mod config;
 pub mod server;
 pub mod service;
 

@@ -3869,6 +3869,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-fog-overseer-server"
+version = "1.1.0"
+dependencies = [
+ "displaydoc",
+ "grpcio",
+ "mc-api",
+ "mc-attest-net",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-fog-api",
+ "mc-fog-ingest-client",
+ "mc-fog-ingest-enclave",
+ "mc-fog-ingest-server",
+ "mc-fog-recovery-db-iface",
+ "mc-fog-sql-recovery-db",
+ "mc-fog-test-infra",
+ "mc-fog-uri",
+ "mc-ledger-db",
+ "mc-transaction-core",
+ "mc-util-from-random",
+ "mc-watcher",
+ "rand_core 0.6.3",
+ "rand_hc 0.3.1",
+ "retry",
+ "rocket",
+ "serde",
+ "structopt",
+ "tempdir",
+ "url 2.2.2",
+]
+
+[[package]]
 name = "mc-fog-recovery-db-iface"
 version = "1.2.0-pre0"
 dependencies = [
