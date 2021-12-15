@@ -8,12 +8,13 @@ pub use mc_consensus_enclave_api::{
 };
 
 use mc_attest_core::{
-    IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport, DEBUG_ENCLAVE,
+    IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
     PeerAuthResponse, PeerSession,
 };
+use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::ResponderId;
 use mc_crypto_keys::{Ed25519Public, X25519Public};
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;

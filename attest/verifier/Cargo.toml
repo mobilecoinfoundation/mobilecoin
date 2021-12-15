@@ -34,6 +34,9 @@ mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_dep
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 sha2 = { version = "0.9.8", default-features = false }
 
+[dev-dependencies]
+mc-util-encodings = { path = "../../util/encodings", default-features = false }
+
 [build-dependencies]
 mc-util-build-script = { path = "../../util/build/script" }
 mc-util-build-sgx = { path = "../../util/build/sgx" }

@@ -3,7 +3,7 @@
 //! Configuration parameters for the fog distribution utility
 
 use grpcio::EnvBuilder;
-use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{o, Logger};
 use mc_connection::{
     HardcodedCredentialsProvider, Result as ConnectionResult, SyncConnection, ThickClient,

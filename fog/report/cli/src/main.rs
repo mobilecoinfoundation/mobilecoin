@@ -16,7 +16,7 @@
 use binascii::bin2hex;
 use grpcio::EnvBuilder;
 use mc_account_keys::{AccountKey, PublicAddress};
-use mc_attest_core::{Verifier, DEBUG_ENCLAVE};
+use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{create_root_logger, log, Logger};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_api::report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_report;

@@ -18,6 +18,7 @@ mc-fog-types = { path = "../../types", default-features = false }
 # mobilecoin
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api", default-features = false }
+mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common" }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-enclave-boundary = { path = "../../../enclave-boundary" }

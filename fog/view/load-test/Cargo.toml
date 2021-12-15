@@ -16,7 +16,7 @@ structopt = "0.3"
 
 # mobilecoin
 mc-account-keys = { path = "../../../account-keys" }
-mc-attest-core = { path = "../../../attest/core" }
+mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-util-keyfile = { path = "../../../util/keyfile" }
 

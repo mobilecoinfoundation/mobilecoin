@@ -2,7 +2,7 @@
 
 //! mobilecoind daemon entry point
 
-use mc_attest_verifier:{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransactionsFetcher};

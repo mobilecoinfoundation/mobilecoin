@@ -6,8 +6,6 @@
 
 extern crate alloc;
 
-mod sim_anchors;
-
 cfg_if::cfg_if! {
     if #[cfg(feature = "sgx-sim")] {
         /// The build-time generated mock IAS signing root authority
@@ -21,7 +19,7 @@ cfg_if::cfg_if! {
         /// Whether or not enclaves should be run and validated in debug mode
         pub const DEBUG_ENCLAVE: bool = true;
         /// An array of zero-terminated signing certificate PEM files used as root anchors.
-        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[crate::IAS_SIM_ROOT_ANCHORS];
+        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[IAS_SIM_ROOT_ANCHORS];
     } else if #[cfg(feature = "ias-dev")] {
         /// Whether or not enclaves should be run and validated in debug mode
         pub const DEBUG_ENCLAVE: bool = true;
@@ -1238,7 +1236,7 @@ impl Verify<ReportBody> for VersionVerifier {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::ias::verify::VerificationSignature;
+    use mc_attest_core::VerificationSignature;
     use mc_sgx_types::{
         sgx_attributes_t, sgx_basename_t, sgx_cpu_svn_t, sgx_measurement_t, sgx_report_body_t,
         sgx_report_data_t,
@@ -1247,12 +1245,12 @@ mod test {
 
     extern crate std;
 
-    const BASE64_QUOTE: &str = include_str!("../../data/test/quote_ok.txt");
-    const BASE64_QUOTE2: &str = include_str!("../../data/test/quote_configuration_needed.txt");
-    const IAS_OK: &str = include_str!("../../data/test/ias_ok.json");
-    const IAS_CONFIG: &str = include_str!("../../data/test/ias_config.json");
-    const IAS_SW: &str = include_str!("../../data/test/ias_sw.json");
-    const IAS_CONFIG_SW: &str = include_str!("../../data/test/ias_config_sw.json");
+    const BASE64_QUOTE: &str = include_str!("../data/test/quote_ok.txt");
+    const BASE64_QUOTE2: &str = include_str!("../data/test/quote_configuration_needed.txt");
+    const IAS_OK: &str = include_str!("../data/test/ias_ok.json");
+    const IAS_CONFIG: &str = include_str!("../data/test/ias_config.json");
+    const IAS_SW: &str = include_str!("../data/test/ias_sw.json");
+    const IAS_CONFIG_SW: &str = include_str!("../data/test/ias_config_sw.json");
     const ONES: [u8; 64] = [0xffu8; 64];
     const REPORT_BODY_SRC: sgx_report_body_t = sgx_report_body_t {
         cpu_svn: sgx_cpu_svn_t {
@@ -1314,7 +1312,7 @@ mod test {
         ],
     };
     const TEST_ANCHORS: &[&str] = &[include_str!(
-        "../../data/Dev_AttestationReportSigningCACert.pem"
+        "../data/Dev_AttestationReportSigningCACert.pem"
     )];
 
     fn get_ias_report() -> VerificationReport {

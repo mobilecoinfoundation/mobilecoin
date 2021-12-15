@@ -32,6 +32,7 @@ mc-account-keys-slip10 = { path = "../account-keys/slip10" }
 mc-api = { path = "../api" }
 mc-attest-ake = { path = "../attest/ake" }
 mc-attest-core = { path = "../attest/core" }
+mc-attest-verifier = { path = "../attest/verifier" }
 mc-common = { path = "../common", features = ["std"] }
 mc-crypto-box = { path = "../crypto/box" }
 mc-crypto-keys = { path = "../crypto/keys" }

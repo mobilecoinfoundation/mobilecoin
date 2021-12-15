@@ -3,7 +3,7 @@
 //! Ledger Sync test app
 
 use mc_account_keys::AccountKey;
-use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::{logger::log, ResponderId};
 use mc_connection::{ConnectionManager, HardcodedCredentialsProvider, ThickClient};
 use mc_consensus_scp::{test_utils::test_node_id, QuorumSet};

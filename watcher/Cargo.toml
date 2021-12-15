@@ -15,6 +15,7 @@ path = "src/bin/db-dump.rs"
 [dependencies]
 mc-api = { path = "../api" }
 mc-attest-core = { path = "../attest/core" }
+mc-attest-verifier = { path = "../attest/verifier" }
 mc-common = { path = "../common", features = ["log"] }
 mc-connection = { path = "../connection" }
 mc-crypto-digestible = { path = "../crypto/digestible" }

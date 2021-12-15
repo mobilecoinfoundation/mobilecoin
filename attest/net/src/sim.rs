@@ -11,8 +11,8 @@ use mbedtls::{
 };
 use mc_attest_core::{
     EpidGroupId, IasNonce, Quote, QuoteSignType, SigRL, VerificationReport, VerificationSignature,
-    IAS_SIM_SIGNING_CHAIN, IAS_SIM_SIGNING_KEY,
 };
+use mc_attest_verifier::{IAS_SIM_SIGNING_CHAIN, IAS_SIM_SIGNING_KEY};
 use mc_util_encodings::ToBase64;
 use serde_json::json;
 use sha2::{digest::Digest, Sha256};

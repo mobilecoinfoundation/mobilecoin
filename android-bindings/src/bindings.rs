@@ -24,9 +24,10 @@ use mc_attest_ake::{
     AuthPending, AuthResponseInput, AuthResponseOutput, ClientInitiate, Ready, Start, Transition,
 };
 use mc_attest_core::{
-    MrEnclave, MrEnclaveVerifier, MrSigner, MrSignerVerifier, ReportData, VerificationReport,
-    VerificationReportData, VerificationSignature, Verifier, DEBUG_ENCLAVE,
+    MrEnclave, MrSigner, ReportData, VerificationReport, VerificationReportData,
+    VerificationSignature,
 };
+use mc_attest_verifier::{MrEnclaveVerifier, MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::ResponderId;
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic, X25519};

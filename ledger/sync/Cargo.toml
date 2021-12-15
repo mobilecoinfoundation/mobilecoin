@@ -11,7 +11,7 @@ path = "src/test_app/main.rs"
 [dependencies]
 mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }
-mc-attest-core = { path = "../../attest/core" }
+mc-attest-verifier = { path = "../../attest/verifier" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
