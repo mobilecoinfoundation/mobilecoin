@@ -215,13 +215,15 @@ where
             .sync_keys_from_remote(&peer_uri)
             .map_err(|err| match err {
                 IngestServiceError::ServerNotIdle => {
-                    rpc_precondition_error("activate", err, logger)
+                    rpc_precondition_error("sync_keys_from_remote", err, logger)
                 }
-                IngestServiceError::Connection(_) => rpc_unavailable_error("activate", err, logger),
+                IngestServiceError::Connection(_) => {
+                    rpc_unavailable_error("sync_keys_from_remote", err, logger)
+                }
                 IngestServiceError::Enclave(EnclaveError::Attest(_)) => {
-                    rpc_permissions_error("activate", err, logger)
+                    rpc_permissions_error("sync_keys_from_remote", err, logger)
                 }
-                _ => rpc_internal_error("activate", err, logger),
+                _ => rpc_internal_error("sync_keys_from_remote", err, logger),
             })
     }
 

@@ -86,7 +86,7 @@ where
         let (private_key, _) = self
             .controller
             .get_ingress_private_key(peer_session)
-            .map_err(|err| rpc_internal_error("get ingress private key", err, logger))?;
+            .map_err(|err| rpc_internal_error("get_ingress_private_key", err, logger))?;
 
         Ok(private_key.into())
     }
