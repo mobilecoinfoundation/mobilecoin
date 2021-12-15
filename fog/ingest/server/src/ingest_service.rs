@@ -123,10 +123,7 @@ where
                 IngestServiceError::ServerNotIdle => {
                     rpc_precondition_error("activate", err, logger)
                 }
-                IngestServiceError::Connection(_) => rpc_unavailable_error("activate", err, logger),
-                IngestServiceError::Backup(PeerBackupError::Connection(_)) => {
-                    rpc_unavailable_error("activate", err, logger)
-                }
+                IngestServiceError::Connection(_) |  IngestServiceError::Backup(PeerBackupError::Connection(_))  => rpc_unavailable_error("activate", err, logger),
                 IngestServiceError::Backup(PeerBackupError::CreatingNewIngressKey) => {
                     rpc_unavailable_error("activate", err, logger)
                 }
