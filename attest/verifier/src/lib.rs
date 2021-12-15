@@ -1,7 +1,13 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! Intel Attestation Report Verifier
+//! Intel Attestation Report Verifiers
+//!
+//! This crate contains a verification framework for examining a
+//! [`VerificationReport`](::mc_attest_core::VerificationReport) data for
+//! compliance with a pre-determined set of criteria, which is the core
+//! mechanism for authenticating attested connections.
 
+#![doc = include_str!("../README.md")]
 #![no_std]
 
 extern crate alloc;
