@@ -387,6 +387,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "block-buffer"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1d36a02058e76b040de25a4464ba1c80935655595b661505c8b39b664828b95"
+dependencies = [
+ "generic-array 0.14.4",
+]
+
+[[package]]
 name = "block-padding"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -927,6 +936,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2f4a431c5c9f662e1200b7c7f02c34e91361150e382089a8f2dec3ba680cbda"
 
 [[package]]
+name = "crypto-common"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "683d6b536309245c849479fba3da410962a43ed8e51c26b729208ec0ac2798d0"
+dependencies = [
+ "generic-array 0.14.4",
+]
+
+[[package]]
 name = "crypto-mac"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1208,6 +1226,17 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 dependencies = [
+ "generic-array 0.14.4",
+]
+
+[[package]]
+name = "digest"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b697d66081d42af4fba142d56918a3cb21dc8eb63372c6b85d14f44fb9c5979b"
+dependencies = [
+ "block-buffer 0.10.0",
+ "crypto-common",
  "generic-array 0.14.4",
 ]
 
@@ -2360,7 +2389,7 @@ dependencies = [
  "mc-util-uri",
  "protobuf",
  "rand_core 0.6.3",
- "sha2 0.9.8",
+ "sha2 0.10.0",
  "slip10_ed25519",
  "tiny-bip39",
  "zeroize",
@@ -2548,7 +2577,7 @@ dependencies = [
  "hkdf",
  "mc-account-keys",
  "mc-crypto-keys",
- "sha2 0.9.8",
+ "sha2 0.10.0",
  "slip10_ed25519",
  "tiny-bip39",
  "zeroize",
@@ -2600,7 +2629,7 @@ dependencies = [
  "mc-util-uri",
  "protobuf",
  "rand 0.8.4",
- "sha2 0.9.8",
+ "sha2 0.10.0",
  "slip10_ed25519",
  "tiny-bip39",
  "zeroize",
@@ -2661,7 +2690,7 @@ dependencies = [
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
  "serde",
- "sha2 0.9.8",
+ "sha2 0.10.0",
 ]
 
 [[package]]
@@ -2710,7 +2739,7 @@ dependencies = [
  "rand_hc 0.3.1",
  "rjson",
  "serde",
- "sha2 0.9.8",
+ "sha2 0.10.0",
  "subtle 2.4.1",
 ]
 
@@ -2744,7 +2773,7 @@ dependencies = [
  "rand 0.8.4",
  "reqwest",
  "serde_json",
- "sha2 0.9.8",
+ "sha2 0.10.0",
 ]
 
 [[package]]
@@ -2790,7 +2819,7 @@ dependencies = [
  "rand 0.8.4",
  "rand_hc 0.3.1",
  "serde",
- "sha2 0.9.8",
+ "sha2 0.10.0",
 ]
 
 [[package]]
@@ -2855,7 +2884,7 @@ dependencies = [
  "rand_hc 0.3.1",
  "retry",
  "secrecy",
- "sha2 0.9.8",
+ "sha2 0.10.0",
  "tempdir",
 ]
 
@@ -3213,7 +3242,7 @@ dependencies = [
  "semver 1.0.4",
  "serde",
  "serde_json",
- "sha2 0.9.8",
+ "sha2 0.10.0",
  "signature",
  "subtle 2.4.1",
  "tempdir",
@@ -3251,7 +3280,7 @@ dependencies = [
  "rand_hc 0.3.1",
  "secrecy",
  "serde",
- "sha2 0.9.8",
+ "sha2 0.10.0",
  "subtle 2.4.1",
  "zeroize",
 ]
@@ -3398,7 +3427,7 @@ dependencies = [
  "mc-util-serial",
  "mc-util-uri",
  "retry",
- "sha2 0.9.8",
+ "sha2 0.10.0",
 ]
 
 [[package]]
@@ -4744,7 +4773,7 @@ dependencies = [
  "rand 0.8.4",
  "rand_hc 0.3.1",
  "retry",
- "sha2 0.9.8",
+ "sha2 0.10.0",
 ]
 
 [[package]]
@@ -4779,7 +4808,7 @@ name = "mc-sgx-css"
 version = "1.2.0-pre0"
 dependencies = [
  "displaydoc",
- "sha2 0.9.8",
+ "sha2 0.10.0",
 ]
 
 [[package]]
@@ -4958,7 +4987,7 @@ dependencies = [
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
  "serde",
- "sha2 0.9.8",
+ "sha2 0.10.0",
  "subtle 2.4.1",
  "tempdir",
  "zeroize",
@@ -5000,7 +5029,7 @@ dependencies = [
  "prost",
  "rand 0.8.4",
  "rand_core 0.6.3",
- "sha2 0.9.8",
+ "sha2 0.10.0",
  "subtle 2.4.1",
  "yaml-rust",
  "zeroize",
@@ -5137,7 +5166,7 @@ dependencies = [
  "prometheus",
  "protobuf",
  "rand 0.8.4",
- "sha2 0.9.8",
+ "sha2 0.10.0",
  "signal-hook",
  "subtle 2.4.1",
  "tempfile",
@@ -7105,6 +7134,17 @@ dependencies = [
  "cpufeatures",
  "digest 0.9.0",
  "opaque-debug 0.3.0",
+]
+
+[[package]]
+name = "sha2"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "900d964dd36bb15bcf2f2b35694c072feab74969a54f2bbeec7a2d725d2bdcb6"
+dependencies = [
+ "cfg-if 1.0.0",
+ "cpufeatures",
+ "digest 0.10.1",
  "sha2-asm",
 ]
 

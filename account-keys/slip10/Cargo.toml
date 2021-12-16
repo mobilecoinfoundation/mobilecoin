@@ -13,7 +13,7 @@ mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 
 displaydoc = { version = "0.2", default-features = false }
 hkdf = "0.9"
-sha2 = "0.9.8"
+sha2 = "0.10.0"
 slip10_ed25519 = "0.1"
 tiny-bip39 = "0.8"
 zeroize = "1.4"

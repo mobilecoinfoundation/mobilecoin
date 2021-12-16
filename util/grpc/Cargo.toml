@@ -27,7 +27,7 @@ lazy_static = "1.4"
 prometheus = "0.13"
 protobuf = "2.22.1"
 rand = "0.8"
-sha2 = "0.9.8"
+sha2 = "0.10.0"
 signal-hook = "0.3"
 subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
 zeroize = { version = "1", default-features = false }
