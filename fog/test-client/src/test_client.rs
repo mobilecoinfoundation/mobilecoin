@@ -91,7 +91,7 @@ pub struct TestClient {
     fog_ledger_sig: Option<Signature>,
     fog_view_sig: Option<Signature>,
     tx_info: Arc<TxInfo>,
-    healthy_tracker: Arc<HealthTracker>,
+    health_tracker: Arc<HealthTracker>,
     logger: Logger,
 }
 
@@ -119,7 +119,7 @@ impl TestClient {
         // The test client uses accounts_keys.len() many clients in round robin
         // fashion. If we set the healing time of health tracker to be this number,
         // then we will heal when every client has successfully transferred again.
-        let healthy_tracker = Arc::new(HealthTracker::new(account_keys.len()));
+        let health_tracker = Arc::new(HealthTracker::new(account_keys.len()));
         Self {
             policy,
             account_keys,
@@ -132,7 +132,7 @@ impl TestClient {
             fog_ledger_sig: None,
             fog_view_sig: None,
             tx_info,
-            healthy_tracker,
+            health_tracker,
         }
     }
 
@@ -301,7 +301,7 @@ impl TestClient {
                         counters::TX_CONFIRMED_DEADLINE_EXCEEDED_COUNT.inc();
                         // Announce unhealthy status once the deadline is exceeded, even if we don't
                         // fail fast
-                        self.healthy_tracker.announce_failure();
+                        self.health_tracker.announce_failure();
                         log::error!(
                             self.logger,
                             "TX appear deadline ({:?}) was exceeded: {}",
@@ -377,7 +377,7 @@ impl TestClient {
                     counters::TX_RECEIVED_DEADLINE_EXCEEDED_COUNT.inc();
                     // Announce unhealthy status once the deadline is exceeded, even if we don't
                     // fail fast
-                    self.healthy_tracker.announce_failure();
+                    self.health_tracker.announce_failure();
                     log::error!(
                         self.logger,
                         "TX receive deadline ({:?}) was exceeded: {}",
@@ -511,7 +511,7 @@ impl TestClient {
             self.policy.clone(),
             Some(src_address_hash),
             self.tx_info.clone(),
-            self.healthy_tracker.clone(),
+            self.health_tracker.clone(),
             self.logger.clone(),
             Context::current(),
         );
@@ -672,7 +672,7 @@ impl TestClient {
                 Err(err) => {
                     log::error!(self.logger, "Transfer failed: {}", err);
                     counters::TX_FAILURE_COUNT.inc();
-                    self.healthy_tracker.announce_failure();
+                    self.health_tracker.announce_failure();
                     match err {
                         TestClientError::ZeroBalance => {
                             counters::ZERO_BALANCE_COUNT.inc();
@@ -715,7 +715,7 @@ impl TestClient {
             }
 
             ti += 1;
-            self.healthy_tracker.set_counter(ti);
+            self.health_tracker.set_counter(ti);
             std::thread::sleep(period);
         }
     }
@@ -753,7 +753,7 @@ impl ReceiveTxWorker {
         policy: TestClientPolicy,
         expected_memo_contents: Option<ShortAddressHash>,
         tx_info: Arc<TxInfo>,
-        healthy_tracker: Arc<HealthTracker>,
+        health_tracker: Arc<HealthTracker>,
         logger: Logger,
         parent_context: Context,
     ) -> Self {
@@ -849,7 +849,7 @@ impl ReceiveTxWorker {
                             counters::TX_RECEIVED_DEADLINE_EXCEEDED_COUNT.inc();
                             // Announce unhealthy status once the deadline is exceeded, even if we
                             // don't fail fast
-                            healthy_tracker.announce_failure();
+                            health_tracker.announce_failure();
                             log::error!(
                                 logger,
                                 "TX receive deadline ({:?}) was exceeded: {}",
@@ -980,7 +980,7 @@ impl core::fmt::Display for TxInfo {
     }
 }
 
-/// Object which manages the IS_HEALTHY gauge
+/// Object which manages the LAST_POLLING_SUCCESSFUL gauge
 ///
 /// * If a failure is observed, we are unhealthy (immediately)
 /// * If no failure is observed for a long enough time, we are healthy again
@@ -1003,12 +1003,12 @@ pub struct HealthTracker {
 
 impl HealthTracker {
     /// Make a new healthy tracker.
-    /// Sets IS_HEALTHY to true initially.
+    /// Sets LAST_POLLING_SUCCESSFUL to true initially.
     ///
     /// Takes "healing time" which is the number of successful transfers before
     /// we consider ourselves healthy again
     pub fn new(healing_time: usize) -> Self {
-        counters::IS_HEALTHY.set(1);
+        counters::LAST_POLLING_SUCCESSFUL.set(1);
         Self {
             healing_time,
             ..Default::default()
@@ -1025,7 +1025,7 @@ impl HealthTracker {
         if self.have_failure.load(Ordering::SeqCst)
             && self.last_failure.load(Ordering::SeqCst) + self.healing_time <= counter
         {
-            counters::IS_HEALTHY.set(1);
+            counters::LAST_POLLING_SUCCESSFUL.set(1);
         }
     }
 
@@ -1035,6 +1035,6 @@ impl HealthTracker {
             .store(self.counter.load(Ordering::SeqCst), Ordering::SeqCst);
         // Store have_failure only after writing to last_failure
         self.have_failure.store(true, Ordering::SeqCst);
-        counters::IS_HEALTHY.set(0);
+        counters::LAST_POLLING_SUCCESSFUL.set(0);
     }
 }
