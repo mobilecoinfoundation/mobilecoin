@@ -98,6 +98,7 @@ pub fn rpc_enclave_err<E: Display>(err: E, logger: &Logger) -> RpcStatus {
     )
 }
 
+/// Database errors are mapped to "Internal Error" and logged at error level
 #[inline]
 pub fn rpc_database_err<E: Display>(err: E, logger: &Logger) -> RpcStatus {
     report_err_with_code!(
@@ -109,9 +110,9 @@ pub fn rpc_database_err<E: Display>(err: E, logger: &Logger) -> RpcStatus {
     )
 }
 
-/// More general helpers which reduces boilerplate when reporting errors that
-/// don't implement the trait -- or, when the type of the error doesn't always
-/// indicate what kind of error. For instance deserialization might sometimes be
+/// More general helpers which reduces boilerplate when reporting errors.
+/// The type of the error doesn't always indicate what kind of error code to
+/// use. For instance deserialization might sometimes be
 /// invalid input and sometimes an internal or database error.
 #[inline]
 pub fn rpc_internal_error<S: Display, E: Display>(
@@ -122,6 +123,8 @@ pub fn rpc_internal_error<S: Display, E: Display>(
     report_err_with_code!(context, err, RpcStatusCode::INTERNAL, logger, Level::Error)
 }
 
+// Invalid arg is listed at debug level, because it can be triggered by bad
+// clients, and may not indicate an actionable issue with the servers.
 #[inline]
 pub fn rpc_invalid_arg_error<S: Display, E: Display>(
     context: S,
@@ -133,10 +136,13 @@ pub fn rpc_invalid_arg_error<S: Display, E: Display>(
         err,
         RpcStatusCode::INVALID_ARGUMENT,
         logger,
-        Level::Info
+        Level::Debug
     )
 }
 
+// Permissions error is listed at debug level, because it can be triggered by
+// clients in normal operation, and may not indicate an actionable issue with
+// the servers.
 #[inline]
 pub fn rpc_permissions_error<S: Display, E: Display>(
     context: S,
@@ -148,10 +154,15 @@ pub fn rpc_permissions_error<S: Display, E: Display>(
         err,
         RpcStatusCode::PERMISSION_DENIED,
         logger,
-        Level::Info
+        Level::Debug
     )
 }
 
+/// Out-of-range error occurs when a client makes a request that is out of
+/// bounds. This is a separate error from invalid arg because it may help them
+/// handle the error more easily.
+/// This is logged at debug level because it likely doesn't indicate an
+/// actionable issue with the servers.
 #[inline]
 pub fn rpc_out_of_range_error<S: Display, E: Display>(
     context: S,
@@ -163,10 +174,17 @@ pub fn rpc_out_of_range_error<S: Display, E: Display>(
         err,
         RpcStatusCode::OUT_OF_RANGE,
         logger,
-        Level::Info
+        Level::Debug
     )
 }
 
+/// Precondition error occurs when a client makes a request that can't be
+/// satisfied for the server's current state. For example, trying to activate an
+/// ingest server that is already activated might return this error.
+///
+/// This is logged at info level so that it is visible to the operator, but
+/// doesn't trigger an alert or indicate a problem that requires action to
+/// address.
 #[inline]
 pub fn rpc_precondition_error<S: Display, E: Display>(
     context: S,

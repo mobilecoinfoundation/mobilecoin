@@ -34,6 +34,7 @@ mc-util-parse = { path = "../../util/parse" }
 mc-util-metered-channel = { path = "../../util/metered-channel" }
 mc-util-metrics = { path = "../../util/metrics" }
 mc-util-serial = { path = "../../util/serial" }
+mc-util-telemetry = { path = "../../util/telemetry", features = ["jaeger"] }
 mc-util-uri = { path = "../../util/uri" }
 
 base64 = "0.13"

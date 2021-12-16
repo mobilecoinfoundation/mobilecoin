@@ -1,0 +1,18 @@
+[package]
+name = "mc-util-telemetry"
+version = "1.2.0-pre0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[features]
+jaeger = ["opentelemetry-jaeger"]
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+cfg-if = "1.0"
+displaydoc = "0.2"
+hostname = "0.3.1"
+opentelemetry = "0.16"
+opentelemetry-jaeger = { version = "0.15", features = ["collector_client", "isahc"], optional = true }

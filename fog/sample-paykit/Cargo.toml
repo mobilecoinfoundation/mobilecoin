@@ -30,6 +30,7 @@ mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-std = { path = "../../transaction/std" }
 mc-util-grpc = { path = "../../util/grpc" }
 mc-util-keyfile = { path = "../../util/keyfile" }
+mc-util-telemetry = { path = "../../util/telemetry" }
 mc-util-uri = { path = "../../util/uri" }
 
 # fog
