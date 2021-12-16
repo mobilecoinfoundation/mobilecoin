@@ -785,7 +785,7 @@ dependencies = [
  "clap",
  "criterion-plot",
  "csv",
- "itertools 0.10.1",
+ "itertools",
  "lazy_static",
  "num-traits",
  "oorandom",
@@ -807,7 +807,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d00996de9f2f7559f7f4dc286073197f83e92256a59ed395f9aac01fe717da57"
 dependencies = [
  "cast",
- "itertools 0.10.1",
+ "itertools",
 ]
 
 [[package]]
@@ -2214,18 +2214,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.9.0"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69ddb889f9d0d08a67338271fa9b62996bc788c7796a5c18cf057420aaed5eaf"
+checksum = "a9a9d19fa1e79b6215ff29b9d6880b706147f16e9b1dbb1e4e5947b5b02bc5e3"
 dependencies = [
  "either",
 ]
@@ -3516,7 +3507,7 @@ dependencies = [
  "futures 0.3.17",
  "grpcio",
  "hex",
- "itertools 0.10.1",
+ "itertools",
  "lazy_static",
  "maplit",
  "mc-api",
@@ -5189,7 +5180,7 @@ dependencies = [
 name = "mc-util-parse"
 version = "1.2.0-pre0"
 dependencies = [
- "itertools 0.10.1",
+ "itertools",
  "mc-sgx-css",
 ]
 
@@ -5227,7 +5218,7 @@ dependencies = [
 name = "mc-util-test-helper"
 version = "1.2.0-pre0"
 dependencies = [
- "itertools 0.9.0",
+ "itertools",
  "lazy_static",
  "mc-account-keys",
  "mc-common",
@@ -6013,7 +6004,7 @@ checksum = "5c6ce811d0b2e103743eec01db1c50612221f173084ce2f7941053e94b6bb474"
 dependencies = [
  "difflib",
  "float-cmp 0.9.0",
- "itertools 0.10.1",
+ "itertools",
  "normalize-line-endings",
  "predicates-core",
  "regex",
@@ -6155,7 +6146,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9cc1a3263e07e0bf68e96268f37665207b49560d98739662cdfaae215c720fe"
 dependencies = [
  "anyhow",
- "itertools 0.10.1",
+ "itertools",
  "proc-macro2 1.0.32",
  "quote 1.0.10",
  "syn 1.0.81",
