@@ -1,32 +1,52 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! Intel Attestation Report Verifier
+//! Intel Attestation Report Verifiers
+//!
+//! This crate contains a verification framework for examining a
+//! [`VerificationReport`](::mc_attest_core::VerificationReport) data for
+//! compliance with a pre-determined set of criteria, which is the core
+//! mechanism for authenticating attested connections.
 
-use alloc::vec;
+#![doc = include_str!("../README.md")]
+#![no_std]
 
-use crate::{
-    error::{IasQuoteError, IasQuoteResult, VerifyError},
-    ias::verify::{VerificationReport, VerificationReportData},
-    nonce::IasNonce,
-    quote::{Quote, QuoteSignType},
-    types::{
-        attributes::Attributes,
-        basename::Basename,
-        config_id::ConfigId,
-        cpu_svn::CpuSecurityVersion,
-        epid_group_id::EpidGroupId,
-        ext_prod_id::ExtendedProductId,
-        family_id::FamilyId,
-        measurement::{MrEnclave, MrSigner},
-        report_body::ReportBody,
-        report_data::ReportDataMask,
-        ConfigSecurityVersion, MiscSelect, ProductId, SecurityVersion,
-    },
-    IAS_SIGNING_ROOT_CERT_PEMS,
-};
+extern crate alloc;
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "sgx-sim")] {
+        /// The build-time generated mock IAS signing root authority
+        pub const IAS_SIM_ROOT_ANCHORS: &str =
+            concat!(include_str!("../data/sim/root_anchor.pem"), "\0");
+        /// The build-time generated mock IAS signing certificate chain
+        pub const IAS_SIM_SIGNING_CHAIN: &str = concat!(include_str!("../data/sim/chain.pem"), "\0");
+        /// The build-time generated mock IAS signing private key
+        pub const IAS_SIM_SIGNING_KEY: &str = concat!(include_str!("../data/sim/signer.key"), "\0");
+
+        /// Whether or not enclaves should be run and validated in debug mode
+        pub const DEBUG_ENCLAVE: bool = true;
+        /// An array of zero-terminated signing certificate PEM files used as root anchors.
+        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[IAS_SIM_ROOT_ANCHORS];
+    } else if #[cfg(feature = "ias-dev")] {
+        /// Whether or not enclaves should be run and validated in debug mode
+        pub const DEBUG_ENCLAVE: bool = true;
+        /// An array of zero-terminated signing certificate PEM files used as root anchors.
+        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[concat!(include_str!(
+            "../data/Dev_AttestationReportSigningCACert.pem"
+        ), "\0")];
+    } else {
+        /// Debug enclaves in prod mode are not supported.
+        pub const DEBUG_ENCLAVE: bool = false;
+        /// An array of zero-terminated signing certificate PEM files used as root anchors.
+        pub const IAS_SIGNING_ROOT_CERT_PEMS: &[&str] = &[concat!(include_str!(
+            "../data/AttestationReportSigningCACert.pem"
+        ), "\0")];
+    }
+}
+
 use alloc::{
     borrow::ToOwned,
     string::{String, ToString},
+    vec,
     vec::Vec,
 };
 use core::convert::TryFrom;
@@ -38,7 +58,12 @@ use mbedtls::{
     x509::{Certificate, Profile},
     Error as TlsError,
 };
-
+use mc_attest_core::{
+    Attributes, Basename, ConfigId, ConfigSecurityVersion, CpuSecurityVersion, EpidGroupId,
+    ExtendedProductId, FamilyId, IasNonce, IasQuoteError, IasQuoteResult, MiscSelect, MrEnclave,
+    MrSigner, ProductId, Quote, QuoteSignType, ReportBody, ReportDataMask, SecurityVersion,
+    VerificationReport, VerificationReportData, VerifyError,
+};
 use mc_sgx_css::Signature;
 use mc_sgx_types::SGX_FLAGS_DEBUG;
 use serde::{Deserialize, Serialize};
@@ -1217,7 +1242,7 @@ impl Verify<ReportBody> for VersionVerifier {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::ias::verify::VerificationSignature;
+    use mc_attest_core::VerificationSignature;
     use mc_sgx_types::{
         sgx_attributes_t, sgx_basename_t, sgx_cpu_svn_t, sgx_measurement_t, sgx_report_body_t,
         sgx_report_data_t,
@@ -1226,12 +1251,12 @@ mod test {
 
     extern crate std;
 
-    const BASE64_QUOTE: &str = include_str!("../../data/test/quote_ok.txt");
-    const BASE64_QUOTE2: &str = include_str!("../../data/test/quote_configuration_needed.txt");
-    const IAS_OK: &str = include_str!("../../data/test/ias_ok.json");
-    const IAS_CONFIG: &str = include_str!("../../data/test/ias_config.json");
-    const IAS_SW: &str = include_str!("../../data/test/ias_sw.json");
-    const IAS_CONFIG_SW: &str = include_str!("../../data/test/ias_config_sw.json");
+    const BASE64_QUOTE: &str = include_str!("../data/test/quote_ok.txt");
+    const BASE64_QUOTE2: &str = include_str!("../data/test/quote_configuration_needed.txt");
+    const IAS_OK: &str = include_str!("../data/test/ias_ok.json");
+    const IAS_CONFIG: &str = include_str!("../data/test/ias_config.json");
+    const IAS_SW: &str = include_str!("../data/test/ias_sw.json");
+    const IAS_CONFIG_SW: &str = include_str!("../data/test/ias_config_sw.json");
     const ONES: [u8; 64] = [0xffu8; 64];
     const REPORT_BODY_SRC: sgx_report_body_t = sgx_report_body_t {
         cpu_svn: sgx_cpu_svn_t {
@@ -1293,7 +1318,7 @@ mod test {
         ],
     };
     const TEST_ANCHORS: &[&str] = &[include_str!(
-        "../../data/Dev_AttestationReportSigningCACert.pem"
+        "../data/Dev_AttestationReportSigningCACert.pem"
     )];
 
     fn get_ias_report() -> VerificationReport {

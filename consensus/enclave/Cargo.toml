@@ -8,6 +8,7 @@ description = "MobileCoin Consensus Enclave - Application Code"
 [dependencies]
 mc-attest-core = { path = "../../attest/core" }
 mc-attest-enclave-api = { path = "../../attest/enclave-api" }
+mc-attest-verifier = { path = "../../attest/verifier" }
 mc-common = { path = "../../common" }
 mc-consensus-enclave-api = { path = "./api" }
 mc-consensus-enclave-edl = { path = "./edl"}

@@ -9,7 +9,7 @@ use crate::{
 };
 use core::{convert::TryFrom, result::Result as StdResult, str::FromStr};
 use mc_account_keys::{AccountKey, PublicAddress};
-use mc_attest_core::Verifier;
+use mc_attest_verifier::Verifier;
 use mc_common::{
     logger::{log, Logger},
     HashSet,

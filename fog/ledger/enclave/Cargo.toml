@@ -8,6 +8,7 @@ license = "GPL-3.0"
 [dependencies]
 # mobilecoin
 mc-attest-core = { path = "../../../attest/core" }
+mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
 mc-common = { path = "../../../common" }
 mc-crypto-keys = { path = "../../../crypto/keys" }

@@ -14,6 +14,7 @@ path = "src/bin/main.rs"
 [dependencies]
 mc-attest-api = { path = "../../attest/api" }
 mc-attest-core = { path = "../../attest/core" }
+mc-attest-verifier = { path = "../../attest/verifier" }
 mc-attest-enclave-api = { path = "../../attest/enclave-api" }
 mc-attest-net = { path = "../../attest/net" }
 mc-common = { path = "../../common", features = ["log"] }

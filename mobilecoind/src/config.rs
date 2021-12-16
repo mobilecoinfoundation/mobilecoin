@@ -3,7 +3,7 @@
 //! Configuration parameters for mobilecoind
 
 use displaydoc::Display;
-use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::{logger::Logger, ResponderId};
 use mc_connection::{ConnectionManager, HardcodedCredentialsProvider, ThickClient};
 use mc_consensus_scp::QuorumSet;

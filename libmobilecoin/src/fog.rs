@@ -4,7 +4,7 @@ use crate::{attest::McVerifier, common::*, keys::McPublicAddress, LibMcError};
 use core::convert::TryFrom;
 use libc::ssize_t;
 use mc_account_keys::PublicAddress;
-use mc_attest_core::Verifier;
+use mc_attest_verifier::Verifier;
 use mc_crypto_keys::{ReprBytes, RistrettoPrivate, RistrettoPublic};
 use mc_fog_kex_rng::{BufferedRng, KexRngPubkey, NewFromKex, StoredRng, VersionedKexRng};
 use mc_fog_report_validation::{

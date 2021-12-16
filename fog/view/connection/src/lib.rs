@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use grpcio::{ChannelBuilder, Environment};
-use mc_attest_core::Verifier;
+use mc_attest_verifier::Verifier;
 use mc_common::{
     logger::{log, o, Logger},
     trace_time,

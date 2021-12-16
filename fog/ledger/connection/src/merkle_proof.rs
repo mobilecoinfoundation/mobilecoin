@@ -3,7 +3,7 @@
 use super::Error;
 use displaydoc::Display;
 use grpcio::{ChannelBuilder, Environment};
-use mc_attest_core::Verifier;
+use mc_attest_verifier::Verifier;
 use mc_common::logger::{o, Logger};
 use mc_fog_api::ledger_grpc::FogMerkleProofApiClient;
 use mc_fog_enclave_connection::EnclaveConnection;

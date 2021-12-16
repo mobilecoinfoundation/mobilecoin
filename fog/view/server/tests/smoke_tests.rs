@@ -8,8 +8,8 @@
 // It exercises both the ingest enclave, and the fog-related crypto that makes
 // its way into the client.
 
-use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_attest_net::{Client as AttestClient, RaClient};
+use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::{
     logger::{log, test_with_logger, Logger},
     time::SystemTimeProvider,

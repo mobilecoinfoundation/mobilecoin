@@ -2,8 +2,8 @@
 
 //! Entrypoint for the MobileCoin server.
 
-use mc_attest_core::DEBUG_ENCLAVE;
 use mc_attest_net::{Client, RaClient};
+use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{
     logger::{create_app_logger, log, o},
     time::SystemTimeProvider,

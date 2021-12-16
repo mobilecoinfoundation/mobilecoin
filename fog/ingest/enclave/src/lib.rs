@@ -11,9 +11,10 @@ pub use mc_fog_ingest_enclave_api::{
 };
 
 use mc_attest_core::{
-    IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport, DEBUG_ENCLAVE,
+    IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
+use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::ResponderId;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic, X25519Public};
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;

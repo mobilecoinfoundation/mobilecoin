@@ -4,7 +4,8 @@
 #![doc = include_str!("../README.md")]
 
 use core::convert::TryFrom;
-use mc_attest_core::{MrEnclaveVerifier, MrSignerVerifier, SecurityVersion};
+use mc_attest_core::SecurityVersion;
+use mc_attest_verifier::{MrEnclaveVerifier, MrSignerVerifier};
 use mc_sgx_css::Signature;
 
 pub fn sigstruct() -> Signature {
