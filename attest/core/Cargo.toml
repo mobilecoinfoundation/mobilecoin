@@ -36,7 +36,7 @@ displaydoc = { version = "0.2", default-features = false }
 hex_fmt = "0.3"
 rjson = "0.3.1"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-sha2 = { version = "0.9.8", default-features = false }
+sha2 = { version = "0.10.0", default-features = false }
 subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
 prost = { version = "0.9", default-features = false }
 
