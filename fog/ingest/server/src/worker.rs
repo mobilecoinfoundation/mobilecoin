@@ -7,6 +7,9 @@ use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_sgx_report_cache_untrusted::REPORT_REFRESH_INTERVAL;
 use mc_transaction_core::BlockIndex;
+use mc_util_telemetry::{
+    block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Key, Span, Tracer,
+};
 use mc_watcher::watcher_db::WatcherDB;
 use std::{
     sync::{
@@ -14,8 +17,11 @@ use std::{
         Arc,
     },
     thread::JoinHandle,
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime},
 };
+
+/// Telemetry: block index currently being worked on.
+const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
 
 /// The ingest worker is a thread responsible for driving the polling loop which
 /// checks if there are new blocks in the ledger to be processed
@@ -84,6 +90,8 @@ impl IngestWorker {
                         continue;
                     }
 
+                    let start_time = SystemTime::now();
+
                     match db.get_block_data(next_block_index) {
                         Err(LedgerError::NotFound) => {
                             if let Some(rec) = &mut last_not_found_log {
@@ -126,15 +134,32 @@ impl IngestWorker {
                                 log::warn!(logger, "Failed updating ledger db metrics: {}", err);
                             }
 
-                            // Get the timestamp for the block.
-                            let timestamp =
-                                watcher.poll_block_timestamp(next_block_index, watcher_timeout);
+                            // Tracing
+                            let tracer = tracer!();
 
-                            controller.process_next_block(
-                                block_data.block(),
-                                block_data.contents(),
-                                timestamp,
+                            let mut span =
+                                block_span_builder(&tracer, "poll_block", next_block_index)
+                                    .with_start_time(start_time)
+                                    .start(&tracer);
+
+                            span.set_attribute(
+                                TELEMETRY_BLOCK_INDEX_KEY.i64(next_block_index as i64),
                             );
+
+                            let _active = mark_span_as_active(span);
+
+                            // Get the timestamp for the block.
+                            let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
+                                watcher.poll_block_timestamp(next_block_index, watcher_timeout)
+                            });
+
+                            tracer.in_span("process_next_block", |_cx| {
+                                controller.process_next_block(
+                                    block_data.block(),
+                                    block_data.contents(),
+                                    timestamp,
+                                );
+                            });
                         }
                     }
                 }

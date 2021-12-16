@@ -41,6 +41,7 @@ mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-metrics = { path = "../../../util/metrics" }
 mc-util-parse = { path = "../../../util/parse" }
 mc-util-serial = { path = "../../../util/serial" }
+mc-util-telemetry = { path = "../../../util/telemetry", features = ["jaeger"] }
 mc-util-uri = { path = "../../../util/uri" }
 mc-watcher = { path = "../../../watcher" }
 mc-watcher-api = { path = "../../../watcher/api" }

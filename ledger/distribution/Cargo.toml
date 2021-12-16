@@ -13,6 +13,7 @@ mc-api = { path = "../../api" }
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }
+mc-util-telemetry = { path = "../../util/telemetry", features = ["jaeger"] }
 
 dirs = "4.0"
 displaydoc = "0.2"

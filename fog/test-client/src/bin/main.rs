@@ -27,6 +27,9 @@ fn main() {
 
     let config = TestClientConfig::from_args();
 
+    let _tracer = mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
+        .expect("Failed setting telemetry tracer");
+
     // Set up test client policy taking into account the runtime config values
     let policy = TestClientPolicy {
         // Don't fail fast when running continuously, we want to keep measuring after the deadline

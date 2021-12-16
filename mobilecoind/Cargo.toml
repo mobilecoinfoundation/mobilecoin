@@ -39,6 +39,7 @@ mc-util-lmdb = { path = "../util/lmdb" }
 mc-util-parse = { path = "../util/parse" }
 mc-util-repr-bytes = { path = "../util/repr-bytes" }
 mc-util-serial = { path = "../util/serial" }
+mc-util-telemetry = { path = "../util/telemetry", features = ["jaeger"] }
 mc-util-uri = { path = "../util/uri" }
 mc-watcher = { path = "../watcher" }
 
@@ -52,9 +53,9 @@ lmdb-rkv = "0.14.0"
 num_cpus = "1.12"
 prost = { version = "0.9", default-features = false, features = ["prost-derive"] }
 protobuf = "2.22.1"
-reqwest = { version = "0.10", default-features = false, features = ["rustls-tls", "gzip"] }
 rand = "0.8"
 rayon = "1.5"
+reqwest = { version = "0.10", default-features = false, features = ["rustls-tls", "gzip"] }
 retry = "1.3"
 serde_json = "1.0"
 structopt = "0.3"

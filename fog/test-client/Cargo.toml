@@ -22,6 +22,7 @@ mc-util-grpc = { path = "../../util/grpc" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-metrics = { path = "../../util/metrics" }
 mc-util-parse = { path = "../../util/parse" }
+mc-util-telemetry = { path = "../../util/telemetry", features = ["jaeger"] }
 mc-util-uri = { path = "../../util/uri" }
 
 # fog

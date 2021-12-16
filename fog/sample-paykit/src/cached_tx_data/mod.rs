@@ -33,12 +33,16 @@ use mc_transaction_core::{
     BlockIndex,
 };
 use mc_transaction_std::MemoType;
+use mc_util_telemetry::{telemetry_static_key, tracer, Key, TraceContextExt, Tracer};
 use std::collections::{BTreeMap, HashSet};
 
 mod memo_handler;
 pub use memo_handler::{MemoHandler, MemoHandlerError};
 
 const MAX_INPUTS: usize = mc_transaction_core::constants::MAX_INPUTS as usize;
+
+/// Telemetry: Number of txos returned from query.
+const TELEMETRY_NUM_TXOS_KEY: Key = telemetry_static_key!("num-txos");
 
 /// Highest subaddress index we support.
 /// If TxOut's are found which belong to us but at an unsupported subaddress
@@ -365,14 +369,16 @@ impl CachedTxData {
 
     /// Poll for new txo data, given fog view connection object
     ///
-    /// This is called when doing a balance check
+    /// This is called when doing a balance check. Returns the number of txos
+    /// discovered.
     pub fn poll_fog_for_txos(
         &mut self,
         fog_view_client: &mut FogViewGrpcClient,
         fog_block_client: &mut FogBlockGrpcClient,
-    ) -> Result<()> {
+    ) -> Result<usize> {
         let old_rng_num_blocks = self.rng_set.get_highest_processed_block_count();
         // Do the fog view protocol, log any errors, and consume any new transactions
+
         let (mut txo_records, new_missed_block_ranges, errors) =
             fog_view_client.poll(&mut self.rng_set, &UserPrivate::from(&self.account_key));
 
@@ -435,6 +441,7 @@ impl CachedTxData {
             }
         };
 
+        let num_txos = txo_records.len();
         if !txo_records.is_empty() {
             for rec in &txo_records {
                 if rec.block_index < u64::from(old_rng_num_blocks) {
@@ -452,7 +459,7 @@ impl CachedTxData {
                 );
             }
         }
-        Ok(())
+        Ok(num_txos)
     }
 
     /// Determines the new missed block ranges given the blocks that are
@@ -724,8 +731,20 @@ impl CachedTxData {
         let old_key_image_data_completeness = self.key_image_data_completeness;
         let old_rng_num_blocks = self.rng_set.get_highest_processed_block_count();
 
-        self.poll_fog_for_txos(fog_view_client, fog_block_client)?;
-        self.poll_fog_for_key_images(key_image_client)?;
+        let tracer = tracer!();
+
+        tracer.in_span("poll_fog_for_txos", |cx| -> Result<()> {
+            let num_txos = self.poll_fog_for_txos(fog_view_client, fog_block_client)?;
+            cx.span()
+                .set_attribute(TELEMETRY_NUM_TXOS_KEY.i64(num_txos as i64));
+
+            Ok(())
+        })?;
+
+        tracer.in_span("poll_fog_for_key_images", |_cx| -> Result<()> {
+            self.poll_fog_for_key_images(key_image_client)?;
+            Ok(())
+        })?;
 
         let new_num_blocks = self.get_num_blocks();
 

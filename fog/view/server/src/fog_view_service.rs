@@ -14,6 +14,7 @@ use mc_util_grpc::{
     Authenticator,
 };
 use mc_util_metrics::SVC_COUNTERS;
+use mc_util_telemetry::{tracer, Tracer};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
@@ -56,53 +57,59 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
     /// Unwrap and forward to enclave
     pub fn query_impl(&mut self, request: attest::Message) -> Result<attest::Message, RpcStatus> {
         log::trace!(self.logger, "Getting encrypted request");
+        let tracer = tracer!();
 
-        // Attempt and deserialize the untrusted portion of this request.
-        let query_request_aad: QueryRequestAAD = mc_util_serial::decode(request.get_aad())
-            .map_err(|err| {
-                RpcStatus::with_message(
-                    RpcStatusCode::INVALID_ARGUMENT,
-                    format!("AAD deserialization error: {}", err),
+        tracer.in_span("query_impl", |_cx| {
+            // Attempt and deserialize the untrusted portion of this request.
+            let query_request_aad: QueryRequestAAD = mc_util_serial::decode(request.get_aad())
+                .map_err(|err| {
+                    RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        format!("AAD deserialization error: {}", err),
+                    )
+                })?;
+
+            let (user_events, next_start_from_user_event_id) =
+                tracer.in_span("search_user_events", |_cx| {
+                    self.db
+                        .search_user_events(query_request_aad.start_from_user_event_id)
+                        .map_err(|e| rpc_internal_error("search_user_events", e, &self.logger))
+                })?;
+
+            let (
+                highest_processed_block_count,
+                highest_processed_block_signature_timestamp,
+                last_known_block_count,
+                last_known_block_cumulative_txo_count,
+            ) = tracer.in_span("get_shared_state", |_cx_| {
+                let shared_state = self.db_poll_shared_state.lock().expect("mutex poisoned");
+                (
+                    shared_state.highest_processed_block_count,
+                    shared_state.highest_processed_block_signature_timestamp,
+                    shared_state.last_known_block_count,
+                    shared_state.last_known_block_cumulative_txo_count,
                 )
+            });
+
+            let untrusted_query_response = UntrustedQueryResponse {
+                user_events,
+                next_start_from_user_event_id,
+                highest_processed_block_count,
+                highest_processed_block_signature_timestamp,
+                last_known_block_count,
+                last_known_block_cumulative_txo_count,
+            };
+
+            let result_blob = tracer.in_span("enclave_query", |_cx| {
+                self.enclave
+                    .query(request.into(), untrusted_query_response)
+                    .map_err(|e| self.enclave_err_to_rpc_status("enclave request", e))
             })?;
 
-        let (user_events, next_start_from_user_event_id) = self
-            .db
-            .search_user_events(query_request_aad.start_from_user_event_id)
-            .map_err(|e| rpc_internal_error("search_user_events", e, &self.logger))?;
-
-        let (
-            highest_processed_block_count,
-            highest_processed_block_signature_timestamp,
-            last_known_block_count,
-            last_known_block_cumulative_txo_count,
-        ) = {
-            let shared_state = self.db_poll_shared_state.lock().expect("mutex poisoned");
-            (
-                shared_state.highest_processed_block_count,
-                shared_state.highest_processed_block_signature_timestamp,
-                shared_state.last_known_block_count,
-                shared_state.last_known_block_cumulative_txo_count,
-            )
-        };
-
-        let untrusted_query_response = UntrustedQueryResponse {
-            user_events,
-            next_start_from_user_event_id,
-            highest_processed_block_count,
-            highest_processed_block_signature_timestamp,
-            last_known_block_count,
-            last_known_block_cumulative_txo_count,
-        };
-
-        let result_blob = self
-            .enclave
-            .query(request.into(), untrusted_query_response)
-            .map_err(|e| self.enclave_err_to_rpc_status("enclave request", e))?;
-
-        let mut resp = attest::Message::new();
-        resp.set_data(result_blob);
-        Ok(resp)
+            let mut resp = attest::Message::new();
+            resp.set_data(result_blob);
+            Ok(resp)
+        })
     }
 
     // Helper function that is common
