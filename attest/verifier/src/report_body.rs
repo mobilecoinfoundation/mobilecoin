@@ -367,7 +367,7 @@ mod test {
     #[test]
     fn attributes_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = AttributesVerifier::from(Attributes::from(REPORT_BODY_SRC.attributes));
+        let verifier = Kind::from(Attributes::from(REPORT_BODY_SRC.attributes));
 
         assert!(verifier.verify(&report_body));
     }
@@ -378,7 +378,7 @@ mod test {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
         let mut attributes = REPORT_BODY_SRC.attributes;
         attributes.flags = 0;
-        let verifier = AttributesVerifier::from(Attributes::from(attributes));
+        let verifier = Kind::from(Attributes::from(attributes));
 
         assert!(!verifier.verify(&report_body));
     }
@@ -387,7 +387,7 @@ mod test {
     #[test]
     fn config_id_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = ConfigIdVerifier::from(ConfigId::from(REPORT_BODY_SRC.config_id));
+        let verifier = Kind::from(ConfigId::from(REPORT_BODY_SRC.config_id));
 
         assert!(verifier.verify(&report_body));
     }
@@ -398,7 +398,7 @@ mod test {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
         let mut config_id = REPORT_BODY_SRC.config_id;
         config_id[0] = 0;
-        let verifier = ConfigIdVerifier::from(ConfigId::from(config_id));
+        let verifier = Kind::from(ConfigId::from(config_id));
 
         assert!(!verifier.verify(&report_body));
     }
@@ -407,7 +407,7 @@ mod test {
     #[test]
     fn config_version_eq_pass() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = ConfigVersionVerifier::from(REPORT_BODY_SRC.config_svn);
+        let verifier = Kind::from(REPORT_BODY_SRC.config_svn);
 
         assert!(verifier.verify(&report_body));
     }
@@ -416,7 +416,7 @@ mod test {
     #[test]
     fn config_version_newer_pass() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = ConfigVersionVerifier::from(REPORT_BODY_SRC.config_svn - 1);
+        let verifier = Kind::from(REPORT_BODY_SRC.config_svn - 1);
 
         assert!(verifier.verify(&report_body));
     }
@@ -425,7 +425,7 @@ mod test {
     #[test]
     fn config_version_older_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = ConfigVersionVerifier::from(REPORT_BODY_SRC.config_svn + 1);
+        let verifier = Kind::from(REPORT_BODY_SRC.config_svn + 1);
 
         assert!(!verifier.verify(&report_body));
     }
@@ -434,7 +434,7 @@ mod test {
     #[test]
     fn cpu_svn_eq_pass() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = CpuVersionVerifier::from(CpuSecurityVersion::from(REPORT_BODY_SRC.cpu_svn));
+        let verifier = Kind::from(CpuSecurityVersion::from(REPORT_BODY_SRC.cpu_svn));
 
         assert!(verifier.verify(&report_body));
     }
@@ -445,7 +445,7 @@ mod test {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
         let mut cpu_svn = REPORT_BODY_SRC.cpu_svn;
         cpu_svn.svn[0] = 0;
-        let verifier = CpuVersionVerifier::from(CpuSecurityVersion::from(cpu_svn));
+        let verifier = Kind::from(CpuSecurityVersion::from(cpu_svn));
 
         assert!(verifier.verify(&report_body));
     }
@@ -456,7 +456,7 @@ mod test {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
         let mut cpu_svn = REPORT_BODY_SRC.cpu_svn;
         cpu_svn.svn[0] = 0xff;
-        let verifier = CpuVersionVerifier::from(CpuSecurityVersion::from(cpu_svn));
+        let verifier = Kind::from(CpuSecurityVersion::from(cpu_svn));
 
         assert!(!verifier.verify(&report_body));
     }
@@ -465,7 +465,7 @@ mod test {
     #[test]
     fn debug_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = DebugVerifier::from(true);
+        let verifier = Kind::from(true);
 
         assert!(verifier.verify(&report_body));
     }
@@ -474,7 +474,7 @@ mod test {
     #[test]
     fn no_debug_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = DebugVerifier::from(false);
+        let verifier = Kind::from(false);
 
         assert!(verifier.verify(&report_body));
     }
@@ -485,7 +485,7 @@ mod test {
         let mut report_body = REPORT_BODY_SRC;
         report_body.attributes.flags |= SGX_FLAGS_DEBUG;
         let report_body = ReportBody::from(report_body);
-        let verifier = DebugVerifier::from(false);
+        let verifier = Kind::from(false);
 
         assert!(!verifier.verify(&report_body));
     }
@@ -494,7 +494,7 @@ mod test {
     #[test]
     fn data_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = DataVerifier::from(
+        let verifier = Kind::from(
             ReportDataMask::new_with_mask(&REPORT_BODY_SRC.report_data.d, &ONES[..])
                 .expect("Could not create report data mask"),
         );
@@ -508,7 +508,7 @@ mod test {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
         let mut data = REPORT_BODY_SRC.report_data.d;
         data[0] = 0;
-        let verifier = DataVerifier::from(
+        let verifier = Kind::from(
             ReportDataMask::new_with_mask(&data, &ONES[..])
                 .expect("Could not create report data mask"),
         );
@@ -520,9 +520,7 @@ mod test {
     #[test]
     fn ext_prod_id_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = ExtendedProductIdVerifier::from(ExtendedProductId::from(
-            REPORT_BODY_SRC.isv_ext_prod_id,
-        ));
+        let verifier = Kind::from(ExtendedProductId::from(REPORT_BODY_SRC.isv_ext_prod_id));
 
         assert!(verifier.verify(&report_body));
     }
@@ -533,7 +531,7 @@ mod test {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
         let mut ext_prod_id = REPORT_BODY_SRC.isv_ext_prod_id;
         ext_prod_id[0] = 0;
-        let verifier = ExtendedProductIdVerifier::from(ExtendedProductId::from(ext_prod_id));
+        let verifier = Kind::from(ExtendedProductId::from(ext_prod_id));
 
         assert!(!verifier.verify(&report_body));
     }
@@ -542,7 +540,7 @@ mod test {
     #[test]
     fn family_id_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = FamilyIdVerifier::from(FamilyId::from(REPORT_BODY_SRC.isv_family_id));
+        let verifier = Kind::from(FamilyId::from(REPORT_BODY_SRC.isv_family_id));
 
         assert!(verifier.verify(&report_body));
     }
@@ -553,7 +551,7 @@ mod test {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
         let mut family_id = REPORT_BODY_SRC.isv_family_id;
         family_id[0] = 0;
-        let verifier = FamilyIdVerifier::from(FamilyId::from(family_id));
+        let verifier = Kind::from(FamilyId::from(family_id));
 
         assert!(!verifier.verify(&report_body));
     }
@@ -562,7 +560,7 @@ mod test {
     #[test]
     fn misc_select_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = MiscSelectVerifier::from(REPORT_BODY_SRC.misc_select);
+        let verifier = Kind::from(REPORT_BODY_SRC.misc_select);
 
         assert!(verifier.verify(&report_body));
     }
@@ -571,7 +569,7 @@ mod test {
     #[test]
     fn misc_select_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = MiscSelectVerifier::from(REPORT_BODY_SRC.misc_select - 1);
+        let verifier = Kind::from(REPORT_BODY_SRC.misc_select - 1);
 
         assert!(!verifier.verify(&report_body));
     }
@@ -580,7 +578,7 @@ mod test {
     #[test]
     fn product_id_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = ProductIdVerifier::from(REPORT_BODY_SRC.isv_prod_id);
+        let verifier = Kind::from(REPORT_BODY_SRC.isv_prod_id);
 
         assert!(verifier.verify(&report_body));
     }
@@ -589,7 +587,7 @@ mod test {
     #[test]
     fn product_id_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = ProductIdVerifier::from(REPORT_BODY_SRC.isv_prod_id - 1);
+        let verifier = Kind::from(REPORT_BODY_SRC.isv_prod_id - 1);
 
         assert!(!verifier.verify(&report_body));
     }
@@ -598,7 +596,7 @@ mod test {
     #[test]
     fn version_eq_pass() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = VersionVerifier::from(REPORT_BODY_SRC.isv_svn);
+        let verifier = Kind::from(REPORT_BODY_SRC.isv_svn);
 
         assert!(verifier.verify(&report_body));
     }
@@ -607,7 +605,7 @@ mod test {
     #[test]
     fn version_newer_pass() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = VersionVerifier::from(REPORT_BODY_SRC.isv_svn - 1);
+        let verifier = Kind::from(REPORT_BODY_SRC.isv_svn - 1);
 
         assert!(verifier.verify(&report_body));
     }
@@ -616,7 +614,7 @@ mod test {
     #[test]
     fn version_older_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = VersionVerifier::from(REPORT_BODY_SRC.isv_svn + 1);
+        let verifier = Kind::from(REPORT_BODY_SRC.isv_svn + 1);
 
         assert!(!verifier.verify(&report_body));
     }
