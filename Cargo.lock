@@ -3870,7 +3870,7 @@ dependencies = [
 
 [[package]]
 name = "mc-fog-overseer-server"
-version = "1.1.0"
+version = "1.2.0-pre0"
 dependencies = [
  "displaydoc",
  "grpcio",

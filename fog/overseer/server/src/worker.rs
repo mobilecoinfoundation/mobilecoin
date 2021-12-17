@@ -10,6 +10,7 @@ use mc_fog_api::ingest_common::{IngestControllerMode, IngestSummary};
 use mc_fog_ingest_client::FogIngestGrpcClient;
 use mc_fog_recovery_db_iface::{IngressPublicKeyRecord, IngressPublicKeyRecordFilters, RecoveryDb};
 use mc_fog_uri::FogIngestUri;
+use retry::{delay::Fixed, retry_with_index, OperationResult};
 use std::{
     convert::TryFrom,
     iter::Iterator,
@@ -126,7 +127,7 @@ where
 
     /// Try a request to Fog Ingest node this many times if you encounter an
     /// error.
-    const NUMBER_OF_RETRIES: u8 = 3;
+    const NUMBER_OF_TRIES: u8 = 3;
 
     pub fn start(
         ingest_clients: Vec<FogIngestGrpcClient>,
@@ -407,37 +408,55 @@ where
         &self,
         inactive_outstanding_key: CompressedRistrettoPublic,
     ) -> Result<(), OverseerError> {
-        for try_count in 0..Self::NUMBER_OF_RETRIES {
+        let result = retry_with_index(Fixed::from_millis(200), |current_try| {
+            if current_try as u8 > Self::NUMBER_OF_TRIES {
+                return OperationResult::Err(OverseerError::ReportLostKey(format!(
+                    "Did not suceed in reporting lost ingress key {} within {} tries.",
+                    inactive_outstanding_key,
+                    Self::NUMBER_OF_TRIES,
+                )));
+            }
+
             match self
                 .recovery_db
                 .report_lost_ingress_key(inactive_outstanding_key)
             {
                 Ok(_) => {
-                    log::info!(
-                        self.logger,
+                    let success_message = format!(
                         "The following key  was successfully reported as lost: {}",
                         inactive_outstanding_key
                     );
                     OperationResult::Ok(success_message)
                 }
                 Err(_) => {
-                    let number_of_remaining_tries = Self::NUMBER_OF_RETRIES - try_count - 1;
-                    log::info!(self.logger, "The following key  was not successfully reported as lost: {}. Will try {} more times", inactive_outstanding_key, number_of_remaining_tries);
+                    let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try as u8;
+                    let error_message = format!("The following key  was not successfully reported as lost: {}. Will try {} more times", inactive_outstanding_key, number_of_remaining_tries);
+                    OperationResult::Retry(OverseerError::ReportLostKey(error_message))
                 }
             }
-        }
+        });
 
-        // TODO: Add alerting that says we need to manually report these keys
-        // as lost.
-        Err(OverseerError::ReportLostKey(format!(
-            "Could not successfully report this key {:?} as lost",
-            inactive_outstanding_key
-        )))
+        match result {
+            Ok(success_message) => {
+                log::info!(self.logger, "{}", success_message);
+                Ok(())
+            }
+            // TODO: Add alerting that says we need to manually report these keys
+            // as lost.
+            Err(err) => Err(err.into()),
+        }
     }
 
     fn set_new_key_on_a_node(&self) -> Result<usize, OverseerError> {
         for (i, ingest_client) in self.ingest_clients.iter().enumerate() {
-            for try_count in 0..Self::NUMBER_OF_RETRIES {
+            let result = retry_with_index(Fixed::from_millis(200), |current_try| {
+                if current_try as u8 > Self::NUMBER_OF_TRIES {
+                    let error_message = format!(
+                        "Did not succeed in setting a new key on node at index {}",
+                        i
+                    );
+                    return OperationResult::Err(OverseerError::SetNewKey(error_message));
+                }
                 match ingest_client.new_keys() {
                     Ok(_) => {
                         log::info!(
@@ -445,50 +464,71 @@ where
                             "New keys successfully set on the ingest node at index {}.",
                             i
                         );
-                        return Ok(i);
+                        OperationResult::Ok(i)
                     }
                     // TODO: We'll need to alert Ops to take manual action at this point.
                     Err(_) => {
-                        let number_of_remaining_tries = Self::NUMBER_OF_RETRIES - try_count - 1;
-                        log::error!(self.logger, "New keys were not successfully set on the ingest node at index {}. Will try {} more times.", i, number_of_remaining_tries);
+                        let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try as u8;
+                        let error_message = format!("New keys were not successfully set on the ingest node at index {}. Will try {} more times.", i, number_of_remaining_tries);
+                        log::warn!(self.logger, "{}", error_message);
+                        OperationResult::Retry(OverseerError::SetNewKey(error_message))
+                    }
+                }
+            });
+
+            match result {
+                Ok(i) => return Ok(i),
+                Err(retry_error) => {
+                    if i == self.ingest_clients.len() {
+                        return Err(retry_error.into());
                     }
                 }
             }
         }
 
         Err(OverseerError::SetNewKey(
-            "Could not successfully set a new key on any ingest node.".to_string(),
+            "New keys were not successfully set on any of the idle nodes.".to_string(),
         ))
     }
 
     fn activate_a_node(&self, activated_node_index: usize) -> Result<(), OverseerError> {
-        for try_count in 0..Self::NUMBER_OF_RETRIES {
+        let result = retry_with_index(Fixed::from_millis(200), |current_try| {
+            if current_try as u8 > Self::NUMBER_OF_TRIES {
+                let error_message = format!(
+                    "Did not succeed in setting a new key on node at index {}",
+                    activated_node_index
+                );
+                return OperationResult::Err(OverseerError::ActivateNode(error_message));
+            }
+
             match self.ingest_clients[activated_node_index].activate() {
                 Ok(_) => {
-                    log::info!(
-                        self.logger,
+                    let success_message = format!(
                         "Node at index {} successfully activated.",
                         activated_node_index
                     );
-                    return Ok(());
+                    OperationResult::Ok(success_message)
                 }
                 // TODO: Alert Ops to take manual action at this point.
                 Err(_) => {
-                    let number_of_remaining_tries = Self::NUMBER_OF_RETRIES - try_count - 1;
-                    log::error!(
-                        self.logger,
+                    let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try as u8;
+                    let error_message = format!(
                         "Node at index {} not activated. Will try {} more times.",
-                        activated_node_index,
-                        number_of_remaining_tries
+                        activated_node_index, number_of_remaining_tries
                     );
+                    OperationResult::Retry(OverseerError::ActivateNode(error_message))
                 }
             }
-        }
+        });
+
         // TODO: Add alerting that says we need to manually activate this
         // node.
-        //
-        Err(OverseerError::ActivateNode(
-            "Could not activate any nodes.".to_string(),
-        ))
+        match result {
+            Ok(success_message) => {
+                log::info!(self.logger, "{}", success_message);
+                Ok(())
+            }
+            Err(retry_error) => Err(retry_error.into()),
+        }
     }
 }

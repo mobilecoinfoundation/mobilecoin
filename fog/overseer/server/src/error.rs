@@ -4,6 +4,7 @@
 use displaydoc::Display;
 use mc_fog_recovery_db_iface::RecoveryDbError;
 use mc_fog_sql_recovery_db::Error as SqlRecoveryDbError;
+use retry::Error as RetryError;
 
 /// An error returned by the overseer service
 #[derive(Debug, Display)]
@@ -22,10 +23,26 @@ pub enum OverseerError {
 
     /// There are multiple outstanding keys: {0}
     MultipleOutstandingKeys(String),
+
+    /// Unknown error associated with retries. Should not happen: {0}
+    GenericRetryError(String),
 }
 
 impl From<SqlRecoveryDbError> for OverseerError {
     fn from(src: SqlRecoveryDbError) -> Self {
         Self::RecoveryDb(Box::new(src))
+    }
+}
+
+impl From<RetryError<OverseerError>> for OverseerError {
+    fn from(src: RetryError<OverseerError>) -> Self {
+        match src {
+            RetryError::Operation {
+                error,
+                total_delay: _,
+                tries: _,
+            } => error,
+            RetryError::Internal(s) => Self::GenericRetryError(s),
+        }
     }
 }
