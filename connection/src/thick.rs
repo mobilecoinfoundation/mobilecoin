@@ -415,7 +415,7 @@ impl<CP: CredentialsProvider> BlockchainConnection for ThickClient<CP> {
 }
 
 impl<CP: CredentialsProvider> UserTxConnection for ThickClient<CP> {
-    fn propose_tx(&mut self, tx: &Tx) -> Result<BlockIndex> {
+    fn propose_tx(&mut self, tx: &Tx) -> Result<u64> {
         trace_time!(self.logger, "ThickClient::propose_tx");
 
         if !self.is_attested() {

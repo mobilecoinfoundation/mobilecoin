@@ -5,7 +5,7 @@
 use mc_common::logger::{log, Logger};
 use mc_fog_sample_paykit::AccountKey;
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
-use mc_util_parse::{load_css_file, parse_duration_in_seconds, CssSignature};
+use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::{AdminUri, ConsensusClientUri};
 use serde::Serialize;
 use std::{path::PathBuf, time::Duration};
@@ -56,11 +56,14 @@ pub struct TestClientConfig {
     pub fog_view: FogViewUri,
 
     /// Seconds to wait for a transaction to clear, before it has exceeded
+    /// deadline. The healthy status will be set false if we exceed this
     /// deadline.
     #[structopt(long, env, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
     pub consensus_wait: Duration,
 
     /// Seconds to wait for ledger sync on fog
+    /// This affects the double-spend test but not the continuous mode of
+    /// operation.
     #[structopt(long, env, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
     pub ledger_sync_wait: Duration,
 
@@ -80,24 +83,20 @@ pub struct TestClientConfig {
     pub transfer_amount: u64,
 
     /// Consensus enclave CSS file (overriding the build-time CSS)
-    #[structopt(long, env, parse(try_from_str=load_css_file))]
-    #[serde(skip_serializing)]
-    pub consensus_enclave_css: Option<CssSignature>,
+    #[structopt(long, env)]
+    pub consensus_enclave_css: Option<String>,
 
     /// Fog ingest enclave CSS file (overriding the build-time CSS)
-    #[structopt(long, env = "INGEST_ENCLAVE_CSS", parse(try_from_str=load_css_file))]
-    #[serde(skip_serializing)]
-    pub fog_ingest_enclave_css: Option<CssSignature>,
+    #[structopt(long, env)]
+    pub ingest_enclave_css: Option<String>,
 
     /// Fog ledger enclave CSS file (overriding the build-time CSS)
-    #[structopt(long, env = "LEDGER_ENCLAVE_CSS", parse(try_from_str=load_css_file))]
-    #[serde(skip_serializing)]
-    pub fog_ledger_enclave_css: Option<CssSignature>,
+    #[structopt(long, env)]
+    pub ledger_enclave_css: Option<String>,
 
     /// Fog view enclave CSS file (overriding the build-time CSS)
-    #[structopt(long, env = "VIEW_ENCLAVE_CSS", parse(try_from_str=load_css_file))]
-    #[serde(skip_serializing)]
-    pub fog_view_enclave_css: Option<CssSignature>,
+    #[structopt(long, env)]
+    pub view_enclave_css: Option<String>,
 
     /// Whether to turn off memos, for backwards compatibility
     #[structopt(long, env)]

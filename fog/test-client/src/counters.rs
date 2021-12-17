@@ -2,7 +2,7 @@
 
 //! Prometheus metrics, interesting when the test runs continuously
 
-use mc_util_metrics::{register_histogram, Histogram, IntCounter, OpMetrics};
+use mc_util_metrics::{register_histogram, Histogram, IntCounter, IntGauge, OpMetrics};
 
 // Histogram buckets used for reporting the TX_CONFIRMED_TIME and
 // TX_RECEIVED_TIME to prometheus
@@ -16,9 +16,26 @@ const TX_TIME_BUCKETS: &[f64] = &[
     16.0, 18.0, 20.0,
 ];
 
+// Histogram buckets used for reporting the TX_BUILD_TIME and
+// TX_SEND_TIME to prometheus
+//
+// The resolution in grafana can be improved by adding more buckets, but this
+// increases storage costs. We may wish to tune the buckets over time as we
+// collect more data and have more of an idea of how long it usually takes and
+// where it is interesting to get more resolution.
+const TX_TIME_BUCKETS_SHORT: &[f64] = &[0.2, 0.5, 0.7, 1.0, 1.2, 1.5, 1.7, 2.0, 2.5, 3.0];
+
 lazy_static::lazy_static! {
     /// Counter group
     pub static ref OP_COUNTERS: OpMetrics = OpMetrics::new_and_registered("fog_test_client");
+
+    /// Time in seconds that it takes for the source client to build a transaction (including fog interactions)
+    pub static ref TX_BUILD_TIME: Histogram =
+        register_histogram!("fog_test_client_tx_build_time", "Time for source client to build a transaction, including fog interactions", TX_TIME_BUCKETS_SHORT.to_vec()).unwrap();
+
+    /// Time in seconds that it takes for the source client to send a transaction
+    pub static ref TX_SEND_TIME: Histogram =
+        register_histogram!("fog_test_client_tx_send_time", "Time for source client to send a built transaction", TX_TIME_BUCKETS_SHORT.to_vec()).unwrap();
 
     /// Time in seconds that it takes for the source client to observe that a submitted transaction landed in the blockchain (timer starts immediately after submission)
     pub static ref TX_CONFIRMED_TIME: Histogram =
@@ -76,4 +93,9 @@ lazy_static::lazy_static! {
 
     /// Number of times that the test failed because a confirm tx operation failed
     pub static ref CONFIRM_TX_ERROR_COUNT: IntCounter = OP_COUNTERS.counter("confirm_tx_error_count");
+
+    /// The LAST_POLLING_SUCCESSFUL status is false (0) if ANY of the clients failed their most recent transfers.
+    /// It is (1) if NO client has failed their most recent transfer.
+    /// This is updated after every transfer attempt.
+    pub static ref LAST_POLLING_SUCCESSFUL: IntGauge = OP_COUNTERS.gauge("last_polling_successful");
 }
