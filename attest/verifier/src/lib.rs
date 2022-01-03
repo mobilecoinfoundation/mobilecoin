@@ -10,6 +10,7 @@
 #![doc = include_str!("../README.md")]
 #![no_std]
 
+mod avr;
 mod ias;
 mod quote;
 mod report_body;
@@ -17,11 +18,7 @@ mod status;
 
 extern crate alloc;
 
-pub use crate::{
-    quote::Kind as QuoteKind,
-    report_body::Kind as ReportBodyKind,
-    status::{MrEnclaveVerifier, MrSignerVerifier},
-};
+pub use crate::status::{MrEnclaveVerifier, MrSignerVerifier};
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "sgx-sim")] {
@@ -55,11 +52,13 @@ cfg_if::cfg_if! {
 }
 
 use crate::{
-    quote::XeidVerifier,
+    avr::{Kind as AvrKind, PseVerifier},
+    quote::{Kind as QuoteKind, XeidVerifier},
     report_body::{
-        ConfigVersionVerifier, DebugVerifier, MiscSelectVerifier, ProductIdVerifier,
-        VersionVerifier,
+        ConfigVersionVerifier, DebugVerifier, Kind as ReportBodyKind, MiscSelectVerifier,
+        ProductIdVerifier, VersionVerifier,
     },
+    status::Kind as StatusKind,
 };
 use alloc::{
     borrow::ToOwned,
@@ -158,8 +157,8 @@ pub struct Verifier {
     trust_anchors: Vec<Vec<u8>>,
     report_body_verifiers: Vec<ReportBodyKind>,
     quote_verifiers: Vec<QuoteKind>,
-    ias_verifiers: Vec<VerifyIasReportDataType>,
-    status_verifiers: Vec<VerifyIasReportDataType>,
+    avr_verifiers: Vec<AvrKind>,
+    status_verifiers: Vec<StatusKind>,
 }
 
 /// Construct a new builder using the baked-in IAS root certificates and debug
@@ -197,7 +196,7 @@ impl Verifier {
             trust_anchors,
             report_body_verifiers: Default::default(),
             quote_verifiers: Default::default(),
-            ias_verifiers: Default::default(),
+            avr_verifiers: Default::default(),
             status_verifiers: Default::default(),
         })
     }
@@ -207,20 +206,15 @@ impl Verifier {
     ///
     /// This is useful to prevent IAS report response replay attacks.
     pub fn nonce(&mut self, nonce: &IasNonce) -> &mut Self {
-        self.ias_verifiers
-            .push(VerifyIasReportDataType::Nonce(NonceVerifier {
-                nonce: nonce.clone(),
-            }));
+        self.avr_verifiers.push(nonce.clone().into());
         self
     }
 
     /// Verify that the PSE manifest hash matches the one given, and the result
     /// is successful.
     pub fn pse_result(&mut self, hash: &[u8]) -> &mut Self {
-        self.ias_verifiers
-            .push(VerifyIasReportDataType::Pse(PseVerifier {
-                hash: hash.to_owned(),
-            }));
+        self.avr_verifiers
+            .push(PseVerifier::from(hash.to_owned()).into());
         self
     }
 
@@ -351,15 +345,13 @@ impl Verifier {
 
     /// Verify the given MrEnclave-based status verifier succeeds
     pub fn mr_enclave(&mut self, verifier: MrEnclaveVerifier) -> &mut Self {
-        self.status_verifiers
-            .push(VerifyIasReportDataType::Enclave(verifier));
+        self.status_verifiers.push(verifier.into());
         self
     }
 
     /// Verify the given MrSigner-based status verifier succeeds
     pub fn mr_signer(&mut self, verifier: MrSignerVerifier) -> &mut Self {
-        self.status_verifiers
-            .push(VerifyIasReportDataType::Signer(verifier));
+        self.status_verifiers.push(verifier.into());
         self
     }
 
@@ -371,10 +363,8 @@ impl Verifier {
 
         // Build the list of IAS report data verifiers (including a quote
         // verifier)
-        let mut and_verifiers = self.ias_verifiers.clone();
-        and_verifiers.push(VerifyIasReportDataType::Quote(QuoteVerifier {
-            quote_verifiers,
-        }));
+        let mut and_verifiers = self.avr_verifiers.clone();
+        and_verifiers.push(quote_verifiers.into());
 
         let trust_anchors = self
             .trust_anchors
@@ -402,9 +392,9 @@ struct IasReportVerifier {
     /// chain against.
     trust_anchors: Vec<MbedtlsBox<Certificate>>,
     /// A vector of report verifiers, one of which must succeed.
-    or_verifiers: Vec<VerifyIasReportDataType>,
+    or_verifiers: Vec<StatusKind>,
     /// A vector of report verifiers, all of which must succeed.
-    and_verifiers: Vec<VerifyIasReportDataType>,
+    and_verifiers: Vec<AvrKind>,
 }
 
 impl From<VerifyError> for Error {
@@ -609,92 +599,6 @@ impl IasReportVerifier {
             Ok(report_data)
         } else {
             Err(Error::Verification(report_data))
-        }
-    }
-}
-
-/// An enumeration of possible report-data verifier
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-enum VerifyIasReportDataType {
-    /// A verifier that checks the nonce of the IAS report
-    Nonce(NonceVerifier),
-    /// A verifier that checks the MRENCLAVE value and advisory IDs of the
-    /// examined report
-    Enclave(MrEnclaveVerifier),
-    /// A verifier that checks the MRSIGNER value and advisory IDs of the
-    /// examined report
-    Signer(MrSignerVerifier),
-    /// A verifier that chains to a list of quote verifiers.
-    Quote(QuoteVerifier),
-    /// A verifier that checks the PSE manifest hash and result
-    Pse(PseVerifier),
-}
-
-impl Verify<VerificationReportData> for VerifyIasReportDataType {
-    fn verify(&self, report_data: &VerificationReportData) -> bool {
-        match self {
-            VerifyIasReportDataType::Nonce(v) => v.verify(report_data),
-            VerifyIasReportDataType::Enclave(v) => v.verify(report_data),
-            VerifyIasReportDataType::Signer(v) => v.verify(report_data),
-            VerifyIasReportDataType::Quote(v) => v.verify(report_data),
-            VerifyIasReportDataType::Pse(v) => v.verify(report_data),
-        }
-    }
-}
-
-/// A [`VerifyIasReportData`] implementation that will check report data for the
-/// presence of the given IAS nonce.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-struct NonceVerifier {
-    /// The nonce to be checked for.
-    pub nonce: IasNonce,
-}
-
-impl Verify<VerificationReportData> for NonceVerifier {
-    fn verify(&self, data: &VerificationReportData) -> bool {
-        data.nonce
-            .as_ref()
-            .map(|v| v.eq(&self.nonce))
-            .unwrap_or(false)
-    }
-}
-
-/// A [`VerifyIasReportData`] implementation which applies a list of verifiers
-/// against the quote structure.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-struct QuoteVerifier {
-    quote_verifiers: Vec<QuoteKind>,
-}
-
-impl Verify<VerificationReportData> for QuoteVerifier {
-    fn verify(&self, data: &VerificationReportData) -> bool {
-        for verifier in &self.quote_verifiers {
-            if !verifier.verify(&data.quote) {
-                return false;
-            }
-        }
-
-        true
-    }
-}
-
-/// A [`VerifyIasReportData`] implementation which checks the PSE result is
-/// acceptable and was made over a particular hash.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-struct PseVerifier {
-    hash: Vec<u8>,
-}
-
-impl Verify<VerificationReportData> for PseVerifier {
-    fn verify(&self, data: &VerificationReportData) -> bool {
-        if let Some(hash) = &data.pse_manifest_hash {
-            if let Some(Ok(())) = &data.pse_manifest_status {
-                self.hash.eq(hash)
-            } else {
-                false
-            }
-        } else {
-            false
         }
     }
 }

@@ -39,8 +39,42 @@ fn check_ids(quote_status: &IasQuoteResult, config_ids: &[String], sw_ids: &[Str
     }
 }
 
-/// A [`VerifyIasReportData`] implementation that will check if the enclave in
-/// question has the given MrEnclave, and has no other IAS report status issues.
+/// An enumeration of status verifier types
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub enum Kind {
+    /// A measurement-and-status verifier which will check for a MRENCLAVE
+    /// value, and allow select non-OK quote-status results from IAS.
+    Enclave(MrEnclaveVerifier),
+    /// A measurement-and-status verifier which will check for a
+    /// MRSIGNER/product-id/enclave-version tuple, allow select non-OK
+    /// quote-status results from IAS.
+    Signer(MrSignerVerifier),
+}
+
+impl From<MrEnclaveVerifier> for Kind {
+    fn from(verifier: MrEnclaveVerifier) -> Kind {
+        Kind::Enclave(verifier)
+    }
+}
+
+impl From<MrSignerVerifier> for Kind {
+    fn from(verifier: MrSignerVerifier) -> Kind {
+        Kind::Signer(verifier)
+    }
+}
+
+impl Verify<VerificationReportData> for Kind {
+    fn verify(&self, data: &VerificationReportData) -> bool {
+        match self {
+            Kind::Enclave(v) => v.verify(data),
+            Kind::Signer(v) => v.verify(data),
+        }
+    }
+}
+
+/// A [`Verify<VerificationReportData>`] implementation that will check if the
+/// enclave in question has the given MrEnclave, and has no other IAS report
+/// status issues.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct MrEnclaveVerifier {
     mr_enclave: MrEnclave,
