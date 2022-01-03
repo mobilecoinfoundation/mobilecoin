@@ -33,8 +33,7 @@ fn main() {
 
     // Set up test client policy taking into account the runtime config values
     let policy = TestClientPolicy {
-        // Don't fail fast when running continuously, we want to keep measuring after the deadline
-        fail_fast_on_deadline: !config.continuous,
+        fail_fast_on_deadline: !config.measure_after_deadline,
         // Don't test RTH memos when passed --no_memos
         test_rth_memos: !config.no_memos,
         tx_submit_deadline: config.consensus_wait,

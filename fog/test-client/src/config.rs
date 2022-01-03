@@ -35,6 +35,20 @@ pub struct TestClientConfig {
     #[structopt(long, env)]
     pub continuous: bool,
 
+    /// If not set, the test is terminated if a deadline is passed. We fail
+    /// immediately, then start counting down for the next trial.
+    ///
+    /// If set, then we continue waiting after the deadline until the
+    /// transaction succeeds.
+    /// * The failed status is still reported immediately to prometheus
+    /// * This allows us to alert on transactions taking too long, and still
+    ///   collect accurate timing histograms even if our transactions are taking
+    ///   too long.
+    ///
+    /// This is only intended to be set in the continuous mode of operation.
+    #[structopt(long, env)]
+    pub measure_after_deadline: bool,
+
     /// Account key directory.
     #[structopt(long, env)]
     pub key_dir: PathBuf,
