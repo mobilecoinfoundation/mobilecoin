@@ -20,6 +20,7 @@ use mc_attest_core::{
     VerificationReportData,
 };
 use mc_sgx_css::Signature;
+use serde::{Deserialize, Serialize};
 
 /// A helper function used to check exceptions to the quote error = fail rule.
 fn check_ids(quote_status: &IasQuoteResult, config_ids: &[String], sw_ids: &[String]) -> bool {
@@ -219,6 +220,24 @@ mod test {
     use alloc::vec;
     use core::convert::TryFrom;
     use mc_attest_core::VerificationReport;
+    use mc_sgx_types::sgx_measurement_t;
+
+    const IAS_OK: &str = include_str!("../data/test/ias_ok.json");
+    const IAS_CONFIG: &str = include_str!("../data/test/ias_config.json");
+    const IAS_SW: &str = include_str!("../data/test/ias_sw.json");
+    const IAS_CONFIG_SW: &str = include_str!("../data/test/ias_config_sw.json");
+    const MR_ENCLAVE: sgx_measurement_t = sgx_measurement_t {
+        m: [
+            247, 180, 107, 31, 41, 201, 41, 41, 32, 42, 25, 79, 7, 29, 232, 138, 9, 180, 143, 195,
+            110, 244, 197, 245, 247, 21, 202, 61, 246, 188, 124, 234,
+        ],
+    };
+    const MR_SIGNER: sgx_measurement_t = sgx_measurement_t {
+        m: [
+            126, 229, 226, 157, 116, 98, 63, 219, 198, 251, 241, 69, 75, 230, 243, 187, 11, 134,
+            193, 35, 102, 183, 180, 120, 173, 19, 53, 62, 68, 222, 132, 17,
+        ],
+    };
 
     /// Ensure an OK result with the expected MRENCLAVE value succeeds.
     #[test]

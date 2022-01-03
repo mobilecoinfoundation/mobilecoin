@@ -18,6 +18,7 @@ mod status;
 extern crate alloc;
 
 pub use crate::{
+    quote::Kind as QuoteKind,
     report_body::Kind as ReportBodyKind,
     status::{MrEnclaveVerifier, MrSignerVerifier},
 };
@@ -53,6 +54,13 @@ cfg_if::cfg_if! {
     }
 }
 
+use crate::{
+    quote::XeidVerifier,
+    report_body::{
+        ConfigVersionVerifier, DebugVerifier, MiscSelectVerifier, ProductIdVerifier,
+        VersionVerifier,
+    },
+};
 use alloc::{
     borrow::ToOwned,
     string::{String, ToString},
@@ -70,14 +78,46 @@ use mbedtls::{
 };
 use mc_attest_core::{
     Attributes, Basename, ConfigId, ConfigSecurityVersion, CpuSecurityVersion, EpidGroupId,
-    ExtendedProductId, FamilyId, IasNonce, IasQuoteError, IasQuoteResult, MiscSelect, MrEnclave,
-    MrSigner, ProductId, Quote, QuoteSignType, ReportBody, ReportDataMask, SecurityVersion,
-    VerificationReport, VerificationReportData, VerifyError,
+    ExtendedProductId, FamilyId, IasNonce, MiscSelect, ProductId, Quote, QuoteSignType,
+    ReportDataMask, SecurityVersion, VerificationReport, VerificationReportData, VerifyError,
 };
-use mc_sgx_css::Signature;
-use mc_sgx_types::SGX_FLAGS_DEBUG;
 use serde::{Deserialize, Serialize};
 use sha2::{digest::Digest, Sha256};
+
+/// Private macros used inside this crate.
+mod macros {
+    // impl From<verifier> for Kind, impl From<inner> for Verifier
+    macro_rules! impl_kind_from_verifier {
+        ($($verifier:ident, $disc:ident, $inner:ty;)*) => {$(
+            impl From<$verifier> for Kind {
+                fn from(verifier: $verifier) -> Self {
+                    Kind::$disc(verifier)
+                }
+            }
+
+            impl From<$inner> for $verifier {
+                fn from(inner: $inner) -> $verifier {
+                    $verifier(inner)
+                }
+            }
+        )*}
+    }
+
+    macro_rules! impl_kind_from_inner {
+        ($($verifier:ident, $disc:ident, $inner:ty;)*) => {$(
+            $crate::macros::impl_kind_from_verifier!{ $verifier, $disc, $inner; }
+
+            impl From<$inner> for Kind {
+                fn from(inner: $inner) -> Kind {
+                    <$verifier>::from(inner).into()
+                }
+            }
+        )*};
+    }
+
+    pub(crate) use impl_kind_from_inner;
+    pub(crate) use impl_kind_from_verifier;
+}
 
 /// A trait which can be used to verify an object using pre-configured data
 trait Verify<T>: Clone {
@@ -117,7 +157,7 @@ pub struct Verifier {
     /// A list of DER-encoded trust anchor certificates.
     trust_anchors: Vec<Vec<u8>>,
     report_body_verifiers: Vec<ReportBodyKind>,
-    quote_verifiers: Vec<VerifyQuoteType>,
+    quote_verifiers: Vec<QuoteKind>,
     ias_verifiers: Vec<VerifyIasReportDataType>,
     status_verifiers: Vec<VerifyIasReportDataType>,
 }
@@ -186,10 +226,7 @@ impl Verifier {
 
     /// Verify that the basename in the quote matches the basename given.
     pub fn basename(&mut self, basename: &Basename) -> &mut Self {
-        self.quote_verifiers
-            .push(VerifyQuoteType::Basename(BasenameVerifier {
-                basename: *basename,
-            }));
+        self.quote_verifiers.push((*basename).into());
         self
     }
 
@@ -197,60 +234,47 @@ impl Verifier {
     ///
     /// This test is useful to ensure continuity of message flow.
     pub fn epid_group_id(&mut self, epid_group_id: &EpidGroupId) -> &mut Self {
-        self.quote_verifiers
-            .push(VerifyQuoteType::EpidGroupId(EpidGroupIdVerifier {
-                epid_group_id: *epid_group_id,
-            }));
+        self.quote_verifiers.push((*epid_group_id).into());
         self
     }
 
     /// Verify that the quote body within the IAS report matches the existing
     /// quote exactly.
     pub fn quote_body(&mut self, quote: &Quote) -> &mut Self {
-        self.quote_verifiers
-            .push(VerifyQuoteType::Body(QuoteContentsEqVerifier {
-                quote: quote.clone(),
-            }));
+        self.quote_verifiers.push(quote.clone().into());
         self
     }
 
     /// Verify that the quote body was created with the appropriate type
     /// (linkable vs. unlinkable).
     pub fn sign_type(&mut self, sign_type: QuoteSignType) -> &mut Self {
-        self.quote_verifiers
-            .push(VerifyQuoteType::SignType(SignTypeVerifier { sign_type }));
+        self.quote_verifiers.push(sign_type.into());
         self
     }
 
     /// Verify that the quoting enclave's security version is at least the given
     /// version.
     pub fn qe_security_version(&mut self, qe_svn: SecurityVersion) -> &mut Self {
-        self.quote_verifiers
-            .push(VerifyQuoteType::QeSvn(QeSecurityVersionVerifier { qe_svn }));
+        self.quote_verifiers.push(QuoteKind::QeSvn(qe_svn.into()));
         self
     }
 
     /// Verify that the quoting enclave's security version is at least the given
     /// version.
     pub fn pce_security_version(&mut self, pce_svn: SecurityVersion) -> &mut Self {
-        self.quote_verifiers
-            .push(VerifyQuoteType::PceSvn(PceSecurityVersionVerifier {
-                pce_svn,
-            }));
+        self.quote_verifiers.push(QuoteKind::PceSvn(pce_svn.into()));
         self
     }
 
     /// Verify the EPID signature is of the type indicated.
     pub fn quote_sign(&mut self, sign_type: QuoteSignType) -> &mut Self {
-        self.quote_verifiers
-            .push(VerifyQuoteType::SignType(SignTypeVerifier { sign_type }));
+        self.quote_verifiers.push(sign_type.into());
         self
     }
 
     /// Verify the quote's XEID matches the given value
     pub fn xeid(&mut self, xeid: u32) -> &mut Self {
-        self.quote_verifiers
-            .push(VerifyQuoteType::Xeid(XeidVerifier { xeid }));
+        self.quote_verifiers.push(XeidVerifier::from(xeid).into());
         self
     }
 
@@ -268,7 +292,8 @@ impl Verifier {
 
     /// Verify the report body config version is at least the given value.
     pub fn config_version(&mut self, config_svn: ConfigSecurityVersion) -> &mut Self {
-        self.report_body_verifiers.push((*config_svn).into());
+        self.report_body_verifiers
+            .push(ConfigVersionVerifier::from(config_svn).into());
         self
     }
 
@@ -280,7 +305,8 @@ impl Verifier {
 
     /// Verify the enclave debug mode is as-expected
     pub fn debug(&mut self, allow_debug: bool) -> &mut Self {
-        self.report_body_verifiers.push(allow_debug.into());
+        self.report_body_verifiers
+            .push(DebugVerifier::from(allow_debug).into());
         self
     }
 
@@ -304,19 +330,22 @@ impl Verifier {
 
     /// Verify the report body misc selection matches the given value.
     pub fn misc_select(&mut self, misc_select: MiscSelect) -> &mut Self {
-        self.report_body_verifiers.push(misc_select.into());
+        self.report_body_verifiers
+            .push(MiscSelectVerifier::from(misc_select).into());
         self
     }
 
     /// Verify the report body product ID matches the given value.
     pub fn product_id(&mut self, product_id: ProductId) -> &mut Self {
-        self.report_body_verifiers.push(product_id.into());
+        self.report_body_verifiers
+            .push(ProductIdVerifier::from(product_id).into());
         self
     }
 
     /// Verify the report body (enclave) version is at least the given value.
     pub fn version(&mut self, version: SecurityVersion) -> &mut Self {
-        self.report_body_verifiers.push(version.into());
+        self.report_body_verifiers
+            .push(VersionVerifier::from(version).into());
         self
     }
 
@@ -338,9 +367,7 @@ impl Verifier {
     pub fn verify(&self, report: &VerificationReport) -> Result<VerificationReportData, Error> {
         // Build a list of quote verifiers
         let mut quote_verifiers = self.quote_verifiers.clone();
-        quote_verifiers.push(VerifyQuoteType::ReportBody(ReportBodyVerifier {
-            body_verifiers: self.report_body_verifiers.clone(),
-        }));
+        quote_verifiers.push(self.report_body_verifiers.clone().into());
 
         // Build the list of IAS report data verifiers (including a quote
         // verifier)
@@ -636,7 +663,7 @@ impl Verify<VerificationReportData> for NonceVerifier {
 /// against the quote structure.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct QuoteVerifier {
-    quote_verifiers: Vec<VerifyQuoteType>,
+    quote_verifiers: Vec<QuoteKind>,
 }
 
 impl Verify<VerificationReportData> for QuoteVerifier {
@@ -672,205 +699,14 @@ impl Verify<VerificationReportData> for PseVerifier {
     }
 }
 
-/// An enumeration of quote content verifiers
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-enum VerifyQuoteType {
-    Basename(BasenameVerifier),
-    /// Verify the quote body with the report matches (exactly) the one
-    /// provided.
-    Body(QuoteContentsEqVerifier),
-    /// Verify the EPID group id within the report matches the one provided.
-    EpidGroupId(EpidGroupIdVerifier),
-    /// Verify the quoting enclave's security version is at least the one given.
-    QeSvn(QeSecurityVersionVerifier),
-    /// Verify the provisioning certificate enclave's security version is at
-    /// least the one given.
-    PceSvn(PceSecurityVersionVerifier),
-    /// Verify the report body using a vector of report body verifiers.
-    ReportBody(ReportBodyVerifier),
-    /// Verify the sign type of the report matches what's expected.
-    SignType(SignTypeVerifier),
-    /// Verify the XEID matches what is expected
-    Xeid(XeidVerifier),
-}
-
-impl Verify<Quote> for VerifyQuoteType {
-    fn verify(&self, quote: &Quote) -> bool {
-        match self {
-            VerifyQuoteType::Basename(v) => v.verify(quote),
-            VerifyQuoteType::Body(v) => v.verify(quote),
-            VerifyQuoteType::EpidGroupId(v) => v.verify(quote),
-            VerifyQuoteType::QeSvn(v) => v.verify(quote),
-            VerifyQuoteType::PceSvn(v) => v.verify(quote),
-            VerifyQuoteType::ReportBody(v) => v.verify(quote),
-            VerifyQuoteType::SignType(v) => v.verify(quote),
-            VerifyQuoteType::Xeid(v) => v.verify(quote),
-        }
-    }
-}
-
-/// A [`Verify<Quote>`] implementation that will check if the basename is as
-/// expected.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-struct BasenameVerifier {
-    basename: Basename,
-}
-
-impl Verify<Quote> for BasenameVerifier {
-    fn verify(&self, quote: &Quote) -> bool {
-        quote
-            .basename()
-            .map(|basename| basename == self.basename)
-            .unwrap_or(false)
-    }
-}
-
-/// A [`Verify<Quote>`] implementation that will simply check that the quote
-/// contained in the IAS report matches the quote in this object.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-struct QuoteContentsEqVerifier {
-    quote: Quote,
-}
-
-impl Verify<Quote> for QuoteContentsEqVerifier {
-    fn verify(&self, quote: &Quote) -> bool {
-        self.quote.contents_eq(quote)
-    }
-}
-
-/// A [`Verify<Quote>`] implementation that will check if the EPID group ID in
-/// the IAS quote is expected.
-///
-/// This can form a very basic sanity check to verify that the SigRL provided
-/// for the quote is as expected.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-struct EpidGroupIdVerifier {
-    epid_group_id: EpidGroupId,
-}
-
-impl Verify<Quote> for EpidGroupIdVerifier {
-    fn verify(&self, quote: &Quote) -> bool {
-        quote
-            .epid_group_id()
-            .map(|epid_group_id| epid_group_id == self.epid_group_id)
-            .unwrap_or(false)
-    }
-}
-
-/// A [`Verify<Quote>`] implementation that will simply check that the QE
-/// security version is at least the version given.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-struct PceSecurityVersionVerifier {
-    pce_svn: SecurityVersion,
-}
-
-impl Verify<Quote> for PceSecurityVersionVerifier {
-    fn verify(&self, quote: &Quote) -> bool {
-        quote
-            .pce_security_version()
-            .map(|pce_svn| pce_svn >= self.pce_svn)
-            .unwrap_or(false)
-    }
-}
-
-/// A [`Verify<Quote>`] implementation that will simply check that the QE
-/// security version is at least the version given.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-struct QeSecurityVersionVerifier {
-    qe_svn: SecurityVersion,
-}
-
-impl Verify<Quote> for QeSecurityVersionVerifier {
-    fn verify(&self, quote: &Quote) -> bool {
-        quote
-            .qe_security_version()
-            .map(|qe_svn| qe_svn >= self.qe_svn)
-            .unwrap_or(false)
-    }
-}
-
-/// A [`Verify<Quote>`] implementation that will collect the results of many
-/// independent [`Verify<ReportBody>`] implementations.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-struct ReportBodyVerifier {
-    body_verifiers: Vec<ReportBodyKind>,
-}
-
-impl Verify<Quote> for ReportBodyVerifier {
-    fn verify(&self, quote: &Quote) -> bool {
-        if let Ok(report_body) = quote.report_body() {
-            let mut result = 0xffff_ffff;
-            for verifier in &self.body_verifiers {
-                result &= verifier.verify(&report_body) as u32;
-            }
-            result != 0
-        } else {
-            false
-        }
-    }
-}
-
-/// A [`Verify<Quote>`] implementation that will check if the EPID signature
-/// type is expected.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-struct SignTypeVerifier {
-    sign_type: QuoteSignType,
-}
-
-impl Verify<Quote> for SignTypeVerifier {
-    fn verify(&self, quote: &Quote) -> bool {
-        if let Ok(sign_type) = quote.sign_type() {
-            sign_type == self.sign_type
-        } else {
-            false
-        }
-    }
-}
-
-/// A [`Verify<Quote>`] implementation that will check if the XEID matches
-/// expectations.
-#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-struct XeidVerifier {
-    xeid: u32,
-}
-
-impl Verify<Quote> for XeidVerifier {
-    fn verify(&self, quote: &Quote) -> bool {
-        quote.xeid().map(|xeid| xeid == self.xeid).unwrap_or(false)
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use mc_attest_core::VerificationSignature;
-    use mc_sgx_types::{
-        sgx_attributes_t, sgx_basename_t, sgx_cpu_svn_t, sgx_measurement_t, sgx_report_body_t,
-        sgx_report_data_t,
-    };
-    use mc_util_encodings::{FromBase64, FromHex};
+    use mc_attest_core::{MrEnclave, MrSigner, VerificationSignature};
+    use mc_util_encodings::FromHex;
 
     extern crate std;
 
-    const BASE64_QUOTE: &str = include_str!("../data/test/quote_ok.txt");
-    const BASE64_QUOTE2: &str = include_str!("../data/test/quote_configuration_needed.txt");
-    const IAS_OK: &str = include_str!("../data/test/ias_ok.json");
-    const IAS_CONFIG: &str = include_str!("../data/test/ias_config.json");
-    const IAS_SW: &str = include_str!("../data/test/ias_sw.json");
-    const IAS_CONFIG_SW: &str = include_str!("../data/test/ias_config_sw.json");
-    const ONES: [u8; 64] = [0xffu8; 64];
-    const MR_ENCLAVE: sgx_measurement_t = sgx_measurement_t {
-        m: [
-            247, 180, 107, 31, 41, 201, 41, 41, 32, 42, 25, 79, 7, 29, 232, 138, 9, 180, 143, 195,
-            110, 244, 197, 245, 247, 21, 202, 61, 246, 188, 124, 234,
-        ],
-    };
-    const MR_SIGNER: sgx_measurement_t = sgx_measurement_t {
-        m: [
-            126, 229, 226, 157, 116, 98, 63, 219, 198, 251, 241, 69, 75, 230, 243, 187, 11, 134,
-            193, 35, 102, 183, 180, 120, 173, 19, 53, 62, 68, 222, 132, 17,
-        ],
-    };
     const TEST_ANCHORS: &[&str] = &[include_str!(
         "../data/Dev_AttestationReportSigningCACert.pem"
     )];
@@ -953,218 +789,5 @@ mod test {
             .debug(true)
             .verify(&get_ias_report())
             .expect("Could not verify IAS report");
-    }
-
-    /// When the quote contains the basename we're expecting
-    #[test]
-    fn basename_success() {
-        let quote =
-            Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = BasenameVerifier {
-            basename: quote.basename().expect("Could not read basename"),
-        };
-
-        assert!(verifier.verify(&quote));
-    }
-
-    /// When the quote does not contain the basename we're expecting
-    #[test]
-    fn basename_fail() {
-        let quote =
-            Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let basename = sgx_basename_t { name: [0u8; 32] };
-        let verifier = BasenameVerifier {
-            basename: Basename::from(basename),
-        };
-
-        assert!(!verifier.verify(&quote));
-    }
-
-    /// When the quote matches what we're expecting
-    #[test]
-    fn quote_contents_success() {
-        let quote =
-            Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = QuoteContentsEqVerifier {
-            quote: quote.clone(),
-        };
-
-        assert!(verifier.verify(&quote));
-    }
-
-    /// When the report does not contain the EPID group ID we're expecting
-    #[test]
-    fn quote_contents_fail() {
-        let quote =
-            Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = QuoteContentsEqVerifier {
-            quote: Quote::from_base64(BASE64_QUOTE2)
-                .expect("Could not parse other quote from base64 file"),
-        };
-
-        assert!(!verifier.verify(&quote));
-    }
-
-    /// When the report contains the EPID group ID we're expecting
-    #[test]
-    fn epid_group_id_success() {
-        let quote =
-            Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = EpidGroupIdVerifier {
-            epid_group_id: quote.epid_group_id().expect("Could not read EPID Group ID"),
-        };
-
-        assert!(verifier.verify(&quote));
-    }
-
-    /// When the report does not contain the EPID group ID we're expecting
-    #[test]
-    fn epid_group_id_fail() {
-        let quote =
-            Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let epid_group_id = [0u8; 4];
-        let verifier = EpidGroupIdVerifier {
-            epid_group_id: EpidGroupId::from(epid_group_id),
-        };
-
-        assert!(!verifier.verify(&quote));
-    }
-
-    /// When the provisioning certificate enclave has the exact version we want
-    #[test]
-    fn pce_svn_eq_pass() {
-        let quote =
-            Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = PceSecurityVersionVerifier {
-            pce_svn: quote
-                .pce_security_version()
-                .expect("PCE SVN could not be read"),
-        };
-
-        assert!(verifier.verify(&quote));
-    }
-
-    /// When the provisioning certificate enclave has a newer version than we
-    /// want
-    #[test]
-    fn pce_svn_newer_pass() {
-        let quote =
-            Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = PceSecurityVersionVerifier {
-            pce_svn: quote
-                .pce_security_version()
-                .expect("PCE SVN could not be read")
-                - 1,
-        };
-
-        assert!(verifier.verify(&quote));
-    }
-
-    /// When the provisioning certificate enclave has an older version than we
-    /// want
-    #[test]
-    fn pce_svn_older_fail() {
-        let quote =
-            Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = PceSecurityVersionVerifier {
-            pce_svn: quote
-                .pce_security_version()
-                .expect("PCE SVN could not be read")
-                + 1,
-        };
-
-        assert!(!verifier.verify(&quote));
-    }
-
-    /// When the quoting enclaves has the exact version we want
-    #[test]
-    fn qe_svn_eq_pass() {
-        let quote =
-            Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = QeSecurityVersionVerifier {
-            qe_svn: quote
-                .qe_security_version()
-                .expect("QE SVN could not be read"),
-        };
-
-        assert!(verifier.verify(&quote));
-    }
-
-    /// When the quoting enclave has a newer version than we want
-    #[test]
-    fn qe_svn_newer_pass() {
-        let quote =
-            Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = QeSecurityVersionVerifier {
-            qe_svn: quote
-                .qe_security_version()
-                .expect("QE SVN could not be read")
-                - 1,
-        };
-
-        assert!(verifier.verify(&quote));
-    }
-
-    /// When the quoting enclave has an older version than we want
-    #[test]
-    fn qe_svn_older_fail() {
-        let quote =
-            Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = QeSecurityVersionVerifier {
-            qe_svn: quote
-                .qe_security_version()
-                .expect("QE SVN could not be read")
-                + 1,
-        };
-
-        assert!(!verifier.verify(&quote));
-    }
-
-    /// When the quote contains the sign type we want
-    #[test]
-    fn sign_type_success() {
-        let quote =
-            Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = SignTypeVerifier {
-            sign_type: quote.sign_type().expect("Could not retreive sign type"),
-        };
-
-        assert!(verifier.verify(&quote));
-    }
-
-    /// When the quote doesn't contain the sign type we want
-    #[test]
-    fn sign_type_fail() {
-        let quote =
-            Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = SignTypeVerifier {
-            sign_type: QuoteSignType::Linkable,
-        };
-
-        assert!(!verifier.verify(&quote));
-    }
-
-    /// When the report contains the attributes we want
-    #[test]
-    fn xeid_success() {
-        let quote =
-            Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = XeidVerifier {
-            xeid: quote.xeid().expect("Xeid could not be read"),
-        };
-
-        assert!(verifier.verify(&quote));
-    }
-
-    /// When the report contains attributes we don't want
-    #[test]
-    fn xeid_fail() {
-        let quote =
-            Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = XeidVerifier {
-            xeid: quote.xeid().expect("Xeid could not be read") + 1,
-        };
-
-        assert!(!verifier.verify(&quote));
     }
 }

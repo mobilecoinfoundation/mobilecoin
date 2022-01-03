@@ -3,12 +3,16 @@
 //! Verifiers which operate on the [`ReportBody`](::mc_attest_core::ReportBody)
 //! data structure.
 
-use crate::Verify;
+use crate::{
+    macros::{impl_kind_from_inner, impl_kind_from_verifier},
+    Verify,
+};
 use mc_attest_core::{
     Attributes, ConfigId, ConfigSecurityVersion, CpuSecurityVersion, ExtendedProductId, FamilyId,
     MiscSelect, ProductId, ReportBody, ReportDataMask, SecurityVersion,
 };
 use mc_sgx_types::SGX_FLAGS_DEBUG;
+use serde::{Deserialize, Serialize};
 
 /// An enumeration of known report body verifier types.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -37,70 +41,22 @@ pub enum Kind {
     Version(VersionVerifier),
 }
 
-impl From<Attributes> for Kind {
-    fn from(attributes: Attributes) -> Self {
-        Kind::Attributes(attributes.into())
-    }
+impl_kind_from_inner! {
+    AttributesVerifier, Attributes, Attributes;
+    ConfigIdVerifier, ConfigId, ConfigId;
+    CpuVersionVerifier, CpuVersion, CpuSecurityVersion;
+    DataVerifier, Data, ReportDataMask;
+    ExtendedProductIdVerifier, ExtendedProductId, ExtendedProductId;
+    FamilyIdVerifier, FamilyId, FamilyId;
 }
 
-impl From<ConfigId> for Kind {
-    fn from(config_id: ConfigId) -> Self {
-        Kind::ConfigId(config_id.into())
-    }
-}
-
-impl From<ConfigSecurityVersion> for Kind {
-    fn from(config_svn: ConfigSecurityVersion) -> Self {
-        Kind::ConfigVersion(config_svn.into())
-    }
-}
-
-impl From<CpuSecurityVersion> for Kind {
-    fn from(cpu_svn: CpuSecurityVersion) -> Self {
-        Kind::CpuVersion(cpu_svn.into())
-    }
-}
-
-impl From<bool> for Kind {
-    fn from(allow_debug: bool) -> Self {
-        Kind::Debug(allow_debug.into())
-    }
-}
-
-impl From<ReportDataMask> for Kind {
-    fn from(data: ReportDataMask) -> Self {
-        Kind::Data(data.into())
-    }
-}
-
-impl From<ExtendedProductId> for Kind {
-    fn from(ext_prod_id: ExtendedProductId) -> Self {
-        Kind::ExtendedProductId(ext_prod_id.into())
-    }
-}
-
-impl From<FamilyId> for Kind {
-    fn from(family_id: FamilyId) -> Self {
-        Kind::FamilyId(family_id.into())
-    }
-}
-
-impl From<MiscSelect> for Kind {
-    fn from(misc_select: MiscSelect) -> Self {
-        Kind::MiscSelect(misc_select.into())
-    }
-}
-
-impl From<ProductId> for Kind {
-    fn from(product_id: ProductId) -> Self {
-        Kind::ProductId(product_id.into())
-    }
-}
-
-impl From<SecurityVersion> for Kind {
-    fn from(version: SecurityVersion) -> Self {
-        Kind::Version(version.into())
-    }
+// FIXME: Type aliases should be removed so this can be simplified
+impl_kind_from_verifier! {
+    ConfigVersionVerifier, ConfigVersion, ConfigSecurityVersion;
+    DebugVerifier, Debug, bool;
+    MiscSelectVerifier, MiscSelect, MiscSelect;
+    ProductIdVerifier, ProductId, ProductId;
+    VersionVerifier, Version, SecurityVersion;
 }
 
 impl Verify<ReportBody> for Kind {
@@ -126,12 +82,6 @@ impl Verify<ReportBody> for Kind {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct AttributesVerifier(Attributes);
 
-impl From<Attributes> for AttributesVerifier {
-    fn from(attributes: Attributes) -> Self {
-        Self(attributes)
-    }
-}
-
 impl Verify<ReportBody> for AttributesVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
         self.0 == report_body.attributes()
@@ -142,12 +92,6 @@ impl Verify<ReportBody> for AttributesVerifier {
 /// configuration ID matches the given value
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ConfigIdVerifier(ConfigId);
-
-impl From<ConfigId> for ConfigIdVerifier {
-    fn from(config_id: ConfigId) -> Self {
-        Self(config_id)
-    }
-}
 
 impl Verify<ReportBody> for ConfigIdVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
@@ -160,12 +104,6 @@ impl Verify<ReportBody> for ConfigIdVerifier {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ConfigVersionVerifier(ConfigSecurityVersion);
 
-impl From<ConfigSecurityVersion> for ConfigVersionVerifier {
-    fn from(config_svn: ConfigSecurityVersion) -> Self {
-        Self(config_svn)
-    }
-}
-
 impl Verify<ReportBody> for ConfigVersionVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
         self.0 <= report_body.config_security_version()
@@ -176,12 +114,6 @@ impl Verify<ReportBody> for ConfigVersionVerifier {
 /// is at least the version specified.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct CpuVersionVerifier(CpuSecurityVersion);
-
-impl From<CpuSecurityVersion> for CpuVersionVerifier {
-    fn from(cpu_svn: CpuSecurityVersion) -> Self {
-        Self(cpu_svn)
-    }
-}
 
 impl Verify<ReportBody> for CpuVersionVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
@@ -194,12 +126,6 @@ impl Verify<ReportBody> for CpuVersionVerifier {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct DebugVerifier(bool);
 
-impl From<bool> for DebugVerifier {
-    fn from(allow_debug: bool) -> Self {
-        Self(allow_debug)
-    }
-}
-
 impl Verify<ReportBody> for DebugVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
         self.0 || (report_body.attributes().flags() & SGX_FLAGS_DEBUG == 0)
@@ -210,12 +136,6 @@ impl Verify<ReportBody> for DebugVerifier {
 /// report data matches the mask given.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct DataVerifier(ReportDataMask);
-
-impl From<ReportDataMask> for DataVerifier {
-    fn from(data: ReportDataMask) -> Self {
-        Self(data)
-    }
-}
 
 impl Verify<ReportBody> for DataVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
@@ -228,12 +148,6 @@ impl Verify<ReportBody> for DataVerifier {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ExtendedProductIdVerifier(ExtendedProductId);
 
-impl From<ExtendedProductId> for ExtendedProductIdVerifier {
-    fn from(ext_prod_id: ExtendedProductId) -> Self {
-        Self(ext_prod_id)
-    }
-}
-
 impl Verify<ReportBody> for ExtendedProductIdVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
         self.0 == report_body.extended_product_id()
@@ -244,12 +158,6 @@ impl Verify<ReportBody> for ExtendedProductIdVerifier {
 /// family ID matches the one given.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct FamilyIdVerifier(FamilyId);
-
-impl From<FamilyId> for FamilyIdVerifier {
-    fn from(family_id: FamilyId) -> Self {
-        Self(family_id)
-    }
-}
 
 impl Verify<ReportBody> for FamilyIdVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
@@ -262,12 +170,6 @@ impl Verify<ReportBody> for FamilyIdVerifier {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct MiscSelectVerifier(MiscSelect);
 
-impl From<MiscSelect> for MiscSelectVerifier {
-    fn from(misc_select: MiscSelect) -> Self {
-        Self(misc_select)
-    }
-}
-
 impl Verify<ReportBody> for MiscSelectVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
         self.0 == report_body.misc_select()
@@ -279,12 +181,6 @@ impl Verify<ReportBody> for MiscSelectVerifier {
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ProductIdVerifier(ProductId);
 
-impl From<ProductId> for ProductIdVerifier {
-    fn from(product_id: ProductId) -> Self {
-        Self(product_id)
-    }
-}
-
 impl Verify<ReportBody> for ProductIdVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
         self.0 == report_body.product_id()
@@ -295,12 +191,6 @@ impl Verify<ReportBody> for ProductIdVerifier {
 /// security version is at least the one given.
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct VersionVerifier(SecurityVersion);
-
-impl From<SecurityVersion> for VersionVerifier {
-    fn from(svn: SecurityVersion) -> Self {
-        Self(svn)
-    }
-}
 
 impl Verify<ReportBody> for VersionVerifier {
     fn verify(&self, report_body: &ReportBody) -> bool {
@@ -315,6 +205,7 @@ mod test {
         sgx_attributes_t, sgx_cpu_svn_t, sgx_measurement_t, sgx_report_body_t, sgx_report_data_t,
     };
 
+    const ONES: [u8; 64] = [0xffu8; 64];
     const REPORT_BODY_SRC: sgx_report_body_t = sgx_report_body_t {
         cpu_svn: sgx_cpu_svn_t {
             svn: [1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
@@ -407,7 +298,7 @@ mod test {
     #[test]
     fn config_version_eq_pass() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(REPORT_BODY_SRC.config_svn);
+        let verifier = Kind::from(ConfigVersionVerifier::from(REPORT_BODY_SRC.config_svn));
 
         assert!(verifier.verify(&report_body));
     }
@@ -416,7 +307,7 @@ mod test {
     #[test]
     fn config_version_newer_pass() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(REPORT_BODY_SRC.config_svn - 1);
+        let verifier = Kind::from(ConfigVersionVerifier::from(REPORT_BODY_SRC.config_svn - 1));
 
         assert!(verifier.verify(&report_body));
     }
@@ -425,7 +316,7 @@ mod test {
     #[test]
     fn config_version_older_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(REPORT_BODY_SRC.config_svn + 1);
+        let verifier = Kind::from(ConfigVersionVerifier::from(REPORT_BODY_SRC.config_svn + 1));
 
         assert!(!verifier.verify(&report_body));
     }
@@ -465,7 +356,7 @@ mod test {
     #[test]
     fn debug_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(true);
+        let verifier = Kind::from(DebugVerifier::from(true));
 
         assert!(verifier.verify(&report_body));
     }
@@ -474,7 +365,7 @@ mod test {
     #[test]
     fn no_debug_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(false);
+        let verifier = Kind::from(DebugVerifier::from(false));
 
         assert!(verifier.verify(&report_body));
     }
@@ -485,7 +376,7 @@ mod test {
         let mut report_body = REPORT_BODY_SRC;
         report_body.attributes.flags |= SGX_FLAGS_DEBUG;
         let report_body = ReportBody::from(report_body);
-        let verifier = Kind::from(false);
+        let verifier = Kind::from(DebugVerifier::from(false));
 
         assert!(!verifier.verify(&report_body));
     }
@@ -560,7 +451,7 @@ mod test {
     #[test]
     fn misc_select_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(REPORT_BODY_SRC.misc_select);
+        let verifier = Kind::from(MiscSelectVerifier::from(REPORT_BODY_SRC.misc_select));
 
         assert!(verifier.verify(&report_body));
     }
@@ -569,7 +460,7 @@ mod test {
     #[test]
     fn misc_select_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(REPORT_BODY_SRC.misc_select - 1);
+        let verifier = Kind::from(MiscSelectVerifier::from(REPORT_BODY_SRC.misc_select - 1));
 
         assert!(!verifier.verify(&report_body));
     }
@@ -578,7 +469,7 @@ mod test {
     #[test]
     fn product_id_success() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(REPORT_BODY_SRC.isv_prod_id);
+        let verifier = Kind::from(ProductIdVerifier::from(REPORT_BODY_SRC.isv_prod_id));
 
         assert!(verifier.verify(&report_body));
     }
@@ -587,7 +478,7 @@ mod test {
     #[test]
     fn product_id_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(REPORT_BODY_SRC.isv_prod_id - 1);
+        let verifier = Kind::from(ProductIdVerifier::from(REPORT_BODY_SRC.isv_prod_id - 1));
 
         assert!(!verifier.verify(&report_body));
     }
@@ -596,7 +487,7 @@ mod test {
     #[test]
     fn version_eq_pass() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(REPORT_BODY_SRC.isv_svn);
+        let verifier = Kind::from(VersionVerifier::from(REPORT_BODY_SRC.isv_svn));
 
         assert!(verifier.verify(&report_body));
     }
@@ -605,7 +496,7 @@ mod test {
     #[test]
     fn version_newer_pass() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(REPORT_BODY_SRC.isv_svn - 1);
+        let verifier = Kind::from(VersionVerifier::from(REPORT_BODY_SRC.isv_svn - 1));
 
         assert!(verifier.verify(&report_body));
     }
@@ -614,7 +505,7 @@ mod test {
     #[test]
     fn version_older_fail() {
         let report_body = ReportBody::from(&REPORT_BODY_SRC);
-        let verifier = Kind::from(REPORT_BODY_SRC.isv_svn + 1);
+        let verifier = Kind::from(VersionVerifier::from(REPORT_BODY_SRC.isv_svn + 1));
 
         assert!(!verifier.verify(&report_body));
     }
