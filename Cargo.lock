@@ -4149,6 +4149,7 @@ version = "1.2.0-pre0"
 dependencies = [
  "displaydoc",
  "grpcio",
+ "hex_fmt",
  "lazy_static",
  "mc-account-keys",
  "mc-common",
