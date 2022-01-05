@@ -100,10 +100,15 @@ impl TryFrom<&[Attribute]> for AttributeConfig {
     }
 }
 
-/// TODO document
+/// Configuration options for individual fields inside a struct.
+/// They are set using the #[digestible(..)] directive.
 #[derive(Default, Clone, Debug)]
 struct FieldAttributeConfig {
-    /// TODO
+    /// Allows skipping the hashing of a field if it's value is equal to 0.
+    /// This is a backwards compatibility tool that allows adding new integer
+    /// fields without affecting the hash of existing objects that do not
+    /// have the field set.print! Using this on a field type that cannot be
+    /// compared to 0 will result in a compile error.
     pub omit_on_zero: bool,
 }
 
