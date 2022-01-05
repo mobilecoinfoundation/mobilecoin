@@ -99,6 +99,16 @@ struct FooV2 {
 
 expands to the same codegen as we had for `struct Foo` earlier.
 
+It is possible to skip digesting individual struct fields if they are equal to zero. This is done by using the #[digestible(omit_on_zero)] directive, for exampe:
+
+```
+#[derive(Digestible)]
+struct Thing {
+    #[digestible(omit_on_zero)]
+    field: i32,
+}
+```
+
 Future improvements
 -------------------
 
