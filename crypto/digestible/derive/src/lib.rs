@@ -100,6 +100,62 @@ impl TryFrom<&[Attribute]> for AttributeConfig {
     }
 }
 
+/// TODO document
+#[derive(Default, Clone, Debug)]
+struct FieldAttributeConfig {
+    /// TODO
+    pub omit_on_zero: bool,
+}
+
+impl FieldAttributeConfig {
+    // Apply a nested meta item from syn to the current config state
+    pub fn apply_meta(&mut self, nested_meta: &NestedMeta) -> Result<(), &'static str> {
+        match nested_meta {
+            NestedMeta::Lit(_) => {
+                return Err("Unexpected digestible literal attribute");
+            }
+            NestedMeta::Meta(meta) => match meta {
+                Meta::Path(path) => {
+                    if path.is_ident("omit_on_zero") {
+                        if !self.omit_on_zero {
+                            self.omit_on_zero = true;
+                        } else {
+                            return Err("omit_on_zero cannot appear twice as an attribute");
+                        }
+                    } else {
+                        return Err("unexpected digestible path attribute");
+                    }
+                }
+                _ => {
+                    return Err("unexpected digestible attribute");
+                }
+            },
+        }
+        Ok(())
+    }
+}
+
+// Parse AttributeConfig from syn attribute list
+impl TryFrom<&[Attribute]> for FieldAttributeConfig {
+    type Error = &'static str;
+
+    fn try_from(src: &[Attribute]) -> Result<Self, &'static str> {
+        let mut result = FieldAttributeConfig::default();
+
+        for attr in src {
+            if attr.path.is_ident("digestible") {
+                if let Meta::List(meta) = attr.parse_meta().unwrap() {
+                    for meta_item in meta.nested.iter() {
+                        result.apply_meta(meta_item)?;
+                    }
+                }
+            }
+        }
+
+        Ok(result)
+    }
+}
+
 // This is the main entrypoint for `derive(Digestible)`
 fn try_digestible(input: TokenStream) -> Result<TokenStream, &'static str> {
     let input: DeriveInput = syn::parse(input).unwrap();
@@ -167,21 +223,30 @@ fn try_digestible_struct(
             match &field.ident {
                 // this is a regular struct, and the field has an identifier
                 Some(field_ident) => {
-                    quote! {
-                        self.#field_ident.append_to_transcript_allow_omit(stringify!(#field_ident).as_bytes(), transcript);
+                    // Read any #[digestible(...)]` attributes on this field and parse them
+                    let attr_config = FieldAttributeConfig::try_from(&field.attrs[..])?;
+
+                    if attr_config.omit_on_zero {
+                        Ok(quote! {
+                            self.#field_ident.append_to_transcript_omit_on_zero(stringify!(#field_ident).as_bytes(), transcript);
+                        })
+                    } else {
+                        Ok(quote! {
+                            self.#field_ident.append_to_transcript_allow_omit(stringify!(#field_ident).as_bytes(), transcript);
+                        })
                     }
                 }
                 // this is a tuple struct, and the field doesn't have an identifier
                 // we have to make a syn object corresponding to the index, and use it in the quote! macro
                 None => {
                     let index = syn::Index::from(idx);
-                    quote! {
+                    Ok(quote! {
                         self.#index.append_to_transcript_allow_omit(stringify!(#index).as_bytes(), transcript);
-                    }
+                    })
                 }
             }
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, &'static str>>()?;
 
     // Final expanded result
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
