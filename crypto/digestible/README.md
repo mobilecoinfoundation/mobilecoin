@@ -500,7 +500,7 @@ struct Thing {
 }
 ```
 
-This feature makes it easy to add integer fields in a backwards-compatible way without having to wrap them in an `Option<>`. This removes the ambiguity of `None` vs `Some(0)`.
+This feature makes it easy to add integer fields in a backwards-compatible way without having to wrap them in an `Option<>`. This removes the ambiguity of `None` vs `Some(0)`. It mimics the Protobuf behavior, where fields set to zero are omitted.
 
 
 References
