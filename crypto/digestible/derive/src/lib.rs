@@ -228,7 +228,9 @@ fn try_digestible_struct(
 
                     if attr_config.omit_on_zero {
                         Ok(quote! {
-                            self.#field_ident.append_to_transcript_omit_on_zero(stringify!(#field_ident).as_bytes(), transcript);
+                            if self.#field_ident != 0 {
+                                self.#field_ident.append_to_transcript_allow_omit(stringify!(#field_ident).as_bytes(), transcript);
+                            }
                         })
                     } else {
                         Ok(quote! {

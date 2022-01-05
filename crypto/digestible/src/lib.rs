@@ -82,16 +82,6 @@ pub trait Digestible {
     ) {
         self.append_to_transcript(context, transcript)
     }
-
-    /// TODO
-    #[inline]
-    fn append_to_transcript_omit_on_zero<DT: DigestTranscript>(
-        &self,
-        context: &'static [u8],
-        transcript: &mut DT,
-    ) {
-        self.append_to_transcript(context, transcript)
-    }
 }
 
 /// A trait implemented by protocol transcript objects.
@@ -258,17 +248,6 @@ impl Digestible for u16 {
         // Note: encoding of the size of the uint is implicit in merlin's framing
         transcript.append_primitive(context, b"uint", &self.to_le_bytes())
     }
-
-    #[inline]
-    fn append_to_transcript_omit_on_zero<DT: DigestTranscript>(
-        &self,
-        context: &'static [u8],
-        transcript: &mut DT,
-    ) {
-        if *self != 0 {
-            self.append_to_transcript(context, transcript)
-        }
-    }
 }
 
 impl Digestible for u32 {
@@ -279,17 +258,6 @@ impl Digestible for u32 {
         transcript: &mut DT,
     ) {
         transcript.append_primitive(context, b"uint", &self.to_le_bytes())
-    }
-
-    #[inline]
-    fn append_to_transcript_omit_on_zero<DT: DigestTranscript>(
-        &self,
-        context: &'static [u8],
-        transcript: &mut DT,
-    ) {
-        if *self != 0 {
-            self.append_to_transcript(context, transcript)
-        }
     }
 }
 
@@ -302,17 +270,6 @@ impl Digestible for u64 {
     ) {
         transcript.append_primitive(context, b"uint", &self.to_le_bytes())
     }
-
-    #[inline]
-    fn append_to_transcript_omit_on_zero<DT: DigestTranscript>(
-        &self,
-        context: &'static [u8],
-        transcript: &mut DT,
-    ) {
-        if *self != 0 {
-            self.append_to_transcript(context, transcript)
-        }
-    }
 }
 
 impl Digestible for i8 {
@@ -323,17 +280,6 @@ impl Digestible for i8 {
         transcript: &mut DT,
     ) {
         transcript.append_primitive(context, b"int", &self.to_le_bytes())
-    }
-
-    #[inline]
-    fn append_to_transcript_omit_on_zero<DT: DigestTranscript>(
-        &self,
-        context: &'static [u8],
-        transcript: &mut DT,
-    ) {
-        if *self != 0 {
-            self.append_to_transcript(context, transcript)
-        }
     }
 }
 
@@ -346,17 +292,6 @@ impl Digestible for i16 {
     ) {
         transcript.append_primitive(context, b"int", &self.to_le_bytes())
     }
-
-    #[inline]
-    fn append_to_transcript_omit_on_zero<DT: DigestTranscript>(
-        &self,
-        context: &'static [u8],
-        transcript: &mut DT,
-    ) {
-        if *self != 0 {
-            self.append_to_transcript(context, transcript)
-        }
-    }
 }
 
 impl Digestible for i32 {
@@ -367,17 +302,6 @@ impl Digestible for i32 {
         transcript: &mut DT,
     ) {
         transcript.append_primitive(context, b"int", &self.to_le_bytes())
-    }
-
-    #[inline]
-    fn append_to_transcript_omit_on_zero<DT: DigestTranscript>(
-        &self,
-        context: &'static [u8],
-        transcript: &mut DT,
-    ) {
-        if *self != 0 {
-            self.append_to_transcript(context, transcript)
-        }
     }
 }
 
@@ -390,17 +314,6 @@ impl Digestible for i64 {
     ) {
         transcript.append_primitive(context, b"int", &self.to_le_bytes())
     }
-
-    #[inline]
-    fn append_to_transcript_omit_on_zero<DT: DigestTranscript>(
-        &self,
-        context: &'static [u8],
-        transcript: &mut DT,
-    ) {
-        if *self != 0 {
-            self.append_to_transcript(context, transcript)
-        }
-    }
 }
 
 impl Digestible for usize {
@@ -412,17 +325,6 @@ impl Digestible for usize {
     ) {
         (*self as u64).append_to_transcript(context, transcript);
     }
-
-    #[inline]
-    fn append_to_transcript_omit_on_zero<DT: DigestTranscript>(
-        &self,
-        context: &'static [u8],
-        transcript: &mut DT,
-    ) {
-        if *self != 0 {
-            self.append_to_transcript(context, transcript)
-        }
-    }
 }
 
 impl Digestible for isize {
@@ -433,17 +335,6 @@ impl Digestible for isize {
         transcript: &mut DT,
     ) {
         (*self as i64).append_to_transcript(context, transcript);
-    }
-
-    #[inline]
-    fn append_to_transcript_omit_on_zero<DT: DigestTranscript>(
-        &self,
-        context: &'static [u8],
-        transcript: &mut DT,
-    ) {
-        if *self != 0 {
-            self.append_to_transcript(context, transcript)
-        }
     }
 }
 
