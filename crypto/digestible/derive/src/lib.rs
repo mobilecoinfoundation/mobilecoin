@@ -100,6 +100,66 @@ impl TryFrom<&[Attribute]> for AttributeConfig {
     }
 }
 
+/// Configuration options for individual fields inside a struct.
+/// They are set using the #[digestible(..)] directive.
+#[derive(Default, Clone, Debug)]
+struct FieldAttributeConfig {
+    /// Allows skipping the hashing of a field if it's value is equal to
+    /// something. This is a backwards compatibility tool that allows adding
+    /// new fields without affecting the hash of existing objects that do
+    /// not have the field set.
+    pub omit_when: Option<Lit>,
+}
+
+impl FieldAttributeConfig {
+    // Apply a nested meta item from syn to the current config state
+    pub fn apply_meta(&mut self, nested_meta: &NestedMeta) -> Result<(), &'static str> {
+        match nested_meta {
+            NestedMeta::Lit(_) => {
+                return Err("Unexpected digestible literal attribute");
+            }
+            NestedMeta::Meta(meta) => match meta {
+                Meta::NameValue(mnv) => {
+                    if mnv.path.is_ident("omit_when") {
+                        if self.omit_when.is_none() {
+                            self.omit_when = Some(mnv.lit.clone());
+                        } else {
+                            return Err("omit_when cannot appear twice as an attribute");
+                        }
+                    } else {
+                        return Err("unexpected digestible feature attribute");
+                    }
+                }
+                _ => {
+                    return Err("unexpected digestible attribute");
+                }
+            },
+        }
+        Ok(())
+    }
+}
+
+// Parse AttributeConfig from syn attribute list
+impl TryFrom<&[Attribute]> for FieldAttributeConfig {
+    type Error = &'static str;
+
+    fn try_from(src: &[Attribute]) -> Result<Self, &'static str> {
+        let mut result = FieldAttributeConfig::default();
+
+        for attr in src {
+            if attr.path.is_ident("digestible") {
+                if let Meta::List(meta) = attr.parse_meta().unwrap() {
+                    for meta_item in meta.nested.iter() {
+                        result.apply_meta(meta_item)?;
+                    }
+                }
+            }
+        }
+
+        Ok(result)
+    }
+}
+
 // This is the main entrypoint for `derive(Digestible)`
 fn try_digestible(input: TokenStream) -> Result<TokenStream, &'static str> {
     let input: DeriveInput = syn::parse(input).unwrap();
@@ -167,21 +227,32 @@ fn try_digestible_struct(
             match &field.ident {
                 // this is a regular struct, and the field has an identifier
                 Some(field_ident) => {
-                    quote! {
-                        self.#field_ident.append_to_transcript_allow_omit(stringify!(#field_ident).as_bytes(), transcript);
+                    // Read any #[digestible(...)]` attributes on this field and parse them
+                    let attr_config = FieldAttributeConfig::try_from(&field.attrs[..])?;
+
+                    if let Some(omit_when) = attr_config.omit_when {
+                        Ok(quote! {
+                            if self.#field_ident != #omit_when {
+                                self.#field_ident.append_to_transcript_allow_omit(stringify!(#field_ident).as_bytes(), transcript);
+                            }
+                        })
+                    } else {
+                        Ok(quote! {
+                            self.#field_ident.append_to_transcript_allow_omit(stringify!(#field_ident).as_bytes(), transcript);
+                        })
                     }
                 }
                 // this is a tuple struct, and the field doesn't have an identifier
                 // we have to make a syn object corresponding to the index, and use it in the quote! macro
                 None => {
                     let index = syn::Index::from(idx);
-                    quote! {
+                    Ok(quote! {
                         self.#index.append_to_transcript_allow_omit(stringify!(#index).as_bytes(), transcript);
-                    }
+                    })
                 }
             }
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, &'static str>>()?;
 
     // Final expanded result
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
