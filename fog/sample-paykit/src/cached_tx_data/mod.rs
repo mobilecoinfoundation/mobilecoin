@@ -658,7 +658,7 @@ impl CachedTxData {
         // Split up key images queries into several requests if there are a lot of key
         // images
         for key_images in key_images.chunks(MAX_KEY_IMAGES_PER_QUERY) {
-            match key_image_client.check_key_images(&key_images) {
+            match key_image_client.check_key_images(key_images) {
                 Ok(response) => {
                     self.latest_global_txo_count =
                         core::cmp::max(self.latest_global_txo_count, response.global_txo_count);
