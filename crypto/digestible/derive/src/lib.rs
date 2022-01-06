@@ -104,12 +104,11 @@ impl TryFrom<&[Attribute]> for AttributeConfig {
 /// They are set using the #[digestible(..)] directive.
 #[derive(Default, Clone, Debug)]
 struct FieldAttributeConfig {
-    /// Allows skipping the hashing of a field if it's value is equal to 0.
-    /// This is a backwards compatibility tool that allows adding new integer
-    /// fields without affecting the hash of existing objects that do not
-    /// have the field set.print! Using this on a field type that cannot be
-    /// compared to 0 will result in a compile error.
-    pub omit_on_zero: bool,
+    /// Allows skipping the hashing of a field if it's value is equal to
+    /// something. This is a backwards compatibility tool that allows adding
+    /// new fields without affecting the hash of existing objects that do
+    /// not have the field set.
+    pub omit_on: Option<Lit>,
 }
 
 impl FieldAttributeConfig {
@@ -120,15 +119,15 @@ impl FieldAttributeConfig {
                 return Err("Unexpected digestible literal attribute");
             }
             NestedMeta::Meta(meta) => match meta {
-                Meta::Path(path) => {
-                    if path.is_ident("omit_on_zero") {
-                        if !self.omit_on_zero {
-                            self.omit_on_zero = true;
+                Meta::NameValue(mnv) => {
+                    if mnv.path.is_ident("omit_on") {
+                        if self.omit_on.is_none() {
+                            self.omit_on = Some(mnv.lit.clone());
                         } else {
-                            return Err("omit_on_zero cannot appear twice as an attribute");
+                            return Err("omit_on cannot appear twice as an attribute");
                         }
                     } else {
-                        return Err("unexpected digestible path attribute");
+                        return Err("unexpected digestible feature attribute");
                     }
                 }
                 _ => {
@@ -231,9 +230,9 @@ fn try_digestible_struct(
                     // Read any #[digestible(...)]` attributes on this field and parse them
                     let attr_config = FieldAttributeConfig::try_from(&field.attrs[..])?;
 
-                    if attr_config.omit_on_zero {
+                    if let Some(omit_on) = attr_config.omit_on {
                         Ok(quote! {
-                            if self.#field_ident != 0 {
+                            if self.#field_ident != #omit_on {
                                 self.#field_ident.append_to_transcript_allow_omit(stringify!(#field_ident).as_bytes(), transcript);
                             }
                         })
