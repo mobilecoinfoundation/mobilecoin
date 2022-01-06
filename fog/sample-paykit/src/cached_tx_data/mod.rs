@@ -39,7 +39,18 @@ use std::collections::{BTreeMap, HashSet};
 mod memo_handler;
 pub use memo_handler::{MemoHandler, MemoHandlerError};
 
+/// Maximum number of inputs in a transaction
 const MAX_INPUTS: usize = mc_transaction_core::constants::MAX_INPUTS as usize;
+
+/// Maximum number of key images we will query fog about in a single query
+/// This limit may be imposed by various factors:
+/// * grpc request size limits (64k / 32 bytes = ~2000)
+/// * enclave maximums
+/// * anything else?
+///
+/// Here it is set rather conservatively to avoid overloading a single fog
+/// ledger instance.
+const MAX_KEY_IMAGES_PER_QUERY: usize = 100;
 
 /// Telemetry: Number of txos returned from query.
 const TELEMETRY_NUM_TXOS_KEY: Key = telemetry_static_key!("num-txos");
@@ -611,6 +622,10 @@ impl CachedTxData {
         // so there would be some wonky behavior if it happened.
         // TxOut public keys are enforced to be unique by consensus, but it is
         // technically possible that the key image repeats.
+        // But it requires that clients are not using real entropy to build Txs,
+        // it could only occur maliciously, if at all. (Maybe it is intractable
+        // to do this if the public keys are different, without finding a hash
+        // collision?)
         //
         // Note that only one of the two TxOuts will actually be spendable if this
         // happens, so it might be a good idea to simply ignore the one of
@@ -640,67 +655,77 @@ impl CachedTxData {
             })
             .collect::<Vec<_>>();
 
-        match key_image_client.check_key_images(&key_images) {
-            Ok(response) => {
-                self.latest_global_txo_count =
-                    core::cmp::max(self.latest_global_txo_count, response.global_txo_count);
-                for result in response.results.iter() {
-                    if let Some(global_index) = key_image_to_global_index.get(&result.key_image) {
-                        let otxo = self
-                            .owned_tx_outs
-                            .get_mut(global_index)
-                            .expect("global index did not actually correspond to a txo");
+        // Split up key images queries into several requests if there are a lot of key
+        // images
+        for key_images in key_images.chunks(MAX_KEY_IMAGES_PER_QUERY) {
+            match key_image_client.check_key_images(&key_images) {
+                Ok(response) => {
+                    self.latest_global_txo_count =
+                        core::cmp::max(self.latest_global_txo_count, response.global_txo_count);
+                    for result in response.results.iter() {
+                        if let Some(global_index) = key_image_to_global_index.get(&result.key_image)
+                        {
+                            let otxo = self
+                                .owned_tx_outs
+                                .get_mut(global_index)
+                                .expect("global index did not actually correspond to a txo");
 
-                        match result.status() {
-                            Err(err) => {
-                                log::error!(self.logger, "Server-side key image error: {}", err);
-                            }
-                            Ok(Some(spent_at)) => {
-                                match otxo.status {
-                                    KeyImageStatus::SpentAt(_) => panic!(
-                                        "We were not supposed to ask about already spent txo's"
-                                    ),
-                                    KeyImageStatus::NotSpent(not_spent_as_of) => {
-                                        if spent_at < u64::from(not_spent_as_of) {
-                                            log::error!(self.logger, "Inconsistency from server -- we earlier learned that a Txo was not spent as of {}, but now we have learned that it was spent at {}", not_spent_as_of, spent_at);
+                            match result.status() {
+                                Err(err) => {
+                                    log::error!(
+                                        self.logger,
+                                        "Server-side key image error: {}",
+                                        err
+                                    );
+                                }
+                                Ok(Some(spent_at)) => {
+                                    match otxo.status {
+                                        KeyImageStatus::SpentAt(_) => panic!(
+                                            "We were not supposed to ask about already spent txo's"
+                                        ),
+                                        KeyImageStatus::NotSpent(not_spent_as_of) => {
+                                            if spent_at < u64::from(not_spent_as_of) {
+                                                log::error!(self.logger, "Inconsistency from server -- we earlier learned that a Txo was not spent as of {}, but now we have learned that it was spent at {}", not_spent_as_of, spent_at);
+                                            }
                                         }
-                                    }
-                                };
-                                otxo.status = KeyImageStatus::SpentAt(spent_at);
-                            }
-                            Ok(None) => {
-                                match &mut otxo.status {
-                                    KeyImageStatus::SpentAt(_) => panic!(
-                                        "We were not supposed to ask about already spent txo's"
-                                    ),
-                                    KeyImageStatus::NotSpent(not_spent_as_of) => {
-                                        // Update our information about when this Txo was spent by
-                                        // If the new information older than the old information,
-                                        // don't discard the old information
-                                        *not_spent_as_of = max(
-                                            *not_spent_as_of,
-                                            BlockCount::from(response.num_blocks),
-                                        );
-                                    }
-                                };
-                            }
-                        };
-                    } else {
-                        log::error!(
-                            self.logger,
-                            "Server told us about key images that we didn't ask about"
-                        );
+                                    };
+                                    otxo.status = KeyImageStatus::SpentAt(spent_at);
+                                }
+                                Ok(None) => {
+                                    match &mut otxo.status {
+                                        KeyImageStatus::SpentAt(_) => panic!(
+                                            "We were not supposed to ask about already spent txo's"
+                                        ),
+                                        KeyImageStatus::NotSpent(not_spent_as_of) => {
+                                            // Update our information about when this Txo was spent
+                                            // by If the
+                                            // new information older than the old information,
+                                            // don't discard the old information
+                                            *not_spent_as_of = max(
+                                                *not_spent_as_of,
+                                                BlockCount::from(response.num_blocks),
+                                            );
+                                        }
+                                    };
+                                }
+                            };
+                        } else {
+                            log::error!(
+                                self.logger,
+                                "Server told us about key images that we didn't ask about"
+                            );
+                        }
                     }
                 }
-            }
-            Err(err @ LedgerConnectionError::Connection(_)) => {
-                log::info!(self.logger, "Check key images failed due to {}", err);
-                return Err(err.into());
-            }
-            Err(e) => {
-                return Err(Error::LedgerConnection(e));
-            }
-        };
+                Err(err @ LedgerConnectionError::Connection(_)) => {
+                    log::info!(self.logger, "Check key images failed due to {}", err);
+                    return Err(err.into());
+                }
+                Err(e) => {
+                    return Err(Error::LedgerConnection(e));
+                }
+            };
+        }
 
         // Recompute the key_image_data_completeness value.
         // In principle we could avoid scanning all the transactions again.
