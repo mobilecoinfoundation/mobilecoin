@@ -43,7 +43,7 @@ struct ThingV5 {
     a: Option<u64>,
     b: Option<u64>,
     c: Vec<bool>,
-    #[digestible(omit_on = 0)]
+    #[digestible(omit_when = 0)]
     d: i32,
 }
 

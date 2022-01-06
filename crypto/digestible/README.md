@@ -490,12 +490,12 @@ for the other possibilities. Note that enum names cannot be changed and old enum
 removed. The index of the enum possibility within the list does become part of the hash.
 
 
-It is also possible to skip digesting fields when they are equal to a given value. This is done by using the #[digestible(omit_on=VAL)] directive on specific struct fields where this behavior is desired, for exampe:
+It is also possible to skip digesting fields when they are equal to a given value. This is done by using the #[digestible(omit_when = VAL)] directive on specific struct fields where this behavior is desired, for exampe:
 
 ```
 #[derive(Digestible)]
 struct Thing {
-    #[digestible(omit_on=0)]
+    #[digestible(omit_when = 0)]
     field: i32,
 }
 ```

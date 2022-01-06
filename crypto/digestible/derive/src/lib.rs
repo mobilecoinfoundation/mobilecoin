@@ -108,7 +108,7 @@ struct FieldAttributeConfig {
     /// something. This is a backwards compatibility tool that allows adding
     /// new fields without affecting the hash of existing objects that do
     /// not have the field set.
-    pub omit_on: Option<Lit>,
+    pub omit_when: Option<Lit>,
 }
 
 impl FieldAttributeConfig {
@@ -120,11 +120,11 @@ impl FieldAttributeConfig {
             }
             NestedMeta::Meta(meta) => match meta {
                 Meta::NameValue(mnv) => {
-                    if mnv.path.is_ident("omit_on") {
-                        if self.omit_on.is_none() {
-                            self.omit_on = Some(mnv.lit.clone());
+                    if mnv.path.is_ident("omit_when") {
+                        if self.omit_when.is_none() {
+                            self.omit_when = Some(mnv.lit.clone());
                         } else {
-                            return Err("omit_on cannot appear twice as an attribute");
+                            return Err("omit_when cannot appear twice as an attribute");
                         }
                     } else {
                         return Err("unexpected digestible feature attribute");
@@ -230,9 +230,9 @@ fn try_digestible_struct(
                     // Read any #[digestible(...)]` attributes on this field and parse them
                     let attr_config = FieldAttributeConfig::try_from(&field.attrs[..])?;
 
-                    if let Some(omit_on) = attr_config.omit_on {
+                    if let Some(omit_when) = attr_config.omit_when {
                         Ok(quote! {
-                            if self.#field_ident != #omit_on {
+                            if self.#field_ident != #omit_when {
                                 self.#field_ident.append_to_transcript_allow_omit(stringify!(#field_ident).as_bytes(), transcript);
                             }
                         })
