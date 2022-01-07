@@ -2752,7 +2752,7 @@ mod tests {
             },
             last_scanned_block: Some(10),
         };
-        assert_eq!(actual[0], expected);
+        assert_eq!(actual, vec![expected]);
     }
 
     #[test_with_logger]
@@ -3064,6 +3064,6 @@ mod tests {
             },
             last_scanned_block: Some(10),
         };
-        assert_eq!(actual[0], expected);
+        assert_eq!(actual, vec![expected]);
     }
 }
