@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::error::OverseerError;
 
@@ -23,10 +23,12 @@ use std::{
 };
 
 // Wraps a thread that is responsible for overseeing the active Fog Ingest
-// cluster. The worker is checking to see that there's always one active
-// ingress key. If there is no active key, then it promotes an idle node to
-// active, and in the case where none of the idle nodes contain the previously
-// active ingress key it reports that key as lost.
+// cluster.
+//
+// The worker checks to see that there's always one active ingress key. If there
+// is no active key, then it promotes an idle node to active, and in the case
+// where none of the idle nodes contain the previously active ingress key, it
+// reports that key as lost.
 pub struct OverseerWorker {
     /// Join handle used to wait for the thread to terminate.
     join_handle: Option<JoinHandle<()>>,
@@ -100,18 +102,22 @@ impl Drop for OverseerWorker {
 
 /// The thread that performs the Fog Overseer logic.
 struct OverseerWorkerThread<DB: RecoveryDb> {
-    /// Each ingest client talks to a specific Fog Ingest node.
+    /// The list of FogIngestClients that Overseer uses to communicate with
+    /// each node in the Fog Ingest cluster that it's monitoring.
     ingest_clients: Vec<FogIngestGrpcClient>,
 
+    /// The database that contains, among other things, info on the Fog Ingest
+    /// cluster's ingress keys.
     recovery_db: DB,
 
+    /// If this is true, the worker will not perform it's monitoring logic.
     stop_requested: Arc<AtomicBool>,
 
     logger: Logger,
 }
 
 /// This associates an IngestSummary with an IngestClient. This makes it easy
-/// to query a given node based on it's IngestSummary.
+/// to query a given node based on its IngestSummary.
 struct IngestSummaryNodeMapping {
     node_index: usize,
 
@@ -146,11 +152,14 @@ where
 
     fn run(self) {
         while !self.stop_requested.load(Ordering::SeqCst) {
-            log::info!(self.logger, "Overser worker start of thread.");
+            log::trace!(self.logger, "Overser worker start of thread.");
             std::thread::sleep(Self::POLLING_FREQUENCY);
 
             let ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping> =
                 self.retrieve_ingest_summary_node_mappings();
+
+            // TODO: Use these ingest summaries to send the desired metadata
+            // to Prometheus: number of keys, number of active nodes, etc.
             let active_ingest_summary_node_mappings: Vec<&IngestSummaryNodeMapping> =
                 ingest_summary_node_mappings
                     .iter()
@@ -159,8 +168,6 @@ where
                             == IngestControllerMode::Active
                     })
                     .collect();
-
-            // TODO: Send these somewhere like Prometheus... ?
 
             let active_node_count = active_ingest_summary_node_mappings.len();
             if active_node_count == 1 {
@@ -187,8 +194,8 @@ where
                     "There are multiple active nodes in the Fog Ingest cluster. Active ingress keys: {:?}",
                     active_node_ingress_pubkeys
                 );
-                // TODO: Signal to ops that two keys are active at once. This is
-                // unexpected.
+                // TODO: Set up sentry alerts and signal to ops that two keys
+                // are active at once. This is unexpected.
             } else {
                 log::error!(
                     self.logger,
@@ -239,9 +246,9 @@ where
     ///
     /// The logic is as follows:
     ///   1. Find all of the "outstanding keys" as determined by the RecoveryDb.
-    ///      These are ingress keys that Fog Ingest needs scan blocks with
-    ///      (and the issue is that Fog Ingest isn't currently doing that
-    ///      because all nodes are idle).
+    ///      These are ingress keys that Fog Ingest needs to scan blocks with
+    ///      but Fog Ingest isn't currently doing that because all nodes are
+    ///      idle.
     ///   2. If there are:
     ///         a) 0 outstanding keys:
     ///              No node will be activated. We now have to:
@@ -255,7 +262,8 @@ where
     ///                 (ii) If you don't find an idle node with that key,
     ///                      then you have to report that key as lost.
     ///        c) > 1 outstanding key:
-    ///             Disarm and send an alert (todo).
+    ///             (i) Disarm
+    ///             (ii) Send an alert (todo).
     fn perform_automatic_failover(
         &self,
         ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping>,
@@ -325,8 +333,8 @@ where
             should_only_include_unexpired_keys: true,
         };
 
-        // First, find the "inactive_outstanding_keys" which are outstanding keys
-        // that we've grabbed from the RecoveryDb.
+        // First, find the "inactive_outstanding_keys" which are outstanding
+        // keys that we've grabbed from the RecoveryDb.
         //
         // TODO: Add a config that allows us to set this start block.
         let ingress_public_key_records: Vec<IngressPublicKeyRecord> =
@@ -342,8 +350,6 @@ where
     }
 
     /// Tries to activate a node with the given inactive outstanding key.
-    ///
-    /// returns true if a node was successfully activated.
     fn try_to_activate_node_for_inactive_outstanding_key(
         &self,
         inactive_outstanding_key: &CompressedRistrettoPublic,

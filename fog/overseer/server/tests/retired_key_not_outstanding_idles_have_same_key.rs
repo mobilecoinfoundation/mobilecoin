@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use mc_common::logger::{test_with_logger, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -112,7 +112,7 @@ fn active_key_is_retired_not_outstanding_new_key_is_set_node_activated(logger: L
     assert_eq!(original_node0_ingress_key, original_node1_ingress_key);
     assert_eq!(original_node0_ingress_key, original_node2_ingress_key);
 
-    // Consider testing the CLI here instead. Initialize an OverSeerService 
+    // Consider testing the CLI here instead. Initialize an OverSeerService
     // object...
     let rocket_config: rocket::Config =
         rocket::Config::build(rocket::config::Environment::Development)
@@ -135,7 +135,7 @@ fn active_key_is_retired_not_outstanding_new_key_is_set_node_activated(logger: L
     // Retire the current active node.
     node0.retire().unwrap();
 
-    // Add eleven test blocks. This will trigger the Fog Ingest controller to 
+    // Add eleven test blocks. This will trigger the Fog Ingest controller to
     // set node0 to idle since it will be retired and past the pubkey_expiry.
     for _ in 0..12 {
         utils::add_test_block(&mut ledger, &watcher, &mut rng);

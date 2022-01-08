@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use mc_common::logger::{test_with_logger, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -152,8 +152,8 @@ fn inactive_oustanding_key_idle_node_has_original_key_node_is_activated_and_key_
     // it won't be automatically moved to the Active state.
     drop(std::fs::remove_file(&state_file_node_0));
 
-    // Restart node0 by creating a new FogIngestServer instance with the same 
-    // url as the original node0 instance. This mimics what happens when our 
+    // Restart node0 by creating a new FogIngestServer instance with the same
+    // url as the original node0 instance. This mimics what happens when our
     // cloud infra provider "brings back" a bounced node.
     let (node0, _state_file_node_0, _client_listen_uri0) = utils::make_node(
         0,

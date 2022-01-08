@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use mc_common::ResponderId;
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
 use mc_fog_uri::FogIngestUri;
@@ -20,7 +21,12 @@ pub struct OverseerConfig {
     #[structopt(long)]
     pub local_overseer_node_id: ResponderId,
 
-    /// gRPC listening URI for client requests.
+    /// TODO: Make this an environment variable that can be dynamically
+    /// refreshed. This will allow ops to have one Fog Overseer instance that
+    /// can look at the new Fog Ingest cluster during the blue / green
+    /// deployment.
+    ///
+    /// gRPC listening URIs for client requests.
     #[structopt(long, use_delimiter = true)]
     pub ingest_cluster_uris: Vec<FogIngestUri>,
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use mc_common::logger::{test_with_logger, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -14,8 +14,8 @@ use url::Url;
 
 mod utils;
 
-// In this scenario, the Fog Ingest cluster has one active node, which is the 
-// expected state for the cluster. 
+// In this scenario, the Fog Ingest cluster has one active node, which is the
+// expected state for the cluster.
 //
 // Fog Overseer shouldn't take any action.
 #[test_with_logger]
@@ -23,7 +23,7 @@ fn one_active_node_cluster_state_does_not_change(logger: Logger) {
     let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
     let recovery_db = db_test_context.get_db_instance();
 
-    // Set up the Watcher db. 
+    // Set up the Watcher db.
     let blockchain_path =
         TempDir::new("blockchain").expect("Could not make tempdir for blockchain state");
     let watcher_path = blockchain_path.path().join("watcher");

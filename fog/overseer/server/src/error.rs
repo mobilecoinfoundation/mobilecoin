@@ -1,12 +1,11 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
-//
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use displaydoc::Display;
 use mc_fog_recovery_db_iface::RecoveryDbError;
 use mc_fog_sql_recovery_db::Error as SqlRecoveryDbError;
 use retry::Error as RetryError;
 
-/// An error returned by the overseer service
+/// An error returned by the OverseerService.
 #[derive(Debug, Display)]
 pub enum OverseerError {
     /// RecoveryDbError: {0}
