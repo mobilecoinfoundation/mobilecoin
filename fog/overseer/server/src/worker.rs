@@ -2,7 +2,6 @@
 
 use crate::error::OverseerError;
 
-use grpcio;
 use mc_api::external;
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -170,43 +169,48 @@ where
                     .collect();
 
             let active_node_count = active_ingest_summary_node_mappings.len();
-            if active_node_count == 1 {
-                log::trace!(
-                    self.logger,
-                    "There is one active node in the Fog Ingest cluster. Active ingress key: {:?}",
-                    active_ingest_summary_node_mappings[0]
+            match active_node_count {
+                0 => {
+                    log::error!(
+                        self.logger,
+                        "There are currently no active nodes in the Fog Ingest cluster. Initiating automatic failover.",
+                    );
+                    match self.perform_automatic_failover(ingest_summary_node_mappings) {
+                        Ok(_) => {
+                            log::info!(self.logger, "Automatic failover completed successfully.")
+                        }
+                        Err(err) => log::error!(self.logger, "Automatic failover failed: {:?}", err),
+                    };
+                }
+                1 => {
+                    log::trace!(
+                        self.logger,
+                        "There is one active node in the Fog Ingest cluster. Active ingress key: {:?}",
+                        active_ingest_summary_node_mappings[0]
                         .ingest_summary
                         .get_ingress_pubkey()
-                );
-                continue;
-            } else if active_node_count > 1 {
-                let active_node_ingress_pubkeys: Vec<&external::CompressedRistretto> =
-                    active_ingest_summary_node_mappings
+                    );
+                    continue;
+                },
+                _ => {
+                    let active_node_ingress_pubkeys: Vec<&external::CompressedRistretto> =
+                        active_ingest_summary_node_mappings
                         .iter()
                         .map(|active_ingest_summary_node_mapping| {
                             active_ingest_summary_node_mapping
                                 .ingest_summary
                                 .get_ingress_pubkey()
                         })
-                        .collect();
-                log::warn!(
-                    self.logger,
-                    "There are multiple active nodes in the Fog Ingest cluster. Active ingress keys: {:?}",
-                    active_node_ingress_pubkeys
-                );
-                // TODO: Set up sentry alerts and signal to ops that two keys
-                // are active at once. This is unexpected.
-            } else {
-                log::error!(
-                    self.logger,
-                    "There are currently no active nodes in the Fog Ingest cluster. Initiating automatic failover.",
-                );
-                match self.perform_automatic_failover(ingest_summary_node_mappings) {
-                    Ok(_) => {
-                        log::info!(self.logger, "Automatic failover completed successfully.")
-                    }
-                    Err(err) => log::error!(self.logger, "Automatic failover failed: {:?}", err),
-                };
+                    .collect();
+                    log::warn!(
+                        self.logger,
+                        "There are multiple active nodes in the Fog Ingest cluster. Active ingress keys: {:?}",
+                        active_node_ingress_pubkeys
+                    );
+                    // TODO: Set up sentry alerts and signal to ops that two keys
+                    // are active at once. This is unexpected.
+                }
+
             }
         }
     }
@@ -283,7 +287,7 @@ where
 
         if let Some(inactive_outstanding_key) = inactive_outstanding_keys.get(0) {
             match self.try_to_activate_node_for_inactive_outstanding_key(
-                &inactive_outstanding_key,
+                inactive_outstanding_key,
                 &ingest_summary_node_mappings,
             ) {
                 Ok(_) => {
@@ -353,7 +357,7 @@ where
     fn try_to_activate_node_for_inactive_outstanding_key(
         &self,
         inactive_outstanding_key: &CompressedRistrettoPublic,
-        ingest_summary_node_mappings: &Vec<IngestSummaryNodeMapping>,
+        ingest_summary_node_mappings: &[IngestSummaryNodeMapping],
     ) -> Result<(), OverseerError> {
         log::debug!(
             self.logger,
@@ -407,7 +411,7 @@ where
             }
         }
 
-        return Err(OverseerError::ActivateNode("Could not activate a node because no node has an ingress key that matches the outstanding key.".to_string()));
+        Err(OverseerError::ActivateNode("Could not activate a node because no node has an ingress key that matches the outstanding key.".to_string()))
     }
 
     fn report_lost_ingress_key(
