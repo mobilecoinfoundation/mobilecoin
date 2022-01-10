@@ -354,6 +354,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "blake2"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b94ba84325db59637ffc528bbe8c7f86c02c57cff5c0e2b9b00f9a851f42f309"
+dependencies = [
+ "digest 0.10.1",
+]
+
+[[package]]
 name = "blake2b_simd"
 version = "0.5.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -383,6 +392,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4152116fd6e9dadb291ae18fc1ec3575ed6d84c29642d97890f4b4a3417297e4"
 dependencies = [
  "block-padding 0.2.1",
+ "generic-array 0.14.4",
+]
+
+[[package]]
+name = "block-buffer"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1d36a02058e76b040de25a4464ba1c80935655595b661505c8b39b664828b95"
+dependencies = [
  "generic-array 0.14.4",
 ]
 
@@ -927,6 +945,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2f4a431c5c9f662e1200b7c7f02c34e91361150e382089a8f2dec3ba680cbda"
 
 [[package]]
+name = "crypto-common"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "683d6b536309245c849479fba3da410962a43ed8e51c26b729208ec0ac2798d0"
+dependencies = [
+ "generic-array 0.14.4",
+]
+
+[[package]]
 name = "crypto-mac"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1209,6 +1236,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 dependencies = [
  "generic-array 0.14.4",
+]
+
+[[package]]
+name = "digest"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b697d66081d42af4fba142d56918a3cb21dc8eb63372c6b85d14f44fb9c5979b"
+dependencies = [
+ "block-buffer 0.10.0",
+ "crypto-common",
+ "generic-array 0.14.4",
+ "subtle 2.4.1",
 ]
 
 [[package]]
@@ -2513,7 +2552,7 @@ dependencies = [
 name = "mc-account-keys"
 version = "1.2.0-pre0"
 dependencies = [
- "blake2",
+ "blake2 0.10.2",
  "criterion",
  "curve25519-dalek",
  "datatest",
@@ -3121,7 +3160,7 @@ name = "mc-crypto-box"
 version = "1.2.0-pre0"
 dependencies = [
  "aead",
- "blake2",
+ "blake2 0.10.2",
  "digest 0.9.0",
  "displaydoc",
  "hkdf",
@@ -3183,7 +3222,7 @@ dependencies = [
 name = "mc-crypto-hashes"
 version = "1.2.0-pre0"
 dependencies = [
- "blake2",
+ "blake2 0.9.2",
  "digest 0.9.0",
  "mc-crypto-digestible",
 ]
@@ -3604,7 +3643,7 @@ dependencies = [
 name = "mc-fog-kex-rng"
 version = "1.2.0-pre0"
 dependencies = [
- "blake2",
+ "blake2 0.10.2",
  "displaydoc",
  "mc-crypto-keys",
  "mc-util-from-random",
@@ -3851,7 +3890,7 @@ dependencies = [
  "aes",
  "aligned-cmov",
  "balanced-tree-index",
- "blake2",
+ "blake2 0.10.2",
  "displaydoc",
  "lazy_static",
  "mc-oblivious-traits",
@@ -4208,7 +4247,7 @@ dependencies = [
 name = "mc-fog-types"
 version = "1.2.0-pre0"
 dependencies = [
- "blake2",
+ "blake2 0.10.2",
  "crc",
  "displaydoc",
  "mc-crypto-keys",
@@ -4365,7 +4404,7 @@ dependencies = [
 name = "mc-fog-view-protocol"
 version = "1.2.0-pre0"
 dependencies = [
- "blake2",
+ "blake2 0.10.2",
  "displaydoc",
  "mc-account-keys",
  "mc-common",
@@ -4540,7 +4579,7 @@ name = "mc-mobilecoind"
 version = "1.2.0-pre0"
 dependencies = [
  "aes-gcm",
- "blake2",
+ "blake2 0.10.2",
  "crossbeam-channel",
  "displaydoc",
  "grpcio",
@@ -4930,7 +4969,7 @@ name = "mc-transaction-core"
 version = "1.2.0-pre0"
 dependencies = [
  "aes",
- "blake2",
+ "blake2 0.10.2",
  "bulletproofs-og",
  "curve25519-dalek",
  "displaydoc",
@@ -4985,7 +5024,7 @@ dependencies = [
 name = "mc-transaction-std"
 version = "1.2.0-pre0"
 dependencies = [
- "blake2",
+ "blake2 0.10.2",
  "curve25519-dalek",
  "displaydoc",
  "hmac 0.11.0",

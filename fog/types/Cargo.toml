@@ -21,7 +21,7 @@ prost = { version = "0.9", default-features = false, features = ["prost-derive"]
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-blake2 = { version = "0.9.2", default-features = false, features = ["simd"] }
+blake2 = { version = "0.10.2", default-features = false, features = ["simd"] }
 
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
 blake2 = { version = "0.9.2", default-features = false }
