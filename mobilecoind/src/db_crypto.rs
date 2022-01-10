@@ -9,7 +9,7 @@ use aes_gcm::{
     },
     AeadCore, Aes256Gcm, Error as AeadError, NewAead,
 };
-use blake2::{Blake2b, Digest};
+use blake2::{Blake2b512, Digest};
 use displaydoc::Display;
 use lmdb::{
     Database, DatabaseFlags, Environment, Error as LmdbError, RwTransaction, Transaction,
@@ -302,7 +302,7 @@ impl DbCryptoProvider {
     > {
         // Hash the password hash with Blake2b to get 64 bytes, first 32 for aeskey,
         // second 32 for nonce
-        let mut hasher = Blake2b::new();
+        let mut hasher = Blake2b512::new();
         hasher.update(&MOBILECOIND_DB_KEY_DOMAIN_TAG);
         hasher.update(&password);
         let result = hasher.finalize();

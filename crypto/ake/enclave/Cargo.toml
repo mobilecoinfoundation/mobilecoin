@@ -17,7 +17,7 @@ mc-util-from-random = { path = "../../../util/from-random" }
 mc-sgx-compat = { path = "../../../sgx/compat", default-features = false }
 
 aes-gcm = "0.9.4"
-digest = { version = "0.9", default-features = false }
+digest = { version = "0.10.1", default-features = false }
 sha2 = { version = "0.9.8", default-features = false }
 
 [build-dependencies]

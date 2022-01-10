@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use crate::KexRngCore;
-use blake2::{digest::generic_array, Blake2b, Digest};
+use blake2::{digest::generic_array, Blake2b512, Digest};
 use generic_array::{
     sequence::Split,
     typenum::{U16, U32},
@@ -22,7 +22,7 @@ impl KexRngCore<Ristretto> for KexRng20201124 {
     const VERSION_ID: u32 = 0;
 
     fn prf(secret: &GenericArray<u8, U32>, counter: &u64) -> Output {
-        let mut hasher = Blake2b::new();
+        let mut hasher = Blake2b512::new();
         hasher.update(b"20201124");
         hasher.update(secret.as_slice());
         hasher.update(counter.to_le_bytes());

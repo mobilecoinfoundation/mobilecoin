@@ -32,7 +32,7 @@ use crate::{
 };
 
 use alloc::vec::Vec;
-use blake2::Blake2b;
+use blake2::Blake2b512;
 use displaydoc::Display;
 use mc_crypto_keys::{Kex, Ristretto};
 use mc_oblivious_aes_gcm::{Aes256Gcm, CtDecryptResult};
@@ -42,7 +42,7 @@ use rand_core::{CryptoRng, RngCore};
 // CONFIGURATION
 ////
 
-pub type RistrettoHkdfBlake2bAes256Gcm = HkdfBox<Ristretto, Blake2b, Aes256Gcm>;
+pub type RistrettoHkdfBlake2bAes256Gcm = HkdfBox<Ristretto, Blake2b512, Aes256Gcm>;
 
 /// A "magic byte" value checked during this process, but not interpreted.
 const MAJOR_VERSION: u8 = 1;
