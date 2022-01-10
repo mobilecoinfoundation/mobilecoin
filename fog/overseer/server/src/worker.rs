@@ -179,7 +179,9 @@ where
                         Ok(_) => {
                             log::info!(self.logger, "Automatic failover completed successfully.")
                         }
-                        Err(err) => log::error!(self.logger, "Automatic failover failed: {:?}", err),
+                        Err(err) => {
+                            log::error!(self.logger, "Automatic failover failed: {:?}", err)
+                        }
                     };
                 }
                 1 => {
@@ -191,26 +193,26 @@ where
                         .get_ingress_pubkey()
                     );
                     continue;
-                },
+                }
                 _ => {
                     let active_node_ingress_pubkeys: Vec<&external::CompressedRistretto> =
                         active_ingest_summary_node_mappings
-                        .iter()
-                        .map(|active_ingest_summary_node_mapping| {
-                            active_ingest_summary_node_mapping
-                                .ingest_summary
-                                .get_ingress_pubkey()
-                        })
-                    .collect();
+                            .iter()
+                            .map(|active_ingest_summary_node_mapping| {
+                                active_ingest_summary_node_mapping
+                                    .ingest_summary
+                                    .get_ingress_pubkey()
+                            })
+                            .collect();
                     log::warn!(
                         self.logger,
                         "There are multiple active nodes in the Fog Ingest cluster. Active ingress keys: {:?}",
                         active_node_ingress_pubkeys
                     );
-                    // TODO: Set up sentry alerts and signal to ops that two keys
-                    // are active at once. This is unexpected.
+                    // TODO: Set up sentry alerts and signal to ops that two
+                    // keys are active at once. This is
+                    // unexpected.
                 }
-
             }
         }
     }
