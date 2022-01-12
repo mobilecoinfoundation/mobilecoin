@@ -416,6 +416,7 @@ where
         Err(OverseerError::ActivateNode(error_message))
     }
 
+    /// Tries to report a lost ingress key.
     fn report_lost_ingress_key(
         &self,
         inactive_outstanding_key: CompressedRistrettoPublic,
@@ -452,6 +453,8 @@ where
         result.map_err(|err| err.into())
     }
 
+    /// Tries to set a new ingress key on a node. The node is assumed to be
+    /// idle.
     fn set_new_key_on_a_node(&self) -> Result<usize, OverseerError> {
         for (i, ingest_client) in self.ingest_clients.iter().enumerate() {
             let result = retry_with_index(Fixed::from_millis(200), |current_try| {
@@ -497,6 +500,7 @@ where
         ))
     }
 
+    /// Tries to activate a node. The node is assumed to be idle.
     fn activate_a_node(&self, activated_node_index: usize) -> Result<(), OverseerError> {
         let result = retry_with_index(Fixed::from_millis(200), |current_try| {
             if current_try as u8 > Self::NUMBER_OF_TRIES {
