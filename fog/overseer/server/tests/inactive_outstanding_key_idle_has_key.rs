@@ -131,7 +131,7 @@ fn inactive_oustanding_key_idle_node_has_original_key_node_is_activated_and_key_
             .unwrap();
     let rocket = server::initialize_rocket_server(rocket_config, overseer_state);
     let client = Client::new(rocket).expect("valid rocket instance");
-    let _req = client.post("/arm");
+    let _req = client.post("/arm").dispatch();
 
     // Add 11 test blocks.
     for _ in 0..11 {
@@ -202,4 +202,7 @@ fn inactive_oustanding_key_idle_node_has_original_key_node_is_activated_and_key_
         .unwrap();
     assert!(!ingress_key_public_status.retired);
     assert!(!ingress_key_public_status.lost);
+
+    let _req = client.post("/disarm").dispatch();
+    std::thread::sleep(Duration::from_secs(10));
 }

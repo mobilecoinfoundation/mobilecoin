@@ -68,13 +68,13 @@ where
 
     pub fn arm(&self) -> Result<String, String> {
         log::trace!(self.logger, "Arming overseer worker");
-        self.stop_requested.store(true, Ordering::SeqCst);
+        self.stop_requested.store(false, Ordering::SeqCst);
         Ok(String::from("Fog Overseer was successfully armed."))
     }
 
     pub fn disarm(&self) -> Result<String, String> {
         log::trace!(self.logger, "Disarming overseer worker");
-        self.stop_requested.store(false, Ordering::SeqCst);
+        self.stop_requested.store(true, Ordering::SeqCst);
         Ok(String::from("Fog Overseer was successfully disarmed."))
     }
 }
