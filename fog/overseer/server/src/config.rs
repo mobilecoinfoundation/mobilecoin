@@ -1,6 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use mc_common::ResponderId;
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
 use mc_fog_uri::FogIngestUri;
 use serde::Serialize;
@@ -16,10 +15,6 @@ pub struct OverseerConfig {
     /// Port to start webserver on.
     #[structopt(long, default_value = "9090")]
     pub listen_port: u16,
-
-    /// Local Ingest Node ID
-    #[structopt(long)]
-    pub local_overseer_node_id: ResponderId,
 
     /// TODO: Make this an environment variable that can be dynamically
     /// refreshed. This will allow ops to have one Fog Overseer instance that
@@ -46,8 +41,6 @@ mod tests {
             "www.mycoolhost.com",
             "--listen-port",
             "8080",
-            "--local-overseer-node-id",
-            "fogoverseer.svc.cluster.local:443",
             "--ingest-cluster-uris",
             "insecure-fog-ingest://0.0.0.0.3226/,insecure-fog-ingest://0.0.0.0.3227/",
         ])

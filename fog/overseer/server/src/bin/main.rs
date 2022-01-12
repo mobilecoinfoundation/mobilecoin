@@ -12,9 +12,7 @@ fn main() {
     // TODO: Enable sentry here.
     // See https://github.com/mobilecoinfoundation/mobilecoin/blob/master/fog/view/server/src/bin/main.rs#L16.
     let config = OverseerConfig::from_args();
-    let (logger, _global_logger_guard) = mc_common::logger::create_app_logger(
-        o!("mc.local_overseer_node_id" => config.local_overseer_node_id.to_string()),
-    );
+    let (logger, _global_logger_guard) = mc_common::logger::create_app_logger(o!());
 
     // Open the database.
     let recovery_db = SqlRecoveryDb::new_from_url(
