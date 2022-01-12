@@ -132,7 +132,7 @@ checksum = "e996dc7940838b7ef1096b882e29ec30a3149a3a443cdc8dba19ed382eca1fe2"
 dependencies = [
  "bstr",
  "doc-comment",
- "predicates 2.0.3",
+ "predicates 2.1.1",
  "predicates-core",
  "predicates-tree",
  "wait-timeout",
@@ -3430,7 +3430,7 @@ dependencies = [
  "mc-util-parse",
  "mc-util-uri",
  "mc-watcher",
- "predicates 2.0.3",
+ "predicates 2.1.1",
  "protobuf",
  "rand 0.8.4",
  "retry",
@@ -6058,9 +6058,9 @@ dependencies = [
 
 [[package]]
 name = "predicates"
-version = "2.0.3"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c6ce811d0b2e103743eec01db1c50612221f173084ce2f7941053e94b6bb474"
+checksum = "a5aab5be6e4732b473071984b3164dbbfb7a3674d30ea5ff44410b6bcd960c3c"
 dependencies = [
  "difflib",
  "float-cmp 0.9.0",
