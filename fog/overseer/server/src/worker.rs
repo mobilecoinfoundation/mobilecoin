@@ -446,7 +446,7 @@ where
             },
         );
 
-        result.map_err(|err| err.into())
+        Ok(result?)
     }
 
     /// Tries to set a new ingress key on a node. The node is assumed to be
@@ -521,6 +521,6 @@ where
             },
         );
 
-        result.map_err(|err| err.into())
+        Ok(result?)
     }
 }
