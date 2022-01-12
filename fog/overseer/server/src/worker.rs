@@ -438,7 +438,8 @@ where
                         "The following key  was successfully reported as lost: {}",
                         inactive_outstanding_key
                     );
-                    OperationResult::Ok(success_message)
+                    log::info!(self.logger, "{}", success_message);
+                    OperationResult::Ok(())
                 }
                 Err(_) => {
                     let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try as u8;
@@ -448,15 +449,7 @@ where
             }
         });
 
-        match result {
-            Ok(success_message) => {
-                log::info!(self.logger, "{}", success_message);
-                Ok(())
-            }
-            // TODO: Add alerting that says we need to manually report these keys
-            // as lost.
-            Err(err) => Err(err.into()),
-        }
+        result.map_err(|err| err.into())
     }
 
     fn set_new_key_on_a_node(&self) -> Result<usize, OverseerError> {
@@ -520,7 +513,8 @@ where
                         "Node at index {} successfully activated.",
                         activated_node_index
                     );
-                    OperationResult::Ok(success_message)
+                    log::info!(self.logger, "{}", success_message);
+                    OperationResult::Ok(())
                 }
                 // TODO: Alert Ops to take manual action at this point.
                 Err(_) => {
@@ -534,14 +528,6 @@ where
             }
         });
 
-        // TODO: Add alerting that says we need to manually activate this
-        // node.
-        match result {
-            Ok(success_message) => {
-                log::info!(self.logger, "{}", success_message);
-                Ok(())
-            }
-            Err(retry_error) => Err(retry_error.into()),
-        }
+        result.map_err(|err| err.into())
     }
 }
