@@ -359,8 +359,8 @@ where
         self.get_ingest_summary().mode == IngestControllerMode::Active
     }
 
-    /// Ask if the server is idle
-    /// This is a convenience wrapper used in tests
+    /// Ask if the server is idle.
+    /// This is a convenience wrapper used in tests.
     pub fn is_idle(&self) -> bool {
         self.get_ingest_summary().mode == IngestControllerMode::Idle
     }
