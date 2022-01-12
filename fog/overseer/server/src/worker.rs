@@ -127,7 +127,7 @@ impl<DB: RecoveryDb> OverseerWorkerThread<DB>
 where
     OverseerError: From<DB::Error>,
 {
-    /// Poll the Fog Ingest cluter every 5 seconds.
+    /// Poll the Fog Ingest cluster every 5 seconds.
     const POLLING_FREQUENCY: Duration = Duration::from_secs(5);
 
     /// Try a request to Fog Ingest node this many times if you encounter an
@@ -151,7 +151,7 @@ where
 
     fn run(self) {
         while !self.stop_requested.load(Ordering::SeqCst) {
-            log::trace!(self.logger, "Overser worker start of thread.");
+            log::trace!(self.logger, "Overseer worker start of thread.");
             std::thread::sleep(Self::POLLING_FREQUENCY);
 
             let ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping> =
@@ -326,11 +326,12 @@ where
         // An outanding key is one that Fog Ingest is still obligated to be
         // scanning blocks with on behalf of users.
         let outstanding_keys_filters = IngressPublicKeyRecordFilters {
-            // A lost key is not outstanding because it will never again be used
-            // to scan blocks.
+            // A lost key can never be outstanding because it will never again
+            // be used to scan blocks.
             should_include_lost_keys: false,
-            // A retired key can be outstanding if public expiry is greater than
-            // its last scanned block.
+            // Its possible for a retired key to be outstanding if its public
+            // expiry is greater than its last scanned block, so we have to
+            // include retired keys in this query.
             should_include_retired_keys: true,
             // If a key has expired- i.e. its last scanned block is greater
             // than or equal to its public expiry- then it will no longer scan
