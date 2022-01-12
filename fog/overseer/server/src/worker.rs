@@ -405,8 +405,6 @@ where
                             return Ok(());
                         }
                         Err(_) => {
-                            // TODO: See if we can make an id field for ingest client. This
-                            // will allow us to better identify ingest clients.
                             log::warn!(self.logger, "Could not activate idle ingest client.");
                         }
                     }
@@ -414,7 +412,8 @@ where
             }
         }
 
-        Err(OverseerError::ActivateNode("Could not activate a node because no node has an ingress key that matches the outstanding key.".to_string()))
+        let error_message = format!("Could not activate a node because no node has an ingress key that matches the outstanding key: {:?}.", inactive_outstanding_key);
+        Err(OverseerError::ActivateNode(error_message))
     }
 
     fn report_lost_ingress_key(
@@ -470,6 +469,7 @@ where
                     );
                     return OperationResult::Err(OverseerError::SetNewKey(error_message));
                 }
+
                 match ingest_client.new_keys() {
                     Ok(_) => {
                         log::info!(
