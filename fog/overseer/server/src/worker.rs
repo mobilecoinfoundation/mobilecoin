@@ -287,7 +287,7 @@ where
     ///                      then you have to report that key as lost.
     ///        c) > 1 outstanding key:
     ///             (i) Disable
-    ///             (ii) Send an alert (todo).
+    ///             (ii) TODO: Send an alert.
     fn perform_automatic_failover(
         &self,
         ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping>,
