@@ -352,16 +352,22 @@ impl<
                 "Identifying safe blocks out of {} blocks",
                 blocks_and_contents.len()
             );
-            if let Ok(safe_blocks) =
-                identify_safe_blocks(&self.ledger, &blocks_and_contents, &self.logger)
+            let safe_blocks =
+                identify_safe_blocks(&self.ledger, &blocks_and_contents, &self.logger);
+
+            log::trace!(
+                &self.logger,
+                "Identified {} safe blocks out of {} blocks",
+                safe_blocks.len(),
+                blocks_and_contents.len()
+            );
+
             {
                 tracer!().in_span("append_safe_blocks", |cx| {
                     cx.span()
                         .set_attribute(TELEMETRY_NUM_BLOCKS_APPENDED.i64(safe_blocks.len() as i64));
                     self.append_safe_blocks(&safe_blocks)
                 })?;
-            } else {
-                log::info!(self.logger, "No safe blocks.");
             }
 
             Ok(())
@@ -759,7 +765,7 @@ pub fn identify_safe_blocks<L: Ledger>(
     ledger: &L,
     blocks_and_contents: &[(Block, BlockContents)],
     logger: &Logger,
-) -> Result<Vec<(Block, BlockContents)>, ()> {
+) -> Vec<(Block, BlockContents)> {
     // The highest block externalized by the local node.
     let highest_local_block = ledger
         .num_blocks()
@@ -853,7 +859,7 @@ pub fn identify_safe_blocks<L: Ledger>(
         safe_blocks_and_contents.push((block.clone(), block_contents.clone()));
     }
 
-    Ok(safe_blocks_and_contents)
+    safe_blocks_and_contents
 }
 
 #[cfg(test)]
@@ -1381,8 +1387,7 @@ mod tests {
             &local_ledger,
             potentially_safe_blocks_and_transactions,
             &logger,
-        )
-        .expect("All inputs blocks should be safe.");
+        );
 
         assert_eq!(
             safe_blocks.len(),
@@ -1410,8 +1415,7 @@ mod tests {
             &local_ledger,
             &potentially_safe_blocks_and_contents,
             &logger,
-        )
-        .unwrap();
+        );
 
         assert_eq!(safe_blocks.len(), 0);
     }
@@ -1446,8 +1450,7 @@ mod tests {
             &local_ledger,
             &potentially_safe_blocks_and_contents,
             &logger,
-        )
-        .expect("All inputs blocks should be safe.");
+        );
 
         // Block one should be safe, but block two is not.
         assert_eq!(safe_blocks.len(), 1);
@@ -1484,8 +1487,7 @@ mod tests {
             &local_ledger,
             &potentially_safe_blocks_and_contents,
             &logger,
-        )
-        .expect("All inputs blocks should be safe.");
+        );
 
         // Block two is not safe.
         assert_eq!(safe_blocks.len(), 0);
@@ -1511,8 +1513,7 @@ mod tests {
             &local_ledger,
             &potentially_safe_blocks_and_contents,
             &logger,
-        )
-        .expect("All inputs blocks should be safe.");
+        );
 
         // Block one is not safe.
         assert_eq!(safe_blocks.len(), 0);
