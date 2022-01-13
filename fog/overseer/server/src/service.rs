@@ -18,7 +18,7 @@ where
     logger: Logger,
     overseer_worker: Option<OverseerWorker>,
     recovery_db: DB,
-    stop_requested: Arc<AtomicBool>,
+    is_enabled: Arc<AtomicBool>,
 }
 
 impl<DB: RecoveryDb + Clone + Send + Sync + 'static> OverseerService<DB>
@@ -31,7 +31,7 @@ where
             logger,
             overseer_worker: None,
             recovery_db,
-            stop_requested: Arc::new(AtomicBool::new(false)),
+            is_enabled: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -53,7 +53,7 @@ where
             self.ingest_cluster_uris.clone(),
             self.recovery_db.clone(),
             self.logger.clone(),
-            self.stop_requested.clone(),
+            self.is_enabled.clone(),
         ));
 
         Ok(())
@@ -66,15 +66,15 @@ where
         Ok(())
     }
 
-    pub fn arm(&self) -> Result<String, String> {
-        log::trace!(self.logger, "Arming overseer worker");
-        self.stop_requested.store(false, Ordering::SeqCst);
+    pub fn enable(&self) -> Result<String, String> {
+        log::trace!(self.logger, "Enabling overseer worker");
+        self.is_enabled.store(true, Ordering::SeqCst);
         Ok(String::from("Fog Overseer was successfully armed."))
     }
 
-    pub fn disarm(&self) -> Result<String, String> {
-        log::trace!(self.logger, "Disarming overseer worker");
-        self.stop_requested.store(true, Ordering::SeqCst);
+    pub fn disable(&self) -> Result<String, String> {
+        log::trace!(self.logger, "Disabling overseer worker");
+        self.is_enabled.store(false, Ordering::SeqCst);
         Ok(String::from("Fog Overseer was successfully disarmed."))
     }
 }

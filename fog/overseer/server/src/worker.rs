@@ -32,8 +32,8 @@ pub struct OverseerWorker {
     /// Join handle used to wait for the thread to terminate.
     join_handle: Option<JoinHandle<()>>,
 
-    /// Stop request trigger, used to signal the thread to stop.
-    stop_requested: Arc<AtomicBool>,
+    /// When true, overseer performs its monitoring logic.
+    is_enabled: Arc<AtomicBool>,
 }
 
 impl OverseerWorker {
@@ -44,12 +44,12 @@ impl OverseerWorker {
         ingest_cluster_uris: Vec<FogIngestUri>,
         recovery_db: DB,
         logger: Logger,
-        stop_requested: Arc<AtomicBool>,
+        is_enabled: Arc<AtomicBool>,
     ) -> Self
     where
         OverseerError: From<DB::Error>,
     {
-        let thread_stop_requested = stop_requested.clone();
+        let thread_is_enabled = is_enabled.clone();
         let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
         let ingest_clients: Vec<FogIngestGrpcClient> = ingest_cluster_uris
             .iter()
@@ -69,7 +69,7 @@ impl OverseerWorker {
                     OverseerWorkerThread::start(
                         ingest_clients,
                         recovery_db,
-                        thread_stop_requested,
+                        thread_is_enabled,
                         logger,
                     )
                 })
@@ -78,14 +78,14 @@ impl OverseerWorker {
 
         Self {
             join_handle,
-            stop_requested,
+            is_enabled,
         }
     }
 
     /// Stop and join the db poll thread
     pub fn stop(&mut self) -> Result<(), ()> {
         if let Some(join_handle) = self.join_handle.take() {
-            self.stop_requested.store(true, Ordering::SeqCst);
+            self.is_enabled.store(false, Ordering::SeqCst);
             join_handle.join().map_err(|_| ())?;
         }
 
@@ -110,7 +110,7 @@ struct OverseerWorkerThread<DB: RecoveryDb> {
     recovery_db: DB,
 
     /// If this is true, the worker will not perform it's monitoring logic.
-    stop_requested: Arc<AtomicBool>,
+    is_enabled: Arc<AtomicBool>,
 
     logger: Logger,
 }
@@ -137,22 +137,27 @@ where
     pub fn start(
         ingest_clients: Vec<FogIngestGrpcClient>,
         recovery_db: DB,
-        stop_requested: Arc<AtomicBool>,
+        is_enabled: Arc<AtomicBool>,
         logger: Logger,
     ) {
         let thread = Self {
             ingest_clients,
             recovery_db,
-            stop_requested,
+            is_enabled,
             logger,
         };
         thread.run();
     }
 
     fn run(self) {
-        while !self.stop_requested.load(Ordering::SeqCst) {
+        loop {
             log::trace!(self.logger, "Overseer worker start of thread.");
             std::thread::sleep(Self::POLLING_FREQUENCY);
+
+            if !self.is_enabled.load(Ordering::SeqCst) {
+                log::info!(self.logger, "Overseer worker is currently disabled.");
+                continue;
+            }
 
             let ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping> =
                 self.retrieve_ingest_summary_node_mappings();
@@ -268,7 +273,7 @@ where
     ///                 (ii) If you don't find an idle node with that key,
     ///                      then you have to report that key as lost.
     ///        c) > 1 outstanding key:
-    ///             (i) Disarm
+    ///             (i) Disable
     ///             (ii) Send an alert (todo).
     fn perform_automatic_failover(
         &self,
@@ -281,9 +286,9 @@ where
             0 => log::info!(self.logger, "Found 0 outstanding keys."),
             1 => log::info!(self.logger, "Found 1 outstanding key."),
             _ => {
-                log::error!(self.logger, "Found multiple outstanding keys. This requires manual intervention. Disarming.");
-                self.stop_requested.store(true, Ordering::SeqCst);
-                return Err(OverseerError::MultipleOutstandingKeys("Multiple outstanding keys found. This is unexpected and requires manual intervention. As such, we've disarmed overseer. Take action and then rearm.".to_string()));
+                log::error!(self.logger, "Found multiple outstanding keys. This requires manual intervention. Disabling overseer.");
+                self.is_enabled.store(false, Ordering::SeqCst);
+                return Err(OverseerError::MultipleOutstandingKeys("Multiple outstanding keys found. This is unexpected and requires manual intervention. As such, we've disabled overseer. Take action and then enable overseer.".to_string()));
             }
         }
 

@@ -5,15 +5,14 @@ use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_sql_recovery_db::SqlRecoveryDb;
 use rocket::{post, routes};
 
-#[post("/arm")]
+#[post("/enable")]
 fn arm(state: rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<String, String> {
-    state.overseer_service.arm()
+    state.overseer_service.enable()
 }
 
-#[allow(dead_code)]
-#[post("/disarm")]
+#[post("/disable")]
 fn disarm(state: rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<String, String> {
-    state.overseer_service.disarm()
+    state.overseer_service.disable()
 }
 
 /// State managed by rocket. As of right now, it's just the OverseerService.
