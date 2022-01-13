@@ -30,7 +30,7 @@ run the tests in `SGX_MODE=HW`. (See below for an explanation.)
 
 A docker-less build also works fine for development:
 - Follow instructions [consensus/service/BUILD.md](consensus/service/BUILD.md)
-- Set up your environment like the [Dockerfile](docker/Dockerfile)
+- Set up your environment with `docker/init_debian.sh`
 
 ## Build configuration
 

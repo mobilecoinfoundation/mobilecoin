@@ -8,13 +8,13 @@
 # if it isn't done, bad things will happen to local builds and CI using mob tool
 # See mob tool comments for extended discussion
 
-# builder-install contains dependencies but doesn't copy our sources in, so it can be
-# cached in google cloud.
-#
+# builder-install contains dependencies but doesn't copy
+# our sources in, so it can be cached in google cloud.
+
+
 # ##################################### #
 #  builder-install - Build environment  #
 # ##################################### #
-
 # Ubuntu 18.04
 FROM ubuntu@sha256:538529c9d229fb55f50e6746b119e899775205d62c0fc1b7e679b30d02ecb6e8 AS builder-install
 
@@ -22,120 +22,21 @@ FROM ubuntu@sha256:538529c9d229fb55f50e6746b119e899775205d62c0fc1b7e679b30d02ecb
 #
 SHELL ["/bin/bash", "-c"]
 
-# Certain Installers make 'installations' easier by having a nice front-end. While this is great when you have a manual install, this becomes an issue during automated installations.
-ENV DEBIAN_FRONTEND=noninteractive
+# Specify the rust-toolchain for init script.
+COPY rust-toolchain /tmp
+ENV RUST_TOOLCHAIN_PATH=/tmp/rust-toolchain
 
-# Install build tools and dependencies
-#
-RUN apt-get update -q -q && \
- apt-get upgrade --yes --force-yes && \
- apt-get install --yes --force-yes \
-  alien \
-  autoconf \
-  automake \
-  binutils-dev \
-  build-essential \
-  clang \
-  cmake \
-  curl \
-  git \
-  jq \
-  libclang-dev \
-  libcurl4-openssl-dev \
-  libdw-dev \
-  libiberty-dev \
-  libpq-dev \
-  libprotobuf-c-dev \
-  libprotobuf-dev \
-  libssl-dev \
-  libssl1.1 \
-  libsystemd-dev \
-  libtool \
-  libxml2-dev \
-  llvm-dev \
-  nano \
-  nginx \
-  ninja-build \
-  ocaml-native-compilers \
-  ocamlbuild \
-  patch \
-  pkg-config \
-  postgresql-10 \
-  prometheus \
-  protobuf-c-compiler \
-  protobuf-compiler \
-  psmisc \
-  python \
-  python3-pip \
-  systemd \
-  unzip \
-  uuid-dev \
-  wget \
-  zlib1g-dev
-# psmisc = killall
-# prometheus = helps with running slam scripts locally
+COPY init_debian.sh /tmp
+RUN bash /tmp/init_debian.sh
 
-# Install go 1.16 release
-RUN wget https://golang.org/dl/go1.16.4.linux-amd64.tar.gz && \
-    mv go1.16.4.linux-amd64.tar.gz go.tgz && \
-    tar -C /usr/local -xzf go.tgz  && \
-    rm -rf go.tgz
-ENV PATH="/usr/local/go/bin:$PATH"
+# Unfortunately we cannot update ENV from the init script.
+# See https://github.com/docker/docker/issues/29110
 ENV GOPATH=/opt/go/
-ENV PATH=$PATH:$GOPATH/bin
-
-# Install SQLite latest release.
-ENV SQLITE=sqlite-autoconf-3350400
-RUN wget https://www.sqlite.org/2021/$SQLITE.tar.gz && \
-    tar xf $SQLITE.tar.gz && \
-    mkdir bld && \
-    pushd bld && \
-    ../$SQLITE/configure && \
-    make && \
-    make install && \
-    popd && \
-    rm -r bld $SQLITE.tar.gz
-
-# For use in CI
-RUN pip3 install awscli black
-
-# filebeat is used for logs when running slam scripts locally
-RUN curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.4.2-amd64.deb && \
-    dpkg -i filebeat-7.4.2-amd64.deb && \
-    rm filebeat-7.4.2-amd64.deb
-
-# set rust nightly
-#
-RUN mkdir -p /tmp/rustup
-WORKDIR /tmp/rustup
-COPY --chown=root:root rust-toolchain .
-RUN wget https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init && \
-  chmod +x rustup-init && \
-  ./rustup-init --default-toolchain $(cat rust-toolchain) -y && \
-  /root/.cargo/bin/rustup component add \
-    clippy \
-    llvm-tools-preview \
-    rust-analysis \
-    rust-src \
-    rustfmt && \
-  /root/.cargo/bin/cargo install sccache cargo-cache cargo2junit cargo-tree cargo-feature-analyst cbindgen && \
-  /root/.cargo/bin/cargo install diesel_cli --no-default-features --features postgres
-
+ENV PATH="/usr/local/go/bin:$GOPATH/bin:$PATH"
 # Set PATH in the container environment to include cargo bin
 ENV PATH="/root/.cargo/bin:$PATH"
 
-# Install kcov. So that we don't have to do this again with every build in ci.
-RUN mkdir -p /tmp/kcov
-WORKDIR /tmp/kcov
-RUN wget https://github.com/SimonKagstrom/kcov/archive/v36.tar.gz && \
-    tar xvf v36.tar.gz && \
-    cd kcov-36 && \
-    cmake . && \
-    make && \
-    make install
-
 # Conditionally install intel SGX libs
-
 ARG DOCKER_NO_SGX=false
 
 COPY --chown=root:root install_sgx.sh /tmp
