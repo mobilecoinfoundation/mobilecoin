@@ -32,8 +32,8 @@ pub struct OverseerWorker {
     /// Join handle used to wait for the thread to terminate.
     join_handle: Option<JoinHandle<()>>,
 
-    /// When true, overseer performs its monitoring logic.
-    is_enabled: Arc<AtomicBool>,
+    /// If true, stops the worker thread.
+    stop_requested: Arc<AtomicBool>,
 }
 
 impl OverseerWorker {
@@ -45,11 +45,13 @@ impl OverseerWorker {
         recovery_db: DB,
         logger: Logger,
         is_enabled: Arc<AtomicBool>,
+        stop_requested: Arc<AtomicBool>,
     ) -> Self
     where
         OverseerError: From<DB::Error>,
     {
         let thread_is_enabled = is_enabled.clone();
+        let thread_stop_requested = stop_requested.clone();
         let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
         let ingest_clients: Vec<FogIngestGrpcClient> = ingest_cluster_uris
             .iter()
@@ -70,6 +72,7 @@ impl OverseerWorker {
                         ingest_clients,
                         recovery_db,
                         thread_is_enabled,
+                        thread_stop_requested,
                         logger,
                     )
                 })
@@ -78,14 +81,14 @@ impl OverseerWorker {
 
         Self {
             join_handle,
-            is_enabled,
+            stop_requested,
         }
     }
 
     /// Stop and join the db poll thread
     pub fn stop(&mut self) -> Result<(), ()> {
         if let Some(join_handle) = self.join_handle.take() {
-            self.is_enabled.store(false, Ordering::SeqCst);
+            self.stop_requested.store(true, Ordering::SeqCst);
             join_handle.join().map_err(|_| ())?;
         }
 
@@ -111,6 +114,9 @@ struct OverseerWorkerThread<DB: RecoveryDb> {
 
     /// If this is true, the worker will not perform it's monitoring logic.
     is_enabled: Arc<AtomicBool>,
+
+    /// If this is true, the thread will stop.
+    stop_requested: Arc<AtomicBool>,
 
     logger: Logger,
 }
@@ -138,12 +144,14 @@ where
         ingest_clients: Vec<FogIngestGrpcClient>,
         recovery_db: DB,
         is_enabled: Arc<AtomicBool>,
+        stop_requested: Arc<AtomicBool>,
         logger: Logger,
     ) {
         let thread = Self {
             ingest_clients,
             recovery_db,
             is_enabled,
+            stop_requested,
             logger,
         };
         thread.run();
@@ -154,8 +162,13 @@ where
             log::trace!(self.logger, "Overseer worker start of thread.");
             std::thread::sleep(Self::POLLING_FREQUENCY);
 
+            if self.stop_requested.load(Ordering::SeqCst) {
+                log::info!(self.logger, "Overseer worker thread stopping.");
+                break;
+            }
+
             if !self.is_enabled.load(Ordering::SeqCst) {
-                log::info!(self.logger, "Overseer worker is currently disabled.");
+                log::trace!(self.logger, "Overseer worker is currently disabled.");
                 continue;
             }
 
