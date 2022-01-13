@@ -755,7 +755,7 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
 /// * `ledger` - The local node's ledger.
 /// * `blocks_and_contents` - A sequence of Blocks with their associated
 ///   transactions, in increasing order of block number.
-fn identify_safe_blocks<L: Ledger>(
+pub fn identify_safe_blocks<L: Ledger>(
     ledger: &L,
     blocks_and_contents: &[(Block, BlockContents)],
     logger: &Logger,

@@ -6,7 +6,8 @@ mod reqwest_transactions_fetcher;
 mod transactions_fetcher_trait;
 
 pub use ledger_sync::{
-    LedgerSync, LedgerSyncError, LedgerSyncService, LedgerSyncServiceThread, MockLedgerSync,
+    identify_safe_blocks, LedgerSync, LedgerSyncError, LedgerSyncService, LedgerSyncServiceThread,
+    MockLedgerSync,
 };
 pub use network_state::{NetworkState, PollingNetworkState, SCPNetworkState};
 pub use reqwest_transactions_fetcher::{
