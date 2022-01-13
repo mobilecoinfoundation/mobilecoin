@@ -70,13 +70,13 @@ where
     }
 
     pub fn enable(&self) -> Result<String, String> {
-        log::trace!(self.logger, "Enabling overseer worker");
+        log::info!(self.logger, "Enabling overseer worker");
         self.is_enabled.store(true, Ordering::SeqCst);
         Ok(String::from("Fog Overseer was successfully armed."))
     }
 
     pub fn disable(&self) -> Result<String, String> {
-        log::trace!(self.logger, "Disabling overseer worker");
+        log::info!(self.logger, "Disabling overseer worker");
         self.is_enabled.store(false, Ordering::SeqCst);
         Ok(String::from("Fog Overseer was successfully disarmed."))
     }
