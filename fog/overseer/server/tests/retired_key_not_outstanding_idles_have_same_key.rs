@@ -17,6 +17,8 @@ use url::Url;
 
 mod utils;
 
+const PORT_NUMBER: u16 = 8084;
+
 // Tests the scenario in which the active node retires its key and scans all
 // its blocks, which means that it's not outstanding. The idle nodes have the
 // same key as this retired key.
@@ -118,7 +120,7 @@ fn active_key_is_retired_not_outstanding_new_key_is_set_node_activated(logger: L
         rocket::Config::build(rocket::config::Environment::Development)
             // TODO: Make these either passed from CLI or in a Rocket.toml.
             .address("127.0.0.1")
-            .port(80)
+            .port(PORT_NUMBER)
             .unwrap();
 
     let mut overseer_service = OverseerService::new(

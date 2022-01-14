@@ -14,6 +14,8 @@ use url::Url;
 
 mod utils;
 
+const PORT_NUMBER: u16 = 8082;
+
 // In this scenario, the Fog Ingest cluster has one active node, which is the
 // expected state for the cluster.
 //
@@ -97,7 +99,7 @@ fn one_active_node_cluster_state_does_not_change(logger: Logger) {
         rocket::Config::build(rocket::config::Environment::Development)
             // TODO: Make these either passed from CLI or in a Rocket.toml.
             .address("127.0.0.1")
-            .port(80)
+            .port(PORT_NUMBER)
             .unwrap();
 
     let mut overseer_service = OverseerService::new(

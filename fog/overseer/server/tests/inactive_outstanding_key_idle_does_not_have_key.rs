@@ -17,6 +17,8 @@ use url::Url;
 
 mod utils;
 
+const PORT_NUMBER: u16 = 8081;
+
 // Tests the scenario in which the most recent active node goes down, and
 // its key is oustanding, which means that the key still needs to be used to
 // scan the blockchain. None of the idle nodes have this active key.
@@ -140,11 +142,10 @@ fn inactive_oustanding_key_idle_node_does_not_have_key_idle_node_is_activated_an
         rocket::Config::build(rocket::config::Environment::Development)
             // TODO: Make these either passed from CLI or in a Rocket.toml.
             .address("127.0.0.1")
-            .port(80)
+            .port(PORT_NUMBER)
             .unwrap();
     let rocket = server::initialize_rocket_server(rocket_config, overseer_state);
     let client = Client::new(rocket).expect("valid rocket instance");
-    let _req = client.post("/arm").dispatch();
 
     // Add 11 test blocks.
     for _ in 0..11 {
@@ -211,6 +212,6 @@ fn inactive_oustanding_key_idle_node_does_not_have_key_idle_node_is_activated_an
     assert!(!ingress_key_public_status.retired);
     assert!(ingress_key_public_status.lost);
 
-    let _req = client.post("/disarm").dispatch();
+    let _req = client.post("/disable").dispatch();
     std::thread::sleep(Duration::from_secs(10));
 }
