@@ -344,17 +344,6 @@ dependencies = [
 
 [[package]]
 name = "blake2"
-version = "0.9.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a4e37d16930f5459780f5621038b6382b9bb37c19016f39fb6b5808d831f174"
-dependencies = [
- "crypto-mac 0.8.0",
- "digest 0.9.0",
- "opaque-debug 0.3.0",
-]
-
-[[package]]
-name = "blake2"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b94ba84325db59637ffc528bbe8c7f86c02c57cff5c0e2b9b00f9a851f42f309"
@@ -2552,7 +2541,7 @@ dependencies = [
 name = "mc-account-keys"
 version = "1.2.0-pre0"
 dependencies = [
- "blake2 0.10.2",
+ "blake2",
  "criterion",
  "curve25519-dalek",
  "datatest",
@@ -2685,7 +2674,7 @@ dependencies = [
  "aead",
  "aes-gcm",
  "cargo-emit",
- "digest 0.9.0",
+ "digest 0.10.1",
  "displaydoc",
  "mc-attest-core",
  "mc-attest-net",
@@ -2709,7 +2698,7 @@ version = "1.2.0-pre0"
 dependencies = [
  "aead",
  "cargo-emit",
- "digest 0.9.0",
+ "digest 0.10.1",
  "futures 0.3.17",
  "grpcio",
  "mc-attest-ake",
@@ -2730,7 +2719,7 @@ dependencies = [
  "bitflags",
  "cargo-emit",
  "chrono",
- "digest 0.9.0",
+ "digest 0.10.1",
  "displaydoc",
  "hex",
  "hex_fmt",
@@ -3140,7 +3129,7 @@ name = "mc-crypto-ake-enclave"
 version = "1.2.0-pre0"
 dependencies = [
  "aes-gcm",
- "digest 0.9.0",
+ "digest 0.10.1",
  "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-enclave-api",
@@ -3160,8 +3149,8 @@ name = "mc-crypto-box"
 version = "1.2.0-pre0"
 dependencies = [
  "aead",
- "blake2 0.10.2",
- "digest 0.9.0",
+ "blake2",
+ "digest 0.10.1",
  "displaydoc",
  "hkdf",
  "mc-crypto-keys",
@@ -3222,8 +3211,8 @@ dependencies = [
 name = "mc-crypto-hashes"
 version = "1.2.0-pre0"
 dependencies = [
- "blake2 0.9.2",
- "digest 0.9.0",
+ "blake2",
+ "digest 0.10.1",
  "mc-crypto-digestible",
 ]
 
@@ -3233,7 +3222,7 @@ version = "1.2.0-pre0"
 dependencies = [
  "binascii",
  "curve25519-dalek",
- "digest 0.9.0",
+ "digest 0.10.1",
  "displaydoc",
  "ed25519",
  "ed25519-dalek",
@@ -3280,7 +3269,7 @@ version = "1.2.0-pre0"
 dependencies = [
  "aead",
  "aes-gcm",
- "digest 0.9.0",
+ "digest 0.10.1",
  "displaydoc",
  "generic-array 0.14.4",
  "hkdf",
@@ -3643,7 +3632,7 @@ dependencies = [
 name = "mc-fog-kex-rng"
 version = "1.2.0-pre0"
 dependencies = [
- "blake2 0.10.2",
+ "blake2",
  "displaydoc",
  "mc-crypto-keys",
  "mc-util-from-random",
@@ -3890,7 +3879,7 @@ dependencies = [
  "aes",
  "aligned-cmov",
  "balanced-tree-index",
- "blake2 0.10.2",
+ "blake2",
  "displaydoc",
  "lazy_static",
  "mc-oblivious-traits",
@@ -4216,7 +4205,7 @@ name = "mc-fog-test-infra"
 version = "1.2.0-pre0"
 dependencies = [
  "curve25519-dalek",
- "digest 0.9.0",
+ "digest 0.10.1",
  "hex",
  "mc-account-keys",
  "mc-common",
@@ -4247,7 +4236,7 @@ dependencies = [
 name = "mc-fog-types"
 version = "1.2.0-pre0"
 dependencies = [
- "blake2 0.10.2",
+ "blake2",
  "crc",
  "displaydoc",
  "mc-crypto-keys",
@@ -4404,7 +4393,7 @@ dependencies = [
 name = "mc-fog-view-protocol"
 version = "1.2.0-pre0"
 dependencies = [
- "blake2 0.10.2",
+ "blake2",
  "displaydoc",
  "mc-account-keys",
  "mc-common",
@@ -4579,7 +4568,7 @@ name = "mc-mobilecoind"
 version = "1.2.0-pre0"
 dependencies = [
  "aes-gcm",
- "blake2 0.10.2",
+ "blake2",
  "crossbeam-channel",
  "displaydoc",
  "grpcio",
@@ -4969,7 +4958,7 @@ name = "mc-transaction-core"
 version = "1.2.0-pre0"
 dependencies = [
  "aes",
- "blake2 0.10.2",
+ "blake2",
  "bulletproofs-og",
  "curve25519-dalek",
  "displaydoc",
@@ -5024,7 +5013,7 @@ dependencies = [
 name = "mc-transaction-std"
 version = "1.2.0-pre0"
 dependencies = [
- "blake2 0.10.2",
+ "blake2",
  "curve25519-dalek",
  "displaydoc",
  "hmac 0.11.0",

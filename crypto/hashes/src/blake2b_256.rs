@@ -9,65 +9,52 @@
 //! # References
 //! * `[RFC 7693: The BLAKE2 Cryptographic Hash and Message Authentication Code (MAC)](https://tools.ietf.org/html/rfc7693)`
 
-use blake2::{digest::BlockInput, VarBlake2b};
-use digest::{
-    generic_array::{
-        typenum::{U128, U32},
-        GenericArray,
+use blake2::{
+    digest::{
+        generic_array::typenum::{U128, U32},
+        Digest, FixedOutput, HashMarker, InvalidBufferSize, InvalidOutputSize, OutputSizeUser,
+        Reset, Update, VariableOutput,
     },
-    FixedOutput, FixedOutputDirty, Reset, Update, VariableOutput,
+    Blake2b,
 };
 
 #[derive(Clone, Debug)]
 /// Blake2b with 256-bit output.
 pub struct Blake2b256 {
-    hasher: VarBlake2b,
-}
-
-impl Blake2b256 {
-    /// Create a new instance of this hasher.
-    pub fn new() -> Self {
-        Self {
-            hasher: VarBlake2b::new(32).unwrap(),
-        }
-    }
-
-    /// Returns the hash of inputted data.
-    pub fn result(self) -> GenericArray<u8, U32> {
-        self.finalize_fixed()
-    }
-}
-
-impl Default for Blake2b256 {
-    fn default() -> Self {
-        Self::new()
-    }
+    hasher: Blake2b<U32>,
 }
 
 impl Update for Blake2b256 {
-    fn update(&mut self, data: impl AsRef<[u8]>) {
-        self.hasher.update(data);
+    #[inline]
+    fn update(&mut self, data: &[u8]) {
+        Digest::update(&mut self.hasher, data)
     }
 }
 
-impl FixedOutputDirty for Blake2b256 {
+impl OutputSizeUser for Blake2b256 {
     type OutputSize = U32;
+}
 
-    fn finalize_into_dirty(&mut self, out: &mut GenericArray<u8, Self::OutputSize>) {
-        let mut result_opt: Option<GenericArray<u8, U32>> = None;
-        self.hasher.finalize_variable_reset(|res| {
-            result_opt = GenericArray::from_exact_iter(res.iter().cloned());
-        });
-        *out = result_opt.unwrap()
+impl VariableOutput for Blake2b256 {
+    const MAX_OUTPUT_SIZE: usize = 0;
+
+    fn new(output_size: usize) -> Result<Self, InvalidOutputSize> {
+        // FIXME: LEFT OFF HERE
+        let hasher = <Blake2b<U32> as VariableOutput>::new(output_size)?;
+        Self { hasher }
+    }
+
+    fn output_size(&self) -> usize {
+        self.hashser.output_size()
+    }
+
+    fn finalize_variable(self, out: &mut [u8]) -> Result<(), InvalidBufferSize> {
+        VariableOutput::finalize_variable(&self.hasher, out)
     }
 }
 
 impl Reset for Blake2b256 {
     fn reset(&mut self) {
-        self.hasher.reset()
+        Reset::reset(&mut self.hasher);
     }
-}
-
-impl BlockInput for Blake2b256 {
-    type BlockSize = U128;
 }
