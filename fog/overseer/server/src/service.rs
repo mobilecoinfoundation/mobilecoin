@@ -54,7 +54,6 @@ where
             self.recovery_db.clone(),
             self.logger.clone(),
             self.is_enabled.clone(),
-            Arc::new(AtomicBool::new(false)),
         ));
 
         Ok(())

@@ -45,12 +45,12 @@ impl OverseerWorker {
         recovery_db: DB,
         logger: Logger,
         is_enabled: Arc<AtomicBool>,
-        stop_requested: Arc<AtomicBool>,
     ) -> Self
     where
         OverseerError: From<DB::Error>,
     {
         let thread_is_enabled = is_enabled.clone();
+        let stop_requested = Arc::new(AtomicBool::new(false));
         let thread_stop_requested = stop_requested.clone();
         let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
         let ingest_clients: Vec<FogIngestGrpcClient> = ingest_cluster_uris
