@@ -116,6 +116,7 @@ impl FogIngestGrpcClient {
     }
 
     pub fn activate(&self) -> ClientResult<IngestSummary> {
+        log::info!(self.logger, "Activating Fog Ingest node {}", self.uri);
         retry(self.get_retries(), || -> Result<_, Error> {
             Ok(self
                 .ingest_api_client
