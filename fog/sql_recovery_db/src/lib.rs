@@ -323,6 +323,9 @@ impl RecoveryDb for SqlRecoveryDb {
         let conn = self.pool.get()?;
 
         use schema::ingress_keys::dsl;
+        let last_scanned_block = diesel::dsl::sql::<diesel::sql_types::BigInt>(
+                    "(SELECT MAX(block_number) FROM ingested_blocks WHERE ingress_keys.ingress_public_key = ingested_blocks.ingress_public_key)"
+                );
         let mut query = dsl::ingress_keys
             .select((
                 dsl::ingress_public_key,
@@ -330,20 +333,23 @@ impl RecoveryDb for SqlRecoveryDb {
                 dsl::pubkey_expiry,
                 dsl::retired,
                 dsl::lost,
-                diesel::dsl::sql::<diesel::sql_types::BigInt>(
-                    "(SELECT MAX(block_number) FROM ingested_blocks WHERE ingress_keys.ingress_public_key = ingested_blocks.ingress_public_key)"
-                ).nullable(),
-
+                last_scanned_block.clone().nullable(),
             ))
             .filter(dsl::start_block.ge(start_block_at_least as i64))
             // Allows for conditional queries, which means additional filter
             // clauses can be added to this query.
             .into_boxed();
 
+        if ingress_public_key_record_filters.should_only_include_unexpired_keys {
+            query = query
+                .filter(last_scanned_block.clone().is_not_null())
+                .filter(dsl::pubkey_expiry.gt(last_scanned_block));
+        }
         if !ingress_public_key_record_filters.should_include_lost_keys {
             // Adds this filter to the existing query (rather than replacing it).
             query = query.filter(dsl::lost.eq(false));
         }
+
         if !ingress_public_key_record_filters.should_include_retired_keys {
             // Adds this filter to the existing query (rather than replacing it).
             query = query.filter(dsl::retired.eq(false));
@@ -2110,7 +2116,8 @@ mod tests {
                 0,
                 IngressPublicKeyRecordFilters {
                     should_include_lost_keys: true,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap(),
@@ -2126,7 +2133,8 @@ mod tests {
                 0,
                 IngressPublicKeyRecordFilters {
                     should_include_lost_keys: true,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap(),
@@ -2152,7 +2160,8 @@ mod tests {
                     0,
                     IngressPublicKeyRecordFilters {
                         should_include_lost_keys: true,
-                        should_include_retired_keys: true
+                        should_include_retired_keys: true,
+                        should_only_include_unexpired_keys: false,
                     }
                 )
                 .unwrap()
@@ -2197,7 +2206,8 @@ mod tests {
                         0,
                         IngressPublicKeyRecordFilters {
                             should_include_lost_keys: true,
-                            should_include_retired_keys: true
+                            should_include_retired_keys: true,
+                            should_only_include_unexpired_keys: false,
                         }
                     )
                     .unwrap()
@@ -2237,7 +2247,8 @@ mod tests {
                     0,
                     IngressPublicKeyRecordFilters {
                         should_include_lost_keys: true,
-                        should_include_retired_keys: true
+                        should_include_retired_keys: true,
+                        should_only_include_unexpired_keys: false,
                     }
                 )
                 .unwrap()
@@ -2275,7 +2286,8 @@ mod tests {
                     0,
                     IngressPublicKeyRecordFilters {
                         should_include_lost_keys: true,
-                        should_include_retired_keys: true
+                        should_include_retired_keys: true,
+                        should_only_include_unexpired_keys: false,
                     }
                 )
                 .unwrap()
@@ -2322,7 +2334,8 @@ mod tests {
                     0,
                     IngressPublicKeyRecordFilters {
                         should_include_lost_keys: true,
-                        should_include_retired_keys: true
+                        should_include_retired_keys: true,
+                        should_only_include_unexpired_keys: false,
                     }
                 )
                 .unwrap()
@@ -2372,7 +2385,8 @@ mod tests {
                         0,
                         IngressPublicKeyRecordFilters {
                             should_include_lost_keys: true,
-                            should_include_retired_keys: true
+                            should_include_retired_keys: true,
+                            should_only_include_unexpired_keys: false,
                         }
                     )
                     .unwrap()
@@ -2408,7 +2422,8 @@ mod tests {
                 400,
                 IngressPublicKeyRecordFilters {
                     should_include_lost_keys: true,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap(),
@@ -2439,7 +2454,8 @@ mod tests {
                 0,
                 IngressPublicKeyRecordFilters {
                     should_include_lost_keys: false,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap(),
@@ -2455,7 +2471,8 @@ mod tests {
                 0,
                 IngressPublicKeyRecordFilters {
                     should_include_lost_keys: true,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap(),
@@ -2476,7 +2493,8 @@ mod tests {
                 0,
                 IngressPublicKeyRecordFilters {
                     should_include_lost_keys: true,
-                    should_include_retired_keys: false
+                    should_include_retired_keys: false,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap()
@@ -2499,7 +2517,8 @@ mod tests {
                 0,
                 IngressPublicKeyRecordFilters {
                     should_include_lost_keys: false,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap(),
@@ -2515,7 +2534,8 @@ mod tests {
                 0,
                 IngressPublicKeyRecordFilters {
                     should_include_lost_keys: true,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap(),
@@ -2537,7 +2557,8 @@ mod tests {
                 0,
                 IngressPublicKeyRecordFilters {
                     should_include_lost_keys: false,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap()
@@ -2560,7 +2581,8 @@ mod tests {
                 0,
                 IngressPublicKeyRecordFilters {
                     should_include_lost_keys: false,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap(),
@@ -2580,7 +2602,8 @@ mod tests {
                     0,
                     IngressPublicKeyRecordFilters {
                         should_include_lost_keys: true,
-                        should_include_retired_keys: true
+                        should_include_retired_keys: true,
+                        should_only_include_unexpired_keys: false,
                     }
                 )
                 .unwrap()
@@ -2617,7 +2640,8 @@ mod tests {
                 0,
                 IngressPublicKeyRecordFilters {
                     should_include_lost_keys: false,
-                    should_include_retired_keys: false
+                    should_include_retired_keys: false,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap()
@@ -2627,7 +2651,7 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn test_new_ingress_key_no_blocks_added_accepted_block_count_is_proposed_start_block_when_zero(
+    fn test_get_ingress_key_records_should_only_include_in_use_keys_one_key_lost_one_key_retired_but_last_scanned_less_than_pubkey_expiry(
         logger: Logger,
     ) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
@@ -2649,6 +2673,90 @@ mod tests {
 
     #[test_with_logger]
     fn test_new_ingress_key_no_blocks_added_accepted_block_count_is_proposed_start_block(
+        logger: Logger,
+    ) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+
+        // At first, there are no records.
+        assert_eq!(
+            db.get_ingress_key_records(
+                0,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: false,
+                    should_only_include_unexpired_keys: false,
+                }
+            )
+            .unwrap(),
+            vec![],
+        );
+
+        // Add an ingress key and see that we can retreive it.
+        let ingress_key1 = CompressedRistrettoPublic::from_random(&mut rng);
+        db.new_ingress_key(&ingress_key1, 0).unwrap();
+
+        let ingress_key2 = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&ingress_key2, 5).unwrap();
+
+        // Add an ingest invocation and see that we can see it.
+        let invoc_id1 = db
+            .new_ingest_invocation(None, &ingress_key1, &random_kex_rng_pubkey(&mut rng), 123)
+            .unwrap();
+
+        let ranges = db.get_ingestable_ranges().unwrap();
+        assert_eq!(ranges.len(), 1);
+        assert_eq!(ranges[0].start_block, 123);
+        assert_eq!(ranges[0].decommissioned, false);
+        assert_eq!(ranges[0].last_ingested_block, None);
+
+        // This makes last_scanned_block equal 10.
+        for block_index in 0..11 {
+            let (block, records) = random_block(&mut rng, block_index, 10);
+            db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
+        }
+
+        db.set_report(
+            &ingress_key1,
+            "",
+            &ReportData {
+                pubkey_expiry: 20,
+                ingest_invocation_id: None,
+                report: Default::default(),
+            },
+        )
+        .unwrap();
+
+        db.retire_ingress_key(&ingress_key1, true).unwrap();
+        db.report_lost_ingress_key(ingress_key2).unwrap();
+
+        let actual = db
+            .get_ingress_key_records(
+                0,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: true,
+                },
+            )
+            .unwrap();
+
+        let expected = IngressPublicKeyRecord {
+            key: ingress_key1.clone(),
+            status: IngressPublicKeyStatus {
+                start_block: 0,
+                pubkey_expiry: 20,
+                retired: true,
+                lost: false,
+            },
+            last_scanned_block: Some(10),
+        };
+        assert_eq!(actual, vec![expected]);
+    }
+
+    #[test_with_logger]
+    fn test_get_ingress_key_records_should_only_include_in_use_keys_one_key_lost_one_key_retired_and_last_scanned_equal_to_pubkey_expiry(
         logger: Logger,
     ) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
@@ -2797,5 +2905,165 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(accepted_start_block, ingress_key_status.start_block);
+    }
+
+    #[test_with_logger]
+    fn test_get_ingress_key_records_should_only_include_in_use_keys_one_key_lost_one_key_retired_and_last_scanned_greater_than_pubkey_expiry(
+        logger: Logger,
+    ) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+
+        // At first, there are no records.
+        assert_eq!(
+            db.get_ingress_key_records(
+                0,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: false,
+                    should_only_include_unexpired_keys: false,
+                }
+            )
+            .unwrap(),
+            vec![],
+        );
+
+        // Add an ingress key and see that we can retreive it.
+        let ingress_key1 = CompressedRistrettoPublic::from_random(&mut rng);
+        db.new_ingress_key(&ingress_key1, 0).unwrap();
+
+        let ingress_key2 = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&ingress_key2, 5).unwrap();
+
+        // Add an ingest invocation and see that we can see it.
+        let invoc_id1 = db
+            .new_ingest_invocation(None, &ingress_key1, &random_kex_rng_pubkey(&mut rng), 123)
+            .unwrap();
+
+        let ranges = db.get_ingestable_ranges().unwrap();
+        assert_eq!(ranges.len(), 1);
+        assert_eq!(ranges[0].id, invoc_id1);
+        assert_eq!(ranges[0].start_block, 123);
+        assert_eq!(ranges[0].decommissioned, false);
+        assert_eq!(ranges[0].last_ingested_block, None);
+
+        // This makes last_scanned_block equal 10.
+        for block_index in 0..11 {
+            let (block, records) = random_block(&mut rng, block_index, 10);
+            db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
+        }
+
+        db.set_report(
+            &ingress_key1,
+            "",
+            &ReportData {
+                pubkey_expiry: 5,
+                ingest_invocation_id: None,
+                report: Default::default(),
+            },
+        )
+        .unwrap();
+
+        db.retire_ingress_key(&ingress_key1, true).unwrap();
+        db.report_lost_ingress_key(ingress_key2).unwrap();
+
+        let actual = db
+            .get_ingress_key_records(
+                0,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: true,
+                },
+            )
+            .unwrap();
+
+        assert_eq!(actual.len(), 0);
+    }
+
+    #[test_with_logger]
+    fn test_get_ingress_key_records_should_only_include_in_use_keys_one_key_lost_one_key_retired_and_last_scanned_less_than_pubkey_expiry(
+        logger: Logger,
+    ) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+
+        // At first, there are no records.
+        assert_eq!(
+            db.get_ingress_key_records(
+                0,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: false,
+                    should_only_include_unexpired_keys: false,
+                }
+            )
+            .unwrap(),
+            vec![],
+        );
+
+        // Add an ingress key and see that we can retreive it.
+        let ingress_key1 = CompressedRistrettoPublic::from_random(&mut rng);
+        db.new_ingress_key(&ingress_key1, 0).unwrap();
+
+        let ingress_key2 = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&ingress_key2, 5).unwrap();
+
+        // Add an ingest invocation and see that we can see it.
+        let invoc_id1 = db
+            .new_ingest_invocation(None, &ingress_key1, &random_kex_rng_pubkey(&mut rng), 123)
+            .unwrap();
+
+        let ranges = db.get_ingestable_ranges().unwrap();
+        assert_eq!(ranges.len(), 1);
+        assert_eq!(ranges[0].id, invoc_id1);
+        assert_eq!(ranges[0].start_block, 123);
+        assert_eq!(ranges[0].decommissioned, false);
+        assert_eq!(ranges[0].last_ingested_block, None);
+
+        // This makes last_scanned_block equal 10.
+        for block_index in 0..11 {
+            let (block, records) = random_block(&mut rng, block_index, 10);
+            db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
+        }
+
+        db.set_report(
+            &ingress_key1,
+            "",
+            &ReportData {
+                pubkey_expiry: 15,
+                ingest_invocation_id: None,
+                report: Default::default(),
+            },
+        )
+        .unwrap();
+
+        db.retire_ingress_key(&ingress_key1, true).unwrap();
+        db.report_lost_ingress_key(ingress_key2).unwrap();
+
+        let actual = db
+            .get_ingress_key_records(
+                0,
+                IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: true,
+                },
+            )
+            .unwrap();
+
+        let expected = IngressPublicKeyRecord {
+            key: ingress_key1.clone(),
+            status: IngressPublicKeyStatus {
+                start_block: 0,
+                pubkey_expiry: 15,
+                retired: true,
+                lost: false,
+            },
+            last_scanned_block: Some(10),
+        };
+        assert_eq!(actual, vec![expected]);
     }
 }

@@ -2,7 +2,10 @@
 
 //! Implement the ingest grpc API
 
-use crate::{controller::IngestController, error::IngestServiceError};
+use crate::{
+    controller::IngestController,
+    error::{IngestServiceError as Error, PeerBackupError},
+};
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_api::external;
 use mc_attest_net::RaClient;
@@ -14,11 +17,13 @@ use mc_fog_api::{
     ingest_common::{IngestSummary, SetPeersRequest},
     Empty,
 };
+use mc_fog_ingest_enclave_api::Error as EnclaveError;
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
 use mc_fog_uri::IngestPeerUri;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_util_grpc::{
-    rpc_database_err, rpc_invalid_arg_error, rpc_logger, rpc_precondition_error, send_result,
+    rpc_database_err, rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error,
+    rpc_precondition_error, rpc_unavailable_error, send_result,
 };
 use mc_util_metrics::SVC_COUNTERS;
 use protobuf::RepeatedField;
@@ -30,7 +35,7 @@ pub struct IngestService<
     R: RaClient + Send + Sync + 'static,
     DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
 > where
-    IngestServiceError: From<<DB as RecoveryDb>::Error>,
+    Error: From<<DB as RecoveryDb>::Error>,
 {
     controller: Arc<IngestController<R, DB>>,
     ledger_db: LedgerDB,
@@ -42,7 +47,7 @@ impl<
         DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
     > IngestService<R, DB>
 where
-    IngestServiceError: From<<DB as RecoveryDb>::Error>,
+    Error: From<<DB as RecoveryDb>::Error>,
 {
     /// Creates a new ingest node (but does not create sockets and start it
     /// etc.)
@@ -65,9 +70,10 @@ where
 
     /// Logic of proto api
     pub fn new_keys_impl(&mut self, logger: &Logger) -> Result<IngestSummary, RpcStatus> {
-        self.controller
-            .new_keys()
-            .map_err(|err| rpc_precondition_error("new_keys", err, logger))?;
+        self.controller.new_keys().map_err(|err| match err {
+            Error::ServerNotIdle => rpc_precondition_error("new_keys", err, logger),
+            _ => rpc_internal_error("new_keys", err, logger),
+        })?;
 
         Ok(self.controller.get_ingest_summary())
     }
@@ -113,7 +119,24 @@ where
                     .num_blocks()
                     .map_err(|err| rpc_database_err(err, logger))?,
             )
-            .map_err(|err| rpc_precondition_error("activate", err, logger))?;
+            .map_err(|err| match err {
+                // These are conditions under which it is incorrect for us to try to activate
+                Error::ServerNotIdle | Error::Backup(PeerBackupError::AnotherActivePeer(_)) => {
+                    rpc_precondition_error("activate", err, logger)
+                }
+                // Return UNAVAILABLE if there is a connection issue, or a retriable error
+                Error::Connection(_)
+                | Error::Backup(PeerBackupError::Connection(_))
+                | Error::Backup(PeerBackupError::CreatingNewIngressKey) => {
+                    rpc_unavailable_error("activate", err, logger)
+                }
+                // Return PERMISSION_DENIED if there is an attestation error
+                Error::Enclave(EnclaveError::Attest(_)) => {
+                    rpc_permissions_error("activate", err, logger)
+                }
+                // return INTERNAL_ERROR for other errors
+                _ => rpc_internal_error("activate", err, logger),
+            })?;
 
         Ok(self.controller.get_ingest_summary())
     }
@@ -188,7 +211,16 @@ where
 
         self.controller
             .sync_keys_from_remote(&peer_uri)
-            .map_err(|err| rpc_database_err(err, logger))
+            .map_err(|err| match err {
+                Error::ServerNotIdle => {
+                    rpc_precondition_error("sync_keys_from_remote", err, logger)
+                }
+                Error::Connection(_) => rpc_unavailable_error("sync_keys_from_remote", err, logger),
+                Error::Enclave(EnclaveError::Attest(_)) => {
+                    rpc_permissions_error("sync_keys_from_remote", err, logger)
+                }
+                _ => rpc_internal_error("sync_keys_from_remote", err, logger),
+            })
     }
 
     /// Retrieves the ingress public keys and filters according to the request's
@@ -204,6 +236,7 @@ where
                 request.start_block_at_least,
                 request.should_include_lost_keys,
                 request.should_include_retired_keys,
+                request.should_only_include_unexpired_keys,
             )
             .map_err(|err| rpc_precondition_error("get_ingress_key_records", err, logger))?;
 
@@ -240,7 +273,7 @@ impl<
         DB: RecoveryDb + ReportDb + Clone + Send + Sync + 'static,
     > mc_fog_api::ingest_grpc::AccountIngestApi for IngestService<R, DB>
 where
-    IngestServiceError: From<<DB as RecoveryDb>::Error>,
+    Error: From<<DB as RecoveryDb>::Error>,
 {
     fn get_status(&mut self, ctx: RpcContext, _request: Empty, sink: UnarySink<IngestSummary>) {
         let _timer = SVC_COUNTERS.req(&ctx);

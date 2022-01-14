@@ -25,12 +25,12 @@ use mc_consensus_api::{
     consensus_peer_grpc::ConsensusPeerApi,
     empty::Empty,
 };
-use mc_consensus_enclave::ConsensusEnclave;
+use mc_consensus_enclave::{ConsensusEnclave, Error};
 use mc_ledger_db::Ledger;
 use mc_peers::TxProposeAAD;
 use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
-    rpc_enclave_err, rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result,
+    rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
 };
 use mc_util_metrics::SVC_COUNTERS;
 use mc_util_serial::deserialize;
@@ -251,10 +251,10 @@ impl ConsensusPeerApi for PeerApiService {
                         Ok(response)
                     }
 
-                    Err(peer_service_error) => match peer_service_error {
-                        PeerServiceError::Enclave(err) => Err(rpc_enclave_err(err, logger)),
-                        err => Err(rpc_internal_error("peer_tx_propose", err, logger)),
-                    },
+                    Err(err @ PeerServiceError::Enclave(Error::Attest(_))) => {
+                        Err(rpc_permissions_error("peer_tx_propose", err, logger))
+                    }
+                    Err(err) => Err(rpc_internal_error("peer_tx_propose", err, logger)),
                 };
 
             send_result(ctx, sink, result, logger)

@@ -29,6 +29,11 @@ pub struct IngressPublicKeyRecordFilters {
 
     /// If set to true, the query will include ingress keys that are retired.
     pub should_include_retired_keys: bool,
+
+    /// If set to true, the query will only include keys that are unexpired,
+    /// which means that the key's last scanned block is less than the key's
+    /// public expiry.
+    pub should_only_include_unexpired_keys: bool,
 }
 
 /// A generic error type for recovery db operations

@@ -11,6 +11,7 @@ use mc_fog_test_client::{
     test_client::{TestClient, TestClientPolicy},
 };
 use mc_util_grpc::AdminServer;
+use mc_util_parse::{load_css_file, CssSignature};
 use serde::Serialize;
 use std::sync::Arc;
 use structopt::StructOpt;
@@ -32,8 +33,7 @@ fn main() {
 
     // Set up test client policy taking into account the runtime config values
     let policy = TestClientPolicy {
-        // Don't fail fast when running continuously, we want to keep measuring after the deadline
-        fail_fast_on_deadline: !config.continuous,
+        fail_fast_on_deadline: !config.measure_after_deadline,
         // Don't test RTH memos when passed --no_memos
         test_rth_memos: !config.no_memos,
         tx_submit_deadline: config.consensus_wait,
@@ -78,36 +78,28 @@ fn main() {
         config.fog_view,
         logger.clone(),
     )
-    .consensus_sigstruct(config.consensus_enclave_css)
-    .fog_ingest_sigstruct(config.fog_ingest_enclave_css)
-    .fog_ledger_sigstruct(config.fog_ledger_enclave_css)
-    .fog_view_sigstruct(config.fog_view_enclave_css);
+    .consensus_sigstruct(maybe_load_css(&config.consensus_enclave_css))
+    .fog_ingest_sigstruct(maybe_load_css(&config.ingest_enclave_css))
+    .fog_ledger_sigstruct(maybe_load_css(&config.ledger_enclave_css))
+    .fog_view_sigstruct(maybe_load_css(&config.view_enclave_css));
 
     // Run continuously or run as a fixed length test, according to config
     if config.continuous {
-        log::info!(
-            logger,
-            "Test client will continuously transfer every {:?} seconds",
-            config.transfer_period
-        );
+        log::info!(logger, "One tx / {:?}", config.transfer_period);
 
         if admin_server.is_none() {
             log::warn!(
                 logger,
-                "Admin server not configured, prometheus metrics will not be available"
+                "Admin not configured, metrics will not be available"
             );
         }
 
         test_client.run_continuously(config.transfer_period);
     } else {
-        log::info!(
-            logger,
-            "Test client will run {} test transfers and stop",
-            config.num_transactions
-        );
+        log::info!(logger, "Running {} test transfers", config.num_transactions);
 
         match test_client.run_test(config.num_transactions) {
-            Ok(()) => println!("All tests passed"),
+            Ok(()) => log::info!(logger, "All tests passed"),
             Err(TestClientError::TxTimeout) => panic!(
                 "Transactions could not clear in {:?} seconds",
                 config.consensus_wait
@@ -115,4 +107,10 @@ fn main() {
             Err(e) => panic!("Unexpected error {:?}", e),
         }
     }
+}
+
+fn maybe_load_css(maybe_file: &Option<String>) -> Option<CssSignature> {
+    maybe_file
+        .as_ref()
+        .map(|x| load_css_file(x).expect("Could not load css file"))
 }

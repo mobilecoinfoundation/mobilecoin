@@ -10,13 +10,14 @@ use mc_fog_ingest_client::{
     ClientResult, FogIngestGrpcClient,
 };
 use mc_fog_uri::FogIngestUri;
-use serde_json::json;
+use serde_json::{json, to_string_pretty};
 use std::{str::FromStr, sync::Arc};
 use structopt::StructOpt;
 
 fn main() -> ClientResult<()> {
     // Logging must go to stderr to not interfere with STDOUT
     std::env::set_var("MC_LOG_STDERR", "1");
+
     let logger = create_root_logger();
 
     let config = IngestConfig::from_args();
@@ -155,13 +156,14 @@ fn get_missed_block_ranges(
 
     println!(
         "{}",
-        json!(missed_block_ranges
+        to_string_pretty(&json!(missed_block_ranges
             .iter()
             .map(|range| json!({
                 "start_block": range.start_block,
                 "end_block": range.end_block,
             }))
-            .collect::<Vec<_>>())
+            .collect::<Vec<_>>()))
+        .expect("could not pretty print")
     );
 
     Ok(())
@@ -198,7 +200,7 @@ fn get_ingress_key_records(
     log::info!(logger, "Ingress keys successfully retrieved");
     println!(
         "{}",
-        json!(ingress_key_records
+        to_string_pretty(&json!(ingress_key_records
             .iter()
             .map(|record| {
                 json!({
@@ -210,14 +212,15 @@ fn get_ingress_key_records(
                     "last_scanned_block": record.last_scanned_block
                 })
             })
-            .collect::<Vec<_>>())
+            .collect::<Vec<_>>()))
+        .expect("could not pretty print")
     );
 
     Ok(())
 }
 
 fn ingest_summary_to_json(summary: &IngestSummary) -> String {
-    json!({
+    to_string_pretty(&json!({
         "mode": format!("{:?}", summary.mode),
         "next_block_index": summary.next_block_index,
         "pubkey_expiry_window": summary.pubkey_expiry_window,
@@ -226,6 +229,6 @@ fn ingest_summary_to_json(summary: &IngestSummary) -> String {
         "kex_rng_version": summary.kex_rng_version,
         "peers": summary.get_peers(),
         "ingest_invocation_id": summary.ingest_invocation_id,
-    })
-    .to_string()
+    }))
+    .expect("could not pretty print")
 }
