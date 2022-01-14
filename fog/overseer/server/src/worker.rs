@@ -7,7 +7,7 @@
 //!
 //! HTTP Client -> Overseer Rocket Server -> OverseerService -> *OverseerWorker*
 
-use crate::error::OverseerError;
+use crate::{error::OverseerError, metrics};
 use mc_api::external;
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -188,8 +188,15 @@ where
                 }
             };
 
-            // TODO: Use these ingest summaries to send the desired metadata
-            // to Prometheus: number of keys, number of active nodes, etc.
+            let ingest_summaries: Vec<IngestSummary> = ingest_summary_node_mappings
+                .iter()
+                .map(|mapping| mapping.ingest_summary.clone())
+                .collect();
+            metrics::utils::set_metrics(
+                &self.logger,
+                ingest_summaries.as_slice(),
+            );
+
             let active_ingest_summary_node_mappings: Vec<&IngestSummaryNodeMapping> =
                 ingest_summary_node_mappings
                     .iter()

@@ -25,6 +25,14 @@ fn get_status(state: rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<Stri
     state.overseer_service.get_status()
 }
 
+/// Produces metrics for Prometheus. 
+///
+/// Meant to be called only by the Prometheus pull mechanism.
+#[get("/metrics")]
+fn get_metrics(state: rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<String, String> {
+    state.overseer_service.get_metrics()
+}
+
 /// State managed by rocket. As of right now, it's just the OverseerService.
 /// Rocket can be viewed as a thin wrapper over this service, allowing it
 /// to be exposed via HTTPS APIs.
@@ -42,6 +50,6 @@ pub fn initialize_rocket_server(
     state: OverseerState<SqlRecoveryDb>,
 ) -> rocket::Rocket {
     rocket::custom(rocket_config)
-        .mount("/", routes![enable, disable, get_status])
+        .mount("/", routes![enable, disable, get_status, get_metrics])
         .manage(state)
 }
