@@ -11,8 +11,8 @@ use mbedtls::{
 };
 use mc_attest_core::{
     EpidGroupId, IasNonce, Quote, QuoteSignType, SigRL, VerificationReport, VerificationSignature,
-    IAS_SIM_SIGNING_CHAIN, IAS_SIM_SIGNING_KEY,
 };
+use mc_attest_verifier::{IAS_SIM_SIGNING_CHAIN, IAS_SIM_SIGNING_KEY};
 use mc_util_encodings::ToBase64;
 use serde_json::json;
 use sha2::{digest::Digest, Sha256};
@@ -119,7 +119,7 @@ impl RaClient for SimClient {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mc_attest_core::{Verifier, IAS_SIM_ROOT_ANCHORS};
+    use mc_attest_verifier::{Verifier, IAS_SIM_ROOT_ANCHORS};
     use mc_util_encodings::FromBase64;
 
     const QUOTE_TEST: &str = include_str!("../data/quote_out_of_date.txt");

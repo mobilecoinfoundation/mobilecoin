@@ -7,9 +7,8 @@ use libc::ssize_t;
 use mc_attest_ake::{
     AuthPending, AuthResponseInput, AuthResponseOutput, ClientInitiate, Ready, Start, Transition,
 };
-use mc_attest_core::{
-    MrEnclave, MrEnclaveVerifier, MrSigner, MrSignerVerifier, Verifier, DEBUG_ENCLAVE,
-};
+use mc_attest_core::{MrEnclave, MrSigner};
+use mc_attest_verifier::{MrEnclaveVerifier, MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::ResponderId;
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::NoiseCipher;

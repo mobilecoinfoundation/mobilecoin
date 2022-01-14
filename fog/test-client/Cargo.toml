@@ -21,6 +21,8 @@ mc-transaction-std = { path = "../../transaction/std" }
 mc-util-grpc = { path = "../../util/grpc" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-metrics = { path = "../../util/metrics" }
+mc-util-parse = { path = "../../util/parse" }
+mc-util-telemetry = { path = "../../util/telemetry", features = ["jaeger"] }
 mc-util-uri = { path = "../../util/uri" }
 
 # fog
@@ -30,6 +32,7 @@ mc-fog-sample-paykit = { path = "../sample-paykit" }
 # third-party
 displaydoc = "0.2"
 grpcio = "0.9"
+hex_fmt = "0.3"
 lazy_static = "1.4"
 more-asserts = "0.2"
 once_cell = "1.8"

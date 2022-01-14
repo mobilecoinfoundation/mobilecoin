@@ -10,7 +10,8 @@ use core::{
 use grpcio::{CallOption, Metadata, MetadataBuilder};
 use mc_attest_ake::{AuthResponseInput, ClientInitiate, Ready, Start, Transition};
 use mc_attest_api::attest::{AuthMessage, Message};
-use mc_attest_core::{VerificationReport, Verifier};
+use mc_attest_core::VerificationReport;
+use mc_attest_verifier::Verifier;
 use mc_common::{
     logger::{log, Logger},
     trace_time,

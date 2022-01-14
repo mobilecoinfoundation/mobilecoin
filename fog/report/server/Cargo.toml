@@ -25,6 +25,7 @@ mc-fog-sig-report = { path = "../../sig/report" }
 mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-metrics = { path = "../../../util/metrics" }
+mc-util-parse = { path = "../../../util/parse" }
 mc-util-uri = { path = "../../../util/uri" }
 
 displaydoc = "0.2"

@@ -27,6 +27,9 @@ pub enum Error {
     /// IngressKeys schema violation: {0}
     IngressKeysSchemaViolation(String),
 
+    /// New ingress key wasn't inserted successfully: {0}
+    IngressKeyUnsuccessfulInsert(String),
+
     /// IngestedBlock schema violation: {0}
     IngestedBlockSchemaViolation(String),
 

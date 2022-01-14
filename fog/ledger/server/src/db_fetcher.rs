@@ -11,6 +11,9 @@ use mc_common::{
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::KeyImageData;
 use mc_ledger_db::{self, Error as LedgerError, Ledger};
+use mc_util_telemetry::{
+    block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Key, Span, Tracer,
+};
 use mc_watcher::watcher_db::WatcherDB;
 use retry::{delay, retry, OperationResult};
 use std::{
@@ -19,8 +22,11 @@ use std::{
         Arc, Mutex,
     },
     thread::{Builder as ThreadBuilder, JoinHandle},
-    time::Duration,
+    time::{Duration, SystemTime},
 };
+
+/// Telemetry: block index currently being worked on.
+const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
 
 /// An object for managing background data fetches from the ledger database.
 pub struct DbFetcher {
@@ -142,6 +148,8 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
         let mut has_more_work = false;
         let watcher_timeout: Duration = Duration::from_millis(5000);
 
+        let start_time = SystemTime::now();
+
         match self.db.get_block_contents(self.next_block_index) {
             Err(LedgerError::NotFound) => std::thread::sleep(Self::POLLING_FREQUENCY),
             Err(e) => {
@@ -154,11 +162,24 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
                 std::thread::sleep(Self::ERROR_RETRY_FREQUENCY);
             }
             Ok(block_contents) => {
-                // Get the timestamp for the block.
-                let timestamp = self
-                    .watcher
-                    .poll_block_timestamp(self.next_block_index, watcher_timeout);
+                // Tracing
+                let tracer = tracer!();
 
+                let mut span = block_span_builder(&tracer, "poll_block", self.next_block_index)
+                    .with_start_time(start_time)
+                    .start(&tracer);
+
+                span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(self.next_block_index as i64));
+
+                let _active = mark_span_as_active(span);
+
+                // Get the timestamp for the block.
+                let timestamp = tracer.in_span("poll_block_timestamp", |_cx| {
+                    self.watcher
+                        .poll_block_timestamp(self.next_block_index, watcher_timeout)
+                });
+
+                // Add block to enclave.
                 let records = block_contents
                     .key_images
                     .iter()
@@ -169,25 +190,33 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
                     })
                     .collect();
 
-                self.add_records_to_enclave(self.next_block_index, records);
-                let mut shared_state = self.db_poll_shared_state.lock().expect("mutex poisoned");
-                // this is next_block_index + 1 because next_block_index is actually the block
-                // we just processed, so we have fully processed next_block_index + 1 blocks
-                shared_state.highest_processed_block_count = self.next_block_index + 1;
-                match self.db.num_txos() {
-                    Err(e) => {
-                        log::error!(
-                            self.logger,
-                            "Unexpected error when checking for ledger num txos {}: {:?}",
-                            self.next_block_index,
-                            e
-                        );
+                tracer.in_span("add_records_to_enclave", |_cx| {
+                    self.add_records_to_enclave(self.next_block_index, records);
+                });
+
+                // Update shared state.
+                tracer.in_span("update_shared_state", |_cx| {
+                    let mut shared_state =
+                        self.db_poll_shared_state.lock().expect("mutex poisoned");
+                    // this is next_block_index + 1 because next_block_index is actually the block
+                    // we just processed, so we have fully processed next_block_index + 1 blocks
+                    shared_state.highest_processed_block_count = self.next_block_index + 1;
+                    match self.db.num_txos() {
+                        Err(e) => {
+                            log::error!(
+                                self.logger,
+                                "Unexpected error when checking for ledger num txos {}: {:?}",
+                                self.next_block_index,
+                                e
+                            );
+                        }
+                        Ok(global_txo_count) => {
+                            // keep track of count for ledger enclave untrusted
+                            shared_state.last_known_block_cumulative_txo_count = global_txo_count;
+                        }
                     }
-                    Ok(global_txo_count) => {
-                        // keep track of count for ledger enclave untrusted
-                        shared_state.last_known_block_cumulative_txo_count = global_txo_count;
-                    }
-                }
+                });
+
                 self.next_block_index += 1;
                 has_more_work = true;
             }

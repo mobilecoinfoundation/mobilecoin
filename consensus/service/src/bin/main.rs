@@ -2,8 +2,8 @@
 
 //! Entrypoint for the MobileCoin server.
 
-use mc_attest_core::DEBUG_ENCLAVE;
 use mc_attest_net::{Client, RaClient};
+use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{
     logger::{create_app_logger, log, o},
     time::SystemTimeProvider,
@@ -35,6 +35,12 @@ fn main() -> Result<(), ConsensusServiceError> {
     let (logger, _global_logger_guard) = create_app_logger(o!(
         "mc.local_node_id" => local_node_id.responder_id.to_string(),
     ));
+
+    let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
+        env!("CARGO_PKG_NAME"),
+        &[("local_node_id", local_node_id.responder_id.to_string())],
+    )
+    .expect("Failed setting telemetry tracer");
 
     // load the sealed block signing key fron storage
     let cached_key = match File::open(&config.sealed_block_signing_key) {

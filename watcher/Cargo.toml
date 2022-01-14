@@ -15,6 +15,7 @@ path = "src/bin/db-dump.rs"
 [dependencies]
 mc-api = { path = "../api" }
 mc-attest-core = { path = "../attest/core" }
+mc-attest-verifier = { path = "../attest/verifier" }
 mc-common = { path = "../common", features = ["log"] }
 mc-connection = { path = "../connection" }
 mc-crypto-digestible = { path = "../crypto/digestible" }
@@ -26,6 +27,7 @@ mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-util-from-random = { path = "../util/from-random" }
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-lmdb = { path = "../util/lmdb" }
+mc-util-parse = { path = "../util/parse" }
 mc-util-repr-bytes = { path = "../util/repr-bytes" }
 mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }

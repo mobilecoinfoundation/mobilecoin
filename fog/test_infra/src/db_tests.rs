@@ -495,7 +495,7 @@ pub fn test_recovery_db_ingress_keys<DB: RecoveryDb>(
 
     assert_eq!(db.get_ingress_key_status(&ingress_key1).unwrap(), None);
 
-    assert!(db.new_ingress_key(&ingress_key1, 1).unwrap());
+    assert!(db.new_ingress_key(&ingress_key1, 1).is_ok());
 
     assert_eq!(
         db.get_ingress_key_status(&ingress_key1).unwrap(),
@@ -511,7 +511,7 @@ pub fn test_recovery_db_ingress_keys<DB: RecoveryDb>(
 
     assert_eq!(db.get_ingress_key_status(&ingress_key2).unwrap(), None);
 
-    assert!(db.new_ingress_key(&ingress_key2, 10).unwrap());
+    assert!(db.new_ingress_key(&ingress_key2, 10).is_ok());
 
     assert_eq!(
         db.get_ingress_key_status(&ingress_key2).unwrap(),
@@ -523,8 +523,8 @@ pub fn test_recovery_db_ingress_keys<DB: RecoveryDb>(
         })
     );
 
-    assert!(!db.new_ingress_key(&ingress_key1, 2).unwrap());
-    assert!(!db.new_ingress_key(&ingress_key2, 10).unwrap());
+    assert!(db.new_ingress_key(&ingress_key1, 2).is_err());
+    assert!(db.new_ingress_key(&ingress_key2, 10).is_err());
 
     assert_eq!(
         db.get_ingress_key_status(&ingress_key1).unwrap(),

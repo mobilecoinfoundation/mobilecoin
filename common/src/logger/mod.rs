@@ -18,12 +18,12 @@
 /// Expose the standard crit! debug! error! etc macros from slog
 /// (those are the ones that accept a Logger instance)
 pub mod log {
-    pub use slog::{crit, debug, error, info, trace, warn};
+    pub use slog::{crit, debug, error, info, log, trace, warn};
 }
 
 /// Expose slog and select useful primitives.
 pub use slog;
-pub use slog::{o, FnValue, Logger, PushFnValue};
+pub use slog::{o, FnValue, Level, Logger, PushFnValue};
 
 /// Create a logger that discards everything.
 pub fn create_null_logger() -> Logger {
@@ -32,66 +32,6 @@ pub fn create_null_logger() -> Logger {
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "log")] {
-        /// Wrap calls to assert! macros to record an error message before panic
-        #[macro_export]
-        macro_rules! log_assert {
-            ($logger:expr, $cond:expr) => ({
-                if !$cond {
-                    let cond_str = stringify!($cond);
-                    log::crit!($logger, "assert!({}) failed", cond_str);
-                    std::thread::sleep(Duration::from_millis(500));
-                    panic!("assert!({}) failed", cond_str);
-                }
-            });
-            ($logger:expr, $cond:expr,) => ({
-                if !$cond {
-                    let cond_str = stringify!($cond);
-                    log::crit!($logger, "assert!({}) failed", cond_str);
-                    std::thread::sleep(Duration::from_millis(500));
-                    panic!("assert!({}) failed", cond_str);
-                }
-            });
-            ($logger:expr, $cond:expr, $($arg:tt)+) => ({
-                if !$cond {
-                    let m = format!($($arg)+);
-                    let cond_str = stringify!($cond);
-                    log::crit!($logger, "assert!({}) failed, {}", cond_str, m);
-                    std::thread::sleep(Duration::from_millis(500));
-                    panic!("assert!({}) failed, {}", cond_str, m);
-                }
-            })
-        }
-
-        /// Wrap calls to assert_eq! macros to record an error message before panic
-        #[macro_export]
-        macro_rules! log_assert_eq {
-            ($logger:expr, $left:expr, $right:expr) => ({
-                log_assert!($logger, ($left) == ($right));
-            });
-            ($logger:expr, $left:expr, $right:expr,) => ({
-                log_assert!($logger, ($left) == ($right));
-            });
-            ($logger:expr, $left:expr, $right:expr, $($arg:tt)+) => ({
-                let m = format!($($arg)+);
-                log_assert!($logger, ($left) == ($right), "{}", m);
-            })
-        }
-
-        /// Wrap calls to assert_ne! macros to record an error message before panic
-        #[macro_export]
-        macro_rules! log_assert_ne {
-            ($logger:expr, $left:expr, $right:expr) => ({
-                log_assert!($logger, ($left) != ($right));
-            });
-            ($logger:expr, $left:expr, $right:expr,) => ({
-                log_assert!($logger, ($left) != ($right));
-            });
-            ($logger:expr, $left:expr, $right:expr, $($arg:tt)+) => ({
-                let m = format!($($arg)+);
-                log_assert!($logger, ($left) != ($right), "{}", m);
-            })
-        }
-
         /// A global logger, for when passing a Logger instance is impractical.
         pub mod global_log {
             pub use slog_scope::{crit, debug, error, info, trace, warn};

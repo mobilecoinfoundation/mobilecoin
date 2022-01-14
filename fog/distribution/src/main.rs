@@ -3,7 +3,7 @@
 use core::{cell::RefCell, convert::TryFrom};
 use lazy_static::lazy_static;
 use mc_account_keys::AccountKey;
-use mc_attest_core::{Verifier, DEBUG_ENCLAVE};
+use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_common::{
     logger::{create_app_logger, log, o, Logger},
     HashMap, HashSet,

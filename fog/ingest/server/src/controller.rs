@@ -8,7 +8,6 @@ use crate::{
     counters,
     error::{IngestServiceError as Error, PeerBackupError, RestoreStateError, SetPeersError},
     server::IngestServerConfig,
-    SeqDisplay,
 };
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
 use mc_attest_net::RaClient;
@@ -32,6 +31,7 @@ use mc_fog_uri::IngestPeerUri;
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCache};
 use mc_transaction_core::{Block, BlockContents, BlockIndex};
+use mc_util_parse::SeqDisplay;
 use mc_util_uri::ConnectionUri;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -716,11 +716,11 @@ where
                         .map(|x| x + 1)
                         .unwrap_or(0),
                 );
-                if !self.recovery_db.new_ingress_key(&our_pubkey, start_block)? {
-                    return Err(PeerBackupError::CreatingNewIngressKey.into());
-                };
 
-                start_block
+                match self.recovery_db.new_ingress_key(&our_pubkey, start_block) {
+                    Ok(accepted_start_block) => accepted_start_block,
+                    Err(_err) => return Err(PeerBackupError::CreatingNewIngressKey.into()),
+                }
             };
         // This unwrap is okay because we are idle right now.
         state
@@ -1439,12 +1439,14 @@ where
         start_block_at_least: u64,
         should_include_lost_keys: bool,
         should_include_retired_keys: bool,
+        should_only_include_unexpired_keys: bool,
     ) -> Result<Vec<IngressPublicKeyRecord>, <DB as RecoveryDb>::Error> {
         self.recovery_db.get_ingress_key_records(
             start_block_at_least,
             IngressPublicKeyRecordFilters {
                 should_include_lost_keys,
                 should_include_retired_keys,
+                should_only_include_unexpired_keys,
             },
         )
     }

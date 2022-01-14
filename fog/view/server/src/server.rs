@@ -25,6 +25,9 @@ use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
     AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, TokenAuthenticator,
 };
+use mc_util_telemetry::{
+    block_span_builder, start_block_span, telemetry_static_key, tracer, Key, Span,
+};
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -362,6 +365,9 @@ pub enum WorkerTickResult {
     Sleep,
 }
 
+/// Telemetry: block indes currently being worked on.
+const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
+
 impl<E, DB> DbPollThreadWorker<E, DB>
 where
     E: ViewEnclaveProxy,
@@ -398,7 +404,10 @@ where
         }
 
         // Grab whatever fetched records have shown up since the last time we ran.
+        let fetch_start = std::time::SystemTime::now();
         let fetched_records_list = self.db_fetcher.get_pending_fetched_records();
+        let fetch_end = std::time::SystemTime::now();
+
         for fetched_records in fetched_records_list.into_iter() {
             // Early exit if stop as requested.
             if self.stop_requested.load(Ordering::SeqCst) {
@@ -406,11 +415,30 @@ where
             }
 
             // Insert the records into the enclave.
+            let tracer = tracer!();
+
+            let mut span =
+                block_span_builder(&tracer, "fetch_records_list", fetched_records.block_index)
+                    .with_start_time(fetch_start)
+                    .with_end_time(fetch_end)
+                    .start(&tracer);
+            span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(fetched_records.block_index as i64));
+            span.end_with_timestamp(fetch_end);
+
+            let mut span = start_block_span(
+                &tracer,
+                "add_records_to_enclave",
+                fetched_records.block_index,
+            );
+            span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(fetched_records.block_index as i64));
+
             self.add_records_to_enclave(
                 fetched_records.ingress_key,
                 fetched_records.block_index,
                 fetched_records.records,
             );
+
+            span.end();
         }
 
         // Figure out the highest fully processed block count and put that in the shared

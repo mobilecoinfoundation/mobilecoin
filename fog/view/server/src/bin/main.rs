@@ -20,9 +20,19 @@ fn main() {
 
     let recovery_db = SqlRecoveryDb::new_from_url(
         &std::env::var("DATABASE_URL").expect("DATABASE_URL environment variable missing"),
+        config.postgres_config.clone(),
         logger.clone(),
     )
     .expect("Failed connecting to database");
+
+    let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
+        env!("CARGO_PKG_NAME"),
+        &[(
+            "client_responser_id",
+            config.client_responder_id.to_string(),
+        )],
+    )
+    .expect("Failed setting telemetry tracer");
 
     let enclave_path = env::current_exe()
         .expect("Could not get the path of our executable")

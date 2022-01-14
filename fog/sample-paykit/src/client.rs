@@ -9,7 +9,7 @@ use crate::{
 };
 use core::{convert::TryFrom, result::Result as StdResult, str::FromStr};
 use mc_account_keys::{AccountKey, PublicAddress};
-use mc_attest_core::Verifier;
+use mc_attest_verifier::Verifier;
 use mc_common::{
     logger::{log, Logger},
     HashSet,
@@ -39,12 +39,16 @@ use mc_transaction_std::{
     ChangeDestination, InputCredentials, MemoType, NoMemoBuilder, RTHMemoBuilder,
     SenderMemoCredential, TransactionBuilder,
 };
+use mc_util_telemetry::{block_span_builder, telemetry_static_key, tracer, Key, Span};
 use mc_util_uri::{ConnectionUri, FogUri};
 use rand::Rng;
 
 /// Default number of blocks used for calculating transaction tombstone block
 /// number. See `new_tx_block_attempts` below.
 const DEFAULT_NEW_TX_BLOCK_ATTEMPTS: u16 = 50;
+
+/// Telemetry: block index the transaction is expected to land at.
+const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
 
 /// Represents the entire sample paykit object, capable of balance checks and
 /// sending transactions
@@ -177,9 +181,19 @@ impl Client {
     /// "is_transaction_accepted". Then, perform another balance check to
     /// get refreshed key image data before attempting to create another
     /// transaction.
-    pub fn send_transaction(&mut self, transaction: &Tx) -> Result<()> {
-        self.consensus_service_conn.propose_tx(transaction)?;
-        Ok(())
+    pub fn send_transaction(&mut self, transaction: &Tx) -> Result<u64> {
+        let start_time = std::time::SystemTime::now();
+        let block_count = self.consensus_service_conn.propose_tx(transaction)?;
+
+        let tracer = tracer!();
+        let mut span = block_span_builder(&tracer, "send_transaction", block_count)
+            .with_start_time(start_time)
+            .start(&tracer);
+
+        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(block_count as i64));
+        span.end();
+
+        Ok(block_count)
     }
 
     /// Check if a transaction has appeared in the ledger, by checking if one of

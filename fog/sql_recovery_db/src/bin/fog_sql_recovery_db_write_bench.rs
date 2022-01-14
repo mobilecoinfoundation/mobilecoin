@@ -15,7 +15,7 @@ use std::{
 
 fn main() {
     let database_url = env::var("DATABASE_URL").expect("Missing DATABASE_URL environment variable");
-    let db = SqlRecoveryDb::new_from_url(&database_url, create_null_logger())
+    let db = SqlRecoveryDb::new_from_url(&database_url, Default::default(), create_null_logger())
         .expect("failled connecting to database");
     let mut rng = thread_rng();
 

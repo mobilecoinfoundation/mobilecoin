@@ -1,0 +1,11 @@
+[package]
+name = "mc-util-parse"
+version = "1.2.0-pre0"
+authors = ["MobileCoin"]
+edition = "2018"
+description = "Helpers for parsing, particularly, for use with structopt and similar"
+readme = "README.md"
+
+[dependencies]
+itertools = "0.10"
+mc-sgx-css = { path = "../../sgx/css" }

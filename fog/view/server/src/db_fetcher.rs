@@ -220,6 +220,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
             IngressPublicKeyRecordFilters {
                 should_include_lost_keys: true,
                 should_include_retired_keys: true,
+                should_only_include_unexpired_keys: false,
             },
         ) {
             Ok(records) => {

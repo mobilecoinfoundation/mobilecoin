@@ -35,7 +35,9 @@ mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-metered-channel = { path = "../../../util/metered-channel" }
 mc-util-metrics = { path = "../../../util/metrics" }
+mc-util-parse = { path = "../../../util/parse" }
 mc-util-serial = { path = "../../../util/serial" }
+mc-util-telemetry = { path = "../../../util/telemetry", features = ["jaeger"] }
 mc-util-uri = { path = "../../../util/uri" }
 
 # fog
@@ -54,7 +56,7 @@ rand = "0.8"
 rand_core = "0.6"
 tempdir = "0.3"
 
-mc-attest-core = { path = "../../../attest/core" }
+mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-crypto-x509-test-vectors = { path = "../../../crypto/x509/test-vectors" }

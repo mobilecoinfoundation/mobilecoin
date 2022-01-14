@@ -4,7 +4,8 @@
 
 use crate::{config::SourceConfig, watcher_db::WatcherDB};
 use grpcio::Environment;
-use mc_attest_core::{VerificationReport, VerificationReportData, Verifier};
+use mc_attest_core::{VerificationReport, VerificationReportData};
+use mc_attest_verifier::Verifier;
 use mc_common::{
     logger::{log, Logger},
     time::SystemTimeProvider,

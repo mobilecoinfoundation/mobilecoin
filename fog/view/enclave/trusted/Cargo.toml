@@ -14,10 +14,10 @@ crate-type = ["staticlib"]
 
 [features]
 sgx-sim = [
-    "mc-attest-core/sgx-sim"
+    "mc-attest-verifier/sgx-sim"
 ]
 ias-dev = [
-    "mc-attest-core/ias-dev"
+    "mc-attest-verifier/ias-dev"
 ]
 
 [dependencies]
@@ -32,6 +32,7 @@ mc-fog-view-enclave-impl = { path = "../impl" }
 
 # mobilecoin
 mc-attest-core = { path = "../../../../attest/core", default-features = false }
+mc-attest-verifier = { path = "../../../../attest/verifier", default-features = false }
 mc-attest-trusted = { path = "../../../../attest/trusted" }
 mc-enclave-boundary = { path = "../../../../enclave-boundary" }
 mc-crypto-keys = { path = "../../../../crypto/keys" }

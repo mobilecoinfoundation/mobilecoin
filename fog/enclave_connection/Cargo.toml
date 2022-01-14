@@ -7,6 +7,7 @@ license = "GPL-3.0"
 
 [dependencies]
 mc-attest-core = { path = "../../attest/core" }
+mc-attest-verifier = { path = "../../attest/verifier" }
 mc-attest-ake = { path = "../../attest/ake" }
 mc-attest-api = { path = "../../attest/api" }
 mc-common = { path = "../../common", features = ["loggers"] }

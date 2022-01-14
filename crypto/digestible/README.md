@@ -489,6 +489,21 @@ New enum possibilities may be added to an existing rust enum without breaking th
 for the other possibilities. Note that enum names cannot be changed and old enums cannot be
 removed. The index of the enum possibility within the list does become part of the hash.
 
+
+It is also possible to skip digesting fields when they are equal to a given value. This is done by using the #[digestible(omit_when = VAL)] directive on specific struct fields where this behavior is desired, for exampe:
+
+```
+#[derive(Digestible)]
+struct Thing {
+    #[digestible(omit_when = 0)]
+    field: i32,
+}
+```
+
+This feature makes it easy to add fields in a backwards-compatible way without having to wrap them in an `Option<>`.
+For example, for integer fields this can remove the ambiguity of `None` vs `Some(0)`. It mimics the Protobuf behavior, where fields set to zero are omitted.
+
+
 References
 ----------
 

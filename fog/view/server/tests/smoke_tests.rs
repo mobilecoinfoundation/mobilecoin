@@ -8,8 +8,8 @@
 // It exercises both the ingest enclave, and the fog-related crypto that makes
 // its way into the client.
 
-use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_attest_net::{Client as AttestClient, RaClient};
+use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::{
     logger::{log, test_with_logger, Logger},
     time::SystemTimeProvider,
@@ -61,14 +61,15 @@ fn get_test_environment(
 
     let server = {
         let config = ViewConfig {
-            ias_spid: Default::default(),
-            ias_api_key: Default::default(),
             client_responder_id: ResponderId::from_str(&uri.addr()).unwrap(),
             client_listen_uri: uri.clone(),
-            admin_listen_uri: Default::default(),
             client_auth_token_secret: None,
-            client_auth_token_max_lifetime: Default::default(),
             omap_capacity: view_omap_capacity,
+            ias_spid: Default::default(),
+            ias_api_key: Default::default(),
+            admin_listen_uri: Default::default(),
+            client_auth_token_max_lifetime: Default::default(),
+            postgres_config: Default::default(),
         };
 
         let enclave = SgxViewEnclave::new(
@@ -117,7 +118,8 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     let db = db_context.get_db_instance();
 
     let ingress_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
-    db.new_ingress_key(&ingress_key, 0).unwrap();
+    let accepted_block_1 = db.new_ingress_key(&ingress_key, 0).unwrap();
+    assert_eq!(accepted_block_1, 0);
 
     // First add some data to the database
     let txs: Vec<ETxOutRecord> = (1u8..21u8)
@@ -190,7 +192,9 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
 
     // Block 3 is missing (on a different key)
     let ingress_key2 = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
-    db.new_ingress_key(&ingress_key2, 3).unwrap();
+    let accepted_block_2 = db.new_ingress_key(&ingress_key2, 3).unwrap();
+    assert_eq!(accepted_block_2, 3);
+
     db.set_report(
         &ingress_key2,
         "",

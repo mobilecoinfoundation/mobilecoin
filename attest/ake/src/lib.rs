@@ -37,8 +37,9 @@ mod test {
     use super::*;
     use aes_gcm::Aes256Gcm;
     use core::convert::TryFrom;
-    use mc_attest_core::{MrSignerVerifier, Quote, Verifier, IAS_SIM_ROOT_ANCHORS};
+    use mc_attest_core::Quote;
     use mc_attest_net::{Client, RaClient};
+    use mc_attest_verifier::{MrSignerVerifier, Verifier, IAS_SIM_ROOT_ANCHORS};
     use mc_crypto_keys::{X25519Private, X25519Public, X25519};
     use mc_util_encodings::{FromBase64, ToX64};
     use mc_util_from_random::FromRandom;

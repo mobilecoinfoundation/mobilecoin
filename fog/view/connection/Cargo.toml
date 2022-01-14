@@ -8,9 +8,11 @@ license = "GPL-3.0"
 [dependencies]
 # mobilecoin
 mc-attest-core = { path = "../../../attest/core" }
+mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-util-grpc = { path = "../../../util/grpc" }
+mc-util-telemetry = { path = "../../../util/telemetry" }
 mc-util-serial = { path = "../../../util/serial" }
 
 # fog
