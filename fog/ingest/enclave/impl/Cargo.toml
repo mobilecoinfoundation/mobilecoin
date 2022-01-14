@@ -34,7 +34,7 @@ mc-fog-recovery-db-iface = { path = "../../../recovery_db_iface", default-featur
 mc-fog-types = { path = "../../../types" }
 
 rand_core = { version = "0.6", default-features = false }
-zeroize = { version = "1.4", default-features = false }
+zeroize = { version = "1.5", default-features = false }
 
 [dev-dependencies]
 

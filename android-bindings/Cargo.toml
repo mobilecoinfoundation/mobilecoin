@@ -45,4 +45,4 @@ rand = { version = "0.8", default-features = false }
 sha2 = { version = "0.9.8", default-features = false }
 slip10_ed25519 = "0.1.3"
 tiny-bip39 = "0.8"
-zeroize = "1.4"
+zeroize = "1.5"
