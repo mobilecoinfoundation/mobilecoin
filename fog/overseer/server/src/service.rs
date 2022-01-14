@@ -19,7 +19,6 @@ where
     overseer_worker: Option<OverseerWorker>,
     recovery_db: DB,
     is_enabled: Arc<AtomicBool>,
-    stop_requested: Arc<AtomicBool>,
 }
 
 impl<DB: RecoveryDb + Clone + Send + Sync + 'static> OverseerService<DB>
@@ -33,7 +32,6 @@ where
             overseer_worker: None,
             recovery_db,
             is_enabled: Arc::new(AtomicBool::new(true)),
-            stop_requested: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -56,7 +54,7 @@ where
             self.recovery_db.clone(),
             self.logger.clone(),
             self.is_enabled.clone(),
-            self.stop_requested.clone(),
+            Arc::new(AtomicBool::new(false)),
         ));
 
         Ok(())
