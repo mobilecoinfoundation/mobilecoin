@@ -10,7 +10,7 @@ use retry::Error as RetryError;
 pub enum OverseerError {
     /// RecoveryDbError: {0}
     RecoveryDb(Box<dyn RecoveryDbError>),
-    // TODO: Add more errors as appropriate
+
     /// Reporting a lost key failed: {0}
     ReportLostKey(String),
 
