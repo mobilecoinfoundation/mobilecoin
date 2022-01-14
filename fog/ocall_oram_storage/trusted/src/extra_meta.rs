@@ -2,7 +2,7 @@
 
 use crate::KeySize;
 use aligned_cmov::{
-    typenum::{Unsigned, U40},
+    typenum::{Unsigned, U40, U64},
     GenericArray,
 };
 use blake2::{digest::Digest, Blake2b};
@@ -54,7 +54,7 @@ pub fn compute_block_hash(
     block_idx: u64,
     extended_metadata: &[u8],
 ) -> Hash {
-    let mut hasher = Blake2b::new();
+    let mut hasher = Blake2b::<U64>::new();
     hasher.update("oram");
     hasher.update(hash_key);
     hasher.update(e_data);
