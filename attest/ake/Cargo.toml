@@ -34,7 +34,7 @@ mc-util-encodings = { path = "../../util/encodings" }
 mc-util-from-random = { path = "../../util/from-random" }
 aes-gcm = "0.9.4"
 rand_hc = "0.3"
-sha2 = "0.9.8"
+sha2 = "0.10.1"
 
 [build-dependencies]
 mc-util-build-script = { path = "../../util/build/script" }
