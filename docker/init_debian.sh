@@ -2,11 +2,10 @@
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # Note: When modifying this file, increment the Dockerfile-version minor version number
-# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#
 # This is needed for mob tool to be able to pull the right image from the farm,
 # if it isn't done, bad things will happen to local builds and CI using mob tool
 # See mob tool comments for extended discussion
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 set -e  # Die on any errors
 
