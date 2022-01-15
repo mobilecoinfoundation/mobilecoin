@@ -49,7 +49,7 @@ apt-get install --yes \
   ocamlbuild \
   patch \
   pkg-config \
-  postgresql-10 \
+  postgresql \
   prometheus \
   protobuf-c-compiler \
   protobuf-compiler \
