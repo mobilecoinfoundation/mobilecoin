@@ -52,7 +52,7 @@ mc-sgx-types = { path = "../../../../sgx/types" }
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
 mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_deps", "aesni", "force_aesni_support", "rdrand"] }
 mbedtls-sys-auto = { version = "2.26.1", default-features = false, features = ["custom_threading"] }
-sha2 = { version = "0.9.8", default-features = false }
+sha2 = { version = "0.10.1", default-features = false }
 
 [build-dependencies]
 mc-util-build-sgx = { path = "../../../../util/build/sgx" }
