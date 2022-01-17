@@ -962,7 +962,7 @@ checksum = "00affe7f6ab566df61b4be3ce8cf16bc2576bca0963ceb0955e45d514bf9a279"
 dependencies = [
  "bstr",
  "csv-core",
- "itoa 0.4.5",
+ "itoa 0.4.8",
  "ryu",
  "serde",
 ]
@@ -1799,6 +1799,12 @@ name = "hashbrown"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
+
+[[package]]
+name = "hashbrown"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c21d40587b92fa6a6c6e3c1bdbf87d75511db5672f9c93175574b3a00df1758"
 dependencies = [
  "serde",
 ]
@@ -1908,7 +1914,7 @@ checksum = "d6ccf5ede3a895d8856620237b2f02972c1bbc78d2965ad7fe8838d4a0ed41f0"
 dependencies = [
  "bytes 0.4.12",
  "fnv",
- "itoa 0.4.5",
+ "itoa 0.4.8",
 ]
 
 [[package]]
@@ -1919,7 +1925,7 @@ checksum = "28d569972648b2c512421b5f2a405ad6ac9666547189d0c5477a3f200f3e02f9"
 dependencies = [
  "bytes 0.5.4",
  "fnv",
- "itoa 0.4.5",
+ "itoa 0.4.8",
 ]
 
 [[package]]
@@ -1995,7 +2001,7 @@ dependencies = [
  "http-body 0.1.0",
  "httparse",
  "iovec",
- "itoa 0.4.5",
+ "itoa 0.4.8",
  "log 0.4.11",
  "net2",
  "rustc_version",
@@ -2025,7 +2031,7 @@ dependencies = [
  "http 0.2.1",
  "http-body 0.3.1",
  "httparse",
- "itoa 0.4.5",
+ "itoa 0.4.8",
  "log 0.4.11",
  "net2",
  "pin-project 0.4.10",
@@ -2111,7 +2117,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc633605454125dec4b66843673f01c7df2b89479b32e0ed634e43a91cff62a5"
 dependencies = [
  "autocfg",
- "hashbrown",
+ "hashbrown 0.11.2",
 ]
 
 [[package]]
@@ -2776,7 +2782,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "chrono",
  "displaydoc",
- "hashbrown",
+ "hashbrown 0.12.0",
  "hex_fmt",
  "hostname",
  "lazy_static",
@@ -6097,12 +6103,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "proc-macro-hack"
-version = "0.5.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
-
-[[package]]
 name = "proc-macro2"
 version = "0.4.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7004,7 +7004,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edfa57a7f8d9c1d260a549e7224100f6c43d43f9103e06dd8b4095a9b2b43ce9"
 dependencies = [
  "form_urlencoded",
- "itoa 0.4.5",
+ "itoa 0.4.8",
  "ryu",
  "serde",
 ]
@@ -7570,7 +7570,7 @@ version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41effe7cfa8af36f439fac33861b66b049edc6f9a32331e2312660529c1c24ad"
 dependencies = [
- "itoa",
+ "itoa 0.4.8",
  "libc",
  "time-macros",
 ]

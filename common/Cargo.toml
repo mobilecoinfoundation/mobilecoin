@@ -45,7 +45,7 @@ mc-util-serial = { path = "../util/serial", default-features = false }
 binascii = "0.1.2"
 cfg-if = "1.0"
 displaydoc = { version = "0.2", default-features = false }
-hashbrown = { version = "0.11.2", default-features = false, features = ["serde", "nightly"] }
+hashbrown = { version = "0.12.0", default-features = false, features = ["serde", "nightly"] }
 hex_fmt = "0.3"
 rand_core = { version = "0.6", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
