@@ -106,9 +106,9 @@ impl<Scheme: UriScheme> FromStr for Uri<Scheme> {
             return Err(UriParseError::MissingHost);
         }
 
-        let use_tls = if url.scheme().starts_with(Scheme::SCHEME_SECURE) {
+        let use_tls = if url.scheme() == Scheme::SCHEME_SECURE {
             true
-        } else if url.scheme().starts_with(Scheme::SCHEME_INSECURE) {
+        } else if url.scheme() == Scheme::SCHEME_INSECURE {
             false
         } else {
             return Err(UriParseError::UnknownScheme(
