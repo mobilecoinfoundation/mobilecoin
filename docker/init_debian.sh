@@ -74,7 +74,6 @@ pip3 install awscli black
 wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add -
 echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" >> /etc/apt/sources.list.d/elastic-7.x.list
 apt-get update && apt-get install filebeat
-systemctl enable filebeat
 
 # Install go 1.16 release
 GO_PKG=go1.16.4.linux-amd64.tar.gz
