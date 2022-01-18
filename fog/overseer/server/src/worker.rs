@@ -49,7 +49,7 @@ impl OverseerWorker {
     where
         OverseerError: From<DB::Error>,
     {
-        let thread_is_enabled = is_enabled.clone();
+        let thread_is_enabled = is_enabled;
         let stop_requested = Arc::new(AtomicBool::new(false));
         let thread_stop_requested = stop_requested.clone();
         let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
