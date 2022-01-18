@@ -79,7 +79,7 @@ where
     }
 
     pub fn get_status(&self) -> Result<String, String> {
-        let is_enabled : bool = self.is_enabled.load(Ordering::SeqCst);
+        let is_enabled: bool = self.is_enabled.load(Ordering::SeqCst);
         let response_message = match is_enabled {
             true => "Fog Overseer is enabled.",
             false => "Fog Overseer is disabled.",
