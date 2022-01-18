@@ -114,7 +114,7 @@ impl UriScheme for WatcherScheme {
 
 #[cfg(test)]
 mod consensus_client_uri_tests {
-    use super::{ConnectionUri, ConsensusClientUri as ClientUri, ConsensusPeerUri as PeerUri};
+    use super::{ConnectionUri, ConsensusClientUri as ClientUri};
     use mc_common::ResponderId;
     use std::str::FromStr;
 
@@ -247,15 +247,8 @@ mod consensus_client_uri_tests {
 
     #[test]
     fn test_client_from_peer_should_fail() {
-        let uri = PeerUri::from_str("insecure-mcp://localhost:3223/?consensus-msg-key=MCowBQYDK2VwAyEAUBfht6884a45r0AjFRXgLlnw3yIDllTepWavLrT8Lfk=").unwrap();
-        assert_eq!(uri.addr(), "localhost:3223");
-        assert_eq!(
-            uri.responder_id().unwrap(),
-            ResponderId::from_str("localhost:3223").unwrap()
-        );
-        assert_eq!(uri.use_tls(), false);
-
-        assert!(ClientUri::from_str(&uri.addr()).is_err());
+        assert!(ClientUri::from_str("mcp://localhost:3223/").is_err());
+        assert!(ClientUri::from_str("insecure-mcp://localhost:3223/").is_err());
     }
 
     #[test]
