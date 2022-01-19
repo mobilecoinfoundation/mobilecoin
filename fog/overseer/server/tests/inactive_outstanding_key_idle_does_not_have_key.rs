@@ -186,7 +186,7 @@ fn inactive_oustanding_key_idle_node_does_not_have_key_idle_node_is_activated_an
     let second_node1_ingress_key = node1.get_ingest_summary().get_ingress_pubkey().clone();
     let second_node2_ingress_key = node2.get_ingest_summary().get_ingress_pubkey().clone();
 
-    // Ensure that none of the keys changed.
+    // We don't care which key changed, just make sure that one of the keys changed!
     let did_node0_ingress_key_change = original_ingress_key != second_node0_ingress_key;
     let did_node1_ingress_key_change = first_node1_ingress_key != second_node1_ingress_key;
     let did_node2_ingress_key_change = first_node2_ingress_key != second_node2_ingress_key;

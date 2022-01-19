@@ -246,6 +246,7 @@ where
     ///
     /// This is only possible if the server is idling
     pub fn new_keys(&self) -> Result<IngestSummary, Error> {
+        log::info!(self.logger, "Setting new key in controller");
         let mut state = self.get_state();
         self.new_keys_inner(&mut state)?;
         Ok(self.get_ingest_summary_inner(&mut state))

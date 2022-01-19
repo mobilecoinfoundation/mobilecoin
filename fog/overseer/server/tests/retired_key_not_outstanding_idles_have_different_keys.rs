@@ -114,10 +114,6 @@ fn active_key_is_retired_not_outstanding_idle_nodes_have_different_keys_new_key_
     let first_node1_ingress_key = node1.get_ingest_summary().get_ingress_pubkey().clone();
     let first_node2_ingress_key = node2.get_ingest_summary().get_ingress_pubkey().clone();
 
-    assert_ne!(first_node0_ingress_key, first_node1_ingress_key);
-    assert_ne!(first_node0_ingress_key, first_node2_ingress_key);
-    assert_ne!(first_node1_ingress_key, first_node2_ingress_key);
-
     // Initialize an OverSeerService object
     let mut overseer_service = OverseerService::new(
         vec![client_listen_uri0, client_listen_uri1, client_listen_uri2],
@@ -189,4 +185,7 @@ fn active_key_is_retired_not_outstanding_idle_nodes_have_different_keys_new_key_
         .unwrap();
     assert!(ingress_key_public_status.retired);
     assert!(!ingress_key_public_status.lost);
+
+    let _req = client.post("/disable").dispatch();
+    std::thread::sleep(Duration::from_secs(10));
 }
