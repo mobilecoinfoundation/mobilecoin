@@ -105,15 +105,6 @@ fn inactive_oustanding_key_idle_node_does_not_have_key_idle_node_is_activated_an
     assert!(!node1.is_active());
     assert!(!node2.is_active());
 
-    let first_node0_ingress_key = node0.get_ingest_summary().get_ingress_pubkey().clone();
-    let first_node1_ingress_key = node1.get_ingest_summary().get_ingress_pubkey().clone();
-    let first_node2_ingress_key = node2.get_ingest_summary().get_ingress_pubkey().clone();
-
-    // At first, all the nodes should share the same ingress key.
-    assert_eq!(first_node0_ingress_key, first_node1_ingress_key);
-    assert_eq!(first_node0_ingress_key, first_node2_ingress_key);
-    assert_eq!(first_node1_ingress_key, first_node2_ingress_key);
-
     // Change the ingress keys on node1 and node2 so that they're different than
     // node0's ingress key, which is the currently active key.
     node1.set_new_keys().unwrap();
