@@ -137,7 +137,7 @@ where
         GenericArray<u8, AeadAlgo::KeySize>,
         GenericArray<u8, AeadAlgo::NonceSize>,
     ) {
-        let kdf = Hkdf::<DigestAlgo>::new(Some(b"dei-salty-box"), dh_secret.as_ref());
+        let kdf = SimpleHkdf::<DigestAlgo>::new(Some(b"dei-salty-box"), dh_secret.as_ref());
         let mut okm = GenericArray::<u8, Sum<AeadAlgo::KeySize, AeadAlgo::NonceSize>>::default();
         kdf.expand(b"aead-key-iv", okm.as_mut_slice())
             .expect("Digest output size is insufficient");

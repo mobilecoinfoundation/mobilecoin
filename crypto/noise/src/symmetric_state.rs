@@ -16,7 +16,7 @@ use core::{convert::TryInto, marker::PhantomData};
 use digest::{BlockInput, FixedOutput, Reset, Update};
 use displaydoc::Display;
 use generic_array::typenum::Unsigned;
-use hkdf::{Hkdf, InvalidLength};
+use hkdf::{InvalidLength, SimpleHkdf};
 use mc_crypto_keys::{Kex, KexPublic, ReprBytes};
 use secrecy::{ExposeSecret, SecretVec};
 use serde::{Deserialize, Serialize};
@@ -111,7 +111,7 @@ where
     /// chaining key, for future invocations, and a new cipher key, which is
     /// applied to our internal cipher state.
     pub fn mix_key(&mut self, input_key_material: KexAlgo::Secret) -> Result<(), SymmetricError> {
-        let kdf = Hkdf::<DigestType>::new(
+        let kdf = SimpleHkdf::<DigestAlgo>::new(
             Some(self.chaining_key.expose_secret().as_slice()),
             input_key_material.as_ref(),
         );
@@ -164,7 +164,7 @@ where
         let key_len = Cipher::KeySize::to_usize();
         let mut output = vec![0u8; chaining_key_len + hash_len + key_len];
 
-        let kdf = Hkdf::<DigestType>::new(
+        let kdf = SimpleHkdf::<DigestAlgo>::new(
             Some(self.chaining_key.expose_secret().as_slice()),
             input_key_material.as_ref(),
         );
@@ -286,7 +286,8 @@ where
     type Error = SymmetricError;
 
     fn try_into(self) -> Result<SymmetricOutput<Cipher, KexAlgo::Public>, SymmetricError> {
-        let kdf = Hkdf::<DigestType>::new(Some(self.chaining_key.expose_secret().as_slice()), &[]);
+        let kdf =
+            SimpleHkdf::<DigestAlgo>::new(Some(self.chaining_key.expose_secret().as_slice()), &[]);
 
         let key_len = Cipher::KeySize::to_usize();
         let digest_len = DigestType::OutputSize::to_usize();

@@ -24,10 +24,10 @@ curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"], optional = true }
 
 [features]
-default=["alloc", "derive", "dalek"]
+default = ["alloc", "derive", "dalek"]
 # Enables support for types in alloc crate
-alloc=[]
+alloc = []
 # Enables re-export of derive(Digestible) macro
-derive=["mc-crypto-digestible-derive"]
+derive = ["mc-crypto-digestible-derive"]
 # Enables support for some crypto primitives in dalek crates
-dalek=["curve25519-dalek", "ed25519-dalek", "x25519-dalek"]
+dalek = ["curve25519-dalek", "ed25519-dalek", "x25519-dalek"]

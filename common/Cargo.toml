@@ -58,7 +58,7 @@ lazy_static = { version = "1.4", optional = true }
 rand_core = { version = "0.6", default-features = false }
 sentry = { version = "0.24", optional = true, default-features = false, features = ["backtrace", "contexts", "log", "panic", "reqwest", "rustls", "serde_json", "slog"] }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-sha3 = { version = "0.9", default-features = false }
+sha3 = { version = "0.10", default-features = false }
 siphasher = "0.3"
 slog = { version = "2.7", default-features = false, features = ["dynamic-keys", "max_level_trace", "release_max_level_trace"] }
 slog-async = { version = "2.7", optional = true }
