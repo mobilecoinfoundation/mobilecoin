@@ -96,6 +96,8 @@ fn inactive_oustanding_key_idle_node_does_not_have_key_idle_node_is_activated_an
     assert!(!node1.is_active());
     assert!(!node2.is_active());
 
+    let original_ingress_key = node0.get_ingest_summary().get_ingress_pubkey().clone();
+
     // Give RPC etc. time to start
     std::thread::sleep(Duration::from_secs(1));
 
@@ -104,19 +106,6 @@ fn inactive_oustanding_key_idle_node_does_not_have_key_idle_node_is_activated_an
     assert!(node0.is_active());
     assert!(!node1.is_active());
     assert!(!node2.is_active());
-
-    // Change the ingress keys on node1 and node2 so that they're different than
-    // node0's ingress key, which is the currently active key.
-    node1.set_new_keys().unwrap();
-    node2.set_new_keys().unwrap();
-
-    let first_node0_ingress_key = node0.get_ingest_summary().get_ingress_pubkey().clone();
-    let first_node1_ingress_key = node1.get_ingest_summary().get_ingress_pubkey().clone();
-    let first_node2_ingress_key = node2.get_ingest_summary().get_ingress_pubkey().clone();
-
-    assert_ne!(first_node0_ingress_key, first_node1_ingress_key);
-    assert_ne!(first_node0_ingress_key, first_node2_ingress_key);
-    assert_ne!(first_node1_ingress_key, first_node2_ingress_key);
 
     // Initialize an OverSeerService object
     let mut overseer_service = OverseerService::new(
@@ -157,6 +146,19 @@ fn inactive_oustanding_key_idle_node_does_not_have_key_idle_node_is_activated_an
     // it won't be automatically moved to the active state.
     drop(std::fs::remove_file(&state_file_node_0));
 
+    // Change the ingress keys on node1 and node2 so that they're different than
+    // node0's ingress key, which is the currently active key.
+    node1.set_new_keys().unwrap();
+    node2.set_new_keys().unwrap();
+    std::thread::sleep(Duration::from_secs(5));
+
+    let first_node1_ingress_key = node1.get_ingest_summary().get_ingress_pubkey().clone();
+    let first_node2_ingress_key = node2.get_ingest_summary().get_ingress_pubkey().clone();
+
+    assert_ne!(original_ingress_key, first_node1_ingress_key);
+    assert_ne!(original_ingress_key, first_node2_ingress_key);
+    assert_ne!(first_node1_ingress_key, first_node2_ingress_key);
+
     // Restart node0. This mimics what happens when our cloud infra provider
     // "brings back" a bounced node.
     let (node0, _state_file_node_0, _client_listen_uri0) = utils::make_node(
@@ -185,7 +187,7 @@ fn inactive_oustanding_key_idle_node_does_not_have_key_idle_node_is_activated_an
     let second_node2_ingress_key = node2.get_ingest_summary().get_ingress_pubkey().clone();
 
     // Ensure that none of the keys changed.
-    let did_node0_ingress_key_change = first_node0_ingress_key != second_node0_ingress_key;
+    let did_node0_ingress_key_change = original_ingress_key != second_node0_ingress_key;
     let did_node1_ingress_key_change = first_node1_ingress_key != second_node1_ingress_key;
     let did_node2_ingress_key_change = first_node2_ingress_key != second_node2_ingress_key;
 
@@ -195,7 +197,7 @@ fn inactive_oustanding_key_idle_node_does_not_have_key_idle_node_is_activated_an
     assert!(did_any_node_keys_change);
 
     // Assert that the first active key has been reported lost.
-    let node0_query_key = CompressedRistrettoPublic::try_from(&first_node0_ingress_key).unwrap();
+    let node0_query_key = CompressedRistrettoPublic::try_from(&original_ingress_key).unwrap();
     let ingress_key_public_status = recovery_db
         .get_ingress_key_status(&node0_query_key)
         .unwrap()
