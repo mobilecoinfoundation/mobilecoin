@@ -16,7 +16,9 @@ use mc_fog_sig_report::Signer as ReportSigner;
 use mc_util_grpc::{rpc_database_err, rpc_internal_error, rpc_logger, send_result};
 use mc_util_metrics::SVC_COUNTERS;
 use prost::DecodeError;
+use retry::{delay, retry, Error as RetryError, OperationResult};
 use signature::{Error as SignatureError, Signature};
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct Service<R: ReportDb + Clone + Send + Sync> {
@@ -27,16 +29,22 @@ pub struct Service<R: ReportDb + Clone + Send + Sync> {
     /// Cryptographic materials used in response construction
     materials: Materials,
 
+    /// Retry count for db connections
+    postgres_retry_count: usize,
+
+    /// Retry backoff millis
+    postgres_retry_millis: u64,
+
     /// Slog logger object
     logger: Logger,
 }
 
 /// An internal error type used to marshal DB and signature errors
 /// to RPC errors suitable for this service.
-#[derive(Clone, Debug, Display, Eq, PartialEq)]
+#[derive(Debug, Display, Eq, PartialEq)]
 enum Error<E: RecoveryDbError> {
     /// There was an error contacting the database: {0}
-    Db(E),
+    Db(RetryError<E>),
     /// The data in the database could not be decoded: {0}
     Decode(DecodeError),
     /// The signature could not be created
@@ -69,10 +77,18 @@ impl<E: RecoveryDbError> Error<E> {
 impl<R: ReportDb + Clone + Send + Sync> Service<R> {
     /// Creates a new report service node (but does not create sockets and start
     /// it etc.)
-    pub fn new(report_db: R, materials: Materials, logger: Logger) -> Self {
+    pub fn new(
+        report_db: R,
+        materials: Materials,
+        postgres_retry_count: usize,
+        postgres_retry_millis: u64,
+        logger: Logger,
+    ) -> Self {
         Self {
             report_db,
             materials,
+            postgres_retry_count,
+            postgres_retry_millis,
             logger,
         }
     }
@@ -81,10 +97,21 @@ impl<R: ReportDb + Clone + Send + Sync> Service<R> {
     /// constructs a new response structure.
     fn build_response(&self) -> Result<ReportResponse, Error<R::Error>> {
         mc_common::trace_time!(self.logger, "Building prost response from report DB");
-        let reports = self
-            .report_db
-            .get_all_reports()
-            .map_err(Error::Db)?
+        let db_response = retry(self.get_retries(), || -> OperationResult<_, R::Error> {
+            match self.report_db.get_all_reports() {
+                Ok(resp) => OperationResult::Ok(resp),
+                Err(err) => {
+                    if err.should_retry() {
+                        OperationResult::Retry(err)
+                    } else {
+                        OperationResult::Err(err)
+                    }
+                }
+            }
+        })
+        .map_err(Error::Db)?;
+
+        let reports = db_response
             .into_iter()
             .map(|(fog_report_id, report_data)| {
                 Ok(Report {
@@ -107,6 +134,13 @@ impl<R: ReportDb + Clone + Send + Sync> Service<R> {
             chain: self.materials.chain.clone(),
             signature,
         })
+    }
+
+    // Helper function for retries config
+    fn get_retries(&self) -> Box<dyn Iterator<Item = Duration>> {
+        Box::new(
+            delay::Fixed::from_millis(self.postgres_retry_millis).take(self.postgres_retry_count),
+        )
     }
 }
 

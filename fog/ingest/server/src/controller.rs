@@ -379,36 +379,39 @@ where
             // if we are still needed to be active.
             if state.is_active() {
                 log::trace!(self.logger, "publish report");
-                match self.publish_report(&ingress_pubkey, &mut state) {
-                    Ok(ingress_key_status) => {
-                        // If our key is retired, and the index we want to scan is past expiry,
-                        // early return. Note, we don't even NEED to scan
-                        // when block.index == pubkey_expiry, because the
-                        // semantic of pubkey expiry is that it bounds the tombstone block, and a
-                        // transaction cannot land in its tombstone block.
-                        // But scanning the tombstone block as well may help
-                        // deal with off-by-one errors somewhere else, and doesn't really hurt.
-                        if ingress_key_status.retired
-                            && block.index > ingress_key_status.pubkey_expiry
-                        {
-                            log::warn!(self.logger, "When preparing to process block index {}, we discovered that our ingress key is expired: {:?}. Switching to idle and nuking keys.", block.index, ingress_key_status);
-                            state.set_idle();
-                            self.new_egress_key(&mut state)
-                                .expect("Failure to rotate egress key can't be recovered from");
-                            return;
+                let mut retry_seconds = 1;
+                loop {
+                    match self.publish_report(&ingress_pubkey, &mut state) {
+                        Ok(ingress_key_status) => {
+                            // If our key is retired, and the index we want to scan is past expiry,
+                            // early return. Note, we don't even NEED to scan
+                            // when block.index == pubkey_expiry, because the
+                            // semantic of pubkey expiry is that it bounds the tombstone block, and
+                            // a transaction cannot land in its
+                            // tombstone block. But scanning the
+                            // tombstone block as well may help
+                            // deal with off-by-one errors somewhere else, and doesn't really hurt.
+                            if ingress_key_status.retired
+                                && block.index > ingress_key_status.pubkey_expiry
+                            {
+                                log::warn!(self.logger, "When preparing to process block index {}, we discovered that our ingress key is expired: {:?}. Switching to idle and nuking keys.", block.index, ingress_key_status);
+                                state.set_idle();
+                                self.new_egress_key(&mut state)
+                                    .expect("Failure to rotate egress key can't be recovered from");
+                                return;
+                            }
+                            break;
                         }
-                    }
-                    Err(err) => {
-                        // Failing to publish a report is not fatal, because we attempt to publish
-                        // on every block, and even if it only succeeds half
-                        // the time, it wont make much difference in the pubkey
-                        // expiry window.
-                        log::error!(
-                            self.logger,
-                            "Could not publish ingest report at block index {}: {}",
-                            block.index,
-                            err
-                        );
+                        Err(err) => {
+                            log::error!(
+                                self.logger,
+                                "Could not publish ingest report at block index {}, will retry: {}",
+                                block.index,
+                                err
+                            );
+                            std::thread::sleep(std::time::Duration::from_secs(retry_seconds));
+                            retry_seconds = std::cmp::min(retry_seconds + 1, 30);
+                        }
                     }
                 }
             }

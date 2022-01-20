@@ -65,4 +65,12 @@ pub struct MobileAcctViewConfig {
     /// Postgres config
     #[structopt(flatten)]
     pub postgres_config: SqlRecoveryDbConnectionConfig,
+
+    /// How many times to retry when we get connection / diesel errors
+    #[structopt(long, env, default_value = "3")]
+    pub postgres_retry_count: usize,
+
+    /// How long to back off when we get connection / diesel errors
+    #[structopt(long, env, default_value = "20")]
+    pub postgres_retry_millis: u64,
 }
