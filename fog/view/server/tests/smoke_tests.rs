@@ -70,6 +70,8 @@ fn get_test_environment(
             admin_listen_uri: Default::default(),
             client_auth_token_max_lifetime: Default::default(),
             postgres_config: Default::default(),
+            postgres_retry_count: 3,
+            postgres_retry_millis: 20,
         };
 
         let enclave = SgxViewEnclave::new(
