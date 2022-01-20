@@ -14,14 +14,14 @@ mc-crypto-digestible-derive = { path = "./derive", optional = true }
 
 # Built-in support for dalek primitives
 # ed25519-dalek doesn't build without rand feature
-ed25519-dalek = { version = "2.0.0-pre.0", default-features = false, features = ["rand"], optional = true }
-x25519-dalek = { version = "2.0.0-pre.0", default-features = false, optional = true }
+ed25519-dalek = { version = "2.0.0-pre.1", default-features = false, features = ["rand"], optional = true }
+x25519-dalek = { version = "2.0.0-pre.2", default-features = false, optional = true }
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["simd_backend", "nightly"], optional = true }
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"], optional = true }
 
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["nightly", "u64_backend"], optional = true }
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"], optional = true }
 
 [features]
 default=["alloc", "derive", "dalek"]

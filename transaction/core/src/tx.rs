@@ -559,12 +559,12 @@ mod tests {
         Amount, Token,
     };
     use alloc::vec::Vec;
+    use core::convert::TryFrom;
     use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
     use prost::Message;
     use rand::{rngs::StdRng, SeedableRng};
-    use core::convert::TryFrom;
 
     #[test]
     // `serialize_tx` should create a Tx, encode/decode it, and compare
