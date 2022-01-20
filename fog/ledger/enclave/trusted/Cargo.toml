@@ -86,7 +86,7 @@ mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.g
 packed_simd_2 = { git = "https://github.com/rust-lang/packed_simd.git", rev = "064df9b1869b942fa768bfa83596f6965fa858c8" }
 
 # Fork and rename to use "OG" dalek-cryptography.
-schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "9b48418556b0af476be2313309bc5a23fb8b351d" }
+schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "5c98ae068ee4652d6df6463b549fbf2d5d132faa" }
 
 # Fixes the following:
 # * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.
