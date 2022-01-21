@@ -7,6 +7,7 @@ use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_recovery_db_iface::{IngressPublicKeyRecord, IngressPublicKeyRecordFilters, RecoveryDb};
 use mc_fog_types::ETxOutRecord;
+use mc_util_grpc::ReadinessIndicator;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -74,7 +75,11 @@ pub struct DbFetcher {
 }
 
 impl DbFetcher {
-    pub fn new<DB: RecoveryDb + Clone + Send + Sync + 'static>(db: DB, logger: Logger) -> Self {
+    pub fn new<DB: RecoveryDb + Clone + Send + Sync + 'static>(
+        db: DB,
+        readiness_indicator: ReadinessIndicator,
+        logger: Logger,
+    ) -> Self {
         let stop_requested = Arc::new(AtomicBool::new(false));
 
         let shared_state = Arc::new(Mutex::new(DbFetcherSharedState::default()));
@@ -96,6 +101,7 @@ impl DbFetcher {
                         thread_stop_requested,
                         thread_shared_state,
                         thread_num_queued_records_limiter,
+                        readiness_indicator,
                         logger,
                     )
                 })
@@ -165,6 +171,7 @@ struct DbFetcherThread<DB: RecoveryDb + Clone + Send + Sync + 'static> {
     shared_state: Arc<Mutex<DbFetcherSharedState>>,
     block_tracker: BlockTracker,
     num_queued_records_limiter: Arc<(Mutex<usize>, Condvar)>,
+    readiness_indicator: ReadinessIndicator,
     logger: Logger,
 }
 
@@ -176,6 +183,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
         stop_requested: Arc<AtomicBool>,
         shared_state: Arc<Mutex<DbFetcherSharedState>>,
         num_queued_records_limiter: Arc<(Mutex<usize>, Condvar)>,
+        readiness_indicator: ReadinessIndicator,
         logger: Logger,
     ) {
         let thread = Self {
@@ -184,6 +192,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
             shared_state,
             block_tracker: BlockTracker::new(logger.clone()),
             num_queued_records_limiter,
+            readiness_indicator,
             logger,
         };
         thread.run();
@@ -204,6 +213,15 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
             // but that could take some time which is why the loop is also gated
             // on the stop trigger in case a stop is requested during loading.
             while self.load_block_data() && !self.stop_requested.load(Ordering::SeqCst) {}
+
+            // If we got this far, then self.load_block_data() must have returned false.
+            // This means that at some point no new data was available and it was all
+            // loaded into the queue. For a large data set, this also implies that
+            // the enclave thread has drained the queue many times and actually loaded
+            // most of the data into ORAM.
+            // It might take some more time before it is all actually loaded into the
+            // enclave, but we are very nearly ready now.
+            self.readiness_indicator.set_ready();
 
             sleep(DB_POLL_INTERNAL);
         }
@@ -331,6 +349,8 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
                         block_index,
                         err
                     );
+                    // We might have more work to do, we aren't sure because of the error
+                    has_more_work = true;
                 }
             }
         }

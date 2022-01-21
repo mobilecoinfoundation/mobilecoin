@@ -16,7 +16,10 @@ use futures::prelude::*;
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, ServerStreamingSink, Service, UnarySink};
 use mc_common::logger::{log, Logger};
 use mc_util_metrics::SVC_COUNTERS;
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 // Re-export the health check status enum for convenience.
 pub use crate::health_api::HealthCheckResponse_ServingStatus as HealthCheckStatus;
@@ -27,6 +30,7 @@ pub use crate::health_api::HealthCheckResponse_ServingStatus as HealthCheckStatu
 // this behavior.
 pub type ServiceHealthCheckCallback = Arc<dyn Fn(&str) -> HealthCheckStatus + Sync + Send>;
 
+/// A service that serves the grpcio health API: https://github.com/grpc/grpc/blob/v1.15.0/src/proto/grpc/health/v1/health.proto
 #[derive(Clone)]
 pub struct HealthService {
     service_health_check_callback: Option<ServiceHealthCheckCallback>,
@@ -34,6 +38,7 @@ pub struct HealthService {
 }
 
 impl HealthService {
+    /// Create a new health service with optional health check callback logic
     pub fn new(
         service_health_check_callback: Option<ServiceHealthCheckCallback>,
         logger: Logger,
@@ -44,6 +49,7 @@ impl HealthService {
         }
     }
 
+    /// Convert it into a grpc service
     pub fn into_service(self) -> Service {
         create_health(self)
     }
@@ -95,5 +101,40 @@ impl Health for HealthService {
             .map(|_| ());
 
         ctx.spawn(resp);
+    }
+}
+
+/// A "global" readiness indicator can be used when your server has an initial
+/// period in which it is unready.
+#[derive(Default, Clone)]
+pub struct ReadinessIndicator {
+    ready: Arc<AtomicBool>,
+}
+
+impl ReadinessIndicator {
+    /// Set the status to ready
+    pub fn set_ready(&self) {
+        self.ready.store(true, Ordering::SeqCst);
+    }
+
+    /// Set the status to unready
+    pub fn set_unready(&self) {
+        self.ready.store(false, Ordering::SeqCst);
+    }
+
+    /// Check the status
+    pub fn is_ready(&self) -> bool {
+        self.ready.load(Ordering::SeqCst)
+    }
+
+    /// Make service health check callback
+    pub fn to_service_health_check_callback(self) -> ServiceHealthCheckCallback {
+        Arc::new(move |_| -> HealthCheckStatus {
+            if self.is_ready() {
+                HealthCheckStatus::SERVING
+            } else {
+                HealthCheckStatus::NOT_SERVING
+            }
+        })
     }
 }

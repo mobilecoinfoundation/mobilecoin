@@ -53,11 +53,15 @@ impl<T> From<AuthenticatorError> for Result<T, RpcStatus> {
 /// Interface for performing an authentication using `BasicCredentials`,
 /// resulting in a String username or an error.
 pub trait Authenticator {
+    /// Attempt to authenticate a user given their credentials
     fn authenticate(
         &self,
         maybe_credentials: Option<BasicCredentials>,
     ) -> Result<String, AuthenticatorError>;
 
+    /// Attempt to authenticate a user given their Metadata object
+    ///
+    /// By default this extracts the BasicCredentials from the Metadata
     fn authenticate_metadata(&self, metadata: &Metadata) -> Result<String, AuthenticatorError> {
         let creds = metadata
             .iter()
@@ -74,6 +78,10 @@ pub trait Authenticator {
         self.authenticate(creds)
     }
 
+    /// Attempt to authenticate a user given the RpcContext
+    ///
+    /// By default this extracts the request headers and calls
+    /// authenticate_metadata
     fn authenticate_rpc(&self, context: &RpcContext) -> Result<String, AuthenticatorError> {
         self.authenticate_metadata(context.request_headers())
     }
@@ -86,6 +94,7 @@ pub struct BasicCredentials {
     password: String,
 }
 
+/// Errors that can occur when parsing an authorization header
 #[derive(Display, Debug)]
 pub enum AuthorizationHeaderError {
     /// Unsupported authorization method

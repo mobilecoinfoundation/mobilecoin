@@ -66,6 +66,15 @@ impl<TP: TimeProvider> Authenticator for TokenAuthenticator<TP> {
 }
 
 impl<TP: TimeProvider> TokenAuthenticator<TP> {
+    /// Create a new Token authenticator
+    ///
+    /// Arguments:
+    /// * shared_secret: The shared secret which is used as a key to hmac to
+    ///   create tokens
+    /// * max_token_lifetime: The duration of time that the tokens that we hand
+    ///   out are valid for
+    /// * time_provider: A generic object that provides "Duration since the
+    ///   epoch"
     pub fn new(shared_secret: [u8; 32], max_token_lifetime: Duration, time_provider: TP) -> Self {
         Self {
             shared_secret,
@@ -121,6 +130,12 @@ pub struct TokenBasicCredentialsGenerator<TP: TimeProvider> {
 }
 
 impl<TP: TimeProvider> TokenBasicCredentialsGenerator<TP> {
+    /// Create a new token credential generator
+    ///
+    /// Arguments:
+    /// * shared_secret: The shared secret used as hmac key
+    /// * time_provider: A generic object that provides "Duration since the
+    ///   epoch"
     pub fn new(shared_secret: [u8; 32], time_provider: TP) -> Self {
         Self {
             shared_secret,
@@ -128,6 +143,7 @@ impl<TP: TimeProvider> TokenBasicCredentialsGenerator<TP> {
         }
     }
 
+    /// Generate a token for a user-id
     pub fn generate_for(
         &self,
         user_id: &str,

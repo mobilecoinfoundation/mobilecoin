@@ -11,6 +11,7 @@ use mc_common::{
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::KeyImageData;
 use mc_ledger_db::{self, Error as LedgerError, Ledger};
+use mc_util_grpc::ReadinessIndicator;
 use mc_util_telemetry::{
     block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Key, Span, Tracer,
 };
@@ -40,10 +41,11 @@ pub struct DbFetcher {
 impl DbFetcher {
     pub fn new<DB: Ledger + Clone + Send + Sync + 'static, E: LedgerEnclaveProxy>(
         db: DB,
-        logger: Logger,
         enclave: E,
         watcher: WatcherDB,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
+        readiness_indicator: ReadinessIndicator,
+        logger: Logger,
     ) -> Self {
         let stop_requested = Arc::new(AtomicBool::new(false));
         let thread_stop_requested = stop_requested.clone();
@@ -56,10 +58,11 @@ impl DbFetcher {
                         db,
                         thread_stop_requested,
                         0,
-                        logger,
                         enclave,
                         watcher,
                         thread_shared_state,
+                        readiness_indicator,
+                        logger,
                     )
                 })
                 .expect("Could not spawn thread"),
@@ -92,10 +95,11 @@ struct DbFetcherThread<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync +
     db: DB,
     stop_requested: Arc<AtomicBool>,
     next_block_index: u64,
-    logger: Logger,
     enclave: E,
     watcher: WatcherDB,
     db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
+    readiness_indicator: ReadinessIndicator,
+    logger: Logger,
 }
 
 /// Background worker thread implementation that takes care of periodically
@@ -108,19 +112,21 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
         db: DB,
         stop_requested: Arc<AtomicBool>,
         next_block_index: u64,
-        logger: Logger,
         enclave: E,
         watcher: WatcherDB,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
+        readiness_indicator: ReadinessIndicator,
+        logger: Logger,
     ) {
         let thread = Self {
             db,
             stop_requested,
             next_block_index,
-            logger,
             enclave,
             watcher,
             db_poll_shared_state,
+            readiness_indicator,
+            logger,
         };
         thread.run();
     }
@@ -133,11 +139,36 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
                 log::info!(self.logger, "Db fetcher thread stop requested.");
                 break;
             }
+
+            // Hack: If we notice that we are way behind the ledger, set ourselves unready
+            match self.db.num_blocks() {
+                Ok(num_blocks) => {
+                    if num_blocks > self.next_block_index + 100 {
+                        self.readiness_indicator.set_unready();
+                    }
+                }
+                Err(err) => {
+                    log::error!(self.logger, "Could not get num blocks from db: {}", err);
+                }
+            };
+
             // Each call to load_block_data attempts to load one block for each known
             // invocation. We want to keep loading blocks as long as we have data to load,
             // but that could take some time which is why the loop is also gated
             // on the stop trigger in case a stop is requested during loading.
             while self.load_block_data() && !self.stop_requested.load(Ordering::SeqCst) {}
+
+            // If we get this far then we loaded all available block data from the DB into
+            // the enclave.
+            //
+            // However, it is possible that mobilecoind is slow to sync, and then we may
+            // think we are ready when we haven't actually loaded anything.
+            // It would be better if we could somehow couple this with a probe to
+            // mobilecoind to ensure that mobilecoind thinks it is caught up.
+            // Setting ourselves unready when we notice we are way behind is a workaround.
+            self.readiness_indicator.set_ready();
+
+            std::thread::sleep(Self::POLLING_FREQUENCY);
         }
     }
 
@@ -145,13 +176,14 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
     /// are aware of and tracking.
     /// Returns true if we might have more block data to load.
     fn load_block_data(&mut self) -> bool {
-        let mut has_more_work = false;
+        // Default to true: if there is an error, we may have more work, we don't know
+        let mut has_more_work = true;
         let watcher_timeout: Duration = Duration::from_millis(5000);
 
         let start_time = SystemTime::now();
 
         match self.db.get_block_contents(self.next_block_index) {
-            Err(LedgerError::NotFound) => std::thread::sleep(Self::POLLING_FREQUENCY),
+            Err(LedgerError::NotFound) => has_more_work = false,
             Err(e) => {
                 log::error!(
                     self.logger,
@@ -218,7 +250,6 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
                 });
 
                 self.next_block_index += 1;
-                has_more_work = true;
             }
         }
         has_more_work
