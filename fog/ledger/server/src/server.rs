@@ -182,7 +182,7 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
 
             // Health check service
             let health_service = mc_util_grpc::HealthService::new(
-                Some(readiness_indicator.to_service_health_check_callback()),
+                Some(readiness_indicator.into()),
                 self.logger.clone(),
             )
             .into_service();

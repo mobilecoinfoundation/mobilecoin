@@ -126,11 +126,12 @@ impl ReadinessIndicator {
     pub fn is_ready(&self) -> bool {
         self.ready.load(Ordering::SeqCst)
     }
+}
 
-    /// Make service health check callback
-    pub fn to_service_health_check_callback(self) -> ServiceHealthCheckCallback {
+impl From<ReadinessIndicator> for ServiceHealthCheckCallback {
+    fn from(src: ReadinessIndicator) -> Self {
         Arc::new(move |_| -> HealthCheckStatus {
-            if self.is_ready() {
+            if src.is_ready() {
                 HealthCheckStatus::SERVING
             } else {
                 HealthCheckStatus::NOT_SERVING

@@ -104,11 +104,9 @@ where
         log::debug!(logger, "Constructed View GRPC Service");
 
         // Health check service
-        let health_service = mc_util_grpc::HealthService::new(
-            Some(readiness_indicator.to_service_health_check_callback()),
-            logger.clone(),
-        )
-        .into_service();
+        let health_service =
+            mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
+                .into_service();
 
         // Package service into grpc server
         log::info!(
