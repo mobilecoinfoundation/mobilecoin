@@ -68,14 +68,26 @@ where
 
     pub fn enable(&self) -> Result<String, String> {
         log::info!(self.logger, "Enabling overseer worker");
-        self.is_enabled.store(true, Ordering::SeqCst);
-        Ok(String::from("Fog Overseer was successfully enabled."))
+        let was_enabled = self.is_enabled.swap(true, Ordering::SeqCst);
+        let response_message = if was_enabled {
+            "Fog Overseer was already enabled"
+        } else {
+            "Fog Overseer was successfully enabled"
+        };
+
+        Ok(String::from(response_message))
     }
 
     pub fn disable(&self) -> Result<String, String> {
         log::info!(self.logger, "Disabling overseer worker");
-        self.is_enabled.store(false, Ordering::SeqCst);
-        Ok(String::from("Fog Overseer was successfully disabled."))
+        let was_enabled = self.is_enabled.swap(false, Ordering::SeqCst);
+        let response_message = if was_enabled {
+            "Fog Overseer was successfully disabled"
+        } else {
+            "Fog Overseer was already disabled"
+        };
+
+        Ok(String::from(response_message))
     }
 
     pub fn get_status(&self) -> Result<String, String> {
