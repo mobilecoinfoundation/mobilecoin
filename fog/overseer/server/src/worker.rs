@@ -172,8 +172,13 @@ where
                 continue;
             }
 
-            let ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping> =
-                self.retrieve_ingest_summary_node_mappings();
+            let ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping> = match self.retrieve_ingest_summary_node_mappings() {
+                Ok(ingest_summary_node_mappings) => ingest_summary_node_mappings,
+                Err(err) => {
+                    log::error!(self.logger, "Encountered an error while retrieving ingest summaries: {}. Returning to beginning of overseer logic.", err);
+                    continue;
+                }
+            };
 
             // TODO: Use these ingest summaries to send the desired metadata
             // to Prometheus: number of keys, number of active nodes, etc.
@@ -237,7 +242,9 @@ where
 
     /// Returns the latest round of ingest summaries for each
     /// FogIngestGrpcClient that communicates with a node that is online.
-    fn retrieve_ingest_summary_node_mappings(&self) -> Vec<IngestSummaryNodeMapping> {
+    fn retrieve_ingest_summary_node_mappings(
+        &self,
+    ) -> Result<Vec<IngestSummaryNodeMapping>, OverseerError> {
         let mut ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping> = Vec::new();
         for (ingest_client_index, ingest_client) in self.ingest_clients.iter().enumerate() {
             match ingest_client.get_status() {
@@ -253,16 +260,16 @@ where
                     });
                 }
                 Err(_) => {
-                    log::warn!(
-                        self.logger,
+                    let error_message = format!(
                         "Unable to retrieve ingest summary for node: {}",
                         ingest_client.get_uri()
                     );
+                    return Err(OverseerError::UnresponsiveNodeError(error_message));
                 }
             }
         }
 
-        ingest_summary_node_mappings
+        Ok(ingest_summary_node_mappings)
     }
 
     /// Performs automatic failover, which means that we try to activate nodes

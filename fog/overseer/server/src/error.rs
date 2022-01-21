@@ -11,6 +11,9 @@ pub enum OverseerError {
     /// RecoveryDbError: {0}
     RecoveryDb(Box<dyn RecoveryDbError>),
 
+    /// A Fog Ingest node did not respond to Fog Overseer: {0}
+    UnresponsiveNodeError(String),
+
     /// Reporting a lost key failed: {0}
     ReportLostKey(String),
 
