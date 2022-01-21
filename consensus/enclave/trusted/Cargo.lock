@@ -144,17 +144,7 @@ version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b94ba84325db59637ffc528bbe8c7f86c02c57cff5c0e2b9b00f9a851f42f309"
 dependencies = [
- "digest 0.10.3",
-]
-
-[[package]]
-name = "block-buffer"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4152116fd6e9dadb291ae18fc1ec3575ed6d84c29642d97890f4b4a3417297e4"
-dependencies = [
- "block-padding",
- "generic-array",
+ "digest",
 ]
 
 [[package]]
@@ -167,25 +157,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "block-padding"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
-
-[[package]]
 name = "bulletproofs-og"
-version = "3.0.0-pre.0"
-source = "git+https://github.com/mobilecoinfoundation/bulletproofs.git?rev=675330c754f28876dbf94fc303fe73666cf8f8f4#675330c754f28876dbf94fc303fe73666cf8f8f4"
+version = "3.0.0-pre.1"
+source = "git+https://github.com/mobilecoinfoundation/bulletproofs.git?rev=65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e#65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e"
 dependencies = [
  "byteorder",
  "clear_on_drop",
  "curve25519-dalek",
- "digest 0.9.0",
+ "digest",
  "merlin",
  "rand_core",
  "serde",
  "serde_derive",
- "sha3 0.9.1",
+ "sha3",
  "subtle",
 ]
 
@@ -333,7 +317,7 @@ version = "4.0.0-pre.2"
 source = "git+https://github.com/mobilecoinfoundation/curve25519-dalek.git?rev=8791722e0273762552c9a056eaccb7df6baf44d7#8791722e0273762552c9a056eaccb7df6baf44d7"
 dependencies = [
  "byteorder",
- "digest 0.10.3",
+ "digest",
  "packed_simd_2",
  "rand_core",
  "serde",
@@ -343,20 +327,11 @@ dependencies = [
 
 [[package]]
 name = "digest"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
-dependencies = [
- "generic-array",
-]
-
-[[package]]
-name = "digest"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2fb860ca6fafa5552fb6d0e816a69c8e49f0908bf524e30a90d97c85892d506"
 dependencies = [
- "block-buffer 0.10.0",
+ "block-buffer",
  "crypto-common",
  "subtle",
 ]
@@ -523,7 +498,7 @@ version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
 dependencies = [
- "digest 0.10.3",
+ "digest",
 ]
 
 [[package]]
@@ -683,7 +658,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "aead",
  "cargo-emit",
- "digest 0.10.3",
+ "digest",
  "displaydoc",
  "mc-attest-core",
  "mc-attest-verifier",
@@ -704,7 +679,7 @@ dependencies = [
  "bitflags",
  "cargo-emit",
  "chrono",
- "digest 0.10.3",
+ "digest",
  "displaydoc",
  "hex_fmt",
  "mc-common",
@@ -785,7 +760,7 @@ dependencies = [
  "mc-util-serial",
  "rand_core",
  "serde",
- "sha3 0.10.1",
+ "sha3",
  "siphasher",
  "slog",
 ]
@@ -883,7 +858,7 @@ name = "mc-crypto-ake-enclave"
 version = "1.3.0-pre0"
 dependencies = [
  "aes-gcm",
- "digest 0.10.3",
+ "digest",
  "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-enclave-api",
@@ -904,7 +879,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "aead",
  "blake2",
- "digest 0.10.3",
+ "digest",
  "displaydoc",
  "hkdf",
  "mc-crypto-keys",
@@ -948,7 +923,7 @@ name = "mc-crypto-hashes"
 version = "1.3.0-pre0"
 dependencies = [
  "blake2",
- "digest 0.10.3",
+ "digest",
  "mc-crypto-digestible",
 ]
 
@@ -958,7 +933,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "binascii",
  "curve25519-dalek",
- "digest 0.10.3",
+ "digest",
  "displaydoc",
  "ed25519",
  "ed25519-dalek",
@@ -997,7 +972,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "aead",
  "aes-gcm",
- "digest 0.10.3",
+ "digest",
  "displaydoc",
  "generic-array",
  "hkdf",
@@ -1564,19 +1539,7 @@ checksum = "99c3bd8169c58782adad9290a9af5939994036b76187f7b4f0e6de91dbbfc0ec"
 dependencies = [
  "cfg-if 1.0.0",
  "cpufeatures",
- "digest 0.10.3",
-]
-
-[[package]]
-name = "sha3"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f81199417d4e5de3f04b1e871023acea7389672c4135918f05aa9cbf2f2fa809"
-dependencies = [
- "block-buffer 0.9.0",
- "digest 0.9.0",
- "keccak",
- "opaque-debug",
+ "digest",
 ]
 
 [[package]]
@@ -1585,7 +1548,7 @@ version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "881bf8156c87b6301fc5ca6b27f11eeb2761224c7081e69b409d5a1951a70c86"
 dependencies = [
- "digest 0.10.3",
+ "digest",
  "keccak",
 ]
 
@@ -1601,7 +1564,7 @@ version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f054c6c1a6e95179d6f23ed974060dcefb2d9388bb7256900badad682c499de4"
 dependencies = [
- "digest 0.10.3",
+ "digest",
 ]
 
 [[package]]
