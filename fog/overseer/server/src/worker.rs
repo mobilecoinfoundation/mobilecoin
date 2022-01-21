@@ -172,7 +172,9 @@ where
                 continue;
             }
 
-            let ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping> = match self.retrieve_ingest_summary_node_mappings() {
+            let ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping> = match self
+                .retrieve_ingest_summary_node_mappings()
+            {
                 Ok(ingest_summary_node_mappings) => ingest_summary_node_mappings,
                 Err(err) => {
                     log::error!(self.logger, "Encountered an error while retrieving ingest summaries: {}. Returning to beginning of overseer logic.", err);
