@@ -293,7 +293,8 @@ where
     ///                      activation is unsuccessful, then return an error
     ///                      and return to the overseer polling logic.
     ///                 (ii) If you don't find an idle node with that key,
-    ///                      then you have to report that key as lost.
+    ///                      then you have to report that key as lost, set
+    ///                      new keys on an idle node, and activate that node.
     ///        c) > 1 outstanding key:
     ///             (i) Disable
     ///             (ii) TODO: Send an alert.
@@ -315,32 +316,49 @@ where
         }
 
         if let Some(inactive_outstanding_key) = inactive_outstanding_keys.get(0) {
-            match self.try_to_activate_node_for_inactive_outstanding_key(
-                inactive_outstanding_key,
-                &ingest_summary_node_mappings,
-            ) {
-                Ok(_) => {
-                    log::info!(
-                        self.logger,
-                        "A node was activated, so there is no need to report the key as lost."
-                    );
-                    return Ok(());
+            log::info!(
+                self.logger,
+                "Trying to activate an idle node with inactive outstanding key: {:?}",
+                &inactive_outstanding_key
+            );
+            for ingest_summary_node_mapping in &ingest_summary_node_mappings {
+                let node_ingress_key = match CompressedRistrettoPublic::try_from(
+                    ingest_summary_node_mapping
+                        .ingest_summary
+                        .get_ingress_pubkey(),
+                ) {
+                    Ok(key) => key,
+                    Err(_) => continue,
+                };
+                if inactive_outstanding_key.eq(&node_ingress_key) {
+                    let node = &self.ingest_clients[ingest_summary_node_mapping.node_index];
+                    match node.activate() {
+                        Ok(_) => {
+                            log::info!(
+                                self.logger,
+                                "Successfully activated node {}.",
+                                node.get_uri()
+                            );
+                            return Ok(());
+                        }
+                        Err(_) => {
+                            let error_message =
+                                format!("Tried activating node {}, but it failed.", node.get_uri());
+                            return Err(OverseerError::ActivateNode(error_message));
+                        }
+                    }
                 }
-                Err(err) => log::error!(
-                    self.logger,
-                    "There was an issue activating a node for the outstanding key: {:?}",
-                    err
-                ),
             }
-        }
 
-        // If there's an outstanding key, we need to report it as lost.
-        if let Some(inactive_outstanding_key) = inactive_outstanding_keys.get(0) {
+            // We've gone through all the Fog Ingest nodes' keys,
+            // and none of them matches the inactive outstanding key. We must
+            // report the inactive outstanding key as lost.
             self.report_lost_ingress_key(*inactive_outstanding_key)?;
         }
 
-        // Regardless of whether or not there's an outstanding key, we need
-        // to set new keys on a node and then activate it.
+        // Having either (a) reported the outstanding key as lost or (b) not
+        // had an oustanding key to begin with, we must now set a new key on an
+        // (idle) node and activate it.
         let activated_node_index = self.set_new_key_on_a_node()?;
         self.activate_a_node(activated_node_index)?;
 
@@ -381,66 +399,6 @@ where
             .iter()
             .map(|record| record.key)
             .collect())
-    }
-
-    /// Tries to activate a node with the given inactive outstanding key.
-    fn try_to_activate_node_for_inactive_outstanding_key(
-        &self,
-        inactive_outstanding_key: &CompressedRistrettoPublic,
-        ingest_summary_node_mappings: &[IngestSummaryNodeMapping],
-    ) -> Result<(), OverseerError> {
-        log::debug!(
-            self.logger,
-            "Trying to activate an idle node with inactive outstanding key: {:?}",
-            &inactive_outstanding_key
-        );
-        for ingest_summary_node_mapping in ingest_summary_node_mappings {
-            let node_ingress_key = match CompressedRistrettoPublic::try_from(
-                ingest_summary_node_mapping
-                    .ingest_summary
-                    .get_ingress_pubkey(),
-            ) {
-                Ok(key) => key,
-                Err(_) => continue,
-            };
-            if inactive_outstanding_key.eq(&node_ingress_key) {
-                // We have to keep trying to activate this node with the
-                // matching ingress key until it becomes active.
-                //
-                // This prevents the secenario in which the active node is
-                // bounced, and then we end up here and we're trying to
-                // activate an idle node. If we give up after a few
-                // unsuccessful tries, then we'd report the previously
-                // active key as lost. But then the previously active server
-                // could be restarted by Kubernetes, have this lost key, and
-                // restart in the active state. This would be bad because
-                // we don't want a server to be active with a lost key.
-                //
-                // Since we always expect the node to come back in some
-                // time, we should just keep trying here.
-                //
-                // TODO: Add alerting if this is taking too long.
-                loop {
-                    log::info!(
-                        self.logger,
-                        "Trying to activate node at index {}",
-                        ingest_summary_node_mapping.node_index
-                    );
-                    match self.ingest_clients[ingest_summary_node_mapping.node_index].activate() {
-                        Ok(_) => {
-                            log::info!(self.logger, "Successfully activated ingest client.");
-                            return Ok(());
-                        }
-                        Err(_) => {
-                            log::warn!(self.logger, "Could not activate idle ingest client.");
-                        }
-                    }
-                }
-            }
-        }
-
-        let error_message = format!("Could not activate a node because no node has an ingress key that matches the outstanding key: {:?}.", inactive_outstanding_key);
-        Err(OverseerError::ActivateNode(error_message))
     }
 
     /// Tries to report a lost ingress key.
