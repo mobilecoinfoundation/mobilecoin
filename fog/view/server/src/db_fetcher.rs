@@ -380,7 +380,7 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
         let db = db_test_context.get_db_instance();
-        let db_fetcher = DbFetcher::new(db.clone(), logger);
+        let db_fetcher = DbFetcher::new(db.clone(), Default::default(), logger);
 
         // Initially, our database starts empty.
         let ingress_keys = db_fetcher.get_highest_processed_block_context();
@@ -610,7 +610,7 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
         let db = db_test_context.get_db_instance();
-        let db_fetcher = DbFetcher::new(db.clone(), logger);
+        let db_fetcher = DbFetcher::new(db.clone(), Default::default(), logger);
 
         // Register two ingress keys that have some overlap:
         // key_id1 starts at block 0, key2 starts at block 5.
@@ -667,7 +667,7 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
         let db = db_test_context.get_db_instance();
-        let db_fetcher = DbFetcher::new(db.clone(), logger);
+        let db_fetcher = DbFetcher::new(db.clone(), Default::default(), logger);
 
         // Register two ingress keys that have some overlap:
         // invoc_id1 starts at block 0, invoc_id2 starts at block 50.
