@@ -341,9 +341,12 @@ where
                             );
                             return Ok(());
                         }
-                        Err(_) => {
-                            let error_message =
-                                format!("Tried activating node {}, but it failed.", node.get_uri());
+                        Err(err) => {
+                            let error_message = format!(
+                                "Tried activating node {}, but it failed: {}.",
+                                node.get_uri(),
+                                err
+                            );
                             return Err(OverseerError::ActivateNode(error_message));
                         }
                     }
