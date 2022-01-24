@@ -309,7 +309,7 @@ where
             0 => log::info!(self.logger, "Found 0 outstanding keys."),
             1 => log::info!(self.logger, "Found 1 outstanding key."),
             _ => {
-                log::error!(self.logger, "Found multiple outstanding keys. This requires manual intervention. Disabling overseer.");
+                log::error!(self.logger, "Found multiple outstanding keys {:?}. This requires manual intervention. Disabling overseer.", inactive_outstanding_keys);
                 self.is_enabled.store(false, Ordering::SeqCst);
                 return Err(OverseerError::MultipleOutstandingKeys("Multiple outstanding keys found. This is unexpected and requires manual intervention. As such, we've disabled overseer. Take action and then enable overseer.".to_string()));
             }
