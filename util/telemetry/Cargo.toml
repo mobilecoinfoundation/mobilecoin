@@ -14,5 +14,5 @@ path = "src/lib.rs"
 cfg-if = "1.0"
 displaydoc = "0.2"
 hostname = "0.3.1"
-opentelemetry = "0.16"
+opentelemetry = "0.17"
 opentelemetry-jaeger = { version = "0.15", features = ["collector_client", "isahc"], optional = true }
