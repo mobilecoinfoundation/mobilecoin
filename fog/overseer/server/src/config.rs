@@ -33,6 +33,7 @@ pub struct OverseerConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mc_fog_uri::ConnectionUri;
     #[test]
     fn ingest_server_config_example() {
         let config = OverseerConfig::from_iter_safe(&[
@@ -42,10 +43,13 @@ mod tests {
             "--listen-port",
             "8080",
             "--ingest-cluster-uris",
-            "insecure-fog-ingest://0.0.0.0.3226/,insecure-fog-ingest://0.0.0.0.3227/",
+            "insecure-fog-ingest://0.0.0.0:3226/,insecure-fog-ingest://0.0.0.0:3227/",
         ])
         .expect("Could not parse command line arguments.");
 
         assert_eq!(config.ingest_cluster_uris.len(), 2);
+
+        assert_eq!(config.ingest_cluster_uris[0].port(), 3226);
+        assert_eq!(config.ingest_cluster_uris[1].port(), 3227);
     }
 }
