@@ -98,6 +98,28 @@ impl fmt::Debug for TxHash {
     }
 }
 
+/// Token Id, used to identify different assets on on the blockchain.
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize, Digestible,
+)]
+pub struct TokenId(u32);
+
+impl From<u32> for TokenId {
+    fn from(src: u32) -> Self {
+        Self(src)
+    }
+}
+
+impl fmt::Display for TokenId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl TokenId {
+    pub const MOB: Self = Self(0);
+}
+
 /// A CryptoNote-style transaction.
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Message, Digestible)]
 pub struct Tx {

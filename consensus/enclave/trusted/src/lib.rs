@@ -34,12 +34,12 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
     // And actually do it
     let outdata = match call_details {
         // Utility methods
-        EnclaveCall::EnclaveInit(peer_self_id, client_self_id, sealed_key, minimum_fee) => {
+        EnclaveCall::EnclaveInit(peer_self_id, client_self_id, sealed_key, minimum_fees) => {
             serialize(&ENCLAVE.enclave_init(
                 &peer_self_id,
                 &client_self_id,
                 &sealed_key,
-                minimum_fee,
+                minimum_fees,
             ))
             .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }

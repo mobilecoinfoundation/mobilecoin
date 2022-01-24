@@ -11,7 +11,7 @@ mod messages;
 
 pub use crate::{error::Error, messages::EnclaveCall};
 
-use alloc::{string::String, vec::Vec};
+use alloc::{collections::BTreeMap, string::String, vec::Vec};
 use core::{cmp::Ordering, hash::Hash, result::Result as StdResult};
 use mc_attest_core::VerificationReport;
 use mc_attest_enclave_api::{
@@ -23,7 +23,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, RistrettoPublic, 
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_transaction_core::{
     ring_signature::KeyImage,
-    tx::{Tx, TxHash, TxOutMembershipProof},
+    tx::{TokenId, Tx, TxHash, TxOutMembershipProof},
     Block, BlockContents, BlockSignature,
 };
 use serde::{Deserialize, Serialize};
@@ -209,7 +209,7 @@ pub trait ConsensusEnclave: ReportableEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-        minimum_fee: Option<u64>,
+        minimum_fees: Option<BTreeMap<TokenId, u64>>,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)>;
 
     /// Retrieve the current minimum fee
