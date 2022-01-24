@@ -69,10 +69,9 @@ where
     pub fn enable(&self) -> Result<String, String> {
         log::info!(self.logger, "Enabling overseer worker");
         let was_enabled = self.is_enabled.swap(true, Ordering::SeqCst);
-        let response_message = if was_enabled {
-            "Fog Overseer was already enabled"
-        } else {
-            "Fog Overseer was successfully enabled"
+        let response_message = match was_enabled {
+            true => "Fog Overseer was already enabled",
+            false => "Fog Overseer was successfully enabled",
         };
 
         Ok(String::from(response_message))
@@ -81,10 +80,9 @@ where
     pub fn disable(&self) -> Result<String, String> {
         log::info!(self.logger, "Disabling overseer worker");
         let was_enabled = self.is_enabled.swap(false, Ordering::SeqCst);
-        let response_message = if was_enabled {
-            "Fog Overseer was successfully disabled"
-        } else {
-            "Fog Overseer was already disabled"
+        let response_message = match was_enabled {
+            true => "Fog Overseer was successfully disabled",
+            false => "Fog Overseer was already disabled",
         };
 
         Ok(String::from(response_message))
