@@ -564,7 +564,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51e3973b165dc0f435831a9e426de67e894de532754ff7a3f307c03ee5dec7dc"
 dependencies = [
  "clap",
- "heck",
+ "heck 0.3.1",
  "indexmap",
  "log 0.4.11",
  "proc-macro2 1.0.32",
@@ -1132,11 +1132,11 @@ dependencies = [
 
 [[package]]
 name = "diesel-derive-enum"
-version = "1.1.1"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70806b70be328e646f243680a3fc93b3cfdd6db373faa5110660a5dd5af243bc"
+checksum = "6c8910921b014e2af16298f006de12aa08af894b71f0f49a486ab6d74b17bbed"
 dependencies = [
- "heck",
+ "heck 0.4.0",
  "proc-macro2 1.0.32",
  "quote 1.0.10",
  "syn 1.0.85",
@@ -1811,6 +1811,12 @@ checksum = "20564e78d53d2bb135c343b3f47714a56af2061f1c928fdb541dc7b9fdd94205"
 dependencies = [
  "unicode-segmentation",
 ]
+
+[[package]]
+name = "heck"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2540771e65fc8cb83cd6e8a237f70c319bd5c29f78ed1084ba5d50eeac86f7f9"
 
 [[package]]
 name = "hermit-abi"
@@ -7374,7 +7380,7 @@ version = "0.4.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcb5ae327f9cc13b68763b5749770cb9e048a99bd9dfdfa58d0cf05d5f64afe0"
 dependencies = [
- "heck",
+ "heck 0.3.1",
  "proc-macro-error",
  "proc-macro2 1.0.32",
  "quote 1.0.10",
