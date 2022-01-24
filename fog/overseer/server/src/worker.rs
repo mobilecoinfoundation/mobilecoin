@@ -66,7 +66,7 @@ impl OverseerWorker {
             .collect();
         let join_handle = Some(
             ThreadBuilder::new()
-                .name("OverseerWorker".to_owned())
+                .name("OverseerWorker".to_string())
                 .spawn(move || {
                     OverseerWorkerThread::start(
                         ingest_clients,

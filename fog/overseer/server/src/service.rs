@@ -74,7 +74,7 @@ where
             false => "Fog Overseer was successfully enabled",
         };
 
-        Ok(String::from(response_message))
+        Ok(response_message.to_string())
     }
 
     pub fn disable(&self) -> Result<String, String> {
@@ -85,7 +85,7 @@ where
             false => "Fog Overseer was already disabled",
         };
 
-        Ok(String::from(response_message))
+        Ok(response_message.to_string())
     }
 
     pub fn get_status(&self) -> Result<String, String> {
@@ -95,6 +95,6 @@ where
             false => "Fog Overseer is disabled.",
         };
 
-        Ok(String::from(response_message))
+        Ok(response_message.to_string())
     }
 }
