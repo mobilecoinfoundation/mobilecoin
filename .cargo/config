@@ -1,22 +1,7 @@
 [build]
 rustflags = ["-D", "warnings"]
 
-# Using 'cfg` is broken, see https://github.com/rust-lang/cargo/issues/6858
-# [target.'cfg(target_arch = "x86_64")']
-# rustflags = ["-D", "warnings", "-C", "target-cpu=skylake"]
-
-# ...so instead we list all target triples (Tier 1 64-bit platforms)
-
-[target.x86_64-unknown-linux-gnu]
-rustflags = ["-D", "warnings", "-C", "target-cpu=skylake"]
-
-[target.x86_64-pc-windows-gnu]
-rustflags = ["-D", "warnings", "-C", "target-cpu=skylake"]
-
-[target.x86_64-pc-windows-msvc]
-rustflags = ["-D", "warnings", "-C", "target-cpu=skylake"]
-
-[target.x86_64-apple-darwin]
+[target.'cfg(target_arch = "x86_64")']
 rustflags = ["-D", "warnings", "-C", "target-cpu=skylake"]
 
 [cargo-new]
