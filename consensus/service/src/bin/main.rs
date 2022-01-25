@@ -16,13 +16,10 @@ use mc_consensus_service::{
     validators::DefaultTxManagerUntrustedInterfaces,
 };
 use mc_ledger_db::LedgerDB;
-use mc_transaction_core::tx::TokenId;
 use std::{
-    collections::BTreeMap,
     env,
     fs::File,
     io::{Read, Write},
-    iter::FromIterator,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -70,13 +67,12 @@ fn main() -> Result<(), ConsensusServiceError> {
         &config.client_responder_id,
         &cached_key,
         config
-            .minimum_fee()
-            .expect("Could not parse minimum fee")
-            .map(|minimum_fee| BTreeMap::from_iter(vec![(TokenId::MOB, minimum_fee)])),
+            .minimum_fees_map()
+            .expect("Could not parse minimum fees map"),
     );
 
     log::info!(logger, "Enclave target features: {}", features.join(", "));
-    log::info!(logger, "Configured minimum fee: {:?}", config.minimum_fee());
+    log::info!(logger, "Configured minimum fees: {:?}", config.minimum_fees_map().expect("Invalid fee configuration"));
 
     // write the sealed block signing key
     let mut sealed_key_file =

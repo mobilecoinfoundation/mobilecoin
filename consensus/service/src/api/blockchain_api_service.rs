@@ -11,7 +11,6 @@ use mc_consensus_api::{
     empty::Empty,
 };
 use mc_ledger_db::Ledger;
-use mc_transaction_core::constants::MINIMUM_FEE;
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use protobuf::RepeatedField;
@@ -32,8 +31,8 @@ pub struct BlockchainApiService<L: Ledger + Clone> {
     /// Logger.
     logger: Logger,
 
-    /// Configured minimum-fee
-    minimum_fee: Option<u64>,
+    /// Configured MOB minimum-fee
+    minimum_fee: u64,
 }
 
 impl<L: Ledger + Clone> BlockchainApiService<L> {
@@ -41,7 +40,7 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
         ledger: L,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
-        minimum_fee: Option<u64>,
+        minimum_fee: u64,
     ) -> Self {
         BlockchainApiService {
             ledger,
@@ -63,7 +62,7 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
         let num_blocks = self.ledger.num_blocks()?;
         let mut resp = LastBlockInfoResponse::new();
         resp.set_index(num_blocks - 1);
-        resp.set_minimum_fee(self.minimum_fee.unwrap_or(MINIMUM_FEE));
+        resp.set_minimum_fee(self.minimum_fee);
 
         Ok(resp)
     }
@@ -177,6 +176,8 @@ mod tests {
         time::Duration,
     };
 
+    const TEST_MINIMUM_FEE: u64 = 100;
+
     fn get_free_port() -> u16 {
         static PORT_NR: AtomicUsize = AtomicUsize::new(0);
         PORT_NR.fetch_add(1, SeqCst) as u16 + 30200
@@ -219,7 +220,7 @@ mod tests {
         );
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger, Some(minimum_fee));
+            BlockchainApiService::new(ledger_db, authenticator, logger, minimum_fee);
 
         let block_response = blockchain_api_service.get_last_block_info_helper().unwrap();
         assert_eq!(block_response, expected_response);
@@ -237,7 +238,7 @@ mod tests {
         ));
 
         let blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger, None);
+            BlockchainApiService::new(ledger_db, authenticator, logger, TEST_MINIMUM_FEE);
 
         let (client, _server) = get_client_server(blockchain_api_service);
 
@@ -269,7 +270,7 @@ mod tests {
             .collect();
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger, None);
+            BlockchainApiService::new(ledger_db, authenticator, logger, TEST_MINIMUM_FEE);
 
         {
             // The empty range [0,0) should return an empty collection of Blocks.
@@ -307,7 +308,7 @@ mod tests {
         let _blocks = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger, None);
+            BlockchainApiService::new(ledger_db, authenticator, logger, TEST_MINIMUM_FEE);
 
         {
             // The range [0, 1000) requests values that don't exist. The response should
@@ -333,7 +334,7 @@ mod tests {
             .collect();
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger, None);
+            BlockchainApiService::new(ledger_db, authenticator, logger, TEST_MINIMUM_FEE);
         blockchain_api_service.set_max_page_size(5);
 
         // The request exceeds the max_page_size, so only max_page_size items should be
@@ -357,7 +358,7 @@ mod tests {
         ));
 
         let blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger, None);
+            BlockchainApiService::new(ledger_db, authenticator, logger, TEST_MINIMUM_FEE);
 
         let (client, _server) = get_client_server(blockchain_api_service);
 
