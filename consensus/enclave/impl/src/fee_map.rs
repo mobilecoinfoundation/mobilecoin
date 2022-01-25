@@ -49,14 +49,6 @@ impl From<BTreeMap<TokenId, u64>> for FeeMap {
 }
 
 impl FeeMap {
-    /*
-    pub fn update(&self, map: BTreeMap<TokenId, u64>) {
-        let mut inner = self.inner.lock().unwrap();
-        inner.map = map;
-        inner.cached_digest = calc_digest_for_map(&inner.map);
-    }
-    */
-
     pub fn get_digest_str(&self) -> String {
         let inner = self.inner.lock().unwrap();
         inner.cached_digest.clone()
@@ -66,18 +58,11 @@ impl FeeMap {
         let inner = self.inner.lock().unwrap();
         inner.map.get(token_id).cloned()
     }
-
-    /*
-    pub fn get_map(&self) -> BTreeMap<TokenId, u64> {
-        let inner = self.inner.lock().unwrap();
-        inner.map.clone()
-    }
-    */
 }
 
 fn calc_digest_for_map(map: &BTreeMap<TokenId, u64>) -> String {
     let mut transcript = MerlinTranscript::new(b"fee_map");
-    transcript.append_seq_header(b"fee_map", map.len() * 2); // TODO: is this kosher?
+    transcript.append_seq_header(b"fee_map", map.len() * 2);
     for (token_id, fee) in map {
         token_id.append_to_transcript(b"token_id", &mut transcript);
         fee.append_to_transcript(b"fee", &mut transcript);
