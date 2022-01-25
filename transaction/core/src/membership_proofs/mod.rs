@@ -15,10 +15,12 @@ use mc_crypto_hashes::{Blake2b256, Digest};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 mod errors;
-pub use errors::Error as MembershipProofError;
-
 mod range;
-pub use range::{Range, RangeError};
+
+pub use self::{
+    errors::Error as MembershipProofError,
+    range::{Range, RangeError},
+};
 
 lazy_static! {
     pub static ref NIL_HASH: [u8; 32] = hash_nil();
