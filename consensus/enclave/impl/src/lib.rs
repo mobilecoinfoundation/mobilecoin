@@ -117,7 +117,7 @@ pub struct SgxConsensusEnclave {
     logger: Logger,
 
     /// Fee map (for determining the minimum fee for a given token id).
-    fee_map: Mutex<FeeMap>,
+    fee_map: FeeMap,
 }
 
 impl SgxConsensusEnclave {
@@ -129,7 +129,7 @@ impl SgxConsensusEnclave {
                 &mut McRng::default(),
             )),
             logger,
-            fee_map: Mutex::new(FeeMap::default()),
+            fee_map: FeeMap::default(),
         }
     }
 
@@ -182,15 +182,20 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         sealed_key: &Option<SealedBlockSigningKey>,
         minimum_fees: Option<BTreeMap<TokenId, u64>>,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
-        let fee_map = minimum_fees.map(FeeMap::from).unwrap_or_default();
-
-        // Must have MOB fee greater than zero
-        if fee_map.get_fee_for_token(&TokenId::MOB).unwrap_or_default() == 0 {
-            return Err(Error::InvalidFeeConfig);
+        // If we are provided with the optional fee map, we must have >0 MOB minimum
+        // fee.
+        if let Some(ref minimum_fees) = minimum_fees {
+            if minimum_fees.get(&TokenId::MOB).cloned().unwrap_or_default() == 0 {
+                return Err(Error::InvalidFeeConfig);
+            }
         }
 
         // Inject the fee into the peer ResponderId
-        let peer_self_id = ResponderId(format!("{}-{}", &peer_self_id.0, fee_map.get_digest_str()));
+        let peer_self_id = ResponderId(format!(
+            "{}-{}",
+            &peer_self_id.0,
+            self.fee_map.get_digest_str()
+        ));
         self.ake.init(peer_self_id, client_self_id.clone())?;
 
         // If we were passed a sealed key, unseal it and overwrite the private key
@@ -210,8 +215,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let key = (*lock).private_key();
         let sealed = IntelSealed::seal_raw(key.as_ref(), &[]).unwrap();
 
-        let mut fee_map_lock = self.fee_map.lock()?;
-        *fee_map_lock = fee_map;
+        self.fee_map.update_or_default(minimum_fees);
 
         Ok((
             sealed.as_ref().to_vec(),
@@ -223,7 +227,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
     }
 
     fn get_minimum_fee(&self, token_id: &TokenId) -> Result<Option<u64>> {
-        Ok(self.fee_map.lock()?.get_fee_for_token(token_id))
+        Ok(self.fee_map.get_fee_for_token(token_id))
     }
 
     fn get_identity(&self) -> Result<X25519Public> {
@@ -262,11 +266,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
     fn peer_init(&self, peer_id: &ResponderId) -> Result<PeerAuthRequest> {
         // Inject the if fee map hash passing off to the AKE
-        let peer_id = ResponderId(format!(
-            "{}-{}",
-            peer_id,
-            self.fee_map.lock()?.get_digest_str()
-        ));
+        let peer_id = ResponderId(format!("{}-{}", peer_id, self.fee_map.get_digest_str()));
 
         Ok(self.ake.peer_init(&peer_id)?)
     }
@@ -281,11 +281,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         msg: PeerAuthResponse,
     ) -> Result<(PeerSession, VerificationReport)> {
         // Inject the if fee map hash passing off to the AKE
-        let peer_id = ResponderId(format!(
-            "{}-{}",
-            peer_id,
-            self.fee_map.lock()?.get_digest_str()
-        ));
+        let peer_id = ResponderId(format!("{}-{}", peer_id, self.fee_map.get_digest_str()));
 
         Ok(self.ake.peer_connect(&peer_id, msg)?)
     }
@@ -387,7 +383,6 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let mut csprng = McRng::default();
         let minimum_fee = self
             .fee_map
-            .lock()?
             .get_fee_for_token(&TokenId::MOB)
             .ok_or(Error::InvalidFeeConfig)?;
         mc_transaction_core::validation::validate(
@@ -462,7 +457,6 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let mut rng = McRng::default();
         let minimum_fee = self
             .fee_map
-            .lock()?
             .get_fee_for_token(&TokenId::MOB)
             .ok_or(Error::InvalidFeeConfig)?;
 

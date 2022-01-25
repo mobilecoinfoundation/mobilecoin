@@ -20,6 +20,17 @@ struct FeeMapInner {
     pub cached_digest: String,
 }
 
+impl Default for FeeMapInner {
+    fn default() -> Self {
+        let mut map = BTreeMap::new();
+        map.insert(TokenId::MOB, MINIMUM_FEE);
+
+        let cached_digest = calc_digest_for_map(&map);
+
+        Self { map, cached_digest }
+    }
+}
+
 /// A thread-safe object that contains a map of fee value by token id.
 pub struct FeeMap {
     inner: Mutex<FeeMapInner>,
@@ -27,13 +38,8 @@ pub struct FeeMap {
 
 impl Default for FeeMap {
     fn default() -> Self {
-        let mut map = BTreeMap::new();
-        map.insert(TokenId::MOB, MINIMUM_FEE);
-
-        let cached_digest = calc_digest_for_map(&map);
-
         Self {
-            inner: Mutex::new(FeeMapInner { map, cached_digest }),
+            inner: Mutex::new(FeeMapInner::default()),
         }
     }
 }
@@ -49,14 +55,30 @@ impl From<BTreeMap<TokenId, u64>> for FeeMap {
 }
 
 impl FeeMap {
+    /// Get the digest of the fee map as a hex-encoded string
     pub fn get_digest_str(&self) -> String {
         let inner = self.inner.lock().unwrap();
         inner.cached_digest.clone()
     }
 
+    /// Get the fee for a given token id, or None if no fee is set for that
+    /// token.
     pub fn get_fee_for_token(&self, token_id: &TokenId) -> Option<u64> {
         let inner = self.inner.lock().unwrap();
         inner.map.get(token_id).cloned()
+    }
+
+    /// Update the fee map with a new one if provided, or reset it to the
+    /// default.
+    pub fn update_or_default(&self, minimum_fees: Option<BTreeMap<TokenId, u64>>) {
+        let mut inner = self.inner.lock().unwrap();
+
+        if let Some(minimum_fees) = minimum_fees {
+            inner.map = minimum_fees;
+            inner.cached_digest = calc_digest_for_map(&inner.map);
+        } else {
+            *inner = FeeMapInner::default();
+        }
     }
 }
 
