@@ -1,5 +1,10 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+//! Server object that exposes HTTP methods that allow the client to access
+//! the [service::OverseerService].
+//!
+//! HTTP Client -> *Overseer Rocket Server* -> OverseerService -> OverseerWorker
+
 use crate::{error::OverseerError, service::OverseerService};
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_sql_recovery_db::SqlRecoveryDb;

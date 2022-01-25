@@ -1,5 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+//! Configuration parameters for Fog Overseer.
+
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
 use mc_fog_uri::FogIngestUri;
 use serde::Serialize;

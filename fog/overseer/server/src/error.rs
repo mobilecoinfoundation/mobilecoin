@@ -1,5 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+//! Errors that can occur during Fog Overseer operation.
+
 use displaydoc::Display;
 use mc_fog_recovery_db_iface::RecoveryDbError;
 use mc_fog_sql_recovery_db::Error as SqlRecoveryDbError;

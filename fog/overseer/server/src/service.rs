@@ -1,5 +1,12 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+//! Implements the service logic for the Fog Overseer. 
+//!
+//! This is encapsulated by Fog Oveseer Server, and it in turn encapsulates the 
+//! OverseerWorker, which contains the overseer busines logic. 
+//!
+//! HTTP Client -> Overseer Rocket Server -> *OverseerService* -> OverseerWorker
+
 use crate::{error::OverseerError, worker::OverseerWorker};
 use mc_common::logger::{log, Logger};
 use mc_fog_recovery_db_iface::RecoveryDb;
@@ -9,7 +16,7 @@ use std::sync::{
     Arc,
 };
 
-// Implements core logic for the Fog Overseer HTTP server.
+/// Implements core logic for the Fog Overseer HTTP server.
 pub struct OverseerService<DB: RecoveryDb + Clone + Send + Sync + 'static>
 where
     OverseerError: From<DB::Error>,

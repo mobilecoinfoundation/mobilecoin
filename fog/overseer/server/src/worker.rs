@@ -1,5 +1,12 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+//! Contains the worker thread that performs the business logic for Fog 
+//! Overseer. 
+//!
+//! This is the "core" logic for Overseer. 
+//!
+//! HTTP Client -> Overseer Rocket Server -> OverseerService -> *OverseerWorker*
+
 use crate::error::OverseerError;
 
 use mc_api::external;
@@ -21,13 +28,13 @@ use std::{
     time::Duration,
 };
 
-// Wraps a thread that is responsible for overseeing the active Fog Ingest
-// cluster.
-//
-// The worker checks to see that there's always one active ingress key. If there
-// is no active key, then it promotes an idle node to active, and in the case
-// where none of the idle nodes contain the previously active ingress key, it
-// reports that key as lost.
+/// Wraps a thread that is responsible for overseeing the active Fog Ingest
+/// cluster.
+///
+/// The worker checks to see that there's always one active ingress key. If there
+/// is no active key, then it promotes an idle node to active, and in the case
+/// where none of the idle nodes contain the previously active ingress key, it
+/// reports that key as lost.
 pub struct OverseerWorker {
     /// Join handle used to wait for the thread to terminate.
     join_handle: Option<JoinHandle<()>>,
