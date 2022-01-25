@@ -287,7 +287,7 @@ where
     ///              No node will be activated. We now have to:
     ///                 (i)  Set new keys on an idle node.
     ///                 (ii) Activate that node.
-    ///         b) 1 oustanding key:
+    ///         b) 1 outsanding key:
     ///              Try to find an idle node that contains that key.
     ///                 (i)  If you find one, great! Just activate that node. If
     ///                      activation is unsuccessful, then return an error
@@ -306,66 +306,27 @@ where
             self.get_inactive_outstanding_keys()?;
 
         match inactive_outstanding_keys.len() {
-            0 => log::info!(self.logger, "Found 0 outstanding keys."),
-            1 => log::info!(self.logger, "Found 1 outstanding key."),
+            0 => {
+                log::info!(self.logger, "Found 0 outstanding keys.");
+                let activated_node_index = self.set_new_key_on_a_node()?;
+                self.activate_a_node(activated_node_index)?;
+                Ok(())
+            }
+            1 => {
+                log::info!(self.logger, "Found 1 outstanding key.");
+                let inactive_outstanding_key = inactive_outstanding_keys[0];
+                self.handle_one_inactive_outstanding_key(
+                    inactive_outstanding_key,
+                    ingest_summary_node_mappings,
+                )?;
+                Ok(())
+            }
             _ => {
                 log::error!(self.logger, "Found multiple outstanding keys {:?}. This requires manual intervention. Disabling overseer.", inactive_outstanding_keys);
                 self.is_enabled.store(false, Ordering::SeqCst);
-                return Err(OverseerError::MultipleOutstandingKeys("Multiple outstanding keys found. This is unexpected and requires manual intervention. As such, we've disabled overseer. Take action and then enable overseer.".to_string()));
+                Err(OverseerError::MultipleOutstandingKeys("Multiple outstanding keys found. This is unexpected and requires manual intervention. As such, we've disabled overseer. Take action and then enable overseer.".to_string()))
             }
         }
-
-        if let Some(inactive_outstanding_key) = inactive_outstanding_keys.get(0) {
-            log::info!(
-                self.logger,
-                "Trying to activate an idle node with inactive outstanding key: {:?}",
-                &inactive_outstanding_key
-            );
-            for ingest_summary_node_mapping in &ingest_summary_node_mappings {
-                let node_ingress_key = match CompressedRistrettoPublic::try_from(
-                    ingest_summary_node_mapping
-                        .ingest_summary
-                        .get_ingress_pubkey(),
-                ) {
-                    Ok(key) => key,
-                    Err(_) => continue,
-                };
-                if inactive_outstanding_key.eq(&node_ingress_key) {
-                    let node = &self.ingest_clients[ingest_summary_node_mapping.node_index];
-                    match node.activate() {
-                        Ok(_) => {
-                            log::info!(
-                                self.logger,
-                                "Successfully activated node {}.",
-                                node.get_uri()
-                            );
-                            return Ok(());
-                        }
-                        Err(err) => {
-                            let error_message = format!(
-                                "Tried activating node {}, but it failed: {}.",
-                                node.get_uri(),
-                                err
-                            );
-                            return Err(OverseerError::ActivateNode(error_message));
-                        }
-                    }
-                }
-            }
-
-            // We've gone through all the Fog Ingest nodes' keys,
-            // and none of them matches the inactive outstanding key. We must
-            // report the inactive outstanding key as lost.
-            self.report_lost_ingress_key(*inactive_outstanding_key)?;
-        }
-
-        // Having either (a) reported the outstanding key as lost or (b) not
-        // had an oustanding key to begin with, we must now set a new key on an
-        // (idle) node and activate it.
-        let activated_node_index = self.set_new_key_on_a_node()?;
-        self.activate_a_node(activated_node_index)?;
-
-        Ok(())
     }
 
     fn get_inactive_outstanding_keys(
@@ -402,6 +363,66 @@ where
             .iter()
             .map(|record| record.key)
             .collect())
+    }
+
+    /// Performs the following logic when one inactive outstanding key is found:
+    ///   1) Tries to find an idle node that contains that key.
+    ///      (i)  If it's found, it activates the node that contains it. If
+    ///           activation is unsuccessful, then it returns an error.
+    ///      (ii) If no idle node is found that contains the key, then it
+    ///           reports that key as lost, sets new keys on an idle node, and
+    ///           activates that node.
+    fn handle_one_inactive_outstanding_key(
+        &self,
+        inactive_outstanding_key: CompressedRistrettoPublic,
+        ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping>,
+    ) -> Result<(), OverseerError> {
+        log::info!(
+            self.logger,
+            "Trying to activate an idle node with inactive outstanding key: {:?}",
+            &inactive_outstanding_key
+        );
+        for ingest_summary_node_mapping in &ingest_summary_node_mappings {
+            let node_ingress_key = match CompressedRistrettoPublic::try_from(
+                ingest_summary_node_mapping
+                    .ingest_summary
+                    .get_ingress_pubkey(),
+            ) {
+                Ok(key) => key,
+                Err(_) => continue,
+            };
+            if inactive_outstanding_key.eq(&node_ingress_key) {
+                let node = &self.ingest_clients[ingest_summary_node_mapping.node_index];
+                match node.activate() {
+                    Ok(_) => {
+                        log::info!(
+                            self.logger,
+                            "Successfully activated node {}.",
+                            node.get_uri()
+                        );
+                        return Ok(());
+                    }
+                    Err(err) => {
+                        let error_message = format!(
+                            "Tried activating node {}, but it failed: {}.",
+                            node.get_uri(),
+                            err
+                        );
+                        return Err(OverseerError::ActivateNode(error_message));
+                    }
+                }
+            }
+        }
+
+        // We've gone through all the Fog Ingest nodes' keys,
+        // and none of them matches the inactive outstanding key. We must
+        // report the inactive outstanding key as lost, set new keys
+        // on an idle node, and activate that node.
+        self.report_lost_ingress_key(inactive_outstanding_key)?;
+        let activated_node_index = self.set_new_key_on_a_node()?;
+        self.activate_a_node(activated_node_index)?;
+
+        Ok(())
     }
 
     /// Tries to report a lost ingress key.
