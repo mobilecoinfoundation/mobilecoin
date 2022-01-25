@@ -223,7 +223,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
     }
 
     fn get_minimum_fee(&self, token_id: &TokenId) -> Result<Option<u64>> {
-        Ok(self.fee_map.lock()?.get_fee_for_token(&token_id))
+        Ok(self.fee_map.lock()?.get_fee_for_token(token_id))
     }
 
     fn get_identity(&self) -> Result<X25519Public> {

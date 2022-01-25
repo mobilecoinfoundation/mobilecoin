@@ -64,7 +64,7 @@ impl FeeMap {
 
     pub fn get_fee_for_token(&self, token_id: &TokenId) -> Option<u64> {
         let inner = self.inner.lock().unwrap();
-        inner.map.get(&token_id).cloned()
+        inner.map.get(token_id).cloned()
     }
 
     /*

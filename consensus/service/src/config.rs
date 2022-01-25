@@ -229,7 +229,7 @@ impl Config {
 
         // Must have a fee for MOB.
         if let Some(fee) = fee_map.get(&TokenId::MOB) {
-            if !self.allow_any_fee && !(10_000..1_000_000_000_000u64).contains(&fee) {
+            if !self.allow_any_fee && !(10_000..1_000_000_000_000u64).contains(fee) {
                 return Err(format!("Fee {} picoMOB is out of bounds", fee));
             }
         } else {

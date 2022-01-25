@@ -12,12 +12,12 @@ use mc_consensus_enclave_api::{
     SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_keys::{Ed25519Public, X25519Public};
-use std::collections::BTreeMap;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as SgxReportResult};
 use mc_transaction_core::{
     tx::{TokenId, TxOutMembershipProof},
     Block, BlockContents, BlockSignature,
 };
+use std::collections::BTreeMap;
 
 use mockall::*;
 
