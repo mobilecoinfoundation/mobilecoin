@@ -43,9 +43,8 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
             ))
             .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
-        EnclaveCall::GetMinimumFee => {
-            serialize(&ENCLAVE.get_minimum_fee()).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
+        EnclaveCall::GetMinimumFee(token_id) => serialize(&ENCLAVE.get_minimum_fee(&token_id))
+            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
         // Node-to-Node Attestation
         EnclaveCall::PeerInit(node_id) => {
             serialize(&ENCLAVE.peer_init(&node_id)).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?

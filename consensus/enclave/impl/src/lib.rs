@@ -222,12 +222,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         ))
     }
 
-    fn get_minimum_fee(&self) -> Result<u64> {
-        // TODO the API should change to not be MOB-specific
-        self.fee_map
-            .lock()?
-            .get_fee_for_token(&TokenId::MOB)
-            .ok_or(Error::InvalidFeeConfig)
+    fn get_minimum_fee(&self, token_id: &TokenId) -> Result<Option<u64>> {
+        Ok(self.fee_map.lock()?.get_fee_for_token(&token_id))
     }
 
     fn get_identity(&self) -> Result<X25519Public> {

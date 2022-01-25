@@ -137,5 +137,5 @@ pub enum EnclaveCall {
     /// The [ConsensusEnclave::get_minimum_fee()] method.
     ///
     /// Retrieves the minimum fee, as initialized.
-    GetMinimumFee,
+    GetMinimumFee(TokenId),
 }

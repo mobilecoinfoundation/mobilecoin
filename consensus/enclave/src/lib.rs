@@ -21,8 +21,11 @@ use mc_enclave_boundary::untrusted::make_variable_length_ecall;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t, *};
 use mc_sgx_urts::SgxEnclave;
-use mc_transaction_core::{tx::TxOutMembershipProof, Block, BlockContents, BlockSignature};
-use std::{path, result::Result as StdResult, sync::Arc};
+use mc_transaction_core::{
+    tx::{TokenId, TxOutMembershipProof},
+    Block, BlockContents, BlockSignature,
+};
+use std::{collections::BTreeMap, path, result::Result as StdResult, sync::Arc};
 
 /// The default filename of the consensus service's SGX enclave binary.
 pub const ENCLAVE_FILE: &str = "libconsensus-enclave.signed.so";
@@ -41,7 +44,7 @@ impl ConsensusServiceSgxEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-        minimum_fee: Option<u64>,
+        minimum_fees: Option<BTreeMap<TokenId, u64>>,
     ) -> (
         ConsensusServiceSgxEnclave,
         SealedBlockSigningKey,
@@ -68,7 +71,7 @@ impl ConsensusServiceSgxEnclave {
         };
 
         let (sealed_key, features) = sgx_enclave
-            .enclave_init(self_peer_id, self_client_id, sealed_key, minimum_fee)
+            .enclave_init(self_peer_id, self_client_id, sealed_key, minimum_fees)
             .expect("enclave_init failed");
 
         (sgx_enclave, sealed_key, features)
@@ -120,20 +123,20 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-        minimum_fee: Option<u64>,
+        minimum_fees: Option<BTreeMap<TokenId, u64>>,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::EnclaveInit(
             self_peer_id.clone(),
             self_client_id.clone(),
             sealed_key.clone(),
-            minimum_fee,
+            minimum_fees,
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn get_minimum_fee(&self) -> Result<u64> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetMinimumFee)?;
+    fn get_minimum_fee(&self, token_id: &TokenId) -> Result<Option<u64>> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetMinimumFee(*token_id))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }

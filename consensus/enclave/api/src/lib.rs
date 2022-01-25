@@ -212,8 +212,8 @@ pub trait ConsensusEnclave: ReportableEnclave {
         minimum_fees: Option<BTreeMap<TokenId, u64>>,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)>;
 
-    /// Retrieve the current minimum fee
-    fn get_minimum_fee(&self) -> Result<u64>;
+    /// Retrieve the current minimum fee for a given token id.
+    fn get_minimum_fee(&self, token_id: &TokenId) -> Result<Option<u64>>;
 
     /// Retrieve the public identity of the enclave.
     fn get_identity(&self) -> Result<X25519Public>;

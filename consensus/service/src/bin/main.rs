@@ -16,10 +16,13 @@ use mc_consensus_service::{
     validators::DefaultTxManagerUntrustedInterfaces,
 };
 use mc_ledger_db::LedgerDB;
+use mc_transaction_core::tx::TokenId;
 use std::{
+    collections::BTreeMap,
     env,
     fs::File,
     io::{Read, Write},
+    iter::FromIterator,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -66,7 +69,10 @@ fn main() -> Result<(), ConsensusServiceError> {
         &config.peer_responder_id,
         &config.client_responder_id,
         &cached_key,
-        config.minimum_fee().expect("Could not parse minimum fee"),
+        config
+            .minimum_fee()
+            .expect("Could not parse minimum fee")
+            .map(|minimum_fee| BTreeMap::from_iter(vec![(TokenId::MOB, minimum_fee)])),
     );
 
     log::info!(logger, "Enclave target features: {}", features.join(", "));
