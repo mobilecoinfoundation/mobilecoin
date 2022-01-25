@@ -2,7 +2,6 @@
 
 #![feature(proc_macro_hygiene, decl_macro)]
 #[deny(missing_docs)]
-
 pub mod config;
 pub mod server;
 pub mod service;
