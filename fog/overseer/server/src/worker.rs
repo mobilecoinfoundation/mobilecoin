@@ -444,11 +444,11 @@ where
                     );
                     OperationResult::Ok(())
                 }
-                Err(_) => {
+                Err(err) => {
                     let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try;
                     let error_message = match number_of_remaining_tries {
-                        0 => format!("Did not succeed in reporting lost ingress key {} within {} tries.", inactive_outstanding_key, Self::NUMBER_OF_TRIES),
-                        _ => format!("The following key  was not successfully reported as lost: {}. Will try {} more times", inactive_outstanding_key, number_of_remaining_tries),
+                        0 => format!("Did not succeed in reporting lost ingress key {} within {} tries. Underlying error: {}", inactive_outstanding_key, Self::NUMBER_OF_TRIES, err),
+                        _ => format!("The following key was not successfully reported as lost: {}. Will try {} more times. Underlying error: {}", inactive_outstanding_key, number_of_remaining_tries, err),
                     };
                     OperationResult::Retry(OverseerError::ReportLostKey(error_message))
                 }
@@ -475,11 +475,11 @@ where
                             OperationResult::Ok(())
                         }
                         // TODO: We'll need to alert Ops to take manual action at this point.
-                        Err(_) => {
+                        Err(err) => {
                             let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try;
                             let error_message = match number_of_remaining_tries {
-                                0 => format!("Did not succeed in setting a new key on node at index {}", i),
-                                _ => format!("New keys were not successfully set on the ingest node at index {}. Will try {} more times.", i, number_of_remaining_tries),
+                                0 => format!("Did not succeed in setting a new key on node at index {}. Underlying error: {}", i, err),
+                                _ => format!("New keys were not successfully set on the ingest node at index {}. Will try {} more times. Underlying error: {}", i, number_of_remaining_tries, err),
                             };
                             OperationResult::Retry(OverseerError::SetNewKey(error_message))
                         }
@@ -512,16 +512,17 @@ where
                         OperationResult::Ok(())
                     }
                     // TODO: Alert Ops to take manual action at this point.
-                    Err(_) => {
+                    Err(err) => {
                         let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try;
                         let error_message = match number_of_remaining_tries {
                             0 => format!(
-                                "Did not succeed in setting a new key on node at index {}",
-                                activated_node_index
+                                "Did not succeed in setting a new key on node at index {}. Underlying error: {}",
+                                activated_node_index,
+                                err
                             ),
                             _ => format!(
-                                "Node at index {} not activated. Will try {} more times.",
-                                activated_node_index, number_of_remaining_tries
+                                "Node at index {} not activated. Will try {} more times. Underlying error: {}",
+                                activated_node_index, number_of_remaining_tries, err
                             ),
                         };
                         OperationResult::Retry(OverseerError::ActivateNode(error_message))
