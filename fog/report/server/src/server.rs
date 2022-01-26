@@ -24,8 +24,6 @@ impl Server {
         db: impl ReportDb + Clone + Send + Sync + 'static,
         client_listen_uri: &FogUri,
         materials: Materials,
-        postgres_retry_count: usize,
-        postgres_retry_millis: u64,
         logger: Logger,
     ) -> Self {
         let env = Arc::new(
@@ -34,13 +32,8 @@ impl Server {
                 .build(),
         );
 
-        let report_service = report_grpc::create_report_api(Service::new(
-            db,
-            materials,
-            postgres_retry_count,
-            postgres_retry_millis,
-            logger.clone(),
-        ));
+        let report_service =
+            report_grpc::create_report_api(Service::new(db, materials, logger.clone()));
         log::debug!(logger, "Constructed Report GRPC Service");
 
         // Health check service

@@ -5,7 +5,7 @@ use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::view_grpc::FogViewApi;
-use mc_fog_recovery_db_iface::{RecoveryDb, RecoveryDbError};
+use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_types::view::QueryRequestAAD;
 use mc_fog_view_enclave::{Error as ViewEnclaveError, ViewEnclaveProxy};
 use mc_fog_view_enclave_api::UntrustedQueryResponse;
@@ -15,11 +15,7 @@ use mc_util_grpc::{
 };
 use mc_util_metrics::SVC_COUNTERS;
 use mc_util_telemetry::{tracer, Tracer};
-use retry::{delay, retry, OperationResult};
-use std::{
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct FogViewService<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> {
@@ -35,12 +31,6 @@ pub struct FogViewService<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> {
     /// GRPC request authenticator.
     authenticator: Arc<dyn Authenticator + Send + Sync>,
 
-    /// Retry count for db connections
-    postgres_retry_count: usize,
-
-    /// Retry backoff millis
-    postgres_retry_millis: u64,
-
     /// Slog logger object
     logger: Logger,
 }
@@ -53,8 +43,6 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
         db: Arc<DB>,
         db_poll_shared_state: Arc<Mutex<DbPollSharedState>>,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
-        postgres_retry_count: usize,
-        postgres_retry_millis: u64,
         logger: Logger,
     ) -> Self {
         Self {
@@ -62,8 +50,6 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
             db,
             db_poll_shared_state,
             authenticator,
-            postgres_retry_count,
-            postgres_retry_millis,
             logger,
         }
     }
@@ -83,25 +69,12 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
                     )
                 })?;
 
-            let (user_events, next_start_from_user_event_id) = tracer
-                .in_span("search_user_events", |_cx| {
-                    retry(self.get_retries(), || -> OperationResult<_, DB::Error> {
-                        match self
-                            .db
-                            .search_user_events(query_request_aad.start_from_user_event_id)
-                        {
-                            Ok(result) => OperationResult::Ok(result),
-                            Err(err) => {
-                                if err.should_retry() {
-                                    OperationResult::Retry(err)
-                                } else {
-                                    OperationResult::Err(err)
-                                }
-                            }
-                        }
-                    })
-                })
-                .map_err(|e| rpc_internal_error("search_user_events", e, &self.logger))?;
+            let (user_events, next_start_from_user_event_id) =
+                tracer.in_span("search_user_events", |_cx| {
+                    self.db
+                        .search_user_events(query_request_aad.start_from_user_event_id)
+                        .map_err(|e| rpc_internal_error("search_user_events", e, &self.logger))
+                })?;
 
             let (
                 highest_processed_block_count,
@@ -137,13 +110,6 @@ impl<E: ViewEnclaveProxy, DB: RecoveryDb + Send + Sync> FogViewService<E, DB> {
             resp.set_data(result_blob);
             Ok(resp)
         })
-    }
-
-    // Helper function for retries config
-    fn get_retries(&self) -> Box<dyn Iterator<Item = Duration>> {
-        Box::new(
-            delay::Fixed::from_millis(self.postgres_retry_millis).take(self.postgres_retry_count),
-        )
     }
 
     // Helper function that is common

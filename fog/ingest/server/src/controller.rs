@@ -1446,7 +1446,7 @@ where
     ) -> Result<Vec<IngressPublicKeyRecord>, <DB as RecoveryDb>::Error> {
         self.recovery_db.get_ingress_key_records(
             start_block_at_least,
-            IngressPublicKeyRecordFilters {
+            &IngressPublicKeyRecordFilters {
                 should_include_lost_keys,
                 should_include_retired_keys,
                 should_only_include_unexpired_keys,

@@ -100,7 +100,7 @@ pub trait RecoveryDb {
     fn get_ingress_key_records(
         &self,
         start_block_at_least: u64,
-        ingress_public_key_record_filters: IngressPublicKeyRecordFilters,
+        ingress_public_key_record_filters: &IngressPublicKeyRecordFilters,
     ) -> Result<Vec<IngressPublicKeyRecord>, Self::Error>;
 
     /// Adds a new ingest invocation to the database, optionally decommissioning

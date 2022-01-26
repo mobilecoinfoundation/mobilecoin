@@ -33,17 +33,9 @@ pub struct Config {
     #[structopt(long, parse(from_os_str))]
     pub signing_key: PathBuf,
 
-    /// Postgres / diesel config
+    /// Postgres config
     #[structopt(flatten)]
     pub postgres_config: SqlRecoveryDbConnectionConfig,
-
-    /// How many times to retry when we get connection / diesel errors
-    #[structopt(long, env, default_value = "3")]
-    pub postgres_retry_count: usize,
-
-    /// How long to back off when we get connection / diesel errors
-    #[structopt(long, env, default_value = "20")]
-    pub postgres_retry_millis: u64,
 }
 
 /// An enumeration of errors which can occur while reading configuration from

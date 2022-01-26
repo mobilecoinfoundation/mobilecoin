@@ -92,8 +92,6 @@ where
             Arc::new(recovery_db),
             db_poll_thread.get_shared_state(),
             client_authenticator,
-            config.postgres_retry_count,
-            config.postgres_retry_millis,
             logger.clone(),
         ));
         log::debug!(logger, "Constructed View GRPC Service");
