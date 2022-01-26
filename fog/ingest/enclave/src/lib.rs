@@ -10,15 +10,19 @@ pub use mc_fog_ingest_enclave_api::{
     Error, IngestEnclave, IngestEnclaveInitParams, IngestEnclaveProxy, Result, SealedIngestKey,
 };
 
+use displaydoc::Display;
 use mc_attest_core::{
     IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
 use mc_attest_verifier::DEBUG_ENCLAVE;
-use mc_common::ResponderId;
+use mc_common::{
+    logger::{log, Logger},
+    ResponderId,
+};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic, X25519Public};
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;
-use mc_fog_ingest_enclave_api::{EnclaveCall, SetIngressPrivateKeyResult};
+use mc_fog_ingest_enclave_api::{EnclaveCall, Error as EnclaveError, SetIngressPrivateKeyResult};
 use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_recovery_db_iface::ETxOutRecord;
 use mc_fog_types::ingest::TxsForIngest;
@@ -31,6 +35,15 @@ use std::{path, result::Result as StdResult, sync::Arc};
 
 /// The default filename of the fog ingest's SGX enclave binary.
 pub const ENCLAVE_FILE: &str = "libingest-enclave.signed.so";
+
+/// An error that occurs when calling IngestSgxEnclave::new
+#[derive(Display, Debug)]
+pub enum NewEnclaveError {
+    /// When creating the new enclave: {0}
+    Create(SgxError),
+    /// When initializing the new enclave: {0}
+    Init(EnclaveError),
+}
 
 /// A handle to an ingest enclave, on the untrusted side
 #[derive(Clone)]
@@ -67,7 +80,8 @@ impl IngestSgxEnclave {
         peer_self_id: &ResponderId,
         sealed_key: &Option<SealedIngestKey>,
         omap_capacity: u64,
-    ) -> IngestSgxEnclave {
+        logger: &Logger,
+    ) -> StdResult<IngestSgxEnclave, NewEnclaveError> {
         let mut launch_token: sgx_launch_token_t = [0; 1024];
         let mut launch_token_updated: i32 = 0;
         // FIXME: this must be filled in from the build.rs
@@ -82,12 +96,16 @@ impl IngestSgxEnclave {
             &mut launch_token_updated,
             &mut misc_attr,
         )
-        .unwrap_or_else(|err| {
-            panic!(
-                "SgxEnclave::create(file_name={:?}, debug={}) failed: {:?}",
-                &enclave_path, DEBUG_ENCLAVE as i32, err
-            )
-        });
+        .map_err(|err| {
+            log::error!(
+                logger,
+                "SgxEnclave::create(file_name={:?}, debug={}) failed: {}",
+                &enclave_path,
+                DEBUG_ENCLAVE as i32,
+                err
+            );
+            NewEnclaveError::Create(SgxError::from(err))
+        })?;
         let sgx_enclave = IngestSgxEnclave {
             eid: enclave.geteid(),
             enclave: Arc::new(enclave),
@@ -101,9 +119,9 @@ impl IngestSgxEnclave {
 
         sgx_enclave
             .enclave_init(params)
-            .expect("enclave_init failed");
+            .map_err(|err| NewEnclaveError::Init(err))?;
 
-        sgx_enclave
+        Ok(sgx_enclave)
     }
 
     /// Takes serialized data, and fires to the corresponding ECALL.

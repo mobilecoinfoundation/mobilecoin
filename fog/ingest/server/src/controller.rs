@@ -21,7 +21,9 @@ use mc_fog_api::{
     ingest_common::{IngestControllerMode, IngestStateFile, IngestSummary},
     report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_report,
 };
-use mc_fog_ingest_enclave::{Error as EnclaveError, IngestEnclave, IngestSgxEnclave};
+use mc_fog_ingest_enclave::{
+    Error as EnclaveError, IngestEnclave, IngestSgxEnclave, NewEnclaveError,
+};
 use mc_fog_recovery_db_iface::{
     IngressPublicKeyRecord, IngressPublicKeyRecordFilters, IngressPublicKeyStatus, RecoveryDb,
     ReportData, ReportDb,
@@ -112,10 +114,26 @@ where
                                 None
                             }
                             _ => {
-                                // TODO: Should we delete the file, to avoid a crash loop?
-                                // We could move it to a backup location or something, like, `.1`,
-                                // `.2`, etc. up to some maximum.
-                                panic!("Could not read state file ({:?}): {}", file, io_error);
+                                log::error!(
+                                    logger,
+                                    "Could not read state file ({:?}): {}",
+                                    file,
+                                    io_error
+                                );
+                                // Move the statefile to .bak, to try to prevent a crashloop
+                                // This server can still be useful starting in idle mode because
+                                // another server can give it the
+                                // correct key. We could delete it
+                                // instead, but it might help for debugging to keep it as .bak
+                                if let Err(err) = file.move_to_bak() {
+                                    log::error!(
+                                        logger,
+                                        "Could not move the state file ({:?}) to .bak: {}",
+                                        file,
+                                        err
+                                    );
+                                }
+                                None
                             }
                         }
                     }
@@ -127,12 +145,41 @@ where
             .map(|x| x.sealed_ingress_key.clone());
 
         // Initialize the enclave
-        let enclave = IngestSgxEnclave::new(
+        let enclave = match IngestSgxEnclave::new(
             config.enclave_path.clone(),
             &config.local_node_id,
             &cached_key,
             config.omap_capacity,
-        );
+            &logger,
+        ) {
+            Ok(enclave) => enclave,
+            Err(NewEnclaveError::Create(err)) => {
+                panic!("Could not create new enclave: {}", err);
+            }
+            Err(NewEnclaveError::Init(err)) => {
+                log::error!(
+                    logger,
+                    "Enclave init failed, sealed key may have been rejected: {}",
+                    err
+                );
+                // Move the statefile to .bak, to try to prevent a crashloop
+                // This server can still be useful starting in idle mode because another
+                // server can give it the correct key.
+                // We could delete it instead, but it might help for debugging to keep it as
+                // .bak
+                if let Some(file) = config.state_file.as_ref() {
+                    if let Err(err) = file.move_to_bak() {
+                        log::error!(
+                            logger,
+                            "Could not move the state file ({:?}) to .bak: {}",
+                            file,
+                            err
+                        );
+                    }
+                }
+                panic!("Enclave init failed, going down");
+            }
+        };
 
         // Initialize report cache
         let report_cache = Arc::new(Mutex::new(ReportCache::new(
@@ -159,7 +206,7 @@ where
             report_cache,
             grpc_env,
             last_sealed_key: Arc::new(Mutex::new(None)),
-            logger,
+            logger: logger.clone(),
         };
 
         // Attempt to restore state from state file if provided
@@ -169,10 +216,12 @@ where
             result
                 .restore_state_from_summary(summary)
                 .unwrap_or_else(|err| {
-                    panic!(
-                        "Could not restore state from state file ({:?}), {:?}: {}",
-                        config.state_file, summary, err
-                    )
+                // Note: We don't panic or nuke the statefile because this server may have recovered
+                // the right key successfully, even if restore_state_from_summary fails
+                log::error!(logger,
+                    "Could not restore state from state file ({:?}), {:?}: {}. Starting in idle instead",
+                    config.state_file, summary, err
+                    );
                 });
         }
 

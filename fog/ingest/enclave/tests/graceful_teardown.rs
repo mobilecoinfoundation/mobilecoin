@@ -22,6 +22,8 @@ fn ingest_enclave_graceful_teardown(logger: Logger) {
             &ResponderId::from_str("127.0.0.1:3040").unwrap(),
             &None,
             OMAP_CAP,
-        );
+            &logger,
+        )
+        .expect("could not initialize enclave");
     }
 }
