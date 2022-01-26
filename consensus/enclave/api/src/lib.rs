@@ -213,6 +213,7 @@ pub trait ConsensusEnclave: ReportableEnclave {
     ) -> Result<(SealedBlockSigningKey, Vec<String>)>;
 
     /// Retrieve the current minimum fee for a given token id.
+    /// Returns None if the token ID is not configured to have a minimum fee.
     fn get_minimum_fee(&self, token_id: &TokenId) -> Result<Option<u64>>;
 
     /// Retrieve the public identity of the enclave.
