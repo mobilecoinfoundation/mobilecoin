@@ -3,8 +3,8 @@
 //! The Consensus Service SGX Enclave Proxy
 
 pub use mc_consensus_enclave_api::{
-    ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeePublicKey, LocallyEncryptedTx,
-    Result, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeeMap, FeeMapError, FeePublicKey,
+    LocallyEncryptedTx, Result, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 
 use mc_attest_core::{

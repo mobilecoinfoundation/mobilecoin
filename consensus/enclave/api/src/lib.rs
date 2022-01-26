@@ -7,9 +7,14 @@
 extern crate alloc;
 
 mod error;
+mod fee_map;
 mod messages;
 
-pub use crate::{error::Error, messages::EnclaveCall};
+pub use crate::{
+    error::Error,
+    fee_map::{Error as FeeMapError, FeeMap},
+    messages::EnclaveCall,
+};
 
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
 use core::{cmp::Ordering, hash::Hash, result::Result as StdResult};

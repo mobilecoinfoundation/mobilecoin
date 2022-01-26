@@ -9,6 +9,7 @@ use mc_common::ResponderId;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_sgx_compat::sync::Mutex;
 use mc_transaction_core::{constants::MINIMUM_FEE, tx::TokenId};
+use serde::{Deserialize, Serialize};
 
 /// State managed by `FeeMap`.
 struct FeeMapInner {
@@ -132,7 +133,7 @@ fn calc_digest_for_map(map: &BTreeMap<TokenId, u64>) -> String {
 }
 
 /// Fee Map error type.
-#[derive(Debug, Display, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
 pub enum Error {
     /// Token `{0}` has invalid fee `{1}`
     InvalidFee(TokenId, u64),

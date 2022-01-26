@@ -4,6 +4,7 @@
 
 use mc_attest_core::ProviderId;
 use mc_common::{HashMap, HashSet, NodeID, ResponderId};
+use mc_consensus_enclave::FeeMap;
 use mc_consensus_scp::{QuorumSet, QuorumSetMember};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private};
 use mc_transaction_core::tx::TokenId;
@@ -226,16 +227,15 @@ impl Config {
                 .cloned()
                 .map(|pair| (pair.0, pair.1)),
         );
+        FeeMap::is_valid_map(&fee_map)
+            .map_err(|err| format!("Invalid fee configuration: {:?}", err))?;
 
-        // Must have a fee for MOB.
-        if let Some(fee) = fee_map.get(&TokenId::MOB) {
-            if !self.allow_any_fee && !(10_000..1_000_000_000_000u64).contains(fee) {
-                return Err(format!("Fee {} picoMOB is out of bounds", fee));
-            }
-        } else {
-            return Err(
-                "minimum fee for MOB must be specified when specifying custom fees".to_string(),
-            );
+        // Must have a fee for MOB (this is enforced by is_valid_map above).
+        let mob_fee = fee_map
+            .get(&TokenId::MOB)
+            .expect("MOB fee must be specified");
+        if !self.allow_any_fee && !(10_000..1_000_000_000_000u64).contains(mob_fee) {
+            return Err(format!("Fee {} picoMOB is out of bounds", mob_fee));
         }
 
         Ok(Some(fee_map))

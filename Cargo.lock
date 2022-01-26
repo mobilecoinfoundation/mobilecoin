@@ -2894,10 +2894,12 @@ name = "mc-consensus-enclave-api"
 version = "1.2.0-pre0"
 dependencies = [
  "displaydoc",
+ "hex",
  "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",
+ "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-message-cipher",
  "mc-sgx-compat",
@@ -2920,7 +2922,6 @@ name = "mc-consensus-enclave-impl"
 version = "1.2.0-pre0"
 dependencies = [
  "cargo-emit",
- "displaydoc",
  "hex",
  "mbedtls",
  "mc-account-keys",
