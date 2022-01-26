@@ -31,7 +31,8 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_recovery_db_iface::{
     AddBlockDataStatus, FogUserEvent, IngestInvocationId, IngressPublicKeyRecord,
-    IngressPublicKeyRecordFilters, IngressPublicKeyStatus, RecoveryDb, ReportData, ReportDb,
+    IngressPublicKeyRecordFilters, IngressPublicKeyStatus, RecoveryDb, RecoveryDbError, ReportData,
+    ReportDb,
 };
 use mc_fog_types::{
     common::BlockRange,
@@ -42,7 +43,7 @@ use mc_transaction_core::Block;
 use mc_util_parse::parse_duration_in_seconds;
 use prost::Message;
 use proto_types::ProtoIngestedBlockData;
-use retry::{delay, retry, Error as RetryError};
+use retry::{delay, Error as RetryError, OperationResult};
 use serde::Serialize;
 use std::{cmp::max, time::Duration};
 use structopt::StructOpt;
@@ -1157,57 +1158,52 @@ impl RecoveryDb for SqlRecoveryDb {
     fn get_ingress_key_status(
         &self,
         key: &CompressedRistrettoPublic,
-    ) -> Result<Option<IngressPublicKeyStatus>, Error> {
-        retry(self.get_retries(), || {
+    ) -> Result<Option<IngressPublicKeyStatus>, Self::Error> {
+        our_retry(self.get_retries(), || {
             self.get_ingress_key_status_retriable(key)
         })
-        .map_err(unpack_retry_error)
     }
 
     fn new_ingress_key(
         &self,
         key: &CompressedRistrettoPublic,
         start_block_count: u64,
-    ) -> Result<u64, Error> {
-        retry(self.get_retries(), || {
+    ) -> Result<u64, Self::Error> {
+        our_retry(self.get_retries(), || {
             self.new_ingress_key_retriable(key, start_block_count)
         })
-        .map_err(unpack_retry_error)
     }
 
     fn retire_ingress_key(
         &self,
         key: &CompressedRistrettoPublic,
         set_retired: bool,
-    ) -> Result<(), Error> {
-        retry(self.get_retries(), || {
+    ) -> Result<(), Self::Error> {
+        our_retry(self.get_retries(), || {
             self.retire_ingress_key_retriable(key, set_retired)
         })
-        .map_err(unpack_retry_error)
     }
 
     fn get_last_scanned_block_index(
         &self,
         key: &CompressedRistrettoPublic,
-    ) -> Result<Option<u64>, Error> {
-        retry(self.get_retries(), || {
+    ) -> Result<Option<u64>, Self::Error> {
+        our_retry(self.get_retries(), || {
             self.get_last_scanned_block_index_retriable(key)
         })
-        .map_err(unpack_retry_error)
     }
 
     fn get_ingress_key_records(
         &self,
         start_block_at_least: u64,
         ingress_public_key_record_filters: &IngressPublicKeyRecordFilters,
-    ) -> Result<Vec<IngressPublicKeyRecord>, Error> {
-        retry(self.get_retries(), || {
+    ) -> Result<Vec<IngressPublicKeyRecord>, Self::Error> {
+        our_retry(self.get_retries(), || {
             self.get_ingress_key_records_retriable(
                 start_block_at_least,
                 ingress_public_key_record_filters,
             )
         })
-        .map_err(unpack_retry_error)
     }
 
     fn new_ingest_invocation(
@@ -1216,8 +1212,8 @@ impl RecoveryDb for SqlRecoveryDb {
         ingress_public_key: &CompressedRistrettoPublic,
         egress_public_key: &KexRngPubkey,
         start_block: u64,
-    ) -> Result<IngestInvocationId, Error> {
-        retry(self.get_retries(), || {
+    ) -> Result<IngestInvocationId, Self::Error> {
+        our_retry(self.get_retries(), || {
             self.new_ingest_invocation_retriable(
                 prev_ingest_invocation_id.clone(),
                 ingress_public_key,
@@ -1225,16 +1221,14 @@ impl RecoveryDb for SqlRecoveryDb {
                 start_block,
             )
         })
-        .map_err(unpack_retry_error)
     }
 
     fn get_ingestable_ranges(
         &self,
     ) -> Result<Vec<mc_fog_recovery_db_iface::IngestableRange>, Self::Error> {
-        retry(self.get_retries(), || {
+        our_retry(self.get_retries(), || {
             self.get_ingestable_ranges_retriable()
         })
-        .map_err(unpack_retry_error)
     }
 
     /// Decommission a given ingest invocation.
@@ -1248,10 +1242,9 @@ impl RecoveryDb for SqlRecoveryDb {
         &self,
         ingest_invocation_id: &IngestInvocationId,
     ) -> Result<(), Self::Error> {
-        retry(self.get_retries(), || {
+        our_retry(self.get_retries(), || {
             self.decommission_ingest_invocation_retriable(ingest_invocation_id)
         })
-        .map_err(unpack_retry_error)
     }
 
     fn add_block_data(
@@ -1261,7 +1254,7 @@ impl RecoveryDb for SqlRecoveryDb {
         block_signature_timestamp: u64,
         txs: &[mc_fog_types::ETxOutRecord],
     ) -> Result<AddBlockDataStatus, Self::Error> {
-        retry(self.get_retries(), || {
+        our_retry(self.get_retries(), || {
             self.add_block_data_retriable(
                 ingest_invocation_id,
                 block,
@@ -1269,34 +1262,30 @@ impl RecoveryDb for SqlRecoveryDb {
                 txs,
             )
         })
-        .map_err(unpack_retry_error)
     }
 
     fn report_lost_ingress_key(
         &self,
         lost_ingress_key: CompressedRistrettoPublic,
     ) -> Result<(), Self::Error> {
-        retry(self.get_retries(), || {
+        our_retry(self.get_retries(), || {
             self.report_lost_ingress_key_retriable(lost_ingress_key)
         })
-        .map_err(unpack_retry_error)
     }
 
     fn get_missed_block_ranges(&self) -> Result<Vec<BlockRange>, Self::Error> {
-        retry(self.get_retries(), || {
+        our_retry(self.get_retries(), || {
             self.get_missed_block_ranges_retriable()
         })
-        .map_err(unpack_retry_error)
     }
 
     fn search_user_events(
         &self,
         start_from_user_event_id: i64,
     ) -> Result<(Vec<FogUserEvent>, i64), Self::Error> {
-        retry(self.get_retries(), || {
+        our_retry(self.get_retries(), || {
             self.search_user_events_retriable(start_from_user_event_id)
         })
-        .map_err(unpack_retry_error)
     }
 
     /// Get any TxOutSearchResults corresponding to given search keys.
@@ -1320,10 +1309,9 @@ impl RecoveryDb for SqlRecoveryDb {
         start_block: u64,
         search_keys: &[Vec<u8>],
     ) -> Result<Vec<TxOutSearchResult>, Self::Error> {
-        retry(self.get_retries(), || {
+        our_retry(self.get_retries(), || {
             self.get_tx_outs_retriable(start_block, search_keys)
         })
-        .map_err(unpack_retry_error)
     }
 
     /// Mark a given ingest invocation as still being alive.
@@ -1331,10 +1319,9 @@ impl RecoveryDb for SqlRecoveryDb {
         &self,
         ingest_invocation_id: &IngestInvocationId,
     ) -> Result<(), Self::Error> {
-        retry(self.get_retries(), || {
+        our_retry(self.get_retries(), || {
             self.update_last_active_at_retriable(ingest_invocation_id)
         })
-        .map_err(unpack_retry_error)
     }
 
     /// Get any ETxOutRecords produced by a given ingress key for a given
@@ -1352,10 +1339,9 @@ impl RecoveryDb for SqlRecoveryDb {
         ingress_key: CompressedRistrettoPublic,
         block_index: u64,
     ) -> Result<Option<Vec<ETxOutRecord>>, Self::Error> {
-        retry(self.get_retries(), || {
+        our_retry(self.get_retries(), || {
             self.get_tx_outs_by_block_and_key_retriable(ingress_key.clone(), block_index)
         })
-        .map_err(unpack_retry_error)
     }
 
     /// Get iid that produced data for given ingress key and a given block
@@ -1365,10 +1351,9 @@ impl RecoveryDb for SqlRecoveryDb {
         ingress_key: CompressedRistrettoPublic,
         block_index: u64,
     ) -> Result<Option<IngestInvocationId>, Self::Error> {
-        retry(self.get_retries(), || {
+        our_retry(self.get_retries(), || {
             self.get_invocation_id_by_block_and_key_retriable(ingress_key.clone(), block_index)
         })
-        .map_err(unpack_retry_error)
     }
 
     /// Get the cumulative txo count for a given block number.
@@ -1384,10 +1369,9 @@ impl RecoveryDb for SqlRecoveryDb {
         &self,
         block_index: u64,
     ) -> Result<Option<u64>, Self::Error> {
-        retry(self.get_retries(), || {
+        our_retry(self.get_retries(), || {
             self.get_cumulative_txo_count_for_block_retriable(block_index)
         })
-        .map_err(unpack_retry_error)
     }
 
     /// Get the block signature timestamp for a given block number.
@@ -1405,18 +1389,16 @@ impl RecoveryDb for SqlRecoveryDb {
         &self,
         block_index: u64,
     ) -> Result<Option<u64>, Self::Error> {
-        retry(self.get_retries(), || {
+        our_retry(self.get_retries(), || {
             self.get_block_signature_timestamp_for_block_retriable(block_index)
         })
-        .map_err(unpack_retry_error)
     }
 
     /// Get the highest block index for which we have any data at all.
     fn get_highest_known_block_index(&self) -> Result<Option<u64>, Self::Error> {
-        retry(self.get_retries(), || {
+        our_retry(self.get_retries(), || {
             self.get_highest_known_block_index_retriable()
         })
-        .map_err(unpack_retry_error)
     }
 }
 
@@ -1425,7 +1407,7 @@ impl ReportDb for SqlRecoveryDb {
     type Error = Error;
 
     fn get_all_reports(&self) -> Result<Vec<(String, ReportData)>, Self::Error> {
-        retry(self.get_retries(), || self.get_all_reports_retriable()).map_err(unpack_retry_error)
+        our_retry(self.get_retries(), || self.get_all_reports_retriable())
     }
 
     /// Set report data associated with a given report id.
@@ -1435,19 +1417,50 @@ impl ReportDb for SqlRecoveryDb {
         report_id: &str,
         data: &ReportData,
     ) -> Result<IngressPublicKeyStatus, Self::Error> {
-        retry(self.get_retries(), || {
+        our_retry(self.get_retries(), || {
             self.set_report_retriable(ingress_key, report_id, data)
         })
-        .map_err(unpack_retry_error)
     }
 
     /// Remove report data associated with a given report id.
     fn remove_report(&self, report_id: &str) -> Result<(), Self::Error> {
-        retry(self.get_retries(), || {
+        our_retry(self.get_retries(), || {
             self.remove_report_retriable(report_id)
         })
-        .map_err(unpack_retry_error)
     }
+}
+
+// Helper for using the retry crate's retry function
+//
+// The retry crate has From<Result<R, E>> for OperationResult, but this does
+// not check if E is retriable, it just always assumes it is.
+// https://docs.rs/retry/latest/src/retry/opresult.rs.html#32-39
+//
+// The retry::retry function will implicitly use this conversion unless you
+// explicitly map things to OperationResult, which is kind of a footgun.
+//
+// This version only works with our Error, but actually tests if it is retriable
+//
+// We also unpack the RetryError object which has a useless variant
+//
+// Note: We may want to move this to a util crate or something, but if we do
+// then there would need to be a common trait for "should_retry()" errors.
+fn our_retry<I, O, R>(iterable: I, mut operation: O) -> Result<R, Error>
+where
+    I: IntoIterator<Item = Duration>,
+    O: FnMut() -> Result<R, Error>,
+{
+    retry::retry(iterable, || match operation() {
+        Ok(ok) => OperationResult::Ok(ok),
+        Err(err) => {
+            if err.should_retry() {
+                OperationResult::Retry(err)
+            } else {
+                OperationResult::Err(err)
+            }
+        }
+    })
+    .map_err(unpack_retry_error)
 }
 
 fn unpack_retry_error(src: RetryError<Error>) -> Error {
