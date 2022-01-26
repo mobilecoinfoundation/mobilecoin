@@ -42,7 +42,7 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
 
     # abort if sender's balance is too low
     sender_balance_picoMOB = mobilecoind.get_balance(sender_monitor_id).balance
-    if sender_balance_picoMOB < (amount_picoMOB + mobilecoin.MINIMUM_FEE):
+    if sender_balance_picoMOB < (amount_picoMOB + mobilecoin.MOB_MINIMUM_FEE):
         print(
             "# sender's balance is too low ({})... aborting!"
             .format(mobilecoin.display_as_MOB(sender_balance_picoMOB))

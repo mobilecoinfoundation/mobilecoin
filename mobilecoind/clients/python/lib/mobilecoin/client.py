@@ -22,7 +22,7 @@ LEDGER_SYNC_INTERVAL_SECONDS = 0.5
 DEFAULT_SUBADDRESS_INDEX = 0
 
 # see transaction/core/src/constants.rs
-MINIMUM_FEE = 10_000_000_000
+MOB_MINIMUM_FEE = 10_000_000_000
 
 
 def parse_tx_status(status) -> str:

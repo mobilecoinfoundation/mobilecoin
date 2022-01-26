@@ -15,7 +15,7 @@ use mc_fog_sample_paykit::{AccountKey, Client, ClientBuilder, TransactionStatus,
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_sgx_css::Signature;
 use mc_transaction_core::{
-    constants::{MINIMUM_FEE, RING_SIZE},
+    constants::{MOB_MINIMUM_FEE, RING_SIZE},
     BlockIndex,
 };
 use mc_transaction_std::MemoType;
@@ -73,7 +73,7 @@ impl Default for TestClientPolicy {
             tx_receive_deadline: Duration::from_secs(10),
             double_spend_wait: Duration::from_secs(10),
             polling_wait: Duration::from_millis(50),
-            transfer_amount: MINIMUM_FEE,
+            transfer_amount: MOB_MINIMUM_FEE,
             test_rth_memos: false,
         }
     }
@@ -240,7 +240,7 @@ impl TestClient {
         assert!(target_address.fog_report_url().is_some());
 
         // Get the current fee from consensus
-        let fee = source_client.get_fee().unwrap_or(MINIMUM_FEE);
+        let fee = source_client.get_fee().unwrap_or(MOB_MINIMUM_FEE);
 
         // Scope for build operation
         let transaction = {
@@ -490,7 +490,7 @@ impl TestClient {
             },
         )?;
 
-        let fee = source_client_lk.get_fee().unwrap_or(MINIMUM_FEE);
+        let fee = source_client_lk.get_fee().unwrap_or(MOB_MINIMUM_FEE);
         let transfer_start = std::time::SystemTime::now();
         let (transaction, block_count) =
             self.transfer(&mut source_client_lk, &mut target_client_lk)?;

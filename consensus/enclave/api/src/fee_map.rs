@@ -8,7 +8,7 @@ use displaydoc::Display;
 use mc_common::ResponderId;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_sgx_compat::sync::Mutex;
-use mc_transaction_core::{constants::MINIMUM_FEE, tx::TokenId};
+use mc_transaction_core::{constants::MOB_MINIMUM_FEE, tx::TokenId};
 use serde::{Deserialize, Serialize};
 
 /// State managed by `FeeMap`.
@@ -27,7 +27,7 @@ struct FeeMapInner {
 impl Default for FeeMapInner {
     fn default() -> Self {
         let mut map = BTreeMap::new();
-        map.insert(TokenId::MOB, MINIMUM_FEE);
+        map.insert(TokenId::MOB, MOB_MINIMUM_FEE);
 
         let cached_digest = calc_digest_for_map(&map);
 

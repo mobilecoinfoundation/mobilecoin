@@ -7,7 +7,7 @@ use mc_crypto_rand::{CryptoRng, RngCore};
 pub use mc_fog_report_validation_test_utils::MockFogResolver;
 use mc_ledger_db::{Ledger, LedgerDB};
 pub use mc_transaction_core::{
-    constants::MINIMUM_FEE,
+    constants::MOB_MINIMUM_FEE,
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
@@ -54,14 +54,14 @@ pub fn create_transaction<L: Ledger, R: RngCore + CryptoRng>(
     let shared_secret = get_tx_out_shared_secret(sender.view_private_key(), &tx_out_public_key);
     let (value, _blinding) = tx_out.amount.get_value(&shared_secret).unwrap();
 
-    assert!(value >= MINIMUM_FEE);
+    assert!(value >= MOB_MINIMUM_FEE);
     create_transaction_with_amount(
         ledger,
         tx_out,
         sender,
         recipient,
-        value - MINIMUM_FEE,
-        MINIMUM_FEE,
+        value - MOB_MINIMUM_FEE,
+        MOB_MINIMUM_FEE,
         tombstone_block,
         rng,
     )

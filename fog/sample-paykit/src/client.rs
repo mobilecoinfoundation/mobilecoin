@@ -29,7 +29,7 @@ use mc_fog_report_validation::{FogPubkeyResolver, FogResolver};
 use mc_fog_types::BlockCount;
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_transaction_core::{
-    constants::MINIMUM_FEE,
+    constants::MOB_MINIMUM_FEE,
     onetime_keys::*,
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutMembershipProof},
@@ -321,7 +321,7 @@ impl Client {
         const TARGET_NUM_INPUTS: usize = 3;
         let inputs = self
             .tx_data
-            .get_transaction_inputs(amount + MINIMUM_FEE, TARGET_NUM_INPUTS)?;
+            .get_transaction_inputs(amount + MOB_MINIMUM_FEE, TARGET_NUM_INPUTS)?;
         let inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = self.get_proofs(&inputs)?;
         let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> = self.get_rings(inputs.len(), rng)?;
 
@@ -815,7 +815,7 @@ mod test_build_transaction_helper {
             true,
             &mut rng,
             &logger,
-            MINIMUM_FEE,
+            MOB_MINIMUM_FEE,
         )
         .unwrap();
 

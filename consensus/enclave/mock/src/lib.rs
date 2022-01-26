@@ -23,7 +23,7 @@ use mc_crypto_keys::{
 use mc_crypto_rand::McRng;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
-    constants::MINIMUM_FEE,
+    constants::MOB_MINIMUM_FEE,
     membership_proofs::compute_implied_merkle_root,
     ring_signature::KeyImage,
     tx::{TokenId, Tx, TxOut, TxOutMembershipProof},
@@ -52,7 +52,7 @@ impl Default for ConsensusServiceMockEnclave {
         let signing_keypair = Arc::new(Ed25519Pair::from_random(&mut csprng));
         let minimum_fees = Arc::new(Mutex::new(BTreeMap::from_iter(vec![(
             TokenId::MOB,
-            MINIMUM_FEE,
+            MOB_MINIMUM_FEE,
         )])));
 
         Self {
@@ -240,7 +240,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
                 tx,
                 parent_block.index + 1,
                 proofs,
-                MINIMUM_FEE,
+                MOB_MINIMUM_FEE,
                 &mut rng,
             )?;
 
