@@ -3,6 +3,8 @@
 //! A helper object for maintaining a map of token id -> minimum fee.
 
 use alloc::{collections::BTreeMap, format, string::String};
+use core::convert::TryFrom;
+use displaydoc::Display;
 use mc_common::ResponderId;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_sgx_compat::sync::Mutex;
@@ -45,13 +47,17 @@ impl Default for FeeMap {
     }
 }
 
-impl From<BTreeMap<TokenId, u64>> for FeeMap {
-    fn from(map: BTreeMap<TokenId, u64>) -> Self {
+impl TryFrom<BTreeMap<TokenId, u64>> for FeeMap {
+    type Error = Error;
+
+    fn try_from(map: BTreeMap<TokenId, u64>) -> Result<Self, Self::Error> {
+        Self::is_valid_map(&map)?;
+
         let cached_digest = calc_digest_for_map(&map);
 
-        Self {
+        Ok(Self {
             inner: Mutex::new(FeeMapInner { map, cached_digest }),
-        }
+        })
     }
 }
 
@@ -77,15 +83,38 @@ impl FeeMap {
 
     /// Update the fee map with a new one if provided, or reset it to the
     /// default.
-    pub fn update_or_default(&self, minimum_fees: Option<BTreeMap<TokenId, u64>>) {
+    pub fn update_or_default(
+        &self,
+        minimum_fees: Option<BTreeMap<TokenId, u64>>,
+    ) -> Result<(), Error> {
         let mut inner = self.inner.lock().unwrap();
 
         if let Some(minimum_fees) = minimum_fees {
+            Self::is_valid_map(&minimum_fees)?;
+
             inner.map = minimum_fees;
             inner.cached_digest = calc_digest_for_map(&inner.map);
         } else {
             *inner = FeeMapInner::default();
         }
+
+        Ok(())
+    }
+
+    /// Check if a given fee map is valid.
+    pub fn is_valid_map(minimum_fees: &BTreeMap<TokenId, u64>) -> Result<(), Error> {
+        // All fees must be greater than 0.
+        if let Some((token_id, fee)) = minimum_fees.iter().find(|(_token_id, fee)| **fee == 0) {
+            return Err(Error::InvalidFee(*token_id, *fee));
+        }
+
+        // Must have a minimum fee for MOB.
+        if !minimum_fees.contains_key(&TokenId::MOB) {
+            return Err(Error::MissingFee(TokenId::MOB));
+        }
+
+        // All good.
+        Ok(())
     }
 }
 
@@ -100,4 +129,98 @@ fn calc_digest_for_map(map: &BTreeMap<TokenId, u64>) -> String {
     let mut result = [0u8; 32];
     transcript.extract_digest(&mut result);
     hex::encode(result)
+}
+
+/// Fee Map error type.
+#[derive(Debug, Display, Eq, PartialEq)]
+pub enum Error {
+    /// Token `{0}` has invalid fee `{1}`
+    InvalidFee(TokenId, u64),
+
+    /// Token `{0}` is missing from the fee map
+    MissingFee(TokenId),
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use alloc::{string::ToString, vec};
+    use core::iter::FromIterator;
+
+    /// Different fee maps/responder ids should result in different responder
+    /// ids.
+    #[test]
+    fn different_fee_maps_result_in_different_responder_ids() {
+        let fee_map1 = FeeMap::try_from(BTreeMap::from_iter(vec![
+            (TokenId::MOB, 100),
+            (TokenId::from(2), 200),
+        ]))
+        .unwrap();
+
+        let fee_map2 = FeeMap::try_from(BTreeMap::from_iter(vec![
+            (TokenId::MOB, 100),
+            (TokenId::from(2), 300),
+        ]))
+        .unwrap();
+
+        let fee_map3 = FeeMap::try_from(BTreeMap::from_iter(vec![
+            (TokenId::MOB, 100),
+            (TokenId::from(3), 300),
+        ]))
+        .unwrap();
+
+        let responder_id1 = ResponderId("1.2.3.4:5".to_string());
+        let responder_id2 = ResponderId("3.1.3.3:7".to_string());
+
+        assert_ne!(
+            fee_map1.responder_id(&responder_id1),
+            fee_map2.responder_id(&responder_id1)
+        );
+
+        assert_ne!(
+            fee_map1.responder_id(&responder_id1),
+            fee_map3.responder_id(&responder_id1)
+        );
+
+        assert_ne!(
+            fee_map2.responder_id(&responder_id1),
+            fee_map3.responder_id(&responder_id1)
+        );
+
+        assert_ne!(
+            fee_map1.responder_id(&responder_id1),
+            fee_map1.responder_id(&responder_id2)
+        );
+    }
+
+    /// Invalid fee maps are rejected.
+    #[test]
+    fn invalid_fee_maps_are_rejected() {
+        let test_token_id = TokenId::from(2);
+
+        // Missing MOB is not allowed
+        assert_eq!(
+            FeeMap::is_valid_map(&BTreeMap::default()),
+            Err(Error::MissingFee(TokenId::MOB)),
+        );
+
+        assert_eq!(
+            FeeMap::is_valid_map(&BTreeMap::from_iter(vec![(test_token_id, 100)])),
+            Err(Error::MissingFee(TokenId::MOB)),
+        );
+
+        // All fees must be >0
+        assert_eq!(
+            FeeMap::is_valid_map(&BTreeMap::from_iter(vec![(TokenId::MOB, 0)])),
+            Err(Error::InvalidFee(TokenId::MOB, 0)),
+        );
+
+        assert_eq!(
+            FeeMap::is_valid_map(&BTreeMap::from_iter(vec![
+                (TokenId::MOB, 10),
+                (test_token_id, 0)
+            ])),
+            Err(Error::InvalidFee(test_token_id, 0)),
+        );
+    }
 }

@@ -2920,6 +2920,7 @@ name = "mc-consensus-enclave-impl"
 version = "1.2.0-pre0"
 dependencies = [
  "cargo-emit",
+ "displaydoc",
  "hex",
  "mbedtls",
  "mc-account-keys",

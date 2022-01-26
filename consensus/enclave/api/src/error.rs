@@ -50,7 +50,7 @@ pub enum Error {
     FeePublicAddress(String),
 
     /// Invalid fee configuration
-    InvalidFeeConfig,
+    InvalidFeeConfig(String),
 }
 
 impl From<MessageCipherError> for Error {

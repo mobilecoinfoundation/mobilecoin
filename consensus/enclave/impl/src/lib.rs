@@ -21,7 +21,7 @@ include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 use alloc::{
     collections::{BTreeMap, BTreeSet},
     format,
-    string::String,
+    string::{String, ToString},
     vec::Vec,
 };
 use core::convert::TryFrom;
@@ -182,12 +182,10 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         sealed_key: &Option<SealedBlockSigningKey>,
         minimum_fees: Option<BTreeMap<TokenId, u64>>,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
-        // If we are provided with the optional fee map, we must have >0 MOB minimum
-        // fee.
+        // If we are provided with the optional fee map, ensure it is valid.
         if let Some(ref minimum_fees) = minimum_fees {
-            if minimum_fees.get(&TokenId::MOB).cloned().unwrap_or_default() == 0 {
-                return Err(Error::InvalidFeeConfig);
-            }
+            FeeMap::is_valid_map(minimum_fees)
+                .map_err(|err| Error::InvalidFeeConfig(err.to_string()))?;
         }
 
         // Inject the fee into the peer ResponderId.
@@ -213,7 +211,9 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let key = (*lock).private_key();
         let sealed = IntelSealed::seal_raw(key.as_ref(), &[]).unwrap();
 
-        self.fee_map.update_or_default(minimum_fees);
+        // This should never fail since we validated the fee map at the beginning of
+        // this method.
+        self.fee_map.update_or_default(minimum_fees).unwrap();
 
         Ok((
             sealed.as_ref().to_vec(),
@@ -379,10 +379,14 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         // Validate.
         let mut csprng = McRng::default();
-        let minimum_fee = self
-            .fee_map
-            .get_fee_for_token(&TokenId::MOB)
-            .ok_or(Error::InvalidFeeConfig)?;
+        let minimum_fee =
+            self.fee_map
+                .get_fee_for_token(&TokenId::MOB)
+                .ok_or(Error::InvalidFeeConfig(
+                    // This should actually never happen since the map enforces the existence of
+                    // MOB.
+                    "MOB missing from fee map".to_string(),
+                ))?;
         mc_transaction_core::validation::validate(
             &tx,
             block_index,
@@ -453,10 +457,14 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // ledger that were used to validate the transactions.
         let mut root_elements = Vec::new();
         let mut rng = McRng::default();
-        let minimum_fee = self
-            .fee_map
-            .get_fee_for_token(&TokenId::MOB)
-            .ok_or(Error::InvalidFeeConfig)?;
+        let minimum_fee =
+            self.fee_map
+                .get_fee_for_token(&TokenId::MOB)
+                .ok_or(Error::InvalidFeeConfig(
+                    // This should actually never happen since the map enforces the existence of
+                    // MOB.
+                    "MOB missing from fee map".to_string(),
+                ))?;
 
         for (tx, proofs) in transactions_with_proofs.iter() {
             mc_transaction_core::validation::validate(
