@@ -63,16 +63,14 @@ impl TryFrom<BTreeMap<TokenId, u64>> for FeeMap {
 }
 
 impl FeeMap {
-    /// Get the digest of the fee map as a hex-encoded string
-    pub fn get_digest_str(&self) -> String {
-        let inner = self.inner.lock().unwrap();
-        inner.cached_digest.clone()
-    }
-
     /// Append the fee map digest to an existing responder id, producing a
     /// responder id that is unique to the current fee configuration.
     pub fn responder_id(&self, responder_id: &ResponderId) -> ResponderId {
-        ResponderId(format!("{}-{}", responder_id.0, self.get_digest_str()))
+        ResponderId(format!(
+            "{}-{}",
+            responder_id.0,
+            self.inner.lock().unwrap().cached_digest
+        ))
     }
 
     /// Get the fee for a given token id, or None if no fee is set for that
