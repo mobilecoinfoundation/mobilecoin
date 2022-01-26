@@ -2,7 +2,8 @@
 
 //! A helper object for maintaining a map of token id -> minimum fee.
 
-use alloc::{collections::BTreeMap, string::String};
+use alloc::{collections::BTreeMap, format, string::String};
+use mc_common::ResponderId;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_sgx_compat::sync::Mutex;
 use mc_transaction_core::{constants::MINIMUM_FEE, tx::TokenId};
@@ -59,6 +60,12 @@ impl FeeMap {
     pub fn get_digest_str(&self) -> String {
         let inner = self.inner.lock().unwrap();
         inner.cached_digest.clone()
+    }
+
+    /// Append the fee map digest to an existing responder id, producing a
+    /// responder id that is unique to the current fee configuration.
+    pub fn responder_id(&self, responder_id: &ResponderId) -> ResponderId {
+        ResponderId(format!("{}-{}", responder_id.0, self.get_digest_str()))
     }
 
     /// Get the fee for a given token id, or None if no fee is set for that

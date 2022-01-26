@@ -190,15 +190,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             }
         }
 
-        // Inject the fee into the peer ResponderId
-        let peer_self_id = ResponderId(format!(
-            "{}-{}",
-            &peer_self_id.0,
-            self.fee_map.get_digest_str()
-        ));
+        // Inject the fee into the peer ResponderId.
+        let peer_self_id = self.fee_map.responder_id(peer_self_id);
+
+        //  Init AKE.
         self.ake.init(peer_self_id, client_self_id.clone())?;
 
-        // If we were passed a sealed key, unseal it and overwrite the private key
+        // If we were passed a sealed key, unseal it and overwrite the private key.
         match sealed_key {
             Some(sealed) => {
                 log::trace!(self.logger, "trying to unseal key");
@@ -210,7 +208,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             None => (),
         }
 
-        // Either way seal the private key and return it
+        // Either way seal the private key and return it.
         let lock = self.ake.get_identity().signing_keypair.lock().unwrap();
         let key = (*lock).private_key();
         let sealed = IntelSealed::seal_raw(key.as_ref(), &[]).unwrap();
@@ -266,7 +264,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
     fn peer_init(&self, peer_id: &ResponderId) -> Result<PeerAuthRequest> {
         // Inject the if fee map hash passing off to the AKE
-        let peer_id = ResponderId(format!("{}-{}", peer_id, self.fee_map.get_digest_str()));
+        let peer_id = self.fee_map.responder_id(peer_id);
 
         Ok(self.ake.peer_init(&peer_id)?)
     }
@@ -281,7 +279,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         msg: PeerAuthResponse,
     ) -> Result<(PeerSession, VerificationReport)> {
         // Inject the if fee map hash passing off to the AKE
-        let peer_id = ResponderId(format!("{}-{}", peer_id, self.fee_map.get_digest_str()));
+        let peer_id = self.fee_map.responder_id(peer_id);
 
         Ok(self.ake.peer_connect(&peer_id, msg)?)
     }
