@@ -140,23 +140,23 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
                 break;
             }
 
-            // Hack: If we notice that we are way behind the ledger, set ourselves unready
-            match self.db.num_blocks() {
-                Ok(num_blocks) => {
-                    if num_blocks > self.next_block_index + 100 {
-                        self.readiness_indicator.set_unready();
-                    }
-                }
-                Err(err) => {
-                    log::error!(self.logger, "Could not get num blocks from db: {}", err);
-                }
-            };
-
             // Each call to load_block_data attempts to load one block for each known
             // invocation. We want to keep loading blocks as long as we have data to load,
             // but that could take some time which is why the loop is also gated
             // on the stop trigger in case a stop is requested during loading.
-            while self.load_block_data() && !self.stop_requested.load(Ordering::SeqCst) {}
+            while self.load_block_data() && !self.stop_requested.load(Ordering::SeqCst) {
+                // Hack: If we notice that we are way behind the ledger, set ourselves unready
+                match self.db.num_blocks() {
+                    Ok(num_blocks) => {
+                        if num_blocks > self.next_block_index + 100 {
+                            self.readiness_indicator.set_unready();
+                        }
+                    }
+                    Err(err) => {
+                        log::error!(self.logger, "Could not get num blocks from db: {}", err);
+                    }
+                };
+            }
 
             // If we get this far then we loaded all available block data from the DB into
             // the enclave.
@@ -177,13 +177,13 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
     /// Returns true if we might have more block data to load.
     fn load_block_data(&mut self) -> bool {
         // Default to true: if there is an error, we may have more work, we don't know
-        let mut has_more_work = true;
+        let mut may_have_more_work = true;
         let watcher_timeout: Duration = Duration::from_millis(5000);
 
         let start_time = SystemTime::now();
 
         match self.db.get_block_contents(self.next_block_index) {
-            Err(LedgerError::NotFound) => has_more_work = false,
+            Err(LedgerError::NotFound) => may_have_more_work = false,
             Err(e) => {
                 log::error!(
                     self.logger,
@@ -252,7 +252,7 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
                 self.next_block_index += 1;
             }
         }
-        has_more_work
+        may_have_more_work
     }
 
     fn add_records_to_enclave(&mut self, block_index: u64, records: Vec<KeyImageData>) {

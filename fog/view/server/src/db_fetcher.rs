@@ -257,7 +257,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
     /// aware of and tracking.
     /// Returns true if we might have more block data to load.
     fn load_block_data(&mut self) -> bool {
-        let mut has_more_work = false;
+        let mut may_have_more_work = false;
 
         // See whats the next block number we need to load for each invocation we are
         // aware of.
@@ -301,7 +301,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
 
                     // Ingest has produced data for this block, we'd like to keep trying the
                     // next block on the next loop iteration.
-                    has_more_work = true;
+                    may_have_more_work = true;
 
                     // Mark that we are done fetching data for this block.
                     self.block_tracker.block_processed(ingress_key, block_index);
@@ -350,12 +350,12 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
                         err
                     );
                     // We might have more work to do, we aren't sure because of the error
-                    has_more_work = true;
+                    may_have_more_work = true;
                 }
             }
         }
 
-        has_more_work
+        may_have_more_work
     }
 
     fn shared_state(&self) -> MutexGuard<DbFetcherSharedState> {

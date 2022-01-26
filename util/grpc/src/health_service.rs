@@ -106,32 +106,40 @@ impl Health for HealthService {
 
 /// A "global" readiness indicator can be used when your server has an initial
 /// period in which it is unready.
+///
+/// Here "unready" means "the server is still not finished starting up, and
+/// replies to the clients may be less useful". When k8s determines that a
+/// service is unready, it lets it run, but does not route incoming traffic to
+/// it.
+///
+/// We indicate "unready" by making the health check callback return
+/// "NOT_SERVING"
 #[derive(Default, Clone)]
 pub struct ReadinessIndicator {
-    ready: Arc<AtomicBool>,
+    is_ready: Arc<AtomicBool>,
 }
 
 impl ReadinessIndicator {
     /// Set the status to ready
     pub fn set_ready(&self) {
-        self.ready.store(true, Ordering::SeqCst);
+        self.is_ready.store(true, Ordering::SeqCst);
     }
 
     /// Set the status to unready
     pub fn set_unready(&self) {
-        self.ready.store(false, Ordering::SeqCst);
+        self.is_ready.store(false, Ordering::SeqCst);
     }
 
     /// Check the status
-    pub fn is_ready(&self) -> bool {
-        self.ready.load(Ordering::SeqCst)
+    pub fn ready(&self) -> bool {
+        self.is_ready.load(Ordering::SeqCst)
     }
 }
 
 impl From<ReadinessIndicator> for ServiceHealthCheckCallback {
     fn from(src: ReadinessIndicator) -> Self {
         Arc::new(move |_| -> HealthCheckStatus {
-            if src.is_ready() {
+            if src.ready() {
                 HealthCheckStatus::SERVING
             } else {
                 HealthCheckStatus::NOT_SERVING
