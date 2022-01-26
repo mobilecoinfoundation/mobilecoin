@@ -12,21 +12,26 @@ use grpcio::{RpcContext, Service, UnarySink};
 use mc_common::logger::Logger;
 use mc_util_metrics::SVC_COUNTERS;
 
+/// A service that exposes the BuildInfo of a service recorded using
+/// mc_util_build_info
 #[derive(Clone)]
 pub struct BuildInfoService {
     logger: Logger,
 }
 
 impl BuildInfoService {
+    /// Create a new instance of the BuildInfo service
     pub fn new(logger: Logger) -> Self {
         Self { logger }
     }
 
+    /// Convert into a grpcio::Service
     pub fn into_service(self) -> Service {
         create_build_info_api(self)
     }
 }
 
+/// Get the BuildInfo object, by reading from the BuildInfo crate
 pub fn get_build_info() -> BuildInfo {
     let mut build_info = BuildInfo::new();
     build_info.set_git_commit(::mc_util_build_info::git_commit().to_owned());

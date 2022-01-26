@@ -7,6 +7,7 @@ use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_recovery_db_iface::{IngressPublicKeyRecord, IngressPublicKeyRecordFilters, RecoveryDb};
 use mc_fog_types::ETxOutRecord;
+use mc_util_grpc::ReadinessIndicator;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -74,7 +75,11 @@ pub struct DbFetcher {
 }
 
 impl DbFetcher {
-    pub fn new<DB: RecoveryDb + Clone + Send + Sync + 'static>(db: DB, logger: Logger) -> Self {
+    pub fn new<DB: RecoveryDb + Clone + Send + Sync + 'static>(
+        db: DB,
+        readiness_indicator: ReadinessIndicator,
+        logger: Logger,
+    ) -> Self {
         let stop_requested = Arc::new(AtomicBool::new(false));
 
         let shared_state = Arc::new(Mutex::new(DbFetcherSharedState::default()));
@@ -96,6 +101,7 @@ impl DbFetcher {
                         thread_stop_requested,
                         thread_shared_state,
                         thread_num_queued_records_limiter,
+                        readiness_indicator,
                         logger,
                     )
                 })
@@ -165,6 +171,7 @@ struct DbFetcherThread<DB: RecoveryDb + Clone + Send + Sync + 'static> {
     shared_state: Arc<Mutex<DbFetcherSharedState>>,
     block_tracker: BlockTracker,
     num_queued_records_limiter: Arc<(Mutex<usize>, Condvar)>,
+    readiness_indicator: ReadinessIndicator,
     logger: Logger,
 }
 
@@ -176,6 +183,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
         stop_requested: Arc<AtomicBool>,
         shared_state: Arc<Mutex<DbFetcherSharedState>>,
         num_queued_records_limiter: Arc<(Mutex<usize>, Condvar)>,
+        readiness_indicator: ReadinessIndicator,
         logger: Logger,
     ) {
         let thread = Self {
@@ -184,6 +192,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
             shared_state,
             block_tracker: BlockTracker::new(logger.clone()),
             num_queued_records_limiter,
+            readiness_indicator,
             logger,
         };
         thread.run();
@@ -204,6 +213,15 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
             // but that could take some time which is why the loop is also gated
             // on the stop trigger in case a stop is requested during loading.
             while self.load_block_data() && !self.stop_requested.load(Ordering::SeqCst) {}
+
+            // If we got this far, then self.load_block_data() must have returned false.
+            // This means that at some point no new data was available and it was all
+            // loaded into the queue. For a large data set, this also implies that
+            // the enclave thread has drained the queue many times and actually loaded
+            // most of the data into ORAM.
+            // It might take some more time before it is all actually loaded into the
+            // enclave, but we are very nearly ready now.
+            self.readiness_indicator.set_ready();
 
             sleep(DB_POLL_INTERNAL);
         }
@@ -239,7 +257,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
     /// aware of and tracking.
     /// Returns true if we might have more block data to load.
     fn load_block_data(&mut self) -> bool {
-        let mut has_more_work = false;
+        let mut may_have_more_work = false;
 
         // See whats the next block number we need to load for each invocation we are
         // aware of.
@@ -283,7 +301,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
 
                     // Ingest has produced data for this block, we'd like to keep trying the
                     // next block on the next loop iteration.
-                    has_more_work = true;
+                    may_have_more_work = true;
 
                     // Mark that we are done fetching data for this block.
                     self.block_tracker.block_processed(ingress_key, block_index);
@@ -331,11 +349,13 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
                         block_index,
                         err
                     );
+                    // We might have more work to do, we aren't sure because of the error
+                    may_have_more_work = true;
                 }
             }
         }
 
-        has_more_work
+        may_have_more_work
     }
 
     fn shared_state(&self) -> MutexGuard<DbFetcherSharedState> {
@@ -360,7 +380,7 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
         let db = db_test_context.get_db_instance();
-        let db_fetcher = DbFetcher::new(db.clone(), logger);
+        let db_fetcher = DbFetcher::new(db.clone(), Default::default(), logger);
 
         // Initially, our database starts empty.
         let ingress_keys = db_fetcher.get_highest_processed_block_context();
@@ -590,7 +610,7 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
         let db = db_test_context.get_db_instance();
-        let db_fetcher = DbFetcher::new(db.clone(), logger);
+        let db_fetcher = DbFetcher::new(db.clone(), Default::default(), logger);
 
         // Register two ingress keys that have some overlap:
         // key_id1 starts at block 0, key2 starts at block 5.
@@ -647,7 +667,7 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
         let db = db_test_context.get_db_instance();
-        let db_fetcher = DbFetcher::new(db.clone(), logger);
+        let db_fetcher = DbFetcher::new(db.clone(), Default::default(), logger);
 
         // Register two ingress keys that have some overlap:
         // invoc_id1 starts at block 0, invoc_id2 starts at block 50.

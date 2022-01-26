@@ -3,16 +3,19 @@
 use crate::{
     AdminService, BuildInfoService, ConnectionUriGrpcioServer, GetConfigJsonFn, HealthService,
 };
+use futures::executor::block_on;
 use grpcio::{Environment, ShutdownFuture};
 use mc_common::logger::{log, Logger};
 use mc_util_uri::{AdminUri, ConnectionUri};
 use std::sync::Arc;
 
+/// The admin server is a grpc server that serves the admin endpoint
 pub struct AdminServer {
     server: grpcio::Server,
 }
 
 impl AdminServer {
+    /// Initilaizes and starts the admin server
     pub fn start(
         env: Option<Arc<Environment>>,
         admin_listen_uri: &AdminUri,
@@ -58,7 +61,14 @@ impl AdminServer {
         Ok(Self { server })
     }
 
+    /// Shuts down the admin server
     pub fn shutdown(&mut self) -> ShutdownFuture {
         self.server.shutdown()
+    }
+}
+
+impl Drop for AdminServer {
+    fn drop(&mut self) {
+        block_on(self.shutdown()).expect("Could not shutdown admin server")
     }
 }

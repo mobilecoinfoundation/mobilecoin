@@ -23,7 +23,8 @@ use mc_fog_uri::ConnectionUri;
 use mc_fog_view_enclave::ViewEnclaveProxy;
 use mc_sgx_report_cache_untrusted::ReportCacheThread;
 use mc_util_grpc::{
-    AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, TokenAuthenticator,
+    AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, ReadinessIndicator,
+    TokenAuthenticator,
 };
 use mc_util_telemetry::{
     block_span_builder, start_block_span, telemetry_static_key, tracer, Key, Span,
@@ -67,8 +68,14 @@ where
         time_provider: impl TimeProvider + 'static,
         logger: Logger,
     ) -> ViewServer<E, RC, DB> {
-        let db_poll_thread =
-            DbPollThread::new(enclave.clone(), recovery_db.clone(), logger.clone());
+        let readiness_indicator = ReadinessIndicator::default();
+
+        let db_poll_thread = DbPollThread::new(
+            enclave.clone(),
+            recovery_db.clone(),
+            readiness_indicator.clone(),
+            logger.clone(),
+        );
 
         let env = Arc::new(
             grpcio::EnvBuilder::new()
@@ -97,7 +104,9 @@ where
         log::debug!(logger, "Constructed View GRPC Service");
 
         // Health check service
-        let health_service = mc_util_grpc::HealthService::new(None, logger.clone()).into_service();
+        let health_service =
+            mc_util_grpc::HealthService::new(Some(readiness_indicator.into()), logger.clone())
+                .into_service();
 
         // Package service into grpc server
         log::info!(
@@ -215,6 +224,9 @@ where
     /// Shared state.
     shared_state: Arc<Mutex<DbPollSharedState>>,
 
+    /// Readiness indicator.
+    readiness_indicator: ReadinessIndicator,
+
     /// Logger.
     logger: Logger,
 }
@@ -233,7 +245,12 @@ where
     }
 
     /// Initialize a new DbPollThread object.
-    pub fn new(enclave: E, db: DB, logger: Logger) -> Self {
+    pub fn new(
+        enclave: E,
+        db: DB,
+        readiness_indicator: ReadinessIndicator,
+        logger: Logger,
+    ) -> Self {
         let stop_requested = Arc::new(AtomicBool::new(false));
         let shared_state = Arc::new(Mutex::new(DbPollSharedState::default()));
 
@@ -243,6 +260,7 @@ where
             join_handle: None,
             stop_requested,
             shared_state,
+            readiness_indicator,
             logger,
         }
     }
@@ -260,6 +278,7 @@ where
         let thread_db = self.db.clone();
         let thread_stop_requested = self.stop_requested.clone();
         let thread_shared_state = self.shared_state.clone();
+        let thread_readiness_indicator = self.readiness_indicator.clone();
         let thread_logger = self.logger.clone();
 
         self.join_handle = Some(
@@ -271,6 +290,7 @@ where
                         thread_db,
                         thread_stop_requested,
                         thread_shared_state,
+                        thread_readiness_indicator,
                         thread_logger,
                     )
                 })
@@ -293,12 +313,19 @@ where
         db: DB,
         stop_requested: Arc<AtomicBool>,
         shared_state: Arc<Mutex<DbPollSharedState>>,
+        readiness_indicator: ReadinessIndicator,
         logger: Logger,
     ) {
         log::debug!(logger, "Db poll thread started");
 
-        let mut worker =
-            DbPollThreadWorker::new(stop_requested, enclave, db, shared_state, logger.clone());
+        let mut worker = DbPollThreadWorker::new(
+            stop_requested,
+            enclave,
+            db,
+            shared_state,
+            readiness_indicator,
+            logger.clone(),
+        );
         loop {
             match worker.tick() {
                 WorkerTickResult::StopRequested => {
@@ -378,6 +405,7 @@ where
         enclave: E,
         db: DB,
         shared_state: Arc<Mutex<DbPollSharedState>>,
+        readiness_indicator: ReadinessIndicator,
         logger: Logger,
     ) -> Self {
         Self {
@@ -385,7 +413,7 @@ where
             enclave,
             db: db.clone(),
             shared_state,
-            db_fetcher: DbFetcher::new(db, logger.clone()),
+            db_fetcher: DbFetcher::new(db, readiness_indicator, logger.clone()),
             enclave_block_tracker: BlockTracker::new(logger.clone()),
             last_unblocked_at: Instant::now(),
             logger,
