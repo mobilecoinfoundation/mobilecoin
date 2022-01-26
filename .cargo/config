@@ -1,7 +1,8 @@
 [build]
 rustflags = ["-D", "warnings"]
 
-[target.'cfg(target_arch = "x86_64")']
+# NB: This breaks subtly if we use spaces in the cfg clause.
+[target.'cfg(target_arch="x86_64")']
 rustflags = ["-D", "warnings", "-C", "target-cpu=skylake"]
 
 [cargo-new]
