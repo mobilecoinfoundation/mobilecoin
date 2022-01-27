@@ -123,8 +123,7 @@ impl IngestSgxEnclave {
             desired_capacity: omap_capacity,
         };
 
-        sgx_enclave
-            .enclave_init(params)?;
+        sgx_enclave.enclave_init(params)?;
 
         Ok(sgx_enclave)
     }
