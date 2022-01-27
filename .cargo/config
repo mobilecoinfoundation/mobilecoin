@@ -1,9 +1,7 @@
 [build]
-rustflags = ["-D", "warnings"]
-
-# NB: This breaks subtly if we use spaces in the cfg clause.
-[target.'cfg(target_arch="x86_64")']
-rustflags = ["-D", "warnings", "-C", "target-cpu=skylake"]
+rustflags = ["-D", "warnings", "-C", "target-cpu=native"]
+# NB: 'cfg(target_feature)' does not work in this context.
+# See https://github.com/rust-lang/cargo/issues/6858
 
 [cargo-new]
 name = "MobileCoin"
