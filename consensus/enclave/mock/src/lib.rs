@@ -26,7 +26,7 @@ use mc_transaction_core::{
     constants::MINIMUM_FEE,
     membership_proofs::compute_implied_merkle_root,
     ring_signature::KeyImage,
-    tx::{Tx, TxOut, TxOutMembershipProof},
+    tx::{TokenId, Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
     Block, BlockContents, BlockSignature, BLOCK_VERSION,
 };
@@ -34,27 +34,30 @@ use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng;
 use std::{
+    collections::BTreeMap,
     convert::TryFrom,
-    sync::{
-        atomic::{AtomicU64, Ordering},
-        Arc,
-    },
+    iter::FromIterator,
+    sync::{Arc, Mutex},
 };
 
 #[derive(Clone)]
 pub struct ConsensusServiceMockEnclave {
     pub signing_keypair: Arc<Ed25519Pair>,
-    pub minimum_fee: Arc<AtomicU64>,
+    pub minimum_fees: Arc<Mutex<BTreeMap<TokenId, u64>>>,
 }
 
 impl Default for ConsensusServiceMockEnclave {
     fn default() -> Self {
         let mut csprng = Hc128Rng::seed_from_u64(0);
         let signing_keypair = Arc::new(Ed25519Pair::from_random(&mut csprng));
+        let minimum_fees = Arc::new(Mutex::new(BTreeMap::from_iter(vec![(
+            TokenId::MOB,
+            MINIMUM_FEE,
+        )])));
 
         Self {
             signing_keypair,
-            minimum_fee: Arc::new(MINIMUM_FEE.into()),
+            minimum_fees,
         }
     }
 }
@@ -101,15 +104,17 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         _self_peer_id: &ResponderId,
         _self_client_id: &ResponderId,
         _sealed_key: &Option<SealedBlockSigningKey>,
-        minimum_fee: Option<u64>,
+        minimum_fees: Option<BTreeMap<TokenId, u64>>,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
-        self.minimum_fee
-            .store(minimum_fee.unwrap_or(MINIMUM_FEE), Ordering::SeqCst);
+        if let Some(minimum_fees) = minimum_fees {
+            let mut minimum_fees_lock = self.minimum_fees.lock().unwrap();
+            *minimum_fees_lock = minimum_fees;
+        }
         Ok((vec![], vec![]))
     }
 
-    fn get_minimum_fee(&self) -> Result<u64> {
-        Ok(self.minimum_fee.load(Ordering::SeqCst))
+    fn get_minimum_fee(&self, token_id: &TokenId) -> Result<Option<u64>> {
+        Ok(self.minimum_fees.lock().unwrap().get(token_id).cloned())
     }
 
     fn get_identity(&self) -> Result<X25519Public> {

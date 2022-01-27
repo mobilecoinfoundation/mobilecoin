@@ -228,7 +228,7 @@ class Node:
             f'--peer-listen-uri="insecure-mcp://0.0.0.0:{self.peer_port}/"',
             f'--scp-debug-dump {WORK_DIR}/scp-debug-dump-{self.node_num}',
             f'--sealed-block-signing-key {WORK_DIR}/consensus-sealed-block-signing-key-{self.node_num}',
-            f'--minimum-fee={self.minimum_fee}',
+            f'--minimum-fee=0:{self.minimum_fee}',
         ])
 
         print(f'Starting node {self.name}: client_port={self.client_port} peer_port={self.peer_port} admin_port={self.admin_port}')

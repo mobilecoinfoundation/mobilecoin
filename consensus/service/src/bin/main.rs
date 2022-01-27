@@ -66,11 +66,19 @@ fn main() -> Result<(), ConsensusServiceError> {
         &config.peer_responder_id,
         &config.client_responder_id,
         &cached_key,
-        config.minimum_fee().expect("Could not parse minimum fee"),
+        config
+            .minimum_fees_map()
+            .expect("Could not parse minimum fees map"),
     );
 
     log::info!(logger, "Enclave target features: {}", features.join(", "));
-    log::info!(logger, "Configured minimum fee: {:?}", config.minimum_fee());
+    log::info!(
+        logger,
+        "Configured minimum fees: {:?}",
+        config
+            .minimum_fees_map()
+            .expect("Invalid fee configuration")
+    );
 
     // write the sealed block signing key
     let mut sealed_key_file =

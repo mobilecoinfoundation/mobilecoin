@@ -13,7 +13,11 @@ use mc_consensus_enclave_api::{
 };
 use mc_crypto_keys::{Ed25519Public, X25519Public};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as SgxReportResult};
-use mc_transaction_core::{tx::TxOutMembershipProof, Block, BlockContents, BlockSignature};
+use mc_transaction_core::{
+    tx::{TokenId, TxOutMembershipProof},
+    Block, BlockContents, BlockSignature,
+};
+use std::collections::BTreeMap;
 
 use mockall::*;
 
@@ -29,10 +33,10 @@ mock! {
             self_peer_id: &ResponderId,
             self_client_id: &ResponderId,
             sealed_key: &Option<SealedBlockSigningKey>,
-            minimum_fee: Option<u64>,
+            minimum_fees: Option<BTreeMap<TokenId, u64>>,
         ) -> ConsensusEnclaveResult<(SealedBlockSigningKey, Vec<String>)>;
 
-        fn get_minimum_fee(&self) -> ConsensusEnclaveResult<u64>;
+        fn get_minimum_fee(&self, token_id: &TokenId) -> ConsensusEnclaveResult<Option<u64>>;
 
         fn get_identity(&self) -> ConsensusEnclaveResult<X25519Public>;
 

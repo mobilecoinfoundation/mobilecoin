@@ -4,14 +4,19 @@
 
 use mc_attest_core::ProviderId;
 use mc_common::{HashMap, HashSet, NodeID, ResponderId};
+use mc_consensus_enclave::FeeMap;
 use mc_consensus_scp::{QuorumSet, QuorumSetMember};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private};
+use mc_transaction_core::tx::TokenId;
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::{
     AdminUri, ConnectionUri, ConsensusClientUri as ClientUri, ConsensusPeerUri as PeerUri,
 };
 use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, fs, path::PathBuf, string::String, sync::Arc, time::Duration};
+use std::{
+    collections::BTreeMap, fmt::Debug, fs, iter::FromIterator, path::PathBuf, str::FromStr,
+    string::String, sync::Arc, time::Duration,
+};
 use structopt::StructOpt;
 
 #[derive(Clone, Debug, StructOpt)]
@@ -94,8 +99,8 @@ pub struct Config {
     pub client_auth_token_max_lifetime: Duration,
 
     /// Override the hard-coded minimum fee.
-    #[structopt(long, env = "MC_MINIMUM_FEE")]
-    pub minimum_fee: Option<u64>,
+    #[structopt(long, env = "MC_MINIMUM_FEE", use_delimiter = true)]
+    minimum_fee: Vec<TokenIdFeePair>,
 
     /// Allow extreme (>= 1MOB, <= 0.000_000_01 MOB).
     #[structopt(long)]
@@ -211,17 +216,29 @@ impl Config {
     }
 
     /// Get the configured minimum fee.
-    pub fn minimum_fee(&self) -> Result<Option<u64>, String> {
-        if let Some(fee) = self.minimum_fee {
-            // 1 MOB -> 10nMOB
-            if !self.allow_any_fee && !(10_000..1_000_000_000_000u64).contains(&fee) {
-                Err(format!("Fee {} picoMOB is out of bounds", fee))
-            } else {
-                Ok(Some(fee))
-            }
-        } else {
-            Ok(None)
+    pub fn minimum_fees_map(&self) -> Result<Option<BTreeMap<TokenId, u64>>, String> {
+        if self.minimum_fee.is_empty() {
+            return Ok(None);
         }
+
+        let fee_map = BTreeMap::from_iter(
+            self.minimum_fee
+                .iter()
+                .cloned()
+                .map(|pair| (pair.0, pair.1)),
+        );
+        FeeMap::is_valid_map(&fee_map)
+            .map_err(|err| format!("Invalid fee configuration: {:?}", err))?;
+
+        // Must have a fee for MOB (this is enforced by is_valid_map above).
+        let mob_fee = fee_map
+            .get(&TokenId::MOB)
+            .expect("MOB fee must be specified");
+        if !self.allow_any_fee && !(10_000..1_000_000_000_000u64).contains(mob_fee) {
+            return Err(format!("Fee {} picoMOB is out of bounds", mob_fee));
+        }
+
+        Ok(Some(fee_map))
     }
 
     /// Get the network configuration by loading the network.toml/json file.
@@ -286,6 +303,34 @@ impl Config {
 
         // Success.
         network
+    }
+}
+
+#[derive(Clone, Debug)]
+struct TokenIdFeePair(TokenId, u64);
+
+impl FromStr for TokenIdFeePair {
+    type Err = String;
+
+    fn from_str(src: &str) -> Result<Self, Self::Err> {
+        let elements = src.split(':').collect::<Vec<&str>>();
+        if elements.len() != 2 {
+            return Err(format!(
+                "{:?} is an invalid minimum fee. Format should be <token id>:<minimum fee>",
+                src
+            ));
+        }
+
+        let token_id = TokenId::from(
+            elements[0]
+                .parse::<u32>()
+                .map_err(|_| format!("{} is not a valid integer", elements[0]))?,
+        );
+        let minimum_fee = elements[1]
+            .parse::<u64>()
+            .map_err(|_| format!("{} is not a valid integer", elements[0]))?;
+
+        Ok(TokenIdFeePair(token_id, minimum_fee))
     }
 }
 
@@ -450,7 +495,7 @@ mod tests {
             sealed_block_signing_key: PathBuf::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Duration::from_secs(60),
-            minimum_fee: None,
+            minimum_fee: vec![],
             allow_any_fee: false,
         };
 
@@ -507,7 +552,7 @@ mod tests {
             sealed_block_signing_key: PathBuf::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Duration::from_secs(60),
-            minimum_fee: None,
+            minimum_fee: vec![],
             allow_any_fee: false,
         };
 
