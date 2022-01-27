@@ -30,9 +30,6 @@ pub const MICROMOB_TO_PICOMOB: u64 = 1_000_000;
 /// one milliMOB = 1e9 picoMOB
 pub const MILLIMOB_TO_PICOMOB: u64 = 1_000_000_000;
 
-/// Minimum allowed fee, denominated in picoMOB.
-pub const MINIMUM_FEE: u64 = 400 * MICROMOB_TO_PICOMOB;
-
 lazy_static! {
     // Blinding for the implicit fee outputs.
     pub static ref FEE_BLINDING: Scalar = Scalar::zero();

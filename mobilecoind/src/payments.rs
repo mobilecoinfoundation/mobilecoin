@@ -404,7 +404,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `inputs` - UTXOs that will be spent by the transaction.
     /// * `receiver` - The single receiver of the transaction's outputs.
     /// * `fee` - Transaction fee in picoMOB. If zero, defaults to the highest
-    ///   fee set by configured consensus nodes, or the hard-coded MINIMUM_FEE.
+    ///   fee set by configured consensus nodes, or the hard-coded FALLBACK_FEE.
     pub fn generate_tx_from_tx_list(
         &self,
         account_key: &AccountKey,
@@ -956,7 +956,7 @@ mod test {
     use mc_connection::{HardcodedCredentialsProvider, ThickClient};
     use mc_crypto_keys::RistrettoPrivate;
     use mc_fog_report_validation::MockFogPubkeyResolver;
-    use mc_transaction_core::constants::{MILLIMOB_TO_PICOMOB, MINIMUM_FEE};
+    use mc_transaction_core::{constants::MILLIMOB_TO_PICOMOB, tokens::Mob, Token};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 
@@ -1074,7 +1074,7 @@ mod test {
                 TransactionsManager::<
                     ThickClient<HardcodedCredentialsProvider>,
                     MockFogPubkeyResolver,
-                >::select_utxos_for_optimization(1000, &utxos, 2, MINIMUM_FEE)
+                >::select_utxos_for_optimization(1000, &utxos, 2, Mob::MINIMUM_FEE)
                 .unwrap();
 
             assert_eq!(selected_utxos, vec![utxos[0].clone(), utxos[4].clone()]);
@@ -1095,7 +1095,7 @@ mod test {
                 TransactionsManager::<
                     ThickClient<HardcodedCredentialsProvider>,
                     MockFogPubkeyResolver,
-                >::select_utxos_for_optimization(1000, &utxos, 3, MINIMUM_FEE)
+                >::select_utxos_for_optimization(1000, &utxos, 3, Mob::MINIMUM_FEE)
                 .unwrap();
 
             assert_eq!(
@@ -1113,23 +1113,24 @@ mod test {
         {
             let mut utxos = generate_utxos(6);
 
-            utxos[0].value = MINIMUM_FEE / 10;
-            utxos[1].value = MINIMUM_FEE / 10;
-            utxos[2].value = MINIMUM_FEE / 10;
-            utxos[3].value = MINIMUM_FEE / 10;
-            utxos[4].value = 200 * MINIMUM_FEE;
-            utxos[5].value = MINIMUM_FEE / 10;
+            utxos[0].value = Mob::MINIMUM_FEE / 10;
+            utxos[1].value = Mob::MINIMUM_FEE / 10;
+            utxos[2].value = Mob::MINIMUM_FEE / 10;
+            utxos[3].value = Mob::MINIMUM_FEE / 10;
+            utxos[4].value = 200 * Mob::MINIMUM_FEE;
+            utxos[5].value = Mob::MINIMUM_FEE / 10;
 
             assert!(
                 utxos[0].value + utxos[1].value + utxos[2].value + utxos[3].value + utxos[5].value
-                    < MINIMUM_FEE
+                    < Mob::MINIMUM_FEE
             );
 
-            let result =
-                TransactionsManager::<
-                    ThickClient<HardcodedCredentialsProvider>,
-                    MockFogPubkeyResolver,
-                >::select_utxos_for_optimization(1000, &utxos, 100, MINIMUM_FEE);
+            let result = TransactionsManager::<
+                ThickClient<HardcodedCredentialsProvider>,
+                MockFogPubkeyResolver,
+            >::select_utxos_for_optimization(
+                1000, &utxos, 100, Mob::MINIMUM_FEE
+            );
             assert!(result.is_err());
         }
 
@@ -1138,14 +1139,15 @@ mod test {
         {
             let mut utxos = generate_utxos(2);
 
-            utxos[0].value = MINIMUM_FEE;
+            utxos[0].value = Mob::MINIMUM_FEE;
             utxos[1].value = 2000 * MILLIMOB_TO_PICOMOB;
 
-            let result =
-                TransactionsManager::<
-                    ThickClient<HardcodedCredentialsProvider>,
-                    MockFogPubkeyResolver,
-                >::select_utxos_for_optimization(1000, &utxos, 100, MINIMUM_FEE);
+            let result = TransactionsManager::<
+                ThickClient<HardcodedCredentialsProvider>,
+                MockFogPubkeyResolver,
+            >::select_utxos_for_optimization(
+                1000, &utxos, 100, Mob::MINIMUM_FEE
+            );
             assert!(result.is_err());
         }
 
@@ -1153,16 +1155,16 @@ mod test {
         {
             let mut utxos = generate_utxos(4);
 
-            utxos[0].value = MINIMUM_FEE;
-            utxos[1].value = 208 * MINIMUM_FEE;
-            utxos[2].value = MINIMUM_FEE / 10;
-            utxos[3].value = MINIMUM_FEE / 5;
+            utxos[0].value = Mob::MINIMUM_FEE;
+            utxos[1].value = 208 * Mob::MINIMUM_FEE;
+            utxos[2].value = Mob::MINIMUM_FEE / 10;
+            utxos[3].value = Mob::MINIMUM_FEE / 5;
 
             let selected_utxos =
                 TransactionsManager::<
                     ThickClient<HardcodedCredentialsProvider>,
                     MockFogPubkeyResolver,
-                >::select_utxos_for_optimization(1000, &utxos, 3, MINIMUM_FEE)
+                >::select_utxos_for_optimization(1000, &utxos, 3, Mob::MINIMUM_FEE)
                 .unwrap();
             // Since we're limited to 3 inputs, the lowest input (of value 1) is going to
             // get excluded.
@@ -1184,13 +1186,15 @@ mod test {
         let result = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
-        >::select_utxos_for_optimization(1000, &[], 100, MINIMUM_FEE);
+        >::select_utxos_for_optimization(1000, &[], 100, Mob::MINIMUM_FEE);
         assert!(result.is_err());
 
         let result = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
-        >::select_utxos_for_optimization(1000, &utxos[0..1], 100, MINIMUM_FEE);
+        >::select_utxos_for_optimization(
+            1000, &utxos[0..1], 100, Mob::MINIMUM_FEE
+        );
         assert!(result.is_err());
 
         // A set of 2 utxos succeeds when max inputs is 2, but fails when it is 3 (since
@@ -1198,13 +1202,17 @@ mod test {
         let result = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
-        >::select_utxos_for_optimization(1000, &utxos[0..2], 2, MINIMUM_FEE);
+        >::select_utxos_for_optimization(
+            1000, &utxos[0..2], 2, Mob::MINIMUM_FEE
+        );
         assert!(result.is_ok());
 
         let result = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
-        >::select_utxos_for_optimization(1000, &utxos[0..2], 3, MINIMUM_FEE);
+        >::select_utxos_for_optimization(
+            1000, &utxos[0..2], 3, Mob::MINIMUM_FEE
+        );
         assert!(result.is_err());
     }
 }

@@ -8,7 +8,7 @@ use displaydoc::Display;
 use mc_common::ResponderId;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_sgx_compat::sync::Mutex;
-use mc_transaction_core::{constants::MINIMUM_FEE, TokenId};
+use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Serialize};
 
 /// State managed by `FeeMap`.
@@ -27,7 +27,7 @@ struct FeeMapInner {
 impl Default for FeeMapInner {
     fn default() -> Self {
         let mut map = BTreeMap::new();
-        map.insert(TokenId::MOB, MINIMUM_FEE);
+        map.insert(Mob::ID, Mob::MINIMUM_FEE);
 
         let cached_digest = calc_digest_for_map(&map);
 
@@ -108,8 +108,8 @@ impl FeeMap {
         }
 
         // Must have a minimum fee for MOB.
-        if !minimum_fees.contains_key(&TokenId::MOB) {
-            return Err(Error::MissingFee(TokenId::MOB));
+        if !minimum_fees.contains_key(&Mob::ID) {
+            return Err(Error::MissingFee(Mob::ID));
         }
 
         // All good.
@@ -151,19 +151,19 @@ mod test {
     #[test]
     fn different_fee_maps_result_in_different_responder_ids() {
         let fee_map1 = FeeMap::try_from(BTreeMap::from_iter(vec![
-            (TokenId::MOB, 100),
+            (Mob::ID, 100),
             (TokenId::from(2), 200),
         ]))
         .unwrap();
 
         let fee_map2 = FeeMap::try_from(BTreeMap::from_iter(vec![
-            (TokenId::MOB, 100),
+            (Mob::ID, 100),
             (TokenId::from(2), 300),
         ]))
         .unwrap();
 
         let fee_map3 = FeeMap::try_from(BTreeMap::from_iter(vec![
-            (TokenId::MOB, 100),
+            (Mob::ID, 100),
             (TokenId::from(3), 300),
         ]))
         .unwrap();
@@ -200,23 +200,23 @@ mod test {
         // Missing MOB is not allowed
         assert_eq!(
             FeeMap::is_valid_map(&BTreeMap::default()),
-            Err(Error::MissingFee(TokenId::MOB)),
+            Err(Error::MissingFee(Mob::ID)),
         );
 
         assert_eq!(
             FeeMap::is_valid_map(&BTreeMap::from_iter(vec![(test_token_id, 100)])),
-            Err(Error::MissingFee(TokenId::MOB)),
+            Err(Error::MissingFee(Mob::ID)),
         );
 
         // All fees must be >0
         assert_eq!(
-            FeeMap::is_valid_map(&BTreeMap::from_iter(vec![(TokenId::MOB, 0)])),
-            Err(Error::InvalidFee(TokenId::MOB, 0)),
+            FeeMap::is_valid_map(&BTreeMap::from_iter(vec![(Mob::ID, 0)])),
+            Err(Error::InvalidFee(Mob::ID, 0)),
         );
 
         assert_eq!(
             FeeMap::is_valid_map(&BTreeMap::from_iter(vec![
-                (TokenId::MOB, 10),
+                (Mob::ID, 10),
                 (test_token_id, 0)
             ])),
             Err(Error::InvalidFee(test_token_id, 0)),
