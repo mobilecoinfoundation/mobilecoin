@@ -235,7 +235,7 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> DbFetcherThread<DB> {
 
         match self.db.get_ingress_key_records(
             0,
-            IngressPublicKeyRecordFilters {
+            &IngressPublicKeyRecordFilters {
                 should_include_lost_keys: true,
                 should_include_retired_keys: true,
                 should_only_include_unexpired_keys: false,

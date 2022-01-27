@@ -3,6 +3,7 @@
 use diesel::{result::Error as DieselError, ConnectionError};
 use displaydoc::Display;
 use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_fog_recovery_db_iface::RecoveryDbError;
 use mc_fog_types::common::BlockRange;
 use prost::{DecodeError, EncodeError};
 use r2d2::Error as R2d2Error;
@@ -49,14 +50,15 @@ pub enum Error {
     Encode(EncodeError),
 }
 
-impl Error {
+impl RecoveryDbError for Error {
     /// Policy decision, whether the call should be retried.
-    pub fn should_retry(&self) -> bool {
+    fn should_retry(&self) -> bool {
         match self {
             Self::Orm(DieselError::DatabaseError(_, info)) => {
                 info.message() == "no connection to the server\n"
                     || info.message() == "terminating connection due to administrator command"
             }
+            Self::R2d2(_) => true,
             _ => false,
         }
     }

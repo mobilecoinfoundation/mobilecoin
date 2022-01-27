@@ -37,8 +37,11 @@ pub struct IngressPublicKeyRecordFilters {
 }
 
 /// A generic error type for recovery db operations
-pub trait RecoveryDbError: Debug + Display + Send + Sync {}
-impl<T> RecoveryDbError for T where T: Debug + Display + Send + Sync {}
+pub trait RecoveryDbError: Debug + Display + Send + Sync {
+    /// Policy decision about whether the error should be retried (e.g.
+    /// connection issue)
+    fn should_retry(&self) -> bool;
+}
 
 /// The recovery database interface.
 pub trait RecoveryDb {
@@ -97,7 +100,7 @@ pub trait RecoveryDb {
     fn get_ingress_key_records(
         &self,
         start_block_at_least: u64,
-        ingress_public_key_record_filters: IngressPublicKeyRecordFilters,
+        ingress_public_key_record_filters: &IngressPublicKeyRecordFilters,
     ) -> Result<Vec<IngressPublicKeyRecord>, Self::Error>;
 
     /// Adds a new ingest invocation to the database, optionally decommissioning
