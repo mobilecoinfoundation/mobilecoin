@@ -27,9 +27,6 @@ pub enum OverseerError {
 
     /// There are multiple outstanding keys: {0}
     MultipleOutstandingKeys(String),
-
-    /// Unknown error associated with retries. Should not happen: {0}
-    GenericRetryError(String),
 }
 
 impl From<SqlRecoveryDbError> for OverseerError {
@@ -46,7 +43,7 @@ impl From<RetryError<OverseerError>> for OverseerError {
                 total_delay: _,
                 tries: _,
             } => error,
-            RetryError::Internal(s) => Self::GenericRetryError(s),
+            RetryError::Internal(s) => panic!("Internal retry error: {}", s),
         }
     }
 }
