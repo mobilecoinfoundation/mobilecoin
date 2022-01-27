@@ -16,7 +16,7 @@ pub use crate::{
     messages::EnclaveCall,
 };
 
-use alloc::{collections::BTreeMap, string::String, vec::Vec};
+use alloc::{string::String, vec::Vec};
 use core::{cmp::Ordering, hash::Hash, result::Result as StdResult};
 use mc_attest_core::VerificationReport;
 use mc_attest_enclave_api::{
@@ -214,7 +214,7 @@ pub trait ConsensusEnclave: ReportableEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-        minimum_fees: Option<BTreeMap<TokenId, u64>>,
+        fee_map: &FeeMap,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)>;
 
     /// Retrieve the current minimum fee for a given token id.

@@ -7,8 +7,8 @@ mod mock_consensus_enclave;
 pub use mock_consensus_enclave::MockConsensusEnclave;
 
 pub use mc_consensus_enclave_api::{
-    ConsensusEnclave, ConsensusEnclaveProxy, Error, FeePublicKey, LocallyEncryptedTx, Result,
-    SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    ConsensusEnclave, ConsensusEnclaveProxy, Error, FeeMap, FeePublicKey, LocallyEncryptedTx,
+    Result, SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
@@ -34,30 +34,25 @@ use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng;
 use std::{
-    collections::BTreeMap,
     convert::TryFrom,
-    iter::FromIterator,
     sync::{Arc, Mutex},
 };
 
 #[derive(Clone)]
 pub struct ConsensusServiceMockEnclave {
     pub signing_keypair: Arc<Ed25519Pair>,
-    pub minimum_fees: Arc<Mutex<BTreeMap<TokenId, u64>>>,
+    pub fee_map: Arc<Mutex<FeeMap>>,
 }
 
 impl Default for ConsensusServiceMockEnclave {
     fn default() -> Self {
         let mut csprng = Hc128Rng::seed_from_u64(0);
         let signing_keypair = Arc::new(Ed25519Pair::from_random(&mut csprng));
-        let minimum_fees = Arc::new(Mutex::new(BTreeMap::from_iter(vec![(
-            TokenId::MOB,
-            Mob::MINIMUM_FEE,
-        )])));
+        let fee_map = Arc::new(Mutex::new(FeeMap::default()));
 
         Self {
             signing_keypair,
-            minimum_fees,
+            fee_map,
         }
     }
 }
@@ -104,17 +99,15 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         _self_peer_id: &ResponderId,
         _self_client_id: &ResponderId,
         _sealed_key: &Option<SealedBlockSigningKey>,
-        minimum_fees: Option<BTreeMap<TokenId, u64>>,
+        fee_map: &FeeMap,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
-        if let Some(minimum_fees) = minimum_fees {
-            let mut minimum_fees_lock = self.minimum_fees.lock().unwrap();
-            *minimum_fees_lock = minimum_fees;
-        }
+        *self.fee_map.lock().unwrap() = fee_map.clone();
+
         Ok((vec![], vec![]))
     }
 
     fn get_minimum_fee(&self, token_id: &TokenId) -> Result<Option<u64>> {
-        Ok(self.minimum_fees.lock().unwrap().get(token_id).cloned())
+        Ok(self.fee_map.lock().unwrap().get_fee_for_token(token_id))
     }
 
     fn get_identity(&self) -> Result<X25519Public> {

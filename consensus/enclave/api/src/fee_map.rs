@@ -7,44 +7,29 @@ use core::convert::TryFrom;
 use displaydoc::Display;
 use mc_common::ResponderId;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
-use mc_sgx_compat::sync::Mutex;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Serialize};
 
-/// State managed by `FeeMap`.
-struct FeeMapInner {
+/// A thread-safe object that contains a map of fee value by token id.
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+pub struct FeeMap {
     /// The actual map of token_id to fee.
     /// Since we hash this map, it is important to use a BTreeMap as it
     /// guarantees iterating over the map is in sorted and predictable
     /// order.
-    pub map: BTreeMap<TokenId, u64>,
+    map: BTreeMap<TokenId, u64>,
 
     /// Cached digest value, formatted as a string.
     /// (Suitable for appending to responder id)
-    pub cached_digest: String,
-}
-
-impl Default for FeeMapInner {
-    fn default() -> Self {
-        let mut map = BTreeMap::new();
-        map.insert(Mob::ID, Mob::MINIMUM_FEE);
-
-        let cached_digest = calc_digest_for_map(&map);
-
-        Self { map, cached_digest }
-    }
-}
-
-/// A thread-safe object that contains a map of fee value by token id.
-pub struct FeeMap {
-    inner: Mutex<FeeMapInner>,
+    cached_digest: String,
 }
 
 impl Default for FeeMap {
     fn default() -> Self {
-        Self {
-            inner: Mutex::new(FeeMapInner::default()),
-        }
+        let map = Self::default_map();
+        let cached_digest = calc_digest_for_map(&map);
+
+        Self { map, cached_digest }
     }
 }
 
@@ -56,9 +41,7 @@ impl TryFrom<BTreeMap<TokenId, u64>> for FeeMap {
 
         let cached_digest = calc_digest_for_map(&map);
 
-        Ok(Self {
-            inner: Mutex::new(FeeMapInner { map, cached_digest }),
-        })
+        Ok(Self { map, cached_digest })
     }
 }
 
@@ -66,36 +49,31 @@ impl FeeMap {
     /// Append the fee map digest to an existing responder id, producing a
     /// responder id that is unique to the current fee configuration.
     pub fn responder_id(&self, responder_id: &ResponderId) -> ResponderId {
-        ResponderId(format!(
-            "{}-{}",
-            responder_id.0,
-            self.inner.lock().unwrap().cached_digest
-        ))
+        ResponderId(format!("{}-{}", responder_id.0, self.cached_digest))
     }
 
     /// Get the fee for a given token id, or None if no fee is set for that
     /// token.
     pub fn get_fee_for_token(&self, token_id: &TokenId) -> Option<u64> {
-        let inner = self.inner.lock().unwrap();
-        inner.map.get(token_id).cloned()
+        self.map.get(token_id).cloned()
     }
 
     /// Update the fee map with a new one if provided, or reset it to the
     /// default.
     pub fn update_or_default(
-        &self,
+        &mut self,
         minimum_fees: Option<BTreeMap<TokenId, u64>>,
     ) -> Result<(), Error> {
-        let mut inner = self.inner.lock().unwrap();
-
         if let Some(minimum_fees) = minimum_fees {
             Self::is_valid_map(&minimum_fees)?;
 
-            inner.map = minimum_fees;
-            inner.cached_digest = calc_digest_for_map(&inner.map);
+            self.map = minimum_fees;
         } else {
-            *inner = FeeMapInner::default();
+            self.map = Self::default_map();
         }
+
+        // Digest must be updated when the map is updated.
+        self.cached_digest = calc_digest_for_map(&self.map);
 
         Ok(())
     }
@@ -114,6 +92,13 @@ impl FeeMap {
 
         // All good.
         Ok(())
+    }
+
+    /// Helper method for constructing the default fee map.
+    fn default_map() -> BTreeMap<TokenId, u64> {
+        let mut map = BTreeMap::new();
+        map.insert(Mob::ID, Mob::MINIMUM_FEE);
+        map
     }
 }
 
