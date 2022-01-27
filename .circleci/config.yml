@@ -25,6 +25,7 @@ defaults:
     IAS_MODE: DEV
     SGX_MODE: SW
     RUST_BACKTRACE: "1"
+    RUSTFLAGS: -D warnings -C target-cpu=skylake
     SKIP_SLOW_TESTS: "1"
 
 executors:
@@ -608,7 +609,7 @@ jobs:
       <<: *default-build-environment
       OPENSSL_BIN: /usr/local/opt/openssl/bin/openssl
       SCCACHE_CACHE_SIZE: 450M
-      RUSTFLAGS: -D warnings -C target-cpu=skylake
+      RUSTFLAGS: -D warnings -C target-cpu=penryn
       CONSENSUS_ENCLAVE_CSS: /Users/distiller/project/sgx/css/src/valid.css
     steps:
       - prepare-for-build: { os: macos }
