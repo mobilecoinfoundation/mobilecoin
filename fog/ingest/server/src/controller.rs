@@ -213,16 +213,40 @@ where
         // NotFound is not an error, but otherwise it is an error.
         if let Some(ref file_data) = state_file_data {
             let summary = file_data.get_summary();
-            result
-                .restore_state_from_summary(summary)
-                .unwrap_or_else(|err| {
-                // Note: We don't panic or nuke the statefile because this server may have recovered
-                // the right key successfully, even if restore_state_from_summary fails
-                log::error!(logger,
+            let mut retry_seconds = 1;
+            loop {
+                match result.restore_state_from_summary(summary) {
+                    Ok(_) => {
+                        let mut state = result.get_state();
+                        state.set_initialized();
+                        break;
+                    }
+                    Err(err @ RestoreStateError::Connection(_)) => {
+                        log::error!(
+                            logger,
+                            "Retry to restore state on connection error: {}",
+                            err
+                        );
+                        std::thread::sleep(std::time::Duration::from_secs(retry_seconds));
+                        retry_seconds = std::cmp::min(retry_seconds + 1, 30);
+                    }
+                    Err(err) => {
+                        // Note: We don't panic or nuke the statefile because this server may have
+                        // recovered the right key successfully, even if
+                        // restore_state_from_summary fails
+                        log::error!(logger,
                     "Could not restore state from state file ({:?}), {:?}: {}. Starting in idle instead",
                     config.state_file, summary, err
                     );
-                });
+                        let mut state = result.get_state();
+                        state.set_partially_initialized();
+                        break;
+                    }
+                };
+            }
+        } else {
+            let mut state = result.get_state();
+            state.set_initialized();
         }
 
         result.write_state_file();
@@ -1046,19 +1070,40 @@ where
                     self.logger.clone(),
                 );
 
-                // Check that the peer from summary is configured from a backup as expected,
-                // without logging or reconfiguring it if it isn't, we just give up.
-                self.confirm_backup(
+                // Check that the peer from summary is configured from a backup as expected
+                // without logging or reconfiguring it.
+                // If it isn't, we just give up.
+                match self.confirm_backup(
                     &mut conn,
                     None,
                     Some(&ingress_pubkey),
                     Some(&new_peers),
                     false,
                     false,
-                )?;
+                ) {
+                    Ok(_) => {}
+                    //Network related error. Retriable.
+                    Err(PeerBackupError::Connection(conn_err)) => {
+                        return Err(RestoreStateError::Connection(conn_err));
+                    }
+                    //Logic errors. These should not occur when confirming backup with update if
+                    // wrong set to false.
+                    Err(err @ PeerBackupError::FailedRemoteKeyBackup(_))
+                    | Err(err @ PeerBackupError::FailedRemoteSetPeers(_)) => {
+                        panic!("Should not have attempted remote modification during confirm backup. Logic Error: {}", err);
+                    }
+                    Err(err @ PeerBackupError::CreatingNewIngressKey) => {
+                        panic!("Should not have attempted creating new ingress key during confirm backup. Logic Error. {}", err);
+                    }
+                    //Nonretriable errors that can occur normally during confirm backup.
+                    Err(err @ PeerBackupError::AnotherActivePeer(_))
+                    | Err(err @ PeerBackupError::PeerSentBadURI(_))
+                    | Err(err @ PeerBackupError::Conversion(_)) => {
+                        return Err(RestoreStateError::Backup(err));
+                    }
+                };
             }
         }
-
         // Either we're restoring to idle state, or we're restoring to an active state
         // but all backups exist correctly, so we can make state changes now.
         self.set_peers_inner(new_peers.into_iter().collect(), &mut state)?;
@@ -1075,7 +1120,6 @@ where
                 state.set_active();
             }
         };
-
         Ok(())
     }
 

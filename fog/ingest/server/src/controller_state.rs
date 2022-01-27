@@ -34,6 +34,23 @@ pub enum IngestMode {
     Active,
 }
 
+/// The ingest server may or may not be fully initialized
+///
+/// Uninitialized: Healthy state, can not be set to active. Can be initialized
+/// Partially Initialized: Unhealty state, initialize was atempted but was not
+/// able to fully initialize
+/// Fully Initailized: Healthy state, can be turned
+/// active
+#[derive(Copy, Clone, Display, Debug, PartialEq, Eq)]
+pub enum IngestStatus {
+    /// Uninitialized
+    Uninitialized,
+    /// Partially initialized
+    Partial,
+    /// Fully initialized
+    Full,
+}
+
 /// State controlling the operation of the ingest controller.
 ///
 /// This data is set from the server configuration initially, but then can be
@@ -63,6 +80,9 @@ pub struct IngestControllerState {
     /// Whether the server is idling, actively scanning the blockchain and
     /// publishing reports, or retiring
     mode: IngestMode,
+    /// Whether the server is unintialized, partially initialized, or fully
+    /// initialized
+    status: IngestStatus,
     /// The next block index to scan from
     next_block_index: u64,
     /// The value we add to the current block index to compute the pubkey expiry
@@ -84,6 +104,7 @@ impl IngestControllerState {
         let peers = config.peers.clone();
         let result = Self {
             mode: IngestMode::Idle,
+            status: IngestStatus::Uninitialized,
             next_block_index: 0, // this is set when the server activates, based on DB's
             pubkey_expiry_window: config.pubkey_expiry_window,
             ingest_invocation_id: None,
@@ -104,6 +125,35 @@ impl IngestControllerState {
     /// In this mode, we are consuming blocks, and publishing fog reports
     pub fn is_active(&self) -> bool {
         self.mode == IngestMode::Active
+    }
+
+    /// Move the server to the initialized status
+    /// This is allowed from any mode.
+    pub fn set_initialized(&mut self) {
+        match self.status {
+            IngestStatus::Full => {
+                log::info!(self.logger, "Server was already initialized");
+            }
+            IngestStatus::Uninitialized | IngestStatus::Partial => {
+                log::info!(
+                    self.logger,
+                    "Server moved to initialized from {}",
+                    self.status
+                );
+            }
+        }
+        self.set_status(IngestStatus::Full);
+    }
+
+    /// Move the server to the partially initialized status
+    /// This is allowed from any mode.
+    pub fn set_partially_initialized(&mut self) {
+        log::warn!(
+            self.logger,
+            "Server was {}, moving to partially initialized",
+            self.status
+        );
+        self.set_status(IngestStatus::Partial);
     }
 
     /// Move the server to the active mode.
@@ -259,6 +309,19 @@ impl IngestControllerState {
             mode
         );
         self.mode = mode;
+
+        self.update_metrics()
+    }
+
+    /// Sets the current status and update relevant metrics.
+    fn set_status(&mut self, status: IngestStatus) {
+        log::info!(
+            self.logger,
+            "Status switching from {:?} to {:?}",
+            self.status,
+            status
+        );
+        self.status = status;
 
         self.update_metrics()
     }
