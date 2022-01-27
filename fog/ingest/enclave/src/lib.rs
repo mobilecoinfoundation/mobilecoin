@@ -45,6 +45,12 @@ pub enum NewEnclaveError {
     Init(EnclaveError),
 }
 
+impl From<EnclaveError> for NewEnclaveError {
+    fn from(src: EnclaveError) -> Self {
+        Self::Init(src)
+    }
+}
+
 /// A handle to an ingest enclave, on the untrusted side
 #[derive(Clone)]
 pub struct IngestSgxEnclave {
@@ -118,8 +124,7 @@ impl IngestSgxEnclave {
         };
 
         sgx_enclave
-            .enclave_init(params)
-            .map_err(NewEnclaveError::Init)?;
+            .enclave_init(params)?;
 
         Ok(sgx_enclave)
     }
