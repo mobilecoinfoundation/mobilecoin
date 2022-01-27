@@ -30,7 +30,7 @@ use mc_crypto_keys::DistinguishedEncoding;
 use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
-use mc_transaction_core::tx::{TokenId, TxHash};
+use mc_transaction_core::{tx::TxHash, TokenId};
 use mc_util_grpc::{
     AdminServer, AnonymousAuthenticator, Authenticator, BuildInfoService,
     ConnectionUriGrpcioServer, GetConfigJsonFn, HealthCheckStatus, HealthService,

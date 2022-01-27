@@ -28,8 +28,8 @@ use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, RistrettoPublic, 
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_transaction_core::{
     ring_signature::KeyImage,
-    tx::{TokenId, Tx, TxHash, TxOutMembershipProof},
-    Block, BlockContents, BlockSignature,
+    tx::{Tx, TxHash, TxOutMembershipProof},
+    Block, BlockContents, BlockSignature, TokenId,
 };
 use serde::{Deserialize, Serialize};
 

@@ -8,7 +8,7 @@ use displaydoc::Display;
 use mc_common::ResponderId;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_sgx_compat::sync::Mutex;
-use mc_transaction_core::{constants::MINIMUM_FEE, tx::TokenId};
+use mc_transaction_core::{constants::MINIMUM_FEE, TokenId};
 use serde::{Deserialize, Serialize};
 
 /// State managed by `FeeMap`.

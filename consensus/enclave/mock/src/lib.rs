@@ -26,9 +26,9 @@ use mc_transaction_core::{
     constants::MINIMUM_FEE,
     membership_proofs::compute_implied_merkle_root,
     ring_signature::KeyImage,
-    tx::{TokenId, Tx, TxOut, TxOutMembershipProof},
+    tx::{Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Block, BlockContents, BlockSignature, BLOCK_VERSION,
+    Block, BlockContents, BlockSignature, TokenId, BLOCK_VERSION,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;
