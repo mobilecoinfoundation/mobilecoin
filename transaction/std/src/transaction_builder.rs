@@ -11,13 +11,13 @@ use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
-    constants::MINIMUM_FEE,
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::create_shared_secret,
     ring_signature::SignatureRctBulletproofs,
+    tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
-    CompressedCommitment, MemoContext, MemoPayload, NewMemoError,
+    CompressedCommitment, MemoContext, MemoPayload, NewMemoError, Token,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
@@ -87,7 +87,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             input_credentials: Vec::new(),
             outputs_and_shared_secrets: Vec::new(),
             tombstone_block: u64::max_value(),
-            fee: MINIMUM_FEE,
+            fee: Mob::MINIMUM_FEE,
             fog_resolver,
             fog_tombstone_block_limit: u64::max_value(),
             memo_builder: Some(memo_builder),
@@ -597,7 +597,7 @@ pub mod transaction_builder_tests {
         transaction_builder.add_input(input_credentials);
         let (_txout, confirmation) = transaction_builder
             .add_output(
-                value - MINIMUM_FEE,
+                value - Mob::MINIMUM_FEE,
                 &recipient.default_subaddress(),
                 &mut rng,
             )
@@ -665,7 +665,7 @@ pub mod transaction_builder_tests {
         transaction_builder.add_input(input_credentials);
         let (_txout, confirmation) = transaction_builder
             .add_output(
-                value - MINIMUM_FEE,
+                value - Mob::MINIMUM_FEE,
                 &recipient.default_subaddress(),
                 &mut rng,
             )
@@ -743,7 +743,7 @@ pub mod transaction_builder_tests {
 
         let (_txout, _confirmation) = transaction_builder
             .add_output_with_fog_hint_address(
-                value - MINIMUM_FEE,
+                value - Mob::MINIMUM_FEE,
                 &recipient.default_subaddress(),
                 &fog_hint_address,
                 |_| Ok(Default::default()),
@@ -808,7 +808,7 @@ pub mod transaction_builder_tests {
             transaction_builder.add_input(input_credentials);
 
             let (_txout, _confirmation) = transaction_builder
-                .add_output(value - MINIMUM_FEE, &recipient_address, &mut rng)
+                .add_output(value - Mob::MINIMUM_FEE, &recipient_address, &mut rng)
                 .unwrap();
 
             let tx = transaction_builder.build(&mut rng).unwrap();
@@ -831,7 +831,7 @@ pub mod transaction_builder_tests {
             transaction_builder.add_input(input_credentials);
 
             let (_txout, _confirmation) = transaction_builder
-                .add_output(value - MINIMUM_FEE, &recipient_address, &mut rng)
+                .add_output(value - Mob::MINIMUM_FEE, &recipient_address, &mut rng)
                 .unwrap();
 
             let tx = transaction_builder.build(&mut rng).unwrap();
@@ -881,7 +881,7 @@ pub mod transaction_builder_tests {
 
             let (_txout, _confirmation) = transaction_builder
                 .add_output(
-                    value - change_value - MINIMUM_FEE,
+                    value - change_value - Mob::MINIMUM_FEE,
                     &recipient_address,
                     &mut rng,
                 )
@@ -936,7 +936,7 @@ pub mod transaction_builder_tests {
                     &RistrettoPublic::try_from(&output.public_key).unwrap(),
                 );
                 let (tx_out_value, _) = output.amount.get_value(&ss).unwrap();
-                assert_eq!(tx_out_value, value - change_value - MINIMUM_FEE);
+                assert_eq!(tx_out_value, value - change_value - Mob::MINIMUM_FEE);
 
                 let memo = output.e_memo.clone().unwrap().decrypt(&ss);
                 assert_eq!(memo, MemoPayload::default());
@@ -1028,7 +1028,7 @@ pub mod transaction_builder_tests {
 
             let (_txout, _confirmation) = transaction_builder
                 .add_output(
-                    value - change_value - MINIMUM_FEE,
+                    value - change_value - Mob::MINIMUM_FEE,
                     &recipient_address,
                     &mut rng,
                 )
@@ -1083,7 +1083,7 @@ pub mod transaction_builder_tests {
                     &RistrettoPublic::try_from(&output.public_key).unwrap(),
                 );
                 let (tx_out_value, _) = output.amount.get_value(&ss).unwrap();
-                assert_eq!(tx_out_value, value - change_value - MINIMUM_FEE);
+                assert_eq!(tx_out_value, value - change_value - Mob::MINIMUM_FEE);
 
                 let memo = output.e_memo.clone().unwrap().decrypt(&ss);
                 match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
@@ -1127,7 +1127,7 @@ pub mod transaction_builder_tests {
                             "lookup based on address hash failed"
                         );
                         assert_eq!(memo.get_num_recipients(), 1);
-                        assert_eq!(memo.get_fee(), MINIMUM_FEE);
+                        assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
                         assert_eq!(
                             memo.get_total_outlay(),
                             value - change_value,
@@ -1151,14 +1151,14 @@ pub mod transaction_builder_tests {
                 TransactionBuilder::new(fog_resolver.clone(), memo_builder);
 
             transaction_builder.set_tombstone_block(2000);
-            transaction_builder.set_fee(MINIMUM_FEE * 4).unwrap();
+            transaction_builder.set_fee(Mob::MINIMUM_FEE * 4).unwrap();
 
             let input_credentials = get_input_credentials(&sender, value, &fog_resolver, &mut rng);
             transaction_builder.add_input(input_credentials);
 
             let (_txout, _confirmation) = transaction_builder
                 .add_output(
-                    value - change_value - MINIMUM_FEE * 4,
+                    value - change_value - Mob::MINIMUM_FEE * 4,
                     &recipient_address,
                     &mut rng,
                 )
@@ -1213,7 +1213,7 @@ pub mod transaction_builder_tests {
                     &RistrettoPublic::try_from(&output.public_key).unwrap(),
                 );
                 let (tx_out_value, _) = output.amount.get_value(&ss).unwrap();
-                assert_eq!(tx_out_value, value - change_value - MINIMUM_FEE * 4);
+                assert_eq!(tx_out_value, value - change_value - Mob::MINIMUM_FEE * 4);
 
                 let memo = output.e_memo.clone().unwrap().decrypt(&ss);
                 match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
@@ -1257,7 +1257,7 @@ pub mod transaction_builder_tests {
                             "lookup based on address hash failed"
                         );
                         assert_eq!(memo.get_num_recipients(), 1);
-                        assert_eq!(memo.get_fee(), MINIMUM_FEE * 4);
+                        assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE * 4);
                         assert_eq!(
                             memo.get_total_outlay(),
                             value - change_value,
@@ -1288,7 +1288,7 @@ pub mod transaction_builder_tests {
 
             let (_txout, _confirmation) = transaction_builder
                 .add_output(
-                    value - change_value - MINIMUM_FEE,
+                    value - change_value - Mob::MINIMUM_FEE,
                     &recipient_address,
                     &mut rng,
                 )
@@ -1343,7 +1343,7 @@ pub mod transaction_builder_tests {
                     &RistrettoPublic::try_from(&output.public_key).unwrap(),
                 );
                 let (tx_out_value, _) = output.amount.get_value(&ss).unwrap();
-                assert_eq!(tx_out_value, value - change_value - MINIMUM_FEE);
+                assert_eq!(tx_out_value, value - change_value - Mob::MINIMUM_FEE);
 
                 let memo = output.e_memo.clone().unwrap().decrypt(&ss);
                 match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
@@ -1388,7 +1388,7 @@ pub mod transaction_builder_tests {
                             "lookup based on address hash failed"
                         );
                         assert_eq!(memo.get_num_recipients(), 1);
-                        assert_eq!(memo.get_fee(), MINIMUM_FEE);
+                        assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
                         assert_eq!(
                             memo.get_total_outlay(),
                             value - change_value,
@@ -1418,7 +1418,7 @@ pub mod transaction_builder_tests {
 
             let (_txout, _confirmation) = transaction_builder
                 .add_output(
-                    value - change_value - MINIMUM_FEE,
+                    value - change_value - Mob::MINIMUM_FEE,
                     &recipient_address,
                     &mut rng,
                 )
@@ -1473,7 +1473,7 @@ pub mod transaction_builder_tests {
                     &RistrettoPublic::try_from(&output.public_key).unwrap(),
                 );
                 let (tx_out_value, _) = output.amount.get_value(&ss).unwrap();
-                assert_eq!(tx_out_value, value - change_value - MINIMUM_FEE);
+                assert_eq!(tx_out_value, value - change_value - Mob::MINIMUM_FEE);
 
                 let memo = output.e_memo.clone().unwrap().decrypt(&ss);
                 match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
@@ -1536,7 +1536,7 @@ pub mod transaction_builder_tests {
 
             let (_txout, _confirmation) = transaction_builder
                 .add_output(
-                    value - change_value - MINIMUM_FEE,
+                    value - change_value - Mob::MINIMUM_FEE,
                     &recipient_address,
                     &mut rng,
                 )
@@ -1591,7 +1591,7 @@ pub mod transaction_builder_tests {
                     &RistrettoPublic::try_from(&output.public_key).unwrap(),
                 );
                 let (tx_out_value, _) = output.amount.get_value(&ss).unwrap();
-                assert_eq!(tx_out_value, value - change_value - MINIMUM_FEE);
+                assert_eq!(tx_out_value, value - change_value - Mob::MINIMUM_FEE);
 
                 let memo = output.e_memo.clone().unwrap().decrypt(&ss);
                 match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
@@ -1621,7 +1621,7 @@ pub mod transaction_builder_tests {
                             "lookup based on address hash failed"
                         );
                         assert_eq!(memo.get_num_recipients(), 1);
-                        assert_eq!(memo.get_fee(), MINIMUM_FEE);
+                        assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
                         assert_eq!(
                             memo.get_total_outlay(),
                             value - change_value,
@@ -1678,7 +1678,11 @@ pub mod transaction_builder_tests {
             transaction_builder.add_input(input_credentials);
 
             let (_txout, _confirmation) = transaction_builder
-                .add_output(value - change_value - MINIMUM_FEE, &bob_address, &mut rng)
+                .add_output(
+                    value - change_value - Mob::MINIMUM_FEE,
+                    &bob_address,
+                    &mut rng,
+                )
                 .unwrap();
 
             transaction_builder
@@ -1730,7 +1734,7 @@ pub mod transaction_builder_tests {
                     &RistrettoPublic::try_from(&output.public_key).unwrap(),
                 );
                 let (tx_out_value, _) = output.amount.get_value(&ss).unwrap();
-                assert_eq!(tx_out_value, value - change_value - MINIMUM_FEE);
+                assert_eq!(tx_out_value, value - change_value - Mob::MINIMUM_FEE);
 
                 let memo = output.e_memo.clone().unwrap().decrypt(&ss);
                 match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
@@ -1774,7 +1778,7 @@ pub mod transaction_builder_tests {
                             "lookup based on address hash failed"
                         );
                         assert_eq!(memo.get_num_recipients(), 1);
-                        assert_eq!(memo.get_fee(), MINIMUM_FEE);
+                        assert_eq!(memo.get_fee(), Mob::MINIMUM_FEE);
                         assert_eq!(
                             memo.get_total_outlay(),
                             value - change_value,
@@ -1830,7 +1834,7 @@ pub mod transaction_builder_tests {
 
             let (_txout, _confirmation) = transaction_builder
                 .add_output(
-                    value - change_value - MINIMUM_FEE,
+                    value - change_value - Mob::MINIMUM_FEE,
                     &recipient_address,
                     &mut rng,
                 )
@@ -1841,13 +1845,13 @@ pub mod transaction_builder_tests {
                 .unwrap();
 
             assert!(
-                transaction_builder.set_fee(MINIMUM_FEE * 4).is_err(),
+                transaction_builder.set_fee(Mob::MINIMUM_FEE * 4).is_err(),
                 "setting fee after change output should be rejected"
             );
 
             assert!(
                 transaction_builder
-                    .add_output(MINIMUM_FEE, &recipient_address, &mut rng,)
+                    .add_output(Mob::MINIMUM_FEE, &recipient_address, &mut rng,)
                     .is_err(),
                 "Adding another output after chnage output should be rejected"
             );

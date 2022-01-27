@@ -18,12 +18,13 @@ use mc_fog_report_connection::{Error as ReportConnError, GrpcFogReportConnection
 use mc_fog_report_validation::FogResolver;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
-    constants::MINIMUM_FEE,
     get_tx_out_shared_secret,
     onetime_keys::{recover_onetime_private_key, view_key_matches_output},
     ring_signature::KeyImage,
+    tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
+    Token,
 };
 use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_util_uri::FogUri;
@@ -132,7 +133,7 @@ fn main() {
             .filter_map(|conn| conn.fetch_block_info(empty()).ok())
             .map(|block_info| block_info.minimum_fee)
             .max()
-            .unwrap_or(MINIMUM_FEE),
+            .unwrap_or(Mob::MINIMUM_FEE),
         Ordering::SeqCst,
     );
 

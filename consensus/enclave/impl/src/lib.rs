@@ -53,9 +53,9 @@ use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
     ring_signature::{KeyImage, Scalar},
-    tx::{TokenId, Tx, TxOut, TxOutMembershipProof},
+    tx::{Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Amount, Block, BlockContents, BlockSignature, MemoPayload, BLOCK_VERSION,
+    Amount, Block, BlockContents, BlockSignature, MemoPayload, TokenId, BLOCK_VERSION,
 };
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};

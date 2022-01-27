@@ -9,10 +9,7 @@ use mc_attest_enclave_api::{
     ClientAuthRequest, ClientSession, EnclaveMessage, PeerAuthRequest, PeerAuthResponse,
     PeerSession,
 };
-use mc_transaction_core::{
-    tx::{TokenId, TxOutMembershipProof},
-    Block,
-};
+use mc_transaction_core::{tx::TxOutMembershipProof, Block, TokenId};
 use serde::{Deserialize, Serialize};
 
 /// An enumeration of API calls and their arguments for use across serialization

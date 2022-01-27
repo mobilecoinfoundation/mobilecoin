@@ -398,7 +398,8 @@ mod tests {
     use alloc::vec::Vec;
 
     use crate::{
-        constants::{MINIMUM_FEE, RING_SIZE},
+        constants::RING_SIZE,
+        tokens::Mob,
         tx::{Tx, TxOutMembershipHash, TxOutMembershipProof},
         validation::{
             error::TransactionValidationError,
@@ -410,6 +411,7 @@ mod tests {
                 validate_tombstone, validate_transaction_fee, MAX_TOMBSTONE_BLOCKS,
             },
         },
+        Token,
     };
 
     use crate::{
@@ -916,26 +918,28 @@ mod tests {
 
         {
             // Off by one fee gets rejected
-            let fee = MINIMUM_FEE - 1;
+            let fee = Mob::MINIMUM_FEE - 1;
             let (tx, _ledger) = create_test_tx_with_amount(INITIALIZE_LEDGER_AMOUNT - fee, fee);
             assert_eq!(
-                validate_transaction_fee(&tx, MINIMUM_FEE),
+                validate_transaction_fee(&tx, Mob::MINIMUM_FEE),
                 Err(TransactionValidationError::TxFeeError)
             );
         }
 
         {
             // Exact fee amount is okay
-            let (tx, _ledger) =
-                create_test_tx_with_amount(INITIALIZE_LEDGER_AMOUNT - MINIMUM_FEE, MINIMUM_FEE);
-            assert_eq!(validate_transaction_fee(&tx, MINIMUM_FEE), Ok(()));
+            let (tx, _ledger) = create_test_tx_with_amount(
+                INITIALIZE_LEDGER_AMOUNT - Mob::MINIMUM_FEE,
+                Mob::MINIMUM_FEE,
+            );
+            assert_eq!(validate_transaction_fee(&tx, Mob::MINIMUM_FEE), Ok(()));
         }
 
         {
             // Overpaying fees is okay
-            let fee = MINIMUM_FEE + 1;
+            let fee = Mob::MINIMUM_FEE + 1;
             let (tx, _ledger) = create_test_tx_with_amount(INITIALIZE_LEDGER_AMOUNT - fee, fee);
-            assert_eq!(validate_transaction_fee(&tx, MINIMUM_FEE), Ok(()));
+            assert_eq!(validate_transaction_fee(&tx, Mob::MINIMUM_FEE), Ok(()));
         }
     }
 

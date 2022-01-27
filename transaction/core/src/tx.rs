@@ -98,28 +98,6 @@ impl fmt::Debug for TxHash {
     }
 }
 
-/// Token Id, used to identify different assets on on the blockchain.
-#[derive(
-    Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize, Digestible,
-)]
-pub struct TokenId(u32);
-
-impl From<u32> for TokenId {
-    fn from(src: u32) -> Self {
-        Self(src)
-    }
-}
-
-impl fmt::Display for TokenId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl TokenId {
-    pub const MOB: Self = Self(0);
-}
-
 /// A CryptoNote-style transaction.
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Message, Digestible)]
 pub struct Tx {
@@ -574,14 +552,14 @@ derive_prost_message_from_repr_bytes!(TxOutConfirmationNumber);
 #[cfg(test)]
 mod tests {
     use crate::{
-        constants::MINIMUM_FEE,
         encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
         get_tx_out_shared_secret,
         memo::MemoPayload,
         ring_signature::SignatureRctBulletproofs,
         subaddress_matches_tx_out,
+        tokens::Mob,
         tx::{Tx, TxIn, TxOut, TxPrefix},
-        Amount,
+        Amount, Token,
     };
     use alloc::vec::Vec;
     use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
@@ -627,7 +605,7 @@ mod tests {
         let prefix = TxPrefix {
             inputs: vec![tx_in],
             outputs: vec![tx_out],
-            fee: MINIMUM_FEE,
+            fee: Mob::MINIMUM_FEE,
             tombstone_block: 23,
         };
 
@@ -685,7 +663,7 @@ mod tests {
         let prefix = TxPrefix {
             inputs: vec![tx_in],
             outputs: vec![tx_out],
-            fee: MINIMUM_FEE,
+            fee: Mob::MINIMUM_FEE,
             tombstone_block: 23,
         };
 
