@@ -222,7 +222,7 @@ where
                         break;
                     }
                     Err(err @ RestoreStateError::Connection(_)) => {
-                        log::error!(
+                        log::warn!(
                             logger,
                             "Retry to restore state on connection error: {}",
                             err
