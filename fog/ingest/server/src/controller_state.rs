@@ -304,7 +304,7 @@ impl IngestControllerState {
     fn set_mode(&mut self, mode: IngestMode) {
         log::info!(
             self.logger,
-            "Mode switching from {:?} to {:?}",
+            "Mode switching from {} to {}",
             self.mode,
             mode
         );
@@ -317,7 +317,7 @@ impl IngestControllerState {
     fn set_status(&mut self, status: IngestStatus) {
         log::info!(
             self.logger,
-            "Status switching from {:?} to {:?}",
+            "Status switching from {} to {}",
             self.status,
             status
         );
