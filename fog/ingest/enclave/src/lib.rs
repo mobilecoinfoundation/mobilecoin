@@ -119,7 +119,7 @@ impl IngestSgxEnclave {
 
         sgx_enclave
             .enclave_init(params)
-            .map_err(|err| NewEnclaveError::Init(err))?;
+            .map_err(NewEnclaveError::Init)?;
 
         Ok(sgx_enclave)
     }
