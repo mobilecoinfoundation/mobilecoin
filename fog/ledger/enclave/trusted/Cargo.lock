@@ -175,7 +175,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a4e37d16930f5459780f5621038b6382b9bb37c19016f39fb6b5808d831f174"
 dependencies = [
  "crypto-mac",
- "digest",
+ "digest 0.9.0",
  "opaque-debug",
 ]
 
@@ -203,7 +203,7 @@ dependencies = [
  "byteorder",
  "clear_on_drop",
  "curve25519-dalek",
- "digest",
+ "digest 0.9.0",
  "merlin",
  "rand_core",
  "serde",
@@ -347,6 +347,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ccaeedb56da03b09f598226e25e80088cb4cd25f316e6e4df7d695f0feeb1403"
 
 [[package]]
+name = "crypto-common"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "683d6b536309245c849479fba3da410962a43ed8e51c26b729208ec0ac2798d0"
+dependencies = [
+ "generic-array",
+]
+
+[[package]]
 name = "crypto-mac"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -372,7 +381,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4033478fbf70d6acf2655ac70da91ee65852d69daf7a67bf7a2f518fb47aafcf"
 dependencies = [
  "byteorder",
- "digest",
+ "digest 0.9.0",
  "packed_simd_2",
  "rand_core",
  "serde",
@@ -386,6 +395,16 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 dependencies = [
+ "generic-array",
+]
+
+[[package]]
+name = "digest"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b697d66081d42af4fba142d56918a3cb21dc8eb63372c6b85d14f44fb9c5979b"
+dependencies = [
+ "crypto-common",
  "generic-array",
 ]
 
@@ -542,7 +561,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe1149865383e4526a43aee8495f9a325f0b806c63ce6427d06336a590abbbc9"
 dependencies = [
- "digest",
+ "digest 0.9.0",
  "hmac",
 ]
 
@@ -553,7 +572,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "126888268dcc288495a26bf004b38c5fdbb31682f992c84ceb046a1f0fe38840"
 dependencies = [
  "crypto-mac",
- "digest",
+ "digest 0.9.0",
 ]
 
 [[package]]
@@ -714,7 +733,7 @@ version = "1.2.0-pre0"
 dependencies = [
  "aead",
  "cargo-emit",
- "digest",
+ "digest 0.9.0",
  "displaydoc",
  "mc-attest-core",
  "mc-attest-verifier",
@@ -735,7 +754,7 @@ dependencies = [
  "bitflags",
  "cargo-emit",
  "chrono",
- "digest",
+ "digest 0.10.1",
  "displaydoc",
  "hex_fmt",
  "mc-common",
@@ -826,7 +845,7 @@ name = "mc-crypto-ake-enclave"
 version = "1.2.0-pre0"
 dependencies = [
  "aes-gcm",
- "digest",
+ "digest 0.9.0",
  "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-enclave-api",
@@ -847,7 +866,7 @@ version = "1.2.0-pre0"
 dependencies = [
  "aead",
  "blake2",
- "digest",
+ "digest 0.9.0",
  "displaydoc",
  "hkdf",
  "mc-crypto-keys",
@@ -891,7 +910,7 @@ name = "mc-crypto-hashes"
 version = "1.2.0-pre0"
 dependencies = [
  "blake2",
- "digest",
+ "digest 0.9.0",
  "mc-crypto-digestible",
 ]
 
@@ -901,7 +920,7 @@ version = "1.2.0-pre0"
 dependencies = [
  "binascii",
  "curve25519-dalek",
- "digest",
+ "digest 0.9.0",
  "displaydoc",
  "ed25519",
  "ed25519-dalek",
@@ -927,7 +946,7 @@ version = "1.2.0-pre0"
 dependencies = [
  "aead",
  "aes-gcm",
- "digest",
+ "digest 0.9.0",
  "displaydoc",
  "generic-array",
  "hkdf",
@@ -1673,7 +1692,7 @@ dependencies = [
  "block-buffer",
  "cfg-if 1.0.0",
  "cpufeatures",
- "digest",
+ "digest 0.9.0",
  "opaque-debug",
 ]
 
@@ -1684,7 +1703,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f81199417d4e5de3f04b1e871023acea7389672c4135918f05aa9cbf2f2fa809"
 dependencies = [
  "block-buffer",
- "digest",
+ "digest 0.9.0",
  "keccak",
  "opaque-debug",
 ]
@@ -1701,7 +1720,7 @@ version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "02658e48d89f2bec991f9a78e69cfa4c316f8d6a6c4ec12fae1aeb263d486788"
 dependencies = [
- "digest",
+ "digest 0.9.0",
 ]
 
 [[package]]
