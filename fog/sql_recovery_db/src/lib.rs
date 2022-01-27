@@ -1215,7 +1215,7 @@ impl RecoveryDb for SqlRecoveryDb {
     ) -> Result<IngestInvocationId, Self::Error> {
         our_retry(self.get_retries(), || {
             self.new_ingest_invocation_retriable(
-                prev_ingest_invocation_id.clone(),
+                prev_ingest_invocation_id,
                 ingress_public_key,
                 egress_public_key,
                 start_block,
@@ -1340,7 +1340,7 @@ impl RecoveryDb for SqlRecoveryDb {
         block_index: u64,
     ) -> Result<Option<Vec<ETxOutRecord>>, Self::Error> {
         our_retry(self.get_retries(), || {
-            self.get_tx_outs_by_block_and_key_retriable(ingress_key.clone(), block_index)
+            self.get_tx_outs_by_block_and_key_retriable(ingress_key, block_index)
         })
     }
 
@@ -1352,7 +1352,7 @@ impl RecoveryDb for SqlRecoveryDb {
         block_index: u64,
     ) -> Result<Option<IngestInvocationId>, Self::Error> {
         our_retry(self.get_retries(), || {
-            self.get_invocation_id_by_block_and_key_retriable(ingress_key.clone(), block_index)
+            self.get_invocation_id_by_block_and_key_retriable(ingress_key, block_index)
         })
     }
 
