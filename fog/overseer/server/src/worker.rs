@@ -268,10 +268,11 @@ where
                         ingest_summary,
                     });
                 }
-                Err(_) => {
+                Err(err) => {
                     let error_message = format!(
-                        "Unable to retrieve ingest summary for node: {}",
-                        ingest_client.get_uri()
+                        "Unable to retrieve ingest summary for node ({}): {}",
+                        ingest_client.get_uri(),
+                        err
                     );
                     return Err(OverseerError::UnresponsiveNodeError(error_message));
                 }
