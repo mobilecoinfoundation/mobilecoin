@@ -3,7 +3,7 @@
 //! A helper object for maintaining a map of token id -> minimum fee.
 
 use alloc::{collections::BTreeMap, format, string::String};
-use core::convert::TryFrom;
+use core::{convert::TryFrom, iter::FromIterator};
 use displaydoc::Display;
 use mc_common::ResponderId;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -46,6 +46,12 @@ impl TryFrom<BTreeMap<TokenId, u64>> for FeeMap {
 }
 
 impl FeeMap {
+    /// Create a fee map from an unsorted iterator.
+    pub fn try_from_iter(iter: impl IntoIterator<Item = (TokenId, u64)>) -> Result<Self, Error> {
+        let map = BTreeMap::from_iter(iter);
+        Self::try_from(map)
+    }
+
     /// Append the fee map digest to an existing responder id, producing a
     /// responder id that is unique to the current fee configuration.
     pub fn responder_id(&self, responder_id: &ResponderId) -> ResponderId {
@@ -94,6 +100,11 @@ impl FeeMap {
         Ok(())
     }
 
+    /// Iterate over all entries in the fee map.
+    pub fn iter(&self) -> impl Iterator<Item = (&TokenId, &u64)> {
+        self.map.iter()
+    }
+
     /// Helper method for constructing the default fee map.
     fn default_map() -> BTreeMap<TokenId, u64> {
         let mut map = BTreeMap::new();
@@ -129,29 +140,14 @@ pub enum Error {
 mod test {
     use super::*;
     use alloc::{string::ToString, vec};
-    use core::iter::FromIterator;
 
     /// Different fee maps/responder ids should result in different responder
     /// ids.
     #[test]
     fn different_fee_maps_result_in_different_responder_ids() {
-        let fee_map1 = FeeMap::try_from(BTreeMap::from_iter(vec![
-            (Mob::ID, 100),
-            (TokenId::from(2), 200),
-        ]))
-        .unwrap();
-
-        let fee_map2 = FeeMap::try_from(BTreeMap::from_iter(vec![
-            (Mob::ID, 100),
-            (TokenId::from(2), 300),
-        ]))
-        .unwrap();
-
-        let fee_map3 = FeeMap::try_from(BTreeMap::from_iter(vec![
-            (Mob::ID, 100),
-            (TokenId::from(3), 300),
-        ]))
-        .unwrap();
+        let fee_map1 = FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(2), 2000)]).unwrap();
+        let fee_map2 = FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(2), 300)]).unwrap();
+        let fee_map3 = FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(30), 300)]).unwrap();
 
         let responder_id1 = ResponderId("1.2.3.4:5".to_string());
         let responder_id2 = ResponderId("3.1.3.3:7".to_string());

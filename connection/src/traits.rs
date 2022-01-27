@@ -6,12 +6,14 @@ use crate::error::{Result, RetryResult};
 use grpcio::Error as GrpcError;
 use mc_attest_core::VerificationReport;
 use mc_consensus_api::consensus_common::LastBlockInfoResponse;
-use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
+use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex, TokenId};
 use mc_util_serial::prost::alloc::fmt::Formatter;
 use mc_util_uri::ConnectionUri;
 use std::{
+    collections::BTreeMap,
     fmt::{Debug, Display, Result as FmtResult},
     hash::Hash,
+    iter::FromIterator,
     ops::Range,
     result::Result as StdResult,
     time::Duration,
@@ -56,20 +58,21 @@ pub trait AttestedConnection: Connection {
 }
 
 /// A structure meant to contain the results of a GetLastBlockInfo response
-#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct BlockInfo {
     /// The index of the last block (aka the block height)
     pub block_index: BlockIndex,
-    /// The minimum fee to use when contacting this system
-    pub minimum_fee: u64,
+
+    /// Minimum fee for each token id supported by the node
+    pub minimum_fees: BTreeMap<TokenId, u64>,
 }
 
 impl Display for BlockInfo {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(
             f,
-            "Block {} with fee {}",
-            self.block_index, self.minimum_fee
+            "Block {} with minimum fess {:?}",
+            self.block_index, self.minimum_fees
         )
     }
 }
@@ -78,7 +81,11 @@ impl From<LastBlockInfoResponse> for BlockInfo {
     fn from(src: LastBlockInfoResponse) -> Self {
         BlockInfo {
             block_index: src.index,
-            minimum_fee: src.minimum_fee,
+            minimum_fees: BTreeMap::from_iter(
+                src.minimum_fees
+                    .into_iter()
+                    .map(|(token_id, fee)| (TokenId::from(token_id), fee)),
+            ),
         }
     }
 }
