@@ -23,7 +23,9 @@ use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::{recover_onetime_private_key, view_key_matches_output},
     ring_signature::KeyImage,
+    tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
+    Token,
 };
 use mc_transaction_std::{InputCredentials, NoMemoBuilder, TransactionBuilder};
 use mc_util_uri::ConnectionUri;
@@ -134,11 +136,13 @@ fn main() {
             .filter_map(|conn| conn.fetch_block_info(empty()).ok())
             .filter_map(|block_info| {
                 // Cleanup the protobuf default fee
-                if block_info.minimum_fee == 0 {
-                    None
-                } else {
-                    Some(block_info.minimum_fee)
-                }
+                block_info.minimum_fees.get(&Mob::ID).and_then(|fee| {
+                    if fee == &0 {
+                        None
+                    } else {
+                        Some(*fee)
+                    }
+                })
             })
             .max()
             .unwrap_or(FALLBACK_FEE),

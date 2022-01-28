@@ -6,7 +6,7 @@ use crate::error::{Result, RetryResult};
 use grpcio::Error as GrpcError;
 use mc_attest_core::VerificationReport;
 use mc_consensus_api::consensus_common::LastBlockInfoResponse;
-use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex, TokenId};
+use mc_transaction_core::{tokens::Mob, tx::Tx, Block, BlockID, BlockIndex, Token, TokenId};
 use mc_util_serial::prost::alloc::fmt::Formatter;
 use mc_util_uri::ConnectionUri;
 use std::{
@@ -79,13 +79,20 @@ impl Display for BlockInfo {
 
 impl From<LastBlockInfoResponse> for BlockInfo {
     fn from(src: LastBlockInfoResponse) -> Self {
+        // Needed for nodes that do not yet return the fee map.
+        let minimum_fees = if src.minimum_fees.is_empty() {
+            BTreeMap::from_iter([(Mob::ID, src.mob_minimum_fee)])
+        } else {
+            BTreeMap::from_iter(
+                src.minimum_fees
+                    .iter()
+                    .map(|(token_id, fee)| (TokenId::from(*token_id), *fee)),
+            )
+        };
+
         BlockInfo {
             block_index: src.index,
-            minimum_fees: BTreeMap::from_iter(
-                src.minimum_fees
-                    .into_iter()
-                    .map(|(token_id, fee)| (TokenId::from(token_id), fee)),
-            ),
+            minimum_fees,
         }
     }
 }

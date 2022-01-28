@@ -20,8 +20,9 @@ use mc_transaction_core::{
     constants::{MAX_INPUTS, MILLIMOB_TO_PICOMOB, RING_SIZE},
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
+    tokens::Mob,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    BlockIndex,
+    BlockIndex, Token,
 };
 use mc_transaction_std::{ChangeDestination, InputCredentials, NoMemoBuilder, TransactionBuilder};
 use mc_util_uri::FogUri;
@@ -146,11 +147,13 @@ fn get_fee<T: BlockchainConnection + UserTxConnection + 'static>(
             .filter_map(|conn| conn.fetch_block_info(empty()).ok())
             .filter_map(|block_info| {
                 // Cleanup the protobuf default fee
-                if block_info.minimum_fee == 0 {
-                    None
-                } else {
-                    Some(block_info.minimum_fee)
-                }
+                block_info.minimum_fees.get(&Mob::ID).and_then(|fee| {
+                    if fee == &0 {
+                        None
+                    } else {
+                        Some(*fee)
+                    }
+                })
             })
             .max()
             .unwrap_or(FALLBACK_FEE)

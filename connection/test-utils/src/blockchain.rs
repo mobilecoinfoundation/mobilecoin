@@ -11,8 +11,10 @@ use mc_transaction_core::{tokens::Mob, tx::Tx, Block, BlockID, BlockIndex, Token
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{
     cmp::{min, Ordering},
+    collections::BTreeMap,
     fmt::{Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
+    iter::FromIterator,
     ops::Range,
     thread,
     time::Duration,
@@ -116,7 +118,7 @@ impl<L: Ledger + Sync> BlockchainConnection for MockBlockchainConnection<L> {
     fn fetch_block_info(&mut self) -> ConnectionResult<BlockInfo> {
         Ok(BlockInfo {
             block_index: self.ledger.num_blocks().unwrap() - 1,
-            minimum_fee: Mob::MINIMUM_FEE,
+            minimum_fees: BTreeMap::from_iter([(Mob::ID, Mob::MINIMUM_FEE)]),
         })
     }
 }

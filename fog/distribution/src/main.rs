@@ -131,7 +131,16 @@ fn main() {
         get_conns(&config, &logger)
             .par_iter()
             .filter_map(|conn| conn.fetch_block_info(empty()).ok())
-            .map(|block_info| block_info.minimum_fee)
+            .filter_map(|block_info| {
+                // Cleanup the protobuf default fee
+                block_info.minimum_fees.get(&Mob::ID).and_then(|fee| {
+                    if fee == &0 {
+                        None
+                    } else {
+                        Some(*fee)
+                    }
+                })
+            })
             .max()
             .unwrap_or(Mob::MINIMUM_FEE),
         Ordering::SeqCst,
