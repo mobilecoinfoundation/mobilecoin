@@ -23,7 +23,7 @@ version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "922b33332f54fc0ad13fa3e514601e8d30fb54e1f3eadc36643f6526db645621"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -68,7 +68,7 @@ version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e05c92d086290f52938013f6242ac62bf7d401fab8ad36798a609faa65c3fd2c"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "subtle 2.4.1",
 ]
 
@@ -79,7 +79,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42131cad0df1f867cc8c693912fe2ba04c67f29be3378c951dac62c80554301f"
 dependencies = [
  "aligned-array",
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -377,7 +377,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4152116fd6e9dadb291ae18fc1ec3575ed6d84c29642d97890f4b4a3417297e4"
 dependencies = [
  "block-padding 0.2.1",
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -629,7 +629,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ee52072ec15386f770805afd189a01c8841be8696bed250fa2f13c4c0d6dfb7"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -930,7 +930,7 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b584a330336237c1eecd3e94266efb216c56ed91225d634cb2991c5f3fd1aeab"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "subtle 2.4.1",
 ]
 
@@ -940,7 +940,7 @@ version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4857fd85a0c34b3c3297875b747c1e02e06b6a0ea32dd892d8192b9ce0813ea6"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "subtle 2.4.1",
 ]
 
@@ -950,7 +950,7 @@ version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1d1a86f49236c215f271d40892d5fc950490551400b02ef360692c29815c714"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "subtle 2.4.1",
 ]
 
@@ -1190,7 +1190,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
 ]
 
 [[package]]
@@ -1612,9 +1612,9 @@ dependencies = [
 
 [[package]]
 name = "generic-array"
-version = "0.14.4"
+version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "501466ecc8a30d1d3b7fc9229b122b2ce8ed6e9d9223f1138d4babb253e51817"
+checksum = "fd48d33ec7f05fbfa152300fdad764757cbded343c1aa1cff2fbaf4134851803"
 dependencies = [
  "serde",
  "typenum",
@@ -2581,7 +2581,7 @@ dependencies = [
  "curve25519-dalek",
  "datatest",
  "displaydoc",
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "mc-account-keys",
  "mc-attest-core",
  "mc-crypto-keys",
@@ -3106,7 +3106,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "curve25519-dalek",
  "ed25519-dalek",
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "mc-crypto-digestible-derive",
  "merlin",
  "x25519-dalek",
@@ -3194,7 +3194,7 @@ version = "1.2.0-pre0"
 dependencies = [
  "aes-gcm",
  "displaydoc",
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "mc-util-serial",
  "mc-util-test-helper",
  "rand_core 0.6.3",
@@ -3210,7 +3210,7 @@ dependencies = [
  "aes-gcm",
  "digest 0.9.0",
  "displaydoc",
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "hkdf",
  "mc-crypto-keys",
  "mc-util-from-random",
@@ -4632,7 +4632,7 @@ checksum = "75ec69b95958d2e9a32a586810490e84e84131576a03089150c866d8f5c5b2db"
 dependencies = [
  "aligned-array",
  "aligned-cmov",
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "mc-oblivious-traits",
  "rand_core 0.6.3",
  "siphasher",
@@ -4903,7 +4903,7 @@ dependencies = [
  "bulletproofs-og",
  "curve25519-dalek",
  "displaydoc",
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "hex_fmt",
  "hkdf",
  "lazy_static",
@@ -5216,7 +5216,7 @@ dependencies = [
 name = "mc-util-repr-bytes"
 version = "1.2.0-pre0"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "prost",
  "serde",
  "serde_cbor",
@@ -8060,7 +8060,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8326b2c654932e3e4f9196e69d08fdf7cfd718e1dc6f66b347e6024a0c961402"
 dependencies = [
- "generic-array 0.14.4",
+ "generic-array 0.14.5",
  "subtle 2.4.1",
 ]
 
