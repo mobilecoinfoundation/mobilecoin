@@ -51,7 +51,7 @@ Cluster Data. It would return a response like this:
       “responder_id”: …,
       “mode”: “ACTIVE|IDLE”,
       “next_block_index”: …,
-      “pubkey_expirty_window”: …,
+      “pubkey_expiry_window”: …,
       “ingress_pubkey” : …,
       “egress_pubkey”: …,
       “kex_rng_version” : …,
