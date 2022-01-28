@@ -17,7 +17,7 @@ use mc_fog_recovery_db_iface::{IngressPublicKeyRecord, IngressPublicKeyRecordFil
 use mc_fog_uri::FogIngestUri;
 use retry::{delay::Fixed, retry_with_index, OperationResult};
 use std::{
-    convert::{TryFrom, TryInto},
+    convert::TryFrom,
     iter::Iterator,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -144,7 +144,7 @@ where
 
     /// Try a request to Fog Ingest node this many times if you encounter an
     /// error.
-    const NUMBER_OF_TRIES: u64 = 3;
+    const NUMBER_OF_TRIES: usize = 3;
 
     pub fn start(
         ingest_clients: Vec<FogIngestGrpcClient>,
@@ -438,7 +438,7 @@ where
         inactive_outstanding_key: CompressedRistrettoPublic,
     ) -> Result<(), OverseerError> {
         let result = retry_with_index(
-            Fixed::from_millis(200).take(Self::NUMBER_OF_TRIES.try_into().unwrap()),
+            Fixed::from_millis(200).take(Self::NUMBER_OF_TRIES),
             |current_try| match self
                 .recovery_db
                 .report_lost_ingress_key(inactive_outstanding_key)
@@ -452,7 +452,7 @@ where
                     OperationResult::Ok(())
                 }
                 Err(err) => {
-                    let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try;
+                    let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try as usize;
                     let error_message = match number_of_remaining_tries {
                         0 => format!("Did not succeed in reporting lost ingress key {} within {} tries. Underlying error: {}", inactive_outstanding_key, Self::NUMBER_OF_TRIES, err),
                         _ => format!("The following key was not successfully reported as lost: {}. Will try {} more times. Underlying error: {}", inactive_outstanding_key, number_of_remaining_tries, err),
@@ -470,7 +470,7 @@ where
     fn set_new_key_on_a_node(&self) -> Result<usize, OverseerError> {
         for (i, ingest_client) in self.ingest_clients.iter().enumerate() {
             let result = retry_with_index(
-                Fixed::from_millis(200).take(Self::NUMBER_OF_TRIES.try_into().unwrap()),
+                Fixed::from_millis(200).take(Self::NUMBER_OF_TRIES),
                 |current_try| {
                     match ingest_client.new_keys() {
                         Ok(_) => {
@@ -483,7 +483,7 @@ where
                         }
                         // TODO: We'll need to alert Ops to take manual action at this point.
                         Err(err) => {
-                            let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try;
+                            let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try as usize;
                             let error_message = match number_of_remaining_tries {
                                 0 => format!("Did not succeed in setting a new key on node at index {}. Underlying error: {}", i, err),
                                 _ => format!("New keys were not successfully set on the ingest node at index {}. Will try {} more times. Underlying error: {}", i, number_of_remaining_tries, err),
@@ -507,7 +507,7 @@ where
     /// Tries to activate a node. The node is assumed to be idle.
     fn activate_a_node(&self, activated_node_index: usize) -> Result<(), OverseerError> {
         let result = retry_with_index(
-            Fixed::from_millis(200).take(Self::NUMBER_OF_TRIES.try_into().unwrap()),
+            Fixed::from_millis(200).take(Self::NUMBER_OF_TRIES),
             |current_try| {
                 match self.ingest_clients[activated_node_index].activate() {
                     Ok(_) => {
@@ -520,7 +520,7 @@ where
                     }
                     // TODO: Alert Ops to take manual action at this point.
                     Err(err) => {
-                        let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try;
+                        let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try as usize;
                         let error_message = match number_of_remaining_tries {
                             0 => format!(
                                 "Did not succeed in setting a new key on node at index {}. Underlying error: {}",
