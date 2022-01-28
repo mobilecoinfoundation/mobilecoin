@@ -483,7 +483,8 @@ where
                         }
                         // TODO: We'll need to alert Ops to take manual action at this point.
                         Err(err) => {
-                            let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try as usize;
+                            let number_of_remaining_tries =
+                                Self::NUMBER_OF_TRIES - current_try as usize;
                             let error_message = match number_of_remaining_tries {
                                 0 => format!("Did not succeed in setting a new key on node at index {}. Underlying error: {}", i, err),
                                 _ => format!("New keys were not successfully set on the ingest node at index {}. Will try {} more times. Underlying error: {}", i, number_of_remaining_tries, err),
@@ -520,7 +521,8 @@ where
                     }
                     // TODO: Alert Ops to take manual action at this point.
                     Err(err) => {
-                        let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try as usize;
+                        let number_of_remaining_tries =
+                            Self::NUMBER_OF_TRIES - current_try as usize;
                         let error_message = match number_of_remaining_tries {
                             0 => format!(
                                 "Did not succeed in setting a new key on node at index {}. Underlying error: {}",
