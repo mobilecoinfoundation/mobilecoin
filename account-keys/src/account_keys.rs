@@ -403,6 +403,11 @@ impl AccountKey {
         self.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX)
     }
 
+    /// The private spend key for the change subaddress.
+    pub fn change_subaddress_spend_private(&self) -> RistrettoPrivate {
+        self.subaddress_spend_private(CHANGE_SUBADDRESS_INDEX)
+    }
+
     /// The private spend key for the i^th subaddress.
     pub fn subaddress_spend_private(&self, index: u64) -> RistrettoPrivate {
         let a: &Scalar = self.view_private_key.as_ref();
@@ -424,6 +429,11 @@ impl AccountKey {
     /// The private view key for the default subaddress.
     pub fn default_subaddress_view_private(&self) -> RistrettoPrivate {
         self.subaddress_view_private(DEFAULT_SUBADDRESS_INDEX)
+    }
+
+    /// The private view key for the change subaddress.
+    pub fn change_subaddress_view_private(&self) -> RistrettoPrivate {
+        self.subaddress_view_private(CHANGE_SUBADDRESS_INDEX)
     }
 
     /// The private view key for the i^th subaddress.
