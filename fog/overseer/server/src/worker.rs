@@ -202,7 +202,7 @@ where
             let active_node_count = active_ingest_summary_node_mappings.len();
             match active_node_count {
                 0 => {
-                    log::error!(
+                    log::warn!(
                         self.logger,
                         "There are currently no active nodes in the Fog Ingest cluster. Initiating automatic failover.",
                     );
@@ -235,7 +235,7 @@ where
                                     .get_ingress_pubkey()
                             })
                             .collect();
-                    log::warn!(
+                    log::error!(
                         self.logger,
                         "There are multiple active nodes in the Fog Ingest cluster. Active ingress keys: {:?}",
                         active_node_ingress_pubkeys
