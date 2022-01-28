@@ -19,7 +19,7 @@ secrecy = "0.8"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 sha2 = { version = "0.9.8", default-features = false }
 subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
-zeroize = "1.4.3"
+zeroize = "1.5.1"
 
 [dev-dependencies]
 rand_hc = "0.3"
