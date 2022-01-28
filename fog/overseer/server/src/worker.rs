@@ -8,7 +8,6 @@
 //! HTTP Client -> Overseer Rocket Server -> OverseerService -> *OverseerWorker*
 
 use crate::error::OverseerError;
-
 use mc_api::external;
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
