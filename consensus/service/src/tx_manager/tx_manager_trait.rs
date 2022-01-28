@@ -4,6 +4,7 @@ use crate::tx_manager::TxManagerResult;
 use mc_attest_enclave_api::{EnclaveMessage, PeerSession};
 use mc_common::HashSet;
 use mc_consensus_enclave::{TxContext, WellFormedEncryptedTx};
+use mc_peers::ConsensusValue;
 use mc_transaction_core::{tx::TxHash, Block, BlockContents, BlockSignature};
 
 #[cfg(test)]
@@ -36,9 +37,10 @@ pub trait TxManager: Send {
 
     /// Forms a Block containing the transactions that correspond to the given
     /// hashes.
+    // TODO rename
     fn tx_hashes_to_block(
         &self,
-        tx_hashes: &[TxHash],
+        value: &[ConsensusValue],
         parent_block: &Block,
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)>;
 

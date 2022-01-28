@@ -11,7 +11,27 @@ use mc_crypto_keys::{Ed25519Pair, Ed25519Signature, KeyError, Signer, Verifier};
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{tx::TxHash, BlockID};
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, result::Result as StdResult};
+use std::{convert::TryFrom, hash::Hash, result::Result as StdResult};
+
+// TODO
+#[derive(
+    Clone,
+    Copy,
+    Display,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    Digestible,
+)]
+pub enum ConsensusValue {
+    /// TxHash({0})
+    TxHash(TxHash),
+}
 
 /// A consensus message holds the data that is exchanged by consensus service
 /// nodes as part of the process of reaching agreement on the contents of the
@@ -20,7 +40,7 @@ use std::{convert::TryFrom, result::Result as StdResult};
 pub struct ConsensusMsg {
     /// An SCP message, used to reach agreement on the set of values the next
     /// block will contain.
-    pub scp_msg: Msg<TxHash>,
+    pub scp_msg: Msg<ConsensusValue>,
 
     /// The block ID of the block the message is trying to append values to.
     pub prev_block_id: BlockID,
@@ -36,7 +56,7 @@ pub struct VerifiedConsensusMsg {
 }
 
 impl VerifiedConsensusMsg {
-    pub fn scp_msg(&self) -> &Msg<TxHash> {
+    pub fn scp_msg(&self) -> &Msg<ConsensusValue> {
         &self.inner.scp_msg
     }
 
@@ -119,7 +139,7 @@ impl From<SignatureError> for ConsensusMsgError {
 impl ConsensusMsg {
     pub fn from_scp_msg(
         ledger: &impl Ledger,
-        scp_msg: Msg<TxHash>,
+        scp_msg: Msg<ConsensusValue>,
         signer_key: &Ed25519Pair,
     ) -> StdResult<Self, ConsensusMsgError> {
         if scp_msg.slot_index == 0 {

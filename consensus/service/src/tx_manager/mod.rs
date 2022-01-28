@@ -16,6 +16,7 @@ use mc_common::{
 use mc_consensus_enclave::{
     ConsensusEnclave, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
+use mc_peers::ConsensusValue;
 use mc_transaction_core::{
     constants::MAX_TRANSACTIONS_PER_BLOCK,
     tx::{TxHash, TxOutMembershipProof},
@@ -263,9 +264,17 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
     /// * `parent_block` - The last block written to the ledger.
     fn tx_hashes_to_block(
         &self,
-        tx_hashes: &[TxHash],
+        values: &[ConsensusValue],
         parent_block: &Block,
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)> {
+        // TODO
+        let tx_hashes: Vec<TxHash> = values
+            .into_iter()
+            .filter_map(|value| match value {
+                ConsensusValue::TxHash(tx_hash) => Some(*tx_hash), // TODO how to avoid this copy
+            })
+            .collect();
+
         let cache = self.lock_cache();
         let cache_entries = Self::get_cache_entries(&cache, tx_hashes.iter())?;
 

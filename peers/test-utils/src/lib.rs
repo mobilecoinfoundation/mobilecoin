@@ -16,7 +16,9 @@ use mc_consensus_scp::{
 };
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::{test_utils::mock_ledger::MockLedger, Ledger};
-use mc_peers::{ConsensusConnection, ConsensusMsg, Error as PeerError, Result as PeerResult};
+use mc_peers::{
+    ConsensusConnection, ConsensusMsg, ConsensusValue, Error as PeerError, Result as PeerResult,
+};
 use mc_transaction_core::{tx::TxHash, Block, BlockID, BlockIndex};
 use mc_util_from_random::FromRandom;
 use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
@@ -228,14 +230,16 @@ pub fn create_consensus_msg(
     msg: &str,
     signer_key: &Ed25519Pair,
 ) -> ConsensusMsg {
-    let msg_hash = TxHash::try_from(Sha512Trunc256::digest(msg.as_bytes()).as_slice())
-        .expect("Could not hash message into TxHash");
+    let value = ConsensusValue::TxHash(
+        TxHash::try_from(Sha512Trunc256::digest(msg.as_bytes()).as_slice())
+            .expect("Could not hash message into TxHash"),
+    );
     let mut payload = NominatePayload {
         X: BTreeSet::default(),
         Y: BTreeSet::default(),
     };
 
-    payload.X.insert(msg_hash);
+    payload.X.insert(value);
     let topic = Topic::Nominate(payload);
     let scp_msg = Msg::new(sender_id, quorum_set, slot_index, topic);
     ConsensusMsg::from_scp_msg(ledger, scp_msg, signer_key)
