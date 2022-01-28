@@ -21,8 +21,9 @@ use mc_consensus_scp::{scp_log::LoggingScpNode, Node, QuorumSet, ScpNode};
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::{LedgerSyncService, ReqwestTransactionsFetcher};
-use mc_peers::{Broadcast, ConsensusConnection, ConsensusMsg, VerifiedConsensusMsg};
-use mc_transaction_core::tx::TxHash;
+use mc_peers::{
+    Broadcast, ConsensusConnection, ConsensusMsg, ConsensusValue, VerifiedConsensusMsg,
+};
 use mc_util_metered_channel::Sender;
 use std::{
     path::PathBuf,
@@ -94,15 +95,29 @@ impl ByzantineLedger {
         logger: Logger,
     ) -> Self {
         // TODO: this should be passed in as an argument.
-        let scp_node: Box<dyn ScpNode<TxHash>> = {
+        let scp_node: Box<dyn ScpNode<ConsensusValue>> = {
             let tx_manager_validate = tx_manager.clone();
             let tx_manager_combine = tx_manager.clone();
             let current_slot_index = ledger.num_blocks().unwrap();
             let node = Node::new(
                 node_id.clone(),
                 quorum_set,
-                Arc::new(move |tx_hash| tx_manager_validate.validate(tx_hash)),
-                Arc::new(move |tx_hashes| tx_manager_combine.combine(tx_hashes)),
+                Arc::new(move |scp_value| match scp_value {
+                    ConsensusValue::TxHash(tx_hash) => tx_manager_validate.validate(&tx_hash),
+                }),
+                Arc::new(move |scp_values| {
+                    // TODO try and reduce clones
+                    let tx_hashes = scp_values
+                        .into_iter()
+                        .filter_map(|scp_value| match scp_value {
+                            ConsensusValue::TxHash(tx_hash) => Some(*tx_hash),
+                        })
+                        .collect::<Vec<_>>();
+
+                    let tx_hashes = tx_manager_combine.combine(&tx_hashes[..])?;
+
+                    Ok(tx_hashes.into_iter().map(ConsensusValue::TxHash).collect())
+                }),
                 current_slot_index,
                 logger.clone(),
             );
@@ -172,7 +187,7 @@ impl ByzantineLedger {
     }
 
     /// Handle transactions submitted by clients.
-    pub fn push_values(&self, values: Vec<TxHash>, received_at: Option<Instant>) {
+    pub fn push_values(&self, values: Vec<ConsensusValue>, received_at: Option<Instant>) {
         self.task_sender
             .send(TaskMessage::Values(received_at, values))
             .expect("Could not send values");

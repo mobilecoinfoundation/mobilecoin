@@ -28,7 +28,7 @@ use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_p
 use mc_consensus_enclave::{ConsensusEnclave, Error as ConsensusEnclaveError};
 use mc_crypto_keys::DistinguishedEncoding;
 use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
-use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
+use mc_peers::{ConsensusValue, PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
 use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
@@ -641,9 +641,9 @@ impl<
                 None
             };
             byzantine_ledger.upgrade().and_then(|ledger| {
-                ledger
-                    .get()
-                    .map(|ledger| ledger.push_values(vec![tx_hash], timestamp))
+                ledger.get().map(|ledger| {
+                    ledger.push_values(vec![ConsensusValue::TxHash(tx_hash)], timestamp)
+                })
             });
         })
     }
