@@ -519,7 +519,13 @@ impl Client {
 
     /// Retrieve the currently configured minimum fee from the consensus service
     pub fn get_fee(&mut self) -> Result<u64> {
-        Ok(self.consensus_service_conn.fetch_block_info()?.minimum_fees.get(&Mob::ID).copied().unwrap_or(0))
+        Ok(self
+            .consensus_service_conn
+            .fetch_block_info()?
+            .minimum_fees
+            .get(&Mob::ID)
+            .copied()
+            .unwrap_or(0))
     }
 
     /// Get the public b58 address for this client
