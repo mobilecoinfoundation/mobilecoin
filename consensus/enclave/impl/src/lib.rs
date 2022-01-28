@@ -198,8 +198,6 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let key = (*lock).private_key();
         let sealed = IntelSealed::seal_raw(key.as_ref(), &[]).unwrap();
 
-        // This should never fail since we validated the fee map at the beginning of
-        // this method.
         *self.fee_map.lock().unwrap() = fee_map.clone();
 
         Ok((
