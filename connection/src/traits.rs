@@ -44,14 +44,20 @@ pub trait AttestedConnection: Connection {
         func: impl FnOnce(&mut Self) -> StdResult<T, GrpcError>,
     ) -> StdResult<T, Self::Error> {
         if !self.is_attested() {
+            println!("ATTESTING");
             let _verification_report = self.attest()?;
+            println!("ATTESTED");
         }
 
+        println!("FUNCING");
         let result = func(self);
 
         if let Err(GrpcError::RpcFailure(_rpc_status)) = &result {
+            println!("DEATTEST");
             self.deattest();
         }
+
+        println!("OK?");
 
         Ok(result?)
     }

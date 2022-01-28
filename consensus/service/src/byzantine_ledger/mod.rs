@@ -104,19 +104,27 @@ impl ByzantineLedger {
                 quorum_set,
                 Arc::new(move |scp_value| match scp_value {
                     ConsensusValue::TxHash(tx_hash) => tx_manager_validate.validate(&tx_hash),
+                    ConsensusValue::Mint(_) => Ok(()), // TODO
                 }),
                 Arc::new(move |scp_values| {
-                    // TODO try and reduce clones
-                    let tx_hashes = scp_values
-                        .into_iter()
-                        .filter_map(|scp_value| match scp_value {
-                            ConsensusValue::TxHash(tx_hash) => Some(*tx_hash),
-                        })
-                        .collect::<Vec<_>>();
+                    let mut tx_hashes = Vec::new();
+                    let mut mint_txs = Vec::new();
 
+                    // TODO avoid copies
+                    for value in scp_values.into_iter() {
+                        match value {
+                            ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
+                            ConsensusValue::Mint(mint_tx) => mint_txs.push(mint_tx.clone()),
+                        }
+                    }
                     let tx_hashes = tx_manager_combine.combine(&tx_hashes[..])?;
 
-                    Ok(tx_hashes.into_iter().map(ConsensusValue::TxHash).collect())
+                    mint_txs.sort();
+
+                    let tx_hashes_iter = tx_hashes.into_iter().map(ConsensusValue::TxHash);
+                    let mint_txs_iter = mint_txs.into_iter().map(ConsensusValue::Mint);
+
+                    Ok(tx_hashes_iter.chain(mint_txs_iter).collect())
                 }),
                 current_slot_index,
                 logger.clone(),

@@ -3028,7 +3028,6 @@ dependencies = [
  "mc-consensus-enclave",
  "mc-consensus-enclave-mock",
  "mc-consensus-scp",
- "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-ledger-db",
  "mc-ledger-sync",

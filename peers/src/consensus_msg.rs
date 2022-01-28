@@ -13,6 +13,15 @@ use mc_transaction_core::{tx::TxHash, BlockID};
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, hash::Hash, result::Result as StdResult};
 
+/// TODO
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Digestible,
+)]
+pub struct MintTx {
+    pub amount: u64,
+    pub tombstone_block: u64,
+}
+
 // TODO
 #[derive(
     Clone,
@@ -31,6 +40,9 @@ use std::{convert::TryFrom, hash::Hash, result::Result as StdResult};
 pub enum ConsensusValue {
     /// TxHash({0})
     TxHash(TxHash),
+
+    /// Mint({0:?})
+    Mint(MintTx),
 }
 
 /// A consensus message holds the data that is exchanged by consensus service

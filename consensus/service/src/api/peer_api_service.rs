@@ -27,7 +27,7 @@ use mc_consensus_api::{
 };
 use mc_consensus_enclave::{ConsensusEnclave, Error};
 use mc_ledger_db::Ledger;
-use mc_peers::TxProposeAAD;
+use mc_peers::{ConsensusValue, TxProposeAAD};
 use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
@@ -155,7 +155,7 @@ impl PeerApiService {
                 Ok(tx_hash) => {
                     // Submit for consideration in next SCP slot.
                     (*self.scp_client_value_sender)(
-                        tx_hash,
+                        ConsensusValue::TxHash(tx_hash),
                         origin_node.as_ref(),
                         relayed_by.as_ref(),
                     );
