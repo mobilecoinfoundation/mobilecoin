@@ -67,6 +67,17 @@ pub struct BlockInfo {
     pub minimum_fees: BTreeMap<TokenId, u64>,
 }
 
+impl BlockInfo {
+    /// Returns the minimum fee for a given token id, or None if no fee was
+    /// available OR if it was zero.
+    pub fn minimum_fee_or_none(&self, token_id: &TokenId) -> Option<u64> {
+        match self.minimum_fees.get(&token_id) {
+            None | Some(&0) => None,
+            Some(fee) => Some(*fee),
+        }
+    }
+}
+
 impl Display for BlockInfo {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(
