@@ -361,7 +361,6 @@ where
 
     /// Ask if the server is idle.
     /// This is a convenience wrapper used in tests.
-    #[cfg(test)]
     pub fn is_idle(&self) -> bool {
         self.get_ingest_summary().mode == IngestControllerMode::Idle
     }
@@ -369,7 +368,6 @@ where
     /// Set new keys.
     /// This is used in tests when it would be simpler than making an RPC
     /// client.
-    #[cfg(test)]
     pub fn set_new_keys(&self) -> Result<IngestSummary, IngestServiceError> {
         self.controller.new_keys()
     }
