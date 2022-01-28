@@ -35,7 +35,7 @@ pub use mc_transaction_core::{
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{Tx, TxOutMembershipProof},
-    BlockIndex,
+    BlockIndex, TokenId,
 };
 
 /// A status that a submitted transaction can have

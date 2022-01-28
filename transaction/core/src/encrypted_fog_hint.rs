@@ -25,15 +25,17 @@ use prost::{
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
-// The length of the encrypted fog hint field in the ledger.
-// Must be at least as large as mc_crypto_box::VersionedCryptoBox::FooterSize.
-// Footersize = 50, + 32 for one curve point, + 2 bytes of magic / padding space
-// for future needs
+/// The length of the encrypted fog hint field in the ledger.
+/// Must be at least as large as mc_crypto_box::VersionedCryptoBox::FooterSize.
+/// Footersize = 50, + 32 for one curve point, + 2 bytes of magic / padding
+/// space for future needs
 pub type EncryptedFogHintSize = U84;
+/// Length of encrypted fog hint as a usize
 pub const ENCRYPTED_FOG_HINT_LEN: usize = EncryptedFogHintSize::USIZE;
 
 type Bytes = GenericArray<u8, EncryptedFogHintSize>;
 
+/// An encrypted fog hint payload in the ledger
 #[derive(
     Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Serialize, Deserialize, Default, Digestible,
 )]
@@ -85,12 +87,15 @@ impl<'bytes> TryFrom<&'bytes [u8]> for EncryptedFogHint {
 }
 
 impl EncryptedFogHint {
+    /// Create a new encrypted fog hint from byte array
     #[inline]
     pub fn new(a: &[u8; ENCRYPTED_FOG_HINT_LEN]) -> Self {
         Self {
             bytes: GenericArray::clone_from_slice(&a[..]),
         }
     }
+
+    /// Convert to byte array
     #[inline]
     pub fn to_bytes(&self) -> [u8; ENCRYPTED_FOG_HINT_LEN] {
         let mut result = [0u8; ENCRYPTED_FOG_HINT_LEN];

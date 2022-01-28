@@ -1,4 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Generates a bootstrapped ledger for testing purposes
+
+#![deny(missing_docs)]
 
 use mc_account_keys::PublicAddress;
 use mc_common::logger::{log, Logger};
@@ -9,7 +13,7 @@ use mc_transaction_core::{
     encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
     ring_signature::KeyImage,
     tx::TxOut,
-    Block, BlockContents, BlockVersion,
+    AmountData, Block, BlockContents, BlockVersion,
 };
 use mc_util_from_random::FromRandom;
 use rand::{RngCore, SeedableRng};
@@ -31,7 +35,10 @@ const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
 /// * `num_blocks` - Number of blocks that will be created.
 /// * `key_images_per_block` - Number of randomly generated key images per
 ///   block.
-/// * `hint_text` - A string to be hashed into the hints for the outputs
+/// * `hint_text` - A string to be used as the hints for the outputs, as an
+///   easter egg
+/// * `max_token_id` - The maximum token id value to bootstrap a supply for. All
+///   token ids will have the same bootstrapped supply.
 ///
 /// This will panic if it attempts to distribute the total value of mobilecoin
 /// into fewer than 16 outputs.
@@ -43,6 +50,7 @@ pub fn bootstrap_ledger(
     key_images_per_block: usize,
     seed: Option<[u8; 32]>,
     hint_text: Option<&str>,
+    max_token_id: u32,
     logger: Logger,
 ) {
     // Create the DB
@@ -50,7 +58,10 @@ pub fn bootstrap_ledger(
     LedgerDB::create(path).expect("Could not create ledger_db");
     let mut db = LedgerDB::open(path).expect("Could not open ledger_db");
 
-    let num_outputs: u64 = (recipients.len() * outputs_per_recipient_per_block * num_blocks) as u64;
+    let num_outputs: u64 = (recipients.len()
+        * outputs_per_recipient_per_block
+        * num_blocks
+        * (max_token_id as usize + 1)) as u64;
     assert!(num_outputs >= 16);
 
     let picomob_per_output: u64 = (TOTAL_MOB / num_outputs) * 1_000_000_000_000;
@@ -68,31 +79,45 @@ pub fn bootstrap_ledger(
 
     let mut rng: FixedRng = SeedableRng::from_seed(seed.unwrap_or([33u8; 32]));
 
+    let block_version = if max_token_id > 0 {
+        BlockVersion::THREE
+    } else {
+        BLOCK_VERSION
+    };
+
     for block_index in 0..num_blocks as u64 {
         log::info!(logger, "Creating block {} of {}.", block_index, num_blocks);
 
         let mut outputs: Vec<TxOut> = Vec::new();
         for recipient in recipients {
             for _i in 0..outputs_per_recipient_per_block {
-                outputs.push(create_output(
-                    recipient,
-                    picomob_per_output,
-                    &mut rng,
-                    hint_text,
-                    &logger,
-                ));
+                // Create outputs of each token id in round-robin
+                for token_id in 0..=max_token_id {
+                    let amount = AmountData {
+                        value: picomob_per_output,
+                        token_id: token_id.into(),
+                    };
+                    outputs.push(create_output(
+                        recipient, amount, &mut rng, hint_text, &logger,
+                    ));
+                }
             }
         }
 
-        let key_images: Vec<KeyImage> = (0..key_images_per_block)
-            .map(|_i| KeyImage::from(rng.next_u64()))
-            .collect();
+        // The origin block doesn't have any key images
+        let key_images: Vec<KeyImage> = if previous_block.is_some() {
+            (0..key_images_per_block)
+                .map(|_i| KeyImage::from(rng.next_u64()))
+                .collect()
+        } else {
+            Default::default()
+        };
 
         let block_contents = BlockContents::new(key_images, outputs.clone());
 
         let block = match previous_block {
             Some(parent) => {
-                Block::new_with_parent(BLOCK_VERSION, &parent, &Default::default(), &block_contents)
+                Block::new_with_parent(block_version, &parent, &Default::default(), &block_contents)
             }
             None => Block::new_origin_block(&outputs),
         };
@@ -119,7 +144,7 @@ pub fn bootstrap_ledger(
 
 fn create_output(
     recipient: &PublicAddress,
-    value: u64,
+    amount: AmountData,
     rng: &mut FixedRng,
     hint_slice: Option<&str>,
     logger: &Logger,
@@ -139,10 +164,14 @@ fn create_output(
         EncryptedFogHint::fake_onetime_hint(rng)
     };
 
-    let mut output = TxOut::new(value, recipient, &tx_private_key, hint).unwrap();
-    // At this point, we clear the e_memo field, because, historically the genesis
-    // block did not have memo fields, even though they are expected now.
-    output.e_memo = None;
+    let output = TxOut::new(
+        amount.value,
+        amount.token_id,
+        recipient,
+        &tx_private_key,
+        hint,
+    )
+    .unwrap();
     log::debug!(logger, "Creating output: {:?}", output);
     output
 }
@@ -152,6 +181,7 @@ mod tests {
     use super::*;
     use mc_account_keys::{AccountKey, RootIdentity};
     use mc_common::logger::test_with_logger;
+    use mc_transaction_core::{tokens::Mob, Token};
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test_with_logger]
@@ -159,13 +189,18 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([20u8; 32]);
         let mut fixed_rng: FixedRng = SeedableRng::from_seed([33u8; 32]);
 
+        let amount = AmountData {
+            value: 10,
+            token_id: Mob::ID,
+        };
+
         let account_key = AccountKey::from(&RootIdentity::from_random(&mut rng));
 
         // Case with short hint text
         let hint_slice = "Vaccine 90% effective";
         let output = create_output(
             &account_key.subaddress(0),
-            10,
+            amount.clone(),
             &mut fixed_rng,
             Some(hint_slice),
             &logger,
@@ -178,7 +213,7 @@ mod tests {
         let hint_slice = "Covid-19 Vaccine 90% Up to 90% Effective in Late-Stage Trials - LONDON — the University of Oxford added their vaccine candidate to a growing list of shots showing promising effectiveness against Covid-19 — setting in motion disparate regulatory and distribution tracks that executives and researchers hope will result in the start of widespread vaccinations by the end of the year.";
         let output = create_output(
             &account_key.subaddress(0),
-            10,
+            amount.clone(),
             &mut fixed_rng,
             Some(hint_slice),
             &logger,
@@ -192,7 +227,7 @@ mod tests {
         let hint_slice = "";
         let output = create_output(
             &account_key.subaddress(0),
-            10,
+            amount,
             &mut fixed_rng,
             Some(hint_slice),
             &logger,

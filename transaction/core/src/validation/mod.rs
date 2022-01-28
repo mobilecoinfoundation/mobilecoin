@@ -1,5 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+//! Validation routines for a MobileCoin transaction
+
 mod error;
 mod validate;
 

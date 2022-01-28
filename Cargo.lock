@@ -3291,6 +3291,7 @@ dependencies = [
  "mc-mobilecoind",
  "mc-transaction-core",
  "mc-transaction-std",
+ "mc-util-generate-sample-ledger",
  "mc-util-keyfile",
  "mc-util-uri",
  "rand 0.8.5",
@@ -4890,6 +4891,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "aes",
  "bulletproofs-og",
+ "crc",
  "curve25519-dalek",
  "displaydoc",
  "generic-array 0.14.5",
@@ -5066,7 +5068,7 @@ dependencies = [
  "rand 0.8.5",
  "rand_hc 0.3.1",
  "structopt",
- "tempdir",
+ "tempfile",
 ]
 
 [[package]]

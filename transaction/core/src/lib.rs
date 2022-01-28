@@ -1,7 +1,10 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+//! MobileCoin transaction data types, transaction construction and validation
+//! routines
+
 #![no_std]
-// #![deny(missing_docs)]
+#![deny(missing_docs)]
 
 extern crate alloc;
 
@@ -35,7 +38,7 @@ pub mod validation;
 #[cfg(test)]
 pub mod proptest_fixtures;
 
-pub use amount::{get_value_mask, Amount, AmountError, Commitment, CompressedCommitment};
+pub use amount::{Amount, AmountData, AmountError, Commitment, CompressedCommitment};
 pub use blockchain::*;
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
 pub use token::{tokens, Token, TokenId};

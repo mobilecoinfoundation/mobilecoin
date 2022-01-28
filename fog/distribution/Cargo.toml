@@ -21,7 +21,7 @@ mc-fog-ingest-enclave-measurement = { path = "../ingest/enclave/measurement" }
 mc-fog-report-connection = { path = "../../fog/report/connection" }
 mc-fog-report-validation = { path = "../../fog/report/validation" }
 mc-ledger-db = { path = "../../ledger/db" }
-mc-mobilecoind = { path = "../../mobilecoind" }
+mc-mobilecoind = { path = "../../mobilecoind" } # This is needed for PeersConfig
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-std = { path = "../../transaction/std" }
 mc-util-keyfile = { path = "../../util/keyfile" }
@@ -44,3 +44,4 @@ curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
+mc-util-generate-sample-ledger = { path = "../../util/generate-sample-ledger" }

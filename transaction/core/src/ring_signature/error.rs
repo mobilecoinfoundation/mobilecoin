@@ -1,8 +1,11 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+//! Errors which can occur in connection to ring signatures
+
 use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 
+/// An error which can occur in connection to a ring signature
 #[derive(
     Clone, Copy, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
 )]
@@ -48,6 +51,9 @@ pub enum Error {
 
     /// Invalid RangeProof
     RangeProofError,
+
+    /// TokenId is not allowed at this block version
+    TokenIdNotAllowed,
 }
 
 impl From<mc_util_repr_bytes::LengthMismatch> for Error {

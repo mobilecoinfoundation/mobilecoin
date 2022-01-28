@@ -28,6 +28,7 @@ impl From<&UnspentTxOut> for mc_mobilecoind_api::UnspentTxOut {
         dst.set_value(src.value);
         dst.set_attempted_spend_height(src.attempted_spend_height);
         dst.set_attempted_spend_tombstone(src.attempted_spend_tombstone);
+        dst.set_token_id(src.token_id);
 
         dst
     }
@@ -43,6 +44,7 @@ impl TryFrom<&mc_mobilecoind_api::UnspentTxOut> for UnspentTxOut {
         let value = src.value;
         let attempted_spend_height = src.attempted_spend_height;
         let attempted_spend_tombstone = src.attempted_spend_tombstone;
+        let token_id = src.token_id;
 
         Ok(Self {
             tx_out,
@@ -51,6 +53,7 @@ impl TryFrom<&mc_mobilecoind_api::UnspentTxOut> for UnspentTxOut {
             value,
             attempted_spend_height,
             attempted_spend_tombstone,
+            token_id,
         })
     }
 }
@@ -173,7 +176,9 @@ mod test {
     use super::*;
     use mc_crypto_keys::RistrettoPublic;
     use mc_ledger_db::Ledger;
-    use mc_transaction_core::{encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, Amount};
+    use mc_transaction_core::{
+        encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, tokens::Mob, Amount, AmountData, Token,
+    };
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey, BlockVersion,
     };
@@ -186,8 +191,12 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         // Rust -> Proto
+        let amount_data = AmountData {
+            value: 1u64 << 13,
+            token_id: Mob::ID,
+        };
         let tx_out = TxOut {
-            amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+            amount: Amount::new(amount_data, &RistrettoPublic::from_random(&mut rng)).unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
             e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
@@ -207,6 +216,7 @@ mod test {
             value,
             attempted_spend_height,
             attempted_spend_tombstone,
+            token_id: *Mob::ID,
         };
 
         let proto = mc_mobilecoind_api::UnspentTxOut::from(&rust);
@@ -272,8 +282,12 @@ mod test {
         };
 
         let utxo = {
+            let amount_data = AmountData {
+                value: 1u64 << 13,
+                token_id: Mob::ID,
+            };
             let tx_out = TxOut {
-                amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+                amount: Amount::new(amount_data, &RistrettoPublic::from_random(&mut rng)).unwrap(),
                 target_key: RistrettoPublic::from_random(&mut rng).into(),
                 public_key: RistrettoPublic::from_random(&mut rng).into(),
                 e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
@@ -293,6 +307,7 @@ mod test {
                 value,
                 attempted_spend_height,
                 attempted_spend_tombstone,
+                token_id: *Mob::ID,
             }
         };
 

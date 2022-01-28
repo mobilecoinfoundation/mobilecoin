@@ -266,4 +266,6 @@ message TxOutRecord {
     /// This exactly 66 bytes when present.
     /// This is omitted for TxOut's from before the upgrade that introduced memos.
     bytes tx_out_e_memo_data = 9;
+    /// The masked token id associated to the amount field in the TxOut that was recovered
+    bytes tx_out_amount_masked_token_id = 10;
 }

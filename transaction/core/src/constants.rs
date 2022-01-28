@@ -31,6 +31,6 @@ pub const MICROMOB_TO_PICOMOB: u64 = 1_000_000;
 pub const MILLIMOB_TO_PICOMOB: u64 = 1_000_000_000;
 
 lazy_static! {
-    // Blinding for the implicit fee outputs.
+    /// Blinding for the implicit fee outputs.
     pub static ref FEE_BLINDING: Scalar = Scalar::zero();
 }

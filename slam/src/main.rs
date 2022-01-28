@@ -25,7 +25,7 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
-    BlockVersion, Token,
+    AmountData, BlockVersion, Token,
 };
 use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_util_uri::ConnectionUri;
@@ -84,7 +84,7 @@ lazy_static! {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SpendableTxOut {
     pub tx_out: TxOut,
-    pub amount: u64,
+    pub amount: AmountData,
     from_account_key: AccountKey,
 }
 
@@ -195,24 +195,24 @@ fn main() {
 
             let public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
             let shared_secret = get_tx_out_shared_secret(account.view_private_key(), &public_key);
-            let (input_amount, _blinding_factor) = tx_out
+            let (amount, _blinding_factor) = tx_out
                 .amount
                 .get_value(&shared_secret)
                 .expect("Malformed amount");
 
             log::trace!(
                 logger,
-                "(account = {:?}) and (tx_index {:?}) = {}",
+                "(account = {:?}) and (tx_index {:?}) = {:?}",
                 account_index,
                 index,
-                input_amount,
+                amount,
             );
 
             // Push to queue
             spendable_txouts_sender
                 .send(SpendableTxOut {
                     tx_out: tx_out.clone(),
-                    amount: input_amount,
+                    amount,
                     from_account_key: account.clone(),
                 })
                 .expect("failed sending to spendable_txouts_sender");
@@ -327,22 +327,18 @@ fn main() {
                     let public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
                     let shared_secret =
                         get_tx_out_shared_secret(account.view_private_key(), &public_key);
-                    let (input_amount, _blinding_factor) = tx_out
+                    let (amount, _blinding_factor) = tx_out
                         .amount
                         .get_value(&shared_secret)
                         .expect("Malformed amount");
-                    log::trace!(
-                        logger,
-                        "amount of {} is {}",
-                        tx_out.public_key,
-                        input_amount
-                    );
+
+                    log::trace!(logger, "amount of {} is {:?}", tx_out.public_key, amount);
 
                     // Push to queue
                     spendable_txouts_sender
                         .send(SpendableTxOut {
                             tx_out: tx_out.clone(),
-                            amount: input_amount,
+                            amount,
                             from_account_key: account.clone(),
                         })
                         .expect("failed sending to spendable_txouts_sender");
@@ -501,9 +497,13 @@ fn build_tx(
     let block_version = BlockVersion::try_from(BLOCK_VERSION.load(Ordering::SeqCst))
         .expect("Unsupported block version");
 
+    // Use token id for first spendable tx out
+    let token_id = spendable_txouts.first().unwrap().amount.token_id;
+
     // Create tx_builder. No fog reports.
     let mut tx_builder = TransactionBuilder::new(
         block_version,
+        token_id,
         FogResolver::default(),
         EmptyMemoBuilder::default(),
     );
@@ -589,15 +589,17 @@ fn build_tx(
 
     // Add ouputs
     for (i, (utxo, _proof)) in utxos_with_proofs.iter().enumerate() {
-        let mut amount = utxo.amount;
-        // Use the first input to pay for the fee.
-        if i == 0 {
-            amount -= FEE.load(Ordering::SeqCst);
-        }
+        if utxo.amount.token_id == token_id {
+            let mut value = utxo.amount.value;
+            // Use the first input to pay for the fee.
+            if i == 0 {
+                value -= FEE.load(Ordering::SeqCst);
+            }
 
-        tx_builder
-            .add_output(amount, &to_account.default_subaddress(), &mut rng)
-            .expect("failed to add output");
+            tx_builder
+                .add_output(value, &to_account.default_subaddress(), &mut rng)
+                .expect("failed to add output");
+        }
     }
 
     // Set tombstone block.

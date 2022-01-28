@@ -384,7 +384,7 @@ fn match_tx_outs_into_utxos(
         let shared_secret =
             get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
 
-        let (value, _blinding) = tx_out
+        let (amount, _blinding) = tx_out
             .amount
             .get_value(&shared_secret)
             .expect("Malformed amount"); // TODO
@@ -401,9 +401,10 @@ fn match_tx_outs_into_utxos(
             tx_out: tx_out.clone(),
             subaddress_index: subaddress_id.index,
             key_image,
-            value,
+            value: amount.value,
             attempted_spend_height: 0,
             attempted_spend_tombstone: 0,
+            token_id: *amount.token_id,
         });
     }
 

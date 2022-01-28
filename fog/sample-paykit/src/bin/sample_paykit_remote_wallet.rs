@@ -17,6 +17,7 @@ use mc_fog_sample_paykit::{
     Client, ClientBuilder,
 };
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
+use mc_transaction_core::{tokens::Mob, Token};
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, send_result, ConnectionUriGrpcioServer,
 };
@@ -125,9 +126,12 @@ impl RemoteWalletService {
         )
         .build();
 
-        let (balance, block_count) = client
+        let (balances, block_count) = client
             .check_balance()
             .map_err(|err| rpc_internal_error("check_balance", err, &self.logger))?;
+
+        // conformance tests only does MOB right now
+        let balance = balances.get(&Mob::ID).cloned().unwrap_or_default();
 
         let mut state = self.state.lock().expect("mutex poisoned");
         let client_id = state.clients.len();
@@ -150,9 +154,11 @@ impl RemoteWalletService {
         let mut state = self.state.lock().expect("mutex poisoned");
         match state.clients.get_mut(request.client_id as usize) {
             Some(Some(client)) => {
-                let (balance, block_count) = client
+                let (balances, block_count) = client
                     .check_balance()
                     .map_err(|err| rpc_internal_error("check_balance", err, &self.logger))?;
+
+                let balance = balances.get(&Mob::ID).cloned().unwrap_or_default();
 
                 let response = BalanceCheckResponse {
                     client_id: request.client_id,

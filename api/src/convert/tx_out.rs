@@ -78,7 +78,9 @@ mod tests {
     use super::*;
     use generic_array::GenericArray;
     use mc_crypto_keys::RistrettoPublic;
-    use mc_transaction_core::{encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, Amount};
+    use mc_transaction_core::{
+        encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, tokens::Mob, Amount, AmountData, Token,
+    };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 
@@ -87,8 +89,12 @@ mod tests {
     fn test_tx_out_from_tx_out_stored() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
+        let amount_data = AmountData {
+            value: 1u64 << 13,
+            token_id: Mob::ID,
+        };
         let source = tx::TxOut {
-            amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+            amount: Amount::new(amount_data, &RistrettoPublic::from_random(&mut rng)).unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
             e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
@@ -106,8 +112,12 @@ mod tests {
     fn test_tx_out_from_tx_out_stored_with_memo() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
+        let amount_data = AmountData {
+            value: 1u64 << 13,
+            token_id: Mob::ID,
+        };
         let source = tx::TxOut {
-            amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+            amount: Amount::new(amount_data, &RistrettoPublic::from_random(&mut rng)).unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
             e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),

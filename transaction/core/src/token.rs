@@ -1,6 +1,8 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use core::{fmt, hash::Hash, ops::Deref};
+//! A new-type wrapper for representing TokenIds
+
+use core::{fmt, hash::Hash, num::ParseIntError, ops::Deref, str::FromStr};
 use mc_crypto_digestible::Digestible;
 use serde::{Deserialize, Serialize};
 
@@ -23,6 +25,7 @@ impl fmt::Display for TokenId {
 }
 
 impl TokenId {
+    /// Represents the MobileCoin token id for MOB token
     pub const MOB: Self = Self(0);
 }
 
@@ -31,6 +34,26 @@ impl Deref for TokenId {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl FromStr for TokenId {
+    type Err = ParseIntError;
+    fn from_str(src: &str) -> Result<Self, Self::Err> {
+        let src = u32::from_str(src)?;
+        Ok(TokenId(src))
+    }
+}
+
+impl PartialEq<u32> for TokenId {
+    fn eq(&self, other: &u32) -> bool {
+        self.0 == *other
+    }
+}
+
+impl PartialEq<TokenId> for u32 {
+    fn eq(&self, other: &TokenId) -> bool {
+        *self == other.0
     }
 }
 
@@ -43,6 +66,7 @@ pub trait Token {
     const MINIMUM_FEE: u64;
 }
 
+/// Exports structures which expose constants related to tokens.
 pub mod tokens {
     use super::*;
     use crate::constants::MICROMOB_TO_PICOMOB;
