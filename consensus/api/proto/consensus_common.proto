@@ -22,7 +22,7 @@ message LastBlockInfoResponse {
     uint64 index = 1;
 
     // Current MOB minimum fee (kept for backwards compatibility)
-    uint64 mob_minimum_fee = 2;
+    uint64 mob_minimum_fee = 2 [deprecated = true];
 
     // A map of token id -> minimum fee
     map<uint32, uint64> minimum_fees = 3;
