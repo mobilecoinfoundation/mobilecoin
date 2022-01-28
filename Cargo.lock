@@ -3412,6 +3412,7 @@ version = "1.2.0-pre0"
 dependencies = [
  "cargo-emit",
  "criterion",
+ "displaydoc",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-verifier",

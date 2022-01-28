@@ -252,12 +252,7 @@ impl IngestControllerState {
 
     /// Sets the current mode and update relevant metrics.
     fn set_mode(&mut self, mode: IngestMode) {
-        log::info!(
-            self.logger,
-            "Mode switching from {:?} to {:?}",
-            self.mode,
-            mode
-        );
+        log::info!(self.logger, "Mode switching from {} to {}", self.mode, mode);
         self.mode = mode;
 
         self.update_metrics()

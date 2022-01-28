@@ -30,6 +30,9 @@ mc-sgx-types = { path = "../../../sgx/types" }
 mc-sgx-urts = { path = "../../../sgx/urts" }
 mc-util-serial = { path = "../../../util/serial" }
 
+# third-party
+displaydoc = "0.2"
+
 [dev-dependencies]
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-rand = { path = "../../../crypto/rand" }
