@@ -24,7 +24,7 @@ use mc_sgx_urts::SgxEnclave;
 use mc_transaction_core::{
     tx::TxOutMembershipProof, Block, BlockContents, BlockSignature, TokenId,
 };
-use std::{collections::BTreeMap, path, result::Result as StdResult, sync::Arc};
+use std::{path, result::Result as StdResult, sync::Arc};
 
 /// The default filename of the consensus service's SGX enclave binary.
 pub const ENCLAVE_FILE: &str = "libconsensus-enclave.signed.so";
@@ -43,7 +43,7 @@ impl ConsensusServiceSgxEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-        minimum_fees: Option<BTreeMap<TokenId, u64>>,
+        fee_map: &FeeMap,
     ) -> (
         ConsensusServiceSgxEnclave,
         SealedBlockSigningKey,
@@ -70,7 +70,7 @@ impl ConsensusServiceSgxEnclave {
         };
 
         let (sealed_key, features) = sgx_enclave
-            .enclave_init(self_peer_id, self_client_id, sealed_key, minimum_fees)
+            .enclave_init(self_peer_id, self_client_id, sealed_key, fee_map)
             .expect("enclave_init failed");
 
         (sgx_enclave, sealed_key, features)
@@ -122,13 +122,13 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-        minimum_fees: Option<BTreeMap<TokenId, u64>>,
+        fee_map: &FeeMap,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::EnclaveInit(
             self_peer_id.clone(),
             self_client_id.clone(),
             sealed_key.clone(),
-            minimum_fees,
+            fee_map.clone(),
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

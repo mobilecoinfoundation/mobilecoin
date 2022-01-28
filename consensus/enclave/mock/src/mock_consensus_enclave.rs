@@ -8,7 +8,7 @@ use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, Verificati
 use mc_attest_enclave_api::*;
 use mc_common::ResponderId;
 use mc_consensus_enclave_api::{
-    ConsensusEnclave, FeePublicKey, LocallyEncryptedTx, Result as ConsensusEnclaveResult,
+    ConsensusEnclave, FeeMap, FeePublicKey, LocallyEncryptedTx, Result as ConsensusEnclaveResult,
     SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_keys::{Ed25519Public, X25519Public};
@@ -16,7 +16,6 @@ use mc_sgx_report_cache_api::{ReportableEnclave, Result as SgxReportResult};
 use mc_transaction_core::{
     tx::TxOutMembershipProof, Block, BlockContents, BlockSignature, TokenId,
 };
-use std::collections::BTreeMap;
 
 use mockall::*;
 
@@ -32,7 +31,7 @@ mock! {
             self_peer_id: &ResponderId,
             self_client_id: &ResponderId,
             sealed_key: &Option<SealedBlockSigningKey>,
-            minimum_fees: Option<BTreeMap<TokenId, u64>>,
+            fee_map: &FeeMap,
         ) -> ConsensusEnclaveResult<(SealedBlockSigningKey, Vec<String>)>;
 
         fn get_minimum_fee(&self, token_id: &TokenId) -> ConsensusEnclaveResult<Option<u64>>;
