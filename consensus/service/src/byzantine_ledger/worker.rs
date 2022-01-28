@@ -583,8 +583,12 @@ impl<
             self.tx_manager.remove_expired(index)
         };
 
+        let current_slot_index = self.current_slot_index;
         self.pending_values.retain(|value| match value {
             ConsensusValue::TxHash(tx_hash) => !purged_hashes.contains(tx_hash),
+
+            // TODO not tested
+            ConsensusValue::Mint(mint_tx) => mint_tx.tombstone_block >= current_slot_index,
         });
 
         // Drop pending values that are no longer considered valid.
@@ -640,6 +644,8 @@ impl<
                         Some(tx_hash)
                     }
                 }
+
+                ConsensusValue::Mint(_) => None,
             })
             .collect();
 

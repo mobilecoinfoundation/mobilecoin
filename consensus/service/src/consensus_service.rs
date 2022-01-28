@@ -30,7 +30,6 @@ use mc_crypto_keys::DistinguishedEncoding;
 use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
 use mc_peers::{ConsensusValue, PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
-use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
     AdminServer, AnonymousAuthenticator, Authenticator, BuildInfoService,
     ConnectionUriGrpcioServer, GetConfigJsonFn, HealthCheckStatus, HealthService,
@@ -96,7 +95,7 @@ pub struct IncomingConsensusMsg {
 /// - The NodeID that notified us about this transaction. (will be None for
 ///   values submitted by clients and not relayed by other nodes)
 pub type ProposeTxCallback =
-    Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>;
+    Arc<dyn Fn(ConsensusValue, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>;
 
 pub struct ConsensusService<
     E: ConsensusEnclave + Clone + Send + Sync + 'static,
@@ -601,36 +600,39 @@ impl<
             })
             .collect();
 
-        Arc::new(move |tx_hash, origin_node, relayed_from| {
+        Arc::new(move |scp_value, origin_node, relayed_from| {
             let origin_node = origin_node.unwrap_or(&local_node_id);
 
-            // Broadcast to peers.
-            //
-            // Nodes always relay transactions sent to them by clients to all their peers.
-            // As such, in mesh network configurations there is no need to relay
-            // transactions received from other peers since the originating node
-            // will already take care of sending the transaction to all
-            // of it's peers.
-            // However, in non-mesh configurations, network operators might want to
-            // selectively have incoming transactions from certain peers be
-            // relayed to other peers in order to improve consensus time.
-            if origin_node == &local_node_id || relay_from_nodes.contains(&origin_node.responder_id)
-            {
-                if let Some(encrypted_tx) = tx_manager.get_encrypted_tx(&tx_hash) {
-                    broadcaster
-                        .lock()
-                        .expect("lock poisoned")
-                        .broadcast_propose_tx_msg(
-                            &tx_hash,
-                            encrypted_tx,
-                            origin_node,
-                            relayed_from.unwrap_or(&local_node_id.responder_id),
-                        );
-                } else {
-                    // If a value was submitted to `scp_client_value_sender` that means it
-                    // should've found it's way into the cache. Suddenly not having it there
-                    // indicates something is broken, so for the time being we will panic.
-                    panic!("tx hash {} expected to be in cache but wasn't", tx_hash);
+            if let ConsensusValue::TxHash(tx_hash) = scp_value {
+                // Broadcast to peers.
+                //
+                // Nodes always relay transactions sent to them by clients to all their peers.
+                // As such, in mesh network configurations there is no need to relay
+                // transactions received from other peers since the originating node
+                // will already take care of sending the transaction to all
+                // of it's peers.
+                // However, in non-mesh configurations, network operators might want to
+                // selectively have incoming transactions from certain peers be
+                // relayed to other peers in order to improve consensus time.
+                if origin_node == &local_node_id
+                    || relay_from_nodes.contains(&origin_node.responder_id)
+                {
+                    if let Some(encrypted_tx) = tx_manager.get_encrypted_tx(&tx_hash) {
+                        broadcaster
+                            .lock()
+                            .expect("lock poisoned")
+                            .broadcast_propose_tx_msg(
+                                &tx_hash,
+                                encrypted_tx,
+                                origin_node,
+                                relayed_from.unwrap_or(&local_node_id.responder_id),
+                            );
+                    } else {
+                        // If a value was submitted to `scp_client_value_sender` that means it
+                        // should've found it's way into the cache. Suddenly not having it there
+                        // indicates something is broken, so for the time being we will panic.
+                        panic!("tx hash {} expected to be in cache but wasn't", tx_hash);
+                    }
                 }
             }
 
@@ -641,9 +643,9 @@ impl<
                 None
             };
             byzantine_ledger.upgrade().and_then(|ledger| {
-                ledger.get().map(|ledger| {
-                    ledger.push_values(vec![ConsensusValue::TxHash(tx_hash)], timestamp)
-                })
+                ledger
+                    .get()
+                    .map(|ledger| ledger.push_values(vec![scp_value], timestamp))
             });
         })
     }

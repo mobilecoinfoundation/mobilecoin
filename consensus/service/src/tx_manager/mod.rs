@@ -267,13 +267,16 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         values: &[ConsensusValue],
         parent_block: &Block,
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)> {
-        // TODO
-        let tx_hashes: Vec<TxHash> = values
-            .into_iter()
-            .filter_map(|value| match value {
-                ConsensusValue::TxHash(tx_hash) => Some(*tx_hash), // TODO how to avoid this copy
-            })
-            .collect();
+        let mut tx_hashes = Vec::new();
+        let mut mint_txs = Vec::new();
+
+        // TODO avoid copies
+        for value in values.into_iter() {
+            match value {
+                ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
+                ConsensusValue::Mint(mint_tx) => mint_txs.push(mint_tx.clone()),
+            }
+        }
 
         let cache = self.lock_cache();
         let cache_entries = Self::get_cache_entries(&cache, tx_hashes.iter())?;
@@ -295,6 +298,9 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         let (block, block_contents, mut signature) = self
             .enclave
             .form_block(parent_block, &encrypted_txs_with_proofs)?;
+
+        // TODO
+        log::info!(self.logger, "MINT TXS: {:?}", mint_txs);
 
         // The enclave cannot provide a timestamp, so this happens in untrusted.
         signature.set_signed_at(chrono::Utc::now().timestamp() as u64);

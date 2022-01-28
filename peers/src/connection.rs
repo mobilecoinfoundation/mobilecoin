@@ -347,7 +347,7 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> ConsensusConnection
     }
 
     fn fetch_latest_msg(&mut self) -> Result<Option<ConsensusMsg>> {
-        let response = self.log_attested_call("gte_latest_msg", |this| {
+        let response = self.log_attested_call("get_latest_msg", |this| {
             this.consensus_api_client.get_latest_msg(&Empty::new())
         })?;
         if response.get_payload().is_empty() {
