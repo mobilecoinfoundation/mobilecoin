@@ -4208,6 +4208,7 @@ version = "1.2.0-pre0"
 dependencies = [
  "dirs",
  "displaydoc",
+ "futures",
  "mc-api",
  "mc-common",
  "mc-ledger-db",
