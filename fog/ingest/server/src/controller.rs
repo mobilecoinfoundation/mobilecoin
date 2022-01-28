@@ -217,8 +217,6 @@ where
             loop {
                 match result.restore_state_from_summary(summary) {
                     Ok(_) => {
-                        let mut state = result.get_state();
-                        state.set_initialized();
                         break;
                     }
                     Err(err @ RestoreStateError::Connection(_)) => {
@@ -238,15 +236,10 @@ where
                     "Could not restore state from state file ({:?}), {:?}: {}. Starting in idle instead",
                     config.state_file, summary, err
                     );
-                        let mut state = result.get_state();
-                        state.set_partially_initialized();
                         break;
                     }
                 };
             }
-        } else {
-            let mut state = result.get_state();
-            state.set_initialized();
         }
 
         result.write_state_file();
