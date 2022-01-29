@@ -246,7 +246,14 @@ impl Builder {
 
         cargo_builder
             .target(ENCLAVE_TARGET_TRIPLE)
-            .add_rust_flags(&["-D", "warnings", "-C", &feature_buf]);
+            .add_rust_flags(&[
+                "-D",
+                "warnings",
+                "-C",
+                "target-cpu=skylake",
+                "-C",
+                &feature_buf,
+            ]);
 
         Ok(Self {
             cargo_builder,
