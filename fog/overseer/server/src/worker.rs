@@ -363,7 +363,7 @@ where
         let ingress_public_key_records: Vec<IngressPublicKeyRecord> =
             self.recovery_db.get_ingress_key_records(
                 /* start_block_at_least= */ 0,
-                outstanding_keys_filters,
+                &outstanding_keys_filters,
             )?;
 
         Ok(ingress_public_key_records
