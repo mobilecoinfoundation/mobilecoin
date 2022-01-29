@@ -176,7 +176,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         fee_map: &FeeMap,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
         // Inject the fee into the peer ResponderId.
-        let peer_self_id = self.fee_map.lock()?.responder_id(peer_self_id);
+        let peer_self_id = fee_map.responder_id(peer_self_id);
 
         // Init AKE.
         self.ake.init(peer_self_id, client_self_id.clone())?;
