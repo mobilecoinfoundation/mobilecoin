@@ -44,10 +44,10 @@ fn get_egress_key_count(ingest_summaries: &[IngestSummary]) -> i64 {
 }
 
 fn get_active_node_count(ingest_summaries: &[IngestSummary]) -> i64 {
-    let active_nodes: Vec<&IngestSummary> = ingest_summaries
+    ingest_summaries
         .iter()
         .filter(|ingest_summary| ingest_summary.get_mode() == IngestControllerMode::Active)
-        .collect();
-
-    active_nodes.len().try_into().unwrap()
+        .count()
+        .try_into()
+        .unwrap()
 }
