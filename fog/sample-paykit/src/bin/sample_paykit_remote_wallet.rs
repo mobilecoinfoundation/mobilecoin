@@ -5,7 +5,7 @@
 //! the sample paykit.
 
 use grpcio::{RpcContext, RpcStatus, UnarySink};
-use mc_account_keys::{AccountKey, RootEntropy, RootIdentity};
+use mc_account_keys::AccountKey;
 use mc_common::logger::{create_root_logger, log, Logger};
 use mc_fog_sample_paykit::{
     empty::Empty,
@@ -20,9 +20,10 @@ use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, send_result, ConnectionUriGrpcioServer,
 };
+use mc_util_keyfile::Slip10IdentityJson;
 use mc_util_uri::{ConsensusClientUri, Uri, UriScheme};
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     str::FromStr,
     sync::{Arc, Mutex},
     thread::sleep,
@@ -76,12 +77,16 @@ impl RemoteWalletService {
         &self,
         request: FreshBalanceCheckRequest,
     ) -> Result<BalanceCheckResponse, RpcStatus> {
-        let root_entropy = RootEntropy::try_from(&request.root_entropy[..])
-            .map_err(|err| rpc_invalid_arg_error("root_entropy", err, &self.logger))?;
+        let id = Slip10IdentityJson {
+            slip10_key: (&request.slip10_key[..])
+                .try_into()
+                .map_err(|err| rpc_invalid_arg_error("slip10 key", err, &self.logger))?,
+            ..Default::default()
+        };
 
-        let root_identity = RootIdentity::from(&root_entropy);
-
-        let account_key = AccountKey::from(&root_identity);
+        let account_key = AccountKey::try_from(&id).map_err(|err| {
+            rpc_invalid_arg_error("could not build account key", err, &self.logger)
+        })?;
 
         // Note: The balance check program is not supposed to submit anything to
         // consensus or talk to consensus, so this is just a dummy value

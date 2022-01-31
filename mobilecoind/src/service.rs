@@ -17,7 +17,7 @@ use crate::{
 use bip39::{Language, Mnemonic, MnemonicType};
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX};
-use mc_account_keys_slip10::Slip10KeyGenerator;
+use mc_account_keys_slip10::{Slip10Key, Slip10KeyGenerator};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -372,6 +372,30 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         root_entropy.copy_from_slice(request.get_root_entropy());
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
+
+        // Return response.
+        let mut response = mc_mobilecoind_api::GetAccountKeyResponse::new();
+        response.set_account_key((&account_key).into());
+        Ok(response)
+    }
+
+    fn get_account_key_from_slip10_impl(
+        &mut self,
+        request: mc_mobilecoind_api::GetAccountKeyFromSlip10Request,
+    ) -> Result<mc_mobilecoind_api::GetAccountKeyResponse, RpcStatus> {
+        // Get the entropy.
+        if request.get_slip10_key().len() != 32 {
+            return Err(RpcStatus::with_message(
+                RpcStatusCode::INVALID_ARGUMENT,
+                "entropy".into(),
+            ));
+        }
+
+        // Use slip10_key to construct AccountKey.
+        let mut slip10_key = [0u8; 32];
+        slip10_key.copy_from_slice(request.get_slip10_key());
+        let key = Slip10Key::from(slip10_key);
+        let account_key = AccountKey::from(key);
 
         // Return response.
         let mut response = mc_mobilecoind_api::GetAccountKeyResponse::new();
@@ -1860,6 +1884,7 @@ build_api! {
     generate_root_entropy Empty GenerateRootEntropyResponse generate_root_entropy_impl,
     generate_mnemonic Empty GenerateMnemonicResponse generate_mnemonic_impl,
     get_account_key_from_root_entropy GetAccountKeyFromRootEntropyRequest GetAccountKeyResponse get_account_key_from_root_entropy_impl,
+    get_account_key_from_slip10 GetAccountKeyFromSlip10Request GetAccountKeyResponse get_account_key_from_slip10_impl,
     get_account_key_from_mnemonic GetAccountKeyFromMnemonicRequest GetAccountKeyResponse get_account_key_from_mnemonic_impl,
     get_public_address GetPublicAddressRequest GetPublicAddressResponse get_public_address_impl,
 
