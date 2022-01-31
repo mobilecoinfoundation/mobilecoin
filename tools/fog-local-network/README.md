@@ -23,7 +23,8 @@ In order to use it, the following steps are necessary.
 
 2) Generating a set of sample keys:
     ```
-    cargo run -p mc-util-keyfile --bin sample-keys --release --manifest-path ../Cargo.toml -- --num 1000 --fog-report-url 'insecure-fog://localhost:6200'
+    export FOG_AUTHORITY_ROOT=$(cargo run --bin mc-crypto-x509-test-vectors -- --type=chain --test-name=ok_rsa_head)
+    cargo run -p mc-util-keyfile --bin sample-keys --release --manifest-path ../Cargo.toml -- --fog-authority-root $FOG_AUTHORITY_ROOT --num 1000 --fog-report-url 'insecure-fog://localhost:6200'
     ```
 
     Some important things to note:
