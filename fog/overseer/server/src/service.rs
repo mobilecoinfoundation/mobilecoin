@@ -11,6 +11,7 @@ use crate::{error::OverseerError, worker::OverseerWorker};
 use mc_common::logger::{log, Logger};
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_uri::FogIngestUri;
+use prometheus::{self, Encoder};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -103,5 +104,18 @@ where
         };
 
         Ok(response_message.to_string())
+    }
+
+    pub fn get_metrics(&self) -> Result<String, String> {
+        log::trace!(self.logger, "Getting prometheus metrics");
+        let metric_families = prometheus::gather();
+        let encoder = prometheus::TextEncoder::new();
+        let mut buffer = vec![];
+        encoder.encode(&metric_families, &mut buffer).unwrap();
+
+        let response = String::from_utf8(buffer)
+            .map_err(|err| format!("Get prometheus metrics from_utf8 failed: {}", err))?;
+
+        Ok(response)
     }
 }
