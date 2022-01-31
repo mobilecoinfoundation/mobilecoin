@@ -353,6 +353,7 @@ impl Ledger for LedgerDB {
         }
 
         let root_merkle_hash = self.tx_out_store.get_root_merkle_hash(&db_transaction)?;
+
         let range = Range::new(
             0,
             // This duplicates the range calculation logic inside get_root_merkle_hash
