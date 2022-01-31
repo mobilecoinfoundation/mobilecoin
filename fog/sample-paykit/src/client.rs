@@ -522,9 +522,7 @@ impl Client {
         Ok(self
             .consensus_service_conn
             .fetch_block_info()?
-            .minimum_fees
-            .get(&Mob::ID)
-            .copied()
+            .minimum_fee_or_none(&Mob::ID)
             .unwrap_or(0))
     }
 

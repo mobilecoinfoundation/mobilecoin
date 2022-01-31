@@ -6,15 +6,14 @@ use mc_connection::{
     BlockInfo, BlockchainConnection, Connection, Error as ConnectionError,
     Result as ConnectionResult, UserTxConnection,
 };
+use mc_consensus_enclave_api::FeeMap;
 use mc_ledger_db::Ledger;
-use mc_transaction_core::{tokens::Mob, tx::Tx, Block, BlockID, BlockIndex, Token};
+use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{
     cmp::{min, Ordering},
-    collections::BTreeMap,
     fmt::{Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
-    iter::FromIterator,
     ops::Range,
     thread,
     time::Duration,
@@ -118,7 +117,7 @@ impl<L: Ledger + Sync> BlockchainConnection for MockBlockchainConnection<L> {
     fn fetch_block_info(&mut self) -> ConnectionResult<BlockInfo> {
         Ok(BlockInfo {
             block_index: self.ledger.num_blocks().unwrap() - 1,
-            minimum_fees: BTreeMap::from_iter([(Mob::ID, Mob::MINIMUM_FEE)]),
+            minimum_fees: FeeMap::default_map(),
         })
     }
 }

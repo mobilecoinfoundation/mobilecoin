@@ -106,7 +106,7 @@ impl FeeMap {
     }
 
     /// Helper method for constructing the default fee map.
-    fn default_map() -> BTreeMap<TokenId, u64> {
+    pub fn default_map() -> BTreeMap<TokenId, u64> {
         let mut map = BTreeMap::new();
         map.insert(Mob::ID, Mob::MINIMUM_FEE);
         map
