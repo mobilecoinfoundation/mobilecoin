@@ -1,12 +1,12 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use core::fmt;
+use core::{fmt, hash::Hash, ops::Deref};
 use mc_crypto_digestible::Digestible;
 use serde::{Deserialize, Serialize};
 
 /// Token Id, used to identify different assets on on the blockchain.
 #[derive(
-    Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize, Digestible,
+    Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize, Digestible, Hash,
 )]
 pub struct TokenId(u32);
 
@@ -24,6 +24,14 @@ impl fmt::Display for TokenId {
 
 impl TokenId {
     pub const MOB: Self = Self(0);
+}
+
+impl Deref for TokenId {
+    type Target = u32;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 /// A generic representation of a token.
