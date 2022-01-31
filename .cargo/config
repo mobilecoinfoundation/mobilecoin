@@ -1,5 +1,5 @@
 [build]
-rustflags = ["-D", "warnings", "-C", "target-cpu=native"]
+rustflags = ["-D", "warnings"]
 # NB: 'cfg(target_feature)' does not work in this context.
 # See https://github.com/rust-lang/cargo/issues/6858
 
