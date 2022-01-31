@@ -6,6 +6,7 @@
 pub mod uri;
 
 use crate::uri::{Destination, Uri};
+use futures::executor::block_on;
 use mc_api::{block_num_to_s3block_path, blockchain, merged_block_num_to_s3block_path};
 use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
@@ -116,15 +117,13 @@ impl S3BlockWriter {
             || {
                 let req = PutObjectRequest {
                     bucket: path.to_string(),
-                    key: String::from(filename),
+                    key: filename.to_string(),
                     body: Some(value.to_vec().into()),
                     acl: Some("public-read".to_string()),
                     ..Default::default()
                 };
 
-                self.s3_client
-                    .put_object(req)
-                    .sync()
+                block_on(self.s3_client.put_object(req))
                     .map(|_| retry::OperationResult::Ok(()))
                     .map_err(|err: RusotoError<PutObjectError>| {
                         log::warn!(
