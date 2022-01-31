@@ -24,8 +24,9 @@ use lmdb::{
 use mc_common::logger::global_log;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
+    membership_proofs::Range,
     ring_signature::KeyImage,
-    tx::{TxOut, TxOutMembershipProof},
+    tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockData, BlockID, BlockSignature, BLOCK_VERSION,
 };
 use mc_util_lmdb::MetadataStoreSettings;
@@ -340,6 +341,27 @@ impl Ledger for LedgerDB {
                     .get_merkle_proof_of_membership(*index, &db_transaction)
             })
             .collect()
+    }
+
+    /// Get the tx out root membership element from the tx out Merkle Tree.
+    fn get_root_tx_out_membership_element(&self) -> Result<TxOutMembershipElement, Error> {
+        let db_transaction = self.env.begin_ro_txn()?;
+        let num_txos = self.tx_out_store.num_tx_outs(&db_transaction)?;
+        let root_merkle_hash = self.tx_out_store.get_root_merkle_hash(&db_transaction)?;
+
+        if num_txos == 0 {
+            return Err(Error::NoOutputs);
+        }
+
+        let range = Range::new(
+            0,
+            // This duplicates the range calculation logic inside get_root_merkle_hash
+            num_txos
+                .checked_next_power_of_two()
+                .ok_or(Error::CapacityExceeded)?
+                - 1,
+        )?;
+        Ok(TxOutMembershipElement::new(range, root_merkle_hash))
     }
 }
 
@@ -720,7 +742,7 @@ mod ledger_db_test {
     use core::convert::TryFrom;
     use mc_account_keys::AccountKey;
     use mc_crypto_keys::RistrettoPrivate;
-    use mc_transaction_core::compute_block_id;
+    use mc_transaction_core::{compute_block_id, membership_proofs::compute_implied_merkle_root};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use rand_core::RngCore;
@@ -1642,6 +1664,53 @@ mod ledger_db_test {
             println!("block {} containing {:?}", block.index, block_contents);
             ledger_db.append_block(block, block_contents, None).unwrap();
             assert_eq!(block.cumulative_txo_count, ledger_db.num_txos().unwrap());
+        }
+    }
+
+    #[test]
+    // ledger_db.get_root_tx_out_membership_element returns the correct element
+    fn get_root_tx_out_membership_element_returns_correct_element() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut ledger_db = create_db();
+
+        let origin_account_key = AccountKey::random(&mut rng);
+        let (origin_block, origin_block_contents) =
+            get_origin_block_and_contents(&origin_account_key);
+        ledger_db
+            .append_block(&origin_block, &origin_block_contents, None)
+            .unwrap();
+
+        // Make random recipients
+        let accounts: Vec<AccountKey> = (0..20).map(|_i| AccountKey::random(&mut rng)).collect();
+        let recipient_pub_keys = accounts
+            .iter()
+            .map(|account| account.default_subaddress())
+            .collect::<Vec<_>>();
+
+        // Get some random blocks
+        let results: Vec<(Block, BlockContents)> = mc_transaction_core_test_utils::get_blocks(
+            &recipient_pub_keys[..],
+            20,
+            20,
+            35,
+            &origin_block,
+            &mut rng,
+        );
+
+        for (block, block_contents) in &results {
+            ledger_db.append_block(block, block_contents, None).unwrap();
+        }
+
+        // The root element shoudl be the same for all TxOuts in the ledger.
+        let root_element = ledger_db.get_root_tx_out_membership_element().unwrap();
+
+        for tx_out_index in 0..ledger_db.num_txos().unwrap() {
+            let proofs = ledger_db
+                .get_tx_out_proof_of_memberships(&[tx_out_index])
+                .unwrap();
+
+            let implied_root = compute_implied_merkle_root(&proofs[0]).unwrap();
+            assert_eq!(root_element, implied_root);
         }
     }
 
