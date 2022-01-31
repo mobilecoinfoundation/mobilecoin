@@ -192,10 +192,7 @@ where
                 .iter()
                 .map(|mapping| mapping.ingest_summary.clone())
                 .collect();
-            metrics::utils::set_metrics(
-                &self.logger,
-                ingest_summaries.as_slice(),
-            );
+            metrics::utils::set_metrics(&self.logger, ingest_summaries.as_slice());
 
             let active_ingest_summary_node_mappings: Vec<&IngestSummaryNodeMapping> =
                 ingest_summary_node_mappings

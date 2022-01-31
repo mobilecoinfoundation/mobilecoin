@@ -25,7 +25,7 @@ fn get_status(state: rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<Stri
     state.overseer_service.get_status()
 }
 
-/// Produces metrics for Prometheus. 
+/// Produces metrics for Prometheus.
 ///
 /// Meant to be called only by the Prometheus pull mechanism.
 #[get("/metrics")]
