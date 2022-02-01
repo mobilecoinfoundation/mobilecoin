@@ -346,13 +346,13 @@ impl Ledger for LedgerDB {
     /// Get the tx out root membership element from the tx out Merkle Tree.
     fn get_root_tx_out_membership_element(&self) -> Result<TxOutMembershipElement, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
-        let num_txos = self.tx_out_store.num_tx_outs(&db_transaction)?;
-        let root_merkle_hash = self.tx_out_store.get_root_merkle_hash(&db_transaction)?;
 
+        let num_txos = self.tx_out_store.num_tx_outs(&db_transaction)?;
         if num_txos == 0 {
             return Err(Error::NoOutputs);
         }
 
+        let root_merkle_hash = self.tx_out_store.get_root_merkle_hash(&db_transaction)?;
         let range = Range::new(
             0,
             // This duplicates the range calculation logic inside get_root_merkle_hash
