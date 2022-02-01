@@ -134,7 +134,7 @@ impl<TXM: TxManager> PendingValues<TXM> {
 mod tests {
     use super::*;
     use crate::tx_manager::{MockTxManager, TxManagerError};
-    use mc_transaction_core::validation::TransactionValidationError;
+    use mc_transaction_core::{tx::TxHash, validation::TransactionValidationError};
     use mockall::predicate::eq;
     use std::{collections::HashSet, iter::FromIterator};
 
@@ -164,17 +164,20 @@ mod tests {
             .return_const(Ok(()));
 
         let mut pending_values = PendingValues::new(Arc::new(tx_manager));
-        assert!(pending_values.push(values[0].clone(), None));
-        assert!(!pending_values.push(values[1].clone(), None));
-        assert!(pending_values.push(values[2].clone(), None));
+        assert!(pending_values.push(values[0].clone().into(), None));
+        assert!(!pending_values.push(values[1].clone().into(), None));
+        assert!(pending_values.push(values[2].clone().into(), None));
 
         assert_eq!(
             pending_values.pending_values,
-            vec![values[0].clone(), values[2].clone(),]
+            vec![values[0].clone().into(), values[2].clone().into()]
         );
         assert_eq!(
             pending_values.pending_values_map,
-            HashMap::from_iter(vec![(values[0].clone(), None), (values[2].clone(), None)])
+            HashMap::from_iter(vec![
+                (values[0].clone().into(), None),
+                (values[2].clone().into(), None)
+            ])
         );
     }
 
@@ -184,7 +187,11 @@ mod tests {
         let mut tx_manager = MockTxManager::new();
 
         // A few test values.
-        let values = vec![TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
+        let values: Vec<ConsensusValue> = vec![
+            TxHash([1u8; 32]).into(),
+            TxHash([2u8; 32]).into(),
+            TxHash([3u8; 32]).into(),
+        ];
 
         // All values are considered valid for this test.
         tx_manager.expect_validate().return_const(Ok(()));
@@ -215,34 +222,40 @@ mod tests {
         let mut tx_manager = MockTxManager::new();
 
         // A few test values.
-        let values = vec![TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
+        let tx_hashes = vec![TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
+
+        let values: Vec<ConsensusValue> = tx_hashes
+            .iter()
+            .cloned()
+            .map(|tx_hash| tx_hash.into())
+            .collect();
 
         // `validate` should be called one for each pending value.
         tx_manager
             .expect_validate()
-            .with(eq(values[0].clone()))
+            .with(eq(tx_hashes[0].clone()))
             .return_const(Ok(()));
         // This transaction has expired.
         tx_manager
             .expect_validate()
-            .with(eq(values[1].clone()))
+            .with(eq(tx_hashes[1].clone()))
             .return_const(Err(TxManagerError::TransactionValidation(
                 TransactionValidationError::TombstoneBlockExceeded,
             )));
         tx_manager
             .expect_validate()
-            .with(eq(values[2].clone()))
+            .with(eq(tx_hashes[2].clone()))
             .return_const(Ok(()));
 
-        // Create new PendingValues and forcefully shove the pending values into it in
-        // order to skip the validation call done by `push()`.
+        // Create new PendingValues and forcefully shove the pending tx_hashes into it
+        // in order to skip the validation call done by `push()`.
         let mut pending_values = PendingValues::new(Arc::new(tx_manager));
 
         pending_values.pending_values = values.clone();
         pending_values.pending_values_map = values
             .iter()
             .cloned()
-            .map(|tx_hash| (tx_hash, Some(Instant::now())))
+            .map(|value| (value, Some(Instant::now())))
             .collect();
 
         pending_values.clear_invalid_values();

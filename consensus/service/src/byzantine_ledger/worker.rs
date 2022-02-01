@@ -815,7 +815,7 @@ mod tests {
     use mc_crypto_keys::Ed25519Pair;
     use mc_ledger_db::{Ledger, MockLedger}; // Don't use test_utils::MockLedger.
     use mc_ledger_sync::{LedgerSyncError, MockLedgerSync, SCPNetworkState};
-    use mc_peers::{ConsensusMsg, MockBroadcast, VerifiedConsensusMsg};
+    use mc_peers::{ConsensusMsg, ConsensusValue, MockBroadcast, VerifiedConsensusMsg};
     use mc_peers_test_utils::MockPeerConnection;
     use mc_transaction_core::{tx::TxHash, validation::TransactionValidationError, Block};
     use mc_util_metered_channel::{Receiver, Sender};
@@ -844,7 +844,7 @@ mod tests {
         quorum_set: &QuorumSet,
         num_blocks: u64,
     ) -> (
-        MockScpNode<TxHash>,
+        MockScpNode<ConsensusValue>,
         MockLedger,
         MockLedgerSync<SCPNetworkState>,
         MockTxManager,
@@ -1249,7 +1249,10 @@ mod tests {
 
         for tx_hash in &tx_hashes {
             task_sender
-                .send(TaskMessage::Values(Some(Instant::now()), vec![*tx_hash]))
+                .send(TaskMessage::Values(
+                    Some(Instant::now()),
+                    vec![ConsensusValue::TxHash(*tx_hash)],
+                ))
                 .unwrap();
         }
         // Initially, pending_values should be empty.
@@ -1327,7 +1330,10 @@ mod tests {
         // Submit the transactions.
         for tx_hash in &tx_hashes {
             task_sender
-                .send(TaskMessage::Values(Some(Instant::now()), vec![*tx_hash]))
+                .send(TaskMessage::Values(
+                    Some(Instant::now()),
+                    vec![ConsensusValue::TxHash(*tx_hash)],
+                ))
                 .unwrap();
         }
 
@@ -1349,7 +1355,7 @@ mod tests {
         signer_key: &Ed25519Pair,
         ledger: &L,
     ) -> VerifiedConsensusMsg {
-        let msg: Msg<TxHash, NodeID> = Msg {
+        let msg: Msg<ConsensusValue, NodeID> = Msg {
             sender_id: sender_id.clone(),
             slot_index: 1,
             quorum_set: QuorumSet {
@@ -1411,7 +1417,9 @@ mod tests {
             .map(|i| TxHash([i as u8; 32]))
             .collect();
         for tx_hash in tx_hashes {
-            worker.pending_values.push(tx_hash, Some(Instant::now()));
+            worker
+                .pending_values
+                .push(tx_hash.into(), Some(Instant::now()));
         }
         worker.need_nominate = true;
 

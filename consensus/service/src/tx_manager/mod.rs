@@ -271,10 +271,10 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         let mut mint_txs = Vec::new();
 
         // TODO avoid copies
-        for value in values.into_iter() {
+        for value in values.iter() {
             match value {
                 ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
-                ConsensusValue::Mint(mint_tx) => mint_txs.push(mint_tx.clone()),
+                ConsensusValue::Mint(mint_tx) => mint_txs.push(*mint_tx),
             }
         }
 
@@ -377,7 +377,10 @@ mod tests {
     };
     use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
     use mc_ledger_db::Ledger;
-    use mc_transaction_core::validation::TransactionValidationError;
+    use mc_transaction_core::{
+        membership_proofs::Range, tx::TxOutMembershipElement,
+        validation::TransactionValidationError,
+    };
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
@@ -760,7 +763,11 @@ mod tests {
     #[test_with_logger]
     // Should return correct block when all transactions are in the cache.
     fn test_hashes_to_block_ok(logger: Logger) {
-        let tx_hashes = vec![TxHash([7u8; 32]), TxHash([44u8; 32]), TxHash([3u8; 32])];
+        let tx_hashes = vec![
+            TxHash([7u8; 32]).into(),
+            TxHash([44u8; 32]).into(),
+            TxHash([3u8; 32]).into(),
+        ];
         let parent_block = Block::new_origin_block(&vec![]);
 
         let mut mock_untrusted = MockUntrustedInterfaces::new();
@@ -774,6 +781,15 @@ mod tests {
             .expect_get_tx_out_proof_of_memberships()
             .times(tx_hashes.len())
             .return_const(Ok(highest_index_proofs));
+
+        // Should get root txout membership eklement once per block.
+        mock_untrusted
+            .expect_get_root_tx_out_membership_element()
+            .times(1)
+            .return_const(Ok(TxOutMembershipElement::new(
+                Range::new(0, 1).unwrap(),
+                [1; 32],
+            )));
 
         let mut mock_enclave = MockConsensusEnclave::new();
         let expected_block = Block::new_origin_block(&vec![]);
@@ -792,11 +808,16 @@ mod tests {
 
         // All transactions must be in the cache.
         for tx_hash in &tx_hashes {
-            let cache_entry = CacheEntry {
-                encrypted_tx: Default::default(),
-                context: Arc::new(Default::default()),
+            match tx_hash {
+                ConsensusValue::TxHash(tx_hash) => {
+                    let cache_entry = CacheEntry {
+                        encrypted_tx: Default::default(),
+                        context: Arc::new(Default::default()),
+                    };
+                    tx_manager.lock_cache().insert(*tx_hash, cache_entry);
+                }
+                _ => panic!("Should only have TxHash entries"),
             };
-            tx_manager.lock_cache().insert(*tx_hash, cache_entry);
         }
 
         match tx_manager.tx_hashes_to_block(&tx_hashes, &parent_block) {
@@ -820,21 +841,30 @@ mod tests {
             logger,
         );
 
-        let mut tx_hashes = vec![TxHash([7u8; 32]), TxHash([44u8; 32]), TxHash([3u8; 32])];
+        let mut tx_hashes = vec![
+            TxHash([7u8; 32]).into(),
+            TxHash([44u8; 32]).into(),
+            TxHash([3u8; 32]).into(),
+        ];
         let parent_block = Block::new_origin_block(&vec![]);
 
         // Add three transactions to the cache.
         for tx_hash in &tx_hashes {
-            let cache_entry = CacheEntry {
-                encrypted_tx: Default::default(),
-                context: Arc::new(Default::default()),
-            };
-            tx_manager.lock_cache().insert(*tx_hash, cache_entry);
+            match tx_hash {
+                ConsensusValue::TxHash(tx_hash) => {
+                    let cache_entry = CacheEntry {
+                        encrypted_tx: Default::default(),
+                        context: Arc::new(Default::default()),
+                    };
+                    tx_manager.lock_cache().insert(*tx_hash, cache_entry);
+                }
+                _ => panic!("Should only have TxHash entries"),
+            }
         }
 
         // This transaction is not in the cache.
         let not_in_cache = TxHash([66u8; 32]);
-        tx_hashes.insert(2, not_in_cache.clone());
+        tx_hashes.insert(2, ConsensusValue::TxHash(not_in_cache.clone()));
 
         match tx_manager.tx_hashes_to_block(&tx_hashes, &parent_block) {
             Ok((_block, _block_contents, _block_signature)) => {
@@ -946,7 +976,7 @@ mod tests {
 
         // Attempting to assemble a block with a non-existent hash should fail
         assert!(tx_manager
-            .tx_hashes_to_block(&[hash_tx_two, hash_tx_three], &parent_block)
+            .tx_hashes_to_block(&[hash_tx_two.into(), hash_tx_three.into()], &parent_block)
             .is_err());
 
         // Attempting to assemble a block with a duplicate transaction should fail.
@@ -967,7 +997,7 @@ mod tests {
         // should succeed.
         // TODO: Right now this relies on ConsensusServiceMockEnclave::form_block
         let (block, block_contents, _signature) = tx_manager
-            .tx_hashes_to_block(&[hash_tx_zero, hash_tx_one], &parent_block)
+            .tx_hashes_to_block(&[hash_tx_zero.into(), hash_tx_one.into()], &parent_block)
             .expect("failed assembling block");
         assert_eq!(
             client_tx_zero.prefix.outputs[0].public_key,

@@ -2,7 +2,7 @@
 
 use mc_consensus_enclave::{TxContext, WellFormedTxContext};
 use mc_transaction_core::{
-    tx::{TxHash, TxOutMembershipProof, TxOutMembershipElement},
+    tx::{TxHash, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationResult,
 };
 use std::sync::Arc;
@@ -45,5 +45,7 @@ pub trait UntrustedInterfaces: Send + Sync {
         indexes: &[u64],
     ) -> TransactionValidationResult<Vec<TxOutMembershipProof>>;
 
-    fn get_root_tx_out_membership_element(&self) -> TransactionValidationResult<TxOutMembershipElement>;
+    fn get_root_tx_out_membership_element(
+        &self,
+    ) -> TransactionValidationResult<TxOutMembershipElement>;
 }
