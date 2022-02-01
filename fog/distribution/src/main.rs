@@ -97,7 +97,7 @@ fn main() {
     let accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_slip10_identities(
         config.sample_data_dir.join(Path::new("keys")),
     )
-    .expect("Could not read default slip10 identities from keys/")
+    .expect("Could not read default slip10 identities from keys")
     .iter()
     .map(AccountKey::try_from)
     .collect::<Result<_, _>>()

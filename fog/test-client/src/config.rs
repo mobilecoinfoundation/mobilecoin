@@ -8,7 +8,7 @@ use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::{AdminUri, ConsensusClientUri};
 use serde::Serialize;
-use std::{convert::TryFrom, path::PathBuf, str::FromStr, time::Duration};
+use std::{convert::TryFrom, path::PathBuf, time::Duration};
 use structopt::StructOpt;
 
 /// StructOpt for test-client binary
