@@ -295,9 +295,14 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             })
             .collect::<Result<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>, TxManagerError>>()?;
 
-        let (block, block_contents, mut signature) = self
-            .enclave
-            .form_block(parent_block, &encrypted_txs_with_proofs)?;
+        let root_element = self.untrusted.get_root_tx_out_membership_element()?;
+
+        let (block, block_contents, mut signature) = self.enclave.form_block(
+            parent_block,
+            &encrypted_txs_with_proofs,
+            &root_element,
+            &mint_txs,
+        )?;
 
         // TODO
         log::info!(self.logger, "MINT TXS: {:?}", mint_txs);

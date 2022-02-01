@@ -26,7 +26,7 @@ use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
     ring_signature::KeyImage,
     tokens::Mob,
-    tx::{Tx, TxOut, TxOutMembershipProof},
+    tx::{Tx, TxOut, TxOutMembershipProof, MintTx, TxOutMembershipElement},
     validation::TransactionValidationError,
     Block, BlockContents, BlockSignature, Token, TokenId, BLOCK_VERSION,
 };
@@ -210,7 +210,9 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         &self,
         parent_block: &Block,
         encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
-    ) -> Result<(Block, BlockContents, BlockSignature)> {
+        _root_element: &TxOutMembershipElement,
+        _mint_txs: &[MintTx],
+     ) -> Result<(Block, BlockContents, BlockSignature)> {
         let transactions_with_proofs: Vec<(Tx, Vec<TxOutMembershipProof>)> =
             encrypted_txs_with_proofs
                 .iter()

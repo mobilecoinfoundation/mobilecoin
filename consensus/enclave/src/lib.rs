@@ -22,7 +22,8 @@ use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResu
 use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t, *};
 use mc_sgx_urts::SgxEnclave;
 use mc_transaction_core::{
-    tx::TxOutMembershipProof, Block, BlockContents, BlockSignature, TokenId,
+    tx::{MintTx, TxOutMembershipElement, TxOutMembershipProof},
+    Block, BlockContents, BlockSignature, TokenId,
 };
 use std::{path, result::Result as StdResult, sync::Arc};
 
@@ -250,10 +251,14 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         &self,
         parent_block: &Block,
         txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+        root_element: &TxOutMembershipElement,
+        mint_txs: &[MintTx],
     ) -> Result<(Block, BlockContents, BlockSignature)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::FormBlock(
             parent_block.clone(),
             txs_with_proofs.to_vec(),
+            root_element.clone(),
+            mint_txs.to_vec(),
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

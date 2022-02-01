@@ -9,18 +9,12 @@ use mc_consensus_scp::Msg;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_keys::{Ed25519Pair, Ed25519Signature, KeyError, Signer, Verifier};
 use mc_ledger_db::Ledger;
-use mc_transaction_core::{tx::TxHash, BlockID};
+use mc_transaction_core::{
+    tx::{MintTx, TxHash},
+    BlockID,
+};
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, hash::Hash, result::Result as StdResult};
-
-/// TODO
-#[derive(
-    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Digestible,
-)]
-pub struct MintTx {
-    pub amount: u64,
-    pub tombstone_block: u64,
-}
 
 // TODO
 #[derive(

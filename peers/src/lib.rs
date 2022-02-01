@@ -17,7 +17,7 @@ pub use crate::{
     broadcast::{Broadcast, MockBroadcast},
     connection::PeerConnection,
     consensus_msg::{
-        ConsensusMsg, ConsensusMsgError, ConsensusValue, MintTx, TxProposeAAD, VerifiedConsensusMsg,
+        ConsensusMsg, ConsensusMsgError, ConsensusValue, TxProposeAAD, VerifiedConsensusMsg,
     },
     error::{Error, Result},
     threaded_broadcaster::ThreadedBroadcaster,
