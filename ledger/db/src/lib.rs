@@ -1701,7 +1701,7 @@ mod ledger_db_test {
             ledger_db.append_block(block, block_contents, None).unwrap();
         }
 
-        // The root element shoudl be the same for all TxOuts in the ledger.
+        // The root element should be the same for all TxOuts in the ledger.
         let root_element = ledger_db.get_root_tx_out_membership_element().unwrap();
 
         for tx_out_index in 0..ledger_db.num_txos().unwrap() {
