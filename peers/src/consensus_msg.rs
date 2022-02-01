@@ -39,6 +39,18 @@ pub enum ConsensusValue {
     Mint(MintTx),
 }
 
+impl From<TxHash> for ConsensusValue {
+    fn from(tx_hash: TxHash) -> Self {
+        Self::TxHash(tx_hash)
+    }
+}
+
+impl From<MintTx> for ConsensusValue {
+    fn from(mint_tx: MintTx) -> Self {
+        Self::Mint(mint_tx)
+    }
+}
+
 /// A consensus message holds the data that is exchanged by consensus service
 /// nodes as part of the process of reaching agreement on the contents of the
 /// next block.
@@ -227,7 +239,7 @@ mod tests {
                 local_quorum_set,
                 num_blocks as u64,
                 Topic::Commit(CommitPayload {
-                    B: Ballot::new(100, &[hash_tx]),
+                    B: Ballot::new(100, &[ConsensusValue::TxHash(hash_tx)]),
                     PN: 77,
                     CN: 55,
                     HN: 66,
@@ -276,11 +288,11 @@ mod tests {
         assert_eq!(msg.scp_msg.quorum_set, m);
 
         let ser = mc_util_serial::serialize(&msg.scp_msg.topic).unwrap();
-        let m: Topic<TxHash> = mc_util_serial::deserialize(&ser).unwrap();
+        let m: Topic<ConsensusValue> = mc_util_serial::deserialize(&ser).unwrap();
         assert_eq!(msg.scp_msg.topic, m);
 
         let ser = mc_util_serial::serialize(&msg.scp_msg).unwrap();
-        let m: Msg<TxHash> = mc_util_serial::deserialize(&ser).unwrap();
+        let m: Msg<ConsensusValue> = mc_util_serial::deserialize(&ser).unwrap();
         assert_eq!(msg.scp_msg, m);
 
         let ser = mc_util_serial::serialize(&msg.prev_block_id).unwrap();

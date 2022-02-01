@@ -103,7 +103,7 @@ impl ByzantineLedger {
                 node_id.clone(),
                 quorum_set,
                 Arc::new(move |scp_value| match scp_value {
-                    ConsensusValue::TxHash(tx_hash) => tx_manager_validate.validate(&tx_hash),
+                    ConsensusValue::TxHash(tx_hash) => tx_manager_validate.validate(tx_hash),
                     ConsensusValue::Mint(_) => Ok(()), // TODO
                 }),
                 Arc::new(move |scp_values| {
@@ -111,10 +111,10 @@ impl ByzantineLedger {
                     let mut mint_txs = Vec::new();
 
                     // TODO avoid copies
-                    for value in scp_values.into_iter() {
+                    for value in scp_values.iter() {
                         match value {
                             ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
-                            ConsensusValue::Mint(mint_tx) => mint_txs.push(mint_tx.clone()),
+                            ConsensusValue::Mint(mint_tx) => mint_txs.push(*mint_tx),
                         }
                     }
                     let tx_hashes = tx_manager_combine.combine(&tx_hashes[..])?;
@@ -541,19 +541,22 @@ mod tests {
             .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_zero,
             ))
-            .unwrap();
+            .unwrap()
+            .into();
 
         let hash_tx_one = tx_manager
             .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_one,
             ))
-            .unwrap();
+            .unwrap()
+            .into();
 
         let hash_tx_two = tx_manager
             .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_two,
             ))
-            .unwrap();
+            .unwrap()
+            .into();
 
         byzantine_ledger.push_values(
             vec![hash_tx_zero, hash_tx_one, hash_tx_two],
