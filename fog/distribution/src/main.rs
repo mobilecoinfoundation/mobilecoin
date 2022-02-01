@@ -301,7 +301,7 @@ fn build_fog_resolver(
             Err(ReportConnError::Rpc(err)) => {
                 log::error!(
                     logger,
-                    "grpc error reaching fog report server, retr700/751:ying: {}",
+                    "grpc error reaching fog report server, retrying: {}",
                     err
                 );
                 OperationResult::Retry(ReportConnError::Rpc(err))
