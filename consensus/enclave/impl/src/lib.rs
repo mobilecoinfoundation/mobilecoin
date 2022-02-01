@@ -46,8 +46,9 @@ use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
+    mint::MintTx,
     ring_signature::{KeyImage, Scalar},
-    tx::{MintTx, Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
+    tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
     Block, BlockContents, BlockSignature, TokenId, BLOCK_VERSION,
 };

@@ -14,7 +14,8 @@ use mc_consensus_enclave_api::{
 use mc_crypto_keys::{Ed25519Public, X25519Public};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as SgxReportResult};
 use mc_transaction_core::{
-    tx::{MintTx, TxOutMembershipElement, TxOutMembershipProof},
+    mint::MintTx,
+    tx::{TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockSignature, TokenId,
 };
 

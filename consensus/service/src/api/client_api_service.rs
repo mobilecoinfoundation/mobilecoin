@@ -19,7 +19,7 @@ use mc_consensus_api::{
 use mc_consensus_enclave::ConsensusEnclave;
 use mc_ledger_db::Ledger;
 use mc_peers::ConsensusValue;
-use mc_transaction_core::tx::MintTx;
+use mc_transaction_core::mint::MintTx;
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use std::sync::Arc;
