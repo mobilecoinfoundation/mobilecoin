@@ -292,15 +292,23 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     };
 
     if check_value_is_preserved {
-        let sum_of_output_commitments: RistrettoPoint = output_values_and_blindings
+        let sum_of_output_values: u64 = output_values_and_blindings
             .iter()
-            .map(|(value, blinding)| GENERATORS.commit(Scalar::from(*value), *blinding))
+            .map(|(value, _)| value)
             .sum();
 
-        let sum_of_pseudo_output_commitments: RistrettoPoint = pseudo_output_values_and_blindings
+        let sum_of_output_commitments =
+            GENERATORS.commit(Scalar::from(sum_of_output_values), sum_of_output_blindings);
+
+        let sum_of_pseudo_output_values: u64 = pseudo_output_values_and_blindings
             .iter()
-            .map(|(value, blinding)| GENERATORS.commit(Scalar::from(*value), *blinding))
+            .map(|(value, _)| value)
             .sum();
+
+        let sum_of_pseudo_output_commitments = GENERATORS.commit(
+            Scalar::from(sum_of_pseudo_output_values),
+            sum_of_pseudo_output_blindings,
+        );
 
         // The implicit fee output.
         let fee_commitment = GENERATORS.commit(Scalar::from(fee), *FEE_BLINDING);
