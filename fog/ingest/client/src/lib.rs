@@ -26,6 +26,9 @@ use std::{convert::TryFrom, sync::Arc, time::Duration};
 
 /// Fog ingest GRPC client.
 pub struct FogIngestGrpcClient {
+    /// The Fog Ingest server's uri.
+    uri: FogIngestUri,
+
     /// The underlying GRPC client.
     ingest_api_client: AccountIngestApiClient,
 
@@ -59,11 +62,16 @@ impl FogIngestGrpcClient {
         let ingest_api_client = AccountIngestApiClient::new(ch);
 
         Self {
+            uri,
             ingest_api_client,
             creds,
             retry_duration,
             logger,
         }
+    }
+
+    pub fn get_uri(&self) -> &FogIngestUri {
+        &self.uri
     }
 
     pub fn get_status(&self) -> ClientResult<IngestSummary> {
@@ -108,6 +116,7 @@ impl FogIngestGrpcClient {
     }
 
     pub fn activate(&self) -> ClientResult<IngestSummary> {
+        log::info!(self.logger, "Activating Fog Ingest node {}", self.uri);
         retry(self.get_retries(), || -> Result<_, Error> {
             Ok(self
                 .ingest_api_client

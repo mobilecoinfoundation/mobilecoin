@@ -14,7 +14,7 @@ use super::{
 };
 use crate::ChangeDestination;
 use mc_account_keys::{PublicAddress, ShortAddressHash};
-use mc_transaction_core::{constants::MINIMUM_FEE, MemoContext, MemoPayload, NewMemoError};
+use mc_transaction_core::{tokens::Mob, MemoContext, MemoPayload, NewMemoError, Token};
 
 /// This memo builder attaches 0x0100 Authenticated Sender Memos to normal
 /// outputs, and 0x0200 Destination Memos to change outputs.
@@ -80,7 +80,7 @@ impl Default for RTHMemoBuilder {
             last_recipient: Default::default(),
             total_outlay: 0,
             num_recipients: 0,
-            fee: MINIMUM_FEE,
+            fee: Mob::MINIMUM_FEE,
         }
     }
 }

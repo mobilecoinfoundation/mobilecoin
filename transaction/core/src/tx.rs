@@ -552,14 +552,14 @@ derive_prost_message_from_repr_bytes!(TxOutConfirmationNumber);
 #[cfg(test)]
 mod tests {
     use crate::{
-        constants::MINIMUM_FEE,
         encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
         get_tx_out_shared_secret,
         memo::MemoPayload,
         ring_signature::SignatureRctBulletproofs,
         subaddress_matches_tx_out,
+        tokens::Mob,
         tx::{Tx, TxIn, TxOut, TxPrefix},
-        Amount,
+        Amount, Token,
     };
     use alloc::vec::Vec;
     use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
@@ -605,7 +605,7 @@ mod tests {
         let prefix = TxPrefix {
             inputs: vec![tx_in],
             outputs: vec![tx_out],
-            fee: MINIMUM_FEE,
+            fee: Mob::MINIMUM_FEE,
             tombstone_block: 23,
         };
 
@@ -663,7 +663,7 @@ mod tests {
         let prefix = TxPrefix {
             inputs: vec![tx_in],
             outputs: vec![tx_out],
-            fee: MINIMUM_FEE,
+            fee: Mob::MINIMUM_FEE,
             tombstone_block: 23,
         };
 

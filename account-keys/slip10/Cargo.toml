@@ -16,7 +16,7 @@ hkdf = "0.9"
 sha2 = "0.9.8"
 slip10_ed25519 = "0.1"
 tiny-bip39 = "0.8"
-zeroize = "1.4"
+zeroize = "1.5"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
 curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["simd_backend", "nightly"] }

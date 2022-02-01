@@ -9,9 +9,10 @@ extern crate mc_fog_ocall_oram_storage_untrusted;
 use std::{path, result::Result as StdResult, sync::Arc};
 
 use mc_attest_core::{
-    IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport, DEBUG_ENCLAVE,
+    IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
+use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{logger::Logger, ResponderId};
 use mc_crypto_keys::X25519Public;
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;

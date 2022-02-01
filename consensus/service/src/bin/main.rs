@@ -2,8 +2,8 @@
 
 //! Entrypoint for the MobileCoin server.
 
-use mc_attest_core::DEBUG_ENCLAVE;
 use mc_attest_net::{Client, RaClient};
+use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{
     logger::{create_app_logger, log, o},
     time::SystemTimeProvider,
@@ -31,10 +31,17 @@ fn main() -> Result<(), ConsensusServiceError> {
 
     let config = Config::from_args();
     let local_node_id = config.node_id();
+    let fee_map = config.fee_map().expect("Could not parse fee map");
 
     let (logger, _global_logger_guard) = create_app_logger(o!(
         "mc.local_node_id" => local_node_id.responder_id.to_string(),
     ));
+
+    let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
+        env!("CARGO_PKG_NAME"),
+        &[("local_node_id", local_node_id.responder_id.to_string())],
+    )
+    .expect("Failed setting telemetry tracer");
 
     // load the sealed block signing key fron storage
     let cached_key = match File::open(&config.sealed_block_signing_key) {
@@ -60,11 +67,11 @@ fn main() -> Result<(), ConsensusServiceError> {
         &config.peer_responder_id,
         &config.client_responder_id,
         &cached_key,
-        config.minimum_fee().expect("Could not parse minimum fee"),
+        &fee_map,
     );
 
     log::info!(logger, "Enclave target features: {}", features.join(", "));
-    log::info!(logger, "Configured minimum fee: {:?}", config.minimum_fee());
+    log::info!(logger, "Configured minimum fees: {:?}", fee_map);
 
     // write the sealed block signing key
     let mut sealed_key_file =

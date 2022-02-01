@@ -2,7 +2,8 @@
 
 use core::convert::TryFrom;
 use displaydoc::Display;
-use mc_attest_core::{VerificationReport, Verifier, VerifierError, VerifyError};
+use mc_attest_core::{VerificationReport, VerifyError};
+use mc_attest_verifier::{Error as VerifierError, Verifier};
 use mc_crypto_keys::{KeyError, RistrettoPublic};
 use mc_util_encodings::Error as EncodingError;
 

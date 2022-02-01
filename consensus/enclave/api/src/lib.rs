@@ -7,9 +7,14 @@
 extern crate alloc;
 
 mod error;
+mod fee_map;
 mod messages;
 
-pub use crate::{error::Error, messages::EnclaveCall};
+pub use crate::{
+    error::Error,
+    fee_map::{Error as FeeMapError, FeeMap},
+    messages::EnclaveCall,
+};
 
 use alloc::{string::String, vec::Vec};
 use core::{cmp::Ordering, hash::Hash, result::Result as StdResult};
@@ -24,7 +29,7 @@ use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{Tx, TxHash, TxOutMembershipProof},
-    Block, BlockContents, BlockSignature,
+    Block, BlockContents, BlockSignature, TokenId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -209,11 +214,12 @@ pub trait ConsensusEnclave: ReportableEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-        minimum_fee: Option<u64>,
+        fee_map: &FeeMap,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)>;
 
-    /// Retrieve the current minimum fee
-    fn get_minimum_fee(&self) -> Result<u64>;
+    /// Retrieve the current minimum fee for a given token id.
+    /// Returns None if the token ID is not configured to have a minimum fee.
+    fn get_minimum_fee(&self, token_id: &TokenId) -> Result<Option<u64>>;
 
     /// Retrieve the public identity of the enclave.
     fn get_identity(&self) -> Result<X25519Public>;

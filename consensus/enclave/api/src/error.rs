@@ -2,6 +2,7 @@
 
 //! Enclave API Errors
 
+use crate::FeeMapError;
 use alloc::string::String;
 use displaydoc::Display;
 use mc_attest_core::SgxError;
@@ -48,6 +49,9 @@ pub enum Error {
 
     /// Fee public address error: {0}
     FeePublicAddress(String),
+
+    /// Invalid fee configuration: {0}
+    FeeMap(FeeMapError),
 }
 
 impl From<MessageCipherError> for Error {
@@ -107,5 +111,11 @@ impl From<AttestEnclaveError> for Error {
 impl From<Ed25519SignatureError> for Error {
     fn from(_src: Ed25519SignatureError) -> Error {
         Error::Signature
+    }
+}
+
+impl From<FeeMapError> for Error {
+    fn from(src: FeeMapError) -> Error {
+        Error::FeeMap(src)
     }
 }

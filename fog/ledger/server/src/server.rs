@@ -18,7 +18,8 @@ use mc_ledger_db::LedgerDB;
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
 use mc_util_encodings::Error as EncodingError;
 use mc_util_grpc::{
-    AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, TokenAuthenticator,
+    AnonymousAuthenticator, Authenticator, ConnectionUriGrpcioServer, ReadinessIndicator,
+    TokenAuthenticator,
 };
 use mc_util_uri::ConnectionUri;
 use mc_watcher::watcher_db::WatcherDB;
@@ -74,8 +75,8 @@ pub struct LedgerServer<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'stat
     enclave: E,
     ra_client: R,
     report_cache_thread: Option<ReportCacheThread>,
-    logger: Logger,
     db_fetcher: Option<DbFetcher>,
+    logger: Logger,
 }
 
 impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E, R> {
@@ -138,13 +139,15 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
             enclave,
             ra_client,
             report_cache_thread: None,
-            logger,
             db_fetcher: None,
+            logger,
         }
     }
 
     pub fn start(&mut self) -> Result<(), LedgerServerError> {
         let ret = {
+            let readiness_indicator = ReadinessIndicator::default();
+
             self.report_cache_thread = Some(ReportCacheThread::start(
                 self.enclave.clone(),
                 self.ra_client.clone(),
@@ -155,10 +158,11 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
 
             self.db_fetcher = Some(DbFetcher::new(
                 self.key_image_service.get_ledger(),
-                self.logger.clone(),
                 self.enclave.clone(),
                 self.key_image_service.get_watcher(),
                 self.key_image_service.get_db_poll_shared_state(),
+                readiness_indicator.clone(),
+                self.logger.clone(),
             ));
 
             let env = Arc::new(
@@ -177,8 +181,11 @@ impl<E: LedgerEnclaveProxy, R: RaClient + Send + Sync + 'static> LedgerServer<E,
                 ledger_grpc::create_fog_untrusted_tx_out_api(self.untrusted_tx_out_service.clone());
 
             // Health check service
-            let health_service =
-                mc_util_grpc::HealthService::new(None, self.logger.clone()).into_service();
+            let health_service = mc_util_grpc::HealthService::new(
+                Some(readiness_indicator.into()),
+                self.logger.clone(),
+            )
+            .into_service();
 
             // Package service into grpc server
             log::info!(

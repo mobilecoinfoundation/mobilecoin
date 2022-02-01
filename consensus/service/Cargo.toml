@@ -14,6 +14,7 @@ path = "src/bin/main.rs"
 [dependencies]
 mc-attest-api = { path = "../../attest/api" }
 mc-attest-core = { path = "../../attest/core" }
+mc-attest-verifier = { path = "../../attest/verifier" }
 mc-attest-enclave-api = { path = "../../attest/enclave-api" }
 mc-attest-net = { path = "../../attest/net" }
 mc-common = { path = "../../common", features = ["log"] }
@@ -29,9 +30,11 @@ mc-sgx-report-cache-untrusted = { path = "../../sgx/report-cache/untrusted" }
 mc-transaction-core = { path = "../../transaction/core"}
 mc-transaction-std = { path = "../../transaction/std"}
 mc-util-grpc = { path = "../../util/grpc" }
+mc-util-parse = { path = "../../util/parse" }
 mc-util-metered-channel = { path = "../../util/metered-channel" }
 mc-util-metrics = { path = "../../util/metrics" }
 mc-util-serial = { path = "../../util/serial" }
+mc-util-telemetry = { path = "../../util/telemetry", features = ["jaeger"] }
 mc-util-uri = { path = "../../util/uri" }
 
 base64 = "0.13"
@@ -42,7 +45,7 @@ futures = "0.3"
 grpcio = "0.9.0"
 hex = "0.4"
 lazy_static = "1.4"
-once_cell = "1.8"
+once_cell = "1.9"
 protobuf = "2.22.1"
 rand = "0.8"
 rayon = "1.5"
@@ -64,7 +67,7 @@ mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-logger-macros = { path = "../../util/logger-macros" }
 
-mockall = "0.10.2"
+mockall = "0.11.0"
 rand_core = { version = "0.6", default-features = false }
 rand_hc = "0.3"
 serial_test = "0.5"

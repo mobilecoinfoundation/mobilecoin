@@ -12,13 +12,14 @@ std = [
     "serde/std",
 ]
 sgx-sim = [
-    "mc-attest-core/sgx-sim",
+    "mc-attest-verifier/sgx-sim",
 ]
 
 [dependencies]
 mc-attest-core = { path = "../../attest/core", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-noise = { path = "../../crypto/noise", default-features = false }
+mc-attest-verifier = { path = "../../attest/verifier", default-features = false }
 
 aead = "0.4"
 digest = { version = "0.9", default-features = false }

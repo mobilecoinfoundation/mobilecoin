@@ -2,7 +2,7 @@
 
 //! mobilecoind daemon entry point
 
-use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransactionsFetcher};
@@ -25,6 +25,9 @@ fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = create_app_logger(o!());
+
+    let _tracer = mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
+        .expect("Failed setting telemetry tracer");
 
     let mut mr_signer_verifier =
         MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());

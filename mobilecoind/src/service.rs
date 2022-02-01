@@ -1947,12 +1947,13 @@ mod test {
     use mc_fog_report_validation::{FullyValidatedFogPubkey, MockFogPubkeyResolver};
     use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_transaction_core::{
-        constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
+        constants::{MAX_INPUTS, RING_SIZE},
         fog_hint::FogHint,
         get_tx_out_shared_secret,
         onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
+        tokens::Mob,
         tx::{Tx, TxOut},
-        Block, BlockContents, BLOCK_VERSION,
+        Block, BlockContents, Token, BLOCK_VERSION,
     };
     use mc_transaction_std::{NoMemoBuilder, TransactionBuilder};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
@@ -3438,7 +3439,7 @@ mod test {
 
             let change_value = test_utils::DEFAULT_PER_RECIPIENT_AMOUNT
                 - outlays.iter().map(|outlay| outlay.value).sum::<u64>()
-                - MINIMUM_FEE;
+                - Mob::MINIMUM_FEE;
 
             for (account_key, expected_value) in &[
                 (&receiver1, outlays[0].value),
@@ -3466,8 +3467,8 @@ mod test {
             }
 
             // Santity test fee
-            assert_eq!(tx_proposal.get_fee(), MINIMUM_FEE);
-            assert_eq!(tx_proposal.get_tx().get_prefix().fee, MINIMUM_FEE);
+            assert_eq!(tx_proposal.get_fee(), Mob::MINIMUM_FEE);
+            assert_eq!(tx_proposal.get_tx().get_prefix().fee, Mob::MINIMUM_FEE);
 
             // Sanity test tombstone block
             let num_blocks = ledger_db.num_blocks().unwrap();
@@ -3738,7 +3739,7 @@ mod test {
             tx_proposal.outlays[0].value,
             // Each UTXO we have has PER_RECIPIENT_AMOUNT coins. We will be merging MAX_INPUTS of
             // those into a single output, minus the fee.
-            (DEFAULT_PER_RECIPIENT_AMOUNT * MAX_INPUTS as u64) - MINIMUM_FEE,
+            (DEFAULT_PER_RECIPIENT_AMOUNT * MAX_INPUTS as u64) - Mob::MINIMUM_FEE,
         );
 
         assert_eq!(tx_proposal.outlay_index_to_tx_out_index.len(), 1);
@@ -3753,8 +3754,8 @@ mod test {
         assert_eq!(value, tx_proposal.outlays[0].value);
 
         // Santity test fee
-        assert_eq!(tx_proposal.fee(), MINIMUM_FEE);
-        assert_eq!(tx_proposal.tx.prefix.fee, MINIMUM_FEE);
+        assert_eq!(tx_proposal.fee(), Mob::MINIMUM_FEE);
+        assert_eq!(tx_proposal.tx.prefix.fee, Mob::MINIMUM_FEE);
 
         // Sanity test tombstone block
         let num_blocks = ledger_db.num_blocks().unwrap();
@@ -3813,7 +3814,7 @@ mod test {
         ));
         let receiver = AccountKey::random(&mut rng);
         request.set_receiver((&receiver.default_subaddress()).into());
-        request.set_fee(MINIMUM_FEE);
+        request.set_fee(Mob::MINIMUM_FEE);
 
         let response = client.generate_tx_from_tx_out_list(&request).unwrap();
         let tx_proposal = TxProposal::try_from(response.get_tx_proposal()).unwrap();
@@ -3822,7 +3823,7 @@ mod test {
         assert_eq!(tx_proposal.tx.prefix.outputs.len(), 1);
 
         // It should equal the sum of the inputs minus the fee
-        let expected_value = tx_utxos.iter().map(|utxo| utxo.value).sum::<u64>() - MINIMUM_FEE;
+        let expected_value = tx_utxos.iter().map(|utxo| utxo.value).sum::<u64>() - Mob::MINIMUM_FEE;
 
         let tx_out = &tx_proposal.tx.prefix.outputs[0];
         let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
@@ -4282,7 +4283,7 @@ mod test {
 
         // Add a few utxos to our recipient, such that all of them are required to
         // create the test transaction.
-        for amount in &[10, 20, MINIMUM_FEE] {
+        for amount in &[10, 20, Mob::MINIMUM_FEE] {
             add_block_to_ledger_db(
                 &mut ledger_db,
                 &[sender.default_subaddress()],
@@ -4368,7 +4369,7 @@ mod test {
         };
 
         // Trying with a higher limit should work.
-        request.set_max_input_utxo_value(MINIMUM_FEE);
+        request.set_max_input_utxo_value(Mob::MINIMUM_FEE);
         let response = client.send_payment(&request).unwrap();
 
         let selected_utxos: Vec<UnspentTxOut> = response

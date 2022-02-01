@@ -18,6 +18,7 @@ mc-fog-types = { path = "../../types", default-features = false }
 # mobilecoin
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api", default-features = false }
+mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common" }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-enclave-boundary = { path = "../../../enclave-boundary" }
@@ -28,6 +29,9 @@ mc-sgx-slog-edl = { path = "../../../sgx/slog-edl" }
 mc-sgx-types = { path = "../../../sgx/types" }
 mc-sgx-urts = { path = "../../../sgx/urts" }
 mc-util-serial = { path = "../../../util/serial" }
+
+# third-party
+displaydoc = "0.2"
 
 [dev-dependencies]
 mc-common = { path = "../../../common", features = ["loggers"] }

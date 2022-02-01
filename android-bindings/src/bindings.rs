@@ -24,9 +24,10 @@ use mc_attest_ake::{
     AuthPending, AuthResponseInput, AuthResponseOutput, ClientInitiate, Ready, Start, Transition,
 };
 use mc_attest_core::{
-    MrEnclave, MrEnclaveVerifier, MrSigner, MrSignerVerifier, ReportData, VerificationReport,
-    VerificationReportData, VerificationSignature, Verifier, DEBUG_ENCLAVE,
+    MrEnclave, MrSigner, ReportData, VerificationReport, VerificationReportData,
+    VerificationSignature,
 };
+use mc_attest_verifier::{MrEnclaveVerifier, MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::ResponderId;
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic, X25519};
@@ -837,6 +838,44 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_AccountKey_get_1default_1subadd
         |env| {
             let account_key: MutexGuard<AccountKey> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
             let view_key = account_key.default_subaddress_view_private();
+
+            let mbox = Box::new(Mutex::new(view_key));
+            let ptr: *mut Mutex<RistrettoPrivate> = Box::into_raw(mbox);
+            Ok(ptr as jlong)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_AccountKey_get_1change_1subaddress_1spend_1key(
+    env: JNIEnv,
+    obj: JObject,
+) -> jlong {
+    jni_ffi_call_or(
+        || Ok(0),
+        &env,
+        |env| {
+            let account_key: MutexGuard<AccountKey> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            let spend_key = account_key.change_subaddress_spend_private();
+
+            let mbox = Box::new(Mutex::new(spend_key));
+            let ptr: *mut Mutex<RistrettoPrivate> = Box::into_raw(mbox);
+            Ok(ptr as jlong)
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_AccountKey_get_1change_1subaddress_1view_1key(
+    env: JNIEnv,
+    obj: JObject,
+) -> jlong {
+    jni_ffi_call_or(
+        || Ok(0),
+        &env,
+        |env| {
+            let account_key: MutexGuard<AccountKey> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            let view_key = account_key.change_subaddress_view_private();
 
             let mbox = Box::new(Mutex::new(view_key));
             let ptr: *mut Mutex<RistrettoPrivate> = Box::into_raw(mbox);

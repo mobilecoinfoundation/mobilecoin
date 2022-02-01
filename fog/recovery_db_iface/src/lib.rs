@@ -29,11 +29,19 @@ pub struct IngressPublicKeyRecordFilters {
 
     /// If set to true, the query will include ingress keys that are retired.
     pub should_include_retired_keys: bool,
+
+    /// If set to true, the query will only include keys that are unexpired,
+    /// which means that the key's last scanned block is less than the key's
+    /// public expiry.
+    pub should_only_include_unexpired_keys: bool,
 }
 
 /// A generic error type for recovery db operations
-pub trait RecoveryDbError: Debug + Display + Send + Sync {}
-impl<T> RecoveryDbError for T where T: Debug + Display + Send + Sync {}
+pub trait RecoveryDbError: Debug + Display + Send + Sync {
+    /// Policy decision about whether the error should be retried (e.g.
+    /// connection issue)
+    fn should_retry(&self) -> bool;
+}
 
 /// The recovery database interface.
 pub trait RecoveryDb {
@@ -50,16 +58,15 @@ pub trait RecoveryDb {
     ///
     /// Arguments:
     /// * key: the public key
-    /// * start_block: the first block we promise to scan with this key
+    /// * start_block: the first block count we promise to scan with this key
     ///
     /// Returns
-    /// * true if the insert was successful, false if this key already exists in
-    ///   the database
+    /// * The accepted start block count
     fn new_ingress_key(
         &self,
         key: &CompressedRistrettoPublic,
-        start_block: u64,
-    ) -> Result<bool, Self::Error>;
+        start_block_count: u64,
+    ) -> Result<u64, Self::Error>;
 
     /// Mark an ingress public key for retiring.
     ///
@@ -93,7 +100,7 @@ pub trait RecoveryDb {
     fn get_ingress_key_records(
         &self,
         start_block_at_least: u64,
-        ingress_public_key_record_filters: IngressPublicKeyRecordFilters,
+        ingress_public_key_record_filters: &IngressPublicKeyRecordFilters,
     ) -> Result<Vec<IngressPublicKeyRecord>, Self::Error>;
 
     /// Adds a new ingest invocation to the database, optionally decommissioning

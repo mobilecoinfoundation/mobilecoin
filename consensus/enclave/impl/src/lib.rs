@@ -18,10 +18,7 @@ mod identity;
 include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 
 use alloc::{collections::BTreeSet, format, string::String, vec::Vec};
-use core::{
-    convert::TryFrom,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use core::convert::TryFrom;
 use identity::Ed25519Identity;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{
@@ -37,8 +34,8 @@ use mc_common::{
     ResponderId,
 };
 use mc_consensus_enclave_api::{
-    ConsensusEnclave, Error, FeePublicKey, LocallyEncryptedTx, Result, SealedBlockSigningKey,
-    TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    ConsensusEnclave, Error, FeeMap, FeeMapError, FeePublicKey, LocallyEncryptedTx, Result,
+    SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -48,13 +45,12 @@ use mc_crypto_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
-    constants::MINIMUM_FEE,
     membership_proofs::compute_implied_merkle_root,
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
     ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Amount, Block, BlockContents, BlockSignature, MemoPayload, BLOCK_VERSION,
+    Amount, Block, BlockContents, BlockSignature, MemoPayload, TokenId, BLOCK_VERSION,
 };
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
@@ -97,11 +93,11 @@ pub struct TxList {
 }
 
 /// Internal state of the enclave, including AKE and attestation related as well
-/// as any business logic state
+/// as any business logic state.
 pub struct SgxConsensusEnclave {
     /// All AKE and attestation related state including responder ids,
     /// established channels for peers and clients, and any pending quotes
-    /// or ias reports
+    /// or ias reports.
     ake: AkeEnclaveState<Ed25519Identity>,
 
     /// Cipher used to encrypt locally-cached transactions.
@@ -110,11 +106,11 @@ pub struct SgxConsensusEnclave {
     /// Cipher used to encrypt well-formed-encrypted transactions.
     well_formed_encrypted_tx_cipher: Mutex<AesMessageCipher>,
 
-    /// Logger
+    /// Logger.
     logger: Logger,
 
-    /// The minimum fee as initialized
-    minimum_fee: AtomicU64,
+    /// Fee map (for determining the minimum fee for a given token id).
+    fee_map: Mutex<FeeMap>,
 }
 
 impl SgxConsensusEnclave {
@@ -126,7 +122,7 @@ impl SgxConsensusEnclave {
                 &mut McRng::default(),
             )),
             logger,
-            minimum_fee: AtomicU64::new(MINIMUM_FEE),
+            fee_map: Mutex::new(FeeMap::default()),
         }
     }
 
@@ -177,20 +173,15 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         peer_self_id: &ResponderId,
         client_self_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-        minimum_fee: Option<u64>,
+        fee_map: &FeeMap,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
-        // Inject the fee into the peer ResponderId
-        let peer_self_id = if let Some(fee) = minimum_fee {
-            let str = format!("{}-{}", &peer_self_id.0, fee);
-            ResponderId(str)
-        } else {
-            peer_self_id.clone()
-        };
+        // Inject the fee into the peer ResponderId.
+        let peer_self_id = fee_map.responder_id(peer_self_id);
 
+        // Init AKE.
         self.ake.init(peer_self_id, client_self_id.clone())?;
 
-        // if we were passed a sealed key, unseal it and overwrite the private key
-
+        // If we were passed a sealed key, unseal it and overwrite the private key.
         match sealed_key {
             Some(sealed) => {
                 log::trace!(self.logger, "trying to unseal key");
@@ -202,14 +193,12 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             None => (),
         }
 
-        // either way seal the private key and return it
+        // Either way seal the private key and return it.
         let lock = self.ake.get_identity().signing_keypair.lock().unwrap();
         let key = (*lock).private_key();
         let sealed = IntelSealed::seal_raw(key.as_ref(), &[]).unwrap();
 
-        if let Some(fee) = minimum_fee {
-            self.minimum_fee.store(fee, Ordering::SeqCst);
-        }
+        *self.fee_map.lock().unwrap() = fee_map.clone();
 
         Ok((
             sealed.as_ref().to_vec(),
@@ -220,8 +209,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         ))
     }
 
-    fn get_minimum_fee(&self) -> Result<u64> {
-        Ok(self.minimum_fee.load(Ordering::SeqCst))
+    fn get_minimum_fee(&self, token_id: &TokenId) -> Result<Option<u64>> {
+        Ok(self.fee_map.lock()?.get_fee_for_token(token_id))
     }
 
     fn get_identity(&self) -> Result<X25519Public> {
@@ -259,16 +248,10 @@ impl ConsensusEnclave for SgxConsensusEnclave {
     }
 
     fn peer_init(&self, peer_id: &ResponderId) -> Result<PeerAuthRequest> {
-        // Inject the minimum fee (if necessary) before passing off to the AKE
-        let minimum_fee = self.minimum_fee.load(Ordering::SeqCst);
-        let peer_auth_request = if minimum_fee != MINIMUM_FEE {
-            let peer_id_str = format!("{}-{}", peer_id, minimum_fee);
-            self.ake.peer_init(&ResponderId(peer_id_str))?
-        } else {
-            self.ake.peer_init(peer_id)?
-        };
+        // Inject the if fee map hash passing off to the AKE
+        let peer_id = self.fee_map.lock()?.responder_id(peer_id);
 
-        Ok(peer_auth_request)
+        Ok(self.ake.peer_init(&peer_id)?)
     }
 
     fn peer_accept(&self, req: PeerAuthRequest) -> Result<(PeerAuthResponse, PeerSession)> {
@@ -280,16 +263,10 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
     ) -> Result<(PeerSession, VerificationReport)> {
-        // Inject the minimum fee (if necessary) before passing off to the AKE
-        let minimum_fee = self.minimum_fee.load(Ordering::SeqCst);
-        let session_and_report = if minimum_fee != MINIMUM_FEE {
-            let peer_id_str = format!("{}-{}", peer_id, minimum_fee);
-            self.ake.peer_connect(&ResponderId(peer_id_str), msg)?
-        } else {
-            self.ake.peer_connect(peer_id, msg)?
-        };
+        // Inject the if fee map hash passing off to the AKE
+        let peer_id = self.fee_map.lock()?.responder_id(peer_id);
 
-        Ok(session_and_report)
+        Ok(self.ake.peer_connect(&peer_id, msg)?)
     }
 
     fn peer_close(&self, session_id: &PeerSession) -> Result<()> {
@@ -387,11 +364,18 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         // Validate.
         let mut csprng = McRng::default();
+        let minimum_fee = self
+            .fee_map
+            .lock()?
+            .get_fee_for_token(&TokenId::MOB)
+            // This should actually never happen since the map enforces the existence of
+            // MOB.
+            .ok_or(Error::FeeMap(FeeMapError::MissingFee(TokenId::MOB)))?;
         mc_transaction_core::validation::validate(
             &tx,
             block_index,
             &proofs,
-            self.minimum_fee.load(Ordering::SeqCst),
+            minimum_fee,
             &mut csprng,
         )?;
 
@@ -457,13 +441,20 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // ledger that were used to validate the transactions.
         let mut root_elements = Vec::new();
         let mut rng = McRng::default();
+        let minimum_fee = self
+            .fee_map
+            .lock()?
+            .get_fee_for_token(&TokenId::MOB)
+            // This should actually never happen since the map enforces the existence of
+            // MOB.
+            .ok_or(Error::FeeMap(FeeMapError::MissingFee(TokenId::MOB)))?;
 
         for (tx, proofs) in transactions_with_proofs.iter() {
             mc_transaction_core::validation::validate(
                 tx,
                 parent_block.index + 1,
                 proofs,
-                self.minimum_fee.load(Ordering::SeqCst),
+                minimum_fee,
                 &mut rng,
             )?;
 

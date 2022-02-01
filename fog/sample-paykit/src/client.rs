@@ -9,7 +9,7 @@ use crate::{
 };
 use core::{convert::TryFrom, result::Result as StdResult, str::FromStr};
 use mc_account_keys::{AccountKey, PublicAddress};
-use mc_attest_core::Verifier;
+use mc_attest_verifier::Verifier;
 use mc_common::{
     logger::{log, Logger},
     HashSet,
@@ -29,22 +29,26 @@ use mc_fog_report_validation::{FogPubkeyResolver, FogResolver};
 use mc_fog_types::BlockCount;
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_transaction_core::{
-    constants::MINIMUM_FEE,
     onetime_keys::*,
     ring_signature::KeyImage,
+    tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
-    BlockIndex,
+    BlockIndex, Token,
 };
 use mc_transaction_std::{
     ChangeDestination, InputCredentials, MemoType, NoMemoBuilder, RTHMemoBuilder,
     SenderMemoCredential, TransactionBuilder,
 };
+use mc_util_telemetry::{block_span_builder, telemetry_static_key, tracer, Key, Span};
 use mc_util_uri::{ConnectionUri, FogUri};
 use rand::Rng;
 
 /// Default number of blocks used for calculating transaction tombstone block
 /// number. See `new_tx_block_attempts` below.
 const DEFAULT_NEW_TX_BLOCK_ATTEMPTS: u16 = 50;
+
+/// Telemetry: block index the transaction is expected to land at.
+const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
 
 /// Represents the entire sample paykit object, capable of balance checks and
 /// sending transactions
@@ -177,9 +181,19 @@ impl Client {
     /// "is_transaction_accepted". Then, perform another balance check to
     /// get refreshed key image data before attempting to create another
     /// transaction.
-    pub fn send_transaction(&mut self, transaction: &Tx) -> Result<()> {
-        self.consensus_service_conn.propose_tx(transaction)?;
-        Ok(())
+    pub fn send_transaction(&mut self, transaction: &Tx) -> Result<u64> {
+        let start_time = std::time::SystemTime::now();
+        let block_count = self.consensus_service_conn.propose_tx(transaction)?;
+
+        let tracer = tracer!();
+        let mut span = block_span_builder(&tracer, "send_transaction", block_count)
+            .with_start_time(start_time)
+            .start(&tracer);
+
+        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(block_count as i64));
+        span.end();
+
+        Ok(block_count)
     }
 
     /// Check if a transaction has appeared in the ledger, by checking if one of
@@ -307,7 +321,7 @@ impl Client {
         const TARGET_NUM_INPUTS: usize = 3;
         let inputs = self
             .tx_data
-            .get_transaction_inputs(amount + MINIMUM_FEE, TARGET_NUM_INPUTS)?;
+            .get_transaction_inputs(amount + Mob::MINIMUM_FEE, TARGET_NUM_INPUTS)?;
         let inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = self.get_proofs(&inputs)?;
         let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> = self.get_rings(inputs.len(), rng)?;
 
@@ -505,7 +519,11 @@ impl Client {
 
     /// Retrieve the currently configured minimum fee from the consensus service
     pub fn get_fee(&mut self) -> Result<u64> {
-        Ok(self.consensus_service_conn.fetch_block_info()?.minimum_fee)
+        Ok(self
+            .consensus_service_conn
+            .fetch_block_info()?
+            .minimum_fee_or_none(&Mob::ID)
+            .unwrap_or(0))
     }
 
     /// Get the public b58 address for this client
@@ -801,7 +819,7 @@ mod test_build_transaction_helper {
             true,
             &mut rng,
             &logger,
-            MINIMUM_FEE,
+            Mob::MINIMUM_FEE,
         )
         .unwrap();
 

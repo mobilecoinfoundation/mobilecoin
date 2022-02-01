@@ -19,7 +19,8 @@ use mc_attest_ake::{
     AuthResponseInput, ClientInitiate, Error as AkeError, Ready, Start, Transition,
 };
 use mc_attest_api::{attest::Message, attest_grpc::AttestedApiClient};
-use mc_attest_core::{VerificationReport, Verifier};
+use mc_attest_core::VerificationReport;
+use mc_attest_verifier::Verifier;
 use mc_common::{
     logger::{log, o, Logger},
     trace_time,
@@ -414,7 +415,7 @@ impl<CP: CredentialsProvider> BlockchainConnection for ThickClient<CP> {
 }
 
 impl<CP: CredentialsProvider> UserTxConnection for ThickClient<CP> {
-    fn propose_tx(&mut self, tx: &Tx) -> Result<BlockIndex> {
+    fn propose_tx(&mut self, tx: &Tx) -> Result<u64> {
         trace_time!(self.logger, "ThickClient::propose_tx");
 
         if !self.is_attested() {

@@ -14,3 +14,6 @@ path = "src/bin/main.rs"
 
 [dev-dependencies]
 json = "0.12"
+
+[build-dependencies]
+cargo-emit = "0.2"

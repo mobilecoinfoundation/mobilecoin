@@ -6,11 +6,12 @@ edition = "2018"
 
 [features]
 sgx-sim = [
-    "mc-attest-core/sgx-sim"
+    "mc-attest-verifier/sgx-sim"
 ]
 
 [dependencies]
-mc-attest-core = { path = "../../attest/core", default-features = false }
+mc-attest-core = { path = "../core", default-features = false }
+mc-attest-verifier = { path = "../verifier", default-features = false }
 mc-sgx-types = { path = "../../sgx/types" }
 
 [build-dependencies]

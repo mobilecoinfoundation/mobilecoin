@@ -10,7 +10,6 @@ use crate::{
     ingest_service::IngestService,
     state_file::StateFile,
     worker::{IngestWorker, PeerCheckupWorker, ReportCacheWorker},
-    SeqDisplay,
 };
 use futures::executor::block_on;
 use mc_attest_api::attest_grpc::create_attested_api;
@@ -28,6 +27,7 @@ use mc_fog_recovery_db_iface::{RecoveryDb, ReportDb};
 use mc_fog_uri::{FogIngestUri, IngestPeerUri};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_util_grpc::ConnectionUriGrpcioServer;
+use mc_util_parse::SeqDisplay;
 use mc_util_uri::ConnectionUri;
 use mc_watcher::watcher_db::WatcherDB;
 use std::{collections::BTreeSet, path::PathBuf, sync::Arc, time::Duration};
@@ -357,6 +357,19 @@ where
     /// This is a convenience wrapper used in tests
     pub fn is_active(&self) -> bool {
         self.get_ingest_summary().mode == IngestControllerMode::Active
+    }
+
+    /// Ask if the server is idle.
+    /// This is a convenience wrapper used in tests.
+    pub fn is_idle(&self) -> bool {
+        self.get_ingest_summary().mode == IngestControllerMode::Idle
+    }
+
+    /// Set new keys.
+    /// This is used in tests when it would be simpler than making an RPC
+    /// client.
+    pub fn set_new_keys(&self) -> Result<IngestSummary, IngestServiceError> {
+        self.controller.new_keys()
     }
 
     /// Tell the server to activate.

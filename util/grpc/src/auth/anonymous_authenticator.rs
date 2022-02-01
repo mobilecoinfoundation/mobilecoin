@@ -7,6 +7,8 @@ use super::*;
 /// The username returned for all authenticate calls.
 pub const ANONYMOUS_USER: &str = "<anonymous>";
 
+/// A trivial GRPC authenticator object that authenticates everyone as
+/// "anonymous"
 #[derive(Default)]
 pub struct AnonymousAuthenticator;
 

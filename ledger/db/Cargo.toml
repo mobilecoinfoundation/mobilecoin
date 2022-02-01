@@ -19,11 +19,12 @@ mc-util-from-random = { path = "../../util/from-random" }
 mc-util-lmdb = { path = "../../util/lmdb" }
 mc-util-metrics = { path = "../../util/metrics" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
+mc-util-telemetry = { path = "../../util/telemetry" }
 
 displaydoc = { version = "0.2", default-features = false }
 lazy_static = "1.4"
 lmdb-rkv = "0.14.0"
-mockall = "0.10.2"
+mockall = "0.11.0"
 prost = { version = "0.9", default-features = false, features = ["prost-derive"] }
 rand = { version = "0.8", optional = true }
 rand_core = "0.6"

@@ -16,7 +16,7 @@ use ed25519::{
         DigestSigner, DigestVerifier, Error as SignatureError, Signature as SignatureTrait, Signer,
         Verifier,
     },
-    Signature, SIGNATURE_LENGTH,
+    Signature,
 };
 use ed25519_dalek::{
     Keypair, PublicKey as DalekPublicKey, SecretKey, Signature as DalekSignature,
@@ -371,12 +371,12 @@ pub struct Ed25519Signature(Signature);
 
 impl Ed25519Signature {
     /// Create a new signature from a byte array
-    pub fn new(bytes: [u8; SIGNATURE_LENGTH]) -> Self {
+    pub fn new(bytes: [u8; Signature::BYTE_SIZE]) -> Self {
         Self(Signature::from(bytes))
     }
 
     /// Return the inner byte array
-    pub fn to_bytes(&self) -> [u8; SIGNATURE_LENGTH] {
+    pub fn to_bytes(&self) -> [u8; Signature::BYTE_SIZE] {
         self.0.to_bytes()
     }
 }
@@ -404,7 +404,7 @@ impl PartialEq for Ed25519Signature {
 // This is needed to implement prost::Message
 impl Default for Ed25519Signature {
     fn default() -> Self {
-        Self::new([0; SIGNATURE_LENGTH])
+        Self::new([0; Signature::BYTE_SIZE])
     }
 }
 

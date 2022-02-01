@@ -3,7 +3,8 @@
 //! Configuration parameters for the Fog ingest client
 
 use mc_crypto_keys::CompressedRistrettoPublic;
-use std::{str::FromStr, time::Duration};
+use mc_util_parse::parse_duration_in_seconds;
+use std::time::Duration;
 use structopt::StructOpt;
 
 #[derive(Clone, StructOpt)]
@@ -18,10 +19,6 @@ pub struct IngestConfig {
 
     #[structopt(subcommand)]
     pub cmd: IngestConfigCommand,
-}
-
-fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
-    Ok(Duration::from_secs(u64::from_str(src)?))
 }
 
 fn parse_ristretto_hex(src: &str) -> Result<CompressedRistrettoPublic, String> {

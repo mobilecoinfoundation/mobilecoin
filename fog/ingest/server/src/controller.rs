@@ -8,7 +8,6 @@ use crate::{
     counters,
     error::{IngestServiceError as Error, PeerBackupError, RestoreStateError, SetPeersError},
     server::IngestServerConfig,
-    SeqDisplay,
 };
 use mc_attest_enclave_api::{EnclaveMessage, PeerAuthRequest, PeerAuthResponse, PeerSession};
 use mc_attest_net::RaClient;
@@ -22,7 +21,9 @@ use mc_fog_api::{
     ingest_common::{IngestControllerMode, IngestStateFile, IngestSummary},
     report_parse::try_extract_unvalidated_ingress_pubkey_from_fog_report,
 };
-use mc_fog_ingest_enclave::{Error as EnclaveError, IngestEnclave, IngestSgxEnclave};
+use mc_fog_ingest_enclave::{
+    Error as EnclaveError, IngestEnclave, IngestSgxEnclave, NewEnclaveError,
+};
 use mc_fog_recovery_db_iface::{
     IngressPublicKeyRecord, IngressPublicKeyRecordFilters, IngressPublicKeyStatus, RecoveryDb,
     ReportData, ReportDb,
@@ -32,6 +33,7 @@ use mc_fog_uri::IngestPeerUri;
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCache};
 use mc_transaction_core::{Block, BlockContents, BlockIndex};
+use mc_util_parse::SeqDisplay;
 use mc_util_uri::ConnectionUri;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -112,10 +114,26 @@ where
                                 None
                             }
                             _ => {
-                                // TODO: Should we delete the file, to avoid a crash loop?
-                                // We could move it to a backup location or something, like, `.1`,
-                                // `.2`, etc. up to some maximum.
-                                panic!("Could not read state file ({:?}): {}", file, io_error);
+                                log::error!(
+                                    logger,
+                                    "Could not read state file ({:?}): {}",
+                                    file,
+                                    io_error
+                                );
+                                // Move the statefile to .bak, to try to prevent a crashloop
+                                // This server can still be useful starting in idle mode because
+                                // another server can give it the
+                                // correct key. We could delete it
+                                // instead, but it might help for debugging to keep it as .bak
+                                if let Err(err) = file.move_to_bak() {
+                                    log::error!(
+                                        logger,
+                                        "Could not move the state file ({:?}) to .bak: {}",
+                                        file,
+                                        err
+                                    );
+                                }
+                                None
                             }
                         }
                     }
@@ -127,12 +145,41 @@ where
             .map(|x| x.sealed_ingress_key.clone());
 
         // Initialize the enclave
-        let enclave = IngestSgxEnclave::new(
+        let enclave = match IngestSgxEnclave::new(
             config.enclave_path.clone(),
             &config.local_node_id,
             &cached_key,
             config.omap_capacity,
-        );
+            &logger,
+        ) {
+            Ok(enclave) => enclave,
+            Err(NewEnclaveError::Create(err)) => {
+                panic!("Could not create new enclave: {}", err);
+            }
+            Err(NewEnclaveError::Init(err)) => {
+                log::error!(
+                    logger,
+                    "Enclave init failed, sealed key may have been rejected: {}",
+                    err
+                );
+                // Move the statefile to .bak, to try to prevent a crashloop
+                // This server can still be useful starting in idle mode because another
+                // server can give it the correct key.
+                // We could delete it instead, but it might help for debugging to keep it as
+                // .bak
+                if let Some(file) = config.state_file.as_ref() {
+                    if let Err(err) = file.move_to_bak() {
+                        log::error!(
+                            logger,
+                            "Could not move the state file ({:?}) to .bak: {}",
+                            file,
+                            err
+                        );
+                    }
+                }
+                panic!("Enclave init failed, going down");
+            }
+        };
 
         // Initialize report cache
         let report_cache = Arc::new(Mutex::new(ReportCache::new(
@@ -159,21 +206,40 @@ where
             report_cache,
             grpc_env,
             last_sealed_key: Arc::new(Mutex::new(None)),
-            logger,
+            logger: logger.clone(),
         };
 
         // Attempt to restore state from state file if provided
         // NotFound is not an error, but otherwise it is an error.
         if let Some(ref file_data) = state_file_data {
             let summary = file_data.get_summary();
-            result
-                .restore_state_from_summary(summary)
-                .unwrap_or_else(|err| {
-                    panic!(
-                        "Could not restore state from state file ({:?}), {:?}: {}",
-                        config.state_file, summary, err
-                    )
-                });
+            let mut retry_seconds = 1;
+            loop {
+                match result.restore_state_from_summary(summary) {
+                    Ok(_) => {
+                        break;
+                    }
+                    Err(err @ RestoreStateError::Connection(_)) => {
+                        log::warn!(
+                            logger,
+                            "Retry to restore state on connection error: {}",
+                            err
+                        );
+                        std::thread::sleep(std::time::Duration::from_secs(retry_seconds));
+                        retry_seconds = std::cmp::min(retry_seconds + 1, 30);
+                    }
+                    Err(err) => {
+                        // Note: We don't panic or nuke the statefile because this server may have
+                        // recovered the right key successfully, even if
+                        // restore_state_from_summary fails
+                        log::error!(logger,
+                    "Could not restore state from state file ({:?}), {:?}: {}. Starting in idle instead",
+                    config.state_file, summary, err
+                    );
+                        break;
+                    }
+                };
+            }
         }
 
         result.write_state_file();
@@ -246,6 +312,7 @@ where
     ///
     /// This is only possible if the server is idling
     pub fn new_keys(&self) -> Result<IngestSummary, Error> {
+        log::info!(self.logger, "Setting new key in controller");
         let mut state = self.get_state();
         self.new_keys_inner(&mut state)?;
         Ok(self.get_ingest_summary_inner(&mut state))
@@ -379,36 +446,39 @@ where
             // if we are still needed to be active.
             if state.is_active() {
                 log::trace!(self.logger, "publish report");
-                match self.publish_report(&ingress_pubkey, &mut state) {
-                    Ok(ingress_key_status) => {
-                        // If our key is retired, and the index we want to scan is past expiry,
-                        // early return. Note, we don't even NEED to scan
-                        // when block.index == pubkey_expiry, because the
-                        // semantic of pubkey expiry is that it bounds the tombstone block, and a
-                        // transaction cannot land in its tombstone block.
-                        // But scanning the tombstone block as well may help
-                        // deal with off-by-one errors somewhere else, and doesn't really hurt.
-                        if ingress_key_status.retired
-                            && block.index > ingress_key_status.pubkey_expiry
-                        {
-                            log::warn!(self.logger, "When preparing to process block index {}, we discovered that our ingress key is expired: {:?}. Switching to idle and nuking keys.", block.index, ingress_key_status);
-                            state.set_idle();
-                            self.new_egress_key(&mut state)
-                                .expect("Failure to rotate egress key can't be recovered from");
-                            return;
+                let mut retry_seconds = 1;
+                loop {
+                    match self.publish_report(&ingress_pubkey, &mut state) {
+                        Ok(ingress_key_status) => {
+                            // If our key is retired, and the index we want to scan is past expiry,
+                            // early return. Note, we don't even NEED to scan
+                            // when block.index == pubkey_expiry, because the
+                            // semantic of pubkey expiry is that it bounds the tombstone block, and
+                            // a transaction cannot land in its
+                            // tombstone block. But scanning the
+                            // tombstone block as well may help
+                            // deal with off-by-one errors somewhere else, and doesn't really hurt.
+                            if ingress_key_status.retired
+                                && block.index > ingress_key_status.pubkey_expiry
+                            {
+                                log::warn!(self.logger, "When preparing to process block index {}, we discovered that our ingress key is expired: {:?}. Switching to idle and nuking keys.", block.index, ingress_key_status);
+                                state.set_idle();
+                                self.new_egress_key(&mut state)
+                                    .expect("Failure to rotate egress key can't be recovered from");
+                                return;
+                            }
+                            break;
                         }
-                    }
-                    Err(err) => {
-                        // Failing to publish a report is not fatal, because we attempt to publish
-                        // on every block, and even if it only succeeds half
-                        // the time, it wont make much difference in the pubkey
-                        // expiry window.
-                        log::error!(
-                            self.logger,
-                            "Could not publish ingest report at block index {}: {}",
-                            block.index,
-                            err
-                        );
+                        Err(err) => {
+                            log::error!(
+                                self.logger,
+                                "Could not publish ingest report at block index {}, will retry: {}",
+                                block.index,
+                                err
+                            );
+                            std::thread::sleep(std::time::Duration::from_secs(retry_seconds));
+                            retry_seconds = std::cmp::min(retry_seconds + 1, 30);
+                        }
                     }
                 }
             }
@@ -716,11 +786,11 @@ where
                         .map(|x| x + 1)
                         .unwrap_or(0),
                 );
-                if !self.recovery_db.new_ingress_key(&our_pubkey, start_block)? {
-                    return Err(PeerBackupError::CreatingNewIngressKey.into());
-                };
 
-                start_block
+                match self.recovery_db.new_ingress_key(&our_pubkey, start_block) {
+                    Ok(accepted_start_block) => accepted_start_block,
+                    Err(_err) => return Err(PeerBackupError::CreatingNewIngressKey.into()),
+                }
             };
         // This unwrap is okay because we are idle right now.
         state
@@ -997,19 +1067,40 @@ where
                     self.logger.clone(),
                 );
 
-                // Check that the peer from summary is configured from a backup as expected,
-                // without logging or reconfiguring it if it isn't, we just give up.
-                self.confirm_backup(
+                // Check that the peer from summary is configured from a backup as expected
+                // without logging or reconfiguring it.
+                // If it isn't, we just give up.
+                match self.confirm_backup(
                     &mut conn,
                     None,
                     Some(&ingress_pubkey),
                     Some(&new_peers),
                     false,
                     false,
-                )?;
+                ) {
+                    Ok(_) => {}
+                    //Network related error. Retriable.
+                    Err(PeerBackupError::Connection(conn_err)) => {
+                        return Err(RestoreStateError::Connection(conn_err));
+                    }
+                    //Logic errors. These should not occur when confirming backup with update if
+                    // wrong set to false.
+                    Err(err @ PeerBackupError::FailedRemoteKeyBackup(_))
+                    | Err(err @ PeerBackupError::FailedRemoteSetPeers(_)) => {
+                        panic!("Should not have attempted remote modification during confirm backup. Logic Error: {}", err);
+                    }
+                    Err(err @ PeerBackupError::CreatingNewIngressKey) => {
+                        panic!("Should not have attempted creating new ingress key during confirm backup. Logic Error. {}", err);
+                    }
+                    //Nonretriable errors that can occur normally during confirm backup.
+                    Err(err @ PeerBackupError::AnotherActivePeer(_))
+                    | Err(err @ PeerBackupError::PeerSentBadURI(_))
+                    | Err(err @ PeerBackupError::Conversion(_)) => {
+                        return Err(RestoreStateError::Backup(err));
+                    }
+                };
             }
         }
-
         // Either we're restoring to idle state, or we're restoring to an active state
         // but all backups exist correctly, so we can make state changes now.
         self.set_peers_inner(new_peers.into_iter().collect(), &mut state)?;
@@ -1026,7 +1117,6 @@ where
                 state.set_active();
             }
         };
-
         Ok(())
     }
 
@@ -1439,12 +1529,14 @@ where
         start_block_at_least: u64,
         should_include_lost_keys: bool,
         should_include_retired_keys: bool,
+        should_only_include_unexpired_keys: bool,
     ) -> Result<Vec<IngressPublicKeyRecord>, <DB as RecoveryDb>::Error> {
         self.recovery_db.get_ingress_key_records(
             start_block_at_least,
-            IngressPublicKeyRecordFilters {
+            &IngressPublicKeyRecordFilters {
                 should_include_lost_keys,
                 should_include_retired_keys,
+                should_only_include_unexpired_keys,
             },
         )
     }

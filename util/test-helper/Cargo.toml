@@ -21,4 +21,4 @@ mc-account-keys = { path = "../../account-keys" }
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
-itertools = "0.9.0"
+itertools = "0.10.3"

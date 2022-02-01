@@ -30,6 +30,9 @@ use mc_transaction_core::{
 };
 use mc_util_lmdb::MetadataStoreSettings;
 use mc_util_serial::{decode, encode, Message};
+use mc_util_telemetry::{
+    mark_span_as_active, start_block_span, telemetry_static_key, tracer, Key, Span,
+};
 use metrics::LedgerMetrics;
 use std::{
     fs,
@@ -56,6 +59,11 @@ pub const BLOCK_NUMBER_BY_TX_OUT_INDEX: &str = "ledger_db:block_number_by_tx_out
 
 /// Keys used by the `counts` database.
 pub const NUM_BLOCKS_KEY: &str = "num_blocks";
+
+/// OpenTelemetry keys
+const TELEMETRY_BLOCK_INDEX_KEY: Key = telemetry_static_key!("block-index");
+const TELEMETRY_NUM_KEY_IMAGES_KEY: Key = telemetry_static_key!("num-key-images");
+const TELEMETRY_NUM_TXOS_KEY: Key = telemetry_static_key!("num-txos");
 
 /// Metadata store settings that are used for version control.
 #[derive(Clone, Default, Debug)]
@@ -152,6 +160,16 @@ impl Ledger for LedgerDB {
         signature: Option<BlockSignature>,
     ) -> Result<(), Error> {
         let start_time = Instant::now();
+
+        let tracer = tracer!();
+
+        let mut span = start_block_span(&tracer, "append_block", block.index);
+        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(block.index as i64));
+        span.set_attribute(
+            TELEMETRY_NUM_KEY_IMAGES_KEY.i64(block_contents.key_images.len() as i64),
+        );
+        span.set_attribute(TELEMETRY_NUM_TXOS_KEY.i64(block_contents.outputs.len() as i64));
+        let _active = mark_span_as_active(span);
 
         // Note: This function must update every LMDB database managed by LedgerDB.
         let mut db_transaction = self.env.begin_rw_txn()?;

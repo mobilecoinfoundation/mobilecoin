@@ -31,7 +31,8 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_recovery_db_iface::{
     AddBlockDataStatus, FogUserEvent, IngestInvocationId, IngressPublicKeyRecord,
-    IngressPublicKeyRecordFilters, IngressPublicKeyStatus, RecoveryDb, ReportData, ReportDb,
+    IngressPublicKeyRecordFilters, IngressPublicKeyStatus, RecoveryDb, RecoveryDbError, ReportData,
+    ReportDb,
 };
 use mc_fog_types::{
     common::BlockRange,
@@ -39,8 +40,13 @@ use mc_fog_types::{
     ETxOutRecord,
 };
 use mc_transaction_core::Block;
+use mc_util_parse::parse_duration_in_seconds;
 use prost::Message;
 use proto_types::ProtoIngestedBlockData;
+use retry::{delay, Error as RetryError, OperationResult};
+use serde::Serialize;
+use std::{cmp::max, time::Duration};
+use structopt::StructOpt;
 
 pub use error::Error;
 
@@ -53,30 +59,102 @@ pub const SQL_MAX_PARAMS: usize = 65000;
 /// Maximal number of rows to insert in one batch.
 pub const SQL_MAX_ROWS: usize = 5000;
 
+/// SQL recovery DB connection configuration parameters
+#[derive(Debug, Clone, StructOpt, Serialize)]
+pub struct SqlRecoveryDbConnectionConfig {
+    /// The idle timeout used by the connection pool.
+    /// If set, connections will be closed after sitting idle for at most 30
+    /// seconds beyond this duration. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
+    #[structopt(long, env, default_value = "60", parse(try_from_str=parse_duration_in_seconds))]
+    pub postgres_idle_timeout: Duration,
+
+    /// The maximum lifetime of connections in the pool.
+    /// If set, connections will be closed after existing for at most 30 seconds
+    /// beyond this duration. If a connection reaches its maximum lifetime
+    /// while checked out it will be closed when it is returned to the pool. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
+    #[structopt(long, env, default_value = "120", parse(try_from_str=parse_duration_in_seconds))]
+    pub postgres_max_lifetime: Duration,
+
+    /// Sets the connection timeout used by the pool.
+    /// The pool will wait this long for a connection to become available before
+    /// returning an error. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
+    #[structopt(long, env, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
+    pub postgres_connection_timeout: Duration,
+
+    /// The maximum number of connections managed by the pool.
+    #[structopt(long, env, default_value = "1")]
+    pub postgres_max_connections: u32,
+
+    /// How many times to retry when we get retriable errors (connection /
+    /// diesel errors)
+    #[structopt(long, env, default_value = "3")]
+    pub postgres_retry_count: usize,
+
+    /// How long to back off (milliseconds) when we get retriable errors
+    /// (connection / diesel errors)
+    #[structopt(long, env, default_value = "20")]
+    pub postgres_retry_millis: u64,
+}
+
+impl Default for SqlRecoveryDbConnectionConfig {
+    fn default() -> Self {
+        Self {
+            postgres_idle_timeout: Duration::from_secs(60),
+            postgres_max_lifetime: Duration::from_secs(120),
+            postgres_connection_timeout: Duration::from_secs(5),
+            postgres_max_connections: 1,
+            postgres_retry_count: 3,
+            postgres_retry_millis: 20,
+        }
+    }
+}
+
 /// SQL-backed recovery database.
 #[derive(Clone)]
 pub struct SqlRecoveryDb {
     pool: Pool<ConnectionManager<PgConnection>>,
+    config: SqlRecoveryDbConnectionConfig,
     logger: Logger,
 }
 
 impl SqlRecoveryDb {
     /// Create a new instance using a pre-existing connection pool.
-    pub fn new(pool: Pool<ConnectionManager<PgConnection>>, logger: Logger) -> Self {
-        Self { pool, logger }
+    fn new(
+        pool: Pool<ConnectionManager<PgConnection>>,
+        config: SqlRecoveryDbConnectionConfig,
+        logger: Logger,
+    ) -> Self {
+        Self {
+            pool,
+            config,
+            logger,
+        }
     }
 
-    /// Create a new instance using a database URL. This will create a
-    /// connection pool of size 1. The benefit of doing this is that the
-    /// pool takes care of automatically reconnecting to the database if the
-    /// connection dies.
-    pub fn new_from_url(database_url: &str, logger: Logger) -> Result<Self, Error> {
+    /// Create a new instance using a database URL,
+    /// and connection parameters. The parameters have sane defaults.
+    pub fn new_from_url(
+        database_url: &str,
+        config: SqlRecoveryDbConnectionConfig,
+        logger: Logger,
+    ) -> Result<Self, Error> {
         let manager = ConnectionManager::<PgConnection>::new(database_url);
         let pool = Pool::builder()
-            .max_size(1)
+            .max_size(config.postgres_max_connections)
+            .idle_timeout(Some(config.postgres_idle_timeout))
+            .max_lifetime(Some(config.postgres_max_lifetime))
+            .connection_timeout(config.postgres_connection_timeout)
             .test_on_check_out(true)
             .build(manager)?;
-        Ok(Self::new(pool, logger))
+        Ok(Self::new(pool, config, logger))
+    }
+
+    // Helper function for retries config
+    fn get_retries(&self) -> Box<dyn Iterator<Item = Duration>> {
+        Box::new(
+            delay::Fixed::from_millis(self.config.postgres_retry_millis)
+                .take(self.config.postgres_retry_count),
+        )
     }
 
     /// Mark a given ingest invocation as decommissioned.
@@ -176,13 +254,20 @@ impl SqlRecoveryDb {
             )))
         }
     }
-}
 
-/// See trait `fog_recovery_db_iface::RecoveryDb` for documentation.
-impl RecoveryDb for SqlRecoveryDb {
-    type Error = Error;
+    fn get_highest_known_block_index_impl(conn: &PgConnection) -> Result<Option<u64>, Error> {
+        Ok(schema::ingested_blocks::dsl::ingested_blocks
+            .select(diesel::dsl::max(schema::ingested_blocks::dsl::block_number))
+            .first::<Option<i64>>(conn)?
+            .map(|val| val as u64))
+    }
 
-    fn get_ingress_key_status(
+    ////
+    // RecoveryDb functions that are meant to be retriable (don't take a conn as
+    // argument)
+    ////
+
+    fn get_ingress_key_status_retriable(
         &self,
         key: &CompressedRistrettoPublic,
     ) -> Result<Option<IngressPublicKeyStatus>, Error> {
@@ -190,29 +275,46 @@ impl RecoveryDb for SqlRecoveryDb {
         self.get_ingress_key_status_impl(&conn, key)
     }
 
-    fn new_ingress_key(
+    fn new_ingress_key_retriable(
         &self,
         key: &CompressedRistrettoPublic,
-        start_block: u64,
-    ) -> Result<bool, Error> {
+        start_block_count: u64,
+    ) -> Result<u64, Error> {
         let conn = self.pool.get()?;
-        let obj = models::NewIngressKey {
-            ingress_public_key: (*key).into(),
-            start_block: start_block as i64,
-            pubkey_expiry: 0,
-            retired: false,
-            lost: false,
-        };
+        conn.build_transaction()
+            .read_write()
+            .run(|| -> Result<u64, Error> {
+                let highest_known_block_count: u64 =
+                    SqlRecoveryDb::get_highest_known_block_index_impl(&conn)?
+                        .map(|index| index + 1)
+                        .unwrap_or(0);
 
-        let inserted_row_count = diesel::insert_into(schema::ingress_keys::table)
-            .values(&obj)
-            .on_conflict_do_nothing()
-            .execute(&conn)?;
+                let accepted_start_block_count = max(start_block_count, highest_known_block_count);
+                let obj = models::NewIngressKey {
+                    ingress_public_key: (*key).into(),
+                    start_block: accepted_start_block_count as i64,
+                    pubkey_expiry: 0,
+                    retired: false,
+                    lost: false,
+                };
 
-        Ok(inserted_row_count > 0)
+                let inserted_row_count = diesel::insert_into(schema::ingress_keys::table)
+                    .values(&obj)
+                    .on_conflict_do_nothing()
+                    .execute(&conn)?;
+
+                if inserted_row_count > 0 {
+                    Ok(accepted_start_block_count)
+                } else {
+                    Err(Error::IngressKeyUnsuccessfulInsert(format!(
+                        "Unable to insert ingress key: {:?}",
+                        key
+                    )))
+                }
+            })
     }
 
-    fn retire_ingress_key(
+    fn retire_ingress_key_retriable(
         &self,
         key: &CompressedRistrettoPublic,
         set_retired: bool,
@@ -227,7 +329,7 @@ impl RecoveryDb for SqlRecoveryDb {
         Ok(())
     }
 
-    fn get_last_scanned_block_index(
+    fn get_last_scanned_block_index_retriable(
         &self,
         key: &CompressedRistrettoPublic,
     ) -> Result<Option<u64>, Error> {
@@ -244,14 +346,17 @@ impl RecoveryDb for SqlRecoveryDb {
         Ok(maybe_index.map(|val| val as u64))
     }
 
-    fn get_ingress_key_records(
+    fn get_ingress_key_records_retriable(
         &self,
         start_block_at_least: u64,
-        ingress_public_key_record_filters: IngressPublicKeyRecordFilters,
+        ingress_public_key_record_filters: &IngressPublicKeyRecordFilters,
     ) -> Result<Vec<IngressPublicKeyRecord>, Error> {
         let conn = self.pool.get()?;
 
         use schema::ingress_keys::dsl;
+        let last_scanned_block = diesel::dsl::sql::<diesel::sql_types::BigInt>(
+                    "(SELECT MAX(block_number) FROM ingested_blocks WHERE ingress_keys.ingress_public_key = ingested_blocks.ingress_public_key)"
+                );
         let mut query = dsl::ingress_keys
             .select((
                 dsl::ingress_public_key,
@@ -259,20 +364,23 @@ impl RecoveryDb for SqlRecoveryDb {
                 dsl::pubkey_expiry,
                 dsl::retired,
                 dsl::lost,
-                diesel::dsl::sql::<diesel::sql_types::BigInt>(
-                    "(SELECT MAX(block_number) FROM ingested_blocks WHERE ingress_keys.ingress_public_key = ingested_blocks.ingress_public_key)"
-                ).nullable(),
-
+                last_scanned_block.clone().nullable(),
             ))
             .filter(dsl::start_block.ge(start_block_at_least as i64))
             // Allows for conditional queries, which means additional filter
             // clauses can be added to this query.
             .into_boxed();
 
+        if ingress_public_key_record_filters.should_only_include_unexpired_keys {
+            query = query
+                .filter(last_scanned_block.clone().is_not_null())
+                .filter(dsl::pubkey_expiry.gt(last_scanned_block));
+        }
         if !ingress_public_key_record_filters.should_include_lost_keys {
             // Adds this filter to the existing query (rather than replacing it).
             query = query.filter(dsl::lost.eq(false));
         }
+
         if !ingress_public_key_record_filters.should_include_retired_keys {
             // Adds this filter to the existing query (rather than replacing it).
             query = query.filter(dsl::retired.eq(false));
@@ -315,7 +423,7 @@ impl RecoveryDb for SqlRecoveryDb {
             .collect())
     }
 
-    fn new_ingest_invocation(
+    fn new_ingest_invocation_retriable(
         &self,
         prev_ingest_invocation_id: Option<IngestInvocationId>,
         ingress_public_key: &CompressedRistrettoPublic,
@@ -359,9 +467,9 @@ impl RecoveryDb for SqlRecoveryDb {
         })
     }
 
-    fn get_ingestable_ranges(
+    fn get_ingestable_ranges_retriable(
         &self,
-    ) -> Result<Vec<mc_fog_recovery_db_iface::IngestableRange>, Self::Error> {
+    ) -> Result<Vec<mc_fog_recovery_db_iface::IngestableRange>, Error> {
         let conn = self.pool.get()?;
 
         // For each ingest invocation we are aware of get its id, start block, is
@@ -402,10 +510,10 @@ impl RecoveryDb for SqlRecoveryDb {
     /// Arguments:
     /// * ingest_invocation_id: The unique ingest invocation id that has been
     ///   retired
-    fn decommission_ingest_invocation(
+    fn decommission_ingest_invocation_retriable(
         &self,
         ingest_invocation_id: &IngestInvocationId,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), Error> {
         let conn = self.pool.get()?;
 
         conn.build_transaction()
@@ -413,19 +521,19 @@ impl RecoveryDb for SqlRecoveryDb {
             .run(|| self.decommission_ingest_invocation_impl(&conn, ingest_invocation_id))
     }
 
-    fn add_block_data(
+    fn add_block_data_retriable(
         &self,
         ingest_invocation_id: &IngestInvocationId,
         block: &Block,
         block_signature_timestamp: u64,
         txs: &[mc_fog_types::ETxOutRecord],
-    ) -> Result<AddBlockDataStatus, Self::Error> {
+    ) -> Result<AddBlockDataStatus, Error> {
         let conn = self.pool.get()?;
 
         match conn
             .build_transaction()
             .read_write()
-            .run(|| -> Result<(), Self::Error> {
+            .run(|| -> Result<(), Error> {
                 // Get ingress pubkey of this ingest invocation id, which is also stored in the
                 // ingested_block record
                 //
@@ -476,7 +584,7 @@ impl RecoveryDb for SqlRecoveryDb {
             // of an error This makes it a little easier for the caller to access this
             // information without making custom traits for interrogating generic
             // errors.
-            Err(Self::Error::Orm(diesel::result::Error::DatabaseError(
+            Err(Error::Orm(diesel::result::Error::DatabaseError(
                 diesel::result::DatabaseErrorKind::UniqueViolation,
                 _,
             ))) => Ok(AddBlockDataStatus {
@@ -486,10 +594,10 @@ impl RecoveryDb for SqlRecoveryDb {
         }
     }
 
-    fn report_lost_ingress_key(
+    fn report_lost_ingress_key_retriable(
         &self,
         lost_ingress_key: CompressedRistrettoPublic,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), Error> {
         let conn = self.pool.get()?;
 
         conn.build_transaction().read_write().run(|| {
@@ -558,15 +666,15 @@ impl RecoveryDb for SqlRecoveryDb {
         })
     }
 
-    fn get_missed_block_ranges(&self) -> Result<Vec<BlockRange>, Self::Error> {
+    fn get_missed_block_ranges_retriable(&self) -> Result<Vec<BlockRange>, Error> {
         let conn = self.pool.get()?;
         self.get_missed_block_ranges_impl(&conn)
     }
 
-    fn search_user_events(
+    fn search_user_events_retriable(
         &self,
         start_from_user_event_id: i64,
-    ) -> Result<(Vec<FogUserEvent>, i64), Self::Error> {
+    ) -> Result<(Vec<FogUserEvent>, i64), Error> {
         // Early return if start_from_user_event_id is max
         if start_from_user_event_id == i64::MAX {
             return Ok((Default::default(), i64::MAX));
@@ -737,11 +845,11 @@ impl RecoveryDb for SqlRecoveryDb {
     /// Returns:
     /// * Exactly one TxOutSearchResult object for every search key, or an
     ///   internal database error description.
-    fn get_tx_outs(
+    fn get_tx_outs_retriable(
         &self,
         start_block: u64,
         search_keys: &[Vec<u8>],
-    ) -> Result<Vec<TxOutSearchResult>, Self::Error> {
+    ) -> Result<Vec<TxOutSearchResult>, Error> {
         let conn = self.pool.get()?;
 
         let query = schema::ingested_blocks::dsl::ingested_blocks
@@ -777,10 +885,10 @@ impl RecoveryDb for SqlRecoveryDb {
     }
 
     /// Mark a given ingest invocation as still being alive.
-    fn update_last_active_at(
+    fn update_last_active_at_retriable(
         &self,
         ingest_invocation_id: &IngestInvocationId,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<(), Error> {
         let conn = self.pool.get()?;
         self.update_last_active_at_impl(&conn, ingest_invocation_id)
     }
@@ -795,11 +903,11 @@ impl RecoveryDb for SqlRecoveryDb {
     /// Returns:
     /// * The ETxOutRecord's from when this block was added, or None if the
     ///   block doesn't exist yet or, an error
-    fn get_tx_outs_by_block_and_key(
+    fn get_tx_outs_by_block_and_key_retriable(
         &self,
         ingress_key: CompressedRistrettoPublic,
         block_index: u64,
-    ) -> Result<Option<Vec<ETxOutRecord>>, Self::Error> {
+    ) -> Result<Option<Vec<ETxOutRecord>>, Error> {
         let conn = self.pool.get()?;
 
         let key_bytes: &[u8] = ingress_key.as_ref();
@@ -824,11 +932,11 @@ impl RecoveryDb for SqlRecoveryDb {
 
     /// Get iid that produced data for given ingress key and a given block
     /// index.
-    fn get_invocation_id_by_block_and_key(
+    fn get_invocation_id_by_block_and_key_retriable(
         &self,
         ingress_key: CompressedRistrettoPublic,
         block_index: u64,
-    ) -> Result<Option<IngestInvocationId>, Self::Error> {
+    ) -> Result<Option<IngestInvocationId>, Error> {
         let conn = self.pool.get()?;
 
         let key_bytes: &[u8] = ingress_key.as_ref();
@@ -859,10 +967,10 @@ impl RecoveryDb for SqlRecoveryDb {
     /// * Some(cumulative_txo_count) if the block was found in the database,
     ///   None if it wasn't, or
     /// an error if the query failed.
-    fn get_cumulative_txo_count_for_block(
+    fn get_cumulative_txo_count_for_block_retriable(
         &self,
         block_index: u64,
-    ) -> Result<Option<u64>, Self::Error> {
+    ) -> Result<Option<u64>, Error> {
         let conn = self.pool.get()?;
 
         let query = schema::ingested_blocks::dsl::ingested_blocks
@@ -896,10 +1004,10 @@ impl RecoveryDb for SqlRecoveryDb {
     /// * Some(cumulative_txo_count) if the block was found in the database,
     ///   None if it wasn't, or
     /// an error if the query failed.
-    fn get_block_signature_timestamp_for_block(
+    fn get_block_signature_timestamp_for_block_retriable(
         &self,
         block_index: u64,
-    ) -> Result<Option<u64>, Self::Error> {
+    ) -> Result<Option<u64>, Error> {
         let conn = self.pool.get()?;
 
         let query = schema::ingested_blocks::dsl::ingested_blocks
@@ -911,21 +1019,17 @@ impl RecoveryDb for SqlRecoveryDb {
     }
 
     /// Get the highest block index for which we have any data at all.
-    fn get_highest_known_block_index(&self) -> Result<Option<u64>, Self::Error> {
+    fn get_highest_known_block_index_retriable(&self) -> Result<Option<u64>, Error> {
         let conn = self.pool.get()?;
-
-        Ok(schema::ingested_blocks::dsl::ingested_blocks
-            .select(diesel::dsl::max(schema::ingested_blocks::dsl::block_number))
-            .first::<Option<i64>>(&conn)?
-            .map(|val| val as u64))
+        SqlRecoveryDb::get_highest_known_block_index_impl(&conn)
     }
-}
 
-/// See trait `fog_recovery_db_iface::ReportDb` for documentation.
-impl ReportDb for SqlRecoveryDb {
-    type Error = Error;
+    ////
+    // ReportDb functions that are meant to be retriable (don't take a conn as
+    // argument)
+    ////
 
-    fn get_all_reports(&self) -> Result<Vec<(String, ReportData)>, Self::Error> {
+    fn get_all_reports_retriable(&self) -> Result<Vec<(String, ReportData)>, Error> {
         let conn = self.pool.get()?;
 
         let query = schema::reports::dsl::reports
@@ -955,16 +1059,17 @@ impl ReportDb for SqlRecoveryDb {
     }
 
     /// Set report data associated with a given report id.
-    fn set_report(
+    fn set_report_retriable(
         &self,
         ingress_key: &CompressedRistrettoPublic,
         report_id: &str,
         data: &ReportData,
-    ) -> Result<IngressPublicKeyStatus, Self::Error> {
+    ) -> Result<IngressPublicKeyStatus, Error> {
         let conn = self.pool.get()?;
 
-        conn.build_transaction().read_write().run(
-            || -> Result<IngressPublicKeyStatus, Self::Error> {
+        conn.build_transaction()
+            .read_write()
+            .run(|| -> Result<IngressPublicKeyStatus, Error> {
                 // First, try to update the pubkey_expiry value on this ingress key, only
                 // allowing it to increase, and only if it is not retired
                 let result: IngressPublicKeyStatus = {
@@ -1032,18 +1137,338 @@ impl ReportDb for SqlRecoveryDb {
                     ))
                     .execute(&conn)?;
                 Ok(result)
-            },
-        )
+            })
     }
 
     /// Remove report data associated with a given report id.
-    fn remove_report(&self, report_id: &str) -> Result<(), Self::Error> {
+    fn remove_report_retriable(&self, report_id: &str) -> Result<(), Error> {
         let conn = self.pool.get()?;
         diesel::delete(
             schema::reports::dsl::reports.filter(schema::reports::dsl::fog_report_id.eq(report_id)),
         )
         .execute(&conn)?;
         Ok(())
+    }
+}
+
+/// See trait `fog_recovery_db_iface::RecoveryDb` for documentation.
+impl RecoveryDb for SqlRecoveryDb {
+    type Error = Error;
+
+    fn get_ingress_key_status(
+        &self,
+        key: &CompressedRistrettoPublic,
+    ) -> Result<Option<IngressPublicKeyStatus>, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.get_ingress_key_status_retriable(key)
+        })
+    }
+
+    fn new_ingress_key(
+        &self,
+        key: &CompressedRistrettoPublic,
+        start_block_count: u64,
+    ) -> Result<u64, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.new_ingress_key_retriable(key, start_block_count)
+        })
+    }
+
+    fn retire_ingress_key(
+        &self,
+        key: &CompressedRistrettoPublic,
+        set_retired: bool,
+    ) -> Result<(), Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.retire_ingress_key_retriable(key, set_retired)
+        })
+    }
+
+    fn get_last_scanned_block_index(
+        &self,
+        key: &CompressedRistrettoPublic,
+    ) -> Result<Option<u64>, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.get_last_scanned_block_index_retriable(key)
+        })
+    }
+
+    fn get_ingress_key_records(
+        &self,
+        start_block_at_least: u64,
+        ingress_public_key_record_filters: &IngressPublicKeyRecordFilters,
+    ) -> Result<Vec<IngressPublicKeyRecord>, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.get_ingress_key_records_retriable(
+                start_block_at_least,
+                ingress_public_key_record_filters,
+            )
+        })
+    }
+
+    fn new_ingest_invocation(
+        &self,
+        prev_ingest_invocation_id: Option<IngestInvocationId>,
+        ingress_public_key: &CompressedRistrettoPublic,
+        egress_public_key: &KexRngPubkey,
+        start_block: u64,
+    ) -> Result<IngestInvocationId, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.new_ingest_invocation_retriable(
+                prev_ingest_invocation_id,
+                ingress_public_key,
+                egress_public_key,
+                start_block,
+            )
+        })
+    }
+
+    fn get_ingestable_ranges(
+        &self,
+    ) -> Result<Vec<mc_fog_recovery_db_iface::IngestableRange>, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.get_ingestable_ranges_retriable()
+        })
+    }
+
+    /// Decommission a given ingest invocation.
+    ///
+    /// This should be done when a given ingest enclave goes down or is retired.
+    ///
+    /// Arguments:
+    /// * ingest_invocation_id: The unique ingest invocation id that has been
+    ///   retired
+    fn decommission_ingest_invocation(
+        &self,
+        ingest_invocation_id: &IngestInvocationId,
+    ) -> Result<(), Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.decommission_ingest_invocation_retriable(ingest_invocation_id)
+        })
+    }
+
+    fn add_block_data(
+        &self,
+        ingest_invocation_id: &IngestInvocationId,
+        block: &Block,
+        block_signature_timestamp: u64,
+        txs: &[mc_fog_types::ETxOutRecord],
+    ) -> Result<AddBlockDataStatus, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.add_block_data_retriable(
+                ingest_invocation_id,
+                block,
+                block_signature_timestamp,
+                txs,
+            )
+        })
+    }
+
+    fn report_lost_ingress_key(
+        &self,
+        lost_ingress_key: CompressedRistrettoPublic,
+    ) -> Result<(), Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.report_lost_ingress_key_retriable(lost_ingress_key)
+        })
+    }
+
+    fn get_missed_block_ranges(&self) -> Result<Vec<BlockRange>, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.get_missed_block_ranges_retriable()
+        })
+    }
+
+    fn search_user_events(
+        &self,
+        start_from_user_event_id: i64,
+    ) -> Result<(Vec<FogUserEvent>, i64), Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.search_user_events_retriable(start_from_user_event_id)
+        })
+    }
+
+    /// Get any TxOutSearchResults corresponding to given search keys.
+    /// Nonzero start_block can be provided as an optimization opportunity.
+    ///
+    /// Note: This is still supported for some tests, but it is VERY SLOW.
+    /// We no longer have an index for ETxOutRecords by search key in the SQL
+    /// directly. This should not be used except in tests.
+    ///
+    /// Arguments:
+    /// * start_block: A lower bound on where we will search. This can often be
+    ///   provided by the user in order to limit the scope of the search and
+    ///   reduce load on the servers.
+    /// * search_keys: A list of fog tx_out search keys to search for.
+    ///
+    /// Returns:
+    /// * Exactly one TxOutSearchResult object for every search key, or an
+    ///   internal database error description.
+    fn get_tx_outs(
+        &self,
+        start_block: u64,
+        search_keys: &[Vec<u8>],
+    ) -> Result<Vec<TxOutSearchResult>, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.get_tx_outs_retriable(start_block, search_keys)
+        })
+    }
+
+    /// Mark a given ingest invocation as still being alive.
+    fn update_last_active_at(
+        &self,
+        ingest_invocation_id: &IngestInvocationId,
+    ) -> Result<(), Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.update_last_active_at_retriable(ingest_invocation_id)
+        })
+    }
+
+    /// Get any ETxOutRecords produced by a given ingress key for a given
+    /// block index.
+    ///
+    /// Arguments:
+    /// * ingress_key: The ingress key we need ETxOutRecords from
+    /// * block_index: The block we need ETxOutRecords from
+    ///
+    /// Returns:
+    /// * The ETxOutRecord's from when this block was added, or None if the
+    ///   block doesn't exist yet or, an error
+    fn get_tx_outs_by_block_and_key(
+        &self,
+        ingress_key: CompressedRistrettoPublic,
+        block_index: u64,
+    ) -> Result<Option<Vec<ETxOutRecord>>, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.get_tx_outs_by_block_and_key_retriable(ingress_key, block_index)
+        })
+    }
+
+    /// Get iid that produced data for given ingress key and a given block
+    /// index.
+    fn get_invocation_id_by_block_and_key(
+        &self,
+        ingress_key: CompressedRistrettoPublic,
+        block_index: u64,
+    ) -> Result<Option<IngestInvocationId>, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.get_invocation_id_by_block_and_key_retriable(ingress_key, block_index)
+        })
+    }
+
+    /// Get the cumulative txo count for a given block number.
+    ///
+    /// Arguments:
+    /// * block_index: The block we need cumulative_txo_count for.
+    ///
+    /// Returns:
+    /// * Some(cumulative_txo_count) if the block was found in the database,
+    ///   None if it wasn't, or
+    /// an error if the query failed.
+    fn get_cumulative_txo_count_for_block(
+        &self,
+        block_index: u64,
+    ) -> Result<Option<u64>, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.get_cumulative_txo_count_for_block_retriable(block_index)
+        })
+    }
+
+    /// Get the block signature timestamp for a given block number.
+    /// Note that it is unspecified which timestamp we use if there are multiple
+    /// timestamps.
+    ///
+    /// Arguments:
+    /// * block_index: The block we need timestamp for.
+    ///
+    /// Returns:
+    /// * Some(cumulative_txo_count) if the block was found in the database,
+    ///   None if it wasn't, or
+    /// an error if the query failed.
+    fn get_block_signature_timestamp_for_block(
+        &self,
+        block_index: u64,
+    ) -> Result<Option<u64>, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.get_block_signature_timestamp_for_block_retriable(block_index)
+        })
+    }
+
+    /// Get the highest block index for which we have any data at all.
+    fn get_highest_known_block_index(&self) -> Result<Option<u64>, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.get_highest_known_block_index_retriable()
+        })
+    }
+}
+
+/// See trait `fog_recovery_db_iface::ReportDb` for documentation.
+impl ReportDb for SqlRecoveryDb {
+    type Error = Error;
+
+    fn get_all_reports(&self) -> Result<Vec<(String, ReportData)>, Self::Error> {
+        our_retry(self.get_retries(), || self.get_all_reports_retriable())
+    }
+
+    /// Set report data associated with a given report id.
+    fn set_report(
+        &self,
+        ingress_key: &CompressedRistrettoPublic,
+        report_id: &str,
+        data: &ReportData,
+    ) -> Result<IngressPublicKeyStatus, Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.set_report_retriable(ingress_key, report_id, data)
+        })
+    }
+
+    /// Remove report data associated with a given report id.
+    fn remove_report(&self, report_id: &str) -> Result<(), Self::Error> {
+        our_retry(self.get_retries(), || {
+            self.remove_report_retriable(report_id)
+        })
+    }
+}
+
+// Helper for using the retry crate's retry function
+//
+// The retry crate has From<Result<R, E>> for OperationResult, but this does
+// not check if E is retriable, it just always assumes it is.
+// https://docs.rs/retry/latest/src/retry/opresult.rs.html#32-39
+//
+// The retry::retry function will implicitly use this conversion unless you
+// explicitly map things to OperationResult, which is kind of a footgun.
+//
+// This version only works with our Error, but actually tests if it is retriable
+//
+// We also unpack the RetryError object which has a useless variant
+//
+// Note: We may want to move this to a util crate or something, but if we do
+// then there would need to be a common trait for "should_retry()" errors.
+fn our_retry<I, O, R>(iterable: I, mut operation: O) -> Result<R, Error>
+where
+    I: IntoIterator<Item = Duration>,
+    O: FnMut() -> Result<R, Error>,
+{
+    retry::retry(iterable, || match operation() {
+        Ok(ok) => OperationResult::Ok(ok),
+        Err(err) => {
+            if err.should_retry() {
+                OperationResult::Retry(err)
+            } else {
+                OperationResult::Err(err)
+            }
+        }
+    })
+    .map_err(unpack_retry_error)
+}
+
+fn unpack_retry_error(src: RetryError<Error>) -> Error {
+    match src {
+        RetryError::Operation { error, .. } => error,
+        RetryError::Internal(_) => {
+            panic!("This is unreachable, see https://github.com/jimmycuadra/retry/issues/38")
+        }
     }
 }
 
@@ -2041,9 +2466,10 @@ mod tests {
         assert_eq!(
             db.get_ingress_key_records(
                 0,
-                IngressPublicKeyRecordFilters {
+                &IngressPublicKeyRecordFilters {
                     should_include_lost_keys: true,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap(),
@@ -2057,9 +2483,10 @@ mod tests {
         assert_eq!(
             db.get_ingress_key_records(
                 0,
-                IngressPublicKeyRecordFilters {
+                &IngressPublicKeyRecordFilters {
                     should_include_lost_keys: true,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap(),
@@ -2083,9 +2510,10 @@ mod tests {
             HashSet::<IngressPublicKeyRecord>::from_iter(
                 db.get_ingress_key_records(
                     0,
-                    IngressPublicKeyRecordFilters {
+                    &IngressPublicKeyRecordFilters {
                         should_include_lost_keys: true,
-                        should_include_retired_keys: true
+                        should_include_retired_keys: true,
+                        should_only_include_unexpired_keys: false,
                     }
                 )
                 .unwrap()
@@ -2128,9 +2556,10 @@ mod tests {
                 HashSet::<IngressPublicKeyRecord>::from_iter(
                     db.get_ingress_key_records(
                         0,
-                        IngressPublicKeyRecordFilters {
+                        &IngressPublicKeyRecordFilters {
                             should_include_lost_keys: true,
-                            should_include_retired_keys: true
+                            should_include_retired_keys: true,
+                            should_only_include_unexpired_keys: false,
                         }
                     )
                     .unwrap()
@@ -2168,9 +2597,10 @@ mod tests {
             HashSet::<IngressPublicKeyRecord>::from_iter(
                 db.get_ingress_key_records(
                     0,
-                    IngressPublicKeyRecordFilters {
+                    &IngressPublicKeyRecordFilters {
                         should_include_lost_keys: true,
-                        should_include_retired_keys: true
+                        should_include_retired_keys: true,
+                        should_only_include_unexpired_keys: false,
                     }
                 )
                 .unwrap()
@@ -2206,9 +2636,10 @@ mod tests {
             HashSet::<IngressPublicKeyRecord>::from_iter(
                 db.get_ingress_key_records(
                     0,
-                    IngressPublicKeyRecordFilters {
+                    &IngressPublicKeyRecordFilters {
                         should_include_lost_keys: true,
-                        should_include_retired_keys: true
+                        should_include_retired_keys: true,
+                        should_only_include_unexpired_keys: false,
                     }
                 )
                 .unwrap()
@@ -2253,9 +2684,10 @@ mod tests {
             HashSet::<IngressPublicKeyRecord>::from_iter(
                 db.get_ingress_key_records(
                     0,
-                    IngressPublicKeyRecordFilters {
+                    &IngressPublicKeyRecordFilters {
                         should_include_lost_keys: true,
-                        should_include_retired_keys: true
+                        should_include_retired_keys: true,
+                        should_only_include_unexpired_keys: false,
                     }
                 )
                 .unwrap()
@@ -2303,9 +2735,10 @@ mod tests {
                 HashSet::<IngressPublicKeyRecord>::from_iter(
                     db.get_ingress_key_records(
                         0,
-                        IngressPublicKeyRecordFilters {
+                        &IngressPublicKeyRecordFilters {
                             should_include_lost_keys: true,
-                            should_include_retired_keys: true
+                            should_include_retired_keys: true,
+                            should_only_include_unexpired_keys: false,
                         }
                     )
                     .unwrap()
@@ -2339,9 +2772,10 @@ mod tests {
         assert_eq!(
             db.get_ingress_key_records(
                 400,
-                IngressPublicKeyRecordFilters {
+                &IngressPublicKeyRecordFilters {
                     should_include_lost_keys: true,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap(),
@@ -2370,9 +2804,10 @@ mod tests {
         assert_eq!(
             db.get_ingress_key_records(
                 0,
-                IngressPublicKeyRecordFilters {
+                &IngressPublicKeyRecordFilters {
                     should_include_lost_keys: false,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap(),
@@ -2386,9 +2821,10 @@ mod tests {
         assert_eq!(
             db.get_ingress_key_records(
                 0,
-                IngressPublicKeyRecordFilters {
+                &IngressPublicKeyRecordFilters {
                     should_include_lost_keys: true,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap(),
@@ -2407,9 +2843,10 @@ mod tests {
         assert_eq!(
             db.get_ingress_key_records(
                 0,
-                IngressPublicKeyRecordFilters {
+                &IngressPublicKeyRecordFilters {
                     should_include_lost_keys: true,
-                    should_include_retired_keys: false
+                    should_include_retired_keys: false,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap()
@@ -2430,9 +2867,10 @@ mod tests {
         assert_eq!(
             db.get_ingress_key_records(
                 0,
-                IngressPublicKeyRecordFilters {
+                &IngressPublicKeyRecordFilters {
                     should_include_lost_keys: false,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap(),
@@ -2446,9 +2884,10 @@ mod tests {
         assert_eq!(
             db.get_ingress_key_records(
                 0,
-                IngressPublicKeyRecordFilters {
+                &IngressPublicKeyRecordFilters {
                     should_include_lost_keys: true,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap(),
@@ -2468,9 +2907,10 @@ mod tests {
         assert_eq!(
             db.get_ingress_key_records(
                 0,
-                IngressPublicKeyRecordFilters {
+                &IngressPublicKeyRecordFilters {
                     should_include_lost_keys: false,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap()
@@ -2491,9 +2931,10 @@ mod tests {
         assert_eq!(
             db.get_ingress_key_records(
                 0,
-                IngressPublicKeyRecordFilters {
+                &IngressPublicKeyRecordFilters {
                     should_include_lost_keys: false,
-                    should_include_retired_keys: true
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap(),
@@ -2511,9 +2952,10 @@ mod tests {
             HashSet::<IngressPublicKeyRecord>::from_iter(
                 db.get_ingress_key_records(
                     0,
-                    IngressPublicKeyRecordFilters {
+                    &IngressPublicKeyRecordFilters {
                         should_include_lost_keys: true,
-                        should_include_retired_keys: true
+                        should_include_retired_keys: true,
+                        should_only_include_unexpired_keys: false,
                     }
                 )
                 .unwrap()
@@ -2548,14 +2990,432 @@ mod tests {
         assert_eq!(
             db.get_ingress_key_records(
                 0,
-                IngressPublicKeyRecordFilters {
+                &IngressPublicKeyRecordFilters {
                     should_include_lost_keys: false,
-                    should_include_retired_keys: false
+                    should_include_retired_keys: false,
+                    should_only_include_unexpired_keys: false,
                 }
             )
             .unwrap()
             .len(),
             0
         );
+    }
+
+    #[test_with_logger]
+    fn test_get_ingress_key_records_should_only_include_in_use_keys_one_key_lost_one_key_retired_but_last_scanned_less_than_pubkey_expiry(
+        logger: Logger,
+    ) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+
+        let proposed_start_block = 0;
+        let ingress_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        let accepted_start_block = db
+            .new_ingress_key(&ingress_key, proposed_start_block)
+            .unwrap();
+
+        assert_eq!(accepted_start_block, proposed_start_block);
+
+        // Ensures that the accepted start block is recorded in the db.
+        let ingress_key_status = db.get_ingress_key_status(&ingress_key).unwrap().unwrap();
+        assert_eq!(accepted_start_block, ingress_key_status.start_block);
+    }
+
+    #[test_with_logger]
+    fn test_new_ingress_key_no_blocks_added_accepted_block_count_is_proposed_start_block(
+        logger: Logger,
+    ) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+
+        // At first, there are no records.
+        assert_eq!(
+            db.get_ingress_key_records(
+                0,
+                &IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: false,
+                    should_only_include_unexpired_keys: false,
+                }
+            )
+            .unwrap(),
+            vec![],
+        );
+
+        // Add an ingress key and see that we can retreive it.
+        let ingress_key1 = CompressedRistrettoPublic::from_random(&mut rng);
+        db.new_ingress_key(&ingress_key1, 0).unwrap();
+
+        let ingress_key2 = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&ingress_key2, 5).unwrap();
+
+        // Add an ingest invocation and see that we can see it.
+        let invoc_id1 = db
+            .new_ingest_invocation(None, &ingress_key1, &random_kex_rng_pubkey(&mut rng), 123)
+            .unwrap();
+
+        let ranges = db.get_ingestable_ranges().unwrap();
+        assert_eq!(ranges.len(), 1);
+        assert_eq!(ranges[0].start_block, 123);
+        assert_eq!(ranges[0].decommissioned, false);
+        assert_eq!(ranges[0].last_ingested_block, None);
+
+        // This makes last_scanned_block equal 10.
+        for block_index in 0..11 {
+            let (block, records) = random_block(&mut rng, block_index, 10);
+            db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
+        }
+
+        db.set_report(
+            &ingress_key1,
+            "",
+            &ReportData {
+                pubkey_expiry: 20,
+                ingest_invocation_id: None,
+                report: Default::default(),
+            },
+        )
+        .unwrap();
+
+        db.retire_ingress_key(&ingress_key1, true).unwrap();
+        db.report_lost_ingress_key(ingress_key2).unwrap();
+
+        let actual = db
+            .get_ingress_key_records(
+                0,
+                &IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: true,
+                },
+            )
+            .unwrap();
+
+        let expected = IngressPublicKeyRecord {
+            key: ingress_key1.clone(),
+            status: IngressPublicKeyStatus {
+                start_block: 0,
+                pubkey_expiry: 20,
+                retired: true,
+                lost: false,
+            },
+            last_scanned_block: Some(10),
+        };
+        assert_eq!(actual, vec![expected]);
+    }
+
+    #[test_with_logger]
+    fn test_get_ingress_key_records_should_only_include_in_use_keys_one_key_lost_one_key_retired_and_last_scanned_equal_to_pubkey_expiry(
+        logger: Logger,
+    ) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+
+        let proposed_start_block = 120;
+        let ingress_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        let accepted_start_block = db
+            .new_ingress_key(&ingress_key, proposed_start_block)
+            .unwrap();
+
+        assert_eq!(accepted_start_block, proposed_start_block);
+
+        // Ensures that the accepted start block is recorded in the db.
+        let ingress_key_status = db.get_ingress_key_status(&ingress_key).unwrap().unwrap();
+        assert_eq!(accepted_start_block, ingress_key_status.start_block);
+    }
+
+    #[test_with_logger]
+    fn test_new_ingress_key_proposed_lower_than_highest_known_accepts_highest_known_block_count(
+        logger: Logger,
+    ) {
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let original_ingress_key =
+            CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&original_ingress_key, 0).unwrap();
+        let num_txs = 1;
+        let invoc_id = db
+            .new_ingest_invocation(
+                None,
+                &original_ingress_key,
+                &random_kex_rng_pubkey(&mut rng),
+                123,
+            )
+            .unwrap();
+
+        // Add the 11th block to the DB. This will serve as the highest known
+        // block index.
+        let highest_known_block_index = 10;
+        let highest_known_block_count = highest_known_block_index + 1;
+        let (block, records) = random_block(&mut rng, highest_known_block_index, num_txs);
+        db.add_block_data(&invoc_id, &block, 0, &records).unwrap();
+
+        let proposed_start_block_count = 8;
+        let mut rng_2: StdRng = SeedableRng::from_seed([127u8; 32]);
+        let new_ingress_key =
+            CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng_2));
+        let accepted_start_block = db
+            .new_ingress_key(&new_ingress_key, proposed_start_block_count)
+            .unwrap();
+
+        assert_eq!(accepted_start_block, highest_known_block_count);
+
+        // Ensures that the accepted start block is recorded in the db.
+        let ingress_key_status = db
+            .get_ingress_key_status(&new_ingress_key)
+            .unwrap()
+            .unwrap();
+        assert_eq!(accepted_start_block, ingress_key_status.start_block);
+    }
+
+    #[test_with_logger]
+    fn test_new_ingress_key_proposed_higher_than_highest_known_accepts_proposed(logger: Logger) {
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let original_ingress_key =
+            CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&original_ingress_key, 0).unwrap();
+        let num_txs = 1;
+        let invoc_id = db
+            .new_ingest_invocation(
+                None,
+                &original_ingress_key,
+                &random_kex_rng_pubkey(&mut rng),
+                123,
+            )
+            .unwrap();
+
+        // Add the 11th block to the DB. This will serve as the highest known
+        // block index.
+        let highest_known_block_index = 10;
+        let (block, records) = random_block(&mut rng, highest_known_block_index, num_txs);
+        db.add_block_data(&invoc_id, &block, 0, &records).unwrap();
+
+        let proposed_start_block_count = 11;
+        let mut rng_2: StdRng = SeedableRng::from_seed([127u8; 32]);
+        let new_ingress_key =
+            CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng_2));
+        let accepted_start_block = db
+            .new_ingress_key(&new_ingress_key, proposed_start_block_count)
+            .unwrap();
+
+        assert_eq!(accepted_start_block, proposed_start_block_count);
+
+        // Ensures that the accepted start block is recorded in the db.
+        let ingress_key_status = db
+            .get_ingress_key_status(&new_ingress_key)
+            .unwrap()
+            .unwrap();
+        assert_eq!(accepted_start_block, ingress_key_status.start_block);
+    }
+
+    #[test_with_logger]
+    fn test_new_ingress_key_proposed_one_more_than_highest_known_accepts_proposed(logger: Logger) {
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let original_ingress_key =
+            CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&original_ingress_key, 0).unwrap();
+        let num_txs = 1;
+        let invoc_id = db
+            .new_ingest_invocation(
+                None,
+                &original_ingress_key,
+                &random_kex_rng_pubkey(&mut rng),
+                123,
+            )
+            .unwrap();
+
+        // Add the 11th block to the DB. This will serve as the highest known
+        // block index.
+        let highest_known_block_index = 10;
+        let highest_known_block_count = highest_known_block_index + 1;
+        let (block, records) = random_block(&mut rng, highest_known_block_index, num_txs);
+        db.add_block_data(&invoc_id, &block, 0, &records).unwrap();
+
+        // Choose 10 to ensure that off by one error is accounted for.
+        let proposed_start_block_count = 10;
+        let mut rng_2: StdRng = SeedableRng::from_seed([127u8; 32]);
+        let new_ingress_key =
+            CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng_2));
+        let accepted_start_block = db
+            .new_ingress_key(&new_ingress_key, proposed_start_block_count)
+            .unwrap();
+
+        assert_eq!(accepted_start_block, highest_known_block_count);
+
+        // Ensures that the accepted start block is recorded in the db.
+        let ingress_key_status = db
+            .get_ingress_key_status(&new_ingress_key)
+            .unwrap()
+            .unwrap();
+        assert_eq!(accepted_start_block, ingress_key_status.start_block);
+    }
+
+    #[test_with_logger]
+    fn test_get_ingress_key_records_should_only_include_in_use_keys_one_key_lost_one_key_retired_and_last_scanned_greater_than_pubkey_expiry(
+        logger: Logger,
+    ) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+
+        // At first, there are no records.
+        assert_eq!(
+            db.get_ingress_key_records(
+                0,
+                &IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: false,
+                    should_only_include_unexpired_keys: false,
+                }
+            )
+            .unwrap(),
+            vec![],
+        );
+
+        // Add an ingress key and see that we can retreive it.
+        let ingress_key1 = CompressedRistrettoPublic::from_random(&mut rng);
+        db.new_ingress_key(&ingress_key1, 0).unwrap();
+
+        let ingress_key2 = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&ingress_key2, 5).unwrap();
+
+        // Add an ingest invocation and see that we can see it.
+        let invoc_id1 = db
+            .new_ingest_invocation(None, &ingress_key1, &random_kex_rng_pubkey(&mut rng), 123)
+            .unwrap();
+
+        let ranges = db.get_ingestable_ranges().unwrap();
+        assert_eq!(ranges.len(), 1);
+        assert_eq!(ranges[0].id, invoc_id1);
+        assert_eq!(ranges[0].start_block, 123);
+        assert_eq!(ranges[0].decommissioned, false);
+        assert_eq!(ranges[0].last_ingested_block, None);
+
+        // This makes last_scanned_block equal 10.
+        for block_index in 0..11 {
+            let (block, records) = random_block(&mut rng, block_index, 10);
+            db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
+        }
+
+        db.set_report(
+            &ingress_key1,
+            "",
+            &ReportData {
+                pubkey_expiry: 5,
+                ingest_invocation_id: None,
+                report: Default::default(),
+            },
+        )
+        .unwrap();
+
+        db.retire_ingress_key(&ingress_key1, true).unwrap();
+        db.report_lost_ingress_key(ingress_key2).unwrap();
+
+        let actual = db
+            .get_ingress_key_records(
+                0,
+                &IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: true,
+                },
+            )
+            .unwrap();
+
+        assert_eq!(actual.len(), 0);
+    }
+
+    #[test_with_logger]
+    fn test_get_ingress_key_records_should_only_include_in_use_keys_one_key_lost_one_key_retired_and_last_scanned_less_than_pubkey_expiry(
+        logger: Logger,
+    ) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let db_test_context = test_utils::SqlRecoveryDbTestContext::new(logger);
+        let db = db_test_context.get_db_instance();
+
+        // At first, there are no records.
+        assert_eq!(
+            db.get_ingress_key_records(
+                0,
+                &IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: false,
+                    should_only_include_unexpired_keys: false,
+                }
+            )
+            .unwrap(),
+            vec![],
+        );
+
+        // Add an ingress key and see that we can retreive it.
+        let ingress_key1 = CompressedRistrettoPublic::from_random(&mut rng);
+        db.new_ingress_key(&ingress_key1, 0).unwrap();
+
+        let ingress_key2 = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+        db.new_ingress_key(&ingress_key2, 5).unwrap();
+
+        // Add an ingest invocation and see that we can see it.
+        let invoc_id1 = db
+            .new_ingest_invocation(None, &ingress_key1, &random_kex_rng_pubkey(&mut rng), 123)
+            .unwrap();
+
+        let ranges = db.get_ingestable_ranges().unwrap();
+        assert_eq!(ranges.len(), 1);
+        assert_eq!(ranges[0].id, invoc_id1);
+        assert_eq!(ranges[0].start_block, 123);
+        assert_eq!(ranges[0].decommissioned, false);
+        assert_eq!(ranges[0].last_ingested_block, None);
+
+        // This makes last_scanned_block equal 10.
+        for block_index in 0..11 {
+            let (block, records) = random_block(&mut rng, block_index, 10);
+            db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
+        }
+
+        db.set_report(
+            &ingress_key1,
+            "",
+            &ReportData {
+                pubkey_expiry: 15,
+                ingest_invocation_id: None,
+                report: Default::default(),
+            },
+        )
+        .unwrap();
+
+        db.retire_ingress_key(&ingress_key1, true).unwrap();
+        db.report_lost_ingress_key(ingress_key2).unwrap();
+
+        let actual = db
+            .get_ingress_key_records(
+                0,
+                &IngressPublicKeyRecordFilters {
+                    should_include_lost_keys: false,
+                    should_include_retired_keys: true,
+                    should_only_include_unexpired_keys: true,
+                },
+            )
+            .unwrap();
+
+        let expected = IngressPublicKeyRecord {
+            key: ingress_key1.clone(),
+            status: IngressPublicKeyStatus {
+                start_block: 0,
+                pubkey_expiry: 15,
+                retired: true,
+                lost: false,
+            },
+            last_scanned_block: Some(10),
+        };
+        assert_eq!(actual, vec![expected]);
     }
 }

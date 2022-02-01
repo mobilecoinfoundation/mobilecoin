@@ -3,24 +3,27 @@
 //! The Consensus Service SGX Enclave Proxy
 
 pub use mc_consensus_enclave_api::{
-    ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeePublicKey, LocallyEncryptedTx,
-    Result, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeeMap, FeeMapError, FeePublicKey,
+    LocallyEncryptedTx, Result, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 
 use mc_attest_core::{
-    IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport, DEBUG_ENCLAVE,
+    IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
     PeerAuthResponse, PeerSession,
 };
+use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::ResponderId;
 use mc_crypto_keys::{Ed25519Public, X25519Public};
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t, *};
 use mc_sgx_urts::SgxEnclave;
-use mc_transaction_core::{tx::TxOutMembershipProof, Block, BlockContents, BlockSignature};
+use mc_transaction_core::{
+    tx::TxOutMembershipProof, Block, BlockContents, BlockSignature, TokenId,
+};
 use std::{path, result::Result as StdResult, sync::Arc};
 
 /// The default filename of the consensus service's SGX enclave binary.
@@ -40,7 +43,7 @@ impl ConsensusServiceSgxEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-        minimum_fee: Option<u64>,
+        fee_map: &FeeMap,
     ) -> (
         ConsensusServiceSgxEnclave,
         SealedBlockSigningKey,
@@ -67,7 +70,7 @@ impl ConsensusServiceSgxEnclave {
         };
 
         let (sealed_key, features) = sgx_enclave
-            .enclave_init(self_peer_id, self_client_id, sealed_key, minimum_fee)
+            .enclave_init(self_peer_id, self_client_id, sealed_key, fee_map)
             .expect("enclave_init failed");
 
         (sgx_enclave, sealed_key, features)
@@ -119,20 +122,20 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-        minimum_fee: Option<u64>,
+        fee_map: &FeeMap,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::EnclaveInit(
             self_peer_id.clone(),
             self_client_id.clone(),
             sealed_key.clone(),
-            minimum_fee,
+            fee_map.clone(),
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn get_minimum_fee(&self) -> Result<u64> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetMinimumFee)?;
+    fn get_minimum_fee(&self, token_id: &TokenId) -> Result<Option<u64>> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetMinimumFee(*token_id))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }

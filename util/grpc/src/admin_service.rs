@@ -35,6 +35,14 @@ pub struct AdminService {
 }
 
 impl AdminService {
+    /// Create a new instance of the admin service
+    ///
+    /// Arguments:
+    /// * name: A name for the server
+    /// * id: An id for the server
+    /// * get_config_json: An optional callback that describes the current
+    ///   configuration of the server as a json object
+    /// * logger
     pub fn new(
         name: String,
         id: String,
@@ -49,6 +57,7 @@ impl AdminService {
         }
     }
 
+    /// Convert into a grpcio::Service
     pub fn into_service(self) -> Service {
         create_admin_api(self)
     }

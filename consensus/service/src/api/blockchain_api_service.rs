@@ -10,12 +10,13 @@ use mc_consensus_api::{
     consensus_common_grpc::BlockchainApi,
     empty::Empty,
 };
+use mc_consensus_enclave::FeeMap;
 use mc_ledger_db::Ledger;
-use mc_transaction_core::constants::MINIMUM_FEE;
+use mc_transaction_core::{tokens::Mob, Token};
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use protobuf::RepeatedField;
-use std::{cmp, convert::From, sync::Arc};
+use std::{cmp, collections::HashMap, convert::From, iter::FromIterator, sync::Arc};
 
 #[derive(Clone)]
 pub struct BlockchainApiService<L: Ledger + Clone> {
@@ -29,26 +30,26 @@ pub struct BlockchainApiService<L: Ledger + Clone> {
     /// results.
     max_page_size: u16,
 
+    /// Minimum fee per token.
+    fee_map: FeeMap,
+
     /// Logger.
     logger: Logger,
-
-    /// Configured minimum-fee
-    minimum_fee: Option<u64>,
 }
 
 impl<L: Ledger + Clone> BlockchainApiService<L> {
     pub fn new(
         ledger: L,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
+        fee_map: FeeMap,
         logger: Logger,
-        minimum_fee: Option<u64>,
     ) -> Self {
         BlockchainApiService {
             ledger,
             authenticator,
             max_page_size: 2000,
+            fee_map,
             logger,
-            minimum_fee,
         }
     }
 
@@ -63,7 +64,16 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
         let num_blocks = self.ledger.num_blocks()?;
         let mut resp = LastBlockInfoResponse::new();
         resp.set_index(num_blocks - 1);
-        resp.set_minimum_fee(self.minimum_fee.unwrap_or(MINIMUM_FEE));
+        resp.set_mob_minimum_fee(
+            self.fee_map
+                .get_fee_for_token(&Mob::ID)
+                .expect("should always have a fee for MOB"),
+        );
+        resp.set_minimum_fees(HashMap::from_iter(
+            self.fee_map
+                .iter()
+                .map(|(token_id, fee)| (**token_id, *fee)),
+        ));
 
         Ok(resp)
     }
@@ -169,10 +179,13 @@ mod tests {
     use grpcio::{ChannelBuilder, Environment, Error as GrpcError, Server, ServerBuilder};
     use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
     use mc_consensus_api::consensus_common_grpc::{self, BlockchainApiClient};
+    use mc_transaction_core::TokenId;
     use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
     use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator};
     use rand::{rngs::StdRng, SeedableRng};
     use std::{
+        collections::HashMap,
+        iter::FromIterator,
         sync::atomic::{AtomicUsize, Ordering::SeqCst},
         time::Duration,
     };
@@ -203,23 +216,26 @@ mod tests {
     #[test_with_logger]
     // `get_last_block_info` should returns the last block.
     fn test_get_last_block_info(logger: Logger) {
+        let fee_map =
+            FeeMap::try_from_iter([(Mob::ID, 12345), (TokenId::from(60), 10203040)]).unwrap();
+
         let mut ledger_db = create_ledger();
         let authenticator = Arc::new(AnonymousAuthenticator::default());
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
         let block_entities = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
-        let minimum_fee = 10_000;
 
         let mut expected_response = LastBlockInfoResponse::new();
         expected_response.set_index(block_entities.last().unwrap().index);
-        expected_response.set_minimum_fee(minimum_fee);
+        expected_response.set_mob_minimum_fee(12345);
+        expected_response.set_minimum_fees(HashMap::from_iter(vec![(0, 12345), (60, 10203040)]));
         assert_eq!(
             block_entities.last().unwrap().index,
             ledger_db.num_blocks().unwrap() - 1
         );
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger, Some(minimum_fee));
+            BlockchainApiService::new(ledger_db, authenticator, fee_map, logger);
 
         let block_response = blockchain_api_service.get_last_block_info_helper().unwrap();
         assert_eq!(block_response, expected_response);
@@ -237,7 +253,7 @@ mod tests {
         ));
 
         let blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger, None);
+            BlockchainApiService::new(ledger_db, authenticator, FeeMap::default(), logger);
 
         let (client, _server) = get_client_server(blockchain_api_service);
 
@@ -269,7 +285,7 @@ mod tests {
             .collect();
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger, None);
+            BlockchainApiService::new(ledger_db, authenticator, FeeMap::default(), logger);
 
         {
             // The empty range [0,0) should return an empty collection of Blocks.
@@ -307,7 +323,7 @@ mod tests {
         let _blocks = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger, None);
+            BlockchainApiService::new(ledger_db, authenticator, FeeMap::default(), logger);
 
         {
             // The range [0, 1000) requests values that don't exist. The response should
@@ -333,7 +349,7 @@ mod tests {
             .collect();
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger, None);
+            BlockchainApiService::new(ledger_db, authenticator, FeeMap::default(), logger);
         blockchain_api_service.set_max_page_size(5);
 
         // The request exceeds the max_page_size, so only max_page_size items should be
@@ -357,7 +373,7 @@ mod tests {
         ));
 
         let blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, logger, None);
+            BlockchainApiService::new(ledger_db, authenticator, FeeMap::default(), logger);
 
         let (client, _server) = get_client_server(blockchain_api_service);
 

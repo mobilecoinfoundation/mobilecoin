@@ -3,7 +3,7 @@
 //! Configuration parameters for mobilecoind
 
 use displaydoc::Display;
-use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
+use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::{logger::Logger, ResponderId};
 use mc_connection::{ConnectionManager, HardcodedCredentialsProvider, ThickClient};
 use mc_consensus_scp::QuorumSet;
@@ -11,13 +11,14 @@ use mc_fog_report_connection::GrpcFogReportConnection;
 use mc_fog_report_validation::FogResolver;
 use mc_mobilecoind_api::MobilecoindUri;
 use mc_sgx_css::Signature;
+use mc_util_parse::{load_css_file, parse_duration_in_seconds};
 use mc_util_uri::{ConnectionUri, ConsensusClientUri, FogUri};
 #[cfg(feature = "ip-check")]
 use reqwest::{
     blocking::Client,
     header::{HeaderMap, HeaderValue, CONTENT_TYPE},
 };
-use std::{convert::TryFrom, fs, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -82,10 +83,6 @@ pub struct Config {
     pub fog_ingest_enclave_css: Option<Signature>,
 }
 
-fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
-    Ok(Duration::from_secs(u64::from_str(src)?))
-}
-
 fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet<ResponderId>, String> {
     let quorum_set: QuorumSet<ResponderId> = serde_json::from_str(src)
         .map_err(|err| format!("Error parsing quorum set {}: {:?}", src, err))?;
@@ -95,14 +92,6 @@ fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet<ResponderId>, Strin
     }
 
     Ok(quorum_set)
-}
-
-fn load_css_file(filename: &str) -> Result<Signature, String> {
-    let bytes =
-        fs::read(filename).map_err(|err| format!("Failed reading file '{}': {}", filename, err))?;
-    let signature = Signature::try_from(&bytes[..])
-        .map_err(|err| format!("Failed parsing CSS file '{}': {}", filename, err))?;
-    Ok(signature)
 }
 
 #[derive(Display, Debug)]

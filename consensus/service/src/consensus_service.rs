@@ -25,7 +25,7 @@ use mc_common::{
 };
 use mc_connection::{Connection, ConnectionManager};
 use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
-use mc_consensus_enclave::ConsensusEnclave;
+use mc_consensus_enclave::{ConsensusEnclave, Error as ConsensusEnclaveError};
 use mc_crypto_keys::DistinguishedEncoding;
 use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
@@ -60,10 +60,19 @@ pub enum ConsensusServiceError {
     BackgroundWorkQueueStop(String),
     /// Report cache error: `{0}`
     ReportCache(ReportCacheError),
+    /// Fees misconfigured: `{0}`
+    FeesMisconfigured(String),
+    /// Consensus enclave error: `{0}`
+    ConsensusEnclave(ConsensusEnclaveError),
 }
 impl From<ReportCacheError> for ConsensusServiceError {
     fn from(src: ReportCacheError) -> Self {
         ConsensusServiceError::ReportCache(src)
+    }
+}
+impl From<ConsensusEnclaveError> for ConsensusServiceError {
+    fn from(src: ConsensusEnclaveError) -> Self {
+        ConsensusServiceError::ConsensusEnclave(src)
     }
 }
 
@@ -337,10 +346,8 @@ impl<
             consensus_common_grpc::create_blockchain_api(BlockchainApiService::new(
                 self.ledger_db.clone(),
                 self.client_authenticator.clone(),
+                self.config.fee_map()?,
                 self.logger.clone(),
-                self.config
-                    .minimum_fee()
-                    .expect("Could not read minimum fee"),
             ));
 
         let is_serving_user_requests = self.create_is_serving_user_requests_fn();
@@ -432,10 +439,8 @@ impl<
             consensus_common_grpc::create_blockchain_api(BlockchainApiService::new(
                 self.ledger_db.clone(),
                 peer_authenticator.clone(),
+                self.config.fee_map()?,
                 self.logger.clone(),
-                self.config
-                    .minimum_fee()
-                    .expect("Could not read minimum fee"),
             ));
 
         let peer_service = consensus_peer_grpc::create_consensus_peer_api(PeerApiService::new(

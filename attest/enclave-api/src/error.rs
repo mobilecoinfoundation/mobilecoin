@@ -5,7 +5,8 @@
 use core::result::Result as StdResult;
 use displaydoc::Display;
 use mc_attest_ake::Error as AkeError;
-use mc_attest_core::{NonceError, QuoteError, SgxError, VerifierError};
+use mc_attest_core::{NonceError, QuoteError, SgxError};
+use mc_attest_verifier::Error as VerifierError;
 use mc_crypto_noise::CipherError;
 use mc_sgx_compat::sync::PoisonError;
 use serde::{Deserialize, Serialize};

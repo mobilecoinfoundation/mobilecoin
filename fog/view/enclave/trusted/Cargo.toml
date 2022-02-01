@@ -14,10 +14,10 @@ crate-type = ["staticlib"]
 
 [features]
 sgx-sim = [
-    "mc-attest-core/sgx-sim"
+    "mc-attest-verifier/sgx-sim"
 ]
 ias-dev = [
-    "mc-attest-core/ias-dev"
+    "mc-attest-verifier/ias-dev"
 ]
 
 [dependencies]
@@ -32,6 +32,7 @@ mc-fog-view-enclave-impl = { path = "../impl" }
 
 # mobilecoin
 mc-attest-core = { path = "../../../../attest/core", default-features = false }
+mc-attest-verifier = { path = "../../../../attest/verifier", default-features = false }
 mc-attest-trusted = { path = "../../../../attest/trusted" }
 mc-enclave-boundary = { path = "../../../../enclave-boundary" }
 mc-crypto-keys = { path = "../../../../crypto/keys" }
@@ -81,8 +82,8 @@ cpufeatures = { git = "https://github.com/mobilecoinfoundation/RustCrypto-utils.
 ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "78bdc2a0b0af852cb4e47a0ca9be74bdf77c57b6" }
 
 # Our patches for newer bindgen, no-std
-mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "ce4cf3e4814e92734434c7deaa59d649d43f442d" }
-mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "ce4cf3e4814e92734434c7deaa59d649d43f442d" }
+mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "49a293a5f4b1ef571c71174e3fa1f301925f3915" }
+mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "49a293a5f4b1ef571c71174e3fa1f301925f3915" }
 
 # packed_simd_2 has unreleased fixes for our nightly version
 packed_simd_2 = { git = "https://github.com/rust-lang/packed_simd.git", rev = "f60e900f4ceb71303baa37ff8b41ee7d490c01bf" }

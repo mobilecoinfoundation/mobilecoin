@@ -2,6 +2,7 @@
 
 //! Configuration parameters for the watcher test utility.
 
+use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::{ConsensusClientUri, WatcherUri};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf, str::FromStr, time::Duration};
@@ -131,10 +132,6 @@ impl SourcesConfig {
     pub fn sources(&self) -> &[SourceConfig] {
         &self.sources
     }
-}
-
-fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
-    Ok(Duration::from_secs(u64::from_str(src)?))
 }
 
 #[cfg(test)]

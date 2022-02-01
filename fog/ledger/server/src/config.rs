@@ -5,9 +5,10 @@
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
 use mc_fog_uri::FogLedgerUri;
+use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
-use std::{path::PathBuf, str::FromStr, time::Duration};
+use std::{path::PathBuf, time::Duration};
 use structopt::StructOpt;
 
 #[derive(Clone, Serialize, StructOpt)]
@@ -67,9 +68,4 @@ pub struct LedgerServerConfig {
     /// developed.)
     #[structopt(long, default_value = "1048576")]
     pub omap_capacity: u64,
-}
-
-/// Converts a string containing number of seconds to a Duration object.
-fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
-    Ok(Duration::from_secs(u64::from_str(src)?))
 }

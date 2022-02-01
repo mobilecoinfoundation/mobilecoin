@@ -4,7 +4,7 @@
 
 use grpcio::EnvBuilder;
 use mc_account_keys::AccountKey;
-use mc_attest_core::{Verifier, DEBUG_ENCLAVE};
+use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{create_root_logger, log, Logger};
 use mc_fog_kex_rng::{NewFromKex, VersionedKexRng};
 use mc_fog_uri::FogViewUri;

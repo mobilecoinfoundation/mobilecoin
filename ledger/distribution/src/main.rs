@@ -6,10 +6,12 @@
 pub mod uri;
 
 use crate::uri::{Destination, Uri};
+use futures::executor::block_on;
 use mc_api::{block_num_to_s3block_path, blockchain, merged_block_num_to_s3block_path};
 use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{BlockData, BlockIndex};
+use mc_util_telemetry::{mark_span_as_active, start_block_span, tracer, Tracer};
 use protobuf::Message;
 use rusoto_core::{Region, RusotoError};
 use rusoto_s3::{PutObjectError, PutObjectRequest, S3Client, S3};
@@ -115,15 +117,13 @@ impl S3BlockWriter {
             || {
                 let req = PutObjectRequest {
                     bucket: path.to_string(),
-                    key: String::from(filename),
+                    key: filename.to_string(),
                     body: Some(value.to_vec().into()),
                     acl: Some("public-read".to_string()),
                     ..Default::default()
                 };
 
-                self.s3_client
-                    .put_object(req)
-                    .sync()
+                block_on(self.s3_client.put_object(req))
                     .map(|_| retry::OperationResult::Ok(()))
                     .map_err(|err: RusotoError<PutObjectError>| {
                         log::warn!(
@@ -299,6 +299,9 @@ fn main() {
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
+    let _tracer = mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
+        .expect("Failed setting telemetry tracer");
+
     // Get path to our state file.
     let state_file_path = config.state_file.clone().unwrap_or_else(|| {
         let mut home_dir = dirs::home_dir().unwrap_or_else(|| panic!("Unable to get home directory, please specify state file explicitly with --state-file"));
@@ -360,11 +363,18 @@ fn main() {
         first_desired_block
     );
     let mut next_block_num = first_desired_block;
+    let tracer = tracer!();
+
     loop {
         while let Ok(block_data) = ledger_db.get_block_data(next_block_num) {
             log::trace!(logger, "Handling block #{}", next_block_num);
 
-            block_handler.write_single_block(&block_data);
+            let span = start_block_span(&tracer, "distribute-block", next_block_num);
+            let _active_span = mark_span_as_active(span);
+
+            tracer.in_span("write_single_block", |_cx| {
+                block_handler.write_single_block(&block_data);
+            });
 
             let cur_block_index = block_data.block().index;
             for bucket_size in config.merge_buckets.iter() {
@@ -400,7 +410,9 @@ fn main() {
                     blocks_data.push(block_data);
                 }
 
-                block_handler.write_multiple_blocks(&blocks_data);
+                tracer.in_span("write_multiple_blocks", |_cx| {
+                    block_handler.write_multiple_blocks(&blocks_data);
+                });
             }
 
             next_block_num += 1;
