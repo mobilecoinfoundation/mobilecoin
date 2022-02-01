@@ -1,11 +1,10 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use sentry as sentry_core;
 use std::env;
 
-pub use sentry_core::configure_scope;
+pub use sentry::configure_scope;
 
-pub fn init() -> Option<sentry_core::internals::ClientInitGuard> {
+pub fn init() -> Option<sentry::ClientInitGuard> {
     // See if we have the two required environment variables for configuring Sentry.
     let dsn = env::var("MC_SENTRY_DSN")
         .ok()
@@ -21,27 +20,17 @@ pub fn init() -> Option<sentry_core::internals::ClientInitGuard> {
                 panic!("MC_BRANCH cannot contain '/'");
             }
 
-            let guard = sentry::init(sentry::ClientOptions {
+            let guard = sentry::init(sentry::apply_defaults(sentry::ClientOptions {
                 attach_stacktrace: true,
                 dsn: dsn.parse().ok(),
+                default_integrations: true,
                 environment: Some(branch.into()),
                 ..Default::default()
-            });
+            }));
 
-            sentry_core::integrations::panic::register_panic_handler();
-
-            sentry_core::configure_scope(|scope| {
+            sentry::configure_scope(|scope| {
                 // Add our GIT commit to each message.
                 scope.set_tag("git_commit", mc_util_build_info::git_commit());
-
-                // Add current thread name to each message.
-                scope.add_event_processor(Box::new(move |mut event| {
-                    event.extra.insert(
-                        "thread".into(),
-                        std::thread::current().name().unwrap_or("?").into(),
-                    );
-                    Some(event)
-                }));
             });
 
             Some(guard)
