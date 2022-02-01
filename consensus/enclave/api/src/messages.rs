@@ -12,7 +12,8 @@ use mc_attest_enclave_api::{
     PeerSession,
 };
 use mc_transaction_core::{
-    tx::{MintTx, TxOutMembershipElement, TxOutMembershipProof},
+    mint::MintTx,
+    tx::{TxOutMembershipElement, TxOutMembershipProof},
     Block, TokenId,
 };
 use serde::{Deserialize, Serialize};

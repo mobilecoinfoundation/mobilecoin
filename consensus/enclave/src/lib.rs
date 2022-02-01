@@ -22,7 +22,8 @@ use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResu
 use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t, *};
 use mc_sgx_urts::SgxEnclave;
 use mc_transaction_core::{
-    tx::{MintTx, TxOutMembershipElement, TxOutMembershipProof},
+    mint::MintTx,
+    tx::{TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockSignature, TokenId,
 };
 use std::{path, result::Result as StdResult, sync::Arc};

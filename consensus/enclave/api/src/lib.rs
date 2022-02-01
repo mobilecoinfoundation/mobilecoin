@@ -27,8 +27,9 @@ use mc_common::ResponderId;
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, RistrettoPublic, X25519Public};
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_transaction_core::{
+    mint::MintTx,
     ring_signature::KeyImage,
-    tx::{MintTx, Tx, TxHash, TxOutMembershipElement, TxOutMembershipProof},
+    tx::{Tx, TxHash, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockSignature, TokenId,
 };
 use serde::{Deserialize, Serialize};
