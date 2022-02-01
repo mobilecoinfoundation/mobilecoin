@@ -26,6 +26,15 @@ use crate::{
     CompressedCommitment, NewMemoError, NewTxError,
 };
 
+/// TODO
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Digestible,
+)]
+pub struct MintTx {
+    pub amount: u64,
+    pub tombstone_block: u64,
+}
+
 /// Transaction hash length, in bytes.
 pub const TX_HASH_LEN: usize = 32;
 
