@@ -5744,7 +5744,7 @@ checksum = "449048140ee61e28f57abe6e9975eedc1f3a29855c7407bd6c12b18578863379"
 dependencies = [
  "async-trait",
  "bytes 1.1.0",
- "http",
+ "http 0.2.1",
  "opentelemetry",
 ]
 
