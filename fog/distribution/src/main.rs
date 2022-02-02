@@ -147,6 +147,8 @@ fn main() {
     let (spendable_txouts_sender, spendable_txouts_receiver) =
         crossbeam_channel::unbounded::<SpendableTxOut>();
 
+    let mut spendable_txouts: Vec<SpendableTxOut> = Vec::new();
+
     while let Ok(block_contents) = ledger_db.get_block_contents(block_count) {
         let transactions = block_contents.outputs;
         // Only get num_transactions per account for the first block, then assume
@@ -167,6 +169,7 @@ fn main() {
         let mut account_index = config.account_offset;
         let mut account = &accounts[account_index];
         let mut num_per_account_processed = 0;
+
         for (index, tx_out) in transactions.iter().enumerate().skip(config.start_offset) {
             // Makes strong assumption about bootstrapped ledger layout
             if num_per_account_processed >= num_transactions_per_account {
@@ -206,13 +209,11 @@ fn main() {
                 );
 
                 // Push to queue
-                spendable_txouts_sender
-                    .send(SpendableTxOut {
-                        tx_out: tx_out.clone(),
-                        amount: input_amount,
-                        from_account_key: account.clone(),
-                    })
-                    .expect("failed sending to spendable_txouts_sender");
+                spendable_txouts.push(SpendableTxOut {
+                    tx_out: tx_out.clone(),
+                    amount: input_amount,
+                    from_account_key: account.clone(),
+                });
             }
             num_per_account_processed += 1;
         }
@@ -237,6 +238,47 @@ fn main() {
         crossbeam_channel::unbounded::<usize>();
 
     let mut running_threads: usize = 0;
+
+    // Seed each fog account with a TxOut. This ensures that integration tests
+    // that check to make sure each fog account has non-zero balance do not fail.
+    let mut seed_fog_resolver = build_fog_resolver(&fog_uri, &env, &logger);
+    let conns = get_conns(&config, &logger);
+
+    log::info!(logger, "starting seed");
+    for (i, fog_account) in fog_accounts.iter().enumerate() {
+        loop {
+            // Build a transaction.
+            let tx = build_tx(
+                &[spendable_txouts[i].clone()],
+                fog_account,
+                &config,
+                &ledger_db,
+                seed_fog_resolver.clone(),
+                &logger,
+            );
+
+            // Submit tx
+            if submit_tx(i, &conns, &tx, &config, &logger) {
+                let mut map = TX_PUB_KEY_TO_ACCOUNT_KEY.lock().unwrap();
+                map.insert(tx.prefix.outputs[0].public_key, fog_account.clone());
+                break;
+            } else {
+                //each worker thread should build its own FogResolver,
+                //if submit fails, it should trash and rebuild the FogResolver to ensure it has
+                // fresh fog
+                seed_fog_resolver = build_fog_resolver(&fog_uri, &env, &logger);
+            }
+            log::trace!(logger, "rebuilding failed tx");
+        }
+    }
+
+    // Discard the spendable_txouts that were used in the seed step.
+    spendable_txouts = spendable_txouts[fog_accounts.len()..].to_vec();
+    for spendable_txout in spendable_txouts {
+        spendable_txouts_sender
+            .send(spendable_txout)
+            .expect("failed sending to spendable_txouts_sender");
+    }
 
     // Spawn worker threads
     for i in 0..config.max_threads {
