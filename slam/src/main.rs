@@ -553,7 +553,7 @@ fn build_tx(
         let onetime_private_key = recover_onetime_private_key(
             &public_key,
             utxo.from_account_key.view_private_key(),
-            &utxo.from_account_key.default_subaddress_spend_private(),
+            &utxo.from_account_key.get_default_subaddress_spend_private(),
         );
 
         let key_image = KeyImage::from(&onetime_private_key);

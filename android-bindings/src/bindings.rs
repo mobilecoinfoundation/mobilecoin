@@ -17,7 +17,10 @@ use jni::{
     sys::{jboolean, jbyteArray, jint, jlong, jobject, jobjectArray, jshort, jstring, JNI_FALSE},
     JNIEnv,
 };
-use mc_account_keys::{AccountKey, PublicAddress, RootEntropy, RootIdentity, DEFAULT_SUBADDRESS_INDEX, CHANGE_SUBADDRESS_INDEX};
+use mc_account_keys::{
+    AccountKey, PublicAddress, RootEntropy, RootIdentity, DEFAULT_SUBADDRESS_INDEX,
+    CHANGE_SUBADDRESS_INDEX
+};
 use mc_account_keys_slip10::Slip10KeyGenerator;
 use mc_api::printable::PrintableWrapper;
 use mc_attest_ake::{
@@ -37,7 +40,9 @@ use mc_fog_report_types::{Report, ReportResponse};
 use mc_fog_report_validation::{FogReportResponses, FogResolver};
 use mc_transaction_core::{
     get_tx_out_shared_secret,
-    onetime_keys::{create_shared_secret, recover_onetime_private_key, recover_public_subaddress_spend_key},
+    onetime_keys::{
+        create_shared_secret, recover_onetime_private_key, recover_public_subaddress_spend_key,
+    },
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     Amount, CompressedCommitment,
@@ -49,10 +54,10 @@ use protobuf::Message;
 use rand::{rngs::StdRng, SeedableRng};
 use sha2::Sha512;
 use std::{
+    collections::BTreeMap,
     ops::DerefMut,
     str::FromStr,
     sync::{Mutex, MutexGuard},
-    collections::BTreeMap,
 };
 use zeroize::Zeroize;
 
@@ -819,7 +824,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_AccountKey_get_1default_1subadd
         &env,
         |env| {
             let account_key: MutexGuard<AccountKey> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
-            let spend_key = account_key.default_subaddress_spend_private();
+            let spend_key = account_key.get_default_subaddress_spend_private();
 
             let mbox = Box::new(Mutex::new(spend_key));
             let ptr: *mut Mutex<RistrettoPrivate> = Box::into_raw(mbox);
@@ -838,7 +843,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_AccountKey_get_1default_1subadd
         &env,
         |env| {
             let account_key: MutexGuard<AccountKey> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
-            let view_key = account_key.default_subaddress_view_private();
+            let view_key = account_key.get_default_subaddress_view_private();
 
             let mbox = Box::new(Mutex::new(view_key));
             let ptr: *mut Mutex<RistrettoPrivate> = Box::into_raw(mbox);
@@ -857,7 +862,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_AccountKey_get_1change_1subaddr
         &env,
         |env| {
             let account_key: MutexGuard<AccountKey> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
-            let spend_key = account_key.change_subaddress_spend_private();
+            let spend_key = account_key.get_change_subaddress_spend_private();
 
             let mbox = Box::new(Mutex::new(spend_key));
             let ptr: *mut Mutex<RistrettoPrivate> = Box::into_raw(mbox);
@@ -876,7 +881,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_AccountKey_get_1change_1subaddr
         &env,
         |env| {
             let account_key: MutexGuard<AccountKey> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
-            let view_key = account_key.change_subaddress_view_private();
+            let view_key = account_key.get_change_subaddress_view_private();
 
             let mbox = Box::new(Mutex::new(view_key));
             let ptr: *mut Mutex<RistrettoPrivate> = Box::into_raw(mbox);
@@ -1051,7 +1056,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOut_compute_1key_1image(
                 &tx_out_target_key,
                 &tx_pub_key,
             );
-            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (DEFAULT_SUBADDRESS_INDEX..=CHANGE_SUBADDRESS_INDEX)
+            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (DEFAULT_SUBADDRESS_INDEX
+                ..=CHANGE_SUBADDRESS_INDEX)
                 .map(|index| (*account_key.subaddress(index).spend_public_key(), index))
                 .collect();
             let subaddress_index = spsk_to_index

@@ -67,7 +67,7 @@ impl MemoHandler {
                 if let Some(addr) = self.contacts.get(&memo.sender_address_hash()) {
                     if bool::from(memo.validate(
                         addr,
-                        &account_key.default_subaddress_view_private(),
+                        &account_key.get_default_subaddress_view_private(),
                         &tx_out.public_key,
                     )) {
                         Ok(Some(memo_type))
@@ -82,7 +82,7 @@ impl MemoHandler {
                 if let Some(addr) = self.contacts.get(&memo.sender_address_hash()) {
                     if bool::from(memo.validate(
                         addr,
-                        &account_key.default_subaddress_view_private(),
+                        &account_key.get_default_subaddress_view_private(),
                         &tx_out.public_key,
                     )) {
                         Ok(Some(memo_type))

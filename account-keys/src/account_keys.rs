@@ -399,12 +399,12 @@ impl AccountKey {
     }
 
     /// The private spend key for the default subaddress.
-    pub fn default_subaddress_spend_private(&self) -> RistrettoPrivate {
+    pub fn get_default_subaddress_spend_private(&self) -> RistrettoPrivate {
         self.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX)
     }
 
     /// The private spend key for the change subaddress.
-    pub fn change_subaddress_spend_private(&self) -> RistrettoPrivate {
+    pub fn get_change_subaddress_spend_private(&self) -> RistrettoPrivate {
         self.subaddress_spend_private(CHANGE_SUBADDRESS_INDEX)
     }
 
@@ -427,12 +427,12 @@ impl AccountKey {
     }
 
     /// The private view key for the default subaddress.
-    pub fn default_subaddress_view_private(&self) -> RistrettoPrivate {
+    pub fn get_default_subaddress_view_private(&self) -> RistrettoPrivate {
         self.subaddress_view_private(DEFAULT_SUBADDRESS_INDEX)
     }
 
     /// The private view key for the change subaddress.
-    pub fn change_subaddress_view_private(&self) -> RistrettoPrivate {
+    pub fn get_change_subaddress_view_private(&self) -> RistrettoPrivate {
         self.subaddress_view_private(CHANGE_SUBADDRESS_INDEX)
     }
 
@@ -534,11 +534,11 @@ mod account_key_tests {
         let account_key = AccountKey::new(&spend_private_key, &view_private_key);
         let public_address = account_key.default_subaddress();
         assert_eq!(
-            account_key.default_subaddress_view_private().to_bytes(),
+            account_key.get_default_subaddress_view_private().to_bytes(),
             case.subaddress_view_private_key
         );
         assert_eq!(
-            account_key.default_subaddress_spend_private().to_bytes(),
+            account_key.get_default_subaddress_spend_private().to_bytes(),
             case.subaddress_spend_private_key
         );
         assert_eq!(
