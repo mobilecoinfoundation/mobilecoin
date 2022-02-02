@@ -199,7 +199,9 @@ pub fn compute_block_id(
 #[cfg(test)]
 mod block_tests {
     use crate::{
+        encrypted_fog_hint::EncryptedFogHint,
         membership_proofs::Range,
+        ring_signature::KeyImage,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
         Block, BlockContents, BlockContentsHash, BlockID, BLOCK_VERSION,
     };
@@ -210,6 +212,29 @@ mod block_tests {
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, CryptoRng, RngCore, SeedableRng};
 
+    fn get_block_contents<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> BlockContents {
+        let recipient = AccountKey::random(rng);
+
+        let outputs: Vec<TxOut> = (0..8)
+            .map(|_i| {
+                TxOut::new(
+                    rng.next_u64(),
+                    &recipient.default_subaddress(),
+                    &RistrettoPrivate::from_random(rng),
+                    EncryptedFogHint::fake_onetime_hint(rng),
+                )
+                .unwrap()
+            })
+            .collect();
+
+        let key_images = vec![
+            KeyImage::from(rng.next_u64()),
+            KeyImage::from(rng.next_u64()),
+            KeyImage::from(rng.next_u64()),
+        ];
+        BlockContents::new(key_images, outputs)
+    }
+
     fn get_block<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> Block {
         let bytes = [14u8; 32];
         let parent_id = BlockID::try_from(&bytes[..]).unwrap();
@@ -219,22 +244,8 @@ mod block_tests {
             hash: TxOutMembershipHash::from([0u8; 32]),
         };
 
-        let recipient = AccountKey::random(rng);
+        let block_contents = get_block_contents(rng);
 
-        let outputs: Vec<TxOut> = (0..8)
-            .map(|_i| {
-                TxOut::new(
-                    45,
-                    &recipient.default_subaddress(),
-                    &RistrettoPrivate::from_random(rng),
-                    Default::default(),
-                )
-                .unwrap()
-            })
-            .collect();
-
-        let key_images = Vec::new(); // TODO: include key images.
-        let block_contents = BlockContents::new(key_images, outputs);
         Block::new(
             BLOCK_VERSION,
             &parent_id,
@@ -318,5 +329,33 @@ mod block_tests {
     // TODO: Block::new should return an error if `tx_hashes` contains duplicates.
     fn test_block_errors_on_duplicate_tx_hashes() {
         unimplemented!()
+    }
+
+    #[test]
+    /// The block ID and block contents hash do not change as the code evolves.
+    /// This test was written by writing a failed assert and then copying the
+    /// actual block id into the test. This should hopefully catches cases where
+    /// we add/change Block/BlockContents and accidentally break id
+    /// calculation of old blocks.
+    fn test_hashing_is_consistent() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        let block = get_block(&mut rng);
+        assert_eq!(
+            block.id.as_ref(),
+            &[
+                54, 149, 234, 64, 10, 166, 9, 176, 203, 154, 166, 123, 16, 98, 112, 231, 21, 243,
+                198, 135, 186, 238, 195, 29, 166, 59, 85, 50, 215, 137, 171, 104
+            ]
+        );
+
+        let block_contents = get_block_contents(&mut rng);
+        assert_eq!(
+            block_contents.hash().as_ref(),
+            &[
+                239, 185, 242, 230, 25, 235, 155, 0, 136, 27, 106, 30, 247, 234, 181, 222, 85, 157,
+                224, 249, 249, 121, 127, 179, 75, 46, 4, 89, 54, 19, 122, 150
+            ]
+        );
     }
 }
