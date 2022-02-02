@@ -131,7 +131,7 @@ fn main() {
         get_conns(&config, &logger)
             .par_iter()
             .filter_map(|conn| conn.fetch_block_info(empty()).ok())
-            .map(|block_info| block_info.minimum_fee)
+            .filter_map(|block_info| block_info.minimum_fee_or_none(&Mob::ID))
             .max()
             .unwrap_or(Mob::MINIMUM_FEE),
         Ordering::SeqCst,

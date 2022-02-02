@@ -435,7 +435,10 @@ impl Builder {
                 .expect("Invalid UTF-8 in signed enclave path"));
             signed_enclave.clone()
         } else {
-            warning!("Signed enclave not provided, trying to sign it...");
+            warning!(
+                "Signed enclave {} not provided, trying to sign it...",
+                self.name
+            );
             let mut signed_enclave_name = "lib".to_owned();
             signed_enclave_name.push_str(&self.name);
             let mut signed_enclave = self.out_dir.join(&signed_enclave_name);
@@ -484,7 +487,10 @@ impl Builder {
                 .expect("Invalid UTF-8 in unsigned enclave path"));
             unsigned_enclave.clone()
         } else {
-            warning!("Unsigned enclave not provided, trying to link a new one...");
+            warning!(
+                "Unsigned enclave {} not provided, trying to link a new one...",
+                self.name
+            );
             let mut name = "lib".to_owned();
             name.push_str(&self.name);
             let mut unsigned_enclave = self.out_dir.join(&name);
@@ -534,7 +540,10 @@ impl Builder {
         if let Some(private_key) = &self.privkey.clone() {
             self.oneshot(&unsigned_enclave, &config_xml, private_key, signed_enclave)?;
         } else if enclave_rebuilt || (self.pubkey.is_none() && self.signature.is_none()) {
-            warning!("Generating single-use key for insecure, one-shot signature");
+            warning!(
+                "Generating single-use key for insecure, one-shot signature of {}",
+                self.name
+            );
 
             let mut csprng = ThreadRngForMbedTls {};
 

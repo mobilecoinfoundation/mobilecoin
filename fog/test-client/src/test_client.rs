@@ -770,8 +770,7 @@ impl ReceiveTxWorker {
                 let span = tracer
                     .span_builder("fog_view_received")
                     .with_kind(SpanKind::Server)
-                    .with_parent_context(parent_context)
-                    .start(&tracer);
+                    .start_with_context(&tracer, &parent_context);
                 let _active = mark_span_as_active(span);
 
                 loop {

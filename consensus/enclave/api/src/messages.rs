@@ -2,8 +2,10 @@
 
 //! The message types used by the consensus_enclave_api.
 
-use crate::{LocallyEncryptedTx, ResponderId, SealedBlockSigningKey, WellFormedEncryptedTx};
-use alloc::{collections::BTreeMap, vec::Vec};
+use crate::{
+    FeeMap, LocallyEncryptedTx, ResponderId, SealedBlockSigningKey, WellFormedEncryptedTx,
+};
+use alloc::vec::Vec;
 use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientSession, EnclaveMessage, PeerAuthRequest, PeerAuthResponse,
@@ -21,7 +23,7 @@ pub enum EnclaveCall {
         ResponderId,
         ResponderId,
         Option<SealedBlockSigningKey>,
-        Option<BTreeMap<TokenId, u64>>,
+        FeeMap,
     ),
 
     /// The [PeerableEnclave::peer_init()] method.

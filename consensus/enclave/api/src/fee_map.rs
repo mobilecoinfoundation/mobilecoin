@@ -3,48 +3,33 @@
 //! A helper object for maintaining a map of token id -> minimum fee.
 
 use alloc::{collections::BTreeMap, format, string::String};
-use core::convert::TryFrom;
+use core::{convert::TryFrom, iter::FromIterator};
 use displaydoc::Display;
 use mc_common::ResponderId;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
-use mc_sgx_compat::sync::Mutex;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Serialize};
 
-/// State managed by `FeeMap`.
-struct FeeMapInner {
+/// A thread-safe object that contains a map of fee value by token id.
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+pub struct FeeMap {
     /// The actual map of token_id to fee.
     /// Since we hash this map, it is important to use a BTreeMap as it
     /// guarantees iterating over the map is in sorted and predictable
     /// order.
-    pub map: BTreeMap<TokenId, u64>,
+    map: BTreeMap<TokenId, u64>,
 
     /// Cached digest value, formatted as a string.
     /// (Suitable for appending to responder id)
-    pub cached_digest: String,
-}
-
-impl Default for FeeMapInner {
-    fn default() -> Self {
-        let mut map = BTreeMap::new();
-        map.insert(Mob::ID, Mob::MINIMUM_FEE);
-
-        let cached_digest = calc_digest_for_map(&map);
-
-        Self { map, cached_digest }
-    }
-}
-
-/// A thread-safe object that contains a map of fee value by token id.
-pub struct FeeMap {
-    inner: Mutex<FeeMapInner>,
+    cached_digest: String,
 }
 
 impl Default for FeeMap {
     fn default() -> Self {
-        Self {
-            inner: Mutex::new(FeeMapInner::default()),
-        }
+        let map = Self::default_map();
+        let cached_digest = calc_digest_for_map(&map);
+
+        Self { map, cached_digest }
     }
 }
 
@@ -56,46 +41,45 @@ impl TryFrom<BTreeMap<TokenId, u64>> for FeeMap {
 
         let cached_digest = calc_digest_for_map(&map);
 
-        Ok(Self {
-            inner: Mutex::new(FeeMapInner { map, cached_digest }),
-        })
+        Ok(Self { map, cached_digest })
     }
 }
 
 impl FeeMap {
+    /// Create a fee map from an unsorted iterator.
+    pub fn try_from_iter(iter: impl IntoIterator<Item = (TokenId, u64)>) -> Result<Self, Error> {
+        let map = BTreeMap::from_iter(iter);
+        Self::try_from(map)
+    }
+
     /// Append the fee map digest to an existing responder id, producing a
     /// responder id that is unique to the current fee configuration.
     pub fn responder_id(&self, responder_id: &ResponderId) -> ResponderId {
-        ResponderId(format!(
-            "{}-{}",
-            responder_id.0,
-            self.inner.lock().unwrap().cached_digest
-        ))
+        ResponderId(format!("{}-{}", responder_id.0, self.cached_digest))
     }
 
     /// Get the fee for a given token id, or None if no fee is set for that
     /// token.
     pub fn get_fee_for_token(&self, token_id: &TokenId) -> Option<u64> {
-        let inner = self.inner.lock().unwrap();
-        inner.map.get(token_id).cloned()
+        self.map.get(token_id).cloned()
     }
 
     /// Update the fee map with a new one if provided, or reset it to the
     /// default.
     pub fn update_or_default(
-        &self,
+        &mut self,
         minimum_fees: Option<BTreeMap<TokenId, u64>>,
     ) -> Result<(), Error> {
-        let mut inner = self.inner.lock().unwrap();
-
         if let Some(minimum_fees) = minimum_fees {
             Self::is_valid_map(&minimum_fees)?;
 
-            inner.map = minimum_fees;
-            inner.cached_digest = calc_digest_for_map(&inner.map);
+            self.map = minimum_fees;
         } else {
-            *inner = FeeMapInner::default();
+            self.map = Self::default_map();
         }
+
+        // Digest must be updated when the map is updated.
+        self.cached_digest = calc_digest_for_map(&self.map);
 
         Ok(())
     }
@@ -114,6 +98,18 @@ impl FeeMap {
 
         // All good.
         Ok(())
+    }
+
+    /// Iterate over all entries in the fee map.
+    pub fn iter(&self) -> impl Iterator<Item = (&TokenId, &u64)> {
+        self.map.iter()
+    }
+
+    /// Helper method for constructing the default fee map.
+    pub fn default_map() -> BTreeMap<TokenId, u64> {
+        let mut map = BTreeMap::new();
+        map.insert(Mob::ID, Mob::MINIMUM_FEE);
+        map
     }
 }
 
@@ -144,29 +140,14 @@ pub enum Error {
 mod test {
     use super::*;
     use alloc::{string::ToString, vec};
-    use core::iter::FromIterator;
 
     /// Different fee maps/responder ids should result in different responder
     /// ids.
     #[test]
     fn different_fee_maps_result_in_different_responder_ids() {
-        let fee_map1 = FeeMap::try_from(BTreeMap::from_iter(vec![
-            (Mob::ID, 100),
-            (TokenId::from(2), 200),
-        ]))
-        .unwrap();
-
-        let fee_map2 = FeeMap::try_from(BTreeMap::from_iter(vec![
-            (Mob::ID, 100),
-            (TokenId::from(2), 300),
-        ]))
-        .unwrap();
-
-        let fee_map3 = FeeMap::try_from(BTreeMap::from_iter(vec![
-            (Mob::ID, 100),
-            (TokenId::from(3), 300),
-        ]))
-        .unwrap();
+        let fee_map1 = FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(2), 2000)]).unwrap();
+        let fee_map2 = FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(2), 300)]).unwrap();
+        let fee_map3 = FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(30), 300)]).unwrap();
 
         let responder_id1 = ResponderId("1.2.3.4:5".to_string());
         let responder_id2 = ResponderId("3.1.3.3:7".to_string());

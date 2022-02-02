@@ -2,6 +2,7 @@
 
 //! Configuration parameters for the Consensus Service application.
 
+use crate::consensus_service::ConsensusServiceError;
 use mc_attest_core::ProviderId;
 use mc_common::{HashMap, HashSet, NodeID, ResponderId};
 use mc_consensus_enclave::FeeMap;
@@ -13,10 +14,7 @@ use mc_util_uri::{
     AdminUri, ConnectionUri, ConsensusClientUri as ClientUri, ConsensusPeerUri as PeerUri,
 };
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::BTreeMap, fmt::Debug, fs, iter::FromIterator, path::PathBuf, str::FromStr,
-    string::String, sync::Arc, time::Duration,
-};
+use std::{fmt::Debug, fs, path::PathBuf, str::FromStr, string::String, sync::Arc, time::Duration};
 use structopt::StructOpt;
 
 #[derive(Clone, Debug, StructOpt)]
@@ -216,29 +214,32 @@ impl Config {
     }
 
     /// Get the configured minimum fee.
-    pub fn minimum_fees_map(&self) -> Result<Option<BTreeMap<TokenId, u64>>, String> {
+    pub fn fee_map(&self) -> Result<FeeMap, ConsensusServiceError> {
         if self.minimum_fee.is_empty() {
-            return Ok(None);
+            return Ok(FeeMap::default());
         }
 
-        let fee_map = BTreeMap::from_iter(
+        let fee_map = FeeMap::try_from_iter(
             self.minimum_fee
                 .iter()
                 .cloned()
                 .map(|pair| (pair.0, pair.1)),
-        );
-        FeeMap::is_valid_map(&fee_map)
-            .map_err(|err| format!("Invalid fee configuration: {:?}", err))?;
+        )
+        .map_err(|err| ConsensusServiceError::FeesMisconfigured(err.to_string()))?;
 
         // Must have a fee for MOB (this is enforced by is_valid_map above).
         let mob_fee = fee_map
-            .get(&TokenId::MOB)
+            .get_fee_for_token(&TokenId::MOB)
             .expect("MOB fee must be specified");
-        if !self.allow_any_fee && !(10_000..1_000_000_000_000u64).contains(mob_fee) {
-            return Err(format!("Fee {} picoMOB is out of bounds", mob_fee));
+
+        if !self.allow_any_fee && !(10_000..1_000_000_000_000u64).contains(&mob_fee) {
+            return Err(ConsensusServiceError::FeesMisconfigured(format!(
+                "Fee {} picoMOB is out of bounds",
+                mob_fee
+            )));
         }
 
-        Ok(Some(fee_map))
+        Ok(fee_map)
     }
 
     /// Get the network configuration by loading the network.toml/json file.

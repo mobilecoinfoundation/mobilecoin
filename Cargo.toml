@@ -63,6 +63,7 @@ members = [
     "fog/ocall_oram_storage/testing",
     "fog/ocall_oram_storage/trusted",
     "fog/ocall_oram_storage/untrusted",
+    "fog/overseer/server",
     "fog/recovery_db_iface",
     "fog/report/api",
     "fog/report/cli",

@@ -30,7 +30,7 @@ use mc_crypto_keys::DistinguishedEncoding;
 use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
-use mc_transaction_core::{tx::TxHash, TokenId};
+use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
     AdminServer, AnonymousAuthenticator, Authenticator, BuildInfoService,
     ConnectionUriGrpcioServer, GetConfigJsonFn, HealthCheckStatus, HealthService,
@@ -60,8 +60,8 @@ pub enum ConsensusServiceError {
     BackgroundWorkQueueStop(String),
     /// Report cache error: `{0}`
     ReportCache(ReportCacheError),
-    /// Fees misconfigured
-    FeesMisconfigured,
+    /// Fees misconfigured: `{0}`
+    FeesMisconfigured(String),
     /// Consensus enclave error: `{0}`
     ConsensusEnclave(ConsensusEnclaveError),
 }
@@ -342,17 +342,12 @@ impl<
             self.logger.clone(),
         ));
 
-        let mob_minimum_fee = self
-            .enclave
-            .get_minimum_fee(&TokenId::MOB)?
-            .ok_or(ConsensusServiceError::FeesMisconfigured)?;
-
         let blockchain_service =
             consensus_common_grpc::create_blockchain_api(BlockchainApiService::new(
                 self.ledger_db.clone(),
                 self.client_authenticator.clone(),
+                self.config.fee_map()?,
                 self.logger.clone(),
-                mob_minimum_fee,
             ));
 
         let is_serving_user_requests = self.create_is_serving_user_requests_fn();
@@ -440,17 +435,12 @@ impl<
             })
         });
 
-        let mob_minimum_fee = self
-            .enclave
-            .get_minimum_fee(&TokenId::MOB)?
-            .ok_or(ConsensusServiceError::FeesMisconfigured)?;
-
         let blockchain_service =
             consensus_common_grpc::create_blockchain_api(BlockchainApiService::new(
                 self.ledger_db.clone(),
                 peer_authenticator.clone(),
+                self.config.fee_map()?,
                 self.logger.clone(),
-                mob_minimum_fee,
             ));
 
         let peer_service = consensus_peer_grpc::create_consensus_peer_api(PeerApiService::new(
