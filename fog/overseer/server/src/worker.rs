@@ -7,7 +7,7 @@
 //!
 //! HTTP Client -> Overseer Rocket Server -> OverseerService -> *OverseerWorker*
 
-use crate::error::OverseerError;
+use crate::{error::OverseerError, metrics};
 use mc_api::external;
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -188,8 +188,12 @@ where
                 }
             };
 
-            // TODO: Use these ingest summaries to send the desired metadata
-            // to Prometheus: number of keys, number of active nodes, etc.
+            let ingest_summaries: Vec<IngestSummary> = ingest_summary_node_mappings
+                .iter()
+                .map(|mapping| mapping.ingest_summary.clone())
+                .collect();
+            metrics::utils::set_metrics(&self.logger, ingest_summaries.as_slice());
+
             let active_ingest_summary_node_mappings: Vec<&IngestSummaryNodeMapping> =
                 ingest_summary_node_mappings
                     .iter()
@@ -211,7 +215,7 @@ where
                             log::info!(self.logger, "Automatic failover completed successfully.")
                         }
                         Err(err) => {
-                            log::error!(self.logger, "Automatic failover failed: {:?}", err)
+                            log::error!(self.logger, "Automatic failover failed: {}", err)
                         }
                     };
                 }
@@ -235,14 +239,10 @@ where
                                     .get_ingress_pubkey()
                             })
                             .collect();
-                    log::error!(
-                        self.logger,
-                        "There are multiple active nodes in the Fog Ingest cluster. Active ingress keys: {:?}",
-                        active_node_ingress_pubkeys
-                    );
-                    // TODO: Set up sentry alerts and signal to ops that two
-                    // keys are active at once. This is
-                    // unexpected.
+                    let error_message =
+                        format!("Active ingress keys: {:?}", active_node_ingress_pubkeys);
+                    let error = OverseerError::MultipleActiveNodes(error_message);
+                    log::error!(self.logger, "{}", error);
                 }
             }
         }
@@ -329,9 +329,11 @@ where
                 Ok(())
             }
             _ => {
-                log::error!(self.logger, "Found multiple outstanding keys {:?}. This requires manual intervention. Disabling overseer.", inactive_outstanding_keys);
                 self.is_enabled.store(false, Ordering::SeqCst);
-                Err(OverseerError::MultipleOutstandingKeys("Multiple outstanding keys found. This is unexpected and requires manual intervention. As such, we've disabled overseer. Take action and then enable overseer.".to_string()))
+                let error_message = format!("This is unexpected and requires manual intervention. As such, we've disabled overseer. Take the appropriate action and then re-enable overseer by calling the /enable endpoint. Inactive oustanding keys: {:?}", inactive_outstanding_keys);
+                Err(OverseerError::MultipleInactiveOutstandingKeys(
+                    error_message,
+                ))
             }
         }
     }

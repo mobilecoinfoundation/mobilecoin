@@ -25,8 +25,11 @@ pub enum OverseerError {
     /// Activating an idle node failed: {0}
     ActivateNode(String),
 
-    /// There are multiple outstanding keys: {0}
-    MultipleOutstandingKeys(String),
+    /// Multiple inactive outstanding keys found: {0}
+    MultipleInactiveOutstandingKeys(String),
+
+    /// There are multiple active Fog Ingest nodes at once: {0}
+    MultipleActiveNodes(String),
 }
 
 impl From<SqlRecoveryDbError> for OverseerError {

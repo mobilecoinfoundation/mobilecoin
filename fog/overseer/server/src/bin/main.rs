@@ -3,15 +3,17 @@
 //! Starts a Rocket server that allows clients to access Fog Overseer APIs
 //! over HTTP.
 
-use mc_common::logger::{log, o};
+use mc_common::{
+    logger::{log, o},
+    sentry,
+};
 use mc_fog_overseer_server::{config::OverseerConfig, server, service::OverseerService};
 use mc_fog_sql_recovery_db::SqlRecoveryDb;
 use structopt::StructOpt;
 
 fn main() {
     mc_common::setup_panic_handler();
-    // TODO: Enable sentry here.
-    // See https://github.com/mobilecoinfoundation/mobilecoin/blob/master/fog/view/server/src/bin/main.rs#L16.
+    let _sentry_guard = sentry::init();
     let config = OverseerConfig::from_args();
     let (logger, _global_logger_guard) = mc_common::logger::create_app_logger(o!());
 
