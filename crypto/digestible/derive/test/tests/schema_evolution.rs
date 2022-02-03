@@ -47,6 +47,31 @@ struct ThingV5 {
     d: i32,
 }
 
+// A new bytes field that is skipped when empty
+#[derive(Digestible)]
+#[digestible(name = "Thing")]
+struct ThingV6 {
+    a: Option<u64>,
+    b: Option<u64>,
+    c: Vec<bool>,
+    #[digestible(omit_when = 0)]
+    d: i32,
+    e: Vec<u8>,
+}
+
+// A new string field that is skipped when empty
+#[derive(Digestible)]
+#[digestible(name = "Thing")]
+struct ThingV7 {
+    a: Option<u64>,
+    b: Option<u64>,
+    c: Vec<bool>,
+    #[digestible(omit_when = 0)]
+    d: i32,
+    e: Vec<u8>,
+    f: String,
+}
+
 // Test vectors for a few instances of the Thing struct, and versions of it
 #[test]
 fn thing_struct() {
@@ -187,6 +212,114 @@ fn struct_schema_evolution() {
             b: Some(99),
             c: Default::default(),
             d: 1,
+        }
+        .digest32::<MerlinTranscript>(b"test")
+    );
+
+    assert_eq!(
+        ThingV2 { a: 14, b: Some(99) }.digest32::<MerlinTranscript>(b"test"),
+        ThingV6 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 0,
+            e: vec![],
+        }
+        .digest32::<MerlinTranscript>(b"test")
+    );
+
+    assert_ne!(
+        ThingV2 { a: 14, b: Some(99) }.digest32::<MerlinTranscript>(b"test"),
+        ThingV6 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 0,
+            e: vec![1u8],
+        }
+        .digest32::<MerlinTranscript>(b"test")
+    );
+
+    assert_ne!(
+        ThingV2 { a: 14, b: Some(99) }.digest32::<MerlinTranscript>(b"test"),
+        ThingV6 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 1,
+            e: vec![],
+        }
+        .digest32::<MerlinTranscript>(b"test")
+    );
+
+    assert_eq!(
+        ThingV2 { a: 14, b: Some(99) }.digest32::<MerlinTranscript>(b"test"),
+        ThingV7 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 0,
+            e: vec![],
+            f: "".to_string(),
+        }
+        .digest32::<MerlinTranscript>(b"test")
+    );
+
+    assert_ne!(
+        ThingV2 { a: 14, b: Some(99) }.digest32::<MerlinTranscript>(b"test"),
+        ThingV7 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 0,
+            e: vec![],
+            f: "a".to_string(),
+        }
+        .digest32::<MerlinTranscript>(b"test")
+    );
+
+    assert_ne!(
+        ThingV2 { a: 14, b: Some(99) }.digest32::<MerlinTranscript>(b"test"),
+        ThingV7 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 4,
+            e: vec![],
+            f: "a".to_string(),
+        }
+        .digest32::<MerlinTranscript>(b"test")
+    );
+
+    assert_ne!(
+        ThingV2 { a: 14, b: Some(99) }.digest32::<MerlinTranscript>(b"test"),
+        ThingV7 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 4,
+            e: vec![],
+            f: "a".to_string(),
+        }
+        .digest32::<MerlinTranscript>(b"test")
+    );
+
+    assert_ne!(
+        ThingV6 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 0,
+            e: vec!['a' as u8]
+        }
+        .digest32::<MerlinTranscript>(b"test"),
+        ThingV7 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 0,
+            e: vec![],
+            f: "a".to_string(),
         }
         .digest32::<MerlinTranscript>(b"test")
     );
