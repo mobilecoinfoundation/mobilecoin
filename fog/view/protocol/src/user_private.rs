@@ -99,7 +99,7 @@ impl UserPrivate {
 impl From<&AccountKey> for UserPrivate {
     fn from(src: &AccountKey) -> UserPrivate {
         UserPrivate {
-            view_key: src.get_default_subaddress_view_private(),
+            view_key: src.default_subaddress_view_private(),
         }
     }
 }
@@ -181,7 +181,7 @@ mod testing {
 
         // Client decrypts with key loaded from file
         let (_result, plaintext) = VersionedCryptoBox::default()
-            .decrypt(&recipient.get_default_subaddress_view_private(), &payload)
+            .decrypt(&recipient.default_subaddress_view_private(), &payload)
             .expect("Could not decrypt cryptogram");
         assert_eq!(plaintext, protobuf);
     }

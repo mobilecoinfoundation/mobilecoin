@@ -58,7 +58,7 @@ fn worker_thread(
     let rng_record = &(resp.rng_records[0]);
     let rng = VersionedKexRng::try_from_kex_pubkey(
         &rng_record.pubkey,
-        &account_key.get_default_subaddress_view_private(),
+        &account_key.default_subaddress_view_private(),
     )
     .expect("kex");
     let search_keys = rng.take(num_search_keys).collect::<Vec<Vec<u8>>>();

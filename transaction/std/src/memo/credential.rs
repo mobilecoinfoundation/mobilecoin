@@ -46,7 +46,7 @@ impl From<&AccountKey> for SenderMemoCredential {
     fn from(src: &AccountKey) -> Self {
         Self::new_from_address_and_spend_private_key(
             &src.default_subaddress(),
-            src.get_default_subaddress_spend_private(),
+            src.default_subaddress_spend_private(),
         )
     }
 }

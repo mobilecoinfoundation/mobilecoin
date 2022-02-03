@@ -191,7 +191,7 @@ mod tests {
         assert!(
             bool::from(memo1.validate(
                 &alice_addr,
-                &bob.get_default_subaddress_view_private(),
+                &bob.default_subaddress_view_private(),
                 &tx_public_key
             )),
             "validation should have passed"
@@ -199,7 +199,7 @@ mod tests {
         assert!(
             !bool::from(memo1.validate(
                 &bob_addr,
-                &bob.get_default_subaddress_view_private(),
+                &bob.default_subaddress_view_private(),
                 &tx_public_key
             )),
             "validation should have failed"
@@ -207,7 +207,7 @@ mod tests {
         assert!(
             !bool::from(memo1.validate(
                 &alice_addr,
-                &alice.get_default_subaddress_view_private(),
+                &alice.default_subaddress_view_private(),
                 &tx_public_key
             )),
             "validation should have failed"
@@ -215,7 +215,7 @@ mod tests {
         assert!(
             !bool::from(memo1.validate(
                 &bob_addr,
-                &alice.get_default_subaddress_view_private(),
+                &alice.default_subaddress_view_private(),
                 &tx_public_key
             )),
             "validation should have failed"
@@ -223,7 +223,7 @@ mod tests {
         assert!(
             !bool::from(memo1.validate(
                 &alice_addr,
-                &bob.get_default_subaddress_view_private(),
+                &bob.default_subaddress_view_private(),
                 &tx_public_key2
             )),
             "validation should have failed"
@@ -231,7 +231,7 @@ mod tests {
         assert!(
             !bool::from(memo1.validate(
                 &bob_addr,
-                &bob.get_default_subaddress_view_private(),
+                &bob.default_subaddress_view_private(),
                 &tx_public_key2
             )),
             "validation should have failed"
@@ -239,7 +239,7 @@ mod tests {
         assert!(
             !bool::from(memo1.validate(
                 &alice_addr,
-                &alice.get_default_subaddress_view_private(),
+                &alice.default_subaddress_view_private(),
                 &tx_public_key2
             )),
             "validation should have failed"
@@ -247,7 +247,7 @@ mod tests {
         assert!(
             !bool::from(memo1.validate(
                 &bob_addr,
-                &alice.get_default_subaddress_view_private(),
+                &alice.default_subaddress_view_private(),
                 &tx_public_key2
             )),
             "validation should have failed"
@@ -267,7 +267,7 @@ mod tests {
         assert!(
             bool::from(memo2.validate(
                 &alice_addr,
-                &bob.get_default_subaddress_view_private(),
+                &bob.default_subaddress_view_private(),
                 &tx_public_key
             )),
             "validation should have passed"
@@ -275,7 +275,7 @@ mod tests {
         assert!(
             !bool::from(memo2.validate(
                 &bob_addr,
-                &bob.get_default_subaddress_view_private(),
+                &bob.default_subaddress_view_private(),
                 &tx_public_key
             )),
             "validation should have failed"
@@ -283,7 +283,7 @@ mod tests {
         assert!(
             !bool::from(memo2.validate(
                 &alice_addr,
-                &alice.get_default_subaddress_view_private(),
+                &alice.default_subaddress_view_private(),
                 &tx_public_key
             )),
             "validation should have failed"
@@ -291,7 +291,7 @@ mod tests {
         assert!(
             !bool::from(memo2.validate(
                 &bob_addr,
-                &alice.get_default_subaddress_view_private(),
+                &alice.default_subaddress_view_private(),
                 &tx_public_key
             )),
             "validation should have failed"
@@ -299,7 +299,7 @@ mod tests {
         assert!(
             !bool::from(memo2.validate(
                 &alice_addr,
-                &bob.get_default_subaddress_view_private(),
+                &bob.default_subaddress_view_private(),
                 &tx_public_key2
             )),
             "validation should have failed"
@@ -307,7 +307,7 @@ mod tests {
         assert!(
             !bool::from(memo2.validate(
                 &bob_addr,
-                &bob.get_default_subaddress_view_private(),
+                &bob.default_subaddress_view_private(),
                 &tx_public_key2
             )),
             "validation should have failed"
@@ -315,7 +315,7 @@ mod tests {
         assert!(
             !bool::from(memo2.validate(
                 &alice_addr,
-                &alice.get_default_subaddress_view_private(),
+                &alice.default_subaddress_view_private(),
                 &tx_public_key2
             )),
             "validation should have failed"
@@ -323,7 +323,7 @@ mod tests {
         assert!(
             !bool::from(memo2.validate(
                 &bob_addr,
-                &alice.get_default_subaddress_view_private(),
+                &alice.default_subaddress_view_private(),
                 &tx_public_key2
             )),
             "validation should have failed"

@@ -162,10 +162,10 @@ fn main() {
                     view_private_key: account_key.view_private_key().to_bytes(),
                     spend_private_key: account_key.spend_private_key().to_bytes(),
                     subaddress_view_private_key: account_key
-                        .get_default_subaddress_view_private()
+                        .default_subaddress_view_private()
                         .to_bytes(),
                     subaddress_spend_private_key: account_key
-                        .get_default_subaddress_spend_private()
+                        .default_subaddress_spend_private()
                         .to_bytes(),
                     subaddress_view_public_key: subaddress.view_public_key().to_bytes(),
                     subaddress_spend_public_key: subaddress.spend_public_key().to_bytes(),
