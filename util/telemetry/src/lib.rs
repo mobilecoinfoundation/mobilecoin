@@ -9,7 +9,6 @@ pub use opentelemetry::{
 
 use opentelemetry::{
     global::{tracer_provider, BoxedTracer},
-    sdk::{trace::Config, Resource},
     trace::{SpanBuilder, TraceId, TracerProvider},
 };
 use std::borrow::Cow;
@@ -117,7 +116,9 @@ cfg_if::cfg_if! {
 
             opentelemetry_jaeger::new_pipeline()
                 .with_service_name(service_name)
-                .with_trace_config(Config::default().with_resource(Resource::new(tags)))
+                .with_trace_config(
+                    sdk::trace::Config::default()
+                        .with_resource(sdk::Resource::new(tags)))
                 .install_simple()
                 .map_err(Error::Trace)
         }
