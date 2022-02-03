@@ -113,10 +113,13 @@ impl TestClient {
         logger: Logger,
     ) -> Self {
         let tx_info = Arc::new(Default::default());
-        // The test client uses accounts_keys.len() many clients in round robin
-        // fashion. If we set the healing time of health tracker to be this number,
-        // then we will heal when every client has successfully transferred again.
-        let health_tracker = Arc::new(HealthTracker::new(account_keys.len()));
+        // As noted in the HealthTracker documentation, healing_time refers
+        // to the number of successful transactions that need to occur before
+        // we can be considered healthy. We want one successful transfer to make
+        // us healthy rather than wait for every account to experience a
+        // successful transaction.
+        let healing_time = 1;
+        let health_tracker = Arc::new(HealthTracker::new(healing_time));
         Self {
             policy,
             account_keys,
@@ -980,11 +983,6 @@ impl core::fmt::Display for TxInfo {
 ///
 /// * If a failure is observed, we are unhealthy (immediately)
 /// * If no failure is observed for a long enough time, we are healthy again
-///
-/// The amount of time is the "healing_time" and it is expected to be set
-/// to the number of clients, so that when we go around once in round-robin
-/// fashion and all clients are successful, we are considered healed, and not
-/// before that.
 #[derive(Default)]
 pub struct HealthTracker {
     // Set to i for the duration of the i'th transfer
@@ -993,7 +991,13 @@ pub struct HealthTracker {
     have_failure: AtomicBool,
     // The counter value during the most recent failure
     last_failure: AtomicUsize,
-    // Healing time: How many successful transfers needed to forget a failure
+    // How many successful transfers needed to forget a previous unsuccessful
+    // transaction and enable us to be healthy. (This usage of the word "time"
+    // does not refer to duration or seconds elapsed).
+    //
+    // Suppose you set this value to the number of accounts that are being
+    // tested and a failure occurs. In this scenario, we can only be healthy
+    // once each account in succession experiences a successful transfer.
     healing_time: usize,
 }
 
@@ -1001,8 +1005,8 @@ impl HealthTracker {
     /// Make a new healthy tracker.
     /// Sets LAST_POLLING_SUCCESSFUL to true initially.
     ///
-    /// Takes "healing time" which is the number of successful transfers before
-    /// we consider ourselves healthy again
+    /// * `healing_time` - number of successful transfers before we consider
+    /// ourselves healthy again
     pub fn new(healing_time: usize) -> Self {
         counters::LAST_POLLING_SUCCESSFUL.set(1);
         Self {
