@@ -424,7 +424,7 @@ fn worker_thread_entry(
 /// Builds and submits a transaction to a given FogAccount.
 ///
 /// If a transaction submit errors, then we get and use a new FogResolver
-/// to build and submit transactions. In this case, we return this new 
+/// to build and submit transactions. In this case, we return this new
 /// FogResolver to the caller so that it can be used in subsequent transactions.
 fn build_and_submit_transaction(
     txs_created: usize,
