@@ -1062,7 +1062,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOut_compute_1key_1image(
                 .collect();
             let subaddress_index = spsk_to_index
                 .get(&subaddress_spk)
-                .ok_or(McError::Other("Subaddress match error".to_owned()))?;
+                .ok_or_else(|| McError::Other("Subaddress match error".to_owned()))?;
 
             let onetime_private_key = recover_onetime_private_key(
                 &tx_pub_key,
