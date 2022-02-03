@@ -17,7 +17,10 @@ use jni::{
     sys::{jboolean, jbyteArray, jint, jlong, jobject, jobjectArray, jshort, jstring, JNI_FALSE},
     JNIEnv,
 };
-use mc_account_keys::{AccountKey, PublicAddress, RootEntropy, RootIdentity};
+use mc_account_keys::{
+    AccountKey, PublicAddress, RootEntropy, RootIdentity, CHANGE_SUBADDRESS_INDEX,
+    DEFAULT_SUBADDRESS_INDEX,
+};
 use mc_account_keys_slip10::Slip10KeyGenerator;
 use mc_api::printable::PrintableWrapper;
 use mc_attest_ake::{
@@ -37,7 +40,9 @@ use mc_fog_report_types::{Report, ReportResponse};
 use mc_fog_report_validation::{FogReportResponses, FogResolver};
 use mc_transaction_core::{
     get_tx_out_shared_secret,
-    onetime_keys::{create_shared_secret, recover_onetime_private_key},
+    onetime_keys::{
+        create_shared_secret, recover_onetime_private_key, recover_public_subaddress_spend_key,
+    },
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     Amount, CompressedCommitment,
@@ -49,6 +54,7 @@ use protobuf::Message;
 use rand::{rngs::StdRng, SeedableRng};
 use sha2::Sha512;
 use std::{
+    collections::BTreeMap,
     ops::DerefMut,
     str::FromStr,
     sync::{Mutex, MutexGuard},
@@ -1043,11 +1049,25 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOut_compute_1key_1image(
             let account_key: MutexGuard<AccountKey> =
                 env.get_rust_field(account_key, RUST_OBJ_FIELD)?;
             let tx_pub_key = RistrettoPublic::try_from(&tx_out.public_key)?;
+            let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key)?;
+
+            let subaddress_spk = recover_public_subaddress_spend_key(
+                account_key.view_private_key(),
+                &tx_out_target_key,
+                &tx_pub_key,
+            );
+            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (DEFAULT_SUBADDRESS_INDEX
+                ..=CHANGE_SUBADDRESS_INDEX)
+                .map(|index| (*account_key.subaddress(index).spend_public_key(), index))
+                .collect();
+            let subaddress_index = spsk_to_index
+                .get(&subaddress_spk)
+                .ok_or_else(|| McError::Other("Subaddress match error".to_owned()))?;
 
             let onetime_private_key = recover_onetime_private_key(
                 &tx_pub_key,
                 account_key.view_private_key(),
-                &account_key.default_subaddress_spend_private(),
+                &account_key.subaddress_spend_private(*subaddress_index),
             );
 
             let key_image = KeyImage::from(&onetime_private_key);
