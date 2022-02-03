@@ -5,7 +5,7 @@ use mc_common::Hash;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     ring_signature::KeyImage,
-    tx::{TxOut, TxOutMembershipProof},
+    tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockData, BlockIndex, BlockSignature,
 };
 use mockall::*;
@@ -78,4 +78,7 @@ pub trait Ledger: Send {
 
     /// Gets the key images used by transactions in a single block.
     fn get_key_images_by_block(&self, block_number: BlockIndex) -> Result<Vec<KeyImage>, Error>;
+
+    /// Get the tx out root membership element from the tx out Merkle Tree.
+    fn get_root_tx_out_membership_element(&self) -> Result<TxOutMembershipElement, Error>;
 }

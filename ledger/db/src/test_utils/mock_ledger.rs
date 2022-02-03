@@ -186,6 +186,10 @@ impl Ledger for MockLedger {
             })
             .collect()
     }
+
+    fn get_root_tx_out_membership_element(&self) -> Result<TxOutMembershipElement, Error> {
+        unimplemented!();
+    }
 }
 
 #[allow(dead_code)]
