@@ -18,8 +18,8 @@ use jni::{
     JNIEnv,
 };
 use mc_account_keys::{
-    AccountKey, PublicAddress, RootEntropy, RootIdentity, DEFAULT_SUBADDRESS_INDEX,
-    CHANGE_SUBADDRESS_INDEX,
+    AccountKey, PublicAddress, RootEntropy, RootIdentity, CHANGE_SUBADDRESS_INDEX,
+    DEFAULT_SUBADDRESS_INDEX,
 };
 use mc_account_keys_slip10::Slip10KeyGenerator;
 use mc_api::printable::PrintableWrapper;
