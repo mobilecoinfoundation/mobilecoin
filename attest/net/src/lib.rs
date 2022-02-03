@@ -10,17 +10,14 @@ mod traits;
 
 pub use self::traits::{Error, RaClient, Result};
 
-#[cfg(not(feature = "sgx-sim"))]
-mod ias;
-#[cfg(feature = "sgx-sim")]
-mod sim;
-
 // Export the "build-configured" RaClient so that downstream doesn't need
 // to copy paste this cfg_if every where and have a build.rs unnecessarily
 cfg_if::cfg_if! {
     if #[cfg(feature = "sgx-sim")] {
+        mod sim;
         pub type Client = crate::sim::SimClient;
     } else {
+        mod ias;
         pub type Client = crate::ias::IasClient;
     }
 }
