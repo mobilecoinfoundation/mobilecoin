@@ -46,11 +46,10 @@ use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
-    onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
     ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Amount, Block, BlockContents, BlockSignature, MemoPayload, TokenId, BLOCK_VERSION,
+    Block, BlockContents, BlockSignature, TokenId, BLOCK_VERSION,
 };
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
@@ -521,24 +520,6 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         }
 
         // Create an aggregate fee output.
-        let fee_tx_private_key = {
-            let mut hash_value = [0u8; 32];
-            {
-                let mut transcript =
-                    MerlinTranscript::new(FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.as_bytes());
-                parent_block
-                    .id
-                    .append_to_transcript(b"parent_block_id", &mut transcript);
-                transactions.append_to_transcript(b"transactions", &mut transcript);
-                transcript.extract_digest(&mut hash_value);
-            };
-
-            // This private key is generated from the hash of all transactions in this
-            // block. This ensures that all nodes generate the same fee output
-            // transaction.
-            RistrettoPrivate::from(Scalar::from_bytes_mod_order(hash_value))
-        };
-
         let total_fee: u64 = transactions.iter().map(|tx| tx.prefix.fee).sum();
         let fee_public_key = self.get_fee_recipient().map_err(|e| {
             Error::FeePublicAddress(format!("Could not get fee public address: {:?}", e))
@@ -548,8 +529,15 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             &fee_public_key.view_public_key,
         );
 
-        let fee_output = mint_aggregate_fee(&fee_recipient, &fee_tx_private_key, total_fee)?;
+        let fee_output = mint_output(
+            &fee_recipient,
+            FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.as_bytes(),
+            parent_block,
+            &transactions,
+            total_fee,
+        )?;
 
+        // Collect outputs and key images.
         let mut outputs: Vec<TxOut> = Vec::new();
         let mut key_images: Vec<KeyImage> = Vec::new();
         for tx in &transactions {
@@ -581,40 +569,46 @@ impl ConsensusEnclave for SgxConsensusEnclave {
     }
 }
 
-/// Creates a single output belonging to the fee recipient account.
+/// Creates a single output belonging to a specific recipient account.
+/// The output is created using a predictable private key that is derived from
+/// the input parameters.
 ///
 /// # Arguments:
-/// * `tx_private_key` - Transaction key used to output the aggregate fee.
-/// * `total_fee` - The sum of all fees in the block.
-fn mint_aggregate_fee(
-    fee_recipient: &PublicAddress,
-    tx_private_key: &RistrettoPrivate,
-    total_fee: u64,
+/// * `recipient` - The recipient of the output.
+/// * `domain_tag` - Domain separator for hashing the input parameters.
+/// * `parent_block` - The parent block.
+/// * `transactions` - The transactions that are included in the current block.
+/// * `amount` - Output amount.
+fn mint_output<T: Digestible>(
+    recipient: &PublicAddress,
+    domain_tag: &'static [u8],
+    parent_block: &Block,
+    transactions: &[T],
+    amount: u64,
 ) -> Result<TxOut> {
-    // Create a single TxOut
-    let fee_output: TxOut = {
-        let target_key = create_tx_out_target_key(tx_private_key, fee_recipient).into();
-        let public_key =
-            create_tx_out_public_key(tx_private_key, fee_recipient.spend_public_key()).into();
+    // Create a determinstic private key based on the block contents.
+    let tx_private_key = {
+        let mut hash_value = [0u8; 32];
+        {
+            let mut transcript = MerlinTranscript::new(domain_tag);
+            parent_block
+                .id
+                .append_to_transcript(b"parent_block_id", &mut transcript);
+            transactions.append_to_transcript(b"transactions", &mut transcript);
+            transcript.extract_digest(&mut hash_value);
+        };
 
-        let shared_secret = create_shared_secret(fee_recipient.view_public_key(), tx_private_key);
-
-        // The fee view key is publicly known, so there is no need for a blinding.
-        let amount = Amount::new(total_fee, &shared_secret)
-            .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?;
-
-        let e_memo = Some(MemoPayload::default().encrypt(&shared_secret));
-
-        TxOut {
-            amount,
-            target_key,
-            public_key,
-            e_fog_hint: Default::default(),
-            e_memo,
-        }
+        // This private key is generated from the hash of all transactions in this
+        // block. This ensures that all nodes generate the same fee output
+        // transaction.
+        RistrettoPrivate::from(Scalar::from_bytes_mod_order(hash_value))
     };
 
-    Ok(fee_output)
+    // Create a single TxOut
+    let output = TxOut::new(amount, recipient, &tx_private_key, Default::default())
+        .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?;
+
+    Ok(output)
 }
 
 #[cfg(test)]
@@ -623,7 +617,8 @@ mod tests {
     use mc_common::logger::test_with_logger;
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{
-        onetime_keys::view_key_matches_output, tx::TxOutMembershipHash,
+        onetime_keys::{create_shared_secret, view_key_matches_output},
+        tx::TxOutMembershipHash,
         validation::TransactionValidationError,
     };
     use mc_transaction_core_test_utils::{
