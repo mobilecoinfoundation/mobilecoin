@@ -900,7 +900,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_AccountKey_get_1change_1subaddr
         &env,
         |env| {
             let account_key: MutexGuard<AccountKey> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
-            let spend_key = account_key.change_subaddress_spend_private();
+            let spend_key = account_key.get_change_subaddress_spend_private();
 
             let mbox = Box::new(Mutex::new(spend_key));
             let ptr: *mut Mutex<RistrettoPrivate> = Box::into_raw(mbox);
@@ -919,7 +919,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_AccountKey_get_1change_1subaddr
         &env,
         |env| {
             let account_key: MutexGuard<AccountKey> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
-            let view_key = account_key.change_subaddress_view_private();
+            let view_key = account_key.get_change_subaddress_view_private();
 
             let mbox = Box::new(Mutex::new(view_key));
             let ptr: *mut Mutex<RistrettoPrivate> = Box::into_raw(mbox);
