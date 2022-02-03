@@ -46,11 +46,10 @@ use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
-    onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
     ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Amount, Block, BlockContents, BlockSignature, MemoPayload, TokenId, BLOCK_VERSION,
+    Block, BlockContents, BlockSignature, TokenId, BLOCK_VERSION,
 };
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
@@ -571,7 +570,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 }
 
 /// Creates a single output belonging to a specific recipient account.
-/// The output is created using a predictable private key that is derived from the input parameters.
+/// The output is created using a predictable private key that is derived from
+/// the input parameters.
 ///
 /// # Arguments:
 /// * `recipient` - The recipient of the output.
@@ -605,27 +605,8 @@ fn mint_output<T: Digestible>(
     };
 
     // Create a single TxOut
-    let output: TxOut = {
-        let target_key = create_tx_out_target_key(&tx_private_key, recipient).into();
-        let public_key =
-            create_tx_out_public_key(&tx_private_key, recipient.spend_public_key()).into();
-
-        let shared_secret = create_shared_secret(recipient.view_public_key(), &tx_private_key);
-
-        // The fee view key is publicly known, so there is no need for a blinding.
-        let amount = Amount::new(amount, &shared_secret)
-            .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?;
-
-        let e_memo = Some(MemoPayload::default().encrypt(&shared_secret));
-
-        TxOut {
-            amount,
-            target_key,
-            public_key,
-            e_fog_hint: Default::default(),
-            e_memo,
-        }
-    };
+    let output = TxOut::new(amount, recipient, &tx_private_key, Default::default())
+        .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?;
 
     Ok(output)
 }
@@ -636,7 +617,8 @@ mod tests {
     use mc_common::logger::test_with_logger;
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{
-        onetime_keys::view_key_matches_output, tx::TxOutMembershipHash,
+        onetime_keys::{create_shared_secret, view_key_matches_output},
+        tx::TxOutMembershipHash,
         validation::TransactionValidationError,
     };
     use mc_transaction_core_test_utils::{
