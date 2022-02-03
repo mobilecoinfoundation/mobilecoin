@@ -532,7 +532,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let fee_output = mint_output(
             &fee_recipient,
             FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.as_bytes(),
-            &parent_block,
+            parent_block,
             &transactions,
             total_fee,
         )?;
