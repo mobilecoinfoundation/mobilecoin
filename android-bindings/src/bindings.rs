@@ -17,7 +17,10 @@ use jni::{
     sys::{jboolean, jbyteArray, jint, jlong, jobject, jobjectArray, jshort, jstring, JNI_FALSE},
     JNIEnv,
 };
-use mc_account_keys::{AccountKey, PublicAddress, RootEntropy, RootIdentity, DEFAULT_SUBADDRESS_INDEX, CHANGE_SUBADDRESS_INDEX};
+use mc_account_keys::{
+    AccountKey, PublicAddress, RootEntropy, RootIdentity, DEFAULT_SUBADDRESS_INDEX,
+    CHANGE_SUBADDRESS_INDEX,
+};
 use mc_account_keys_slip10::Slip10KeyGenerator;
 use mc_api::printable::PrintableWrapper;
 use mc_attest_ake::{
