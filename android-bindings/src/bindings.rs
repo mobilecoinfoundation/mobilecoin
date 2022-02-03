@@ -37,7 +37,9 @@ use mc_fog_report_types::{Report, ReportResponse};
 use mc_fog_report_validation::{FogReportResponses, FogResolver};
 use mc_transaction_core::{
     get_tx_out_shared_secret,
-    onetime_keys::{create_shared_secret, recover_onetime_private_key, recover_public_subaddress_spend_key},
+    onetime_keys::{
+        create_shared_secret, recover_onetime_private_key, recover_public_subaddress_spend_key,
+    },
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     Amount, CompressedCommitment,
@@ -49,10 +51,10 @@ use protobuf::Message;
 use rand::{rngs::StdRng, SeedableRng};
 use sha2::Sha512;
 use std::{
+    collections::BTreeMap,
     ops::DerefMut,
     str::FromStr,
     sync::{Mutex, MutexGuard},
-    collections::BTreeMap,
 };
 use zeroize::Zeroize;
 
@@ -1051,7 +1053,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOut_compute_1key_1image(
                 &tx_out_target_key,
                 &tx_pub_key,
             );
-            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (DEFAULT_SUBADDRESS_INDEX..=CHANGE_SUBADDRESS_INDEX)
+            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (DEFAULT_SUBADDRESS_INDEX
+                ..=CHANGE_SUBADDRESS_INDEX)
                 .map(|index| (*account_key.subaddress(index).spend_public_key(), index))
                 .collect();
             let subaddress_index = spsk_to_index
