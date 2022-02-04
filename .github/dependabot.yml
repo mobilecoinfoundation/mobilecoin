@@ -5,6 +5,8 @@ updates:
   schedule:
     interval: daily
   open-pull-requests-limit: 25
+  assignees:
+    - "@eng"
 - package-ecosystem: cargo
   directory: "/consensus/enclave/trusted/"
   schedule:
