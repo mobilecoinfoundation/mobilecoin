@@ -12,6 +12,7 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     Amount, CompressedCommitment, MemoPayload,
 };
+use crc::crc32;
 use mc_transaction_std::{InputCredentials, RTHMemoBuilder, TransactionBuilder};
 use mc_util_ffi::*;
 
@@ -34,6 +35,22 @@ impl<'a> TryFromFfi<&McTxOutAmount<'a>> for Amount {
             masked_value: src.masked_value,
         })
     }
+}
+
+/// # Preconditions
+///
+/// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
+#[no_mangle]
+pub extern "C" fn mc_tx_out_commitment_crc32(
+    tx_out_commitment: FfiRefPtr<McBuffer>,
+    out_crc32: FfiMutPtr<u32>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+) -> bool {
+    ffi_boundary_with_error(out_error, || {
+        let commitment = CompressedCommitment::try_from_ffi(&tx_out_commitment)?;
+        *out_crc32.into_mut() = crc32::checksum_ieee(&commitment.to_bytes());
+        Ok(())
+    })
 }
 
 /// # Preconditions
