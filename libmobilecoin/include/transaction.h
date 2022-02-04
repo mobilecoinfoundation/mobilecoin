@@ -48,9 +48,9 @@ MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
 /// # Errors
 ///
 /// * `LibMcError::InvalidInput`
-bool mc_tx_out_reconstruct_commitment(
+bool mc_tx_out_commitment_crc32(
   const McBuffer* MC_NONNULL tx_out_commitment,
-  uint32_t* MC_NONNULL out_crc32
+  uint32_t* MC_NONNULL out_crc32,
   McError* MC_NULLABLE * MC_NULLABLE out_error
 )
 MC_ATTRIBUTE_NONNULL(1, 2);
@@ -58,7 +58,7 @@ MC_ATTRIBUTE_NONNULL(1, 2);
 /// # Preconditions
 ///
 /// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
-bool mc_tx_out_commitment_crc32(
+bool mc_tx_out_matches_any_subaddress(
   const McTxOutAmount* MC_NONNULL tx_out_amount,
   const McBuffer* MC_NONNULL tx_out_public_key,
   const McBuffer* MC_NONNULL view_private_key,
