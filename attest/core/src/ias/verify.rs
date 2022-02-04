@@ -561,7 +561,6 @@ pub struct VerificationReport {
     /// DER-formatted bytes, from the X-IASReport-Signing-Certificate HTTP
     /// header.
     #[prost(bytes, repeated)]
-    #[digestible(never_omit)]
     pub chain: Vec<Vec<u8>>,
     /// The raw report body JSON, as a byte sequence
     #[prost(string, required)]
