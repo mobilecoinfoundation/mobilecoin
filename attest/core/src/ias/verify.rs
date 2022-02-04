@@ -463,7 +463,7 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
     Clone, Debug, Default, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 #[repr(transparent)]
-pub struct VerificationSignature(Vec<u8>);
+pub struct VerificationSignature(#[digestible(never_omit)] Vec<u8>);
 
 impl AsRef<[u8]> for VerificationSignature {
     fn as_ref(&self) -> &[u8] {
@@ -561,9 +561,11 @@ pub struct VerificationReport {
     /// DER-formatted bytes, from the X-IASReport-Signing-Certificate HTTP
     /// header.
     #[prost(bytes, repeated)]
+    #[digestible(never_omit)]
     pub chain: Vec<Vec<u8>>,
     /// The raw report body JSON, as a byte sequence
     #[prost(string, required)]
+    #[digestible(never_omit)]
     pub http_body: String,
 }
 
