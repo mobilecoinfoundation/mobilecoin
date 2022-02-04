@@ -2302,6 +2302,7 @@ dependencies = [
  "aes-gcm",
  "cbindgen",
  "cmake",
+ "crc",
  "displaydoc",
  "libc",
  "mc-account-keys",

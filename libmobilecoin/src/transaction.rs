@@ -12,6 +12,7 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     Amount, CompressedCommitment,
 };
+use crc::crc32;
 use mc_transaction_std::{InputCredentials, NoMemoBuilder, TransactionBuilder};
 use mc_util_ffi::*;
 
@@ -50,6 +51,26 @@ pub extern "C" fn mc_tx_out_reconstruct_commitment(
             .expect("out_tx_out_commitment length is insufficient");
 
         out_tx_out_commitment.copy_from_slice(&amount.commitment.to_bytes());
+        Ok(())
+    })
+}
+
+/// # Preconditions
+///
+/// * `tx_out_commitment` - must be a valid CompressedCommitment
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+#[no_mangle]
+pub extern "C" fn mc_tx_out_commitment_crc32(
+    tx_out_commitment: FfiRefPtr<McBuffer>,
+    out_crc32: FfiMutPtr<u32>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+) -> bool {
+    ffi_boundary_with_error(out_error, || {
+        let commitment = CompressedCommitment::try_from_ffi(&tx_out_commitment)?;
+        *out_crc32.into_mut() = crc32::checksum_ieee(&commitment.to_bytes());
         Ok(())
     })
 }

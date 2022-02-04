@@ -54,6 +54,20 @@ MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
 
 /// # Preconditions
 ///
+/// * `tx_out_commitment` - must be a valid CompressedCommitment
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+bool mc_tx_out_commitment_crc32(
+  const McBuffer* MC_NONNULL tx_out_commitment,
+  uint32_t* MC_NONNULL out_crc32,
+  McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2);
+
+/// # Preconditions
+///
 /// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
 /// * `subaddress_spend_private_key` - must be a valid 32-byte Ristretto-format scalar.
 bool mc_tx_out_matches_subaddress(
