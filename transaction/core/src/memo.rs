@@ -38,7 +38,7 @@ use core::convert::{TryFrom, TryInto};
 use displaydoc::Display;
 use generic_array::{
     sequence::Split,
-    typenum::{U32, U66, U48},
+    typenum::{U32, U48, U66},
     GenericArray,
 };
 use hkdf::Hkdf;
@@ -77,7 +77,6 @@ impl From<GenericArray<u8, U66>> for EncryptedMemo {
         Self(src)
     }
 }
-
 
 impl TryFrom<&[u8]> for EncryptedMemo {
     type Error = MemoError;
