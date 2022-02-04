@@ -109,6 +109,12 @@ struct FieldAttributeConfig {
     /// new fields without affecting the hash of existing objects that do
     /// not have the field set.
     pub omit_when: Option<Lit>,
+
+    /// Never omit the hashing of a field.
+    /// This is a backwards compatibility tool that allows us to skip omitting
+    /// fields that are now omitted when not set (the behavior for
+    /// &[u8]/Vec<u8>/&str/String has changed over time).
+    pub never_omit: bool,
 }
 
 impl FieldAttributeConfig {
@@ -121,15 +127,32 @@ impl FieldAttributeConfig {
             NestedMeta::Meta(meta) => match meta {
                 Meta::NameValue(mnv) => {
                     if mnv.path.is_ident("omit_when") {
-                        if self.omit_when.is_none() {
-                            self.omit_when = Some(mnv.lit.clone());
-                        } else {
+                        if self.never_omit {
+                            return Err("omit_when cannot be used together with never_omit");
+                        } else if self.omit_when.is_some() {
                             return Err("omit_when cannot appear twice as an attribute");
+                        } else {
+                            self.omit_when = Some(mnv.lit.clone());
                         }
                     } else {
                         return Err("unexpected digestible feature attribute");
                     }
                 }
+
+                Meta::Path(path) => {
+                    if path.is_ident("never_omit") {
+                        if self.omit_when.is_some() {
+                            return Err("never_omit cannot be used together with omit_when");
+                        } else {
+                            self.never_omit = true;
+                        }
+                    } else {
+                        return Err(
+                            "unexpected digestible attribute (unrecognized \"path\" element)",
+                        );
+                    }
+                }
+
                 _ => {
                     return Err("unexpected digestible attribute");
                 }
@@ -230,7 +253,11 @@ fn try_digestible_struct(
                     // Read any #[digestible(...)]` attributes on this field and parse them
                     let attr_config = FieldAttributeConfig::try_from(&field.attrs[..])?;
 
-                    if let Some(omit_when) = attr_config.omit_when {
+                    if attr_config.never_omit {
+                        Ok(quote! {
+                            self.#field_ident.append_to_transcript(stringify!(#field_ident).as_bytes(), transcript);
+                        })
+                    } else if let Some(omit_when) = attr_config.omit_when {
                         Ok(quote! {
                             if self.#field_ident != #omit_when {
                                 self.#field_ident.append_to_transcript_allow_omit(stringify!(#field_ident).as_bytes(), transcript);
@@ -245,10 +272,26 @@ fn try_digestible_struct(
                 // this is a tuple struct, and the field doesn't have an identifier
                 // we have to make a syn object corresponding to the index, and use it in the quote! macro
                 None => {
+                    // Read any #[digestible(...)]` attributes on this field and parse them
+                    let attr_config = FieldAttributeConfig::try_from(&field.attrs[..])?;
+
                     let index = syn::Index::from(idx);
-                    Ok(quote! {
-                        self.#index.append_to_transcript_allow_omit(stringify!(#index).as_bytes(), transcript);
-                    })
+
+                    if attr_config.never_omit {
+                        Ok(quote! {
+                            self.#index.append_to_transcript(stringify!(#index).as_bytes(), transcript);
+                        })
+                    } else if let Some(omit_when) = attr_config.omit_when {
+                        Ok(quote! {
+                            if self.#index != #omit_when {
+                                self.#index.append_to_transcript_allow_omit(stringify!(#index).as_bytes(), transcript);
+                            }
+                        })
+                    } else {
+                        Ok(quote! {
+                            self.#index.append_to_transcript_allow_omit(stringify!(#index).as_bytes(), transcript);
+                        })
+                    }
                 }
             }
         })

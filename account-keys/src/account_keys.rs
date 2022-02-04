@@ -53,6 +53,7 @@ pub struct PublicAddress {
     /// Empty if no fog for this public address, should be parseable as
     /// mc_util_uri::FogUri.
     #[prost(string, tag = "3")]
+    #[digestible(never_omit)]
     fog_report_url: String,
 
     /// The fog report server potentially returns multiple reports when queried.
@@ -60,6 +61,7 @@ pub struct PublicAddress {
     ///
     /// Empty if no fog for this public address.
     #[prost(string, tag = "4")]
+    #[digestible(never_omit)]
     fog_report_id: String,
 
     /// A signature with the user's spend_private_key over the fog authority's
@@ -68,6 +70,7 @@ pub struct PublicAddress {
     /// Empty if no fog for this public address, must be parseable as a
     /// [`SchnorrkelSignature`].
     #[prost(bytes, tag = "5")]
+    #[digestible(never_omit)]
     fog_authority_sig: Vec<u8>,
 }
 

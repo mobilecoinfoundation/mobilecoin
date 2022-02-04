@@ -47,6 +47,31 @@ struct ThingV5 {
     d: i32,
 }
 
+// A new bytes field that is skipped when empty
+#[derive(Digestible)]
+#[digestible(name = "Thing")]
+struct ThingV6 {
+    a: Option<u64>,
+    b: Option<u64>,
+    c: Vec<bool>,
+    #[digestible(omit_when = 0)]
+    d: i32,
+    e: Vec<u8>,
+}
+
+// A new string field that is skipped when empty
+#[derive(Digestible)]
+#[digestible(name = "Thing")]
+struct ThingV7 {
+    a: Option<u64>,
+    b: Option<u64>,
+    c: Vec<bool>,
+    #[digestible(omit_when = 0)]
+    d: i32,
+    e: Vec<u8>,
+    f: String,
+}
+
 // Test vectors for a few instances of the Thing struct, and versions of it
 #[test]
 fn thing_struct() {
@@ -187,6 +212,114 @@ fn struct_schema_evolution() {
             b: Some(99),
             c: Default::default(),
             d: 1,
+        }
+        .digest32::<MerlinTranscript>(b"test")
+    );
+
+    assert_eq!(
+        ThingV2 { a: 14, b: Some(99) }.digest32::<MerlinTranscript>(b"test"),
+        ThingV6 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 0,
+            e: vec![],
+        }
+        .digest32::<MerlinTranscript>(b"test")
+    );
+
+    assert_ne!(
+        ThingV2 { a: 14, b: Some(99) }.digest32::<MerlinTranscript>(b"test"),
+        ThingV6 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 0,
+            e: vec![1u8],
+        }
+        .digest32::<MerlinTranscript>(b"test")
+    );
+
+    assert_ne!(
+        ThingV2 { a: 14, b: Some(99) }.digest32::<MerlinTranscript>(b"test"),
+        ThingV6 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 1,
+            e: vec![],
+        }
+        .digest32::<MerlinTranscript>(b"test")
+    );
+
+    assert_eq!(
+        ThingV2 { a: 14, b: Some(99) }.digest32::<MerlinTranscript>(b"test"),
+        ThingV7 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 0,
+            e: vec![],
+            f: "".to_string(),
+        }
+        .digest32::<MerlinTranscript>(b"test")
+    );
+
+    assert_ne!(
+        ThingV2 { a: 14, b: Some(99) }.digest32::<MerlinTranscript>(b"test"),
+        ThingV7 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 0,
+            e: vec![],
+            f: "a".to_string(),
+        }
+        .digest32::<MerlinTranscript>(b"test")
+    );
+
+    assert_ne!(
+        ThingV2 { a: 14, b: Some(99) }.digest32::<MerlinTranscript>(b"test"),
+        ThingV7 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 4,
+            e: vec![],
+            f: "a".to_string(),
+        }
+        .digest32::<MerlinTranscript>(b"test")
+    );
+
+    assert_ne!(
+        ThingV2 { a: 14, b: Some(99) }.digest32::<MerlinTranscript>(b"test"),
+        ThingV7 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 4,
+            e: vec![],
+            f: "a".to_string(),
+        }
+        .digest32::<MerlinTranscript>(b"test")
+    );
+
+    assert_ne!(
+        ThingV6 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 0,
+            e: vec!['a' as u8]
+        }
+        .digest32::<MerlinTranscript>(b"test"),
+        ThingV7 {
+            a: Some(14),
+            b: Some(99),
+            c: Default::default(),
+            d: 0,
+            e: vec![],
+            f: "a".to_string(),
         }
         .digest32::<MerlinTranscript>(b"test")
     );
@@ -768,4 +901,71 @@ fn test_enum_schema_evolution() {
             }
         )
     );
+}
+
+// Test never_omit.
+#[test]
+fn test_never_omit() {
+    // A struct that contains fields that were never omitted in the first version of
+    // this crate, but are omitted in the current version.
+    #[derive(Digestible, Default)]
+    #[digestible(name = "TestStruct")]
+    struct TestNeverOmitWithoutAttribute {
+        pub s: String,
+        pub b: Vec<u8>,
+    }
+
+    #[derive(Digestible, Default)]
+    #[digestible(name = "TestStruct")]
+    struct TestNeverOmitWithAttribute {
+        #[digestible(never_omit)]
+        pub s: String,
+        #[digestible(never_omit)]
+        pub b: Vec<u8>,
+    }
+
+    // Generated at commit cfa51d26ae943a9055698bb209c2fe06fa7a7cac
+    let expected_hash = [
+        40, 122, 9, 96, 111, 71, 243, 177, 157, 236, 85, 85, 130, 17, 214, 71, 245, 79, 97, 169,
+        132, 87, 12, 160, 83, 167, 23, 48, 208, 181, 80, 159,
+    ];
+
+    // Without the never_omit attribute the hash is expected to change.
+    let obj = TestNeverOmitWithoutAttribute::default();
+    assert_ne!(obj.digest32::<MerlinTranscript>(b"obj"), expected_hash);
+
+    // With the never_omit attribute the hash should not change.
+    let obj = TestNeverOmitWithAttribute::default();
+    assert_eq!(obj.digest32::<MerlinTranscript>(b"obj"), expected_hash);
+}
+
+// Test never_omit on tuple structs.
+#[test]
+fn test_never_omit_tuple_struct() {
+    // A struct that contains fields that were never omitted in the first version of
+    // this crate, but are omitted in the current version.
+    #[derive(Digestible, Default)]
+    #[digestible(name = "TestStruct")]
+    struct TestNeverOmitWithoutAttribute(String, Vec<u8>);
+
+    #[derive(Digestible, Default)]
+    #[digestible(name = "TestStruct")]
+    struct TestNeverOmitWithAttribute(
+        #[digestible(never_omit)] String,
+        #[digestible(never_omit)] Vec<u8>,
+    );
+
+    // Generated at commit cfa51d26ae943a9055698bb209c2fe06fa7a7cac
+    let expected_hash = [
+        73, 178, 245, 28, 202, 74, 143, 171, 184, 16, 2, 92, 62, 48, 204, 51, 235, 99, 69, 202,
+        202, 17, 100, 127, 188, 235, 87, 170, 31, 109, 241, 23,
+    ];
+
+    // Without the never_omit attribute the hash is expected to change.
+    let obj = TestNeverOmitWithoutAttribute::default();
+    assert_ne!(obj.digest32::<MerlinTranscript>(b"obj"), expected_hash);
+
+    // With the never_omit attribute the hash should not change.
+    let obj = TestNeverOmitWithAttribute::default();
+    assert_eq!(obj.digest32::<MerlinTranscript>(b"obj"), expected_hash);
 }

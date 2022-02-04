@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 pub struct Report {
     /// The fog_report_id of the report
     #[prost(string, tag = "1")]
+    #[digestible(never_omit)]
     pub fog_report_id: String,
     /// The bytes of the verification report
     #[prost(message, required, tag = "2")]

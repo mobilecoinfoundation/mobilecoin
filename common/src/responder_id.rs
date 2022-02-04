@@ -27,7 +27,7 @@ pub enum ResponderIdParseError {
 #[derive(
     Clone, Default, Debug, Eq, Serialize, Deserialize, PartialEq, PartialOrd, Ord, Hash, Digestible,
 )]
-pub struct ResponderId(pub String);
+pub struct ResponderId(#[digestible(never_omit)] pub String);
 
 impl Display for ResponderId {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {

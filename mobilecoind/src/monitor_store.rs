@@ -94,13 +94,19 @@ impl From<&MonitorData> for MonitorId {
         // signature scheme was implemented. This re-implements the original
         // structure in order to maintain a consistent hash in the database.
         //
+        // The never_omit attributes are needed because of a change in the digestible
+        // crate that now omits empty strings/vectors by default.
+        //
         // This should eventually be removed.
         #[derive(Debug, Digestible)]
         struct PublicAddress {
             view_public_key: RistrettoPublic,
             spend_public_key: RistrettoPublic,
+            #[digestible(never_omit)]
             fog_report_url: String,
+            #[digestible(never_omit)]
             fog_report_id: String,
+            #[digestible(never_omit)]
             fog_authority_fingerprint_sig: Vec<u8>,
         }
 

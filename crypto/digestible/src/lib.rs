@@ -350,6 +350,10 @@ impl Digestible for bool {
 }
 
 // Treat &[u8] as a primitive "bytes" types
+//
+// When allowed, this type is omitted when the byte slice is empty.
+// This permits bytes to be added to a schema without creating a breaking
+// change, just as in protobuf.
 impl Digestible for &[u8] {
     #[inline]
     fn append_to_transcript<DT: DigestTranscript>(
@@ -358,6 +362,17 @@ impl Digestible for &[u8] {
         transcript: &mut DT,
     ) {
         transcript.append_primitive(context, b"bytes", self);
+    }
+
+    #[inline]
+    fn append_to_transcript_allow_omit<DT: DigestTranscript>(
+        &self,
+        context: &'static [u8],
+        transcript: &mut DT,
+    ) {
+        if !self.is_empty() {
+            self.append_to_transcript(context, transcript)
+        }
     }
 }
 
@@ -382,6 +397,15 @@ impl<T: DigestibleAsBytes> Digestible for T {
         transcript: &mut DT,
     ) {
         <Self as AsRef<[u8]>>::as_ref(self).append_to_transcript(context, transcript);
+    }
+
+    #[inline]
+    fn append_to_transcript_allow_omit<DT: DigestTranscript>(
+        &self,
+        context: &'static [u8],
+        transcript: &mut DT,
+    ) {
+        <Self as AsRef<[u8]>>::as_ref(self).append_to_transcript_allow_omit(context, transcript);
     }
 }
 
@@ -525,6 +549,11 @@ cfg_if! {
             fn append_to_transcript<DT: DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
                 <Self as AsRef<[u8]>>::as_ref(self).append_to_transcript(context, transcript);
             }
+
+            #[inline]
+            fn append_to_transcript_allow_omit<DT: DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
+                <Self as AsRef<[u8]>>::as_ref(self).append_to_transcript_allow_omit(context, transcript);
+            }
         }
 
         // Forward from String to &[str] impl
@@ -533,13 +562,27 @@ cfg_if! {
             fn append_to_transcript<DT: DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
                 <Self as AsRef<str>>::as_ref(self).append_to_transcript(context, transcript);
             }
+
+            #[inline]
+            fn append_to_transcript_allow_omit<DT: DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
+                <Self as AsRef<str>>::as_ref(self).append_to_transcript_allow_omit(context, transcript);
+            }
         }
 
-        // Forward from &str to &[u8] impl
+        // Treat &str as a primitive of type "str", and append its bytes to the transcript
+        // When omitting is allowed, omit it if the string is empty, so that strings can be added
+        // in schema evolution without breaking backwards compatibility, just as with bytes in protobuf.
         impl Digestible for &str {
             #[inline]
             fn append_to_transcript<DT: DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
                 transcript.append_primitive(context, b"str", self.as_bytes());
+            }
+
+            #[inline]
+            fn append_to_transcript_allow_omit<DT: DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
+                if !self.is_empty() {
+                    transcript.append_primitive(context, b"str", self.as_bytes());
+                }
             }
         }
 
