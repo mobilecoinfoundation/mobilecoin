@@ -82,7 +82,7 @@ fn test_ingest_enclave(logger: Logger) {
         assert_eq!(tx_rows.len(), 10);
 
         // Check that the tx row ciphertexts have the right size
-        const EXPECTED_PAYLOAD_SIZE: usize = 207; // The observed tx_row.payload size
+        const EXPECTED_PAYLOAD_SIZE: usize = 227; // The observed tx_row.payload size
         for tx_row in tx_rows.iter() {
             assert_eq!(
                 tx_row.payload.len(), EXPECTED_PAYLOAD_SIZE,

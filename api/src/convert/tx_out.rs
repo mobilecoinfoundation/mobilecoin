@@ -111,7 +111,7 @@ mod tests {
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
             e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
-            e_memo: Some((*GenericArray::from_slice(&[9u8; 46])).into()),
+            e_memo: Some((*GenericArray::from_slice(&[9u8; 66])).into()),
         };
 
         let converted = external::TxOut::from(&source);
