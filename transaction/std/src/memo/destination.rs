@@ -115,14 +115,14 @@ impl DestinationMemo {
     }
 }
 
-impl From<&[u8; 44]> for DestinationMemo {
+impl From<&[u8; 64]> for DestinationMemo {
     // The layout of the memo data in 32 bytes is:
-    // [0-16]: sender_address_hash
+    // [0-16): sender_address_hash
     // [16]: num_recipients
-    // [17-24]: fee
-    // [24-32]: total outlay
-    // [32-44]: unused
-    fn from(src: &[u8; 44]) -> Self {
+    // [17-24): fee
+    // [24-32): total outlay
+    // [32-64): unused
+    fn from(src: &[u8; 64]) -> Self {
         let address_hash: [u8; 16] = src[0..16].try_into().expect("arithmetic error");
         let num_recipients = src[16];
         let fee = {
@@ -140,9 +140,9 @@ impl From<&[u8; 44]> for DestinationMemo {
     }
 }
 
-impl From<DestinationMemo> for [u8; 44] {
-    fn from(src: DestinationMemo) -> [u8; 44] {
-        let mut memo_data = [0u8; 44];
+impl From<DestinationMemo> for [u8; 64] {
+    fn from(src: DestinationMemo) -> [u8; 64] {
+        let mut memo_data = [0u8; 64];
         memo_data[0..16].copy_from_slice(src.address_hash.as_ref());
         memo_data[16..24].copy_from_slice(&src.fee.to_be_bytes());
         memo_data[16] = src.num_recipients;
