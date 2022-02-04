@@ -902,3 +902,39 @@ fn test_enum_schema_evolution() {
         )
     );
 }
+
+// Test never_omit.
+#[test]
+fn test_never_omit() {
+    // A struct that contains fields that were never omitted in the first version of
+    // this crate, but are omitted in the current version.
+    #[derive(Digestible, Default)]
+    #[digestible(name = "TestStruct")]
+    struct TestNeverOmitWithoutAttribute {
+        pub s: String,
+        pub b: Vec<u8>,
+    }
+
+    #[derive(Digestible, Default)]
+    #[digestible(name = "TestStruct")]
+    struct TestNeverOmitWithAttribute {
+        #[digestible(never_omit)]
+        pub s: String,
+        #[digestible(never_omit)]
+        pub b: Vec<u8>,
+    }
+
+    // Generated at commit cfa51d26ae943a9055698bb209c2fe06fa7a7cac
+    let expected_hash = [
+        40, 122, 9, 96, 111, 71, 243, 177, 157, 236, 85, 85, 130, 17, 214, 71, 245, 79, 97, 169,
+        132, 87, 12, 160, 83, 167, 23, 48, 208, 181, 80, 159,
+    ];
+
+    // Without the never_omit attribute the hash is expected to change.
+    let obj = TestNeverOmitWithoutAttribute::default();
+    assert_ne!(obj.digest32::<MerlinTranscript>(b"obj"), expected_hash);
+
+    // With the never_omit attribute the hash should not change.
+    let obj = TestNeverOmitWithAttribute::default();
+    assert_eq!(obj.digest32::<MerlinTranscript>(b"obj"), expected_hash);
+}
