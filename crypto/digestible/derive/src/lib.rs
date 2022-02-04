@@ -272,10 +272,26 @@ fn try_digestible_struct(
                 // this is a tuple struct, and the field doesn't have an identifier
                 // we have to make a syn object corresponding to the index, and use it in the quote! macro
                 None => {
+                    // Read any #[digestible(...)]` attributes on this field and parse them
+                    let attr_config = FieldAttributeConfig::try_from(&field.attrs[..])?;
+
                     let index = syn::Index::from(idx);
-                    Ok(quote! {
-                        self.#index.append_to_transcript_allow_omit(stringify!(#index).as_bytes(), transcript);
-                    })
+
+                    if attr_config.never_omit {
+                        Ok(quote! {
+                            self.#index.append_to_transcript(stringify!(#index).as_bytes(), transcript);
+                        })
+                    } else if let Some(omit_when) = attr_config.omit_when {
+                        Ok(quote! {
+                            if self.#index != #omit_when {
+                                self.#index.append_to_transcript_allow_omit(stringify!(#index).as_bytes(), transcript);
+                            }
+                        })
+                    } else {
+                        Ok(quote! {
+                            self.#index.append_to_transcript_allow_omit(stringify!(#index).as_bytes(), transcript);
+                        })
+                    }
                 }
             }
         })

@@ -938,3 +938,34 @@ fn test_never_omit() {
     let obj = TestNeverOmitWithAttribute::default();
     assert_eq!(obj.digest32::<MerlinTranscript>(b"obj"), expected_hash);
 }
+
+// Test never_omit on tuple structs.
+#[test]
+fn test_never_omit_tuple_struct() {
+    // A struct that contains fields that were never omitted in the first version of
+    // this crate, but are omitted in the current version.
+    #[derive(Digestible, Default)]
+    #[digestible(name = "TestStruct")]
+    struct TestNeverOmitWithoutAttribute(String, Vec<u8>);
+
+    #[derive(Digestible, Default)]
+    #[digestible(name = "TestStruct")]
+    struct TestNeverOmitWithAttribute(
+        #[digestible(never_omit)] String,
+        #[digestible(never_omit)] Vec<u8>,
+    );
+
+    // Generated at commit cfa51d26ae943a9055698bb209c2fe06fa7a7cac
+    let expected_hash = [
+        73, 178, 245, 28, 202, 74, 143, 171, 184, 16, 2, 92, 62, 48, 204, 51, 235, 99, 69, 202,
+        202, 17, 100, 127, 188, 235, 87, 170, 31, 109, 241, 23,
+    ];
+
+    // Without the never_omit attribute the hash is expected to change.
+    let obj = TestNeverOmitWithoutAttribute::default();
+    assert_ne!(obj.digest32::<MerlinTranscript>(b"obj"), expected_hash);
+
+    // With the never_omit attribute the hash should not change.
+    let obj = TestNeverOmitWithAttribute::default();
+    assert_eq!(obj.digest32::<MerlinTranscript>(b"obj"), expected_hash);
+}
