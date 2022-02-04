@@ -25,6 +25,7 @@ use more_asserts::assert_gt;
 use once_cell::sync::OnceCell;
 use serde::Serialize;
 use std::{
+    ops::Sub,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex,
@@ -646,7 +647,20 @@ impl TestClient {
     /// prometheus counters
     ///
     /// Arguments:
-    /// * period: The amount of time we wait between test transfers
+    /// * period: The amount of time we allot for a transfer to take place. This
+    /// allows us to dictate how many transfers should be completed by the test
+    /// client per day.
+    ///
+    /// E.g. If period is 60 seconds, then the test client *should* make 1440
+    /// transfers per day.
+    ///
+    /// The period should be larger than the average time expected for a
+    /// transfer to complete. If a transfer takes longer than the period, then
+    /// we don't sleep for any time after the transfer completes. As such, these
+    /// slow transfers will decrease the number of transfers per day, and
+    /// therefore we can only use the period to approximate daily transfer rate,
+    /// but it should be equal in most cases where the period is sufficiently
+    /// larger than the expected transfer duration.
     pub fn run_continuously(&self, period: Duration) {
         let client_count = self.account_keys.len() as usize;
         assert!(client_count > 1);
@@ -664,6 +678,7 @@ impl TestClient {
             let source_client = clients[source_index].clone();
             let target_client = clients[target_index].clone();
 
+            let transfer_start = Instant::now();
             match self.test_transfer(source_client, source_index, target_client, target_index) {
                 Ok(_) => {
                     log::info!(self.logger, "Transfer succeeded");
@@ -713,10 +728,24 @@ impl TestClient {
                     }
                 }
             }
+            let transfer_duration = transfer_start.elapsed();
+            let sleep_duration = match period.checked_sub(transfer_duration) {
+                Some(duration) => duration,
+                None => {
+                    let excess_transaction_time = transfer_duration.sub(period);
+                    log::warn!(
+                        self.logger,
+                        "Transfer took {} seconds. This is {} seconds more than the allotted transfer time.",
+                        transfer_duration.as_secs(),
+                        excess_transaction_time.as_secs()
+                    );
+                    Duration::ZERO
+                }
+            };
 
             ti += 1;
             self.health_tracker.set_counter(ti);
-            std::thread::sleep(period);
+            std::thread::sleep(sleep_duration);
         }
     }
 }
