@@ -2,6 +2,7 @@
 
 use crate::{common::*, fog::McFogResolver, keys::McPublicAddress, LibMcError};
 use core::convert::TryFrom;
+use crc::crc32;
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{ReprBytes, RistrettoPrivate, RistrettoPublic};
 use mc_fog_report_validation::FogResolver;
@@ -12,7 +13,6 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     Amount, CompressedCommitment,
 };
-use crc::crc32;
 use mc_transaction_std::{InputCredentials, NoMemoBuilder, TransactionBuilder};
 use mc_util_ffi::*;
 
