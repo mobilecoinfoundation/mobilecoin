@@ -53,7 +53,7 @@ pub use unused::UnusedMemo;
 /// A trait that all registered memo types should implement.
 /// This creates a single source of truth for the memo type bytes.
 pub trait RegisteredMemoType:
-    Sized + Clone + Debug + Into<[u8; 44]> + for<'a> From<&'a [u8; 44]>
+    Sized + Clone + Debug + Into<[u8; 64]> + for<'a> From<&'a [u8; 64]>
 {
     /// The type bytes assigned to this memo type.
     /// These are typically found in the MCIP that specifies this memo type.
@@ -149,7 +149,7 @@ mod tests {
             }
         }
 
-        let memo5 = MemoPayload::new([7u8, 8u8], [0u8; 44]);
+        let memo5 = MemoPayload::new([7u8, 8u8], [0u8; 64]);
         match MemoType::try_from(&memo5) {
             Ok(_) => {
                 panic!("failure was expected");

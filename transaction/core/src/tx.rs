@@ -732,7 +732,7 @@ mod tests {
         {
             let tx_private_key = RistrettoPrivate::from_random(&mut rng);
 
-            let memo_val = MemoPayload::new([2u8; 2], [4u8; 44]);
+            let memo_val = MemoPayload::new([2u8; 2], [4u8; 64]);
             // A tx out with a memo
             let tx_out = TxOut::new_with_memo(
                 13u64,
@@ -765,7 +765,7 @@ mod tests {
         {
             let tx_private_key = RistrettoPrivate::from_random(&mut rng);
 
-            let memo_val = MemoPayload::new([4u8; 2], [9u8; 44]);
+            let memo_val = MemoPayload::new([4u8; 2], [9u8; 64]);
             // A tx out with a memo
             let tx_out = TxOut::new_with_memo(
                 13u64,

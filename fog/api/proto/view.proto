@@ -263,7 +263,7 @@ message TxOutRecord {
     /// They can confirm correct recomputation by checking this crc value.
     fixed32 tx_out_amount_commitment_data_crc32 = 8;
     /// The bytes of the encrypted memo.
-    /// This exactly 46 bytes when present.
+    /// This exactly 66 bytes when present.
     /// This is omitted for TxOut's from before the upgrade that introduced memos.
     bytes tx_out_e_memo_data = 9;
 }

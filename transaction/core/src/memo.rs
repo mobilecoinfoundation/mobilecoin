@@ -7,7 +7,7 @@
 //!
 //! The encrypted memo of TxOut's is designed to have one encryption scheme and
 //! the payload is an extensible format. Two bytes are used for a schema type,
-//! and fourty four bytes are used for data according to that schema.
+//! and sixty four bytes are used for data according to that schema.
 //!
 //! The encryption details are defined in the transaction crate, but we would
 //! like to avoid making the introduction of a new schema require changes to
@@ -38,7 +38,7 @@ use core::convert::{TryFrom, TryInto};
 use displaydoc::Display;
 use generic_array::{
     sequence::Split,
-    typenum::{U32, U46, U48},
+    typenum::{U32, U48, U66},
     GenericArray,
 };
 use hkdf::Hkdf;
@@ -52,7 +52,7 @@ use sha2::Sha512;
 
 /// An encrypted memo, which can be decrypted by the recipient of a TxOut.
 #[derive(Clone, Copy, Default, Debug, Eq, Hash, Digestible, Ord, PartialEq, PartialOrd)]
-pub struct EncryptedMemo(GenericArray<u8, U46>);
+pub struct EncryptedMemo(GenericArray<u8, U66>);
 
 impl AsRef<[u8]> for EncryptedMemo {
     fn as_ref(&self) -> &[u8] {
@@ -60,20 +60,20 @@ impl AsRef<[u8]> for EncryptedMemo {
     }
 }
 
-impl AsRef<GenericArray<u8, U46>> for EncryptedMemo {
-    fn as_ref(&self) -> &GenericArray<u8, U46> {
+impl AsRef<GenericArray<u8, U66>> for EncryptedMemo {
+    fn as_ref(&self) -> &GenericArray<u8, U66> {
         &self.0
     }
 }
 
-impl From<EncryptedMemo> for GenericArray<u8, U46> {
+impl From<EncryptedMemo> for GenericArray<u8, U66> {
     fn from(src: EncryptedMemo) -> Self {
         src.0
     }
 }
 
-impl From<GenericArray<u8, U46>> for EncryptedMemo {
-    fn from(src: GenericArray<u8, U46>) -> Self {
+impl From<GenericArray<u8, U66>> for EncryptedMemo {
+    fn from(src: GenericArray<u8, U66>) -> Self {
         Self(src)
     }
 }
@@ -81,7 +81,7 @@ impl From<GenericArray<u8, U46>> for EncryptedMemo {
 impl TryFrom<&[u8]> for EncryptedMemo {
     type Error = MemoError;
     fn try_from(src: &[u8]) -> Result<EncryptedMemo, Self::Error> {
-        if src.len() == 46 {
+        if src.len() == 66 {
             Ok(Self(*GenericArray::from_slice(src)))
         } else {
             Err(MemoError::BadLength(src.len()))
@@ -89,7 +89,7 @@ impl TryFrom<&[u8]> for EncryptedMemo {
     }
 }
 
-derive_repr_bytes_from_as_ref_and_try_from!(EncryptedMemo, U46);
+derive_repr_bytes_from_as_ref_and_try_from!(EncryptedMemo, U66);
 derive_into_vec_from_repr_bytes!(EncryptedMemo);
 derive_serde_from_repr_bytes!(EncryptedMemo);
 derive_prost_message_from_repr_bytes!(EncryptedMemo);
@@ -112,14 +112,14 @@ impl EncryptedMemo {
 /// Note that a memo payload may be invalid / uninterpretable, or refer to new
 /// memo types that have been introduced at a later date.
 #[derive(Clone, Copy, Default, Debug, Eq, Digestible, Ord, PartialEq, PartialOrd)]
-pub struct MemoPayload(GenericArray<u8, U46>);
+pub struct MemoPayload(GenericArray<u8, U66>);
 
 impl MemoPayload {
     /// Create a new memo payload from given type bytes and data bytes
-    pub fn new(memo_type: [u8; 2], memo_data: [u8; 44]) -> Self {
+    pub fn new(memo_type: [u8; 2], memo_data: [u8; 64]) -> Self {
         let mut result = Self::default();
         result.0[0..2].copy_from_slice(&memo_type);
-        result.0[2..46].copy_from_slice(&memo_data);
+        result.0[2..66].copy_from_slice(&memo_data);
         result
     }
 
@@ -128,9 +128,9 @@ impl MemoPayload {
         self.0.as_slice()[0..2].try_into().expect("length mismatch")
     }
 
-    /// Get the memo data bytes (fourty-four bytes)
-    pub fn get_memo_data(&self) -> &[u8; 44] {
-        self.0.as_slice()[2..46]
+    /// Get the memo data bytes (sixty-four bytes)
+    pub fn get_memo_data(&self) -> &[u8; 64] {
+        self.0.as_slice()[2..66]
             .try_into()
             .expect("length mismatch")
     }
@@ -182,20 +182,20 @@ impl AsRef<[u8]> for MemoPayload {
     }
 }
 
-impl AsRef<GenericArray<u8, U46>> for MemoPayload {
-    fn as_ref(&self) -> &GenericArray<u8, U46> {
+impl AsRef<GenericArray<u8, U66>> for MemoPayload {
+    fn as_ref(&self) -> &GenericArray<u8, U66> {
         &self.0
     }
 }
 
-impl From<MemoPayload> for GenericArray<u8, U46> {
+impl From<MemoPayload> for GenericArray<u8, U66> {
     fn from(src: MemoPayload) -> Self {
         src.0
     }
 }
 
-impl From<GenericArray<u8, U46>> for MemoPayload {
-    fn from(src: GenericArray<u8, U46>) -> Self {
+impl From<GenericArray<u8, U66>> for MemoPayload {
+    fn from(src: GenericArray<u8, U66>) -> Self {
         Self(src)
     }
 }
@@ -203,7 +203,7 @@ impl From<GenericArray<u8, U46>> for MemoPayload {
 impl TryFrom<&[u8]> for MemoPayload {
     type Error = MemoError;
     fn try_from(src: &[u8]) -> Result<MemoPayload, Self::Error> {
-        if src.len() == 46 {
+        if src.len() == 66 {
             Ok(Self(*GenericArray::from_slice(src)))
         } else {
             Err(MemoError::BadLength(src.len()))
@@ -211,7 +211,7 @@ impl TryFrom<&[u8]> for MemoPayload {
     }
 }
 
-derive_repr_bytes_from_as_ref_and_try_from!(MemoPayload, U46);
+derive_repr_bytes_from_as_ref_and_try_from!(MemoPayload, U66);
 derive_into_vec_from_repr_bytes!(MemoPayload);
 derive_serde_from_repr_bytes!(MemoPayload);
 derive_prost_message_from_repr_bytes!(MemoPayload);
@@ -240,7 +240,7 @@ mod tests {
         let e_memo1 = memo1.clone().encrypt(&key1);
         assert_eq!(memo1, e_memo1.decrypt(&key1), "roundtrip failed");
 
-        let memo2 = MemoPayload::new([1u8, 2u8], [47u8; 44]);
+        let memo2 = MemoPayload::new([1u8, 2u8], [47u8; 64]);
         let e_memo2 = memo2.clone().encrypt(&key1);
         assert_eq!(memo2, e_memo2.decrypt(&key1), "roundtrip failed");
 
@@ -252,7 +252,7 @@ mod tests {
             "decrypting with wrong key succeeded"
         );
 
-        let memo2 = MemoPayload::new([1u8, 2u8], [47u8; 44]);
+        let memo2 = MemoPayload::new([1u8, 2u8], [47u8; 64]);
         let e_memo2 = memo2.clone().encrypt(&key2);
         assert_ne!(
             memo2,

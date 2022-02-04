@@ -462,7 +462,7 @@ impl Sample for Option<EncryptedMemo> {
             return None;
         }
 
-        let bytes = [x; 46];
+        let bytes = [x; 66];
         Some(EncryptedMemo::try_from(&bytes[..]).unwrap())
     }
 }

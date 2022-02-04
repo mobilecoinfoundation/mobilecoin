@@ -15,15 +15,15 @@ impl RegisteredMemoType for UnusedMemo {
     const MEMO_TYPE_BYTES: [u8; 2] = [0x00, 0x00];
 }
 
-impl From<&[u8; 44]> for UnusedMemo {
-    fn from(_: &[u8; 44]) -> Self {
+impl From<&[u8; 64]> for UnusedMemo {
+    fn from(_: &[u8; 64]) -> Self {
         Self
     }
 }
 
-impl From<UnusedMemo> for [u8; 44] {
-    fn from(_: UnusedMemo) -> [u8; 44] {
-        [0u8; 44]
+impl From<UnusedMemo> for [u8; 64] {
+    fn from(_: UnusedMemo) -> [u8; 64] {
+        [0u8; 64]
     }
 }
 
