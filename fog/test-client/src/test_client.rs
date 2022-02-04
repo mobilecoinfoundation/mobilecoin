@@ -730,7 +730,7 @@ impl TestClient {
                 Some(duration) => duration,
                 None => {
                     let excess_transaction_time = transfer_duration.sub(period);
-                    log::error!(
+                    log::warn!(
                         self.logger,
                         "Transfer took {} seconds. This is {} seconds more than the allotted transfer time.",
                         transfer_duration.as_secs(),
