@@ -213,6 +213,13 @@ mod block_tests {
     use rand::{rngs::StdRng, CryptoRng, RngCore, SeedableRng};
 
     fn get_block_contents<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> BlockContents {
+        let (key_images, outputs) = get_key_images_and_outputs(rng);
+        BlockContents::new(key_images, outputs)
+    }
+
+    fn get_key_images_and_outputs<RNG: CryptoRng + RngCore>(
+        rng: &mut RNG,
+    ) -> (Vec<KeyImage>, Vec<TxOut>) {
         let recipient = AccountKey::random(rng);
 
         let outputs: Vec<TxOut> = (0..8)
@@ -232,7 +239,7 @@ mod block_tests {
             KeyImage::from(rng.next_u64()),
             KeyImage::from(rng.next_u64()),
         ];
-        BlockContents::new(key_images, outputs)
+        (key_images, outputs)
     }
 
     fn get_block<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> Block {
@@ -246,6 +253,30 @@ mod block_tests {
 
         let block_contents = get_block_contents(rng);
 
+        Block::new(
+            BLOCK_VERSION,
+            &parent_id,
+            3,
+            400,
+            &root_element,
+            &block_contents,
+        )
+    }
+
+    fn get_block_with_no_memo<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> Block {
+        let bytes = [14u8; 32];
+        let parent_id = BlockID::try_from(&bytes[..]).unwrap();
+
+        let root_element = TxOutMembershipElement {
+            range: Range::new(0, 15).unwrap(),
+            hash: TxOutMembershipHash::from([0u8; 32]),
+        };
+        let (key_images, mut outputs) = get_key_images_and_outputs(rng);
+        for ref mut output in outputs.iter_mut() {
+            output.e_memo = None;
+        }
+
+        let block_contents = BlockContents::new(key_images, outputs);
         Block::new(
             BLOCK_VERSION,
             &parent_id,
@@ -340,6 +371,7 @@ mod block_tests {
     fn test_hashing_is_consistent() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
+        //Check hash with memo
         let block = get_block(&mut rng);
         assert_eq!(
             block.id.as_ref(),
@@ -355,6 +387,24 @@ mod block_tests {
             &[
                 130, 252, 161, 182, 34, 248, 219, 175, 99, 76, 204, 54, 204, 35, 147, 41, 168, 222,
                 68, 11, 76, 106, 243, 173, 136, 27, 208, 27, 85, 199, 193, 241
+            ]
+        );
+
+        //Check hash without memo
+        let block_with_no_memo = get_block_with_no_memo(&mut rng);
+        assert_eq!(
+            block_with_no_memo.id.as_ref(),
+            &[
+                243, 102, 219, 76, 169, 151, 159, 65, 84, 34, 178, 32, 207, 95, 133, 127, 68, 161,
+                140, 254, 120, 243, 90, 232, 156, 40, 132, 101, 203, 160, 12, 159
+            ]
+        );
+
+        assert_eq!(
+            block_with_no_memo.contents_hash.as_ref(),
+            &[
+                69, 203, 184, 52, 204, 228, 5, 91, 161, 228, 220, 116, 182, 23, 169, 32, 76, 104,
+                121, 186, 195, 20, 142, 138, 69, 155, 193, 215, 226, 117, 134, 74
             ]
         );
     }
