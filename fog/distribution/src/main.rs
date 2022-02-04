@@ -147,6 +147,8 @@ fn main() {
     let (spendable_txouts_sender, spendable_txouts_receiver) =
         crossbeam_channel::unbounded::<SpendableTxOut>();
 
+    let mut spendable_txouts: Vec<SpendableTxOut> = Vec::new();
+
     while let Ok(block_contents) = ledger_db.get_block_contents(block_count) {
         let transactions = block_contents.outputs;
         // Only get num_transactions per account for the first block, then assume
@@ -206,13 +208,11 @@ fn main() {
                 );
 
                 // Push to queue
-                spendable_txouts_sender
-                    .send(SpendableTxOut {
-                        tx_out: tx_out.clone(),
-                        amount: input_amount,
-                        from_account_key: account.clone(),
-                    })
-                    .expect("failed sending to spendable_txouts_sender");
+                spendable_txouts.push(SpendableTxOut {
+                    tx_out: tx_out.clone(),
+                    amount: input_amount,
+                    from_account_key: account.clone(),
+                });
             }
             num_per_account_processed += 1;
         }
@@ -237,6 +237,37 @@ fn main() {
         crossbeam_channel::unbounded::<usize>();
 
     let mut running_threads: usize = 0;
+
+    // Seed each fog account with a TxOut. This ensures that integration tests
+    // that check to make sure each fog account has a non-zero balance do not
+    // fail.
+    let mut seed_fog_resolver = build_fog_resolver(&fog_uri, &env, &logger);
+    let conns = get_conns(&config, &logger);
+
+    log::info!(logger, "Seeding Fog Accounts with initial TxOuts.");
+    for (i, fog_account) in fog_accounts.iter().enumerate() {
+        seed_fog_resolver = build_and_submit_transaction(
+            i,
+            // For this seed phase, only use one TxOut for each transaction.
+            vec![spendable_txouts[i].clone()],
+            fog_account,
+            &config,
+            &ledger_db,
+            seed_fog_resolver,
+            &logger,
+            &conns,
+            &env,
+            &fog_uri,
+        );
+    }
+
+    // Don't use spendable_txouts that were used in the seed step.
+    spendable_txouts = spendable_txouts[fog_accounts.len()..].to_vec();
+    for spendable_txout in spendable_txouts {
+        spendable_txouts_sender
+            .send(spendable_txout)
+            .expect("failed sending to spendable_txouts_sender");
+    }
 
     // Spawn worker threads
     for i in 0..config.max_threads {
@@ -369,32 +400,67 @@ fn worker_thread_entry(
                 .expect("No fog report url"),
         )
         .expect("Could not parse fog url");
-        // Sometime transactions could not be submitted before tombstone block passed,
-        // so loop until transactions can be submmitted
-        loop {
-            // Got our inputs, construct transaction.
-            let tx = build_tx(
-                &pending_spendable_txouts,
-                to_account,
-                &config,
-                &ledger_db,
-                fog_resolver.clone(),
-                &logger,
-            );
 
-            // Submit tx
-            if submit_tx(txs_created, &conns, &tx, &config, &logger) {
-                txs_created += 1;
-                let mut map = TX_PUB_KEY_TO_ACCOUNT_KEY.lock().unwrap();
-                map.insert(tx.prefix.outputs[0].public_key, to_account.clone());
-                break;
-            } else {
-                //each worker thread should build its own FogResolver,
-                //if submit fails, it should trash and rebuild the FogResolver to ensure it has
-                // fresh fog
-                fog_resolver = build_fog_resolver(&fog_uri, &env, &logger);
-            }
-            log::trace!(logger, "rebuilding failed tx");
+        fog_resolver = build_and_submit_transaction(
+            txs_created,
+            pending_spendable_txouts,
+            to_account,
+            &config,
+            &ledger_db,
+            fog_resolver,
+            &logger,
+            &conns,
+            &env,
+            &fog_uri,
+        );
+        txs_created += 1;
+    }
+}
+
+/// Builds and submits a transaction to a given FogAccount.
+///
+/// If a transaction submit errors, then we get and use a new FogResolver
+/// to build and submit transactions. In this case, we return this new
+/// FogResolver to the caller so that it can be used in subsequent transactions.
+/// If a transaction error doesn't occur, we return the old FogResolver.
+fn build_and_submit_transaction(
+    txs_created: usize,
+    pending_spendable_txouts: Vec<SpendableTxOut>,
+    to_account: &AccountKey,
+    config: &Config,
+    ledger_db: &LedgerDB,
+    fog_resolver: FogResolver,
+    logger: &Logger,
+    conns: &[SyncConnection<ThickClient<HardcodedCredentialsProvider>>],
+    env: &Arc<grpcio::Environment>,
+    fog_uri: &FogUri,
+) -> FogResolver {
+    // Sometimes transactions can not be submitted before the tombstone block
+    // has passed, so loop until transactions can be submmitted
+    let mut current_fog_resolver = fog_resolver;
+    loop {
+        let tx = build_tx(
+            &pending_spendable_txouts,
+            to_account,
+            config,
+            ledger_db,
+            current_fog_resolver.clone(),
+            logger,
+        );
+
+        if submit_tx(txs_created, conns, &tx, config, logger) {
+            let mut map = TX_PUB_KEY_TO_ACCOUNT_KEY.lock().unwrap();
+            map.insert(tx.prefix.outputs[0].public_key, to_account.clone());
+            return current_fog_resolver;
+        } else {
+            // If submit fails, trash and rebuild the FogResolver to ensure it's
+            // building and submitting against a fresh Fog.
+            current_fog_resolver = build_fog_resolver(fog_uri, env, logger);
+            log::trace!(
+                logger,
+                "Rebuilding failed tx. Got new FogResolver: {:?}",
+                current_fog_resolver
+            );
         }
     }
 }
