@@ -57,9 +57,8 @@ pub struct MobileAcctViewConfig {
     /// available SGX EPC memory, and then beyond that it will be allocated on
     /// the heap in the untrusted side. Once the needed capacity exceeds RAM,
     /// you will either get killed by OOM killer, or it will start being swapped
-    /// to disk by linux kernel. (Unless / until a kernel-bypass pathway is
-    /// developed.)
-    #[structopt(long, default_value = "1048576")]
+    /// to disk by linux kernel.
+    #[structopt(long, default_value = "1048576", env)]
     pub omap_capacity: u64,
 
     /// Postgres config
