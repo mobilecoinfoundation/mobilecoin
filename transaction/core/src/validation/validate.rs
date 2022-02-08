@@ -505,14 +505,23 @@ mod tests {
     fn test_validate_memos_exist() {
         let (mut tx, _) = create_test_tx();
 
-        assert_eq!(validate_memos_exist(&tx), Ok(()));
+        assert_eq!(
+            validate_memos_exist(&tx),
+            Err(TransactionValidationError::MissingMemo)
+        );
 
-        tx.prefix.outputs.first_mut().unwrap().e_memo = None;
+        tx.prefix.outputs.first_mut().unwrap().e_memo = Some(Default::default());
 
         assert_eq!(
             validate_memos_exist(&tx),
             Err(TransactionValidationError::MissingMemo)
         );
+
+        for ref mut output in tx.prefix.outputs.iter_mut() {
+            output.e_memo = Some(Default::default());
+        }
+
+        assert_eq!(validate_memos_exist(&tx), Ok(()));
     }
 
     #[test]
@@ -520,24 +529,23 @@ mod tests {
     fn test_validate_no_memos_exist() {
         let (mut tx, _) = create_test_tx();
 
+        assert_eq!(validate_no_memos_exist(&tx), Ok(()));
+
+        tx.prefix.outputs.first_mut().unwrap().e_memo = Some(Default::default());
+
         assert_eq!(
             validate_no_memos_exist(&tx),
             Err(TransactionValidationError::MemosNotAllowed)
         );
 
-        let len = tx.prefix.outputs.len();
-        for ref mut output in tx.prefix.outputs.iter_mut().take(len - 1) {
-            output.e_memo = None;
+        for ref mut output in tx.prefix.outputs.iter_mut() {
+            output.e_memo = Some(Default::default());
         }
 
         assert_eq!(
             validate_no_memos_exist(&tx),
             Err(TransactionValidationError::MemosNotAllowed)
         );
-
-        tx.prefix.outputs.last_mut().unwrap().e_memo = None;
-
-        assert_eq!(validate_no_memos_exist(&tx), Ok(()));
     }
 
     #[test]
