@@ -422,7 +422,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         &self,
         parent_block: &Block,
         encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
-        _root_element: &TxOutMembershipElement,
+        root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)> {
         // This implicitly converts Vec<Result<(Tx Vec<TxOutMembershipProof>),_>> into
         // Result<Vec<(Tx, Vec<TxOutMembershipProof>)>, _>, and terminates the
@@ -470,6 +470,14 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         if root_elements.len() != 1 {
             return Err(Error::InvalidLocalMembershipProof);
+        }
+
+        // Sanity check - since our caller (TxManager::tx_hashes_to_block) collects all
+        // proof of memberships and root element at a time the ledger is not
+        // expected to change, we should end with the same root element for all
+        // transactions.
+        if root_element != &root_elements[0] {
+            return Err(Error::InvalidLocalMembershipRootElement);
         }
 
         let transactions: Vec<Tx> = transactions_with_proofs
