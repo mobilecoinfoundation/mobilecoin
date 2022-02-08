@@ -15,7 +15,7 @@ pub use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
     Block, BlockID, BlockIndex, Token, BLOCK_VERSION,
 };
-use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
+use mc_transaction_std::{InputCredentials, NoMemoBuilder, TransactionBuilder};
 use mc_util_from_random::FromRandom;
 use rand::{seq::SliceRandom, Rng};
 use tempdir::TempDir;
@@ -88,7 +88,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
     rng: &mut R,
 ) -> Tx {
     let mut transaction_builder =
-        TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
+        TransactionBuilder::new(MockFogResolver::default(), NoMemoBuilder::default());
 
     // The first transaction in the origin block should contain enough outputs to
     // use as mixins.

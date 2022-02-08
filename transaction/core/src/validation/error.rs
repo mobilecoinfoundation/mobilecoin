@@ -125,6 +125,9 @@ pub enum TransactionValidationError {
 
     /// A TxOut is missing the required memo field
     MissingMemo,
+
+    /// A TxOut includes a memo, but this is not allowed yet
+    MemosNotAllowed,
 }
 
 impl From<mc_crypto_keys::KeyError> for TransactionValidationError {
