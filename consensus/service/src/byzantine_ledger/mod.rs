@@ -108,8 +108,7 @@ impl ByzantineLedger {
                 Arc::new(move |scp_values| {
                     let mut tx_hashes = Vec::new();
 
-                    // TODO avoid copies
-                    for value in scp_values.iter() {
+                    for value in scp_values {
                         match value {
                             ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
                         }

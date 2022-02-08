@@ -269,8 +269,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)> {
         let mut tx_hashes = Vec::new();
 
-        // TODO avoid copies
-        for value in values.iter() {
+        for value in values {
             match value {
                 ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
             }
