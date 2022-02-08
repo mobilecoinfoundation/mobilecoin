@@ -13,7 +13,7 @@ use mc_transaction_core::{tx::TxHash, BlockID};
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, hash::Hash, result::Result as StdResult};
 
-// TODO
+/// A single value in a consensus round.
 #[derive(
     Clone,
     Copy,
