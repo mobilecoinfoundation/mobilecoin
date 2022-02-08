@@ -63,8 +63,8 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     // In the 1.2 release, it is planned that clients will know to read memos,
     // but memos will not be allowed to exist in the chain until the next release.
-    // If we implement "block-version-based protocol evolution" (MCIP 26), then this function
-    // would become block-version aware and this coudl become a branch.
+    // If we implement "block-version-based protocol evolution" (MCIP 26), then this
+    // function would become block-version aware and this could become a branch.
     validate_no_memos_exist(tx)?;
     // validate_memos_exist(tx)?;
 
