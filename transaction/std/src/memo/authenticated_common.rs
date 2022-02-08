@@ -67,7 +67,7 @@ pub fn validate_authenticated_sender(
         memo_type_bytes,
         memo_data,
     );
-    let found_hmac: [u8; 16] = memo_data[(64-16)..].try_into().unwrap();
+    let found_hmac: [u8; 16] = memo_data[(64 - 16)..].try_into().unwrap();
     result &= expected_hmac.ct_eq(&found_hmac);
     result
 }

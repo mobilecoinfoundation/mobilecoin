@@ -145,7 +145,7 @@ impl From<&[u8; 64]> for AuthenticatedSenderWithPaymentRequestIdMemo {
 
 impl From<AuthenticatedSenderWithPaymentRequestIdMemo> for [u8; 64] {
     fn from(src: AuthenticatedSenderWithPaymentRequestIdMemo) -> [u8; 64] {
-        src.memo_data 
+        src.memo_data
     }
 }
 
