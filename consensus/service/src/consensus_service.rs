@@ -603,7 +603,8 @@ impl<
         Arc::new(move |scp_value, origin_node, relayed_from| {
             let origin_node = origin_node.unwrap_or(&local_node_id);
 
-            if let ConsensusValue::TxHash(tx_hash) = scp_value {
+            let ConsensusValue::TxHash(tx_hash) = scp_value;
+            {
                 // Broadcast to peers.
                 //
                 // Nodes always relay transactions sent to them by clients to all their peers.

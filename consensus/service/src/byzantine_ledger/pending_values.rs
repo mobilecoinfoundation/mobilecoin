@@ -78,13 +78,6 @@ impl<TXM: TxManager> PendingValues<TXM> {
                         false
                     }
                 }
-
-                // TODO
-                ConsensusValue::Mint(_) => {
-                    entry.insert(timestamp);
-                    self.pending_values.push(value);
-                    true
-                }
             }
         } else {
             false
@@ -123,9 +116,6 @@ impl<TXM: TxManager> PendingValues<TXM> {
         let tx_manager = self.tx_manager.clone();
         self.retain(|value| match value {
             ConsensusValue::TxHash(tx_hash) => tx_manager.validate(tx_hash).is_ok(),
-
-            // TODO
-            ConsensusValue::Mint(_) => true,
         });
     }
 }

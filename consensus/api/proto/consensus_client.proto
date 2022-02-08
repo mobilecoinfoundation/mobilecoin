@@ -14,15 +14,4 @@ service ConsensusClientAPI {
     /// This API call is made with an encrypted payload for the enclave,
     /// indicating a new value to be acted upon.
     rpc ClientTxPropose(attest.Message) returns (consensus_common.ProposeTxResponse);
-
-    rpc Mint(MintRequest) returns (MintResponse);
-}
-
-message MintRequest {
-    uint64 amount = 1;
-    uint64 tombstone_block = 2;
-}
-
-message MintResponse {
-    uint64 block_count = 1;
 }

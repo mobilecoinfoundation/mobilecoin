@@ -268,13 +268,11 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         parent_block: &Block,
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)> {
         let mut tx_hashes = Vec::new();
-        let mut mint_txs = Vec::new();
 
         // TODO avoid copies
         for value in values.iter() {
             match value {
                 ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
-                ConsensusValue::Mint(mint_tx) => mint_txs.push(*mint_tx),
             }
         }
 
@@ -295,17 +293,9 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             })
             .collect::<Result<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>, TxManagerError>>()?;
 
-        let root_element = self.untrusted.get_root_tx_out_membership_element()?;
-
-        let (block, block_contents, mut signature) = self.enclave.form_block(
-            parent_block,
-            &encrypted_txs_with_proofs,
-            &root_element,
-            &mint_txs,
-        )?;
-
-        // TODO
-        log::info!(self.logger, "MINT TXS: {:?}", mint_txs);
+        let (block, block_contents, mut signature) = self
+            .enclave
+            .form_block(parent_block, &encrypted_txs_with_proofs)?;
 
         // The enclave cannot provide a timestamp, so this happens in untrusted.
         signature.set_signed_at(chrono::Utc::now().timestamp() as u64);
@@ -377,10 +367,7 @@ mod tests {
     };
     use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
     use mc_ledger_db::Ledger;
-    use mc_transaction_core::{
-        membership_proofs::Range, tx::TxOutMembershipElement,
-        validation::TransactionValidationError,
-    };
+    use mc_transaction_core::validation::TransactionValidationError;
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
@@ -782,15 +769,6 @@ mod tests {
             .times(tx_hashes.len())
             .return_const(Ok(highest_index_proofs));
 
-        // Should get root txout membership eklement once per block.
-        mock_untrusted
-            .expect_get_root_tx_out_membership_element()
-            .times(1)
-            .return_const(Ok(TxOutMembershipElement::new(
-                Range::new(0, 1).unwrap(),
-                [1; 32],
-            )));
-
         let mut mock_enclave = MockConsensusEnclave::new();
         let expected_block = Block::new_origin_block(&vec![]);
         let expected_block_contents = BlockContents::new(vec![], vec![]);
@@ -816,7 +794,6 @@ mod tests {
                     };
                     tx_manager.lock_cache().insert(*tx_hash, cache_entry);
                 }
-                _ => panic!("Should only have TxHash entries"),
             };
         }
 
@@ -858,7 +835,6 @@ mod tests {
                     };
                     tx_manager.lock_cache().insert(*tx_hash, cache_entry);
                 }
-                _ => panic!("Should only have TxHash entries"),
             }
         }
 

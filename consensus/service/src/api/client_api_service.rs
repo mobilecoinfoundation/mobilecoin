@@ -10,16 +10,14 @@ use crate::{
 };
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
-use mc_common::logger::{log, Logger};
+use mc_common::logger::Logger;
 use mc_consensus_api::{
-    consensus_client::{MintRequest, MintResponse},
     consensus_client_grpc::ConsensusClientApi,
     consensus_common::{ProposeTxResponse, ProposeTxResult},
 };
 use mc_consensus_enclave::ConsensusEnclave;
 use mc_ledger_db::Ledger;
 use mc_peers::ConsensusValue;
-use mc_transaction_core::mint::MintTx;
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use std::sync::Arc;
@@ -139,20 +137,6 @@ impl ConsensusClientApi for ClientApiService {
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(ctx, sink, result, logger)
         });
-    }
-
-    fn mint(&mut self, ctx: RpcContext, req: MintRequest, sink: UnarySink<MintResponse>) {
-        log::info!(self.logger, "MINT REQ {:?}", req);
-
-        let mint_tx = MintTx {
-            amount: req.amount,
-            tombstone_block: req.tombstone_block,
-        };
-        (*self.propose_tx_callback)(ConsensusValue::Mint(mint_tx), None, None);
-
-        let mut resp = MintResponse::new();
-        resp.set_block_count(self.ledger.num_blocks().unwrap());
-        send_result(ctx, sink, Ok(resp), &self.logger);
     }
 }
 
