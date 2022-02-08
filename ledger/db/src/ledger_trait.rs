@@ -81,4 +81,13 @@ pub trait Ledger: Send {
 
     /// Get the tx out root membership element from the tx out Merkle Tree.
     fn get_root_tx_out_membership_element(&self) -> Result<TxOutMembershipElement, Error>;
+
+    /// Get the latest block header, if any. NotFound if the ledger-db is empty.
+    fn get_latest_block(&self) -> Result<Block, Error> {
+        let num_blocks = self.num_blocks()?;
+        if num_blocks == 0 {
+            return Err(Error::NotFound);
+        }
+        Ok(self.get_block(num_blocks - 1)?)
+    }
 }

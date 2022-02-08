@@ -20,8 +20,13 @@ pub use mc_fog_kex_rng::KexRngPubkey;
 // These are synced with types in fog_api view.proto, and tests enforce that
 // they round trip These are NOT expected to be synced with Db schema types
 
+/// The QueryRequestAAD structure, which should be passed as AAD when making
+/// an attested fog view request.
 #[derive(Clone, Eq, PartialEq, Message)]
 pub struct QueryRequestAAD {
+    /// The first id of a user event to return. If you set this larger than 0,
+    /// it means that you already saw some of the events and you don't want
+    /// to be sent them again.
     #[prost(int64, tag = "1")]
     pub start_from_user_event_id: i64,
 
@@ -31,38 +36,62 @@ pub struct QueryRequestAAD {
     pub start_from_block_index: u64,
 }
 
+/// The QueryRequest structure, which should be passed as the encrypted data
+/// when making an attested fog view request
 #[derive(Clone, Eq, PartialEq, Message)]
 pub struct QueryRequest {
+    /// The search keys to query for TxOut's
+    /// These should all be values that came from KexRng's
     #[prost(bytes, repeated, tag = "1")]
     pub get_txos: Vec<Vec<u8>>,
 }
 
+/// The QueryResponse structure, returned by the enclave in response to an
+/// attested request
 #[derive(Clone, Eq, PartialEq, Message)]
 pub struct QueryResponse {
+    /// The number of blocks processed by this view enclave at the time that the
+    /// request was evaluated.
     #[prost(uint64, tag = "1")]
     pub highest_processed_block_count: u64,
 
+    /// The timestamp of the highest processed block
     #[prost(uint64, tag = "2")]
     pub highest_processed_block_signature_timestamp: u64,
 
+    /// The index of the next user id event that the user should query
+    /// (all events from request.start_from_user_event_id, up to this number,
+    /// were returned)
     #[prost(int64, tag = "3")]
     pub next_start_from_user_event_id: i64,
 
+    /// Any block ranges corresponding to missed block events. Any block in the
+    /// range should be downloaded and scanned to ensure correct balance
+    /// computation.
     #[prost(message, repeated, tag = "4")]
     pub missed_block_ranges: Vec<BlockRange>,
 
+    /// Any RNG records that the users can now use to build RNGs and then search
+    /// for transactions.
     #[prost(message, repeated, tag = "5")]
     pub rng_records: Vec<RngRecord>,
 
+    /// Any records of decommissioned ingest invocations, which implies that an
+    /// RNG will no longer be used.
     #[prost(message, repeated, tag = "6")]
     pub decommissioned_ingest_invocations: Vec<DecommissionedIngestInvocation>,
 
+    /// The results of each tx out search query
     #[prost(message, repeated, tag = "7")]
     pub tx_out_search_results: Vec<TxOutSearchResult>,
 
+    /// The last known block count. This may be larger than the highest known
+    /// block count, if fog is stuck or this view server is behind.
     #[prost(uint64, tag = "8")]
     pub last_known_block_count: u64,
 
+    /// The last known block cumulative txo count. This is provided to help
+    /// clients sample for mixins.
     #[prost(uint64, tag = "9")]
     pub last_known_block_cumulative_txo_count: u64,
 }
@@ -88,9 +117,11 @@ pub struct RngRecord {
 /// Information about a decommissioned ingest invocation.
 #[derive(Clone, Eq, PartialEq, Hash, Message, Serialize, Deserialize)]
 pub struct DecommissionedIngestInvocation {
+    /// The ingest invocation id which is decommissioned
     #[prost(int64, tag = "1")]
     pub ingest_invocation_id: i64,
 
+    /// The last block which it ingested
     #[prost(uint64, tag = "2")]
     pub last_ingested_block: u64,
 }
@@ -152,13 +183,13 @@ pub struct TxOutSearchResult {
     pub ciphertext: Vec<u8>,
 }
 
-// TxOutRecord is what information the fog service preserves for a user about
-// their TxOut. These are created by the ingest server and then encrypted. The
-// encrypted blobs are eventually returned to the user, who must deserialize
-// them.
-//
-// Note: There are conformance tests in fog_api that check that this matches
-// proto
+/// TxOutRecord is what information the fog service preserves for a user about
+/// their TxOut. These are created by the ingest server and then encrypted. The
+/// encrypted blobs are eventually returned to the user, who must deserialize
+/// them.
+///
+/// Note: There are conformance tests in fog-api that check that this matches
+/// the proto
 #[derive(Clone, Eq, Hash, PartialEq, Message)]
 pub struct TxOutRecord {
     /// The (compressed ristretto) bytes of commitment associated to amount
@@ -279,9 +310,9 @@ impl TxOutRecord {
     }
 }
 
-// FogTxOut is a redacted version of the TxOut, removing the fog hint, and with
-// reduced data about Amount. The hint is only used during ingest, so we don't
-// need to persist it.
+/// FogTxOut is a redacted version of the TxOut, removing the fog hint, and with
+/// reduced data about Amount. The hint is only used during ingest, so we don't
+/// need to persist it.
 #[derive(Clone, Eq, Hash, PartialEq, Debug, Default)]
 pub struct FogTxOut {
     /// The one-time public address of this output.

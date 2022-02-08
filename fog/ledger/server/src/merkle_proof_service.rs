@@ -134,6 +134,11 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> MerkleProofService<L, E> {
                 })
                 .collect::<Result<Vec<_>, DbError>>()
                 .map_err(|err| rpc_database_err(err, &self.logger))?,
+            latest_block_version: self
+                .ledger
+                .get_latest_block()
+                .map_err(|err| rpc_database_err(err, &self.logger))?
+                .version,
         })
     }
 

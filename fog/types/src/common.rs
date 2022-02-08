@@ -6,13 +6,16 @@ use serde::{Deserialize, Serialize};
 /// A half-open [a, b) range of blocks
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Message, Serialize, Deserialize)]
 pub struct BlockRange {
+    /// The first block in the range
     #[prost(uint64, tag = "1")]
     pub start_block: u64,
+    /// The end block, which is one past the end of the range.
     #[prost(uint64, tag = "2")]
     pub end_block: u64,
 }
 
 impl BlockRange {
+    /// Create a new block range
     pub fn new(start_block: u64, end_block: u64) -> Self {
         Self {
             start_block,
@@ -20,14 +23,17 @@ impl BlockRange {
         }
     }
 
+    /// Test if a block index is in the range
     pub fn contains(&self, block: u64) -> bool {
         block >= self.start_block && block < self.end_block
     }
 
+    /// Test if a block range is well-formed
     pub fn is_valid(&self) -> bool {
         self.end_block > self.start_block
     }
 
+    /// Test if two block ranges overlap
     pub fn overlaps(&self, other: &BlockRange) -> bool {
         self.start_block < other.end_block && other.start_block < self.end_block
     }

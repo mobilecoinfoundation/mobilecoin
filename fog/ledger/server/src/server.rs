@@ -247,4 +247,7 @@ pub struct DbPollSharedState {
 
     /// The cumulative txo count of the last known block.
     pub last_known_block_cumulative_txo_count: u64,
+
+    /// The latest value of `block_version` in the blockchain
+    pub latest_block_version: u32,
 }

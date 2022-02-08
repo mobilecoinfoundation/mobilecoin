@@ -36,6 +36,15 @@ message GetOutputsResponse {
     uint64 num_blocks = 2;
     /// The total number of Txos in the ledger at the time the request is evaluated
     uint64 global_txo_count = 3;
+    /// The latest block_version of a block in the block chain
+    ///
+    /// This may be needed when building transactions, so that use of new transaction
+    /// features can be gated on the block version being increased.
+    ///
+    /// Clients may also choose to prompt users to update their software if
+    /// the block version increases beyond what was "known" when the software
+    /// was built.
+    uint32 latest_block_version = 4;
 }
 
 message OutputResult {
@@ -114,6 +123,15 @@ message CheckKeyImagesResponse {
     uint64 global_txo_count = 2;
     /// The results for each key image query
     repeated KeyImageResult results = 3;
+    /// The latest block_version of a block in the block chain
+    ///
+    /// This may be needed when building transactions, so that use of new transaction
+    /// features can be gated on the block version being increased.
+    ///
+    /// Clients may also choose to prompt users to update their software if
+    /// the block version increases beyond what was "known" when the software
+    /// was built.
+    uint32 latest_block_version = 4;
 }
 
 message KeyImageResult {

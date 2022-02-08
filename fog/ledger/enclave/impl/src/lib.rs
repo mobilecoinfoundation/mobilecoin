@@ -140,7 +140,7 @@ where
     fn check_key_images(
         &self,
         msg: EnclaveMessage<ClientSession>,
-        untrusted_keyimagequery_response: UntrustedKeyImageQueryResponse,
+        untrusted_key_image_query_response: UntrustedKeyImageQueryResponse,
     ) -> Result<Vec<u8>> {
         let channel_id = msg.channel_id.clone(); //client session does not implement copy trait so clone
         let user_plaintext = self.ake.client_decrypt(msg)?;
@@ -151,10 +151,11 @@ where
         })?;
 
         let mut resp = CheckKeyImagesResponse {
-            num_blocks: untrusted_keyimagequery_response.highest_processed_block_count,
+            num_blocks: untrusted_key_image_query_response.highest_processed_block_count,
             results: Default::default(),
-            global_txo_count: untrusted_keyimagequery_response
+            global_txo_count: untrusted_key_image_query_response
                 .last_known_block_cumulative_txo_count,
+            latest_block_version: untrusted_key_image_query_response.latest_block_version,
         };
 
         // Do the scope lock of keyimagetore

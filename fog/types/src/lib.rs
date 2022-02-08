@@ -2,15 +2,25 @@
 
 #![no_std]
 
+//! Enclave-compatible types used by fog.
+//! Particularly prosty versions of protobuf types, but also some enclave api
+//! types.
+
+#![deny(missing_docs)]
+
 extern crate alloc;
 
 use alloc::vec::Vec;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
+/// Types from or related to fog_common.proto
 pub mod common;
+/// Types related to fog ingest
 pub mod ingest;
+/// Types related to fog ledger
 pub mod ledger;
+/// Types related to fog view
 pub mod view;
 
 /// An Encrypted Tx Out Record, consisting of a fog search_key (rng output),
@@ -59,5 +69,6 @@ impl core::fmt::Display for BlockCount {
 }
 
 impl BlockCount {
+    /// The largest possible BlockCount
     pub const MAX: BlockCount = BlockCount(u64::MAX);
 }
