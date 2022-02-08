@@ -505,13 +505,7 @@ mod tests {
     fn test_validate_memos_exist() {
         let (mut tx, _) = create_test_tx();
 
-        assert_eq!(
-            validate_memos_exist(&tx),
-            Err(TransactionValidationError::MissingMemo)
-        );
-
-        tx.prefix.outputs.first_mut().unwrap().e_memo = Some(Default::default());
-
+        assert!(tx.prefix.outputs.first_mut().unwrap().e_memo.is_none());
         assert_eq!(
             validate_memos_exist(&tx),
             Err(TransactionValidationError::MissingMemo)
@@ -529,6 +523,7 @@ mod tests {
     fn test_validate_no_memos_exist() {
         let (mut tx, _) = create_test_tx();
 
+        assert!(tx.prefix.outputs.first_mut().unwrap().e_memo.is_none());
         assert_eq!(validate_no_memos_exist(&tx), Ok(()));
 
         tx.prefix.outputs.first_mut().unwrap().e_memo = Some(Default::default());
