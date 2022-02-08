@@ -54,6 +54,20 @@ pub struct GetOutputsResponse {
     /// was built.
     #[prost(uint32, tag = "4")]
     pub latest_block_version: u32,
+
+    /// The max of latest_block_version and the MAX_BLOCK_VERSION value
+    /// in mc-transaction-core (in this deploy of fog ledger).
+    ///
+    /// Usually when we redeploy consensus, we also redeploy fog. So this should
+    /// usually be equal to the MAX_BLOCK_VERSION value in the consensus
+    /// enclave. (In case it isn't, it won't be less than
+    /// latest_block_version.)
+    ///
+    /// This is possibly an additional signal that clients can use to discover
+    /// that there is a new version of transaction-core that may be available
+    /// for an update (by comparing to their local value of max_block_version).
+    #[prost(uint32, tag = "5")]
+    pub max_block_version: u32,
 }
 
 /// The result of an individual query for an output and membership proof
@@ -129,6 +143,20 @@ pub struct CheckKeyImagesResponse {
     /// was built.
     #[prost(uint32, tag = "4")]
     pub latest_block_version: u32,
+
+    /// The max of latest_block_version and the MAX_BLOCK_VERSION value
+    /// in mc-transaction-core (in this deploy of fog ledger).
+    ///
+    /// Usually when we redeploy consensus, we also redeploy fog. So this should
+    /// usually be equal to the MAX_BLOCK_VERSION value in the consensus
+    /// enclave. (In case it isn't, it won't be less than
+    /// latest_block_version.)
+    ///
+    /// This is possibly an additional signal that clients can use to discover
+    /// that there is a new version of transaction-core that may be available
+    /// for an update (by comparing to their local value of max_block_version).
+    #[prost(uint32, tag = "5")]
+    pub max_block_version: u32,
 }
 
 /// A result which tells for a given key image, whether it was spent or not

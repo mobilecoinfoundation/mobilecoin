@@ -54,6 +54,9 @@ pub struct UntrustedKeyImageQueryResponse {
 
     /// The latest value of block version in the blockchain
     pub latest_block_version: u32,
+
+    /// The (max of) latest_block_version and mc_transaction_core::BLOCK_VERSION
+    pub max_block_version: u32,
 }
 
 /// The API for interacting with a ledger node's enclave.

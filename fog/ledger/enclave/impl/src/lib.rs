@@ -156,6 +156,7 @@ where
             global_txo_count: untrusted_key_image_query_response
                 .last_known_block_cumulative_txo_count,
             latest_block_version: untrusted_key_image_query_response.latest_block_version,
+            max_block_version: untrusted_key_image_query_response.max_block_version,
         };
 
         // Do the scope lock of keyimagetore

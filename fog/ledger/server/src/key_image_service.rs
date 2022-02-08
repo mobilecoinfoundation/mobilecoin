@@ -89,6 +89,10 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
             highest_processed_block_count,
             last_known_block_cumulative_txo_count,
             latest_block_version,
+            max_block_version: core::cmp::max(
+                latest_block_version,
+                mc_transaction_core::BLOCK_VERSION,
+            ),
         };
 
         let result_blob = self

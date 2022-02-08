@@ -104,6 +104,12 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> MerkleProofService<L, E> {
             ));
         }
 
+        let latest_block_version = self
+            .ledger
+            .get_latest_block()
+            .map_err(|err| rpc_database_err(err, &self.logger))?
+            .version;
+
         Ok(GetOutputsResponse {
             num_blocks: self
                 .ledger
@@ -134,11 +140,11 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> MerkleProofService<L, E> {
                 })
                 .collect::<Result<Vec<_>, DbError>>()
                 .map_err(|err| rpc_database_err(err, &self.logger))?,
-            latest_block_version: self
-                .ledger
-                .get_latest_block()
-                .map_err(|err| rpc_database_err(err, &self.logger))?
-                .version,
+            latest_block_version,
+            max_block_version: core::cmp::max(
+                latest_block_version,
+                mc_transaction_core::BLOCK_VERSION,
+            ),
         })
     }
 
