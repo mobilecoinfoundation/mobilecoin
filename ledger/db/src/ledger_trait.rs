@@ -88,6 +88,6 @@ pub trait Ledger: Send {
         if num_blocks == 0 {
             return Err(Error::NotFound);
         }
-        Ok(self.get_block(num_blocks - 1)?)
+        self.get_block(num_blocks - 1)
     }
 }
