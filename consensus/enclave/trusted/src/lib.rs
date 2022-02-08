@@ -97,8 +97,8 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
                 .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
 
-        EnclaveCall::FormBlock(parent_block, encrypted_txs_with_proofs) => {
-            serialize(&ENCLAVE.form_block(&parent_block, &encrypted_txs_with_proofs))
+        EnclaveCall::FormBlock(parent_block, encrypted_txs_with_proofs, root_element) => {
+            serialize(&ENCLAVE.form_block(&parent_block, &encrypted_txs_with_proofs, &root_element))
                 .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
     };

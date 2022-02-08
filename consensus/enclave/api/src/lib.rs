@@ -28,7 +28,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, RistrettoPublic, 
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_transaction_core::{
     ring_signature::KeyImage,
-    tx::{Tx, TxHash, TxOutMembershipProof},
+    tx::{Tx, TxHash, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockSignature, TokenId,
 };
 use serde::{Deserialize, Serialize};
@@ -301,6 +301,7 @@ pub trait ConsensusEnclave: ReportableEnclave {
         &self,
         parent_block: &Block,
         encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+        root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)>;
 }
 
