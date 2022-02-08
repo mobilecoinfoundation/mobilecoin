@@ -272,6 +272,7 @@ mod test {
         let highest_index: u32 = num_tx_outs - 1;
 
         mock_ledger.num_tx_outs = num_tx_outs as u64;
+        mock_ledger.num_blocks = 1;
 
         for (index, tx_out) in get_tx_outs(num_tx_outs).into_iter().enumerate() {
             mock_ledger.tx_out_by_index.insert(index as u64, tx_out);
@@ -324,6 +325,7 @@ mod test {
         let mut mock_ledger = MockLedger::default();
         let num_tx_outs: u32 = 100;
         mock_ledger.num_tx_outs = num_tx_outs as u64;
+        mock_ledger.num_blocks = 1;
 
         // Populate the mock ledger with TxOuts and membership proofs.
         for (index, tx_out) in get_tx_outs(num_tx_outs).into_iter().enumerate() {

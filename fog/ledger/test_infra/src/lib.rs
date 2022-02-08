@@ -105,8 +105,12 @@ impl Ledger for MockLedger {
         Ok(self.num_blocks)
     }
 
-    fn get_block(&self, _block_number: u64) -> Result<Block, Error> {
-        unimplemented!()
+    fn get_block(&self, block_number: u64) -> Result<Block, Error> {
+        if block_number < self.num_blocks {
+            Ok(Block::default())
+        } else {
+            Err(Error::NotFound)
+        }
     }
 
     fn get_block_signature(&self, _block_number: u64) -> Result<BlockSignature, Error> {
