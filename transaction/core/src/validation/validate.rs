@@ -38,10 +38,6 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_number_of_outputs(&tx.prefix, MAX_OUTPUTS)?;
 
-    // Bring this back in Issue #905 (Make memos mandatory)
-    // https://github.com/mobilecoinfoundation/mobilecoin/issues/905
-    // validate_memos_exist(tx)?;
-
     validate_ring_sizes(&tx.prefix, RING_SIZE)?;
 
     validate_ring_elements_are_unique(&tx.prefix)?;
@@ -64,6 +60,13 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     // Note: The transaction must not contain a Key Image that has previously been
     // spent. This must be checked outside the enclave.
+
+    // In the 1.2 release, it is planned that clients will know to read memos,
+    // but memos will not be allowed to exist in the chain until the next release.
+    // If we implement "block-version-based protocol evolution, then this function
+    // would become block-version aware and this coudl become a branch.
+    validate_no_memos_exist(tx)?;
+    // validate_memos_exist(tx)?;
 
     Ok(())
 }
@@ -195,7 +198,20 @@ fn validate_outputs_public_keys_are_unique(tx: &Tx) -> TransactionValidationResu
     Ok(())
 }
 
-/// All outputs have a memo (old-style TxOuts are rejected)
+/// All outputs have no memo (new-style TxOuts (Post MCIP #3) are rejected)
+fn validate_no_memos_exist(tx: &Tx) -> TransactionValidationResult<()> {
+    if tx
+        .prefix
+        .outputs
+        .iter()
+        .any(|output| output.e_memo.is_some())
+    {
+        return Err(TransactionValidationError::MemosNotAllowed);
+    }
+    Ok(())
+}
+
+/// All outputs have a memo (old-style TxOuts (Pre MCIP #3) are rejected)
 ///
 /// Note: This is only under test for now, and can become live
 /// at the time that we address mobilecoinfoundation/mobilecoin/issues/905
@@ -393,6 +409,8 @@ pub fn validate_tombstone(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     extern crate alloc;
 
     use alloc::vec::Vec;
@@ -401,16 +419,7 @@ mod tests {
         constants::RING_SIZE,
         tokens::Mob,
         tx::{Tx, TxOutMembershipHash, TxOutMembershipProof},
-        validation::{
-            error::TransactionValidationError,
-            validate::{
-                validate_inputs_are_sorted, validate_key_images_are_unique,
-                validate_membership_proofs, validate_memos_exist, validate_number_of_inputs,
-                validate_number_of_outputs, validate_outputs_public_keys_are_unique,
-                validate_ring_elements_are_unique, validate_ring_sizes, validate_signature,
-                validate_tombstone, validate_transaction_fee, MAX_TOMBSTONE_BLOCKS,
-            },
-        },
+        validation::error::TransactionValidationError,
         Token,
     };
 
@@ -492,17 +501,43 @@ mod tests {
     }
 
     #[test]
-    // Should return MissingMemo when memos are missing in the outputs
+    // Should return MissingMemo when memos are missing in any the outputs
     fn test_validate_memos_exist() {
         let (mut tx, _) = create_test_tx();
-        for ref mut output in tx.prefix.outputs.iter_mut() {
-            output.e_memo = None;
-        }
+
+        assert_eq!(validate_memos_exist(&tx), Ok(()));
+
+        tx.prefix.outputs.first_mut().unwrap().e_memo = None;
 
         assert_eq!(
             validate_memos_exist(&tx),
             Err(TransactionValidationError::MissingMemo)
         );
+    }
+
+    #[test]
+    // Should return MemosNotAllowed when memos are present in any of the outputs
+    fn test_validate_no_memos_exist() {
+        let (mut tx, _) = create_test_tx();
+
+        assert_eq!(
+            validate_no_memos_exist(&tx),
+            Err(TransactionValidationError::MemosNotAllowed)
+        );
+
+        let len = tx.prefix.outputs.len();
+        for ref mut output in tx.prefix.outputs.iter_mut().take(len - 1) {
+            output.e_memo = None;
+        }
+
+        assert_eq!(
+            validate_no_memos_exist(&tx),
+            Err(TransactionValidationError::MemosNotAllowed)
+        );
+
+        tx.prefix.outputs.last_mut().unwrap().e_memo = None;
+
+        assert_eq!(validate_no_memos_exist(&tx), Ok(()));
     }
 
     #[test]

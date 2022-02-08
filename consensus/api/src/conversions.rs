@@ -9,122 +9,90 @@
 //! `mc_transaction_core::validation::TransactionValidationError`.
 
 use crate::consensus_common::ProposeTxResult;
-use mc_transaction_core::{ring_signature, validation::TransactionValidationError};
+use mc_transaction_core::{ring_signature, validation::TransactionValidationError as Error};
 use std::convert::{From, TryInto};
 
 /// Convert TransactionValidationError --> ProposeTxResult.
-impl From<TransactionValidationError> for ProposeTxResult {
-    fn from(src: TransactionValidationError) -> Self {
+impl From<Error> for ProposeTxResult {
+    fn from(src: Error) -> Self {
         match src {
-            TransactionValidationError::InputsProofsLengthMismatch => {
-                Self::InputsProofsLengthMismatch
-            }
-            TransactionValidationError::NoInputs => Self::NoInputs,
-            TransactionValidationError::TooManyInputs => Self::TooManyInputs,
-            TransactionValidationError::InsufficientInputSignatures => {
-                Self::InsufficientInputSignatures
-            }
-            TransactionValidationError::InvalidInputSignature => Self::InvalidInputSignature,
-            TransactionValidationError::InvalidTransactionSignature(_e) => {
-                Self::InvalidTransactionSignature
-            }
-            TransactionValidationError::InvalidRangeProof => Self::InvalidRangeProof,
-            TransactionValidationError::InsufficientRingSize => Self::InsufficientRingSize,
-            TransactionValidationError::TombstoneBlockExceeded => Self::TombstoneBlockExceeded,
-            TransactionValidationError::TombstoneBlockTooFar => Self::TombstoneBlockTooFar,
-            TransactionValidationError::NoOutputs => Self::NoOutputs,
-            TransactionValidationError::TooManyOutputs => Self::TooManyOutputs,
-            TransactionValidationError::ExcessiveRingSize => Self::ExcessiveRingSize,
-            TransactionValidationError::DuplicateRingElements => Self::DuplicateRingElements,
-            TransactionValidationError::UnsortedRingElements => Self::UnsortedRingElements,
-            TransactionValidationError::UnequalRingSizes => Self::UnequalRingSizes,
-            TransactionValidationError::UnsortedKeyImages => Self::UnsortedKeyImages,
-            TransactionValidationError::ContainsSpentKeyImage => Self::ContainsSpentKeyImage,
-            TransactionValidationError::DuplicateKeyImages => Self::DuplicateKeyImages,
-            TransactionValidationError::DuplicateOutputPublicKey => Self::DuplicateOutputPublicKey,
-            TransactionValidationError::ContainsExistingOutputPublicKey => {
-                Self::ContainsExistingOutputPublicKey
-            }
-            TransactionValidationError::MissingTxOutMembershipProof => {
-                Self::MissingTxOutMembershipProof
-            }
-            TransactionValidationError::InvalidTxOutMembershipProof => {
-                Self::InvalidTxOutMembershipProof
-            }
-            TransactionValidationError::InvalidRistrettoPublicKey => {
-                Self::InvalidRistrettoPublicKey
-            }
-            TransactionValidationError::InvalidLedgerContext => Self::InvalidLedgerContext,
-            TransactionValidationError::Ledger(_) => Self::Ledger,
-            TransactionValidationError::MembershipProofValidationError => {
-                Self::MembershipProofValidationError
-            }
-            TransactionValidationError::TxFeeError => Self::TxFeeError,
-            TransactionValidationError::KeyError => Self::KeyError,
-            TransactionValidationError::UnsortedInputs => Self::UnsortedInputs,
-            TransactionValidationError::MissingMemo => Self::MissingMemo,
+            Error::InputsProofsLengthMismatch => Self::InputsProofsLengthMismatch,
+            Error::NoInputs => Self::NoInputs,
+            Error::TooManyInputs => Self::TooManyInputs,
+            Error::InsufficientInputSignatures => Self::InsufficientInputSignatures,
+            Error::InvalidInputSignature => Self::InvalidInputSignature,
+            Error::InvalidTransactionSignature(_e) => Self::InvalidTransactionSignature,
+            Error::InvalidRangeProof => Self::InvalidRangeProof,
+            Error::InsufficientRingSize => Self::InsufficientRingSize,
+            Error::TombstoneBlockExceeded => Self::TombstoneBlockExceeded,
+            Error::TombstoneBlockTooFar => Self::TombstoneBlockTooFar,
+            Error::NoOutputs => Self::NoOutputs,
+            Error::TooManyOutputs => Self::TooManyOutputs,
+            Error::ExcessiveRingSize => Self::ExcessiveRingSize,
+            Error::DuplicateRingElements => Self::DuplicateRingElements,
+            Error::UnsortedRingElements => Self::UnsortedRingElements,
+            Error::UnequalRingSizes => Self::UnequalRingSizes,
+            Error::UnsortedKeyImages => Self::UnsortedKeyImages,
+            Error::ContainsSpentKeyImage => Self::ContainsSpentKeyImage,
+            Error::DuplicateKeyImages => Self::DuplicateKeyImages,
+            Error::DuplicateOutputPublicKey => Self::DuplicateOutputPublicKey,
+            Error::ContainsExistingOutputPublicKey => Self::ContainsExistingOutputPublicKey,
+            Error::MissingTxOutMembershipProof => Self::MissingTxOutMembershipProof,
+            Error::InvalidTxOutMembershipProof => Self::InvalidTxOutMembershipProof,
+            Error::InvalidRistrettoPublicKey => Self::InvalidRistrettoPublicKey,
+            Error::InvalidLedgerContext => Self::InvalidLedgerContext,
+            Error::Ledger(_) => Self::Ledger,
+            Error::MembershipProofValidationError => Self::MembershipProofValidationError,
+            Error::TxFeeError => Self::TxFeeError,
+            Error::KeyError => Self::KeyError,
+            Error::UnsortedInputs => Self::UnsortedInputs,
+            Error::MissingMemo => Self::MissingMemo,
+            Error::MemosNotAllowed => Self::MemosNotAllowed,
         }
     }
 }
 
 /// Convert ProposeTxResult --> TransactionValidationError.
-impl TryInto<TransactionValidationError> for ProposeTxResult {
+impl TryInto<Error> for ProposeTxResult {
     type Error = &'static str;
 
-    fn try_into(self) -> Result<TransactionValidationError, Self::Error> {
+    fn try_into(self) -> Result<Error, Self::Error> {
         match self {
             Self::Ok => Err("Ok value cannot be convererted into TransactionValidationError"),
-            Self::InputsProofsLengthMismatch => {
-                Ok(TransactionValidationError::InputsProofsLengthMismatch)
-            }
-            Self::NoInputs => Ok(TransactionValidationError::NoInputs),
-            Self::TooManyInputs => Ok(TransactionValidationError::TooManyInputs),
-            Self::InsufficientInputSignatures => {
-                Ok(TransactionValidationError::InsufficientInputSignatures)
-            }
-            Self::InvalidInputSignature => Ok(TransactionValidationError::InvalidInputSignature),
-            Self::InvalidTransactionSignature => {
-                Ok(TransactionValidationError::InvalidTransactionSignature(
-                    ring_signature::Error::InvalidSignature,
-                ))
-            }
-            Self::InvalidRangeProof => Ok(TransactionValidationError::InvalidRangeProof),
-            Self::InsufficientRingSize => Ok(TransactionValidationError::InsufficientRingSize),
-            Self::TombstoneBlockExceeded => Ok(TransactionValidationError::TombstoneBlockExceeded),
-            Self::TombstoneBlockTooFar => Ok(TransactionValidationError::TombstoneBlockTooFar),
-            Self::NoOutputs => Ok(TransactionValidationError::NoOutputs),
-            Self::TooManyOutputs => Ok(TransactionValidationError::TooManyOutputs),
-            Self::ExcessiveRingSize => Ok(TransactionValidationError::ExcessiveRingSize),
-            Self::DuplicateRingElements => Ok(TransactionValidationError::DuplicateRingElements),
-            Self::UnsortedRingElements => Ok(TransactionValidationError::UnsortedRingElements),
-            Self::UnequalRingSizes => Ok(TransactionValidationError::UnequalRingSizes),
-            Self::UnsortedKeyImages => Ok(TransactionValidationError::UnsortedKeyImages),
-            Self::ContainsSpentKeyImage => Ok(TransactionValidationError::ContainsSpentKeyImage),
-            Self::DuplicateKeyImages => Ok(TransactionValidationError::DuplicateKeyImages),
-            Self::DuplicateOutputPublicKey => {
-                Ok(TransactionValidationError::DuplicateOutputPublicKey)
-            }
-            Self::ContainsExistingOutputPublicKey => {
-                Ok(TransactionValidationError::ContainsExistingOutputPublicKey)
-            }
-            Self::MissingTxOutMembershipProof => {
-                Ok(TransactionValidationError::MissingTxOutMembershipProof)
-            }
-            Self::InvalidTxOutMembershipProof => {
-                Ok(TransactionValidationError::InvalidTxOutMembershipProof)
-            }
-            Self::InvalidRistrettoPublicKey => {
-                Ok(TransactionValidationError::InvalidRistrettoPublicKey)
-            }
-            Self::InvalidLedgerContext => Ok(TransactionValidationError::InvalidLedgerContext),
-            Self::Ledger => Ok(TransactionValidationError::Ledger(String::default())),
-            Self::MembershipProofValidationError => {
-                Ok(TransactionValidationError::MembershipProofValidationError)
-            }
-            Self::TxFeeError => Ok(TransactionValidationError::TxFeeError),
-            Self::KeyError => Ok(TransactionValidationError::KeyError),
-            Self::UnsortedInputs => Ok(TransactionValidationError::UnsortedInputs),
-            Self::MissingMemo => Ok(TransactionValidationError::MissingMemo),
+            Self::InputsProofsLengthMismatch => Ok(Error::InputsProofsLengthMismatch),
+            Self::NoInputs => Ok(Error::NoInputs),
+            Self::TooManyInputs => Ok(Error::TooManyInputs),
+            Self::InsufficientInputSignatures => Ok(Error::InsufficientInputSignatures),
+            Self::InvalidInputSignature => Ok(Error::InvalidInputSignature),
+            Self::InvalidTransactionSignature => Ok(Error::InvalidTransactionSignature(
+                ring_signature::Error::InvalidSignature,
+            )),
+            Self::InvalidRangeProof => Ok(Error::InvalidRangeProof),
+            Self::InsufficientRingSize => Ok(Error::InsufficientRingSize),
+            Self::TombstoneBlockExceeded => Ok(Error::TombstoneBlockExceeded),
+            Self::TombstoneBlockTooFar => Ok(Error::TombstoneBlockTooFar),
+            Self::NoOutputs => Ok(Error::NoOutputs),
+            Self::TooManyOutputs => Ok(Error::TooManyOutputs),
+            Self::ExcessiveRingSize => Ok(Error::ExcessiveRingSize),
+            Self::DuplicateRingElements => Ok(Error::DuplicateRingElements),
+            Self::UnsortedRingElements => Ok(Error::UnsortedRingElements),
+            Self::UnequalRingSizes => Ok(Error::UnequalRingSizes),
+            Self::UnsortedKeyImages => Ok(Error::UnsortedKeyImages),
+            Self::ContainsSpentKeyImage => Ok(Error::ContainsSpentKeyImage),
+            Self::DuplicateKeyImages => Ok(Error::DuplicateKeyImages),
+            Self::DuplicateOutputPublicKey => Ok(Error::DuplicateOutputPublicKey),
+            Self::ContainsExistingOutputPublicKey => Ok(Error::ContainsExistingOutputPublicKey),
+            Self::MissingTxOutMembershipProof => Ok(Error::MissingTxOutMembershipProof),
+            Self::InvalidTxOutMembershipProof => Ok(Error::InvalidTxOutMembershipProof),
+            Self::InvalidRistrettoPublicKey => Ok(Error::InvalidRistrettoPublicKey),
+            Self::InvalidLedgerContext => Ok(Error::InvalidLedgerContext),
+            Self::Ledger => Ok(Error::Ledger(String::default())),
+            Self::MembershipProofValidationError => Ok(Error::MembershipProofValidationError),
+            Self::TxFeeError => Ok(Error::TxFeeError),
+            Self::KeyError => Ok(Error::KeyError),
+            Self::UnsortedInputs => Ok(Error::UnsortedInputs),
+            Self::MissingMemo => Ok(Error::MissingMemo),
+            Self::MemosNotAllowed => Ok(Error::MemosNotAllowed),
         }
     }
 }
