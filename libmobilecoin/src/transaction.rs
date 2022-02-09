@@ -70,7 +70,8 @@ pub extern "C" fn mc_tx_out_commitment_crc32(
 ) -> bool {
     ffi_boundary_with_error(out_error, || {
         let commitment = CompressedCommitment::try_from_ffi(&tx_out_commitment)?;
-        *out_crc32.into_mut() = Crc::<u32>::new(&crc::CRC_32_ISO_HDLC).checksum(&commitment.to_bytes());
++        *out_crc32.into_mut() =
++            Crc::<u32>::new(&crc::CRC_32_ISO_HDLC).checksum(&commitment.to_bytes());
         Ok(())
     })
 }
