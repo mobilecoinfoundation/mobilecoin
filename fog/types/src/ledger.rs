@@ -42,8 +42,35 @@ pub struct GetOutputsResponse {
     /// Number of txos in the ledger
     #[prost(uint64, tag = "3")]
     pub global_txo_count: u64,
+
+    /// The latest block_version of a block in the block chain
+    ///
+    /// This may be needed when building transactions, so that use of new
+    /// transaction features can be gated on the block version being
+    /// increased.
+    ///
+    /// Clients may also choose to prompt users to update their software if
+    /// the block version increases beyond what was "known" when the software
+    /// was built.
+    #[prost(uint32, tag = "4")]
+    pub latest_block_version: u32,
+
+    /// The max of latest_block_version and the MAX_BLOCK_VERSION value
+    /// in mc-transaction-core (in this deploy of fog ledger).
+    ///
+    /// Usually when we redeploy consensus, we also redeploy fog. So this should
+    /// usually be equal to the MAX_BLOCK_VERSION value in the consensus
+    /// enclave. (In case it isn't, it won't be less than
+    /// latest_block_version.)
+    ///
+    /// This is possibly an additional signal that clients can use to discover
+    /// that there is a new version of transaction-core that may be available
+    /// for an update (by comparing to their local value of max_block_version).
+    #[prost(uint32, tag = "5")]
+    pub max_block_version: u32,
 }
 
+/// The result of an individual query for an output and membership proof
 #[derive(Clone, Message, Eq, PartialEq, Serialize, Deserialize)]
 pub struct OutputResult {
     /// Index that was queried (global index of a txo)
@@ -77,9 +104,11 @@ pub struct CheckKeyImagesRequest {
 /// Query about a particular key image
 #[derive(Message, Eq, PartialEq)]
 pub struct KeyImageQuery {
+    /// The key image to query about
     #[prost(message, required, tag = "1")]
     pub key_image: KeyImage,
 
+    /// A lower bound on the range to search. This is an optimization.
     #[prost(fixed64, tag = "2")]
     pub start_block: u64,
 }
@@ -102,21 +131,47 @@ pub struct CheckKeyImagesResponse {
     /// Results of key image checks
     #[prost(message, repeated, tag = "3")]
     pub results: Vec<KeyImageResult>,
+
+    /// The latest block_version of a block in the block chain
+    ///
+    /// This may be needed when building transactions, so that use of new
+    /// transaction features can be gated on the block version being
+    /// increased.
+    ///
+    /// Clients may also choose to prompt users to update their software if
+    /// the block version increases beyond what was "known" when the software
+    /// was built.
+    #[prost(uint32, tag = "4")]
+    pub latest_block_version: u32,
+
+    /// The max of latest_block_version and the MAX_BLOCK_VERSION value
+    /// in mc-transaction-core (in this deploy of fog ledger).
+    ///
+    /// Usually when we redeploy consensus, we also redeploy fog. So this should
+    /// usually be equal to the MAX_BLOCK_VERSION value in the consensus
+    /// enclave. (In case it isn't, it won't be less than
+    /// latest_block_version.)
+    ///
+    /// This is possibly an additional signal that clients can use to discover
+    /// that there is a new version of transaction-core that may be available
+    /// for an update (by comparing to their local value of max_block_version).
+    #[prost(uint32, tag = "5")]
+    pub max_block_version: u32,
 }
 
 /// A result which tells for a given key image, whether it was spent or not
 /// and at what height.
 #[derive(Clone, Message, Eq, PartialEq, Serialize, Deserialize)]
 pub struct KeyImageResult {
+    /// The key image which was queried
     #[prost(message, required, tag = "1")]
     pub key_image: KeyImage,
-    // Note: We should perhaps add
-    // [prost(... , default = "!064")]
-    // here to force prost to emit this field even if spent_at = 0, because
-    // spent_at = 0 indicates a miss and we don't want to leak that.
-    // But it's kind of a hack...
-    // proto3 does not support defaults, so this cannot be in the .proto AFAIU
-    // There's probably a simpler fix...
+
+    /// The block index of the block in which this key image appeared
+    //
+    // Note: prost will omit this field if spent_at = 0, but that never
+    // happens in real life, because a Tx cannot be spent in the origin block,
+    // and in the case that a Tx is not spent, we set this field to a nonzero value.
     #[prost(fixed64, tag = "2")]
     pub spent_at: u64,
 
@@ -138,6 +193,7 @@ pub struct KeyImageResult {
     pub key_image_result_code: u32,
 }
 
+/// An enum corresponding to the KeyImageResultCode proto enum
 #[derive(PartialEq, Eq, Debug, Display)]
 #[repr(u32)]
 pub enum KeyImageResultCode {

@@ -104,6 +104,12 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> MerkleProofService<L, E> {
             ));
         }
 
+        let latest_block_version = self
+            .ledger
+            .get_latest_block()
+            .map_err(|err| rpc_database_err(err, &self.logger))?
+            .version;
+
         Ok(GetOutputsResponse {
             num_blocks: self
                 .ledger
@@ -134,6 +140,11 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> MerkleProofService<L, E> {
                 })
                 .collect::<Result<Vec<_>, DbError>>()
                 .map_err(|err| rpc_database_err(err, &self.logger))?,
+            latest_block_version,
+            max_block_version: core::cmp::max(
+                latest_block_version,
+                mc_transaction_core::BLOCK_VERSION,
+            ),
         })
     }
 
@@ -267,6 +278,7 @@ mod test {
         let highest_index: u32 = num_tx_outs - 1;
 
         mock_ledger.num_tx_outs = num_tx_outs as u64;
+        mock_ledger.num_blocks = 1;
 
         for (index, tx_out) in get_tx_outs(num_tx_outs).into_iter().enumerate() {
             mock_ledger.tx_out_by_index.insert(index as u64, tx_out);
@@ -319,6 +331,7 @@ mod test {
         let mut mock_ledger = MockLedger::default();
         let num_tx_outs: u32 = 100;
         mock_ledger.num_tx_outs = num_tx_outs as u64;
+        mock_ledger.num_blocks = 1;
 
         // Populate the mock ledger with TxOuts and membership proofs.
         for (index, tx_out) in get_tx_outs(num_tx_outs).into_iter().enumerate() {

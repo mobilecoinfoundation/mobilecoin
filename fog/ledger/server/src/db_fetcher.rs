@@ -247,6 +247,19 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
                             shared_state.last_known_block_cumulative_txo_count = global_txo_count;
                         }
                     }
+                    match self.db.get_latest_block() {
+                        Err(e) => {
+                            log::error!(
+                                self.logger,
+                                "Unexpected error when checking for ledger latest block version {}: {:?}",
+                                self.next_block_index,
+                                e
+                            );
+                        }
+                        Ok(block) => {
+                            shared_state.latest_block_version = block.version;
+                        }
+                    }
                 });
 
                 self.next_block_index += 1;

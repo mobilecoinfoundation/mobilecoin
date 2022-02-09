@@ -72,17 +72,27 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
     ) -> Result<attest::Message, RpcStatus> {
         log::trace!(self.logger, "Getting encrypted request");
 
-        let (highest_processed_block_count, last_known_block_cumulative_txo_count) = {
+        let (
+            highest_processed_block_count,
+            last_known_block_cumulative_txo_count,
+            latest_block_version,
+        ) = {
             let shared_state = self.db_poll_shared_state.lock().expect("mutex poisoned");
             (
                 shared_state.highest_processed_block_count,
                 shared_state.last_known_block_cumulative_txo_count,
+                shared_state.latest_block_version,
             )
         };
 
         let untrusted_query_response = UntrustedKeyImageQueryResponse {
             highest_processed_block_count,
             last_known_block_cumulative_txo_count,
+            latest_block_version,
+            max_block_version: core::cmp::max(
+                latest_block_version,
+                mc_transaction_core::BLOCK_VERSION,
+            ),
         };
 
         let result_blob = self
