@@ -5,10 +5,13 @@
 //!
 //! HTTP Client -> *Overseer Rocket Server* -> OverseerService -> OverseerWorker
 
-use crate::{error::OverseerError, service::OverseerService};
+use crate::{
+    error::OverseerError, responses::GetIngestSummariesResponse, service::OverseerService,
+};
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_sql_recovery_db::SqlRecoveryDb;
 use rocket::{get, post, routes};
+use rocket_contrib::json::Json;
 
 #[post("/enable")]
 fn enable(state: rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<String, String> {
@@ -23,6 +26,13 @@ fn disable(state: rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<String,
 #[get("/status")]
 fn get_status(state: rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<String, String> {
     state.overseer_service.get_status()
+}
+
+#[get("/ingest_summaries")]
+fn get_ingest_summaries(
+    state: rocket::State<OverseerState<SqlRecoveryDb>>,
+) -> Result<Json<GetIngestSummariesResponse>, String> {
+    state.overseer_service.get_ingest_summaries()
 }
 
 /// Produces metrics for Prometheus.
@@ -50,6 +60,15 @@ pub fn initialize_rocket_server(
     state: OverseerState<SqlRecoveryDb>,
 ) -> rocket::Rocket {
     rocket::custom(rocket_config)
-        .mount("/", routes![enable, disable, get_status, get_metrics])
+        .mount(
+            "/",
+            routes![
+                enable,
+                disable,
+                get_status,
+                get_metrics,
+                get_ingest_summaries
+            ],
+        )
         .manage(state)
 }

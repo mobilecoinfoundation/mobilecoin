@@ -7,11 +7,14 @@
 //!
 //! HTTP Client -> Overseer Rocket Server -> *OverseerService* -> OverseerWorker
 
-use crate::{error::OverseerError, worker::OverseerWorker};
+use crate::{error::OverseerError, responses::GetIngestSummariesResponse, worker::OverseerWorker};
 use mc_common::logger::{log, Logger};
+use mc_fog_ingest_client::FogIngestGrpcClient;
 use mc_fog_recovery_db_iface::RecoveryDb;
+use mc_fog_types::ingest_common::IngestSummary;
 use mc_fog_uri::FogIngestUri;
 use prometheus::{self, Encoder};
+use rocket_contrib::json::Json;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -135,5 +138,32 @@ where
             .map_err(|err| format!("Get prometheus metrics from_utf8 failed: {}", err))?;
 
         Ok(response)
+    }
+
+    pub fn get_ingest_summaries(&self) -> Result<Json<GetIngestSummariesResponse>, String> {
+        let mut ingest_summaries: Vec<IngestSummary> = Vec::new();
+        for ingest_client in self.ingest_clients.lock().unwrap().iter() {
+            match ingest_client.get_status() {
+                Ok(proto_ingest_summary) => {
+                    log::trace!(
+                        self.logger,
+                        "Ingest summary retrieved: {:?}",
+                        proto_ingest_summary
+                    );
+                    let ingest_summary: IngestSummary = IngestSummary::from(&proto_ingest_summary);
+                    ingest_summaries.push(ingest_summary);
+                }
+                Err(err) => {
+                    let error_message = format!(
+                        "Unable to retrieve ingest summary for node ({}): {}",
+                        ingest_client.get_uri(),
+                        err
+                    );
+                    return Err(error_message);
+                }
+            }
+        }
+        let response = GetIngestSummariesResponse { ingest_summaries };
+        Ok(Json(response))
     }
 }

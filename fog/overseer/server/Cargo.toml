@@ -17,6 +17,7 @@ lazy_static = "1.4"
 prometheus = "0.13.0"
 retry = "1.3"
 rocket = { version = "0.4.5", default-features = false }
+rocket_contrib = { version = "0.4.5", default-features = false, features = ["json"] }
 serde = "1"
 structopt = "0.3"
 
@@ -32,6 +33,7 @@ mc-fog-api = { path = "../../api" }
 mc-fog-ingest-client = { path = "../../ingest/client" }
 mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
 mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
+mc-fog-types = { path = "../../types" }
 mc-fog-uri = { path = "../../uri" }
 
 [dev-dependencies]
