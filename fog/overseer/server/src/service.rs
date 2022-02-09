@@ -16,6 +16,7 @@ use mc_fog_uri::FogIngestUri;
 use prometheus::{self, Encoder};
 use rocket_contrib::json::Json;
 use std::{
+    collections::HashMap,
     convert::TryFrom,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -142,7 +143,8 @@ where
     }
 
     pub fn get_ingest_summaries(&self) -> Result<Json<GetIngestSummariesResponse>, String> {
-        let mut ingest_summaries: Vec<IngestSummary> = Vec::new();
+        let mut ingest_summaries: HashMap<FogIngestUri, Result<IngestSummary, String>> =
+            HashMap::new();
         for ingest_client in self.ingest_clients.lock().unwrap().iter() {
             match ingest_client.get_status() {
                 Ok(proto_ingest_summary) => {
@@ -152,10 +154,18 @@ where
                         proto_ingest_summary
                     );
                     match IngestSummary::try_from(&proto_ingest_summary) {
-                        Ok(ingest_summary) => ingest_summaries.push(ingest_summary),
-                        Err(_) => {
-                            let error_message = format!("Could not construct ingest summary for {}", ingest_client.get_uri());
-                            return Err(error_message);
+                        Ok(ingest_summary) => {
+                            ingest_summaries
+                                .insert(ingest_client.get_uri().clone(), Ok(ingest_summary));
+                        }
+                        Err(err) => {
+                            let error_message = format!(
+                                "Could not construct ingest summary for {}: {}",
+                                ingest_client.get_uri(),
+                                err
+                            );
+                            ingest_summaries
+                                .insert(ingest_client.get_uri().clone(), Err(error_message));
                         }
                     }
                 }
@@ -165,11 +175,12 @@ where
                         ingest_client.get_uri(),
                         err
                     );
-                    return Err(error_message);
+                    ingest_summaries.insert(ingest_client.get_uri().clone(), Err(error_message));
                 }
             }
         }
         let response = GetIngestSummariesResponse { ingest_summaries };
+
         Ok(Json(response))
     }
 }
