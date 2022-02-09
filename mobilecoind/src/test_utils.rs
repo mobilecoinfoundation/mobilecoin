@@ -23,9 +23,7 @@ use mc_fog_report_validation_test_utils::{FogPubkeyResolver, MockFogResolver};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::PollingNetworkState;
 use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
-use mc_transaction_core::{
-    ring_signature::KeyImage, tx::TxOut, Block, BlockContents, BLOCK_VERSION,
-};
+use mc_transaction_core::{ring_signature::KeyImage, tx::TxOut, Block, BlockContents};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::{ConnectionUri, FogUri};
@@ -39,6 +37,8 @@ use std::{
     },
 };
 use tempdir::TempDir;
+
+pub use mc_transaction_core::BlockVersion;
 
 /// The amount each recipient gets in the test ledger.
 pub const DEFAULT_PER_RECIPIENT_AMOUNT: u64 = 5_000 * 1_000_000_000_000;
@@ -60,6 +60,7 @@ pub const GET_TESTING_ENVIRONMENT_NUM_BLOCKS: usize = 10;
 /// Note that all txos will be controlled by the subindex
 /// DEFAULT_SUBADDRESS_INDEX
 pub fn get_test_databases(
+    block_version: BlockVersion,
     num_random_recipients: u32,
     known_recipients: &[PublicAddress],
     num_blocks: usize,
@@ -95,6 +96,7 @@ pub fn get_test_databases(
             vec![KeyImage::from(rng.next_u64())]
         };
         let _new_block_height = add_block_to_ledger_db(
+            block_version,
             &mut ledger_db,
             &public_addresses,
             DEFAULT_PER_RECIPIENT_AMOUNT,
@@ -150,6 +152,7 @@ fn generate_ledger_db(path: &str) -> LedgerDB {
 /// * `key_images` - Key images to include in the block.
 /// * `rng` - Random number generator.
 pub fn add_block_to_ledger_db(
+    block_version: BlockVersion,
     ledger_db: &mut LedgerDB,
     recipients: &[PublicAddress],
     output_value: u64,
@@ -185,7 +188,7 @@ pub fn add_block_to_ledger_db(
             .get_block(num_blocks - 1)
             .expect("failed to get parent block");
         new_block =
-            Block::new_with_parent(BLOCK_VERSION, &parent, &Default::default(), &block_contents);
+            Block::new_with_parent(block_version, &parent, &Default::default(), &block_contents);
     } else {
         new_block = Block::new_origin_block(&outputs);
     }
@@ -203,6 +206,7 @@ pub fn add_block_to_ledger_db(
 /// * `ledger_db`
 /// * `outputs` - TXOs to add to ledger.
 pub fn add_txos_to_ledger_db(
+    block_version: BlockVersion,
     ledger_db: &mut LedgerDB,
     outputs: &Vec<TxOut>,
     rng: &mut (impl CryptoRng + RngCore),
@@ -217,7 +221,7 @@ pub fn add_txos_to_ledger_db(
             .get_block(num_blocks - 1)
             .expect("failed to get parent block");
         new_block =
-            Block::new_with_parent(BLOCK_VERSION, &parent, &Default::default(), &block_contents);
+            Block::new_with_parent(block_version, &parent, &Default::default(), &block_contents);
     } else {
         new_block = Block::new_origin_block(&outputs);
     }
@@ -316,6 +320,7 @@ pub fn setup_client(uri: &MobilecoindUri, logger: &Logger) -> MobilecoindApiClie
 /// * `rng`
 
 pub fn get_testing_environment(
+    block_version: BlockVersion,
     num_random_recipients: u32,
     recipients: &[PublicAddress],
     monitors: &[MonitorData],
@@ -329,6 +334,7 @@ pub fn get_testing_environment(
     ConnectionManager<MockBlockchainConnection<LedgerDB>>,
 ) {
     let (ledger_db, mobilecoind_db) = get_test_databases(
+        block_version,
         num_random_recipients,
         recipients,
         GET_TESTING_ENVIRONMENT_NUM_BLOCKS,

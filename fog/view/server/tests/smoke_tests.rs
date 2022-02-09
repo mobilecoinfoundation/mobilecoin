@@ -30,7 +30,7 @@ use mc_fog_view_connection::FogViewGrpcClient;
 use mc_fog_view_enclave::SgxViewEnclave;
 use mc_fog_view_protocol::FogViewConnection;
 use mc_fog_view_server::{config::MobileAcctViewConfig as ViewConfig, server::ViewServer};
-use mc_transaction_core::{Block, BlockID, BLOCK_VERSION};
+use mc_transaction_core::{Block, BlockID, BlockVersion};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::GrpcRetryConfig;
 use rand::{rngs::StdRng, SeedableRng};
@@ -146,7 +146,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id1,
         &Block::new(
-            BLOCK_VERSION,
+            BlockVersion::ONE,
             &BlockID::default(),
             0,
             2,
@@ -161,7 +161,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id1,
         &Block::new(
-            BLOCK_VERSION,
+            BlockVersion::ONE,
             &BlockID::default(),
             1,
             6,
@@ -184,7 +184,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id2,
         &Block::new(
-            BLOCK_VERSION,
+            BlockVersion::ONE,
             &BlockID::default(),
             2,
             12,
@@ -219,7 +219,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id2,
         &Block::new(
-            BLOCK_VERSION,
+            BlockVersion::ONE,
             &BlockID::default(),
             3,
             12,
@@ -234,7 +234,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id2,
         &Block::new(
-            BLOCK_VERSION,
+            BlockVersion::ONE,
             &BlockID::default(),
             4,
             16,
@@ -251,7 +251,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id2,
         &Block::new(
-            BLOCK_VERSION,
+            BlockVersion::ONE,
             &BlockID::default(),
             5,
             20,

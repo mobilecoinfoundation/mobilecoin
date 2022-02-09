@@ -34,8 +34,9 @@ use mc_common::{
     ResponderId,
 };
 use mc_consensus_enclave_api::{
-    ConsensusEnclave, Error, FeeMap, FeeMapError, FeePublicKey, LocallyEncryptedTx, Result,
-    SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeeMapError,
+    FeePublicKey, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
+    WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -49,7 +50,7 @@ use mc_transaction_core::{
     ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Block, BlockContents, BlockSignature, TokenId, BLOCK_VERSION,
+    Block, BlockContents, BlockSignature, TokenId,
 };
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
@@ -108,8 +109,12 @@ pub struct SgxConsensusEnclave {
     /// Logger.
     logger: Logger,
 
-    /// Fee map (for determining the minimum fee for a given token id).
-    fee_map: Mutex<FeeMap>,
+    /// Blockchain Config
+    ///
+    /// This is configuration data that affects whether or not a transaction
+    /// is valid. To ensure that it is uniform across the network, it's hash
+    /// gets appended to responder id.
+    blockchain_config: Mutex<Option<BlockchainConfigWithDigest>>,
 }
 
 impl SgxConsensusEnclave {
@@ -121,7 +126,7 @@ impl SgxConsensusEnclave {
                 &mut McRng::default(),
             )),
             logger,
-            fee_map: Mutex::new(FeeMap::default()),
+            blockchain_config: Mutex::new(None),
         }
     }
 
@@ -172,10 +177,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         peer_self_id: &ResponderId,
         client_self_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-        fee_map: &FeeMap,
+        blockchain_config: BlockchainConfig,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
-        // Inject the fee into the peer ResponderId.
-        let peer_self_id = fee_map.responder_id(peer_self_id);
+        let blockchain_config = BlockchainConfigWithDigest::from(blockchain_config);
+        // Inject the fee map and block version into the peer ResponderId.
+        let peer_self_id = blockchain_config.responder_id(peer_self_id);
+
+        *self.blockchain_config.lock().unwrap() = Some(blockchain_config);
 
         // Init AKE.
         self.ake.init(peer_self_id, client_self_id.clone())?;
@@ -197,8 +205,6 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let key = (*lock).private_key();
         let sealed = IntelSealed::seal_raw(key.as_ref(), &[]).unwrap();
 
-        *self.fee_map.lock().unwrap() = fee_map.clone();
-
         Ok((
             sealed.as_ref().to_vec(),
             TARGET_FEATURES
@@ -209,7 +215,14 @@ impl ConsensusEnclave for SgxConsensusEnclave {
     }
 
     fn get_minimum_fee(&self, token_id: &TokenId) -> Result<Option<u64>> {
-        Ok(self.fee_map.lock()?.get_fee_for_token(token_id))
+        Ok(self
+            .blockchain_config
+            .lock()?
+            .as_ref()
+            .expect("enclave was not initialized")
+            .get_config()
+            .fee_map
+            .get_fee_for_token(token_id))
     }
 
     fn get_identity(&self) -> Result<X25519Public> {
@@ -247,8 +260,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
     }
 
     fn peer_init(&self, peer_id: &ResponderId) -> Result<PeerAuthRequest> {
-        // Inject the if fee map hash passing off to the AKE
-        let peer_id = self.fee_map.lock()?.responder_id(peer_id);
+        // Inject the blockchain config hash, passing off to the AKE
+        let peer_id = self
+            .blockchain_config
+            .lock()?
+            .as_ref()
+            .expect("enclave was not initialized")
+            .responder_id(peer_id);
 
         Ok(self.ake.peer_init(&peer_id)?)
     }
@@ -262,8 +280,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
     ) -> Result<(PeerSession, VerificationReport)> {
-        // Inject the if fee map hash passing off to the AKE
-        let peer_id = self.fee_map.lock()?.responder_id(peer_id);
+        // Inject the blockchain config hash passing off to the AKE
+        let peer_id = self
+            .blockchain_config
+            .lock()?
+            .as_ref()
+            .expect("enclave was not initialized")
+            .responder_id(peer_id);
 
         Ok(self.ake.peer_connect(&peer_id, msg)?)
     }
@@ -341,6 +364,12 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         block_index: u64,
         proofs: Vec<TxOutMembershipProof>,
     ) -> Result<(WellFormedEncryptedTx, WellFormedTxContext)> {
+        let blockchain_config = self.blockchain_config.lock()?;
+        let config = blockchain_config
+            .as_ref()
+            .expect("enclave was not initialized")
+            .get_config();
+
         // Enforce that all membership proofs provided by the untrusted system for
         // transaction validation came from the same ledger state. This can be
         // checked by requiring all proofs to have the same root hash.
@@ -363,9 +392,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         // Validate.
         let mut csprng = McRng::default();
-        let minimum_fee = self
+        let minimum_fee = config
             .fee_map
-            .lock()?
             .get_fee_for_token(&TokenId::MOB)
             // This should actually never happen since the map enforces the existence of
             // MOB.
@@ -373,6 +401,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         mc_transaction_core::validation::validate(
             &tx,
             block_index,
+            config.block_version,
             &proofs,
             minimum_fee,
             &mut csprng,
@@ -424,6 +453,12 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
         root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)> {
+        let blockchain_config = self.blockchain_config.lock()?;
+        let config = blockchain_config
+            .as_ref()
+            .expect("enclave was not initialized")
+            .get_config();
+
         // This implicitly converts Vec<Result<(Tx Vec<TxOutMembershipProof>),_>> into
         // Result<Vec<(Tx, Vec<TxOutMembershipProof>)>, _>, and terminates the
         // iteration when the first Error is encountered.
@@ -441,9 +476,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // ledger that were used to validate the transactions.
         let mut root_elements = Vec::new();
         let mut rng = McRng::default();
-        let minimum_fee = self
+        let minimum_fee = config
             .fee_map
-            .lock()?
             .get_fee_for_token(&TokenId::MOB)
             // This should actually never happen since the map enforces the existence of
             // MOB.
@@ -453,6 +487,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             mc_transaction_core::validation::validate(
                 tx,
                 parent_block.index + 1,
+                config.block_version,
                 proofs,
                 minimum_fee,
                 &mut rng,
@@ -564,7 +599,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         // Form the block.
         let block = Block::new_with_parent(
-            BLOCK_VERSION,
+            config.block_version,
             parent_block,
             &root_elements[0],
             &block_contents,
@@ -629,6 +664,7 @@ mod tests {
         onetime_keys::{create_shared_secret, view_key_matches_output},
         tx::TxOutMembershipHash,
         validation::TransactionValidationError,
+        BlockVersion,
     };
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey, ViewKey,
@@ -646,637 +682,767 @@ mod tests {
 
     #[test_with_logger]
     fn test_tx_is_well_formed_works(logger: Logger) {
-        let enclave = SgxConsensusEnclave::new(logger);
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
 
-        // Create a valid test transaction.
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + 1,
-            &mut rng,
-        );
-
-        // Create a LocallyEncryptedTx that can be fed into `tx_is_well_formed`.
-        let tx_bytes = mc_util_serial::encode(&tx);
-        let locally_encrypted_tx = LocallyEncryptedTx(
+        for block_version in BlockVersion::iterator() {
+            let enclave = SgxConsensusEnclave::new(logger.clone());
+            let blockchain_config = BlockchainConfig {
+                block_version,
+                ..Default::default()
+            };
             enclave
-                .locally_encrypted_tx_cipher
-                .lock()
-                .unwrap()
-                .encrypt_bytes(&mut rng, tx_bytes.clone()),
-        );
+                .enclave_init(
+                    &Default::default(),
+                    &Default::default(),
+                    &None,
+                    blockchain_config,
+                )
+                .unwrap();
 
-        // Call `tx_is_well_formed`.
-        let highest_indices = tx.get_membership_proof_highest_indices();
-        let proofs = ledger
-            .get_tx_out_proof_of_memberships(&highest_indices)
-            .expect("failed getting proofs");
-        let block_index = ledger.num_blocks().unwrap();
-        let (well_formed_encrypted_tx, well_formed_tx_context) = enclave
-            .tx_is_well_formed(locally_encrypted_tx.clone(), block_index, proofs)
-            .unwrap();
+            // Create a valid test transaction.
+            let sender = AccountKey::random(&mut rng);
+            let recipient = AccountKey::random(&mut rng);
 
-        // Check that the context we got back is correct.
-        assert_eq!(well_formed_tx_context.tx_hash(), &tx.tx_hash());
-        assert_eq!(well_formed_tx_context.fee(), tx.prefix.fee);
-        assert_eq!(
-            well_formed_tx_context.tombstone_block(),
-            tx.prefix.tombstone_block
-        );
-        assert_eq!(*well_formed_tx_context.key_images(), tx.key_images());
+            let mut ledger = create_ledger();
+            let n_blocks = 3;
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
-        // All three tx representations should be different.
-        assert_ne!(tx_bytes, locally_encrypted_tx.0);
-        assert_ne!(tx_bytes, well_formed_encrypted_tx.0);
-        assert_ne!(locally_encrypted_tx.0, well_formed_encrypted_tx.0);
+            // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
+            let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+            let tx_out = block_contents.outputs[0].clone();
 
-        // Check that we can go back from the encrypted tx to the original tx.
-        let well_formed_tx = enclave
-            .decrypt_well_formed_tx(&well_formed_encrypted_tx)
-            .unwrap();
-        assert_eq!(tx, well_formed_tx.tx);
+            let tx = create_transaction(
+                block_version,
+                &mut ledger,
+                &tx_out,
+                &sender,
+                &recipient.default_subaddress(),
+                n_blocks + 1,
+                &mut rng,
+            );
+
+            // Create a LocallyEncryptedTx that can be fed into `tx_is_well_formed`.
+            let tx_bytes = mc_util_serial::encode(&tx);
+            let locally_encrypted_tx = LocallyEncryptedTx(
+                enclave
+                    .locally_encrypted_tx_cipher
+                    .lock()
+                    .unwrap()
+                    .encrypt_bytes(&mut rng, tx_bytes.clone()),
+            );
+
+            // Call `tx_is_well_formed`.
+            let highest_indices = tx.get_membership_proof_highest_indices();
+            let proofs = ledger
+                .get_tx_out_proof_of_memberships(&highest_indices)
+                .expect("failed getting proofs");
+            let block_index = ledger.num_blocks().unwrap();
+            let (well_formed_encrypted_tx, well_formed_tx_context) = enclave
+                .tx_is_well_formed(locally_encrypted_tx.clone(), block_index, proofs)
+                .unwrap();
+
+            // Check that the context we got back is correct.
+            assert_eq!(well_formed_tx_context.tx_hash(), &tx.tx_hash());
+            assert_eq!(well_formed_tx_context.fee(), tx.prefix.fee);
+            assert_eq!(
+                well_formed_tx_context.tombstone_block(),
+                tx.prefix.tombstone_block
+            );
+            assert_eq!(*well_formed_tx_context.key_images(), tx.key_images());
+
+            // All three tx representations should be different.
+            assert_ne!(tx_bytes, locally_encrypted_tx.0);
+            assert_ne!(tx_bytes, well_formed_encrypted_tx.0);
+            assert_ne!(locally_encrypted_tx.0, well_formed_encrypted_tx.0);
+
+            // Check that we can go back from the encrypted tx to the original tx.
+            let well_formed_tx = enclave
+                .decrypt_well_formed_tx(&well_formed_encrypted_tx)
+                .unwrap();
+            assert_eq!(tx, well_formed_tx.tx);
+        }
     }
 
     #[test_with_logger]
     fn test_tx_is_well_formed_works_errors_on_bad_inputs(logger: Logger) {
-        let enclave = SgxConsensusEnclave::new(logger);
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
-        // Create a valid test transaction.
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + 1,
-            &mut rng,
-        );
-
-        // Create a LocallyEncryptedTx that can be fed into `tx_is_well_formed`.
-        let tx_bytes = mc_util_serial::encode(&tx);
-        let locally_encrypted_tx = LocallyEncryptedTx(
+        for block_version in BlockVersion::iterator() {
+            let enclave = SgxConsensusEnclave::new(logger.clone());
+            let blockchain_config = BlockchainConfig {
+                block_version,
+                ..Default::default()
+            };
             enclave
-                .locally_encrypted_tx_cipher
-                .lock()
-                .unwrap()
-                .encrypt_bytes(&mut rng, tx_bytes.clone()),
-        );
+                .enclave_init(
+                    &Default::default(),
+                    &Default::default(),
+                    &None,
+                    blockchain_config,
+                )
+                .unwrap();
 
-        // Call `tx_is_well_formed` with a block index that puts us past the tombstone
-        // block.
-        let highest_indices = tx.get_membership_proof_highest_indices();
-        let proofs = ledger
-            .get_tx_out_proof_of_memberships(&highest_indices)
-            .expect("failed getting proofs");
-        let block_index = ledger.num_blocks().unwrap();
+            // Create a valid test transaction.
+            let sender = AccountKey::random(&mut rng);
+            let recipient = AccountKey::random(&mut rng);
 
-        assert_eq!(
-            enclave.tx_is_well_formed(
-                locally_encrypted_tx.clone(),
-                block_index + mc_transaction_core::constants::MAX_TOMBSTONE_BLOCKS,
-                proofs.clone(),
-            ),
-            Err(Error::MalformedTx(
-                TransactionValidationError::TombstoneBlockExceeded
-            ))
-        );
+            let mut ledger = create_ledger();
+            let n_blocks = 3;
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
-        // Call `tx_is_well_formed` with a wrong proof.
-        let mut bad_proofs = proofs.clone();
-        bad_proofs[0].elements[0].hash = TxOutMembershipHash::from([123; 32]);
+            // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
+            let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+            let tx_out = block_contents.outputs[0].clone();
 
-        assert_eq!(
-            enclave.tx_is_well_formed(locally_encrypted_tx.clone(), block_index, bad_proofs,),
-            Err(Error::InvalidLocalMembershipProof)
-        );
+            let tx = create_transaction(
+                block_version,
+                &mut ledger,
+                &tx_out,
+                &sender,
+                &recipient.default_subaddress(),
+                n_blocks + 1,
+                &mut rng,
+            );
 
-        // Corrupt the encrypted data.
-        let mut corrputed_locally_encrypted_tx = locally_encrypted_tx.clone();
-        corrputed_locally_encrypted_tx.0[0] = !corrputed_locally_encrypted_tx.0[0];
+            // Create a LocallyEncryptedTx that can be fed into `tx_is_well_formed`.
+            let tx_bytes = mc_util_serial::encode(&tx);
+            let locally_encrypted_tx = LocallyEncryptedTx(
+                enclave
+                    .locally_encrypted_tx_cipher
+                    .lock()
+                    .unwrap()
+                    .encrypt_bytes(&mut rng, tx_bytes.clone()),
+            );
 
-        assert_eq!(
-            enclave.tx_is_well_formed(corrputed_locally_encrypted_tx, block_index, proofs),
-            Err(Error::CacheCipher(
-                mc_crypto_message_cipher::CipherError::MacFailure
-            ))
-        );
+            // Call `tx_is_well_formed` with a block index that puts us past the tombstone
+            // block.
+            let highest_indices = tx.get_membership_proof_highest_indices();
+            let proofs = ledger
+                .get_tx_out_proof_of_memberships(&highest_indices)
+                .expect("failed getting proofs");
+            let block_index = ledger.num_blocks().unwrap();
+
+            assert_eq!(
+                enclave.tx_is_well_formed(
+                    locally_encrypted_tx.clone(),
+                    block_index + mc_transaction_core::constants::MAX_TOMBSTONE_BLOCKS,
+                    proofs.clone(),
+                ),
+                Err(Error::MalformedTx(
+                    TransactionValidationError::TombstoneBlockExceeded
+                ))
+            );
+
+            // Call `tx_is_well_formed` with a wrong proof.
+            let mut bad_proofs = proofs.clone();
+            bad_proofs[0].elements[0].hash = TxOutMembershipHash::from([123; 32]);
+
+            assert_eq!(
+                enclave.tx_is_well_formed(locally_encrypted_tx.clone(), block_index, bad_proofs,),
+                Err(Error::InvalidLocalMembershipProof)
+            );
+
+            // Corrupt the encrypted data.
+            let mut corrputed_locally_encrypted_tx = locally_encrypted_tx.clone();
+            corrputed_locally_encrypted_tx.0[0] = !corrputed_locally_encrypted_tx.0[0];
+
+            assert_eq!(
+                enclave.tx_is_well_formed(corrputed_locally_encrypted_tx, block_index, proofs),
+                Err(Error::CacheCipher(
+                    mc_crypto_message_cipher::CipherError::MacFailure
+                ))
+            );
+        }
     }
 
     #[test_with_logger]
     // tx_is_well_formed rejects inconsistent root elements.
     fn test_tx_is_well_form_rejects_inconsistent_root_elements(logger: Logger) {
-        let enclave = SgxConsensusEnclave::new(logger);
-        // Construct TxOutMembershipProofs.
-        let mut ledger = create_ledger();
-        let n_blocks = 16;
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
-        let account_key = AccountKey::random(&mut rng);
-        initialize_ledger(&mut ledger, n_blocks, &account_key, &mut rng);
 
-        let n_proofs = 10;
-        let indexes: Vec<u64> = (0..n_proofs as u64).into_iter().collect();
-        let mut membership_proofs = ledger.get_tx_out_proof_of_memberships(&indexes).unwrap();
-        // Modify one of the proofs to have a different root hash.
-        let inconsistent_proof = &mut membership_proofs[7];
-        // TODO: check this
-        let root_element = inconsistent_proof.elements.last_mut().unwrap();
-        root_element.hash = TxOutMembershipHash::from([33u8; 32]);
+        for block_version in BlockVersion::iterator() {
+            let enclave = SgxConsensusEnclave::new(logger.clone());
+            let blockchain_config = BlockchainConfig {
+                block_version,
+                ..Default::default()
+            };
+            enclave
+                .enclave_init(
+                    &Default::default(),
+                    &Default::default(),
+                    &None,
+                    blockchain_config,
+                )
+                .unwrap();
 
-        // The membership proofs supplied by the server are checked before this is
-        // decrypted and validated, so it can just be constructed from an empty
-        // vector of bytes.
-        let locally_encrypted_tx = LocallyEncryptedTx(Vec::new());
-        let block_index = 77;
-        let result =
-            enclave.tx_is_well_formed(locally_encrypted_tx, block_index, membership_proofs);
-        let expected = Err(Error::InvalidLocalMembershipProof);
-        assert_eq!(result, expected);
+            // Construct TxOutMembershipProofs.
+            let mut ledger = create_ledger();
+            let n_blocks = 16;
+            let account_key = AccountKey::random(&mut rng);
+            initialize_ledger(block_version, &mut ledger, n_blocks, &account_key, &mut rng);
+
+            let n_proofs = 10;
+            let indexes: Vec<u64> = (0..n_proofs as u64).into_iter().collect();
+            let mut membership_proofs = ledger.get_tx_out_proof_of_memberships(&indexes).unwrap();
+            // Modify one of the proofs to have a different root hash.
+            let inconsistent_proof = &mut membership_proofs[7];
+            // TODO: check this
+            let root_element = inconsistent_proof.elements.last_mut().unwrap();
+            root_element.hash = TxOutMembershipHash::from([33u8; 32]);
+
+            // The membership proofs supplied by the server are checked before this is
+            // decrypted and validated, so it can just be constructed from an empty
+            // vector of bytes.
+            let locally_encrypted_tx = LocallyEncryptedTx(Vec::new());
+            let block_index = 77;
+            let result =
+                enclave.tx_is_well_formed(locally_encrypted_tx, block_index, membership_proofs);
+            let expected = Err(Error::InvalidLocalMembershipProof);
+            assert_eq!(result, expected);
+        }
     }
 
     #[test_with_logger]
     fn test_form_block_works(logger: Logger) {
-        let enclave = SgxConsensusEnclave::new(logger);
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
-        // Create a valid test transaction.
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 1;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Spend outputs from the origin block.
-        let origin_block_contents = ledger.get_block_contents(0).unwrap();
-
-        let input_transactions: Vec<Tx> = (0..3)
-            .map(|i| {
-                let tx_out = origin_block_contents.outputs[i].clone();
-
-                create_transaction(
-                    &mut ledger,
-                    &tx_out,
-                    &sender,
-                    &recipient.default_subaddress(),
-                    n_blocks + 1,
-                    &mut rng,
+        for block_version in BlockVersion::iterator() {
+            let enclave = SgxConsensusEnclave::new(logger.clone());
+            let blockchain_config = BlockchainConfig {
+                block_version,
+                ..Default::default()
+            };
+            enclave
+                .enclave_init(
+                    &Default::default(),
+                    &Default::default(),
+                    &None,
+                    blockchain_config,
                 )
-            })
-            .collect();
+                .unwrap();
 
-        let total_fee: u64 = input_transactions.iter().map(|tx| tx.prefix.fee).sum();
+            // Create a valid test transaction.
+            let sender = AccountKey::random(&mut rng);
+            let recipient = AccountKey::random(&mut rng);
 
-        // Create WellFormedEncryptedTxs + proofs
-        let well_formed_encrypted_txs_with_proofs: Vec<_> = input_transactions
-            .iter()
-            .map(|tx| {
-                let well_formed_tx = WellFormedTx::from(tx.clone());
-                let encrypted_tx = enclave
-                    .encrypt_well_formed_tx(&well_formed_tx, &mut rng)
-                    .unwrap();
+            let mut ledger = create_ledger();
+            let n_blocks = 1;
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
-                let highest_indices = well_formed_tx.tx.get_membership_proof_highest_indices();
-                let membership_proofs = ledger
-                    .get_tx_out_proof_of_memberships(&highest_indices)
-                    .expect("failed getting proof");
-                (encrypted_tx, membership_proofs)
-            })
-            .collect();
+            // Spend outputs from the origin block.
+            let origin_block_contents = ledger.get_block_contents(0).unwrap();
 
-        // Form block
-        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
-        let root_element = ledger.get_root_tx_out_membership_element().unwrap();
+            let input_transactions: Vec<Tx> = (0..3)
+                .map(|i| {
+                    let tx_out = origin_block_contents.outputs[i].clone();
 
-        let (block, block_contents, signature) = enclave
-            .form_block(
-                &parent_block,
-                &well_formed_encrypted_txs_with_proofs,
-                &root_element,
-            )
-            .unwrap();
+                    create_transaction(
+                        block_version,
+                        &mut ledger,
+                        &tx_out,
+                        &sender,
+                        &recipient.default_subaddress(),
+                        n_blocks + 1,
+                        &mut rng,
+                    )
+                })
+                .collect();
 
-        // Verify signature.
-        {
-            assert_eq!(
-                signature.signer(),
-                &enclave
-                    .ake
-                    .get_identity()
-                    .signing_keypair
-                    .lock()
-                    .unwrap()
-                    .public_key()
-            );
+            let total_fee: u64 = input_transactions.iter().map(|tx| tx.prefix.fee).sum();
 
-            assert!(signature.verify(&block).is_ok());
+            // Create WellFormedEncryptedTxs + proofs
+            let well_formed_encrypted_txs_with_proofs: Vec<_> = input_transactions
+                .iter()
+                .map(|tx| {
+                    let well_formed_tx = WellFormedTx::from(tx.clone());
+                    let encrypted_tx = enclave
+                        .encrypt_well_formed_tx(&well_formed_tx, &mut rng)
+                        .unwrap();
+
+                    let highest_indices = well_formed_tx.tx.get_membership_proof_highest_indices();
+                    let membership_proofs = ledger
+                        .get_tx_out_proof_of_memberships(&highest_indices)
+                        .expect("failed getting proof");
+                    (encrypted_tx, membership_proofs)
+                })
+                .collect();
+
+            // Form block
+            let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+            let root_element = ledger.get_root_tx_out_membership_element().unwrap();
+
+            let (block, block_contents, signature) = enclave
+                .form_block(
+                    &parent_block,
+                    &well_formed_encrypted_txs_with_proofs,
+                    &root_element,
+                )
+                .unwrap();
+
+            // Verify signature.
+            {
+                assert_eq!(
+                    signature.signer(),
+                    &enclave
+                        .ake
+                        .get_identity()
+                        .signing_keypair
+                        .lock()
+                        .unwrap()
+                        .public_key()
+                );
+
+                assert!(signature.verify(&block).is_ok());
+            }
+
+            // `block_contents` should include the aggregate fee.
+
+            let num_outputs: usize = input_transactions
+                .iter()
+                .map(|tx| tx.prefix.outputs.len())
+                .sum();
+            assert_eq!(num_outputs + 1, block_contents.outputs.len());
+
+            // One of the outputs should be the aggregate fee.
+            let view_secret_key = RistrettoPrivate::try_from(&FEE_VIEW_PRIVATE_KEY).unwrap();
+
+            let fee_view_key = {
+                let fee_recipient_pubkeys = enclave.get_fee_recipient().unwrap();
+                let public_address = PublicAddress::new(
+                    &fee_recipient_pubkeys.spend_public_key,
+                    &RistrettoPublic::from(&view_secret_key),
+                );
+                ViewKey::new(view_secret_key, *public_address.spend_public_key())
+            };
+
+            let fee_output = block_contents
+                .outputs
+                .iter()
+                .find(|output| {
+                    let output_public_key = RistrettoPublic::try_from(&output.public_key).unwrap();
+                    let output_target_key = RistrettoPublic::try_from(&output.target_key).unwrap();
+                    view_key_matches_output(&fee_view_key, &output_target_key, &output_public_key)
+                })
+                .unwrap();
+
+            let fee_output_public_key = RistrettoPublic::try_from(&fee_output.public_key).unwrap();
+
+            // The value of the aggregate fee should equal the total value of fees in the
+            // input transaction.
+            let shared_secret = create_shared_secret(&fee_output_public_key, &view_secret_key);
+            let (value, _blinding) = fee_output.amount.get_value(&shared_secret).unwrap();
+            assert_eq!(value, total_fee);
         }
-
-        // `block_contents` should include the aggregate fee.
-
-        let num_outputs: usize = input_transactions
-            .iter()
-            .map(|tx| tx.prefix.outputs.len())
-            .sum();
-        assert_eq!(num_outputs + 1, block_contents.outputs.len());
-
-        // One of the outputs should be the aggregate fee.
-        let view_secret_key = RistrettoPrivate::try_from(&FEE_VIEW_PRIVATE_KEY).unwrap();
-
-        let fee_view_key = {
-            let fee_recipient_pubkeys = enclave.get_fee_recipient().unwrap();
-            let public_address = PublicAddress::new(
-                &fee_recipient_pubkeys.spend_public_key,
-                &RistrettoPublic::from(&view_secret_key),
-            );
-            ViewKey::new(view_secret_key, *public_address.spend_public_key())
-        };
-
-        let fee_output = block_contents
-            .outputs
-            .iter()
-            .find(|output| {
-                let output_public_key = RistrettoPublic::try_from(&output.public_key).unwrap();
-                let output_target_key = RistrettoPublic::try_from(&output.target_key).unwrap();
-                view_key_matches_output(&fee_view_key, &output_target_key, &output_public_key)
-            })
-            .unwrap();
-
-        let fee_output_public_key = RistrettoPublic::try_from(&fee_output.public_key).unwrap();
-
-        // The value of the aggregate fee should equal the total value of fees in the
-        // input transaction.
-        let shared_secret = create_shared_secret(&fee_output_public_key, &view_secret_key);
-        let (value, _blinding) = fee_output.amount.get_value(&shared_secret).unwrap();
-        assert_eq!(value, total_fee);
     }
 
     #[test_with_logger]
     /// form_block should return an error if the input transactions contain a
     /// double-spend.
     fn test_form_block_prevents_duplicate_spend(logger: Logger) {
-        let enclave = SgxConsensusEnclave::new(logger);
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
-        // Initialize a ledger. `sender` is the owner of all outputs in the initial
-        // ledger.
-        let sender = AccountKey::random(&mut rng);
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+        for block_version in BlockVersion::iterator() {
+            let enclave = SgxConsensusEnclave::new(logger.clone());
+            let blockchain_config = BlockchainConfig {
+                block_version,
+                ..Default::default()
+            };
+            enclave
+                .enclave_init(
+                    &Default::default(),
+                    &Default::default(),
+                    &None,
+                    blockchain_config,
+                )
+                .unwrap();
 
-        // Create a few transactions from `sender` to `recipient`.
-        let num_transactions = 5;
-        let recipient = AccountKey::random(&mut rng);
+            // Initialize a ledger. `sender` is the owner of all outputs in the initial
+            // ledger.
+            let sender = AccountKey::random(&mut rng);
+            let mut ledger = create_ledger();
+            let n_blocks = 3;
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
-        // The first block contains RING_SIZE outputs.
-        let block_zero_contents = ledger.get_block_contents(0).unwrap();
+            // Create a few transactions from `sender` to `recipient`.
+            let num_transactions = 5;
+            let recipient = AccountKey::random(&mut rng);
 
-        let mut new_transactions = Vec::new();
-        for i in 0..num_transactions {
-            let tx_out = &block_zero_contents.outputs[i];
+            // The first block contains RING_SIZE outputs.
+            let block_zero_contents = ledger.get_block_contents(0).unwrap();
 
-            let tx = create_transaction(
-                &mut ledger,
-                tx_out,
-                &sender,
-                &recipient.default_subaddress(),
-                n_blocks + 1,
-                &mut rng,
+            let mut new_transactions = Vec::new();
+            for i in 0..num_transactions {
+                let tx_out = &block_zero_contents.outputs[i];
+
+                let tx = create_transaction(
+                    block_version,
+                    &mut ledger,
+                    tx_out,
+                    &sender,
+                    &recipient.default_subaddress(),
+                    n_blocks + 1,
+                    &mut rng,
+                );
+                new_transactions.push(tx);
+            }
+
+            // Create another transaction that spends the zero^th output in block zero.
+            let double_spend = {
+                let tx_out = &block_zero_contents.outputs[0];
+
+                create_transaction(
+                    block_version,
+                    &mut ledger,
+                    tx_out,
+                    &sender,
+                    &recipient.default_subaddress(),
+                    n_blocks + 1,
+                    &mut rng,
+                )
+            };
+            new_transactions.push(double_spend);
+
+            // Create WellFormedEncryptedTxs + proofs
+            let well_formed_encrypted_txs_with_proofs: Vec<_> = new_transactions
+                .iter()
+                .map(|tx| {
+                    let well_formed_tx = WellFormedTx::from(tx.clone());
+                    let encrypted_tx = enclave
+                        .encrypt_well_formed_tx(&well_formed_tx, &mut rng)
+                        .unwrap();
+
+                    let highest_indices = well_formed_tx.tx.get_membership_proof_highest_indices();
+                    let membership_proofs = ledger
+                        .get_tx_out_proof_of_memberships(&highest_indices)
+                        .expect("failed getting proof");
+                    (encrypted_tx, membership_proofs)
+                })
+                .collect();
+
+            // Form block
+            let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+            let root_element = ledger.get_root_tx_out_membership_element().unwrap();
+
+            let form_block_result = enclave.form_block(
+                &parent_block,
+                &well_formed_encrypted_txs_with_proofs,
+                &root_element,
             );
-            new_transactions.push(tx);
+            let expected_duplicate_key_image = new_transactions[0].key_images()[0];
+
+            // Check
+            let expected = Err(Error::FormBlock(format!(
+                "Duplicate key image: {:?}",
+                expected_duplicate_key_image
+            )));
+
+            assert_eq!(form_block_result, expected);
         }
-
-        // Create another transaction that spends the zero^th output in block zero.
-        let double_spend = {
-            let tx_out = &block_zero_contents.outputs[0];
-
-            create_transaction(
-                &mut ledger,
-                tx_out,
-                &sender,
-                &recipient.default_subaddress(),
-                n_blocks + 1,
-                &mut rng,
-            )
-        };
-        new_transactions.push(double_spend);
-
-        // Create WellFormedEncryptedTxs + proofs
-        let well_formed_encrypted_txs_with_proofs: Vec<_> = new_transactions
-            .iter()
-            .map(|tx| {
-                let well_formed_tx = WellFormedTx::from(tx.clone());
-                let encrypted_tx = enclave
-                    .encrypt_well_formed_tx(&well_formed_tx, &mut rng)
-                    .unwrap();
-
-                let highest_indices = well_formed_tx.tx.get_membership_proof_highest_indices();
-                let membership_proofs = ledger
-                    .get_tx_out_proof_of_memberships(&highest_indices)
-                    .expect("failed getting proof");
-                (encrypted_tx, membership_proofs)
-            })
-            .collect();
-
-        // Form block
-        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
-        let root_element = ledger.get_root_tx_out_membership_element().unwrap();
-
-        let form_block_result = enclave.form_block(
-            &parent_block,
-            &well_formed_encrypted_txs_with_proofs,
-            &root_element,
-        );
-        let expected_duplicate_key_image = new_transactions[0].key_images()[0];
-
-        // Check
-        let expected = Err(Error::FormBlock(format!(
-            "Duplicate key image: {:?}",
-            expected_duplicate_key_image
-        )));
-
-        assert_eq!(form_block_result, expected);
     }
 
     #[test_with_logger]
     /// form_block should return an error if the input transactions contain a
     /// duplicate output public key.
     fn test_form_block_prevents_duplicate_output_public_key(logger: Logger) {
-        let enclave = SgxConsensusEnclave::new(logger);
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
-        // Initialize a ledger. `sender` is the owner of all outputs in the initial
-        // ledger.
-        let sender = AccountKey::random(&mut rng);
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+        for block_version in BlockVersion::iterator() {
+            let enclave = SgxConsensusEnclave::new(logger.clone());
+            let blockchain_config = BlockchainConfig {
+                block_version,
+                ..Default::default()
+            };
+            enclave
+                .enclave_init(
+                    &Default::default(),
+                    &Default::default(),
+                    &None,
+                    blockchain_config,
+                )
+                .unwrap();
 
-        // Create a few transactions from `sender` to `recipient`.
-        let num_transactions = 5;
-        let recipient = AccountKey::random(&mut rng);
+            // Initialize a ledger. `sender` is the owner of all outputs in the initial
+            // ledger.
+            let sender = AccountKey::random(&mut rng);
+            let mut ledger = create_ledger();
+            let n_blocks = 3;
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
-        // The first block contains RING_SIZE outputs.
-        let block_zero_contents = ledger.get_block_contents(0).unwrap();
+            // Create a few transactions from `sender` to `recipient`.
+            let num_transactions = 5;
+            let recipient = AccountKey::random(&mut rng);
 
-        // Re-create the rng so that we could more easily generate a duplicate output
-        // public key.
-        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+            // The first block contains RING_SIZE outputs.
+            let block_zero_contents = ledger.get_block_contents(0).unwrap();
 
-        let mut new_transactions = Vec::new();
-        for i in 0..num_transactions - 1 {
-            let tx_out = &block_zero_contents.outputs[i];
-
-            let tx = create_transaction(
-                &mut ledger,
-                tx_out,
-                &sender,
-                &recipient.default_subaddress(),
-                n_blocks + 1,
-                &mut rng,
-            );
-            new_transactions.push(tx);
-        }
-
-        // Re-creating the rng here would result in a duplicate output public key.
-        {
+            // Re-create the rng so that we could more easily generate a duplicate output
+            // public key.
             let mut rng = Hc128Rng::from_seed([77u8; 32]);
-            let tx_out = &block_zero_contents.outputs[num_transactions - 1];
 
-            let tx = create_transaction(
-                &mut ledger,
-                tx_out,
-                &sender,
-                &recipient.default_subaddress(),
-                n_blocks + 1,
-                &mut rng,
-            );
-            new_transactions.push(tx);
+            let mut new_transactions = Vec::new();
+            for i in 0..num_transactions - 1 {
+                let tx_out = &block_zero_contents.outputs[i];
 
-            assert_eq!(
-                new_transactions[0].prefix.outputs[0].public_key,
-                new_transactions[num_transactions - 1].prefix.outputs[0].public_key,
+                let tx = create_transaction(
+                    block_version,
+                    &mut ledger,
+                    tx_out,
+                    &sender,
+                    &recipient.default_subaddress(),
+                    n_blocks + 1,
+                    &mut rng,
+                );
+                new_transactions.push(tx);
+            }
+
+            // Re-creating the rng here would result in a duplicate output public key.
+            {
+                let mut rng = Hc128Rng::from_seed([77u8; 32]);
+                let tx_out = &block_zero_contents.outputs[num_transactions - 1];
+
+                let tx = create_transaction(
+                    block_version,
+                    &mut ledger,
+                    tx_out,
+                    &sender,
+                    &recipient.default_subaddress(),
+                    n_blocks + 1,
+                    &mut rng,
+                );
+                new_transactions.push(tx);
+
+                assert_eq!(
+                    new_transactions[0].prefix.outputs[0].public_key,
+                    new_transactions[num_transactions - 1].prefix.outputs[0].public_key,
+                );
+            }
+
+            // Create WellFormedEncryptedTxs + proofs
+            let well_formed_encrypted_txs_with_proofs: Vec<_> = new_transactions
+                .iter()
+                .map(|tx| {
+                    let well_formed_tx = WellFormedTx::from(tx.clone());
+                    let encrypted_tx = enclave
+                        .encrypt_well_formed_tx(&well_formed_tx, &mut rng)
+                        .unwrap();
+
+                    let highest_indices = well_formed_tx.tx.get_membership_proof_highest_indices();
+                    let membership_proofs = ledger
+                        .get_tx_out_proof_of_memberships(&highest_indices)
+                        .expect("failed getting proof");
+                    (encrypted_tx, membership_proofs)
+                })
+                .collect();
+
+            // Form block
+            let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+            let root_element = ledger.get_root_tx_out_membership_element().unwrap();
+
+            let form_block_result = enclave.form_block(
+                &parent_block,
+                &well_formed_encrypted_txs_with_proofs,
+                &root_element,
             );
+            let expected_duplicate_output_public_key = new_transactions[0].output_public_keys()[0];
+
+            // Check
+            let expected = Err(Error::FormBlock(format!(
+                "Duplicate output public key: {:?}",
+                expected_duplicate_output_public_key
+            )));
+
+            assert_eq!(form_block_result, expected);
         }
-
-        // Create WellFormedEncryptedTxs + proofs
-        let well_formed_encrypted_txs_with_proofs: Vec<_> = new_transactions
-            .iter()
-            .map(|tx| {
-                let well_formed_tx = WellFormedTx::from(tx.clone());
-                let encrypted_tx = enclave
-                    .encrypt_well_formed_tx(&well_formed_tx, &mut rng)
-                    .unwrap();
-
-                let highest_indices = well_formed_tx.tx.get_membership_proof_highest_indices();
-                let membership_proofs = ledger
-                    .get_tx_out_proof_of_memberships(&highest_indices)
-                    .expect("failed getting proof");
-                (encrypted_tx, membership_proofs)
-            })
-            .collect();
-
-        // Form block
-        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
-        let root_element = ledger.get_root_tx_out_membership_element().unwrap();
-
-        let form_block_result = enclave.form_block(
-            &parent_block,
-            &well_formed_encrypted_txs_with_proofs,
-            &root_element,
-        );
-        let expected_duplicate_output_public_key = new_transactions[0].output_public_keys()[0];
-
-        // Check
-        let expected = Err(Error::FormBlock(format!(
-            "Duplicate output public key: {:?}",
-            expected_duplicate_output_public_key
-        )));
-
-        assert_eq!(form_block_result, expected);
     }
 
     #[test_with_logger]
     fn form_block_refuses_duplicate_root_elements(logger: Logger) {
-        let enclave = SgxConsensusEnclave::new(logger);
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
-        // Initialize a ledger. `sender` is the owner of all outputs in the initial
-        // ledger.
-        let sender = AccountKey::random(&mut rng);
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+        for block_version in BlockVersion::iterator() {
+            let enclave = SgxConsensusEnclave::new(logger.clone());
+            let blockchain_config = BlockchainConfig {
+                block_version,
+                ..Default::default()
+            };
+            enclave
+                .enclave_init(
+                    &Default::default(),
+                    &Default::default(),
+                    &None,
+                    blockchain_config,
+                )
+                .unwrap();
 
-        let mut ledger2 = create_ledger();
-        initialize_ledger(&mut ledger2, n_blocks + 1, &sender, &mut rng);
+            // Initialize a ledger. `sender` is the owner of all outputs in the initial
+            // ledger.
+            let sender = AccountKey::random(&mut rng);
+            let mut ledger = create_ledger();
+            let n_blocks = 3;
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
-        // Create a few transactions from `sender` to `recipient`.
-        let num_transactions = 6;
-        let recipient = AccountKey::random(&mut rng);
+            let mut ledger2 = create_ledger();
+            initialize_ledger(block_version, &mut ledger2, n_blocks + 1, &sender, &mut rng);
 
-        // The first block contains a single transaction with RING_SIZE outputs.
-        let block_zero_contents = ledger.get_block_contents(0).unwrap();
+            // Create a few transactions from `sender` to `recipient`.
+            let num_transactions = 6;
+            let recipient = AccountKey::random(&mut rng);
 
-        let mut new_transactions = Vec::new();
-        for i in 0..num_transactions {
-            let tx_out = &block_zero_contents.outputs[i];
+            // The first block contains a single transaction with RING_SIZE outputs.
+            let block_zero_contents = ledger.get_block_contents(0).unwrap();
 
-            let tx = create_transaction(
-                &mut ledger,
-                tx_out,
-                &sender,
-                &recipient.default_subaddress(),
-                n_blocks + 1,
-                &mut rng,
+            let mut new_transactions = Vec::new();
+            for i in 0..num_transactions {
+                let tx_out = &block_zero_contents.outputs[i];
+
+                let tx = create_transaction(
+                    block_version,
+                    &mut ledger,
+                    tx_out,
+                    &sender,
+                    &recipient.default_subaddress(),
+                    n_blocks + 1,
+                    &mut rng,
+                );
+                new_transactions.push(tx);
+            }
+
+            // Create WellFormedEncryptedTxs + proofs
+            let well_formed_encrypted_txs_with_proofs: Vec<(
+                WellFormedEncryptedTx,
+                Vec<TxOutMembershipProof>,
+            )> = new_transactions
+                .iter()
+                .enumerate()
+                .map(|(tx_idx, tx)| {
+                    let well_formed_tx = WellFormedTx::from(tx.clone());
+                    let encrypted_tx = enclave
+                        .encrypt_well_formed_tx(&well_formed_tx, &mut rng)
+                        .unwrap();
+
+                    let highest_indices = well_formed_tx.tx.get_membership_proof_highest_indices();
+                    let membership_proofs = highest_indices
+                        .iter()
+                        .map(|index| {
+                            // Make one of the proofs have a different root element by creating it
+                            // from a different
+                            if tx_idx == 0 {
+                                ledger2
+                                    .get_tx_out_proof_of_memberships(&[*index])
+                                    .expect("failed getting proof")[0]
+                                    .clone()
+                            } else {
+                                ledger
+                                    .get_tx_out_proof_of_memberships(&[*index])
+                                    .expect("failed getting proof")[0]
+                                    .clone()
+                            }
+                        })
+                        .collect();
+                    (encrypted_tx, membership_proofs)
+                })
+                .collect();
+
+            // Form block
+            let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+            let root_element = ledger.get_root_tx_out_membership_element().unwrap();
+
+            let form_block_result = enclave.form_block(
+                &parent_block,
+                &well_formed_encrypted_txs_with_proofs,
+                &root_element,
             );
-            new_transactions.push(tx);
+
+            // Check
+            let expected = Err(Error::MalformedTx(
+                TransactionValidationError::InvalidTxOutMembershipProof,
+            ));
+            assert_eq!(form_block_result, expected);
         }
-
-        // Create WellFormedEncryptedTxs + proofs
-        let well_formed_encrypted_txs_with_proofs: Vec<(
-            WellFormedEncryptedTx,
-            Vec<TxOutMembershipProof>,
-        )> = new_transactions
-            .iter()
-            .enumerate()
-            .map(|(tx_idx, tx)| {
-                let well_formed_tx = WellFormedTx::from(tx.clone());
-                let encrypted_tx = enclave
-                    .encrypt_well_formed_tx(&well_formed_tx, &mut rng)
-                    .unwrap();
-
-                let highest_indices = well_formed_tx.tx.get_membership_proof_highest_indices();
-                let membership_proofs = highest_indices
-                    .iter()
-                    .map(|index| {
-                        // Make one of the proofs have a different root element by creating it from
-                        // a different
-                        if tx_idx == 0 {
-                            ledger2
-                                .get_tx_out_proof_of_memberships(&[*index])
-                                .expect("failed getting proof")[0]
-                                .clone()
-                        } else {
-                            ledger
-                                .get_tx_out_proof_of_memberships(&[*index])
-                                .expect("failed getting proof")[0]
-                                .clone()
-                        }
-                    })
-                    .collect();
-                (encrypted_tx, membership_proofs)
-            })
-            .collect();
-
-        // Form block
-        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
-        let root_element = ledger.get_root_tx_out_membership_element().unwrap();
-
-        let form_block_result = enclave.form_block(
-            &parent_block,
-            &well_formed_encrypted_txs_with_proofs,
-            &root_element,
-        );
-
-        // Check
-        let expected = Err(Error::MalformedTx(
-            TransactionValidationError::InvalidTxOutMembershipProof,
-        ));
-        assert_eq!(form_block_result, expected);
     }
 
     #[test_with_logger]
     fn form_block_refuses_incorrect_root_element(logger: Logger) {
-        let enclave = SgxConsensusEnclave::new(logger);
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
-        // Initialize a ledger. `sender` is the owner of all outputs in the initial
-        // ledger.
-        let sender = AccountKey::random(&mut rng);
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+        for block_version in BlockVersion::iterator() {
+            let enclave = SgxConsensusEnclave::new(logger.clone());
+            let blockchain_config = BlockchainConfig {
+                block_version,
+                ..Default::default()
+            };
+            enclave
+                .enclave_init(
+                    &Default::default(),
+                    &Default::default(),
+                    &None,
+                    blockchain_config,
+                )
+                .unwrap();
 
-        // Create a few transactions from `sender` to `recipient`.
-        let num_transactions = 6;
-        let recipient = AccountKey::random(&mut rng);
+            // Initialize a ledger. `sender` is the owner of all outputs in the initial
+            // ledger.
+            let sender = AccountKey::random(&mut rng);
+            let mut ledger = create_ledger();
+            let n_blocks = 3;
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
-        // The first block contains a single transaction with RING_SIZE outputs.
-        let block_zero_contents = ledger.get_block_contents(0).unwrap();
+            // Create a few transactions from `sender` to `recipient`.
+            let num_transactions = 6;
+            let recipient = AccountKey::random(&mut rng);
 
-        let mut new_transactions = Vec::new();
-        for i in 0..num_transactions {
-            let tx_out = &block_zero_contents.outputs[i];
+            // The first block contains a single transaction with RING_SIZE outputs.
+            let block_zero_contents = ledger.get_block_contents(0).unwrap();
 
-            let tx = create_transaction(
-                &mut ledger,
-                tx_out,
-                &sender,
-                &recipient.default_subaddress(),
-                n_blocks + 1,
-                &mut rng,
+            let mut new_transactions = Vec::new();
+            for i in 0..num_transactions {
+                let tx_out = &block_zero_contents.outputs[i];
+
+                let tx = create_transaction(
+                    block_version,
+                    &mut ledger,
+                    tx_out,
+                    &sender,
+                    &recipient.default_subaddress(),
+                    n_blocks + 1,
+                    &mut rng,
+                );
+                new_transactions.push(tx);
+            }
+
+            // Create WellFormedEncryptedTxs + proofs
+            let well_formed_encrypted_txs_with_proofs: Vec<_> = new_transactions
+                .iter()
+                .map(|tx| {
+                    let well_formed_tx = WellFormedTx::from(tx.clone());
+                    let encrypted_tx = enclave
+                        .encrypt_well_formed_tx(&well_formed_tx, &mut rng)
+                        .unwrap();
+
+                    let highest_indices = well_formed_tx.tx.get_membership_proof_highest_indices();
+                    let membership_proofs = ledger
+                        .get_tx_out_proof_of_memberships(&highest_indices)
+                        .expect("failed getting proof");
+                    (encrypted_tx, membership_proofs)
+                })
+                .collect();
+
+            // Form block
+            let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+            let mut root_element = ledger.get_root_tx_out_membership_element().unwrap();
+
+            // Alter the root element so that it is inconsistent with the proofs.
+            root_element.hash.0[0] = !root_element.hash.0[0];
+
+            let form_block_result = enclave.form_block(
+                &parent_block,
+                &well_formed_encrypted_txs_with_proofs,
+                &root_element,
             );
-            new_transactions.push(tx);
+
+            // Check
+            let expected = Err(Error::InvalidLocalMembershipRootElement);
+            assert_eq!(form_block_result, expected);
         }
-
-        // Create WellFormedEncryptedTxs + proofs
-        let well_formed_encrypted_txs_with_proofs: Vec<_> = new_transactions
-            .iter()
-            .map(|tx| {
-                let well_formed_tx = WellFormedTx::from(tx.clone());
-                let encrypted_tx = enclave
-                    .encrypt_well_formed_tx(&well_formed_tx, &mut rng)
-                    .unwrap();
-
-                let highest_indices = well_formed_tx.tx.get_membership_proof_highest_indices();
-                let membership_proofs = ledger
-                    .get_tx_out_proof_of_memberships(&highest_indices)
-                    .expect("failed getting proof");
-                (encrypted_tx, membership_proofs)
-            })
-            .collect();
-
-        // Form block
-        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
-        let mut root_element = ledger.get_root_tx_out_membership_element().unwrap();
-
-        // Alter the root element so that it is inconsistent with the proofs.
-        root_element.hash.0[0] = !root_element.hash.0[0];
-
-        let form_block_result = enclave.form_block(
-            &parent_block,
-            &well_formed_encrypted_txs_with_proofs,
-            &root_element,
-        );
-
-        // Check
-        let expected = Err(Error::InvalidLocalMembershipRootElement);
-        assert_eq!(form_block_result, expected);
     }
 }

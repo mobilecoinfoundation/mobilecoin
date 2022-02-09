@@ -1107,7 +1107,7 @@ pub mod tests {
     use mc_attest_core::VerificationSignature;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_crypto_keys::Ed25519Pair;
-    use mc_transaction_core::{Block, BlockContents};
+    use mc_transaction_core::{Block, BlockContents, BlockVersion};
     use mc_transaction_core_test_utils::get_blocks;
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::run_with_one_seed;
@@ -1131,7 +1131,15 @@ pub mod tests {
             .iter()
             .map(|account| account.default_subaddress())
             .collect::<Vec<_>>();
-        get_blocks(&recipient_pub_keys, 10, 1, 10, &origin, &mut rng)
+        get_blocks(
+            BlockVersion::ONE,
+            &recipient_pub_keys,
+            10,
+            1,
+            10,
+            &origin,
+            &mut rng,
+        )
     }
 
     // SignatureStore should insert and get multiple signatures.

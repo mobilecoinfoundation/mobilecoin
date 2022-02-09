@@ -11,7 +11,7 @@ use mc_fog_ingest_client::FogIngestGrpcClient;
 use mc_fog_view_protocol::FogViewConnection;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
-    ring_signature::KeyImage, Block, BlockContents, BlockSignature, BLOCK_VERSION,
+    ring_signature::KeyImage, Block, BlockContents, BlockSignature, BlockVersion,
 };
 use mc_util_from_random::FromRandom;
 use mc_watcher::watcher_db::WatcherDB;
@@ -149,7 +149,7 @@ pub fn test_block<T: RngCore + CryptoRng, C: FogViewConnection>(
             .get_block(block_index - 1)
             .unwrap_or_else(|err| panic!("Failed getting block {}: {:?}", block_index - 1, err));
         let block = Block::new_with_parent(
-            BLOCK_VERSION,
+            BlockVersion::ONE,
             &parent_block,
             &Default::default(),
             &block_contents,

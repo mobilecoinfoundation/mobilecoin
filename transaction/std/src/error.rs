@@ -44,6 +44,9 @@ pub enum TxBuilderError {
 
     /// Memo: {0}
     Memo(NewMemoError),
+
+    /// Block version ({0} < {1}) is too old to be supported
+    BlockVersionTooOld(u32, u32),
 }
 
 impl From<mc_util_serial::encode::Error> for TxBuilderError {

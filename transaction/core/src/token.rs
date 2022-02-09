@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 /// Token Id, used to identify different assets on on the blockchain.
 #[derive(
-    Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize, Digestible, Hash,
+    Clone, Copy, Debug, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub struct TokenId(u32);
 
@@ -18,7 +18,7 @@ impl From<u32> for TokenId {
 
 impl fmt::Display for TokenId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{}", self.0)
     }
 }
 

@@ -7,8 +7,9 @@ mod mock_consensus_enclave;
 pub use mock_consensus_enclave::MockConsensusEnclave;
 
 pub use mc_consensus_enclave_api::{
-    ConsensusEnclave, ConsensusEnclaveProxy, Error, FeeMap, FeePublicKey, LocallyEncryptedTx,
-    Result, SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    BlockchainConfig, ConsensusEnclave, ConsensusEnclaveProxy, Error, FeePublicKey,
+    LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext, WellFormedEncryptedTx,
+    WellFormedTxContext,
 };
 
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
@@ -28,7 +29,7 @@ use mc_transaction_core::{
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Block, BlockContents, BlockSignature, Token, TokenId, BLOCK_VERSION,
+    Block, BlockContents, BlockSignature, Token, TokenId,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;
@@ -41,18 +42,18 @@ use std::{
 #[derive(Clone)]
 pub struct ConsensusServiceMockEnclave {
     pub signing_keypair: Arc<Ed25519Pair>,
-    pub fee_map: Arc<Mutex<FeeMap>>,
+    pub blockchain_config: Arc<Mutex<BlockchainConfig>>,
 }
 
 impl Default for ConsensusServiceMockEnclave {
     fn default() -> Self {
         let mut csprng = Hc128Rng::seed_from_u64(0);
         let signing_keypair = Arc::new(Ed25519Pair::from_random(&mut csprng));
-        let fee_map = Arc::new(Mutex::new(FeeMap::default()));
+        let blockchain_config = Arc::new(Mutex::new(BlockchainConfig::default()));
 
         Self {
             signing_keypair,
-            fee_map,
+            blockchain_config,
         }
     }
 }
@@ -99,15 +100,20 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         _self_peer_id: &ResponderId,
         _self_client_id: &ResponderId,
         _sealed_key: &Option<SealedBlockSigningKey>,
-        fee_map: &FeeMap,
+        blockchain_config: BlockchainConfig,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
-        *self.fee_map.lock().unwrap() = fee_map.clone();
+        *self.blockchain_config.lock().unwrap() = blockchain_config;
 
         Ok((vec![], vec![]))
     }
 
     fn get_minimum_fee(&self, token_id: &TokenId) -> Result<Option<u64>> {
-        Ok(self.fee_map.lock().unwrap().get_fee_for_token(token_id))
+        Ok(self
+            .blockchain_config
+            .lock()
+            .unwrap()
+            .fee_map
+            .get_fee_for_token(token_id))
     }
 
     fn get_identity(&self) -> Result<X25519Public> {
@@ -212,6 +218,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
         _root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)> {
+        let block_version = self.blockchain_config.lock().unwrap().block_version;
         let transactions_with_proofs: Vec<(Tx, Vec<TxOutMembershipProof>)> =
             encrypted_txs_with_proofs
                 .iter()
@@ -233,6 +240,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
             mc_transaction_core::validation::validate(
                 tx,
                 parent_block.index + 1,
+                block_version,
                 proofs,
                 Mob::MINIMUM_FEE,
                 &mut rng,
@@ -262,7 +270,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         let block_contents = BlockContents::new(key_images, outputs);
 
         let block = Block::new_with_parent(
-            BLOCK_VERSION,
+            block_version,
             parent_block,
             &root_elements[0],
             &block_contents,

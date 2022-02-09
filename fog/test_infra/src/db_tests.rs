@@ -7,7 +7,7 @@ use mc_fog_recovery_db_iface::{
     ReportDb,
 };
 use mc_fog_types::view::{RngRecord, TxOutSearchResultCode};
-use mc_transaction_core::{Block, BlockID, BLOCK_VERSION};
+use mc_transaction_core::{Block, BlockID, BlockVersion};
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 
@@ -661,7 +661,7 @@ pub fn random_block(
     num_txs: usize,
 ) -> (Block, Vec<ETxOutRecord>) {
     let block = Block::new(
-        BLOCK_VERSION,
+        BlockVersion::ONE,
         &BlockID::default(),
         block_index,
         0,

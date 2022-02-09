@@ -9,6 +9,7 @@ use crate::config::{network::NetworkConfig, tokens::TokensConfig};
 use mc_attest_core::ProviderId;
 use mc_common::{NodeID, ResponderId};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private};
+use mc_transaction_core::{BlockVersion};
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::{AdminUri, ConsensusClientUri as ClientUri, ConsensusPeerUri as PeerUri};
 use std::{fmt::Debug, path::PathBuf, string::String, sync::Arc, time::Duration};
@@ -96,6 +97,10 @@ pub struct Config {
     /// The location for the network.toml/json configuration file.
     #[structopt(long = "tokens", parse(from_os_str))]
     pub tokens_path: Option<PathBuf>,
+
+    /// The configured block version
+    #[structopt(long, env = "MC_BLOCK_VERSION", default_value = "1")]
+    pub block_version: BlockVersion,
 }
 
 /// Decodes an Ed25519 private key.
@@ -175,6 +180,7 @@ mod tests {
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Duration::from_secs(60),
             tokens_path: None,
+            block_version: BlockVersion::ONE,
         };
 
         assert_eq!(
@@ -241,6 +247,7 @@ mod tests {
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Duration::from_secs(60),
             tokens_path: None,
+            block_version: BlockVersion::ONE,
         };
 
         assert_eq!(

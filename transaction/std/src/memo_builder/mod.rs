@@ -20,6 +20,10 @@ pub use rth_memo_builder::RTHMemoBuilder;
 /// installed in the transaction builder when that is constructed.
 /// This way low-level handing of memo payloads with TxOuts is not needed,
 /// and just invoking the TransactionBuilder as before will do the right thing.
+///
+/// Note: Even if the memo builder creates memo paylaods, they will be filtered
+/// out by the transaction builder if the block version is too low for memos
+/// to be supported.
 pub trait MemoBuilder: Debug {
     /// Set the fee.
     /// The memo builder is in the loop when the fee is set and changed,
@@ -34,7 +38,7 @@ pub trait MemoBuilder: Debug {
         value: u64,
         recipient: &PublicAddress,
         memo_context: MemoContext,
-    ) -> Result<Option<MemoPayload>, NewMemoError>;
+    ) -> Result<MemoPayload, NewMemoError>;
 
     /// Build a memo for a change output (to ourselves).
     fn make_memo_for_change_output(
@@ -42,7 +46,7 @@ pub trait MemoBuilder: Debug {
         value: u64,
         change_destination: &ChangeDestination,
         memo_context: MemoContext,
-    ) -> Result<Option<MemoPayload>, NewMemoError>;
+    ) -> Result<MemoPayload, NewMemoError>;
 }
 
 /// The empty memo builder always builds UnusedMemo.
@@ -60,8 +64,8 @@ impl MemoBuilder for EmptyMemoBuilder {
         _value: u64,
         _recipient: &PublicAddress,
         _memo_context: MemoContext,
-    ) -> Result<Option<MemoPayload>, NewMemoError> {
-        Ok(Some(memo::UnusedMemo {}.into()))
+    ) -> Result<MemoPayload, NewMemoError> {
+        Ok(memo::UnusedMemo {}.into())
     }
 
     fn make_memo_for_change_output(
@@ -69,41 +73,7 @@ impl MemoBuilder for EmptyMemoBuilder {
         _value: u64,
         _change_destination: &ChangeDestination,
         _memo_context: MemoContext,
-    ) -> Result<Option<MemoPayload>, NewMemoError> {
-        Ok(Some(memo::UnusedMemo {}.into()))
-    }
-}
-
-/// The NoMemoBuilder always selects None for the memo.
-/// This can be used in the transitional period when the servers transition from
-/// not expecting or accepting memos, to allowing memos to be optional.
-/// In a future release, memos will become mandatory and this memo builder will
-/// be removed in favor of the EmptyMemoBuilder. (The EmptyMemoBuilder won't
-/// work in the period of time before the servers that know about memos have
-/// been deployed)
-#[derive(Default, Clone, Debug)]
-pub struct NoMemoBuilder;
-
-impl MemoBuilder for NoMemoBuilder {
-    fn set_fee(&mut self, _fee: u64) -> Result<(), NewMemoError> {
-        Ok(())
-    }
-
-    fn make_memo_for_output(
-        &mut self,
-        _value: u64,
-        _recipient: &PublicAddress,
-        _memo_context: MemoContext,
-    ) -> Result<Option<MemoPayload>, NewMemoError> {
-        Ok(None)
-    }
-
-    fn make_memo_for_change_output(
-        &mut self,
-        _value: u64,
-        _change_destination: &ChangeDestination,
-        _memo_context: MemoContext,
-    ) -> Result<Option<MemoPayload>, NewMemoError> {
-        Ok(None)
+    ) -> Result<MemoPayload, NewMemoError> {
+        Ok(memo::UnusedMemo {}.into())
     }
 }

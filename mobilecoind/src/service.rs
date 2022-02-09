@@ -1928,9 +1928,9 @@ mod test {
         onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
         tokens::Mob,
         tx::{Tx, TxOut},
-        Block, BlockContents, Token, BLOCK_VERSION,
+        Block, BlockContents, BlockVersion, Token,
     };
-    use mc_transaction_std::{NoMemoBuilder, TransactionBuilder};
+    use mc_transaction_std::{EmptyMemoBuilder, TransactionBuilder};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
@@ -1940,13 +1940,16 @@ mod test {
         str::FromStr,
     };
 
+    // None of these tests really depend on any of the new features
+    const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
+
     #[test_with_logger]
     fn test_add_monitor_impl(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([20u8; 32]);
 
         // Three random recipients and no monitors.
         let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // Create request for adding a new monitor.
         let data = MonitorData::new(
@@ -1999,7 +2002,14 @@ mod test {
 
         // 10 random recipients and no monitors.
         let (_ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(10, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(
+                BLOCK_VERSION,
+                10,
+                &vec![],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
 
         let monitors_map = mobilecoind_db.get_monitor_map().unwrap();
         assert_eq!(0, monitors_map.len());
@@ -2043,7 +2053,14 @@ mod test {
 
         // 10 random recipients and no monitors.
         let (_ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(10, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(
+                BLOCK_VERSION,
+                10,
+                &vec![],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
 
         // Add some new monitors directly to the database.
         let monitors_to_add = 10;
@@ -2095,7 +2112,14 @@ mod test {
 
         // 10 random recipients and no monitors.
         let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(10, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(
+                BLOCK_VERSION,
+                10,
+                &vec![],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
 
         let data = MonitorData::new(
             AccountKey::random(&mut rng),
@@ -2164,6 +2188,7 @@ mod test {
         // 1 known recipient, 3 random recipients and no monitors.
         let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 3,
                 &vec![account_key.default_subaddress()],
                 &vec![],
@@ -2256,7 +2281,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // call get entropy
         let response = client
@@ -2273,7 +2298,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // call get entropy
         let response = client
@@ -2296,7 +2321,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // Use mnemonic to construct AccountKey.
         let mnemonic_str =
@@ -2334,7 +2359,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // Use root entropy to construct AccountKey.
         let root_entropy = [123u8; 32];
@@ -2376,7 +2401,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (_ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // Insert into database.
         let id = mobilecoind_db.add_monitor(&data).unwrap();
@@ -2424,7 +2449,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // Call get ledger info.
         let response = client
@@ -2440,7 +2465,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // Call get block info for a valid block.
         let mut request = mc_mobilecoind_api::GetBlockInfoRequest::new();
@@ -2463,7 +2488,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // Call get block info for a valid block.
         let mut request = mc_mobilecoind_api::GetBlockRequest::new();
@@ -2486,11 +2511,12 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (mut ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // Insert a block with some key images in it.
         let recipient = AccountKey::random(&mut rng).default_subaddress();
         add_block_to_ledger_db(
+            BLOCK_VERSION,
             &mut ledger_db,
             &[recipient.clone()],
             DEFAULT_PER_RECIPIENT_AMOUNT,
@@ -2614,6 +2640,7 @@ mod test {
         // Add another block to the ledger with different key images, to the same
         // recipient
         add_block_to_ledger_db(
+            BLOCK_VERSION,
             &mut ledger_db,
             &[recipient.clone()],
             DEFAULT_PER_RECIPIENT_AMOUNT,
@@ -2724,7 +2751,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // A call with an invalid hash should fail
         {
@@ -2804,13 +2831,21 @@ mod test {
 
         // Insert into database.
         let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
-        let mut transaction_builder =
-            TransactionBuilder::new(MockFogResolver::default(), NoMemoBuilder::default());
+        let mut transaction_builder = TransactionBuilder::new(
+            BLOCK_VERSION,
+            MockFogResolver::default(),
+            EmptyMemoBuilder::default(),
+        );
         let (tx_out, tx_confirmation) = transaction_builder
             .add_output(10, &receiver.subaddress(0), &mut rng)
             .unwrap();
 
-        add_txos_to_ledger_db(&mut ledger_db, &vec![tx_out.clone()], &mut rng);
+        add_txos_to_ledger_db(
+            BLOCK_VERSION,
+            &mut ledger_db,
+            &vec![tx_out.clone()],
+            &mut rng,
+        );
 
         // A request with a valid confirmation number and monitor ID should return
         // Verified
@@ -2880,6 +2915,7 @@ mod test {
         // 1 known recipient, 3 random recipients and no monitors.
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 3,
                 &vec![account_key.default_subaddress()],
                 &vec![],
@@ -2983,6 +3019,7 @@ mod test {
         {
             let recipient = AccountKey::random(&mut rng).default_subaddress();
             add_block_to_ledger_db(
+                BLOCK_VERSION,
                 &mut ledger_db,
                 &[recipient],
                 DEFAULT_PER_RECIPIENT_AMOUNT,
@@ -3073,6 +3110,7 @@ mod test {
         // 1 known recipient, 3 random recipients and no monitors.
         let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 3,
                 &vec![sender.default_subaddress()],
                 &vec![],
@@ -3126,6 +3164,7 @@ mod test {
         // 1 known recipient, 3 random recipients and no monitors.
         let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 3,
                 &vec![sender.default_subaddress()],
                 &vec![],
@@ -3200,6 +3239,7 @@ mod test {
         // 1 known recipient, 3 random recipients and no monitors.
         let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 3,
                 &vec![sender.default_subaddress()],
                 &vec![],
@@ -3250,6 +3290,7 @@ mod test {
         // 1 known recipient, 3 random recipients and no monitors.
         let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 3,
                 &vec![sender.default_subaddress()],
                 &vec![],
@@ -3326,6 +3367,7 @@ mod test {
         // 1 known recipient, 3 random recipients and no monitors.
         let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 3,
                 &vec![sender.default_subaddress()],
                 &vec![],
@@ -3514,7 +3556,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // Grab the first TxOut of each block in the database and verify its index.
         for block_index in 0..test_utils::GET_TESTING_ENVIRONMENT_NUM_BLOCKS as u64 {
@@ -3548,6 +3590,7 @@ mod test {
         // 1 known recipient, 3 random recipients and no monitors.
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 3,
                 &vec![sender.default_subaddress()],
                 &vec![],
@@ -3661,6 +3704,7 @@ mod test {
             / test_utils::GET_TESTING_ENVIRONMENT_NUM_BLOCKS as u32;
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 num_random_recipients as u32,
                 &vec![sender_default_subaddress.clone()],
                 &vec![],
@@ -3671,6 +3715,7 @@ mod test {
         // Add a bunch of blocks/utxos for our recipient.
         for _ in 0..MAX_INPUTS {
             let _ = add_block_to_ledger_db(
+                BLOCK_VERSION,
                 &mut ledger_db,
                 &[sender_default_subaddress.clone()],
                 DEFAULT_PER_RECIPIENT_AMOUNT,
@@ -3758,6 +3803,7 @@ mod test {
         // 1 known recipient, 3 random recipients and no monitors.
         let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 3,
                 &vec![sender.default_subaddress()],
                 &vec![],
@@ -3824,6 +3870,7 @@ mod test {
         // 1 known recipient, 3 random recipients and no monitors.
         let (ledger_db, mobilecoind_db, client, _server, server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 3,
                 &vec![sender.default_subaddress()],
                 &vec![],
@@ -4013,6 +4060,7 @@ mod test {
         // 1 known recipient, 3 random recipients and no monitors.
         let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 3,
                 &vec![account_key.default_subaddress()],
                 &vec![],
@@ -4080,6 +4128,7 @@ mod test {
         // 1 known recipient, 3 random recipients and no monitors.
         let (ledger_db, mobilecoind_db, client, _server, server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 3,
                 &vec![sender.default_subaddress()],
                 &vec![],
@@ -4254,12 +4303,20 @@ mod test {
 
         // 1 known recipient, 3 random recipients and no monitors.
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(10, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(
+                BLOCK_VERSION,
+                10,
+                &vec![],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
 
         // Add a few utxos to our recipient, such that all of them are required to
         // create the test transaction.
         for amount in &[10, 20, Mob::MINIMUM_FEE] {
             add_block_to_ledger_db(
+                BLOCK_VERSION,
                 &mut ledger_db,
                 &[sender.default_subaddress()],
                 *amount,
@@ -4396,6 +4453,7 @@ mod test {
 
         // 1 known recipient, 3 random recipients and no monitors.
         let (ledger_db, mobilecoind_db) = test_utils::get_test_databases(
+            BLOCK_VERSION,
             3,
             &vec![sender.default_subaddress()],
             test_utils::GET_TESTING_ENVIRONMENT_NUM_BLOCKS,
@@ -4538,6 +4596,7 @@ mod test {
         // 1 known recipient, 3 random recipients and no monitors.
         let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 3,
                 &vec![sender.default_subaddress()],
                 &vec![],
@@ -4604,6 +4663,7 @@ mod test {
         // 1 known recipient, 3 random recipients and no monitors.
         let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 3,
                 &vec![sender.default_subaddress()],
                 &vec![],
@@ -4668,6 +4728,7 @@ mod test {
         // 1 known recipient, 3 random recipients and no monitors.
         let (ledger_db, mobilecoind_db, client, _server, server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 3,
                 &vec![sender.default_subaddress()],
                 &vec![],
@@ -4782,7 +4843,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // Random receiver address.
         let receiver = AccountKey::random(&mut rng).default_subaddress();
@@ -4875,7 +4936,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // a valid transfer code must reference a tx_public_key that appears in the
         // ledger that is controlled by the root_entropy included in the code
@@ -4886,8 +4947,11 @@ mod test {
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
 
-        let mut transaction_builder =
-            TransactionBuilder::new(MockFogResolver::default(), NoMemoBuilder::default());
+        let mut transaction_builder = TransactionBuilder::new(
+            BLOCK_VERSION,
+            MockFogResolver::default(),
+            EmptyMemoBuilder::default(),
+        );
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
                 10,
@@ -4896,7 +4960,12 @@ mod test {
             )
             .unwrap();
 
-        add_txos_to_ledger_db(&mut ledger_db, &vec![tx_out.clone()], &mut rng);
+        add_txos_to_ledger_db(
+            BLOCK_VERSION,
+            &mut ledger_db,
+            &vec![tx_out.clone()],
+            &mut rng,
+        );
 
         let tx_public_key = tx_out.public_key;
 
@@ -4983,7 +5052,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // a valid transfer code must reference a tx_public_key that appears in the
         // ledger that is controlled by the bip39_entropy included in the code
@@ -4994,8 +5063,11 @@ mod test {
         let key = mnemonic.derive_slip10_key(0);
         let account_key = AccountKey::from(key);
 
-        let mut transaction_builder =
-            TransactionBuilder::new(MockFogResolver::default(), NoMemoBuilder::default());
+        let mut transaction_builder = TransactionBuilder::new(
+            BLOCK_VERSION,
+            MockFogResolver::default(),
+            EmptyMemoBuilder::default(),
+        );
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
                 10,
@@ -5004,7 +5076,12 @@ mod test {
             )
             .unwrap();
 
-        add_txos_to_ledger_db(&mut ledger_db, &vec![tx_out.clone()], &mut rng);
+        add_txos_to_ledger_db(
+            BLOCK_VERSION,
+            &mut ledger_db,
+            &vec![tx_out.clone()],
+            &mut rng,
+        );
 
         let tx_public_key = tx_out.public_key;
 
@@ -5085,7 +5162,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         {
             // Random receiver address.
@@ -5152,7 +5229,7 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
         let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
 
         let network_status = client
             .get_network_status(&mc_mobilecoind_api::Empty::new())
@@ -5186,6 +5263,7 @@ mod test {
         // 1 known recipient, 3 random recipients and no monitors.
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
+                BLOCK_VERSION,
                 3,
                 &vec![sender.default_subaddress()],
                 &vec![],
@@ -5234,6 +5312,7 @@ mod test {
 
         let recipient = AccountKey::random(&mut rng).default_subaddress();
         add_block_to_ledger_db(
+            BLOCK_VERSION,
             &mut ledger_db,
             &[recipient],
             DEFAULT_PER_RECIPIENT_AMOUNT,

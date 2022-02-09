@@ -3,7 +3,7 @@
 //! The message types used by the consensus_enclave_api.
 
 use crate::{
-    FeeMap, LocallyEncryptedTx, ResponderId, SealedBlockSigningKey, WellFormedEncryptedTx,
+    BlockchainConfig, LocallyEncryptedTx, ResponderId, SealedBlockSigningKey, WellFormedEncryptedTx,
 };
 use alloc::vec::Vec;
 use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
@@ -26,7 +26,7 @@ pub enum EnclaveCall {
         ResponderId,
         ResponderId,
         Option<SealedBlockSigningKey>,
-        FeeMap,
+        BlockchainConfig,
     ),
 
     /// The [PeerableEnclave::peer_init()] method.

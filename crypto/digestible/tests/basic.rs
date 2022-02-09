@@ -466,6 +466,46 @@ fn test_btree_set() {
     );
 }
 
+// Test digesting of BTreeMap
+#[test]
+fn test_btree_map() {
+    let mut temp: std::collections::BTreeMap<u64, String> = Default::default();
+    assert_eq!(
+        temp.digest32::<MerlinTranscript>(b"test"),
+        [
+            35, 213, 109, 195, 226, 235, 162, 166, 228, 183, 30, 23, 226, 184, 19, 8, 12, 166, 24,
+            194, 247, 84, 216, 45, 122, 19, 75, 140, 159, 233, 85, 6
+        ]
+    );
+
+    temp.insert(19, "woot".to_string());
+    assert_eq!(
+        temp.digest32::<MerlinTranscript>(b"test"),
+        [
+            157, 91, 97, 183, 53, 162, 127, 203, 78, 224, 250, 181, 7, 233, 137, 34, 155, 253, 11,
+            218, 205, 131, 249, 193, 147, 122, 147, 210, 206, 120, 146, 30
+        ]
+    );
+
+    temp.insert(17, "megapile".to_string());
+    assert_eq!(
+        temp.digest32::<MerlinTranscript>(b"test"),
+        [
+            86, 233, 76, 166, 1, 234, 207, 241, 211, 139, 180, 111, 129, 50, 124, 103, 204, 156,
+            111, 108, 68, 189, 26, 150, 99, 129, 229, 137, 135, 254, 15, 187
+        ]
+    );
+
+    temp.insert(49, "electric".to_string());
+    assert_eq!(
+        temp.digest32::<MerlinTranscript>(b"test"),
+        [
+            238, 88, 122, 55, 171, 144, 7, 202, 32, 204, 179, 33, 203, 2, 43, 166, 92, 208, 16,
+            179, 0, 119, 188, 71, 38, 184, 254, 237, 90, 176, 177, 213
+        ]
+    );
+}
+
 // Test digesting of Generic Array
 //
 // Particularly, check that it is hashing the same way as a regular array

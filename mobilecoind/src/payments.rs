@@ -22,9 +22,11 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    BlockIndex, Token,
+    BlockIndex, BlockVersion, Token,
 };
-use mc_transaction_std::{ChangeDestination, InputCredentials, NoMemoBuilder, TransactionBuilder};
+use mc_transaction_std::{
+    ChangeDestination, EmptyMemoBuilder, InputCredentials, TransactionBuilder,
+};
 use mc_util_uri::FogUri;
 use rand::Rng;
 use rayon::prelude::*;
@@ -763,8 +765,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             fog_resolver_factory(&fog_uris).map_err(Error::Fog)?
         };
 
+        // FIXME: We should get the block version from
+        // `LedgerDb::get_last_block()?.version`
+        let block_version = BlockVersion::ONE;
+
         // Create tx_builder.
-        let mut tx_builder = TransactionBuilder::new(fog_resolver, NoMemoBuilder::default());
+        let mut tx_builder =
+            TransactionBuilder::new(block_version, fog_resolver, EmptyMemoBuilder::default());
 
         tx_builder
             .set_fee(fee)

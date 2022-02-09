@@ -33,6 +33,7 @@ mod tests {
     use mc_transaction_core::{
         onetime_keys::recover_onetime_private_key,
         tx::{Tx, TxOut, TxOutMembershipProof},
+        BlockVersion,
     };
     use mc_transaction_core_test_utils::MockFogResolver;
     use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
@@ -46,87 +47,96 @@ mod tests {
         // transaction_builder.rs::test_simple_transaction
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let alice = AccountKey::random(&mut rng);
-        let bob = AccountKey::random(&mut rng);
-        let charlie = AccountKey::random(&mut rng);
+        for block_version in BlockVersion::iterator() {
+            let alice = AccountKey::random(&mut rng);
+            let bob = AccountKey::random(&mut rng);
+            let charlie = AccountKey::random(&mut rng);
 
-        let minted_outputs: Vec<TxOut> = {
-            // Mint an initial collection of outputs, including one belonging to
-            // `sender_account`.
-            let mut recipient_and_amounts: Vec<(PublicAddress, u64)> = Vec::new();
-            recipient_and_amounts.push((alice.default_subaddress(), 65536));
+            let minted_outputs: Vec<TxOut> = {
+                // Mint an initial collection of outputs, including one belonging to
+                // `sender_account`.
+                let mut recipient_and_amounts: Vec<(PublicAddress, u64)> = Vec::new();
+                recipient_and_amounts.push((alice.default_subaddress(), 65536));
 
-            // Some outputs belonging to this account will be used as mix-ins.
-            recipient_and_amounts.push((charlie.default_subaddress(), 65536));
-            recipient_and_amounts.push((charlie.default_subaddress(), 65536));
-            mc_transaction_core_test_utils::get_outputs(&recipient_and_amounts, &mut rng)
-        };
+                // Some outputs belonging to this account will be used as mix-ins.
+                recipient_and_amounts.push((charlie.default_subaddress(), 65536));
+                recipient_and_amounts.push((charlie.default_subaddress(), 65536));
+                mc_transaction_core_test_utils::get_outputs(
+                    block_version,
+                    &recipient_and_amounts,
+                    &mut rng,
+                )
+            };
 
-        let mut transaction_builder =
-            TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                MockFogResolver::default(),
+                EmptyMemoBuilder::default(),
+            );
 
-        let ring: Vec<TxOut> = minted_outputs.clone();
-        let public_key = RistrettoPublic::try_from(&minted_outputs[0].public_key).unwrap();
-        let onetime_private_key = recover_onetime_private_key(
-            &public_key,
-            alice.view_private_key(),
-            &alice.default_subaddress_spend_private(),
-        );
+            let ring: Vec<TxOut> = minted_outputs.clone();
+            let public_key = RistrettoPublic::try_from(&minted_outputs[0].public_key).unwrap();
+            let onetime_private_key = recover_onetime_private_key(
+                &public_key,
+                alice.view_private_key(),
+                &alice.default_subaddress_spend_private(),
+            );
 
-        let membership_proofs: Vec<TxOutMembershipProof> = ring
-            .iter()
-            .map(|_tx_out| {
-                // TransactionBuilder does not validate membership proofs, but does require one
-                // for each ring member.
-                TxOutMembershipProof::new(0, 0, Default::default())
-            })
-            .collect();
+            let membership_proofs: Vec<TxOutMembershipProof> = ring
+                .iter()
+                .map(|_tx_out| {
+                    // TransactionBuilder does not validate membership proofs, but does require one
+                    // for each ring member.
+                    TxOutMembershipProof::new(0, 0, Default::default())
+                })
+                .collect();
 
-        let input_credentials = InputCredentials::new(
-            ring.clone(),
-            membership_proofs,
-            0,
-            onetime_private_key,
-            *alice.view_private_key(),
-        )
-        .unwrap();
-
-        transaction_builder.add_input(input_credentials);
-        transaction_builder.set_fee(0).unwrap();
-        transaction_builder
-            .add_output(65536, &bob.default_subaddress(), &mut rng)
+            let input_credentials = InputCredentials::new(
+                ring.clone(),
+                membership_proofs,
+                0,
+                onetime_private_key,
+                *alice.view_private_key(),
+            )
             .unwrap();
 
-        let tx = transaction_builder.build(&mut rng).unwrap();
+            transaction_builder.add_input(input_credentials);
+            transaction_builder.set_fee(0).unwrap();
+            transaction_builder
+                .add_output(65536, &bob.default_subaddress(), &mut rng)
+                .unwrap();
 
-        // decode(encode(tx)) should be the identity function.
-        {
-            let bytes = mc_util_serial::encode(&tx);
-            let recovered_tx = mc_util_serial::decode(&bytes).unwrap();
-            assert_eq!(tx, recovered_tx);
-        }
+            let tx = transaction_builder.build(&mut rng).unwrap();
 
-        // Converting mc_transaction_core::Tx -> external::Tx -> mc_transaction_core::Tx
-        // should be the identity function.
-        {
-            let external_tx: external::Tx = external::Tx::from(&tx);
-            let recovered_tx: Tx = Tx::try_from(&external_tx).unwrap();
-            assert_eq!(tx, recovered_tx);
-        }
+            // decode(encode(tx)) should be the identity function.
+            {
+                let bytes = mc_util_serial::encode(&tx);
+                let recovered_tx = mc_util_serial::decode(&bytes).unwrap();
+                assert_eq!(tx, recovered_tx);
+            }
 
-        // Encoding with prost, decoding with protobuf should be the identity function.
-        {
-            let bytes = mc_util_serial::encode(&tx);
-            let recovered_tx = external::Tx::parse_from_bytes(&bytes).unwrap();
-            assert_eq!(recovered_tx, external::Tx::from(&tx));
-        }
+            // Converting mc_transaction_core::Tx -> external::Tx -> mc_transaction_core::Tx
+            // should be the identity function.
+            {
+                let external_tx: external::Tx = external::Tx::from(&tx);
+                let recovered_tx: Tx = Tx::try_from(&external_tx).unwrap();
+                assert_eq!(tx, recovered_tx);
+            }
 
-        // Encoding with protobuf, decoding with prost should be the identity function.
-        {
-            let external_tx: external::Tx = external::Tx::from(&tx);
-            let bytes = external_tx.write_to_bytes().unwrap();
-            let recovered_tx: Tx = mc_util_serial::decode(&bytes).unwrap();
-            assert_eq!(tx, recovered_tx);
+            // Encoding with prost, decoding with protobuf should be the identity function.
+            {
+                let bytes = mc_util_serial::encode(&tx);
+                let recovered_tx = external::Tx::parse_from_bytes(&bytes).unwrap();
+                assert_eq!(recovered_tx, external::Tx::from(&tx));
+            }
+
+            // Encoding with protobuf, decoding with prost should be the identity function.
+            {
+                let external_tx: external::Tx = external::Tx::from(&tx);
+                let bytes = external_tx.write_to_bytes().unwrap();
+                let recovered_tx: Tx = mc_util_serial::decode(&bytes).unwrap();
+                assert_eq!(tx, recovered_tx);
+            }
         }
     }
 }
