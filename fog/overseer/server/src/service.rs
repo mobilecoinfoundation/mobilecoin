@@ -16,6 +16,7 @@ use mc_fog_uri::FogIngestUri;
 use prometheus::{self, Encoder};
 use rocket_contrib::json::Json;
 use std::{
+    convert::TryFrom,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -150,8 +151,13 @@ where
                         "Ingest summary retrieved: {:?}",
                         proto_ingest_summary
                     );
-                    let ingest_summary: IngestSummary = IngestSummary::from(&proto_ingest_summary);
-                    ingest_summaries.push(ingest_summary);
+                    match IngestSummary::try_from(&proto_ingest_summary) {
+                        Ok(ingest_summary) => ingest_summaries.push(ingest_summary),
+                        Err(_) => {
+                            let error_message = format!("Could not construct ingest summary for {}", ingest_client.get_uri());
+                            return Err(error_message);
+                        }
+                    }
                 }
                 Err(err) => {
                     let error_message = format!(
