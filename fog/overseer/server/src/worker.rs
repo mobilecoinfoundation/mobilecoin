@@ -14,14 +14,13 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::ingest_common::{IngestControllerMode, IngestSummary};
 use mc_fog_ingest_client::FogIngestGrpcClient;
 use mc_fog_recovery_db_iface::{IngressPublicKeyRecord, IngressPublicKeyRecordFilters, RecoveryDb};
-use mc_fog_uri::FogIngestUri;
 use retry::{delay::Fixed, retry_with_index, OperationResult};
 use std::{
     convert::TryFrom,
     iter::Iterator,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        Arc, Mutex,
     },
     thread::{Builder as ThreadBuilder, JoinHandle},
     time::Duration,
@@ -43,11 +42,8 @@ pub struct OverseerWorker {
 }
 
 impl OverseerWorker {
-    /// Retry failed GRPC requests every 10 seconds.
-    const GRPC_RETRY_SECONDS: Duration = Duration::from_millis(10000);
-
     pub fn new<DB: RecoveryDb + Clone + Send + Sync + 'static>(
-        ingest_cluster_uris: Vec<FogIngestUri>,
+        ingest_clients: Arc<Mutex<Vec<FogIngestGrpcClient>>>,
         recovery_db: DB,
         logger: Logger,
         is_enabled: Arc<AtomicBool>,
@@ -58,18 +54,6 @@ impl OverseerWorker {
         let thread_is_enabled = is_enabled;
         let stop_requested = Arc::new(AtomicBool::new(false));
         let thread_stop_requested = stop_requested.clone();
-        let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
-        let ingest_clients: Vec<FogIngestGrpcClient> = ingest_cluster_uris
-            .iter()
-            .map(|fog_ingest_uri| {
-                FogIngestGrpcClient::new(
-                    fog_ingest_uri.clone(),
-                    Self::GRPC_RETRY_SECONDS,
-                    grpcio_env.clone(),
-                    logger.clone(),
-                )
-            })
-            .collect();
         let join_handle = Some(
             ThreadBuilder::new()
                 .name("OverseerWorker".to_string())
@@ -112,7 +96,7 @@ impl Drop for OverseerWorker {
 struct OverseerWorkerThread<DB: RecoveryDb> {
     /// The list of FogIngestClients that Overseer uses to communicate with
     /// each node in the Fog Ingest cluster that it's monitoring.
-    ingest_clients: Vec<FogIngestGrpcClient>,
+    ingest_clients: Arc<Mutex<Vec<FogIngestGrpcClient>>>,
 
     /// The database that contains, among other things, info on the Fog Ingest
     /// cluster's ingress keys.
@@ -147,7 +131,7 @@ where
     const NUMBER_OF_TRIES: usize = 3;
 
     pub fn start(
-        ingest_clients: Vec<FogIngestGrpcClient>,
+        ingest_clients: Arc<Mutex<Vec<FogIngestGrpcClient>>>,
         recovery_db: DB,
         is_enabled: Arc<AtomicBool>,
         stop_requested: Arc<AtomicBool>,
@@ -254,7 +238,9 @@ where
         &self,
     ) -> Result<Vec<IngestSummaryNodeMapping>, OverseerError> {
         let mut ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping> = Vec::new();
-        for (ingest_client_index, ingest_client) in self.ingest_clients.iter().enumerate() {
+        for (ingest_client_index, ingest_client) in
+            self.ingest_clients.lock().unwrap().iter().enumerate()
+        {
             match ingest_client.get_status() {
                 Ok(ingest_summary) => {
                     log::trace!(
@@ -401,7 +387,8 @@ where
                 Err(_) => continue,
             };
             if inactive_outstanding_key.eq(&node_ingress_key) {
-                let node = &self.ingest_clients[ingest_summary_node_mapping.node_index];
+                let node =
+                    &self.ingest_clients.lock().unwrap()[ingest_summary_node_mapping.node_index];
                 match node.activate() {
                     Ok(_) => {
                         log::info!(
@@ -470,7 +457,7 @@ where
     /// Tries to set a new ingress key on a node. The node is assumed to be
     /// idle.
     fn set_new_key_on_a_node(&self) -> Result<usize, OverseerError> {
-        for (i, ingest_client) in self.ingest_clients.iter().enumerate() {
+        for (i, ingest_client) in self.ingest_clients.lock().unwrap().iter().enumerate() {
             let result = retry_with_index(
                 Fixed::from_millis(200).take(Self::NUMBER_OF_TRIES),
                 |current_try| {
@@ -512,7 +499,7 @@ where
         let result = retry_with_index(
             Fixed::from_millis(200).take(Self::NUMBER_OF_TRIES),
             |current_try| {
-                match self.ingest_clients[activated_node_index].activate() {
+                match self.ingest_clients.lock().unwrap()[activated_node_index].activate() {
                     Ok(_) => {
                         log::info!(
                             self.logger,

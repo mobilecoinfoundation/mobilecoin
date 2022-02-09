@@ -12,9 +12,12 @@ use mc_common::logger::{log, Logger};
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_uri::FogIngestUri;
 use prometheus::{self, Encoder};
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
+    time::Duration,
 };
 
 /// Implements core logic for the Fog Overseer HTTP server.
@@ -22,7 +25,7 @@ pub struct OverseerService<DB: RecoveryDb + Clone + Send + Sync + 'static>
 where
     OverseerError: From<DB::Error>,
 {
-    ingest_cluster_uris: Vec<FogIngestUri>,
+    ingest_clients: Arc<Mutex<Vec<FogIngestGrpcClient>>>,
     logger: Logger,
     overseer_worker: Option<OverseerWorker>,
     recovery_db: DB,
@@ -33,9 +36,24 @@ impl<DB: RecoveryDb + Clone + Send + Sync + 'static> OverseerService<DB>
 where
     OverseerError: From<DB::Error>,
 {
+    /// Retry failed GRPC requests every 10 seconds.
+    const GRPC_RETRY_SECONDS: Duration = Duration::from_millis(10000);
+
     pub fn new(ingest_cluster_uris: Vec<FogIngestUri>, recovery_db: DB, logger: Logger) -> Self {
+        let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
+        let ingest_clients: Vec<FogIngestGrpcClient> = ingest_cluster_uris
+            .iter()
+            .map(|fog_ingest_uri| {
+                FogIngestGrpcClient::new(
+                    fog_ingest_uri.clone(),
+                    Self::GRPC_RETRY_SECONDS,
+                    grpcio_env.clone(),
+                    logger.clone(),
+                )
+            })
+            .collect();
         Self {
-            ingest_cluster_uris,
+            ingest_clients: Arc::new(Mutex::new(ingest_clients)),
             logger,
             overseer_worker: None,
             recovery_db,
@@ -58,7 +76,7 @@ where
         log::info!(self.logger, "Starting overseer worker");
 
         self.overseer_worker = Some(OverseerWorker::new(
-            self.ingest_cluster_uris.clone(),
+            self.ingest_clients.clone(),
             self.recovery_db.clone(),
             self.logger.clone(),
             self.is_enabled.clone(),
