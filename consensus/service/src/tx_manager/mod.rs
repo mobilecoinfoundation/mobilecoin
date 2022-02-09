@@ -368,7 +368,10 @@ mod tests {
     };
     use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
     use mc_ledger_db::Ledger;
-    use mc_transaction_core::validation::TransactionValidationError;
+    use mc_transaction_core::{
+        membership_proofs::Range, tx::TxOutMembershipElement,
+        validation::TransactionValidationError,
+    };
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
@@ -769,6 +772,15 @@ mod tests {
             .expect_get_tx_out_proof_of_memberships()
             .times(tx_hashes.len())
             .return_const(Ok(highest_index_proofs));
+
+        // Should get root txout membership element once per block.
+        mock_untrusted
+            .expect_get_root_tx_out_membership_element()
+            .times(1)
+            .return_const(Ok(TxOutMembershipElement::new(
+                Range::new(0, 1).unwrap(),
+                [1; 32],
+            )));
 
         let mut mock_enclave = MockConsensusEnclave::new();
         let expected_block = Block::new_origin_block(&vec![]);
