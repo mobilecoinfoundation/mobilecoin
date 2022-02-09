@@ -18,6 +18,8 @@ use serde::{Deserialize, Serialize};
 pub mod common;
 /// Types related to fog ingest
 pub mod ingest;
+/// Types related to ingest_common.proto
+pub mod ingest_common;
 /// Types related to fog ledger
 pub mod ledger;
 /// Types related to fog view
