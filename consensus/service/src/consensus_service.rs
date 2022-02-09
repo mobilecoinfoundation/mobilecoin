@@ -28,9 +28,8 @@ use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_p
 use mc_consensus_enclave::{ConsensusEnclave, Error as ConsensusEnclaveError};
 use mc_crypto_keys::DistinguishedEncoding;
 use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
-use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
+use mc_peers::{ConsensusValue, PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
-use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
     AdminServer, AnonymousAuthenticator, Authenticator, BuildInfoService,
     ConnectionUriGrpcioServer, GetConfigJsonFn, HealthCheckStatus, HealthService,
@@ -96,7 +95,7 @@ pub struct IncomingConsensusMsg {
 /// - The NodeID that notified us about this transaction. (will be None for
 ///   values submitted by clients and not relayed by other nodes)
 pub type ProposeTxCallback =
-    Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>;
+    Arc<dyn Fn(ConsensusValue, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>;
 
 pub struct ConsensusService<
     E: ConsensusEnclave + Clone + Send + Sync + 'static,
@@ -601,8 +600,9 @@ impl<
             })
             .collect();
 
-        Arc::new(move |tx_hash, origin_node, relayed_from| {
+        Arc::new(move |scp_value, origin_node, relayed_from| {
             let origin_node = origin_node.unwrap_or(&local_node_id);
+            let ConsensusValue::TxHash(tx_hash) = scp_value;
 
             // Broadcast to peers.
             //
@@ -643,7 +643,7 @@ impl<
             byzantine_ledger.upgrade().and_then(|ledger| {
                 ledger
                     .get()
-                    .map(|ledger| ledger.push_values(vec![tx_hash], timestamp))
+                    .map(|ledger| ledger.push_values(vec![scp_value], timestamp))
             });
         })
     }

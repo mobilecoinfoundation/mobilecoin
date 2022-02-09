@@ -77,8 +77,8 @@ mock! {
         fn form_block(
             &self,
             parent_block: &Block,
-            txs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
-        ) -> ConsensusEnclaveResult<(Block, BlockContents, BlockSignature)>;
+            encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+         ) -> ConsensusEnclaveResult<(Block, BlockContents, BlockSignature)>;
     }
 
     impl ReportableEnclave for ConsensusEnclave {

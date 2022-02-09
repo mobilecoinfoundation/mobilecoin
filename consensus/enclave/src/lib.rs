@@ -249,11 +249,11 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
     fn form_block(
         &self,
         parent_block: &Block,
-        txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+        encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
     ) -> Result<(Block, BlockContents, BlockSignature)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::FormBlock(
             parent_block.clone(),
-            txs_with_proofs.to_vec(),
+            encrypted_txs_with_proofs.to_vec(),
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

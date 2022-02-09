@@ -27,7 +27,7 @@ use mc_consensus_api::{
 };
 use mc_consensus_enclave::{ConsensusEnclave, Error};
 use mc_ledger_db::Ledger;
-use mc_peers::TxProposeAAD;
+use mc_peers::{ConsensusValue, TxProposeAAD};
 use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
@@ -155,7 +155,7 @@ impl PeerApiService {
                 Ok(tx_hash) => {
                     // Submit for consideration in next SCP slot.
                     (*self.scp_client_value_sender)(
-                        tx_hash,
+                        ConsensusValue::TxHash(tx_hash),
                         origin_node.as_ref(),
                         relayed_by.as_ref(),
                     );
@@ -418,8 +418,8 @@ mod tests {
     };
     use mc_crypto_keys::{Ed25519Pair, Ed25519Private};
     use mc_ledger_db::MockLedger;
-    use mc_peers;
-    use mc_transaction_core::{tx::TxHash, Block};
+    use mc_peers::{self, ConsensusValue};
+    use mc_transaction_core::Block;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use std::sync::Arc;
@@ -445,9 +445,11 @@ mod tests {
 
     // Does nothing.
     fn get_scp_client_value_sender(
-    ) -> Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send> {
+    ) -> Arc<dyn Fn(ConsensusValue, Option<&NodeID>, Option<&ResponderId>) + Sync + Send> {
         Arc::new(
-            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {
+            |_value: ConsensusValue,
+             _node_id: Option<&NodeID>,
+             _responder_id: Option<&ResponderId>| {
                 // Do nothing.
             },
         )

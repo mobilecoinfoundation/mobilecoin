@@ -300,7 +300,7 @@ pub trait ConsensusEnclave: ReportableEnclave {
     fn form_block(
         &self,
         parent_block: &Block,
-        txs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+        encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
     ) -> Result<(Block, BlockContents, BlockSignature)>;
 }
 

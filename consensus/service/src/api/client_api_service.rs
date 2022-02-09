@@ -17,6 +17,7 @@ use mc_consensus_api::{
 };
 use mc_consensus_enclave::ConsensusEnclave;
 use mc_ledger_db::Ledger;
+use mc_peers::ConsensusValue;
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use std::sync::Arc;
@@ -88,7 +89,7 @@ impl ClientApiService {
         self.tx_manager.validate(&tx_hash)?;
 
         // The transaction can be considered by the network.
-        (*self.propose_tx_callback)(tx_hash, None, None);
+        (*self.propose_tx_callback)(ConsensusValue::TxHash(tx_hash), None, None);
         counters::ADD_TX.inc();
         Ok(response)
     }
@@ -162,6 +163,7 @@ mod client_api_tests {
     use mc_consensus_enclave::TxContext;
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_ledger_db::MockLedger;
+    use mc_peers::ConsensusValue;
     use mc_transaction_core::{
         ring_signature::KeyImage, tx::TxHash, validation::TransactionValidationError,
     };
@@ -202,7 +204,9 @@ mod client_api_tests {
 
         // Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>
         let scp_client_value_sender = Arc::new(
-            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {
+            |_value: ConsensusValue,
+             _node_id: Option<&NodeID>,
+             _responder_id: Option<&ResponderId>| {
                 // TODO: store inputs for inspection.
             },
         );
@@ -266,7 +270,9 @@ mod client_api_tests {
         }
 
         let scp_client_value_sender = Arc::new(
-            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
+            |_value: ConsensusValue,
+             _node_id: Option<&NodeID>,
+             _responder_id: Option<&ResponderId>| {},
         );
 
         let mut ledger = MockLedger::new();
@@ -336,7 +342,9 @@ mod client_api_tests {
             .return_const(Ok(tx_context));
 
         let scp_client_value_sender = Arc::new(
-            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
+            |_value: ConsensusValue,
+             _node_id: Option<&NodeID>,
+             _responder_id: Option<&ResponderId>| {},
         );
 
         let num_blocks = 5;
@@ -395,7 +403,9 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { false }); // Not serving
 
         let scp_client_value_sender = Arc::new(
-            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
+            |_value: ConsensusValue,
+             _node_id: Option<&NodeID>,
+             _responder_id: Option<&ResponderId>| {},
         );
 
         let authenticator = AnonymousAuthenticator::default();
@@ -441,7 +451,9 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { true });
 
         let scp_client_value_sender = Arc::new(
-            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
+            |_value: ConsensusValue,
+             _node_id: Option<&NodeID>,
+             _responder_id: Option<&ResponderId>| {},
         );
 
         let authenticator = AnonymousAuthenticator::default();
@@ -487,7 +499,9 @@ mod client_api_tests {
         let is_serving_fn = Arc::new(|| -> bool { true }); // Not serving
 
         let scp_client_value_sender = Arc::new(
-            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
+            |_value: ConsensusValue,
+             _node_id: Option<&NodeID>,
+             _responder_id: Option<&ResponderId>| {},
         );
 
         let authenticator = TokenAuthenticator::new(

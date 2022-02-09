@@ -21,8 +21,8 @@ use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::{LedgerSync, NetworkState, SCPNetworkState};
 use mc_peers::{
-    Broadcast, ConsensusConnection, ConsensusMsg, Error as PeerError, RetryableConsensusConnection,
-    VerifiedConsensusMsg,
+    Broadcast, ConsensusConnection, ConsensusMsg, ConsensusValue, Error as PeerError,
+    RetryableConsensusConnection, VerifiedConsensusMsg,
 };
 use mc_transaction_core::tx::TxHash;
 use mc_util_metered_channel::Receiver;
@@ -48,7 +48,7 @@ pub struct ByzantineLedgerWorker<
     PC: BlockchainConnection + ConsensusConnection + 'static,
     TXM: TxManager,
 > {
-    scp_node: Box<dyn ScpNode<TxHash>>,
+    scp_node: Box<dyn ScpNode<ConsensusValue>>,
     msg_signer_key: Arc<Ed25519Pair>,
 
     connection_manager: ConnectionManager<PC>,
@@ -121,7 +121,7 @@ impl<
     ///   by this node.
     /// * `logger` - Logger instance.
     pub fn new(
-        scp_node: Box<dyn ScpNode<TxHash>>,
+        scp_node: Box<dyn ScpNode<ConsensusValue>>,
         msg_signer_key: Arc<Ed25519Pair>,
         ledger: L,
         ledger_sync_service: LS,
@@ -509,13 +509,14 @@ impl<
         }
     }
 
-    fn complete_current_slot(&mut self, externalized: Vec<TxHash>) {
+    fn complete_current_slot(&mut self, externalized: Vec<ConsensusValue>) {
         let tracer = tracer!();
 
         let span = start_block_span(&tracer, "complete_current_slot", self.current_slot_index);
         let _active = mark_span_as_active(span);
 
         // Update pending value processing time metrics.
+        // TODO: need to rename tx_hash here
         for tx_hash in externalized.iter() {
             if let Some(timestamp) = self.pending_values.get_timestamp_for_value(tx_hash) {
                 let duration = Instant::now().saturating_duration_since(timestamp);
@@ -582,8 +583,9 @@ impl<
             self.tx_manager.remove_expired(index)
         };
 
-        self.pending_values
-            .retain(|tx_hash| !purged_hashes.contains(tx_hash));
+        self.pending_values.retain(|value| match value {
+            ConsensusValue::TxHash(tx_hash) => !purged_hashes.contains(tx_hash),
+        });
 
         // Drop pending values that are no longer considered valid.
         self.pending_values.clear_invalid_values();
@@ -623,14 +625,22 @@ impl<
 
     fn fetch_missing_txs(
         &mut self,
-        scp_msg: &Msg<TxHash>,
+        scp_msg: &Msg<ConsensusValue>,
         from_responder_id: &ResponderId,
     ) -> bool {
         // Hashes of transactions that are not currently cached.
         let missing_hashes: Vec<TxHash> = scp_msg
             .values()
             .into_iter()
-            .filter(|tx_hash| !self.tx_manager.contains(tx_hash))
+            .filter_map(|value| match value {
+                ConsensusValue::TxHash(tx_hash) => {
+                    if self.tx_manager.contains(&tx_hash) {
+                        None
+                    } else {
+                        Some(tx_hash)
+                    }
+                }
+            })
             .collect();
 
         // Don't attempt to issue any RPC calls if we know we're going to fail.
@@ -722,7 +732,7 @@ impl<
     }
 
     /// Broadcast a consensus message issued by this node.
-    fn issue_consensus_message(&mut self, msg: Msg<TxHash>) -> Result<(), &'static str> {
+    fn issue_consensus_message(&mut self, msg: Msg<ConsensusValue>) -> Result<(), &'static str> {
         let consensus_msg =
             ConsensusMsg::from_scp_msg(&self.ledger, msg, self.msg_signer_key.as_ref())
                 .map_err(|_| "Failed creating ConsensusMsg")?;
@@ -799,7 +809,7 @@ mod tests {
     use mc_crypto_keys::Ed25519Pair;
     use mc_ledger_db::{Ledger, MockLedger}; // Don't use test_utils::MockLedger.
     use mc_ledger_sync::{LedgerSyncError, MockLedgerSync, SCPNetworkState};
-    use mc_peers::{ConsensusMsg, MockBroadcast, VerifiedConsensusMsg};
+    use mc_peers::{ConsensusMsg, ConsensusValue, MockBroadcast, VerifiedConsensusMsg};
     use mc_peers_test_utils::MockPeerConnection;
     use mc_transaction_core::{tx::TxHash, validation::TransactionValidationError, Block};
     use mc_util_metered_channel::{Receiver, Sender};
@@ -828,7 +838,7 @@ mod tests {
         quorum_set: &QuorumSet,
         num_blocks: u64,
     ) -> (
-        MockScpNode<TxHash>,
+        MockScpNode<ConsensusValue>,
         MockLedger,
         MockLedgerSync<SCPNetworkState>,
         MockTxManager,
@@ -1233,7 +1243,10 @@ mod tests {
 
         for tx_hash in &tx_hashes {
             task_sender
-                .send(TaskMessage::Values(Some(Instant::now()), vec![*tx_hash]))
+                .send(TaskMessage::Values(
+                    Some(Instant::now()),
+                    vec![ConsensusValue::TxHash(*tx_hash)],
+                ))
                 .unwrap();
         }
         // Initially, pending_values should be empty.
@@ -1311,7 +1324,10 @@ mod tests {
         // Submit the transactions.
         for tx_hash in &tx_hashes {
             task_sender
-                .send(TaskMessage::Values(Some(Instant::now()), vec![*tx_hash]))
+                .send(TaskMessage::Values(
+                    Some(Instant::now()),
+                    vec![ConsensusValue::TxHash(*tx_hash)],
+                ))
                 .unwrap();
         }
 
@@ -1333,7 +1349,7 @@ mod tests {
         signer_key: &Ed25519Pair,
         ledger: &L,
     ) -> VerifiedConsensusMsg {
-        let msg: Msg<TxHash, NodeID> = Msg {
+        let msg: Msg<ConsensusValue, NodeID> = Msg {
             sender_id: sender_id.clone(),
             slot_index: 1,
             quorum_set: QuorumSet {
@@ -1395,7 +1411,9 @@ mod tests {
             .map(|i| TxHash([i as u8; 32]))
             .collect();
         for tx_hash in tx_hashes {
-            worker.pending_values.push(tx_hash, Some(Instant::now()));
+            worker
+                .pending_values
+                .push(tx_hash.into(), Some(Instant::now()));
         }
         worker.need_nominate = true;
 
