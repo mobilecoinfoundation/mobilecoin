@@ -27,7 +27,7 @@ pub fn compute_category1_hmac(
     shared_secret: &[u8; 32],
     tx_out_public_key: &CompressedRistrettoPublic,
     memo_type_bytes: [u8; 2],
-    memo_data: &[u8; 44],
+    memo_data: &[u8; 64],
 ) -> [u8; 16] {
     let mut mac = HmacSha512::new_from_slice(shared_secret.as_ref())
         .expect("hmac can take a key of any size");
@@ -38,7 +38,7 @@ pub fn compute_category1_hmac(
     // Next add memo type bytes (2)
     mac.update(&memo_type_bytes);
     // Next add all the memo data bytes, except for the last 16 (which are the mac)
-    mac.update(&memo_data[..(44 - 16)]);
+    mac.update(&memo_data[..(64 - 16)]);
     let mut result = [0u8; 16];
     result.copy_from_slice(&mac.finalize().into_bytes()[0..16]);
     result
@@ -50,7 +50,7 @@ pub fn validate_authenticated_sender(
     receiving_subaddress_view_private_key: &RistrettoPrivate,
     tx_out_public_key: &CompressedRistrettoPublic,
     memo_type_bytes: [u8; 2],
-    memo_data: &[u8; 44],
+    memo_data: &[u8; 64],
 ) -> Choice {
     let mut result = Choice::from(1u8);
     let expected_sender_address_hash = ShortAddressHash::from(sender_address);
@@ -67,7 +67,7 @@ pub fn validate_authenticated_sender(
         memo_type_bytes,
         memo_data,
     );
-    let found_hmac: [u8; 16] = memo_data[28..].try_into().unwrap();
+    let found_hmac: [u8; 16] = memo_data[(64 - 16)..].try_into().unwrap();
     result &= expected_hmac.ct_eq(&found_hmac);
     result
 }
