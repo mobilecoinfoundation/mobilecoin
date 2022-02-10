@@ -148,7 +148,7 @@ macro_rules! impl_sync_connection_retry {
             stringify!($func),
             stringify!($iter)
         );
-        $crate::_retry::retry($iter.map($crate::_retry::delay::jitter), || {
+        $crate::_retry::retry($iter.into_iter().map($crate::_retry::delay::jitter), || {
             $crate::_retry_wrapper!($obj.$func())
         })
     }};
@@ -160,7 +160,7 @@ macro_rules! impl_sync_connection_retry {
             stringify!($arg1),
             stringify!($iter)
         );
-        $crate::_retry::retry($iter.map($crate::_retry::delay::jitter), || {
+        $crate::_retry::retry($iter.into_iter().map($crate::_retry::delay::jitter), || {
             $crate::_retry_wrapper!($obj.$func($arg1))
         })
     }};
@@ -173,7 +173,7 @@ macro_rules! impl_sync_connection_retry {
             stringify!($arg2),
             stringify!($iter)
         );
-        $crate::_retry::retry($iter.map($crate::_retry::delay::jitter), || {
+        $crate::_retry::retry($iter.into_iter().map($crate::_retry::delay::jitter), || {
             $crate::_retry_wrapper!($obj.$func($arg1, $arg2))
         })
     }};
