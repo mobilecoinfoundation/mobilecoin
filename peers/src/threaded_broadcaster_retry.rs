@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use retry::delay::{Fibonacci,jitter};
+use retry::delay::{jitter, Fibonacci};
 use std::time::{Duration, Instant};
 
 /// Default number of attempts to make at delivering each message.

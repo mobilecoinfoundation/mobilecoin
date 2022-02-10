@@ -17,7 +17,7 @@ use mc_consensus_scp::{
 };
 use mc_transaction_core::BlockIndex;
 use mc_util_uri::ConnectionUri;
-use retry::delay::{Fibonacci,jitter};
+use retry::delay::{jitter, Fibonacci};
 use std::{
     collections::{HashMap, HashSet},
     str::FromStr,
