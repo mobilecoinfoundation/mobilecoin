@@ -148,7 +148,9 @@ macro_rules! impl_sync_connection_retry {
             stringify!($func),
             stringify!($iter)
         );
-        $crate::_retry::retry($iter, || $crate::_retry_wrapper!($obj.$func()))
+        $crate::_retry::retry($iter.map($crate::_retry::delay::jitter), || {
+            $crate::_retry_wrapper!($obj.$func())
+        })
     }};
     ($obj:expr, $logger:expr, $func:ident, $iter:expr, $arg1:expr) => {{
         $crate::_trace_time!(
@@ -158,7 +160,9 @@ macro_rules! impl_sync_connection_retry {
             stringify!($arg1),
             stringify!($iter)
         );
-        $crate::_retry::retry($iter, || $crate::_retry_wrapper!($obj.$func($arg1)))
+        $crate::_retry::retry($iter.map($crate::_retry::delay::jitter), || {
+            $crate::_retry_wrapper!($obj.$func($arg1))
+        })
     }};
     ($obj:expr, $logger:expr, $func:ident, $iter:expr, $arg1:expr, $arg2:expr) => {{
         $crate::_trace_time!(
@@ -169,7 +173,9 @@ macro_rules! impl_sync_connection_retry {
             stringify!($arg2),
             stringify!($iter)
         );
-        $crate::_retry::retry($iter, || $crate::_retry_wrapper!($obj.$func($arg1, $arg2)))
+        $crate::_retry::retry($iter.map($crate::_retry::delay::jitter), || {
+            $crate::_retry_wrapper!($obj.$func($arg1, $arg2))
+        })
     }};
 }
 

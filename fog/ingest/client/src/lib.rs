@@ -223,7 +223,9 @@ impl FogIngestGrpcClient {
     // policy, which is then used to implement retries for all the grpc calls
     fn get_retries(&self) -> Box<dyn Iterator<Item = Duration>> {
         Box::new(
-            retry::delay::Fixed::from_millis(100).take(self.retry_duration.as_secs() as usize * 10),
+            retry::delay::Fixed::from_millis(100)
+                .take(self.retry_duration.as_secs() as usize * 10)
+                .map(retry::delay::jitter),
         )
     }
 }

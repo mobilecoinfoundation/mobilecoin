@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use retry::delay::Fibonacci;
+use retry::delay::{Fibonacci,jitter};
 use std::time::{Duration, Instant};
 
 /// Default number of attempts to make at delivering each message.
@@ -51,7 +51,8 @@ impl RetryPolicy for FibonacciRetryPolicy {
                 // The `retry` crate does not touch the delay iterator for it's first attempt,
                 // so if we want to have `max_attempts` attempts we need the iterator to return
                 // that number minus one.
-                .take(self.max_attempts - 1),
+                .take(self.max_attempts - 1)
+                .map(jitter),
         )
     }
 

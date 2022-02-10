@@ -153,7 +153,8 @@ impl SqlRecoveryDb {
     fn get_retries(&self) -> Box<dyn Iterator<Item = Duration>> {
         Box::new(
             delay::Fixed::from_millis(self.config.postgres_retry_millis)
-                .take(self.config.postgres_retry_count),
+                .take(self.config.postgres_retry_count)
+                .map(delay::jitter),
         )
     }
 

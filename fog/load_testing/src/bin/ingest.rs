@@ -240,7 +240,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
                 AdminApiClient::new(ch)
             };
 
-            let info = retry(delay::Fixed::from_millis(5000), || {
+            let info = retry(delay::Fixed::from_millis(5000).map(delay::jitter), || {
                 ingest_server.assert_not_stopped();
 
                 match admin_client.get_info(&Empty::default()) {

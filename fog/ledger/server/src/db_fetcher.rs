@@ -271,7 +271,7 @@ impl<DB: Ledger, E: LedgerEnclaveProxy + Clone + Send + Sync + 'static> DbFetche
     fn add_records_to_enclave(&mut self, block_index: u64, records: Vec<KeyImageData>) {
         let num_records = records.len();
 
-        let _info = retry(delay::Fixed::from_millis(5000), || {
+        let _info = retry(delay::Fixed::from_millis(5000).map(delay::jitter), || {
             trace_time!(
                 self.logger,
                 "Added {} records into the enclave",

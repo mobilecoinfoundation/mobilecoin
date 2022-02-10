@@ -13,7 +13,10 @@ use mc_fog_uri::FogViewUri;
 use mc_fog_view_protocol::FogViewConnection;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_telemetry::{tracer, Tracer};
-use retry::{delay::Fixed, retry, Error as RetryError};
+use retry::{
+    delay::{jitter, Fixed},
+    retry, Error as RetryError,
+};
 use std::sync::Arc;
 
 pub struct FogViewGrpcClient {
@@ -67,7 +70,7 @@ impl FogViewConnection for FogViewGrpcClient {
 
             let aad_bytes = mc_util_serial::encode(&req_aad);
 
-            retry(Fixed::from_millis(100).take(5), || {
+            retry(Fixed::from_millis(100).take(5).map(jitter), || {
                 self.conn
                     .retriable_encrypted_enclave_request(&req, &aad_bytes)
             })

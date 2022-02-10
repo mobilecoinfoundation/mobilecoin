@@ -17,7 +17,7 @@ use mc_consensus_scp::{
 };
 use mc_transaction_core::BlockIndex;
 use mc_util_uri::ConnectionUri;
-use retry::delay::Fibonacci;
+use retry::delay::{Fibonacci,jitter};
 use std::{
     collections::{HashMap, HashSet},
     str::FromStr,
@@ -148,7 +148,7 @@ impl<BC: BlockchainConnection + 'static> PollingNetworkState<BC> {
 
     fn get_retry_iterator() -> Box<dyn Iterator<Item = Duration>> {
         // Start at 50ms, make 10 attempts (total would be 7150ms)
-        Box::new(Fibonacci::from_millis(50).take(10))
+        Box::new(Fibonacci::from_millis(50).take(10).map(jitter))
     }
 }
 
