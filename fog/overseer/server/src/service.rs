@@ -19,7 +19,7 @@ use std::{
     convert::TryFrom,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, 
+        Arc,
     },
     time::Duration,
 };

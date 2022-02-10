@@ -8,6 +8,9 @@ use serde::{Deserialize, Serialize};
 
 /// Mirrors the proto definition of IngestSummary. We have to define this
 /// "native" Rust type to be able to add traits like Serialize to this data.
+///
+/// TODO: Once protobuf v3 becomes stable, use it's JSON conversion feature
+/// where this struct is needed, and delete this struct.
 #[derive(Deserialize, Serialize)]
 pub struct IngestSummary {
     /// The current mode of the server
