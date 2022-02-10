@@ -20,7 +20,7 @@ use std::{
     iter::Iterator,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
+        Arc,
     },
     thread::{Builder as ThreadBuilder, JoinHandle},
     time::Duration,
@@ -43,7 +43,7 @@ pub struct OverseerWorker {
 
 impl OverseerWorker {
     pub fn new<DB: RecoveryDb + Clone + Send + Sync + 'static>(
-        ingest_clients: Arc<Mutex<Vec<FogIngestGrpcClient>>>,
+        ingest_clients: Arc<Vec<FogIngestGrpcClient>>,
         recovery_db: DB,
         logger: Logger,
         is_enabled: Arc<AtomicBool>,
@@ -96,7 +96,7 @@ impl Drop for OverseerWorker {
 struct OverseerWorkerThread<DB: RecoveryDb> {
     /// The list of FogIngestClients that Overseer uses to communicate with
     /// each node in the Fog Ingest cluster that it's monitoring.
-    ingest_clients: Arc<Mutex<Vec<FogIngestGrpcClient>>>,
+    ingest_clients: Arc<Vec<FogIngestGrpcClient>>,
 
     /// The database that contains, among other things, info on the Fog Ingest
     /// cluster's ingress keys.
@@ -131,7 +131,7 @@ where
     const NUMBER_OF_TRIES: usize = 3;
 
     pub fn start(
-        ingest_clients: Arc<Mutex<Vec<FogIngestGrpcClient>>>,
+        ingest_clients: Arc<Vec<FogIngestGrpcClient>>,
         recovery_db: DB,
         is_enabled: Arc<AtomicBool>,
         stop_requested: Arc<AtomicBool>,
@@ -238,9 +238,7 @@ where
         &self,
     ) -> Result<Vec<IngestSummaryNodeMapping>, OverseerError> {
         let mut ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping> = Vec::new();
-        for (ingest_client_index, ingest_client) in
-            self.ingest_clients.lock().unwrap().iter().enumerate()
-        {
+        for (ingest_client_index, ingest_client) in self.ingest_clients.iter().enumerate() {
             match ingest_client.get_status() {
                 Ok(ingest_summary) => {
                     log::trace!(
@@ -387,8 +385,7 @@ where
                 Err(_) => continue,
             };
             if inactive_outstanding_key.eq(&node_ingress_key) {
-                let node =
-                    &self.ingest_clients.lock().unwrap()[ingest_summary_node_mapping.node_index];
+                let node = &self.ingest_clients[ingest_summary_node_mapping.node_index];
                 match node.activate() {
                     Ok(_) => {
                         log::info!(
@@ -457,7 +454,7 @@ where
     /// Tries to set a new ingress key on a node. The node is assumed to be
     /// idle.
     fn set_new_key_on_a_node(&self) -> Result<usize, OverseerError> {
-        for (i, ingest_client) in self.ingest_clients.lock().unwrap().iter().enumerate() {
+        for (i, ingest_client) in self.ingest_clients.iter().enumerate() {
             let result = retry_with_index(
                 Fixed::from_millis(200).take(Self::NUMBER_OF_TRIES),
                 |current_try| {
@@ -499,7 +496,7 @@ where
         let result = retry_with_index(
             Fixed::from_millis(200).take(Self::NUMBER_OF_TRIES),
             |current_try| {
-                match self.ingest_clients.lock().unwrap()[activated_node_index].activate() {
+                match self.ingest_clients[activated_node_index].activate() {
                     Ok(_) => {
                         log::info!(
                             self.logger,

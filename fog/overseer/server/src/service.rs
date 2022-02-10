@@ -19,7 +19,7 @@ use std::{
     convert::TryFrom,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
+        Arc, 
     },
     time::Duration,
 };
@@ -29,7 +29,7 @@ pub struct OverseerService<DB: RecoveryDb + Clone + Send + Sync + 'static>
 where
     OverseerError: From<DB::Error>,
 {
-    ingest_clients: Arc<Mutex<Vec<FogIngestGrpcClient>>>,
+    ingest_clients: Arc<Vec<FogIngestGrpcClient>>,
     logger: Logger,
     overseer_worker: Option<OverseerWorker>,
     recovery_db: DB,
@@ -57,7 +57,7 @@ where
             })
             .collect();
         Self {
-            ingest_clients: Arc::new(Mutex::new(ingest_clients)),
+            ingest_clients: Arc::new(ingest_clients),
             logger,
             overseer_worker: None,
             recovery_db,
@@ -144,7 +144,7 @@ where
     pub fn get_ingest_summaries(&self) -> Result<GetIngestSummariesResponse, String> {
         let mut ingest_summaries: HashMap<FogIngestUri, Result<IngestSummary, String>> =
             HashMap::new();
-        for ingest_client in self.ingest_clients.lock().unwrap().iter() {
+        for ingest_client in self.ingest_clients.iter() {
             match ingest_client.get_status() {
                 Ok(proto_ingest_summary) => {
                     log::trace!(
