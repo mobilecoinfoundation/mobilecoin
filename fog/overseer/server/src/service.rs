@@ -14,7 +14,6 @@ use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_types::ingest_common::IngestSummary;
 use mc_fog_uri::FogIngestUri;
 use prometheus::{self, Encoder};
-use rocket_contrib::json::Json;
 use std::{
     collections::HashMap,
     convert::TryFrom,
@@ -142,7 +141,7 @@ where
         Ok(response)
     }
 
-    pub fn get_ingest_summaries(&self) -> Result<Json<GetIngestSummariesResponse>, String> {
+    pub fn get_ingest_summaries(&self) -> Result<GetIngestSummariesResponse, String> {
         let mut ingest_summaries: HashMap<FogIngestUri, Result<IngestSummary, String>> =
             HashMap::new();
         for ingest_client in self.ingest_clients.lock().unwrap().iter() {
@@ -181,6 +180,6 @@ where
         }
         let response = GetIngestSummariesResponse { ingest_summaries };
 
-        Ok(Json(response))
+        Ok(response)
     }
 }

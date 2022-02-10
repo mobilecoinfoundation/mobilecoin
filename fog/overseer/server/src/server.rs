@@ -32,7 +32,7 @@ fn get_status(state: rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<Stri
 fn get_ingest_summaries(
     state: rocket::State<OverseerState<SqlRecoveryDb>>,
 ) -> Result<Json<GetIngestSummariesResponse>, String> {
-    state.overseer_service.get_ingest_summaries()
+    state.overseer_service.get_ingest_summaries().map(Json)
 }
 
 /// Produces metrics for Prometheus.
