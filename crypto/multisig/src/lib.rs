@@ -13,6 +13,9 @@ use mc_crypto_keys::{Ed25519SignatureError, PublicKey, Signature, Verifier};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
+/// The maximum number of signatures that can be included in a multi-signature.
+pub const MAX_SIGNATURES: usize = 10;
+
 /// A multi-signature: a collection of one or more signatures.
 #[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize)]
 pub struct MultiSig<
@@ -62,9 +65,11 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
     where
         P: Verifier<S>,
     {
-        // If the signature contains less than the threshold number of signers, there's
-        // no point in trying.
-        if multi_sig.signatures.len() < self.threshold as usize {
+        // If the signature contains less than the threshold number of signers or more
+        // than the hardcoded limit, there's no point in trying.
+        if multi_sig.signatures.len() < self.threshold as usize
+            || multi_sig.signatures.len() > MAX_SIGNATURES
+        {
             return Err(Ed25519SignatureError::new());
         }
 
