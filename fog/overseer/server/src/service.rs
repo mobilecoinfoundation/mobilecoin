@@ -149,7 +149,8 @@ where
                 Ok(proto_ingest_summary) => {
                     log::trace!(
                         self.logger,
-                        "Ingest summary retrieved: {:?}",
+                        "Ingest summary retrieved for {}: {:?}",
+                        ingest_client.get_uri(),
                         proto_ingest_summary
                     );
                     match IngestSummary::try_from(&proto_ingest_summary) {
