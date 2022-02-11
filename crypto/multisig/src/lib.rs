@@ -9,55 +9,59 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 use mc_crypto_digestible::Digestible;
-use mc_crypto_keys::{Ed25519Public, Ed25519Signature, Ed25519SignatureError, Verifier};
+use mc_crypto_keys::{Ed25519SignatureError, PublicKey, Signature, Verifier};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
-/// A multi-signature: a collection of 1 or more Ed25519 signatures.
+/// A multi-signature: a collection of one or more signatures.
 #[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize)]
-pub struct MultiSig {
+pub struct MultiSig<
+    S: Clone + Default + Digestible + Eq + Message + PartialEq + Serialize + Signature,
+> {
     #[prost(message, repeated, tag = "1")]
-    signatures: Vec<Ed25519Signature>,
+    signatures: Vec<S>,
 }
 
-impl MultiSig {
-    /// Construct a new multi-signature from a collection of Ed25519 signatures.
-    pub fn new(signatures: Vec<Ed25519Signature>) -> Self {
+impl<S: Clone + Default + Digestible + Eq + Message + PartialEq + Serialize + Signature>
+    MultiSig<S>
+{
+    /// Construct a new multi-signature from a collection of signatures.
+    pub fn new(signatures: Vec<S>) -> Self {
         Self { signatures }
     }
 }
 
-/*impl Signature for MultiSig {
-    fn from_bytes(bytes: &[u8]) -> Result<Self, Ed25519SignatureError> {
-        panic!();
-    }
-}*/
-
-/// A set of M-out-of-N Ed25519 public keys.
+/// A set of M-out-of-N public keys.
 #[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize)]
-pub struct SignerSet {
+#[serde(bound = "")]
+pub struct SignerSet<P: Default + PublicKey + Message> {
     /// List of potential signers.
     #[prost(message, repeated, tag = "1")]
-    signers: Vec<Ed25519Public>,
+    signers: Vec<P>,
 
     /// Minimum number of signers required.
     #[prost(uint32, tag = "2")]
     threshold: u32,
 }
 
-impl SignerSet {
+impl<P: Default + PublicKey + Message> SignerSet<P> {
     /// Construct a new `SignerSet` from a list of public keys and threshold.
-    pub fn new(signers: Vec<Ed25519Public>, threshold: u32) -> Self {
+    pub fn new(signers: Vec<P>, threshold: u32) -> Self {
         Self { signers, threshold }
     }
 
     /// Verify a message against a multi-signature, returning the list of
     /// signers that signed it.
-    pub fn verify(
+    pub fn verify<
+        S: Clone + Default + Digestible + Eq + Message + PartialEq + Serialize + Signature,
+    >(
         &self,
         message: &[u8],
-        multi_sig: &MultiSig,
-    ) -> Result<Vec<Ed25519Public>, Ed25519SignatureError> {
+        multi_sig: &MultiSig<S>,
+    ) -> Result<Vec<P>, Ed25519SignatureError>
+    where
+        P: Verifier<S>,
+    {
         // If the signature contains less than the threshold number of signers, there's
         // no point in trying.
         if multi_sig.signatures.len() < self.threshold as usize {
@@ -87,12 +91,6 @@ impl SignerSet {
     }
 }
 
-/*impl Verifier<MultiSig> for SignerSet {
-    fn verify(&self, message: &[u8], multi_sig: &MultiSig) -> Result<(), Ed25519SignatureError> {
-        self.verify_signers(message, multi_sig).map(|_| ())
-    }
-}*/
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -103,7 +101,7 @@ mod test {
     use rand_hc::Hc128Rng;
 
     #[test]
-    fn verify_signers_sanity() {
+    fn ed25519_verify_signers_sanity() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
         let signer1 = Ed25519Pair::from_random(&mut rng);
         let signer2 = Ed25519Pair::from_random(&mut rng);
