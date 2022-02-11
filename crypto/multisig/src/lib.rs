@@ -133,6 +133,10 @@ mod test {
             vec![signer1.public_key(), signer3.public_key()]
         );
 
+        // If we alter the message, we should not pass verification.
+        let message2 = b"different message";
+        assert!(signer_set.verify(message2.as_ref(), &multi_sig).is_err());
+
         // With three valid signatures we should succeed to verify and get the correct
         // keys back.
         let multi_sig = MultiSig::new(vec![
@@ -173,6 +177,64 @@ mod test {
         assert_eq!(
             signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
             vec![signer1.public_key(), signer3.public_key()]
+        );
+    }
+
+    #[test]
+    fn test_serde_works() {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let signer1 = Ed25519Pair::from_random(&mut rng);
+        let signer2 = Ed25519Pair::from_random(&mut rng);
+        let signer3 = Ed25519Pair::from_random(&mut rng);
+
+        let signer_set = SignerSet::new(
+            vec![
+                signer1.public_key(),
+                signer2.public_key(),
+                signer3.public_key(),
+            ],
+            2,
+        );
+
+        assert_eq!(
+            signer_set,
+            mc_util_serial::deserialize(&mc_util_serial::serialize(&signer_set).unwrap()).unwrap()
+        );
+
+        let message = b"this is a test";
+        let multi_sig = MultiSig::new(vec![signer1.try_sign(message.as_ref()).unwrap()]);
+        assert_eq!(
+            multi_sig,
+            mc_util_serial::deserialize(&mc_util_serial::serialize(&multi_sig).unwrap()).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_prost_works() {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let signer1 = Ed25519Pair::from_random(&mut rng);
+        let signer2 = Ed25519Pair::from_random(&mut rng);
+        let signer3 = Ed25519Pair::from_random(&mut rng);
+
+        let signer_set = SignerSet::new(
+            vec![
+                signer1.public_key(),
+                signer2.public_key(),
+                signer3.public_key(),
+            ],
+            2,
+        );
+
+        assert_eq!(
+            signer_set,
+            mc_util_serial::decode(&mc_util_serial::encode(&signer_set)).unwrap()
+        );
+
+        let message = b"this is a test";
+        let multi_sig = MultiSig::new(vec![signer1.try_sign(message.as_ref()).unwrap()]);
+        assert_eq!(
+            multi_sig,
+            mc_util_serial::decode(&mc_util_serial::encode(&multi_sig)).unwrap()
         );
     }
 }
