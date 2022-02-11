@@ -35,6 +35,7 @@ members = [
     "crypto/digestible/signature",
     "crypto/keys",
     "crypto/message-cipher",
+    "crypto/multisig",
     "crypto/noise",
     "crypto/rand",
     "crypto/x509/test-vectors",
