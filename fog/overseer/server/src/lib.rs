@@ -4,6 +4,7 @@
 #[deny(missing_docs)]
 pub mod config;
 pub mod metrics;
+pub mod responses;
 pub mod server;
 pub mod service;
 
