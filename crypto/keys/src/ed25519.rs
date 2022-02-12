@@ -3,7 +3,7 @@
 //! This module implements the common keys traits for the Ed25519 digital
 //! signature scheme.
 
-pub use ed25519::signature::Error as Ed25519SignatureError;
+pub use ed25519::signature::Error as SignatureError;
 
 use alloc::vec;
 
@@ -12,10 +12,7 @@ use alloc::vec::Vec;
 use core::convert::TryFrom;
 use digest::generic_array::typenum::{U32, U64};
 use ed25519::{
-    signature::{
-        DigestSigner, DigestVerifier, Error as SignatureError, Signature as SignatureTrait, Signer,
-        Verifier,
-    },
+    signature::{DigestSigner, DigestVerifier, Signature as SignatureTrait, Signer, Verifier},
     Signature,
 };
 use ed25519_dalek::{
@@ -30,7 +27,6 @@ use mc_util_repr_bytes::{
 };
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
-use signature::Error;
 use zeroize::Zeroize;
 
 // ASN.1 DER Signature Bytes -- this is a set of nested TLVs describing
@@ -409,7 +405,7 @@ impl Default for Ed25519Signature {
 }
 
 impl SignatureTrait for Ed25519Signature {
-    fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
+    fn from_bytes(bytes: &[u8]) -> Result<Self, SignatureError> {
         Ok(Self(Signature::from_bytes(bytes)?))
     }
 }
@@ -421,9 +417,9 @@ impl AsRef<[u8]> for Ed25519Signature {
 }
 
 impl<'a> TryFrom<&'a [u8]> for Ed25519Signature {
-    type Error = Ed25519SignatureError;
+    type Error = SignatureError;
 
-    fn try_from(bytes: &'a [u8]) -> Result<Self, Error> {
+    fn try_from(bytes: &'a [u8]) -> Result<Self, SignatureError> {
         Ok(Self(Signature::try_from(bytes)?))
     }
 }
