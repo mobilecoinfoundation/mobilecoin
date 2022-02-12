@@ -10,22 +10,22 @@ use mc_fog_enclave_connection::EnclaveConnection;
 use mc_fog_types::ledger::{GetOutputsRequest, GetOutputsResponse, OutputResult};
 use mc_fog_uri::FogLedgerUri;
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
-use mc_util_grpc::ConnectionUriGrpcioChannel;
-use retry::{
-    delay::{jitter, Fixed},
-    retry,
-};
+use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig};
+use retry::retry;
 use std::sync::Arc;
 
 /// An attested connection to the Fog Merkle Proof service.
 pub struct FogMerkleProofGrpcClient {
     conn: EnclaveConnection<FogLedgerUri, FogMerkleProofApiClient>,
+    grpc_retry_config: GrpcRetryConfig,
+    uri: FogLedgerUri,
 }
 
 impl FogMerkleProofGrpcClient {
     /// Create a new client object
     pub fn new(
         uri: FogLedgerUri,
+        grpc_retry_config: GrpcRetryConfig,
         verifier: Verifier,
         env: Arc<Environment>,
         logger: Logger,
@@ -37,7 +37,9 @@ impl FogMerkleProofGrpcClient {
         let grpc_client = FogMerkleProofApiClient::new(ch);
 
         Self {
-            conn: EnclaveConnection::new(uri, grpc_client, verifier, logger),
+            conn: EnclaveConnection::new(uri.clone(), grpc_client, verifier, logger),
+            grpc_retry_config,
+            uri,
         }
     }
 
@@ -53,9 +55,10 @@ impl FogMerkleProofGrpcClient {
         };
 
         let response: GetOutputsResponse =
-            retry(Fixed::from_millis(100).take(5).map(jitter), || {
+            retry(self.grpc_retry_config.get_retry_iterator(), || {
                 self.conn.retriable_encrypted_enclave_request(&request, &[])
-            })?;
+            })
+            .map_err(|err| Error::Connection(self.uri.clone(), err))?;
 
         Ok(response)
     }

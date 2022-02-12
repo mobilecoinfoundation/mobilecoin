@@ -717,7 +717,7 @@ impl CachedTxData {
                         }
                     }
                 }
-                Err(err @ LedgerConnectionError::Connection(_)) => {
+                Err(err @ LedgerConnectionError::Connection(_, _)) => {
                     log::info!(self.logger, "Check key images failed due to {}", err);
                     return Err(err.into());
                 }

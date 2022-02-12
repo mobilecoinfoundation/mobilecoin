@@ -27,6 +27,7 @@ use mc_transaction_core::{
     ring_signature::KeyImage, tx::TxOut, Block, BlockContents, BlockSignature, BLOCK_VERSION,
 };
 use mc_util_from_random::FromRandom;
+use mc_util_grpc::GrpcRetryConfig;
 use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
 use mc_watcher::watcher_db::WatcherDB;
 use std::{
@@ -41,6 +42,11 @@ use url::Url;
 const TEST_URL: &str = "http://www.my_url1.com";
 
 const OMAP_CAPACITY: u64 = 128 * 128;
+
+const GRPC_RETRY_CONFIG: GrpcRetryConfig = GrpcRetryConfig {
+    grpc_retry_count: 3,
+    grpc_retry_millis: 20,
+};
 
 fn setup_watcher_db(logger: Logger) -> (WatcherDB, PathBuf) {
     let url = Url::parse(TEST_URL).unwrap();
@@ -148,7 +154,13 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
         let mut verifier = Verifier::default();
         verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
-        let mut client = FogMerkleProofGrpcClient::new(client_uri, verifier, grpc_env, logger);
+        let mut client = FogMerkleProofGrpcClient::new(
+            client_uri,
+            GRPC_RETRY_CONFIG,
+            verifier,
+            grpc_env,
+            logger,
+        );
 
         // Get merkle root of num_blocks - 1
         let merkle_root = {
@@ -322,7 +334,8 @@ fn fog_ledger_key_images_test(logger: Logger) {
         let mut verifier = Verifier::default();
         verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
-        let mut client = FogKeyImageGrpcClient::new(client_uri, verifier, grpc_env, logger);
+        let mut client =
+            FogKeyImageGrpcClient::new(client_uri, GRPC_RETRY_CONFIG, verifier, grpc_env, logger);
 
         // Check on key images
         let mut response = client
@@ -501,8 +514,12 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
             .expect("Failed starting ledger server");
 
         // Make unattested ledger client
-        let client =
-            FogUntrustedLedgerGrpcClient::new(client_uri.clone(), grpc_env, logger.clone());
+        let client = FogUntrustedLedgerGrpcClient::new(
+            client_uri.clone(),
+            GRPC_RETRY_CONFIG,
+            grpc_env,
+            logger.clone(),
+        );
 
         // Try to get a block
         let queries = [0..1];
@@ -654,8 +671,12 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
             .expect("Failed starting ledger server");
 
         // Make unattested ledger client
-        let client =
-            FogUntrustedLedgerGrpcClient::new(client_uri.clone(), grpc_env, logger.clone());
+        let client = FogUntrustedLedgerGrpcClient::new(
+            client_uri.clone(),
+            GRPC_RETRY_CONFIG,
+            grpc_env,
+            logger.clone(),
+        );
 
         // Get a tx_out that is actually in the ledger
         let real_tx_out0 = { ledger.get_tx_out_by_index(0).unwrap() };

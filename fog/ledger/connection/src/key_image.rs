@@ -12,22 +12,22 @@ use mc_fog_types::ledger::{
 };
 use mc_fog_uri::FogLedgerUri;
 use mc_transaction_core::{ring_signature::KeyImage, BlockIndex};
-use mc_util_grpc::ConnectionUriGrpcioChannel;
-use retry::{
-    delay::{jitter, Fixed},
-    retry,
-};
+use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig};
+use retry::retry;
 use std::sync::Arc;
 
 /// An attested connection to the Fog Key Image service.
 pub struct FogKeyImageGrpcClient {
     conn: EnclaveConnection<FogLedgerUri, FogKeyImageApiClient>,
+    grpc_retry_config: GrpcRetryConfig,
+    uri: FogLedgerUri,
 }
 
 impl FogKeyImageGrpcClient {
     /// Create a new client object
     pub fn new(
         uri: FogLedgerUri,
+        grpc_retry_config: GrpcRetryConfig,
         verifier: Verifier,
         env: Arc<Environment>,
         logger: Logger,
@@ -39,7 +39,9 @@ impl FogKeyImageGrpcClient {
         let grpc_client = FogKeyImageApiClient::new(ch);
 
         Self {
-            conn: EnclaveConnection::new(uri, grpc_client, verifier, logger),
+            conn: EnclaveConnection::new(uri.clone(), grpc_client, verifier, logger),
+            grpc_retry_config,
+            uri,
         }
     }
 
@@ -59,9 +61,10 @@ impl FogKeyImageGrpcClient {
         };
 
         let response: CheckKeyImagesResponse =
-            retry(Fixed::from_millis(100).take(5).map(jitter), || {
+            retry(self.grpc_retry_config.get_retry_iterator(), || {
                 self.conn.retriable_encrypted_enclave_request(&request, &[])
-            })?;
+            })
+            .map_err(|err| Error::Connection(self.uri.clone(), err))?;
 
         Ok(response)
     }

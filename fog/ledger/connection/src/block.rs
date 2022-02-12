@@ -5,23 +5,29 @@ use grpcio::{ChannelBuilder, Environment};
 use mc_common::logger::Logger;
 use mc_fog_api::{fog_common::BlockRange, ledger, ledger_grpc, ledger_grpc::FogBlockApiClient};
 use mc_fog_uri::{ConnectionUri, FogLedgerUri};
-use mc_util_grpc::{BasicCredentials, ConnectionUriGrpcioChannel};
+use mc_util_grpc::{BasicCredentials, ConnectionUriGrpcioChannel, GrpcRetryConfig};
 use protobuf::RepeatedField;
+use retry::retry;
 use std::sync::Arc;
 
 /// A unattested connection to the Fog Block service.
 pub struct FogBlockGrpcClient {
-    #[allow(unused)]
     uri: FogLedgerUri,
     blocks_client: FogBlockApiClient,
     creds: BasicCredentials,
+    grpc_retry_config: GrpcRetryConfig,
     #[allow(unused)]
     logger: Logger,
 }
 
 impl FogBlockGrpcClient {
     /// Create a new client object
-    pub fn new(uri: FogLedgerUri, grpc_env: Arc<Environment>, logger: Logger) -> Self {
+    pub fn new(
+        uri: FogLedgerUri,
+        grpc_retry_config: GrpcRetryConfig,
+        grpc_env: Arc<Environment>,
+        logger: Logger,
+    ) -> Self {
         let creds = BasicCredentials::new(&uri.username(), &uri.password());
 
         let ch = ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&uri, &logger);
@@ -31,6 +37,7 @@ impl FogBlockGrpcClient {
             uri,
             blocks_client,
             creds,
+            grpc_retry_config,
             logger,
         }
     }
@@ -40,13 +47,13 @@ impl FogBlockGrpcClient {
         &mut self,
         missed_block_ranges: Vec<BlockRange>,
     ) -> Result<ledger::BlockResponse, Error> {
-        let mut block_request = ledger::BlockRequest::new();
-        block_request.ranges = RepeatedField::from_vec(missed_block_ranges);
+        let mut request = ledger::BlockRequest::new();
+        request.ranges = RepeatedField::from_vec(missed_block_ranges);
 
-        let result = self
-            .blocks_client
-            .get_blocks_opt(&block_request, self.creds.call_option()?)?;
-
-        Ok(result)
+        retry(self.grpc_retry_config.get_retry_iterator(), || {
+            self.blocks_client
+                .get_blocks_opt(&request, self.creds.call_option()?)
+        })
+        .map_err(|grpcio_error| Error::Grpc(self.uri.clone(), grpcio_error))
     }
 }

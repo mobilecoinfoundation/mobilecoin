@@ -7,24 +7,30 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::{fog_common::BlockRange, ledger, ledger_grpc};
 use mc_fog_uri::FogLedgerUri;
 use mc_transaction_core::BlockIndex;
-use mc_util_grpc::{BasicCredentials, ConnectionUriGrpcioChannel};
+use mc_util_grpc::{BasicCredentials, ConnectionUriGrpcioChannel, GrpcRetryConfig};
 use mc_util_uri::ConnectionUri;
+use retry::retry;
 use std::{ops::Range, sync::Arc};
 
 /// A non-attested connection to untrusted fog ledger endpoints
 pub struct FogUntrustedLedgerGrpcClient {
-    #[allow(unused)]
     uri: FogLedgerUri,
     blocks_client: ledger_grpc::FogBlockApiClient,
     tx_out_client: ledger_grpc::FogUntrustedTxOutApiClient,
     creds: BasicCredentials,
+    grpc_retry_config: GrpcRetryConfig,
     #[allow(unused)]
     logger: Logger,
 }
 
 impl FogUntrustedLedgerGrpcClient {
     /// Create a new client object
-    pub fn new(uri: FogLedgerUri, grpc_env: Arc<Environment>, logger: Logger) -> Self {
+    pub fn new(
+        uri: FogLedgerUri,
+        grpc_retry_config: GrpcRetryConfig,
+        grpc_env: Arc<Environment>,
+        logger: Logger,
+    ) -> Self {
         let creds = BasicCredentials::new(&uri.username(), &uri.password());
 
         let ch = ChannelBuilder::default_channel_builder(grpc_env).connect_to_uri(&uri, &logger);
@@ -38,6 +44,7 @@ impl FogUntrustedLedgerGrpcClient {
             blocks_client,
             tx_out_client,
             creds,
+            grpc_retry_config,
             logger,
         }
     }
@@ -59,10 +66,12 @@ impl FogUntrustedLedgerGrpcClient {
                 range
             });
         }
-        let result = self
-            .blocks_client
-            .get_blocks_opt(&request, self.creds.call_option()?)?;
-        Ok(result)
+
+        retry(self.grpc_retry_config.get_retry_iterator(), || {
+            self.blocks_client
+                .get_blocks_opt(&request, self.creds.call_option()?)
+        })
+        .map_err(|grpcio_error| Error::Grpc(self.uri.clone(), grpcio_error))
     }
 
     /// Make (non-private) request to check if particular TxOut public keys
@@ -81,9 +90,10 @@ impl FogUntrustedLedgerGrpcClient {
             request.tx_out_pubkeys.push((&pubkey).into());
         }
 
-        let result = self
-            .tx_out_client
-            .get_tx_outs_opt(&request, self.creds.call_option()?)?;
-        Ok(result)
+        retry(self.grpc_retry_config.get_retry_iterator(), || {
+            self.tx_out_client
+                .get_tx_outs_opt(&request, self.creds.call_option()?)
+        })
+        .map_err(|grpcio_error| Error::Grpc(self.uri.clone(), grpcio_error))
     }
 }

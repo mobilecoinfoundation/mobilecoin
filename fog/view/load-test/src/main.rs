@@ -10,6 +10,7 @@ use mc_fog_kex_rng::{NewFromKex, VersionedKexRng};
 use mc_fog_uri::FogViewUri;
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_fog_view_protocol::FogViewConnection;
+use mc_util_grpc::GrpcRetryConfig;
 use std::{
     path::PathBuf,
     str::FromStr,
@@ -41,16 +42,21 @@ struct Config {
     /// Number of search keys to include in request
     #[structopt(long, default_value = "100")]
     pub num_search_keys: usize,
+
+    /// Grpc retry config
+    #[structopt(flatten)]
+    pub grpc_retry_config: GrpcRetryConfig,
 }
 
 fn worker_thread(
     uri: String,
+    grpc_retry_config: GrpcRetryConfig,
     account_key: AccountKey,
     num_search_keys: usize,
     num_reqs: Arc<AtomicU64>,
     logger: Logger,
 ) {
-    let mut fog_view_client = build_fog_view_conn(&uri, &logger);
+    let mut fog_view_client = build_fog_view_conn(&uri, grpc_retry_config, &logger);
 
     let resp = fog_view_client
         .request(0, 0, Default::default())
@@ -86,8 +92,18 @@ fn main() {
         let num_search_keys = config.num_search_keys;
         let num_reqs = num_reqs.clone();
         let uri = config.view_uri.clone();
+        let retry_config = config.grpc_retry_config.clone();
 
-        thread::spawn(move || worker_thread(uri, account_key, num_search_keys, num_reqs, logger));
+        thread::spawn(move || {
+            worker_thread(
+                uri,
+                retry_config,
+                account_key,
+                num_search_keys,
+                num_reqs,
+                logger,
+            )
+        });
     }
 
     loop {
@@ -99,7 +115,11 @@ fn main() {
     }
 }
 
-fn build_fog_view_conn(uri: &str, logger: &Logger) -> FogViewGrpcClient {
+fn build_fog_view_conn(
+    uri: &str,
+    grpc_retry_config: GrpcRetryConfig,
+    logger: &Logger,
+) -> FogViewGrpcClient {
     let grpc_env = Arc::new(
         EnvBuilder::new()
             .name_prefix("view-grpc".to_owned())
@@ -119,5 +139,11 @@ fn build_fog_view_conn(uri: &str, logger: &Logger) -> FogViewGrpcClient {
     let client_uri = FogViewUri::from_str(uri)
         .unwrap_or_else(|e| panic!("Could not parse client uri: {}: {:?}", uri, e));
 
-    FogViewGrpcClient::new(client_uri, verifier, grpc_env, logger.clone())
+    FogViewGrpcClient::new(
+        client_uri,
+        grpc_retry_config,
+        verifier,
+        grpc_env,
+        logger.clone(),
+    )
 }

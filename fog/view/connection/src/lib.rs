@@ -11,21 +11,26 @@ use mc_fog_enclave_connection::{EnclaveConnection, Error as EnclaveConnectionErr
 use mc_fog_types::view::{QueryRequest, QueryRequestAAD, QueryResponse};
 use mc_fog_uri::FogViewUri;
 use mc_fog_view_protocol::FogViewConnection;
-use mc_util_grpc::ConnectionUriGrpcioChannel;
+use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig};
 use mc_util_telemetry::{tracer, Tracer};
-use retry::{
-    delay::{jitter, Fixed},
-    retry, Error as RetryError,
-};
-use std::sync::Arc;
+use retry::{retry, Error as RetryError};
+use std::{fmt::Display, sync::Arc};
 
 pub struct FogViewGrpcClient {
     conn: EnclaveConnection<FogViewUri, view_grpc::FogViewApiClient>,
+    grpc_retry_config: GrpcRetryConfig,
+    uri: FogViewUri,
     logger: Logger,
 }
 
 impl FogViewGrpcClient {
-    pub fn new(uri: FogViewUri, verifier: Verifier, env: Arc<Environment>, logger: Logger) -> Self {
+    pub fn new(
+        uri: FogViewUri,
+        grpc_retry_config: GrpcRetryConfig,
+        verifier: Verifier,
+        env: Arc<Environment>,
+        logger: Logger,
+    ) -> Self {
         let logger = logger.new(o!("mc.fog.cxn" => uri.to_string()));
 
         let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&uri, &logger);
@@ -33,14 +38,16 @@ impl FogViewGrpcClient {
         let grpc_client = view_grpc::FogViewApiClient::new(ch);
 
         Self {
-            conn: EnclaveConnection::new(uri, grpc_client, verifier, logger.clone()),
+            conn: EnclaveConnection::new(uri.clone(), grpc_client, verifier, logger.clone()),
+            grpc_retry_config,
+            uri,
             logger,
         }
     }
 }
 
 impl FogViewConnection for FogViewGrpcClient {
-    type Error = RetryError<EnclaveConnectionError>;
+    type Error = Error;
 
     fn request(
         &mut self,
@@ -70,10 +77,30 @@ impl FogViewConnection for FogViewGrpcClient {
 
             let aad_bytes = mc_util_serial::encode(&req_aad);
 
-            retry(Fixed::from_millis(100).take(5).map(jitter), || {
+            retry(self.grpc_retry_config.get_retry_iterator(), || {
                 self.conn
                     .retriable_encrypted_enclave_request(&req, &aad_bytes)
             })
+            .map_err(|err| Error {
+                uri: self.uri.clone(),
+                error: err,
+            })
         })
+    }
+}
+
+#[derive(Debug)]
+pub struct Error {
+    pub uri: FogViewUri,
+    pub error: RetryError<EnclaveConnectionError>,
+}
+
+impl Display for Error {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            formatter,
+            "Fog view connection ({}): {}",
+            &self.uri, &self.error
+        )
     }
 }
