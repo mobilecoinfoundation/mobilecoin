@@ -9,7 +9,7 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 use mc_crypto_digestible::Digestible;
-use mc_crypto_keys::{Ed25519SignatureError, PublicKey, Signature, Verifier};
+use mc_crypto_keys::{SignatureError, PublicKey, Signature, Verifier};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
@@ -61,7 +61,7 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
         &self,
         message: &[u8],
         multi_sig: &MultiSig<S>,
-    ) -> Result<Vec<P>, Ed25519SignatureError>
+    ) -> Result<Vec<P>, SignatureError>
     where
         P: Verifier<S>,
     {
@@ -70,7 +70,7 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
         if multi_sig.signatures.len() < self.threshold as usize
             || multi_sig.signatures.len() > MAX_SIGNATURES
         {
-            return Err(Ed25519SignatureError::new());
+            return Err(SignatureError::new());
         }
 
         let mut matched_signers = Vec::new();
@@ -89,7 +89,7 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
         }
 
         if matched_signers.len() < self.threshold as usize {
-            return Err(Ed25519SignatureError::new());
+            return Err(SignatureError::new());
         }
 
         Ok(matched_signers)
