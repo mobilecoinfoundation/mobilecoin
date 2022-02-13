@@ -92,7 +92,7 @@ fn main() {
         let num_search_keys = config.num_search_keys;
         let num_reqs = num_reqs.clone();
         let uri = config.view_uri.clone();
-        let retry_config = config.grpc_retry_config.clone();
+        let retry_config = config.grpc_retry_config;
 
         thread::spawn(move || {
             worker_thread(
