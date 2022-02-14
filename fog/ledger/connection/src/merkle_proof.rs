@@ -11,18 +11,27 @@ use mc_fog_types::ledger::{GetOutputsRequest, GetOutputsResponse, OutputResult};
 use mc_fog_uri::FogLedgerUri;
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig};
-use retry::retry;
 use std::sync::Arc;
 
-/// An attested connection to the Fog Merkle Proof service.
+/// A high level object for making requests to the Fog Merkle Proof service.
 pub struct FogMerkleProofGrpcClient {
+    /// The attested connection
     conn: EnclaveConnection<FogLedgerUri, FogMerkleProofApiClient>,
+    /// Grpc retry config
     grpc_retry_config: GrpcRetryConfig,
+    /// Uri to connect to
     uri: FogLedgerUri,
 }
 
 impl FogMerkleProofGrpcClient {
     /// Create a new client object
+    ///
+    /// Arguments:
+    /// * uri: The uri to connect to
+    /// * grpc_retry_config: The retry policy to use for connection errors
+    /// * verifier: The attestation verifier
+    /// * env: The grpc environment to use (thread pool)
+    /// * logger: for logging
     pub fn new(
         uri: FogLedgerUri,
         grpc_retry_config: GrpcRetryConfig,
@@ -54,10 +63,10 @@ impl FogMerkleProofGrpcClient {
             merkle_root_block,
         };
 
-        let response: GetOutputsResponse =
-            retry(self.grpc_retry_config.get_retry_iterator(), || {
-                self.conn.retriable_encrypted_enclave_request(&request, &[])
-            })
+        let retry_config = self.grpc_retry_config;
+
+        let response: GetOutputsResponse = retry_config
+            .retry(|| self.conn.retriable_encrypted_enclave_request(&request, &[]))
             .map_err(|err| Error::Connection(self.uri.clone(), err))?;
 
         Ok(response)

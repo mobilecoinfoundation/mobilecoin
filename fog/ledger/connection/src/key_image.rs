@@ -13,7 +13,6 @@ use mc_fog_types::ledger::{
 use mc_fog_uri::FogLedgerUri;
 use mc_transaction_core::{ring_signature::KeyImage, BlockIndex};
 use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig};
-use retry::retry;
 use std::sync::Arc;
 
 /// An attested connection to the Fog Key Image service.
@@ -25,6 +24,13 @@ pub struct FogKeyImageGrpcClient {
 
 impl FogKeyImageGrpcClient {
     /// Create a new client object
+    ///
+    /// Arguments:
+    /// uri: The uri to connect to
+    /// grpc_retry_config: The retry policy to use when connecting
+    /// verifier: The attestation verifier
+    /// env: The grpc environment (thread pool) to use for this connection
+    /// logger: for logging
     pub fn new(
         uri: FogLedgerUri,
         grpc_retry_config: GrpcRetryConfig,
@@ -60,10 +66,10 @@ impl FogKeyImageGrpcClient {
                 .collect(),
         };
 
-        let response: CheckKeyImagesResponse =
-            retry(self.grpc_retry_config.get_retry_iterator(), || {
-                self.conn.retriable_encrypted_enclave_request(&request, &[])
-            })
+        let retry_config = self.grpc_retry_config;
+
+        let response: CheckKeyImagesResponse = retry_config
+            .retry(|| self.conn.retriable_encrypted_enclave_request(&request, &[]))
             .map_err(|err| Error::Connection(self.uri.clone(), err))?;
 
         Ok(response)

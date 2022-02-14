@@ -9,7 +9,6 @@ use mc_fog_uri::FogLedgerUri;
 use mc_transaction_core::BlockIndex;
 use mc_util_grpc::{BasicCredentials, ConnectionUriGrpcioChannel, GrpcRetryConfig};
 use mc_util_uri::ConnectionUri;
-use retry::retry;
 use std::{ops::Range, sync::Arc};
 
 /// A non-attested connection to untrusted fog ledger endpoints
@@ -67,11 +66,12 @@ impl FogUntrustedLedgerGrpcClient {
             });
         }
 
-        retry(self.grpc_retry_config.get_retry_iterator(), || {
-            self.blocks_client
-                .get_blocks_opt(&request, self.creds.call_option()?)
-        })
-        .map_err(|grpcio_error| Error::Grpc(self.uri.clone(), grpcio_error))
+        self.grpc_retry_config
+            .retry(|| {
+                self.blocks_client
+                    .get_blocks_opt(&request, self.creds.call_option()?)
+            })
+            .map_err(|grpcio_error| Error::Grpc(self.uri.clone(), grpcio_error))
     }
 
     /// Make (non-private) request to check if particular TxOut public keys
@@ -90,10 +90,11 @@ impl FogUntrustedLedgerGrpcClient {
             request.tx_out_pubkeys.push((&pubkey).into());
         }
 
-        retry(self.grpc_retry_config.get_retry_iterator(), || {
-            self.tx_out_client
-                .get_tx_outs_opt(&request, self.creds.call_option()?)
-        })
-        .map_err(|grpcio_error| Error::Grpc(self.uri.clone(), grpcio_error))
+        self.grpc_retry_config
+            .retry(|| {
+                self.tx_out_client
+                    .get_tx_outs_opt(&request, self.creds.call_option()?)
+            })
+            .map_err(|grpcio_error| Error::Grpc(self.uri.clone(), grpcio_error))
     }
 }

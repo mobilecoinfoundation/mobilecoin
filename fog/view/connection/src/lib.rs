@@ -1,5 +1,10 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+//! A client object that creates an attested connection with a fog view enclave
+//! mediated over grpc. Can be used to make high-level requests.
+
+#![deny(missing_docs)]
+
 use grpcio::{ChannelBuilder, Environment};
 use mc_attest_verifier::Verifier;
 use mc_common::{
@@ -13,17 +18,30 @@ use mc_fog_uri::FogViewUri;
 use mc_fog_view_protocol::FogViewConnection;
 use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig};
 use mc_util_telemetry::{tracer, Tracer};
-use retry::{retry, Error as RetryError};
+use retry::Error as RetryError;
 use std::{fmt::Display, sync::Arc};
 
+/// A high-level object mediating requests to the fog view service
 pub struct FogViewGrpcClient {
+    /// The attested connection
     conn: EnclaveConnection<FogViewUri, view_grpc::FogViewApiClient>,
+    /// The grpc retry config
     grpc_retry_config: GrpcRetryConfig,
+    /// The uri we connected to
     uri: FogViewUri,
+    /// A logger object
     logger: Logger,
 }
 
 impl FogViewGrpcClient {
+    /// Create a new fog view grpc client
+    ///
+    /// Arguments:
+    /// * uri: The Uri to connect to
+    /// * grpc_retry_config: Retry policy to use for connection issues
+    /// * verifier: The attestation verifier
+    /// * env: A grpc environment (thread pool) to use for this connection
+    /// * logger: For logging
     pub fn new(
         uri: FogViewUri,
         grpc_retry_config: GrpcRetryConfig,
@@ -77,21 +95,26 @@ impl FogViewConnection for FogViewGrpcClient {
 
             let aad_bytes = mc_util_serial::encode(&req_aad);
 
-            retry(self.grpc_retry_config.get_retry_iterator(), || {
-                self.conn
-                    .retriable_encrypted_enclave_request(&req, &aad_bytes)
-            })
-            .map_err(|err| Error {
-                uri: self.uri.clone(),
-                error: err,
-            })
+            let retry_config = self.grpc_retry_config;
+            retry_config
+                .retry(|| {
+                    self.conn
+                        .retriable_encrypted_enclave_request(&req, &aad_bytes)
+                })
+                .map_err(|err| Error {
+                    uri: self.uri.clone(),
+                    error: err,
+                })
         })
     }
 }
 
+/// An error that can occur when making a fog view request
 #[derive(Debug)]
 pub struct Error {
+    /// The uri which we made the request from
     pub uri: FogViewUri,
+    /// The error which occurred
     pub error: RetryError<EnclaveConnectionError>,
 }
 

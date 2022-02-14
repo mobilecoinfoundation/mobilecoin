@@ -28,17 +28,18 @@ impl Default for GrpcRetryConfig {
 
 impl GrpcRetryConfig {
     /// Get a duration iterator for use with retry crate based on this config
-    pub fn get_retry_iterator(&self) -> Box<dyn Iterator<Item = Duration>> {
-        Box::new(
-            delay::Fixed::from_millis(self.grpc_retry_millis)
-                .take(self.grpc_retry_count)
-                .map(delay::jitter),
-        )
+    pub fn get_retry_iterator(&self) -> impl Iterator<Item = Duration> {
+        delay::Fixed::from_millis(self.grpc_retry_millis)
+            .take(self.grpc_retry_count)
+            .map(delay::jitter)
     }
-  pub fn retry<O, R, E, OR>(operation: O) -> Result<R, retry::Error<E>> 
-  where
-      O: FnMut() -> OR,
-      OR: Into<retry::OperationResult<R, E>>, {
-        retry::retry(self.get_retry_iterator, operation)
-      }
+
+    /// Retry an operation using this retry config
+    pub fn retry<O, R, E, OR>(&self, operation: O) -> Result<R, retry::Error<E>>
+    where
+        O: FnMut() -> OR,
+        OR: Into<retry::OperationResult<R, E>>,
+    {
+        retry::retry(self.get_retry_iterator(), operation)
+    }
 }
