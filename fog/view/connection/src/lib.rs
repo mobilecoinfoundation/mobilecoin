@@ -101,9 +101,9 @@ impl FogViewConnection for FogViewGrpcClient {
                     self.conn
                         .retriable_encrypted_enclave_request(&req, &aad_bytes)
                 })
-                .map_err(|err| Error {
+                .map_err(|error| Error {
                     uri: self.uri.clone(),
-                    error: err,
+                    error,
                 })
         })
     }
