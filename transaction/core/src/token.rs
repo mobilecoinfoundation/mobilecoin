@@ -39,7 +39,7 @@ pub trait Token {
     /// Token Id.
     const ID: TokenId;
 
-    /// Mininum fee for this token.
+    /// Default mininum fee for this token.
     const MINIMUM_FEE: u64;
 }
 

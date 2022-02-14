@@ -3,8 +3,12 @@
 //! Configuration parameters for the Consensus Service application.
 
 mod network;
+mod tokens;
 
-use crate::{config::network::NetworkConfig, consensus_service::ConsensusServiceError};
+use crate::{
+    config::{network::NetworkConfig, tokens::TokensConfig},
+    consensus_service::ConsensusServiceError,
+};
 use mc_attest_core::ProviderId;
 use mc_common::{NodeID, ResponderId};
 use mc_consensus_enclave::FeeMap;
@@ -99,8 +103,13 @@ pub struct Config {
     minimum_fee: Vec<TokenIdFeePair>,
 
     /// Allow extreme (>= 1MOB, <= 0.000_000_01 MOB).
+    // TODO this should move into TokensConfig.
     #[structopt(long)]
     pub allow_any_fee: bool,
+
+    /// The location for the network.toml/json configuration file.
+    #[structopt(long = "tokens", parse(from_os_str))]
+    pub tokens_path: Option<PathBuf>,
 }
 
 /// Decodes an Ed25519 private key.
@@ -157,6 +166,19 @@ impl Config {
     /// Get the network configuration by loading the network.toml/json file.
     pub fn network(&self) -> NetworkConfig {
         NetworkConfig::load_from_path(&self.network_path, &self.peer_responder_id)
+    }
+
+    /// Get the tokens configuration from a file, if provided, or the default
+    /// configuration.
+    pub fn tokens_config(&self) -> TokensConfig {
+        if let Some(tokens_path) = &self.tokens_path {
+            TokensConfig::load_from_path(tokens_path).expect(&format!(
+                "failed loading tokens configuration from {:?}",
+                tokens_path
+            ))
+        } else {
+            TokensConfig::default()
+        }
     }
 }
 

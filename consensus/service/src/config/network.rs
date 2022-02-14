@@ -34,7 +34,7 @@ impl NetworkConfig {
             .unwrap_or_else(|err| panic!("failed reading {:?}: {:?}", path, err));
 
         // Parse configuration file.
-        let network: NetworkConfig = match path.extension().and_then(|ext| ext.to_str()) {
+        let network: Self = match path.extension().and_then(|ext| ext.to_str()) {
             None => panic!("failed figuring out file extension for path {:?}", path),
             Some("toml") => toml::from_str(&data)
                 .unwrap_or_else(|err| panic!("failed TOML parsing {:?}: {:?}", path, err)),
