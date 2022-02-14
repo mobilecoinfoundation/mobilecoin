@@ -5,7 +5,7 @@
 //! produce a joint signature on a common message. The simplest multi-signature
 //! of a message is just a set of signatures containing one signature over the
 //! message from each member of the signing group. We say that a multi-signature
-//! is a k-of-n threshold signature if only k valid signatures are required from
+//! is a m-of-n threshold signature if only k valid signatures are required from
 //! a signing group of size n.
 
 #![cfg_attr(not(test), no_std)]
@@ -40,7 +40,7 @@ impl<S: Clone + Default + Digestible + Eq + Message + PartialEq + Serialize + Si
     }
 }
 
-/// A set of K-out-of-N public keys.
+/// A set of M-out-of-N public keys.
 #[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize)]
 #[serde(bound = "")]
 pub struct SignerSet<P: Default + PublicKey + Message> {
