@@ -164,8 +164,12 @@ impl Config {
     }
 
     /// Get the network configuration by loading the network.toml/json file.
+    /// This will panic if the configuration is invalid.
     pub fn network(&self) -> NetworkConfig {
-        NetworkConfig::load_from_path(&self.network_path, &self.peer_responder_id)
+        NetworkConfig::load_from_path(&self.network_path, &self.peer_responder_id).expect(&format!(
+            "Failed loading network configuration from {:?}",
+            self.network_path,
+        ))
     }
 
     /// Get the tokens configuration from a file, if provided, or the default

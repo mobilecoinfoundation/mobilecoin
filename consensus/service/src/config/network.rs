@@ -26,22 +26,26 @@ pub struct NetworkConfig {
 
 impl NetworkConfig {
     /// Get the network configuration by loading the network.toml/json file.
-    pub fn load_from_path(path: impl AsRef<Path>, peer_responder_id: &ResponderId) -> Self {
+    pub fn load_from_path(
+        path: impl AsRef<Path>,
+        peer_responder_id: &ResponderId,
+    ) -> Result<Self, String> {
         let path = path.as_ref();
 
         // Read configuration file.
-        let data = fs::read_to_string(path)
-            .unwrap_or_else(|err| panic!("failed reading {:?}: {:?}", path, err));
+        let data = fs::read_to_string(path).unwrap_or_else(|err| err.to_string());
 
         // Parse configuration file.
         let network: Self = match path.extension().and_then(|ext| ext.to_str()) {
-            None => panic!("failed figuring out file extension for path {:?}", path),
-            Some("toml") => toml::from_str(&data)
-                .unwrap_or_else(|err| panic!("failed TOML parsing {:?}: {:?}", path, err)),
-            Some("json") => serde_json::from_str(&data)
-                .unwrap_or_else(|err| panic!("failed JSON parsing {:?}: {:?}", path, err)),
-            Some(ext) => panic!("Unrecognized extension in path {:?}: {:?}", path, ext),
-        };
+            None => Err("failed figuring out file extension".to_owned()),
+            Some("toml") => {
+                toml::from_str(&data).map_err(|err| format!("TOML parsing failed: {:?}", err))
+            }
+            Some("json") => {
+                serde_json::from_str(&data).map_err(|err| format!("JSON parsing failed: {:?}", err))
+            }
+            Some(ext) => Err(format!("Unrecognized extension '{}'", ext)),
+        }?;
 
         // Sanity tests:
         // - Our responder ID should not appear in `broadcast_peers` or `known_peers`.
@@ -53,33 +57,33 @@ impl NetworkConfig {
             .chain(network.known_peers.iter().flatten());
         let mut spotted_responder_ids = HashSet::default();
         for peer_uri in peer_uris {
-            let responder_id = peer_uri.responder_id().unwrap_or_else(|e| {
-                panic!("failed getting responder id for {:?}: {:?}", peer_uri, e)
-            });
+            let responder_id = peer_uri
+                .responder_id()
+                .map_err(|e| format!("failed getting responder id for {:?}: {:?}", peer_uri, e))?;
 
             if peer_responder_id == &responder_id {
-                panic!(
+                return Err(format!(
                     "Our peer responder id ({}) should not appear in broadcast_peers or known_peers!",
                     responder_id
-                );
+                ));
             }
 
             if !spotted_responder_ids.insert(responder_id.clone()) {
-                panic!(
+                return Err(format!(
                     "Duplicate responder_id {} found in network configuration",
                     responder_id
-                );
+                ));
             }
         }
 
         // Sanity test: We should have at least one source of transactions, if we have
         // any peers configured.
         if !network.broadcast_peers.is_empty() && network.tx_source_urls.is_empty() {
-            panic!("Network configuration is missing tx_source_urls");
+            return Err(format!("Network configuration is missing tx_source_urls"));
         }
 
         // Success.
-        network
+        Ok(network)
     }
 
     pub fn quorum_set(&self) -> QuorumSet {
