@@ -9,7 +9,7 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 use mc_crypto_digestible::Digestible;
-use mc_crypto_keys::{SignatureError, PublicKey, Signature, Verifier};
+use mc_crypto_keys::{PublicKey, Signature, SignatureError, Verifier};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
