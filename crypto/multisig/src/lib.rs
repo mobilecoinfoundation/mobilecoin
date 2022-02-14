@@ -119,20 +119,30 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
 mod test {
     use super::*;
     use alloc::vec;
-    use core::iter::FromIterator;
     use mc_crypto_keys::{Ed25519Pair, Ed25519Public, Signer};
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
-    use std::collections::HashSet;
+
+    /// Helper method for comparing two signers list.
+    /// In other places in the code we might convert to a HashSet first and then
+    /// compare, but that would hide duplicate elements and we want to catch
+    /// that.
+    fn assert_eq_ignore_order(mut a: Vec<Ed25519Public>, mut b: Vec<Ed25519Public>) {
+        a.sort();
+        b.sort();
+
+        assert_eq!(a, b);
+    }
 
     #[test]
-    fn ed25519_verify_signers_sanity() {
+    fn ed25519_verify_signers_sanity_k_equals_3() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
         let signer1 = Ed25519Pair::from_random(&mut rng);
         let signer2 = Ed25519Pair::from_random(&mut rng);
         let signer3 = Ed25519Pair::from_random(&mut rng);
         let signer4 = Ed25519Pair::from_random(&mut rng);
+        let signer5 = Ed25519Pair::from_random(&mut rng);
 
         let signer_set = SignerSet::new(
             vec![
@@ -154,11 +164,9 @@ mod test {
             signer1.try_sign(message.as_ref()).unwrap(),
             signer3.try_sign(message.as_ref()).unwrap(),
         ]);
-        assert_eq!(
-            HashSet::<Ed25519Public>::from_iter(
-                signer_set.verify(message.as_ref(), &multi_sig).unwrap()
-            ),
-            HashSet::from_iter(vec![signer1.public_key(), signer3.public_key()])
+        assert_eq_ignore_order(
+            signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
+            vec![signer1.public_key(), signer3.public_key()],
         );
 
         // If we alter the message, we should not pass verification.
@@ -172,15 +180,13 @@ mod test {
             signer2.try_sign(message.as_ref()).unwrap(),
             signer3.try_sign(message.as_ref()).unwrap(),
         ]);
-        assert_eq!(
-            HashSet::<Ed25519Public>::from_iter(
-                signer_set.verify(message.as_ref(), &multi_sig).unwrap()
-            ),
-            HashSet::from_iter(vec![
+        assert_eq_ignore_order(
+            signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
+            vec![
                 signer1.public_key(),
                 signer2.public_key(),
-                signer3.public_key()
-            ])
+                signer3.public_key(),
+            ],
         );
 
         // Trying to cheat by signing twice with the same signer will not work.
@@ -204,11 +210,175 @@ mod test {
             signer3.try_sign(message.as_ref()).unwrap(),
             signer4.try_sign(message.as_ref()).unwrap(),
         ]);
-        assert_eq!(
-            HashSet::<Ed25519Public>::from_iter(
-                signer_set.verify(message.as_ref(), &multi_sig).unwrap()
-            ),
-            HashSet::from_iter(vec![signer1.public_key(), signer3.public_key()])
+        assert_eq_ignore_order(
+            signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
+            vec![signer1.public_key(), signer3.public_key()],
+        );
+
+        // Bunch of duplicate signers and signatures, all do not match.
+        let multi_sig = MultiSig::new(vec![
+            signer4.try_sign(message.as_ref()).unwrap(),
+            signer4.try_sign(message.as_ref()).unwrap(),
+            signer5.try_sign(message.as_ref()).unwrap(),
+            signer5.try_sign(message.as_ref()).unwrap(),
+            signer4.try_sign(message.as_ref()).unwrap(),
+        ]);
+        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
+    }
+
+    #[test]
+    fn ed25519_verify_signers_sanity_k_equals_1() {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let signer1 = Ed25519Pair::from_random(&mut rng);
+        let signer2 = Ed25519Pair::from_random(&mut rng);
+        let signer3 = Ed25519Pair::from_random(&mut rng);
+        let signer4 = Ed25519Pair::from_random(&mut rng);
+        let signer5 = Ed25519Pair::from_random(&mut rng);
+
+        let signer_set = SignerSet::new(
+            vec![
+                signer1.public_key(),
+                signer2.public_key(),
+                signer3.public_key(),
+            ],
+            1,
+        );
+        let message = b"this is a test";
+
+        // Try with just no valid signatures, we should fail to verify.
+        let multi_sig = MultiSig::new(vec![signer4.try_sign(message.as_ref()).unwrap()]);
+        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
+
+        let multi_sig = MultiSig::new(vec![
+            signer4.try_sign(message.as_ref()).unwrap(),
+            signer4.try_sign(message.as_ref()).unwrap(),
+        ]);
+        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
+
+        let multi_sig = MultiSig::new(vec![
+            signer4.try_sign(message.as_ref()).unwrap(),
+            signer5.try_sign(message.as_ref()).unwrap(),
+        ]);
+        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
+
+        // Add a valid signer, we should now verify successfully.
+        let multi_sig = MultiSig::new(vec![
+            signer4.try_sign(message.as_ref()).unwrap(),
+            signer5.try_sign(message.as_ref()).unwrap(),
+            signer1.try_sign(message.as_ref()).unwrap(),
+        ]);
+        assert_eq_ignore_order(
+            signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
+            vec![signer1.public_key()],
+        );
+
+        // With two valid signers we should get both back.
+        let multi_sig = MultiSig::new(vec![
+            signer4.try_sign(message.as_ref()).unwrap(),
+            signer5.try_sign(message.as_ref()).unwrap(),
+            signer1.try_sign(message.as_ref()).unwrap(),
+            signer2.try_sign(message.as_ref()).unwrap(),
+        ]);
+        assert_eq_ignore_order(
+            signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
+            vec![signer1.public_key(), signer2.public_key()],
+        );
+
+        // Add the same valid signers, they should not be returned twice.
+        let multi_sig = MultiSig::new(vec![
+            signer1.try_sign(message.as_ref()).unwrap(),
+            signer2.try_sign(message.as_ref()).unwrap(),
+            signer4.try_sign(message.as_ref()).unwrap(),
+            signer5.try_sign(message.as_ref()).unwrap(),
+            signer1.try_sign(message.as_ref()).unwrap(),
+            signer2.try_sign(message.as_ref()).unwrap(),
+            signer1.try_sign(message.as_ref()).unwrap(),
+            signer2.try_sign(message.as_ref()).unwrap(),
+        ]);
+        assert_eq_ignore_order(
+            signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
+            vec![signer1.public_key(), signer2.public_key()],
+        );
+    }
+
+    #[test]
+    fn ed25519_verify_with_duplicate_signers() {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let signer1 = Ed25519Pair::from_random(&mut rng);
+        let signer2 = Ed25519Pair::from_random(&mut rng);
+        let signer3 = Ed25519Pair::from_random(&mut rng);
+        let signer4 = Ed25519Pair::from_random(&mut rng);
+        let signer5 = Ed25519Pair::from_random(&mut rng);
+
+        // This signer set contains duplicate public keys but when verifying we should
+        // not see the same key twice.
+        let signer_set = SignerSet::new(
+            vec![
+                signer1.public_key(),
+                signer2.public_key(),
+                signer1.public_key(),
+                signer2.public_key(),
+                signer3.public_key(),
+                signer1.public_key(),
+                signer2.public_key(),
+            ],
+            1,
+        );
+        let message = b"this is a test";
+
+        // Try with just no valid signatures, we should fail to verify.
+        let multi_sig = MultiSig::new(vec![signer4.try_sign(message.as_ref()).unwrap()]);
+        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
+
+        let multi_sig = MultiSig::new(vec![
+            signer4.try_sign(message.as_ref()).unwrap(),
+            signer4.try_sign(message.as_ref()).unwrap(),
+        ]);
+        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
+
+        let multi_sig = MultiSig::new(vec![
+            signer4.try_sign(message.as_ref()).unwrap(),
+            signer5.try_sign(message.as_ref()).unwrap(),
+        ]);
+        assert!(signer_set.verify(message.as_ref(), &multi_sig).is_err());
+
+        // Add a valid signer, we should now verify successfully.
+        let multi_sig = MultiSig::new(vec![
+            signer4.try_sign(message.as_ref()).unwrap(),
+            signer5.try_sign(message.as_ref()).unwrap(),
+            signer1.try_sign(message.as_ref()).unwrap(),
+        ]);
+        assert_eq_ignore_order(
+            signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
+            vec![signer1.public_key()],
+        );
+
+        // With two valid signers we should get both back.
+        let multi_sig = MultiSig::new(vec![
+            signer4.try_sign(message.as_ref()).unwrap(),
+            signer5.try_sign(message.as_ref()).unwrap(),
+            signer1.try_sign(message.as_ref()).unwrap(),
+            signer2.try_sign(message.as_ref()).unwrap(),
+        ]);
+        assert_eq_ignore_order(
+            signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
+            vec![signer1.public_key(), signer2.public_key()],
+        );
+
+        // Add the same valid signers, they should not be returned twice.
+        let multi_sig = MultiSig::new(vec![
+            signer1.try_sign(message.as_ref()).unwrap(),
+            signer2.try_sign(message.as_ref()).unwrap(),
+            signer4.try_sign(message.as_ref()).unwrap(),
+            signer5.try_sign(message.as_ref()).unwrap(),
+            signer1.try_sign(message.as_ref()).unwrap(),
+            signer2.try_sign(message.as_ref()).unwrap(),
+            signer1.try_sign(message.as_ref()).unwrap(),
+            signer2.try_sign(message.as_ref()).unwrap(),
+        ]);
+        assert_eq_ignore_order(
+            signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
+            vec![signer1.public_key(), signer2.public_key()],
         );
     }
 
@@ -230,14 +400,14 @@ mod test {
 
         assert_eq!(
             signer_set,
-            mc_util_serial::deserialize(&mc_util_serial::serialize(&signer_set).unwrap()).unwrap()
+            mc_util_serial::deserialize(&mc_util_serial::serialize(&signer_set).unwrap()).unwrap(),
         );
 
         let message = b"this is a test";
         let multi_sig = MultiSig::new(vec![signer1.try_sign(message.as_ref()).unwrap()]);
         assert_eq!(
             multi_sig,
-            mc_util_serial::deserialize(&mc_util_serial::serialize(&multi_sig).unwrap()).unwrap()
+            mc_util_serial::deserialize(&mc_util_serial::serialize(&multi_sig).unwrap()).unwrap(),
         );
     }
 
@@ -259,14 +429,14 @@ mod test {
 
         assert_eq!(
             signer_set,
-            mc_util_serial::decode(&mc_util_serial::encode(&signer_set)).unwrap()
+            mc_util_serial::decode(&mc_util_serial::encode(&signer_set)).unwrap(),
         );
 
         let message = b"this is a test";
         let multi_sig = MultiSig::new(vec![signer1.try_sign(message.as_ref()).unwrap()]);
         assert_eq!(
             multi_sig,
-            mc_util_serial::decode(&mc_util_serial::encode(&multi_sig)).unwrap()
+            mc_util_serial::decode(&mc_util_serial::encode(&multi_sig)).unwrap(),
         );
     }
 }
