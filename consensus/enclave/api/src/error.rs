@@ -41,6 +41,9 @@ pub enum Error {
     /// Invalid membership proof provided by local system
     InvalidLocalMembershipProof,
 
+    /// Invalid membership root element provided by local system
+    InvalidLocalMembershipRootElement,
+
     /// Form block error: {0}
     FormBlock(String),
 
