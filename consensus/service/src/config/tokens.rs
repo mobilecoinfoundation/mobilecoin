@@ -2,6 +2,7 @@
 
 //! Tokens configuration.
 
+use crate::consensus_service::ConsensusServiceError;
 use mc_common::HashSet;
 use mc_consensus_enclave::FeeMap;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
@@ -51,20 +52,29 @@ impl TokensConfig {
             Some("json") => {
                 serde_json::from_str(&data).map_err(|err| format!("JSON parsing: {:?}", err))
             }
-            Some(ext) => Err(format!("Unrecognized extension '{}' in path", ext)),
+            Some(ext) => Err(format!("Unrecognized extension '{}'", ext)),
         }?;
 
+        tokens_config.validate()?;
+        Ok(tokens_config)
+    }
+
+    /// Validate the tokens configuration.
+    pub fn validate(&self) -> Result<(), String> {
         // Cannot have duplicate configuration for a single token.
-        let unique_token_ids =
-            HashSet::from_iter(tokens_config.tokens.iter().map(|token| token.token_id));
-        if unique_token_ids.len() != tokens_config.tokens.len() {
+        let unique_token_ids = HashSet::from_iter(self.tokens.iter().map(|token| token.token_id));
+        if unique_token_ids.len() != self.tokens.len() {
             return Err("duplicate token configuration found".to_owned());
         }
 
-        // Validate that we have a fee for every token that does not have a supported
-        // built-in fee.
+        // Must have MOB.
+        if self.get_token_config(&Mob::ID).is_none() {
+            return Err("MOB token configuration not found".to_owned());
+        }
+
+        // We must have a fee for every token that does not have a built-in default fee.
         let default_fee_map = FeeMap::default();
-        for token in tokens_config.tokens.iter() {
+        for token in self.tokens.iter() {
             let has_default_fee = default_fee_map.get_fee_for_token(&token.token_id).is_some();
             if token.minimum_fee.is_none() && !has_default_fee {
                 return Err(format!(
@@ -75,6 +85,36 @@ impl TokensConfig {
         }
 
         // Tokens configuration is valid.
-        Ok(tokens_config)
+        Ok(())
+    }
+
+    /// Get the configuration of a specific token.
+    pub fn get_token_config(&self, token_id: &TokenId) -> Option<&TokenConfig> {
+        self.tokens.iter().find(|token| token.token_id == *token_id)
+    }
+
+    /// Construct a FeeMap based on the configuration.
+    pub fn fee_map(&self) -> Result<FeeMap, ConsensusServiceError> {
+        let default_fee_map = FeeMap::default();
+        FeeMap::try_from_iter(
+            self.tokens
+                .iter()
+                .map(|token_config| {
+                    Ok((
+                        token_config.token_id,
+                        token_config
+                            .minimum_fee
+                            .or_else(|| default_fee_map.get_fee_for_token(&token_config.token_id))
+                            .ok_or_else(|| {
+                                ConsensusServiceError::FeesMisconfigured(format!(
+                                    "missing minimum fee for token id {:?}",
+                                    token_config.token_id
+                                ))
+                            })?,
+                    ))
+                })
+                .collect::<Result<Vec<_>, ConsensusServiceError>>()?,
+        )
+        .map_err(|err| ConsensusServiceError::FeesMisconfigured(err.to_string()))
     }
 }
