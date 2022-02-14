@@ -17,6 +17,7 @@ use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_sgx_css::Signature;
 use mc_transaction_core::constants::RING_SIZE;
+use mc_util_grpc::GrpcRetryConfig;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::sync::Arc;
 
@@ -26,6 +27,9 @@ pub struct ClientBuilder {
     uri: ConsensusClientUri,
     key: AccountKey,
     logger: Logger,
+
+    // Optional, has sane defaults
+    grpc_retry_config: GrpcRetryConfig,
 
     // Optional, has sane defaults
     ring_size: usize,
@@ -60,6 +64,7 @@ impl ClientBuilder {
             uri,
             key,
             logger,
+            grpc_retry_config: Default::default(),
             ring_size: RING_SIZE,
             use_rth_memos: true,
             fog_view_address,
@@ -70,6 +75,13 @@ impl ClientBuilder {
             fog_ledger_sigstruct: None,
             fog_view_sigstruct: None,
         }
+    }
+
+    /// Sets the grpc retry configuration
+    pub fn grpc_retry_config(self, config: GrpcRetryConfig) -> Self {
+        let mut retval = self;
+        retval.grpc_retry_config = config;
+        retval
     }
 
     /// Sets the ring size to be used when generating transactions.
@@ -192,6 +204,7 @@ impl ClientBuilder {
 
         FogViewGrpcClient::new(
             self.fog_view_address.clone(),
+            self.grpc_retry_config,
             verifier,
             grpc_env,
             self.logger.clone(),
@@ -219,23 +232,27 @@ impl ClientBuilder {
         (
             FogMerkleProofGrpcClient::new(
                 self.ledger_server_address.clone(),
+                self.grpc_retry_config,
                 verifier.clone(),
                 grpc_env.clone(),
                 self.logger.clone(),
             ),
             FogKeyImageGrpcClient::new(
                 self.ledger_server_address.clone(),
+                self.grpc_retry_config,
                 verifier,
                 grpc_env.clone(),
                 self.logger.clone(),
             ),
             FogUntrustedLedgerGrpcClient::new(
                 self.ledger_server_address.clone(),
+                self.grpc_retry_config,
                 grpc_env.clone(),
                 self.logger.clone(),
             ),
             FogBlockGrpcClient::new(
                 self.ledger_server_address.clone(),
+                self.grpc_retry_config,
                 grpc_env,
                 self.logger.clone(),
             ),

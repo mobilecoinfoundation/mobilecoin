@@ -76,6 +76,7 @@ fn main() {
         config.consensus_config.consensus_validators,
         config.fog_ledger,
         config.fog_view,
+        config.grpc_retry_config,
         logger.clone(),
     )
     .consensus_sigstruct(maybe_load_css(&config.consensus_enclave_css))

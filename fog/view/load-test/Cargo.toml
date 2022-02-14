@@ -18,6 +18,7 @@ structopt = "0.3"
 mc-account-keys = { path = "../../../account-keys" }
 mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["log"] }
+mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-keyfile = { path = "../../../util/keyfile" }
 
 # fog

@@ -16,6 +16,7 @@ use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_sgx_css::Signature;
 use mc_transaction_core::{constants::RING_SIZE, tokens::Mob, BlockIndex, Token};
 use mc_transaction_std::MemoType;
+use mc_util_grpc::GrpcRetryConfig;
 use mc_util_telemetry::{
     block_span_builder, mark_span_as_active, telemetry_static_key, tracer, Context, Key, Span,
     SpanKind, Tracer,
@@ -80,6 +81,7 @@ impl Default for TestClientPolicy {
 /// An object which can run test transfers
 pub struct TestClient {
     policy: TestClientPolicy,
+    grpc_retry_config: GrpcRetryConfig,
     account_keys: Vec<AccountKey>,
     consensus_uris: Vec<ConsensusClientUri>,
     fog_ledger: FogLedgerUri,
@@ -111,6 +113,7 @@ impl TestClient {
         consensus_uris: Vec<ConsensusClientUri>,
         fog_ledger: FogLedgerUri,
         fog_view: FogViewUri,
+        grpc_retry_config: GrpcRetryConfig,
         logger: Logger,
     ) -> Self {
         let tx_info = Arc::new(Default::default());
@@ -123,6 +126,7 @@ impl TestClient {
         let health_tracker = Arc::new(HealthTracker::new(healing_time));
         Self {
             policy,
+            grpc_retry_config,
             account_keys,
             consensus_uris,
             fog_ledger,
@@ -197,6 +201,7 @@ impl TestClient {
                 account_key.clone(),
                 self.logger.clone(),
             )
+            .grpc_retry_config(self.grpc_retry_config)
             .ring_size(RING_SIZE)
             .use_rth_memos(self.policy.test_rth_memos)
             .address_book(address_book.clone())

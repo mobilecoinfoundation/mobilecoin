@@ -32,6 +32,7 @@ use mc_fog_view_protocol::FogViewConnection;
 use mc_fog_view_server::{config::MobileAcctViewConfig as ViewConfig, server::ViewServer};
 use mc_transaction_core::{Block, BlockID, BLOCK_VERSION};
 use mc_util_from_random::FromRandom;
+use mc_util_grpc::GrpcRetryConfig;
 use rand::{rngs::StdRng, SeedableRng};
 use std::{
     str::FromStr,
@@ -43,6 +44,11 @@ use std::{
 };
 
 static PORT_NR: AtomicUsize = AtomicUsize::new(40100);
+
+const GRPC_RETRY_CONFIG: GrpcRetryConfig = GrpcRetryConfig {
+    grpc_retry_count: 3,
+    grpc_retry_millis: 20,
+};
 
 fn get_test_environment(
     view_omap_capacity: u64,
@@ -103,7 +109,7 @@ fn get_test_environment(
         let mut verifier = Verifier::default();
         verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
-        FogViewGrpcClient::new(uri, verifier, grpcio_env.clone(), logger)
+        FogViewGrpcClient::new(uri, GRPC_RETRY_CONFIG, verifier, grpcio_env.clone(), logger)
     };
 
     (db_test_context, server, client)
