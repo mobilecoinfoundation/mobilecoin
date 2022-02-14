@@ -99,7 +99,7 @@ impl Display for Error {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             formatter,
-            "Fog view connection ({}): {}",
+            "Fog view connection error ({}): {}",
             &self.uri, &self.error
         )
     }
