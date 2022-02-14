@@ -2,7 +2,7 @@
 
 //! Multi-signature implementations.
 
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 #![deny(missing_docs)]
 
 extern crate alloc;
@@ -73,9 +73,21 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
             return Err(SignatureError::new());
         }
 
-        let mut matched_signers = Vec::new();
+        // Sort and dedup the list of signers and signatures.
+        // While the verification code below should be immune to duplicate signers or
+        // signatures, the overhead of deduping them is negligible and being
+        // extra-safe is a good idea.
         let mut potential_signers = self.signers.clone();
-        for signature in multi_sig.signatures.iter() {
+        potential_signers.sort();
+        potential_signers.dedup();
+
+        let mut signatures = multi_sig.signatures.clone();
+        signatures.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
+        signatures.dedup();
+
+        // See which signatures which match signers.
+        let mut matched_signers = Vec::new();
+        for signature in signatures.iter() {
             let matched_signer = potential_signers.iter().find_map(|signer| {
                 signer
                     .verify(message, signature)
@@ -88,6 +100,7 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
             }
         }
 
+        // Did we pass the threshold of verified signatures?
         if matched_signers.len() < self.threshold as usize {
             return Err(SignatureError::new());
         }
@@ -100,10 +113,12 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
 mod test {
     use super::*;
     use alloc::vec;
-    use mc_crypto_keys::{Ed25519Pair, Signer};
+    use core::iter::FromIterator;
+    use mc_crypto_keys::{Ed25519Pair, Ed25519Public, Signer};
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
+    use std::collections::HashSet;
 
     #[test]
     fn ed25519_verify_signers_sanity() {
@@ -134,8 +149,10 @@ mod test {
             signer3.try_sign(message.as_ref()).unwrap(),
         ]);
         assert_eq!(
-            signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
-            vec![signer1.public_key(), signer3.public_key()]
+            HashSet::<Ed25519Public>::from_iter(
+                signer_set.verify(message.as_ref(), &multi_sig).unwrap()
+            ),
+            HashSet::from_iter(vec![signer1.public_key(), signer3.public_key()])
         );
 
         // If we alter the message, we should not pass verification.
@@ -150,12 +167,14 @@ mod test {
             signer3.try_sign(message.as_ref()).unwrap(),
         ]);
         assert_eq!(
-            signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
-            vec![
+            HashSet::<Ed25519Public>::from_iter(
+                signer_set.verify(message.as_ref(), &multi_sig).unwrap()
+            ),
+            HashSet::from_iter(vec![
                 signer1.public_key(),
                 signer2.public_key(),
                 signer3.public_key()
-            ]
+            ])
         );
 
         // Trying to cheat by signing twice with the same signer will not work.
@@ -180,8 +199,10 @@ mod test {
             signer4.try_sign(message.as_ref()).unwrap(),
         ]);
         assert_eq!(
-            signer_set.verify(message.as_ref(), &multi_sig).unwrap(),
-            vec![signer1.public_key(), signer3.public_key()]
+            HashSet::<Ed25519Public>::from_iter(
+                signer_set.verify(message.as_ref(), &multi_sig).unwrap()
+            ),
+            HashSet::from_iter(vec![signer1.public_key(), signer3.public_key()])
         );
     }
 
