@@ -35,4 +35,10 @@ impl GrpcRetryConfig {
                 .map(delay::jitter),
         )
     }
+  pub fn retry<O, R, E, OR>(operation: O) -> Result<R, retry::Error<E>> 
+  where
+      O: FnMut() -> OR,
+      OR: Into<retry::OperationResult<R, E>>, {
+        retry::retry(self.get_retry_iterator, operation)
+      }
 }
