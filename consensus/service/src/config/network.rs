@@ -8,6 +8,7 @@ use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 
+/// Consensus network configuration.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct NetworkConfig {
     /// The set of nodes which you trust to validate transactions.
