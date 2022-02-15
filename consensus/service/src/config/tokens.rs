@@ -15,7 +15,8 @@ pub struct TokenConfig {
     /// Token ID.
     token_id: TokenId,
 
-    /// Minimum fee.
+    /// Minimum fee, in the smallest denomination supported by the token (e.g.
+    /// picomob for the MOB token).
     minimum_fee: Option<u64>,
 
     /// Allow extreme fees. Currently the limitation is only enforced for MOB
@@ -194,343 +195,322 @@ mod tests {
     }
 
     #[test]
-    fn no_mob_config() {
-        // With minimum fee.
-        {
-            let input_toml: &str = r#"
+    fn no_mob_config_with_minimum_fee() {
+        let input_toml: &str = r#"
                 tokens = [
                     { token_id = 1, minimum_fee = 123000 }
                 ]
             "#;
-            let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-            let input_json: &str = r#"{
+        let input_json: &str = r#"{
                 "tokens": [
                     { "token_id": 1, "minimum_fee": 123000 }
                 ]
             }"#;
-            let tokens2: TokensConfig =
-                serde_json::from_str(input_json).expect("failed parsing json");
-            assert_eq!(tokens, tokens2);
+        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
+        assert_eq!(tokens, tokens2);
 
-            // Validation should fail since we must have the MOB token configured.
-            assert!(tokens.validate().is_err());
-            assert!(tokens.fee_map().is_err());
-        }
+        // Validation should fail since we must have the MOB token configured.
+        assert!(tokens.validate().is_err());
+        assert!(tokens.fee_map().is_err());
+    }
 
-        // Without minimum fee.
-        {
-            let input_toml: &str = r#"
+    #[test]
+    fn no_mob_config_without_minimum_fee() {
+        let input_toml: &str = r#"
                 tokens = [
                     { token_id = 2 }
                 ]
             "#;
-            let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-            let input_json: &str = r#"{
+        let input_json: &str = r#"{
                 "tokens": [
                     { "token_id": 2 }
                 ]
             }"#;
-            let tokens2: TokensConfig =
-                serde_json::from_str(input_json).expect("failed parsing json");
-            assert_eq!(tokens, tokens2);
+        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
+        assert_eq!(tokens, tokens2);
 
-            // Validation should fail since we must have the MOB token configured.
-            assert!(tokens.validate().is_err());
-            assert!(tokens.fee_map().is_err());
-        }
+        // Validation should fail since we must have the MOB token configured.
+        assert!(tokens.validate().is_err());
+        assert!(tokens.fee_map().is_err());
     }
 
     #[test]
-    fn only_mob_config() {
-        // With minimum fee.
-        {
-            let input_toml: &str = r#"
+    fn only_mob_config_with_minimum_fee() {
+        let input_toml: &str = r#"
                 tokens = [
                     { token_id = 0, minimum_fee = 123000 }
                 ]
             "#;
-            let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-            let input_json: &str = r#"{
+        let input_json: &str = r#"{
                 "tokens": [
                     { "token_id": 0, "minimum_fee": 123000 }
                 ]
             }"#;
-            let tokens2: TokensConfig =
-                serde_json::from_str(input_json).expect("failed parsing json");
-            assert_eq!(tokens, tokens2);
+        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
+        assert_eq!(tokens, tokens2);
 
-            // Validation should succeed since MOB is specified and has minimum fee.
-            assert!(tokens.validate().is_ok());
-            assert_eq!(
-                tokens.get_token_config(&Mob::ID).unwrap().minimum_fee,
-                Some(123000)
-            );
+        // Validation should succeed since MOB is specified and has minimum fee.
+        assert!(tokens.validate().is_ok());
+        assert_eq!(
+            tokens.get_token_config(&Mob::ID).unwrap().minimum_fee,
+            Some(123000)
+        );
 
-            // A random token id does not exist.
-            assert_eq!(tokens.get_token_config(&TokenId::from(42)), None);
-        }
+        // A random token id does not exist.
+        assert_eq!(tokens.get_token_config(&TokenId::from(42)), None);
+    }
 
-        // Without minimum fee.
-        {
-            let input_toml: &str = r#"
+    #[test]
+    fn only_mob_config_without_minimum_fee() {
+        let input_toml: &str = r#"
                 tokens = [
                     { token_id = 0 }
                 ]
             "#;
-            let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-            let input_json: &str = r#"{
+        let input_json: &str = r#"{
                 "tokens": [
                     { "token_id": 0 }
                 ]
             }"#;
-            let tokens2: TokensConfig =
-                serde_json::from_str(input_json).expect("failed parsing json");
-            assert_eq!(tokens, tokens2);
+        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
+        assert_eq!(tokens, tokens2);
 
-            // Validation should succeed since MOB is specified and has a default minimum
-            // fee.
-            assert!(tokens.validate().is_ok());
-            assert_eq!(
-                tokens
-                    .get_token_config(&Mob::ID)
-                    .unwrap()
-                    .minimum_fee_or_default(),
-                Some(Mob::MINIMUM_FEE)
-            );
-            assert_eq!(tokens.fee_map().unwrap(), FeeMap::default());
+        // Validation should succeed since MOB is specified and has a default minimum
+        // fee.
+        assert!(tokens.validate().is_ok());
+        assert_eq!(
+            tokens
+                .get_token_config(&Mob::ID)
+                .unwrap()
+                .minimum_fee_or_default(),
+            Some(Mob::MINIMUM_FEE)
+        );
+        assert_eq!(tokens.fee_map().unwrap(), FeeMap::default());
 
-            // A random token id does not exist.
-            assert_eq!(tokens.get_token_config(&TokenId::from(42)), None);
-        }
+        // A random token id does not exist.
+        assert_eq!(tokens.get_token_config(&TokenId::from(42)), None);
     }
 
     #[test]
-    fn mob_and_another_token() {
+    fn mob_and_another_token_with_minimum_fee() {
         let test_token = TokenId::from(6);
 
-        // With minimum fee.
-        {
-            let input_toml: &str = r#"
+        let input_toml: &str = r#"
                 tokens = [
                     { token_id = 0, minimum_fee = 123000 },
                     { token_id = 6, minimum_fee = 456000 }
                 ]
             "#;
-            let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-            let input_json: &str = r#"{
+        let input_json: &str = r#"{
                 "tokens": [
                     { "token_id": 0, "minimum_fee": 123000 },
                     { "token_id": 6, "minimum_fee": 456000 }
                 ]
             }"#;
-            let tokens2: TokensConfig =
-                serde_json::from_str(input_json).expect("failed parsing json");
-            assert_eq!(tokens, tokens2);
+        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
+        assert_eq!(tokens, tokens2);
 
-            // Validation should succeed since MOB and the secound token have minimum fee
-            // configured.
-            assert!(tokens.validate().is_ok());
-            assert_eq!(
-                tokens
-                    .get_token_config(&Mob::ID)
-                    .unwrap()
-                    .minimum_fee_or_default(),
-                Some(123000)
-            );
-            assert_eq!(
-                tokens
-                    .get_token_config(&test_token)
-                    .unwrap()
-                    .minimum_fee_or_default(),
-                Some(456000)
-            );
+        // Validation should succeed since MOB and the secound token have minimum fee
+        // configured.
+        assert!(tokens.validate().is_ok());
+        assert_eq!(
+            tokens
+                .get_token_config(&Mob::ID)
+                .unwrap()
+                .minimum_fee_or_default(),
+            Some(123000)
+        );
+        assert_eq!(
+            tokens
+                .get_token_config(&test_token)
+                .unwrap()
+                .minimum_fee_or_default(),
+            Some(456000)
+        );
 
-            // Fee map looks good.
-            assert_eq!(
-                tokens.fee_map().unwrap(),
-                FeeMap::try_from_iter(vec![(Mob::ID, 123000), (test_token, 456000)]).unwrap(),
-            );
+        // Fee map looks good.
+        assert_eq!(
+            tokens.fee_map().unwrap(),
+            FeeMap::try_from_iter(vec![(Mob::ID, 123000), (test_token, 456000)]).unwrap(),
+        );
 
-            // A random token id does not exist.
-            assert_eq!(tokens.get_token_config(&TokenId::from(42)), None);
-        }
+        // A random token id does not exist.
+        assert_eq!(tokens.get_token_config(&TokenId::from(42)), None);
+    }
 
-        // Without a minimum MOB fee (so we revert to the default one)
-        {
-            let input_toml: &str = r#"
+    #[test]
+    fn mob_and_another_token_without_minimum_fee_reverts_to_default() {
+        let test_token = TokenId::from(6);
+        let input_toml: &str = r#"
                 tokens = [
                     { token_id = 0 },
                     { token_id = 6, minimum_fee = 456000 }
                 ]
             "#;
-            let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-            let input_json: &str = r#"{
+        let input_json: &str = r#"{
                 "tokens": [
                     { "token_id": 0 },
                     { "token_id": 6, "minimum_fee": 456000 }
                 ]
             }"#;
-            let tokens2: TokensConfig =
-                serde_json::from_str(input_json).expect("failed parsing json");
-            assert_eq!(tokens, tokens2);
+        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
+        assert_eq!(tokens, tokens2);
 
-            // Validation should succeed since MOB and the secound token have minimum fee
-            // configured.
-            assert!(tokens.validate().is_ok());
-            assert_eq!(
-                tokens
-                    .get_token_config(&Mob::ID)
-                    .unwrap()
-                    .minimum_fee_or_default(),
-                Some(Mob::MINIMUM_FEE)
-            );
-            assert_eq!(
-                tokens
-                    .get_token_config(&test_token)
-                    .unwrap()
-                    .minimum_fee_or_default(),
-                Some(456000)
-            );
+        // Validation should succeed since MOB and the secound token have minimum fee
+        // configured.
+        assert!(tokens.validate().is_ok());
+        assert_eq!(
+            tokens
+                .get_token_config(&Mob::ID)
+                .unwrap()
+                .minimum_fee_or_default(),
+            Some(Mob::MINIMUM_FEE)
+        );
+        assert_eq!(
+            tokens
+                .get_token_config(&test_token)
+                .unwrap()
+                .minimum_fee_or_default(),
+            Some(456000)
+        );
 
-            // Fee map looks good.
-            assert_eq!(
-                tokens.fee_map().unwrap(),
-                FeeMap::try_from_iter(vec![(Mob::ID, Mob::MINIMUM_FEE), (test_token, 456000)])
-                    .unwrap(),
-            );
+        // Fee map looks good.
+        assert_eq!(
+            tokens.fee_map().unwrap(),
+            FeeMap::try_from_iter(vec![(Mob::ID, Mob::MINIMUM_FEE), (test_token, 456000)]).unwrap(),
+        );
 
-            // A random token id does not exist.
-            assert_eq!(tokens.get_token_config(&TokenId::from(42)), None);
-        }
+        // A random token id does not exist.
+        assert_eq!(tokens.get_token_config(&TokenId::from(42)), None);
+    }
 
-        // Without a minimum fee for the second token that does not have a default fee.
-        {
-            let input_toml: &str = r#"
+    // Without a minimum fee for the second token that does not have a default fee.
+    #[test]
+    fn mob_and_another_token_without_minimum_fee_and_no_default() {
+        let input_toml: &str = r#"
                 tokens = [
                     { token_id = 0, minimum_fee = 123000 },
                     { token_id = 6 }
                 ]
             "#;
-            let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-            let input_json: &str = r#"{
+        let input_json: &str = r#"{
                 "tokens": [
                     { "token_id": 0, "minimum_fee": 123000 },
                     { "token_id": 6 }
                 ]
             }"#;
-            let tokens2: TokensConfig =
-                serde_json::from_str(input_json).expect("failed parsing json");
-            assert_eq!(tokens, tokens2);
+        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
+        assert_eq!(tokens, tokens2);
 
-            // Validation should fail since the minimum fee for the second token is unknown.
-            assert!(tokens.validate().is_err());
+        // Validation should fail since the minimum fee for the second token is unknown.
+        assert!(tokens.validate().is_err());
 
-            // Getting the fee map should also fail.
-            assert!(tokens.fee_map().is_err());
-        }
+        // Getting the fee map should also fail.
+        assert!(tokens.fee_map().is_err());
     }
 
     #[test]
-    fn allow_any_fee_can_only_be_used_on_mob() {
-        // Can't use allow_any_fee on non MOB token
-        {
-            let input_toml: &str = r#"
+    fn cant_use_allow_any_fee_on_non_mob_tokens() {
+        let input_toml: &str = r#"
             tokens = [
                 { token_id = 1, minimum_fee = 123000, allow_any_fee = true }
             ]
         "#;
-            let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-            let input_json: &str = r#"{
+        let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 1, "minimum_fee": 123000, "allow_any_fee": true }
             ]
         }"#;
-            let tokens2: TokensConfig =
-                serde_json::from_str(input_json).expect("failed parsing json");
-            assert_eq!(tokens, tokens2);
+        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
+        assert_eq!(tokens, tokens2);
 
-            // Validation should fail since allow_any_fee cannot be used on non-MOB tokens.
-            assert!(tokens.validate().is_err());
-        }
+        // Validation should fail since allow_any_fee cannot be used on non-MOB tokens.
+        assert!(tokens.validate().is_err());
+    }
 
-        // Without allow_any_fee on MOB, we cant use a small fee.
-        {
-            let input_toml: &str = r#"
+    #[test]
+    fn cant_use_small_fee_on_mob_without_allow_any_fee() {
+        let input_toml: &str = r#"
             tokens = [
                 { token_id = 0, minimum_fee = 1 }
             ]
         "#;
-            let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-            let input_json: &str = r#"{
+        let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 0, "minimum_fee": 1 }
             ]
         }"#;
-            let tokens2: TokensConfig =
-                serde_json::from_str(input_json).expect("failed parsing json");
-            assert_eq!(tokens, tokens2);
+        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
+        assert_eq!(tokens, tokens2);
 
-            // Validation should fail since the fee is outside the allowed eange.
-            assert!(tokens.validate().is_err());
-        }
+        // Validation should fail since the fee is outside the allowed eange.
+        assert!(tokens.validate().is_err());
+    }
 
-        {
-            let input_toml: &str = r#"
+    #[test]
+    fn cant_use_small_fee_on_mob_with_allow_any_fee_false() {
+        let input_toml: &str = r#"
             tokens = [
                 { token_id = 0, minimum_fee = 1, allow_any_fee = false }
             ]
         "#;
-            let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-            let input_json: &str = r#"{
+        let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 0, "minimum_fee": 1, "allow_any_fee": false }
             ]
         }"#;
-            let tokens2: TokensConfig =
-                serde_json::from_str(input_json).expect("failed parsing json");
-            assert_eq!(tokens, tokens2);
+        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
+        assert_eq!(tokens, tokens2);
 
-            // Validation should fail since the fee is outside the allowed eange.
-            assert!(tokens.validate().is_err());
-        }
+        // Validation should fail since the fee is outside the allowed eange.
+        assert!(tokens.validate().is_err());
+    }
 
-        // allow_any_fee allows us to override the limit
-        {
-            let input_toml: &str = r#"
+    #[test]
+    fn allow_any_fee_allows_small_mob_fee() {
+        let input_toml: &str = r#"
             tokens = [
                 { token_id = 0, minimum_fee = 1, allow_any_fee = true}
             ]
         "#;
-            let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-            let input_json: &str = r#"{
+        let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 0, "minimum_fee": 1, "allow_any_fee": true }
             ]
         }"#;
-            let tokens2: TokensConfig =
-                serde_json::from_str(input_json).expect("failed parsing json");
-            assert_eq!(tokens, tokens2);
+        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
+        assert_eq!(tokens, tokens2);
 
-            // Validation should fail since the fee is outside the allowed range.
-            assert!(tokens.validate().is_ok());
-            assert_eq!(
-                tokens
-                    .get_token_config(&Mob::ID)
-                    .unwrap()
-                    .minimum_fee_or_default(),
-                Some(1)
-            );
-        }
+        // Validation should fail since the fee is outside the allowed range.
+        assert!(tokens.validate().is_ok());
+        assert_eq!(
+            tokens
+                .get_token_config(&Mob::ID)
+                .unwrap()
+                .minimum_fee_or_default(),
+            Some(1)
+        );
     }
 }
