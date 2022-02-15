@@ -151,6 +151,7 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mc_transaction_core::{tokens::Mob, Token};
     use std::str::FromStr;
 
     #[test]
@@ -175,6 +176,7 @@ mod tests {
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Duration::from_secs(60),
             allow_any_fee: false,
+            tokens_path: None,
         };
 
         assert_eq!(
@@ -208,6 +210,12 @@ mod tests {
             config.admin_listen_uri,
             Some(AdminUri::from_str("insecure-mca://0.0.0.0:9090/").unwrap())
         );
+
+        // Empty tokens path should result with a single token being configured.
+        let tokens = config.tokens();
+        assert_eq!(tokens.tokens().len(), 1);
+        assert_eq!(tokens.tokens()[0].token_id(), Mob::ID);
+        assert_eq!(tokens.tokens()[0].minimum_fee(), Some(Mob::MINIMUM_FEE));
     }
 
     #[test]
@@ -231,6 +239,7 @@ mod tests {
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Duration::from_secs(60),
             allow_any_fee: false,
+            tokens_path: None,
         };
 
         assert_eq!(
