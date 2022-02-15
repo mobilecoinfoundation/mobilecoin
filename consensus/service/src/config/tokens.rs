@@ -20,7 +20,9 @@ pub struct TokenConfig {
 
     /// Allow extreme fees. Currently the limitation is only enforced for MOB
     /// (>= 1MOB, <= 0.000_000_01 MOB).
-    #[serde(default)] // default to false
+    // instructs serde to default to false without explicitly requiring this field to appear in the
+    // file.
+    #[serde(default)]
     allow_any_fee: bool,
 }
 
@@ -30,7 +32,8 @@ impl TokenConfig {
         self.token_id
     }
 
-    /// Minimum fee.
+    /// Get the configured minimum fee or a default one, if available.
+    /// Will return None if the minimum fee is unknown for this token id.
     pub fn minimum_fee_or_default(&self) -> Option<u64> {
         self.minimum_fee
             .or_else(|| FeeMap::default().get_fee_for_token(&self.token_id()))
