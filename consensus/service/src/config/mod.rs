@@ -151,6 +151,7 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mc_consensus_enclave::FeeMap;
     use mc_transaction_core::{tokens::Mob, Token};
     use std::str::FromStr;
 
@@ -215,7 +216,11 @@ mod tests {
         let tokens = config.tokens();
         assert_eq!(tokens.tokens().len(), 1);
         assert_eq!(tokens.tokens()[0].token_id(), Mob::ID);
-        assert_eq!(tokens.tokens()[0].minimum_fee(), Some(Mob::MINIMUM_FEE));
+        assert_eq!(
+            tokens.tokens()[0].minimum_fee_or_default(),
+            Some(Mob::MINIMUM_FEE)
+        );
+        assert_eq!(tokens.fee_map().unwrap(), FeeMap::default());
     }
 
     #[test]
