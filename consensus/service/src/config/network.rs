@@ -79,7 +79,7 @@ impl NetworkConfig {
         // Sanity test: We should have at least one source of transactions, if we have
         // any peers configured.
         if !network.broadcast_peers.is_empty() && network.tx_source_urls.is_empty() {
-            return Err(format!("Network configuration is missing tx_source_urls"));
+            return Err("Network configuration is missing tx_source_urls".to_owned());
         }
 
         // Success.
