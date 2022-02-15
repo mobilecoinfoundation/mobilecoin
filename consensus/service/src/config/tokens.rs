@@ -171,6 +171,55 @@ mod tests {
     }
 
     #[test]
+    fn no_mob_config() {
+        // With minimum fee.
+        {
+            let input_toml: &str = r#"
+                tokens = [
+                    { token_id = 1, minimum_fee = 123 }
+                ]
+            "#;
+            let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+
+            let input_json: &str = r#"{
+                "tokens": [
+                    { "token_id": 1, "minimum_fee": 123 }
+                ]
+            }"#;
+            let tokens2: TokensConfig =
+                serde_json::from_str(input_json).expect("failed parsing json");
+            assert_eq!(tokens, tokens2);
+
+            // Validation should fail since we must have the MOB token configured.
+            assert!(tokens.validate().is_err());
+            assert!(tokens.fee_map().is_err());
+        }
+
+        // Without minimum fee.
+        {
+            let input_toml: &str = r#"
+                tokens = [
+                    { token_id = 2 }
+                ]
+            "#;
+            let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+
+            let input_json: &str = r#"{
+                "tokens": [
+                    { "token_id": 2 }
+                ]
+            }"#;
+            let tokens2: TokensConfig =
+                serde_json::from_str(input_json).expect("failed parsing json");
+            assert_eq!(tokens, tokens2);
+
+            // Validation should fail since we must have the MOB token configured.
+            assert!(tokens.validate().is_err());
+            assert!(tokens.fee_map().is_err());
+        }
+    }
+
+    #[test]
     fn only_mob_config() {
         // With minimum fee.
         {
