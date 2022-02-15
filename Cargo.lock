@@ -3184,6 +3184,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-multisig"
+version = "1.2.0-pre0"
+dependencies = [
+ "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "mc-util-serial",
+ "prost",
+ "rand_core 0.6.3",
+ "rand_hc 0.3.1",
+ "serde",
+]
+
+[[package]]
 name = "mc-crypto-noise"
 version = "1.2.0-pre0"
 dependencies = [
