@@ -148,22 +148,18 @@ impl TokensConfig {
 
     /// Construct a FeeMap based on the configuration.
     pub fn fee_map(&self) -> Result<FeeMap, ConsensusServiceError> {
-        let default_fee_map = FeeMap::default();
         FeeMap::try_from_iter(
             self.tokens
                 .iter()
                 .map(|token_config| {
                     Ok((
                         token_config.token_id,
-                        token_config
-                            .minimum_fee
-                            .or_else(|| default_fee_map.get_fee_for_token(&token_config.token_id))
-                            .ok_or_else(|| {
-                                ConsensusServiceError::Configuration(format!(
-                                    "missing minimum fee for token id {:?}",
-                                    token_config.token_id
-                                ))
-                            })?,
+                        token_config.minimum_fee_or_default().ok_or_else(|| {
+                            ConsensusServiceError::Configuration(format!(
+                                "missing minimum fee for token id {:?}",
+                                token_config.token_id
+                            ))
+                        })?,
                     ))
                 })
                 .collect::<Result<Vec<_>, ConsensusServiceError>>()?,
