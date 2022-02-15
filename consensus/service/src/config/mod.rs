@@ -93,11 +93,6 @@ pub struct Config {
     #[structopt(long, default_value = "86400", parse(try_from_str=parse_duration_in_seconds))]
     pub client_auth_token_max_lifetime: Duration,
 
-    /// Allow extreme (>= 1MOB, <= 0.000_000_01 MOB).
-    // TODO this should move into TokensConfig.
-    #[structopt(long)]
-    pub allow_any_fee: bool,
-
     /// The location for the network.toml/json configuration file.
     #[structopt(long = "tokens", parse(from_os_str))]
     pub tokens_path: Option<PathBuf>,
@@ -179,7 +174,6 @@ mod tests {
             sealed_block_signing_key: PathBuf::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Duration::from_secs(60),
-            allow_any_fee: false,
             tokens_path: None,
         };
 
@@ -246,7 +240,6 @@ mod tests {
             sealed_block_signing_key: PathBuf::default(),
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Duration::from_secs(60),
-            allow_any_fee: false,
             tokens_path: None,
         };
 
