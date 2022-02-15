@@ -59,8 +59,8 @@ pub enum ConsensusServiceError {
     BackgroundWorkQueueStop(String),
     /// Report cache error: `{0}`
     ReportCache(ReportCacheError),
-    /// Fees misconfigured: `{0}`
-    FeesMisconfigured(String),
+    /// Configuration: `{0}`
+    Configuration(String),
     /// Consensus enclave error: `{0}`
     ConsensusEnclave(ConsensusEnclaveError),
 }
@@ -345,7 +345,7 @@ impl<
             consensus_common_grpc::create_blockchain_api(BlockchainApiService::new(
                 self.ledger_db.clone(),
                 self.client_authenticator.clone(),
-                self.config.fee_map()?,
+                self.config.tokens().fee_map()?,
                 self.logger.clone(),
             ));
 
@@ -438,7 +438,7 @@ impl<
             consensus_common_grpc::create_blockchain_api(BlockchainApiService::new(
                 self.ledger_db.clone(),
                 peer_authenticator.clone(),
-                self.config.fee_map()?,
+                self.config.tokens().fee_map()?,
                 self.logger.clone(),
             ));
 

@@ -31,7 +31,7 @@ fn main() -> Result<(), ConsensusServiceError> {
 
     let config = Config::from_args();
     let local_node_id = config.node_id();
-    let fee_map = config.fee_map().expect("Could not parse fee map");
+    let fee_map = config.tokens().fee_map().expect("Could not parse fee map");
 
     let (logger, _global_logger_guard) = create_app_logger(o!(
         "mc.local_node_id" => local_node_id.responder_id.to_string(),
@@ -67,6 +67,8 @@ fn main() -> Result<(), ConsensusServiceError> {
         &config.peer_responder_id,
         &config.client_responder_id,
         &cached_key,
+        // TODO should use hash of any configuration that we want to ensure is coordinated
+        // between nodes.
         &fee_map,
     );
 
