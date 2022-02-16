@@ -503,7 +503,7 @@ mod tests {
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
         assert_eq!(tokens, tokens2);
 
-        // Validation should fail since the fee is outside the allowed range.
+        // Validation should succeed since allow_any_fee was true.
         assert!(tokens.validate().is_ok());
         assert_eq!(
             tokens
