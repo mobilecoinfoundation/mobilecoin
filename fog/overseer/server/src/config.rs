@@ -11,20 +11,15 @@ use structopt::StructOpt;
 #[derive(Clone, Serialize, StructOpt)]
 pub struct OverseerConfig {
     /// Host to listen on.
-    #[structopt(long, default_value = "127.0.0.1")]
+    #[structopt(long, env, default_value = "127.0.0.1")]
     pub listen_host: String,
 
     /// Port to start webserver on.
-    #[structopt(long, default_value = "9090")]
+    #[structopt(long, env, default_value = "9090")]
     pub listen_port: u16,
 
-    /// TODO: Make this an environment variable that can be dynamically
-    /// refreshed. This will allow ops to have one Fog Overseer instance that
-    /// can look at the new Fog Ingest cluster during the blue / green
-    /// deployment.
-    ///
     /// gRPC listening URIs for client requests.
-    #[structopt(long, use_delimiter = true)]
+    #[structopt(long, env, use_delimiter = true)]
     pub ingest_cluster_uris: Vec<FogIngestUri>,
 
     /// Postgres config
