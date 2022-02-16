@@ -46,7 +46,3 @@ mc-util-build-sgx = { path = "../../../util/build/sgx" }
 
 cargo-emit = "0.2.1"
 pkg-config = "0.3"
-
-[[bench]]
-name = "add_etxout"
-harness = false

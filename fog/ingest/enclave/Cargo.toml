@@ -46,7 +46,3 @@ mc-util-build-script = { path = "../../../util/build/script" }
 
 cargo-emit = "0.2.1"
 pkg-config = "0.3"
-
-[[bench]]
-name = "add_user"
-harness = false
