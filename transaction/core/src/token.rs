@@ -18,7 +18,7 @@ impl From<u32> for TokenId {
 
 impl fmt::Display for TokenId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{}", self.0)
     }
 }
 
