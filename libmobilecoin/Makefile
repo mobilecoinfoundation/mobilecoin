@@ -87,7 +87,11 @@ DASH:= -
 ####################################
 
 .PHONY: all
-all: setup ios
+all: require setup ios
+
+.PHONY: require
+require:
+	brew list llvm > /dev/null 2>&1 || (echo "ERROR: llvm installed with brew is required. do: brew install llvm"; exit 1)
 
 .PHONY: setup
 setup: 
@@ -134,7 +138,7 @@ out/ios/target: $(ARCHS_IOS)
 # Legacy build process uses standard rustup toolchains for building
 # Output is in out/ios/legacy/
 .PHONY: legacy
-legacy: legacy_setup legacy_ios
+legacy: require legacy_setup legacy_ios
 
 
 .PHONY: legacy_setup
