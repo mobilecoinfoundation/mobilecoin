@@ -180,13 +180,13 @@ mod tests {
     #[test]
     fn empty_config() {
         let input_toml: &str = r#"
-                tokens = []
-            "#;
+            tokens = []
+        "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         let input_json: &str = r#"{
-                "tokens": []
-            }"#;
+            "tokens": []
+        }"#;
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
         assert_eq!(tokens, tokens2);
 
@@ -197,17 +197,17 @@ mod tests {
     #[test]
     fn no_mob_config_with_minimum_fee() {
         let input_toml: &str = r#"
-                tokens = [
-                    { token_id = 1, minimum_fee = 123000 }
-                ]
-            "#;
+            [[tokens]]
+            token_id = 1
+            minimum_fee = 123000
+        "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         let input_json: &str = r#"{
-                "tokens": [
-                    { "token_id": 1, "minimum_fee": 123000 }
-                ]
-            }"#;
+            "tokens": [
+                { "token_id": 1, "minimum_fee": 123000 }
+            ]
+        }"#;
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
         assert_eq!(tokens, tokens2);
 
@@ -219,17 +219,16 @@ mod tests {
     #[test]
     fn no_mob_config_without_minimum_fee() {
         let input_toml: &str = r#"
-                tokens = [
-                    { token_id = 2 }
-                ]
-            "#;
+            [[tokens]]
+            token_id = 2
+        "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         let input_json: &str = r#"{
-                "tokens": [
-                    { "token_id": 2 }
-                ]
-            }"#;
+            "tokens": [
+                { "token_id": 2 }
+            ]
+        }"#;
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
         assert_eq!(tokens, tokens2);
 
@@ -241,17 +240,17 @@ mod tests {
     #[test]
     fn only_mob_config_with_minimum_fee() {
         let input_toml: &str = r#"
-                tokens = [
-                    { token_id = 0, minimum_fee = 123000 }
-                ]
-            "#;
+            [[tokens]]
+            token_id = 0
+            minimum_fee = 123000
+        "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         let input_json: &str = r#"{
-                "tokens": [
-                    { "token_id": 0, "minimum_fee": 123000 }
-                ]
-            }"#;
+            "tokens": [
+                { "token_id": 0, "minimum_fee": 123000 }
+            ]
+        }"#;
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
         assert_eq!(tokens, tokens2);
 
@@ -269,17 +268,16 @@ mod tests {
     #[test]
     fn only_mob_config_without_minimum_fee() {
         let input_toml: &str = r#"
-                tokens = [
-                    { token_id = 0 }
-                ]
-            "#;
+            [[tokens]]
+            token_id = 0
+        "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         let input_json: &str = r#"{
-                "tokens": [
-                    { "token_id": 0 }
-                ]
-            }"#;
+            "tokens": [
+                { "token_id": 0 }
+            ]
+        }"#;
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
         assert_eq!(tokens, tokens2);
 
@@ -304,19 +302,22 @@ mod tests {
         let test_token = TokenId::from(6);
 
         let input_toml: &str = r#"
-                tokens = [
-                    { token_id = 0, minimum_fee = 123000 },
-                    { token_id = 6, minimum_fee = 456000 }
-                ]
-            "#;
+            [[tokens]]
+            token_id = 0
+            minimum_fee = 123000
+
+            [[tokens]]
+            token_id = 6
+            minimum_fee = 456000
+        "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         let input_json: &str = r#"{
-                "tokens": [
-                    { "token_id": 0, "minimum_fee": 123000 },
-                    { "token_id": 6, "minimum_fee": 456000 }
-                ]
-            }"#;
+            "tokens": [
+                { "token_id": 0, "minimum_fee": 123000 },
+                { "token_id": 6, "minimum_fee": 456000 }
+            ]
+        }"#;
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
         assert_eq!(tokens, tokens2);
 
@@ -352,19 +353,21 @@ mod tests {
     fn mob_and_another_token_without_minimum_fee_reverts_to_default() {
         let test_token = TokenId::from(6);
         let input_toml: &str = r#"
-                tokens = [
-                    { token_id = 0 },
-                    { token_id = 6, minimum_fee = 456000 }
-                ]
-            "#;
+            [[tokens]]
+            token_id = 0
+
+            [[tokens]]
+            token_id = 6
+            minimum_fee = 456000
+        "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         let input_json: &str = r#"{
-                "tokens": [
-                    { "token_id": 0 },
-                    { "token_id": 6, "minimum_fee": 456000 }
-                ]
-            }"#;
+            "tokens": [
+                { "token_id": 0 },
+                { "token_id": 6, "minimum_fee": 456000 }
+            ]
+        }"#;
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
         assert_eq!(tokens, tokens2);
 
@@ -400,19 +403,21 @@ mod tests {
     #[test]
     fn mob_and_another_token_without_minimum_fee_and_no_default() {
         let input_toml: &str = r#"
-                tokens = [
-                    { token_id = 0, minimum_fee = 123000 },
-                    { token_id = 6 }
-                ]
-            "#;
+            [[tokens]]
+            token_id = 0
+            minimum_fee = 123000
+
+            [[tokens]]
+            token_id = 6
+        "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         let input_json: &str = r#"{
-                "tokens": [
-                    { "token_id": 0, "minimum_fee": 123000 },
-                    { "token_id": 6 }
-                ]
-            }"#;
+            "tokens": [
+                { "token_id": 0, "minimum_fee": 123000 },
+                { "token_id": 6 }
+            ]
+        }"#;
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
         assert_eq!(tokens, tokens2);
 
@@ -426,9 +431,10 @@ mod tests {
     #[test]
     fn cant_use_allow_any_fee_on_non_mob_tokens() {
         let input_toml: &str = r#"
-            tokens = [
-                { token_id = 1, minimum_fee = 123000, allow_any_fee = true }
-            ]
+            [[tokens]]
+            token_id = 1
+            minimum_fee = 123000
+            allow_any_fee = true
         "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
@@ -447,9 +453,9 @@ mod tests {
     #[test]
     fn cant_use_small_fee_on_mob_without_allow_any_fee() {
         let input_toml: &str = r#"
-            tokens = [
-                { token_id = 0, minimum_fee = 1 }
-            ]
+            [[tokens]]
+            token_id = 0
+            minimum_fee = 1
         "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
@@ -468,9 +474,10 @@ mod tests {
     #[test]
     fn cant_use_small_fee_on_mob_with_allow_any_fee_false() {
         let input_toml: &str = r#"
-            tokens = [
-                { token_id = 0, minimum_fee = 1, allow_any_fee = false }
-            ]
+            [[tokens]]
+            token_id = 0
+            minimum_fee = 1
+            allow_any_fee = false
         "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
@@ -489,9 +496,10 @@ mod tests {
     #[test]
     fn allow_any_fee_allows_small_mob_fee() {
         let input_toml: &str = r#"
-            tokens = [
-                { token_id = 0, minimum_fee = 1, allow_any_fee = true}
-            ]
+            [[tokens]]
+            token_id = 0
+            minimum_fee = 1
+            allow_any_fee = true
         "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
