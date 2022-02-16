@@ -93,6 +93,13 @@ all: require setup ios
 require:
 	brew list llvm > /dev/null 2>&1 || (echo "ERROR: llvm installed with brew is required. do: brew install llvm"; exit 1)
 
+.PHONY: bitcode
+bitcode: setup bitcode-init
+
+.PHONY: bitcode-init
+bitcode-init:
+	cd rust-bitcode && ./build-install.sh -t $@ -l $(SWIFT_VERSION) -r $(RUST_COMMIT) -n $(RUST_COMMIT_NAME);
+
 .PHONY: setup
 setup: 
 	mkdir -p rust-bitcode
