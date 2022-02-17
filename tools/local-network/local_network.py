@@ -160,6 +160,7 @@ class Node:
         self.ledger_dir = os.path.join(WORK_DIR, f'node-ledger-{self.node_num}')
         self.ledger_distribution_dir = os.path.join(WORK_DIR, f'node-ledger-distribution-{self.node_num}')
         self.msg_signer_key_file = os.path.join(WORK_DIR, f'node-scp-{self.node_num}.pem')
+        self.tokens_config_file = os.path.join(WORK_DIR, f'node-tokens-{self.node_num}.json')
         subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {self.msg_signer_key_file}', shell=True)
 
     def peer_uri(self, broadcast_consensus_msgs=True):
@@ -213,6 +214,15 @@ class Node:
         except FileNotFoundError:
             pass
 
+        # Tokens config file
+        tokens_config = {
+            "tokens": [
+                { "token_id": 0, "minimum_fee": self.minimum_fee },
+            ],
+        }
+        with open(self.tokens_config_file, 'w') as f:
+            json.dump(tokens_config, f)
+
         cmd = ' '.join([
             f'cd {PROJECT_DIR} && exec {TARGET_DIR}/consensus-service',
             f'--client-responder-id localhost:{self.client_port}',
@@ -228,7 +238,7 @@ class Node:
             f'--peer-listen-uri="insecure-mcp://0.0.0.0:{self.peer_port}/"',
             f'--scp-debug-dump {WORK_DIR}/scp-debug-dump-{self.node_num}',
             f'--sealed-block-signing-key {WORK_DIR}/consensus-sealed-block-signing-key-{self.node_num}',
-            f'--minimum-fee=0:{self.minimum_fee}',
+            f'--tokens={self.tokens_config_file}',
         ])
 
         print(f'Starting node {self.name}: client_port={self.client_port} peer_port={self.peer_port} admin_port={self.admin_port}')
