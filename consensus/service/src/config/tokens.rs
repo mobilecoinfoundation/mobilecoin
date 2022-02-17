@@ -11,8 +11,8 @@ use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fs, iter::FromIterator, path::Path};
 
-/// A helper struct for ser/derserializing a SignerSet that uses hex-encoded DER
-/// representation of Ed25519 public keys.
+/// A helper struct for ser/derserializing a SignerSet that uses hex-encoded
+/// DER representation of Ed25519 public keys.
 #[derive(Serialize, Deserialize)]
 struct DerSignerSet {
     signers: Vec<String>,
