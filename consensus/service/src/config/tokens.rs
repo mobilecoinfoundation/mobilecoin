@@ -667,15 +667,14 @@ mod tests {
 
     #[test]
     fn valid_minting_config() {
-        // This test code is used to generate the two keys used in the test below.
-        /*
         let key1 = Ed25519Public::try_from(&[3u8; 32][..]).unwrap();
         let key2 = Ed25519Public::try_from(&[123u8; 32][..]).unwrap();
+
+        // This test code is used to generate the two keys used in the test below.
         let key1_hex = hex::encode(&key1.to_der());
         let key2_hex = hex::encode(&key2.to_der());
         println!("{}", key1_hex);
         println!("{}", key2_hex);
-        */
 
         let input_toml: &str = r#"
             [[tokens]]
