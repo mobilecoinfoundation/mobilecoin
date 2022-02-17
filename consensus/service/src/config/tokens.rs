@@ -668,12 +668,14 @@ mod tests {
     #[test]
     fn valid_minting_config() {
         // This test code is used to generate the two keys used in the test below.
+        /*
         let key1 = Ed25519Public::try_from(&[3u8; 32][..]).unwrap();
         let key2 = Ed25519Public::try_from(&[123u8; 32][..]).unwrap();
         let key1_hex = hex::encode(&key1.to_der());
         let key2_hex = hex::encode(&key2.to_der());
         println!("{}", key1_hex);
         println!("{}", key2_hex);
+        */
 
         let input_toml: &str = r#"
             [[tokens]]
@@ -692,21 +694,21 @@ mod tests {
 
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
         let input_json: &str = r#"{
-                    "tokens": [
-                        { "token_id": 0 },
-                        {
-                            "token_id": 1,
-                            "minimum_fee": 1,
-                            "master_minters": {
-                                "signers": [
-                                    "302a300506032b65700321000303030303030303030303030303030303030303030303030303030303030303",
-                                    "302a300506032b65700321007b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b"
-                                ],
-                                "threshold": 1
-                            }
-                        }
-                    ]
-                }"#;
+            "tokens": [
+                { "token_id": 0 },
+                {
+                    "token_id": 1,
+                    "minimum_fee": 1,
+                    "master_minters": {
+                        "signers": [
+                            "302a300506032b65700321000303030303030303030303030303030303030303030303030303030303030303",
+                            "302a300506032b65700321007b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b"
+                        ],
+                        "threshold": 1
+                    }
+                }
+            ]
+        }"#;
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
         assert_eq!(tokens, tokens2);
 
