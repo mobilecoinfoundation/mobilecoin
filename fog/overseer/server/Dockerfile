@@ -10,8 +10,8 @@ COPY bin/start_overseer_server /usr/local/bin/start_overseer_server
 # The default port that the Fog Overseer HTTP Server runs on.
 ARG DEFAULT_PORT=9090
 
-ENV LISTEN_HOST 127.0.0.1
-ENV LISTEN_PORT $DEFAULT_PORT
+ENV OVERSEER_LISTEN_HOST 127.0.0.1
+ENV OVERSEER_LISTEN_PORT $DEFAULT_PORT
 
 # Required environment variables
 # INGEST_CLUSTER_URIS - comma separated list of Fog Ingest *Client* URIs.

@@ -10,13 +10,13 @@ use structopt::StructOpt;
 /// StructOpt configuration options for an Overseer Server
 #[derive(Clone, Serialize, StructOpt)]
 pub struct OverseerConfig {
-    /// Host to listen on.
+    /// Host that the Overseer server listens on.
     #[structopt(long, env, default_value = "127.0.0.1")]
-    pub listen_host: String,
+    pub overseer_listen_host: String,
 
-    /// Port to start webserver on.
+    /// Port to start the Overseer webserver on.
     #[structopt(long, env, default_value = "9090")]
-    pub listen_port: u16,
+    pub overseer_listen_port: u16,
 
     /// gRPC listening URIs for client requests.
     #[structopt(long, env, use_delimiter = true)]
@@ -35,9 +35,9 @@ mod tests {
     fn ingest_server_config_example() {
         let config = OverseerConfig::from_iter_safe(&[
             "/usr/bin/start_overseer_server",
-            "--listen-host",
+            "--overseer-listen-host",
             "www.mycoolhost.com",
-            "--listen-port",
+            "--overseer-listen-port",
             "8080",
             "--ingest-cluster-uris",
             "insecure-fog-ingest://0.0.0.0:3226/,insecure-fog-ingest://0.0.0.0:3227/",

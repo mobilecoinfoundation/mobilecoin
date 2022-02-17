@@ -37,8 +37,8 @@ fn main() {
 
     let rocket_config: rocket::Config =
         rocket::Config::build(rocket::config::Environment::Development)
-            .address(config.listen_host)
-            .port(config.listen_port)
+            .address(config.overseer_listen_host)
+            .port(config.overseer_listen_port)
             .unwrap();
 
     server::initialize_rocket_server(rocket_config, overseer_state);
