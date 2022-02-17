@@ -262,6 +262,8 @@ impl TokensConfig {
 
     /// Construct a FeeMap based on the configuration.
     pub fn fee_map(&self) -> Result<FeeMap, ConsensusServiceError> {
+        self.validate()?;
+
         FeeMap::try_from_iter(
             self.tokens
                 .iter()
@@ -793,5 +795,26 @@ mod tests {
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         assert_validation_error(&tokens, "token id 2: must have at least one signer");
+    }
+
+    #[test]
+    fn cannot_have_duplicate_token_ids() {
+        let input_toml: &str = r#"
+            [[tokens]]
+            token_id = 0
+
+            [[tokens]]
+            token_id = 1
+            minimum_fee = 123000
+
+            [[tokens]]
+            token_id = 1
+            minimum_fee = 123000
+        "#;
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+
+        // Validation should fail since we must have the MOB token configured.
+        assert_validation_error(&tokens, "duplicate token configuration found");
+        assert!(tokens.fee_map().is_err());
     }
 }
