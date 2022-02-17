@@ -34,7 +34,7 @@ mod tests {
     #[test]
     fn ingest_server_config_example() {
         let config = OverseerConfig::from_iter_safe(&[
-            "/usr/bin/start_overseer_server",
+            "/usr/bin/fog_overseer_server",
             "--overseer-listen-host",
             "www.mycoolhost.com",
             "--overseer-listen-port",
