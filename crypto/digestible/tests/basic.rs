@@ -5,6 +5,7 @@
 
 use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_POINT, scalar::Scalar};
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
+use std::collections::{BTreeMap, BTreeSet};
 
 // Test merlin transcript hash values for various primitives
 //
@@ -519,4 +520,33 @@ fn test_generic_array() {
         array.digest32::<MerlinTranscript>(b"test"),
         garray.digest32::<MerlinTranscript>(b"test"),
     );
+}
+
+// Test that hashing BTreeSet of strings is the same as hashing Vec of (sorted)
+// strings
+#[test]
+fn test_btree_set_vs_vec() {
+    let vec1 = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+    let set1 = vec1.iter().cloned().collect::<BTreeSet<String>>();
+
+    assert_eq!(
+        vec1.digest32::<MerlinTranscript>(b"test"),
+        set1.digest32::<MerlinTranscript>(b"test"),
+    )
+}
+
+// Test that hashing BTreeMap of int is the same as hashing Vec of (sorted)
+// pairs
+#[test]
+fn test_btree_map_vs_vec() {
+    let vec1: Vec<(&u64, &u64)> = vec![(&9, &11), (&14, &25), (&19, &1)];
+    let map1 = vec1
+        .iter()
+        .map(|(a, b)| (**a, **b))
+        .collect::<BTreeMap<u64, u64>>();
+
+    assert_eq!(
+        vec1.digest32::<MerlinTranscript>(b"test"),
+        map1.digest32::<MerlinTranscript>(b"test"),
+    )
 }
