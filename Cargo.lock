@@ -4949,6 +4949,7 @@ dependencies = [
  "mc-crypto-digestible-test-utils",
  "mc-crypto-hashes",
  "mc-crypto-keys",
+ "mc-crypto-multisig",
  "mc-crypto-rand",
  "mc-ledger-db",
  "mc-transaction-core-test-utils",
