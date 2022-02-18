@@ -459,6 +459,10 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             .expect("enclave was not initialized")
             .get_config();
 
+        if parent_block.version > *config.block_version {
+            return Err(Error::FormBlock(format!("Block version cannot decrease: parent_block.version = {}, config.block_version = {}", parent_block.version, config.block_version)));
+        }
+
         // This implicitly converts Vec<Result<(Tx Vec<TxOutMembershipProof>),_>> into
         // Result<Vec<(Tx, Vec<TxOutMembershipProof>)>, _>, and terminates the
         // iteration when the first Error is encountered.
@@ -1443,6 +1447,98 @@ mod tests {
             // Check
             let expected = Err(Error::InvalidLocalMembershipRootElement);
             assert_eq!(form_block_result, expected);
+        }
+    }
+
+    #[test_with_logger]
+    fn form_block_refuses_decreasing_block_version(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+
+        for block_version in BlockVersion::iterator() {
+            let enclave = SgxConsensusEnclave::new(logger.clone());
+            let blockchain_config = BlockchainConfig {
+                block_version: BlockVersion::try_from(*block_version - 1).unwrap(),
+                ..Default::default()
+            };
+            enclave
+                .enclave_init(
+                    &Default::default(),
+                    &Default::default(),
+                    &None,
+                    blockchain_config,
+                )
+                .unwrap();
+
+            // Initialize a ledger. `sender` is the owner of all outputs in the initial
+            // ledger.
+            let sender = AccountKey::random(&mut rng);
+            let mut ledger = create_ledger();
+            let n_blocks = 3;
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+            // Create a few transactions from `sender` to `recipient`.
+            let num_transactions = 6;
+            let recipient = AccountKey::random(&mut rng);
+
+            // The first block contains a single transaction with RING_SIZE outputs.
+            let block_zero_contents = ledger.get_block_contents(0).unwrap();
+
+            let mut new_transactions = Vec::new();
+            for i in 0..num_transactions {
+                let tx_out = &block_zero_contents.outputs[i];
+
+                let tx = create_transaction(
+                    block_version,
+                    &mut ledger,
+                    tx_out,
+                    &sender,
+                    &recipient.default_subaddress(),
+                    n_blocks + 1,
+                    &mut rng,
+                );
+                new_transactions.push(tx);
+            }
+
+            // Create WellFormedEncryptedTxs + proofs
+            let well_formed_encrypted_txs_with_proofs: Vec<(
+                WellFormedEncryptedTx,
+                Vec<TxOutMembershipProof>,
+            )> = new_transactions
+                .iter()
+                .map(|tx| {
+                    let well_formed_tx = WellFormedTx::from(tx.clone());
+                    let encrypted_tx = enclave
+                        .encrypt_well_formed_tx(&well_formed_tx, &mut rng)
+                        .unwrap();
+
+                    let highest_indices = well_formed_tx.tx.get_membership_proof_highest_indices();
+                    let membership_proofs = ledger
+                        .get_tx_out_proof_of_memberships(&highest_indices)
+                        .expect("failed getting proof");
+                    (encrypted_tx, membership_proofs)
+                })
+                .collect();
+
+            // Form block
+            let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+            let root_element = ledger.get_root_tx_out_membership_element().unwrap();
+
+            let form_block_result = enclave.form_block(
+                &parent_block,
+                &well_formed_encrypted_txs_with_proofs,
+                &root_element,
+            );
+
+            log::info!(logger, "got form block result: {:?}", form_block_result);
+
+            // Check if we get a form block error as expected
+            match form_block_result {
+                Err(Error::FormBlock(_)) => {}
+                _ => panic!(
+                    "Expected a FormBlock error due to config.block_version being less than parent"
+                ),
+            }
         }
     }
 }
