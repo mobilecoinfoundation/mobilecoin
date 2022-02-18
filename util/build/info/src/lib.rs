@@ -11,8 +11,9 @@ use core::fmt::{Result, Write};
 pub fn write_report(output: &mut dyn Write) -> Result {
     write!(
         output,
-        r##"{{ "GIT_COMMIT": "{}", "PROFILE": "{}", "DEBUG": "{}", "OPT_LEVEL": "{}", "DEBUG_ASSERTIONS": "{}", "TARGET_ARCH": "{}", "TARGET_OS": "{}", "TARGET_FEATURE": "{}", "RUSTFLAGS": "{}", "SGX_MODE": "{}", "IAS_MODE": "{}" }}"##,
+        r##"{{ "GIT_COMMIT": "{}", "MOBILECOIN_GIT_COMMIT": "{}", "PROFILE": "{}", "DEBUG": "{}", "OPT_LEVEL": "{}", "DEBUG_ASSERTIONS": "{}", "TARGET_ARCH": "{}", "TARGET_OS": "{}", "TARGET_FEATURE": "{}", "RUSTFLAGS": "{}", "SGX_MODE": "{}", "IAS_MODE": "{}" }}"##,
         git_commit(),
+        mobilecoin_git_commit(),
         profile(),
         debug(),
         opt_level(),
