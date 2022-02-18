@@ -31,7 +31,7 @@ use mc_util_uri::FogUri;
 use rand::Rng;
 use rayon::prelude::*;
 use std::{
-    cmp::Reverse,
+    cmp::{max, Reverse},
     convert::TryFrom,
     iter::empty,
     str::FromStr,
@@ -261,11 +261,17 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         };
         log::trace!(logger, "Tombstone block set to {}", tombstone_block);
 
+        // Come up with a block version
+        let block_version =
+            BlockVersion::try_from(max(self.ledger_db.get_latest_block()?.version, 1))
+                .map_err(|err| Error::TxBuild(err.to_string()))?;
+
         // Build and return the TxProposal object
         let mut rng = rand::thread_rng();
         let tx_proposal = Self::build_tx_proposal(
             &selected_utxos_with_proofs,
             rings,
+            block_version,
             fee,
             &sender_monitor_data.account_key,
             change_subaddress,
@@ -363,6 +369,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let tombstone_block = num_blocks_in_ledger + DEFAULT_NEW_TX_BLOCK_ATTEMPTS;
         log::trace!(logger, "Tombstone block set to {}", tombstone_block);
 
+        // Come up with a block version
+        let block_version =
+            BlockVersion::try_from(max(self.ledger_db.get_latest_block()?.version, 1))
+                .map_err(|err| Error::TxBuild(err.to_string()))?;
+
         // We are paying ourselves the entire amount.
         let outlays = vec![Outlay {
             receiver: monitor_data.account_key.subaddress(subaddress_index),
@@ -374,6 +385,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let tx_proposal = Self::build_tx_proposal(
             &selected_utxos_with_proofs,
             rings,
+            block_version,
             fee,
             &monitor_data.account_key,
             subaddress_index,
@@ -447,6 +459,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let tombstone_block = self.ledger_db.num_blocks()? + DEFAULT_NEW_TX_BLOCK_ATTEMPTS;
         log::trace!(logger, "Tombstone block set to {}", tombstone_block);
 
+        // Come up with a block version
+        let block_version =
+            BlockVersion::try_from(max(self.ledger_db.get_latest_block()?.version, 1))
+                .map_err(|err| Error::TxBuild(err.to_string()))?;
+
         // The entire value goes to receiver
         let outlays = vec![Outlay {
             receiver: receiver.clone(),
@@ -458,6 +475,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let tx_proposal = Self::build_tx_proposal(
             &inputs_with_proofs,
             rings,
+            block_version,
             fee,
             account_key,
             0,
@@ -728,6 +746,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     fn build_tx_proposal(
         inputs: &[(UnspentTxOut, TxOutMembershipProof)],
         rings: Vec<Vec<(TxOut, TxOutMembershipProof)>>,
+        block_version: BlockVersion,
         fee: u64,
         from_account_key: &AccountKey,
         change_subaddress: u64,
@@ -765,9 +784,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             fog_resolver_factory(&fog_uris).map_err(Error::Fog)?
         };
 
-        // FIXME: We should get the block version from
-        // `LedgerDb::get_last_block()?.version`
-        let block_version = BlockVersion::ONE;
+        // TODO: Use RTH memo builder, optionally?
 
         // Create tx_builder.
         let mut tx_builder =
