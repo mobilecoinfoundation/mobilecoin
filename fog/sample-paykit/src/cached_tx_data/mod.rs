@@ -675,7 +675,7 @@ impl CachedTxData {
             match key_image_client.check_key_images(key_images) {
                 Ok(response) => {
                     self.latest_global_txo_count =
-                        core::cmp::max(self.latest_global_txo_count, response.global_txo_count);
+                        max(self.latest_global_txo_count, response.global_txo_count);
                     // Note: latest_block_version is only increasing on the block chain, since
                     // the network enforces that each block version is at least as large as its
                     // parent. However, the client could talk to ledger servers
@@ -684,7 +684,7 @@ impl CachedTxData {
                     // protect the client from being "poisoned" by talking to a ledger server that
                     // is behind, and having a subsequent Tx fail validation.
                     self.latest_block_version =
-                        core::cmp::max(self.latest_block_version, response.latest_block_version);
+                        max(self.latest_block_version, response.latest_block_version);
                     for result in response.results.iter() {
                         if let Some(global_index) = key_image_to_global_index.get(&result.key_image)
                         {
