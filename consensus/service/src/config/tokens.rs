@@ -91,8 +91,7 @@ pub struct TokenConfig {
     /// Master minters - if set, controls the set of keys that can sign
     /// set-minting-configuration transactions.
     /// Not supported for MOB
-    #[serde(with = "der_signer_set")]
-    #[serde(default)]
+    #[serde(default, with = "der_signer_set")]
     master_minters: Option<SignerSet<Ed25519Public>>,
 }
 
