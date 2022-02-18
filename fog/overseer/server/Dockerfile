@@ -5,7 +5,7 @@ RUN apt-get update \
   && rm -r /var/lib/apt/lists
 
 WORKDIR /
-COPY bin/start_overseer_server /usr/local/bin/start_overseer_server
+COPY bin/fog_overseer_server /usr/local/bin/fog_overseer_server
 
 ENV OVERSEER_LISTEN_HOST 0.0.0.0
 
