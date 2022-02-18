@@ -496,7 +496,9 @@ fn build_tx(
     // Sanity
     assert_eq!(utxos_with_proofs.len(), rings.len());
 
-    let block_version = BlockVersion::try_from(BLOCK_VERSION.load(Ordering::SeqCst))
+    // This max occurs because the bootstrapped ledger has block version 0,
+    // but non-bootstrap blocks always have block version >= 1
+    let block_version = BlockVersion::try_from(max(BLOCK_VERSION.load(Ordering::SeqCst), 1))
         .expect("Unsupported block version");
 
     // Create tx_builder. No fog reports.
