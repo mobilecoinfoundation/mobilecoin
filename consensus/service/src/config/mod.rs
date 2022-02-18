@@ -9,7 +9,7 @@ use crate::config::{network::NetworkConfig, tokens::TokensConfig};
 use mc_attest_core::ProviderId;
 use mc_common::{NodeID, ResponderId};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private};
-use mc_transaction_core::{BlockVersion};
+use mc_transaction_core::BlockVersion;
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::{AdminUri, ConsensusClientUri as ClientUri, ConsensusPeerUri as PeerUri};
 use std::{fmt::Debug, path::PathBuf, string::String, sync::Arc, time::Duration};
