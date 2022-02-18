@@ -280,7 +280,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
     ) -> Result<(PeerSession, VerificationReport)> {
-        // Inject the blockchain config hash passing off to the AKE
+        // Inject the blockchain config hash before passing off to the AKE
         let peer_id = self
             .blockchain_config
             .lock()?
