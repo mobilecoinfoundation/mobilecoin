@@ -14,6 +14,7 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
+use core::hash::Hash;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{PublicKey, Signature, SignatureError, Verifier};
 use prost::Message;
@@ -23,16 +24,39 @@ use serde::{Deserialize, Serialize};
 pub const MAX_SIGNATURES: usize = 10;
 
 /// A multi-signature: a collection of one or more signatures.
-#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize)]
+#[derive(
+    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub struct MultiSig<
-    S: Clone + Default + Digestible + Eq + Message + PartialEq + Serialize + Signature,
+    S: Clone
+        + Default
+        + Digestible
+        + Eq
+        + Hash
+        + Message
+        + Ord
+        + PartialEq
+        + PartialOrd
+        + Serialize
+        + Signature,
 > {
     #[prost(message, repeated, tag = "1")]
     signatures: Vec<S>,
 }
 
-impl<S: Clone + Default + Digestible + Eq + Message + PartialEq + Serialize + Signature>
-    MultiSig<S>
+impl<
+        S: Clone
+            + Default
+            + Digestible
+            + Eq
+            + Hash
+            + Message
+            + Ord
+            + PartialEq
+            + PartialOrd
+            + Serialize
+            + Signature,
+    > MultiSig<S>
 {
     /// Construct a new multi-signature from a collection of signatures.
     pub fn new(signatures: Vec<S>) -> Self {
@@ -41,7 +65,9 @@ impl<S: Clone + Default + Digestible + Eq + Message + PartialEq + Serialize + Si
 }
 
 /// A set of M-out-of-N public keys.
-#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize)]
+#[derive(
+    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(bound = "")]
 pub struct SignerSet<P: Default + PublicKey + Message> {
     /// List of potential signers.
@@ -62,7 +88,17 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
     /// Verify a message against a multi-signature, returning the list of
     /// signers that signed it.
     pub fn verify<
-        S: Clone + Default + Digestible + Eq + Message + PartialEq + Serialize + Signature,
+        S: Clone
+            + Default
+            + Digestible
+            + Eq
+            + Hash
+            + Message
+            + Ord
+            + PartialEq
+            + PartialOrd
+            + Serialize
+            + Signature,
     >(
         &self,
         message: &[u8],
