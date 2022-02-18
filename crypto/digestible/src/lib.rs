@@ -448,7 +448,7 @@ impl<Length: ArrayLength<u8>> DigestibleAsBytes for GenericArray<u8, Length> {}
 
 // Implementation for tuples of Digestible
 // This is treated as an Agg in the abstract structure hashing schema,
-// because that is how digestible-dreive handles tuple structs and enums in
+// because that is how digestible-derive handles tuple structs and enums in
 // tuples.
 
 impl<T: Digestible, U: Digestible> Digestible for (&T, &U) {
