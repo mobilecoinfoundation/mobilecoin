@@ -219,7 +219,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             .blockchain_config
             .lock()?
             .as_ref()
-            .expect("enclave was not initialized")
+            .ok_or(Error::NotInited)?
             .get_config()
             .fee_map
             .get_fee_for_token(token_id))
@@ -265,7 +265,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             .blockchain_config
             .lock()?
             .as_ref()
-            .expect("enclave was not initialized")
+            .ok_or(Error::NotInited)?
             .responder_id(peer_id);
 
         Ok(self.ake.peer_init(&peer_id)?)
@@ -285,7 +285,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             .blockchain_config
             .lock()?
             .as_ref()
-            .expect("enclave was not initialized")
+            .ok_or(Error::NotInited)?
             .responder_id(peer_id);
 
         Ok(self.ake.peer_connect(&peer_id, msg)?)
@@ -367,7 +367,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let blockchain_config = self.blockchain_config.lock()?;
         let config = blockchain_config
             .as_ref()
-            .expect("enclave was not initialized")
+            .ok_or(Error::NotInited)?
             .get_config();
 
         // Enforce that all membership proofs provided by the untrusted system for
