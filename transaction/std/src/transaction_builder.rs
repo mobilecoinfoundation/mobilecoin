@@ -294,6 +294,13 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             return Err(TxBuilderError::BlockVersionTooOld(*self.block_version, 1));
         }
 
+        if self.block_version > BlockVersion::MAX {
+            return Err(TxBuilderError::BlockVersionTooNew(
+                *self.block_version,
+                *BlockVersion::MAX,
+            ));
+        }
+
         if self.input_credentials.is_empty() {
             return Err(TxBuilderError::NoInputs);
         }

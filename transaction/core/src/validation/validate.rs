@@ -4,7 +4,7 @@
 
 extern crate alloc;
 
-use alloc::vec::Vec;
+use alloc::{format, vec::Vec};
 
 use super::error::{TransactionValidationError, TransactionValidationResult};
 use crate::{
@@ -35,6 +35,13 @@ pub fn validate<R: RngCore + CryptoRng>(
     minimum_fee: u64,
     csprng: &mut R,
 ) -> TransactionValidationResult<()> {
+    if block_version < BlockVersion::ONE || BlockVersion::MAX < block_version {
+        return Err(TransactionValidationError::Ledger(format!(
+            "Invalid block version: {}",
+            block_version
+        )));
+    }
+
     validate_number_of_inputs(&tx.prefix, MAX_INPUTS)?;
 
     validate_number_of_outputs(&tx.prefix, MAX_OUTPUTS)?;
