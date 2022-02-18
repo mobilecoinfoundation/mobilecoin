@@ -11,57 +11,62 @@ use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fs, iter::FromIterator, path::Path};
 
-/// A helper struct for ser/derserializing a SignerSet that uses hex-encoded
-/// DER representation of Ed25519 public keys.
-#[derive(Serialize, Deserialize)]
-struct DerSignerSet {
-    signers: Vec<String>,
-    threshold: u32,
-}
+mod der_signer_set {
+    use super::*;
 
-/// Helper method for serializing a SignerSet<Ed25519Public> into a
-/// hex-DER-encoded variant.
-fn signer_set_ser<S: Serializer>(
-    signer_set: &Option<SignerSet<Ed25519Public>>,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    let der_signer_set = signer_set.as_ref().map(|der_signer_set| DerSignerSet {
-        signers: der_signer_set
-            .signers()
-            .iter()
-            .map(|signer| hex::encode(&signer.to_der()))
-            .collect(),
-        threshold: der_signer_set.threshold(),
-    });
+    /// A helper struct for ser/derserializing a SignerSet that uses hex-encoded
+    /// DER representation of Ed25519 public keys.
+    #[derive(Serialize, Deserialize)]
+    struct DerSignerSet {
+        signers: Vec<String>,
+        threshold: u32,
+    }
 
-    der_signer_set.serialize(serializer)
-}
-
-/// Helper method for deserializing a hex-DER-encoded SignerSet<Ed25519Public>.
-fn signer_set_deser<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> Result<Option<SignerSet<Ed25519Public>>, D::Error> {
-    let der_signer_set: Option<DerSignerSet> = Deserialize::deserialize(deserializer)?;
-    match der_signer_set {
-        None => Ok(None),
-        Some(der_signer_set) => {
-            let signers = der_signer_set
-                .signers
+    /// Helper method for serializing a SignerSet<Ed25519Public> into a
+    /// hex-DER-encoded variant.
+    pub fn serialize<S: Serializer>(
+        signer_set: &Option<SignerSet<Ed25519Public>>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let der_signer_set = signer_set.as_ref().map(|signer_set| DerSignerSet {
+            signers: signer_set
+                .signers()
                 .iter()
-                .map(|s| {
-                    // Decode each hex-encoded string into a byte vector.
-                    hex::decode(s)
-                        .map_err(serde::de::Error::custom)
-                        .and_then(|bytes| {
-                            // Decode each byte vector into an Ed25519Public.
-                            Ed25519Public::try_from_der(&bytes[..])
-                                .map_err(serde::de::Error::custom)
-                        })
-                })
-                // Return the keys.
-                .collect::<Result<_, D::Error>>()?;
+                .map(|signer| hex::encode(&signer.to_der()))
+                .collect(),
+            threshold: signer_set.threshold(),
+        });
 
-            Ok(Some(SignerSet::new(signers, der_signer_set.threshold)))
+        der_signer_set.serialize(serializer)
+    }
+
+    /// Helper method for deserializing a hex-DER-encoded
+    /// SignerSet<Ed25519Public>.
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<SignerSet<Ed25519Public>>, D::Error> {
+        let der_signer_set: Option<DerSignerSet> = Deserialize::deserialize(deserializer)?;
+        match der_signer_set {
+            None => Ok(None),
+            Some(der_signer_set) => {
+                let signers = der_signer_set
+                    .signers
+                    .iter()
+                    .map(|s| {
+                        // Decode each hex-encoded string into a byte vector.
+                        hex::decode(s)
+                            .map_err(serde::de::Error::custom)
+                            .and_then(|bytes| {
+                                // Decode each byte vector into an Ed25519Public.
+                                Ed25519Public::try_from_der(&bytes[..])
+                                    .map_err(serde::de::Error::custom)
+                            })
+                    })
+                    // Return the keys.
+                    .collect::<Result<_, D::Error>>()?;
+
+                Ok(Some(SignerSet::new(signers, der_signer_set.threshold)))
+            }
         }
     }
 }
@@ -86,8 +91,7 @@ pub struct TokenConfig {
     /// Master minters - if set, controls the set of keys that can sign
     /// set-minting-configuration transactions.
     /// Not supported for MOB
-    #[serde(serialize_with = "signer_set_ser")]
-    #[serde(deserialize_with = "signer_set_deser")]
+    #[serde(with = "der_signer_set")]
     #[serde(default)]
     master_minters: Option<SignerSet<Ed25519Public>>,
 }
