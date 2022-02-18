@@ -290,8 +290,16 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 
     /// Consume the builder and return the transaction.
     pub fn build<RNG: CryptoRng + RngCore>(mut self, rng: &mut RNG) -> Result<Tx, TxBuilderError> {
-        if self.block_version < BlockVersion::ONE {
-            return Err(TxBuilderError::BlockVersionTooOld(*self.block_version, 1));
+        // Note: Origin block has block version zero, so some clients like slam that
+        // start with a bootstrapped ledger will target block version 0. However,
+        // block version zero has no special rules and so targetting block version 0
+        // should be the same as targetting block version 1, for the transaction
+        // builder. This test is mainly here in case we decide that the
+        // transaction builder should stop supporting sufficiently old block
+        // versions in the future, then we can replace the zero here with
+        // something else.
+        if self.block_version < BlockVersion::default() {
+            return Err(TxBuilderError::BlockVersionTooOld(*self.block_version, 0));
         }
 
         if self.block_version > BlockVersion::MAX {

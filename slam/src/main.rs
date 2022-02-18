@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use core::{cell::RefCell, cmp::max, convert::TryFrom};
+use core::{cell::RefCell, convert::TryFrom};
 use lazy_static::lazy_static;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
@@ -498,7 +498,7 @@ fn build_tx(
 
     // This max occurs because the bootstrapped ledger has block version 0,
     // but non-bootstrap blocks always have block version >= 1
-    let block_version = BlockVersion::try_from(max(BLOCK_VERSION.load(Ordering::SeqCst), 1))
+    let block_version = BlockVersion::try_from(BLOCK_VERSION.load(Ordering::SeqCst))
         .expect("Unsupported block version");
 
     // Create tx_builder. No fog reports.

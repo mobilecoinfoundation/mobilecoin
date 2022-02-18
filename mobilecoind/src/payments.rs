@@ -31,7 +31,7 @@ use mc_util_uri::FogUri;
 use rand::Rng;
 use rayon::prelude::*;
 use std::{
-    cmp::{max, Reverse},
+    cmp::Reverse,
     convert::TryFrom,
     iter::empty,
     str::FromStr,
@@ -262,9 +262,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         log::trace!(logger, "Tombstone block set to {}", tombstone_block);
 
         // Come up with a block version
-        let block_version =
-            BlockVersion::try_from(max(self.ledger_db.get_latest_block()?.version, 1))
-                .map_err(|err| Error::TxBuild(err.to_string()))?;
+        let block_version = BlockVersion::try_from(self.ledger_db.get_latest_block()?.version)
+            .map_err(|err| Error::TxBuild(err.to_string()))?;
 
         // Build and return the TxProposal object
         let mut rng = rand::thread_rng();
@@ -370,9 +369,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         log::trace!(logger, "Tombstone block set to {}", tombstone_block);
 
         // Come up with a block version
-        let block_version =
-            BlockVersion::try_from(max(self.ledger_db.get_latest_block()?.version, 1))
-                .map_err(|err| Error::TxBuild(err.to_string()))?;
+        let block_version = BlockVersion::try_from(self.ledger_db.get_latest_block()?.version)
+            .map_err(|err| Error::TxBuild(err.to_string()))?;
 
         // We are paying ourselves the entire amount.
         let outlays = vec![Outlay {
@@ -460,9 +458,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         log::trace!(logger, "Tombstone block set to {}", tombstone_block);
 
         // Come up with a block version
-        let block_version =
-            BlockVersion::try_from(max(self.ledger_db.get_latest_block()?.version, 1))
-                .map_err(|err| Error::TxBuild(err.to_string()))?;
+        let block_version = BlockVersion::try_from(self.ledger_db.get_latest_block()?.version)
+            .map_err(|err| Error::TxBuild(err.to_string()))?;
 
         // The entire value goes to receiver
         let outlays = vec![Outlay {
