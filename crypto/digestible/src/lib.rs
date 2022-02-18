@@ -450,7 +450,10 @@ impl<Length: ArrayLength<u8>> DigestibleAsBytes for GenericArray<u8, Length> {}
 // This is treated as an Agg in the abstract structure hashing schema,
 // because that is how digestible-derive handles tuple structs and enums in
 // tuples.
-
+//
+// Note: It would be nice to be able to implement this for (T, U) instead,
+// and have a blanket impl for &T where T is digestible. That doesn't seem to
+// work right now.
 impl<T: Digestible, U: Digestible> Digestible for (&T, &U) {
     #[inline]
     fn append_to_transcript<DT: DigestTranscript>(
@@ -630,9 +633,6 @@ cfg_if! {
 
         // Treat a BTreeMap as a (sorted) sequence
         // This implementation should match that for &[(T, U)]
-        //
-        // Note: We don't currently implement digestible for tuples, but we should.
-        // Digestible derive works on tuple structs and that's what we are mirroring
         impl<T: Digestible, U: Digestible> Digestible for BTreeMap<T, U> {
             #[inline]
             fn append_to_transcript<DT: DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
