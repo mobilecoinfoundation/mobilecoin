@@ -37,6 +37,7 @@ endif
 
 CARGO_PACKAGE = libmobilecoin
 ARCHS_IOS = aarch64-apple-ios-sim aarch64-apple-ios-macabi aarch64-apple-ios x86_64-apple-ios-macabi x86_64-apple-ios x86_64-apple-darwin
+TARGET_TOOLCHAINS = toolchain_aarch64-apple-ios-sim toolchain_aarch64-apple-ios-macabi toolchain_aarch64-apple-ios toolchain_x86_64-apple-ios-macabi toolchain_x86_64-apple-ios toolchain_x86_64-apple-darwin
 # ARCHS_IOS = aarch64-apple-ios-sim # aarch64-apple-ios x86_64-apple-ios x86_64-apple-darwin
 
 # add l_ prefix to build-targets that use the legacy build-process
@@ -73,7 +74,7 @@ define TOOLCHAIN_install
 		$(info "from `rust` commit - $(RUST_COMMIT)") \
 		$(info "for build-target - $(1)") \
 		cd rust-bitcode && \
-		./build-install.sh -t $@ -l $(SWIFT_VERSION) -r $(RUST_COMMIT) -n $(RUST_COMMIT_NAME); \
+		./build-install.sh -t $(1) -l $(SWIFT_VERSION) -r $(RUST_COMMIT) -n $(RUST_COMMIT_NAME); \
 	)
 endef
 
@@ -134,6 +135,9 @@ $(ARCHS_IOS):
 	$(call TOOLCHAIN_install,$@)
 	$(CARGO_ENV_FLAGS) $(CARGO) +ios-$@-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION)) build --package $(CARGO_PACKAGE) --target $@ $(CARGO_BUILD_FLAGS)
 
+.PHONY: $(TARGET_TOOLCHAINS)
+$(TARGET_TOOLCHAINS):
+	$(call TOOLCHAIN_install,$(subst toolchain_,,$@))
 
 .PHONY: out/ios/target
 out/ios/target: $(ARCHS_IOS)
