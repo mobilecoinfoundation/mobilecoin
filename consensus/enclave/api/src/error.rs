@@ -55,6 +55,12 @@ pub enum Error {
 
     /// Invalid fee configuration: {0}
     FeeMap(FeeMapError),
+
+    /// Enclave not initialized
+    NotInitialized,
+
+    /// Block Version Error: {0}
+    BlockVersion(String),
 }
 
 impl From<MessageCipherError> for Error {

@@ -13,9 +13,9 @@ pub use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Block, BlockID, BlockIndex, Token, BLOCK_VERSION,
+    Block, BlockID, BlockIndex, BlockVersion, Token,
 };
-use mc_transaction_std::{InputCredentials, NoMemoBuilder, TransactionBuilder};
+use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_util_from_random::FromRandom;
 use rand::{seq::SliceRandom, Rng};
 use tempdir::TempDir;
@@ -42,6 +42,7 @@ pub fn create_ledger() -> LedgerDB {
 /// * `tombstone_block` - The tombstone block for the new transaction.
 /// * `rng` - The randomness used by this function
 pub fn create_transaction<L: Ledger, R: RngCore + CryptoRng>(
+    block_version: BlockVersion,
     ledger: &mut L,
     tx_out: &TxOut,
     sender: &AccountKey,
@@ -56,6 +57,7 @@ pub fn create_transaction<L: Ledger, R: RngCore + CryptoRng>(
 
     assert!(value >= Mob::MINIMUM_FEE);
     create_transaction_with_amount(
+        block_version,
         ledger,
         tx_out,
         sender,
@@ -78,6 +80,7 @@ pub fn create_transaction<L: Ledger, R: RngCore + CryptoRng>(
 /// * `tombstone_block` - The tombstone block for the new transaction.
 /// * `rng` - The randomness used by this function
 pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
+    block_version: BlockVersion,
     ledger: &mut L,
     tx_out: &TxOut,
     sender: &AccountKey,
@@ -87,8 +90,11 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
     tombstone_block: BlockIndex,
     rng: &mut R,
 ) -> Tx {
-    let mut transaction_builder =
-        TransactionBuilder::new(MockFogResolver::default(), NoMemoBuilder::default());
+    let mut transaction_builder = TransactionBuilder::new(
+        block_version,
+        MockFogResolver::default(),
+        EmptyMemoBuilder::default(),
+    );
 
     // The first transaction in the origin block should contain enough outputs to
     // use as mixins.
@@ -159,6 +165,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
 ///
 /// Returns the blocks that were created.
 pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
+    block_version: BlockVersion,
     ledger: &mut L,
     n_blocks: u64,
     account_key: &AccountKey,
@@ -176,6 +183,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
         let (block, block_contents) = match to_spend {
             Some(tx_out) => {
                 let tx = create_transaction(
+                    block_version,
                     ledger,
                     &tx_out,
                     account_key,
@@ -190,7 +198,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                 let block_contents = BlockContents::new(key_images, outputs);
 
                 let block = Block::new(
-                    0,
+                    block_version,
                     &parent.as_ref().unwrap().id,
                     block_index,
                     parent.as_ref().unwrap().cumulative_txo_count,
@@ -241,6 +249,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
 
 /// Generate a list of blocks, each with a random number of transactions.
 pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
+    block_version: BlockVersion,
     recipients: &[PublicAddress],
     n_blocks: usize,
     min_txs_per_block: usize,
@@ -264,7 +273,7 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
                 )
             })
             .collect();
-        let outputs = get_outputs(&recipient_and_amount, rng);
+        let outputs = get_outputs(block_version, &recipient_and_amount, rng);
 
         // Non-origin blocks must have at least one key image.
         let key_images = vec![KeyImage::from(block_index as u64)];
@@ -278,7 +287,7 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
         };
 
         let block =
-            Block::new_with_parent(BLOCK_VERSION, &last_block, &root_element, &block_contents);
+            Block::new_with_parent(block_version, &last_block, &root_element, &block_contents);
 
         last_block = block.clone();
 
@@ -290,19 +299,24 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
 
 /// Generate a set of outputs that "mint" coins for each recipient.
 pub fn get_outputs<T: RngCore + CryptoRng>(
+    block_version: BlockVersion,
     recipient_and_amount: &[(PublicAddress, u64)],
     rng: &mut T,
 ) -> Vec<TxOut> {
     recipient_and_amount
         .iter()
         .map(|(recipient, value)| {
-            TxOut::new(
+            let mut result = TxOut::new(
                 *value,
                 recipient,
                 &RistrettoPrivate::from_random(rng),
                 Default::default(),
             )
-            .unwrap()
+            .unwrap();
+            if !block_version.e_memo_feature_is_supported() {
+                result.e_memo = None;
+            }
+            result
         })
         .collect()
 }

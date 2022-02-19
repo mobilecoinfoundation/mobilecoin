@@ -245,7 +245,7 @@ mod test {
     use super::*;
     use crate::{
         monitor_store::MonitorData,
-        test_utils::{get_test_databases, DEFAULT_PER_RECIPIENT_AMOUNT},
+        test_utils::{get_test_databases, BlockVersion, DEFAULT_PER_RECIPIENT_AMOUNT},
     };
     use mc_account_keys::AccountKey;
     use mc_common::{
@@ -270,6 +270,7 @@ mod test {
 
         // Set up a db with a known recipient, 3 random recipients and 10 blocks.
         let (ledger_db, _mobilecoind_db) = get_test_databases(
+            BlockVersion::MAX,
             3,
             &vec![account_key.subaddress(TEST_SUBADDRESS)],
             10,

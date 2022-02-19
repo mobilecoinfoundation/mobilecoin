@@ -255,6 +255,7 @@ mod tests {
     use mc_ledger_db::Ledger;
     use mc_peers::{MockBroadcast, ThreadedBroadcaster};
     use mc_peers_test_utils::MockPeerConnection;
+    use mc_transaction_core::BlockVersion;
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
@@ -269,6 +270,9 @@ mod tests {
         sync::{Arc, Mutex},
         time::Instant,
     };
+
+    // Run these tests with a particular block version
+    const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
 
     fn test_peer_uri(node_id: u32, pubkey: String) -> PeerUri {
         PeerUri::from_str(&format!(
@@ -356,7 +360,7 @@ mod tests {
         let mut ledger = create_ledger();
         let sender = AccountKey::random(&mut rng);
         let num_blocks = 1;
-        initialize_ledger(&mut ledger, num_blocks, &sender, &mut rng);
+        initialize_ledger(BLOCK_VERSION, &mut ledger, num_blocks, &sender, &mut rng);
 
         // Mock peer_manager
         let peer_manager = ConnectionManager::new(
@@ -423,7 +427,7 @@ mod tests {
         let mut ledger = create_ledger();
         let sender = AccountKey::random(&mut rng);
         let num_blocks = 1;
-        initialize_ledger(&mut ledger, num_blocks, &sender, &mut rng);
+        initialize_ledger(BLOCK_VERSION, &mut ledger, num_blocks, &sender, &mut rng);
 
         // Mock peer_manager
         let mock_peer = MockPeerConnection::new(
@@ -457,6 +461,8 @@ mod tests {
         )));
 
         let enclave = ConsensusServiceMockEnclave::default();
+        enclave.blockchain_config.lock().unwrap().block_version = BLOCK_VERSION;
+
         let tx_manager = Arc::new(TxManagerImpl::new(
             enclave.clone(),
             DefaultTxManagerUntrustedInterfaces::new(ledger.clone()),
@@ -494,6 +500,7 @@ mod tests {
 
             let recipient = AccountKey::random(&mut rng);
             let tx1 = create_transaction(
+                BLOCK_VERSION,
                 &mut ledger,
                 &block_contents.outputs[0],
                 &sender,
@@ -504,6 +511,7 @@ mod tests {
 
             let recipient = AccountKey::random(&mut rng);
             let tx2 = create_transaction(
+                BLOCK_VERSION,
                 &mut ledger,
                 &block_contents.outputs[1],
                 &sender,
@@ -514,6 +522,7 @@ mod tests {
 
             let recipient = AccountKey::random(&mut rng);
             let tx3 = create_transaction(
+                BLOCK_VERSION,
                 &mut ledger,
                 &block_contents.outputs[2],
                 &sender,

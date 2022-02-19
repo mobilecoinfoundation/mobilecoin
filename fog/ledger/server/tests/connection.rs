@@ -24,7 +24,7 @@ use mc_fog_test_infra::get_enclave_path;
 use mc_fog_uri::{ConnectionUri, FogLedgerUri};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
-    ring_signature::KeyImage, tx::TxOut, Block, BlockContents, BlockSignature, BLOCK_VERSION,
+    ring_signature::KeyImage, tx::TxOut, Block, BlockContents, BlockSignature, BlockVersion,
 };
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::GrpcRetryConfig;
@@ -66,155 +66,166 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
 
     let mut rng = RngType::from_seed([0u8; 32]);
 
-    let alice = AccountKey::random_with_fog(&mut rng);
-    let bob = AccountKey::random_with_fog(&mut rng);
-    let charlie = AccountKey::random_with_fog(&mut rng);
+    for block_version in BlockVersion::iterator() {
+        let alice = AccountKey::random_with_fog(&mut rng);
+        let bob = AccountKey::random_with_fog(&mut rng);
+        let charlie = AccountKey::random_with_fog(&mut rng);
 
-    let recipients = vec![
-        alice.default_subaddress(),
-        bob.default_subaddress(),
-        charlie.default_subaddress(),
-    ];
+        let recipients = vec![
+            alice.default_subaddress(),
+            bob.default_subaddress(),
+            charlie.default_subaddress(),
+        ];
 
-    // Make LedgerDB
-    let ledger_dir = TempDir::new("fog-ledger").expect("Could not get test_ledger tempdir");
-    let db_full_path = ledger_dir.path();
-    let mut ledger = generate_ledger_db(db_full_path);
+        // Make LedgerDB
+        let ledger_dir = TempDir::new("fog-ledger").expect("Could not get test_ledger tempdir");
+        let db_full_path = ledger_dir.path();
+        let mut ledger = generate_ledger_db(db_full_path);
 
-    let (mut watcher, watcher_dir) = setup_watcher_db(logger.clone());
+        let (mut watcher, watcher_dir) = setup_watcher_db(logger.clone());
 
-    // Populate ledger with some data
-    add_block_to_ledger_db(&mut ledger, &recipients, &[], &mut rng, &mut watcher);
-    add_block_to_ledger_db(
-        &mut ledger,
-        &recipients,
-        &[KeyImage::from(1)],
-        &mut rng,
-        &mut watcher,
-    );
-    let num_blocks = add_block_to_ledger_db(
-        &mut ledger,
-        &recipients,
-        &[KeyImage::from(2)],
-        &mut rng,
-        &mut watcher,
-    );
-
-    {
-        // Make LedgerServer
-        let client_uri = FogLedgerUri::from_str(&format!(
-            "insecure-fog-ledger://127.0.0.1:{}",
-            base_port + 7
-        ))
-        .unwrap();
-        let config = LedgerServerConfig {
-            ledger_db: db_full_path.to_path_buf(),
-            watcher_db: watcher_dir,
-            admin_listen_uri: Default::default(),
-            client_listen_uri: client_uri.clone(),
-            client_responder_id: ResponderId::from_str(&client_uri.addr()).unwrap(),
-            ias_spid: Default::default(),
-            ias_api_key: Default::default(),
-            client_auth_token_secret: None,
-            client_auth_token_max_lifetime: Default::default(),
-            omap_capacity: OMAP_CAPACITY,
-        };
-
-        let enclave = LedgerSgxEnclave::new(
-            get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
-            &config.client_responder_id,
-            OMAP_CAPACITY,
-            logger.clone(),
+        // Populate ledger with some data
+        add_block_to_ledger_db(
+            block_version,
+            &mut ledger,
+            &recipients,
+            &[],
+            &mut rng,
+            &mut watcher,
+        );
+        add_block_to_ledger_db(
+            block_version,
+            &mut ledger,
+            &recipients,
+            &[KeyImage::from(1)],
+            &mut rng,
+            &mut watcher,
+        );
+        let num_blocks = add_block_to_ledger_db(
+            block_version,
+            &mut ledger,
+            &recipients,
+            &[KeyImage::from(2)],
+            &mut rng,
+            &mut watcher,
         );
 
-        let ra_client =
-            AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
+        {
+            // Make LedgerServer
+            let client_uri = FogLedgerUri::from_str(&format!(
+                "insecure-fog-ledger://127.0.0.1:{}",
+                base_port + 7
+            ))
+            .unwrap();
+            let config = LedgerServerConfig {
+                ledger_db: db_full_path.to_path_buf(),
+                watcher_db: watcher_dir,
+                admin_listen_uri: Default::default(),
+                client_listen_uri: client_uri.clone(),
+                client_responder_id: ResponderId::from_str(&client_uri.addr()).unwrap(),
+                ias_spid: Default::default(),
+                ias_api_key: Default::default(),
+                client_auth_token_secret: None,
+                client_auth_token_max_lifetime: Default::default(),
+                omap_capacity: OMAP_CAPACITY,
+            };
 
-        let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
+            let enclave = LedgerSgxEnclave::new(
+                get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
+                &config.client_responder_id,
+                OMAP_CAPACITY,
+                logger.clone(),
+            );
 
-        let mut ledger_server = LedgerServer::new(
-            config,
-            enclave,
-            ledger.clone(),
-            watcher.clone(),
-            ra_client,
-            SystemTimeProvider::default(),
-            logger.clone(),
-        );
+            let ra_client =
+                AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
 
-        ledger_server
-            .start()
-            .expect("Failed starting ledger server");
+            let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
-        // Make ledger enclave client
-        let mut mr_signer_verifier =
-            MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
-        mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
+            let mut ledger_server = LedgerServer::new(
+                config,
+                enclave,
+                ledger.clone(),
+                watcher.clone(),
+                ra_client,
+                SystemTimeProvider::default(),
+                logger.clone(),
+            );
 
-        let mut verifier = Verifier::default();
-        verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
+            ledger_server
+                .start()
+                .expect("Failed starting ledger server");
 
-        let mut client = FogMerkleProofGrpcClient::new(
-            client_uri,
-            GRPC_RETRY_CONFIG,
-            verifier,
-            grpc_env,
-            logger,
-        );
+            // Make ledger enclave client
+            let mut mr_signer_verifier =
+                MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
+            mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
 
-        // Get merkle root of num_blocks - 1
-        let merkle_root = {
-            let temp = ledger.get_tx_out_proof_of_memberships(&[0u64]).unwrap();
-            let merkle_proof = &temp[0];
-            mc_transaction_core::membership_proofs::compute_implied_merkle_root(merkle_proof)
-                .unwrap()
-        };
+            let mut verifier = Verifier::default();
+            verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
-        // Get some tx outs and merkle proofs
-        let response = client
-            .get_outputs(
-                vec![0u64, 1u64, 2u64, 3u64, 4u64, 5u64, 6u64, 7u64, 8u64],
-                num_blocks - 1,
-            )
-            .expect("get outputs failed");
+            let mut client = FogMerkleProofGrpcClient::new(
+                client_uri,
+                GRPC_RETRY_CONFIG,
+                verifier,
+                grpc_env,
+                logger.clone(),
+            );
 
-        // Test the basic fields
-        assert_eq!(response.num_blocks, num_blocks);
-        assert_eq!(response.global_txo_count, ledger.num_txos().unwrap());
+            // Get merkle root of num_blocks - 1
+            let merkle_root = {
+                let temp = ledger.get_tx_out_proof_of_memberships(&[0u64]).unwrap();
+                let merkle_proof = &temp[0];
+                mc_transaction_core::membership_proofs::compute_implied_merkle_root(merkle_proof)
+                    .unwrap()
+            };
 
-        // Validate merkle proofs
-        for res in response.results.iter() {
-            let (tx_out, proof) = res.status().unwrap().unwrap();
-            let result = mc_transaction_core::membership_proofs::is_membership_proof_valid(
-                &tx_out,
-                &proof,
-                merkle_root.hash.as_ref(),
-            )
-            .expect("membership proof structure failed!");
-            assert!(result, "membership proof was invalid! idx = {}, output = {:?}, proof = {:?}, merkle_root = {:?}", res.index, tx_out, proof, merkle_root);
+            // Get some tx outs and merkle proofs
+            let response = client
+                .get_outputs(
+                    vec![0u64, 1u64, 2u64, 3u64, 4u64, 5u64, 6u64, 7u64, 8u64],
+                    num_blocks - 1,
+                )
+                .expect("get outputs failed");
+
+            // Test the basic fields
+            assert_eq!(response.num_blocks, num_blocks);
+            assert_eq!(response.global_txo_count, ledger.num_txos().unwrap());
+
+            // Validate merkle proofs
+            for res in response.results.iter() {
+                let (tx_out, proof) = res.status().unwrap().unwrap();
+                let result = mc_transaction_core::membership_proofs::is_membership_proof_valid(
+                    &tx_out,
+                    &proof,
+                    merkle_root.hash.as_ref(),
+                )
+                .expect("membership proof structure failed!");
+                assert!(result, "membership proof was invalid! idx = {}, output = {:?}, proof = {:?}, merkle_root = {:?}", res.index, tx_out, proof, merkle_root);
+            }
+
+            // Make some queries that are out of bounds
+            let response = client
+                .get_outputs(vec![1u64, 6u64, 9u64, 14u64], num_blocks - 1)
+                .expect("get outputs failed");
+
+            // Test the basic fields
+            assert_eq!(response.num_blocks, num_blocks);
+            assert_eq!(response.global_txo_count, ledger.num_txos().unwrap());
+            assert_eq!(response.results.len(), 4);
+            assert!(response.results[0].status().as_ref().unwrap().is_some());
+            assert!(response.results[1].status().as_ref().unwrap().is_some());
+            assert!(response.results[2].status().as_ref().unwrap().is_none());
+            assert!(response.results[3].status().as_ref().unwrap().is_none());
         }
 
-        // Make some queries that are out of bounds
-        let response = client
-            .get_outputs(vec![1u64, 6u64, 9u64, 14u64], num_blocks - 1)
-            .expect("get outputs failed");
-
-        // Test the basic fields
-        assert_eq!(response.num_blocks, num_blocks);
-        assert_eq!(response.global_txo_count, ledger.num_txos().unwrap());
-        assert_eq!(response.results.len(), 4);
-        assert!(response.results[0].status().as_ref().unwrap().is_some());
-        assert!(response.results[1].status().as_ref().unwrap().is_some());
-        assert!(response.results[2].status().as_ref().unwrap().is_none());
-        assert!(response.results[3].status().as_ref().unwrap().is_none());
+        // grpcio detaches all its threads and does not join them :(
+        // we opened a PR here: https://github.com/tikv/grpc-rs/pull/455
+        // in the meantime we can just sleep after grpcio env and all related
+        // objects have been destroyed, and hope that those 6 threads see the
+        // shutdown requests within 1 second.
+        std::thread::sleep(std::time::Duration::from_millis(1000));
     }
-
-    // grpcio detaches all its threads and does not join them :(
-    // we opened a PR here: https://github.com/tikv/grpc-rs/pull/455
-    // in the meantime we can just sleep after grpcio env and all related
-    // objects have been destroyed, and hope that those 6 threads see the
-    // shutdown requests within 1 second.
-    std::thread::sleep(std::time::Duration::from_millis(1000));
 }
 
 // Test that a fog ledger connection is able to check key images by hitting
@@ -225,190 +236,207 @@ fn fog_ledger_key_images_test(logger: Logger) {
 
     let mut rng = RngType::from_seed([0u8; 32]);
 
-    let alice = AccountKey::random_with_fog(&mut rng);
+    for block_version in BlockVersion::iterator() {
+        let alice = AccountKey::random_with_fog(&mut rng);
 
-    let recipients = vec![alice.default_subaddress()];
+        let recipients = vec![alice.default_subaddress()];
 
-    let keys: Vec<KeyImage> = (0..20).map(|x| KeyImage::from(x as u64)).collect();
+        let keys: Vec<KeyImage> = (0..20).map(|x| KeyImage::from(x as u64)).collect();
 
-    // Make LedgerDB
-    let ledger_dir = TempDir::new("fog-ledger").expect("Could not get test_ledger tempdir");
-    let db_full_path = ledger_dir.path();
-    let mut ledger = generate_ledger_db(db_full_path);
+        // Make LedgerDB
+        let ledger_dir = TempDir::new("fog-ledger").expect("Could not get test_ledger tempdir");
+        let db_full_path = ledger_dir.path();
+        let mut ledger = generate_ledger_db(db_full_path);
 
-    // Make WatcherDB
-    let (mut watcher, watcher_dir) = setup_watcher_db(logger.clone());
+        // Make WatcherDB
+        let (mut watcher, watcher_dir) = setup_watcher_db(logger.clone());
 
-    // Populate ledger with some data
-    // Origin block cannot have key images
-    add_block_to_ledger_db(&mut ledger, &recipients, &[], &mut rng, &mut watcher);
-    add_block_to_ledger_db(
-        &mut ledger,
-        &recipients,
-        &keys[0..2],
-        &mut rng,
-        &mut watcher,
-    );
-    add_block_to_ledger_db(
-        &mut ledger,
-        &recipients,
-        &keys[3..6],
-        &mut rng,
-        &mut watcher,
-    );
-    let num_blocks = add_block_to_ledger_db(
-        &mut ledger,
-        &recipients,
-        &keys[6..9],
-        &mut rng,
-        &mut watcher,
-    );
-
-    // Populate watcher with Signature and Timestamp for block 1
-    let url1 = Url::parse(TEST_URL).unwrap();
-    let block1 = ledger.get_block(1).unwrap();
-    let signing_key_a = Ed25519Pair::from_random(&mut rng);
-    let filename = String::from("00/00");
-    let mut signed_block_a1 =
-        BlockSignature::from_block_and_keypair(&block1, &signing_key_a).unwrap();
-    signed_block_a1.set_signed_at(1593798844);
-    watcher
-        .add_block_signature(&url1, 1, signed_block_a1, filename.clone())
-        .unwrap();
-
-    // Update last synced to block 2, to indicate that this URL did not participate
-    // in consensus for block 2.
-    watcher.update_last_synced(&url1, 2).unwrap();
-
-    {
-        // Make LedgerServer
-        let client_uri = FogLedgerUri::from_str(&format!(
-            "insecure-fog-ledger://127.0.0.1:{}",
-            base_port + 7
-        ))
-        .unwrap();
-        let config = LedgerServerConfig {
-            ledger_db: db_full_path.to_path_buf(),
-            watcher_db: watcher_dir,
-            admin_listen_uri: Default::default(),
-            client_listen_uri: client_uri.clone(),
-            client_responder_id: ResponderId::from_str(&client_uri.addr()).unwrap(),
-            ias_spid: Default::default(),
-            ias_api_key: Default::default(),
-            client_auth_token_secret: None,
-            client_auth_token_max_lifetime: Default::default(),
-            omap_capacity: OMAP_CAPACITY,
-        };
-
-        let enclave = LedgerSgxEnclave::new(
-            get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
-            &config.client_responder_id,
-            OMAP_CAPACITY,
-            logger.clone(),
+        // Populate ledger with some data
+        // Origin block cannot have key images
+        add_block_to_ledger_db(
+            block_version,
+            &mut ledger,
+            &recipients,
+            &[],
+            &mut rng,
+            &mut watcher,
+        );
+        add_block_to_ledger_db(
+            block_version,
+            &mut ledger,
+            &recipients,
+            &keys[0..2],
+            &mut rng,
+            &mut watcher,
+        );
+        add_block_to_ledger_db(
+            block_version,
+            &mut ledger,
+            &recipients,
+            &keys[3..6],
+            &mut rng,
+            &mut watcher,
+        );
+        let num_blocks = add_block_to_ledger_db(
+            block_version,
+            &mut ledger,
+            &recipients,
+            &keys[6..9],
+            &mut rng,
+            &mut watcher,
         );
 
-        let ra_client =
-            AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
+        // Populate watcher with Signature and Timestamp for block 1
+        let url1 = Url::parse(TEST_URL).unwrap();
+        let block1 = ledger.get_block(1).unwrap();
+        let signing_key_a = Ed25519Pair::from_random(&mut rng);
+        let filename = String::from("00/00");
+        let mut signed_block_a1 =
+            BlockSignature::from_block_and_keypair(&block1, &signing_key_a).unwrap();
+        signed_block_a1.set_signed_at(1593798844);
+        watcher
+            .add_block_signature(&url1, 1, signed_block_a1, filename.clone())
+            .unwrap();
 
-        let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
+        // Update last synced to block 2, to indicate that this URL did not participate
+        // in consensus for block 2.
+        watcher.update_last_synced(&url1, 2).unwrap();
 
-        let mut ledger_server = LedgerServer::new(
-            config,
-            enclave,
-            ledger.clone(),
-            watcher,
-            ra_client,
-            SystemTimeProvider::default(),
-            logger.clone(),
-        );
+        {
+            // Make LedgerServer
+            let client_uri = FogLedgerUri::from_str(&format!(
+                "insecure-fog-ledger://127.0.0.1:{}",
+                base_port + 7
+            ))
+            .unwrap();
+            let config = LedgerServerConfig {
+                ledger_db: db_full_path.to_path_buf(),
+                watcher_db: watcher_dir,
+                admin_listen_uri: Default::default(),
+                client_listen_uri: client_uri.clone(),
+                client_responder_id: ResponderId::from_str(&client_uri.addr()).unwrap(),
+                ias_spid: Default::default(),
+                ias_api_key: Default::default(),
+                client_auth_token_secret: None,
+                client_auth_token_max_lifetime: Default::default(),
+                omap_capacity: OMAP_CAPACITY,
+            };
 
-        ledger_server
-            .start()
-            .expect("Failed starting ledger server");
+            let enclave = LedgerSgxEnclave::new(
+                get_enclave_path(mc_fog_ledger_enclave::ENCLAVE_FILE),
+                &config.client_responder_id,
+                OMAP_CAPACITY,
+                logger.clone(),
+            );
 
-        // Make ledger enclave client
-        let mut mr_signer_verifier =
-            MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
-        mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
+            let ra_client =
+                AttestClient::new(&config.ias_api_key).expect("Could not create IAS client");
 
-        let mut verifier = Verifier::default();
-        verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
+            let grpc_env = Arc::new(grpcio::EnvBuilder::new().build());
 
-        let mut client =
-            FogKeyImageGrpcClient::new(client_uri, GRPC_RETRY_CONFIG, verifier, grpc_env, logger);
+            let mut ledger_server = LedgerServer::new(
+                config,
+                enclave,
+                ledger.clone(),
+                watcher,
+                ra_client,
+                SystemTimeProvider::default(),
+                logger.clone(),
+            );
 
-        // Check on key images
-        let mut response = client
-            .check_key_images(&[keys[0], keys[1], keys[3], keys[7], keys[19]])
-            .expect("check_key_images failed");
+            ledger_server
+                .start()
+                .expect("Failed starting ledger server");
 
-        let mut n = 1;
-        // adding a delay to give fog ledger time to fully initialize
-        while response.num_blocks != num_blocks {
-            response = client
+            // Make ledger enclave client
+            let mut mr_signer_verifier =
+                MrSignerVerifier::from(mc_fog_ledger_enclave_measurement::sigstruct());
+            mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
+
+            let mut verifier = Verifier::default();
+            verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
+
+            let mut client = FogKeyImageGrpcClient::new(
+                client_uri,
+                GRPC_RETRY_CONFIG,
+                verifier,
+                grpc_env,
+                logger.clone(),
+            );
+
+            // Check on key images
+            let mut response = client
                 .check_key_images(&[keys[0], keys[1], keys[3], keys[7], keys[19]])
                 .expect("check_key_images failed");
 
-            thread::sleep(time::Duration::from_secs(10));
-            // panic on the 20th time
-            n += 1; //
-            if n > 20 {
-                panic!("Fog ledger not  fully initialized");
+            let mut n = 1;
+            // adding a delay to give fog ledger time to fully initialize
+            while response.num_blocks != num_blocks {
+                response = client
+                    .check_key_images(&[keys[0], keys[1], keys[3], keys[7], keys[19]])
+                    .expect("check_key_images failed");
+
+                thread::sleep(time::Duration::from_secs(10));
+                // panic on the 20th time
+                n += 1; //
+                if n > 20 {
+                    panic!("Fog ledger not  fully initialized");
+                }
             }
+
+            // FIXME assert_eq!(response.num_txos, ...);
+            assert_eq!(response.results[0].key_image, keys[0]);
+            assert_eq!(response.results[0].status(), Ok(Some(1)));
+            assert_eq!(response.results[0].timestamp, 100);
+            assert_eq!(
+                response.results[0].timestamp_result_code,
+                TimestampResultCode::TimestampFound as u32
+            );
+            assert_eq!(response.results[1].key_image, keys[1]);
+            assert_eq!(response.results[1].status(), Ok(Some(1)));
+            assert_eq!(response.results[1].timestamp, 100);
+            assert_eq!(
+                response.results[1].timestamp_result_code,
+                TimestampResultCode::TimestampFound as u32
+            );
+
+            // Check a key_image for a block which will never have signatures & timestamps
+            assert_eq!(response.results[2].key_image, keys[3]);
+            assert_eq!(response.results[2].status(), Ok(Some(2))); // Spent in block 2
+            assert_eq!(response.results[2].timestamp, 200);
+            assert_eq!(
+                response.results[2].timestamp_result_code,
+                TimestampResultCode::TimestampFound as u32
+            );
+
+            // Watcher has only synced 1 block, so timestamp should be behind
+            assert_eq!(response.results[3].key_image, keys[7]);
+            assert_eq!(response.results[3].status(), Ok(Some(3))); // Spent in block 3
+            assert_eq!(response.results[3].timestamp, 300);
+            assert_eq!(
+                response.results[3].timestamp_result_code,
+                TimestampResultCode::TimestampFound as u32
+            );
+
+            // Check a key_image that has not been spent
+            assert_eq!(response.results[4].key_image, keys[19]);
+            assert_eq!(response.results[4].status(), Ok(None)); // Not spent
+            assert_eq!(response.results[4].timestamp, u64::MAX);
+            assert_eq!(
+                response.results[4].timestamp_result_code,
+                TimestampResultCode::TimestampFound as u32
+            );
         }
 
-        // FIXME assert_eq!(response.num_txos, ...);
-        assert_eq!(response.results[0].key_image, keys[0]);
-        assert_eq!(response.results[0].status(), Ok(Some(1)));
-        assert_eq!(response.results[0].timestamp, 100);
-        assert_eq!(
-            response.results[0].timestamp_result_code,
-            TimestampResultCode::TimestampFound as u32
-        );
-        assert_eq!(response.results[1].key_image, keys[1]);
-        assert_eq!(response.results[1].status(), Ok(Some(1)));
-        assert_eq!(response.results[1].timestamp, 100);
-        assert_eq!(
-            response.results[1].timestamp_result_code,
-            TimestampResultCode::TimestampFound as u32
-        );
+        // FIXME: Check a key_image that generates a DatabaseError - tough to generate
 
-        // Check a key_image for a block which will never have signatures & timestamps
-        assert_eq!(response.results[2].key_image, keys[3]);
-        assert_eq!(response.results[2].status(), Ok(Some(2))); // Spent in block 2
-        assert_eq!(response.results[2].timestamp, 200);
-        assert_eq!(
-            response.results[2].timestamp_result_code,
-            TimestampResultCode::TimestampFound as u32
-        );
-
-        // Watcher has only synced 1 block, so timestamp should be behind
-        assert_eq!(response.results[3].key_image, keys[7]);
-        assert_eq!(response.results[3].status(), Ok(Some(3))); // Spent in block 3
-        assert_eq!(response.results[3].timestamp, 300);
-        assert_eq!(
-            response.results[3].timestamp_result_code,
-            TimestampResultCode::TimestampFound as u32
-        );
-
-        // Check a key_image that has not been spent
-        assert_eq!(response.results[4].key_image, keys[19]);
-        assert_eq!(response.results[4].status(), Ok(None)); // Not spent
-        assert_eq!(response.results[4].timestamp, u64::MAX);
-        assert_eq!(
-            response.results[4].timestamp_result_code,
-            TimestampResultCode::TimestampFound as u32
-        );
+        // grpcio detaches all its threads and does not join them :(
+        // we opened a PR here: https://github.com/tikv/grpc-rs/pull/455
+        // in the meantime we can just sleep after grpcio env and all related
+        // objects have been destroyed, and hope that those 6 threads see the
+        // shutdown requests within 1 second.
+        std::thread::sleep(std::time::Duration::from_millis(1000));
     }
-
-    // FIXME: Check a key_image that generates a DatabaseError - tough to generate
-
-    // grpcio detaches all its threads and does not join them :(
-    // we opened a PR here: https://github.com/tikv/grpc-rs/pull/455
-    // in the meantime we can just sleep after grpcio env and all related
-    // objects have been destroyed, and hope that those 6 threads see the
-    // shutdown requests within 1 second.
-    std::thread::sleep(std::time::Duration::from_millis(1000));
 }
 
 // Test that a fog ledger connection is able to check key images by hitting
@@ -435,6 +463,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
     // Populate ledger with some data
     // Origin block cannot have key images
     add_block_to_ledger_db(
+        BlockVersion::MAX,
         &mut ledger,
         &[alice.default_subaddress()],
         &[],
@@ -442,6 +471,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         &mut watcher,
     );
     add_block_to_ledger_db(
+        BlockVersion::MAX,
         &mut ledger,
         &[alice.default_subaddress(), bob.default_subaddress()],
         &[KeyImage::from(1)],
@@ -449,6 +479,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         &mut watcher,
     );
     add_block_to_ledger_db(
+        BlockVersion::MAX,
         &mut ledger,
         &[
             alice.default_subaddress(),
@@ -460,6 +491,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
         &mut watcher,
     );
     let num_blocks = add_block_to_ledger_db(
+        BlockVersion::MAX,
         &mut ledger,
         &recipients,
         &[KeyImage::from(3)],
@@ -592,6 +624,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
     // Populate ledger with some data
     // Origin block cannot have key images
     add_block_to_ledger_db(
+        BlockVersion::MAX,
         &mut ledger,
         &[alice.default_subaddress()],
         &[],
@@ -599,6 +632,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         &mut watcher,
     );
     add_block_to_ledger_db(
+        BlockVersion::MAX,
         &mut ledger,
         &[alice.default_subaddress(), bob.default_subaddress()],
         &[KeyImage::from(1)],
@@ -606,6 +640,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         &mut watcher,
     );
     add_block_to_ledger_db(
+        BlockVersion::MAX,
         &mut ledger,
         &[
             alice.default_subaddress(),
@@ -617,6 +652,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
         &mut watcher,
     );
     let _num_blocks = add_block_to_ledger_db(
+        BlockVersion::MAX,
         &mut ledger,
         &recipients,
         &[KeyImage::from(3)],
@@ -737,6 +773,7 @@ fn generate_ledger_db(path: &Path) -> LedgerDB {
 /// * `recipients` - Recipients of outputs.
 /// * `rng`
 fn add_block_to_ledger_db(
+    block_version: BlockVersion,
     ledger_db: &mut LedgerDB,
     recipients: &[PublicAddress],
     key_images: &[KeyImage],
@@ -798,7 +835,7 @@ fn add_block_to_ledger_db(
             .get_block(num_blocks - 1)
             .expect("failed to get parent block");
         new_block =
-            Block::new_with_parent(BLOCK_VERSION, &parent, &Default::default(), &block_contents);
+            Block::new_with_parent(block_version, &parent, &Default::default(), &block_contents);
     } else {
         new_block = Block::new_origin_block(&outputs);
     }

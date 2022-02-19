@@ -20,7 +20,7 @@ pub use memo::{
     DestinationMemoError, MemoDecodingError, MemoType, RegisteredMemoType, SenderMemoCredential,
     UnusedMemo,
 };
-pub use memo_builder::{EmptyMemoBuilder, MemoBuilder, NoMemoBuilder, RTHMemoBuilder};
+pub use memo_builder::{EmptyMemoBuilder, MemoBuilder, RTHMemoBuilder};
 pub use transaction_builder::TransactionBuilder;
 
 // Re-export this to help the exported macros work

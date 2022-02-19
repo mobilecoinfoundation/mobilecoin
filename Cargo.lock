@@ -2908,6 +2908,7 @@ dependencies = [
  "mc-util-build-script",
  "mc-util-from-random",
  "mc-util-serial",
+ "once_cell",
  "prost",
  "rand 0.8.5",
  "rand_core 0.6.3",

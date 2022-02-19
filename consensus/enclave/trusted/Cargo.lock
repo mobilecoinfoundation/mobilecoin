@@ -828,6 +828,7 @@ dependencies = [
  "mc-util-build-script",
  "mc-util-from-random",
  "mc-util-serial",
+ "once_cell",
  "prost",
  "rand_core",
 ]
@@ -1293,6 +1294,12 @@ checksum = "c62be47e61d1842b9170f0fdeec8eba98e60e90e5446449a0545e5152acd7096"
 dependencies = [
  "autocfg",
 ]
+
+[[package]]
+name = "once_cell"
+version = "1.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da32515d9f6e6e489d7bc9d84c71b060db7247dc035bbe44eac88cf87486d8d5"
 
 [[package]]
 name = "opaque-debug"

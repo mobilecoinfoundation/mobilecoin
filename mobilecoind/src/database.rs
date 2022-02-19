@@ -354,6 +354,7 @@ mod test {
     use crate::{error::Error, test_utils::get_test_databases};
     use mc_account_keys::AccountKey;
     use mc_common::logger::{test_with_logger, Logger};
+    use mc_transaction_core::BlockVersion;
     use rand::{rngs::StdRng, SeedableRng};
     use std::iter::FromIterator;
     use tempdir::TempDir;
@@ -530,7 +531,7 @@ mod test {
 
         // Set up a db with 3 random recipients and 10 blocks.
         let (_ledger_db, mobilecoind_db) =
-            get_test_databases(3, &vec![], 10, logger.clone(), &mut rng);
+            get_test_databases(BlockVersion::ONE, 3, &vec![], 10, logger.clone(), &mut rng);
 
         // A test accouunt.
         let account_key = AccountKey::random(&mut rng);

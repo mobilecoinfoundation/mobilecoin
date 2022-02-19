@@ -9,12 +9,15 @@ use mc_transaction_core::{
     encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
     ring_signature::KeyImage,
     tx::TxOut,
-    Block, BlockContents, BLOCK_VERSION,
+    Block, BlockContents, BlockVersion,
 };
 use mc_util_from_random::FromRandom;
 use rand::{RngCore, SeedableRng};
 use rand_hc::Hc128Rng as FixedRng;
 use std::{path::Path, vec::Vec};
+
+// This is historically the version created by bootstrap
+const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
 
 /// Deterministically populates a testnet ledger.
 ///

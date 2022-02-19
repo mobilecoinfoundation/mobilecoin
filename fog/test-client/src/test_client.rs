@@ -14,7 +14,7 @@ use mc_crypto_rand::McRng;
 use mc_fog_sample_paykit::{AccountKey, Client, ClientBuilder, TransactionStatus, Tx};
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_sgx_css::Signature;
-use mc_transaction_core::{constants::RING_SIZE, tokens::Mob, BlockIndex, Token};
+use mc_transaction_core::{constants::RING_SIZE, tokens::Mob, BlockIndex, BlockVersion, Token};
 use mc_transaction_std::MemoType;
 use mc_util_grpc::GrpcRetryConfig;
 use mc_util_telemetry::{
@@ -26,6 +26,7 @@ use more_asserts::assert_gt;
 use once_cell::sync::OnceCell;
 use serde::Serialize;
 use std::{
+    convert::TryFrom,
     ops::Sub,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -203,7 +204,6 @@ impl TestClient {
             )
             .grpc_retry_config(self.grpc_retry_config)
             .ring_size(RING_SIZE)
-            .use_rth_memos(self.policy.test_rth_memos)
             .address_book(address_book.clone())
             .consensus_sig(self.consensus_sig.clone())
             .fog_ingest_sig(self.fog_ingest_sig.clone())
@@ -546,59 +546,63 @@ impl TestClient {
         receive_tx_worker.join()?;
 
         if self.policy.test_rth_memos {
-            // Ensure source client got a destination memo, as expected for recoverable
-            // transcation history
-            match source_client_lk.get_last_memo() {
-                Ok(Some(memo)) => match memo {
-                    MemoType::Destination(memo) => {
-                        if memo.get_total_outlay() != self.policy.transfer_amount + fee {
-                            log::error!(self.logger, "Destination memo had wrong total outlay, found {}, expected {}. Tx Info: {}", memo.get_total_outlay(), self.policy.transfer_amount + fee, self.tx_info);
-                            return Err(TestClientError::UnexpectedMemo);
-                        }
-                        if memo.get_fee() != fee {
-                            log::error!(
+            let block_version =
+                BlockVersion::try_from(source_client_lk.get_latest_block_version())?;
+            if block_version.e_memo_feature_is_supported() {
+                // Ensure source client got a destination memo, as expected for recoverable
+                // transcation history
+                match source_client_lk.get_last_memo() {
+                    Ok(Some(memo)) => match memo {
+                        MemoType::Destination(memo) => {
+                            if memo.get_total_outlay() != self.policy.transfer_amount + fee {
+                                log::error!(self.logger, "Destination memo had wrong total outlay, found {}, expected {}. Tx Info: {}", memo.get_total_outlay(), self.policy.transfer_amount + fee, self.tx_info);
+                                return Err(TestClientError::UnexpectedMemo);
+                            }
+                            if memo.get_fee() != fee {
+                                log::error!(
                                     self.logger,
                                     "Destination memo had wrong fee, found {}, expected {}. Tx Info: {}",
                                     memo.get_fee(),
                                     fee,
                                     self.tx_info
                                 );
+                                return Err(TestClientError::UnexpectedMemo);
+                            }
+                            if memo.get_num_recipients() != 1 {
+                                log::error!(self.logger, "Destination memo had wrong num_recipients, found {}, expected 1. TxInfo: {}", memo.get_num_recipients(), self.tx_info);
+                                return Err(TestClientError::UnexpectedMemo);
+                            }
+                            if *memo.get_address_hash() != tgt_address_hash {
+                                log::error!(self.logger, "Destination memo had wrong address hash, found {:?}, expected {:?}. Tx Info: {}", memo.get_address_hash(), tgt_address_hash, self.tx_info);
+                                return Err(TestClientError::UnexpectedMemo);
+                            }
+                        }
+                        _ => {
+                            log::error!(
+                                self.logger,
+                                "Source Client: Unexpected memo type. Tx Info: {}",
+                                self.tx_info
+                            );
                             return Err(TestClientError::UnexpectedMemo);
                         }
-                        if memo.get_num_recipients() != 1 {
-                            log::error!(self.logger, "Destination memo had wrong num_recipients, found {}, expected 1. TxInfo: {}", memo.get_num_recipients(), self.tx_info);
-                            return Err(TestClientError::UnexpectedMemo);
-                        }
-                        if *memo.get_address_hash() != tgt_address_hash {
-                            log::error!(self.logger, "Destination memo had wrong address hash, found {:?}, expected {:?}. Tx Info: {}", memo.get_address_hash(), tgt_address_hash, self.tx_info);
-                            return Err(TestClientError::UnexpectedMemo);
-                        }
-                    }
-                    _ => {
+                    },
+                    Ok(None) => {
                         log::error!(
                             self.logger,
-                            "Source Client: Unexpected memo type. Tx Info: {}",
+                            "Source Client: Missing memo. Tx Info: {}",
                             self.tx_info
                         );
                         return Err(TestClientError::UnexpectedMemo);
                     }
-                },
-                Ok(None) => {
-                    log::error!(
-                        self.logger,
-                        "Source Client: Missing memo. Tx Info: {}",
-                        self.tx_info
-                    );
-                    return Err(TestClientError::UnexpectedMemo);
-                }
-                Err(err) => {
-                    log::error!(
-                        self.logger,
-                        "Source Client: Memo parse error: {}. TxInfo: {}",
-                        err,
-                        self.tx_info
-                    );
-                    return Err(TestClientError::InvalidMemo);
+                    Err(err) => {
+                        log::error!(
+                            self.logger,
+                            "Source Client: Memo parse error: {}. TxInfo: {}",
+                            err,
+                            self.tx_info
+                        );
+                        return Err(TestClientError::InvalidMemo);
+                    }
                 }
             }
         }
@@ -730,6 +734,9 @@ impl TestClient {
                         TestClientError::ConfirmTx(_) => {
                             counters::CONFIRM_TX_ERROR_COUNT.inc();
                         }
+                        TestClientError::BlockVersion(_) => {
+                            counters::BUILD_TX_ERROR_COUNT.inc();
+                        }
                     }
                 }
             }
@@ -823,43 +830,47 @@ impl ReceiveTxWorker {
                         counters::TX_RECEIVED_TIME.observe(start.elapsed().as_secs_f64());
 
                         if policy.test_rth_memos {
-                            // Ensure target client got a sender memo, as expected for recoverable
-                            // transcation history
-                            match client.get_last_memo() {
-                                Ok(Some(memo)) => match memo {
-                                    MemoType::AuthenticatedSender(memo) => {
-                                        if let Some(hash) = expected_memo_contents {
-                                            if memo.sender_address_hash() != hash {
-                                                log::error!(logger, "Target Client: Unexpected address hash: {:?} != {:?}. TxInfo: {}", memo.sender_address_hash(), hash, tx_info);
-                                                return Err(TestClientError::UnexpectedMemo);
+                            let block_version =
+                                BlockVersion::try_from(client.get_latest_block_version())?;
+                            if block_version.e_memo_feature_is_supported() {
+                                // Ensure target client got a sender memo, as expected for
+                                // recoverable transcation history
+                                match client.get_last_memo() {
+                                    Ok(Some(memo)) => match memo {
+                                        MemoType::AuthenticatedSender(memo) => {
+                                            if let Some(hash) = expected_memo_contents {
+                                                if memo.sender_address_hash() != hash {
+                                                    log::error!(logger, "Target Client: Unexpected address hash: {:?} != {:?}. TxInfo: {}", memo.sender_address_hash(), hash, tx_info);
+                                                    return Err(TestClientError::UnexpectedMemo);
+                                                }
                                             }
                                         }
-                                    }
-                                    _ => {
+                                        _ => {
+                                            log::error!(
+                                                logger,
+                                                "Target Client: Unexpected memo type. TxInfo: {}",
+                                                tx_info
+                                            );
+                                            return Err(TestClientError::UnexpectedMemo);
+                                        }
+                                    },
+                                    Ok(None) => {
                                         log::error!(
                                             logger,
-                                            "Target Client: Unexpected memo type. TxInfo: {}",
+                                            "Target Client: Missing memo. TxInfo: {}",
                                             tx_info
                                         );
                                         return Err(TestClientError::UnexpectedMemo);
                                     }
-                                },
-                                Ok(None) => {
-                                    log::error!(
-                                        logger,
-                                        "Target Client: Missing memo. TxInfo: {}",
-                                        tx_info
-                                    );
-                                    return Err(TestClientError::UnexpectedMemo);
-                                }
-                                Err(err) => {
-                                    log::error!(
-                                        logger,
-                                        "Target Client: Memo parse error: {}. TxInfo: {}",
-                                        err,
-                                        tx_info
-                                    );
-                                    return Err(TestClientError::InvalidMemo);
+                                    Err(err) => {
+                                        log::error!(
+                                            logger,
+                                            "Target Client: Memo parse error: {}. TxInfo: {}",
+                                            err,
+                                            tx_info
+                                        );
+                                        return Err(TestClientError::InvalidMemo);
+                                    }
                                 }
                             }
                         }

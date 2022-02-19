@@ -370,7 +370,7 @@ mod tests {
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{
         membership_proofs::Range, tx::TxOutMembershipElement,
-        validation::TransactionValidationError,
+        validation::TransactionValidationError, BlockVersion,
     };
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
@@ -870,16 +870,20 @@ mod tests {
     #[test_with_logger]
     fn test_hashes_to_block(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let block_version = BlockVersion::ONE;
         let sender = AccountKey::random(&mut rng);
         let mut ledger = create_ledger();
         let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
         let num_blocks = ledger.num_blocks().expect("Ledger must contain a block.");
         let parent_block = ledger.get_block(num_blocks - 1).unwrap();
 
+        let enclave = ConsensusServiceMockEnclave::default();
+        enclave.blockchain_config.lock().unwrap().block_version = block_version;
+
         let tx_manager = TxManagerImpl::new(
-            ConsensusServiceMockEnclave::default(),
+            enclave,
             DefaultTxManagerUntrustedInterfaces::new(ledger.clone()),
             logger.clone(),
         );
@@ -891,12 +895,13 @@ mod tests {
             let sender = AccountKey::random(&mut rng);
             let mut ledger = create_ledger();
             let n_blocks = 3;
-            initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
             let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
             let tx_out = block_contents.outputs[0].clone();
 
             let recipient = AccountKey::random(&mut rng);
             let tx1 = create_transaction(
+                block_version,
                 &mut ledger,
                 &tx_out,
                 &sender,
@@ -907,6 +912,7 @@ mod tests {
 
             let recipient = AccountKey::random(&mut rng);
             let tx2 = create_transaction(
+                block_version,
                 &mut ledger,
                 &tx_out,
                 &sender,
@@ -917,6 +923,7 @@ mod tests {
 
             let recipient = AccountKey::random(&mut rng);
             let tx3 = create_transaction(
+                block_version,
                 &mut ledger,
                 &tx_out,
                 &sender,
@@ -927,6 +934,7 @@ mod tests {
 
             let recipient = AccountKey::random(&mut rng);
             let tx4 = create_transaction(
+                block_version,
                 &mut ledger,
                 &tx_out,
                 &sender,

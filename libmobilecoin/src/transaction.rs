@@ -11,9 +11,9 @@ use mc_transaction_core::{
     onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
     ring_signature::KeyImage,
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    Amount, CompressedCommitment,
+    Amount, BlockVersion, CompressedCommitment,
 };
-use mc_transaction_std::{InputCredentials, NoMemoBuilder, TransactionBuilder};
+use mc_transaction_std::{InputCredentials, RTHMemoBuilder, TransactionBuilder};
 use mc_util_ffi::*;
 
 /* ==== TxOut ==== */
@@ -342,10 +342,19 @@ pub extern "C" fn mc_transaction_builder_create(
                     FogResolver::new(fog_resolver.0.clone(), &fog_resolver.1)
                         .expect("FogResolver could not be constructed from the provided materials")
                 });
-        // TODO: After servers are deployed that are supporting the memos,
-        // Enable recoverable transaction history by configuring an RTHMemoBuilder
-        let memo_builder = NoMemoBuilder::default();
-        let mut transaction_builder = TransactionBuilder::new(fog_resolver, memo_builder);
+        // FIXME: block version should be a parameter, it should be the latest
+        // version that fog ledger told us about, or that we got from ledger-db
+        let block_version = BlockVersion::ONE;
+        // Note: RTHMemoBuilder can be selected here, but we will only actually
+        // write memos if block_version is large enough that memos are supported.
+        // If block version is < 2, then transaction builder will filter out memos.
+        let mut memo_builder = RTHMemoBuilder::default();
+        // FIXME: we need to pass the source account key to build sender memo
+        // credentials memo_builder.set_sender_credential(SenderMemoCredential::
+        // from(source_account_key));
+        memo_builder.enable_destination_memo();
+        let mut transaction_builder =
+            TransactionBuilder::new(block_version, fog_resolver, memo_builder);
         transaction_builder
             .set_fee(fee)
             .expect("failure not expected");

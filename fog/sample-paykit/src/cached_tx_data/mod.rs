@@ -105,6 +105,10 @@ pub struct CachedTxData {
     /// but might ideally take into account fog view server responses as well.
     /// However, that would require a change that would conflict with SQL PR.
     latest_global_txo_count: u64,
+    /// The latest block version that we have heard about.
+    /// This is used by the transaction builder to target the correct block
+    /// version.
+    latest_block_version: u32,
     /// A memo handler which attempts to decrypt memos and validate them
     memo_handler: MemoHandler,
     /// A pre-calculated map of subaddress public spend key to subaddress index.
@@ -129,6 +133,7 @@ impl CachedTxData {
             owned_tx_outs: Default::default(),
             key_image_data_completeness: BlockCount::MAX,
             latest_global_txo_count: 0,
+            latest_block_version: 1,
             memo_handler: MemoHandler::new(address_book, logger.clone()),
             spsk_to_index,
             missed_block_ranges: Vec::new(),
@@ -174,6 +179,15 @@ impl CachedTxData {
     /// mixins, we make requests that are in-bounds.
     pub fn get_global_txo_count(&self) -> u64 {
         self.latest_global_txo_count
+    }
+
+    /// Get the latest_block_version
+    ///
+    /// This is the latest value of block_version known to be in the blockchain.
+    /// Note that this may not be a valid block version according to our copy
+    /// of mc-transaction-core.
+    pub fn get_latest_block_version(&self) -> u32 {
+        self.latest_block_version
     }
 
     /// Helper function: Compute the set of Txos contributing to the balance,
@@ -661,7 +675,16 @@ impl CachedTxData {
             match key_image_client.check_key_images(key_images) {
                 Ok(response) => {
                     self.latest_global_txo_count =
-                        core::cmp::max(self.latest_global_txo_count, response.global_txo_count);
+                        max(self.latest_global_txo_count, response.global_txo_count);
+                    // Note: latest_block_version is only increasing on the block chain, since
+                    // the network enforces that each block version is at least as large as its
+                    // parent. However, the client could talk to ledger servers
+                    // that are ahead and then to ledger servers that are
+                    // behind. Putting a max here on the client side helps
+                    // protect the client from being "poisoned" by talking to a ledger server that
+                    // is behind, and having a subsequent Tx fail validation.
+                    self.latest_block_version =
+                        max(self.latest_block_version, response.latest_block_version);
                     for result in response.results.iter() {
                         if let Some(global_index) = key_image_to_global_index.get(&result.key_image)
                         {
