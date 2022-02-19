@@ -223,7 +223,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         Ok(self
             .blockchain_config
             .get()
-            .ok_or(Error::NotInited)?
+            .ok_or(Error::NotInitialized)?
             .get_config()
             .fee_map
             .get_fee_for_token(token_id))
@@ -268,7 +268,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let peer_id = self
             .blockchain_config
             .get()
-            .ok_or(Error::NotInited)?
+            .ok_or(Error::NotInitialized)?
             .responder_id(peer_id);
 
         Ok(self.ake.peer_init(&peer_id)?)
@@ -287,7 +287,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let peer_id = self
             .blockchain_config
             .get()
-            .ok_or(Error::NotInited)?
+            .ok_or(Error::NotInitialized)?
             .responder_id(peer_id);
 
         Ok(self.ake.peer_connect(&peer_id, msg)?)
@@ -369,7 +369,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let config = self
             .blockchain_config
             .get()
-            .ok_or(Error::NotInited)?
+            .ok_or(Error::NotInitialized)?
             .get_config();
 
         // Enforce that all membership proofs provided by the untrusted system for
@@ -458,11 +458,11 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let config = self
             .blockchain_config
             .get()
-            .ok_or(Error::NotInited)?
+            .ok_or(Error::NotInitialized)?
             .get_config();
 
         if parent_block.version > *config.block_version {
-            return Err(Error::FormBlock(format!("Block version cannot decrease: parent_block.version = {}, config.block_version = {}", parent_block.version, config.block_version)));
+            return Err(Error::BlockVersion(format!("Block version cannot decrease: parent_block.version = {}, config.block_version = {}", parent_block.version, config.block_version)));
         }
 
         // This implicitly converts Vec<Result<(Tx Vec<TxOutMembershipProof>),_>> into
@@ -1536,9 +1536,9 @@ mod tests {
 
             // Check if we get a form block error as expected
             match form_block_result {
-                Err(Error::FormBlock(_)) => {}
+                Err(Error::BlockVersion(_)) => {}
                 _ => panic!(
-                    "Expected a FormBlock error due to config.block_version being less than parent"
+                    "Expected a BlockVersion error due to config.block_version being less than parent"
                 ),
             }
         }
