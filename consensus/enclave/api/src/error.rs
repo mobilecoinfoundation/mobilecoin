@@ -57,7 +57,10 @@ pub enum Error {
     FeeMap(FeeMapError),
 
     /// Enclave not initialized
-    NotInited,
+    NotInitialized,
+
+    /// Block Version Error: {0}
+    BlockVersion(String),
 }
 
 impl From<MessageCipherError> for Error {
