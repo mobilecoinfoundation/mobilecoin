@@ -7349,15 +7349,15 @@ dependencies = [
 
 [[package]]
 name = "slog-term"
-version = "2.8.1"
+version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3668dd2252f4381d64de0c79e6c8dc6bd509d1cab3535b35a3fc9bafd1241d5"
+checksum = "87d29185c55b7b258b4f120eab00f48557d4d9bc814f41713f449d35b0f8977c"
 dependencies = [
  "atty",
- "chrono",
  "slog",
  "term",
  "thread_local",
+ "time 0.3.5",
 ]
 
 [[package]]
