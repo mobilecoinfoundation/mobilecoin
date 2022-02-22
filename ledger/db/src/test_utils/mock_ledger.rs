@@ -1,13 +1,14 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use crate::{Error, Ledger};
+use crate::{ActiveMintConfig, Error, Ledger};
 use mc_account_keys::AccountKey;
 use mc_common::{HashMap, HashSet};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_transaction_core::{
+    mint::SetMintConfigTx,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion,
+    Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion, TokenId,
 };
 use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, SeedableRng};
@@ -189,6 +190,13 @@ impl Ledger for MockLedger {
 
     fn get_root_tx_out_membership_element(&self) -> Result<TxOutMembershipElement, Error> {
         unimplemented!();
+    }
+    fn set_active_mint_configs(&self, _set_mint_config_tx: &SetMintConfigTx) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    fn get_active_mint_configs(&self, _token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error> {
+        unimplemented!()
     }
 }
 

@@ -63,6 +63,9 @@ pub enum Error {
 
     /// Metadata store: {0}
     MetadataStore(MetadataStoreError),
+
+    /// Invalid mint configuration: {0}
+    InvalidMintConfig(String),
 }
 
 impl From<lmdb::Error> for Error {
