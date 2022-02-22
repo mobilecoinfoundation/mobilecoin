@@ -4447,6 +4447,7 @@ dependencies = [
  "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",
+ "mc-crypto-multisig",
  "mc-crypto-rand",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",

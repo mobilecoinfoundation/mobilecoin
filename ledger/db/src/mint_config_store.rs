@@ -26,7 +26,7 @@ pub const SET_MINT_CONFIG_TX_BY_NONCE_DB_NAME: &str =
     "mint_config_store:set_mint_config_tx_by_nonce_db_name";
 
 /// An active mint configuration for a single token.
-#[derive(Clone, Message)]
+#[derive(Clone, Eq, Message, PartialEq)]
 pub struct ActiveMintConfig {
     /// The actual mint configuration.
     #[prost(message, required, tag = "1")]
@@ -38,10 +38,26 @@ pub struct ActiveMintConfig {
 }
 
 /// A collection of active mint configurations.
-#[derive(Clone, Message)]
+#[derive(Clone, Eq, Message, PartialEq)]
 pub struct ActiveMintConfigs {
     #[prost(message, repeated, tag = "1")]
     pub configs: Vec<ActiveMintConfig>,
+}
+
+impl From<&SetMintConfigTx> for ActiveMintConfigs {
+    fn from(set_mint_config_tx: &SetMintConfigTx) -> Self {
+        ActiveMintConfigs {
+            configs: set_mint_config_tx
+                .prefix
+                .configs
+                .iter()
+                .map(|mint_config| ActiveMintConfig {
+                    mint_config: mint_config.clone(),
+                    total_minted: 0,
+                })
+                .collect(),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -95,17 +111,7 @@ impl MintConfigStore {
         }
 
         // MintConfigs -> ActiveMintConfigs
-        let active_mint_configs = ActiveMintConfigs {
-            configs: set_mint_config_tx
-                .prefix
-                .configs
-                .iter()
-                .map(|mint_config| ActiveMintConfig {
-                    mint_config: mint_config.clone(),
-                    total_minted: 0,
-                })
-                .collect(),
-        };
+        let active_mint_configs = ActiveMintConfigs::from(set_mint_config_tx);
 
         // Store in database
         db_transaction.put(
@@ -140,6 +146,124 @@ impl MintConfigStore {
             }
             Err(lmdb::Error::NotFound) => Ok(Vec::new()),
             Err(err) => Err(err.into()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::tx_out_store::tx_out_store_tests::get_env;
+    use mc_crypto_keys::Ed25519Pair;
+    use mc_crypto_multisig::SignerSet;
+    use mc_transaction_core::mint::{MintConfig, SetMintConfigTx, SetMintConfigTxPrefix};
+    use mc_util_from_random::FromRandom;
+    use rand::{rngs::StdRng, SeedableRng};
+    use rand_core::{CryptoRng, RngCore};
+
+    pub fn init_mint_config_store() -> (MintConfigStore, Environment) {
+        let env = get_env();
+        MintConfigStore::create(&env).unwrap();
+        let mint_config_store = MintConfigStore::new(&env).unwrap();
+        (mint_config_store, env)
+    }
+
+    pub fn generate_test_mint_config_tx(
+        token_id: TokenId,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> SetMintConfigTx {
+        let signer_1 = Ed25519Pair::from_random(rng).public_key();
+        let signer_2 = Ed25519Pair::from_random(rng).public_key();
+        let signer_3 = Ed25519Pair::from_random(rng).public_key();
+
+        let mut nonce: Vec<u8> = vec![0u8; 32];
+        rng.fill_bytes(&mut nonce);
+
+        SetMintConfigTx {
+            prefix: SetMintConfigTxPrefix {
+                token_id: *token_id,
+                configs: vec![
+                    MintConfig {
+                        token_id: *token_id,
+                        signer_set: SignerSet::new(vec![signer_1.clone()], 1),
+                        mint_limit: rng.next_u64(),
+                    },
+                    MintConfig {
+                        token_id: *token_id,
+                        signer_set: SignerSet::new(vec![signer_2.clone(), signer_3.clone()], 1),
+                        mint_limit: rng.next_u64(),
+                    },
+                ],
+                nonce,
+                tombstone_block: rng.next_u64(),
+            },
+            signature: Default::default(),
+        }
+    }
+
+    #[test]
+    // Should be able to set a valid mint configuration and then get it back.
+    fn set_get_behaves_correctly() {
+        let (mint_config_store, env) = init_mint_config_store();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+            let test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
+            let test_tx_2 = generate_test_mint_config_tx(TokenId::from(2), &mut rng);
+
+
+        // Should be able to set a valid mint configuration and then get it back.
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs(TokenId::from(1), &db_transaction)
+                .unwrap();
+            assert_eq!(
+                active_mint_configs,
+                ActiveMintConfigs::from(&test_tx_1).configs
+            );
+
+            // Getting configuration for a different token id should return an empty vec.
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs(TokenId::from(2), &db_transaction)
+                .unwrap();
+            assert_eq!(active_mint_configs, vec![]);
+        }
+
+        // Set a minting configuration for the 2nd token and try again.
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .set_active_mint_configs(&test_tx_2, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs(TokenId::from(1), &db_transaction)
+                .unwrap();
+            assert_eq!(
+                active_mint_configs,
+                ActiveMintConfigs::from(&test_tx_1).configs
+            );
+
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs(TokenId::from(2), &db_transaction)
+                .unwrap();
+            assert_eq!(
+                active_mint_configs,
+                ActiveMintConfigs::from(&test_tx_2).configs
+            );
         }
     }
 }
