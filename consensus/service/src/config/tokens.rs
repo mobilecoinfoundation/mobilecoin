@@ -5,12 +5,74 @@
 use crate::consensus_service::ConsensusServiceError;
 use mc_common::HashSet;
 use mc_consensus_enclave::FeeMap;
+use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
+use mc_crypto_multisig::SignerSet;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fs, iter::FromIterator, path::Path};
 
+mod der_signer_set {
+    use super::*;
+
+    /// A helper struct for ser/derserializing a SignerSet that uses hex-encoded
+    /// DER representation of Ed25519 public keys.
+    #[derive(Serialize, Deserialize)]
+    struct DerSignerSet {
+        signers: Vec<String>,
+        threshold: u32,
+    }
+
+    /// Helper method for serializing a SignerSet<Ed25519Public> into a
+    /// hex-DER-encoded variant.
+    pub fn serialize<S: Serializer>(
+        signer_set: &Option<SignerSet<Ed25519Public>>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let der_signer_set = signer_set.as_ref().map(|signer_set| DerSignerSet {
+            signers: signer_set
+                .signers()
+                .iter()
+                .map(|signer| hex::encode(&signer.to_der()))
+                .collect(),
+            threshold: signer_set.threshold(),
+        });
+
+        der_signer_set.serialize(serializer)
+    }
+
+    /// Helper method for deserializing a hex-DER-encoded
+    /// SignerSet<Ed25519Public>.
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<SignerSet<Ed25519Public>>, D::Error> {
+        let der_signer_set: Option<DerSignerSet> = Deserialize::deserialize(deserializer)?;
+        match der_signer_set {
+            None => Ok(None),
+            Some(der_signer_set) => {
+                let signers = der_signer_set
+                    .signers
+                    .iter()
+                    .map(|s| {
+                        // Decode each hex-encoded string into a byte vector.
+                        hex::decode(s)
+                            .map_err(serde::de::Error::custom)
+                            .and_then(|bytes| {
+                                // Decode each byte vector into an Ed25519Public.
+                                Ed25519Public::try_from_der(&bytes[..])
+                                    .map_err(serde::de::Error::custom)
+                            })
+                    })
+                    // Return the keys.
+                    .collect::<Result<_, D::Error>>()?;
+
+                Ok(Some(SignerSet::new(signers, der_signer_set.threshold)))
+            }
+        }
+    }
+}
+
 /// Single token configuration.
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TokenConfig {
     /// Token ID.
     token_id: TokenId,
@@ -25,6 +87,12 @@ pub struct TokenConfig {
     // file.
     #[serde(default)]
     allow_any_fee: bool,
+
+    /// Master minters - if set, controls the set of keys that can sign
+    /// set-minting-configuration transactions.
+    /// Not supported for MOB
+    #[serde(default, with = "der_signer_set")]
+    master_minters: Option<SignerSet<Ed25519Public>>,
 }
 
 impl TokenConfig {
@@ -39,10 +107,73 @@ impl TokenConfig {
         self.minimum_fee
             .or_else(|| FeeMap::default().get_fee_for_token(&self.token_id()))
     }
+
+    /// Master minters config, when available.
+    pub fn master_minters(&self) -> Option<&SignerSet<Ed25519Public>> {
+        // Can never have master minters for MOB
+        if self.token_id == TokenId::MOB {
+            return None;
+        }
+        self.master_minters.as_ref()
+    }
+
+    /// Check if the token configuration is valid.
+    pub fn validate(&self) -> Result<(), ConsensusServiceError> {
+        // We must have a fee for every configured token.
+        if self.minimum_fee_or_default().is_none() {
+            return Err(ConsensusServiceError::Configuration(
+                "missing minimum fee".to_string(),
+            ));
+        }
+
+        // By default, we restrict MOB minimum fee to a sane value.
+        if self.token_id == Mob::ID {
+            let mob_fee = self.minimum_fee_or_default().unwrap(); // We are guaranteed to have a minimum fee for MOB.
+            if !self.allow_any_fee && !(10_000..1_000_000_000_000u64).contains(&mob_fee) {
+                return Err(ConsensusServiceError::Configuration(format!(
+                    "Fee {} picoMOB is out of bounds",
+                    mob_fee
+                )));
+            }
+        } else {
+            // allow_any_fee can only be used for MOB
+            if self.allow_any_fee {
+                return Err(ConsensusServiceError::Configuration(
+                    "allow_any_fee can only be used for MOB".to_string(),
+                ));
+            }
+        }
+
+        // Validate minting configuration if present.
+        if let Some(master_minters) = &self.master_minters {
+            // MOB cannot be minted.
+            if self.token_id == TokenId::MOB {
+                return Err(ConsensusServiceError::Configuration(
+                    "MOB cannot have minting configuration".to_string(),
+                ));
+            }
+
+            // We must have at least one master minter.
+            if master_minters.signers().is_empty() || master_minters.threshold() == 0 {
+                return Err(ConsensusServiceError::Configuration(
+                    "must have at least one signer".to_string(),
+                ));
+            }
+
+            if master_minters.threshold() as usize > master_minters.signers().len() {
+                return Err(ConsensusServiceError::Configuration(
+                    "signer set threshold is greater than the number of signers".to_string(),
+                ));
+            }
+        }
+
+        // We are valid.
+        Ok(())
+    }
 }
 
 /// Tokens configuration.
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TokensConfig {
     /// Token configurations (one for each supported token).
     tokens: Vec<TokenConfig>,
@@ -55,6 +186,7 @@ impl Default for TokensConfig {
                 token_id: Mob::ID,
                 minimum_fee: Some(Mob::MINIMUM_FEE),
                 allow_any_fee: false,
+                master_minters: None,
             }],
         }
     }
@@ -110,32 +242,16 @@ impl TokensConfig {
 
         // Validate the configuration of each token
         for token in self.tokens.iter() {
-            // We must have a fee for every configured token.
-            if token.minimum_fee_or_default().is_none() {
-                return Err(ConsensusServiceError::Configuration(format!(
-                    "missing minimum fee for token id {:?}",
-                    token.token_id
-                )));
-            }
-
-            // By default, we restrict MOB minimum fee to a sane value.
-            if token.token_id == Mob::ID {
-                let mob_fee = token.minimum_fee_or_default().unwrap(); // We are guaranteed to have a minimum fee for MOB.
-                if !token.allow_any_fee && !(10_000..1_000_000_000_000u64).contains(&mob_fee) {
-                    return Err(ConsensusServiceError::Configuration(format!(
-                        "Fee {} picoMOB is out of bounds",
-                        mob_fee
-                    )));
+            token.validate().map_err(|err| {
+                if let ConsensusServiceError::Configuration(msg) = err {
+                    ConsensusServiceError::Configuration(format!(
+                        "token id {}: {}",
+                        token.token_id, msg
+                    ))
+                } else {
+                    err
                 }
-            } else {
-                // allow_any_fee can only be used for MOB
-                if token.allow_any_fee {
-                    return Err(ConsensusServiceError::Configuration(format!(
-                        "allow_any_fee can only be used for MOB, it was used on token id {:?}",
-                        token.token_id
-                    )));
-                }
-            }
+            })?;
         }
 
         // Tokens configuration is valid.
@@ -149,6 +265,8 @@ impl TokensConfig {
 
     /// Construct a FeeMap based on the configuration.
     pub fn fee_map(&self) -> Result<FeeMap, ConsensusServiceError> {
+        self.validate()?;
+
         FeeMap::try_from_iter(
             self.tokens
                 .iter()
@@ -176,6 +294,15 @@ impl TokensConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::convert::TryFrom;
+
+    fn assert_validation_error(tokens: &TokensConfig, err: &str) {
+        match tokens.validate() {
+            Ok(_) => panic!("expected an error"),
+            Err(ConsensusServiceError::Configuration(msg)) => assert_eq!(msg, err),
+            Err(e) => panic!("Unexpected error: {}", e),
+        }
+    }
 
     #[test]
     fn empty_config() {
@@ -191,7 +318,7 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since MOB is not specified.
-        assert!(tokens.validate().is_err());
+        assert_validation_error(&tokens, "MOB token configuration not found");
     }
 
     #[test]
@@ -212,7 +339,7 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since we must have the MOB token configured.
-        assert!(tokens.validate().is_err());
+        assert_validation_error(&tokens, "MOB token configuration not found");
         assert!(tokens.fee_map().is_err());
     }
 
@@ -233,7 +360,7 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since we must have the MOB token configured.
-        assert!(tokens.validate().is_err());
+        assert_validation_error(&tokens, "MOB token configuration not found");
         assert!(tokens.fee_map().is_err());
     }
 
@@ -422,7 +549,7 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since the minimum fee for the second token is unknown.
-        assert!(tokens.validate().is_err());
+        assert_validation_error(&tokens, "token id 6: missing minimum fee");
 
         // Getting the fee map should also fail.
         assert!(tokens.fee_map().is_err());
@@ -447,7 +574,7 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since allow_any_fee cannot be used on non-MOB tokens.
-        assert!(tokens.validate().is_err());
+        assert_validation_error(&tokens, "MOB token configuration not found");
     }
 
     #[test]
@@ -468,7 +595,7 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since the fee is outside the allowed eange.
-        assert!(tokens.validate().is_err());
+        assert_validation_error(&tokens, "token id 0: Fee 1 picoMOB is out of bounds");
     }
 
     #[test]
@@ -490,7 +617,7 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since the fee is outside the allowed eange.
-        assert!(tokens.validate().is_err());
+        assert_validation_error(&tokens, "token id 0: Fee 1 picoMOB is out of bounds");
     }
 
     #[test]
@@ -520,5 +647,177 @@ mod tests {
                 .minimum_fee_or_default(),
             Some(1)
         );
+    }
+
+    #[test]
+    fn master_minters_deserialize_serialize_deserialize_works() {
+        let token_config = TokenConfig {
+            token_id: TokenId::from(123),
+            minimum_fee: Some(456),
+            allow_any_fee: false,
+            master_minters: Some(SignerSet::new(
+                vec![
+                    Ed25519Public::try_from(&[3u8; 32][..]).unwrap(),
+                    Ed25519Public::try_from(&[123u8; 32][..]).unwrap(),
+                ],
+                1,
+            )),
+        };
+
+        let bytes = mc_util_serial::serialize(&token_config).unwrap();
+        let token_config2: TokenConfig = mc_util_serial::deserialize(&bytes).unwrap();
+
+        assert_eq!(token_config, token_config2);
+    }
+
+    #[test]
+    fn valid_minting_config() {
+        let key1 = Ed25519Public::try_from(&[3u8; 32][..]).unwrap();
+        let key2 = Ed25519Public::try_from(&[123u8; 32][..]).unwrap();
+
+        // This test code is used to generate the two keys used in the test below.
+        let key1_hex = hex::encode(&key1.to_der());
+        let key2_hex = hex::encode(&key2.to_der());
+        println!("{}", key1_hex);
+        println!("{}", key2_hex);
+
+        let input_toml: &str = r#"
+            [[tokens]]
+            token_id = 0 # Must have MOB
+            
+            [[tokens]]
+            token_id = 1
+            minimum_fee = 1
+            [tokens.master_minters]
+            signers = [
+                "302a300506032b65700321000303030303030303030303030303030303030303030303030303030303030303",
+                "302a300506032b65700321007b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b"
+            ]
+            threshold = 1
+       "#;
+
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+        let input_json: &str = r#"{
+            "tokens": [
+                { "token_id": 0 },
+                {
+                    "token_id": 1,
+                    "minimum_fee": 1,
+                    "master_minters": {
+                        "signers": [
+                            "302a300506032b65700321000303030303030303030303030303030303030303030303030303030303030303",
+                            "302a300506032b65700321007b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b"
+                        ],
+                        "threshold": 1
+                    }
+                }
+            ]
+        }"#;
+        let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
+        assert_eq!(tokens, tokens2);
+
+        // Validation should succeed since the configuration is valid.
+        assert!(tokens.validate().is_ok());
+
+        // Keys should've decoded successfully.
+        assert_eq!(
+            tokens
+                .get_token_config(&TokenId::from(1))
+                .unwrap()
+                .master_minters()
+                .unwrap()
+                .signers()[0],
+            key1
+        );
+
+        assert_eq!(
+            tokens
+                .get_token_config(&TokenId::from(1))
+                .unwrap()
+                .master_minters()
+                .unwrap()
+                .signers()[1],
+            key2
+        );
+    }
+
+    #[test]
+    fn cannot_specify_minting_config_for_mob() {
+        let input_toml: &str = r#"
+            [[tokens]]
+            token_id = 0
+            
+            [tokens.master_minters]
+            signers = [
+                "302a300506032b65700321000303030303030303030303030303030303030303030303030303030303030303",
+                "302a300506032b65700321007b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b"
+            ]
+            threshold = 1
+       "#;
+
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+
+        assert_validation_error(&tokens, "token id 0: MOB cannot have minting configuration");
+    }
+
+    #[test]
+    fn cannot_have_no_signers() {
+        let input_toml: &str = r#"
+            [[tokens]]
+            token_id = 0 # Must have MOB
+            
+            [[tokens]]
+            token_id = 2
+            minimum_fee = 1
+            [tokens.master_minters]
+            signers = []
+            threshold = 1
+       "#;
+
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+
+        assert_validation_error(&tokens, "token id 2: must have at least one signer");
+    }
+
+    #[test]
+    fn cannot_have_zero_threshold() {
+        let input_toml: &str = r#"
+            [[tokens]]
+            token_id = 0 # Must have MOB
+            [[tokens]]
+            token_id = 2
+            minimum_fee = 1
+            [tokens.master_minters]
+            signers = [
+                "302a300506032b65700321000303030303030303030303030303030303030303030303030303030303030303",
+                "302a300506032b65700321007b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b"
+            ]
+            threshold = 0
+       "#;
+
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+
+        assert_validation_error(&tokens, "token id 2: must have at least one signer");
+    }
+
+    #[test]
+    fn cannot_have_duplicate_token_ids() {
+        let input_toml: &str = r#"
+            [[tokens]]
+            token_id = 0
+
+            [[tokens]]
+            token_id = 1
+            minimum_fee = 123000
+
+            [[tokens]]
+            token_id = 1
+            minimum_fee = 123000
+        "#;
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+
+        // Validation should fail since we must have the MOB token configured.
+        assert_validation_error(&tokens, "duplicate token configuration found");
+        assert!(tokens.fee_map().is_err());
     }
 }

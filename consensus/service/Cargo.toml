@@ -24,6 +24,7 @@ mc-consensus-enclave = { path = "../../consensus/enclave" }
 mc-consensus-scp = { path = "../../consensus/scp" }
 mc-crypto-digestible = { path = "../../crypto/digestible" }
 mc-crypto-keys = { path = "../../crypto/keys" }
+mc-crypto-multisig = { path = "../../crypto/multisig" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-ledger-sync = { path = "../../ledger/sync" }
 mc-peers = { path = "../../peers" }

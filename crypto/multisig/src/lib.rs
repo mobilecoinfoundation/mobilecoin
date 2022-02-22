@@ -85,6 +85,16 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
         Self { signers, threshold }
     }
 
+    /// Get the list of potential signers.
+    pub fn signers(&self) -> &[P] {
+        &self.signers
+    }
+
+    /// Get the threshold.
+    pub fn threshold(&self) -> u32 {
+        self.threshold
+    }
+
     /// Verify a message against a multi-signature, returning the list of
     /// signers that signed it.
     pub fn verify<
