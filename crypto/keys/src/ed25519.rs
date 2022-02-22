@@ -9,7 +9,11 @@ use alloc::vec;
 
 use crate::traits::*;
 use alloc::vec::Vec;
-use core::convert::TryFrom;
+use core::{
+    cmp::Ordering,
+    convert::TryFrom,
+    hash::{Hash, Hasher},
+};
 use digest::generic_array::typenum::{U32, U64};
 use ed25519::{
     signature::{DigestSigner, DigestVerifier, Signature as SignatureTrait, Signer, Verifier},
@@ -394,6 +398,24 @@ impl Eq for Ed25519Signature {}
 impl PartialEq for Ed25519Signature {
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(&other.0)
+    }
+}
+
+impl PartialOrd for Ed25519Signature {
+    fn partial_cmp(&self, other: &Ed25519Signature) -> Option<Ordering> {
+        self.to_bytes().partial_cmp(&other.to_bytes())
+    }
+}
+
+impl Ord for Ed25519Signature {
+    fn cmp(&self, other: &Ed25519Signature) -> Ordering {
+        self.to_bytes().cmp(&other.to_bytes())
+    }
+}
+
+impl Hash for Ed25519Signature {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.to_bytes().hash(state)
     }
 }
 
