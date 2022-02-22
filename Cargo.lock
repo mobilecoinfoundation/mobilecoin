@@ -3009,6 +3009,7 @@ dependencies = [
  "mc-consensus-scp",
  "mc-crypto-digestible",
  "mc-crypto-keys",
+ "mc-crypto-multisig",
  "mc-ledger-db",
  "mc-ledger-sync",
  "mc-peers",
