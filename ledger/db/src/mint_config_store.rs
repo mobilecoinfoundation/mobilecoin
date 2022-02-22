@@ -202,14 +202,12 @@ mod test {
     }
 
     #[test]
-    // Should be able to set a valid mint configuration and then get it back.
     fn set_get_behaves_correctly() {
         let (mint_config_store, env) = init_mint_config_store();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-            let test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
-            let test_tx_2 = generate_test_mint_config_tx(TokenId::from(2), &mut rng);
-
+        let test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
+        let test_tx_2 = generate_test_mint_config_tx(TokenId::from(2), &mut rng);
 
         // Should be able to set a valid mint configuration and then get it back.
         {
@@ -259,6 +257,102 @@ mod test {
 
             let active_mint_configs = mint_config_store
                 .get_active_mint_configs(TokenId::from(2), &db_transaction)
+                .unwrap();
+            assert_eq!(
+                active_mint_configs,
+                ActiveMintConfigs::from(&test_tx_2).configs
+            );
+        }
+    }
+
+    #[test]
+    fn duplicate_nonce_not_allowed() {
+        let (mint_config_store, env) = init_mint_config_store();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        let test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
+        let mut test_tx_2 = generate_test_mint_config_tx(TokenId::from(2), &mut rng);
+
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            assert_eq!(
+                mint_config_store.set_active_mint_configs(&test_tx_1, &mut db_transaction),
+                Err(Error::Lmdb(lmdb::Error::KeyExist))
+            );
+            db_transaction.commit().unwrap();
+        }
+
+        test_tx_2.prefix.nonce = test_tx_1.prefix.nonce.clone();
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            assert_eq!(
+                mint_config_store.set_active_mint_configs(&test_tx_1, &mut db_transaction),
+                Err(Error::Lmdb(lmdb::Error::KeyExist))
+            );
+            db_transaction.commit().unwrap();
+        }
+
+        // Sanity - change the nonce, we should then succeed.
+        test_tx_2.prefix.nonce[0] = !test_tx_2.prefix.nonce[0];
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .set_active_mint_configs(&test_tx_2, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+    }
+
+    #[test]
+    fn set_replaces_configuration() {
+        let (mint_config_store, env) = init_mint_config_store();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        let test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
+        let test_tx_2 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
+
+        assert_ne!(test_tx_1, test_tx_2);
+
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs(TokenId::from(1), &db_transaction)
+                .unwrap();
+            assert_eq!(
+                active_mint_configs,
+                ActiveMintConfigs::from(&test_tx_1).configs
+            );
+        }
+
+        // Replace the previous configuration with a different one
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .set_active_mint_configs(&test_tx_2, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs(TokenId::from(1), &db_transaction)
                 .unwrap();
             assert_eq!(
                 active_mint_configs,
