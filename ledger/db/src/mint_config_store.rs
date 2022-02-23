@@ -148,6 +148,41 @@ impl MintConfigStore {
             Err(err) => Err(err.into()),
         }
     }
+
+    /// Update the total minted amount for a given MintConfig.
+    pub fn update_total_minted(
+        &self,
+        mint_config: &MintConfig,
+        amount: u64,
+        db_transaction: &mut RwTransaction,
+    ) -> Result<(), Error> {
+        // Get the active mint configs for the given token.
+        let mut active_mint_configs =
+            self.get_active_mint_configs(TokenId::from(mint_config.token_id), db_transaction)?;
+
+        // Find the active mint config that matches the mint config we were given.
+        let active_mint_config = active_mint_configs
+            .iter_mut()
+            .find(|active_mint_config| active_mint_config.mint_config == *mint_config)
+            .ok_or(Error::InvalidMintConfig(
+                "Mint config not found".to_string(),
+            ))?;
+
+        // Update the total minted amount.
+        active_mint_config.total_minted = amount;
+
+        // Write to db.
+        db_transaction.put(
+            self.active_mint_configs_by_token_id,
+            &u32_to_key_bytes(mint_config.token_id),
+            &encode(&ActiveMintConfigs {
+                configs: active_mint_configs,
+            }),
+            WriteFlags::empty(),
+        )?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -357,6 +392,146 @@ mod test {
             assert_eq!(
                 active_mint_configs,
                 ActiveMintConfigs::from(&test_tx_2).configs
+            );
+        }
+    }
+
+    #[test]
+    fn update_total_minted_works() {
+        let (mint_config_store, env) = init_mint_config_store();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        let test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
+
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        // Initially, both mint configs are not minted anything
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs(TokenId::from(1), &db_transaction)
+                .unwrap();
+            assert_eq!(active_mint_configs[0].total_minted, 0);
+            assert_eq!(active_mint_configs[1].total_minted, 0);
+        }
+
+        // Update the total minted amount of the second configuration
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .update_total_minted(&test_tx_1.prefix.configs[1], 123456, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        // The amount should've updated correctly.
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs(TokenId::from(1), &db_transaction)
+                .unwrap();
+            assert_eq!(active_mint_configs[0].total_minted, 0);
+            assert_eq!(active_mint_configs[1].total_minted, 123456);
+        }
+
+        // Update both configurations in one transaction
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .update_total_minted(
+                    &test_tx_1.prefix.configs[0],
+                    1020304050,
+                    &mut db_transaction,
+                )
+                .unwrap();
+            mint_config_store
+                .update_total_minted(
+                    &test_tx_1.prefix.configs[1],
+                    2020202020,
+                    &mut db_transaction,
+                )
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        // The amount should've updated correctly.
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs(TokenId::from(1), &db_transaction)
+                .unwrap();
+            assert_eq!(active_mint_configs[0].total_minted, 1020304050);
+            assert_eq!(active_mint_configs[1].total_minted, 2020202020);
+        }
+    }
+
+    #[test]
+    fn cannot_update_total_minted_amount_for_unknown_config() {
+        let (mint_config_store, env) = init_mint_config_store();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        let mut test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
+        let test_tx_2 = generate_test_mint_config_tx(TokenId::from(2), &mut rng);
+
+        // Try to update when nothing has been written yet.
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            assert_eq!(
+                mint_config_store.update_total_minted(
+                    &test_tx_1.prefix.configs[1],
+                    123456,
+                    &mut db_transaction
+                ),
+                Err(Error::InvalidMintConfig(
+                    "Mint config not found".to_string(),
+                ))
+            );
+        }
+
+        // Write a minting configuration to the database
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        // Try to update another one that has not been written.
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            assert_eq!(
+                mint_config_store.update_total_minted(
+                    &test_tx_2.prefix.configs[1],
+                    123456,
+                    &mut db_transaction
+                ),
+                Err(Error::InvalidMintConfig(
+                    "Mint config not found".to_string(),
+                ))
+            );
+        }
+
+        // Mess with the mint limit - we should fail to write as well.
+        {
+            test_tx_1.prefix.configs[1].mint_limit += 123;
+
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            assert_eq!(
+                mint_config_store.update_total_minted(
+                    &test_tx_1.prefix.configs[1],
+                    123456,
+                    &mut db_transaction
+                ),
+                Err(Error::InvalidMintConfig(
+                    "Mint config not found".to_string(),
+                ))
             );
         }
     }

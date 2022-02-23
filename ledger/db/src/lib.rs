@@ -26,7 +26,7 @@ use mc_common::logger::global_log;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     membership_proofs::Range,
-    mint::SetMintConfigTx,
+    mint::{MintConfig, SetMintConfigTx},
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockData, BlockID, BlockSignature, TokenId, MAX_BLOCK_VERSION,
@@ -390,6 +390,14 @@ impl Ledger for LedgerDB {
         Ok(self
             .mint_config_store
             .get_active_mint_configs(token_id, &db_transaction)?)
+    }
+
+    fn update_total_minted(&self, mint_config: &MintConfig, amount: u64) -> Result<(), Error> {
+        let mut db_transaction = self.env.begin_rw_txn()?;
+        self.mint_config_store
+            .update_total_minted(mint_config, amount, &mut db_transaction)?;
+        db_transaction.commit()?;
+        Ok(())
     }
 }
 
