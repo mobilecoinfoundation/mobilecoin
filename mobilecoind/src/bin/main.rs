@@ -179,12 +179,10 @@ fn create_or_open_ledger_db(
             }
         }
         Err(err @ _) => {
-            // If the ledger database exists and we failed to open it, something is wrong with it and this requires manual intervention.
+            // If the ledger database exists and we failed to open it, something is wrong
+            // with it and this requires manual intervention.
             if ledger_db_file.exists() {
-                panic!(
-                    "Failed to open ledger db {:?}: {:?}",
-                    config.ledger_db, err
-                );
+                panic!("Failed to open ledger db {:?}: {:?}", config.ledger_db, err);
             }
         }
     };
