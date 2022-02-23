@@ -7,7 +7,7 @@ use lmdb::{DatabaseFlags, Environment, Transaction, WriteFlags};
 use mc_common::logger::{log, Logger};
 use mc_ledger_db::{
     key_bytes_to_u64, tx_out_store::TX_OUT_INDEX_BY_PUBLIC_KEY_DB_NAME, u64_to_key_bytes, Error,
-    LedgerDbMetadataStoreSettings, MetadataStore, TxOutStore, TxOutsByBlockValue,
+    LedgerDbMetadataStoreSettings, MetadataStore, MintConfigStore, TxOutStore, TxOutsByBlockValue,
     BLOCK_NUMBER_BY_TX_OUT_INDEX, COUNTS_DB_NAME, MAX_LMDB_DATABASES, MAX_LMDB_FILE_SIZE,
     NUM_BLOCKS_KEY, TX_OUTS_BY_BLOCK_DB_NAME,
 };
@@ -80,6 +80,26 @@ pub fn migrate(ledger_db_path: impl AsRef<Path>, logger: &Logger) {
                 );
                 db_txn.commit().expect("Failed committing transaction");
             }
+            // Version 20220222 came after 20200707 introduced minting.
+            Err(MetadataStoreError::VersionIncompatible(20200707, _)) => {
+                log::info!(
+                    logger,
+                    "Ledger db migrating from version 20200707 to 20220222..."
+                );
+                MintConfigStore::create(&env).expect("Failed creating MintConfigStore");
+
+                let mut db_txn = env.begin_rw_txn().expect("Failed starting rw transaction");
+                metadata_store
+                    .set_version_to_latest(&mut db_txn)
+                    .expect("Failed setting metadata version");
+                log::info!(
+                    logger,
+                    "Ledger db migration complete, now at version: {:?}",
+                    metadata_store.get_version(&db_txn),
+                );
+                db_txn.commit().expect("Failed committing transaction");
+            }
+
             // Don't know how to migrate.
             Err(err) => {
                 panic!("Error while migrating: {:?}", err);
