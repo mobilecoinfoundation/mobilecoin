@@ -59,7 +59,6 @@ where
     Ok(cbor::to_vec(value)?)
 }
 
-// Forward mc_util_serial::deserialize to bincode::deserialize
 pub fn deserialize<'a, T>(bytes: &'a [u8]) -> Result<T, decode::Error>
 where
     T: serde::de::Deserialize<'a>,
