@@ -252,8 +252,11 @@ class Node:
         # Wait for ledger db to become available
         ledger_db = os.path.join(self.ledger_dir, 'data.mdb')
         while not os.path.exists(ledger_db):
-            time.sleep(1)
+            if self.consensus_process.poll() is not None:
+                print('consensus process crashed')
+                return self.stop()
             print(f'Waiting for {ledger_db}')
+            time.sleep(1)
 
         cmd = ' '.join([
             f'cd {PROJECT_DIR} && exec {TARGET_DIR}/ledger-distribution',
@@ -327,8 +330,10 @@ class Mobilecoind:
         self.process = subprocess.Popen(cmd, shell=True)
         print()
 
-        print('Waiting for watcher db to become available')
         while not os.path.exists(os.path.join(self.watcher_db, 'data.mdb')):
+            if self.process.poll() is not None:
+                print('mobilecoind process crashed')
+                return self.stop()
             print('Waiting for watcher db to become available')
             time.sleep(1)
 
