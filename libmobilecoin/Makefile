@@ -47,9 +47,9 @@ IOS_LIB = libmobilecoin.a
 IOS_LIB_STRIPPED = libmobilecoin_stripped.a
 IOS_C_HEADERS = include/*
 
-RUST_COMMIT = 4e282795d
-RUST_COMMIT_NAME = nightly-2021-08-01
-SWIFT_VERSION = 5.3.2
+RUST_COMMIT = $(shell source toolchain-config.env; echo $$RUST_COMMIT)
+RUST_COMMIT_NAME = $(shell source toolchain-config.env; echo $$RUST_COMMIT_NAME)
+SWIFT_VERSION = $(shell source toolchain-config.env; echo $$SWIFT_VERSION)
 
 ### Helper Function
 
