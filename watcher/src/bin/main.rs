@@ -149,7 +149,7 @@ impl WatcherSyncThread {
 
             // For now, ignore origin block, as it does not have a signature.
             let syncing_done = watcher
-                .sync_blocks(1, config.max_block_height)
+                .sync_blocks(1, config.max_block_height, false)
                 .expect("Could not sync signatures");
             if syncing_done {
                 log::info!(logger, "sync_signatures indicates we're done");
