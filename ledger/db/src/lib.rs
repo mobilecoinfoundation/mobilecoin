@@ -387,9 +387,8 @@ impl Ledger for LedgerDB {
     /// given token id.
     fn get_active_mint_configs(&self, token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
-        Ok(self
-            .mint_config_store
-            .get_active_mint_configs(token_id, &db_transaction)?)
+        self.mint_config_store
+            .get_active_mint_configs(token_id, &db_transaction)
     }
 
     fn update_total_minted(&self, mint_config: &MintConfig, amount: u64) -> Result<(), Error> {

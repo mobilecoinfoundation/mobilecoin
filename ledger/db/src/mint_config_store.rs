@@ -141,7 +141,7 @@ impl MintConfigStore {
         let token_id_bytes = u32_to_key_bytes(*token_id);
         match db_transaction.get(self.active_mint_configs_by_token_id, &token_id_bytes) {
             Ok(bytes) => {
-                let active_mint_configs: ActiveMintConfigs = decode(&bytes)?;
+                let active_mint_configs: ActiveMintConfigs = decode(bytes)?;
                 Ok(active_mint_configs.configs)
             }
             Err(lmdb::Error::NotFound) => Ok(Vec::new()),
@@ -168,9 +168,7 @@ impl MintConfigStore {
         let active_mint_config = active_mint_configs
             .iter_mut()
             .find(|active_mint_config| active_mint_config.mint_config == *mint_config)
-            .ok_or(Error::InvalidMintConfig(
-                "Mint config not found".to_string(),
-            ))?;
+            .ok_or_else(|| Error::InvalidMintConfig("Mint config not found".to_string()))?;
 
         // Update the total minted amount.
         active_mint_config.total_minted = amount;
