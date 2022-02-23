@@ -66,6 +66,9 @@ pub enum Error {
 
     /// Invalid mint configuration: {0}
     InvalidMintConfig(String),
+
+    /// Mint limit exceeded: {0} > {1}
+    MintLimitExceeded(u64, u64),
 }
 
 impl From<lmdb::Error> for Error {
