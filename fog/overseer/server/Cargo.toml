@@ -6,7 +6,7 @@ edition = "2018"
 license = "GPL-3.0"
 
 [[bin]]
-name = "start_overseer_server"
+name = "fog_overseer_server"
 path = "src/bin/main.rs"
 
 [dependencies]
