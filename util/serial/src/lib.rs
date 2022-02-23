@@ -8,13 +8,14 @@ use alloc::vec::Vec;
 pub extern crate prost;
 
 pub use prost::{DecodeError, EncodeError, Message};
+use minicbor_ser as cbor;
 
-// We put a new-type around serde_cbor::Error in `mod decode` and `mod encode`,
+// We put a new-type around minicbor_ser::error::Error in `mod decode` and `mod encode`,
 // because this keeps us compatible with how rmp-serde was exporting its errors,
 // and avoids unnecessary code changes.
 pub mod decode {
     #[derive(Debug)]
-    pub struct Error(serde_cbor::Error);
+    pub struct Error(minicbor_ser::error::Error);
 
     impl core::fmt::Display for Error {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -22,8 +23,8 @@ pub mod decode {
         }
     }
 
-    impl From<serde_cbor::Error> for Error {
-        fn from(src: serde_cbor::Error) -> Self {
+    impl From<minicbor_ser::error::Error> for Error {
+        fn from(src: minicbor_ser::error::Error) -> Self {
             Self(src)
         }
     }
@@ -31,7 +32,7 @@ pub mod decode {
 
 pub mod encode {
     #[derive(Debug)]
-    pub struct Error(serde_cbor::Error);
+    pub struct Error(minicbor_ser::error::Error);
 
     impl core::fmt::Display for Error {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -39,8 +40,8 @@ pub mod encode {
         }
     }
 
-    impl From<serde_cbor::Error> for Error {
-        fn from(src: serde_cbor::Error) -> Self {
+    impl From<minicbor_ser::error::Error> for Error {
+        fn from(src: minicbor_ser::error::Error) -> Self {
             Self(src)
         }
     }
@@ -55,7 +56,7 @@ pub fn serialize<T: ?Sized>(value: &T) -> Result<Vec<u8>, encode::Error>
 where
     T: serde::ser::Serialize + Sized,
 {
-    Ok(serde_cbor::to_vec(value)?)
+    Ok(cbor::to_vec(value)?)
 }
 
 // Forward mc_util_serial::deserialize to bincode::deserialize
@@ -63,7 +64,7 @@ pub fn deserialize<'a, T>(bytes: &'a [u8]) -> Result<T, decode::Error>
 where
     T: serde::de::Deserialize<'a>,
 {
-    Ok(serde_cbor::from_slice(bytes)?)
+    Ok(cbor::from_slice(bytes)?)
 }
 
 pub fn encode<T: Message>(value: &T) -> Vec<u8> {

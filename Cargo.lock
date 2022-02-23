@@ -5264,9 +5264,9 @@ dependencies = [
 name = "mc-util-serial"
 version = "1.2.0-pre0"
 dependencies = [
+ "minicbor-ser",
  "prost",
  "serde",
- "serde_cbor",
 ]
 
 [[package]]
@@ -5451,6 +5451,22 @@ name = "mime"
 version = "0.3.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a60c7ce501c71e03a9c9c0d35b861413ae925bd979cc7a4e30d060069aaac8d"
+
+[[package]]
+name = "minicbor"
+version = "0.11.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48222b0b93eea4181f796ff574ad31a6ef635a6a6d9953b5cebffe44e1b70c59"
+
+[[package]]
+name = "minicbor-ser"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4377ac4fab63e0c3821e7bfff783599292fde1c88d50887131e13d7f7eac70e9"
+dependencies = [
+ "minicbor",
+ "serde",
+]
 
 [[package]]
 name = "miniz_oxide"
