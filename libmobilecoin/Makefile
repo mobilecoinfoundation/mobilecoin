@@ -28,10 +28,11 @@ CARGO ?= cargo
 
 ### Environment Variables
 
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Darwin)
-  export LIBCLANG_PATH = $(shell brew --prefix llvm)/lib
-endif
+# Move to rust-bitcode scripts
+#UNAME_S := $(shell uname -s)
+#ifeq ($(UNAME_S),Darwin)
+  #export LIBCLANG_PATH = $(shell brew --prefix llvm)/lib
+#endif
 
 ### Local Variables
 
