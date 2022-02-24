@@ -5,11 +5,12 @@
 //! This store maintains two LMDB databases:
 //! 1) A mapping of token id -> currently active mint configurations.
 //!    This database is used for two things:
-//!        1) It allows transaction validation code to figure out if a mint
-//! transaction is allowed to mint.        2) It enables keeping track of how
-//! much was minted using a given configuration. This is used to enforce the
-//! per-configuration mint limit. 2) A mapping of nonce -> SetMintConfigTx
-//! object containing the nonce. This is mainly used to prevent replay attacks.
+//!      1) It allows transaction validation code to figure out if a mint
+//! transaction is allowed to mint.
+//!      2) It enables keeping track of how much was minted using a given
+//! configuration. This is used to enforce the per-configuration mint limit. 2)
+//! A mapping of nonce -> SetMintConfigTx object containing the nonce. This is
+//! mainly used to prevent replay attacks.
 
 use crate::{u32_to_key_bytes, Error};
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
