@@ -43,12 +43,12 @@ pub fn migrate(ledger_db_path: impl AsRef<Path>, logger: &Logger) {
             Ok(_) => {
                 break;
             }
-            // Version 20200610 introduced the TxOut public key -> index store.
-            Err(MetadataStoreError::VersionIncompatible(20200427, 20200610))
-            | Err(MetadataStoreError::VersionIncompatible(20200427, 20200707)) => {
+            // Version 20200610 came after 20200427 and introduced the TxOut public key -> index
+            // store.
+            Err(MetadataStoreError::VersionIncompatible(20200427, _)) => {
                 log::info!(logger, "Ledger db migrating from version 20200427 to 20200610, this might take awhile...");
 
-                construct_tx_out_index_by_public_key_from_existing_data(&env, &logger)
+                construct_tx_out_index_by_public_key_from_existing_data(&env, logger)
                     .expect("Failed constructing tx out index by public key database");
 
                 let mut db_txn = env.begin_rw_txn().expect("Failed starting rw transaction");
@@ -62,16 +62,17 @@ pub fn migrate(ledger_db_path: impl AsRef<Path>, logger: &Logger) {
                 );
                 db_txn.commit().expect("Failed committing transaction");
             }
-            // Version 20200707 introduced the TxOut global index -> block index store.
-            Err(MetadataStoreError::VersionIncompatible(20200610, 20200707)) => {
+            // Version 20200707 came after 20200610 introduced the TxOut global index -> block index
+            // store.
+            Err(MetadataStoreError::VersionIncompatible(20200610, _)) => {
                 log::info!(logger, "Ledger db migrating from version 20200610 to 20200707, this might take awhile...");
 
-                construct_block_number_by_tx_out_index_from_existing_data(&env, &logger)
+                construct_block_number_by_tx_out_index_from_existing_data(&env, logger)
                     .expect("Failed constructing block number by tx out index database");
 
                 let mut db_txn = env.begin_rw_txn().expect("Failed starting rw transaction");
                 metadata_store
-                    .set_version_to_latest(&mut db_txn)
+                    .set_version(&mut db_txn, 20200707)
                     .expect("Failed setting metadata version");
                 log::info!(
                     logger,
