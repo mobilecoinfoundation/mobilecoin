@@ -44,10 +44,11 @@ use std::{
 
 pub use error::Error;
 pub use ledger_trait::{Ledger, MockLedger};
-pub use mc_util_lmdb::MetadataStore;
+pub use mc_util_lmdb::{MetadataStore, MetadataStoreError};
 pub use tx_out_store::TxOutStore;
 
-const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
+pub const MAX_LMDB_FILE_SIZE: usize = 2usize.pow(40); // 1 TB
+pub const MAX_LMDB_DATABASES: u32 = 22; // maximum number of databases in the lmdb file
 
 // LMDB Database names.
 pub const COUNTS_DB_NAME: &str = "ledger_db:counts";
@@ -371,7 +372,7 @@ impl LedgerDB {
     #[allow(clippy::unreadable_literal)]
     pub fn open(path: &Path) -> Result<LedgerDB, Error> {
         let env = Environment::new()
-            .set_max_dbs(22)
+            .set_max_dbs(MAX_LMDB_DATABASES)
             .set_map_size(MAX_LMDB_FILE_SIZE)
             // TODO - needed because currently our test cloud machines have slow disks.
             .set_flags(EnvironmentFlags::NO_SYNC)

@@ -29,6 +29,7 @@ mc-crypto-rand = { path = "../crypto/rand" }
 mc-fog-report-connection = { path = "../fog/report/connection" }
 mc-fog-report-validation = { path = "../fog/report/validation" }
 mc-ledger-db = { path = "../ledger/db" }
+mc-ledger-migration = { path = "../ledger/migration" }
 mc-ledger-sync = { path = "../ledger/sync" }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
 mc-sgx-css = { path = "../sgx/css" }
