@@ -8,18 +8,17 @@ use mc_common::logger::{log, Logger};
 use mc_ledger_db::{
     key_bytes_to_u64, tx_out_store::TX_OUT_INDEX_BY_PUBLIC_KEY_DB_NAME, u64_to_key_bytes, Error,
     LedgerDbMetadataStoreSettings, MetadataStore, TxOutStore, TxOutsByBlockValue,
-    BLOCK_NUMBER_BY_TX_OUT_INDEX, COUNTS_DB_NAME, NUM_BLOCKS_KEY, TX_OUTS_BY_BLOCK_DB_NAME,
+    BLOCK_NUMBER_BY_TX_OUT_INDEX, COUNTS_DB_NAME, MAX_LMDB_DATABASES, MAX_LMDB_FILE_SIZE,
+    NUM_BLOCKS_KEY, TX_OUTS_BY_BLOCK_DB_NAME,
 };
 use mc_util_lmdb::MetadataStoreError;
 use mc_util_serial::decode;
 use std::path::Path;
 
-const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
-
 pub fn migrate(ledger_db_path: impl AsRef<Path>, logger: &Logger) {
     // Open the LMDB database.
     let env = Environment::new()
-        .set_max_dbs(24)
+        .set_max_dbs(MAX_LMDB_DATABASES)
         .set_map_size(MAX_LMDB_FILE_SIZE)
         .open(ledger_db_path.as_ref())
         .expect("Failed opening ledger db");
