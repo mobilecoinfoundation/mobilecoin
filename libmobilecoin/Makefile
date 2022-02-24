@@ -131,6 +131,9 @@ $(ARCHS_IOS):
 	mkdir -p out/ios
 	$(call TOOLCHAIN_install,$@)
 	$(CARGO_ENV_FLAGS) $(CARGO) +ios-$@-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION)) build --package $(CARGO_PACKAGE) --target $@ $(CARGO_BUILD_FLAGS)
+	$(call BINARY_copy,$@,target)
+	mkdir -p out/ios/include
+	cp $(IOS_C_HEADERS) out/ios/include
 
 .PHONY: $(TARGET_TOOLCHAINS)
 $(TARGET_TOOLCHAINS):
