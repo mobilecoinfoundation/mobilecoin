@@ -39,8 +39,9 @@ pub struct ActiveMintConfig {
 }
 
 /// A collection of active mint configurations.
+/// This is needed for serializing/deserializing a Vec<ActiveMintConfig>.
 #[derive(Clone, Eq, Message, PartialEq)]
-pub struct ActiveMintConfigs {
+struct ActiveMintConfigs {
     #[prost(message, repeated, tag = "1")]
     pub configs: Vec<ActiveMintConfig>,
 }
