@@ -178,7 +178,12 @@ fn create_or_open_ledger_db(
                 }
             }
         }
-        Err(err @ _) => {
+        Err(mc_ledger_db::Error::MetadataStore(
+            mc_ledger_db::MetadataStoreError::VersionIncompatible(old, new),
+        )) => {
+            panic!("Ledger DB {:?} requires migration from version {} to {}. Please run the mc-ledger-migration utility.", config.ledger_db, old, new);
+        }
+        Err(err) => {
             // If the ledger database exists and we failed to open it, something is wrong
             // with it and this requires manual intervention.
             if ledger_db_file.exists() {

@@ -44,7 +44,7 @@ use std::{
 
 pub use error::Error;
 pub use ledger_trait::{Ledger, MockLedger};
-pub use mc_util_lmdb::MetadataStore;
+pub use mc_util_lmdb::{MetadataStore, MetadataStoreError};
 pub use tx_out_store::TxOutStore;
 
 const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
