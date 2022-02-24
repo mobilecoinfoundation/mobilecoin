@@ -161,6 +161,11 @@ fn create_or_open_ledger_db(
 ) -> LedgerDB {
     let ledger_db_file = Path::new(&config.ledger_db).join("data.mdb");
 
+    // Attempt to run migrations, if requested.
+    if config.ledger_db_migrate {
+        mc_ledger_migration::migrate(&config.ledger_db, logger);
+    }
+
     // Attempt to open the ledger and see if it has anything in it.
     match LedgerDB::open(&config.ledger_db) {
         Ok(ledger_db) => {
@@ -181,7 +186,7 @@ fn create_or_open_ledger_db(
         Err(mc_ledger_db::Error::MetadataStore(
             mc_ledger_db::MetadataStoreError::VersionIncompatible(old, new),
         )) => {
-            panic!("Ledger DB {:?} requires migration from version {} to {}. Please run the mc-ledger-migration utility.", config.ledger_db, old, new);
+            panic!("Ledger DB {:?} requires migration from version {} to {}. Please run mobilecoind with --ledger-db-migrate or use the mc-ledger-migration utility.", config.ledger_db, old, new);
         }
         Err(err) => {
             // If the ledger database exists and we failed to open it, something is wrong
