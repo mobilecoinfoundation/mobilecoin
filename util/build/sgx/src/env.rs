@@ -2,7 +2,6 @@
 
 //! SGX Build Utilities
 
-use crate::vars::{ENV_IAS_MODE, ENV_SGX_MODE};
 use displaydoc::Display;
 use mc_util_build_script::Environment;
 use std::{
@@ -10,6 +9,9 @@ use std::{
     env::{var, VarError},
     result::Result as StdResult,
 };
+
+pub const ENV_IAS_MODE: &str = "IAS_MODE";
+pub const ENV_SGX_MODE: &str = "SGX_MODE";
 
 /// An enumeration of environment errors which occur when parsing SGX
 /// environments
@@ -89,13 +91,15 @@ impl SgxEnvironment {
         let ias_mode = if env.feature("ias-dev") {
             IasMode::Development
         } else {
-            IasMode::try_from(var(ENV_IAS_MODE)?.as_str())?
+            let ias_mode = var(ENV_IAS_MODE)?;
+            IasMode::try_from(ias_mode.as_str())?
         };
 
         let sgx_mode = if env.feature("sgx-sim") {
             SgxMode::Simulation
         } else {
-            SgxMode::try_from(var(ENV_SGX_MODE)?.as_str())?
+            let sgx_mode = var(ENV_SGX_MODE)?;
+            SgxMode::try_from(sgx_mode.as_str())?
         };
 
         Ok(Self { ias_mode, sgx_mode })
