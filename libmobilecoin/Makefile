@@ -61,10 +61,10 @@ endef
 define TOOLCHAIN_install	
 	$(if \
 		$(shell rustup toolchain list | \
-		  		grep "ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION))" | \
-	    		wc -l | \
-	    		awk '{$$1=$$1;print}' | \
-	    		grep '1'), \
+				grep "ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION))" | \
+				wc -l | \
+				awk '{$$1=$$1;print}' | \
+				grep '1'), \
 		@echo "toolchain ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION)) already installed", \
 		@echo "toolchain ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION)) not installed"; \
 		$(info "Compiling & Installing Rust $(RUST_COMMIT_NAME) toolchain") \
