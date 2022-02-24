@@ -4,6 +4,7 @@
 
 #![feature(proc_macro_hygiene, decl_macro)]
 
+use clap::Parser;
 use grpcio::ChannelBuilder;
 use mc_api::external::{CompressedRistretto, PublicAddress, RistrettoPrivate};
 use mc_common::logger::{create_app_logger, log, o};
@@ -14,23 +15,26 @@ use protobuf::RepeatedField;
 use rocket::{delete, get, post, routes};
 use rocket_contrib::json::Json;
 use std::{convert::TryFrom, sync::Arc};
-use structopt::StructOpt;
 
 /// Command line config, set with defaults that will work with
 /// a standard mobilecoind instance
-#[derive(Clone, Debug, StructOpt)]
-#[structopt(name = "mobilecoind-json", about = "A REST frontend for mobilecoind")]
+#[derive(Clone, Debug, Parser)]
+#[clap(name = "mobilecoind-json", about = "A REST frontend for mobilecoind")]
 pub struct Config {
     /// Host to listen on.
-    #[structopt(long, default_value = "127.0.0.1")]
+    #[clap(long, default_value = "127.0.0.1", env = "MC_LISTEN_HOST")]
     pub listen_host: String,
 
     /// Port to start webserver on.
-    #[structopt(long, default_value = "9090")]
+    #[clap(long, default_value = "9090", env = "MC_LISTEN_PORT")]
     pub listen_port: u16,
 
     /// MobileCoinD URI.
-    #[structopt(long, default_value = "insecure-mobilecoind://127.0.0.1/")]
+    #[clap(
+        long,
+        default_value = "insecure-mobilecoind://127.0.0.1/",
+        env = "MC_MOBILECOIND_URI"
+    )]
     pub mobilecoind_uri: MobilecoindUri,
 }
 
@@ -795,7 +799,7 @@ fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
 
-    let config = Config::from_args();
+    let config = Config::parse();
 
     let (logger, _global_logger_guard) = create_app_logger(o!());
     log::info!(

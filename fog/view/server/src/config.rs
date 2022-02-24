@@ -2,6 +2,7 @@
 
 //! Configuration parameters for the MobileCoin Fog View Node
 
+use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
@@ -10,42 +11,41 @@ use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
 use std::time::Duration;
-use structopt::StructOpt;
 
-#[derive(Clone, Serialize, StructOpt)]
+#[derive(Clone, Parser, Serialize)]
 pub struct MobileAcctViewConfig {
     /// The ID with which to respond to client attestation requests.
     ///
     /// This ID needs to match the host:port clients use in their URI when
     /// referencing this node.
-    #[structopt(long)]
+    #[clap(long, env = "MC_CLIENT_RESPONDER_ID")]
     pub client_responder_id: ResponderId,
 
     /// PEM-formatted keypair to send with an Attestation Request.
-    #[structopt(long)]
+    #[clap(long, env = "MC_IAS_API_KEY")]
     pub ias_api_key: String,
 
     /// The IAS SPID to use when getting a quote
-    #[structopt(long)]
+    #[clap(long, env = "MC_IAS_SPID")]
     pub ias_spid: ProviderId,
 
     /// gRPC listening URI for client requests.
-    #[structopt(long)]
+    #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
     pub client_listen_uri: FogViewUri,
 
     /// Optional admin listening URI.
-    #[structopt(long)]
+    #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
     pub admin_listen_uri: Option<AdminUri>,
 
     /// Enables authenticating client requests using Authorization tokens using
     /// the provided hex-encoded 32 bytes shared secret.
-    #[structopt(long, parse(try_from_str=hex::FromHex::from_hex))]
+    #[clap(long, parse(try_from_str = hex::FromHex::from_hex), env = "MC_CLIENT_AUTH_TOKEN_SECRET")]
     pub client_auth_token_secret: Option<[u8; 32]>,
 
     /// Maximal client authentication token lifetime, in seconds (only relevant
     /// when --client-auth-token-secret is used. Defaults to 86400 - 24
     /// hours).
-    #[structopt(long, default_value = "86400", parse(try_from_str=parse_duration_in_seconds))]
+    #[clap(long, default_value = "86400", parse(try_from_str = parse_duration_in_seconds), env = "MC_CLIENT_AUTH_TOKEN_MAX_LIFETIME")]
     pub client_auth_token_max_lifetime: Duration,
 
     /// The capacity to build the OMAP (ORAM hash table) with.
@@ -58,10 +58,10 @@ pub struct MobileAcctViewConfig {
     /// the heap in the untrusted side. Once the needed capacity exceeds RAM,
     /// you will either get killed by OOM killer, or it will start being swapped
     /// to disk by linux kernel.
-    #[structopt(long, default_value = "1048576", env)]
+    #[clap(long, default_value = "1048576", env = "MC_OMAP_CAPACITY")]
     pub omap_capacity: u64,
 
     /// Postgres config
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub postgres_config: SqlRecoveryDbConnectionConfig,
 }

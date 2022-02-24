@@ -4,6 +4,7 @@
 //! command-line, print it's contents (optionally as debug byte arrays) to
 //! standard output or an output file.
 
+use clap::Parser;
 use hex_fmt::HexFmt;
 use mc_sgx_css::Signature;
 use std::{
@@ -14,20 +15,19 @@ use std::{
     mem,
     path::PathBuf,
 };
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Config {
     /// The SIGSTRUCT file to read, or stdin
-    #[structopt(parse(from_os_str))]
+    #[clap(parse(from_os_str))]
     pub input: Option<PathBuf>,
     /// The output location, or stdout
-    #[structopt(parse(from_os_str))]
+    #[clap(parse(from_os_str))]
     pub output: Option<PathBuf>,
 }
 
 fn main() {
-    let config = Config::from_args();
+    let config = Config::parse();
 
     let input = if config.input.is_some() {
         std::fs::read(config.input.unwrap()).expect("Could not read input file")

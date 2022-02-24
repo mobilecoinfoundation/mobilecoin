@@ -7,18 +7,18 @@
 //!
 //! Suggested use:
 //! cargo run --release -- --num 1000 >> account_keys.json
+use clap::Parser;
 use mc_util_test_helper::{known_accounts, AccountKey};
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Config {
     /// Number of user keys to generate.
-    #[structopt(short, long, default_value = "10")]
+    #[clap(short, long, default_value = "10", env = "MC_NUM")]
     pub num: usize,
 }
 
 fn main() {
-    let config = Config::from_args();
+    let config = Config::parse();
 
     let account_keys: Vec<AccountKey> = known_accounts::generate(config.num);
 

@@ -15,8 +15,7 @@
 //!
 //! Fog distro guarantees to pay each destination account at least once.
 
-#![deny(missing_docs)]
-
+use clap::Parser;
 use core::{cell::RefCell, convert::TryFrom};
 use lazy_static::lazy_static;
 use mc_account_keys::AccountKey;
@@ -61,7 +60,6 @@ use std::{
     thread,
     time::Duration,
 };
-use structopt::StructOpt;
 use tempfile::tempdir;
 
 thread_local! {
@@ -118,7 +116,7 @@ fn main() {
     mc_common::setup_panic_handler();
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
-    let config = Config::from_args();
+    let config = Config::parse();
 
     // Read account root_entropies from disk
     let src_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_root_entropies(

@@ -23,6 +23,9 @@ pub enum ResponderIdParseError {
     InvalidFormat(String),
 }
 
+#[cfg(feature = "std")]
+impl std::error::Error for ResponderIdParseError {}
+
 /// Node unique identifier.
 #[derive(
     Clone, Default, Debug, Eq, Serialize, Deserialize, PartialEq, PartialOrd, Ord, Hash, Digestible,

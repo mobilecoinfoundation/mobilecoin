@@ -17,6 +17,19 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 ## [1.2.0] 2022-02-22
 
 ### Added
+- Support env overrides for ~all command-line flags.
+  - Flags that take multiple values can be repeated on the command line,
+    or passed as comma-separated values via environment or command-line args.
+
+### Changed
+
+### Rust Dependencies
+ - Replace `structopt` with `clap`.
+
+
+## [1.2.0]
+
+### Added
 
  - Encrypted Memos ([MCIP #3](https://github.com/mobilecoinfoundation/mcips/pull/3))
  - Recoverable Transaction History ([MCIP #4](https://github.com/mobilecoinfoundation/mcips/pull/4))

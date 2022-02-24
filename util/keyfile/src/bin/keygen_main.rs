@@ -2,12 +2,12 @@
 
 //! A CLI tool for generating individual MobileCoin identities
 
+use clap::Parser;
 use mc_account_keys::{RootEntropy, RootIdentity};
 use mc_util_keyfile::config::Config;
-use structopt::StructOpt;
 
 fn main() {
-    let config = Config::from_args();
+    let config = Config::parse();
     let path = config
         .output_dir
         .clone()

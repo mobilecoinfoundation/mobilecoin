@@ -2,6 +2,7 @@
 
 //! Fog Ingest client
 
+use clap::Parser;
 use mc_common::logger::{create_root_logger, log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::ingest_common::IngestSummary;
@@ -12,7 +13,6 @@ use mc_fog_ingest_client::{
 use mc_fog_uri::FogIngestUri;
 use serde_json::{json, to_string_pretty};
 use std::{str::FromStr, sync::Arc};
-use structopt::StructOpt;
 
 fn main() -> ClientResult<()> {
     // Logging must go to stderr to not interfere with STDOUT
@@ -20,7 +20,7 @@ fn main() -> ClientResult<()> {
 
     let logger = create_root_logger();
 
-    let config = IngestConfig::from_args();
+    let config = IngestConfig::parse();
 
     let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
 

@@ -2,25 +2,25 @@
 
 //! A utility for issueing admin GRPC requests.
 
+use clap::{Parser, Subcommand};
 use grpcio::ChannelBuilder;
 use mc_util_grpc::{
     admin::SetRustLogRequest, admin_grpc::AdminApiClient, empty::Empty, ConnectionUriGrpcioChannel,
 };
 use mc_util_uri::AdminUri;
 use std::{str::FromStr, sync::Arc};
-use structopt::StructOpt;
 
-#[derive(Clone, StructOpt)]
+#[derive(Clone, Parser)]
 pub struct Config {
     /// URI to connect to
-    #[structopt(long)]
+    #[clap(long, env = "MC_URI")]
     pub uri: String,
 
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     pub cmd: Command,
 }
 
-#[derive(Clone, StructOpt)]
+#[derive(Clone, Subcommand)]
 pub enum Command {
     /// Get Prometheus metrics.
     Metrics,
@@ -42,7 +42,7 @@ fn main() {
     mc_common::setup_panic_handler();
     let (logger, _global_logger_guard) =
         mc_common::logger::create_app_logger(mc_common::logger::o!());
-    let config = Config::from_args();
+    let config = Config::parse();
 
     let env = Arc::new(grpcio::EnvBuilder::new().build());
     let uri = AdminUri::from_str(&config.uri).expect("failed to parse uri");

@@ -2,16 +2,16 @@
 
 //! A utility for decoding b58 strings
 
+use clap::Parser;
 use mc_api::{external::PublicAddress, printable::PrintableWrapper};
-use structopt::StructOpt;
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 struct Config {
     pub b58_string: String,
 }
 
 fn main() {
-    let config = Config::from_args();
+    let config = Config::parse();
 
     match PrintableWrapper::b58_decode(config.b58_string) {
         Ok(printable_wrapper) => {

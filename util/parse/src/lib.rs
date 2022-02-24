@@ -10,7 +10,7 @@ pub use mc_sgx_css::Signature as CssSignature;
 
 /// Parse a number of seconds into a duration
 ///
-/// This can be used with structopt
+/// This can be used with Clap
 pub fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
     Ok(Duration::from_secs(u64::from_str(src)?))
 }

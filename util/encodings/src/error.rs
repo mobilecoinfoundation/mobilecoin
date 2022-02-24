@@ -85,3 +85,6 @@ impl From<Error> for FmtError {
         FmtError
     }
 }
+
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}

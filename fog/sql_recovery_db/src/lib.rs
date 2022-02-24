@@ -17,6 +17,7 @@ mod schema;
 mod sql_types;
 
 use crate::sql_types::{SqlCompressedRistrettoPublic, UserEventType};
+use clap::Parser;
 use diesel::{
     pg::PgConnection,
     prelude::*,
@@ -46,7 +47,6 @@ use proto_types::ProtoIngestedBlockData;
 use retry::{delay, Error as RetryError, OperationResult};
 use serde::Serialize;
 use std::{cmp::max, time::Duration};
-use structopt::StructOpt;
 
 pub use error::Error;
 
@@ -60,39 +60,39 @@ pub const SQL_MAX_PARAMS: usize = 65000;
 pub const SQL_MAX_ROWS: usize = 5000;
 
 /// SQL recovery DB connection configuration parameters
-#[derive(Debug, Clone, StructOpt, Serialize)]
+#[derive(Debug, Clone, Parser, Serialize)]
 pub struct SqlRecoveryDbConnectionConfig {
     /// The idle timeout used by the connection pool.
     /// If set, connections will be closed after sitting idle for at most 30
     /// seconds beyond this duration. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
-    #[structopt(long, env, default_value = "60", parse(try_from_str=parse_duration_in_seconds))]
+    #[clap(long, default_value = "60", parse(try_from_str = parse_duration_in_seconds), env = "MC_POSTGRES_IDLE_TIMEOUT")]
     pub postgres_idle_timeout: Duration,
 
     /// The maximum lifetime of connections in the pool.
     /// If set, connections will be closed after existing for at most 30 seconds
     /// beyond this duration. If a connection reaches its maximum lifetime
     /// while checked out it will be closed when it is returned to the pool. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
-    #[structopt(long, env, default_value = "120", parse(try_from_str=parse_duration_in_seconds))]
+    #[clap(long, default_value = "120", parse(try_from_str = parse_duration_in_seconds), env = "MC_POSTGRES_MAX_LIFETIME")]
     pub postgres_max_lifetime: Duration,
 
     /// Sets the connection timeout used by the pool.
     /// The pool will wait this long for a connection to become available before
     /// returning an error. (https://docs.diesel.rs/diesel/r2d2/struct.Builder.html)
-    #[structopt(long, env, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
+    #[clap(long, default_value = "5", parse(try_from_str = parse_duration_in_seconds), env = "MC_POSTGRES_CONNECTION_TIMEOUT")]
     pub postgres_connection_timeout: Duration,
 
     /// The maximum number of connections managed by the pool.
-    #[structopt(long, env, default_value = "1")]
+    #[clap(long, default_value = "1", env = "MC_POSTGRES_MAX_CONNECTIONS")]
     pub postgres_max_connections: u32,
 
     /// How many times to retry when we get retriable errors (connection /
     /// diesel errors)
-    #[structopt(long, env, default_value = "3")]
+    #[clap(long, default_value = "3", env = "MC_POSTGRES_RETRY_COUNT")]
     pub postgres_retry_count: usize,
 
     /// How long to back off (milliseconds) when we get retriable errors
     /// (connection / diesel errors)
-    #[structopt(long, env, default_value = "20")]
+    #[clap(long, default_value = "20", env = "MC_POSTGRES_RETRY_MILLIS")]
     pub postgres_retry_millis: u64,
 }
 

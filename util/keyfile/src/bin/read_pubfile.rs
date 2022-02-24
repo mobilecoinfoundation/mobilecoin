@@ -1,18 +1,18 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+use clap::Parser;
 use mc_util_keyfile::read_pubfile;
 use std::path::PathBuf;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Config {
     /// Path to pubfile
-    #[structopt(long)]
+    #[clap(long, env = "MC_PUBFILE")]
     pub pubfile: PathBuf,
 }
 
 fn main() {
-    let config = Config::from_args();
+    let config = Config::parse();
 
     let pubaddress = read_pubfile(config.pubfile.clone()).expect("Could not read pubfile");
 

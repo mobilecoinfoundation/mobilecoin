@@ -2,6 +2,7 @@
 
 //! Configuration parameters for mobilecoind
 
+use clap::Parser;
 use displaydoc::Display;
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::{logger::Logger, ResponderId};
@@ -20,25 +21,29 @@ use reqwest::{
     header::{HeaderMap, HeaderValue, CONTENT_TYPE},
 };
 use std::{path::PathBuf, sync::Arc, time::Duration};
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "mobilecoind", about = "The MobileCoin client daemon.")]
+#[derive(Debug, Parser)]
+#[clap(name = "mobilecoind", about = "The MobileCoin client daemon.")]
 pub struct Config {
     /// Path to ledger db (lmdb).
-    #[structopt(long, default_value = "/tmp/ledgerdb", parse(from_os_str))]
+    #[clap(
+        long,
+        default_value = "/tmp/ledgerdb",
+        parse(from_os_str),
+        env = "MC_LEDGER_DB"
+    )]
     pub ledger_db: PathBuf,
 
     /// Path to existing ledger db that contains the origin block, used when
     /// initializing new ledger dbs.
-    #[structopt(long)]
+    #[clap(long, env = "MC_LEDGER_DB_BOOTSTRAP")]
     pub ledger_db_bootstrap: Option<String>,
 
     /// Path to watcher db (lmdb).
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str), env = "MC_WATCHER_DB")]
     pub watcher_db: Option<PathBuf>,
 
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub peers_config: PeersConfig,
 
     /// Quorum set for ledger syncing. By default, the quorum set would include
@@ -47,44 +52,49 @@ pub struct Config {
     /// The quorum set is represented in JSON. For example:
     /// {"threshold":1,"members":[{"type":"Node","args":"node2.test.mobilecoin.
     /// com:443"},{"type":"Node","args":"node3.test.mobilecoin.com:443"}]}
-    #[structopt(long, parse(try_from_str=parse_quorum_set_from_json))]
+    #[clap(long, parse(try_from_str = parse_quorum_set_from_json), env = "MC_QUORUM_SET")]
     quorum_set: Option<QuorumSet<ResponderId>>,
 
     /// URLs to use for transaction data.
     ///
     /// For example: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/
-    #[structopt(long = "tx-source-url", required_unless = "offline")]
+    #[clap(
+        long = "tx-source-url",
+        required_unless_present = "offline",
+        use_value_delimiter = true,
+        env = "MC_TX_SOURCE_URL"
+    )]
     pub tx_source_urls: Option<Vec<String>>,
 
     /// How many seconds to wait between polling.
-    #[structopt(long, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
+    #[clap(long, default_value = "5", parse(try_from_str = parse_duration_in_seconds), env = "MC_POLL_INTERVAL")]
     pub poll_interval: Duration,
 
     // Mobilecoind specific arguments
     /// Path to mobilecoind database used to store transactions and accounts.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str), env = "MC_MOBILECOIND_DB")]
     pub mobilecoind_db: Option<PathBuf>,
 
     /// URI to listen on and serve requests from.
-    #[structopt(long)]
+    #[clap(long, env = "MC_LISTEN_URI")]
     pub listen_uri: Option<MobilecoindUri>,
 
     /// Number of worker threads to use for view key scanning.
     /// Defaults to number of logical CPU cores.
-    #[structopt(long)]
+    #[clap(long, env = "MC_NUM_WORKERS")]
     pub num_workers: Option<usize>,
 
     /// Offline mode.
-    #[structopt(long)]
+    #[clap(long, env = "MC_OFFLINE")]
     pub offline: bool,
 
     /// Fog ingest enclave CSS file (needed in order to enable sending
     /// transactions to fog recipients).
-    #[structopt(long, parse(try_from_str=load_css_file))]
+    #[clap(long, parse(try_from_str = load_css_file), env = "MC_FOG_INGEST_ENCLAVE_CSS")]
     pub fog_ingest_enclave_css: Option<Signature>,
 
     /// Automatically migrate the ledger db into the most recent version.
-    #[structopt(long)]
+    #[clap(long, env = "MC_LEDGER_DB_MIGRATE")]
     pub ledger_db_migrate: bool,
 
     /// Token id
@@ -138,22 +148,7 @@ impl Config {
         }
 
         // Otherwise create a quorum set that includes all of the peers we know about.
-        let node_ids = self
-            .peers_config
-            .peers
-            .clone()
-            .unwrap_or_default()
-            .iter()
-            .map(|p| {
-                p.responder_id().unwrap_or_else(|e| {
-                    panic!(
-                        "Could not get responder_id from uri {}: {:?}",
-                        p.to_string(),
-                        e
-                    )
-                })
-            })
-            .collect::<Vec<ResponderId>>();
+        let node_ids = self.peers_config.responder_ids();
         QuorumSet::new_with_node_ids(node_ids.len() as u32, node_ids)
     }
 
@@ -258,23 +253,32 @@ impl Config {
     }
 }
 
-#[derive(Clone, Debug, StructOpt)]
-#[structopt()]
+#[derive(Clone, Debug, Parser)]
 pub struct PeersConfig {
-    /// validator nodes to connect to.
-    #[structopt(long = "peer", required_unless = "offline")]
+    /// Validator nodes to connect to.
+    /// Sample usages:
+    ///     --peer mc://foo:123 --peer mc://bar:456
+    ///     --peer mc://foo:123,mc://bar:456
+    ///     env MC_PEER=mc://foo:123,mc://bar:456
+    #[clap(
+        long = "peer",
+        required_unless_present = "offline",
+        env = "MC_PEER",
+        use_value_delimiter = true
+    )]
     pub peers: Option<Vec<ConsensusClientUri>>,
 }
 
 impl PeersConfig {
     pub fn responder_ids(&self) -> Vec<ResponderId> {
         self.peers
-            .clone()
-            .unwrap_or_default()
+            .as_ref()
+            .unwrap()
             .iter()
             .map(|peer| {
-                peer.responder_id()
-                    .expect("Could not get responder_id from peer")
+                peer.responder_id().unwrap_or_else(|err| {
+                    panic!("Could not get responder_id from peer URI {}: {}", peer, err)
+                })
             })
             .collect()
     }
@@ -286,8 +290,8 @@ impl PeersConfig {
         logger: Logger,
     ) -> Vec<ThickClient<HardcodedCredentialsProvider>> {
         self.peers
-            .clone()
-            .unwrap_or_default()
+            .as_ref()
+            .unwrap()
             .iter()
             .map(|client_uri| {
                 ThickClient::new(

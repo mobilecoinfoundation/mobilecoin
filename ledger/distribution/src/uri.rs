@@ -35,6 +35,8 @@ pub enum UriParseError {
     InvalidS3Region(ParseRegionError),
 }
 
+impl std::error::Error for UriParseError {}
+
 impl FromStr for Uri {
     type Err = UriParseError;
 

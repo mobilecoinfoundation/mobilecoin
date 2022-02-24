@@ -12,6 +12,7 @@ use mc_watcher::{
     watcher_db::create_or_open_rw_watcher_db,
 };
 
+use clap::Parser;
 use futures::executor::block_on;
 use grpcio::{EnvBuilder, ServerBuilder};
 use mc_common::logger::{create_app_logger, log, o, Logger};
@@ -24,13 +25,12 @@ use std::{
     },
     thread::{sleep, Builder as ThreadBuilder, JoinHandle},
 };
-use structopt::StructOpt;
 
 fn main() {
     mc_common::setup_panic_handler();
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
-    let config = WatcherConfig::from_args();
+    let config = WatcherConfig::parse();
     let sources_config = config.sources_config();
 
     let watcher_db = create_or_open_rw_watcher_db(

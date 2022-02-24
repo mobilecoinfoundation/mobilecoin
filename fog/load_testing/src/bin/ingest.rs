@@ -11,6 +11,7 @@
 //! Processing Txos gets slower as the map gets more full, the load test
 //! should be updated to measure this effect.
 
+use clap::Parser;
 use grpcio::{ChannelBuilder, Error as GrpcioError};
 use mc_account_keys::AccountKey;
 use mc_common::logger::{log, Logger};
@@ -35,7 +36,6 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use structopt::StructOpt;
 use tempdir::TempDir;
 
 // Compute mean and std_dev of timings
@@ -398,20 +398,20 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
     test_results
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(
+#[derive(Debug, Parser)]
+#[clap(
     name = "fog-ingest-server-load-test",
     about = "Spawns and drives a fog ingest server with input in order to measure its performance"
 )]
 struct LoadTestOptions {
-    #[structopt(long)]
+    #[clap(long, env = "MC_USER_CAPACITY")]
     user_capacity: Option<Vec<u64>>,
 }
 
 fn main() {
     mc_common::setup_panic_handler();
 
-    let opt = LoadTestOptions::from_args();
+    let opt = LoadTestOptions::parse();
 
     // Reduce log level maybe?
     let logger = mc_common::logger::create_root_logger();

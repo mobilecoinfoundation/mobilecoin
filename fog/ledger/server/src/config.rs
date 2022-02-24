@@ -2,6 +2,7 @@
 
 //! Configuration parameters for the ledger server
 
+use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
 use mc_fog_uri::FogLedgerUri;
@@ -9,50 +10,49 @@ use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
 use std::{path::PathBuf, time::Duration};
-use structopt::StructOpt;
 
-#[derive(Clone, Serialize, StructOpt)]
+#[derive(Clone, Parser, Serialize)]
 pub struct LedgerServerConfig {
     /// gRPC listening URI for client requests.
-    #[structopt(long)]
+    #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
     pub client_listen_uri: FogLedgerUri,
 
     /// Path to ledger db (lmdb)
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str), env = "MC_LEDGER_DB")]
     pub ledger_db: PathBuf,
 
     /// Path to watcher db (lmdb) - includes block timestamps
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str), env = "MC_WATCHER_DB")]
     pub watcher_db: PathBuf,
 
     /// Client Responder id.
     ///
     /// This ID needs to match the host:port clients use in their URI when
     /// referencing this node.
-    #[structopt(long)]
+    #[clap(long, env = "MC_CLIENT_RESPONDER_ID")]
     pub client_responder_id: ResponderId,
 
     /// IAS Api Key.
-    #[structopt(long)]
+    #[clap(long, env = "MC_IAS_API_KEY")]
     pub ias_api_key: String,
 
     /// IAS Service Provider ID.
-    #[structopt(long)]
+    #[clap(long, env = "MC_IAS_SPID")]
     pub ias_spid: ProviderId,
 
     /// Optional admin listening URI.
-    #[structopt(long)]
+    #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
     pub admin_listen_uri: Option<AdminUri>,
 
     /// Enables authenticating client requests using Authorization tokens using
     /// the provided hex-encoded 32 bytes shared secret.
-    #[structopt(long, parse(try_from_str=hex::FromHex::from_hex))]
+    #[clap(long, parse(try_from_str = hex::FromHex::from_hex), env = "MC_CLIENT_AUTH_TOKEN_SECRET")]
     pub client_auth_token_secret: Option<[u8; 32]>,
 
     /// Maximal client authentication token lifetime, in seconds (only relevant
     /// when --client-auth-token-secret is used. Defaults to 86400 - 24
     /// hours).
-    #[structopt(long, default_value = "86400", parse(try_from_str=parse_duration_in_seconds))]
+    #[clap(long, default_value = "86400", parse(try_from_str = parse_duration_in_seconds), env = "MC_CLIENT_AUTH_TOKEN_MAX_LIFETIME")]
     pub client_auth_token_max_lifetime: Duration,
 
     /// The capacity to build the OMAP (ORAM hash table) with.
@@ -65,6 +65,6 @@ pub struct LedgerServerConfig {
     /// the heap in the untrusted side. Once the needed capacity exceeds RAM,
     /// you will either get killed by OOM killer, or it will start being swapped
     /// to disk by linux kernel.
-    #[structopt(long, default_value = "1048576", env)]
+    #[clap(long, default_value = "1048576", env = "MC_OMAP_CAPACITY")]
     pub omap_capacity: u64,
 }

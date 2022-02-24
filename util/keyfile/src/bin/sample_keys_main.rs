@@ -1,41 +1,41 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+use clap::Parser;
 use hex::FromHex;
 use std::{fs, path::PathBuf, string::ToString, vec::Vec};
-use structopt::StructOpt;
 
-// Hack to work around Vec special handling in structopt
+// Hack to work around Vec special handling in clap
 type VecBytes = Vec<u8>;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Config {
     /// Fog Report URL
-    #[structopt(long)]
+    #[clap(long, env = "MC_FOG_REPORT_URL")]
     pub fog_report_url: Option<String>,
 
     /// Fog Report ID
-    #[structopt(long)]
+    #[clap(long, env = "MC_FOG_REPORT_ID")]
     pub fog_report_id: Option<String>,
 
     /// Fog Authority subjectPublicKeyInfo, loaded from a PEM root certificate
-    #[structopt(long = "fog-authority-root", parse(try_from_str=load_spki_from_pemfile))]
+    #[clap(long, parse(try_from_str = load_spki_from_pemfile), env = "MC_FOG_AUTHORITY_ROOT")]
     pub fog_authority_root: Option<VecBytes>,
 
     /// Fog Authority subjectPublicKeyInfo, encoded in base 64
-    #[structopt(long = "fog-authority-spki", parse(try_from_str=decode_base64))]
+    #[clap(long, parse(try_from_str = decode_base64), env = "MC_FOG_AUTHORITY_SPKI")]
     pub fog_authority_spki: Option<VecBytes>,
 
     /// Number of user keys to generate.
-    #[structopt(short, long, default_value = "10")]
+    #[clap(short, long, default_value = "10", env = "MC_NUM")]
     pub num: usize,
 
     /// Output directory, defaults to ./keys
-    #[structopt(long)]
+    #[clap(long, env = "MC_OUTPUT_DIR")]
     pub output_dir: Option<PathBuf>,
 
     // Seed to use when generating keys (e.g.
     // 1234567812345678123456781234567812345678123456781234567812345678).
-    #[structopt(short, long, parse(try_from_str=FromHex::from_hex))]
+    #[clap(short, long, parse(try_from_str = FromHex::from_hex), env = "MC_SEED")]
     pub seed: Option<[u8; 32]>,
 }
 
@@ -57,7 +57,7 @@ fn decode_base64(src: &str) -> Result<VecBytes, String> {
 }
 
 fn main() {
-    let config = Config::from_args();
+    let config = Config::parse();
 
     let path = config
         .output_dir

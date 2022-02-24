@@ -25,7 +25,7 @@ impl_hexstr_for_bytestruct! {
 /// Convert from a string to a provider ID.
 ///
 /// This forces the canonical string representation of a Service Provider ID to
-/// hex, and is required for this type to be used in structopt configurations.
+/// hex, and is required for this type to be used in Clap configurations.
 impl FromStr for ProviderId {
     type Err = <ProviderId as FromHex>::Error;
 

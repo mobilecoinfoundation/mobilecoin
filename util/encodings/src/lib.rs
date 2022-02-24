@@ -2,7 +2,7 @@
 
 //! Traits and support for common encoding types
 
-#![cfg_attr(all(not(test), not(doctest)), no_std)]
+#![cfg_attr(not(any(test, doctest, feature = "std")), no_std)]
 
 extern crate alloc;
 

@@ -2,6 +2,7 @@
 
 //! Configuration parameters for ReportServer
 
+use clap::Parser;
 use displaydoc::Display;
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private, Ed25519Public, KeyError};
 use mc_crypto_x509_utils::{ChainError, X509CertificateChain, X509CertificateIter};
@@ -10,31 +11,30 @@ use mc_util_uri::{AdminUri, FogUri};
 use pem::PemError;
 use serde::Serialize;
 use std::{convert::TryFrom, fs, io::Error as IoError, path::PathBuf, result::Result as StdResult};
-use structopt::StructOpt;
 use x509_signature::X509Certificate;
 
 /// Configuration options for the report server
-#[derive(Clone, Debug, StructOpt, Serialize)]
-#[structopt(name = "report-server", about = "Ingest Attestation Report Server.")]
+#[derive(Clone, Debug, Parser, Serialize)]
+#[clap(name = "report-server", about = "Ingest Attestation Report Server.")]
 pub struct Config {
     /// gRPC listening URI for client requests.
-    #[structopt(long)]
+    #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
     pub client_listen_uri: FogUri,
 
     /// Internal admin server used for metrics/debugging.
-    #[structopt(long)]
+    #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
     pub admin_listen_uri: Option<AdminUri>,
 
     /// The path to an X509 certificate chain in PEM format.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str), env = "MC_SIGNING_CHAIN")]
     pub signing_chain: PathBuf,
 
     /// The path to the signing key.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str), env = "MC_SIGNING_KEY")]
     pub signing_key: PathBuf,
 
     /// Postgres config
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub postgres_config: SqlRecoveryDbConnectionConfig,
 }
 

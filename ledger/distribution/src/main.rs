@@ -6,6 +6,7 @@
 pub mod uri;
 
 use crate::uri::{Destination, Uri};
+use clap::{ArgEnum, Parser};
 use mc_api::{block_num_to_s3block_path, blockchain, merged_block_num_to_s3block_path};
 use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
@@ -15,8 +16,7 @@ use protobuf::Message;
 use rusoto_core::{Region, RusotoError};
 use rusoto_s3::{PutObjectError, PutObjectRequest, S3Client, S3};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf, str::FromStr};
-use structopt::StructOpt;
+use std::{fs, path::PathBuf};
 
 pub trait BlockHandler {
     fn write_single_block(&mut self, block_data: &BlockData);
@@ -24,7 +24,7 @@ pub trait BlockHandler {
 }
 
 /// Block to start syncing from.
-#[derive(Clone, Debug)]
+#[derive(ArgEnum, Clone, Debug)]
 pub enum StartFrom {
     /// Start from the origin block.
     Zero,
@@ -37,43 +37,36 @@ pub enum StartFrom {
     Last,
 }
 
-impl FromStr for StartFrom {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "zero" => Ok(Self::Zero),
-            "next" => Ok(Self::Next),
-            "last" => Ok(Self::Last),
-            _ => Err("Unknown value, valid values are zero/next/last".into()),
-        }
-    }
-}
-
-#[derive(Clone, Debug, StructOpt)]
-#[structopt(
+/// Configuration for ledger distribution.
+#[derive(Clone, Debug, Parser)]
+#[clap(
     name = "ledger_distribution",
     about = "The MobileCoin Ledger Distribution Service."
 )]
 pub struct Config {
     /// Path to local LMDB db file.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str), env = "MC_LEDGER_PATH")]
     pub ledger_path: PathBuf,
 
     /// Destination to upload to.
-    #[structopt(long = "dest")]
+    #[clap(long = "dest", env = "MC_DEST")]
     pub destination: Uri,
 
     /// Block to start from.
-    #[structopt(long, default_value = "zero")]
+    #[clap(arg_enum, long, default_value = "zero", env = "MC_START_FROM")]
     pub start_from: StartFrom,
 
     /// State file, defaults to ~/.mc-ledger-distribution-state
-    #[structopt(long)]
+    #[clap(long, env = "MC_STATE_FILE")]
     pub state_file: Option<PathBuf>,
 
     /// Merged blocks bucket sizes. Use 0 to disable.
-    #[structopt(long, default_value = "100,1000,10000", use_delimiter = true)]
+    #[clap(
+        long,
+        default_value = "100,1000,10000",
+        use_value_delimiter = true,
+        env = "MC_MERGE_BUCKETS"
+    )]
     merge_buckets: Vec<u64>,
 }
 
@@ -294,7 +287,7 @@ impl BlockHandler for LocalBlockWriter {
 
 // Implements the ledger db polling loop
 fn main() {
-    let config = Config::from_args();
+    let config = Config::parse();
 
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
