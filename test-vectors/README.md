@@ -28,5 +28,5 @@ Note: the `#[test]` line is not strictly necessary, but serves to ensure that ID
 ## Adding additional test vectors
 
 Adding additional test vectors involves adding additional structs implementing `TestVector` to the `mc-test-vectors-definitions` crate and adding a corresponding test vector generator crate (or adding to an existing one) whose `build.rs` generates the `.jsonl` test vector files (for an example, see the `mc-test-vectors-account-keys` crate).
- 
+
 See the documentation in `util/test-vectors` for more detail on generating test vectors.

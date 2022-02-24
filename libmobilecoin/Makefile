@@ -58,7 +58,7 @@ define BINARY_copy
 endef
 
 # First argument $(1) is a build-target
-define TOOLCHAIN_install	
+define TOOLCHAIN_install
 	$(if \
 		$(shell rustup toolchain list | \
 				grep "ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION))" | \
@@ -76,7 +76,7 @@ define TOOLCHAIN_install
 	)
 endef
 
-define RUSTBITCODE_init	
+define RUSTBITCODE_init
 endef
 
 DOT:= .
@@ -90,14 +90,14 @@ DASH:= -
 all: setup ios
 
 .PHONY: setup
-setup: 
+setup:
 	mkdir -p rust-bitcode
 	cd rust-bitcode && \
 	git init && \
 	git remote add origin git@github.com:mobilecoinofficial/rust-bitcode; \
 	git fetch --depth 1 origin a49da0265778fce5dd6521ba609b4c1d0a0959ad; \
 	git checkout FETCH_HEAD;
-	
+
 .PHONY: ios
 ios: out/ios/target
 
@@ -112,7 +112,7 @@ else
   CARGO_BUILD_FLAGS += -Z unstable-options --profile ${CARGO_PROFILE}
 endif
 
-LEGACY_CARGO_BUILD_FLAGS = $(CARGO_BUILD_FLAGS) 
+LEGACY_CARGO_BUILD_FLAGS = $(CARGO_BUILD_FLAGS)
 
 .PHONY: $(ARCHS_IOS)
 x86_64-apple-ios aarch64-apple-ios: CARGO_ENV_FLAGS += CFLAGS="-DPB_NO_PACKED_STRUCTS=1"

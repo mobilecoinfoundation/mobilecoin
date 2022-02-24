@@ -4,7 +4,7 @@
 # ./tools/enclaver.sh test.mobilecoin.com
 #
 # First:
-#   Sets the NETWORK environment variable for ./tools/download_sigstruct.sh 
+#   Sets the NETWORK environment variable for ./tools/download_sigstruct.sh
 #   which downloads the `.css` files for Consensus, Ingest, Ledger, and View
 #
 # Then:
@@ -40,7 +40,7 @@
 #      MRENCLAVE: 0x7330c9987f21b91313b39dcdeaa7da8da5ca101c929f5740c207742c762e6dcd
 #
 
-export NETWORK=$1; ./download_sigstruct.sh 
+export NETWORK=$1; ./download_sigstruct.sh
 
 echo -e "\nConsensus Enclave"
 cargo run -p mc-sgx-css-dump --release 2>/dev/null < ./consensus-enclave.css | grep MRENCLAVE | sed 's/,//'

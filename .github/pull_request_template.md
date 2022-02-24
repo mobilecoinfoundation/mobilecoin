@@ -7,7 +7,7 @@ Soundtrack of this PR: [link to song that really fits the mood of this PR]()
 ### In this PR
 * < Additions, removals, fixes, features >
 
-< Ticket status, e.g. "fixes #issue number" > 
+< Ticket status, e.g. "fixes #issue number" >
 
 ### Future Work
 * < Out of scope non-goals for this PR >
