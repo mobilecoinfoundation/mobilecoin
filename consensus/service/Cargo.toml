@@ -71,8 +71,7 @@ mc-util-logger-macros = { path = "../../util/logger-macros" }
 mockall = "0.11.0"
 rand_core = { version = "0.6", default-features = false }
 rand_hc = "0.3"
-serial_test = "0.5"
-serial_test_derive = "0.5"
+serial_test = "0.6"
 tempdir = "0.3"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dev-dependencies]

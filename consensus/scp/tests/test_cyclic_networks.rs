@@ -3,7 +3,7 @@
 mod mock_network;
 
 use mc_common::logger::{test_with_logger, Logger};
-use serial_test_derive::serial;
+use serial_test::serial;
 
 /// Performs a consensus test for a cyclic network of `num_nodes` nodes.
 fn cyclic_test_helper(num_nodes: usize, logger: Logger) {

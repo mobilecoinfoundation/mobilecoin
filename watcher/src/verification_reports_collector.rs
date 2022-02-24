@@ -371,7 +371,7 @@ mod tests {
     use mc_crypto_digestible::{Digestible, MerlinTranscript};
     use mc_crypto_keys::{Ed25519Pair, Ed25519Private};
     use mc_transaction_core::BlockSignature;
-    use serial_test_derive::serial;
+    use serial_test::serial;
     use std::{iter::FromIterator, str::FromStr, sync::Mutex, thread::sleep};
 
     // A contraption that allows us to return a specific VerificationReport for a
