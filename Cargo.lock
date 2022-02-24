@@ -2968,7 +2968,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
- "serial_test_derive 0.5.1",
  "tempdir",
 ]
 
