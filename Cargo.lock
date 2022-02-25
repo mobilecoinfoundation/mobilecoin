@@ -5112,7 +5112,6 @@ dependencies = [
  "mc-util-keyfile",
  "rand 0.8.5",
  "rand_hc 0.3.1",
- "serde",
  "structopt",
  "tempdir",
 ]
@@ -5159,7 +5158,6 @@ dependencies = [
  "mc-common",
  "mc-util-grpc",
  "mc-util-uri",
- "serde",
  "structopt",
 ]
 
@@ -5171,7 +5169,6 @@ dependencies = [
  "mc-common",
  "mc-util-grpc",
  "percent-encoding 2.1.0",
- "serde",
  "structopt",
 ]
 
