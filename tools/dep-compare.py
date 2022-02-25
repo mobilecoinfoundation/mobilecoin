@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 
 import toml
+from collections import defaultdict
 
-# Given a Cargo.lock path, get a dictionary mapping package names to version numbers
+# Given a Cargo.lock path, get a dictionary mapping package names to all version numbers for that package
 def load_cargo_lock_packages(path):
     lock = toml.load(path)
-    return {package['name']: package['version'] for package in lock['package']}
+    result = defaultdict(list)
+    for package in lock['package']:
+        result[package['name']].append(package['version'])
+    return result
 
 root = load_cargo_lock_packages("Cargo.lock")
 consensus = load_cargo_lock_packages("consensus/enclave/trusted/Cargo.lock")
