@@ -1,13 +1,13 @@
 /**
- * A simple command line application for interaction with mobilecoind which also shows how to call 
+ * A simple command line application for interaction with mobilecoind which also shows how to call
  * mobilecoind from Java.
- * 
+ *
  * The `server` and `command` flags are required to generate gRPC calls. Additional parameters are required
  * depending on the command used.
- * 
+ *
  * An example invocation which simply returns a new root entropy is:
  * ./gradlew run --args='-s localhost:4444 -c entropy'
- * 
+ *
  */
 package com.mobilecoin.mob_client;
 
@@ -200,7 +200,7 @@ public class App {
     /**
      * Calls mobilecoind to derive the AccountKey object from a hex form of the root
      * entropy
-     * 
+     *
      * @param stub    The gRPC stub connected to mobilecoind
      * @param entropy A hex representation of the 256 bits of root entropy
      * @return An account key derived from the root entropy
@@ -216,7 +216,7 @@ public class App {
     /**
      * Generates 256-bits of random entropy that can be used to create a new account
      * key
-     * 
+     *
      * @param stub The gRPC stub connected to mobilecoind
      * @return A hex representation of random 256 bits
      */
@@ -228,7 +228,7 @@ public class App {
     /**
      * Creates a monitor over a single account key and a range of subaddresses TODO:
      * this is fixed to monitor 100,000 subaddresses
-     * 
+     *
      * @param stub       The gRPC stub connected to mobilecoind
      * @param accountKey An AccountKey object, usually returned by
      *                   getKeyFromHexEntropy
@@ -244,7 +244,7 @@ public class App {
 
     /**
      * Gets the balance for a given monitor and subaddress index
-     * 
+     *
      * @param stub      The gRPC stub connected to mobilecoind
      * @param monitorId 256-bit ID of the monitor observing the account
      * @param index     The subaddress index for which to check the balance

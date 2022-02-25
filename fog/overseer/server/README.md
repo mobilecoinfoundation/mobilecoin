@@ -1,6 +1,6 @@
 # Fog Overseer
 
-The Fog Overseer service monitors the Fog Ingest cluster's nodes and ensures that there is always one active node in the cluster. 
+The Fog Overseer service monitors the Fog Ingest cluster's nodes and ensures that there is always one active node in the cluster.
 
 ## Historical Context
 
@@ -21,19 +21,19 @@ Fog Overseer is designed to automate this manual failover process.
 
 It starts by querying all the Fog Ingest nodes to see if one node is active. If there exists one active node, then no further action is needed. If more than one node is active, then Overseer logs an error and doesn't take any action. If no nodes are active, then it initiates automatic failover.
 
-This failover begins with retrieving all of the keys in the Fog DB that are “outstanding”, which means that they are not lost or finished retiring. If there are multiple outstanding keys, it disables overseer, logs an error, and sends an alert to human operators to fix the issue. If there is one outstanding key, then it tries to find an idle node with that key. If it finds such node, then it activates it. If no nodes are found for the key, it marks the key as lost, chooses an idle node, sets new keys on that node, and activates the node. 
+This failover begins with retrieving all of the keys in the Fog DB that are “outstanding”, which means that they are not lost or finished retiring. If there are multiple outstanding keys, it disables overseer, logs an error, and sends an alert to human operators to fix the issue. If there is one outstanding key, then it tries to find an idle node with that key. If it finds such node, then it activates it. If no nodes are found for the key, it marks the key as lost, chooses an idle node, sets new keys on that node, and activates the node.
 
-Note that this design does not support multiple Fog Overseers to run concurrently. See the Future Work > Multiple Fog Overseers section for more info. 
+Note that this design does not support multiple Fog Overseers to run concurrently. See the Future Work > Multiple Fog Overseers section for more info.
 
 ## API
 
-`POST /disable`: Stops Fog Overseer from performing it's monitoring. This is necessary during a blue-green deployment or certain failure scenarios in which we don't want Overseer to make any changes to cluster state. If Overseer is disabled, this is a no-op. 
+`POST /disable`: Stops Fog Overseer from performing it's monitoring. This is necessary during a blue-green deployment or certain failure scenarios in which we don't want Overseer to make any changes to cluster state. If Overseer is disabled, this is a no-op.
 `POST /enable`: If Overseer is disabled, this restarts Overseer's monitoring. If Overseer is enabled, this is a no-op.
 
-## Future Projects 
+## Future Projects
 
 ## Metrics and Alerting
-The service will publish the following metrics to prometheus: 
+The service will publish the following metrics to prometheus:
 - Number of ingress keys
 - Number of egress keys
 - Number of active nodes
@@ -63,7 +63,7 @@ Cluster Data. It would return a response like this:
 }
 ```
 
-### Multiple Fog Overseers 
-We’d like to support multiple Fog Overseer nodes running concurrently. Currently, Fog Overseer only operates on one Fog Ingest cluster. If we had two Fog Overseer Instances A and B and Fog Overseer instance A calls NewKeys on Fog Ingest instance A, and then Fog Overseer instance B calls Activate on Fog Ingest instance A in parallel, then there would be a race. 
+### Multiple Fog Overseers
+We’d like to support multiple Fog Overseer nodes running concurrently. Currently, Fog Overseer only operates on one Fog Ingest cluster. If we had two Fog Overseer Instances A and B and Fog Overseer instance A calls NewKeys on Fog Ingest instance A, and then Fog Overseer instance B calls Activate on Fog Ingest instance A in parallel, then there would be a race.
 
-To prevent this, we can implement a mutex in Fog Ingest that prevents Activate and NewKeys from executing in parallel. 
+To prevent this, we can implement a mutex in Fog Ingest that prevents Activate and NewKeys from executing in parallel.

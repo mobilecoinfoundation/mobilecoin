@@ -114,7 +114,7 @@ message GetIngressKeyRecordsRequest {
     bool should_include_retired_keys = 3;
 
     /// If true the response will only include ingress keys that are
-    /// unexpired, which are keys with public expiry values are greater than 
+    /// unexpired, which are keys with public expiry values are greater than
     /// their last scanned block values.
     bool should_only_include_unexpired_keys = 4;
 }

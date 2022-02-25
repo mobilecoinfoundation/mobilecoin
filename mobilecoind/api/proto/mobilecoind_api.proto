@@ -315,14 +315,14 @@ message GetUnspentTxOutListResponse {
 // Generate a new random root entropy value.
 // - empty request
 message GenerateRootEntropyResponse {
-	  // 32 bytes generated using a cryptographically secure RNG.
+    // 32 bytes generated using a cryptographically secure RNG.
     bytes root_entropy = 1;
 }
 
 // Generate a new random mnemomic.
 // - empty request
 message GenerateMnemonicResponse {
-	// mnemonic generated using a cryptographically secure RNG.
+    // mnemonic generated using a cryptographically secure RNG.
     string mnemonic = 1;
 
     // The mnemonic represented as 32 bytes entropy.
