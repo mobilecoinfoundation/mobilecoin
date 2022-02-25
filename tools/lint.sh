@@ -8,6 +8,8 @@ if [[ ! -z "$1" ]]; then
     cd "$1"
 fi
 
+SGX_MODE=SW
+
 for toml in $(grep --exclude-dir cargo --exclude-dir rust-mbedtls --include=Cargo.toml -r . -e '\[workspace\]' | cut -d: -f1); do
   pushd $(dirname $toml) >/dev/null
   echo "Linting in $PWD"

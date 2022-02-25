@@ -47,7 +47,7 @@ docker build docker -t mobilecoin-image
 docker run -v $(pwd):/tmp/mobilecoin --workdir /tmp/mobilecoin --device /dev/isgx -it mobilecoin-image /bin/bash
 ```
 
->Note: The SGX is loaded into the conatiner with `--device /dev/isgx`. If you are running in simulation mode, or building the binary but not running it, you can omit this.
+>Note: The SGX is loaded into the container with `--device /dev/isgx`. If you are running in simulation mode, or building the binary but not running it, you can omit this.
 
 #### Setting up your Environment
 
