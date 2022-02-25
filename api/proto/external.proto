@@ -35,6 +35,20 @@ message Ed25519Signature {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// `mc-crypto-multisig` crate
+///////////////////////////////////////////////////////////////////////////////
+
+message Ed25519MultiSig {
+    repeated Ed25519Signature signatures = 1;
+}
+
+message Ed25519SignerSet {
+    repeated Ed25519Public signers = 1;
+    uint32 threshold = 2;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
 // `account-keys` crate
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -294,4 +308,68 @@ message VerificationReport {
 
     /// The raw report body JSON, as a byte sequence
     string http_body = 3;
+}
+
+/// The contents of a mint-tx, which is a transaction to mint new tokens.
+message MintTxPrefix {
+    /// Token ID we are minting.
+    uint32 token_id = 1;
+
+    /// Amount we are minting.
+    uint64 amount = 2;
+
+    /// The destination's public subaddress view key 'C'.
+    CompressedRistretto view_public_key = 3;
+
+    /// The destination's public subaddress spend key `D`.
+    CompressedRistretto spend_public_key = 4;
+
+    /// Nonce, to prevent replay attacks.
+    bytes nonce = 5;
+
+    /// The block index at which this transaction is no longer valid.
+    uint64 tombstone_block = 6;
+}
+
+/// A mint transaction coupled with a signature over it.
+message MintTx {
+    MintTxPrefix prefix = 1;
+    Ed25519MultiSig signature = 2;
+}
+
+/// A minting configuration for a single token ID.
+/// The minting configuration specifies who is allowed to submit mint
+/// transactions, for which token and at what total limit.
+message MintConfig {
+    /// Token ID this configuration applies to.
+    uint32 token_id = 1;
+
+    /// The set of keys that can sign a minting transaction.
+    Ed25519SignerSet signer_set = 2;
+
+    /// The maximal amount this configuration can mint from the moment it has
+    /// been applied.
+    uint64 mint_limit = 3;
+}
+
+/// The contents of a set-mint-config transaction. This transaction alters the
+/// minting configuration for a single token ID.
+message SetMintConfigTxPrefix {
+    /// Token ID we are replacing the configuration set for.
+    uint32 token_id = 1;
+
+    /// The new configuration.
+    repeated MintConfig configs = 2;
+
+    /// Nonce, to prevent replay attacks.
+    bytes nonce = 3;
+
+    /// The block index at which this transaction is no longer valid.
+    uint64 tombstone_block = 4;
+}
+
+/// A set-mint-config transaction coupled with a signature over it.
+message SetMintConfigTx {
+    SetMintConfigTxPrefix prefix = 1;
+    Ed25519MultiSig signature = 2;
 }

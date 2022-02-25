@@ -2564,6 +2564,7 @@ dependencies = [
  "mc-account-keys",
  "mc-attest-core",
  "mc-crypto-keys",
+ "mc-crypto-multisig",
  "mc-crypto-x509-test-vectors",
  "mc-test-vectors-b58-encodings",
  "mc-transaction-core",
