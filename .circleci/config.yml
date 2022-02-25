@@ -392,7 +392,23 @@ commands:
           command: |
             # tell the operating system to remove the file size limit on core dump files
             ulimit -c unlimited
-            cargo test --package "mc-fog-*" -j 4 --frozen --no-fail-fast
+            cargo test --workspace --package "mc-fog-*" --exclude "mc-fog-ingest-*" -j 4 --frozen --no-fail-fast
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_artifacts:
+          path: /tmp/core_dumps
+
+  run-fog-ingest-tests:
+    steps:
+      - run:
+          name: Run fog ingest tests (in release mode)
+          command: |
+            # tell the operating system to remove the file size limit on core dump files
+            ulimit -c unlimited
+            cargo test --release --package "mc-fog-ingest-*" -j 4 --frozen --no-fail-fast
       - run:
           command: |
             mkdir -p /tmp/core_dumps
@@ -537,6 +553,21 @@ jobs:
     steps:
       - prepare-for-build
       - run-fog-tests
+      - check-dirty-git
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ save-sccache-cache ]
+      - post-build
+      - post-fog-test
+
+  # Run fog ingest tests on a single container
+  run-fog-ingest-tests:
+    executor: build-executor
+    environment:
+      <<: *default-build-environment
+    steps:
+      - prepare-for-build
+      - run-fog-ingest-tests
       - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
@@ -690,6 +721,10 @@ workflows:
 
       # Run fog tests on a single container
       - run-fog-tests:
+          filters: { branches: { ignore: /^deploy\/.*/ } }
+
+      # Run fog ingest tests on a single container
+      - run-fog-ingest-tests:
           filters: { branches: { ignore: /^deploy\/.*/ } }
 
       # run fog conformance tests
