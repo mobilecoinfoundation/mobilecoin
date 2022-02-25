@@ -1,4 +1,4 @@
-// Copyright 2018-2021 MobileCoin, Inc.
+// Copyright 2018-2022 MobileCoin, Inc.
 
 //! Main Method for the Fog Report Server
 

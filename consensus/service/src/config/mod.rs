@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Configuration parameters for the Consensus Service application.
+#![deny(missing_docs)]
 
 mod network;
 mod tokens;
@@ -15,8 +16,12 @@ use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::{AdminUri, ConsensusClientUri as ClientUri, ConsensusPeerUri as PeerUri};
 use std::{fmt::Debug, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 
+/// Configuration parameters for the Consensus Service application.
 #[derive(Clone, Debug, Parser)]
-#[clap(name = "consensus_service", about = "The MobileCoin Consensus Service.")]
+#[clap(
+    name = "consensus_service",
+    about = "The MobileCoin Consensus Service."
+)]
 pub struct Config {
     /// Peer Responder ID
     ///

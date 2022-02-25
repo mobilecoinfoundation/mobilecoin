@@ -1,10 +1,12 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Configuration for generating key files for a new user identity.
 
 use clap::Parser;
 use rand::{rngs::StdRng, SeedableRng};
 use std::path::PathBuf;
 
-/// Configuration for generating key files for a new user identity
+/// Configuration for generating key files for a new user identity.
 #[derive(Debug, Parser)]
 pub struct Config {
     /// Optional FogURL for the accounts
@@ -30,6 +32,7 @@ pub struct Config {
 }
 
 impl Config {
+    /// Get or generate root entropy.
     // This consumes self because it might not be deterministic
     pub fn get_root_entropy(self) -> [u8; 32] {
         if let Some(root) = self.root {

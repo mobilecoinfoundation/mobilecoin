@@ -1,4 +1,5 @@
-// Copyright 2018-2021 MobileCoin, Inc.
+// Copyright 2018-2022 MobileCoin, Inc.
+#![deny(missing_docs)]
 
 //! Configuration parameters for ReportServer
 

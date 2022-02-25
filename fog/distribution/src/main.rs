@@ -1,4 +1,6 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Entry point for the fog distribution utility
 
 //! Fog distribution is a transfer script which moves funds from a set of
 //! accounts funded by a ledger bootstrap, to another set of accounts (which may
@@ -14,6 +16,8 @@
 //! Tx's rather than checking to see if they land, once it is in the slam step.
 //!
 //! Fog distro guarantees to pay each destination account at least once.
+
+#![deny(missing_docs)]
 
 use clap::Parser;
 use core::{cell::RefCell, convert::TryFrom};
@@ -64,12 +68,12 @@ use tempfile::tempdir;
 
 thread_local! {
     /// global variable storing connections to the consensus network
-    pub static CONNS: RefCell<Option<Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>>>> = RefCell::new(None);
+    static CONNS: RefCell<Option<Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>>>> = RefCell::new(None);
 }
 
 fn set_conns(config: &Config, logger: &Logger) {
     let conns = config.get_connections(logger).unwrap();
-    CONNS.with(|c| *c.borrow_mut() = Some(conns));
+    CONNS.with(|c| c.replace(Some(conns)));
 }
 
 fn get_conns(
@@ -103,8 +107,7 @@ lazy_static! {
 
 /// A TxOut found from the bootstrapped ledger that we can spend
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SpendableTxOut {
-    /// The tx out that is spendable
+struct SpendableTxOut {
     pub tx_out: TxOut,
     /// The amount of the tx out
     pub amount: Amount,

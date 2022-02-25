@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! A helper utility for collecting blocks from a local ledger file and storing
 //! them as Protobuf-serialized files on S3.
@@ -18,8 +19,11 @@ use rusoto_s3::{PutObjectError, PutObjectRequest, S3Client, S3};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 
+/// Block writer.
 pub trait BlockHandler {
+    /// Write a single block.
     fn write_single_block(&mut self, block_data: &BlockData);
+    /// Write multiple blocks, possibly merged.
     fn write_multiple_blocks(&mut self, blocks_data: &[BlockData]);
 }
 

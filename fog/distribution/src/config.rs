@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Configuration parameters for the fog distribution utility
 
@@ -12,7 +12,7 @@ use mc_connection::{
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{path::PathBuf, sync::Arc};
 
-/// Config options for the fog-distribution tool
+/// Configuration parameters for the fog distribution utility
 #[derive(Clone, Debug, Parser)]
 #[structopt(
     name = "fog-distribution",

@@ -1,4 +1,7 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
+
+//! Helper to generate sample keys.
 
 use clap::Parser;
 use hex::FromHex;
@@ -7,6 +10,7 @@ use std::{fs, path::PathBuf, string::ToString, vec::Vec};
 // Hack to work around Vec special handling in clap
 type VecBytes = Vec<u8>;
 
+/// Configurable options.
 #[derive(Debug, Parser)]
 struct Config {
     /// Fog Report URL

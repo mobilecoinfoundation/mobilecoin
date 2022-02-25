@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Configuration parameters for Fog Overseer.
+#![deny(missing_docs)]
 
 use clap::Parser;
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;

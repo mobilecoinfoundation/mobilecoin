@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! A CLI tool that resolves FogPubkey requests
 //!

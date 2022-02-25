@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! A utility for generating GRPC authentication tokens.
 
@@ -7,6 +8,7 @@ use mc_common::time::SystemTimeProvider;
 use mc_util_grpc::TokenBasicCredentialsGenerator;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 
+/// Configuration.
 #[derive(Clone, Debug, Parser)]
 #[clap(
     name = "mc-util-grpc-token-generator",

@@ -1,7 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Traits and support for common encoding types
 
+#![deny(missing_docs)]
 #![cfg_attr(not(any(test, doctest, feature = "std")), no_std)]
 
 extern crate alloc;

@@ -1,5 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
-
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 

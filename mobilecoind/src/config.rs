@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! Configuration parameters for mobilecoind
 
@@ -22,6 +23,7 @@ use reqwest::{
 };
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
+/// Configuration parameters for mobilecoind
 #[derive(Debug, Parser)]
 #[clap(name = "mobilecoind", about = "The MobileCoin client daemon.")]
 pub struct Config {
@@ -43,6 +45,7 @@ pub struct Config {
     #[clap(long, parse(from_os_str), env = "MC_WATCHER_DB")]
     pub watcher_db: Option<PathBuf>,
 
+    /// Peers config.
     #[clap(flatten)]
     pub peers_config: PeersConfig,
 
@@ -113,6 +116,7 @@ fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet<ResponderId>, Strin
     Ok(quorum_set)
 }
 
+/// Error type.
 #[derive(Display, Debug)]
 pub enum ConfigError {
     /// Error parsing json {0}
@@ -141,6 +145,8 @@ impl From<reqwest::Error> for ConfigError {
 }
 
 impl Config {
+    /// Parse the quorom set.
+    /// Panics on error.
     pub fn quorum_set(&self) -> QuorumSet<ResponderId> {
         // If we have an explicit quorum set, use that.
         if let Some(quorum_set) = &self.quorum_set {
@@ -253,6 +259,7 @@ impl Config {
     }
 }
 
+/// Wrapper for configuring and parsing peer URIs.
 #[derive(Clone, Debug, Parser)]
 pub struct PeersConfig {
     /// Validator nodes to connect to.
@@ -270,6 +277,7 @@ pub struct PeersConfig {
 }
 
 impl PeersConfig {
+    /// Parse the peer URIs as ResponderIds.
     pub fn responder_ids(&self) -> Vec<ResponderId> {
         self.peers
             .as_ref()
@@ -283,6 +291,7 @@ impl PeersConfig {
             .collect()
     }
 
+    /// Instantiate a client for each of the peer URIs.
     pub fn create_peers(
         &self,
         verifier: Verifier,
@@ -306,6 +315,7 @@ impl PeersConfig {
             .collect()
     }
 
+    /// Instantiate a ConnectionManager for all the peers.
     pub fn create_peer_manager(
         &self,
         verifier: Verifier,

@@ -1,6 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Configuration parameters for the ledger server
+
+#![deny(missing_docs)]
 
 use clap::Parser;
 use mc_attest_core::ProviderId;
@@ -11,6 +13,7 @@ use mc_util_uri::AdminUri;
 use serde::Serialize;
 use std::{path::PathBuf, time::Duration};
 
+/// Configuration parameters for the ledger server
 #[derive(Clone, Parser, Serialize)]
 pub struct LedgerServerConfig {
     /// gRPC listening URI for client requests.

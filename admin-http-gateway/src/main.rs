@@ -1,7 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! An HTTP frontend for a MobileCoin service's admin GRPC interface.
 
+#![deny(missing_docs)]
 #![feature(proc_macro_hygiene, decl_macro)]
 
 use clap::Parser;
@@ -19,6 +20,7 @@ use rocket_contrib::json::Json;
 use serde_derive::Serialize;
 use std::{convert::TryFrom, sync::Arc};
 
+/// Gateway options.
 #[derive(Clone, Debug, Parser)]
 #[clap(
     name = "mc-admin-http-gateway",

@@ -1,4 +1,7 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
+
+//! Utility to read .pub files.
 
 use clap::Parser;
 use mc_util_keyfile::read_pubfile;

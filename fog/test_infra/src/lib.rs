@@ -1,6 +1,9 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+//! Fog test helpers
+
 #![allow(non_snake_case)]
+#![deny(missing_docs)]
 
 pub mod db_tests;
 pub mod mock_client;

@@ -1,4 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! Starts a Rocket server that allows clients to access Fog Overseer APIs
 //! over HTTP.

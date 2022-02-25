@@ -27,6 +27,7 @@ pub struct UserData {
 }
 
 impl UserData {
+    /// Get a reference to the TXOs
     pub fn get_txos(&self) -> &[TxOutRecord] {
         &self.txs
     }
@@ -39,23 +40,22 @@ pub struct UserPool {
     users: Vec<(UserPrivate, UserData)>,
 }
 
-// A test-block is a list of random TxOuts indexed by recipient.
+/// A test-block is a list of random TxOuts indexed by recipient.
 type TestBlock = HashMap<UserPrivate, Vec<TxOut>>;
 
-// A 'checkpoint' in the state is a count of transactions recieved by users
+/// A 'checkpoint' in the state is a count of transactions recieved by users
 type Checkpoint = HashMap<UserPrivate, usize>;
 
-// A 'delta' of the state is a list of new transactions recieved by users, since
-// a checkpoint was taken. The test is based on, take a checkpoint, make random
-// transactions, submit a block to ingest, poll the view node, and then measure
-// delta against the checkpoint. If the generated transactions match the delta,
-// we accept. If not we retry a few times, and then eventually fail.
+/// A 'delta' of the state is a list of new transactions recieved by users,
+/// since a checkpoint was taken. The test is based on, take a checkpoint, make
+/// random transactions, submit a block to ingest, poll the view node, and then
+/// measure delta against the checkpoint. If the generated transactions match
+/// the delta, we accept. If not we retry a few times, and then eventually fail.
 type Delta = HashMap<UserPrivate, HashSet<TxOutRecord>>;
 
-// Take a test block, order the TxOuts arbitrarily, compute their global tx out
-// indices, and finally compute what we expect the users to see on the other
-// end.
-//
+/// Take a test block, order the TxOuts arbitrarily, compute their global
+/// TxOut indices, and finally compute what we expect the users to see on
+/// the other end.
 pub fn test_block_to_inputs_and_expected_outputs(
     block_index: u64,
     mut global_tx_out_index: usize,
@@ -90,7 +90,7 @@ pub fn test_block_to_inputs_and_expected_outputs(
     (result_block, result_delta)
 }
 
-// Turn a test block into a list of UserPrivate, TxOut pairs
+/// Turn a test block into a list of UserPrivate, TxOut pairs
 pub fn test_block_to_pairs(test_block: &TestBlock) -> Vec<(UserPrivate, TxOut)> {
     let mut result = Vec::new();
 
@@ -124,7 +124,7 @@ pub fn make_random_tx<T: RngCore + CryptoRng>(
 }
 
 impl UserPool {
-    // Make a new user pool with a given number of users
+    /// Make a new user pool with a given number of users
     pub fn new<T: RngCore + CryptoRng>(num_users: usize, rng: &mut T) -> Self {
         Self {
             users: (0..num_users)
@@ -133,7 +133,7 @@ impl UserPool {
         }
     }
 
-    // get all the pubkeys for the users
+    /// get all the pubkeys for the users
     pub fn get_pubkeys(&self) -> Vec<RistrettoPublic> {
         self.users
             .iter()
@@ -141,14 +141,14 @@ impl UserPool {
             .collect()
     }
 
-    // Trash all user tx's and rng states
+    /// Trash all user tx's and rng states
     pub fn trash_user_phones(&mut self) {
         for pair in self.users.iter_mut() {
             pair.1 = Default::default()
         }
     }
 
-    // Get a checkpoint
+    /// Get a checkpoint
     pub fn get_checkpoint(&self) -> Checkpoint {
         self.users
             .iter()
@@ -156,7 +156,7 @@ impl UserPool {
             .collect()
     }
 
-    // Get a checkpoint "at time zero" i.e. every user has zero tx's
+    /// Get a checkpoint "at time zero" i.e. every user has zero tx's
     pub fn get_zero_checkpoint(&self) -> Checkpoint {
         self.users
             .iter()
@@ -164,7 +164,7 @@ impl UserPool {
             .collect()
     }
 
-    // Compute a delta of current state against a checkpoint
+    /// Compute a delta of current state against a checkpoint
     pub fn compute_delta(&self, checkpoint: &Checkpoint) -> Delta {
         self.users
             .iter()
@@ -185,7 +185,7 @@ impl UserPool {
             .collect()
     }
 
-    // Make a random test block, to be submitted as a block to ingest
+    /// Make a random test block, to be submitted as a block to ingest
     pub fn random_test_block<T: RngCore + CryptoRng>(
         &self,
         tx_count: usize,
@@ -204,9 +204,9 @@ impl UserPool {
         result
     }
 
-    // Make each of the users poll consecutively, and add any Txos that they find
-    // to their little cache.
-    // Return the final num blocks values for each user
+    /// Make each of the users poll consecutively, and add any Txos that they
+    /// find to their little cache.
+    /// Return the final num blocks values for each user
     pub fn poll<C: FogViewConnection>(&mut self, view_node: &mut C) -> Vec<BlockCount> {
         let mut final_num_blocks_values = Vec::<BlockCount>::default();
         for (ref upriv, ref mut udata) in self.users.iter_mut() {

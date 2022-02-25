@@ -1,6 +1,7 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Configuration parameters for the MobileCoin Fog View Node
+#![deny(missing_docs)]
 
 use clap::Parser;
 use mc_attest_core::ProviderId;
@@ -12,6 +13,7 @@ use mc_util_uri::AdminUri;
 use serde::Serialize;
 use std::time::Duration;
 
+/// Configuration parameters for the MobileCoin Fog View Node
 #[derive(Clone, Parser, Serialize)]
 pub struct MobileAcctViewConfig {
     /// The ID with which to respond to client attestation requests.

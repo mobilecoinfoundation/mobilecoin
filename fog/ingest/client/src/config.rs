@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! Configuration parameters for the Fog ingest client
 
@@ -7,7 +8,8 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_util_parse::parse_duration_in_seconds;
 use std::time::Duration;
 
-#[derive(Clone, Parser)]
+/// Configuration parameters for the Fog ingest client
+#[derive(Clone, Debug, Parser)]
 pub struct IngestConfig {
     /// URI for ingest server
     #[clap(long, env = "MC_URI")]
@@ -17,6 +19,7 @@ pub struct IngestConfig {
     #[clap(long, short, default_value = "10", parse(try_from_str = parse_duration_in_seconds), env = "MC_RETRY_SECONDS")]
     pub retry_seconds: Duration,
 
+    /// The command to run.
     #[clap(subcommand)]
     pub cmd: IngestConfigCommand,
 }
@@ -28,7 +31,8 @@ fn parse_ristretto_hex(src: &str) -> Result<CompressedRistrettoPublic, String> {
     Ok(CompressedRistrettoPublic::from(&key_bytes))
 }
 
-#[derive(Clone, Subcommand)]
+/// The command to run.
+#[derive(Clone, Debug, Subcommand)]
 pub enum IngestConfigCommand {
     /// Get a summary of the state of the ingest server.
     GetStatus,
@@ -38,7 +42,10 @@ pub enum IngestConfigCommand {
     NewKeys,
 
     /// Set the list of peers of this ingest server.
-    SetPeers { peer_uris: Vec<String> },
+    SetPeers {
+        /// The peer URIs.
+        peer_uris: Vec<String>,
+    },
 
     /// Set the pubkey_expiry_window of the ingest server.
     SetPubkeyExpiryWindow {

@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 MobileCoin Inc.
+// Copyright (c) 2018-2022 MobileCoin Inc.
+#![deny(missing_docs)]
 
 //! Retrieve the paths of previously generated test vectors
 

@@ -1,5 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
-
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 #![doc = include_str!("../../README.md")]
 
 //! A standalone watcher program that can sync data from multiple sources.
@@ -103,6 +103,7 @@ impl From<IOError> for Error {
     }
 }
 
+/// Thread wrapper for watcher sync.
 pub struct WatcherSyncThread {
     /// Join handle used to wait for the thread to terminate.
     join_handle: Option<JoinHandle<()>>,
@@ -114,6 +115,7 @@ pub struct WatcherSyncThread {
 const MAX_BLOCKS_PER_SYNC_ITERATION: usize = 1000;
 
 impl WatcherSyncThread {
+    /// Start the sync thread.
     pub fn start(watcher: Watcher, config: WatcherConfig, logger: Logger) -> Result<Self, Error> {
         let stop_requested = Arc::new(AtomicBool::new(false));
         let thread_stop_requested = stop_requested.clone();
@@ -128,6 +130,7 @@ impl WatcherSyncThread {
         })
     }
 
+    /// Stop and join the sync thread.
     pub fn stop(&mut self) -> Result<(), Error> {
         if let Some(join_handle) = self.join_handle.take() {
             self.stop_requested.store(true, Ordering::SeqCst);

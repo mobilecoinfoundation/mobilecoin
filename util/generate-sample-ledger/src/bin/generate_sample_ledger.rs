@@ -1,9 +1,13 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
+
+//! A utility to generate a sample ledger.
 
 use clap::Parser;
 use mc_common::logger::create_root_logger;
 use std::path::PathBuf;
 
+/// Configuration.
 #[derive(Debug, Parser)]
 struct Config {
     /// Number of transactions per key to generate

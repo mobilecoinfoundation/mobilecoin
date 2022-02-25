@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! Configuration parameters for the test client binary
 
@@ -146,7 +147,6 @@ impl TestClientConfig {
 
 /// Parser container for consensus config information
 #[derive(Clone, Debug, Parser, Serialize)]
-#[clap()]
 pub struct ConsensusConfig {
     /// Consensus Validator nodes to connect to.
     #[clap(

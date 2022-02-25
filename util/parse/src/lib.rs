@@ -1,6 +1,7 @@
-//! Miscellaneous parsing and formatting utilities
-
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 #![deny(missing_docs)]
+
+//! Miscellaneous parsing and formatting utilities
 
 use core::fmt::Display;
 use itertools::Itertools;

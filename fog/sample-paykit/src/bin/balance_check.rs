@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This unix command-line tool exposes the balance check functionality of
 //! fog-sample-paykit in a way compatible with the fog-conformance-test. (It

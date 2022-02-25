@@ -1,3 +1,6 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
+
 use clap::Parser;
 use retry::delay;
 use serde::Serialize;

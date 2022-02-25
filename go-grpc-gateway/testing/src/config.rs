@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use clap::Parser;
 use mc_util_uri::FogUri;
 use serde::Serialize;

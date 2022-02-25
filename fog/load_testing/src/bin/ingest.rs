@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! This load test creates an ingest server, adds users to it, and adds blocks,
 //! creating one block every 5 seconds.
@@ -114,9 +115,15 @@ impl core::fmt::Display for TestResult {
     }
 }
 
+/// RAII gaurd for a child process, which kills the child on drop.
 pub struct AutoKillChild(pub std::process::Child);
 
 impl AutoKillChild {
+    /// Assert that the child process is still alive.
+    ///
+    /// Panics:
+    ///  * If the process stopped unexpectedly.
+    ///  * If there is an error while getting the process' status.
     pub fn assert_not_stopped(&mut self) {
         match self.0.try_wait() {
             Ok(Some(stat)) => {

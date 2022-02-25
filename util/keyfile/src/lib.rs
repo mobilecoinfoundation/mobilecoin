@@ -1,5 +1,8 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+#![doc = include_str!("../README.md")]
+#![deny(missing_docs)]
+
 mod json_format;
 
 pub mod config;

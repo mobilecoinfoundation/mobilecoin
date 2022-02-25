@@ -1,3 +1,5 @@
+#![deny(missing_docs)]
+
 //! Intel SGX SIGSTRUCT Dump Utility
 //!
 //! This utility will read a SIGSTRUCT (css) file from standard input or the

@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! A utility for issueing admin GRPC requests.
 
@@ -10,16 +11,19 @@ use mc_util_grpc::{
 use mc_util_uri::AdminUri;
 use std::{str::FromStr, sync::Arc};
 
+/// Configurable options.
 #[derive(Clone, Parser)]
 pub struct Config {
     /// URI to connect to
     #[clap(long, env = "MC_URI")]
     pub uri: String,
 
+    /// The command to run.
     #[clap(subcommand)]
     pub cmd: Command,
 }
 
+/// The command to run.
 #[derive(Clone, Subcommand)]
 pub enum Command {
     /// Get Prometheus metrics.
