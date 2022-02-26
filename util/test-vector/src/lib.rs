@@ -1,4 +1,3 @@
-use datatest::DataTestCaseDesc;
 use serde::{de, ser};
 use std::{
     fs::{self, File},
@@ -10,7 +9,7 @@ pub trait TestVector: Sized {
     const FILE_NAME: &'static str;
     const MODULE_SUBDIR: &'static str;
 
-    fn from_jsonl(dir: &str) -> Vec<DataTestCaseDesc<Self>>
+    fn from_jsonl(dir: &str) -> Vec<Self>
     where
         for<'a> Self: de::Deserialize<'a>,
     {
@@ -24,13 +23,8 @@ pub trait TestVector: Sized {
             .map(|(i, line)| {
                 let line = line
                     .unwrap_or_else(|_| panic!("cannot read line {} of file '{}'", i, filename));
-                let case: Self = serde_json::from_str(&line)
-                    .unwrap_or_else(|_| panic!("cannot parse line {} of file '{}'", i, filename));
-                DataTestCaseDesc {
-                    name: None,
-                    case,
-                    location: format!("test_vector {}", i),
-                }
+                serde_json::from_str(&line)
+                    .unwrap_or_else(|_| panic!("cannot parse line {} of file '{}'", i, filename))
             })
             .collect()
     }

@@ -187,9 +187,6 @@ bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.
 # This version contains iOS build fixes
 cmake = { git = "https://github.com/alexcrichton/cmake-rs", rev = "5f89f90ee5d7789832963bffdb2dcb5939e6199c" }
 
-# Fix issues with recent nightlies
-datatest = { git = "https://github.com/mobilecoinfoundation/datatest.git", rev = "dc3521f692228b846a2312e7ceece50e7664be6e" }
-
 # Fix issues with recent nightlies, bump curve25519-dalek version
 ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "78bdc2a0b0af852cb4e47a0ca9be74bdf77c57b6" }
 
