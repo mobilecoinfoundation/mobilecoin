@@ -32,7 +32,7 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         deserialize(inbuf).or(Err(sgx_status_t::SGX_ERROR_INVALID_PARAMETER))?;
 
     // And actually do it
-    let outdata = match call_details {
+    match call_details {
         // Utility methods
         EnclaveCall::EnclaveInit(peer_self_id, client_self_id, sealed_key, blockchain_config) => {
             serialize(&ENCLAVE.enclave_init(
@@ -41,74 +41,43 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
                 &sealed_key,
                 blockchain_config,
             ))
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
-        EnclaveCall::GetMinimumFee(token_id) => serialize(&ENCLAVE.get_minimum_fee(&token_id))
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
+        EnclaveCall::GetMinimumFee(token_id) => serialize(&ENCLAVE.get_minimum_fee(&token_id)),
         // Node-to-Node Attestation
-        EnclaveCall::PeerInit(node_id) => {
-            serialize(&ENCLAVE.peer_init(&node_id)).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-        EnclaveCall::PeerAccept(auth_msg) => {
-            serialize(&ENCLAVE.peer_accept(auth_msg)).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
+        EnclaveCall::PeerInit(node_id) => serialize(&ENCLAVE.peer_init(&node_id)),
+        EnclaveCall::PeerAccept(auth_msg) => serialize(&ENCLAVE.peer_accept(auth_msg)),
         EnclaveCall::PeerConnect(node_id, auth_msg) => {
             serialize(&ENCLAVE.peer_connect(&node_id, auth_msg))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
-        EnclaveCall::PeerClose(session_id) => serialize(&ENCLAVE.peer_close(&session_id))
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
+        EnclaveCall::PeerClose(session_id) => serialize(&ENCLAVE.peer_close(&session_id)),
         // Node-to-Client Attestation
-        EnclaveCall::ClientAccept(auth_msg) => serialize(&ENCLAVE.client_accept(auth_msg))
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
-        EnclaveCall::ClientClose(channel_id) => serialize(&ENCLAVE.client_close(channel_id))
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
-        EnclaveCall::ClientDiscardMessage(msg) => serialize(&ENCLAVE.client_discard_message(msg))
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
+        EnclaveCall::ClientAccept(auth_msg) => serialize(&ENCLAVE.client_accept(auth_msg)),
+        EnclaveCall::ClientClose(channel_id) => serialize(&ENCLAVE.client_close(channel_id)),
+        EnclaveCall::ClientDiscardMessage(msg) => serialize(&ENCLAVE.client_discard_message(msg)),
         // Report Caching
-        EnclaveCall::GetIdentity => {
-            serialize(&ENCLAVE.get_identity()).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-        EnclaveCall::GetSigner => {
-            serialize(&ENCLAVE.get_signer()).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-        EnclaveCall::GetFeeRecipient => {
-            serialize(&ENCLAVE.get_fee_recipient()).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-        EnclaveCall::NewEreport(qe_info) => {
-            serialize(&ENCLAVE.new_ereport(qe_info)).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
+        EnclaveCall::GetIdentity => serialize(&ENCLAVE.get_identity()),
+        EnclaveCall::GetSigner => serialize(&ENCLAVE.get_signer()),
+        EnclaveCall::GetFeeRecipient => serialize(&ENCLAVE.get_fee_recipient()),
+        EnclaveCall::NewEreport(qe_info) => serialize(&ENCLAVE.new_ereport(qe_info)),
         EnclaveCall::VerifyQuote(quote, qe_report) => {
             serialize(&ENCLAVE.verify_quote(quote, qe_report))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
-        EnclaveCall::VerifyReport(ias_report) => serialize(&ENCLAVE.verify_ias_report(ias_report))
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
-        EnclaveCall::GetReport => {
-            serialize(&ENCLAVE.get_ias_report()).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
+        EnclaveCall::VerifyReport(ias_report) => serialize(&ENCLAVE.verify_ias_report(ias_report)),
+        EnclaveCall::GetReport => serialize(&ENCLAVE.get_ias_report()),
         // Transactions
-        EnclaveCall::ClientTxPropose(msg) => serialize(&ENCLAVE.client_tx_propose(msg))
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
-        EnclaveCall::PeerTxPropose(msg) => {
-            serialize(&ENCLAVE.peer_tx_propose(msg)).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
+        EnclaveCall::ClientTxPropose(msg) => serialize(&ENCLAVE.client_tx_propose(msg)),
+        EnclaveCall::PeerTxPropose(msg) => serialize(&ENCLAVE.peer_tx_propose(msg)),
         EnclaveCall::TxIsWellFormed(locally_encrypted_tx, block_index, proofs) => {
             serialize(&ENCLAVE.tx_is_well_formed(locally_encrypted_tx, block_index, proofs))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
         EnclaveCall::TxsForPeer(txs, aad, peer) => {
             serialize(&ENCLAVE.txs_for_peer(&txs, &aad, &peer))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
-
         EnclaveCall::FormBlock(parent_block, encrypted_txs_with_proofs, root_element) => {
             serialize(&ENCLAVE.form_block(&parent_block, &encrypted_txs_with_proofs, &root_element))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
-    };
-
-    Ok(outdata)
+    }
+    .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))
 }
 
 /// The entry point implementation for consensus_enclave_api

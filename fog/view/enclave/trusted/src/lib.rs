@@ -16,6 +16,7 @@ use mc_sgx_compat::{eprintln, panic::catch_unwind};
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_sgx_slog::default_logger;
 use mc_sgx_types::{c_void, sgx_is_outside_enclave, sgx_status_t};
+use mc_util_serial::{deserialize, serialize};
 
 lazy_static::lazy_static! {
     static ref RETRY_BUFFER: RetryBuffer = RetryBuffer::new(&ecall_dispatcher);
@@ -93,51 +94,32 @@ lazy_static::lazy_static! {
 
 pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
     // Figure out what we're trying to do
-    let call_details: ViewEnclaveRequest = mc_util_serial::deserialize(inbuf).map_err(|err| {
+    let call_details: ViewEnclaveRequest = deserialize(inbuf).map_err(|err| {
         eprintln!("ecall_dispatcher: could not deserialize request: {}", err);
         sgx_status_t::SGX_ERROR_INVALID_PARAMETER
     })?;
 
     // And actually do it
-    let outdata = match call_details {
+    match call_details {
         ViewEnclaveRequest::Init(params) => {
             mc_sgx_enclave_id::set_enclave_id(params.eid);
-            mc_util_serial::serialize(&ENCLAVE.init(params))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
+            serialize(&ENCLAVE.init(params))
         }
-        ViewEnclaveRequest::GetIdentity => mc_util_serial::serialize(&ENCLAVE.get_identity())
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
-        ViewEnclaveRequest::NewEReport(target_info) => {
-            mc_util_serial::serialize(&ENCLAVE.new_ereport(target_info))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
+        ViewEnclaveRequest::GetIdentity => mc_util_serial::serialize(&ENCLAVE.get_identity()),
+        ViewEnclaveRequest::NewEReport(target_info) => serialize(&ENCLAVE.new_ereport(target_info)),
         ViewEnclaveRequest::VerifyQuote(quote, report) => {
-            mc_util_serial::serialize(&ENCLAVE.verify_quote(quote, report))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
+            serialize(&ENCLAVE.verify_quote(quote, report))
         }
         ViewEnclaveRequest::VerifyIasReport(verification_report) => {
-            mc_util_serial::serialize(&ENCLAVE.verify_ias_report(verification_report))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
+            serialize(&ENCLAVE.verify_ias_report(verification_report))
         }
-        ViewEnclaveRequest::GetIasReport => mc_util_serial::serialize(&ENCLAVE.get_ias_report())
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
-        ViewEnclaveRequest::ClientAccept(msg) => {
-            mc_util_serial::serialize(&ENCLAVE.client_accept(msg))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-        ViewEnclaveRequest::ClientClose(session) => {
-            mc_util_serial::serialize(&ENCLAVE.client_close(session))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
+        ViewEnclaveRequest::GetIasReport => serialize(&ENCLAVE.get_ias_report()),
+        ViewEnclaveRequest::ClientAccept(msg) => serialize(&ENCLAVE.client_accept(msg)),
+        ViewEnclaveRequest::ClientClose(session) => serialize(&ENCLAVE.client_close(session)),
         ViewEnclaveRequest::Query(req, untrusted_query_response) => {
-            mc_util_serial::serialize(&ENCLAVE.query(req, untrusted_query_response))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
+            serialize(&ENCLAVE.query(req, untrusted_query_response))
         }
-        ViewEnclaveRequest::AddRecords(records) => {
-            mc_util_serial::serialize(&ENCLAVE.add_records(records))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-    };
-
-    Ok(outdata)
+        ViewEnclaveRequest::AddRecords(records) => serialize(&ENCLAVE.add_records(records)),
+    }
+    .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))
 }
