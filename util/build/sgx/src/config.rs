@@ -172,19 +172,12 @@ impl ConfigBuilder {
 
     /// Enable the Key Separation and Sharing feature,
     pub fn enable_kss(&mut self, isv_extended_product_id: u128, isv_family_id: u128) -> &mut Self {
+        const MASK: u128 = 0x0000_0000_0000_0000_ffff_ffff_ffff_ffff;
         // All these should be infallible.
         self.isv_ext_prod_id_high = Some((isv_extended_product_id >> 64).try_into().unwrap());
-        self.isv_ext_prod_id_low = Some(
-            (isv_extended_product_id & 0x0000_0000_0000_0000_ffff_ffff_ffff_ffff)
-                .try_into()
-                .unwrap(),
-        );
+        self.isv_ext_prod_id_low = Some((isv_extended_product_id & MASK).try_into().unwrap());
         self.isv_family_id_high = Some((isv_family_id >> 64).try_into().unwrap());
-        self.isv_family_id_low = Some(
-            (isv_family_id & 0x0000_0000_0000_0000_ffff_ffff_ffff_ffff)
-                .try_into()
-                .unwrap(),
-        );
+        self.isv_family_id_low = Some((isv_family_id & MASK).try_into().unwrap());
         self.enable_kss = Some(true);
         self
     }

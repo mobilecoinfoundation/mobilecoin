@@ -134,7 +134,7 @@ mod test {
         let attr_ser = serialize(&attrs).expect("Could not serialize attributes");
         let attrs2: Attributes = deserialize(&attr_ser).expect("Could not deserialize attributes");
         assert_eq!(attrs, attrs2);
-        assert_eq!(0x0102_0304_0506_0708, attrs2.flags());
-        assert_eq!(0x0807_0605_0403_0201, attrs2.xfrm());
+        assert_eq!(src.flags, attrs2.flags());
+        assert_eq!(src.xfrm, attrs2.xfrm());
     }
 }
