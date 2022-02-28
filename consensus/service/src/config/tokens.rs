@@ -559,6 +559,9 @@ mod tests {
     fn cant_use_allow_any_fee_on_non_mob_tokens() {
         let input_toml: &str = r#"
             [[tokens]]
+            token_id = 0
+
+            [[tokens]]
             token_id = 1
             minimum_fee = 123000
             allow_any_fee = true
@@ -567,6 +570,7 @@ mod tests {
 
         let input_json: &str = r#"{
             "tokens": [
+                { "token_id": 0 },
                 { "token_id": 1, "minimum_fee": 123000, "allow_any_fee": true }
             ]
         }"#;
@@ -574,7 +578,10 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since allow_any_fee cannot be used on non-MOB tokens.
-        assert_validation_error(&tokens, "MOB token configuration not found");
+        assert_validation_error(
+            &tokens,
+            "token id 1: allow_any_fee can only be used for MOB",
+        );
     }
 
     #[test]

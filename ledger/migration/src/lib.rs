@@ -90,7 +90,7 @@ pub fn migrate(ledger_db_path: impl AsRef<Path>, logger: &Logger) {
 
                 let mut db_txn = env.begin_rw_txn().expect("Failed starting rw transaction");
                 metadata_store
-                    .set_version_to_latest(&mut db_txn)
+                    .set_version(&mut db_txn, 20220222)
                     .expect("Failed setting metadata version");
                 log::info!(
                     logger,

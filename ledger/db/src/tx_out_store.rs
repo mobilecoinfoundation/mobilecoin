@@ -796,6 +796,7 @@ pub mod tx_out_store_tests {
     use std::path::Path;
     use tempdir::TempDir;
 
+    /// Create an LMDB environment that can be used for testing.
     pub fn get_env() -> Environment {
         let temp_dir = TempDir::new("test").unwrap();
         let path = temp_dir.path().to_str().unwrap().to_string();
