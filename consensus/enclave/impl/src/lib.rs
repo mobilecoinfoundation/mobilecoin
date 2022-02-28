@@ -849,11 +849,11 @@ mod tests {
             );
 
             // Corrupt the encrypted data.
-            let mut corrputed_locally_encrypted_tx = locally_encrypted_tx.clone();
-            corrputed_locally_encrypted_tx.0[0] = !corrputed_locally_encrypted_tx.0[0];
+            let mut corrupted_locally_encrypted_tx = locally_encrypted_tx.clone();
+            corrupted_locally_encrypted_tx.0[0] = !corrupted_locally_encrypted_tx.0[0];
 
             assert_eq!(
-                enclave.tx_is_well_formed(corrputed_locally_encrypted_tx, block_index, proofs),
+                enclave.tx_is_well_formed(corrupted_locally_encrypted_tx, block_index, proofs),
                 Err(Error::CacheCipher(
                     mc_crypto_message_cipher::CipherError::MacFailure
                 ))

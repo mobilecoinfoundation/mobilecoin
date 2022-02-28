@@ -275,7 +275,7 @@ where
         })
     }
 
-    /// Do an identity-binding DH (that is, an "ee" or "es" operation).
+    /// Do an identity-binding DH (that is, an "se" or "es" operation).
     fn mix_es_se_key(&mut self, identity_is_local: bool) -> Result<(), HandshakeError> {
         let (local, remote, local_err, remote_err) = if identity_is_local {
             (
