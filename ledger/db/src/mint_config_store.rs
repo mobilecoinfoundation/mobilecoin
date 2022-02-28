@@ -401,6 +401,64 @@ mod test {
     }
 
     #[test]
+    fn empty_configuration_accepted() {
+        let (mint_config_store, env) = init_mint_config_store();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        let test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
+        let test_tx_2 = SetMintConfigTx {
+            prefix: MintConfigTxPrefix {
+                token_id: TokenId::from(1),
+                configs: vec![],
+                nonce: [5u8; 32],
+                tombstone_block: 1234,
+            },
+            signature: Default::default(),
+        };
+
+        assert_ne!(test_tx_1, test_tx_2);
+
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs(TokenId::from(1), &db_transaction)
+                .unwrap();
+            assert_eq!(
+                active_mint_configs,
+                ActiveMintConfigs::from(&test_tx_1).configs
+            );
+        }
+
+        // Replace the previous configuration with an empty one
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .set_active_mint_configs(&test_tx_2, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs(TokenId::from(1), &db_transaction)
+                .unwrap();
+            assert_eq!(
+                active_mint_configs,
+                ActiveMintConfigs::from(&test_tx_2).configs
+            );
+        }
+    }
+
+    #[test]
     fn update_total_minted_works() {
         let (mint_config_store, env) = init_mint_config_store();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
