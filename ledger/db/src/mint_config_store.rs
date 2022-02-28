@@ -407,10 +407,10 @@ mod test {
 
         let test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
         let test_tx_2 = SetMintConfigTx {
-            prefix: MintConfigTxPrefix {
-                token_id: TokenId::from(1),
+            prefix: SetMintConfigTxPrefix {
+                token_id: test_tx_1.prefix.token_id,
                 configs: vec![],
-                nonce: [5u8; 32],
+                nonce: vec![5u8; 32],
                 tombstone_block: 1234,
             },
             signature: Default::default(),

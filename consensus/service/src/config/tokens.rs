@@ -657,7 +657,7 @@ mod tests {
     }
 
     #[test]
-    fn master_minters_deserialize_serialize_deserialize_works() {
+    fn master_minters_serialize_deserialize_works() {
         let token_config = TokenConfig {
             token_id: TokenId::from(123),
             minimum_fee: Some(456),
