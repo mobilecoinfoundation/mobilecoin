@@ -26,6 +26,7 @@ mod ed25519_multisig;
 mod ed25519_signature;
 mod key_image;
 mod mint_config;
+mod mint_tx;
 mod public_address;
 mod ring_mlsag;
 mod ristretto_private;
