@@ -31,7 +31,7 @@ mc-sgx-types = { path = "../../sgx/types" }
 binascii = "0.1.2"
 bitflags = "1.2"
 chrono = { version = "0.4.19", default-features = false, features = ["alloc"] }
-digest = { version = "0.9", default-features = false }
+digest = { version = "0.10", default-features = false }
 displaydoc = { version = "0.2", default-features = false }
 hex_fmt = "0.3"
 rjson = "0.3.1"
