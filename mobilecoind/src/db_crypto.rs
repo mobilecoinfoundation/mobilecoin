@@ -9,12 +9,12 @@ use aes_gcm::{
     },
     AeadCore, Aes256Gcm, Error as AeadError, NewAead,
 };
-use blake2::{Blake2b512, Digest};
 use displaydoc::Display;
 use lmdb::{
     Database, DatabaseFlags, Environment, Error as LmdbError, RwTransaction, Transaction,
     WriteFlags,
 };
+use mc_crypto_hashes::{Blake2b512, Digest};
 use std::sync::{Arc, Mutex};
 
 /// Domain tag for database-wide encryption.

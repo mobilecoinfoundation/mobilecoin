@@ -25,11 +25,9 @@ mc-util-serial = { path = "../../util/serial" }
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
-blake2 = { version = "0.10.2", default-features = false, features = ["simd"] }
 
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
-blake2 = { version = "0.10.2", default-features = false }
 
 [dev-dependencies]
 maplit = "1.0"

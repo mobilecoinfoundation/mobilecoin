@@ -878,10 +878,10 @@ name = "mc-crypto-box"
 version = "1.3.0-pre0"
 dependencies = [
  "aead",
- "blake2",
  "digest",
  "displaydoc",
  "hkdf",
+ "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-oblivious-aes-gcm",
  "rand_core",
@@ -1141,7 +1141,6 @@ name = "mc-transaction-core"
 version = "1.3.0-pre0"
 dependencies = [
  "aes",
- "blake2",
  "bulletproofs-og",
  "curve25519-dalek",
  "displaydoc",

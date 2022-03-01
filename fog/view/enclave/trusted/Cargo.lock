@@ -835,10 +835,10 @@ name = "mc-crypto-box"
 version = "1.3.0-pre0"
 dependencies = [
  "aead",
- "blake2",
  "digest",
  "displaydoc",
  "hkdf",
+ "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-oblivious-aes-gcm",
  "rand_core",
@@ -956,8 +956,9 @@ dependencies = [
 name = "mc-fog-kex-rng"
 version = "1.3.0-pre0"
 dependencies = [
- "blake2",
+ "digest",
  "displaydoc",
+ "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-repr-bytes",
@@ -1015,7 +1016,6 @@ dependencies = [
 name = "mc-fog-types"
 version = "1.3.0-pre0"
 dependencies = [
- "blake2",
  "crc",
  "displaydoc",
  "mc-crypto-keys",
@@ -1289,7 +1289,6 @@ name = "mc-transaction-core"
 version = "1.3.0-pre0"
 dependencies = [
  "aes",
- "blake2",
  "bulletproofs-og",
  "curve25519-dalek",
  "displaydoc",

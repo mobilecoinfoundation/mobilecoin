@@ -1,12 +1,12 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use crate::KexRngCore;
-use blake2::{digest::generic_array, Blake2b512, Digest};
-use generic_array::{
+use digest::generic_array::{
     sequence::Split,
     typenum::{U16, U32},
     GenericArray,
 };
+use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::Ristretto;
 
 type Output = GenericArray<u8, U16>;

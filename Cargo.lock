@@ -3061,10 +3061,10 @@ name = "mc-crypto-box"
 version = "1.3.0-pre0"
 dependencies = [
  "aead",
- "blake2",
  "digest 0.10.3",
  "displaydoc",
  "hkdf",
+ "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-oblivious-aes-gcm",
  "mc-util-from-random",
@@ -3559,8 +3559,9 @@ dependencies = [
 name = "mc-fog-kex-rng"
 version = "1.3.0-pre0"
 dependencies = [
- "blake2",
+ "digest 0.10.3",
  "displaydoc",
+ "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-repr-bytes",
@@ -4202,7 +4203,6 @@ dependencies = [
 name = "mc-fog-types"
 version = "1.3.0-pre0"
 dependencies = [
- "blake2",
  "crc",
  "displaydoc",
  "mc-crypto-keys",
@@ -4360,11 +4360,11 @@ dependencies = [
 name = "mc-fog-view-protocol"
 version = "1.3.0-pre0"
 dependencies = [
- "blake2",
  "displaydoc",
  "mc-account-keys",
  "mc-common",
  "mc-crypto-box",
+ "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-fog-kex-rng",
  "mc-fog-types",
@@ -4535,7 +4535,6 @@ name = "mc-mobilecoind"
 version = "1.3.0-pre0"
 dependencies = [
  "aes-gcm",
- "blake2",
  "crossbeam-channel",
  "displaydoc",
  "grpcio",
@@ -4555,6 +4554,7 @@ dependencies = [
  "mc-consensus-enclave-measurement",
  "mc-consensus-scp",
  "mc-crypto-digestible",
+ "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-rand",
  "mc-fog-report-connection",
@@ -4925,7 +4925,6 @@ name = "mc-transaction-core"
 version = "1.3.0-pre0"
 dependencies = [
  "aes",
- "blake2",
  "bulletproofs-og",
  "curve25519-dalek",
  "displaydoc",
@@ -4980,7 +4979,6 @@ dependencies = [
 name = "mc-transaction-std"
 version = "1.3.0-pre0"
 dependencies = [
- "blake2",
  "curve25519-dalek",
  "displaydoc",
  "hmac 0.12.1",
