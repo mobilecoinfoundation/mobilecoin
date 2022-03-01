@@ -89,3 +89,111 @@ impl TryFrom<&external::SetMintConfigTx> for SetMintConfigTx {
         Ok(Self { prefix, signature })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::convert::ed25519_multisig::tests::{test_multi_sig, test_signer_set};
+    use mc_util_serial::{decode, encode};
+    use protobuf::Message;
+
+    #[test]
+    // MintConfig -> external::MintConfig -> MintConfig should be the identity
+    // function.
+    fn test_convert_mint_config() {
+        let source = MintConfig {
+            token_id: 123,
+            signer_set: test_signer_set(),
+            mint_limit: 10000,
+        };
+
+        // decode(encode(source)) should be the identity function.
+        {
+            let bytes = encode(&source);
+            let recovered = decode(&bytes).unwrap();
+            assert_eq!(source, recovered);
+        }
+
+        // Converting mc_transaction_core::mint::MintConfig -> external::MintConfig ->
+        // mc_transaction_core::mint::MintConfig should be the identity function.
+        {
+            let external = external::MintConfig::from(&source);
+            let recovered = MintConfig::try_from(&external).unwrap();
+            assert_eq!(source, recovered);
+        }
+
+        // Encoding with prost, decoding with protobuf should be the identity
+        // function.
+        {
+            let bytes = encode(&source);
+            let recovered = external::MintConfig::parse_from_bytes(&bytes).unwrap();
+            assert_eq!(recovered, external::MintConfig::from(&source));
+        }
+
+        // Encoding with protobuf, decoding with prost should be the identity function.
+        {
+            let external = external::MintConfig::from(&source);
+            let bytes = external.write_to_bytes().unwrap();
+            let recovered: MintConfig = decode(&bytes).unwrap();
+            assert_eq!(source, recovered);
+        }
+    }
+
+    #[test]
+    // SetMintConfigTx -> external::SetMintConfigTx -> SetMintConfigTx should be the
+    // identity function.
+    fn test_convert_set_mint_config_tx() {
+        let source = SetMintConfigTx {
+            prefix: SetMintConfigTxPrefix {
+                token_id: 123,
+                configs: vec![
+                    MintConfig {
+                        token_id: 123,
+                        signer_set: test_signer_set(),
+                        mint_limit: 10000,
+                    },
+                    MintConfig {
+                        token_id: 456,
+                        signer_set: test_signer_set(),
+                        mint_limit: 20000,
+                    },
+                ],
+                nonce: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+                tombstone_block: 100,
+            },
+            signature: test_multi_sig(),
+        };
+
+        // decode(encode(source)) should be the identity function.
+        {
+            let bytes = encode(&source);
+            let recovered = decode(&bytes).unwrap();
+            assert_eq!(source, recovered);
+        }
+
+        // Converting mc_transaction_core::mint::SetMintConfigTx ->
+        // external::SetMintConfigTx -> mc_transaction_core::mint::
+        // SetMintConfigTx should be the identity function.
+        {
+            let external = external::SetMintConfigTx::from(&source);
+            let recovered = SetMintConfigTx::try_from(&external).unwrap();
+            assert_eq!(source, recovered);
+        }
+
+        // Encoding with prost, decoding with protobuf should be the identity
+        // function.
+        {
+            let bytes = encode(&source);
+            let recovered = external::SetMintConfigTx::parse_from_bytes(&bytes).unwrap();
+            assert_eq!(recovered, external::SetMintConfigTx::from(&source));
+        }
+
+        // Encoding with protobuf, decoding with prost should be the identity function.
+        {
+            let external = external::SetMintConfigTx::from(&source);
+            let bytes = external.write_to_bytes().unwrap();
+            let recovered: SetMintConfigTx = decode(&bytes).unwrap();
+            assert_eq!(source, recovered);
+        }
+    }
+}
