@@ -36,7 +36,6 @@ RUN mkdir "$ANDROID_HOME" .android \
 # Install Android Build Tool and Libraries
 RUN $ANDROID_HOME/cmdline-tools/tools/bin/sdkmanager --install "build-tools;${ANDROID_BUILD_TOOLS_VERSION}" \
     "platforms;android-${ANDROID_VERSION}" \
-    "platform-tools" \
     "ndk-bundle"
 
 # Add NDK to PATH
