@@ -63,8 +63,8 @@ pub fn migrate(ledger_db_path: impl AsRef<Path>, logger: &Logger) {
                 );
                 db_txn.commit().expect("Failed committing transaction");
             }
-            // Version 2020_07_07 came after 2020_06_10 introduced the TxOut global index -> block index
-            // store.
+            // Version 2020_07_07 came after 2020_06_10 introduced the TxOut global index -> block
+            // index store.
             Err(MetadataStoreError::VersionIncompatible(2020_06_10, _)) => {
                 log::info!(logger, "Ledger db migrating from version 2020_06_10 to 2020_07_07, this might take awhile...");
 
