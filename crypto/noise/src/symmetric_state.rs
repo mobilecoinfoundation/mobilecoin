@@ -55,7 +55,7 @@ where
     hash: HandshakeHash<DigestType>,
     chaining_key: SecretVec<u8>,
     cipher_state: CipherState<Cipher>,
-    _kex: PhantomData<fn() -> KexAlgo>,
+    _kex: PhantomData<KexAlgo>,
 }
 
 impl<Handshake, KexAlgo, Cipher, DigestType>
@@ -81,7 +81,7 @@ where
             hash,
             chaining_key,
             cipher_state,
-            _kex: PhantomData::default(),
+            _kex: PhantomData,
         }
     }
 }

@@ -37,10 +37,10 @@ where
     Cipher: AeadMut,
     DigestType: Default + Update + FixedOutput,
 {
-    _pattern: PhantomData<fn() -> Handshake>,
-    _kex: PhantomData<fn() -> KexAlgo>,
-    _cipher: PhantomData<fn() -> Cipher>,
-    _digest: PhantomData<fn() -> DigestType>,
+    _pattern: PhantomData<Handshake>,
+    _kex: PhantomData<KexAlgo>,
+    _cipher: PhantomData<Cipher>,
+    _digest: PhantomData<DigestAlgo>,
 }
 
 impl<Handshake, KexAlgo, Cipher, DigestType> Clone
@@ -53,10 +53,10 @@ where
 {
     fn clone(&self) -> Self {
         Self {
-            _pattern: PhantomData::default(),
-            _kex: PhantomData::default(),
-            _cipher: PhantomData::default(),
-            _digest: PhantomData::default(),
+            _pattern: PhantomData,
+            _kex: PhantomData,
+            _cipher: PhantomData,
+            _digest: PhantomData,
         }
     }
 }
@@ -71,10 +71,10 @@ where
 {
     fn default() -> Self {
         Self {
-            _pattern: PhantomData::default(),
-            _kex: PhantomData::default(),
-            _cipher: PhantomData::default(),
-            _digest: PhantomData::default(),
+            _pattern: PhantomData,
+            _kex: PhantomData,
+            _cipher: PhantomData,
+            _digest: PhantomData,
         }
     }
 }

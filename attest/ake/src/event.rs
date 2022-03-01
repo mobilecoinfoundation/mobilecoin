@@ -25,9 +25,9 @@ where
     /// This is the local node's ias report.
     pub(crate) ias_report: VerificationReport,
 
-    _kex: PhantomData<fn() -> KexAlgo>,
-    _cipher: PhantomData<fn() -> Cipher>,
-    _digest: PhantomData<fn() -> DigestType>,
+    _kex: PhantomData<KexAlgo>,
+    _cipher: PhantomData<Cipher>,
+    _digest: PhantomData<DigestAlgo>,
 }
 
 impl<KexAlgo, Cipher, DigestType> NodeInitiate<KexAlgo, Cipher, DigestType>
@@ -41,9 +41,9 @@ where
         Self {
             local_identity,
             ias_report,
-            _kex: PhantomData::default(),
-            _cipher: PhantomData::default(),
-            _digest: PhantomData::default(),
+            _kex: PhantomData,
+            _cipher: PhantomData,
+            _digest: PhantomData,
         }
     }
 }
@@ -64,9 +64,9 @@ where
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
     DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
-    _kex: PhantomData<fn() -> KexAlgo>,
-    _cipher: PhantomData<fn() -> Cipher>,
-    _digest: PhantomData<fn() -> DigestType>,
+    _kex: PhantomData<KexAlgo>,
+    _cipher: PhantomData<Cipher>,
+    _digest: PhantomData<DigestAlgo>,
 }
 
 impl<KexAlgo, Cipher, DigestType> Default for ClientInitiate<KexAlgo, Cipher, DigestType>
@@ -77,9 +77,9 @@ where
 {
     fn default() -> Self {
         Self {
-            _kex: PhantomData::default(),
-            _cipher: PhantomData::default(),
-            _digest: PhantomData::default(),
+            _kex: PhantomData,
+            _cipher: PhantomData,
+            _digest: PhantomData,
         }
     }
 }
