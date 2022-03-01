@@ -462,12 +462,13 @@ impl AccountKey {
 #[cfg(test)]
 mod account_key_tests {
     use super::*;
-    use alloc::boxed::Box;
     use core::convert::TryFrom;
-    use datatest::data;
     use mc_crypto_keys::RistrettoSignature;
-    use mc_test_vectors_account_keys::*;
+    use mc_test_vectors_account_keys::{
+        DefaultSubaddrKeysFromAcctPrivKeys, SubaddrKeysFromAcctPrivKeys,
+    };
     use mc_util_test_vector::TestVector;
+    use mc_util_test_with_data::test_with_data;
     use rand::prelude::StdRng;
     use rand_core::SeedableRng;
 
@@ -529,8 +530,7 @@ mod account_key_tests {
         );
     }
 
-    #[data(DefaultSubaddrKeysFromAcctPrivKeys::from_jsonl("../test-vectors/vectors"))]
-    #[test]
+    #[test_with_data(DefaultSubaddrKeysFromAcctPrivKeys::from_jsonl("../test-vectors/vectors"))]
     fn default_subaddr_keys_from_acct_priv_keys(case: DefaultSubaddrKeysFromAcctPrivKeys) {
         let spend_private_key = RistrettoPrivate::try_from(&case.spend_private_key).unwrap();
         let view_private_key = RistrettoPrivate::try_from(&case.view_private_key).unwrap();
@@ -555,9 +555,8 @@ mod account_key_tests {
         );
     }
 
-    #[data(SubaddrKeysFromAcctPrivKeys::from_jsonl("../test-vectors/vectors"))]
-    #[test]
-    fn subaddr_keys_from_acct_priv_keys(case: SubaddrKeysFromAcctPrivKeys) {
+    #[test_with_data(SubaddrKeysFromAcctPrivKeys::from_jsonl("../test-vectors/vectors"))]
+    fn subaddr_keys_from_acct_priv_keys(case: &SubaddrKeysFromAcctPrivKeys) {
         let spend_private_key = RistrettoPrivate::try_from(&case.spend_private_key).unwrap();
         let view_private_key = RistrettoPrivate::try_from(&case.view_private_key).unwrap();
         let account_key = AccountKey::new(&spend_private_key, &view_private_key);
