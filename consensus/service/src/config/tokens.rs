@@ -33,7 +33,7 @@ mod pem_signer_set {
                 .signers()
                 .iter()
                 .map(|signer| Pem {
-                    tag: String::from("FOO"),
+                    tag: String::from("PUBLIC KEY"),
                     contents: signer.to_der(),
                 })
                 .collect::<Vec<_>>();
