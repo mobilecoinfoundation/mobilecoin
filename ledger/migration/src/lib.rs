@@ -3,6 +3,8 @@
 //! Ledger migration: Perform updates of LedgerDB to accommodate for
 //! backward-incompatible changes.
 
+#![allow(clippy::inconsistent_digit_grouping)]
+
 use lmdb::{DatabaseFlags, Environment, Transaction, WriteFlags};
 use mc_common::logger::{log, Logger};
 use mc_ledger_db::{
@@ -42,17 +44,17 @@ pub fn migrate(ledger_db_path: impl AsRef<Path>, logger: &Logger) {
             Ok(_) => {
                 break;
             }
-            // Version 20200610 came after 20200427 and introduced the TxOut public key -> index
+            // Version 2020_06_10 came after 2020_04_27 and introduced the TxOut public key -> index
             // store.
-            Err(MetadataStoreError::VersionIncompatible(20200427, _)) => {
-                log::info!(logger, "Ledger db migrating from version 20200427 to 20200610, this might take awhile...");
+            Err(MetadataStoreError::VersionIncompatible(2020_04_27, _)) => {
+                log::info!(logger, "Ledger db migrating from version 2020_04_27 to 2020_06_10, this might take awhile...");
 
                 construct_tx_out_index_by_public_key_from_existing_data(&env, logger)
                     .expect("Failed constructing tx out index by public key database");
 
                 let mut db_txn = env.begin_rw_txn().expect("Failed starting rw transaction");
                 metadata_store
-                    .set_version(&mut db_txn, 20200610)
+                    .set_version(&mut db_txn, 2020_06_10)
                     .expect("Failed setting metadata version");
                 log::info!(
                     logger,
@@ -61,17 +63,17 @@ pub fn migrate(ledger_db_path: impl AsRef<Path>, logger: &Logger) {
                 );
                 db_txn.commit().expect("Failed committing transaction");
             }
-            // Version 20200707 came after 20200610 introduced the TxOut global index -> block index
+            // Version 2020_07_07 came after 2020_06_10 introduced the TxOut global index -> block index
             // store.
-            Err(MetadataStoreError::VersionIncompatible(20200610, _)) => {
-                log::info!(logger, "Ledger db migrating from version 20200610 to 20200707, this might take awhile...");
+            Err(MetadataStoreError::VersionIncompatible(2020_06_10, _)) => {
+                log::info!(logger, "Ledger db migrating from version 2020_06_10 to 2020_07_07, this might take awhile...");
 
                 construct_block_number_by_tx_out_index_from_existing_data(&env, logger)
                     .expect("Failed constructing block number by tx out index database");
 
                 let mut db_txn = env.begin_rw_txn().expect("Failed starting rw transaction");
                 metadata_store
-                    .set_version(&mut db_txn, 20200707)
+                    .set_version(&mut db_txn, 2020_07_07)
                     .expect("Failed setting metadata version");
                 log::info!(
                     logger,
@@ -80,17 +82,17 @@ pub fn migrate(ledger_db_path: impl AsRef<Path>, logger: &Logger) {
                 );
                 db_txn.commit().expect("Failed committing transaction");
             }
-            // Version 20220222 came after 20200707 introduced minting.
-            Err(MetadataStoreError::VersionIncompatible(20200707, _)) => {
+            // Version 2022_02_22 came after 2020_07_07 introduced minting.
+            Err(MetadataStoreError::VersionIncompatible(2020_07_07, _)) => {
                 log::info!(
                     logger,
-                    "Ledger db migrating from version 20200707 to 20220222..."
+                    "Ledger db migrating from version 2020_07_07 to 2022_02_22..."
                 );
                 MintConfigStore::create(&env).expect("Failed creating MintConfigStore");
 
                 let mut db_txn = env.begin_rw_txn().expect("Failed starting rw transaction");
                 metadata_store
-                    .set_version(&mut db_txn, 20220222)
+                    .set_version(&mut db_txn, 2022_02_22)
                     .expect("Failed setting metadata version");
                 log::info!(
                     logger,
