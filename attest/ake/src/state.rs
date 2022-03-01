@@ -3,11 +3,9 @@
 //! Transducer states used by initiators and/or responders.
 
 use crate::mealy::State;
-use aead::{AeadMut, NewAead};
 use alloc::{string::String, vec::Vec};
-use digest::{BlockInput, FixedOutput, Reset, Update};
 use mc_crypto_keys::Kex;
-use mc_crypto_noise::{CipherError, CipherState, HandshakeState, NoiseCipher};
+use mc_crypto_noise::{CipherError, CipherState, HandshakeState, NoiseCipher, NoiseDigest};
 
 /// The state of a node (initiator or responder) before anything has happened
 /// yet.
@@ -28,31 +26,31 @@ impl State for Start {}
 
 /// The state after an NodeInit or ClientInit event has been added to
 /// the Start state.
-pub struct AuthPending<KexAlgo, Cipher, DigestType>
+pub struct AuthPending<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
+    Cipher: NoiseCipher,
+    DigestAlgo: NoiseDigest,
 {
     /// The handshake state
-    pub(crate) state: HandshakeState<KexAlgo, Cipher, DigestType>,
+    pub(crate) state: HandshakeState<KexAlgo, Cipher, DigestAlgo>,
 }
 
-impl<KexAlgo, Cipher, DigestType> State for AuthPending<KexAlgo, Cipher, DigestType>
+impl<KexAlgo, Cipher, DigestAlgo> State for AuthPending<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
+    Cipher: NoiseCipher,
+    DigestAlgo: NoiseDigest,
 {
 }
 
-impl<KexAlgo, Cipher, DigestType> AuthPending<KexAlgo, Cipher, DigestType>
+impl<KexAlgo, Cipher, DigestAlgo> AuthPending<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
+    Cipher: NoiseCipher,
+    DigestAlgo: NoiseDigest,
 {
-    pub(crate) fn new(state: HandshakeState<KexAlgo, Cipher, DigestType>) -> Self {
+    pub(crate) fn new(state: HandshakeState<KexAlgo, Cipher, DigestAlgo>) -> Self {
         Self { state }
     }
 }
@@ -61,7 +59,7 @@ where
 /// an initiator.
 pub struct Ready<Cipher>
 where
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
+    Cipher: NoiseCipher,
 {
     pub(crate) writer: CipherState<Cipher>,
     pub(crate) reader: CipherState<Cipher>,
@@ -70,7 +68,7 @@ where
 
 impl<Cipher> Ready<Cipher>
 where
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
+    Cipher: NoiseCipher,
 {
     /// Retrieve the channel binding as a byte slice
     pub fn binding(&self) -> &[u8] {
@@ -87,4 +85,4 @@ where
     }
 }
 
-impl<Cipher> State for Ready<Cipher> where Cipher: AeadMut + NewAead + NoiseCipher + Sized {}
+impl<Cipher> State for Ready<Cipher> where Cipher: NoiseCipher {}
