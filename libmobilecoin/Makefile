@@ -42,6 +42,7 @@ IOS_LIB = libmobilecoin.a
 IOS_LIB_STRIPPED = libmobilecoin_stripped.a
 IOS_C_HEADERS = include/*
 
+RUST_BITCODE_COMMIT = $(shell source toolchain-config.env; echo $$RUST_BITCODE_COMMIT)
 RUST_COMMIT = $(shell source toolchain-config.env; echo $$RUST_COMMIT)
 RUST_COMMIT_NAME = $(shell source toolchain-config.env; echo $$RUST_COMMIT_NAME)
 SWIFT_VERSION = $(shell source toolchain-config.env; echo $$SWIFT_VERSION)
@@ -93,7 +94,7 @@ setup:
 	cd rust-bitcode && \
 	git init && \
 	git remote add origin git@github.com:mobilecoinofficial/rust-bitcode; \
-	git fetch --depth 1 origin 5ed1ddf8b708c512c589d10453193d12a4643169; \
+	git fetch --depth 1 origin $(RUST_COMMIT_NAME); \
 	git checkout FETCH_HEAD;
 	
 .PHONY: ios
