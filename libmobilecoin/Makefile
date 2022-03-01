@@ -26,20 +26,14 @@ CARGO ?= cargo
 ######## Internal Variables ########
 ####################################
 
-### Environment Variables
-
-# Move to rust-bitcode scripts
-#UNAME_S := $(shell uname -s)
-#ifeq ($(UNAME_S),Darwin)
-  #export LIBCLANG_PATH = $(shell brew --prefix llvm)/lib
-#endif
-
 ### Local Variables
+
+DOT:= .
+DASH:= -
 
 CARGO_PACKAGE = libmobilecoin
 ARCHS_IOS = aarch64-apple-ios-sim aarch64-apple-ios-macabi aarch64-apple-ios x86_64-apple-ios-macabi x86_64-apple-ios x86_64-apple-darwin
 TARGET_TOOLCHAINS = toolchain_aarch64-apple-ios-sim toolchain_aarch64-apple-ios-macabi toolchain_aarch64-apple-ios toolchain_x86_64-apple-ios-macabi toolchain_x86_64-apple-ios toolchain_x86_64-apple-darwin
-# ARCHS_IOS = aarch64-apple-ios-sim # aarch64-apple-ios x86_64-apple-ios x86_64-apple-darwin
 
 # add l_ prefix to build-targets that use the legacy build-process
 ALL_LEGACY_ARCHS_IOS = l_aarch64-apple-ios-sim l_aarch64-apple-ios-macabi l_aarch64-apple-ios l_x86_64-apple-ios-macabi l_x86_64-apple-ios l_x86_64-apple-darwin
@@ -78,12 +72,6 @@ define TOOLCHAIN_install
 		./build-install.sh -t $(1) -l $(SWIFT_VERSION) -r $(RUST_COMMIT) -n $(RUST_COMMIT_NAME); \
 	)
 endef
-
-define RUSTBITCODE_init	
-endef
-
-DOT:= .
-DASH:= -
 
 ####################################
 ############## Targets #############
