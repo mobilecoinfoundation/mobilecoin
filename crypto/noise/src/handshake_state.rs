@@ -721,7 +721,7 @@ mod test {
             .expect("Responder could not decrypt message 1");
         assert_eq!(message1.as_bytes(), decrypted1.as_slice());
 
-        let message2 = "It look's like you're trying to pay a friend without being it generating an advertisement. Would you like some help with that?";
+        let message2 = "It look's like you're trying to pay a friend without it generating an advertisement. Would you like some help with that?";
         let encrypted2 = responder_output
             .responder_cipher
             .encrypt_with_ad(prologue.as_bytes(), message2.as_bytes())
@@ -843,7 +843,7 @@ mod test {
             .expect("Responder could not decrypt message 1");
         assert_eq!(message1.as_bytes(), decrypted1.as_slice());
 
-        let message2 = "It look's like you're trying to pay a friend without being it generating an advertisement. Would you like some help with that?";
+        let message2 = "It look's like you're trying to pay a friend without it generating an advertisement. Would you like some help with that?";
         let encrypted2 = responder_output
             .responder_cipher
             .encrypt_with_ad(prologue.as_bytes(), message2.as_bytes())

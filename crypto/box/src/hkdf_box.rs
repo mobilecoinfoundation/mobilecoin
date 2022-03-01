@@ -15,8 +15,8 @@ use core::{
     marker::PhantomData,
     ops::{Add, Sub},
 };
-use digest::{BlockInput, Digest, FixedOutput, Reset, Update};
-use hkdf::Hkdf;
+use digest::{core_api::BlockSizeUser, Digest};
+use hkdf::SimpleHkdf;
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_oblivious_aes_gcm::{CtAeadDecrypt, CtDecryptResult};
 use rand_core::{CryptoRng, RngCore};
@@ -35,7 +35,7 @@ pub struct HkdfBox<KexAlgo, DigestAlgo, AeadAlgo>
 where
     KexAlgo: Kex,
     for<'privkey> <KexAlgo as Kex>::Public: From<&'privkey <KexAlgo as Kex>::EphemeralPrivate>,
-    DigestAlgo: Digest + Update + FixedOutput + Default + Clone + BlockInput + Reset,
+    DigestAlgo: Digest + BlockSizeUser + Clone,
     AeadAlgo: AeadInPlace + NewAead + CtAeadDecrypt,
 {
     _kex: PhantomData<KexAlgo>,
@@ -47,7 +47,7 @@ impl<KexAlgo, DigestAlgo, AeadAlgo> CryptoBox<KexAlgo> for HkdfBox<KexAlgo, Dige
 where
     KexAlgo: Kex,
     for<'privkey> <KexAlgo as Kex>::Public: From<&'privkey <KexAlgo as Kex>::EphemeralPrivate>,
-    DigestAlgo: Digest + Update + FixedOutput + Default + Clone + BlockInput + Reset,
+    DigestAlgo: Digest + BlockSizeUser + Clone,
     AeadAlgo: AeadInPlace + NewAead + CtAeadDecrypt,
     // Note: I think all of these bounds should go away after RFC 2089 is implemented
     // https://github.com/rust-lang/rfcs/blob/master/text/2089-implied-bounds.md
@@ -122,7 +122,7 @@ impl<KexAlgo, DigestAlgo, AeadAlgo> HkdfBox<KexAlgo, DigestAlgo, AeadAlgo>
 where
     KexAlgo: Kex,
     for<'privkey> <KexAlgo as Kex>::Public: From<&'privkey <KexAlgo as Kex>::EphemeralPrivate>,
-    DigestAlgo: Digest + Update + FixedOutput + Default + Clone + BlockInput + Reset,
+    DigestAlgo: Digest + BlockSizeUser + Clone,
     AeadAlgo: AeadInPlace + NewAead + CtAeadDecrypt,
     AeadAlgo::KeySize: Add<AeadAlgo::NonceSize>,
     Sum<AeadAlgo::KeySize, AeadAlgo::NonceSize>:
@@ -151,7 +151,7 @@ impl<KexAlgo, DigestAlgo, AeadAlgo> Default for HkdfBox<KexAlgo, DigestAlgo, Aea
 where
     KexAlgo: Kex,
     for<'privkey> <KexAlgo as Kex>::Public: From<&'privkey <KexAlgo as Kex>::EphemeralPrivate>,
-    DigestAlgo: Digest + Update + FixedOutput + Default + Clone + BlockInput + Reset,
+    DigestAlgo: Digest + BlockSizeUser + Clone,
     AeadAlgo: AeadInPlace + NewAead + CtAeadDecrypt,
 {
     fn default() -> Self {

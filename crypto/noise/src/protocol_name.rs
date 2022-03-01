@@ -6,7 +6,7 @@ use crate::patterns::{HandshakeIX, HandshakeNX, HandshakePattern};
 use aead::AeadMut;
 use aes_gcm::Aes256Gcm;
 use core::marker::PhantomData;
-use digest::{FixedOutput, Update};
+use digest::Digest;
 use displaydoc::Display;
 use mc_crypto_keys::{Kex, X25519};
 use serde::{Deserialize, Serialize};
@@ -30,12 +30,12 @@ pub enum ProtocolNameError {
 /// [section 8](http://noiseprotocol.org/noise.html#protocol-names-and-modifiers)
 /// of the specification.
 #[derive(Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct ProtocolName<Handshake, KexAlgo, Cipher, DigestType>
+pub struct ProtocolName<Handshake, KexAlgo, Cipher, DigestAlgo>
 where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut,
-    DigestType: Default + Update + FixedOutput,
+    DigestAlgo: Digest,
 {
     _pattern: PhantomData<Handshake>,
     _kex: PhantomData<KexAlgo>,
@@ -43,13 +43,13 @@ where
     _digest: PhantomData<DigestAlgo>,
 }
 
-impl<Handshake, KexAlgo, Cipher, DigestType> Clone
-    for ProtocolName<Handshake, KexAlgo, Cipher, DigestType>
+impl<Handshake, KexAlgo, Cipher, DigestAlgo> Clone
+    for ProtocolName<Handshake, KexAlgo, Cipher, DigestAlgo>
 where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut,
-    DigestType: Default + Update + FixedOutput,
+    DigestAlgo: Digest,
 {
     fn clone(&self) -> Self {
         Self {
@@ -61,13 +61,13 @@ where
     }
 }
 
-impl<Handshake, KexAlgo, Cipher, DigestType> Default
-    for ProtocolName<Handshake, KexAlgo, Cipher, DigestType>
+impl<Handshake, KexAlgo, Cipher, DigestAlgo> Default
+    for ProtocolName<Handshake, KexAlgo, Cipher, DigestAlgo>
 where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut,
-    DigestType: Default + Update + FixedOutput,
+    DigestAlgo: Digest,
 {
     fn default() -> Self {
         Self {
