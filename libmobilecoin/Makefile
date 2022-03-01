@@ -56,13 +56,13 @@ define BINARY_copy
 endef
 
 # First argument $(1) is a build-target
-define TOOLCHAIN_install	
+define TOOLCHAIN_install
 	$(if \
 		$(shell rustup toolchain list | \
-		  		grep "ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION))" | \
-	    		wc -l | \
-	    		awk '{$$1=$$1;print}' | \
-	    		grep '1'), \
+				grep "ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION))" | \
+				wc -l | \
+				awk '{$$1=$$1;print}' | \
+				grep '1'), \
 		@echo "toolchain ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION)) already installed", \
 		@echo "toolchain ios-$(1)-$(RUST_COMMIT_NAME)-swift-$(subst $(DOT),$(DASH),$(SWIFT_VERSION)) not installed"; \
 		$(info "Compiling & Installing Rust $(RUST_COMMIT_NAME) toolchain") \
@@ -89,14 +89,14 @@ bitcode-init:
 	cd rust-bitcode && ./build-install.sh -t $@ -l $(SWIFT_VERSION) -r $(RUST_COMMIT) -n $(RUST_COMMIT_NAME);
 
 .PHONY: setup
-setup: 
+setup:
 	mkdir -p rust-bitcode
 	cd rust-bitcode && \
 	git init && \
 	git remote add origin git@github.com:mobilecoinofficial/rust-bitcode; \
 	git fetch --depth 1 origin $(RUST_BITCODE_COMMIT); \
 	git checkout FETCH_HEAD;
-	
+
 .PHONY: ios
 ios: out/ios/target
 
@@ -111,7 +111,7 @@ else
   CARGO_BUILD_FLAGS += -Z unstable-options --profile ${CARGO_PROFILE}
 endif
 
-LEGACY_CARGO_BUILD_FLAGS = $(CARGO_BUILD_FLAGS) 
+LEGACY_CARGO_BUILD_FLAGS = $(CARGO_BUILD_FLAGS)
 
 .PHONY: $(ARCHS_IOS)
 x86_64-apple-ios aarch64-apple-ios: CARGO_ENV_FLAGS += CFLAGS="-DPB_NO_PACKED_STRUCTS=1"

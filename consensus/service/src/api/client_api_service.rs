@@ -168,7 +168,7 @@ mod client_api_tests {
         ring_signature::KeyImage, tx::TxHash, validation::TransactionValidationError,
     };
     use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator};
-    use serial_test_derive::serial;
+    use serial_test::serial;
     use std::{sync::Arc, time::Duration};
 
     /// Starts the service on localhost and connects a client to it.

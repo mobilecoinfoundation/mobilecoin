@@ -5,12 +5,12 @@
 
 use crate::{Signer, Verifier};
 use mc_crypto_digestible_signature::{DigestibleSigner, DigestibleVerifier};
-use mc_crypto_keys::{Ed25519Pair, Ed25519Public, Ed25519Signature, Ed25519SignatureError};
+use mc_crypto_keys::{Ed25519Pair, Ed25519Public, Ed25519Signature, SignatureError};
 use mc_fog_report_types::Report;
 
 impl Signer for Ed25519Pair {
     type Sig = Ed25519Signature;
-    type Error = Ed25519SignatureError;
+    type Error = SignatureError;
 
     fn sign_reports(&self, reports: &[Report]) -> Result<Self::Sig, Self::Error> {
         self.try_sign_digestible(super::context(), &reports)
@@ -19,7 +19,7 @@ impl Signer for Ed25519Pair {
 
 impl Verifier for Ed25519Public {
     type Sig = Ed25519Signature;
-    type Error = Ed25519SignatureError;
+    type Error = SignatureError;
 
     fn verify_reports(&self, reports: &[Report], sig: &Self::Sig) -> Result<(), Self::Error> {
         self.verify_digestible(super::context(), &reports, sig)

@@ -333,7 +333,7 @@ commands:
     parameters:
       test_command:
         type: string
-        default: cargo test --workspace --exclude "mc-fog-*" --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests -j 4
+        default: cargo test --workspace --exclude "mc-fog-*" --exclude "mc-consensus-*" --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests -j 4
     steps:
       - run:
           name: Run mobilecoin tests
@@ -368,6 +368,22 @@ commands:
       - store_artifacts:
           path: /tmp/core_dumps
 
+  run-consensus-tests:
+    steps:
+      - run:
+          name: Run consensus tests
+          command: |
+            # tell the operating system to remove the file size limit on core dump files
+            ulimit -c unlimited
+            cargo test --package "mc-consensus-*" -j 4 --frozen --no-fail-fast
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_artifacts:
+          path: /tmp/core_dumps
+
   # FIXME: Figure out why the parallel tests stuff using cargo2junit isn't working in the cloud for fog, maybe a memory limit issue?
   run-fog-tests:
     steps:
@@ -376,7 +392,23 @@ commands:
           command: |
             # tell the operating system to remove the file size limit on core dump files
             ulimit -c unlimited
-            cargo test --package "mc-fog-*" -j 4 --frozen --no-fail-fast
+            cargo test --workspace --package "mc-fog-*" --exclude "mc-fog-ingest-*" -j 4 --frozen --no-fail-fast
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_artifacts:
+          path: /tmp/core_dumps
+
+  run-fog-ingest-tests:
+    steps:
+      - run:
+          name: Run fog ingest tests (in release mode)
+          command: |
+            # tell the operating system to remove the file size limit on core dump files
+            ulimit -c unlimited
+            cargo test --release --package "mc-fog-ingest-*" -j 4 --frozen --no-fail-fast
       - run:
           command: |
             mkdir -p /tmp/core_dumps
@@ -499,6 +531,20 @@ jobs:
       - post-build
       - post-mc-test
 
+  # Run consensus tests on a single container
+  run-consensus-tests:
+    executor: build-executor
+    environment:
+      <<: *default-build-environment
+    steps:
+      - prepare-for-build
+      - run-consensus-tests
+      - check-dirty-git
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ save-sccache-cache ]
+      - post-build
+
   # Run fog tests on a single container
   run-fog-tests:
     executor: build-executor
@@ -507,6 +553,21 @@ jobs:
     steps:
       - prepare-for-build
       - run-fog-tests
+      - check-dirty-git
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ save-sccache-cache ]
+      - post-build
+      - post-fog-test
+
+  # Run fog ingest tests on a single container
+  run-fog-ingest-tests:
+    executor: build-executor
+    environment:
+      <<: *default-build-environment
+    steps:
+      - prepare-for-build
+      - run-fog-ingest-tests
       - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
@@ -654,8 +715,16 @@ workflows:
       - run-mc-tests:
           filters: { branches: { ignore: /^deploy\/.*/ } }
 
+      # Run consensus tests on a single container
+      - run-consensus-tests:
+          filters: { branches: { ignore: /^deploy\/.*/ } }
+
       # Run fog tests on a single container
       - run-fog-tests:
+          filters: { branches: { ignore: /^deploy\/.*/ } }
+
+      # Run fog ingest tests on a single container
+      - run-fog-ingest-tests:
           filters: { branches: { ignore: /^deploy\/.*/ } }
 
       # run fog conformance tests

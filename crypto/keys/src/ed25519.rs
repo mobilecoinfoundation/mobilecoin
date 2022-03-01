@@ -3,19 +3,20 @@
 //! This module implements the common keys traits for the Ed25519 digital
 //! signature scheme.
 
-pub use ed25519::signature::Error as Ed25519SignatureError;
+pub use ed25519::signature::Error as SignatureError;
 
 use alloc::vec;
 
 use crate::traits::*;
 use alloc::vec::Vec;
-use core::convert::TryFrom;
+use core::{
+    cmp::Ordering,
+    convert::TryFrom,
+    hash::{Hash, Hasher},
+};
 use digest::generic_array::typenum::{U32, U64};
 use ed25519::{
-    signature::{
-        DigestSigner, DigestVerifier, Error as SignatureError, Signature as SignatureTrait, Signer,
-        Verifier,
-    },
+    signature::{DigestSigner, DigestVerifier, Signature as SignatureTrait, Signer, Verifier},
     Signature,
 };
 use ed25519_dalek::{
@@ -30,7 +31,6 @@ use mc_util_repr_bytes::{
 };
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
-use signature::Error;
 use zeroize::Zeroize;
 
 // ASN.1 DER Signature Bytes -- this is a set of nested TLVs describing
@@ -401,6 +401,24 @@ impl PartialEq for Ed25519Signature {
     }
 }
 
+impl PartialOrd for Ed25519Signature {
+    fn partial_cmp(&self, other: &Ed25519Signature) -> Option<Ordering> {
+        self.to_bytes().partial_cmp(&other.to_bytes())
+    }
+}
+
+impl Ord for Ed25519Signature {
+    fn cmp(&self, other: &Ed25519Signature) -> Ordering {
+        self.to_bytes().cmp(&other.to_bytes())
+    }
+}
+
+impl Hash for Ed25519Signature {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.to_bytes().hash(state)
+    }
+}
+
 // This is needed to implement prost::Message
 impl Default for Ed25519Signature {
     fn default() -> Self {
@@ -409,7 +427,7 @@ impl Default for Ed25519Signature {
 }
 
 impl SignatureTrait for Ed25519Signature {
-    fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
+    fn from_bytes(bytes: &[u8]) -> Result<Self, SignatureError> {
         Ok(Self(Signature::from_bytes(bytes)?))
     }
 }
@@ -421,9 +439,9 @@ impl AsRef<[u8]> for Ed25519Signature {
 }
 
 impl<'a> TryFrom<&'a [u8]> for Ed25519Signature {
-    type Error = Ed25519SignatureError;
+    type Error = SignatureError;
 
-    fn try_from(bytes: &'a [u8]) -> Result<Self, Error> {
+    fn try_from(bytes: &'a [u8]) -> Result<Self, SignatureError> {
         Ok(Self(Signature::try_from(bytes)?))
     }
 }

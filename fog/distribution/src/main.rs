@@ -24,7 +24,7 @@ use mc_transaction_core::{
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Token,
+    BlockVersion, Token,
 };
 use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_util_uri::FogUri;
@@ -37,7 +37,7 @@ use std::{
     path::Path,
     str::FromStr,
     sync::{
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicU32, AtomicU64, Ordering},
         Arc, Mutex,
     },
     thread,
@@ -71,6 +71,7 @@ fn get_conns(
 
 lazy_static! {
     pub static ref BLOCK_HEIGHT: AtomicU64 = AtomicU64::default();
+    pub static ref BLOCK_VERSION: AtomicU32 = AtomicU32::new(1);
 
     pub static ref FEE: AtomicU64 = AtomicU64::default();
 
@@ -125,6 +126,10 @@ fn main() {
     let ledger_db = LedgerDB::open(ledger_dir.path()).expect("Could not open ledger_db");
 
     BLOCK_HEIGHT.store(ledger_db.num_blocks().unwrap(), Ordering::SeqCst);
+    BLOCK_VERSION.store(
+        ledger_db.get_latest_block().unwrap().version,
+        Ordering::SeqCst,
+    );
 
     // Use the maximum fee of all configured consensus nodes
     FEE.store(
@@ -563,8 +568,14 @@ fn build_tx(
     // Sanity
     assert_eq!(utxos_with_proofs.len(), rings.len());
 
+    // This max occurs because the bootstrapped ledger has block version 0,
+    // but non-bootstrap blocks always have block version >= 1
+    let block_version = BlockVersion::try_from(BLOCK_VERSION.load(Ordering::SeqCst))
+        .expect("Unsupported block version");
+
     // Create tx_builder.
-    let mut tx_builder = TransactionBuilder::new(fog_resolver, EmptyMemoBuilder::default());
+    let mut tx_builder =
+        TransactionBuilder::new(block_version, fog_resolver, EmptyMemoBuilder::default());
 
     tx_builder.set_fee(FEE.load(Ordering::SeqCst)).unwrap();
 

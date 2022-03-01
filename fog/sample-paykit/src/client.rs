@@ -33,11 +33,11 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
-    BlockIndex, Token,
+    BlockIndex, BlockVersion, Token,
 };
 use mc_transaction_std::{
-    ChangeDestination, InputCredentials, MemoType, NoMemoBuilder, RTHMemoBuilder,
-    SenderMemoCredential, TransactionBuilder,
+    ChangeDestination, InputCredentials, MemoType, RTHMemoBuilder, SenderMemoCredential,
+    TransactionBuilder,
 };
 use mc_util_telemetry::{block_span_builder, telemetry_static_key, tracer, Key, Span};
 use mc_util_uri::{ConnectionUri, FogUri};
@@ -70,9 +70,6 @@ pub struct Client {
     /// tombstone block when generating a new transaction.
     new_tx_block_attempts: u16,
 
-    /// Whether to use RTH memos. For backwards compat, we can turn memos off.
-    use_rth_memos: bool,
-
     logger: Logger,
 }
 
@@ -90,7 +87,6 @@ impl Client {
         ring_size: usize,
         account_key: AccountKey,
         address_book: Vec<PublicAddress>,
-        use_rth_memos: bool,
         logger: Logger,
     ) -> Self {
         let tx_data = CachedTxData::new(account_key.clone(), address_book, logger.clone());
@@ -108,7 +104,6 @@ impl Client {
             account_key,
             tx_data,
             new_tx_block_attempts: DEFAULT_NEW_TX_BLOCK_ATTEMPTS,
-            use_rth_memos,
             logger,
         }
     }
@@ -159,7 +154,7 @@ impl Client {
     /// * Balance (in picomob)
     /// * Number of blocks in the chain at the time that this was the correct
     ///   balance
-    pub fn compute_balance(&mut self) -> (u64, BlockCount) {
+    pub fn compute_balance(&self) -> (u64, BlockCount) {
         self.tx_data.get_balance()
     }
 
@@ -169,8 +164,14 @@ impl Client {
     }
 
     /// Get the last memo (or validation error) that we recieved from a TxOut
-    pub fn get_last_memo(&mut self) -> &StdResult<Option<MemoType>, MemoHandlerError> {
+    pub fn get_last_memo(&self) -> &StdResult<Option<MemoType>, MemoHandlerError> {
         self.tx_data.get_last_memo()
+    }
+
+    /// Get the latest block version that we heard about from fog
+    /// Note that this may not be a "valid" block version if our software is old
+    pub fn get_latest_block_version(&self) -> u32 {
+        self.tx_data.get_latest_block_version()
     }
 
     /// Submits a transaction to the MobileCoin network.
@@ -327,6 +328,8 @@ impl Client {
 
         let tombstone_block = self.compute_tombstone_block()?;
 
+        let block_version = BlockVersion::try_from(self.tx_data.get_latest_block_version())?;
+
         // Make fog resolver
         // TODO: This should be the change subaddress, not the default subaddress, for
         // self.account_key
@@ -341,6 +344,7 @@ impl Client {
         let fog_resolver = FogResolver::new(fog_responses, &self.fog_verifier)?;
 
         build_transaction_helper(
+            block_version,
             inputs,
             rings,
             amount,
@@ -348,7 +352,6 @@ impl Client {
             target_address,
             tombstone_block,
             fog_resolver,
-            self.use_rth_memos,
             rng,
             &self.logger,
             fee,
@@ -541,6 +544,7 @@ impl Client {
 /// and returns the remainder to the sender minus the transaction fee.
 ///
 /// # Arguments
+/// * `block_version` - The block version to target
 /// * `inputs` - Inputs that will be spent by the transaction.
 /// * `rings` - A ring of TxOuts and membership proofs for each input.
 /// * `amount` - The amount that will be sent.
@@ -552,6 +556,7 @@ impl Client {
 ///   longer valid.
 /// * `rng` -
 fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
+    block_version: BlockVersion,
     inputs: Vec<(OwnedTxOut, TxOutMembershipProof)>,
     rings: Vec<Vec<(TxOut, TxOutMembershipProof)>>,
     amount: u64,
@@ -559,7 +564,6 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     target_address: &PublicAddress,
     tombstone_block: BlockIndex,
     fog_resolver: FPR,
-    use_rth_memos: bool,
     rng: &mut T,
     logger: &Logger,
     fee: u64,
@@ -574,16 +578,14 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
         return Err(Error::RingsForInput(rings.len(), inputs.len()));
     }
 
-    // Use the RTHMemoBuilder if memos are enabled, NoMemoBuilder otherwise
-    let mut tx_builder = if use_rth_memos {
+    // Use the RTHMemoBuilder
+    // Note: Memos are disabled if we target an older block version
+    let mut tx_builder = {
         let mut memo_builder = RTHMemoBuilder::default();
         memo_builder.set_sender_credential(SenderMemoCredential::from(source_account_key));
         memo_builder.enable_destination_memo();
 
-        TransactionBuilder::new(fog_resolver, memo_builder)
-    } else {
-        let memo_builder = NoMemoBuilder::default();
-        TransactionBuilder::new(fog_resolver, memo_builder)
+        TransactionBuilder::new(block_version, fog_resolver, memo_builder)
     };
     tx_builder.set_fee(fee)?;
 
@@ -728,115 +730,120 @@ mod test_build_transaction_helper {
     fn test_build_transaction_helper_rings_disjoint_from_inputs(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let sender_account_key = AccountKey::random(&mut rng);
-        let sender_public_address = sender_account_key.default_subaddress();
+        for block_version in BlockVersion::iterator() {
+            let sender_account_key = AccountKey::random(&mut rng);
+            let sender_public_address = sender_account_key.default_subaddress();
 
-        // Amount per input.
-        let initial_amount = 300 * MILLIMOB_TO_PICOMOB;
-        let amount_to_send = 457 * MILLIMOB_TO_PICOMOB;
-        let num_inputs = 3;
-        let ring_size = 1;
+            // Amount per input.
+            let initial_amount = 300 * MILLIMOB_TO_PICOMOB;
+            let amount_to_send = 457 * MILLIMOB_TO_PICOMOB;
+            let num_inputs = 3;
+            let ring_size = 1;
 
-        // Create inputs.
-        let inputs = {
-            let mut recipient_and_amount: Vec<(PublicAddress, u64)> = Vec::new();
-            for _i in 0..num_inputs {
-                recipient_and_amount.push((sender_public_address.clone(), initial_amount));
-            }
-            let outputs = get_outputs(&recipient_and_amount, &mut rng);
-
-            let cached_inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = outputs
-                .into_iter()
-                .map(|tx_out| {
-                    let fog_tx_out = FogTxOut::from(&tx_out);
-                    let meta = FogTxOutMetadata::default();
-                    let txo_record = TxOutRecord::new(fog_tx_out, meta);
-
-                    let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key).unwrap();
-                    let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
-
-                    let subaddress_spk = recover_public_subaddress_spend_key(
-                        sender_account_key.view_private_key(),
-                        &tx_out_target_key,
-                        &tx_public_key,
-                    );
-                    let spsk_to_index =
-                        HashMap::from_iter(vec![(subaddress_spk, DEFAULT_SUBADDRESS_INDEX)]);
-
-                    let owned_tx_out =
-                        OwnedTxOut::new(txo_record, &sender_account_key, &spsk_to_index).unwrap();
-
-                    let proof = TxOutMembershipProof::new(0, 0, Default::default());
-
-                    (owned_tx_out, proof)
-                })
-                .collect();
-
-            cached_inputs
-        };
-
-        assert_eq!(inputs.len(), num_inputs);
-
-        // Create rings.
-        let mut rings: Vec<Vec<TxOut>> = Vec::new();
-        for _i in 0..num_inputs {
-            let ring: Vec<TxOut> = {
+            // Create inputs.
+            let inputs = {
                 let mut recipient_and_amount: Vec<(PublicAddress, u64)> = Vec::new();
-                for _i in 0..ring_size {
-                    recipient_and_amount.push((sender_public_address.clone(), 33));
+                for _i in 0..num_inputs {
+                    recipient_and_amount.push((sender_public_address.clone(), initial_amount));
                 }
-                get_outputs(&recipient_and_amount, &mut rng)
+                let outputs = get_outputs(block_version, &recipient_and_amount, &mut rng);
+
+                let cached_inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = outputs
+                    .into_iter()
+                    .map(|tx_out| {
+                        let fog_tx_out = FogTxOut::from(&tx_out);
+                        let meta = FogTxOutMetadata::default();
+                        let txo_record = TxOutRecord::new(fog_tx_out, meta);
+
+                        let tx_out_target_key =
+                            RistrettoPublic::try_from(&tx_out.target_key).unwrap();
+                        let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+
+                        let subaddress_spk = recover_public_subaddress_spend_key(
+                            sender_account_key.view_private_key(),
+                            &tx_out_target_key,
+                            &tx_public_key,
+                        );
+                        let spsk_to_index =
+                            HashMap::from_iter(vec![(subaddress_spk, DEFAULT_SUBADDRESS_INDEX)]);
+
+                        let owned_tx_out =
+                            OwnedTxOut::new(txo_record, &sender_account_key, &spsk_to_index)
+                                .unwrap();
+
+                        let proof = TxOutMembershipProof::new(0, 0, Default::default());
+
+                        (owned_tx_out, proof)
+                    })
+                    .collect();
+
+                cached_inputs
             };
-            assert_eq!(ring.len(), ring_size);
-            rings.push(ring);
+
+            assert_eq!(inputs.len(), num_inputs);
+
+            // Create rings.
+            let mut rings: Vec<Vec<TxOut>> = Vec::new();
+            for _i in 0..num_inputs {
+                let ring: Vec<TxOut> = {
+                    let mut recipient_and_amount: Vec<(PublicAddress, u64)> = Vec::new();
+                    for _i in 0..ring_size {
+                        recipient_and_amount.push((sender_public_address.clone(), 33));
+                    }
+                    get_outputs(block_version, &recipient_and_amount, &mut rng)
+                };
+                assert_eq!(ring.len(), ring_size);
+                rings.push(ring);
+            }
+
+            assert_eq!(inputs.len(), rings.len());
+
+            let mut rings_and_membership_proofs: Vec<Vec<(TxOut, TxOutMembershipProof)>> =
+                Vec::new();
+            for ring in rings.into_iter() {
+                let ring_with_proofs = ring
+                    .into_iter()
+                    .map(|tx_out| {
+                        let membership_proof = TxOutMembershipProof::new(0, 0, Default::default());
+                        (tx_out, membership_proof)
+                    })
+                    .collect();
+                rings_and_membership_proofs.push(ring_with_proofs);
+            }
+
+            let recipient_account_key = AccountKey::random(&mut rng);
+
+            let fake_acct_resolver = FakeAcctResolver {};
+            let tx = build_transaction_helper(
+                block_version,
+                inputs,
+                rings_and_membership_proofs,
+                amount_to_send,
+                &sender_account_key,
+                &recipient_account_key.default_subaddress(),
+                super::BlockIndex::max_value(),
+                fake_acct_resolver,
+                &mut rng,
+                &logger,
+                Mob::MINIMUM_FEE,
+            )
+            .unwrap();
+
+            // The transaction should contain the correct number of inputs.
+            assert_eq!(tx.prefix.inputs.len(), num_inputs);
+
+            // Each TxIn should contain a ring of `ring_size` elements. If `ring_size` is
+            // zero, the ring will have size 1 after the input is included.
+            for tx_in in tx.prefix.inputs {
+                assert_eq!(tx_in.ring.len(), ring_size);
+            }
+
+            // TODO: `tx` should contain the correct number of outputs.
+
+            // TODO: `tx` should send the correct amount to the recipient.
+
+            // TODO: `tx` should return the correct "change" to the sender.
         }
-
-        assert_eq!(inputs.len(), rings.len());
-
-        let mut rings_and_membership_proofs: Vec<Vec<(TxOut, TxOutMembershipProof)>> = Vec::new();
-        for ring in rings.into_iter() {
-            let ring_with_proofs = ring
-                .into_iter()
-                .map(|tx_out| {
-                    let membership_proof = TxOutMembershipProof::new(0, 0, Default::default());
-                    (tx_out, membership_proof)
-                })
-                .collect();
-            rings_and_membership_proofs.push(ring_with_proofs);
-        }
-
-        let recipient_account_key = AccountKey::random(&mut rng);
-
-        let fake_acct_resolver = FakeAcctResolver {};
-        let tx = build_transaction_helper(
-            inputs,
-            rings_and_membership_proofs,
-            amount_to_send,
-            &sender_account_key,
-            &recipient_account_key.default_subaddress(),
-            super::BlockIndex::max_value(),
-            fake_acct_resolver,
-            true,
-            &mut rng,
-            &logger,
-            Mob::MINIMUM_FEE,
-        )
-        .unwrap();
-
-        // The transaction should contain the correct number of inputs.
-        assert_eq!(tx.prefix.inputs.len(), num_inputs);
-
-        // Each TxIn should contain a ring of `ring_size` elements. If `ring_size` is
-        // zero, the ring will have size 1 after the input is included.
-        for tx_in in tx.prefix.inputs {
-            assert_eq!(tx_in.ring.len(), ring_size);
-        }
-
-        // TODO: `tx` should contain the correct number of outputs.
-
-        // TODO: `tx` should send the correct amount to the recipient.
-
-        // TODO: `tx` should return the correct "change" to the sender.
     }
 
     #[test]

@@ -3,14 +3,17 @@
 //! APIs for MobileCoin Consensus Node Enclaves
 
 #![no_std]
+#![deny(missing_docs)]
 
 extern crate alloc;
 
+mod config;
 mod error;
 mod fee_map;
 mod messages;
 
 pub use crate::{
+    config::{BlockchainConfig, BlockchainConfigWithDigest},
     error::Error,
     fee_map::{Error as FeeMapError, FeeMap},
     messages::EnclaveCall,
@@ -28,7 +31,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, RistrettoPublic, 
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_transaction_core::{
     ring_signature::KeyImage,
-    tx::{Tx, TxHash, TxOutMembershipProof},
+    tx::{Tx, TxHash, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockSignature, TokenId,
 };
 use serde::{Deserialize, Serialize};
@@ -87,26 +90,32 @@ impl WellFormedTxContext {
         }
     }
 
+    /// Get the tx_hash
     pub fn tx_hash(&self) -> &TxHash {
         &self.tx_hash
     }
 
+    /// Get the fee
     pub fn fee(&self) -> u64 {
         self.fee
     }
 
+    /// Get the tombstone block
     pub fn tombstone_block(&self) -> u64 {
         self.tombstone_block
     }
 
+    /// Get the key images
     pub fn key_images(&self) -> &Vec<KeyImage> {
         &self.key_images
     }
 
+    /// Get the highest indices
     pub fn highest_indices(&self) -> &Vec<u64> {
         &self.highest_indices
     }
 
+    /// Get the output public keys
     pub fn output_public_keys(&self) -> &Vec<CompressedRistrettoPublic> {
         &self.output_public_keys
     }
@@ -186,13 +195,20 @@ mod well_formed_tx_context_tests {
 /// place in `tx_is_well_formed`.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct TxContext {
+    /// The Tx encrypted for the local enclave
     pub locally_encrypted_tx: LocallyEncryptedTx,
+    /// The hash of the (unencrypted) Tx
     pub tx_hash: TxHash,
+    /// The highest indices in the Tx merkle proof
     pub highest_indices: Vec<u64>,
+    /// The key images appearing in the Tx
     pub key_images: Vec<KeyImage>,
+    /// The output public keys appearing in the Tx
     pub output_public_keys: Vec<CompressedRistrettoPublic>,
 }
 
+/// A type alias for the SGX sealed version of the block signing key of the
+/// local enclave
 pub type SealedBlockSigningKey = Vec<u8>;
 
 /// PublicAddress is not serializable with serde currently, and rather than
@@ -200,7 +216,9 @@ pub type SealedBlockSigningKey = Vec<u8>;
 /// RistrettoPublic.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct FeePublicKey {
+    /// The spend public key of the fee address
     pub spend_public_key: RistrettoPublic,
+    /// The view public key of the fee address
     pub view_public_key: RistrettoPublic,
 }
 
@@ -214,7 +232,7 @@ pub trait ConsensusEnclave: ReportableEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-        fee_map: &FeeMap,
+        blockchain_config: BlockchainConfig,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)>;
 
     /// Retrieve the current minimum fee for a given token id.
@@ -301,6 +319,7 @@ pub trait ConsensusEnclave: ReportableEnclave {
         &self,
         parent_block: &Block,
         encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+        root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)>;
 }
 

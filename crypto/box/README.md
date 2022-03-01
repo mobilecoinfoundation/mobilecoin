@@ -50,7 +50,7 @@ such a scheme.
 The security statement for this assembly is roughly as follows:
 - If the `Kex` is well-chosen, then the shared secret that results is hard for
   an adversary to predict, or even, distinguish from a random nonce.
-- If `Digest` is well-chosen, then `Hkdf<Digest>` 
+- If `Digest` is well-chosen, then `Hkdf<Digest>`
   and derives from the shared secret, a key and IV that are hard to distinguish
   from uniformly random bytes.
 - If the key and IV are such, then a suitable `Aead` provides confidentiality and

@@ -1,5 +1,10 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+//! A client object that creates an attested connection with a fog view enclave
+//! mediated over grpc. Can be used to make high-level requests.
+
+#![deny(missing_docs)]
+
 use grpcio::{ChannelBuilder, Environment};
 use mc_attest_verifier::Verifier;
 use mc_common::{
@@ -11,18 +16,39 @@ use mc_fog_enclave_connection::{EnclaveConnection, Error as EnclaveConnectionErr
 use mc_fog_types::view::{QueryRequest, QueryRequestAAD, QueryResponse};
 use mc_fog_uri::FogViewUri;
 use mc_fog_view_protocol::FogViewConnection;
-use mc_util_grpc::ConnectionUriGrpcioChannel;
+use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcRetryConfig};
 use mc_util_telemetry::{tracer, Tracer};
-use retry::{delay::Fixed, retry, Error as RetryError};
-use std::sync::Arc;
+use retry::Error as RetryError;
+use std::{fmt::Display, sync::Arc};
 
+/// A high-level object mediating requests to the fog view service
 pub struct FogViewGrpcClient {
+    /// The attested connection
     conn: EnclaveConnection<FogViewUri, view_grpc::FogViewApiClient>,
+    /// The grpc retry config
+    grpc_retry_config: GrpcRetryConfig,
+    /// The uri we connected to
+    uri: FogViewUri,
+    /// A logger object
     logger: Logger,
 }
 
 impl FogViewGrpcClient {
-    pub fn new(uri: FogViewUri, verifier: Verifier, env: Arc<Environment>, logger: Logger) -> Self {
+    /// Create a new fog view grpc client
+    ///
+    /// Arguments:
+    /// * uri: The Uri to connect to
+    /// * grpc_retry_config: Retry policy to use for connection issues
+    /// * verifier: The attestation verifier
+    /// * env: A grpc environment (thread pool) to use for this connection
+    /// * logger: For logging
+    pub fn new(
+        uri: FogViewUri,
+        grpc_retry_config: GrpcRetryConfig,
+        verifier: Verifier,
+        env: Arc<Environment>,
+        logger: Logger,
+    ) -> Self {
         let logger = logger.new(o!("mc.fog.cxn" => uri.to_string()));
 
         let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&uri, &logger);
@@ -30,14 +56,16 @@ impl FogViewGrpcClient {
         let grpc_client = view_grpc::FogViewApiClient::new(ch);
 
         Self {
-            conn: EnclaveConnection::new(uri, grpc_client, verifier, logger.clone()),
+            conn: EnclaveConnection::new(uri.clone(), grpc_client, verifier, logger.clone()),
+            grpc_retry_config,
+            uri,
             logger,
         }
     }
 }
 
 impl FogViewConnection for FogViewGrpcClient {
-    type Error = RetryError<EnclaveConnectionError>;
+    type Error = Error;
 
     fn request(
         &mut self,
@@ -67,10 +95,35 @@ impl FogViewConnection for FogViewGrpcClient {
 
             let aad_bytes = mc_util_serial::encode(&req_aad);
 
-            retry(Fixed::from_millis(100).take(5), || {
-                self.conn
-                    .retriable_encrypted_enclave_request(&req, &aad_bytes)
-            })
+            let retry_config = self.grpc_retry_config;
+            retry_config
+                .retry(|| {
+                    self.conn
+                        .retriable_encrypted_enclave_request(&req, &aad_bytes)
+                })
+                .map_err(|error| Error {
+                    uri: self.uri.clone(),
+                    error,
+                })
         })
+    }
+}
+
+/// An error that can occur when making a fog view request
+#[derive(Debug)]
+pub struct Error {
+    /// The uri which we made the request from
+    pub uri: FogViewUri,
+    /// The error which occurred
+    pub error: RetryError<EnclaveConnectionError>,
+}
+
+impl Display for Error {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            formatter,
+            "Fog view connection error ({}): {}",
+            &self.uri, &self.error
+        )
     }
 }

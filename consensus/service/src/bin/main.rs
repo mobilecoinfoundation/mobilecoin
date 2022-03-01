@@ -8,7 +8,7 @@ use mc_common::{
     logger::{create_app_logger, log, o},
     time::SystemTimeProvider,
 };
-use mc_consensus_enclave::{ConsensusServiceSgxEnclave, ENCLAVE_FILE};
+use mc_consensus_enclave::{BlockchainConfig, ConsensusServiceSgxEnclave, ENCLAVE_FILE};
 use mc_consensus_service::{
     config::Config,
     consensus_service::{ConsensusService, ConsensusServiceError},
@@ -31,7 +31,7 @@ fn main() -> Result<(), ConsensusServiceError> {
 
     let config = Config::from_args();
     let local_node_id = config.node_id();
-    let fee_map = config.fee_map().expect("Could not parse fee map");
+    let fee_map = config.tokens().fee_map().expect("Could not parse fee map");
 
     let (logger, _global_logger_guard) = create_app_logger(o!(
         "mc.local_node_id" => local_node_id.responder_id.to_string(),
@@ -59,6 +59,11 @@ fn main() -> Result<(), ConsensusServiceError> {
         scope.set_tag("local_node_id", local_node_id.responder_id.to_string());
     });
 
+    let blockchain_config = BlockchainConfig {
+        fee_map: fee_map.clone(),
+        block_version: config.block_version,
+    };
+
     let enclave_path = env::current_exe()
         .expect("Could not get the path of our executable")
         .with_file_name(ENCLAVE_FILE);
@@ -67,7 +72,7 @@ fn main() -> Result<(), ConsensusServiceError> {
         &config.peer_responder_id,
         &config.client_responder_id,
         &cached_key,
-        &fee_map,
+        blockchain_config,
     );
 
     log::info!(logger, "Enclave target features: {}", features.join(", "));

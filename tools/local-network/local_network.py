@@ -160,6 +160,7 @@ class Node:
         self.ledger_dir = os.path.join(WORK_DIR, f'node-ledger-{self.node_num}')
         self.ledger_distribution_dir = os.path.join(WORK_DIR, f'node-ledger-distribution-{self.node_num}')
         self.msg_signer_key_file = os.path.join(WORK_DIR, f'node-scp-{self.node_num}.pem')
+        self.tokens_config_file = os.path.join(WORK_DIR, f'node-tokens-{self.node_num}.json')
         subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {self.msg_signer_key_file}', shell=True)
 
     def peer_uri(self, broadcast_consensus_msgs=True):
@@ -213,6 +214,15 @@ class Node:
         except FileNotFoundError:
             pass
 
+        # Tokens config file
+        tokens_config = {
+            "tokens": [
+                { "token_id": 0, "minimum_fee": self.minimum_fee },
+            ],
+        }
+        with open(self.tokens_config_file, 'w') as f:
+            json.dump(tokens_config, f)
+
         cmd = ' '.join([
             f'cd {PROJECT_DIR} && exec {TARGET_DIR}/consensus-service',
             f'--client-responder-id localhost:{self.client_port}',
@@ -228,7 +238,7 @@ class Node:
             f'--peer-listen-uri="insecure-mcp://0.0.0.0:{self.peer_port}/"',
             f'--scp-debug-dump {WORK_DIR}/scp-debug-dump-{self.node_num}',
             f'--sealed-block-signing-key {WORK_DIR}/consensus-sealed-block-signing-key-{self.node_num}',
-            f'--minimum-fee=0:{self.minimum_fee}',
+            f'--tokens={self.tokens_config_file}',
         ])
 
         print(f'Starting node {self.name}: client_port={self.client_port} peer_port={self.peer_port} admin_port={self.admin_port}')
@@ -242,8 +252,11 @@ class Node:
         # Wait for ledger db to become available
         ledger_db = os.path.join(self.ledger_dir, 'data.mdb')
         while not os.path.exists(ledger_db):
-            time.sleep(1)
+            if self.consensus_process.poll() is not None:
+                print('consensus process crashed')
+                return self.stop()
             print(f'Waiting for {ledger_db}')
+            time.sleep(1)
 
         cmd = ' '.join([
             f'cd {PROJECT_DIR} && exec {TARGET_DIR}/ledger-distribution',
@@ -252,7 +265,7 @@ class Node:
             f'--state-file {WORK_DIR}/ledger-distribution-state-{self.node_num}',
         ])
         print(f'Starting local ledger distribution: {cmd}')
-        self.ledger_distribution_process= subprocess.Popen(cmd, shell=True)
+        self.ledger_distribution_process = subprocess.Popen(cmd, shell=True)
 
         cmd = ' '.join([
             f'cd {PROJECT_DIR} && export ROCKET_CLI_COLORS=0 && exec {TARGET_DIR}/mc-admin-http-gateway',
@@ -317,8 +330,10 @@ class Mobilecoind:
         self.process = subprocess.Popen(cmd, shell=True)
         print()
 
-        print('Waiting for watcher db to become available')
         while not os.path.exists(os.path.join(self.watcher_db, 'data.mdb')):
+            if self.process.poll() is not None:
+                print('mobilecoind process crashed')
+                return self.stop()
             print('Waiting for watcher db to become available')
             time.sleep(1)
 
@@ -334,6 +349,7 @@ class NetworkCLI(threading.Thread):
     def __init__(self, network):
         super().__init__()
         self.network = network
+        self.server = None
 
     def run(self):
         network = self.network
@@ -386,15 +402,20 @@ class NetworkCLI(threading.Thread):
 
                     self.send('> ')
 
+        assert self.server is None
         socketserver.TCPServer.allow_reuse_address = True
-        server = socketserver.TCPServer(('0.0.0.0', CLI_PORT), NetworkCLITCPHandler)
-        server.serve_forever()
+        self.server = socketserver.TCPServer(('0.0.0.0', CLI_PORT), NetworkCLITCPHandler)
+        self.server.serve_forever()
+
+    def stop(self):
+        self.server.shutdown()
 
 class Network:
     def __init__(self):
         self.cloud_logging = None
         self.nodes = []
         self.ledger_distribution = None
+        self.cli = None
         try:
             shutil.rmtree(WORK_DIR)
         except FileNotFoundError:
@@ -442,12 +463,7 @@ class Network:
                 return node
 
     def start(self):
-        print("Killing any existing processes")
-        try:
-            subprocess.check_output("killall -9 consensus-service filebeat ledger-distribution prometheus mc-admin-http-gateway mobilecoind 2>/dev/null", shell=True)
-        except subprocess.CalledProcessError as exc:
-            if exc.returncode != 1:
-                raise
+        self.stop()
 
         self.cloud_logging = CloudLogging()
         self.cloud_logging.start(self)
@@ -456,9 +472,11 @@ class Network:
         for node in self.nodes:
             node.start(self)
 
+        print("Starting network CLI")
         self.cli = NetworkCLI(self)
         self.cli.start()
 
+        print("Starting mobilecoind")
         self.mobilecoind = Mobilecoind(MOBILECOIND_PORT)
         self.mobilecoind.start(self)
 
@@ -478,7 +496,24 @@ class Network:
                     print(f'Node {node} ledger distribution died with exit code {node.ledger_distribution_process.poll()}')
                     return False
 
+            if self.mobilecoind.process and self.mobilecoind.process.poll() is not None:
+                print(f'mobilecoind died with exit code {self.mobilecoind.process.poll()}')
+                return False
+
             time.sleep(1)
+
+    def stop(self):
+        if self.cli is not None:
+            self.cli.stop()
+            self.cli = None
+
+        print("Killing any existing processes")
+        try:
+            subprocess.check_output("killall -9 consensus-service filebeat ledger-distribution prometheus mc-admin-http-gateway mobilecoind 2>/dev/null", shell=True)
+        except subprocess.CalledProcessError as exc:
+            if exc.returncode != 1:
+                raise
+
 
     def default_entry_point(self, network_type, skip_build=False):
         if network_type == 'dense5':
@@ -524,6 +559,7 @@ class Network:
 
         self.start()
         self.wait()
+        self.stop()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Local network tester')

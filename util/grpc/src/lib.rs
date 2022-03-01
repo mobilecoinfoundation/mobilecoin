@@ -27,6 +27,7 @@ mod build_info_service;
 mod cookie_helper;
 mod grpcio_extensions;
 mod health_service;
+mod retry_config;
 mod server_cert_reloader;
 
 pub use crate::{
@@ -42,6 +43,7 @@ pub use crate::{
     cookie_helper::{Error as CookieError, GrpcCookieStore},
     grpcio_extensions::{ConnectionUriGrpcioChannel, ConnectionUriGrpcioServer},
     health_service::{HealthCheckStatus, HealthService, ReadinessIndicator},
+    retry_config::GrpcRetryConfig,
     server_cert_reloader::{ServerCertReloader, ServerCertReloaderError},
 };
 

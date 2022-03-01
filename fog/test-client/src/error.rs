@@ -4,6 +4,7 @@
 
 use displaydoc::Display;
 use mc_fog_sample_paykit::Error as SamplePaykitError;
+use mc_transaction_core::BlockVersionError;
 
 /// Error that can occur when running a test transfer
 #[derive(Display, Debug)]
@@ -32,4 +33,12 @@ pub enum TestClientError {
     SubmitTx(SamplePaykitError),
     /// Client error while confirming a transaction: {0}
     ConfirmTx(SamplePaykitError),
+    /// Block version error: {0}
+    BlockVersion(BlockVersionError),
+}
+
+impl From<BlockVersionError> for TestClientError {
+    fn from(src: BlockVersionError) -> Self {
+        Self::BlockVersion(src)
+    }
 }

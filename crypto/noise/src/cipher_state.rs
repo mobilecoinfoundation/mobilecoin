@@ -13,6 +13,8 @@ use generic_array::{typenum::Unsigned, GenericArray};
 use secrecy::{ExposeSecret, SecretVec};
 use serde::{Deserialize, Serialize};
 
+const MAX_BYTES_SENT: u64 = (1u64 << 56) + 4;
+
 #[derive(
     Copy, Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
@@ -170,7 +172,7 @@ impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> CipherState<Cipher> {
     /// implementation returned an error.
     pub fn encrypt_with_ad(&mut self, aad: &[u8], msg: &[u8]) -> Result<Vec<u8>, CipherError> {
         let msg_len = msg.len() as u64;
-        if self.nonce == core::u64::MAX || self.bytes_sent + msg_len > 72_057_594_037_927_940 {
+        if self.nonce == core::u64::MAX || self.bytes_sent + msg_len > MAX_BYTES_SENT {
             return Err(CipherError::ReKeyNeeded);
         }
 
@@ -211,7 +213,7 @@ impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> CipherState<Cipher> {
 
             // This is a little weird down here, but it indicates the far side
             // encrypted some data it shouldn't have...
-            if self.bytes_sent + retval.len() as u64 > 72_057_594_037_927_940 {
+            if self.bytes_sent + retval.len() as u64 > MAX_BYTES_SENT {
                 return Err(CipherError::ReKeyNeeded);
             }
 

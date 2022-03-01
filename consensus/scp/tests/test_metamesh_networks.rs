@@ -3,7 +3,7 @@
 mod mock_network;
 
 use mc_common::logger::{test_with_logger, Logger};
-use serial_test_derive::serial;
+use serial_test::serial;
 use std::time::Duration;
 
 /// Performs a consensus test for a metamesh network of `n * m` nodes.

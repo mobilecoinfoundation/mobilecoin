@@ -146,7 +146,7 @@ impl MemoBuilder for RTHMemoBuilder {
         value: u64,
         recipient: &PublicAddress,
         memo_context: MemoContext,
-    ) -> Result<Option<MemoPayload>, NewMemoError> {
+    ) -> Result<MemoPayload, NewMemoError> {
         if self.wrote_destination_memo {
             return Err(NewMemoError::OutputsAfterChange);
         }
@@ -179,7 +179,7 @@ impl MemoBuilder for RTHMemoBuilder {
         } else {
             UnusedMemo {}.into()
         };
-        Ok(Some(payload))
+        Ok(payload)
     }
 
     /// Build a memo for a change output (to ourselves).
@@ -188,9 +188,9 @@ impl MemoBuilder for RTHMemoBuilder {
         _value: u64,
         _change_destination: &ChangeDestination,
         _memo_context: MemoContext,
-    ) -> Result<Option<MemoPayload>, NewMemoError> {
+    ) -> Result<MemoPayload, NewMemoError> {
         if !self.destination_memo_enabled {
-            return Ok(Some(UnusedMemo {}.into()));
+            return Ok(UnusedMemo {}.into());
         }
         if self.wrote_destination_memo {
             return Err(NewMemoError::MultipleChangeOutputs);
@@ -203,7 +203,7 @@ impl MemoBuilder for RTHMemoBuilder {
             Ok(mut d_memo) => {
                 self.wrote_destination_memo = true;
                 d_memo.set_num_recipients(self.num_recipients);
-                Ok(Some(d_memo.into()))
+                Ok(d_memo.into())
             }
             Err(err) => match err {
                 DestinationMemoError::FeeTooLarge => Err(NewMemoError::LimitsExceeded("fee")),

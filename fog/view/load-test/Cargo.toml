@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-view-load-test"
-version = "1.2.0-pre0"
+version = "1.3.0-pre0"
 authors = ["MobileCoin"]
 edition = "2018"
 license = "GPL-3.0"
@@ -18,6 +18,7 @@ structopt = "0.3"
 mc-account-keys = { path = "../../../account-keys" }
 mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["log"] }
+mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-keyfile = { path = "../../../util/keyfile" }
 
 # fog

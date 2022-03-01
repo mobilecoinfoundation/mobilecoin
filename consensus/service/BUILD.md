@@ -93,7 +93,7 @@ We provide an example install_sgx script that we use in our deployment in [docke
 Recommended SDK and package installation:
 
 ```bash
-# Download Drivers, Setup SGX Package Repository 
+# Download Drivers, Setup SGX Package Repository
 (
 	. /etc/os-release
 

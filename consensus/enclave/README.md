@@ -21,7 +21,7 @@ The data flow, therefore is:
  1. Generated code passes that through the SGX ECALL machinery into the corresponding `mobileenclave_ecall` definition in `mc-consensus-enclave-trusted`.
  1. `mc-consensus-enclave-trusted` deserializes the request structure, and gives it to the "real" implementation, which lives in `mc-consensus-enclave-impl`.
  1. Returned data is handled in a similar fashion as the stack is unwound.
- 
+
  Therefore, the "base" crate contains a basic remoting implementation that proxies data into the enclave across the SGX boundary.
- 
- The `mc-consensus-enclave-edl` crate contains build-time Enclave Definition Language (EDL) files which describe the code to be generated, and is used by both outer and `-trusted` crates. 
+
+ The `mc-consensus-enclave-edl` crate contains build-time Enclave Definition Language (EDL) files which describe the code to be generated, and is used by both outer and `-trusted` crates.

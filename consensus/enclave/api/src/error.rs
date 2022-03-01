@@ -7,7 +7,7 @@ use alloc::string::String;
 use displaydoc::Display;
 use mc_attest_core::SgxError;
 use mc_attest_enclave_api::Error as AttestEnclaveError;
-use mc_crypto_keys::Ed25519SignatureError;
+use mc_crypto_keys::SignatureError;
 use mc_crypto_message_cipher::CipherError as MessageCipherError;
 use mc_sgx_compat::sync::PoisonError;
 use mc_transaction_core::validation::TransactionValidationError;
@@ -41,6 +41,9 @@ pub enum Error {
     /// Invalid membership proof provided by local system
     InvalidLocalMembershipProof,
 
+    /// Invalid membership root element provided by local system
+    InvalidLocalMembershipRootElement,
+
     /// Form block error: {0}
     FormBlock(String),
 
@@ -52,6 +55,12 @@ pub enum Error {
 
     /// Invalid fee configuration: {0}
     FeeMap(FeeMapError),
+
+    /// Enclave not initialized
+    NotInitialized,
+
+    /// Block Version Error: {0}
+    BlockVersion(String),
 }
 
 impl From<MessageCipherError> for Error {
@@ -108,8 +117,8 @@ impl From<AttestEnclaveError> for Error {
     }
 }
 
-impl From<Ed25519SignatureError> for Error {
-    fn from(_src: Ed25519SignatureError) -> Error {
+impl From<SignatureError> for Error {
+    fn from(_src: SignatureError) -> Error {
         Error::Signature
     }
 }

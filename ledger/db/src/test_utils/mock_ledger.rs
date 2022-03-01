@@ -7,7 +7,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockID, BlockSignature, BLOCK_VERSION,
+    Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion,
 };
 use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, SeedableRng};
@@ -249,7 +249,7 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
             let block_contents = BlockContents::new(key_images, outputs);
 
             let block = Block::new_with_parent(
-                BLOCK_VERSION,
+                BlockVersion::ONE,
                 &blocks_and_contents[block_index - 1].0,
                 &TxOutMembershipElement::default(),
                 &block_contents,
