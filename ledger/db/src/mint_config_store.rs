@@ -172,6 +172,14 @@ impl MintConfigStore {
             .find(|active_mint_config| active_mint_config.mint_config == *mint_config)
             .ok_or_else(|| Error::InvalidMintConfig("Mint config not found".to_string()))?;
 
+        // Total minted amount should never decrease.
+        if amount < active_mint_config.total_minted {
+            return Err(Error::TotalMintedAmountCannotDecrease(
+                amount,
+                active_mint_config.total_minted,
+            ));
+        }
+
         // Update the total minted amount.
         active_mint_config.total_minted = amount;
 
@@ -560,6 +568,42 @@ mod test {
                     test_tx_1.prefix.configs[1].mint_limit + 1,
                     test_tx_1.prefix.configs[1].mint_limit
                 ))
+            );
+        }
+    }
+
+    #[test]
+    fn cannot_decrease_total_minted_amount() {
+        let (mint_config_store, env) = init_mint_config_store();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        let test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
+
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .update_total_minted(&test_tx_1.prefix.configs[1], 10, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            assert_eq!(
+                mint_config_store.update_total_minted(
+                    &test_tx_1.prefix.configs[1],
+                    9,
+                    &mut db_transaction,
+                ),
+                Err(Error::TotalMintedAmountCannotDecrease(9, 10,))
             );
         }
     }

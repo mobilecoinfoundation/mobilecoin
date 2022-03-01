@@ -69,6 +69,9 @@ pub enum Error {
 
     /// Mint limit exceeded: {0} > {1}
     MintLimitExceeded(u64, u64),
+
+    /// Total minted amount cannot decrease: {0} < {1}
+    TotalMintedAmountCannotDecrease(u64, u64),
 }
 
 impl From<lmdb::Error> for Error {
