@@ -30,7 +30,7 @@ impl TryFrom<&external::Ed25519MultiSig> for MultiSig<Ed25519Signature> {
         let signatures: Vec<Ed25519Signature> = source
             .get_signatures()
             .iter()
-            .map(|s| Ed25519Signature::try_from(s))
+            .map(Ed25519Signature::try_from)
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(Self::new(signatures))
@@ -60,7 +60,7 @@ impl TryFrom<&external::Ed25519SignerSet> for SignerSet<Ed25519Public> {
         let signers: Vec<Ed25519Public> = source
             .get_signers()
             .iter()
-            .map(|s| Ed25519Public::try_from(s))
+            .map(Ed25519Public::try_from)
             .collect::<Result<Vec<_>, _>>()?;
 
         let threshold = source.get_threshold();

@@ -56,7 +56,7 @@ impl TryFrom<&external::SetMintConfigTxPrefix> for SetMintConfigTxPrefix {
         let configs: Vec<MintConfig> = source
             .get_configs()
             .iter()
-            .map(|c| MintConfig::try_from(c))
+            .map(MintConfig::try_from)
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(Self {
