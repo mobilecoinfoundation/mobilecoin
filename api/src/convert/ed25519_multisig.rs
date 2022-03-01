@@ -124,8 +124,7 @@ pub mod tests {
             assert_eq!(source, recovered);
         }
 
-        // Converting mc_transaction_core::mint::SignerSet<Ed25519Public> ->
-        // external::Ed25519SignerSet -> mc_transaction_core::mint::
+        // SignerSet<Ed25519Public> -> external::Ed25519SignerSet ->
         // SignerSet<Ed25519Public> should be the identity function.
         {
             let external = external::Ed25519SignerSet::from(&source);
@@ -163,8 +162,7 @@ pub mod tests {
             assert_eq!(source, recovered);
         }
 
-        // Converting mc_transaction_core::mint::MultiSig<Ed25519Public> ->
-        // external::Ed25519MultiSig -> mc_transaction_core::mint::
+        // Converting MultiSig<Ed25519Public> -> external::Ed25519MultiSig ->
         // MultiSig<Ed25519Public> should be the identity function.
         {
             let external = external::Ed25519MultiSig::from(&source);
