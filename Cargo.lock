@@ -3030,6 +3030,7 @@ dependencies = [
  "mc-util-uri",
  "mockall",
  "once_cell",
+ "pem",
  "protobuf",
  "rand 0.8.5",
  "rand_core 0.6.3",
