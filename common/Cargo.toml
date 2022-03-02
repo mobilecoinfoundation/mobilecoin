@@ -56,7 +56,7 @@ hex_fmt = "0.3"
 hostname = { version = "0.3.1", optional = true }
 lazy_static = { version = "1.4", optional = true }
 rand_core = { version = "0.6", default-features = false }
-sentry = { version = "0.24", optional = true, default-features = false, features = ["backtrace", "contexts", "log", "panic", "reqwest", "rustls", "serde_json", "slog"] }
+sentry = { version = "0.25", optional = true, default-features = false, features = ["backtrace", "contexts", "log", "panic", "reqwest", "rustls", "serde_json", "slog"] }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 sha3 = { version = "0.9", default-features = false }
 siphasher = "0.3"
