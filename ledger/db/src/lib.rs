@@ -26,7 +26,7 @@ use mc_common::logger::global_log;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     membership_proofs::Range,
-    mint::{MintConfig, SetMintConfigTx},
+    mint::{MintConfig, MintTx, SetMintConfigTx},
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockData, BlockID, BlockSignature, TokenId, MAX_BLOCK_VERSION,
@@ -51,7 +51,7 @@ pub use mint_config_store::{ActiveMintConfig, MintConfigStore};
 pub use tx_out_store::TxOutStore;
 
 pub const MAX_LMDB_FILE_SIZE: usize = 2usize.pow(40); // 1 TB
-pub const MAX_LMDB_DATABASES: u32 = 24; // maximum number of databases in the lmdb file
+pub const MAX_LMDB_DATABASES: u32 = 26; // maximum number of databases in the lmdb file
 
 // LMDB Database names.
 pub const COUNTS_DB_NAME: &str = "ledger_db:counts";
@@ -61,6 +61,8 @@ pub const KEY_IMAGES_DB_NAME: &str = "ledger_db:key_images";
 pub const KEY_IMAGES_BY_BLOCK_DB_NAME: &str = "ledger_db:key_images_by_block";
 pub const TX_OUTS_BY_BLOCK_DB_NAME: &str = "ledger_db:tx_outs_by_block";
 pub const BLOCK_NUMBER_BY_TX_OUT_INDEX: &str = "ledger_db:block_number_by_tx_out_index";
+pub const SET_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME: &str = "ledger_db:set_mint_config_txs_by_block";
+pub const MINT_TXS_BY_BLOCK_DB_NAME: &str = "ledger_db:set_txs_by_block";
 
 /// Keys used by the `counts` database.
 pub const NUM_BLOCKS_KEY: &str = "num_blocks";
@@ -108,6 +110,22 @@ pub struct KeyImageList {
     pub key_images: Vec<KeyImage>,
 }
 
+/// A list of set-mint-config-txs that can be prost-encoded. This is needed
+/// since that's the only way to encode a Vec<SetMintConfigTx>.
+#[derive(Clone, Message)]
+pub struct SetMintConfigTxList {
+    #[prost(message, repeated, tag = "1")]
+    pub set_mint_config_txs: Vec<SetMintConfigTx>,
+}
+
+/// A list of mint-txs that can be prost-encoded. This is needed since that's
+/// the only way to encode a Vec<MintTx>.
+#[derive(Clone, Message)]
+pub struct MintTxList {
+    #[prost(message, repeated, tag = "1")]
+    pub mint_txs: Vec<MintTx>,
+}
+
 #[derive(Clone)]
 pub struct LedgerDB {
     env: Arc<Environment>,
@@ -145,6 +163,12 @@ pub struct LedgerDB {
 
     /// Storage abstraction for mint configurations.
     mint_config_store: MintConfigStore,
+
+    /// SetMintConfigTxs by block.
+    set_mint_config_txs_by_block: Database,
+
+    /// MintTxs by block.
+    set_mint_txs_by_block: Database,
 
     /// Location on filesystem.
     path: PathBuf,
@@ -190,6 +214,18 @@ impl Ledger for LedgerDB {
 
         // Write information about TxOuts included in block.
         self.write_tx_outs(block.index, &block_contents.outputs, &mut db_transaction)?;
+
+        // Write SetMintConfigTxs included in the block.
+        self.write_set_mint_config_txs(
+            block.index,
+            &block_contents.set_mint_config_txs,
+            &mut db_transaction,
+        )?;
+
+        // Write MintTxs included in the block.
+        self.write_mint_txs(block.index, &block_contents.mint_txs, &mut db_transaction)?;
+
+        // TODO update total minted if anything was minted
 
         // Write block.
         self.write_block(block, signature.as_ref(), &mut db_transaction)?;
@@ -426,6 +462,9 @@ impl LedgerDB {
         let key_images_by_block = env.open_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME))?;
         let tx_outs_by_block = env.open_db(Some(TX_OUTS_BY_BLOCK_DB_NAME))?;
         let block_number_by_tx_out_index = env.open_db(Some(BLOCK_NUMBER_BY_TX_OUT_INDEX))?;
+        let set_mint_config_txs_by_block =
+            env.open_db(Some(SET_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME))?;
+        let mint_txs_by_block = env.open_db(Some(MINT_TXS_BY_BLOCK_DB_NAME))?;
 
         let tx_out_store = TxOutStore::new(&env)?;
         let mint_config_store = MintConfigStore::new(&env)?;
@@ -445,6 +484,8 @@ impl LedgerDB {
             metadata_store,
             tx_out_store,
             mint_config_store,
+            set_mint_config_txs_by_block,
+            mint_txs_by_block,
             metrics,
         };
 
@@ -457,7 +498,7 @@ impl LedgerDB {
     /// Creates a fresh Ledger Database in the given path.
     pub fn create(path: &Path) -> Result<(), Error> {
         let env = Environment::new()
-            .set_max_dbs(22)
+            .set_max_dbs(MAX_LMDB_DATABASES)
             .set_map_size(MAX_LMDB_FILE_SIZE)
             .open(path)?;
 
@@ -468,6 +509,11 @@ impl LedgerDB {
         env.create_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(TX_OUTS_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCK_NUMBER_BY_TX_OUT_INDEX), DatabaseFlags::empty())?;
+        env.create_db(
+            Some(SET_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME),
+            DatabaseFlags::empty(),
+        )?;
+        env.create_db(Some(MINT_TXS_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
 
         MetadataStore::<LedgerDbMetadataStoreSettings>::create(&env)?;
         TxOutStore::create(&env)?;
@@ -616,6 +662,48 @@ impl LedgerDB {
         Ok(())
     }
 
+    fn write_set_mint_config_txs(
+        &self,
+        block_index: u64,
+        set_mint_config_txs: &[SetMintConfigTx],
+        db_transaction: &mut RwTransaction,
+    ) -> Result<(), Error> {
+        let block_index_bytes = u64_to_key_bytes(block_index);
+
+        let set_mint_config_tx_list = SetMintConfigTxList {
+            set_mint_config_txs: set_mint_config_txs.to_vec(),
+        };
+
+        db_transaction.put(
+            self.set_mint_config_txs_by_block,
+            &u64_to_key_bytes(block_index),
+            &encode(&set_mint_config_tx_list),
+            WriteFlags::empty(),
+        )?;
+        Ok(())
+    }
+
+    fn write_mint_txs(
+        &self,
+        block_index: u64,
+        mint_txs: &[MintTx],
+        db_transaction: &mut RwTransaction,
+    ) -> Result<(), Error> {
+        let block_index_bytes = u64_to_key_bytes(block_index);
+
+        let mint_tx_list = MintTxList {
+            mint_txs: mint_txs.to_vec(),
+        };
+
+        db_transaction.put(
+            self.mint_txs_by_block,
+            &u64_to_key_bytes(block_index),
+            &encode(&mint_tx_list),
+            WriteFlags::empty(),
+        )?;
+        Ok(())
+    }
+
     /// Checks if a block can be appended to the db.
     fn validate_append_block(
         &self,
@@ -693,6 +781,8 @@ impl LedgerDB {
             return Err(Error::InvalidBlockID(block.id.clone()));
         }
 
+        // TODO check minting?
+
         // All good
         Ok(())
     }
@@ -741,10 +831,22 @@ impl LedgerDB {
         let key_image_list: KeyImageList =
             decode(db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?)?;
 
+        // Get all SetMintConfigTxs in block.
+        let set_mint_config_tx_list: SetMintConfigTxList = decode(db_transaction.get(
+            self.set_mint_config_txs_by_block,
+            &u64_to_key_bytes(block_number),
+        )?)?;
+
+        // Get all MintTxs in block.
+        let mint_txs: MintTxList =
+            decode(db_transaction.get(self.mint_txs_by_block, &u64_to_key_bytes(block_number))?)?;
+
         // Returns block contents.
         Ok(BlockContents {
             key_images: key_image_list.key_images,
             outputs,
+            set_mint_config_txs: set_mint_config_tx_list.set_mint_config_txs,
+            mint_txs: mint_txs.mint_txs,
         })
     }
 

@@ -1,6 +1,11 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use crate::{ring_signature::KeyImage, tx::TxOut, ConvertError};
+use crate::{
+    mint::{MintTx, SetMintConfigTx},
+    ring_signature::KeyImage,
+    tx::TxOut,
+    ConvertError,
+};
 use alloc::{vec, vec::Vec};
 use core::{convert::TryFrom, fmt::Debug};
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
@@ -21,13 +26,28 @@ pub struct BlockContents {
     /// Outputs minted by this block.
     #[prost(message, repeated, tag = "2")]
     pub outputs: Vec<TxOut>,
+
+    /// Set-mint-config transactions in this block.
+    #[prost(message, repeated, tag = "3")]
+    pub set_mint_config_txs: Vec<SetMintConfigTx>,
+
+    /// Mint transactions in this block.
+    #[prost(message, repeated, tag = "4")]
+    pub mint_txs: Vec<MintTx>,
 }
 
 impl BlockContents {
-    pub fn new(key_images: Vec<KeyImage>, outputs: Vec<TxOut>) -> Self {
+    pub fn new(
+        key_images: Vec<KeyImage>,
+        outputs: Vec<TxOut>,
+        set_mint_config_txs: Vec<SetMintConfigTx>,
+        mint_txs: Vec<MintTx>,
+    ) -> Self {
         Self {
             key_images,
             outputs,
+            set_mint_config_txs,
+            mint_txs,
         }
     }
 

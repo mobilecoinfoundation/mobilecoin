@@ -61,9 +61,11 @@ impl Block {
         let index: BlockIndex = 0;
         let cumulative_txo_count = outputs.len() as u64;
         let root_element = TxOutMembershipElement::default();
-        // The origin block does not contain any key images.
+        // The origin block does not contain any key images, set_mint_config_txs or mint_txs.
         let key_images = Vec::new();
-        let block_contents = BlockContents::new(key_images, outputs.to_vec());
+        let set_mint_config_txs = Vec::new();
+        let mint_txs = Vec::new();
+        let block_contents = BlockContents::new(key_images, outputs.to_vec(), set_mint_config_txs, mint_txs);
         let contents_hash = block_contents.hash();
         let id = compute_block_id(
             version,

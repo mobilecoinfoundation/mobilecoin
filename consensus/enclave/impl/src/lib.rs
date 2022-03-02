@@ -601,7 +601,12 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // key images.
         outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
         key_images.sort();
-        let block_contents = BlockContents::new(key_images, outputs);
+
+        // Right now set-mint-config-txs and mint-txs are not actually created anywhere.
+        let set_mint_config_txs = Vec::new();
+        let mint_txs = Vec::new();
+
+        let block_contents = BlockContents::new(key_images, outputs, set_mint_config_txs, mint_txs);
 
         // Form the block.
         let block = Block::new_with_parent(

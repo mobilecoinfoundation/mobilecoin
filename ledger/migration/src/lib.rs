@@ -90,6 +90,9 @@ pub fn migrate(ledger_db_path: impl AsRef<Path>, logger: &Logger) {
                 );
                 MintConfigStore::create(&env).expect("Failed creating MintConfigStore");
 
+                // TODO create the two new by-block databases and fill them with empty data for
+                // existing blocks!
+
                 let mut db_txn = env.begin_rw_txn().expect("Failed starting rw transaction");
                 metadata_store
                     .set_version(&mut db_txn, 2022_02_22)
