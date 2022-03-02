@@ -11,61 +11,63 @@ use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fs, iter::FromIterator, path::Path};
 
-mod der_signer_set {
+mod pem_signer_set {
     use super::*;
+    use pem::Pem;
 
-    /// A helper struct for ser/derserializing a SignerSet that uses hex-encoded
-    /// DER representation of Ed25519 public keys.
+    /// A helper struct for ser/derserializing an Ed25519 SignerSet that is PEM
+    /// encoded.
     #[derive(Serialize, Deserialize)]
-    struct DerSignerSet {
-        signers: Vec<String>,
+    struct PemSignerSet {
+        signers: String,
         threshold: u32,
     }
 
-    /// Helper method for serializing a SignerSet<Ed25519Public> into a
-    /// hex-DER-encoded variant.
+    /// Helper method for serializing a SignerSet<Ed25519Public> into PEM.
     pub fn serialize<S: Serializer>(
         signer_set: &Option<SignerSet<Ed25519Public>>,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
-        let der_signer_set = signer_set.as_ref().map(|signer_set| DerSignerSet {
-            signers: signer_set
+        let pem_signer_set = signer_set.as_ref().map(|signer_set| {
+            let pems = signer_set
                 .signers()
                 .iter()
-                .map(|signer| hex::encode(&signer.to_der()))
-                .collect(),
-            threshold: signer_set.threshold(),
+                .map(|signer| Pem {
+                    tag: String::from("PUBLIC KEY"),
+                    contents: signer.to_der(),
+                })
+                .collect::<Vec<_>>();
+
+            PemSignerSet {
+                signers: pem::encode_many(&pems[..]),
+                threshold: signer_set.threshold(),
+            }
         });
 
-        der_signer_set.serialize(serializer)
+        pem_signer_set.serialize(serializer)
     }
 
-    /// Helper method for deserializing a hex-DER-encoded
-    /// SignerSet<Ed25519Public>.
+    /// Helper method for deserializing a PEM-encoded SignerSet<Ed25519Public>.
     pub fn deserialize<'de, D: Deserializer<'de>>(
         deserializer: D,
     ) -> Result<Option<SignerSet<Ed25519Public>>, D::Error> {
-        let der_signer_set: Option<DerSignerSet> = Deserialize::deserialize(deserializer)?;
-        match der_signer_set {
+        let pem_signer_set: Option<PemSignerSet> = Deserialize::deserialize(deserializer)?;
+        match pem_signer_set {
             None => Ok(None),
-            Some(der_signer_set) => {
-                let signers = der_signer_set
-                    .signers
+            Some(pem_signer_set) => {
+                let pems = pem::parse_many(pem_signer_set.signers.as_bytes())
+                    .map_err(serde::de::Error::custom)?;
+
+                let signers = pems
                     .iter()
-                    .map(|s| {
-                        // Decode each hex-encoded string into a byte vector.
-                        hex::decode(s)
+                    .map(|pem| {
+                        Ed25519Public::try_from_der(&pem.contents[..])
                             .map_err(serde::de::Error::custom)
-                            .and_then(|bytes| {
-                                // Decode each byte vector into an Ed25519Public.
-                                Ed25519Public::try_from_der(&bytes[..])
-                                    .map_err(serde::de::Error::custom)
-                            })
                     })
                     // Return the keys.
                     .collect::<Result<_, D::Error>>()?;
 
-                Ok(Some(SignerSet::new(signers, der_signer_set.threshold)))
+                Ok(Some(SignerSet::new(signers, pem_signer_set.threshold)))
             }
         }
     }
@@ -91,7 +93,7 @@ pub struct TokenConfig {
     /// Master minters - if set, controls the set of keys that can sign
     /// set-minting-configuration transactions.
     /// Not supported for MOB
-    #[serde(default, with = "der_signer_set")]
+    #[serde(default, with = "pem_signer_set")]
     master_minters: Option<SignerSet<Ed25519Public>>,
 }
 
@@ -559,6 +561,9 @@ mod tests {
     fn cant_use_allow_any_fee_on_non_mob_tokens() {
         let input_toml: &str = r#"
             [[tokens]]
+            token_id = 0
+
+            [[tokens]]
             token_id = 1
             minimum_fee = 123000
             allow_any_fee = true
@@ -567,6 +572,7 @@ mod tests {
 
         let input_json: &str = r#"{
             "tokens": [
+                { "token_id": 0 },
                 { "token_id": 1, "minimum_fee": 123000, "allow_any_fee": true }
             ]
         }"#;
@@ -574,7 +580,10 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since allow_any_fee cannot be used on non-MOB tokens.
-        assert_validation_error(&tokens, "MOB token configuration not found");
+        assert_validation_error(
+            &tokens,
+            "token id 1: allow_any_fee can only be used for MOB",
+        );
     }
 
     #[test]
@@ -650,7 +659,7 @@ mod tests {
     }
 
     #[test]
-    fn master_minters_deserialize_serialize_deserialize_works() {
+    fn master_minters_serialize_deserialize_works() {
         let token_config = TokenConfig {
             token_id: TokenId::from(123),
             minimum_fee: Some(456),
@@ -672,14 +681,28 @@ mod tests {
 
     #[test]
     fn valid_minting_config() {
-        let key1 = Ed25519Public::try_from(&[3u8; 32][..]).unwrap();
-        let key2 = Ed25519Public::try_from(&[123u8; 32][..]).unwrap();
+        // Keys were generated using:
+        // ```sh
+        // pri_pem=$(openssl genpkey -algorithm ED25519)
+        // pri_der=$(echo -n "${pri_pem}" | openssl pkey -outform DER | openssl base64)
+        // echo -n "${pri_pem}" | openssl pkey -pubout
+        // ```
 
-        // This test code is used to generate the two keys used in the test below.
-        let key1_hex = hex::encode(&key1.to_der());
-        let key2_hex = hex::encode(&key2.to_der());
-        println!("{}", key1_hex);
-        println!("{}", key2_hex);
+        let pem1 = pem::parse(
+            r#"-----BEGIN PUBLIC KEY-----
+            MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
+            -----END PUBLIC KEY-----"#,
+        )
+        .unwrap();
+        let key1 = Ed25519Public::try_from_der(&pem1.contents[..]).unwrap();
+
+        let pem2 = pem::parse(
+            r#"-----BEGIN PUBLIC KEY-----
+            MCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=
+            -----END PUBLIC KEY-----"#,
+        )
+        .unwrap();
+        let key2 = Ed25519Public::try_from_der(&pem2.contents[..]).unwrap();
 
         let input_toml: &str = r#"
             [[tokens]]
@@ -689,14 +712,18 @@ mod tests {
             token_id = 1
             minimum_fee = 1
             [tokens.master_minters]
-            signers = [
-                "302a300506032b65700321000303030303030303030303030303030303030303030303030303030303030303",
-                "302a300506032b65700321007b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b"
-            ]
+            signers = """
+            -----BEGIN PUBLIC KEY-----
+            MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
+            -----END PUBLIC KEY-----
+            -----BEGIN PUBLIC KEY-----
+            MCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=
+            -----END PUBLIC KEY-----
+            """
             threshold = 1
        "#;
-
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+
         let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 0 },
@@ -704,10 +731,7 @@ mod tests {
                     "token_id": 1,
                     "minimum_fee": 1,
                     "master_minters": {
-                        "signers": [
-                            "302a300506032b65700321000303030303030303030303030303030303030303030303030303030303030303",
-                            "302a300506032b65700321007b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b"
-                        ],
+                        "signers": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----",
                         "threshold": 1
                     }
                 }
@@ -748,11 +772,12 @@ mod tests {
             token_id = 0
             
             [tokens.master_minters]
-            signers = [
-                "302a300506032b65700321000303030303030303030303030303030303030303030303030303030303030303",
-                "302a300506032b65700321007b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b"
-            ]
-            threshold = 1
+            signers = """
+            -----BEGIN PUBLIC KEY-----
+            MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
+            -----END PUBLIC KEY-----
+            """
+             threshold = 1
        "#;
 
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
@@ -770,7 +795,7 @@ mod tests {
             token_id = 2
             minimum_fee = 1
             [tokens.master_minters]
-            signers = []
+            signers = ""
             threshold = 1
        "#;
 
@@ -788,10 +813,11 @@ mod tests {
             token_id = 2
             minimum_fee = 1
             [tokens.master_minters]
-            signers = [
-                "302a300506032b65700321000303030303030303030303030303030303030303030303030303030303030303",
-                "302a300506032b65700321007b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b"
-            ]
+            signers = """
+            -----BEGIN PUBLIC KEY-----
+            MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
+            -----END PUBLIC KEY-----
+            """
             threshold = 0
        "#;
 
