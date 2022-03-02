@@ -62,6 +62,11 @@ impl<
     pub fn new(signatures: Vec<S>) -> Self {
         Self { signatures }
     }
+
+    /// Get signatures
+    pub fn signatures(&self) -> &[S] {
+        &self.signatures
+    }
 }
 
 /// A set of M-out-of-N public keys.

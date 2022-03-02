@@ -2564,6 +2564,7 @@ dependencies = [
  "mc-account-keys",
  "mc-attest-core",
  "mc-crypto-keys",
+ "mc-crypto-multisig",
  "mc-crypto-x509-test-vectors",
  "mc-test-vectors-b58-encodings",
  "mc-transaction-core",
@@ -2581,6 +2582,8 @@ dependencies = [
  "prost",
  "protobuf",
  "rand 0.8.5",
+ "rand_core 0.6.3",
+ "rand_hc 0.3.1",
 ]
 
 [[package]]
