@@ -10,6 +10,7 @@ extern crate test;
 mod error;
 mod ledger_trait;
 mod metrics;
+mod mint_config_store;
 
 pub mod tx_out_store;
 
@@ -25,9 +26,10 @@ use mc_common::logger::global_log;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     membership_proofs::Range,
+    mint::{MintConfig, SetMintConfigTx},
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockID, BlockSignature, MAX_BLOCK_VERSION,
+    Block, BlockContents, BlockData, BlockID, BlockSignature, TokenId, MAX_BLOCK_VERSION,
 };
 use mc_util_lmdb::MetadataStoreSettings;
 use mc_util_serial::{decode, encode, Message};
@@ -45,10 +47,11 @@ use std::{
 pub use error::Error;
 pub use ledger_trait::{Ledger, MockLedger};
 pub use mc_util_lmdb::{MetadataStore, MetadataStoreError};
+pub use mint_config_store::{ActiveMintConfig, MintConfigStore};
 pub use tx_out_store::TxOutStore;
 
 pub const MAX_LMDB_FILE_SIZE: usize = 2usize.pow(40); // 1 TB
-pub const MAX_LMDB_DATABASES: u32 = 22; // maximum number of databases in the lmdb file
+pub const MAX_LMDB_DATABASES: u32 = 24; // maximum number of databases in the lmdb file
 
 // LMDB Database names.
 pub const COUNTS_DB_NAME: &str = "ledger_db:counts";
@@ -75,8 +78,8 @@ impl MetadataStoreSettings for LedgerDbMetadataStoreSettings {
     // introduced. If this is properly maintained, we could check during ledger
     // db opening for any incompatibilities, and either refuse to open or
     // perform a migration.
-    #[allow(clippy::unreadable_literal)]
-    const LATEST_VERSION: u64 = 20200707;
+    #[allow(clippy::inconsistent_digit_grouping)]
+    const LATEST_VERSION: u64 = 2022_02_22;
 
     /// The current crate version that manages the database.
     const CRATE_VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -139,6 +142,9 @@ pub struct LedgerDB {
     /// TxOut global index -> block number.
     /// This map allows retrieval of the block a given TxOut belongs to.
     block_number_by_tx_out_index: Database,
+
+    /// Storage abstraction for mint configurations.
+    mint_config_store: MintConfigStore,
 
     /// Location on filesystem.
     path: PathBuf,
@@ -365,6 +371,33 @@ impl Ledger for LedgerDB {
         )?;
         Ok(TxOutMembershipElement::new(range, root_merkle_hash))
     }
+
+    /// Set active mint configurations for a given token id, based on a
+    /// set-mint-config transaction.
+    fn set_active_mint_configs(&self, set_mint_config_tx: &SetMintConfigTx) -> Result<(), Error> {
+        let mut db_transaction = self.env.begin_rw_txn()?;
+        self.mint_config_store
+            .set_active_mint_configs(set_mint_config_tx, &mut db_transaction)?;
+        db_transaction.commit()?;
+        Ok(())
+    }
+
+    /// Get active mint configurations for a given token id.
+    /// Returns an empty array of no mint configurations are active for the
+    /// given token id.
+    fn get_active_mint_configs(&self, token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error> {
+        let db_transaction = self.env.begin_ro_txn()?;
+        self.mint_config_store
+            .get_active_mint_configs(token_id, &db_transaction)
+    }
+
+    fn update_total_minted(&self, mint_config: &MintConfig, amount: u64) -> Result<(), Error> {
+        let mut db_transaction = self.env.begin_rw_txn()?;
+        self.mint_config_store
+            .update_total_minted(mint_config, amount, &mut db_transaction)?;
+        db_transaction.commit()?;
+        Ok(())
+    }
 }
 
 impl LedgerDB {
@@ -395,6 +428,7 @@ impl LedgerDB {
         let block_number_by_tx_out_index = env.open_db(Some(BLOCK_NUMBER_BY_TX_OUT_INDEX))?;
 
         let tx_out_store = TxOutStore::new(&env)?;
+        let mint_config_store = MintConfigStore::new(&env)?;
 
         let metrics = LedgerMetrics::new(path);
 
@@ -410,6 +444,7 @@ impl LedgerDB {
             block_number_by_tx_out_index,
             metadata_store,
             tx_out_store,
+            mint_config_store,
             metrics,
         };
 
@@ -436,6 +471,7 @@ impl LedgerDB {
 
         MetadataStore::<LedgerDbMetadataStoreSettings>::create(&env)?;
         TxOutStore::create(&env)?;
+        MintConfigStore::create(&env)?;
 
         let mut db_transaction = env.begin_rw_txn()?;
 
@@ -726,7 +762,7 @@ impl LedgerDB {
     }
 }
 
-// Specifies how we encode the u64 chunk number in lmdb
+// Specifies how we encode the u32/u64 chunk number in lmdb
 // The lexicographical sorting of the numbers, done by lmdb, must match the
 // numeric order of the chunks. Thus we use Big Endian byte order here
 pub fn u64_to_key_bytes(value: u64) -> [u8; 8] {
@@ -736,6 +772,10 @@ pub fn u64_to_key_bytes(value: u64) -> [u8; 8] {
 pub fn key_bytes_to_u64(bytes: &[u8]) -> u64 {
     assert_eq!(8, bytes.len());
     u64::from_be_bytes(bytes.try_into().unwrap())
+}
+
+pub fn u32_to_key_bytes(value: u32) -> [u8; 4] {
+    value.to_be_bytes()
 }
 
 #[cfg(test)]

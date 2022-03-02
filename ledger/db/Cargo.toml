@@ -37,6 +37,7 @@ curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features
 
 [dev-dependencies]
 mc-crypto-keys = { path = "../../crypto/keys" }
+mc-crypto-multisig = { path = "../../crypto/multisig" }
 mc-crypto-rand = { path = "../../crypto/rand" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 rand = "0.8"

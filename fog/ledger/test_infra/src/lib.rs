@@ -10,12 +10,13 @@ use mc_fog_ledger_enclave::{
     GetOutputsResponse, LedgerEnclave, OutputContext, Result as EnclaveResult,
 };
 use mc_fog_ledger_enclave_api::{KeyImageData, UntrustedKeyImageQueryResponse};
-use mc_ledger_db::{Error, Ledger};
+use mc_ledger_db::{ActiveMintConfig, Error, Ledger};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
+    mint::{MintConfig, SetMintConfigTx},
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockSignature,
+    Block, BlockContents, BlockData, BlockSignature, TokenId,
 };
 
 #[derive(Default, Clone)]
@@ -185,6 +186,18 @@ impl Ledger for MockLedger {
     }
 
     fn get_root_tx_out_membership_element(&self) -> Result<TxOutMembershipElement, Error> {
+        unimplemented!()
+    }
+
+    fn set_active_mint_configs(&self, _set_mint_config_tx: &SetMintConfigTx) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    fn get_active_mint_configs(&self, _token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error> {
+        unimplemented!()
+    }
+
+    fn update_total_minted(&self, _mint_config: &MintConfig, _amount: u64) -> Result<(), Error> {
         unimplemented!()
     }
 }
