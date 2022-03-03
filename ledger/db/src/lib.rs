@@ -1950,4 +1950,7 @@ mod ledger_db_test {
 
         b.iter(|| ledger_db.get_block(rng.next_u64() % n_blocks).unwrap())
     }
+
+    // TODO add test for block with only mint tx, only set mintconfig tx, no
+    // txs, regular txs + mints, etc
 }
