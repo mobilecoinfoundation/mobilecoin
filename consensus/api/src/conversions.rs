@@ -46,7 +46,6 @@ impl From<Error> for ProposeTxResult {
             Error::TxFeeError => Self::TxFeeError,
             Error::KeyError => Self::KeyError,
             Error::UnsortedInputs => Self::UnsortedInputs,
-            Error::UnsortedOutputs => Self::UnsortedOutputs,
             Error::MissingMemo => Self::MissingMemo,
             Error::MemosNotAllowed => Self::MemosNotAllowed,
         }
@@ -92,7 +91,6 @@ impl TryInto<Error> for ProposeTxResult {
             Self::TxFeeError => Ok(Error::TxFeeError),
             Self::KeyError => Ok(Error::KeyError),
             Self::UnsortedInputs => Ok(Error::UnsortedInputs),
-            Self::UnsortedOutputs => Ok(Error::UnsortedOutputs),
             Self::MissingMemo => Ok(Error::MissingMemo),
             Self::MemosNotAllowed => Ok(Error::MemosNotAllowed),
         }
