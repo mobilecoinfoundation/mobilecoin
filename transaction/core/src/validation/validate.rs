@@ -150,26 +150,20 @@ fn validate_ring_elements_are_unique(tx_prefix: &TxPrefix) -> TransactionValidat
         .flat_map(|tx_in| tx_in.ring.iter())
         .collect();
 
-    let mut uniques = HashSet::default();
-    for tx_out in &ring_elements {
-        if !uniques.insert(tx_out) {
-            return Err(TransactionValidationError::DuplicateRingElements);
-        }
-    }
-
-    Ok(())
+    check_unique(
+        &ring_elements,
+        TransactionValidationError::DuplicateRingElements,
+    )
 }
 
 /// Elements in a ring must be sorted.
 fn validate_ring_elements_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidationResult<()> {
     for tx_in in &tx_prefix.inputs {
-        if !tx_in
-            .ring
-            .windows(2)
-            .all(|w| w[0].public_key < w[1].public_key)
-        {
-            return Err(TransactionValidationError::UnsortedRingElements);
-        }
+        check_sorted(
+            &tx_in.ring,
+            |a, b| a.public_key < b.public_key,
+            TransactionValidationError::UnsortedRingElements,
+        )?;
     }
 
     Ok(())
@@ -178,51 +172,38 @@ fn validate_ring_elements_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidat
 /// Inputs must be sorted by the public key of the first ring element of each
 /// input.
 fn validate_inputs_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidationResult<()> {
-    let inputs_are_sorted = tx_prefix.inputs.windows(2).all(|w| {
-        !w[0].ring.is_empty()
-            && !w[1].ring.is_empty()
-            && w[0].ring[0].public_key < w[1].ring[0].public_key
-    });
-    if !inputs_are_sorted {
-        return Err(TransactionValidationError::UnsortedInputs);
-    }
-
-    Ok(())
+    check_sorted(
+        &tx_prefix.inputs,
+        |a, b| {
+            !a.ring.is_empty() && !b.ring.is_empty() && a.ring[0].public_key < b.ring[0].public_key
+        },
+        TransactionValidationError::UnsortedInputs,
+    )
 }
 
 /// Transaction outputs must be sorted by public_key, ascending.
 fn validate_outputs_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidationResult<()> {
-    let outputs_are_sorted = tx_prefix
-        .outputs
-        .windows(2)
-        .all(|window| window[0].public_key <= window[1].public_key);
-    if !outputs_are_sorted {
-        return Err(TransactionValidationError::UnsortedOutputs);
-    }
-
-    Ok(())
+    check_sorted(
+        &tx_prefix.outputs,
+        |a, b| a.public_key < b.public_key,
+        TransactionValidationError::UnsortedOutputs,
+    )
 }
 
 /// All output public keys within the transaction must be unique.
 fn validate_outputs_public_keys_are_unique(tx: &Tx) -> TransactionValidationResult<()> {
-    let mut uniques = HashSet::default();
-    for public_key in tx.output_public_keys() {
-        if !uniques.insert(public_key) {
-            return Err(TransactionValidationError::DuplicateOutputPublicKey);
-        }
-    }
-    Ok(())
+    check_unique(
+        &tx.output_public_keys(),
+        TransactionValidationError::DuplicateOutputPublicKey,
+    )
 }
 
 /// All key images within the transaction must be unique.
 fn validate_key_images_are_unique(tx: &Tx) -> TransactionValidationResult<()> {
-    let mut uniques = HashSet::default();
-    for key_image in tx.key_images() {
-        if !uniques.insert(key_image) {
-            return Err(TransactionValidationError::DuplicateKeyImages);
-        }
-    }
-    Ok(())
+    check_unique(
+        &tx.key_images(),
+        TransactionValidationError::DuplicateKeyImages,
+    )
 }
 
 /// All outputs have no memo (new-style TxOuts (Post MCIP #3) are rejected)
@@ -425,6 +406,31 @@ pub fn validate_tombstone(
         return Err(TransactionValidationError::TombstoneBlockTooFar);
     }
 
+    Ok(())
+}
+
+fn check_sorted<T>(
+    values: &[T],
+    ordered: fn(&T, &T) -> bool,
+    err: TransactionValidationError,
+) -> TransactionValidationResult<()> {
+    if !values.windows(2).all(|pair| ordered(&pair[0], &pair[1])) {
+        Err(err)
+    } else {
+        Ok(())
+    }
+}
+
+fn check_unique<T: Eq + core::hash::Hash>(
+    values: &[T],
+    err: TransactionValidationError,
+) -> TransactionValidationResult<()> {
+    let mut uniques = HashSet::default();
+    for x in values {
+        if !uniques.insert(x) {
+            return Err(err);
+        }
+    }
     Ok(())
 }
 
