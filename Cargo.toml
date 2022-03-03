@@ -97,6 +97,7 @@ members = [
     "ledger/from-archive",
     "ledger/migration",
     "ledger/sync",
+    "ledger/streaming/api",
     "libmobilecoin",
     "mobilecoind",
     "mobilecoind-json",
