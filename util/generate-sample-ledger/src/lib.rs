@@ -88,7 +88,11 @@ pub fn bootstrap_ledger(
             .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
-        let block_contents = BlockContents::new(key_images, outputs.clone());
+        let block_contents = BlockContents {
+            key_images,
+            outputs: outputs.clone(),
+            ..Default::default()
+        };
 
         let block = match previous_block {
             Some(parent) => {

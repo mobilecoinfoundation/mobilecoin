@@ -67,11 +67,13 @@ impl TryFrom<&blockchain::BlockContents> for mc_transaction_core::BlockContents 
             .map(MintTx::try_from)
             .collect::<Result<_, _>>()?;
 
-        Ok(BlockContents::new(
+        // We purposefully do not ..Default::default() here so that new fields are not
+        // missed.
+        Ok(BlockContents {
             key_images,
             outputs,
             set_mint_config_txs,
             mint_txs,
-        ))
+        })
     }
 }

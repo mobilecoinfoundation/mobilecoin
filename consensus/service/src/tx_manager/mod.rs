@@ -784,7 +784,7 @@ mod tests {
 
         let mut mock_enclave = MockConsensusEnclave::new();
         let expected_block = Block::new_origin_block(&vec![]);
-        let expected_block_contents = BlockContents::new(vec![], vec![]);
+        let expected_block_contents = BlockContents::default();
         // The enclave does not set the signed_at field.
         let expected_block_signature =
             BlockSignature::new(Ed25519Signature::default(), Ed25519Public::default(), 0);

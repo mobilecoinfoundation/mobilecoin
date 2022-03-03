@@ -37,20 +37,6 @@ pub struct BlockContents {
 }
 
 impl BlockContents {
-    pub fn new(
-        key_images: Vec<KeyImage>,
-        outputs: Vec<TxOut>,
-        set_mint_config_txs: Vec<SetMintConfigTx>,
-        mint_txs: Vec<MintTx>,
-    ) -> Self {
-        Self {
-            key_images,
-            outputs,
-            set_mint_config_txs,
-            mint_txs,
-        }
-    }
-
     /// The Merlin digest of `self`.
     pub fn hash(&self) -> BlockContentsHash {
         BlockContentsHash(self.digest32::<MerlinTranscript>(b"block_contents"))

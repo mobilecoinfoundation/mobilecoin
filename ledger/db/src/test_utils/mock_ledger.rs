@@ -243,7 +243,10 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
 
             let outputs = vec![tx_out];
             let origin_block = Block::new_origin_block(&outputs);
-            let block_contents = BlockContents::new(vec![], outputs, vec![], vec![]);
+            let block_contents = BlockContents {
+                outputs,
+                ..Default::default()
+            };
             block_ids.push(origin_block.id.clone());
             blocks_and_contents.push((origin_block, block_contents));
         } else {
@@ -258,10 +261,11 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
 
             let outputs = vec![tx_out];
             let key_images = vec![KeyImage::from(rng.next_u64())];
-            let set_mint_config_txs = vec![];
-            let mint_txs = vec![];
-            let block_contents =
-                BlockContents::new(key_images, outputs, set_mint_config_txs, mint_txs);
+            let block_contents = BlockContents {
+                key_images,
+                outputs,
+                ..Default::default()
+            };
 
             let block = Block::new_with_parent(
                 BlockVersion::ONE,

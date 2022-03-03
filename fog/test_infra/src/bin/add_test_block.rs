@@ -189,7 +189,11 @@ fn main() {
             .get_block(num_blocks - 1)
             .expect("Could not get last block");
 
-        let block_contents = BlockContents::new(key_images_to_burn, tx_outs);
+        let block_contents = BlockContents {
+            key_images: key_images_to_burn,
+            outputs: tx_outs,
+            ..Default::default()
+        };
 
         // Fake proofs
         let root_element = TxOutMembershipElement {

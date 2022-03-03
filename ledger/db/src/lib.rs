@@ -952,7 +952,12 @@ mod ledger_db_test {
             } else {
                 vec![]
             };
-            let block_contents = BlockContents::new(key_images, outputs.clone());
+
+            let block_contents = BlockContents {
+                key_images,
+                outputs: outputs.clone(),
+                ..Default::default()
+            };
 
             let block = match parent_block {
                 None => Block::new_origin_block(&outputs),
@@ -1001,7 +1006,10 @@ mod ledger_db_test {
 
         let outputs = vec![output];
         let block = Block::new_origin_block(&outputs);
-        let block_contents = BlockContents::new(vec![], outputs);
+        let block_contents = BlockContents {
+            outputs,
+            ..Default::default()
+        };
 
         (block, block_contents)
     }
@@ -1059,7 +1067,11 @@ mod ledger_db_test {
 
         let key_images: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
 
-        let block_contents = BlockContents::new(key_images.clone(), outputs);
+        let block_contents = BlockContents {
+            key_images: key_images.clone(),
+            outputs,
+            ..Default::default()
+        };
         let block = Block::new_with_parent(
             BLOCK_VERSION,
             &origin_block,
@@ -1138,9 +1150,10 @@ mod ledger_db_test {
             })
             .collect();
 
-        let key_images = Vec::new();
-
-        let block_contents = BlockContents::new(key_images.clone(), outputs);
+        let block_contents = BlockContents {
+            outputs,
+            ..Default::default()
+        };
         let block = Block::new_with_parent(
             BLOCK_VERSION,
             &origin_block,
@@ -1299,7 +1312,11 @@ mod ledger_db_test {
         .unwrap();
         let outputs = vec![tx_out];
 
-        let block_contents = BlockContents::new(key_images.clone(), outputs);
+        let block_contents = BlockContents {
+            key_images: key_images.clone(),
+            outputs,
+            ..Default::default()
+        };
         let block = Block::new_with_parent(
             BlockVersion::ONE,
             &origin_block,
@@ -1344,7 +1361,11 @@ mod ledger_db_test {
         .unwrap();
         let outputs = vec![tx_out];
 
-        let block_contents = BlockContents::new(key_images.clone(), outputs);
+        let block_contents = BlockContents {
+            key_images: key_images.clone(),
+            outputs,
+            ..Default::default()
+        };
         let parent = ledger_db.get_block(n_blocks - 1).unwrap();
         let block = Block::new_with_parent(
             BlockVersion::ONE,
@@ -1381,9 +1402,11 @@ mod ledger_db_test {
             .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
-        let outputs = Vec::new();
-
-        let block_contents = BlockContents::new(key_images.clone(), outputs);
+        let block_contents = BlockContents {
+            key_images,
+            outputs,
+            ..Default::default()
+        };
         let block = Block::new_with_parent(
             BlockVersion::ONE,
             &origin_block,
@@ -1465,7 +1488,11 @@ mod ledger_db_test {
                 let key_images: Vec<KeyImage> =
                     (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
 
-                let block_contents = BlockContents::new(key_images.clone(), outputs);
+                let block_contents = BlockContents {
+                    key_images,
+                    outputs,
+                    ..Default::default()
+                };
                 last_block = Block::new_with_parent(
                     block_version,
                     &last_block,
@@ -1509,7 +1536,11 @@ mod ledger_db_test {
             let key_images: Vec<KeyImage> =
                 (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
 
-            let block_contents = BlockContents::new(key_images.clone(), outputs);
+            let block_contents = BlockContents {
+                key_images,
+                outputs,
+                ..Default::default()
+            };
             assert_eq!(last_block.version, *MAX_BLOCK_VERSION);
 
             // Note: unsafe transmute is being used to skirt the invariant that BlockVersion
@@ -1562,7 +1593,11 @@ mod ledger_db_test {
         .unwrap();
 
         let outputs = vec![tx_out];
-        let block_contents = BlockContents::new(key_images, outputs);
+        let block_contents = BlockContents {
+            key_images,
+            outputs,
+            ..Default::default()
+        };
 
         // Appending a block to a previously written location should fail.
         let mut new_block = Block::new(
@@ -1618,7 +1653,11 @@ mod ledger_db_test {
             )
             .unwrap();
             let outputs = vec![tx_out];
-            BlockContents::new(block_one_key_images.clone(), outputs)
+            BlockContents {
+                key_images: block_one_key_images.clone(),
+                outputs,
+                ..Default::default()
+            };
         };
 
         let block_one = Block::new_with_parent(
@@ -1642,7 +1681,11 @@ mod ledger_db_test {
             )
             .unwrap();
             let outputs = vec![tx_out];
-            BlockContents::new(block_one_key_images.clone(), outputs)
+            BlockContents {
+                key_images: block_one_key_images.clone(),
+                outputs,
+                ..Default::default()
+            };
         };
 
         let block_two = Block::new_with_parent(
@@ -1687,7 +1730,12 @@ mod ledger_db_test {
             .unwrap();
             tx_out.public_key = existing_tx_out.public_key.clone();
             let outputs = vec![tx_out];
-            BlockContents::new(vec![KeyImage::from(rng.next_u64())], outputs)
+            let key_images = vec![KeyImage::from(rng.next_u64())];
+            BlockContents {
+                key_images,
+                outputs,
+                ..Default::default()
+            }
         };
 
         let block_one = Block::new_with_parent(
@@ -1748,7 +1796,12 @@ mod ledger_db_test {
             .unwrap();
 
             let key_images = vec![KeyImage::from(rng.next_u64())];
-            let block_contents = BlockContents::new(key_images, vec![tx_out]);
+            let outputs = vec![tx_out];
+            let block_contents = BlockContents {
+                key_images,
+                outputs,
+                ..Default::default()
+            };
 
             let bytes = [14u8; 32];
             let bad_parent_id = BlockID::try_from(&bytes[..]).unwrap();

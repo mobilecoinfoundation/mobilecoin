@@ -606,8 +606,15 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let set_mint_config_txs = Vec::new();
         let mint_txs = Vec::new();
 
-        let block_contents = BlockContents::new(key_images, outputs, set_mint_config_txs, mint_txs);
-
+        // We purposefully do not ..Default::default() here so that new block fields
+        // show up as a compilation error until addressed.
+        let block_contents = BlockContents {
+            key_images,
+            outputs,
+            set_mint_config_txs,
+            mint_txs,
+        };
+        //
         // Form the block.
         let block = Block::new_with_parent(
             config.block_version,
