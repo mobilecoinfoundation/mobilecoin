@@ -168,7 +168,7 @@ pub struct LedgerDB {
     set_mint_config_txs_by_block: Database,
 
     /// MintTxs by block.
-    set_mint_txs_by_block: Database,
+    mint_txs_by_block: Database,
 
     /// Location on filesystem.
     path: PathBuf,
@@ -676,7 +676,7 @@ impl LedgerDB {
 
         db_transaction.put(
             self.set_mint_config_txs_by_block,
-            &u64_to_key_bytes(block_index),
+            &block_index_bytes,
             &encode(&set_mint_config_tx_list),
             WriteFlags::empty(),
         )?;
@@ -697,7 +697,7 @@ impl LedgerDB {
 
         db_transaction.put(
             self.mint_txs_by_block,
-            &u64_to_key_bytes(block_index),
+            &block_index_bytes,
             &encode(&mint_tx_list),
             WriteFlags::empty(),
         )?;
