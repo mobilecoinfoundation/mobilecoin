@@ -1404,7 +1404,6 @@ mod ledger_db_test {
 
         let block_contents = BlockContents {
             key_images,
-            outputs,
             ..Default::default()
         };
         let block = Block::new_with_parent(
@@ -1657,7 +1656,7 @@ mod ledger_db_test {
                 key_images: block_one_key_images.clone(),
                 outputs,
                 ..Default::default()
-            };
+            }
         };
 
         let block_one = Block::new_with_parent(
@@ -1685,7 +1684,7 @@ mod ledger_db_test {
                 key_images: block_one_key_images.clone(),
                 outputs,
                 ..Default::default()
-            };
+            }
         };
 
         let block_two = Block::new_with_parent(
