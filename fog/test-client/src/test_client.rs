@@ -224,7 +224,7 @@ impl TestClient {
         &self,
         source_client: &mut Client,
         target_client: &mut Client,
-    ) -> Result<(Tx, u64), TestClientError> {
+    ) -> Result<(Tx, u64, u64), TestClientError> {
         self.tx_info.clear();
         let target_address = target_client.get_account_key().default_subaddress();
         log::debug!(
@@ -269,7 +269,7 @@ impl TestClient {
             block_count
         };
         self.tx_info.set_tx_propose_block_count(block_count);
-        Ok((transaction, block_count))
+        Ok((transaction, block_count, fee))
     }
 
     /// Waits for a transaction to be accepted by the network
@@ -496,9 +496,8 @@ impl TestClient {
             },
         )?;
 
-        let fee = source_client_lk.get_fee().unwrap_or(Mob::MINIMUM_FEE);
         let transfer_start = std::time::SystemTime::now();
-        let (transaction, block_count) =
+        let (transaction, block_count, fee) =
             self.transfer(&mut source_client_lk, &mut target_client_lk)?;
 
         let mut span = block_span_builder(&tracer, "test_iteration", block_count)

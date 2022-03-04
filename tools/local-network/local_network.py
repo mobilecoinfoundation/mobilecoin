@@ -152,7 +152,7 @@ class Node:
         self.admin_http_gateway_port = admin_http_gateway_port
         self.peers = peers
         self.quorum_set = quorum_set
-        self.minimum_fee = 10_000_000_000
+        self.minimum_fee = 400_000_000
 
         self.consensus_process = None
         self.ledger_distribution_process = None
