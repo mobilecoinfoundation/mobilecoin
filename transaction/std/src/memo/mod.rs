@@ -110,7 +110,7 @@ mod tests {
             bob.default_subaddress().view_public_key(),
             &tx_public_key,
         );
-        let memo_bytes: [u8; 44] = memo.clone().into();
+        let memo_bytes: [u8; 64] = memo.clone().into();
 
         let result = memo.validate(
             &alice.default_subaddress(),
