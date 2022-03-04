@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-grpc-admin-tool"
-version = "1.2.0-pre0"
+version = "1.3.0-pre0"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -15,8 +15,3 @@ mc-util-uri = { path = "../uri" }
 
 grpcio = "0.9.0"
 structopt = "0.3"
-
-[build-dependencies]
-# Even though this is unused, it needs to be here otherwise Cargo brings in some weird mixture of packages/features that refuses to compile.
-# Go figure ¯\_(ツ)_/¯
-serde = { version = "1", default-features = false, features = ["alloc", "derive"] }

@@ -23,7 +23,7 @@ use mc_transaction_core::{
     membership_proofs::Range,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Amount, Block, BlockContents, BlockData, BlockSignature, BLOCK_VERSION,
+    Amount, Block, BlockContents, BlockData, BlockSignature, BlockVersion,
 };
 use mc_util_from_random::FromRandom;
 use mc_watcher::watcher_db::WatcherDB;
@@ -125,7 +125,12 @@ fn add_test_block<T: RngCore + CryptoRng>(ledger: &mut LedgerDB, watcher: &Watch
         hash: TxOutMembershipHash::from([0u8; 32]),
     };
 
-    let block = Block::new_with_parent(BLOCK_VERSION, &last_block, &root_element, &block_contents);
+    let block = Block::new_with_parent(
+        BlockVersion::ONE,
+        &last_block,
+        &root_element,
+        &block_contents,
+    );
 
     let signer = Ed25519Pair::from_random(rng);
 

@@ -4,14 +4,14 @@
 
 extern crate alloc;
 
-use alloc::vec::Vec;
+use alloc::{format, vec::Vec};
 
 use super::error::{TransactionValidationError, TransactionValidationResult};
 use crate::{
     constants::*,
     membership_proofs::{derive_proof_at_index, is_membership_proof_valid},
     tx::{Tx, TxOut, TxOutMembershipProof, TxPrefix},
-    CompressedCommitment,
+    BlockVersion, CompressedCommitment,
 };
 use mc_common::HashSet;
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -30,10 +30,18 @@ use rand_core::{CryptoRng, RngCore};
 pub fn validate<R: RngCore + CryptoRng>(
     tx: &Tx,
     current_block_index: u64,
+    block_version: BlockVersion,
     root_proofs: &[TxOutMembershipProof],
     minimum_fee: u64,
     csprng: &mut R,
 ) -> TransactionValidationResult<()> {
+    if block_version < BlockVersion::ONE || BlockVersion::MAX < block_version {
+        return Err(TransactionValidationError::Ledger(format!(
+            "Invalid block version: {}",
+            block_version
+        )));
+    }
+
     validate_number_of_inputs(&tx.prefix, MAX_INPUTS)?;
 
     validate_number_of_outputs(&tx.prefix, MAX_OUTPUTS)?;
@@ -61,12 +69,17 @@ pub fn validate<R: RngCore + CryptoRng>(
     // Note: The transaction must not contain a Key Image that has previously been
     // spent. This must be checked outside the enclave.
 
-    // In the 1.2 release, it is planned that clients will know to read memos,
-    // but memos will not be allowed to exist in the chain until the next release.
-    // If we implement "block-version-based protocol evolution" (MCIP 26), then this
-    // function would become block-version aware and this could become a branch.
-    validate_no_memos_exist(tx)?;
-    // validate_memos_exist(tx)?;
+    ////
+    // Validate rules which depend on block version (see MCIP #26)
+    ////
+
+    // If memos are supported, then all outputs must have memo fields.
+    // If memos are not yet supported, then no outputs may have memo fields.
+    if block_version.e_memo_feature_is_supported() {
+        validate_memos_exist(tx)?;
+    } else {
+        validate_no_memos_exist(tx)?;
+    }
 
     Ok(())
 }
@@ -212,12 +225,6 @@ fn validate_no_memos_exist(tx: &Tx) -> TransactionValidationResult<()> {
 }
 
 /// All outputs have a memo (old-style TxOuts (Pre MCIP #3) are rejected)
-///
-/// Note: This is only under test for now, and can become live
-/// at the time that we address mobilecoinfoundation/mobilecoin/issues/905
-/// "make memos mandatory". See MCIP #0003 for discussion of interim period
-/// during which memos are optional.
-#[cfg(test)]
 fn validate_memos_exist(tx: &Tx) -> TransactionValidationResult<()> {
     if tx
         .prefix
@@ -423,14 +430,12 @@ mod tests {
         Token,
     };
 
-    use crate::{
-        membership_proofs::Range, validation::validate::validate_ring_elements_are_sorted,
-    };
+    use crate::membership_proofs::Range;
     use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes};
     use mc_ledger_db::{Ledger, LedgerDB};
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, create_transaction_with_amount, initialize_ledger,
-        INITIALIZE_LEDGER_AMOUNT,
+        AccountKey, INITIALIZE_LEDGER_AMOUNT,
     };
     use rand::{rngs::StdRng, SeedableRng};
     use serde::{de::DeserializeOwned, ser::Serialize};
@@ -450,19 +455,26 @@ mod tests {
         mc_util_serial::deserialize(&bytes).unwrap()
     }
 
-    fn create_test_tx() -> (Tx, LedgerDB) {
+    fn create_test_tx(block_version: BlockVersion) -> (Tx, LedgerDB) {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let sender = mc_transaction_core_test_utils::AccountKey::random(&mut rng);
+        let sender = AccountKey::random(&mut rng);
         let mut ledger = create_ledger();
         let n_blocks = 1;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+        initialize_ledger(
+            adapt_hack(&block_version),
+            &mut ledger,
+            n_blocks,
+            &sender,
+            &mut rng,
+        );
 
         // Spend an output from the last block.
         let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
         let tx_out = block_contents.outputs[0].clone();
 
-        let recipient = mc_transaction_core_test_utils::AccountKey::random(&mut rng);
+        let recipient = AccountKey::random(&mut rng);
         let tx = create_transaction(
+            adapt_hack(&block_version),
             &mut ledger,
             &tx_out,
             &sender,
@@ -474,19 +486,30 @@ mod tests {
         (adapt_hack(&tx), ledger)
     }
 
-    fn create_test_tx_with_amount(amount: u64, fee: u64) -> (Tx, LedgerDB) {
+    fn create_test_tx_with_amount(
+        block_version: BlockVersion,
+        amount: u64,
+        fee: u64,
+    ) -> (Tx, LedgerDB) {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let sender = mc_transaction_core_test_utils::AccountKey::random(&mut rng);
+        let sender = AccountKey::random(&mut rng);
         let mut ledger = create_ledger();
         let n_blocks = 1;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+        initialize_ledger(
+            adapt_hack(&block_version),
+            &mut ledger,
+            n_blocks,
+            &sender,
+            &mut rng,
+        );
 
         // Spend an output from the last block.
         let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
         let tx_out = block_contents.outputs[0].clone();
 
-        let recipient = mc_transaction_core_test_utils::AccountKey::random(&mut rng);
+        let recipient = AccountKey::random(&mut rng);
         let tx = create_transaction_with_amount(
+            adapt_hack(&block_version),
             &mut ledger,
             &tx_out,
             &sender,
@@ -503,40 +526,31 @@ mod tests {
     #[test]
     // Should return MissingMemo when memos are missing in any the outputs
     fn test_validate_memos_exist() {
-        let (mut tx, _) = create_test_tx();
+        let (tx, _) = create_test_tx(BlockVersion::ONE);
 
-        assert!(tx.prefix.outputs.first_mut().unwrap().e_memo.is_none());
+        assert!(tx.prefix.outputs.first().unwrap().e_memo.is_none());
         assert_eq!(
             validate_memos_exist(&tx),
             Err(TransactionValidationError::MissingMemo)
         );
 
-        for ref mut output in tx.prefix.outputs.iter_mut() {
-            output.e_memo = Some(Default::default());
-        }
+        let (tx, _) = create_test_tx(BlockVersion::TWO);
 
+        assert!(tx.prefix.outputs.first().unwrap().e_memo.is_some());
         assert_eq!(validate_memos_exist(&tx), Ok(()));
     }
 
     #[test]
     // Should return MemosNotAllowed when memos are present in any of the outputs
     fn test_validate_no_memos_exist() {
-        let (mut tx, _) = create_test_tx();
+        let (tx, _) = create_test_tx(BlockVersion::ONE);
 
-        assert!(tx.prefix.outputs.first_mut().unwrap().e_memo.is_none());
+        assert!(tx.prefix.outputs.first().unwrap().e_memo.is_none());
         assert_eq!(validate_no_memos_exist(&tx), Ok(()));
 
-        tx.prefix.outputs.first_mut().unwrap().e_memo = Some(Default::default());
+        let (tx, _) = create_test_tx(BlockVersion::TWO);
 
-        assert_eq!(
-            validate_no_memos_exist(&tx),
-            Err(TransactionValidationError::MemosNotAllowed)
-        );
-
-        for ref mut output in tx.prefix.outputs.iter_mut() {
-            output.e_memo = Some(Default::default());
-        }
-
+        assert!(tx.prefix.outputs.first().unwrap().e_memo.is_some());
         assert_eq!(
             validate_no_memos_exist(&tx),
             Err(TransactionValidationError::MemosNotAllowed)
@@ -547,34 +561,36 @@ mod tests {
     // Should return Ok(()) when the Tx's membership proofs are correct and agree
     // with ledger.
     fn test_validate_membership_proofs() {
-        let (tx, ledger) = create_test_tx();
+        for block_version in BlockVersion::iterator() {
+            let (tx, ledger) = create_test_tx(block_version);
 
-        let highest_indices = tx.get_membership_proof_highest_indices();
-        let root_proofs: Vec<TxOutMembershipProof> = adapt_hack(
-            &ledger
-                .get_tx_out_proof_of_memberships(&highest_indices)
-                .expect("failed getting proofs"),
-        );
-
-        // Validate the transaction prefix without providing the correct ledger context.
-        {
-            let mut broken_proofs = root_proofs.clone();
-            broken_proofs[0].elements[0].hash = TxOutMembershipHash::from([1u8; 32]);
-            assert_eq!(
-                validate_membership_proofs(&tx.prefix, &broken_proofs),
-                Err(TransactionValidationError::InvalidTxOutMembershipProof)
-            );
-        }
-
-        // Validate the transaction prefix with the correct root proofs.
-        {
             let highest_indices = tx.get_membership_proof_highest_indices();
             let root_proofs: Vec<TxOutMembershipProof> = adapt_hack(
                 &ledger
                     .get_tx_out_proof_of_memberships(&highest_indices)
                     .expect("failed getting proofs"),
             );
-            assert_eq!(validate_membership_proofs(&tx.prefix, &root_proofs), Ok(()));
+
+            // Validate the transaction prefix without providing the correct ledger context.
+            {
+                let mut broken_proofs = root_proofs.clone();
+                broken_proofs[0].elements[0].hash = TxOutMembershipHash::from([1u8; 32]);
+                assert_eq!(
+                    validate_membership_proofs(&tx.prefix, &broken_proofs),
+                    Err(TransactionValidationError::InvalidTxOutMembershipProof)
+                );
+            }
+
+            // Validate the transaction prefix with the correct root proofs.
+            {
+                let highest_indices = tx.get_membership_proof_highest_indices();
+                let root_proofs: Vec<TxOutMembershipProof> = adapt_hack(
+                    &ledger
+                        .get_tx_out_proof_of_memberships(&highest_indices)
+                        .expect("failed getting proofs"),
+                );
+                assert_eq!(validate_membership_proofs(&tx.prefix, &root_proofs), Ok(()));
+            }
         }
     }
 
@@ -582,328 +598,358 @@ mod tests {
     // Should return InvalidRangeProof if a membership proof containing an invalid
     // Range.
     fn test_validate_membership_proofs_invalid_range_in_tx() {
-        let (mut tx, ledger) = create_test_tx();
+        for block_version in BlockVersion::iterator() {
+            let (mut tx, ledger) = create_test_tx(block_version);
 
-        let highest_indices = tx.get_membership_proof_highest_indices();
-        let root_proofs: Vec<TxOutMembershipProof> = adapt_hack(
-            &ledger
-                .get_tx_out_proof_of_memberships(&highest_indices)
-                .expect("failed getting proofs"),
-        );
+            let highest_indices = tx.get_membership_proof_highest_indices();
+            let root_proofs: Vec<TxOutMembershipProof> = adapt_hack(
+                &ledger
+                    .get_tx_out_proof_of_memberships(&highest_indices)
+                    .expect("failed getting proofs"),
+            );
 
-        // Modify tx to include an invalid Range.
-        let mut proof = tx.prefix.inputs[0].proofs[0].clone();
-        let mut first_element = proof.elements[0].clone();
-        first_element.range = Range { from: 7, to: 3 };
-        proof.elements[0] = first_element;
-        tx.prefix.inputs[0].proofs[0] = proof;
+            // Modify tx to include an invalid Range.
+            let mut proof = tx.prefix.inputs[0].proofs[0].clone();
+            let mut first_element = proof.elements[0].clone();
+            first_element.range = Range { from: 7, to: 3 };
+            proof.elements[0] = first_element;
+            tx.prefix.inputs[0].proofs[0] = proof;
 
-        assert_eq!(
-            validate_membership_proofs(&tx.prefix, &root_proofs),
-            Err(TransactionValidationError::MembershipProofValidationError)
-        );
+            assert_eq!(
+                validate_membership_proofs(&tx.prefix, &root_proofs),
+                Err(TransactionValidationError::MembershipProofValidationError)
+            );
+        }
     }
 
     #[test]
     // Should return InvalidRangeProof if a root proof containing an invalid Range.
     fn test_validate_membership_proofs_invalid_range_in_root_proof() {
-        let (tx, ledger) = create_test_tx();
+        for block_version in BlockVersion::iterator() {
+            let (tx, ledger) = create_test_tx(block_version);
 
-        let highest_indices = tx.get_membership_proof_highest_indices();
-        let mut root_proofs: Vec<TxOutMembershipProof> = adapt_hack(
-            &ledger
-                .get_tx_out_proof_of_memberships(&highest_indices)
-                .expect("failed getting proofs"),
-        );
+            let highest_indices = tx.get_membership_proof_highest_indices();
+            let mut root_proofs: Vec<TxOutMembershipProof> = adapt_hack(
+                &ledger
+                    .get_tx_out_proof_of_memberships(&highest_indices)
+                    .expect("failed getting proofs"),
+            );
 
-        // Modify a root proof to include an invalid Range.
-        let mut proof = root_proofs[0].clone();
-        let mut first_element = proof.elements[0].clone();
-        first_element.range = Range { from: 7, to: 3 };
-        proof.elements[0] = first_element;
-        root_proofs[0] = proof;
+            // Modify a root proof to include an invalid Range.
+            let mut proof = root_proofs[0].clone();
+            let mut first_element = proof.elements[0].clone();
+            first_element.range = Range { from: 7, to: 3 };
+            proof.elements[0] = first_element;
+            root_proofs[0] = proof;
 
-        assert_eq!(
-            validate_membership_proofs(&tx.prefix, &root_proofs),
-            Err(TransactionValidationError::MembershipProofValidationError)
-        );
+            assert_eq!(
+                validate_membership_proofs(&tx.prefix, &root_proofs),
+                Err(TransactionValidationError::MembershipProofValidationError)
+            );
+        }
     }
 
     #[test]
     fn test_validate_number_of_inputs() {
-        let (orig_tx, _ledger) = create_test_tx();
-        let max_inputs = 25;
+        for block_version in BlockVersion::iterator() {
+            let (orig_tx, _ledger) = create_test_tx(block_version);
+            let max_inputs = 25;
 
-        for num_inputs in 0..100 {
-            let mut tx_prefix = orig_tx.prefix.clone();
-            tx_prefix.inputs.clear();
-            for _i in 0..num_inputs {
-                tx_prefix.inputs.push(orig_tx.prefix.inputs[0].clone());
+            for num_inputs in 0..100 {
+                let mut tx_prefix = orig_tx.prefix.clone();
+                tx_prefix.inputs.clear();
+                for _i in 0..num_inputs {
+                    tx_prefix.inputs.push(orig_tx.prefix.inputs[0].clone());
+                }
+
+                let expected_result = if num_inputs == 0 {
+                    Err(TransactionValidationError::NoInputs)
+                } else if num_inputs > max_inputs {
+                    Err(TransactionValidationError::TooManyInputs)
+                } else {
+                    Ok(())
+                };
+
+                assert_eq!(
+                    validate_number_of_inputs(&tx_prefix, max_inputs),
+                    expected_result,
+                );
             }
-
-            let expected_result = if num_inputs == 0 {
-                Err(TransactionValidationError::NoInputs)
-            } else if num_inputs > max_inputs {
-                Err(TransactionValidationError::TooManyInputs)
-            } else {
-                Ok(())
-            };
-
-            assert_eq!(
-                validate_number_of_inputs(&tx_prefix, max_inputs),
-                expected_result,
-            );
         }
     }
 
     #[test]
     fn test_validate_number_of_outputs() {
-        let (orig_tx, _ledger) = create_test_tx();
-        let max_outputs = 25;
+        for block_version in BlockVersion::iterator() {
+            let (orig_tx, _ledger) = create_test_tx(block_version);
+            let max_outputs = 25;
 
-        for num_outputs in 0..100 {
-            let mut tx_prefix = orig_tx.prefix.clone();
-            tx_prefix.outputs.clear();
-            for _i in 0..num_outputs {
-                tx_prefix.outputs.push(orig_tx.prefix.outputs[0].clone());
+            for num_outputs in 0..100 {
+                let mut tx_prefix = orig_tx.prefix.clone();
+                tx_prefix.outputs.clear();
+                for _i in 0..num_outputs {
+                    tx_prefix.outputs.push(orig_tx.prefix.outputs[0].clone());
+                }
+
+                let expected_result = if num_outputs == 0 {
+                    Err(TransactionValidationError::NoOutputs)
+                } else if num_outputs > max_outputs {
+                    Err(TransactionValidationError::TooManyOutputs)
+                } else {
+                    Ok(())
+                };
+
+                assert_eq!(
+                    validate_number_of_outputs(&tx_prefix, max_outputs),
+                    expected_result,
+                );
             }
-
-            let expected_result = if num_outputs == 0 {
-                Err(TransactionValidationError::NoOutputs)
-            } else if num_outputs > max_outputs {
-                Err(TransactionValidationError::TooManyOutputs)
-            } else {
-                Ok(())
-            };
-
-            assert_eq!(
-                validate_number_of_outputs(&tx_prefix, max_outputs),
-                expected_result,
-            );
         }
     }
 
     #[test]
     fn test_validate_ring_sizes() {
-        let (tx, _ledger) = create_test_tx();
-        assert_eq!(tx.prefix.inputs.len(), 1);
-        assert_eq!(tx.prefix.inputs[0].ring.len(), RING_SIZE);
+        for block_version in BlockVersion::iterator() {
+            let (tx, _ledger) = create_test_tx(block_version);
+            assert_eq!(tx.prefix.inputs.len(), 1);
+            assert_eq!(tx.prefix.inputs[0].ring.len(), RING_SIZE);
 
-        // A transaction with a single input containing RING_SIZE elements.
-        assert_eq!(validate_ring_sizes(&tx.prefix, RING_SIZE), Ok(()));
+            // A transaction with a single input containing RING_SIZE elements.
+            assert_eq!(validate_ring_sizes(&tx.prefix, RING_SIZE), Ok(()));
 
-        // A single input containing zero elements.
-        {
-            let mut tx_prefix = tx.prefix.clone();
-            tx_prefix.inputs[0].ring.clear();
+            // A single input containing zero elements.
+            {
+                let mut tx_prefix = tx.prefix.clone();
+                tx_prefix.inputs[0].ring.clear();
 
-            assert_eq!(
-                validate_ring_sizes(&tx_prefix, RING_SIZE),
-                Err(TransactionValidationError::InsufficientRingSize),
-            );
-        }
+                assert_eq!(
+                    validate_ring_sizes(&tx_prefix, RING_SIZE),
+                    Err(TransactionValidationError::InsufficientRingSize),
+                );
+            }
 
-        // A single input containing too few elements.
-        {
-            let mut tx_prefix = tx.prefix.clone();
-            tx_prefix.inputs[0].ring.pop();
+            // A single input containing too few elements.
+            {
+                let mut tx_prefix = tx.prefix.clone();
+                tx_prefix.inputs[0].ring.pop();
 
-            assert_eq!(
-                validate_ring_sizes(&tx_prefix, RING_SIZE),
-                Err(TransactionValidationError::InsufficientRingSize),
-            );
-        }
+                assert_eq!(
+                    validate_ring_sizes(&tx_prefix, RING_SIZE),
+                    Err(TransactionValidationError::InsufficientRingSize),
+                );
+            }
 
-        // A single input containing too many elements.
-        {
-            let mut tx_prefix = tx.prefix.clone();
-            let element = tx_prefix.inputs[0].ring[0].clone();
-            tx_prefix.inputs[0].ring.push(element);
+            // A single input containing too many elements.
+            {
+                let mut tx_prefix = tx.prefix.clone();
+                let element = tx_prefix.inputs[0].ring[0].clone();
+                tx_prefix.inputs[0].ring.push(element);
 
-            assert_eq!(
-                validate_ring_sizes(&tx_prefix, RING_SIZE),
-                Err(TransactionValidationError::ExcessiveRingSize),
-            );
-        }
+                assert_eq!(
+                    validate_ring_sizes(&tx_prefix, RING_SIZE),
+                    Err(TransactionValidationError::ExcessiveRingSize),
+                );
+            }
 
-        // Two inputs each containing RING_SIZE elements.
-        {
-            let mut tx_prefix = tx.prefix.clone();
-            let input = tx_prefix.inputs[0].clone();
-            tx_prefix.inputs.push(input);
+            // Two inputs each containing RING_SIZE elements.
+            {
+                let mut tx_prefix = tx.prefix.clone();
+                let input = tx_prefix.inputs[0].clone();
+                tx_prefix.inputs.push(input);
 
-            assert_eq!(validate_ring_sizes(&tx_prefix, RING_SIZE), Ok(()));
-        }
+                assert_eq!(validate_ring_sizes(&tx_prefix, RING_SIZE), Ok(()));
+            }
 
-        // The second input contains too few elements.
-        {
-            let mut tx_prefix = tx.prefix.clone();
-            let mut input = tx_prefix.inputs[0].clone();
-            input.ring.pop();
-            tx_prefix.inputs.push(input);
+            // The second input contains too few elements.
+            {
+                let mut tx_prefix = tx.prefix.clone();
+                let mut input = tx_prefix.inputs[0].clone();
+                input.ring.pop();
+                tx_prefix.inputs.push(input);
 
-            assert_eq!(
-                validate_ring_sizes(&tx_prefix, RING_SIZE),
-                Err(TransactionValidationError::InsufficientRingSize),
-            );
+                assert_eq!(
+                    validate_ring_sizes(&tx_prefix, RING_SIZE),
+                    Err(TransactionValidationError::InsufficientRingSize),
+                );
+            }
         }
     }
 
     #[test]
     fn test_validate_ring_elements_are_unique() {
-        let (tx, _ledger) = create_test_tx();
-        assert_eq!(tx.prefix.inputs.len(), 1);
+        for block_version in BlockVersion::iterator() {
+            let (tx, _ledger) = create_test_tx(block_version);
+            assert_eq!(tx.prefix.inputs.len(), 1);
 
-        // A transaction with a single input and unique ring elements.
-        assert_eq!(validate_ring_elements_are_unique(&tx.prefix), Ok(()));
+            // A transaction with a single input and unique ring elements.
+            assert_eq!(validate_ring_elements_are_unique(&tx.prefix), Ok(()));
 
-        // A transaction with a single input and duplicate ring elements.
-        {
-            let mut tx_prefix = tx.prefix.clone();
-            tx_prefix.inputs[0]
-                .ring
-                .push(tx.prefix.inputs[0].ring[0].clone());
+            // A transaction with a single input and duplicate ring elements.
+            {
+                let mut tx_prefix = tx.prefix.clone();
+                tx_prefix.inputs[0]
+                    .ring
+                    .push(tx.prefix.inputs[0].ring[0].clone());
 
-            assert_eq!(
-                validate_ring_elements_are_unique(&tx_prefix),
-                Err(TransactionValidationError::DuplicateRingElements)
-            );
-        }
-
-        // A transaction with a multiple inputs and unique ring elements.
-        {
-            let mut tx_prefix = tx.prefix.clone();
-            tx_prefix.inputs.push(tx.prefix.inputs[0].clone());
-
-            for mut tx_out in tx_prefix.inputs[1].ring.iter_mut() {
-                let mut bytes = tx_out.target_key.to_bytes();
-                bytes[0] = !bytes[0];
-                tx_out.target_key = CompressedRistrettoPublic::from_bytes(&bytes).unwrap();
+                assert_eq!(
+                    validate_ring_elements_are_unique(&tx_prefix),
+                    Err(TransactionValidationError::DuplicateRingElements)
+                );
             }
 
-            assert_eq!(validate_ring_elements_are_unique(&tx_prefix), Ok(()));
-        }
+            // A transaction with a multiple inputs and unique ring elements.
+            {
+                let mut tx_prefix = tx.prefix.clone();
+                tx_prefix.inputs.push(tx.prefix.inputs[0].clone());
 
-        // A transaction with a multiple inputs and duplicate ring elements in different
-        // rings.
-        {
-            let mut tx_prefix = tx.prefix.clone();
-            tx_prefix.inputs.push(tx.prefix.inputs[0].clone());
+                for mut tx_out in tx_prefix.inputs[1].ring.iter_mut() {
+                    let mut bytes = tx_out.target_key.to_bytes();
+                    bytes[0] = !bytes[0];
+                    tx_out.target_key = CompressedRistrettoPublic::from_bytes(&bytes).unwrap();
+                }
 
-            assert_eq!(
-                validate_ring_elements_are_unique(&tx_prefix),
-                Err(TransactionValidationError::DuplicateRingElements)
-            );
+                assert_eq!(validate_ring_elements_are_unique(&tx_prefix), Ok(()));
+            }
+
+            // A transaction with a multiple inputs and duplicate ring elements in different
+            // rings.
+            {
+                let mut tx_prefix = tx.prefix.clone();
+                tx_prefix.inputs.push(tx.prefix.inputs[0].clone());
+
+                assert_eq!(
+                    validate_ring_elements_are_unique(&tx_prefix),
+                    Err(TransactionValidationError::DuplicateRingElements)
+                );
+            }
         }
     }
 
     #[test]
     /// validate_ring_elements_are_sorted should reject an unsorted ring.
     fn test_validate_ring_elements_are_sorted() {
-        let (mut tx, _ledger) = create_test_tx();
-        assert_eq!(validate_ring_elements_are_sorted(&tx.prefix), Ok(()));
+        for block_version in BlockVersion::iterator() {
+            let (mut tx, _ledger) = create_test_tx(block_version);
+            assert_eq!(validate_ring_elements_are_sorted(&tx.prefix), Ok(()));
 
-        // Change the ordering of a ring.
-        tx.prefix.inputs[0].ring.swap(0, 3);
-        assert_eq!(
-            validate_ring_elements_are_sorted(&tx.prefix),
-            Err(TransactionValidationError::UnsortedRingElements)
-        );
+            // Change the ordering of a ring.
+            tx.prefix.inputs[0].ring.swap(0, 3);
+            assert_eq!(
+                validate_ring_elements_are_sorted(&tx.prefix),
+                Err(TransactionValidationError::UnsortedRingElements)
+            );
+        }
     }
 
     #[test]
     /// validate_inputs_are_sorted should reject unsorted inputs.
     fn test_validate_inputs_are_sorted() {
-        let (tx, _ledger) = create_test_tx();
+        for block_version in BlockVersion::iterator() {
+            let (tx, _ledger) = create_test_tx(block_version);
 
-        // Add a second input to the transaction.
-        let mut tx_prefix = tx.prefix.clone();
-        tx_prefix.inputs.push(tx.prefix.inputs[0].clone());
+            // Add a second input to the transaction.
+            let mut tx_prefix = tx.prefix.clone();
+            tx_prefix.inputs.push(tx.prefix.inputs[0].clone());
 
-        // By removing the first ring element of the second input we ensure the inputs
-        // are different, but remain sorted (since the ring elements are
-        // sorted).
-        tx_prefix.inputs[1].ring.remove(0);
+            // By removing the first ring element of the second input we ensure the inputs
+            // are different, but remain sorted (since the ring elements are
+            // sorted).
+            tx_prefix.inputs[1].ring.remove(0);
 
-        assert_eq!(validate_inputs_are_sorted(&tx_prefix), Ok(()));
+            assert_eq!(validate_inputs_are_sorted(&tx_prefix), Ok(()));
 
-        // Change the ordering of inputs.
-        tx_prefix.inputs.swap(0, 1);
-        assert_eq!(
-            validate_inputs_are_sorted(&tx_prefix),
-            Err(TransactionValidationError::UnsortedInputs)
-        );
+            // Change the ordering of inputs.
+            tx_prefix.inputs.swap(0, 1);
+            assert_eq!(
+                validate_inputs_are_sorted(&tx_prefix),
+                Err(TransactionValidationError::UnsortedInputs)
+            );
+        }
     }
 
     #[test]
     /// validate_key_images_are_unique rejects duplicate key image.
     fn test_validate_key_images_are_unique_rejects_duplicate() {
-        let (mut tx, _ledger) = create_test_tx();
-        // Tx only contains a single ring signature, which contains the key image.
-        // Duplicate the ring signature so that tx.key_images() returns a
-        // duplicate key image.
-        let ring_signature = tx.signature.ring_signatures[0].clone();
-        tx.signature.ring_signatures.push(ring_signature);
+        for block_version in BlockVersion::iterator() {
+            let (mut tx, _ledger) = create_test_tx(block_version);
+            // Tx only contains a single ring signature, which contains the key image.
+            // Duplicate the ring signature so that tx.key_images() returns a
+            // duplicate key image.
+            let ring_signature = tx.signature.ring_signatures[0].clone();
+            tx.signature.ring_signatures.push(ring_signature);
 
-        assert_eq!(
-            validate_key_images_are_unique(&tx),
-            Err(TransactionValidationError::DuplicateKeyImages)
-        );
+            assert_eq!(
+                validate_key_images_are_unique(&tx),
+                Err(TransactionValidationError::DuplicateKeyImages)
+            );
+        }
     }
 
     #[test]
     /// validate_key_images_are_unique returns Ok if all key images are unique.
     fn test_validate_key_images_are_unique_ok() {
-        let (tx, _ledger) = create_test_tx();
-        assert_eq!(validate_key_images_are_unique(&tx), Ok(()),);
+        for block_version in BlockVersion::iterator() {
+            let (tx, _ledger) = create_test_tx(block_version);
+            assert_eq!(validate_key_images_are_unique(&tx), Ok(()),);
+        }
     }
 
     #[test]
     /// validate_outputs_public_keys_are_unique rejects duplicate public key.
     fn test_validate_output_public_keys_are_unique_rejects_duplicate() {
-        let (mut tx, _ledger) = create_test_tx();
-        // Tx only contains a single output. Duplicate the
-        // output so that tx.output_public_keys() returns a duplicate public key.
-        let tx_out = tx.prefix.outputs[0].clone();
-        tx.prefix.outputs.push(tx_out);
+        for block_version in BlockVersion::iterator() {
+            let (mut tx, _ledger) = create_test_tx(block_version);
+            // Tx only contains a single output. Duplicate the
+            // output so that tx.output_public_keys() returns a duplicate public key.
+            let tx_out = tx.prefix.outputs[0].clone();
+            tx.prefix.outputs.push(tx_out);
 
-        assert_eq!(
-            validate_outputs_public_keys_are_unique(&tx),
-            Err(TransactionValidationError::DuplicateOutputPublicKey)
-        );
+            assert_eq!(
+                validate_outputs_public_keys_are_unique(&tx),
+                Err(TransactionValidationError::DuplicateOutputPublicKey)
+            );
+        }
     }
 
     #[test]
     /// validate_outputs_public_keys_are_unique returns Ok if all public keys
     /// are unique.
     fn test_validate_output_public_keys_are_unique_ok() {
-        let (tx, _ledger) = create_test_tx();
-        assert_eq!(validate_outputs_public_keys_are_unique(&tx), Ok(()),);
+        for block_version in BlockVersion::iterator() {
+            let (tx, _ledger) = create_test_tx(block_version);
+            assert_eq!(validate_outputs_public_keys_are_unique(&tx), Ok(()),);
+        }
     }
 
     #[test]
     // `validate_signature` return OK for a valid transaction.
     fn test_validate_signature_ok() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let (tx, _ledger) = create_test_tx();
-        assert_eq!(validate_signature(&tx, &mut rng), Ok(()));
+
+        for block_version in BlockVersion::iterator() {
+            let (tx, _ledger) = create_test_tx(block_version);
+            assert_eq!(validate_signature(&tx, &mut rng), Ok(()));
+        }
     }
 
     #[test]
     // Should return InvalidTransactionSignature if an input is modified.
     fn test_transaction_signature_err_modified_input() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let (mut tx, _ledger) = create_test_tx();
 
-        // Remove an input.
-        tx.prefix.inputs[0].ring.pop();
+        for block_version in BlockVersion::iterator() {
+            let (mut tx, _ledger) = create_test_tx(block_version);
 
-        match validate_signature(&tx, &mut rng) {
-            Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
-            Err(e) => {
-                panic!("Unexpected error {}", e);
+            // Remove an input.
+            tx.prefix.inputs[0].ring.pop();
+
+            match validate_signature(&tx, &mut rng) {
+                Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
+                Err(e) => {
+                    panic!("Unexpected error {}", e);
+                }
+                Ok(()) => panic!("Unexpected success"),
             }
-            Ok(()) => panic!("Unexpected success"),
         }
     }
 
@@ -911,18 +957,21 @@ mod tests {
     // Should return InvalidTransactionSignature if an output is modified.
     fn test_transaction_signature_err_modified_output() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let (mut tx, _ledger) = create_test_tx();
 
-        // Add an output.
-        let output = tx.prefix.outputs.get(0).unwrap().clone();
-        tx.prefix.outputs.push(output);
+        for block_version in BlockVersion::iterator() {
+            let (mut tx, _ledger) = create_test_tx(block_version);
 
-        match validate_signature(&tx, &mut rng) {
-            Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
-            Err(e) => {
-                panic!("Unexpected error {}", e);
+            // Add an output.
+            let output = tx.prefix.outputs.get(0).unwrap().clone();
+            tx.prefix.outputs.push(output);
+
+            match validate_signature(&tx, &mut rng) {
+                Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
+                Err(e) => {
+                    panic!("Unexpected error {}", e);
+                }
+                Ok(()) => panic!("Unexpected success"),
             }
-            Ok(()) => panic!("Unexpected success"),
         }
     }
 
@@ -930,54 +979,63 @@ mod tests {
     // Should return InvalidTransactionSignature if the fee is modified.
     fn test_transaction_signature_err_modified_fee() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let (mut tx, _ledger) = create_test_tx();
 
-        tx.prefix.fee = tx.prefix.fee + 1;
+        for block_version in BlockVersion::iterator() {
+            let (mut tx, _ledger) = create_test_tx(block_version);
 
-        match validate_signature(&tx, &mut rng) {
-            Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
-            Err(e) => {
-                panic!("Unexpected error {}", e);
+            tx.prefix.fee = tx.prefix.fee + 1;
+
+            match validate_signature(&tx, &mut rng) {
+                Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
+                Err(e) => {
+                    panic!("Unexpected error {}", e);
+                }
+                Ok(()) => panic!("Unexpected success"),
             }
-            Ok(()) => panic!("Unexpected success"),
         }
     }
 
     #[test]
     fn test_validate_transaction_fee() {
-        {
-            // Zero fees gets rejected
-            let (tx, _ledger) = create_test_tx_with_amount(INITIALIZE_LEDGER_AMOUNT, 0);
-            assert_eq!(
-                validate_transaction_fee(&tx, 1000),
-                Err(TransactionValidationError::TxFeeError)
-            );
-        }
+        for block_version in BlockVersion::iterator() {
+            {
+                // Zero fees gets rejected
+                let (tx, _ledger) =
+                    create_test_tx_with_amount(block_version, INITIALIZE_LEDGER_AMOUNT, 0);
+                assert_eq!(
+                    validate_transaction_fee(&tx, 1000),
+                    Err(TransactionValidationError::TxFeeError)
+                );
+            }
 
-        {
-            // Off by one fee gets rejected
-            let fee = Mob::MINIMUM_FEE - 1;
-            let (tx, _ledger) = create_test_tx_with_amount(INITIALIZE_LEDGER_AMOUNT - fee, fee);
-            assert_eq!(
-                validate_transaction_fee(&tx, Mob::MINIMUM_FEE),
-                Err(TransactionValidationError::TxFeeError)
-            );
-        }
+            {
+                // Off by one fee gets rejected
+                let fee = Mob::MINIMUM_FEE - 1;
+                let (tx, _ledger) =
+                    create_test_tx_with_amount(block_version, INITIALIZE_LEDGER_AMOUNT - fee, fee);
+                assert_eq!(
+                    validate_transaction_fee(&tx, Mob::MINIMUM_FEE),
+                    Err(TransactionValidationError::TxFeeError)
+                );
+            }
 
-        {
-            // Exact fee amount is okay
-            let (tx, _ledger) = create_test_tx_with_amount(
-                INITIALIZE_LEDGER_AMOUNT - Mob::MINIMUM_FEE,
-                Mob::MINIMUM_FEE,
-            );
-            assert_eq!(validate_transaction_fee(&tx, Mob::MINIMUM_FEE), Ok(()));
-        }
+            {
+                // Exact fee amount is okay
+                let (tx, _ledger) = create_test_tx_with_amount(
+                    block_version,
+                    INITIALIZE_LEDGER_AMOUNT - Mob::MINIMUM_FEE,
+                    Mob::MINIMUM_FEE,
+                );
+                assert_eq!(validate_transaction_fee(&tx, Mob::MINIMUM_FEE), Ok(()));
+            }
 
-        {
-            // Overpaying fees is okay
-            let fee = Mob::MINIMUM_FEE + 1;
-            let (tx, _ledger) = create_test_tx_with_amount(INITIALIZE_LEDGER_AMOUNT - fee, fee);
-            assert_eq!(validate_transaction_fee(&tx, Mob::MINIMUM_FEE), Ok(()));
+            {
+                // Overpaying fees is okay
+                let fee = Mob::MINIMUM_FEE + 1;
+                let (tx, _ledger) =
+                    create_test_tx_with_amount(block_version, INITIALIZE_LEDGER_AMOUNT - fee, fee);
+                assert_eq!(validate_transaction_fee(&tx, Mob::MINIMUM_FEE), Ok(()));
+            }
         }
     }
 

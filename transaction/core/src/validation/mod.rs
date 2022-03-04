@@ -3,5 +3,7 @@
 mod error;
 mod validate;
 
-pub use error::{TransactionValidationError, TransactionValidationResult};
-pub use validate::{validate, validate_signature, validate_tombstone};
+pub use self::{
+    error::{TransactionValidationError, TransactionValidationResult},
+    validate::{validate, validate_signature, validate_tombstone},
+};

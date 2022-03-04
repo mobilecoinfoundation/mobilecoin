@@ -22,7 +22,7 @@ use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
 use mc_fog_uri::{ConnectionUri, FogIngestUri, IngestPeerUri};
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_transaction_core::{Block, BlockContents, BlockSignature};
+use mc_transaction_core::{Block, BlockContents, BlockSignature, BlockVersion};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{admin_grpc::AdminApiClient, ConnectionUriGrpcioChannel, Empty};
 use mc_util_uri::AdminUri;
@@ -197,7 +197,10 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         LedgerDB::create(ledger_db_path.path()).unwrap();
         let mut ledger_db = LedgerDB::open(ledger_db_path.path()).unwrap();
 
+        let block_version = BlockVersion::ONE;
+
         mc_transaction_core_test_utils::initialize_ledger(
+            block_version,
             &mut ledger_db,
             1u64,
             &AccountKey::random(&mut McRng {}),
@@ -301,6 +304,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
                 .collect::<Vec<_>>();
 
             let results: Vec<(Block, BlockContents)> = mc_transaction_core_test_utils::get_blocks(
+                block_version,
                 &recipient_pub_keys[..],
                 REPETITIONS,
                 CHUNK_SIZE,

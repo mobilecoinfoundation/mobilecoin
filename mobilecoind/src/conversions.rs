@@ -175,7 +175,7 @@ mod test {
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, Amount};
     use mc_transaction_core_test_utils::{
-        create_ledger, create_transaction, initialize_ledger, AccountKey,
+        create_ledger, create_transaction, initialize_ledger, AccountKey, BlockVersion,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -255,12 +255,13 @@ mod test {
             let mut ledger = create_ledger();
             let sender = AccountKey::random(&mut rng);
             let recipient = AccountKey::random(&mut rng);
-            initialize_ledger(&mut ledger, 1, &sender, &mut rng);
+            initialize_ledger(BlockVersion::MAX, &mut ledger, 1, &sender, &mut rng);
 
             let block_contents = ledger.get_block_contents(0).unwrap();
             let tx_out = block_contents.outputs[0].clone();
 
             create_transaction(
+                BlockVersion::MAX,
                 &mut ledger,
                 &tx_out,
                 &sender,

@@ -1,7 +1,9 @@
 use mc_account_keys::AccountKey;
 use mc_crypto_digestible_test_utils::*;
 use mc_crypto_keys::RistrettoPrivate;
-use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, tx::TxOut, Block, BlockContents};
+use mc_transaction_core::{
+    encrypted_fog_hint::EncryptedFogHint, tx::TxOut, Block, BlockContents, BlockVersion,
+};
 use mc_util_from_random::FromRandom;
 use rand_core::{RngCore, SeedableRng};
 use rand_hc::Hc128Rng as FixedRng;
@@ -33,7 +35,7 @@ fn test_origin_tx_outs() -> Vec<TxOut> {
         .collect()
 }
 
-fn test_blockchain() -> Vec<(Block, BlockContents)> {
+fn test_blockchain(block_version: BlockVersion) -> Vec<(Block, BlockContents)> {
     let mut rng: FixedRng = SeedableRng::from_seed([10u8; 32]);
 
     let origin_tx_outs = test_origin_tx_outs();
@@ -45,6 +47,7 @@ fn test_blockchain() -> Vec<(Block, BlockContents)> {
         .collect::<Vec<_>>();
 
     mc_transaction_core_test_utils::get_blocks(
+        block_version,
         &recipient_pub_keys[..],
         3,
         50,
@@ -211,7 +214,7 @@ fn origin_block_digestible_ast() {
 
 #[test]
 fn block_contents_digestible_test_vectors() {
-    let mut results = test_blockchain();
+    let results = test_blockchain(BlockVersion::TWO);
 
     // Test digest of block contents
     assert_eq!(
@@ -236,12 +239,8 @@ fn block_contents_digestible_test_vectors() {
         ]
     );
 
-    // Now remove all memos and run the old test vectors
-    for (_, ref mut block_contents) in results.iter_mut() {
-        for ref mut output in block_contents.outputs.iter_mut() {
-            output.e_memo = None;
-        }
-    }
+    // Now set block version 1 and run the old test vectors
+    let results = test_blockchain(BlockVersion::ONE);
 
     // Test digest of block contents
     assert_eq!(

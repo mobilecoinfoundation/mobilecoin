@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-generate-sample-ledger"
-version = "1.2.0-pre0"
+version = "1.3.0-pre0"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -31,8 +31,3 @@ curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features
 
 [dev-dependencies]
 tempdir = "0.3"
-
-[build-dependencies]
-# Even though this is unused, it needs to be here otherwise Cargo brings in some weird mixture of packages/features that refuses to compile.
-# Go figure ¯\_(ツ)_/¯
-serde = { version = "1", default-features = false, features = ["alloc", "derive"] }

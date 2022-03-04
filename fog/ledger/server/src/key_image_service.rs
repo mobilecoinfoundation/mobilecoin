@@ -91,7 +91,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
             latest_block_version,
             max_block_version: core::cmp::max(
                 latest_block_version,
-                mc_transaction_core::BLOCK_VERSION,
+                *mc_transaction_core::MAX_BLOCK_VERSION,
             ),
         };
 

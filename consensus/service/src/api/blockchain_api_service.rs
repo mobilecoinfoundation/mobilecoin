@@ -179,7 +179,7 @@ mod tests {
     use grpcio::{ChannelBuilder, Environment, Error as GrpcError, Server, ServerBuilder};
     use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
     use mc_consensus_api::consensus_common_grpc::{self, BlockchainApiClient};
-    use mc_transaction_core::TokenId;
+    use mc_transaction_core::{BlockVersion, TokenId};
     use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
     use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator};
     use rand::{rngs::StdRng, SeedableRng};
@@ -223,7 +223,13 @@ mod tests {
         let authenticator = Arc::new(AnonymousAuthenticator::default());
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
-        let block_entities = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
+        let block_entities = initialize_ledger(
+            BlockVersion::MAX,
+            &mut ledger_db,
+            10,
+            &account_key,
+            &mut rng,
+        );
 
         let mut expected_response = LastBlockInfoResponse::new();
         expected_response.set_index(block_entities.last().unwrap().index);
@@ -277,7 +283,13 @@ mod tests {
         let authenticator = Arc::new(AnonymousAuthenticator::default());
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
-        let block_entities = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
+        let block_entities = initialize_ledger(
+            BlockVersion::MAX,
+            &mut ledger_db,
+            10,
+            &account_key,
+            &mut rng,
+        );
 
         let expected_blocks: Vec<blockchain::Block> = block_entities
             .into_iter()
@@ -320,7 +332,13 @@ mod tests {
         let authenticator = Arc::new(AnonymousAuthenticator::default());
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
-        let _blocks = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
+        let _blocks = initialize_ledger(
+            BlockVersion::MAX,
+            &mut ledger_db,
+            10,
+            &account_key,
+            &mut rng,
+        );
 
         let mut blockchain_api_service =
             BlockchainApiService::new(ledger_db, authenticator, FeeMap::default(), logger);
@@ -341,7 +359,13 @@ mod tests {
         let authenticator = Arc::new(AnonymousAuthenticator::default());
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
-        let block_entities = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
+        let block_entities = initialize_ledger(
+            BlockVersion::MAX,
+            &mut ledger_db,
+            10,
+            &account_key,
+            &mut rng,
+        );
 
         let expected_blocks: Vec<blockchain::Block> = block_entities
             .into_iter()

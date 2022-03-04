@@ -331,7 +331,7 @@ mod test {
     use super::*;
     use crate::{
         error::Error,
-        test_utils::{get_test_databases, get_test_monitor_data_and_id},
+        test_utils::{get_test_databases, get_test_monitor_data_and_id, BlockVersion},
     };
     use mc_account_keys::RootIdentity;
     use mc_common::logger::{test_with_logger, Logger};
@@ -407,7 +407,7 @@ pKZkdp8MQU5TLFOE9qjNeVsCAwEAAQ==
 
         // Set up a db with 3 random recipients and 10 blocks.
         let (_ledger_db, mobilecoind_db) =
-            get_test_databases(3, &vec![], 10, logger.clone(), &mut rng);
+            get_test_databases(BlockVersion::MAX, 3, &vec![], 10, logger.clone(), &mut rng);
 
         // Check that there are no monitors yet.
         assert_eq!(

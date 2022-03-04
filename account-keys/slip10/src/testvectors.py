@@ -87,14 +87,14 @@ def derive(parent_key, parent_chaincode, i, curve):
             key = int_to_string(key, 32)
             break
         d = '\x01' + h[32:] + struct.pack('>L', i)
-                        
+
     return (key, chaincode)
 
 def get_curve_info(curvename):
     if curvename == 'secp256k1':
-        return (ecdsa.curves.SECP256k1, b'Bitcoin seed') 
+        return (ecdsa.curves.SECP256k1, b'Bitcoin seed')
     if curvename == 'nist256p1':
-        return (ecdsa.curves.NIST256p, b'Nist256p1 seed') 
+        return (ecdsa.curves.NIST256p, b'Nist256p1 seed')
     if curvename == 'ed25519':
         return ('ed25519', b'ed25519 seed')
     raise BaseException('unsupported curve: '+curvename)
@@ -126,7 +126,7 @@ def show_testvector(name, curvename, seedhex, derivationpath):
         if ((i & privdev) != 0):
             path = path + "<sub>H</sub>"
         k,c = derive(k, c, i, curve)
-        p = publickey(k, curve) 
+        p = publickey(k, curve)
         print('* Chain ' + path)
         print('  * fingerprint: ' + fpr.hex())
         print('  * chain code: ' + c.hex())

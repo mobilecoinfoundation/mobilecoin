@@ -11,7 +11,7 @@ use mc_fog_ledger_connection::{Error as LedgerConnectionError, KeyImageQueryErro
 use mc_fog_report_connection::Error as FogResolutionError;
 use mc_fog_types::view::FogTxOutError;
 use mc_fog_view_protocol::TxOutPollingError;
-use mc_transaction_core::{validation::TransactionValidationError, AmountError};
+use mc_transaction_core::{validation::TransactionValidationError, AmountError, BlockVersionError};
 use mc_transaction_std::TxBuilderError;
 use mc_util_uri::UriParseError;
 use std::result::Result as StdResult;
@@ -111,6 +111,9 @@ pub enum Error {
 
     /// Could not parse uri: {0}
     Uri(UriParseError),
+
+    /// Block version error: {0}
+    BlockVersion(BlockVersionError),
 }
 
 impl From<ConnectionError> for Error {
@@ -173,5 +176,11 @@ impl From<FogResolutionError> for Error {
 impl From<UriParseError> for Error {
     fn from(src: UriParseError) -> Self {
         Self::Uri(src)
+    }
+}
+
+impl From<BlockVersionError> for Error {
+    fn from(src: BlockVersionError) -> Self {
+        Self::BlockVersion(src)
     }
 }

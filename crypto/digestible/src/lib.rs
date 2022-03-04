@@ -446,6 +446,28 @@ impl DigestibleAsBytes for [u8; 32] {}
 
 impl<Length: ArrayLength<u8>> DigestibleAsBytes for GenericArray<u8, Length> {}
 
+// Implementation for tuples of Digestible
+// This is treated as an Agg in the abstract structure hashing schema,
+// because that is how digestible-derive handles tuple structs and enums in
+// tuples.
+//
+// Note: It would be nice to be able to implement this for (T, U) instead,
+// and have a blanket impl for &T where T is digestible. That doesn't seem to
+// work right now.
+impl<T: Digestible, U: Digestible> Digestible for (&T, &U) {
+    #[inline]
+    fn append_to_transcript<DT: DigestTranscript>(
+        &self,
+        context: &'static [u8],
+        transcript: &mut DT,
+    ) {
+        transcript.append_agg_header(context, b"Tuple");
+        self.0.append_to_transcript(b"0", transcript);
+        self.1.append_to_transcript(b"1", transcript);
+        transcript.append_agg_closer(context, b"Tuple");
+    }
+}
+
 // Implementation for slices of Digestible
 // This is treated as a Seq in the abstract structure hashing schema
 //
@@ -529,7 +551,7 @@ cfg_if! {
         extern crate alloc;
         use alloc::vec::Vec;
         use alloc::string::String;
-        use alloc::collections::BTreeSet;
+        use alloc::collections::{BTreeSet, BTreeMap};
 
         // Forward from Vec<T> to &[T] impl
         impl<T: Digestible> Digestible for Vec<T> {
@@ -589,6 +611,29 @@ cfg_if! {
         // Treat a BTreeSet as a (sorted) sequence
         // This implementation should match that for &[T]
         impl<T: Digestible> Digestible for BTreeSet<T> {
+            #[inline]
+            fn append_to_transcript<DT: DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
+                if self.is_empty() {
+                    // This allows for schema evolution in variant types, it means Vec can be added to a fieldless enum
+                    transcript.append_none(context);
+                } else {
+                    transcript.append_seq_header(context, self.len());
+                    for elem in self.iter() {
+                        elem.append_to_transcript(b"", transcript);
+                    }
+                }
+            }
+            #[inline]
+            fn append_to_transcript_allow_omit<DT: DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
+                if !self.is_empty() {
+                    self.append_to_transcript(context, transcript);
+                }
+            }
+        }
+
+        // Treat a BTreeMap as a (sorted) sequence
+        // This implementation should match that for &[(T, U)]
+        impl<T: Digestible, U: Digestible> Digestible for BTreeMap<T, U> {
             #[inline]
             fn append_to_transcript<DT: DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
                 if self.is_empty() {

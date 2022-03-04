@@ -81,6 +81,10 @@ pub struct Config {
     /// transactions to fog recipients).
     #[structopt(long, parse(try_from_str=load_css_file))]
     pub fog_ingest_enclave_css: Option<Signature>,
+
+    /// Automatically migrate the ledger db into the most recent version.
+    #[structopt(long)]
+    pub ledger_db_migrate: bool,
 }
 
 fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet<ResponderId>, String> {

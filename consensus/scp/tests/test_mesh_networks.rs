@@ -3,7 +3,7 @@
 mod mock_network;
 
 use mc_common::logger::{test_with_logger, Logger};
-use serial_test_derive::serial;
+use serial_test::serial;
 
 /// Performs a consensus test for a mesh network of (n) nodes.
 fn mesh_test_helper(

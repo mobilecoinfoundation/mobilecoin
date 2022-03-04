@@ -2,15 +2,16 @@
 
 use crate::{
     tx::{TxOut, TxOutMembershipElement},
-    BlockContents, BlockContentsHash, BlockID,
+    BlockContents, BlockContentsHash, BlockID, BlockVersion,
 };
 use alloc::vec::Vec;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
-/// The current block format version.
-pub const BLOCK_VERSION: u32 = 1;
+/// The maximum supported block format version for this build of
+/// mc-transaction-core
+pub const MAX_BLOCK_VERSION: BlockVersion = BlockVersion::MAX;
 
 /// The index of a block in the blockchain.
 pub type BlockIndex = u64;
@@ -94,7 +95,7 @@ impl Block {
     /// * `root_element` - The root element for membership proofs
     /// * `block_contents - The Contents of the block.
     pub fn new_with_parent(
-        version: u32,
+        version: BlockVersion,
         parent: &Block,
         root_element: &TxOutMembershipElement,
         block_contents: &BlockContents,
@@ -122,7 +123,7 @@ impl Block {
     /// * `root_element` - The root element for membership proofs
     /// * `block_contents` - Contents of the block.
     pub fn new(
-        version: u32,
+        version: BlockVersion,
         parent_id: &BlockID,
         index: BlockIndex,
         cumulative_txo_count: u64,
@@ -131,7 +132,7 @@ impl Block {
     ) -> Self {
         let contents_hash = block_contents.hash();
         let id = compute_block_id(
-            version,
+            *version,
             parent_id,
             index,
             cumulative_txo_count,
@@ -141,7 +142,7 @@ impl Block {
 
         Self {
             id,
-            version,
+            version: *version,
             parent_id: parent_id.clone(),
             index,
             cumulative_txo_count,
@@ -203,7 +204,7 @@ mod block_tests {
         membership_proofs::Range,
         ring_signature::KeyImage,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-        Block, BlockContents, BlockContentsHash, BlockID, BLOCK_VERSION,
+        Block, BlockContents, BlockContentsHash, BlockID, BlockVersion,
     };
     use alloc::vec::Vec;
     use core::convert::TryFrom;
@@ -211,6 +212,8 @@ mod block_tests {
     use mc_crypto_keys::RistrettoPrivate;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, CryptoRng, RngCore, SeedableRng};
+
+    const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
 
     fn get_block_contents<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> BlockContents {
         let (key_images, outputs) = get_key_images_and_outputs(rng);

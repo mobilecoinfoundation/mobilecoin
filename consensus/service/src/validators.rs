@@ -28,7 +28,7 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{
     ring_signature::KeyImage,
-    tx::{TxHash, TxOutMembershipProof},
+    tx::{TxHash, TxOutMembershipElement, TxOutMembershipProof},
     validation::{validate_tombstone, TransactionValidationError, TransactionValidationResult},
 };
 use std::{collections::HashSet, iter::FromIterator, sync::Arc};
@@ -167,6 +167,14 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
     ) -> TransactionValidationResult<Vec<TxOutMembershipProof>> {
         self.ledger
             .get_tx_out_proof_of_memberships(indexes)
+            .map_err(|e| TransactionValidationError::Ledger(e.to_string()))
+    }
+
+    fn get_root_tx_out_membership_element(
+        &self,
+    ) -> TransactionValidationResult<TxOutMembershipElement> {
+        self.ledger
+            .get_root_tx_out_membership_element()
             .map_err(|e| TransactionValidationError::Ledger(e.to_string()))
     }
 }
@@ -492,6 +500,7 @@ mod combine_tests {
     use mc_transaction_core::{
         onetime_keys::recover_onetime_private_key,
         tx::{TxOut, TxOutMembershipProof},
+        BlockVersion,
     };
     use mc_transaction_core_test_utils::{AccountKey, MockFogResolver};
     use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
@@ -521,114 +530,188 @@ mod combine_tests {
     fn combine_single_transaction() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
 
-        let alice = AccountKey::random(&mut rng);
-        let bob = AccountKey::random(&mut rng);
+        for block_version in BlockVersion::iterator() {
+            let alice = AccountKey::random(&mut rng);
+            let bob = AccountKey::random(&mut rng);
 
-        // Step 1: create a TxOut and the keys for its enclosing transaction. This TxOut
-        // will be used as the input for a transaction used in the test.
+            // Step 1: create a TxOut and the keys for its enclosing transaction. This TxOut
+            // will be used as the input for a transaction used in the test.
 
-        // The transaction secret key r and its public key R.
-        let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
+            // The transaction secret key r and its public key R.
+            let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
-        let tx_out = TxOut::new(
-            123,
-            &alice.default_subaddress(),
-            &tx_secret_key_for_txo,
-            Default::default(),
-        )
-        .unwrap();
-
-        let tx_public_key_for_txo = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
-
-        // Step 2: Alice creates a transaction that sends the full value of `tx_out` to
-        // Bob.
-
-        // Create InputCredentials to spend the TxOut.
-        let onetime_private_key = recover_onetime_private_key(
-            &tx_public_key_for_txo,
-            alice.view_private_key(),
-            &alice.default_subaddress_spend_private(),
-        );
-
-        let ring: Vec<TxOut> = vec![tx_out];
-        let membership_proofs: Vec<TxOutMembershipProof> = ring
-            .iter()
-            .map(|_tx_out| {
-                // TODO: provide valid proofs for each tx_out.
-                TxOutMembershipProof::new(0, 0, Default::default())
-            })
-            .collect();
-
-        let input_credentials = InputCredentials::new(
-            ring,
-            membership_proofs,
-            0,
-            onetime_private_key,
-            *alice.view_private_key(),
-        )
-        .unwrap();
-
-        let mut transaction_builder =
-            TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
-        transaction_builder.add_input(input_credentials);
-        transaction_builder.set_fee(0).unwrap();
-        transaction_builder
-            .add_output(123, &bob.default_subaddress(), &mut rng)
+            let tx_out = TxOut::new(
+                123,
+                &alice.default_subaddress(),
+                &tx_secret_key_for_txo,
+                Default::default(),
+            )
             .unwrap();
 
-        let tx = transaction_builder.build(&mut rng).unwrap();
-        let client_tx = WellFormedTxContext::from(&tx);
+            let tx_public_key_for_txo = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
 
-        // "Combining" a singleton set should return a vec containing the single
-        // element.
-        let combined_transactions = combine(vec![client_tx], 100);
-        assert_eq!(combined_transactions.len(), 1);
+            // Step 2: Alice creates a transaction that sends the full value of `tx_out` to
+            // Bob.
+
+            // Create InputCredentials to spend the TxOut.
+            let onetime_private_key = recover_onetime_private_key(
+                &tx_public_key_for_txo,
+                alice.view_private_key(),
+                &alice.default_subaddress_spend_private(),
+            );
+
+            let ring: Vec<TxOut> = vec![tx_out];
+            let membership_proofs: Vec<TxOutMembershipProof> = ring
+                .iter()
+                .map(|_tx_out| {
+                    // TODO: provide valid proofs for each tx_out.
+                    TxOutMembershipProof::new(0, 0, Default::default())
+                })
+                .collect();
+
+            let input_credentials = InputCredentials::new(
+                ring,
+                membership_proofs,
+                0,
+                onetime_private_key,
+                *alice.view_private_key(),
+            )
+            .unwrap();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                MockFogResolver::default(),
+                EmptyMemoBuilder::default(),
+            );
+            transaction_builder.add_input(input_credentials);
+            transaction_builder.set_fee(0).unwrap();
+            transaction_builder
+                .add_output(123, &bob.default_subaddress(), &mut rng)
+                .unwrap();
+
+            let tx = transaction_builder.build(&mut rng).unwrap();
+            let client_tx = WellFormedTxContext::from(&tx);
+
+            // "Combining" a singleton set should return a vec containing the single
+            // element.
+            let combined_transactions = combine(vec![client_tx], 100);
+            assert_eq!(combined_transactions.len(), 1);
+        }
     }
 
     #[test]
     // `combine` should enforce a maximum limit on the number of returned items.
     fn combine_max_size() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
-        let mut transaction_set: Vec<WellFormedTxContext> = Vec::new();
 
-        let alice = AccountKey::random(&mut rng);
-        let bob = AccountKey::random(&mut rng);
+        for block_version in BlockVersion::iterator() {
+            let mut transaction_set: Vec<WellFormedTxContext> = Vec::new();
 
-        for _i in 0..10 {
-            let client_tx: WellFormedTxContext = {
-                // Step 1: create a TxOut and the keys for its enclosing transaction. This TxOut
-                // will be used as the input for a transaction used in the test.
+            let alice = AccountKey::random(&mut rng);
+            let bob = AccountKey::random(&mut rng);
 
-                // The transaction keys.
-                let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
+            for _i in 0..10 {
+                let client_tx: WellFormedTxContext = {
+                    // Step 1: create a TxOut and the keys for its enclosing transaction. This TxOut
+                    // will be used as the input for a transaction used in the test.
 
-                let tx_out = TxOut::new(
-                    88,
-                    &alice.default_subaddress(),
-                    &tx_secret_key_for_txo,
-                    Default::default(),
-                )
-                .unwrap();
+                    // The transaction keys.
+                    let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
-                let tx_public_key_for_txo = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+                    let tx_out = TxOut::new(
+                        88,
+                        &alice.default_subaddress(),
+                        &tx_secret_key_for_txo,
+                        Default::default(),
+                    )
+                    .unwrap();
 
-                // Step 2: Create a transaction that sends the full value of `tx_out` to
-                // `recipient_account`.
+                    let tx_public_key_for_txo =
+                        RistrettoPublic::try_from(&tx_out.public_key).unwrap();
 
-                let mut transaction_builder = TransactionBuilder::new(
-                    MockFogResolver::default(),
-                    EmptyMemoBuilder::default(),
-                );
+                    // Step 2: Create a transaction that sends the full value of `tx_out` to
+                    // `recipient_account`.
 
-                // Create InputCredentials to spend the TxOut.
-                let onetime_private_key = recover_onetime_private_key(
-                    &tx_public_key_for_txo,
-                    alice.view_private_key(),
-                    &alice.default_subaddress_spend_private(),
-                );
+                    let mut transaction_builder = TransactionBuilder::new(
+                        block_version,
+                        MockFogResolver::default(),
+                        EmptyMemoBuilder::default(),
+                    );
 
-                // Create InputCredentials to spend the TxOut.
-                let ring: Vec<TxOut> = vec![tx_out.clone()];
+                    // Create InputCredentials to spend the TxOut.
+                    let onetime_private_key = recover_onetime_private_key(
+                        &tx_public_key_for_txo,
+                        alice.view_private_key(),
+                        &alice.default_subaddress_spend_private(),
+                    );
+
+                    // Create InputCredentials to spend the TxOut.
+                    let ring: Vec<TxOut> = vec![tx_out.clone()];
+                    let membership_proofs: Vec<TxOutMembershipProof> = ring
+                        .iter()
+                        .map(|_tx_out| {
+                            // TODO: provide valid proofs for each tx_out.
+                            TxOutMembershipProof::new(0, 0, Default::default())
+                        })
+                        .collect();
+
+                    let input_credentials = InputCredentials::new(
+                        ring,
+                        membership_proofs,
+                        0,
+                        onetime_private_key,
+                        *alice.view_private_key(),
+                    )
+                    .unwrap();
+                    transaction_builder.add_input(input_credentials);
+                    transaction_builder.set_fee(0).unwrap();
+                    transaction_builder
+                        .add_output(88, &bob.default_subaddress(), &mut rng)
+                        .unwrap();
+
+                    let tx = transaction_builder.build(&mut rng).unwrap();
+                    WellFormedTxContext::from(&tx)
+                };
+                transaction_set.push(client_tx);
+            }
+
+            let max_elements: usize = 7;
+            let combined_transactions = combine(transaction_set, max_elements);
+
+            // The combined list of transactions should contain no more than `max_elements`.
+            assert_eq!(combined_transactions.len(), max_elements);
+        }
+    }
+
+    #[test]
+    // `combine` should omit transactions that would cause a key image to be used
+    // twice.
+    fn combine_reject_reused_key_images() {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+
+        for block_version in BlockVersion::iterator() {
+            let alice = AccountKey::random(&mut rng);
+            let bob = AccountKey::random(&mut rng);
+
+            // Create a TxOut that was sent to Alice.
+            let tx_out = TxOut::new(
+                123,
+                &alice.default_subaddress(),
+                &RistrettoPrivate::from_random(&mut rng),
+                Default::default(),
+            )
+            .unwrap();
+
+            // Alice creates InputCredentials to spend her tx_out.
+            let onetime_private_key = recover_onetime_private_key(
+                &RistrettoPublic::try_from(&tx_out.public_key).unwrap(),
+                alice.view_private_key(),
+                &alice.default_subaddress_spend_private(),
+            );
+
+            // Create a transaction that sends the full value of  `tx_out` to bob.
+            let first_client_tx: WellFormedTxContext = {
+                let ring = vec![tx_out.clone()];
                 let membership_proofs: Vec<TxOutMembershipProof> = ring
                     .iter()
                     .map(|_tx_out| {
@@ -645,179 +728,126 @@ mod combine_tests {
                     *alice.view_private_key(),
                 )
                 .unwrap();
+
+                let mut transaction_builder = TransactionBuilder::new(
+                    block_version,
+                    MockFogResolver::default(),
+                    EmptyMemoBuilder::default(),
+                );
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(88, &bob.default_subaddress(), &mut rng)
+                    .add_output(123, &bob.default_subaddress(), &mut rng)
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
                 WellFormedTxContext::from(&tx)
             };
-            transaction_set.push(client_tx);
+
+            // Create another transaction that attempts to spend `tx_out`.
+            let second_client_tx: WellFormedTxContext = {
+                let recipient_account = AccountKey::random(&mut rng);
+                let ring: Vec<TxOut> = vec![tx_out];
+                let membership_proofs: Vec<TxOutMembershipProof> = ring
+                    .iter()
+                    .map(|_tx_out| {
+                        // TODO: provide valid proofs for each tx_out.
+                        TxOutMembershipProof::new(0, 0, Default::default())
+                    })
+                    .collect();
+
+                let input_credentials = InputCredentials::new(
+                    ring,
+                    membership_proofs,
+                    0,
+                    onetime_private_key,
+                    *alice.view_private_key(),
+                )
+                .unwrap();
+
+                let mut transaction_builder = TransactionBuilder::new(
+                    block_version,
+                    MockFogResolver::default(),
+                    EmptyMemoBuilder::default(),
+                );
+                transaction_builder.add_input(input_credentials);
+                transaction_builder.set_fee(0).unwrap();
+                transaction_builder
+                    .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                    .unwrap();
+
+                let tx = transaction_builder.build(&mut rng).unwrap();
+                WellFormedTxContext::from(&tx)
+            };
+
+            // This transaction spends a different TxOut, unrelated to `first_client_tx` and
+            // `second_client_tx`.
+            let third_client_tx: WellFormedTxContext = {
+                let recipient_account = AccountKey::random(&mut rng);
+
+                // The transaction keys.
+                let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
+                let tx_out = TxOut::new(
+                    123,
+                    &alice.default_subaddress(),
+                    &tx_secret_key_for_txo,
+                    Default::default(),
+                )
+                .unwrap();
+                let tx_public_key_for_txo = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+
+                // Step 2: Create a transaction that sends the full value of `tx_out` to
+                // `recipient_account`.
+
+                // Create InputCredentials to spend the TxOut.
+                let onetime_private_key = recover_onetime_private_key(
+                    &tx_public_key_for_txo,
+                    alice.view_private_key(),
+                    &alice.default_subaddress_spend_private(),
+                );
+
+                let ring: Vec<TxOut> = vec![tx_out];
+                let membership_proofs: Vec<TxOutMembershipProof> = ring
+                    .iter()
+                    .map(|_tx_out| {
+                        // TODO: provide valid proofs for each tx_out.
+                        TxOutMembershipProof::new(0, 0, Default::default())
+                    })
+                    .collect();
+
+                let input_credentials = InputCredentials::new(
+                    ring,
+                    membership_proofs,
+                    0,
+                    onetime_private_key,
+                    *alice.view_private_key(),
+                )
+                .unwrap();
+
+                let mut transaction_builder = TransactionBuilder::new(
+                    block_version,
+                    MockFogResolver::default(),
+                    EmptyMemoBuilder::default(),
+                );
+                transaction_builder.add_input(input_credentials);
+                transaction_builder.set_fee(0).unwrap();
+                transaction_builder
+                    .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                    .unwrap();
+
+                let tx = transaction_builder.build(&mut rng).unwrap();
+                WellFormedTxContext::from(&tx)
+            };
+
+            // `combine` the set of transactions.
+            let transaction_set = vec![first_client_tx, second_client_tx, third_client_tx.clone()];
+
+            let combined_transactions = combine(transaction_set, 10);
+            // `combine` should only allow one of the transactions that attempts to use the
+            // same key image.
+            assert_eq!(combined_transactions.len(), 2);
+            assert!(combined_transactions.contains(third_client_tx.tx_hash()));
         }
-
-        let max_elements: usize = 7;
-        let combined_transactions = combine(transaction_set, max_elements);
-
-        // The combined list of transactions should contain no more than `max_elements`.
-        assert_eq!(combined_transactions.len(), max_elements);
-    }
-
-    #[test]
-    // `combine` should omit transactions that would cause a key image to be used
-    // twice.
-    fn combine_reject_reused_key_images() {
-        let mut rng = Hc128Rng::from_seed([1u8; 32]);
-
-        let alice = AccountKey::random(&mut rng);
-        let bob = AccountKey::random(&mut rng);
-
-        // Create a TxOut that was sent to Alice.
-        let tx_out = TxOut::new(
-            123,
-            &alice.default_subaddress(),
-            &RistrettoPrivate::from_random(&mut rng),
-            Default::default(),
-        )
-        .unwrap();
-
-        // Alice creates InputCredentials to spend her tx_out.
-        let onetime_private_key = recover_onetime_private_key(
-            &RistrettoPublic::try_from(&tx_out.public_key).unwrap(),
-            alice.view_private_key(),
-            &alice.default_subaddress_spend_private(),
-        );
-
-        // Create a transaction that sends the full value of  `tx_out` to bob.
-        let first_client_tx: WellFormedTxContext = {
-            let ring = vec![tx_out.clone()];
-            let membership_proofs: Vec<TxOutMembershipProof> = ring
-                .iter()
-                .map(|_tx_out| {
-                    // TODO: provide valid proofs for each tx_out.
-                    TxOutMembershipProof::new(0, 0, Default::default())
-                })
-                .collect();
-
-            let input_credentials = InputCredentials::new(
-                ring,
-                membership_proofs,
-                0,
-                onetime_private_key,
-                *alice.view_private_key(),
-            )
-            .unwrap();
-
-            let mut transaction_builder =
-                TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
-            transaction_builder.add_input(input_credentials);
-            transaction_builder.set_fee(0).unwrap();
-            transaction_builder
-                .add_output(123, &bob.default_subaddress(), &mut rng)
-                .unwrap();
-
-            let tx = transaction_builder.build(&mut rng).unwrap();
-            WellFormedTxContext::from(&tx)
-        };
-
-        // Create another transaction that attempts to spend `tx_out`.
-        let second_client_tx: WellFormedTxContext = {
-            let recipient_account = AccountKey::random(&mut rng);
-            let ring: Vec<TxOut> = vec![tx_out];
-            let membership_proofs: Vec<TxOutMembershipProof> = ring
-                .iter()
-                .map(|_tx_out| {
-                    // TODO: provide valid proofs for each tx_out.
-                    TxOutMembershipProof::new(0, 0, Default::default())
-                })
-                .collect();
-
-            let input_credentials = InputCredentials::new(
-                ring,
-                membership_proofs,
-                0,
-                onetime_private_key,
-                *alice.view_private_key(),
-            )
-            .unwrap();
-
-            let mut transaction_builder =
-                TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
-            transaction_builder.add_input(input_credentials);
-            transaction_builder.set_fee(0).unwrap();
-            transaction_builder
-                .add_output(123, &recipient_account.default_subaddress(), &mut rng)
-                .unwrap();
-
-            let tx = transaction_builder.build(&mut rng).unwrap();
-            WellFormedTxContext::from(&tx)
-        };
-
-        // This transaction spends a different TxOut, unrelated to `first_client_tx` and
-        // `second_client_tx`.
-        let third_client_tx: WellFormedTxContext = {
-            let recipient_account = AccountKey::random(&mut rng);
-
-            // The transaction keys.
-            let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
-            let tx_out = TxOut::new(
-                123,
-                &alice.default_subaddress(),
-                &tx_secret_key_for_txo,
-                Default::default(),
-            )
-            .unwrap();
-            let tx_public_key_for_txo = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
-
-            // Step 2: Create a transaction that sends the full value of `tx_out` to
-            // `recipient_account`.
-
-            // Create InputCredentials to spend the TxOut.
-            let onetime_private_key = recover_onetime_private_key(
-                &tx_public_key_for_txo,
-                alice.view_private_key(),
-                &alice.default_subaddress_spend_private(),
-            );
-
-            let ring: Vec<TxOut> = vec![tx_out];
-            let membership_proofs: Vec<TxOutMembershipProof> = ring
-                .iter()
-                .map(|_tx_out| {
-                    // TODO: provide valid proofs for each tx_out.
-                    TxOutMembershipProof::new(0, 0, Default::default())
-                })
-                .collect();
-
-            let input_credentials = InputCredentials::new(
-                ring,
-                membership_proofs,
-                0,
-                onetime_private_key,
-                *alice.view_private_key(),
-            )
-            .unwrap();
-
-            let mut transaction_builder =
-                TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
-            transaction_builder.add_input(input_credentials);
-            transaction_builder.set_fee(0).unwrap();
-            transaction_builder
-                .add_output(123, &recipient_account.default_subaddress(), &mut rng)
-                .unwrap();
-
-            let tx = transaction_builder.build(&mut rng).unwrap();
-            WellFormedTxContext::from(&tx)
-        };
-
-        // `combine` the set of transactions.
-        let transaction_set = vec![first_client_tx, second_client_tx, third_client_tx.clone()];
-
-        let combined_transactions = combine(transaction_set, 10);
-        // `combine` should only allow one of the transactions that attempts to use the
-        // same key image.
-        assert_eq!(combined_transactions.len(), 2);
-        assert!(combined_transactions.contains(third_client_tx.tx_hash()));
     }
 
     #[test]
@@ -826,170 +856,181 @@ mod combine_tests {
     fn combine_reject_duplicate_output_public_key() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
 
-        let alice = AccountKey::random(&mut rng);
-        let bob = AccountKey::random(&mut rng);
+        for block_version in BlockVersion::iterator() {
+            let alice = AccountKey::random(&mut rng);
+            let bob = AccountKey::random(&mut rng);
 
-        // Create two TxOuts that were sent to Alice.
-        let tx_out1 = TxOut::new(
-            123,
-            &alice.default_subaddress(),
-            &RistrettoPrivate::from_random(&mut rng),
-            Default::default(),
-        )
-        .unwrap();
-
-        let tx_out2 = TxOut::new(
-            123,
-            &alice.default_subaddress(),
-            &RistrettoPrivate::from_random(&mut rng),
-            Default::default(),
-        )
-        .unwrap();
-
-        // Alice creates InputCredentials to spend her tx_outs.
-        let onetime_private_key1 = recover_onetime_private_key(
-            &RistrettoPublic::try_from(&tx_out1.public_key).unwrap(),
-            alice.view_private_key(),
-            &alice.default_subaddress_spend_private(),
-        );
-
-        let onetime_private_key2 = recover_onetime_private_key(
-            &RistrettoPublic::try_from(&tx_out2.public_key).unwrap(),
-            alice.view_private_key(),
-            &alice.default_subaddress_spend_private(),
-        );
-
-        // Create a transaction that sends the full value of  `tx_out1` to bob.
-        let first_client_tx: WellFormedTxContext = {
-            let ring = vec![tx_out1.clone()];
-            let membership_proofs: Vec<TxOutMembershipProof> = ring
-                .iter()
-                .map(|_tx_out| {
-                    // TODO: provide valid proofs for each tx_out.
-                    TxOutMembershipProof::new(0, 0, Default::default())
-                })
-                .collect();
-
-            let input_credentials = InputCredentials::new(
-                ring,
-                membership_proofs,
-                0,
-                onetime_private_key1,
-                *alice.view_private_key(),
-            )
-            .unwrap();
-
-            let mut transaction_builder =
-                TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
-            transaction_builder.add_input(input_credentials);
-            transaction_builder.set_fee(0).unwrap();
-            transaction_builder
-                .add_output(123, &bob.default_subaddress(), &mut rng)
-                .unwrap();
-
-            let tx = transaction_builder.build(&mut rng).unwrap();
-            WellFormedTxContext::from(&tx)
-        };
-
-        // Create another transaction that attempts to spend `tx_out2` but has the same
-        // output public key.
-        let second_client_tx: WellFormedTxContext = {
-            let recipient_account = AccountKey::random(&mut rng);
-            let ring: Vec<TxOut> = vec![tx_out2];
-            let membership_proofs: Vec<TxOutMembershipProof> = ring
-                .iter()
-                .map(|_tx_out| {
-                    // TODO: provide valid proofs for each tx_out.
-                    TxOutMembershipProof::new(0, 0, Default::default())
-                })
-                .collect();
-
-            let input_credentials = InputCredentials::new(
-                ring,
-                membership_proofs,
-                0,
-                onetime_private_key2,
-                *alice.view_private_key(),
-            )
-            .unwrap();
-
-            let mut transaction_builder =
-                TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
-            transaction_builder.add_input(input_credentials);
-            transaction_builder.set_fee(0).unwrap();
-            transaction_builder
-                .add_output(123, &recipient_account.default_subaddress(), &mut rng)
-                .unwrap();
-
-            let mut tx = transaction_builder.build(&mut rng).unwrap();
-            tx.prefix.outputs[0].public_key = first_client_tx.output_public_keys()[0].clone();
-            WellFormedTxContext::from(&tx)
-        };
-
-        // This transaction spends a different TxOut, unrelated to `first_client_tx` and
-        // `second_client_tx`.
-        let third_client_tx: WellFormedTxContext = {
-            let recipient_account = AccountKey::random(&mut rng);
-
-            // The transaction keys.
-            let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
-            let tx_out = TxOut::new(
+            // Create two TxOuts that were sent to Alice.
+            let tx_out1 = TxOut::new(
                 123,
                 &alice.default_subaddress(),
-                &tx_secret_key_for_txo,
+                &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
             )
             .unwrap();
-            let tx_public_key_for_txo = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
 
-            // Step 2: Create a transaction that sends the full value of `tx_out` to
-            // `recipient_account`.
+            let tx_out2 = TxOut::new(
+                123,
+                &alice.default_subaddress(),
+                &RistrettoPrivate::from_random(&mut rng),
+                Default::default(),
+            )
+            .unwrap();
 
-            // Create InputCredentials to spend the TxOut.
-            let onetime_private_key = recover_onetime_private_key(
-                &tx_public_key_for_txo,
+            // Alice creates InputCredentials to spend her tx_outs.
+            let onetime_private_key1 = recover_onetime_private_key(
+                &RistrettoPublic::try_from(&tx_out1.public_key).unwrap(),
                 alice.view_private_key(),
                 &alice.default_subaddress_spend_private(),
             );
 
-            let ring: Vec<TxOut> = vec![tx_out];
-            let membership_proofs: Vec<TxOutMembershipProof> = ring
-                .iter()
-                .map(|_tx_out| {
-                    // TODO: provide valid proofs for each tx_out.
-                    TxOutMembershipProof::new(0, 0, Default::default())
-                })
-                .collect();
+            let onetime_private_key2 = recover_onetime_private_key(
+                &RistrettoPublic::try_from(&tx_out2.public_key).unwrap(),
+                alice.view_private_key(),
+                &alice.default_subaddress_spend_private(),
+            );
 
-            let input_credentials = InputCredentials::new(
-                ring,
-                membership_proofs,
-                0,
-                onetime_private_key,
-                *alice.view_private_key(),
-            )
-            .unwrap();
+            // Create a transaction that sends the full value of  `tx_out1` to bob.
+            let first_client_tx: WellFormedTxContext = {
+                let ring = vec![tx_out1.clone()];
+                let membership_proofs: Vec<TxOutMembershipProof> = ring
+                    .iter()
+                    .map(|_tx_out| {
+                        // TODO: provide valid proofs for each tx_out.
+                        TxOutMembershipProof::new(0, 0, Default::default())
+                    })
+                    .collect();
 
-            let mut transaction_builder =
-                TransactionBuilder::new(MockFogResolver::default(), EmptyMemoBuilder::default());
-            transaction_builder.add_input(input_credentials);
-            transaction_builder.set_fee(0).unwrap();
-            transaction_builder
-                .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                let input_credentials = InputCredentials::new(
+                    ring,
+                    membership_proofs,
+                    0,
+                    onetime_private_key1,
+                    *alice.view_private_key(),
+                )
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).unwrap();
-            WellFormedTxContext::from(&tx)
-        };
+                let mut transaction_builder = TransactionBuilder::new(
+                    block_version,
+                    MockFogResolver::default(),
+                    EmptyMemoBuilder::default(),
+                );
+                transaction_builder.add_input(input_credentials);
+                transaction_builder.set_fee(0).unwrap();
+                transaction_builder
+                    .add_output(123, &bob.default_subaddress(), &mut rng)
+                    .unwrap();
 
-        // `combine` the set of transactions.
-        let transaction_set = vec![first_client_tx, second_client_tx, third_client_tx.clone()];
+                let tx = transaction_builder.build(&mut rng).unwrap();
+                WellFormedTxContext::from(&tx)
+            };
 
-        let combined_transactions = combine(transaction_set, 10);
-        // `combine` should only allow one of the transactions that attempts to use the
-        // same output public key.
-        assert_eq!(combined_transactions.len(), 2);
-        assert!(combined_transactions.contains(third_client_tx.tx_hash()));
+            // Create another transaction that attempts to spend `tx_out2` but has the same
+            // output public key.
+            let second_client_tx: WellFormedTxContext = {
+                let recipient_account = AccountKey::random(&mut rng);
+                let ring: Vec<TxOut> = vec![tx_out2];
+                let membership_proofs: Vec<TxOutMembershipProof> = ring
+                    .iter()
+                    .map(|_tx_out| {
+                        // TODO: provide valid proofs for each tx_out.
+                        TxOutMembershipProof::new(0, 0, Default::default())
+                    })
+                    .collect();
+
+                let input_credentials = InputCredentials::new(
+                    ring,
+                    membership_proofs,
+                    0,
+                    onetime_private_key2,
+                    *alice.view_private_key(),
+                )
+                .unwrap();
+
+                let mut transaction_builder = TransactionBuilder::new(
+                    block_version,
+                    MockFogResolver::default(),
+                    EmptyMemoBuilder::default(),
+                );
+                transaction_builder.add_input(input_credentials);
+                transaction_builder.set_fee(0).unwrap();
+                transaction_builder
+                    .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                    .unwrap();
+
+                let mut tx = transaction_builder.build(&mut rng).unwrap();
+                tx.prefix.outputs[0].public_key = first_client_tx.output_public_keys()[0].clone();
+                WellFormedTxContext::from(&tx)
+            };
+
+            // This transaction spends a different TxOut, unrelated to `first_client_tx` and
+            // `second_client_tx`.
+            let third_client_tx: WellFormedTxContext = {
+                let recipient_account = AccountKey::random(&mut rng);
+
+                // The transaction keys.
+                let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
+                let tx_out = TxOut::new(
+                    123,
+                    &alice.default_subaddress(),
+                    &tx_secret_key_for_txo,
+                    Default::default(),
+                )
+                .unwrap();
+                let tx_public_key_for_txo = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+
+                // Step 2: Create a transaction that sends the full value of `tx_out` to
+                // `recipient_account`.
+
+                // Create InputCredentials to spend the TxOut.
+                let onetime_private_key = recover_onetime_private_key(
+                    &tx_public_key_for_txo,
+                    alice.view_private_key(),
+                    &alice.default_subaddress_spend_private(),
+                );
+
+                let ring: Vec<TxOut> = vec![tx_out];
+                let membership_proofs: Vec<TxOutMembershipProof> = ring
+                    .iter()
+                    .map(|_tx_out| {
+                        // TODO: provide valid proofs for each tx_out.
+                        TxOutMembershipProof::new(0, 0, Default::default())
+                    })
+                    .collect();
+
+                let input_credentials = InputCredentials::new(
+                    ring,
+                    membership_proofs,
+                    0,
+                    onetime_private_key,
+                    *alice.view_private_key(),
+                )
+                .unwrap();
+
+                let mut transaction_builder = TransactionBuilder::new(
+                    block_version,
+                    MockFogResolver::default(),
+                    EmptyMemoBuilder::default(),
+                );
+                transaction_builder.add_input(input_credentials);
+                transaction_builder.set_fee(0).unwrap();
+                transaction_builder
+                    .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                    .unwrap();
+
+                let tx = transaction_builder.build(&mut rng).unwrap();
+                WellFormedTxContext::from(&tx)
+            };
+
+            // `combine` the set of transactions.
+            let transaction_set = vec![first_client_tx, second_client_tx, third_client_tx.clone()];
+
+            let combined_transactions = combine(transaction_set, 10);
+            // `combine` should only allow one of the transactions that attempts to use the
+            // same output public key.
+            assert_eq!(combined_transactions.len(), 2);
+            assert!(combined_transactions.contains(third_client_tx.tx_hash()));
+        }
     }
 
     #[test]

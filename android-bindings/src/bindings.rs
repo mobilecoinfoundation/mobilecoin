@@ -52,13 +52,15 @@ use mc_transaction_core::{
     },
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    Amount, CompressedCommitment,
+    Amount, BlockVersion, CompressedCommitment,
 };
+
 use mc_transaction_std::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, ChangeDestination,
     DestinationMemo, InputCredentials, MemoBuilder, MemoPayload, RTHMemoBuilder,
     SenderMemoCredential, TransactionBuilder,
 };
+
 use mc_util_from_random::FromRandom;
 use mc_util_uri::FogUri;
 use protobuf::Message;
@@ -1601,15 +1603,23 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_init_1jni(
     env: JNIEnv,
     obj: JObject,
     fog_resolver: JObject,
-    memo_builder_box: JObject,
+    _memo_builder_box: JObject,
 ) {
     jni_ffi_call(&env, |env| {
         let fog_resolver: MutexGuard<FogResolver> =
             env.get_rust_field(fog_resolver, RUST_OBJ_FIELD)?;
-        let memo_builder_box: Box<dyn MemoBuilder + Send + Sync> =
-            env.take_rust_field(memo_builder_box, RUST_OBJ_FIELD)?;
-
-        let tx_builder = TransactionBuilder::new_with_box(fog_resolver.clone(), memo_builder_box);
+        // FIXME: block version should be a parameter, it should be the latest
+        // version that fog ledger told us about, or that we got from ledger-db
+        let block_version = BlockVersion::ONE;
+        // Note: RTHMemoBuilder can be selected here, but we will only actually
+        // write memos if block_version is large enough that memos are supported.
+        // If block version is < 2, then transaction builder will filter out memos.
+        let mut memo_builder = RTHMemoBuilder::default();
+        // FIXME: we need to pass the source account key to build sender memo
+        // credentials memo_builder.set_sender_credential(SenderMemoCredential::
+        // from(source_account_key));
+        memo_builder.enable_destination_memo();
+        let tx_builder = TransactionBuilder::new(block_version, fog_resolver.clone(), memo_builder);
         Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, tx_builder)?)
     })
 }

@@ -159,26 +159,46 @@ fn create_or_open_ledger_db(
     logger: &Logger,
     transactions_fetcher: &ReqwestTransactionsFetcher,
 ) -> LedgerDB {
+    let ledger_db_file = Path::new(&config.ledger_db).join("data.mdb");
+
+    // Attempt to run migrations, if requested.
+    if config.ledger_db_migrate {
+        mc_ledger_migration::migrate(&config.ledger_db, logger);
+    }
+
     // Attempt to open the ledger and see if it has anything in it.
-    if let Ok(ledger_db) = LedgerDB::open(&config.ledger_db) {
-        if let Ok(num_blocks) = ledger_db.num_blocks() {
-            if num_blocks > 0 {
-                // Successfully opened a ledger that has blocks in it.
-                log::info!(
-                    logger,
-                    "Ledger DB {:?} opened: num_blocks={} num_txos={}",
-                    config.ledger_db,
-                    num_blocks,
-                    ledger_db.num_txos().expect("Failed getting number of txos")
-                );
-                return ledger_db;
+    match LedgerDB::open(&config.ledger_db) {
+        Ok(ledger_db) => {
+            if let Ok(num_blocks) = ledger_db.num_blocks() {
+                if num_blocks > 0 {
+                    // Successfully opened a ledger that has blocks in it.
+                    log::info!(
+                        logger,
+                        "Ledger DB {:?} opened: num_blocks={} num_txos={}",
+                        config.ledger_db,
+                        num_blocks,
+                        ledger_db.num_txos().expect("Failed getting number of txos")
+                    );
+                    return ledger_db;
+                }
             }
         }
-    }
+        Err(mc_ledger_db::Error::MetadataStore(
+            mc_ledger_db::MetadataStoreError::VersionIncompatible(old, new),
+        )) => {
+            panic!("Ledger DB {:?} requires migration from version {} to {}. Please run mobilecoind with --ledger-db-migrate or use the mc-ledger-migration utility.", config.ledger_db, old, new);
+        }
+        Err(err) => {
+            // If the ledger database exists and we failed to open it, something is wrong
+            // with it and this requires manual intervention.
+            if ledger_db_file.exists() {
+                panic!("Failed to open ledger db {:?}: {:?}", config.ledger_db, err);
+            }
+        }
+    };
 
     // Ledger doesn't exist, or is empty. Copy a bootstrapped ledger or try and get
     // it from the network.
-    let ledger_db_file = Path::new(&config.ledger_db).join("data.mdb");
     match &config.ledger_db_bootstrap {
         Some(ledger_db_bootstrap) => {
             log::debug!(

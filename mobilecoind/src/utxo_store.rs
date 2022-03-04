@@ -419,7 +419,7 @@ impl UtxoStore {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test_utils::{get_test_databases, get_test_monitor_data_and_id};
+    use crate::test_utils::{get_test_databases, get_test_monitor_data_and_id, BlockVersion};
     use mc_common::{
         logger::{test_with_logger, Logger},
         HashSet,
@@ -436,7 +436,7 @@ mod test {
     ) -> (LedgerDB, UtxoStore, Vec<UnspentTxOut>) {
         // Set up a db with 3 random recipients and 10 blocks.
         let (ledger_db, _mobilecoind_db) =
-            get_test_databases(3, &vec![], 10, logger.clone(), &mut rng);
+            get_test_databases(BlockVersion::ONE, 3, &vec![], 10, logger.clone(), &mut rng);
 
         // Get a few TxOuts to play with, and use them to construct UnspentTxOuts.
         let utxos: Vec<UnspentTxOut> = (0..5)

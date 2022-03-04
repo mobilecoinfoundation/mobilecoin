@@ -122,7 +122,7 @@ mod tests {
         membership_proofs::Range,
         ring_signature::KeyImage,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-        Amount, Block, BlockContents, BlockData, BlockID, BlockSignature,
+        Amount, Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -148,7 +148,7 @@ mod tests {
 
             let block_contents = BlockContents::new(vec![key_image.clone()], vec![tx_out.clone()]);
             let block = Block::new(
-                1,
+                BlockVersion::ONE,
                 &parent_block_id,
                 99 + block_idx,
                 400 + block_idx,

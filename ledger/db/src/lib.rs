@@ -27,7 +27,7 @@ use mc_transaction_core::{
     membership_proofs::Range,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockID, BlockSignature, BLOCK_VERSION,
+    Block, BlockContents, BlockData, BlockID, BlockSignature, MAX_BLOCK_VERSION,
 };
 use mc_util_lmdb::MetadataStoreSettings;
 use mc_util_serial::{decode, encode, Message};
@@ -44,10 +44,11 @@ use std::{
 
 pub use error::Error;
 pub use ledger_trait::{Ledger, MockLedger};
-pub use mc_util_lmdb::MetadataStore;
+pub use mc_util_lmdb::{MetadataStore, MetadataStoreError};
 pub use tx_out_store::TxOutStore;
 
-const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
+pub const MAX_LMDB_FILE_SIZE: usize = 2usize.pow(40); // 1 TB
+pub const MAX_LMDB_DATABASES: u32 = 22; // maximum number of databases in the lmdb file
 
 // LMDB Database names.
 pub const COUNTS_DB_NAME: &str = "ledger_db:counts";
@@ -371,7 +372,7 @@ impl LedgerDB {
     #[allow(clippy::unreadable_literal)]
     pub fn open(path: &Path) -> Result<LedgerDB, Error> {
         let env = Environment::new()
-            .set_max_dbs(22)
+            .set_max_dbs(MAX_LMDB_DATABASES)
             .set_map_size(MAX_LMDB_FILE_SIZE)
             // TODO - needed because currently our test cloud machines have slow disks.
             .set_flags(EnvironmentFlags::NO_SYNC)
@@ -609,7 +610,7 @@ impl LedgerDB {
 
             // The block's version should be bounded by
             // [prev block version, max block version]
-            if block.version < last_block.version || block.version > BLOCK_VERSION {
+            if block.version < last_block.version || block.version > *MAX_BLOCK_VERSION {
                 return Err(Error::InvalidBlockVersion(block.version));
             }
 
@@ -743,12 +744,17 @@ mod ledger_db_test {
     use core::convert::TryFrom;
     use mc_account_keys::AccountKey;
     use mc_crypto_keys::RistrettoPrivate;
-    use mc_transaction_core::{compute_block_id, membership_proofs::compute_implied_merkle_root};
+    use mc_transaction_core::{
+        compute_block_id, membership_proofs::compute_implied_merkle_root, BlockVersion,
+    };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use rand_core::RngCore;
     use tempdir::TempDir;
     use test::Bencher;
+
+    // TODO: Should these tests run over several block versions?
+    const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
 
     /// Creates a LedgerDB instance.
     fn create_db() -> LedgerDB {
@@ -1153,7 +1159,7 @@ mod ledger_db_test {
 
         let block_contents = BlockContents::new(key_images.clone(), outputs);
         let block = Block::new_with_parent(
-            BLOCK_VERSION,
+            BlockVersion::ONE,
             &origin_block,
             &Default::default(),
             &block_contents,
@@ -1198,8 +1204,12 @@ mod ledger_db_test {
 
         let block_contents = BlockContents::new(key_images.clone(), outputs);
         let parent = ledger_db.get_block(n_blocks - 1).unwrap();
-        let block =
-            Block::new_with_parent(BLOCK_VERSION, &parent, &Default::default(), &block_contents);
+        let block = Block::new_with_parent(
+            BlockVersion::ONE,
+            &parent,
+            &Default::default(),
+            &block_contents,
+        );
 
         ledger_db
             .append_block(&block, &block_contents, None)
@@ -1233,7 +1243,7 @@ mod ledger_db_test {
 
         let block_contents = BlockContents::new(key_images.clone(), outputs);
         let block = Block::new_with_parent(
-            BLOCK_VERSION,
+            BlockVersion::ONE,
             &origin_block,
             &Default::default(),
             &block_contents,
@@ -1275,9 +1285,9 @@ mod ledger_db_test {
 
     #[test]
     /// Appending blocks that have ever-increasing and continous version numbers
-    /// should work as long as it is <= BLOCK_VERSION.
-    /// Appending a block > BLOCK_VERSION should fail even if it is after a
-    /// block with version == BLOCK_VERSION.
+    /// should work as long as it is <= MAX_BLOCK_VERSION.
+    /// Appending a block > MAX_BLOCK_VERSION should fail even if it is after a
+    /// block with version == MAX_BLOCK_VERSION.
     /// Appending a block with a version < last block's version should fail.
     fn test_append_block_with_version_bumps() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
@@ -1293,8 +1303,8 @@ mod ledger_db_test {
 
         let mut last_block = origin_block;
 
-        // BLOCK_VERSION sets the current version, which is the max version.
-        for version in 0..=BLOCK_VERSION {
+        // MAX_BLOCK_VERSION sets the current max block version
+        for block_version in BlockVersion::iterator() {
             // In each iteration we add a few blocks with the same version.
             for _ in 0..3 {
                 let recipient_account_key = AccountKey::random(&mut rng);
@@ -1315,7 +1325,7 @@ mod ledger_db_test {
 
                 let block_contents = BlockContents::new(key_images.clone(), outputs);
                 last_block = Block::new_with_parent(
-                    version,
+                    block_version,
                     &last_block,
                     &Default::default(),
                     &block_contents,
@@ -1325,21 +1335,21 @@ mod ledger_db_test {
                     .append_block(&last_block, &block_contents, None)
                     .unwrap();
             }
-        }
 
-        // All blocks should've been written (+ origin block).
-        assert_eq!(
-            ledger_db.num_blocks().unwrap(),
-            1 + (3 * (BLOCK_VERSION + 1)) as u64
-        );
+            // All blocks should've been written (+ origin block).
+            assert_eq!(
+                ledger_db.num_blocks().unwrap(),
+                1 + (3 * (*block_version)) as u64
+            );
+        }
 
         // Last block version should be what we expect.
         let last_block = ledger_db
             .get_block(ledger_db.num_blocks().unwrap() - 1)
             .unwrap();
-        assert_eq!(last_block.version, BLOCK_VERSION);
+        assert_eq!(last_block.version, *MAX_BLOCK_VERSION);
 
-        // Appending a block with version > BLOCK_VERSION should fail.
+        // Appending a block with version < previous block version should fail.
         {
             let recipient_account_key = AccountKey::random(&mut rng);
             let outputs: Vec<TxOut> = (0..4)
@@ -1358,10 +1368,12 @@ mod ledger_db_test {
                 (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
 
             let block_contents = BlockContents::new(key_images.clone(), outputs);
-            assert_eq!(last_block.version, BLOCK_VERSION);
+            assert_eq!(last_block.version, *MAX_BLOCK_VERSION);
 
+            // Note: unsafe transmute is being used to skirt the invariant that BlockVersion
+            // does not exceed MAX_BLOCK_VERSION
             let invalid_block = Block::new_with_parent(
-                last_block.version + 1,
+                unsafe { core::mem::transmute(last_block.version + 1) },
                 &last_block,
                 &Default::default(),
                 &block_contents,
@@ -1373,7 +1385,7 @@ mod ledger_db_test {
 
             if last_block.version > 0 {
                 let invalid_block = Block::new_with_parent(
-                    last_block.version - 1,
+                    BlockVersion::try_from(last_block.version - 1).unwrap(),
                     &last_block,
                     &Default::default(),
                     &block_contents,
@@ -1653,6 +1665,7 @@ mod ledger_db_test {
 
         // Get some random blocks
         let results: Vec<(Block, BlockContents)> = mc_transaction_core_test_utils::get_blocks(
+            BLOCK_VERSION,
             &recipient_pub_keys[..],
             20,
             20,
@@ -1690,6 +1703,7 @@ mod ledger_db_test {
 
         // Get some random blocks
         let results: Vec<(Block, BlockContents)> = mc_transaction_core_test_utils::get_blocks(
+            BLOCK_VERSION,
             &recipient_pub_keys[..],
             20,
             20,

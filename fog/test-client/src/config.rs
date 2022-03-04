@@ -5,6 +5,7 @@
 use mc_common::logger::{log, Logger};
 use mc_fog_sample_paykit::AccountKey;
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
+use mc_util_grpc::GrpcRetryConfig;
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::{AdminUri, ConsensusClientUri};
 use serde::Serialize;
@@ -115,6 +116,10 @@ pub struct TestClientConfig {
     /// Whether to turn off memos, for backwards compatibility
     #[structopt(long, env)]
     pub no_memos: bool,
+
+    /// Grpc retry config
+    #[structopt(flatten)]
+    pub grpc_retry_config: GrpcRetryConfig,
 }
 
 impl TestClientConfig {

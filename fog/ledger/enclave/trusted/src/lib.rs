@@ -34,52 +34,35 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         deserialize(inbuf).or(Err(sgx_status_t::SGX_ERROR_INVALID_PARAMETER))?;
 
     // And actually do it
-    let outdata = match call_details {
+    match call_details {
         // Utility methods
         EnclaveCall::EnclaveInit(self_id, desired_capacity) => {
             serialize(&ENCLAVE.enclave_init(&self_id, desired_capacity))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
         // Node-to-Client Attestation
-        EnclaveCall::ClientAccept(auth_msg) => serialize(&ENCLAVE.client_accept(auth_msg))
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
-        EnclaveCall::ClientClose(channel_id) => serialize(&ENCLAVE.client_close(channel_id))
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
+        EnclaveCall::ClientAccept(auth_msg) => serialize(&ENCLAVE.client_accept(auth_msg)),
+        EnclaveCall::ClientClose(channel_id) => serialize(&ENCLAVE.client_close(channel_id)),
         // Report Caching
-        EnclaveCall::GetIdentity => {
-            serialize(&ENCLAVE.get_identity()).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-        EnclaveCall::NewEreport(qe_info) => {
-            serialize(&ENCLAVE.new_ereport(qe_info)).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
+        EnclaveCall::GetIdentity => serialize(&ENCLAVE.get_identity()),
+        EnclaveCall::NewEreport(qe_info) => serialize(&ENCLAVE.new_ereport(qe_info)),
         EnclaveCall::VerifyQuote(quote, qe_report) => {
             serialize(&ENCLAVE.verify_quote(quote, qe_report))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
-        EnclaveCall::VerifyReport(ias_report) => serialize(&ENCLAVE.verify_ias_report(ias_report))
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
-        EnclaveCall::GetReport => {
-            serialize(&ENCLAVE.get_ias_report()).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
+        EnclaveCall::VerifyReport(ias_report) => serialize(&ENCLAVE.verify_ias_report(ias_report)),
+        EnclaveCall::GetReport => serialize(&ENCLAVE.get_ias_report()),
         // Outputs
-        EnclaveCall::GetOutputs(msg) => {
-            serialize(&ENCLAVE.get_outputs(msg)).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
+        EnclaveCall::GetOutputs(msg) => serialize(&ENCLAVE.get_outputs(msg)),
         EnclaveCall::GetOutputsData(resp, client) => {
             serialize(&ENCLAVE.get_outputs_data(resp, client))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
         // Check Key image
         EnclaveCall::CheckKeyImages(req, untrusted_keyimagequery_response) => {
             serialize(&ENCLAVE.check_key_images(req, untrusted_keyimagequery_response))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
         // Add Key Image Data
-        EnclaveCall::AddKeyImageData(records) => serialize(&ENCLAVE.add_key_image_data(records))
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
-    };
-
-    Ok(outdata)
+        EnclaveCall::AddKeyImageData(records) => serialize(&ENCLAVE.add_key_image_data(records)),
+    }
+    .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))
 }
 
 /// The entry point implementation for ledger_enclave_api

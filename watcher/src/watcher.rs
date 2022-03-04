@@ -110,6 +110,7 @@ impl Watcher {
         &self,
         start: u64,
         max_block_height: Option<u64>,
+        log_sync_failures: bool,
     ) -> Result<bool, WatcherError> {
         log::info!(
             self.logger,
@@ -194,12 +195,21 @@ impl Watcher {
                     }
 
                     Err(err) => {
-                        log::debug!(
-                            self.logger,
-                            "Could not sync block {} for url ({:?})",
-                            block_index,
-                            err
-                        );
+                        if log_sync_failures {
+                            log::error!(
+                                self.logger,
+                                "Could not sync block {} for url ({:?})",
+                                block_index,
+                                err
+                            );
+                        } else {
+                            log::debug!(
+                                self.logger,
+                                "Could not sync block {} for url ({:?})",
+                                block_index,
+                                err
+                            );
+                        }
                     }
                 }
             }
@@ -355,7 +365,7 @@ impl WatcherSyncThread {
                     lowest_next_block_to_sync + MAX_BLOCKS_PER_SYNC_ITERATION as u64,
                 );
                 watcher
-                    .sync_blocks(lowest_next_block_to_sync, Some(max_blocks))
+                    .sync_blocks(lowest_next_block_to_sync, Some(max_blocks), true)
                     .expect("Could not sync blocks");
             } else if !stop_requested.load(Ordering::SeqCst) {
                 log::trace!(

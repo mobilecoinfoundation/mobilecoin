@@ -292,9 +292,11 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             })
             .collect::<Result<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>, TxManagerError>>()?;
 
-        let (block, block_contents, mut signature) = self
-            .enclave
-            .form_block(parent_block, &encrypted_txs_with_proofs)?;
+        let root_element = self.untrusted.get_root_tx_out_membership_element()?;
+
+        let (block, block_contents, mut signature) =
+            self.enclave
+                .form_block(parent_block, &encrypted_txs_with_proofs, &root_element)?;
 
         // The enclave cannot provide a timestamp, so this happens in untrusted.
         signature.set_signed_at(chrono::Utc::now().timestamp() as u64);
@@ -366,7 +368,10 @@ mod tests {
     };
     use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
     use mc_ledger_db::Ledger;
-    use mc_transaction_core::validation::TransactionValidationError;
+    use mc_transaction_core::{
+        membership_proofs::Range, tx::TxOutMembershipElement,
+        validation::TransactionValidationError, BlockVersion,
+    };
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
@@ -768,6 +773,15 @@ mod tests {
             .times(tx_hashes.len())
             .return_const(Ok(highest_index_proofs));
 
+        // Should get root txout membership element once per block.
+        mock_untrusted
+            .expect_get_root_tx_out_membership_element()
+            .times(1)
+            .return_const(Ok(TxOutMembershipElement::new(
+                Range::new(0, 1).unwrap(),
+                [1; 32],
+            )));
+
         let mut mock_enclave = MockConsensusEnclave::new();
         let expected_block = Block::new_origin_block(&vec![]);
         let expected_block_contents = BlockContents::new(vec![], vec![]);
@@ -856,16 +870,20 @@ mod tests {
     #[test_with_logger]
     fn test_hashes_to_block(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let block_version = BlockVersion::ONE;
         let sender = AccountKey::random(&mut rng);
         let mut ledger = create_ledger();
         let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
         let num_blocks = ledger.num_blocks().expect("Ledger must contain a block.");
         let parent_block = ledger.get_block(num_blocks - 1).unwrap();
 
+        let enclave = ConsensusServiceMockEnclave::default();
+        enclave.blockchain_config.lock().unwrap().block_version = block_version;
+
         let tx_manager = TxManagerImpl::new(
-            ConsensusServiceMockEnclave::default(),
+            enclave,
             DefaultTxManagerUntrustedInterfaces::new(ledger.clone()),
             logger.clone(),
         );
@@ -877,12 +895,13 @@ mod tests {
             let sender = AccountKey::random(&mut rng);
             let mut ledger = create_ledger();
             let n_blocks = 3;
-            initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
             let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
             let tx_out = block_contents.outputs[0].clone();
 
             let recipient = AccountKey::random(&mut rng);
             let tx1 = create_transaction(
+                block_version,
                 &mut ledger,
                 &tx_out,
                 &sender,
@@ -893,6 +912,7 @@ mod tests {
 
             let recipient = AccountKey::random(&mut rng);
             let tx2 = create_transaction(
+                block_version,
                 &mut ledger,
                 &tx_out,
                 &sender,
@@ -903,6 +923,7 @@ mod tests {
 
             let recipient = AccountKey::random(&mut rng);
             let tx3 = create_transaction(
+                block_version,
                 &mut ledger,
                 &tx_out,
                 &sender,
@@ -913,6 +934,7 @@ mod tests {
 
             let recipient = AccountKey::random(&mut rng);
             let tx4 = create_transaction(
+                block_version,
                 &mut ledger,
                 &tx_out,
                 &sender,

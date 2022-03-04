@@ -37,7 +37,7 @@ use mc_transaction_core::{
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Block, BlockContents, BlockData, BlockSignature, BLOCK_VERSION,
+    Block, BlockContents, BlockData, BlockSignature, BlockVersion,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;
@@ -197,8 +197,11 @@ fn main() {
             hash: TxOutMembershipHash::from([0u8; 32]),
         };
 
+        // Use the same block version as the previous block
+        let block_version = BlockVersion::try_from(last_block.version).unwrap();
+
         let block =
-            Block::new_with_parent(BLOCK_VERSION, &last_block, &root_element, &block_contents);
+            Block::new_with_parent(block_version, &last_block, &root_element, &block_contents);
 
         let signer = Ed25519Pair::from_random(&mut rng);
 

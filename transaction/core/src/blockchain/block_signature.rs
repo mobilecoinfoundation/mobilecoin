@@ -4,7 +4,7 @@ use crate::Block;
 use core::fmt::{Display, Formatter, Result as FmtResult};
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{
-    Ed25519Pair, Ed25519Public, Ed25519Signature, Ed25519SignatureError, Signer, Verifier,
+    Ed25519Pair, Ed25519Public, Ed25519Signature, SignatureError, Signer, Verifier,
 };
 use prost::Message;
 use serde::{Deserialize, Serialize};
@@ -51,7 +51,7 @@ impl BlockSignature {
     pub fn from_block_and_keypair(
         block: &Block,
         keypair: &Ed25519Pair,
-    ) -> Result<Self, Ed25519SignatureError> {
+    ) -> Result<Self, SignatureError> {
         let digest = block.digest32::<MerlinTranscript>(b"block-sig");
         let signature = keypair.try_sign(&digest)?;
 
@@ -85,7 +85,7 @@ impl BlockSignature {
     }
 
     /// Verify that this signature is over a given block.
-    pub fn verify(&self, block: &Block) -> Result<(), Ed25519SignatureError> {
+    pub fn verify(&self, block: &Block) -> Result<(), SignatureError> {
         let digest = block.digest32::<MerlinTranscript>(b"block-sig");
 
         self.signer.verify(&digest, &self.signature)

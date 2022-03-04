@@ -10,21 +10,16 @@ use structopt::StructOpt;
 /// StructOpt configuration options for an Overseer Server
 #[derive(Clone, Serialize, StructOpt)]
 pub struct OverseerConfig {
-    /// Host to listen on.
-    #[structopt(long, default_value = "127.0.0.1")]
-    pub listen_host: String,
+    /// Host that the Overseer server listens on.
+    #[structopt(long, env, default_value = "127.0.0.1")]
+    pub overseer_listen_host: String,
 
-    /// Port to start webserver on.
-    #[structopt(long, default_value = "9090")]
-    pub listen_port: u16,
+    /// Port to start the Overseer webserver on.
+    #[structopt(long, env, default_value = "9090")]
+    pub overseer_listen_port: u16,
 
-    /// TODO: Make this an environment variable that can be dynamically
-    /// refreshed. This will allow ops to have one Fog Overseer instance that
-    /// can look at the new Fog Ingest cluster during the blue / green
-    /// deployment.
-    ///
     /// gRPC listening URIs for client requests.
-    #[structopt(long, use_delimiter = true)]
+    #[structopt(long, env, use_delimiter = true)]
     pub ingest_cluster_uris: Vec<FogIngestUri>,
 
     /// Postgres config
@@ -39,10 +34,10 @@ mod tests {
     #[test]
     fn ingest_server_config_example() {
         let config = OverseerConfig::from_iter_safe(&[
-            "/usr/bin/start_overseer_server",
-            "--listen-host",
+            "/usr/bin/fog_overseer_server",
+            "--overseer-listen-host",
             "www.mycoolhost.com",
-            "--listen-port",
+            "--overseer-listen-port",
             "8080",
             "--ingest-cluster-uris",
             "insecure-fog-ingest://0.0.0.0:3226/,insecure-fog-ingest://0.0.0.0:3227/",

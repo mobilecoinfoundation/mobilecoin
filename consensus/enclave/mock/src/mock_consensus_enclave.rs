@@ -8,13 +8,15 @@ use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, Verificati
 use mc_attest_enclave_api::*;
 use mc_common::ResponderId;
 use mc_consensus_enclave_api::{
-    ConsensusEnclave, FeeMap, FeePublicKey, LocallyEncryptedTx, Result as ConsensusEnclaveResult,
-    SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    BlockchainConfig, ConsensusEnclave, FeePublicKey, LocallyEncryptedTx,
+    Result as ConsensusEnclaveResult, SealedBlockSigningKey, TxContext, WellFormedEncryptedTx,
+    WellFormedTxContext,
 };
 use mc_crypto_keys::{Ed25519Public, X25519Public};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as SgxReportResult};
 use mc_transaction_core::{
-    tx::TxOutMembershipProof, Block, BlockContents, BlockSignature, TokenId,
+    tx::{TxOutMembershipElement, TxOutMembershipProof},
+    Block, BlockContents, BlockSignature, TokenId,
 };
 
 use mockall::*;
@@ -31,7 +33,7 @@ mock! {
             self_peer_id: &ResponderId,
             self_client_id: &ResponderId,
             sealed_key: &Option<SealedBlockSigningKey>,
-            fee_map: &FeeMap,
+            blockchain_config: BlockchainConfig,
         ) -> ConsensusEnclaveResult<(SealedBlockSigningKey, Vec<String>)>;
 
         fn get_minimum_fee(&self, token_id: &TokenId) -> ConsensusEnclaveResult<Option<u64>>;
@@ -78,7 +80,8 @@ mock! {
             &self,
             parent_block: &Block,
             encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
-         ) -> ConsensusEnclaveResult<(Block, BlockContents, BlockSignature)>;
+            root_element: &TxOutMembershipElement,
+        ) -> ConsensusEnclaveResult<(Block, BlockContents, BlockSignature)>;
     }
 
     impl ReportableEnclave for ConsensusEnclave {

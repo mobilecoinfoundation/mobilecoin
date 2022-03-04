@@ -3,8 +3,9 @@
 //! The Consensus Service SGX Enclave Proxy
 
 pub use mc_consensus_enclave_api::{
-    ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeeMap, FeeMapError, FeePublicKey,
-    LocallyEncryptedTx, Result, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    BlockchainConfig, ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeeMap,
+    FeeMapError, FeePublicKey, LocallyEncryptedTx, Result, TxContext, WellFormedEncryptedTx,
+    WellFormedTxContext,
 };
 
 use mc_attest_core::{
@@ -22,7 +23,8 @@ use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResu
 use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t, *};
 use mc_sgx_urts::SgxEnclave;
 use mc_transaction_core::{
-    tx::TxOutMembershipProof, Block, BlockContents, BlockSignature, TokenId,
+    tx::{TxOutMembershipElement, TxOutMembershipProof},
+    Block, BlockContents, BlockSignature, TokenId,
 };
 use std::{path, result::Result as StdResult, sync::Arc};
 
@@ -43,7 +45,7 @@ impl ConsensusServiceSgxEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-        fee_map: &FeeMap,
+        blockchain_config: BlockchainConfig,
     ) -> (
         ConsensusServiceSgxEnclave,
         SealedBlockSigningKey,
@@ -70,7 +72,7 @@ impl ConsensusServiceSgxEnclave {
         };
 
         let (sealed_key, features) = sgx_enclave
-            .enclave_init(self_peer_id, self_client_id, sealed_key, fee_map)
+            .enclave_init(self_peer_id, self_client_id, sealed_key, blockchain_config)
             .expect("enclave_init failed");
 
         (sgx_enclave, sealed_key, features)
@@ -122,13 +124,13 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-        fee_map: &FeeMap,
+        blockchain_config: BlockchainConfig,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::EnclaveInit(
             self_peer_id.clone(),
             self_client_id.clone(),
             sealed_key.clone(),
-            fee_map.clone(),
+            blockchain_config,
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
@@ -250,10 +252,12 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         &self,
         parent_block: &Block,
         encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+        root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::FormBlock(
             parent_block.clone(),
             encrypted_txs_with_proofs.to_vec(),
+            root_element.clone(),
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

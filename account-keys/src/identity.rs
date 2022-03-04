@@ -186,10 +186,9 @@ fn root_identity_hkdf_helper(ikm: &[u8], info: &[u8]) -> Scalar {
 #[cfg(test)]
 mod testing {
     use super::*;
-    use alloc::boxed::Box;
-    use datatest::data;
-    use mc_test_vectors_account_keys::*;
+    use mc_test_vectors_account_keys::AcctPrivKeysFromRootEntropy;
     use mc_util_test_vector::TestVector;
+    use mc_util_test_with_data::test_with_data;
 
     // Protobuf deserialization should recover a serialized RootIdentity.
     #[test]
@@ -208,8 +207,7 @@ mod testing {
         })
     }
 
-    #[data(AcctPrivKeysFromRootEntropy::from_jsonl("../test-vectors/vectors"))]
-    #[test]
+    #[test_with_data(AcctPrivKeysFromRootEntropy::from_jsonl("../test-vectors/vectors"))]
     fn acct_priv_keys_from_root_entropy(case: AcctPrivKeysFromRootEntropy) {
         let account_key = AccountKey::from(&RootIdentity::from(&case.root_entropy));
         assert_eq!(
