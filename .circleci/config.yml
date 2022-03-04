@@ -480,7 +480,7 @@ commands:
             LEDGER_BASE=$(pwd)/ledger \
             python3 tools/fog-local-network/fog_local_network.py --network-type dense5 --skip-build &
 
-            sleep 10
+            sleep 20
 
             ./target/release/sample-keys --num 4 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $FOG_AUTHORITY_ROOT
 
@@ -494,7 +494,7 @@ commands:
                 --peer insecure-mc://localhost:3204/ \
                 --num-tx-to-send 10
 
-            sleep 5
+            sleep 20
 
             ./target/release/test_client \
                 --consensus insecure-mc://localhost:3200/ \
