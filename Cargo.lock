@@ -4486,6 +4486,7 @@ dependencies = [
  "mc-api",
  "mc-common",
  "mc-consensus-scp",
+ "mc-transaction-core",
  "mc-util-build-grpc",
  "mc-util-build-script",
  "protobuf",

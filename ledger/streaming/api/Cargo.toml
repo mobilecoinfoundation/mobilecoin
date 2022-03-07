@@ -11,6 +11,7 @@ edition = "2018"
 mc-api = { path = "../../../api" }
 mc-common = { path = "../../../common" }
 mc-consensus-scp = { path = "../../../consensus/scp" }
+mc-transaction-core = { path = "../../../transaction/core" }
 
 displaydoc = { version = "0.2", default-features = false }
 futures = { version = "0.3.21" }
