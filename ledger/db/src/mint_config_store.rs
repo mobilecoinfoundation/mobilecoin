@@ -162,6 +162,11 @@ impl MintConfigStore {
             self.get_active_mint_configs(TokenId::from(mint_tx.prefix.token_id), db_transaction)?;
         let message = mint_tx.prefix.hash();
 
+        // Our default error is NotFound, in case we are unable to find a mint config
+        // that matches the mint tx. We might override it if we find one but the
+        // amount will exceed the mint limit.
+        let mut error = Error::NotFound;
+
         for active_mint_config in active_mint_configs {
             // See if this mint config has signed the mint tx.
             if !active_mint_config
@@ -181,11 +186,16 @@ impl MintConfigStore {
             {
                 if new_total_minted <= active_mint_config.mint_config.mint_limit {
                     return Ok(active_mint_config);
+                } else {
+                    error = Error::MintLimitExceeded(
+                        new_total_minted,
+                        active_mint_config.mint_config.mint_limit,
+                    );
                 }
             }
         }
 
-        Err(Error::NotFound)
+        Err(error)
     }
 
     /// Update the total minted amount for a given MintConfig.
