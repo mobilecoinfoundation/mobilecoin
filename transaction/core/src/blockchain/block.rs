@@ -224,7 +224,7 @@ mod block_tests {
             key_images,
             outputs,
             ..Default::default()
-        };
+        }
     }
 
     fn get_key_images_and_outputs<RNG: CryptoRng + RngCore>(

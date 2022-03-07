@@ -237,6 +237,7 @@ fn three_node_cluster_activation_retiry(logger: Logger) {
     let origin_contents = BlockContents {
         key_images: Default::default(),
         outputs: origin_txo.clone(),
+        ..Default::default()
     };
     let origin_block = Block::new_origin_block(&origin_txo);
     ledger
@@ -450,6 +451,7 @@ fn three_node_cluster_fencing(logger: Logger) {
     let origin_contents = BlockContents {
         key_images: Default::default(),
         outputs: origin_txo.clone(),
+        ..Default::default()
     };
     let origin_block = Block::new_origin_block(&origin_txo);
     ledger
