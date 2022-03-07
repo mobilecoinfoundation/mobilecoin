@@ -248,9 +248,11 @@ impl MintConfigStore {
 pub mod tests {
     use super::*;
     use crate::tx_out_store::tx_out_store_tests::get_env;
-    use mc_crypto_keys::{Ed25519Pair, Signer};
+    use mc_crypto_keys::{Ed25519Pair, RistrettoPublic, Signer};
     use mc_crypto_multisig::{MultiSig, SignerSet};
-    use mc_transaction_core::mint::{MintConfig, SetMintConfigTx, SetMintConfigTxPrefix};
+    use mc_transaction_core::mint::{
+        MintConfig, MintTxPrefix, SetMintConfigTx, SetMintConfigTxPrefix,
+    };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use rand_core::{CryptoRng, RngCore};
@@ -310,6 +312,36 @@ pub mod tests {
         let (set_mint_config_tx, _signers) =
             generate_test_mint_config_tx_and_signers(token_id, rng);
         set_mint_config_tx
+    }
+
+    // Generate a random mint tx
+    pub fn generate_test_mint_tx(
+        token_id: TokenId,
+        signers: &[Ed25519Pair],
+        amount: u64,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> MintTx {
+        let mut nonce: Vec<u8> = vec![0u8; 32];
+        rng.fill_bytes(&mut nonce);
+
+        let prefix = MintTxPrefix {
+            token_id: *token_id,
+            amount,
+            view_public_key: RistrettoPublic::from_random(rng),
+            spend_public_key: RistrettoPublic::from_random(rng),
+            nonce,
+            tombstone_block: rng.next_u64(),
+        };
+
+        let message = prefix.hash();
+
+        let signatures = signers
+            .iter()
+            .map(|signer| signer.try_sign(message.as_ref()).unwrap())
+            .collect();
+        let signature = MultiSig::new(signatures);
+
+        MintTx { prefix, signature }
     }
 
     #[test]
@@ -733,6 +765,210 @@ pub mod tests {
                 Err(Error::InvalidMintConfig(
                     "Mint config not found".to_string(),
                 ))
+            );
+        }
+    }
+    #[test]
+    fn get_active_mint_config_for_mint_tx_works() {
+        let (mint_config_store, env) = init_mint_config_store();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+
+        let (test_tx_1, signers1) = generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        // Store mint config
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        // Generate a test mint tx that matches the first mint config and see that we
+        // can get it back.
+        let db_transaction = env.begin_ro_txn().unwrap();
+        let mint_tx1 = generate_test_mint_tx(
+            token_id1,
+            &[Ed25519Pair::from(signers1[0].private_key())],
+            10,
+            &mut rng,
+        );
+        assert_eq!(
+            mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx1, &db_transaction),
+            Ok(ActiveMintConfig {
+                mint_config: test_tx_1.prefix.configs[0].clone(),
+                total_minted: 0,
+            })
+        );
+
+        // Generate a test mint tx that matches the second mint config and see that we
+        // can get it back.
+        let mint_tx2 = generate_test_mint_tx(
+            token_id1,
+            &[Ed25519Pair::from(signers1[1].private_key())],
+            10,
+            &mut rng,
+        );
+        assert_eq!(
+            mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx2, &db_transaction),
+            Ok(ActiveMintConfig {
+                mint_config: test_tx_1.prefix.configs[1].clone(),
+                total_minted: 0,
+            })
+        );
+
+        // Generate a test mint tx that is signed by an unknown signer, we shouldn't get
+        // anything back.
+        let mint_tx3 = generate_test_mint_tx(
+            token_id1,
+            &[Ed25519Pair::from_random(&mut rng)],
+            10,
+            &mut rng,
+        );
+        assert_eq!(
+            mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx3, &db_transaction),
+            Err(Error::NotFound)
+        );
+
+        // Generate a test mint tx that is signed by all known signers but a different
+        // token id.
+        let mint_tx4 = generate_test_mint_tx(token_id2, &signers1, 10, &mut rng);
+        assert_eq!(
+            mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx4, &db_transaction),
+            Err(Error::NotFound)
+        );
+    }
+
+    #[test]
+    fn get_active_mint_config_for_mint_tx_refuses_to_exceed_mint_limit() {
+        let (mint_config_store, env) = init_mint_config_store();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+
+        let (test_tx_1, signers1) = generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        // Store mint config
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        // Generate a test mint tx that will immediately exceed the mint limit.
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let mint_tx = generate_test_mint_tx(
+                token_id1,
+                &[Ed25519Pair::from(signers1[0].private_key())],
+                test_tx_1.prefix.configs[0].mint_limit + 1,
+                &mut rng,
+            );
+            assert_eq!(
+                mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx, &db_transaction),
+                Err(Error::MintLimitExceeded(
+                    mint_tx.prefix.amount,
+                    test_tx_1.prefix.configs[0].mint_limit
+                ))
+            );
+        }
+
+        // Mint limit should be enforced correctly if some amount was already minted.
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .update_total_minted(&test_tx_1.prefix.configs[0], 10, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let mint_tx = generate_test_mint_tx(
+                token_id1,
+                &[Ed25519Pair::from(signers1[0].private_key())],
+                test_tx_1.prefix.configs[0].mint_limit - 9,
+                &mut rng,
+            );
+            assert_eq!(
+                mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx, &db_transaction),
+                Err(Error::MintLimitExceeded(
+                    mint_tx.prefix.amount + 10, // 10 is the amount that was previously minted
+                    test_tx_1.prefix.configs[0].mint_limit
+                ))
+            );
+        }
+
+        // Sanity - getting the active mint configuration should succeed when not
+        // over-minting.
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let mint_tx = generate_test_mint_tx(
+                token_id1,
+                &[Ed25519Pair::from(signers1[0].private_key())],
+                20,
+                &mut rng,
+            );
+            assert_eq!(
+                mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx, &db_transaction),
+                Ok(ActiveMintConfig {
+                    mint_config: test_tx_1.prefix.configs[0].clone(),
+                    total_minted: 10,
+                })
+            );
+        }
+    }
+
+    #[test]
+    fn get_active_mint_config_for_mint_tx_selects_correct_config_when_exceeding_mint_limit() {
+        let (mint_config_store, env) = init_mint_config_store();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+
+        let (mut test_tx_1, signers1) =
+            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        // This test requires that the 2nd minting configuration is >= the first one.
+        test_tx_1.prefix.configs[1].mint_limit = test_tx_1.prefix.configs[0].mint_limit;
+
+        // Store mint config
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        // Mint limit should result in the second configuration being selected.
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .update_total_minted(&test_tx_1.prefix.configs[0], 10, &mut db_transaction)
+                .unwrap();
+            mint_config_store
+                .update_total_minted(&test_tx_1.prefix.configs[1], 9, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let mint_tx = generate_test_mint_tx(
+                token_id1,
+                &signers1,
+                test_tx_1.prefix.configs[0].mint_limit - 9,
+                &mut rng,
+            );
+            assert_eq!(
+                mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx, &db_transaction),
+                Ok(ActiveMintConfig {
+                    mint_config: test_tx_1.prefix.configs[1].clone(),
+                    total_minted: 9,
+                })
             );
         }
     }

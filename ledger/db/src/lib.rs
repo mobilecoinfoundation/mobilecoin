@@ -912,18 +912,17 @@ mod ledger_db_test {
     use super::*;
     use crate::mint_config_store::tests::{
         generate_test_mint_config_tx, generate_test_mint_config_tx_and_signers,
+        generate_test_mint_tx,
     };
     use core::convert::TryFrom;
     use mc_account_keys::AccountKey;
-    use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate, RistrettoPublic, Signer};
-    use mc_crypto_multisig::MultiSig;
+    use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate};
     use mc_transaction_core::{
-        compute_block_id, membership_proofs::compute_implied_merkle_root, mint::MintTxPrefix,
-        BlockVersion,
+        compute_block_id, membership_proofs::compute_implied_merkle_root, BlockVersion,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use rand_core::{CryptoRng, RngCore};
+    use rand_core::RngCore;
     use tempdir::TempDir;
     use test::Bencher;
 
@@ -1013,36 +1012,6 @@ mod ledger_db_test {
         assert_eq!(db.num_blocks().unwrap(), num_blocks as u64);
 
         (blocks, blocks_contents)
-    }
-
-    // Generate a random mint tx
-    pub fn generate_test_mint_tx(
-        token_id: TokenId,
-        signers: &[Ed25519Pair],
-        amount: u64,
-        rng: &mut (impl RngCore + CryptoRng),
-    ) -> MintTx {
-        let mut nonce: Vec<u8> = vec![0u8; 32];
-        rng.fill_bytes(&mut nonce);
-
-        let prefix = MintTxPrefix {
-            token_id: *token_id,
-            amount,
-            view_public_key: RistrettoPublic::from_random(rng),
-            spend_public_key: RistrettoPublic::from_random(rng),
-            nonce,
-            tombstone_block: rng.next_u64(),
-        };
-
-        let message = prefix.hash();
-
-        let signatures = signers
-            .iter()
-            .map(|signer| signer.try_sign(message.as_ref()).unwrap())
-            .collect();
-        let signature = MultiSig::new(signatures);
-
-        MintTx { prefix, signature }
     }
 
     #[test]
