@@ -13,7 +13,7 @@ use mc_fog_ledger_enclave_api::{KeyImageData, UntrustedKeyImageQueryResponse};
 use mc_ledger_db::{ActiveMintConfig, Error, Ledger};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
-    mint::{MintConfig, SetMintConfigTx},
+    mint::MintConfig,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockData, BlockSignature, TokenId,
@@ -186,10 +186,6 @@ impl Ledger for MockLedger {
     }
 
     fn get_root_tx_out_membership_element(&self) -> Result<TxOutMembershipElement, Error> {
-        unimplemented!()
-    }
-
-    fn set_active_mint_configs(&self, _set_mint_config_tx: &SetMintConfigTx) -> Result<(), Error> {
         unimplemented!()
     }
 

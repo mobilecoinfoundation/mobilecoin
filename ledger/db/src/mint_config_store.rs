@@ -198,7 +198,7 @@ impl MintConfigStore {
 }
 
 #[cfg(test)]
-mod test {
+pub mod tests {
     use super::*;
     use crate::tx_out_store::tx_out_store_tests::get_env;
     use mc_crypto_keys::Ed25519Pair;

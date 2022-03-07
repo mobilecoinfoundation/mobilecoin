@@ -5,7 +5,7 @@ use mc_account_keys::AccountKey;
 use mc_common::{HashMap, HashSet};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_transaction_core::{
-    mint::{MintConfig, SetMintConfigTx},
+    mint::MintConfig,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion, TokenId,
@@ -190,9 +190,6 @@ impl Ledger for MockLedger {
 
     fn get_root_tx_out_membership_element(&self) -> Result<TxOutMembershipElement, Error> {
         unimplemented!();
-    }
-    fn set_active_mint_configs(&self, _set_mint_config_tx: &SetMintConfigTx) -> Result<(), Error> {
-        unimplemented!()
     }
 
     fn get_active_mint_configs(&self, _token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error> {
