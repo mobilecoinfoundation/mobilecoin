@@ -2,8 +2,9 @@
 
 //! Minting transaction configuration.
 
+use crate::domain_separators::SET_MINT_CONFIG_TX_PREFIX_DOMAIN_TAG;
 use alloc::vec::Vec;
-use mc_crypto_digestible::Digestible;
+use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
 use mc_crypto_multisig::{MultiSig, SignerSet};
 use mc_util_serial::Message;
@@ -51,6 +52,13 @@ pub struct SetMintConfigTxPrefix {
     /// The block index at which this transaction is no longer valid.
     #[prost(uint64, tag = "4")]
     pub tombstone_block: u64,
+}
+
+impl SetMintConfigTxPrefix {
+    /// Digestible-crate hash of `self` using Merlin
+    pub fn hash(&self) -> [u8; 32] {
+        self.digest32::<MerlinTranscript>(SET_MINT_CONFIG_TX_PREFIX_DOMAIN_TAG.as_bytes())
+    }
 }
 
 /// A set-mint-config transaction coupled with a signature over it.

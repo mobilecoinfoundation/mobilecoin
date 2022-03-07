@@ -15,7 +15,7 @@
 use crate::{u32_to_key_bytes, Error};
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_transaction_core::{
-    mint::{MintConfig, SetMintConfigTx},
+    mint::{MintConfig, MintTx, SetMintConfigTx},
     TokenId,
 };
 use mc_util_serial::{decode, encode, Message};
@@ -151,6 +151,43 @@ impl MintConfigStore {
         }
     }
 
+    // Attempt to get a MintConfig that is active and is capable of minting the
+    // given amount of tokens.
+    pub fn get_active_mint_config_for_mint_tx(
+        &self,
+        mint_tx: &MintTx,
+        db_transaction: &impl Transaction,
+    ) -> Result<ActiveMintConfig, Error> {
+        let active_mint_configs =
+            self.get_active_mint_configs(TokenId::from(mint_tx.prefix.token_id), db_transaction)?;
+        let message = mint_tx.prefix.hash();
+
+        for active_mint_config in active_mint_configs {
+            // See if this mint config has signed the mint tx.
+            if !active_mint_config
+                .mint_config
+                .signer_set
+                .verify(&message, &mint_tx.signature)
+                .is_ok()
+            {
+                continue;
+            }
+
+            // This mint config has signed the mint tx. Is it allowed to mint the given
+            // amount of tokens?
+            if let Some(new_total_minted) = active_mint_config
+                .total_minted
+                .checked_add(mint_tx.prefix.amount)
+            {
+                if new_total_minted <= active_mint_config.mint_config.mint_limit {
+                    return Ok(active_mint_config);
+                }
+            }
+        }
+
+        Err(Error::NotFound)
+    }
+
     /// Update the total minted amount for a given MintConfig.
     pub fn update_total_minted(
         &self,
@@ -201,8 +238,8 @@ impl MintConfigStore {
 pub mod tests {
     use super::*;
     use crate::tx_out_store::tx_out_store_tests::get_env;
-    use mc_crypto_keys::Ed25519Pair;
-    use mc_crypto_multisig::SignerSet;
+    use mc_crypto_keys::{Ed25519Pair, Signer};
+    use mc_crypto_multisig::{MultiSig, SignerSet};
     use mc_transaction_core::mint::{MintConfig, SetMintConfigTx, SetMintConfigTxPrefix};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -215,37 +252,54 @@ pub mod tests {
         (mint_config_store, env)
     }
 
-    pub fn generate_test_mint_config_tx(
+    pub fn generate_test_mint_config_tx_and_signers(
         token_id: TokenId,
         rng: &mut (impl RngCore + CryptoRng),
-    ) -> SetMintConfigTx {
-        let signer_1 = Ed25519Pair::from_random(rng).public_key();
-        let signer_2 = Ed25519Pair::from_random(rng).public_key();
-        let signer_3 = Ed25519Pair::from_random(rng).public_key();
+    ) -> (SetMintConfigTx, Vec<Ed25519Pair>) {
+        let signer_1 = Ed25519Pair::from_random(rng);
+        let signer_2 = Ed25519Pair::from_random(rng);
+        let signer_3 = Ed25519Pair::from_random(rng);
 
         let mut nonce: Vec<u8> = vec![0u8; 32];
         rng.fill_bytes(&mut nonce);
 
-        SetMintConfigTx {
-            prefix: SetMintConfigTxPrefix {
-                token_id: *token_id,
-                configs: vec![
-                    MintConfig {
-                        token_id: *token_id,
-                        signer_set: SignerSet::new(vec![signer_1.clone()], 1),
-                        mint_limit: rng.next_u64(),
-                    },
-                    MintConfig {
-                        token_id: *token_id,
-                        signer_set: SignerSet::new(vec![signer_2.clone(), signer_3.clone()], 1),
-                        mint_limit: rng.next_u64(),
-                    },
-                ],
-                nonce,
-                tombstone_block: rng.next_u64(),
-            },
-            signature: Default::default(),
-        }
+        let prefix = SetMintConfigTxPrefix {
+            token_id: *token_id,
+            configs: vec![
+                MintConfig {
+                    token_id: *token_id,
+                    signer_set: SignerSet::new(vec![signer_1.public_key()], 1),
+                    mint_limit: rng.next_u64(),
+                },
+                MintConfig {
+                    token_id: *token_id,
+                    signer_set: SignerSet::new(
+                        vec![signer_2.public_key(), signer_3.public_key()],
+                        1,
+                    ),
+                    mint_limit: rng.next_u64(),
+                },
+            ],
+            nonce,
+            tombstone_block: rng.next_u64(),
+        };
+
+        let message = prefix.hash();
+        let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
+
+        (
+            SetMintConfigTx { prefix, signature },
+            vec![signer_1, signer_2, signer_3],
+        )
+    }
+
+    pub fn generate_test_mint_config_tx(
+        token_id: TokenId,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> SetMintConfigTx {
+        let (set_mint_config_tx, _signers) =
+            generate_test_mint_config_tx_and_signers(token_id, rng);
+        set_mint_config_tx
     }
 
     #[test]
