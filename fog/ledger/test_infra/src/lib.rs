@@ -192,8 +192,4 @@ impl Ledger for MockLedger {
     fn get_active_mint_configs(&self, _token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error> {
         unimplemented!()
     }
-
-    fn update_total_minted(&self, _mint_config: &MintConfig, _amount: u64) -> Result<(), Error> {
-        unimplemented!()
-    }
 }
