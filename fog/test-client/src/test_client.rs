@@ -622,10 +622,6 @@ impl TestClient {
 
         let start_time = Instant::now();
         for ti in 0..num_transactions {
-            // FIXME: Should not be needed
-            log::debug!(self.logger, "sleeping");
-            std::thread::sleep(Duration::from_millis(5000));
-
             log::debug!(self.logger, "Transation: {:?}", ti);
 
             let source_index = ti % client_count;
@@ -639,10 +635,6 @@ impl TestClient {
                 target_client,
                 target_index,
             )?;
-
-            // FIXME: Should not be needed
-            log::debug!(self.logger, "sleeping");
-            std::thread::sleep(Duration::from_millis(5000));
 
             // Attempt double spend on the last transaction. This is an expensive test.
             if ti == num_transactions - 1 {
