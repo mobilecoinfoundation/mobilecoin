@@ -41,8 +41,13 @@ use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
 /// The constant chosen for the burn address view private key.
-/// This is arbitrary but we decided to make it nonzero.
+/// This is arbitrary but we decided to make it nonzero, because we are using
+/// this number to multiply, and multiplying by zero can lead to degeneracies.
 pub const BURN_ADDRESS_VIEW_PRIVATE: Scalar = Scalar::from_bits([1u8; 32]);
+
+// The constant used for hash-to-curve to produce burn address spend public.
+// This follows the style of the other domain separators in mc-transaction-core.
+const BURN_ADDRESS_DOMAIN_SEPARATOR: &[u8] = b"mc_burn_address_spend_public";
 
 /// The burn address view private key in the keys-crate wrapper type
 pub fn burn_address_view_private() -> RistrettoPrivate {
@@ -60,14 +65,47 @@ pub fn burn_address() -> PublicAddress {
 
 // The burn address spend public key, in the curve25519-dalek ristretto point
 // type
+//
+// This is meant to be a nothing-up-my-sleeve number hashed to the elliptic
+// curve, so that it is infeasible for anyone to know the root of this curve
+// point.
+//
+// Following the approach used for other such curve points in
+// mc-transaction-core, we hash a string descriptor using blake2b and then use
+// this to hash-to-curve.
 fn burn_address_spend_public() -> RistrettoPoint {
     let mut hasher = Blake2b::new();
-    hasher.update(b"MC_BURN_ADDRESS_SPEND_PUBLIC");
+    hasher.update(BURN_ADDRESS_DOMAIN_SEPARATOR);
     RistrettoPoint::from_hash(hasher)
 }
 
 // The burn address view public key, in the curve25519-dalek ristretto point
-// type
+// type.
+//
+// This needs to be chosen in such a way that it corresponds to a sub-address
+// view public key, so that sending to the burn address (as a sub-address) will
+// work and view key scanning with burn_address_view_private will also work.
+//
+// To achieve this, we use the identity for subaddress derivations:
+//
+// `subaddress_view_public = account_view_private * subaddress_spend_public`
+//
+// For reference, see Mechanics of MobileCoin section on subaddresses, or,
+// refer to the `AccountKey` struct defined in this crate, which defines
+//
+// `subaddress_view_private = account_view_private * subaddress_spend_private`
+//
+// This implies the identity that we need here -- simply multiply both sides
+// by RISTRETTO_BASEPOINT.
+//
+// Because of this identity, as long as we know `account_view_private` for the
+// burn address (defined above as a known constant), and we know
+// `subaddress_spend_public` for the burn address (defined above as a hash to
+// curve), we can use the identity to derive `subaddress_view_public`.
+//
+// This is the last key we need to get a complete
+// subaddress for the burn address, and at no point do we need any of the spend
+// private keys for the burn address to complete this derivation.
 fn burn_address_view_public() -> RistrettoPoint {
     BURN_ADDRESS_VIEW_PRIVATE * burn_address_spend_public()
 }
