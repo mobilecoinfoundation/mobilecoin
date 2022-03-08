@@ -14,27 +14,26 @@ impl From<&mc_transaction_core::BlockContents> for blockchain::BlockContents {
     fn from(source: &mc_transaction_core::BlockContents) -> Self {
         let mut block_contents = blockchain::BlockContents::new();
 
-        let key_images: Vec<external::KeyImage> = source
+        let key_images = source
             .key_images
             .iter()
             .map(external::KeyImage::from)
             .collect();
 
-        let outputs: Vec<external::TxOut> =
-            source.outputs.iter().map(external::TxOut::from).collect();
+        let outputs = source.outputs.iter().map(external::TxOut::from).collect();
 
-        let set_mint_config_txs: Vec<_> = source
+        let set_mint_config_txs = source
             .set_mint_config_txs
             .iter()
             .map(external::SetMintConfigTx::from)
             .collect();
 
-        let mint_txs: Vec<_> = source.mint_txs.iter().map(external::MintTx::from).collect();
+        let mint_txs = source.mint_txs.iter().map(external::MintTx::from).collect();
 
-        block_contents.set_key_images(RepeatedField::from_vec(key_images));
-        block_contents.set_outputs(RepeatedField::from_vec(outputs));
-        block_contents.set_set_mint_config_txs(RepeatedField::from_vec(set_mint_config_txs));
-        block_contents.set_mint_txs(RepeatedField::from_vec(mint_txs));
+        block_contents.set_key_images(key_images);
+        block_contents.set_outputs(outputs);
+        block_contents.set_set_mint_config_txs(set_mint_config_txs);
+        block_contents.set_mint_txs(mint_txs);
         block_contents
     }
 }
