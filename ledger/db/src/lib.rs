@@ -11,6 +11,7 @@ mod error;
 mod ledger_trait;
 mod metrics;
 mod mint_config_store;
+mod mint_tx_store;
 
 pub mod tx_out_store;
 
@@ -26,7 +27,6 @@ use mc_common::logger::global_log;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     membership_proofs::Range,
-    mint::{MintTx, SetMintConfigTx},
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockData, BlockID, BlockSignature, TokenId, MAX_BLOCK_VERSION,
@@ -48,6 +48,7 @@ pub use error::Error;
 pub use ledger_trait::{Ledger, MockLedger};
 pub use mc_util_lmdb::{MetadataStore, MetadataStoreError};
 pub use mint_config_store::{ActiveMintConfig, MintConfigStore};
+pub use mint_tx_store::MintTxStore;
 pub use tx_out_store::TxOutStore;
 
 pub const MAX_LMDB_FILE_SIZE: usize = 2usize.pow(40); // 1 TB
@@ -61,9 +62,6 @@ pub const KEY_IMAGES_DB_NAME: &str = "ledger_db:key_images";
 pub const KEY_IMAGES_BY_BLOCK_DB_NAME: &str = "ledger_db:key_images_by_block";
 pub const TX_OUTS_BY_BLOCK_DB_NAME: &str = "ledger_db:tx_outs_by_block";
 pub const BLOCK_NUMBER_BY_TX_OUT_INDEX: &str = "ledger_db:block_number_by_tx_out_index";
-pub const SET_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME: &str = "ledger_db:set_mint_config_txs_by_block";
-pub const MINT_TXS_BY_BLOCK_DB_NAME: &str = "ledger_db:set_txs_by_block";
-pub const MINT_TX_BY_NONCE_DB_NAME: &str = "ledger_db:mint_tx_by_nonce";
 
 /// Keys used by the `counts` database.
 pub const NUM_BLOCKS_KEY: &str = "num_blocks";
@@ -111,22 +109,6 @@ pub struct KeyImageList {
     pub key_images: Vec<KeyImage>,
 }
 
-/// A list of set-mint-config-txs that can be prost-encoded. This is needed
-/// since that's the only way to encode a Vec<SetMintConfigTx>.
-#[derive(Clone, Message)]
-pub struct SetMintConfigTxList {
-    #[prost(message, repeated, tag = "1")]
-    pub set_mint_config_txs: Vec<SetMintConfigTx>,
-}
-
-/// A list of mint-txs that can be prost-encoded. This is needed since that's
-/// the only way to encode a Vec<MintTx>.
-#[derive(Clone, Message)]
-pub struct MintTxList {
-    #[prost(message, repeated, tag = "1")]
-    pub mint_txs: Vec<MintTx>,
-}
-
 #[derive(Clone)]
 pub struct LedgerDB {
     env: Arc<Environment>,
@@ -165,14 +147,8 @@ pub struct LedgerDB {
     /// Storage abstraction for mint configurations.
     mint_config_store: MintConfigStore,
 
-    /// SetMintConfigTxs by block.
-    set_mint_config_txs_by_block: Database,
-
-    /// MintTxs by block.
-    mint_txs_by_block: Database,
-
-    /// MintTx by nonce.
-    mint_tx_by_nonce: Database,
+    /// Storage abstraction for mint trnasactions.
+    mint_tx_store: MintTxStore,
 
     /// Location on filesystem.
     path: PathBuf,
@@ -222,10 +198,15 @@ impl Ledger for LedgerDB {
         // Write MintTxs included in the block. We do this before writing the
         // configuration, since the assumption is that the new configuration is not yet
         // active at the time the MintTx has made its way to a block.
-        self.write_mint_txs(block.index, &block_contents.mint_txs, &mut db_transaction)?;
+        self.mint_tx_store.write_mint_txs(
+            block.index,
+            &block_contents.mint_txs,
+            &self.mint_config_store,
+            &mut db_transaction,
+        )?;
 
         // Write SetMintConfigTxs included in the block.
-        self.write_set_mint_config_txs(
+        self.mint_config_store.write_set_mint_config_txs(
             block.index,
             &block_contents.set_mint_config_txs,
             &mut db_transaction,
@@ -432,13 +413,10 @@ impl LedgerDB {
         let key_images_by_block = env.open_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME))?;
         let tx_outs_by_block = env.open_db(Some(TX_OUTS_BY_BLOCK_DB_NAME))?;
         let block_number_by_tx_out_index = env.open_db(Some(BLOCK_NUMBER_BY_TX_OUT_INDEX))?;
-        let set_mint_config_txs_by_block =
-            env.open_db(Some(SET_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME))?;
-        let mint_txs_by_block = env.open_db(Some(MINT_TXS_BY_BLOCK_DB_NAME))?;
-        let mint_tx_by_nonce = env.open_db(Some(MINT_TX_BY_NONCE_DB_NAME))?;
 
         let tx_out_store = TxOutStore::new(&env)?;
         let mint_config_store = MintConfigStore::new(&env)?;
+        let mint_tx_store = MintTxStore::new(&env)?;
 
         let metrics = LedgerMetrics::new(path);
 
@@ -455,9 +433,7 @@ impl LedgerDB {
             metadata_store,
             tx_out_store,
             mint_config_store,
-            set_mint_config_txs_by_block,
-            mint_txs_by_block,
-            mint_tx_by_nonce,
+            mint_tx_store,
             metrics,
         };
 
@@ -481,16 +457,11 @@ impl LedgerDB {
         env.create_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(TX_OUTS_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCK_NUMBER_BY_TX_OUT_INDEX), DatabaseFlags::empty())?;
-        env.create_db(
-            Some(SET_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME),
-            DatabaseFlags::empty(),
-        )?;
-        env.create_db(Some(MINT_TXS_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
-        env.create_db(Some(MINT_TX_BY_NONCE_DB_NAME), DatabaseFlags::empty())?;
 
         MetadataStore::<LedgerDbMetadataStoreSettings>::create(&env)?;
         TxOutStore::create(&env)?;
         MintConfigStore::create(&env)?;
+        MintTxStore::create(&env)?;
 
         let mut db_transaction = env.begin_rw_txn()?;
 
@@ -635,85 +606,6 @@ impl LedgerDB {
         Ok(())
     }
 
-    fn write_set_mint_config_txs(
-        &self,
-        block_index: u64,
-        set_mint_config_txs: &[SetMintConfigTx],
-        db_transaction: &mut RwTransaction,
-    ) -> Result<(), Error> {
-        let block_index_bytes = u64_to_key_bytes(block_index);
-
-        // Store the list of SetMintConfigTxs.
-        let set_mint_config_tx_list = SetMintConfigTxList {
-            set_mint_config_txs: set_mint_config_txs.to_vec(),
-        };
-
-        db_transaction.put(
-            self.set_mint_config_txs_by_block,
-            &block_index_bytes,
-            &encode(&set_mint_config_tx_list),
-            WriteFlags::empty(),
-        )?;
-
-        // Update active mint configurations.
-        for set_mint_config_tx in set_mint_config_txs {
-            self.mint_config_store
-                .set_active_mint_configs(set_mint_config_tx, db_transaction)?;
-        }
-
-        Ok(())
-    }
-
-    fn write_mint_txs(
-        &self,
-        block_index: u64,
-        mint_txs: &[MintTx],
-        db_transaction: &mut RwTransaction,
-    ) -> Result<(), Error> {
-        let block_index_bytes = u64_to_key_bytes(block_index);
-
-        // Store the list of MintTxs.
-        let mint_tx_list = MintTxList {
-            mint_txs: mint_txs.to_vec(),
-        };
-
-        db_transaction.put(
-            self.mint_txs_by_block,
-            &block_index_bytes,
-            &encode(&mint_tx_list),
-            WriteFlags::empty(),
-        )?;
-
-        // For each mint transaction, we need to locate the matching mint configuration
-        // and update the total minted count. We also need to ensure the nonce is
-        // unique.
-        for mint_tx in mint_txs {
-            // Update total minted.
-            let active_mint_config = self
-                .mint_config_store
-                .get_active_mint_config_for_mint_tx(&mint_tx, db_transaction)?;
-
-            let new_total_minted = active_mint_config.total_minted.checked_add(mint_tx.prefix.amount).expect("shouldn't have failed because get_active_mint_config_for_mint_tx guards against this");
-
-            self.mint_config_store.update_total_minted(
-                &active_mint_config.mint_config,
-                new_total_minted,
-                db_transaction,
-            )?;
-
-            // Ensure nonce uniqueness
-            db_transaction.put(
-                self.mint_tx_by_nonce,
-                &mint_tx.prefix.nonce,
-                &encode(mint_tx),
-                WriteFlags::NO_OVERWRITE, /* this ensures we do not overwrite a nonce that was
-                                           * already used */
-            )?;
-        }
-
-        Ok(())
-    }
-
     /// Checks if a block can be appended to the db.
     fn validate_append_block(
         &self,
@@ -800,7 +692,10 @@ impl LedgerDB {
 
         // Check that none of the minting transaction nonces appear in the ledger.
         for mint_tx in block_contents.mint_txs.iter() {
-            if self.contains_mint_tx_nonce(&mint_tx.prefix.nonce, db_transaction)? {
+            if self
+                .mint_tx_store
+                .contains_mint_tx_nonce(&mint_tx.prefix.nonce, db_transaction)?
+            {
                 return Err(Error::DuplicateMintTx);
             }
         }
@@ -864,21 +759,21 @@ impl LedgerDB {
             decode(db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?)?;
 
         // Get all SetMintConfigTxs in block.
-        let set_mint_config_tx_list: SetMintConfigTxList = decode(db_transaction.get(
-            self.set_mint_config_txs_by_block,
-            &u64_to_key_bytes(block_number),
-        )?)?;
+        let set_mint_config_txs = self
+            .mint_config_store
+            .get_set_mint_config_txs_by_block_index(block_number, db_transaction)?;
 
         // Get all MintTxs in block.
-        let mint_txs: MintTxList =
-            decode(db_transaction.get(self.mint_txs_by_block, &u64_to_key_bytes(block_number))?)?;
+        let mint_txs = self
+            .mint_tx_store
+            .get_mint_txs_by_block_index(block_number, db_transaction)?;
 
         // Returns block contents.
         Ok(BlockContents {
             key_images: key_image_list.key_images,
             outputs,
-            set_mint_config_txs: set_mint_config_tx_list.set_mint_config_txs,
-            mint_txs: mint_txs.mint_txs,
+            set_mint_config_txs,
+            mint_txs,
         })
     }
 
@@ -925,19 +820,6 @@ impl LedgerDB {
                 Ok(Some(u64::from_le_bytes(u64_buf)))
             }
             Err(lmdb::Error::NotFound) => Ok(None),
-            Err(e) => Err(Error::Lmdb(e)),
-        }
-    }
-
-    /// Returns true if the Ledger contains the given mint tx nonce
-    fn contains_mint_tx_nonce(
-        &self,
-        nonce: &[u8],
-        db_transaction: &impl Transaction,
-    ) -> Result<bool, Error> {
-        match db_transaction.get(self.mint_tx_by_nonce, &nonce) {
-            Ok(_db_bytes) => Ok(true),
-            Err(lmdb::Error::NotFound) => Ok(false),
             Err(e) => Err(Error::Lmdb(e)),
         }
     }

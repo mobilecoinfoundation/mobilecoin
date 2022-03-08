@@ -2,7 +2,7 @@
 
 //! Data access abstraction for minting configuration stored in the ledger.
 //!
-//! This store maintains two LMDB databases:
+//! This store maintains three LMDB databases:
 //! 1) A mapping of token id -> currently active mint configurations.
 //!    This database is used for two things:
 //!      1) It allows transaction validation code to figure out if a mint
@@ -11,8 +11,10 @@
 //! configuration. This is used to enforce the per-configuration mint limit.
 //! 2) A mapping of nonce -> SetMintConfigTx object containing the nonce. This
 //!    is mainly used to prevent replay attacks.
+//! 3) A mapping of block index -> list of SetMintConfigTx objects included in
+//!    the block.
 
-use crate::{u32_to_key_bytes, Error};
+use crate::{u32_to_key_bytes, u64_to_key_bytes, Error};
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_transaction_core::{
     mint::{MintConfig, MintTx, SetMintConfigTx},
@@ -25,6 +27,8 @@ pub const ACTIVE_MINT_CONFIGS_BY_TOKEN_ID_DB_NAME: &str =
     "mint_config_store:active_mint_configs_by_token_id";
 pub const SET_MINT_CONFIG_TX_BY_NONCE_DB_NAME: &str =
     "mint_config_store:set_mint_config_tx_by_nonce_db_name";
+pub const SET_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME: &str =
+    "mint_config_store:set_mint_config_txs_by_block";
 
 /// An active mint configuration for a single token.
 #[derive(Clone, Eq, Message, PartialEq)]
@@ -62,6 +66,14 @@ impl From<&SetMintConfigTx> for ActiveMintConfigs {
     }
 }
 
+/// A list of set-mint-config-txs that can be prost-encoded. This is needed
+/// since that's the only way to encode a Vec<SetMintConfigTx>.
+#[derive(Clone, Message)]
+pub struct SetMintConfigTxList {
+    #[prost(message, repeated, tag = "1")]
+    pub set_mint_config_txs: Vec<SetMintConfigTx>,
+}
+
 #[derive(Clone)]
 pub struct MintConfigStore {
     /// token id -> Vec<ActiveMintConfig>
@@ -69,6 +81,9 @@ pub struct MintConfigStore {
 
     /// nonce -> SetMintConfigTx
     set_mint_config_tx_by_nonce: Database,
+
+    /// block_index -> SetMintConfigTxList
+    set_mint_config_txs_by_block: Database,
 }
 
 impl MintConfigStore {
@@ -78,6 +93,8 @@ impl MintConfigStore {
             active_mint_configs_by_token_id: env
                 .open_db(Some(ACTIVE_MINT_CONFIGS_BY_TOKEN_ID_DB_NAME))?,
             set_mint_config_tx_by_nonce: env.open_db(Some(SET_MINT_CONFIG_TX_BY_NONCE_DB_NAME))?,
+            set_mint_config_txs_by_block: env
+                .open_db(Some(SET_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME))?,
         })
     }
 
@@ -91,7 +108,53 @@ impl MintConfigStore {
             Some(SET_MINT_CONFIG_TX_BY_NONCE_DB_NAME),
             DatabaseFlags::empty(),
         )?;
+        env.create_db(
+            Some(SET_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME),
+            DatabaseFlags::empty(),
+        )?;
+
         Ok(())
+    }
+
+    /// Write set-mint-config-txs in a given block.
+    pub fn write_set_mint_config_txs(
+        &self,
+        block_index: u64,
+        set_mint_config_txs: &[SetMintConfigTx],
+        db_transaction: &mut RwTransaction,
+    ) -> Result<(), Error> {
+        let block_index_bytes = u64_to_key_bytes(block_index);
+
+        // Store the list of SetMintConfigTxs.
+        let set_mint_config_tx_list = SetMintConfigTxList {
+            set_mint_config_txs: set_mint_config_txs.to_vec(),
+        };
+
+        db_transaction.put(
+            self.set_mint_config_txs_by_block,
+            &block_index_bytes,
+            &encode(&set_mint_config_tx_list),
+            WriteFlags::empty(),
+        )?;
+
+        // Update active mint configurations.
+        for set_mint_config_tx in set_mint_config_txs {
+            self.set_active_mint_configs(set_mint_config_tx, db_transaction)?;
+        }
+        Ok(())
+    }
+
+    /// Get SetMintConfigTxs in a given block.
+    pub fn get_set_mint_config_txs_by_block_index(
+        &self,
+        block_index: u64,
+        db_transaction: &impl Transaction,
+    ) -> Result<Vec<SetMintConfigTx>, Error> {
+        let set_mint_config_tx_list: SetMintConfigTxList = decode(db_transaction.get(
+            self.set_mint_config_txs_by_block,
+            &u64_to_key_bytes(block_index),
+        )?)?;
+        Ok(set_mint_config_tx_list.set_mint_config_txs)
     }
 
     /// Set mint configurations for a given token.
