@@ -31,7 +31,7 @@ mc-fog-sample-paykit = { path = "../sample-paykit" }
 
 # third-party
 displaydoc = "0.2"
-grpcio = "0.9"
+grpcio = "0.10"
 hex_fmt = "0.3"
 lazy_static = "1.4"
 more-asserts = "0.2"

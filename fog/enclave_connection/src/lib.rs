@@ -7,7 +7,7 @@ use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use grpcio::{CallOption, Metadata, MetadataBuilder};
+use grpcio::{CallOption, Metadata, MetadataBuilder, Result as GrpcResult};
 use mc_attest_ake::{AuthResponseInput, ClientInitiate, Ready, Start, Transition};
 use mc_attest_api::attest::{AuthMessage, Message};
 use mc_attest_core::VerificationReport;
@@ -41,12 +41,12 @@ pub trait EnclaveGrpcChannel: Send + Sync {
         &mut self,
         msg: &AuthMessage,
         call_option: CallOption,
-    ) -> Result<(Option<Metadata>, AuthMessage, Option<Metadata>), grpcio::Error>;
+    ) -> GrpcResult<(Metadata, AuthMessage, Metadata)>;
     fn enclave_request(
         &mut self,
         ciphertext: &Message,
         call_option: CallOption,
-    ) -> Result<(Option<Metadata>, Message, Option<Metadata>), grpcio::Error>;
+    ) -> GrpcResult<(Metadata, Message, Metadata)>;
 }
 
 /// A generic object representing an attested connection to a remote enclave
@@ -104,7 +104,7 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> AttestedConnection for EnclaveConn
         // Update cookies from server-sent metadata
         if let Err(e) = self
             .cookies
-            .update_from_server_metadata(header.as_ref(), trailer.as_ref())
+            .update_from_server_metadata(Some(&header), Some(&trailer))
         {
             log::warn!(
                 self.logger,
@@ -213,7 +213,7 @@ impl<U: ConnectionUri, G: EnclaveGrpcChannel> EnclaveConnection<U, G> {
             // Update cookies from server-sent metadata
             if let Err(e) = this
                 .cookies
-                .update_from_server_metadata(header.as_ref(), trailer.as_ref())
+                .update_from_server_metadata(Some(&header), Some(&trailer))
             {
                 log::warn!(
                     this.logger,
