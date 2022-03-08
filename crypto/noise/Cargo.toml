@@ -13,7 +13,7 @@ aead = "0.4"
 digest = "0.10"
 displaydoc = { version = "0.2", default-features = false }
 generic-array = { version = "0.14", features = ["serde"] }
-hkdf = "0.12"
+hkdf = "0.12.3"
 rand_core = "0.6"
 secrecy = "0.8"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
