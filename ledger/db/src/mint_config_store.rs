@@ -242,6 +242,19 @@ impl MintConfigStore {
 
         Ok(())
     }
+
+    /// Returns true of the Ledger contains the given set-mint-config-tx nonce.
+    pub fn contains_set_mint_config_tx_nonce(
+        &self,
+        nonce: &[u8],
+        db_transaction: &impl Transaction,
+    ) -> Result<bool, Error> {
+        match db_transaction.get(self.set_mint_config_tx_by_nonce, &nonce) {
+            Ok(_db_bytes) => Ok(true),
+            Err(lmdb::Error::NotFound) => Ok(false),
+            Err(e) => Err(Error::Lmdb(e)),
+        }
+    }
 }
 
 #[cfg(test)]

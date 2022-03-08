@@ -211,7 +211,7 @@ impl Ledger for LedgerDB {
         let mut db_transaction = self.env.begin_rw_txn()?;
 
         // Validate the block is safe to append.
-        self.validate_append_block(block, block_contents)?;
+        self.validate_append_block(block, block_contents, &db_transaction)?;
 
         // Write key images included in block.
         self.write_key_images(block.index, &block_contents.key_images, &mut db_transaction)?;
@@ -342,29 +342,13 @@ impl Ledger for LedgerDB {
         public_key: &CompressedRistrettoPublic,
     ) -> Result<bool, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
-        match self
-            .tx_out_store
-            .get_tx_out_index_by_public_key(public_key, &db_transaction)
-        {
-            Ok(_) => Ok(true),
-            Err(Error::NotFound) => Ok(false),
-            Err(e) => Err(e),
-        }
+        self.contains_tx_out_public_key_impl(public_key, &db_transaction)
     }
 
     /// Returns true if the Ledger contains the given KeyImage.
     fn check_key_image(&self, key_image: &KeyImage) -> Result<Option<u64>, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
-        match db_transaction.get(self.key_images, &key_image) {
-            Ok(db_bytes) => {
-                assert_eq!(db_bytes.len(), 8, "Expected exactly 8 le bytes (u64 block height) to be stored with key image, found {}", db_bytes.len());
-                let mut u64_buf = [0u8; 8];
-                u64_buf.copy_from_slice(db_bytes);
-                Ok(Some(u64::from_le_bytes(u64_buf)))
-            }
-            Err(lmdb::Error::NotFound) => Ok(None),
-            Err(e) => Err(Error::Lmdb(e)),
-        }
+        self.check_key_image_impl(key_image, &db_transaction)
     }
 
     /// Gets the KeyImages used by transactions in a single Block.
@@ -735,6 +719,7 @@ impl LedgerDB {
         &self,
         block: &Block,
         block_contents: &BlockContents,
+        db_transaction: &impl Transaction,
     ) -> Result<(), Error> {
         // Check version is correct
         // Check if block is being appended at the correct place.
@@ -793,14 +778,17 @@ impl LedgerDB {
 
         // Check that none of the key images were previously spent.
         for key_image in &block_contents.key_images {
-            if self.contains_key_image(key_image)? {
+            if self
+                .check_key_image_impl(key_image, db_transaction)?
+                .is_some()
+            {
                 return Err(Error::KeyImageAlreadySpent);
             }
         }
 
         // Check that none of the output public keys appear in the ledger.
         for output in block_contents.outputs.iter() {
-            if self.contains_tx_out_public_key(&output.public_key)? {
+            if self.contains_tx_out_public_key_impl(&output.public_key, db_transaction)? {
                 return Err(Error::DuplicateOutputPublicKey);
             }
         }
@@ -810,7 +798,22 @@ impl LedgerDB {
             return Err(Error::InvalidBlockID(block.id.clone()));
         }
 
-        // TODO check minting?
+        // Check that none of the minting transaction nonces appear in the ledger.
+        for mint_tx in block_contents.mint_txs.iter() {
+            if self.contains_mint_tx_nonce(&mint_tx.prefix.nonce, db_transaction)? {
+                return Err(Error::DuplicateMintTx);
+            }
+        }
+
+        // Check that none of the set-mint-config-tx nonces appear in the ledger.
+        for set_mint_config_tx in block_contents.set_mint_config_txs.iter() {
+            if self.mint_config_store.contains_set_mint_config_tx_nonce(
+                &set_mint_config_tx.prefix.nonce,
+                db_transaction,
+            )? {
+                return Err(Error::DuplicateSetMintConfigTx);
+            }
+        }
 
         // All good
         Ok(())
@@ -890,6 +893,53 @@ impl LedgerDB {
         let signature_bytes = db_transaction.get(self.block_signatures, &key)?;
         let signature = decode(signature_bytes)?;
         Ok(signature)
+    }
+
+    /// Returns true if the Ledger contains the given TxOut public key.
+    fn contains_tx_out_public_key_impl(
+        &self,
+        public_key: &CompressedRistrettoPublic,
+        db_transaction: &impl Transaction,
+    ) -> Result<bool, Error> {
+        match self
+            .tx_out_store
+            .get_tx_out_index_by_public_key(public_key, db_transaction)
+        {
+            Ok(_) => Ok(true),
+            Err(Error::NotFound) => Ok(false),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Returns true if the Ledger contains the given KeyImage.
+    fn check_key_image_impl(
+        &self,
+        key_image: &KeyImage,
+        db_transaction: &impl Transaction,
+    ) -> Result<Option<u64>, Error> {
+        match db_transaction.get(self.key_images, &key_image) {
+            Ok(db_bytes) => {
+                assert_eq!(db_bytes.len(), 8, "Expected exactly 8 le bytes (u64 block height) to be stored with key image, found {}", db_bytes.len());
+                let mut u64_buf = [0u8; 8];
+                u64_buf.copy_from_slice(db_bytes);
+                Ok(Some(u64::from_le_bytes(u64_buf)))
+            }
+            Err(lmdb::Error::NotFound) => Ok(None),
+            Err(e) => Err(Error::Lmdb(e)),
+        }
+    }
+
+    /// Returns true if the Ledger contains the given mint tx nonce
+    fn contains_mint_tx_nonce(
+        &self,
+        nonce: &[u8],
+        db_transaction: &impl Transaction,
+    ) -> Result<bool, Error> {
+        match db_transaction.get(self.mint_tx_by_nonce, &nonce) {
+            Ok(_db_bytes) => Ok(true),
+            Err(lmdb::Error::NotFound) => Ok(false),
+            Err(e) => Err(Error::Lmdb(e)),
+        }
     }
 }
 
@@ -1290,7 +1340,9 @@ mod ledger_db_test {
     }
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: Lmdb(KeyExist)")]
+    #[should_panic(
+        expected = "called `Result::unwrap()` on an `Err` value: DuplicateSetMintConfigTx"
+    )]
     // Appending a block that contains a previously-seen SetMintConfigTx should
     // fail.
     fn test_append_block_fails_for_duplicate_set_mint_config_txs() {
@@ -1786,7 +1838,7 @@ mod ledger_db_test {
     }
 
     #[test]
-    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: Lmdb(KeyExist)")]
+    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: DuplicateMintTx")]
     // Appending a block that contains a previously-seen MintTx should
     // fail.
     fn test_append_block_fails_for_duplicate_mint_txs() {

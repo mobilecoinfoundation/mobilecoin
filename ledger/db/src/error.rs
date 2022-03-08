@@ -72,6 +72,12 @@ pub enum Error {
 
     /// Total minted amount cannot decrease: {0} < {1}
     TotalMintedAmountCannotDecrease(u64, u64),
+
+    /// DuplicateMintTx
+    DuplicateMintTx,
+
+    /// DuplicateSetMintConfigTx
+    DuplicateSetMintConfigTx,
 }
 
 impl From<lmdb::Error> for Error {
