@@ -106,6 +106,17 @@ fn burn_address_spend_public() -> RistrettoPoint {
 // This is the last key we need to get a complete
 // subaddress for the burn address, and at no point do we need any of the spend
 // private keys for the burn address to complete this derivation.
+//
+// A more naive idea would be to just take
+// `RistrettoPublic::from(BURN_ADDRESS_VIEW_PRIVATE)`. Under the hood that's the
+// same as `BURN_ADDRESS_VIEW_PRIVATE * RISTRETTO_BASEPOINT`. That would be
+// correct if we were not producing a subaddress here. But, if we do that,
+// then view key matching with `BURN_ADDRESS_VIEW_PRIVATE`
+// will not work, because the transaction builder only supports
+// sending to subaddresses (and not "regular" cryptonote addresses). We could
+// bring back the (deprecated and deleted code) from before we made the decision
+// that all addresses in MobileCoin are subaddresses, but it's simpler not to
+// have to do that.
 fn burn_address_view_public() -> RistrettoPoint {
     BURN_ADDRESS_VIEW_PRIVATE * burn_address_spend_public()
 }
