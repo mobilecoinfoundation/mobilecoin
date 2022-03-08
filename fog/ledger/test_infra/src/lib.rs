@@ -13,7 +13,6 @@ use mc_fog_ledger_enclave_api::{KeyImageData, UntrustedKeyImageQueryResponse};
 use mc_ledger_db::{ActiveMintConfig, Error, Ledger};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
-    mint::MintConfig,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockData, BlockSignature, TokenId,

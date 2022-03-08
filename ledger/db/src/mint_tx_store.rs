@@ -37,10 +37,8 @@ impl MintTxStore {
     /// Opens an existing MintTxStore.
     pub fn new(env: &Environment) -> Result<Self, Error> {
         Ok(MintTxStore {
-            mint_txs_by_block: env
-                .open_db(Some(MINT_TXS_BY_BLOCK_DB_NAME))?,
-            mint_tx_by_nonce: env
-                .open_db(Some(MINT_TX_BY_NONCE_DB_NAME))?,
+            mint_txs_by_block: env.open_db(Some(MINT_TXS_BY_BLOCK_DB_NAME))?,
+            mint_tx_by_nonce: env.open_db(Some(MINT_TX_BY_NONCE_DB_NAME))?,
         })
     }
 
@@ -103,7 +101,7 @@ impl MintTxStore {
         for mint_tx in mint_txs {
             // Update total minted.
             let active_mint_config =
-                mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx, db_transaction)?;
+                mint_config_store.get_active_mint_config_for_mint_tx(mint_tx, db_transaction)?;
 
             let new_total_minted = active_mint_config.total_minted.checked_add(mint_tx.prefix.amount).expect("shouldn't have failed because get_active_mint_config_for_mint_tx guards against this");
 

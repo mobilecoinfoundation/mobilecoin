@@ -232,11 +232,11 @@ impl MintConfigStore {
 
         for active_mint_config in active_mint_configs {
             // See if this mint config has signed the mint tx.
-            if !active_mint_config
+            if active_mint_config
                 .mint_config
                 .signer_set
                 .verify(&message, &mint_tx.signature)
-                .is_ok()
+                .is_err()
             {
                 continue;
             }

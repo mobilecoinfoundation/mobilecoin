@@ -52,7 +52,7 @@ pub use mint_tx_store::MintTxStore;
 pub use tx_out_store::TxOutStore;
 
 pub const MAX_LMDB_FILE_SIZE: usize = 2usize.pow(40); // 1 TB
-pub const MAX_LMDB_DATABASES: u32 = 27; // maximum number of databases in the lmdb file
+pub const MAX_LMDB_DATABASES: u32 = 29; // maximum number of databases in the lmdb file
 
 // LMDB Database names.
 pub const COUNTS_DB_NAME: &str = "ledger_db:counts";
