@@ -219,15 +219,17 @@ impl Ledger for LedgerDB {
         // Write information about TxOuts included in block.
         self.write_tx_outs(block.index, &block_contents.outputs, &mut db_transaction)?;
 
+        // Write MintTxs included in the block. We do this before writing the
+        // configuration, since the assumption is that the new configuration is not yet
+        // active at the time the MintTx has made its way to a block.
+        self.write_mint_txs(block.index, &block_contents.mint_txs, &mut db_transaction)?;
+
         // Write SetMintConfigTxs included in the block.
         self.write_set_mint_config_txs(
             block.index,
             &block_contents.set_mint_config_txs,
             &mut db_transaction,
         )?;
-
-        // Write MintTxs included in the block.
-        self.write_mint_txs(block.index, &block_contents.mint_txs, &mut db_transaction)?;
 
         // Write block.
         self.write_block(block, signature.as_ref(), &mut db_transaction)?;
@@ -1560,6 +1562,230 @@ mod ledger_db_test {
     }
 
     #[test]
+    // Appending a block that contains a mix of outputs, key images and mint
+    // transactions should work as expected.
+    fn test_append_block_containing_outputs_key_images_and_mint_txs() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut ledger_db = create_db();
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+
+        // === Create and append the origin block. ===
+        // The origin block contains a single output belonging to the
+        // `origin_account_key`.
+
+        let origin_account_key = AccountKey::random(&mut rng);
+        let (origin_block, origin_block_contents) =
+            get_origin_block_and_contents(&origin_account_key);
+
+        ledger_db
+            .append_block(&origin_block, &origin_block_contents, None)
+            .unwrap();
+
+        // === Create and append a non-origin block. ===
+        let recipient_account_key = AccountKey::random(&mut rng);
+        let outputs1: Vec<TxOut> = (0..4)
+            .map(|_i| {
+                TxOut::new(
+                    1000,
+                    &recipient_account_key.default_subaddress(),
+                    &RistrettoPrivate::from_random(&mut rng),
+                    Default::default(),
+                )
+                .unwrap()
+            })
+            .collect();
+
+        let key_images1: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
+        let set_mint_config_tx1 = generate_test_mint_config_tx(token_id1, &mut rng);
+        let (set_mint_config_tx2, signers2) =
+            generate_test_mint_config_tx_and_signers(token_id2, &mut rng);
+
+        let block_contents1 = BlockContents {
+            key_images: key_images1,
+            outputs: outputs1,
+            set_mint_config_txs: vec![set_mint_config_tx1.clone(), set_mint_config_tx2.clone()],
+            mint_txs: vec![], /* For this block we cant include any mint txs since we need an
+                               * active configuration first. */
+        };
+        let block1 = Block::new_with_parent(
+            BLOCK_VERSION,
+            &origin_block,
+            &Default::default(),
+            &block_contents1,
+        );
+
+        ledger_db
+            .append_block(&block1, &block_contents1, None)
+            .unwrap();
+
+        assert_eq!(2, ledger_db.num_blocks().unwrap());
+        // The origin block should still be in the ledger:
+        assert_eq!(origin_block, ledger_db.get_block(0).unwrap());
+        // The new block should be in the ledger:
+        assert_eq!(block1, ledger_db.get_block(1).unwrap());
+        // The new block contents should be in the ledger:
+        assert_eq!(block_contents1, ledger_db.get_block_contents(1).unwrap());
+
+        // The active mint configs should be updated.
+        assert_eq!(
+            ledger_db.get_active_mint_configs(token_id1).unwrap(),
+            vec![
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    total_minted: 0,
+                },
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    total_minted: 0,
+                }
+            ]
+        );
+
+        assert_eq!(
+            ledger_db.get_active_mint_configs(token_id2).unwrap(),
+            vec![
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx2.prefix.configs[0].clone(),
+                    total_minted: 0,
+                },
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx2.prefix.configs[1].clone(),
+                    total_minted: 0,
+                }
+            ]
+        );
+
+        // Each TxOut from the current block should be in the ledger.
+        assert_eq!(5, ledger_db.num_txos().unwrap());
+
+        for (i, tx_out) in block_contents1.outputs.iter().enumerate() {
+            // The first tx_out is the origin block, tx_outs are for the following block
+            // hence the + 1
+            assert_eq!(
+                ledger_db.get_tx_out_by_index((i + 1) as u64).unwrap(),
+                *tx_out
+            );
+
+            // All tx outs are in the second block.
+            let block_index = ledger_db
+                .get_block_index_by_tx_out_index((i + 1) as u64)
+                .unwrap();
+            assert_eq!(block_index, 1);
+        }
+
+        // The key images should be in the ledger.
+        assert!(ledger_db
+            .contains_key_image(block_contents1.key_images.get(0).unwrap())
+            .unwrap());
+
+        let block1_key_images = ledger_db.get_key_images_by_block(1).unwrap();
+        assert_eq!(block_contents1.key_images, block1_key_images);
+
+        //  === Write another block - this one has a MintTx in addition to all
+        // the other txs.
+        let outputs2: Vec<TxOut> = (0..4)
+            .map(|_i| {
+                TxOut::new(
+                    1000,
+                    &recipient_account_key.default_subaddress(),
+                    &RistrettoPrivate::from_random(&mut rng),
+                    Default::default(),
+                )
+                .unwrap()
+            })
+            .collect();
+
+        let key_images2: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
+        let set_mint_config_tx3 = generate_test_mint_config_tx(token_id1, &mut rng);
+        let mint_tx1 = generate_test_mint_tx(token_id2, &signers2, 10, &mut rng);
+        let mint_tx2 = generate_test_mint_tx(token_id2, &signers2, 20, &mut rng);
+
+        let block_contents2 = BlockContents {
+            key_images: key_images2,
+            outputs: outputs2,
+            set_mint_config_txs: vec![set_mint_config_tx3.clone()],
+            mint_txs: vec![mint_tx1.clone(), mint_tx2.clone()],
+        };
+        let block2 = Block::new_with_parent(
+            BLOCK_VERSION,
+            &block1,
+            &Default::default(),
+            &block_contents2,
+        );
+
+        ledger_db
+            .append_block(&block2, &block_contents2, None)
+            .unwrap();
+
+        assert_eq!(3, ledger_db.num_blocks().unwrap());
+        // The previous blocks should still be in the ledger:
+        assert_eq!(origin_block, ledger_db.get_block(0).unwrap());
+        assert_eq!(
+            origin_block_contents,
+            ledger_db.get_block_contents(0).unwrap()
+        );
+        assert_eq!(block1, ledger_db.get_block(1).unwrap());
+        assert_eq!(block_contents1, ledger_db.get_block_contents(1).unwrap());
+        // The new block should be in the ledger:
+        assert_eq!(block2, ledger_db.get_block(2).unwrap());
+        assert_eq!(block_contents2, ledger_db.get_block_contents(2).unwrap());
+
+        // The active mint configs should be updated.
+        assert_eq!(
+            ledger_db.get_active_mint_configs(token_id1).unwrap(),
+            vec![
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx3.prefix.configs[0].clone(),
+                    total_minted: 0,
+                },
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx3.prefix.configs[1].clone(),
+                    total_minted: 0,
+                }
+            ]
+        );
+
+        assert_eq!(
+            ledger_db.get_active_mint_configs(token_id2).unwrap(),
+            vec![
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx2.prefix.configs[0].clone(),
+                    total_minted: 30,
+                },
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx2.prefix.configs[1].clone(),
+                    total_minted: 0,
+                }
+            ]
+        );
+
+        // Each TxOut from the current block should be in the ledger.
+        assert_eq!(9, ledger_db.num_txos().unwrap());
+
+        for (i, tx_out) in block_contents2.outputs.iter().enumerate() {
+            assert_eq!(
+                ledger_db.get_tx_out_by_index((i + 5) as u64).unwrap(),
+                *tx_out
+            );
+
+            // All tx outs are in the second block.
+            let block_index = ledger_db
+                .get_block_index_by_tx_out_index((i + 5) as u64)
+                .unwrap();
+            assert_eq!(block_index, 2);
+        }
+
+        // The key images should be in the ledger.
+        assert!(ledger_db
+            .contains_key_image(block_contents2.key_images.get(0).unwrap())
+            .unwrap());
+
+        let block2_key_images = ledger_db.get_key_images_by_block(2).unwrap();
+        assert_eq!(block_contents2.key_images, block2_key_images);
+    }
+
+    #[test]
     #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: Lmdb(KeyExist)")]
     // Appending a block that contains a previously-seen MintTx should
     // fail.
@@ -1867,6 +2093,41 @@ mod ledger_db_test {
                 }
             ]
         );
+    }
+
+    #[test]
+    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: NoOutputs")]
+    // Appending an empty block should fail.
+    fn test_append_block_fails_when_block_is_empty() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut ledger_db = create_db();
+
+        // === Create and append the origin block. ===
+        // The origin block contains a single output belonging to the
+        // `origin_account_key`.
+
+        let origin_account_key = AccountKey::random(&mut rng);
+        let (origin_block, origin_block_contents) =
+            get_origin_block_and_contents(&origin_account_key);
+
+        ledger_db
+            .append_block(&origin_block, &origin_block_contents, None)
+            .unwrap();
+
+        // === Append a block with no contents. ===
+
+        let block_contents1 = Default::default();
+
+        let block1 = Block::new_with_parent(
+            BLOCK_VERSION,
+            &origin_block,
+            &Default::default(),
+            &block_contents1,
+        );
+
+        ledger_db
+            .append_block(&block1, &block_contents1, None)
+            .unwrap();
     }
 
     #[test]
@@ -2701,7 +2962,4 @@ mod ledger_db_test {
 
         b.iter(|| ledger_db.get_block(rng.next_u64() % n_blocks).unwrap())
     }
-
-    // TODO add test for block with only mint tx, only set mintconfig tx, no
-    // txs, regular txs + mints, etc
 }
