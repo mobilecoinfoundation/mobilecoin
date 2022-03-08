@@ -7,7 +7,6 @@ use mc_transaction_core::{
     tx::TxOut,
     BlockContents,
 };
-use protobuf::RepeatedField;
 use std::convert::TryFrom;
 
 impl From<&mc_transaction_core::BlockContents> for blockchain::BlockContents {
