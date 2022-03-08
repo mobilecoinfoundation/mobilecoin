@@ -507,7 +507,7 @@ fn submit_tx(
                 BLOCK_HEIGHT.fetch_max(block_height, Ordering::SeqCst);
                 return true;
             }
-            Err(RetryError::Operation { error, .. }) => {
+            Err(RetryError::Operation { error, total_delay, tries }) => {
                 if let ConnectionError::TransactionValidation(
                     TransactionValidationError::TombstoneBlockExceeded,
                 ) = error
@@ -520,12 +520,14 @@ fn submit_tx(
 
                 log::warn!(
                     logger,
-                    "Failed to submit transaction {:?} to node {} (attempt {} / {}): {}",
+                    "Failed to submit transaction {:?} to node {} (attempt {} / {}): {}. Total Delay: {:?}. Retry Crate 'tries': {}.",
                     counter,
                     conn,
                     i,
                     max_retries,
-                    error
+                    error,
+                    total_delay,
+                    tries
                 );
                 thread::sleep(retry_sleep_duration);
             }
