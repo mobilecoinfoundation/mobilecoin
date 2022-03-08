@@ -5,42 +5,17 @@
 use crate::{
     mint::{
         config::{MintConfig, SetMintConfigTx},
-        constants::{NONCE_MAX_LENGTH, NONCE_MIN_LENGTH},
+        validation::{
+            common::{
+                validate_block_version, validate_nonce, validate_token_id, validate_tombstone,
+            },
+            error::Error,
+        },
     },
-    validation::{validate_tombstone, TransactionValidationError},
-    BlockVersion, TokenId,
+    BlockVersion,
 };
-use displaydoc::Display;
 use mc_crypto_keys::Ed25519Public;
 use mc_crypto_multisig::SignerSet;
-use serde::{Deserialize, Serialize};
-
-#[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
-pub enum Error {
-    /// Invalid block version: {0}
-    BlockVersion(BlockVersion),
-
-    /// Invalid token id: {0}
-    TokenId(u32),
-
-    /// Invalid nonce length: {0}
-    NonceLength(usize),
-
-    /// Invalid signer set
-    SignerSet,
-
-    /// Invalid signature
-    Signature,
-
-    /// Number of blocks in ledger exceeds the tombstone block number
-    TombstoneBlockExceeded,
-
-    /// Tombstone block is too far in the future
-    TombstoneBlockTooFar,
-
-    /// Unknown error (should never happen)
-    Unknown,
-}
 
 /// Determines if the transaction is valid, with respect to the provided
 /// context.
@@ -66,35 +41,9 @@ pub fn validate_set_mint_config_tx(
 
     validate_nonce(&tx.prefix.nonce)?;
 
-    validate_tombstone(current_block_index, tx.prefix.tombstone_block).map_err(
-        |err| match err {
-            TransactionValidationError::TombstoneBlockExceeded => Error::TombstoneBlockExceeded,
-            TransactionValidationError::TombstoneBlockTooFar => Error::TombstoneBlockTooFar,
-            _ => Error::Unknown, /* This should never happen since validate_tombstone only
-                                  * returns one of the two error types above */
-        },
-    )?;
+    validate_tombstone(current_block_index, tx.prefix.tombstone_block)?;
 
     validate_signature(tx, master_minters)?;
-
-    Ok(())
-}
-
-/// The current block version being built must support minting.
-fn validate_block_version(block_version: BlockVersion) -> Result<(), Error> {
-    // TODO this should actually be block version THREE!
-    if block_version < BlockVersion::TWO || BlockVersion::MAX < block_version {
-        return Err(Error::BlockVersion(block_version));
-    }
-
-    Ok(())
-}
-
-/// The token id being minted must be supported.
-fn validate_token_id(token_id: u32) -> Result<(), Error> {
-    if token_id == *TokenId::MOB {
-        return Err(Error::TokenId(token_id));
-    }
 
     Ok(())
 }
@@ -116,15 +65,6 @@ fn validate_configs(token_id: u32, configs: &[MintConfig]) -> Result<(), Error> 
     Ok(())
 }
 
-/// The nonce must be within the hardcoded lenght limit.
-fn validate_nonce(nonce: &[u8]) -> Result<(), Error> {
-    if nonce.len() < NONCE_MIN_LENGTH || nonce.len() > NONCE_MAX_LENGTH {
-        return Err(Error::NonceLength(nonce.len()));
-    }
-
-    Ok(())
-}
-
 /// The transaction must be properly signed by the master minters set.
 fn validate_signature(
     tx: &SetMintConfigTx,
@@ -141,35 +81,11 @@ fn validate_signature(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mint::config::SetMintConfigTxPrefix;
+    use crate::mint::{config::SetMintConfigTxPrefix, constants::NONCE_MIN_LENGTH};
     use mc_crypto_keys::{Ed25519Pair, Signer};
     use mc_crypto_multisig::MultiSig;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    #[test]
-    fn validate_block_version_accepts_valid_block_versions() {
-        assert!(validate_block_version(BlockVersion::TWO).is_ok()); // TODO needs to be three
-        assert!(validate_block_version(BlockVersion::MAX).is_ok()); // TODO needs to be three
-    }
-
-    #[test]
-    fn validate_block_version_rejects_unsupported_block_versions() {
-        assert_eq!(
-            validate_block_version(BlockVersion::ONE),
-            Err(Error::BlockVersion(BlockVersion::ONE))
-        );
-    }
-
-    #[test]
-    fn validate_token_id_accepts_valid_token_ids() {
-        assert!(validate_token_id(1).is_ok());
-        assert!(validate_token_id(10).is_ok());
-    }
-
-    #[test]
-    fn validate_token_id_rejects_invalid_token_ids() {
-        assert_eq!(validate_token_id(0), Err(Error::TokenId(0)));
-    }
 
     #[test]
     fn validate_configs_accepts_valid_mint_configs() {
@@ -264,26 +180,6 @@ mod tests {
         assert_eq!(
             validate_configs(token_id, &[mint_config2]),
             Err(Error::SignerSet)
-        );
-    }
-
-    #[test]
-    fn validate_nonce_accepts_valid_nonces() {
-        validate_nonce(&[1u8; NONCE_MIN_LENGTH]).unwrap();
-        validate_nonce(&[1u8; NONCE_MIN_LENGTH + 1]).unwrap();
-        validate_nonce(&[1u8; NONCE_MAX_LENGTH]).unwrap();
-    }
-
-    #[test]
-    fn validate_nonce_rejects_valid_nonces() {
-        assert_eq!(validate_nonce(&[]), Err(Error::NonceLength(0)));
-        assert_eq!(
-            validate_nonce(&[1u8; NONCE_MIN_LENGTH - 1]),
-            Err(Error::NonceLength(NONCE_MIN_LENGTH - 1))
-        );
-        assert_eq!(
-            validate_nonce(&[1u8; NONCE_MAX_LENGTH + 1]),
-            Err(Error::NonceLength(NONCE_MAX_LENGTH + 1))
         );
     }
 

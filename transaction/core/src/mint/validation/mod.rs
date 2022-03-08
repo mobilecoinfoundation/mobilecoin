@@ -3,3 +3,7 @@
 //! Minting-related validation code.
 
 pub mod config;
+pub mod error;
+pub mod tx;
+
+mod common;
