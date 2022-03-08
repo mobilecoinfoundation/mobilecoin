@@ -111,7 +111,7 @@ fn one_active_node_cluster_state_does_not_change(logger: Logger) {
     let overseer_state = OverseerState { overseer_service };
     let rocket = server::initialize_rocket_server(rocket_config, overseer_state);
     let client = Client::new(rocket).expect("valid rocket instance");
-    let _req = client.post("/arm");
+    let _req = client.post("/enable").dispatch();
 
     // Give Overseer time to perform logic
     std::thread::sleep(Duration::from_millis(5000));
