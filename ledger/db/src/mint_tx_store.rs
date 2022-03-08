@@ -137,7 +137,9 @@ mod tests {
     };
     use mc_crypto_keys::Ed25519Pair;
     use mc_transaction_core::TokenId;
+    use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
+    use std::cmp::max;
 
     pub fn init_test_stores() -> (MintConfigStore, MintTxStore, Environment) {
         let env = get_env();
@@ -328,6 +330,193 @@ mod tests {
         );
     }
 
-    // TODO: test writing same block index twice, unknown signer, exceeding mint
-    // capacity.
+    #[test]
+    fn write_mint_txs_cannot_overwrite_block() {
+        let (mint_config_store, mint_tx_store, env) = init_test_stores();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+
+        // Generate and store a mint configurations.
+        let (set_mint_config_tx1, signers1) =
+            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_config_store
+            .write_set_mint_config_txs(0, &[set_mint_config_tx1.clone()], &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        // Generate a mint tx that mints 1 token on block 0
+        let mint_tx1 = generate_test_mint_tx(token_id1, &signers1, 1, &mut rng);
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_tx_store
+            .write_mint_txs(0, &[mint_tx1], &mint_config_store, &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        // Trying again on block 0 should fail.
+        let mint_tx2 = generate_test_mint_tx(token_id1, &signers1, 1, &mut rng);
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        assert_eq!(
+            mint_tx_store.write_mint_txs(0, &[mint_tx2.clone()], &mint_config_store, &mut db_txn),
+            Err(Error::Lmdb(lmdb::Error::KeyExist))
+        );
+        drop(db_txn);
+
+        // But will succeed on block 1.
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_tx_store
+            .write_mint_txs(1, &[mint_tx2], &mint_config_store, &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+    }
+
+    #[test]
+    fn write_mint_txs_works_when_some_signers_are_unknown() {
+        let (mint_config_store, mint_tx_store, env) = init_test_stores();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+
+        // Generate and store a mint configurations.
+        let (set_mint_config_tx1, signers1) =
+            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_config_store
+            .write_set_mint_config_txs(0, &[set_mint_config_tx1.clone()], &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        // Generate a mint tx that mints 1 token on block 0 with unknown signers.
+        let mint_tx1 = generate_test_mint_tx(
+            token_id1,
+            &[
+                Ed25519Pair::from_random(&mut rng),
+                Ed25519Pair::from_random(&mut rng),
+                Ed25519Pair::from(signers1[1].private_key()),
+            ],
+            12,
+            &mut rng,
+        );
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_tx_store
+            .write_mint_txs(0, &[mint_tx1], &mint_config_store, &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        let db_txn = env.begin_ro_txn().unwrap();
+        let active_mint_configs = mint_config_store
+            .get_active_mint_configs(token_id1, &db_txn)
+            .unwrap();
+        assert_eq!(
+            active_mint_configs,
+            vec![
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    total_minted: 0,
+                },
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    total_minted: 12,
+                }
+            ]
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: NotFound")]
+    fn write_mint_txs_fail_when_signer_is_unknown() {
+        let (mint_config_store, mint_tx_store, env) = init_test_stores();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+
+        // Generate and store a mint configurations.
+        let (set_mint_config_tx1, _signers1) =
+            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_config_store
+            .write_set_mint_config_txs(0, &[set_mint_config_tx1.clone()], &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        // Generate a mint tx that mints 1 token on block 0 with unknown signers.
+        let mint_tx1 = generate_test_mint_tx(
+            token_id1,
+            &[
+                Ed25519Pair::from_random(&mut rng),
+                Ed25519Pair::from_random(&mut rng),
+            ],
+            1,
+            &mut rng,
+        );
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_tx_store
+            .write_mint_txs(0, &[mint_tx1], &mint_config_store, &mut db_txn)
+            .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: NotFound")]
+    fn write_mint_txs_fail_when_signature_is_invalid() {
+        let (mint_config_store, mint_tx_store, env) = init_test_stores();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+
+        // Generate and store a mint configurations.
+        let (set_mint_config_tx1, signers1) =
+            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_config_store
+            .write_set_mint_config_txs(0, &[set_mint_config_tx1.clone()], &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        // Generate a mint tx that mints 1 token on block 0 but corrupt the signature by
+        // altering the amount.
+        let mut mint_tx1 = generate_test_mint_tx(token_id1, &signers1, 1, &mut rng);
+        mint_tx1.prefix.amount += 1;
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_tx_store
+            .write_mint_txs(0, &[mint_tx1], &mint_config_store, &mut db_txn)
+            .unwrap();
+    }
+
+    #[test]
+    fn write_mint_txs_fail_when_mint_limit_exceeded() {
+        let (mint_config_store, mint_tx_store, env) = init_test_stores();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+
+        // Generate and store a mint configurations.
+        let (set_mint_config_tx1, signers1) =
+            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_config_store
+            .write_set_mint_config_txs(0, &[set_mint_config_tx1.clone()], &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        // Generate a mint tx that immediately exceeds the mint limit of both
+        // configurations.
+        let mint_tx1 = generate_test_mint_tx(
+            token_id1,
+            &signers1,
+            max(
+                set_mint_config_tx1.prefix.configs[0].mint_limit,
+                set_mint_config_tx1.prefix.configs[1].mint_limit,
+            ) + 1,
+            &mut rng,
+        );
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        assert_eq!(
+            mint_tx_store.write_mint_txs(0, &[mint_tx1.clone()], &mint_config_store, &mut db_txn),
+            Err(Error::MintLimitExceeded(
+                mint_tx1.prefix.amount,
+                mint_tx1.prefix.amount - 1
+            ))
+        );
+    }
 }
