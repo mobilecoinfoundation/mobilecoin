@@ -157,46 +157,6 @@ impl MintConfigStore {
         Ok(set_mint_config_tx_list.set_mint_config_txs)
     }
 
-    /// Set mint configurations for a given token.
-    pub fn set_active_mint_configs(
-        &self,
-        set_mint_config_tx: &SetMintConfigTx,
-        db_transaction: &mut RwTransaction,
-    ) -> Result<(), Error> {
-        // All mint configurations must have the same token id.
-        if set_mint_config_tx
-            .prefix
-            .configs
-            .iter()
-            .any(|mint_config| mint_config.token_id != set_mint_config_tx.prefix.token_id)
-        {
-            return Err(Error::InvalidMintConfig(
-                "All mint configurations must have the same token id".to_string(),
-            ));
-        }
-
-        // MintConfigs -> ActiveMintConfigs
-        let active_mint_configs = ActiveMintConfigs::from(set_mint_config_tx);
-
-        // Store in database
-        db_transaction.put(
-            self.set_mint_config_tx_by_nonce,
-            &set_mint_config_tx.prefix.nonce,
-            &encode(set_mint_config_tx),
-            WriteFlags::NO_OVERWRITE, /* this ensures we do not overwrite a nonce that was
-                                       * already used */
-        )?;
-
-        db_transaction.put(
-            self.active_mint_configs_by_token_id,
-            &u32_to_key_bytes(set_mint_config_tx.prefix.token_id),
-            &encode(&active_mint_configs),
-            WriteFlags::empty(),
-        )?;
-
-        Ok(())
-    }
-
     /// Get mint configurations for a given token.
     pub fn get_active_mint_configs(
         &self,
@@ -317,6 +277,46 @@ impl MintConfigStore {
             Err(lmdb::Error::NotFound) => Ok(false),
             Err(e) => Err(Error::Lmdb(e)),
         }
+    }
+
+    /// Set mint configurations for a given token.
+    fn set_active_mint_configs(
+        &self,
+        set_mint_config_tx: &SetMintConfigTx,
+        db_transaction: &mut RwTransaction,
+    ) -> Result<(), Error> {
+        // All mint configurations must have the same token id.
+        if set_mint_config_tx
+            .prefix
+            .configs
+            .iter()
+            .any(|mint_config| mint_config.token_id != set_mint_config_tx.prefix.token_id)
+        {
+            return Err(Error::InvalidMintConfig(
+                "All mint configurations must have the same token id".to_string(),
+            ));
+        }
+
+        // MintConfigs -> ActiveMintConfigs
+        let active_mint_configs = ActiveMintConfigs::from(set_mint_config_tx);
+
+        // Store in database
+        db_transaction.put(
+            self.set_mint_config_tx_by_nonce,
+            &set_mint_config_tx.prefix.nonce,
+            &encode(set_mint_config_tx),
+            WriteFlags::NO_OVERWRITE, /* this ensures we do not overwrite a nonce that was
+                                       * already used */
+        )?;
+
+        db_transaction.put(
+            self.active_mint_configs_by_token_id,
+            &u32_to_key_bytes(set_mint_config_tx.prefix.token_id),
+            &encode(&active_mint_configs),
+            WriteFlags::empty(),
+        )?;
+
+        Ok(())
     }
 }
 
@@ -1045,6 +1045,93 @@ pub mod tests {
                     mint_config: test_tx_1.prefix.configs[1].clone(),
                     total_minted: 9,
                 })
+            );
+        }
+    }
+
+    #[test]
+    fn can_set_empty_configs_array() {
+        let (mint_config_store, env) = init_mint_config_store();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+
+        let test_tx_1 = generate_test_mint_config_tx(token_id1, &mut rng);
+        let test_tx_2 = generate_test_mint_config_tx(token_id2, &mut rng);
+
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .write_set_mint_config_txs(
+                    0,
+                    &[test_tx_1.clone(), test_tx_2.clone()],
+                    &mut db_transaction,
+                )
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs(token_id1, &db_transaction)
+                .unwrap();
+            assert_eq!(
+                active_mint_configs,
+                ActiveMintConfigs::from(&test_tx_1).configs
+            );
+
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs(token_id2, &db_transaction)
+                .unwrap();
+            assert_eq!(
+                active_mint_configs,
+                ActiveMintConfigs::from(&test_tx_2).configs
+            );
+        }
+
+        // Replace the previous configuration with an empty one - this is how we could
+        // disable minting for a given token id
+        {
+            let test_tx_3 = {
+                let signer_1 = Ed25519Pair::from_random(&mut rng);
+
+                let mut nonce: Vec<u8> = vec![0u8; 32];
+                rng.fill_bytes(&mut nonce);
+
+                let prefix = SetMintConfigTxPrefix {
+                    token_id: *token_id1,
+                    configs: vec![],
+                    nonce,
+                    tombstone_block: rng.next_u64(),
+                };
+
+                let message = prefix.hash();
+                let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
+
+                SetMintConfigTx { prefix, signature }
+            };
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .write_set_mint_config_txs(1, &[test_tx_3.clone()], &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs(token_id1, &db_transaction)
+                .unwrap();
+            assert_eq!(active_mint_configs, vec![]);
+
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs(token_id2, &db_transaction)
+                .unwrap();
+            assert_eq!(
+                active_mint_configs,
+                ActiveMintConfigs::from(&test_tx_2).configs
             );
         }
     }
