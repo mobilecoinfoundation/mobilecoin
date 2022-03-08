@@ -104,7 +104,13 @@ commands:
     steps:
       - restore_cache:
           name: Restore sccache cache
-          key: v0-sccache-{{ arch }}-{{ .Environment.CIRCLE_JOB }}.
+          keys:
+            # Find a cache corresponding to this specific branch.
+            - v0-sccache-{{ arch }}-{{ checksum "Cargo.lock" }}-{{ .Branch }}
+            # Fall back to the most recently generated cache used from any branch.
+            - v0-sccache-{{ arch }}-{{ checksum "Cargo.lock" }}
+            # Fall back to the most recently generated cache used from any checksum.
+            - v0-sccache-{{ arch }}
 
   # Saves sccache cache on a per-job, per-architecture basis. Adds the git revision as a suffix
   # so that each saved cache is stored using a unique key.
@@ -112,8 +118,8 @@ commands:
     steps:
       - save_cache:
           name: Save sccache cache
-          # See https://discuss.circleci.com/t/add-mechanism-to-update-existing-cache-key/9014/13
-          key: v0-sccache-{{ arch }}-{{ .Environment.CIRCLE_JOB }}.{{ .Revision }}
+          # See https://circleci.com/docs/2.0/caching/
+          key: v0-sccache-{{ arch }}-{{ checksum "Cargo.lock" }}-{{ .Branch }}
           paths:
             - ~/.cache/sccache
 
@@ -130,7 +136,13 @@ commands:
     steps:
       - restore_cache:
           name: Restore Cargo cache
-          key: v0-cargo-{{ arch }}
+          keys:
+            # Find a cache corresponding to this specific revision.
+            - v0-cargo-{{ arch }}-{{ checksum "Cargo.lock" }}-{{ .Branch }}
+            # Fall back to the most recently generated cache used from any revision.
+            - v0-cargo-{{ arch }}-{{ checksum "Cargo.lock" }}
+            # Fall back to the most recently generated cache used for any checksum.
+            - v0-cargo-{{ arch }}
 
   # Saves cargo cache on a per-architecture basis. Adds the git revision as a suffix so that each
   # saved cache is stored using a unique key.
@@ -186,7 +198,7 @@ commands:
       - save_cache:
           name: Save Cargo cache
           # See https://discuss.circleci.com/t/add-mechanism-to-update-existing-cache-key/9014/13
-          key: v0-cargo-{{ arch }}-{{ .Revision }}
+          key: v0-cargo-{{ arch }}-{{ checksum "Cargo.lock" }}-{{ .Branch }}
           # https://doc.rust-lang.org/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci
           paths:
             - ~/.cargo/.crates.toml
@@ -368,55 +380,6 @@ commands:
       - store_artifacts:
           path: /tmp/core_dumps
 
-  run-consensus-tests:
-    steps:
-      - run:
-          name: Run consensus tests
-          command: |
-            # tell the operating system to remove the file size limit on core dump files
-            ulimit -c unlimited
-            cargo test --package "mc-consensus-*" -j 4 --frozen --no-fail-fast
-      - run:
-          command: |
-            mkdir -p /tmp/core_dumps
-            cp core.* /tmp/core_dumps
-          when: on_fail
-      - store_artifacts:
-          path: /tmp/core_dumps
-
-  # FIXME: Figure out why the parallel tests stuff using cargo2junit isn't working in the cloud for fog, maybe a memory limit issue?
-  run-fog-tests:
-    steps:
-      - run:
-          name: Run fog tests
-          command: |
-            # tell the operating system to remove the file size limit on core dump files
-            ulimit -c unlimited
-            cargo test --workspace --package "mc-fog-*" --exclude "mc-fog-ingest-*" -j 4 --frozen --no-fail-fast
-      - run:
-          command: |
-            mkdir -p /tmp/core_dumps
-            cp core.* /tmp/core_dumps
-          when: on_fail
-      - store_artifacts:
-          path: /tmp/core_dumps
-
-  run-fog-ingest-tests:
-    steps:
-      - run:
-          name: Run fog ingest tests (in release mode)
-          command: |
-            # tell the operating system to remove the file size limit on core dump files
-            ulimit -c unlimited
-            cargo test --release --package "mc-fog-ingest-*" -j 4 --frozen --no-fail-fast
-      - run:
-          command: |
-            mkdir -p /tmp/core_dumps
-            cp core.* /tmp/core_dumps
-          when: on_fail
-      - store_artifacts:
-          path: /tmp/core_dumps
-
   # A job that runs the fog-conformance-tests, building things in release mode
   # Note: If we bring back the run-parallel-tests stuff, we could make this use --skip-build,
   # and consume the build targets built in earlier step perhaps
@@ -453,8 +416,13 @@ commands:
 
   post-build:
     steps:
+      - check-dirty-git
       - record-sccache-cache-stats
       - print-cargo-cache-stats
+      # Save caches after every build on master. This results in shorter CI times.
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ save-sccache-cache, save-cargo-cache ]
 
   post-mc-test:
     steps:
@@ -463,17 +431,10 @@ commands:
       - store_artifacts:
           path: /tmp/mc-test-results
 
-  post-fog-test:
-    steps:
-      - store_test_results:
-          path: /tmp/fog-test-results
-      - store_artifacts:
-          path: /tmp/fog-test-results
-
   lint:
     steps:
       - run:
-          name: Lint/fmt
+          name: Lint check
           command: |
             ./tools/lint.sh
 
@@ -524,10 +485,6 @@ jobs:
     steps:
       - prepare-for-build
       - run-mc-tests
-      - check-dirty-git
-      - when:
-          condition: { equal: [ << pipeline.git.branch >>, master ] }
-          steps: [ save-sccache-cache ]
       - post-build
       - post-mc-test
 
@@ -538,12 +495,10 @@ jobs:
       <<: *default-build-environment
     steps:
       - prepare-for-build
-      - run-consensus-tests
-      - check-dirty-git
-      - when:
-          condition: { equal: [ << pipeline.git.branch >>, master ] }
-          steps: [ save-sccache-cache ]
+      - run-mc-tests:
+          test_command: cargo test --package "mc-consensus-*" -j 4 --frozen --no-fail-fast
       - post-build
+      - post-mc-test
 
   # Run fog tests on a single container
   run-fog-tests:
@@ -552,13 +507,10 @@ jobs:
       <<: *default-build-environment
     steps:
       - prepare-for-build
-      - run-fog-tests
-      - check-dirty-git
-      - when:
-          condition: { equal: [ << pipeline.git.branch >>, master ] }
-          steps: [ save-sccache-cache ]
+      - run-mc-tests:
+          test_command: cargo test --workspace --package "mc-fog-*" --exclude "mc-fog-ingest-*" -j 4 --frozen --no-fail-fast
       - post-build
-      - post-fog-test
+      - post-mc-test
 
   # Run fog ingest tests on a single container
   run-fog-ingest-tests:
@@ -567,13 +519,10 @@ jobs:
       <<: *default-build-environment
     steps:
       - prepare-for-build
-      - run-fog-ingest-tests
-      - check-dirty-git
-      - when:
-          condition: { equal: [ << pipeline.git.branch >>, master ] }
-          steps: [ save-sccache-cache ]
+      - run-mc-tests:
+          test_command: cargo test --release --package "mc-fog-ingest-*" -j 4 --frozen --no-fail-fast
       - post-build
-      - post-fog-test
+      - post-mc-test
 
   # Run fog conformance tests on a single container
   run-fog-conformance-tests:
@@ -583,6 +532,7 @@ jobs:
     steps:
       - prepare-for-build
       - run-fog-conformance-tests-release
+      - check-dirty-git
 
   # Build and lint in debug mode
   build-and-lint-debug:
@@ -602,17 +552,10 @@ jobs:
             IAS_MODE: PROD
           command: cargo build --frozen --target "$HOST_TARGET_TRIPLE" -j 4
 
-      # The lint and saving of caches happens here since this job is faster than the run-tests job.
-      # This results in shorter CI times.
       - lint
       - generate-docs
       - store-docs
-      - check-dirty-git
       - run-libmobilecoin-cbindgen
-      - check-dirty-git
-      - when:
-          condition: { equal: [ << pipeline.git.branch >>, master ] }
-          steps: [ save-sccache-cache, save-cargo-cache ]
       - post-build
 
   # Build/publish Android bindings
@@ -646,6 +589,7 @@ jobs:
           key: android-bindings-sccache-cache-stable-{{ epoch }}
           paths:
             - "~/.cache/sccache"
+      - check-dirty-git
 # FIXME: Need to install aws creds
 #      - run:
 #          name: Upload to s3
@@ -677,7 +621,6 @@ jobs:
           name: Cargo build
           command: |
             cargo build --frozen --target "$HOST_TARGET_TRIPLE" -p libmobilecoin
-      - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
           steps: [ save-sccache-cache, save-cargo-cache, save-homebrew-cache ]
@@ -694,9 +637,7 @@ jobs:
       - run:
           name: go build
           command: cd go-grpc-gateway && ./install_tools.sh && ./build.sh
-      - check-dirty-git
       - lint-go
-      - check-dirty-git
       - run:
           name: cargo build
           command: cd go-grpc-gateway/testing && cargo build --locked
@@ -704,7 +645,9 @@ jobs:
           name: curl test
           command: cd go-grpc-gateway && ./test.sh
       - check-dirty-git
-      - post-build
+
+_ignore_deploy: &ignore_deploy
+  branches: { ignore: /^deploy\/.*/ }
 
 workflows:
   version: 2
@@ -713,31 +656,31 @@ workflows:
     jobs:
       # Run mc tests on a single container
       - run-mc-tests:
-          filters: { branches: { ignore: /^deploy\/.*/ } }
+          filters: *ignore_deploy
 
       # Run consensus tests on a single container
       - run-consensus-tests:
-          filters: { branches: { ignore: /^deploy\/.*/ } }
+          filters: *ignore_deploy
 
       # Run fog tests on a single container
       - run-fog-tests:
-          filters: { branches: { ignore: /^deploy\/.*/ } }
+          filters: *ignore_deploy
 
       # Run fog ingest tests on a single container
       - run-fog-ingest-tests:
-          filters: { branches: { ignore: /^deploy\/.*/ } }
+          filters: *ignore_deploy
 
       # run fog conformance tests
       - run-fog-conformance-tests:
-          filters: { branches: { ignore: /^deploy\/.*/ } }
+          filters: *ignore_deploy
 
       # Build everything in debug
       - build-and-lint-debug:
-          filters: { branches: { ignore: /^deploy\/.*/ } }
+          filters: *ignore_deploy
 
       # build/publish android bindings
       - android-bindings:
-          filters: { branches: { ignore: /^deploy\/.*/ } }
+          filters: *ignore_deploy
 
       # Build using macOS
       - build-macos:
@@ -745,8 +688,8 @@ workflows:
           matrix:
             parameters:
               xcode-version: ["11.7.0", *default-xcode-version]
-          filters: { branches: { ignore: /^deploy\/.*/ } }
+          filters: *ignore_deploy
 
-      # Run tests on a single container
+      # Run Go tests on a single container
       - build-and-test-go:
-          filters: { branches: { ignore: /^deploy\/.*/ } }
+          filters: *ignore_deploy
