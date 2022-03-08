@@ -16,4 +16,4 @@ mc-util-serial = { path = "../../../util/serial" }
 mc-util-uri = { path = "../../../util/uri" }
 
 displaydoc = "0.2"
-grpcio = "0.9.0"
+grpcio = "0.10.0"

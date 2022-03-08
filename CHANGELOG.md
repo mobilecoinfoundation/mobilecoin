@@ -5,7 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
-## [Unreleased]
+## Unreleased
+
+### Added
+
+### Changed
+
+### Rust Dependencies
+* Updated grpcio from 0.9 to 0.10.
+
+## [1.2.0] 2022-02-22
 
 ### Added
 
