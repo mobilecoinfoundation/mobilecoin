@@ -124,3 +124,70 @@ impl MintTxStore {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        mint_config_store::{
+            tests::{generate_test_mint_config_tx_and_signers, generate_test_mint_tx},
+            ActiveMintConfig,
+        },
+        tx_out_store::tx_out_store_tests::get_env,
+    };
+    use mc_transaction_core::TokenId;
+    use rand::{rngs::StdRng, SeedableRng};
+
+    pub fn init_test_stores() -> (MintConfigStore, MintTxStore, Environment) {
+        let env = get_env();
+        MintConfigStore::create(&env).unwrap();
+        MintTxStore::create(&env).unwrap();
+        let mint_config_store = MintConfigStore::new(&env).unwrap();
+        let mint_tx_store = MintTxStore::new(&env).unwrap();
+        (mint_config_store, mint_tx_store, env)
+    }
+
+    #[test]
+    fn write_mint_txs_updates_total_minted() {
+        let (mint_config_store, mint_tx_store, env) = init_test_stores();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+
+        // Generate and store a mint configuration that will get its total_minted
+        // updated.
+        let (set_mint_config_tx1, signers1) =
+            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_config_store
+            .write_set_mint_config_txs(0, &[set_mint_config_tx1.clone()], &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        // Generate a mint tx that mints 1 token.
+        let mint_tx1 = generate_test_mint_tx(token_id1, &signers1, 1, &mut rng);
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_tx_store
+            .write_mint_txs(0, &[mint_tx1], &mint_config_store, &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        // Get the configurations and ensure the total minted is updated.
+        let db_txn = env.begin_ro_txn().unwrap();
+        let active_mint_configs = mint_config_store
+            .get_active_mint_configs(token_id1, &db_txn)
+            .unwrap();
+        assert_eq!(
+            active_mint_configs,
+            vec![
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    total_minted: 1,
+                },
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    total_minted: 0,
+                }
+            ]
+        );
+    }
+}
