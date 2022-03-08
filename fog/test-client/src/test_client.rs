@@ -220,6 +220,11 @@ impl TestClient {
     /// to.
     ///
     /// This only builds and submits the transaction, it does not confirm it
+    ///
+    /// Returns:
+    ///  * Tx: the transaction that represents the transfer.
+    ///  * u64: the block count at which the transaction was submitted.
+    ///  * u64: the fee associated with the transaction.
     fn transfer(
         &self,
         source_client: &mut Client,
