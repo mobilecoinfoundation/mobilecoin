@@ -84,8 +84,30 @@ mod tests {
         );
 
         assert_eq!(
+            block_num_to_s3block_path(1_000_000_000_000_000),
+            PathBuf::from("00/03/8d/7e/a4/c6/80/00038d7ea4c68000.pb"),
+        );
+
+        assert_eq!(
             block_num_to_s3block_path(0x1a2b_3c4e_5a6b_7c8d),
             PathBuf::from("1a/2b/3c/4e/5a/6b/7c/1a2b3c4e5a6b7c8d.pb"),
+        );
+    }
+
+    #[test]
+    fn test_merged_block_num_to_s3block_path() {
+        assert_eq!(
+            merged_block_num_to_s3block_path(10, 0),
+            PathBuf::from("merged-10/00/00/00/00/00/00/00/0000000000000000.pb"),
+        );
+
+        assert_eq!(
+            merged_block_num_to_s3block_path(10, 1_000_000_000_000_000),
+            PathBuf::from("merged-10/00/03/8d/7e/a4/c6/80/00038d7ea4c68000.pb"),
+        );
+        assert_eq!(
+            merged_block_num_to_s3block_path(1000, 1_000_000_000_000_000),
+            PathBuf::from("merged-1000/00/03/8d/7e/a4/c6/80/00038d7ea4c68000.pb"),
         );
     }
 }
