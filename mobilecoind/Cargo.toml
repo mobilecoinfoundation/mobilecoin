@@ -80,4 +80,4 @@ tempdir = "0.3"
 
 [build-dependencies]
 # Resolves a build failure for the x86_64-apple-darwin target by overriding the grpcio libz dep, which is pinned to v1.0.25
-libz-sys = "1.1.2"
+libz-sys = "1.1.4"
