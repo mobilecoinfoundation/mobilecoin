@@ -31,7 +31,7 @@ An important optimization is used:
 - If the ciphertext metadata from untrusted is all zeroes, then we assume this is
   the first time we access the block, and pass all zero metadata and data back
   to the Oblivious RAM. Effectively, we lazily zero the data segments in blocks
-  living untrusted memory memory, and dont require that we write encryptions of
+  living untrusted memory, and dont require that we write encryptions of
   zeros to every memory cell at initialization.
 
 Authentication design
