@@ -92,7 +92,7 @@ impl MintTxStore {
             self.mint_txs_by_block,
             &block_index_bytes,
             &encode(&mint_tx_list),
-            WriteFlags::empty(),
+            WriteFlags::NO_OVERWRITE, // We should not be updating existing blocks
         )?;
 
         // For each mint transaction, we need to locate the matching mint configuration
@@ -135,6 +135,7 @@ mod tests {
         },
         tx_out_store::tx_out_store_tests::get_env,
     };
+    use mc_crypto_keys::Ed25519Pair;
     use mc_transaction_core::TokenId;
     use rand::{rngs::StdRng, SeedableRng};
 
@@ -152,14 +153,21 @@ mod tests {
         let (mint_config_store, mint_tx_store, env) = init_test_stores();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
 
-        // Generate and store a mint configuration that will get its total_minted
-        // updated.
+        // Generate and store a mint configurations.
         let (set_mint_config_tx1, signers1) =
             generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        let (set_mint_config_tx2, signers2) =
+            generate_test_mint_config_tx_and_signers(token_id2, &mut rng);
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
-            .write_set_mint_config_txs(0, &[set_mint_config_tx1.clone()], &mut db_txn)
+            .write_set_mint_config_txs(
+                0,
+                &[set_mint_config_tx1.clone(), set_mint_config_tx2.clone()],
+                &mut db_txn,
+            )
             .unwrap();
         db_txn.commit().unwrap();
 
@@ -189,5 +197,137 @@ mod tests {
                 }
             ]
         );
+        drop(db_txn);
+
+        // Generate a mint tx that mints 2 tokens.
+        let mint_tx2 = generate_test_mint_tx(token_id1, &signers1, 2, &mut rng);
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_tx_store
+            .write_mint_txs(1, &[mint_tx2], &mint_config_store, &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        // Get the configurations and ensure the total minted is updated.
+        let db_txn = env.begin_ro_txn().unwrap();
+        let active_mint_configs = mint_config_store
+            .get_active_mint_configs(token_id1, &db_txn)
+            .unwrap();
+        assert_eq!(
+            active_mint_configs,
+            vec![
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    total_minted: 3,
+                },
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    total_minted: 0,
+                }
+            ]
+        );
+        drop(db_txn);
+
+        // Mint using the 2nd configuration of the 1st token
+        let mint_tx3 = generate_test_mint_tx(
+            token_id1,
+            &[Ed25519Pair::from(signers1[1].private_key())],
+            5,
+            &mut rng,
+        );
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_tx_store
+            .write_mint_txs(2, &[mint_tx3], &mint_config_store, &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        // Get the configurations and ensure the total minted is updated.
+        let db_txn = env.begin_ro_txn().unwrap();
+        let active_mint_configs = mint_config_store
+            .get_active_mint_configs(token_id1, &db_txn)
+            .unwrap();
+        assert_eq!(
+            active_mint_configs,
+            vec![
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    total_minted: 3,
+                },
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    total_minted: 5,
+                }
+            ]
+        );
+
+        // Try with the 2nd token - initially nothing has been minted.
+        let active_mint_configs = mint_config_store
+            .get_active_mint_configs(token_id2, &db_txn)
+            .unwrap();
+        assert_eq!(
+            active_mint_configs,
+            vec![
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx2.prefix.configs[0].clone(),
+                    total_minted: 0,
+                },
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx2.prefix.configs[1].clone(),
+                    total_minted: 0,
+                }
+            ]
+        );
+        drop(db_txn);
+
+        // Mint using the 2nd configuration of the 2nd token
+        let mint_tx4 = generate_test_mint_tx(
+            token_id2,
+            &[Ed25519Pair::from(signers2[1].private_key())],
+            15,
+            &mut rng,
+        );
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_tx_store
+            .write_mint_txs(3, &[mint_tx4], &mint_config_store, &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        // Get the configurations and ensure the total minted is updated.
+        let db_txn = env.begin_ro_txn().unwrap();
+        let active_mint_configs = mint_config_store
+            .get_active_mint_configs(token_id1, &db_txn)
+            .unwrap();
+        assert_eq!(
+            active_mint_configs,
+            vec![
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    total_minted: 3,
+                },
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    total_minted: 5,
+                }
+            ]
+        );
+
+        let active_mint_configs = mint_config_store
+            .get_active_mint_configs(token_id2, &db_txn)
+            .unwrap();
+        assert_eq!(
+            active_mint_configs,
+            vec![
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx2.prefix.configs[0].clone(),
+                    total_minted: 0,
+                },
+                ActiveMintConfig {
+                    mint_config: set_mint_config_tx2.prefix.configs[1].clone(),
+                    total_minted: 15,
+                }
+            ]
+        );
     }
+
+    // TODO: test writing same block index twice, unknown signer, exceeding mint
+    // capacity.
 }

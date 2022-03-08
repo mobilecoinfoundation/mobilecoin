@@ -134,7 +134,7 @@ impl MintConfigStore {
             self.set_mint_config_txs_by_block,
             &block_index_bytes,
             &encode(&set_mint_config_tx_list),
-            WriteFlags::empty(),
+            WriteFlags::NO_OVERWRITE, // We should not be updating existing blocks
         )?;
 
         // Update active mint configurations.
