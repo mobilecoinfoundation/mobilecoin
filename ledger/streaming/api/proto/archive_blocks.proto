@@ -1,0 +1,19 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+// Ledger Sync Archive API
+
+syntax = "proto3";
+
+package archive_blocks;
+
+message ArchiveBlocksUrlRequest {
+    // May include hints for geographic proximity and/or caching.
+}
+
+message ArchiveBlocksUrlResponse {
+    string base_url = 1;
+}
+
+service ArchiveBlocks {
+    rpc GetBaseUrl(ArchiveBlocksUrlRequest) returns (ArchiveBlocksUrlResponse);
+}
