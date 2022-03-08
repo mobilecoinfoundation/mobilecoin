@@ -517,6 +517,15 @@ fn submit_tx(
                             "Transaction {:?} could not be submitted before tombstone block passed, giving up", counter);
                     return false;
                 }
+                if let ConnectionError::TransactionValidation(
+                    TransactionValidationError::ContainsSpentKeyImage,
+                ) = error
+                {
+                    log::info!(
+                            logger,
+                            "Transaction {:?} contains a spent key image. Moving to next transaction", counter);
+                    return true;
+                }
 
                 log::warn!(
                     logger,
