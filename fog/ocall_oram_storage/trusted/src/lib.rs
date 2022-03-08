@@ -322,19 +322,6 @@ where
                         }
                     }
 
-                    // Check with trusted merkle root if this is the last treetop index
-                    if idx == first_treetop_index
-                        && !bool::from(
-                            self.trusted_merkle_roots[indices[idx] as usize]
-                                .ct_eq(&this_block_hash),
-                        )
-                    {
-                        panic!(
-                            "authentication failed, trusted merkle root {}",
-                            indices[idx]
-                        );
-                    }
-
                     // Store this hash for next round
                     last_hash = Some((indices[idx], this_block_hash));
 
@@ -346,6 +333,16 @@ where
                     dest_meta[idx].copy_from_slice(meta);
                 }
             }
+
+            // Check the last hash with the trusted merkle root storage
+            // This unwrap is valid because if first_treetop_index is zero, then we didn't
+            // enter this `if`
+            let (last_idx, last_hash) = last_hash.expect("should not be empty at this point");
+            assert!(
+                bool::from(self.trusted_merkle_roots[last_idx as usize].ct_eq(&last_hash)),
+                "authentication failed, trusted merkle root mismatch at {}",
+                last_idx
+            );
         }
     }
 
@@ -440,6 +437,8 @@ where
             }
 
             // The last one from the treetop goes in self.trusted_merkle_roots
+            // This unwrap is valid because if first_treetop_index is zero, then we didn't
+            // enter this `if`
             let (last_idx, last_hash) = last_hash.expect("should not be empty at this point");
             self.trusted_merkle_roots[last_idx as usize] = last_hash;
 
