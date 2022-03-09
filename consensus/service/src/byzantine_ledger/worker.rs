@@ -6,6 +6,7 @@ use crate::{
         task_message::TaskMessage, IS_BEHIND_GRACE_PERIOD, MAX_PENDING_VALUES_TO_NOMINATE,
     },
     counters,
+    mint_tx_manager::MintTxManager,
     tx_manager::TxManager,
 };
 use mc_common::{
@@ -47,6 +48,7 @@ pub struct ByzantineLedgerWorker<
     LS: LedgerSync<SCPNetworkState> + Send + 'static,
     PC: BlockchainConnection + ConsensusConnection + 'static,
     TXM: TxManager,
+    MTXM: MintTxManager,
 > {
     scp_node: Box<dyn ScpNode<ConsensusValue>>,
     msg_signer_key: Arc<Ed25519Pair>,
@@ -85,7 +87,7 @@ pub struct ByzantineLedgerWorker<
     pending_consensus_msgs: Vec<(VerifiedConsensusMsg, ResponderId)>,
 
     // Transactions that this node will attempt to submit to consensus.
-    pending_values: PendingValues<TXM>,
+    pending_values: PendingValues<TXM, MTXM>,
 
     // Set to true when the worker has pending values that have not yet been proposed to the
     // scp_node.
@@ -99,7 +101,8 @@ impl<
         LS: LedgerSync<SCPNetworkState> + Send + 'static,
         PC: BlockchainConnection + ConsensusConnection + 'static,
         TXM: TxManager + Send + Sync,
-    > ByzantineLedgerWorker<L, LS, PC, TXM>
+        MTXM: MintTxManager + Send + Sync,
+    > ByzantineLedgerWorker<L, LS, PC, TXM, MTXM>
 {
     /// Create a new ByzantineLedgerWorker.
     ///
@@ -110,6 +113,7 @@ impl<
     /// * `ledger_sync_service` - LedgerSyncService
     /// * `connection_manager` - Manages connections to peers.
     /// * `tx_manager` - TxManager
+    /// * `mint_tx_manager` - MintTxManager
     /// * `broadcaster` - Broadcaster
     /// * `tasks` - Receiver-end of a queue of task messages for this worker to
     ///   process.
@@ -127,6 +131,7 @@ impl<
         ledger_sync_service: LS,
         connection_manager: ConnectionManager<PC>,
         tx_manager: Arc<TXM>,
+        mint_tx_manager: Arc<MTXM>,
         broadcaster: Arc<Mutex<dyn Broadcast>>,
         tasks: Receiver<TaskMessage>,
         is_behind: Arc<AtomicBool>,
@@ -152,7 +157,7 @@ impl<
             logger,
             current_slot_index,
             pending_consensus_msgs: Default::default(),
-            pending_values: PendingValues::new(tx_manager),
+            pending_values: PendingValues::new(tx_manager, mint_tx_manager),
             need_nominate: false,
             network_state,
             ledger_sync_service,
