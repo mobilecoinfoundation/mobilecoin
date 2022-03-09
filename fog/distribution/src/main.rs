@@ -507,7 +507,11 @@ fn submit_tx(
                 BLOCK_HEIGHT.fetch_max(block_height, Ordering::SeqCst);
                 return true;
             }
-            Err(RetryError::Operation { error, total_delay, tries }) => {
+            Err(RetryError::Operation {
+                error,
+                total_delay,
+                tries,
+            }) => {
                 if let ConnectionError::TransactionValidation(
                     TransactionValidationError::TombstoneBlockExceeded,
                 ) = error
@@ -522,8 +526,10 @@ fn submit_tx(
                 ) = error
                 {
                     log::info!(
-                            logger,
-                            "Transaction {:?} contains a spent key image. Moving to next transaction", counter);
+                        logger,
+                        "Transaction {:?} contains a spent key image. Moving to next transaction",
+                        counter
+                    );
                     return true;
                 }
 
