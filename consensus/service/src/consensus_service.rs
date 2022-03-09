@@ -602,37 +602,45 @@ impl<
 
         Arc::new(move |scp_value, origin_node, relayed_from| {
             let origin_node = origin_node.unwrap_or(&local_node_id);
-            let ConsensusValue::TxHash(tx_hash) = scp_value;
-
-            // Broadcast to peers.
-            //
-            // Nodes always relay transactions sent to them by clients to all their peers.
-            // As such, in mesh network configurations there is no need to relay
-            // transactions received from other peers since the originating node
-            // will already take care of sending the transaction to all
-            // of it's peers.
-            // However, in non-mesh configurations, network operators might want to
-            // selectively have incoming transactions from certain peers be
-            // relayed to other peers in order to improve consensus time.
-            if origin_node == &local_node_id || relay_from_nodes.contains(&origin_node.responder_id)
-            {
-                if let Some(encrypted_tx) = tx_manager.get_encrypted_tx(&tx_hash) {
-                    broadcaster
-                        .lock()
-                        .expect("lock poisoned")
-                        .broadcast_propose_tx_msg(
-                            &tx_hash,
-                            encrypted_tx,
-                            origin_node,
-                            relayed_from.unwrap_or(&local_node_id.responder_id),
-                        );
-                } else {
-                    // If a value was submitted to `scp_client_value_sender` that means it
-                    // should've found it's way into the cache. Suddenly not having it there
-                    // indicates something is broken, so for the time being we will panic.
-                    panic!("tx hash {} expected to be in cache but wasn't", tx_hash);
+            match scp_value {
+                ConsensusValue::TxHash(tx_hash) => {
+                    // Broadcast to peers.
+                    //
+                    // Nodes always relay transactions sent to them by clients to all their peers.
+                    // As such, in mesh network configurations there is no need to relay
+                    // transactions received from other peers since the originating node
+                    // will already take care of sending the transaction to all
+                    // of it's peers.
+                    // However, in non-mesh configurations, network operators might want to
+                    // selectively have incoming transactions from certain peers be
+                    // relayed to other peers in order to improve consensus time.
+                    if origin_node == &local_node_id
+                        || relay_from_nodes.contains(&origin_node.responder_id)
+                    {
+                        if let Some(encrypted_tx) = tx_manager.get_encrypted_tx(&tx_hash) {
+                            broadcaster
+                                .lock()
+                                .expect("lock poisoned")
+                                .broadcast_propose_tx_msg(
+                                    &tx_hash,
+                                    encrypted_tx,
+                                    origin_node,
+                                    relayed_from.unwrap_or(&local_node_id.responder_id),
+                                );
+                        } else {
+                            // If a value was submitted to `scp_client_value_sender` that means it
+                            // should've found it's way into the cache. Suddenly not having it there
+                            // indicates something is broken, so for the time being we will panic.
+                            panic!("tx hash {} expected to be in cache but wasn't", tx_hash);
+                        }
+                    }
                 }
-            }
+
+                ConsensusValue::SetMintConfigTx(_) => {
+                    // SetMintConfigTxs do not need to be broadcasted to peers,
+                    // they will learn about them directly via SCP messages.
+                }
+            };
 
             // Feed into ByzantineLedger.
             let timestamp = if origin_node == &local_node_id {

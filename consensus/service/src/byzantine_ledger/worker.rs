@@ -576,15 +576,16 @@ impl<
         // Purge transactions that can no longer be processed based on their tombstone
         // block.
         let max_externalized_slots = self.scp_node.max_externalized_slots() as u64;
-        let purged_hashes = {
-            let index = self
-                .current_slot_index
-                .saturating_sub(max_externalized_slots);
-            self.tx_manager.remove_expired(index)
-        };
+        let expired_block_index = self
+            .current_slot_index
+            .saturating_sub(max_externalized_slots);
+        let purged_hashes = self.tx_manager.remove_expired(expired_block_index);
 
         self.pending_values.retain(|value| match value {
             ConsensusValue::TxHash(tx_hash) => !purged_hashes.contains(tx_hash),
+            ConsensusValue::SetMintConfigTx(set_mint_config_tx) => {
+                set_mint_config_tx.prefix.tombstone_block > expired_block_index
+            }
         });
 
         // Drop pending values that are no longer considered valid.
@@ -639,6 +640,10 @@ impl<
                     } else {
                         Some(tx_hash)
                     }
+                }
+
+                ConsensusValue::SetMintConfigTx(_) => {
+                    panic!("we should never attempt to fetch SetMintConfigTxs");
                 }
             })
             .collect();
