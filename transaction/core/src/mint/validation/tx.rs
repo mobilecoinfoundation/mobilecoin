@@ -323,6 +323,12 @@ mod tests {
         let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
         let signer_set = SignerSet::new(vec![signer_1.public_key()], 1);
 
+        let tx = MintTx {
+            prefix: prefix.clone(),
+            signature: signature.clone(),
+        };
+        assert_eq!(validate_signature(&tx, &signer_set), Ok(()), "sanity check");
+
         let mut prefix1 = prefix.clone();
         prefix1.amount = 2;
         let tx = MintTx {
