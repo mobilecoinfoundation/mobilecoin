@@ -29,7 +29,8 @@ use mc_transaction_core::{
     membership_proofs::Range,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockID, BlockSignature, TokenId, MAX_BLOCK_VERSION,
+    Block, BlockContents, BlockData, BlockID, BlockIndex, BlockSignature, TokenId,
+    MAX_BLOCK_VERSION,
 };
 use mc_util_lmdb::MetadataStoreSettings;
 use mc_util_serial::{decode, encode, Message};
@@ -327,13 +328,13 @@ impl Ledger for LedgerDB {
     }
 
     /// Returns true if the Ledger contains the given KeyImage.
-    fn check_key_image(&self, key_image: &KeyImage) -> Result<Option<u64>, Error> {
+    fn check_key_image(&self, key_image: &KeyImage) -> Result<Option<BlockIndex>, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
         self.check_key_image_impl(key_image, &db_transaction)
     }
 
     /// Gets the KeyImages used by transactions in a single Block.
-    fn get_key_images_by_block(&self, block_number: u64) -> Result<Vec<KeyImage>, Error> {
+    fn get_key_images_by_block(&self, block_number: BlockIndex) -> Result<Vec<KeyImage>, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
         let key_image_list: KeyImageList =
             decode(db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?)?;
@@ -384,6 +385,24 @@ impl Ledger for LedgerDB {
         let db_transaction = self.env.begin_ro_txn()?;
         self.mint_config_store
             .get_active_mint_configs(token_id, &db_transaction)
+    }
+
+    /// Checks if the ledger contains a given SetMintConfigTx nonce.
+    /// If so, returns the index of the block in which it entered the ledger.
+    /// Ok(None) is returned when the nonce is not in the ledger.
+    fn check_set_mint_config_tx_nonce(&self, nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
+        let db_transaction = self.env.begin_ro_txn()?;
+        self.mint_config_store
+            .check_set_mint_config_tx_nonce(nonce, &db_transaction)
+    }
+
+    /// Checks if the ledger contains a given MintTx nonce.
+    /// If so, returns the index of the block in which it entered the ledger.
+    /// Ok(None) is returned when the nonce is not in the ledger.
+    fn check_mint_tx_nonce(&self, nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
+        let db_transaction = self.env.begin_ro_txn()?;
+        self.mint_tx_store
+            .check_mint_tx_nonce(nonce, &db_transaction)
     }
 }
 
@@ -694,7 +713,8 @@ impl LedgerDB {
         for mint_tx in block_contents.mint_txs.iter() {
             if self
                 .mint_tx_store
-                .contains_mint_tx_nonce(&mint_tx.prefix.nonce, db_transaction)?
+                .check_mint_tx_nonce(&mint_tx.prefix.nonce, db_transaction)?
+                .is_some()
             {
                 return Err(Error::DuplicateMintTx);
             }
@@ -702,10 +722,11 @@ impl LedgerDB {
 
         // Check that none of the set-mint-config-tx nonces appear in the ledger.
         for set_mint_config_tx in block_contents.set_mint_config_txs.iter() {
-            if self.mint_config_store.contains_set_mint_config_tx_nonce(
-                &set_mint_config_tx.prefix.nonce,
-                db_transaction,
-            )? {
+            if self
+                .mint_config_store
+                .check_set_mint_config_tx_nonce(&set_mint_config_tx.prefix.nonce, db_transaction)?
+                .is_some()
+            {
                 return Err(Error::DuplicateSetMintConfigTx);
             }
         }
