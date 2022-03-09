@@ -25,6 +25,7 @@ members = [
     "consensus/enclave/impl",
     "consensus/enclave/measurement",
     "consensus/enclave/mock",
+    "consensus/mint-client",
     "consensus/scp",
     "consensus/scp/play",
     "consensus/service",

@@ -264,19 +264,17 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
     /// * `parent_block` - The last block written to the ledger.
     fn tx_hashes_to_block(
         &self,
-        values: &[ConsensusValue],
+        values: Vec<ConsensusValue>,
         parent_block: &Block,
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)> {
         let mut tx_hashes = Vec::new();
+        let mut set_mint_config_txs = Vec::new();
 
         for value in values {
             match value {
-                ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
+                ConsensusValue::TxHash(tx_hash) => tx_hashes.push(tx_hash),
                 ConsensusValue::SetMintConfigTx(set_mint_config_tx) => {
-                    panic!(
-                        "forming a block with SetMintConfigTx {:?}",
-                        set_mint_config_tx
-                    );
+                    set_mint_config_txs.push(set_mint_config_tx);
                 }
             }
         }

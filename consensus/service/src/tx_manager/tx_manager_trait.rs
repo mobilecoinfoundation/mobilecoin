@@ -37,10 +37,10 @@ pub trait TxManager: Send {
 
     /// Forms a Block containing the transactions that correspond to the given
     /// hashes.
-    // TODO rename
+    // TODO rename since this is no longer specific to just hashes
     fn tx_hashes_to_block(
         &self,
-        value: &[ConsensusValue],
+        value: Vec<ConsensusValue>,
         parent_block: &Block,
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)>;
 
