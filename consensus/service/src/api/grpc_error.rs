@@ -5,7 +5,7 @@ use displaydoc::Display;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_common::logger::global_log;
 use mc_consensus_api::{
-    consensus_client::ProposeSetMintConfigTxResponse,
+    consensus_client::{MintValidationResult, ProposeSetMintConfigTxResponse},
     consensus_common::{ProposeTxResponse, ProposeTxResult},
 };
 use mc_consensus_enclave::Error as EnclaveError;
@@ -156,8 +156,12 @@ impl From<ConsensusGrpcError> for Result<ProposeSetMintConfigTxResponse, RpcStat
                 // let resp = ProposeSetMintConfigTxResponse::new();
                 // TODO resp.set_result(ProposeSetMintConfigTxResult::from(err));
                 // Ok(resp)
-                todo!()
+                todo!() // This should never happen
             }
+            ConsensusGrpcError::MintValidation(err) => Ok(ProposeSetMintConfigTxResponse {
+                result: Some(MintValidationResult::from(err)).into(),
+                ..Default::default()
+            }),
             _ => Err(RpcStatus::from(src)),
         }
     }
