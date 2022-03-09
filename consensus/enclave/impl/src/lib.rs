@@ -42,6 +42,10 @@ use mc_common::{
 use mc_consensus_enclave_api::{
     BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeePublicKey,
     FormBlockInputs, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
+    LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext, WellFormedEncryptedTx,
+    WellFormedTxContext,
+    BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeeMapError,
+    FeePublicKey, FormBlockInputs, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
     WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
@@ -653,8 +657,11 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
         key_images.sort();
 
-        // Right now mint-config-txs and mint-txs are not actually created anywhere.
-        let mint_config_txs = Vec::new();
+       // Get the list of SetMintConfigTxs included in the block.
+        // TODO perform any last minute validation here.
+        let mint_config_txs = inputs.set_mint_config_txs;
+
+        // Right now mint-txs are not actually created anywhere.
         let mint_txs = Vec::new();
 
         // We purposefully do not ..Default::default() here so that new block fields

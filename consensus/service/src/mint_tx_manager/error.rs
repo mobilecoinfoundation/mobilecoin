@@ -2,7 +2,7 @@
 
 use displaydoc::Display;
 use mc_ledger_db::Error as LedgerDbError;
-use mc_transaction_core::mint::MintValidationError;
+use mc_transaction_core::{mint::MintValidationError, TokenId};
 
 #[derive(Clone, Debug, Display)]
 pub enum MintTxManagerError {
@@ -11,6 +11,9 @@ pub enum MintTxManagerError {
 
     /// Ledger error: {0}
     LedgerDb(LedgerDbError),
+
+    /// No master minters configured for token id {0}
+    NoMasterMinters(TokenId),
 }
 
 impl From<MintValidationError> for MintTxManagerError {

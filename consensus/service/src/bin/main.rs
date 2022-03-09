@@ -107,7 +107,15 @@ fn main() -> Result<(), ConsensusServiceError> {
         logger.clone(),
     );
 
-    let mint_tx_manager = MintTxManagerImpl::new(local_ledger.clone(), logger.clone());
+    let mint_tx_manager = MintTxManagerImpl::new(
+        local_ledger.clone(),
+        config.block_version,
+        config
+            .tokens()
+            .token_id_to_master_minters()
+            .expect("failed getting token_id_to_master_minters"),
+        logger.clone(),
+    );
 
     let mut consensus_service = ConsensusService::new(
         config,

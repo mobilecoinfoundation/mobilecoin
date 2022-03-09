@@ -552,7 +552,7 @@ impl<
             .expect("Ledger must contain a block.");
         let (block, block_contents, signature) = self
             .tx_manager
-            .tx_hashes_to_block(externalized, &parent_block)
+            .tx_hashes_to_block(externalized.clone(), &parent_block)
             .unwrap_or_else(|e| panic!("Failed to build block from {:?}: {:?}", externalized, e));
 
         log::info!(
@@ -803,6 +803,7 @@ mod tests {
             worker::ByzantineLedgerWorker,
             IS_BEHIND_GRACE_PERIOD, MAX_PENDING_VALUES_TO_NOMINATE,
         },
+        mint_tx_manager::MockMintTxManager,
         tx_manager::{MockTxManager, TxManagerError},
     };
     use mc_common::{
@@ -850,6 +851,7 @@ mod tests {
         MockLedger,
         MockLedgerSync<SCPNetworkState>,
         MockTxManager,
+        MockMintTxManager,
         MockBroadcast,
     ) {
         let mut scp_node = MockScpNode::new();
@@ -865,6 +867,7 @@ mod tests {
             ledger,
             MockLedgerSync::new(),
             MockTxManager::new(),
+            MockMintTxManager::new(),
             MockBroadcast::new(),
         )
     }
@@ -902,7 +905,7 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 15;
-        let (scp_node, ledger, ledger_sync, tx_manager, broadcast) =
+        let (scp_node, ledger, ledger_sync, tx_manager, mint_tx_manager, broadcast) =
             get_mocks(&local_node_id, &quorum_set, num_blocks);
 
         let connection_manager = get_connection_manager(&local_node_id, &peers, &logger);
@@ -916,6 +919,7 @@ mod tests {
             ledger_sync,
             connection_manager,
             Arc::new(tx_manager),
+            Arc::new(mint_tx_manager),
             Arc::new(Mutex::new(broadcast)),
             task_receiver,
             Arc::new(AtomicBool::new(false)),
@@ -949,7 +953,7 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 12;
-        let (scp_node, ledger, mut ledger_sync, tx_manager, broadcast) =
+        let (scp_node, ledger, mut ledger_sync, tx_manager, mint_tx_manager, broadcast) =
             get_mocks(&node_id, &quorum_set, num_blocks);
 
         // Mock returns `is_behind`.
@@ -966,6 +970,7 @@ mod tests {
             ledger_sync,
             connection_manager,
             Arc::new(tx_manager),
+            Arc::new(mint_tx_manager),
             Arc::new(Mutex::new(broadcast)),
             task_receiver,
             Arc::new(AtomicBool::new(false)),
@@ -1066,7 +1071,7 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 12;
-        let (scp_node, ledger, mut ledger_sync, tx_manager, broadcast) =
+        let (scp_node, ledger, mut ledger_sync, tx_manager, mint_tx_manager, broadcast) =
             get_mocks(&node_id, &quorum_set, num_blocks);
         let connection_manager = get_connection_manager(&node_id, &peers, &logger);
         let (_task_sender, task_receiver) = get_channel();
@@ -1083,6 +1088,7 @@ mod tests {
             ledger_sync,
             connection_manager,
             Arc::new(tx_manager),
+            Arc::new(mint_tx_manager),
             Arc::new(Mutex::new(broadcast)),
             task_receiver,
             Arc::new(AtomicBool::new(false)),
@@ -1125,7 +1131,7 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 12;
-        let (scp_node, ledger, mut ledger_sync, tx_manager, broadcast) =
+        let (scp_node, ledger, mut ledger_sync, tx_manager, mint_tx_manager, broadcast) =
             get_mocks(&node_id, &quorum_set, num_blocks);
         let connection_manager = get_connection_manager(&node_id, &peers, &logger);
         let (_task_sender, task_receiver) = get_channel();
@@ -1142,6 +1148,7 @@ mod tests {
             ledger_sync,
             connection_manager,
             Arc::new(tx_manager),
+            Arc::new(mint_tx_manager),
             Arc::new(Mutex::new(broadcast)),
             task_receiver,
             Arc::new(AtomicBool::new(false)),
@@ -1183,7 +1190,7 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 12;
-        let (scp_node, mut ledger, ledger_sync, mut tx_manager, broadcast) =
+        let (scp_node, mut ledger, ledger_sync, mut tx_manager, mint_tx_manager, broadcast) =
             get_mocks(&node_id, &quorum_set, num_blocks);
 
         // Transaction hashes that will be submitted by clients.
@@ -1234,6 +1241,7 @@ mod tests {
             ledger_sync,
             connection_manager,
             Arc::new(tx_manager),
+            Arc::new(mint_tx_manager),
             Arc::new(Mutex::new(broadcast)),
             task_receiver,
             Arc::new(AtomicBool::new(false)),
@@ -1292,7 +1300,7 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 12;
-        let (scp_node, ledger, ledger_sync, mut tx_manager, broadcast) =
+        let (scp_node, ledger, ledger_sync, mut tx_manager, mint_tx_manager, broadcast) =
             get_mocks(&node_id, &quorum_set, num_blocks);
 
         let connection_manager = get_connection_manager(&node_id, &peers, &logger);
@@ -1318,6 +1326,7 @@ mod tests {
             ledger_sync,
             connection_manager,
             Arc::new(tx_manager),
+            Arc::new(mint_tx_manager),
             Arc::new(Mutex::new(broadcast)),
             task_receiver,
             Arc::new(AtomicBool::new(false)),
@@ -1383,7 +1392,7 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 12;
-        let (mut scp_node, ledger, ledger_sync, mut tx_manager, broadcast) =
+        let (mut scp_node, ledger, ledger_sync, mut tx_manager, mint_tx_manager, broadcast) =
             get_mocks(&node_id, &quorum_set, num_blocks);
         let connection_manager = get_connection_manager(&node_id, &peers, &logger);
         let (_task_sender, task_receiver) = get_channel();
@@ -1406,6 +1415,7 @@ mod tests {
             ledger_sync,
             connection_manager,
             Arc::new(tx_manager),
+            Arc::new(mint_tx_manager),
             Arc::new(Mutex::new(broadcast)),
             task_receiver,
             Arc::new(AtomicBool::new(false)),

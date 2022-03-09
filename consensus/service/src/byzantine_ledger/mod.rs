@@ -295,6 +295,7 @@ impl Drop for ByzantineLedger {
 mod tests {
     use super::*;
     use crate::{
+        mint_tx_manager::{MintTxManagerImpl, MockMintTxManager},
         tx_manager::{MockTxManager, TxManagerImpl},
         validators::DefaultTxManagerUntrustedInterfaces,
     };
@@ -435,6 +436,9 @@ mod tests {
         // Mock tx_manager
         let tx_manager = Arc::new(MockTxManager::new());
 
+        // Mock mint_tx_manager
+        let mint_tx_manager = Arc::new(MockMintTxManager::new());
+
         // Mock broadcaster
         let broadcaster = Arc::new(Mutex::new(MockBroadcast::new()));
 
@@ -444,6 +448,7 @@ mod tests {
             peer_manager,
             ledger.clone(),
             tx_manager.clone(),
+            mint_tx_manager,
             broadcaster,
             msg_signer_key.clone(),
             Vec::new(),
@@ -520,12 +525,15 @@ mod tests {
             logger.clone(),
         ));
 
+        let mint_tx_manager = Arc::new(MintTxManagerImpl::new(ledger.clone(), logger.clone()));
+
         let byzantine_ledger = ByzantineLedger::new(
             local_node_id.clone(),
             local_quorum_set.clone(),
             peer_manager,
             ledger.clone(),
             tx_manager.clone(),
+            mint_tx_manager,
             broadcaster,
             local_signer_key.clone(),
             Vec::new(),

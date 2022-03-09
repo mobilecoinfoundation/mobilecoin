@@ -3,7 +3,7 @@
 //! Tokens configuration.
 
 use crate::consensus_service::ConsensusServiceError;
-use mc_common::HashSet;
+use mc_common::{HashMap, HashSet};
 use mc_consensus_enclave::FeeMap;
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
 use mc_crypto_multisig::SignerSet;
@@ -290,6 +290,19 @@ impl TokensConfig {
     /// Get the entire set of configured tokens.
     pub fn tokens(&self) -> &[TokenConfig] {
         &self.tokens
+    }
+
+    /// Get a map of token id -> master minters.
+    pub fn token_id_to_master_minters(&self) -> Result<HashMap<TokenId, SignerSet<Ed25519Public>>, ConsensusServiceError> {
+        self.validate()?;
+
+        HashMap::from_iter(self.tokens.iter().filter_map(|token_config| {
+            if let Some(master_minters) = &token_config.master_minters {
+                Some((token_config.token_id, master_minters.clone()))
+            } else {
+                None
+            }
+        }))
     }
 }
 
