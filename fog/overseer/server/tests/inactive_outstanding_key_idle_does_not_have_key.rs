@@ -126,6 +126,7 @@ fn inactive_oustanding_key_idle_node_does_not_have_key_idle_node_is_activated_an
             .unwrap();
     let rocket = server::initialize_rocket_server(rocket_config, overseer_state);
     let client = Client::new(rocket).expect("valid rocket instance");
+    client.post("/enable").dispatch();
 
     // Add 11 test blocks.
     for _ in 0..11 {
