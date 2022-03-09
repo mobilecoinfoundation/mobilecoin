@@ -19,7 +19,7 @@ base64 = "0.13"
 cookie = "0.16"
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.9.0"
+grpcio = "0.10.0"
 hex = "0.4"
 hex_fmt = "0.3"
 hmac = "0.10"
