@@ -77,6 +77,8 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
             master_minters,
         )?;
 
+        // Ensure that we have not seen this transaction before.
+
         Ok(())
     }
 

@@ -532,7 +532,7 @@ impl<
         // Invariant: pending_values only contains valid values that were not
         // externalized.
         self.pending_values
-            .retain(|tx_hash| !externalized.contains(tx_hash));
+            .retain(|value| !externalized.contains(value));
 
         log::info!(
             self.logger,
@@ -585,6 +585,7 @@ impl<
             .current_slot_index
             .saturating_sub(max_externalized_slots);
         let purged_hashes = self.tx_manager.remove_expired(expired_block_index);
+        let pending_values_len_before_purge = self.pending_values.len();
 
         self.pending_values.retain(|value| match value {
             ConsensusValue::TxHash(tx_hash) => !purged_hashes.contains(tx_hash),
@@ -594,13 +595,15 @@ impl<
         });
 
         // Drop pending values that are no longer considered valid.
+        let pending_values_len_before_clear_invalid = self.pending_values.len();
         self.pending_values.clear_invalid_values();
 
         log::info!(
             self.logger,
-            "Number of pending values post cleanup: {} ({} expired)",
+            "Number of pending values post cleanup: {} (before purge: {}, before clear_invalid: {})",
             self.pending_values.len(),
-            purged_hashes.len(),
+            pending_values_len_before_purge,
+            pending_values_len_before_clear_invalid,
         );
 
         // Previous slot metrics.
