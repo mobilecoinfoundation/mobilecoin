@@ -78,6 +78,10 @@ impl<TXM: TxManager> PendingValues<TXM> {
                         false
                     }
                 }
+
+                ConsensusValue::SetMintConfigTx(_set_mint_config_tx) => {
+                    todo!()
+                }
             }
         } else {
             false
@@ -116,6 +120,9 @@ impl<TXM: TxManager> PendingValues<TXM> {
         let tx_manager = self.tx_manager.clone();
         self.retain(|value| match value {
             ConsensusValue::TxHash(tx_hash) => tx_manager.validate(tx_hash).is_ok(),
+            ConsensusValue::SetMintConfigTx(_set_mint_config_tx) => {
+                todo!()
+            }
         });
     }
 }

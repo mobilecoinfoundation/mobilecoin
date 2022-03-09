@@ -104,6 +104,9 @@ impl ByzantineLedger {
                 quorum_set,
                 Arc::new(move |scp_value| match scp_value {
                     ConsensusValue::TxHash(tx_hash) => tx_manager_validate.validate(tx_hash),
+                    ConsensusValue::SetMintConfigTx(_set_mint_config_tx) => {
+                        todo!()
+                    }
                 }),
                 Arc::new(move |scp_values| {
                     let mut tx_hashes = Vec::new();
@@ -111,6 +114,9 @@ impl ByzantineLedger {
                     for value in scp_values {
                         match value {
                             ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
+                            ConsensusValue::SetMintConfigTx(_set_mint_config_tx) => {
+                                todo!()
+                            }
                         }
                     }
                     let tx_hashes = tx_manager_combine.combine(&tx_hashes[..])?;
