@@ -513,8 +513,7 @@ impl TestClient {
         )?;
 
         let transfer_start = std::time::SystemTime::now();
-        let  transfer_data =
-            self.transfer(&mut source_client_lk, &mut target_client_lk)?;
+        let transfer_data = self.transfer(&mut source_client_lk, &mut target_client_lk)?;
 
         let mut span = block_span_builder(&tracer, "test_iteration", transfer_data.block_count)
             .with_start_time(transfer_start)
@@ -569,7 +568,9 @@ impl TestClient {
                 match source_client_lk.get_last_memo() {
                     Ok(Some(memo)) => match memo {
                         MemoType::Destination(memo) => {
-                            if memo.get_total_outlay() != self.policy.transfer_amount + transfer_data.fee {
+                            if memo.get_total_outlay()
+                                != self.policy.transfer_amount + transfer_data.fee
+                            {
                                 log::error!(self.logger, "Destination memo had wrong total outlay, found {}, expected {}. Tx Info: {}", memo.get_total_outlay(), self.policy.transfer_amount + transfer_data.fee, self.tx_info);
                                 return Err(TestClientError::UnexpectedMemo);
                             }
