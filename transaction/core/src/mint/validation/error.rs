@@ -2,27 +2,28 @@
 
 //! Error type for mint transactions validation.
 
-use crate::{BlockVersion, TokenId};
+use crate::BlockVersion;
 use displaydoc::Display;
+use crate::TokenId;
 use serde::{Deserialize, Serialize};
 
 /// Error type for mint transactions validation.
 #[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum Error {
     /// Invalid block version: {0}
-    BlockVersion(BlockVersion),
+    InvalidBlockVersion(BlockVersion),
 
     /// Invalid token id: {0}
-    TokenId(u32),
+    InvalidTokenId(u32),
 
     /// Invalid nonce length: {0}
-    NonceLength(usize),
+    InvalidNonceLength(usize),
 
     /// Invalid signer set
-    SignerSet,
+    InvalidSignerSet,
 
     /// Invalid signature
-    Signature,
+    InvalidSignature,
 
     /// Number of blocks in ledger exceeds the tombstone block number
     TombstoneBlockExceeded,

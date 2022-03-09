@@ -57,12 +57,12 @@ pub fn validate_mint_config_tx(
 fn validate_configs(token_id: u32, configs: &[MintConfig]) -> Result<(), Error> {
     for config in configs {
         if config.token_id != token_id {
-            return Err(Error::TokenId(config.token_id));
+            return Err(Error::InvalidTokenId(config.token_id));
         }
 
         let num_signers = config.signer_set.signers().len();
         if num_signers == 0 || num_signers < config.signer_set.threshold() as usize {
-            return Err(Error::SignerSet);
+            return Err(Error::InvalidSignerSet);
         }
     }
 
@@ -82,7 +82,7 @@ fn validate_signature(
 
     master_minters
         .verify(&message[..], &tx.signature)
-        .map_err(|_| Error::Signature)
+        .map_err(|_| Error::InvalidSignature)
         .map(|_| ())
 }
 
@@ -153,12 +153,12 @@ mod tests {
 
         assert_eq!(
             validate_configs(123, &[mint_config1.clone(), mint_config2.clone()]),
-            Err(Error::TokenId(234))
+            Err(Error::InvalidTokenId(234))
         );
 
         assert_eq!(
             validate_configs(1, &[mint_config1.clone(), mint_config2.clone()]),
-            Err(Error::TokenId(123))
+            Err(Error::InvalidTokenId(123))
         );
     }
 
@@ -183,11 +183,11 @@ mod tests {
 
         assert_eq!(
             validate_configs(token_id, &[mint_config1]),
-            Err(Error::SignerSet)
+            Err(Error::InvalidSignerSet)
         );
         assert_eq!(
             validate_configs(token_id, &[mint_config2]),
-            Err(Error::SignerSet)
+            Err(Error::InvalidSignerSet)
         );
     }
 
@@ -357,7 +357,7 @@ mod tests {
                     1
                 )
             ),
-            Err(Error::Signature)
+            Err(Error::InvalidSignature)
         );
 
         // Tamper with the tombstone block.
@@ -379,7 +379,7 @@ mod tests {
                     1
                 )
             ),
-            Err(Error::Signature)
+            Err(Error::InvalidSignature)
         );
     }
 
@@ -433,7 +433,7 @@ mod tests {
                     2
                 )
             ),
-            Err(Error::Signature)
+            Err(Error::InvalidSignature)
         );
 
         // Signing with unknown signers.
@@ -450,7 +450,7 @@ mod tests {
                     1
                 )
             ),
-            Err(Error::Signature)
+            Err(Error::InvalidSignature)
         );
 
         // Signing below threshold with one known signers and one unknown.
@@ -470,7 +470,7 @@ mod tests {
                     2
                 )
             ),
-            Err(Error::Signature)
+            Err(Error::InvalidSignature)
         );
     }
 
@@ -527,7 +527,7 @@ mod tests {
                     2
                 )
             ),
-            Err(Error::Signature)
+            Err(Error::InvalidSignature)
         );
     }
 }
