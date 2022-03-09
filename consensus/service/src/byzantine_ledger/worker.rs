@@ -552,7 +552,7 @@ impl<
             .expect("Ledger must contain a block.");
         let (block, block_contents, signature) = self
             .tx_manager
-            .tx_hashes_to_block(&externalized, &parent_block)
+            .tx_hashes_to_block(externalized, &parent_block)
             .unwrap_or_else(|e| panic!("Failed to build block from {:?}: {:?}", externalized, e));
 
         log::info!(
@@ -638,17 +638,15 @@ impl<
         let missing_hashes: Vec<TxHash> = scp_msg
             .values()
             .into_iter()
-            .filter_map(|value| match value {
-                ConsensusValue::TxHash(tx_hash) => {
+            .filter_map(|value| {
+                if let ConsensusValue::TxHash(tx_hash) = value {
                     if self.tx_manager.contains(&tx_hash) {
                         None
                     } else {
                         Some(tx_hash)
                     }
-                }
-
-                ConsensusValue::SetMintConfigTx(_) => {
-                    panic!("we should never attempt to fetch SetMintConfigTxs");
+                } else {
+                    None
                 }
             })
             .collect();
