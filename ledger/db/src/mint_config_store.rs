@@ -298,7 +298,7 @@ impl MintConfigStore {
         Ok(())
     }
 
-    pub fn contains_set_mint_config_tx_nonce(
+    pub fn check_set_mint_config_tx_nonce(
         &self,
         nonce: &[u8],
         db_transaction: &impl Transaction,
