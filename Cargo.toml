@@ -99,6 +99,7 @@ members = [
     "ledger/sync",
     "ledger/streaming/api",
     "ledger/streaming/client",
+    "ledger/streaming/publisher",
     "libmobilecoin",
     "mobilecoind",
     "mobilecoind-json",

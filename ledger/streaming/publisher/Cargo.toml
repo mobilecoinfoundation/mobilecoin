@@ -1,0 +1,34 @@
+[package]
+name = "mc-ledger-streaming-publisher"
+version = "1.3.0-pre0"
+authors = ["MobileCoin"]
+license = "MIT OR Apache-2.0"
+edition = "2018"
+
+[lib]
+
+[features]
+test_utils = []
+
+[dependencies]
+mc-common = { path = "../../../common" }
+mc-ledger-streaming-api = { path = "../api" }
+mc-util-grpc = { path = "../../../util/grpc" }
+mc-util-uri = { path = "../../../util/uri" }
+
+displaydoc = "0.2"
+flo_stream = "0.7"
+futures = "0.3"
+grpcio = "0.10"
+
+[build-dependencies]
+mc-util-build-grpc = { path = "../../../util/build/grpc" }
+mc-util-build-script = { path = "../../../util/build/script" }
+
+cargo-emit = "0.2.1"
+
+[dev-dependencies]
+mc-common = { path = "../../../common", features = ["loggers"] }
+
+async_executors = { version = "0.5", features = ["async_std", "tokio_ct", "tokio_tp"] }
+futures = { version = "0.3.21", features = ["thread-pool"] }
