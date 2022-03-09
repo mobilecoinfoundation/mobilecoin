@@ -9,7 +9,6 @@ use mc_consensus_mint_client::Config;
 use mc_crypto_keys::{Ed25519Pair, Signer};
 use mc_crypto_multisig::{MultiSig, SignerSet};
 use mc_transaction_core::mint::{MintConfig, SetMintConfigTx, SetMintConfigTxPrefix};
-use mc_util_from_random::FromRandom;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::sync::Arc;
@@ -23,9 +22,9 @@ fn main() {
     let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&config.node, &logger);
     let api_client = ConsensusClientApiClient::new(ch);
 
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-    let signer_1 = Ed25519Pair::from_random(&mut rng);
+    let signer_1 = Ed25519Pair::from(config.private_key);
 
+    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
     let mut nonce: Vec<u8> = vec![0u8; 32];
     rng.fill_bytes(&mut nonce);
 
@@ -37,7 +36,7 @@ fn main() {
             mint_limit: 1000,
         }],
         nonce,
-        tombstone_block: 0,
+        tombstone_block: 10,
     };
 
     let message = prefix.hash();
