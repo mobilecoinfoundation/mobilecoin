@@ -56,7 +56,7 @@ pub fn validate_mint_tx(
 pub fn validate_against_mint_config(tx: &MintTx, mint_config: &MintConfig) -> Result<(), Error> {
     // The token id must match.
     if tx.prefix.token_id != mint_config.token_id {
-        return Err(Error::TokenId(tx.prefix.token_id));
+        return Err(Error::InvalidTokenId(tx.prefix.token_id));
     }
 
     // The amount must not exceed the mint limit.
@@ -81,7 +81,7 @@ fn validate_signature(tx: &MintTx, signer_set: &SignerSet<Ed25519Public>) -> Res
 
     signer_set
         .verify(&message[..], &tx.signature)
-        .map_err(|_| Error::Signature)
+        .map_err(|_| Error::InvalidSignature)
         .map(|_| ())
 }
 
@@ -171,7 +171,7 @@ mod tests {
 
         assert_eq!(
             validate_against_mint_config(&tx, &mint_config),
-            Err(Error::TokenId(token_id + 1))
+            Err(Error::InvalidTokenId(token_id + 1))
         );
     }
 
@@ -254,7 +254,7 @@ mod tests {
 
         assert_eq!(
             validate_against_mint_config(&tx, &mint_config),
-            Err(Error::Signature)
+            Err(Error::InvalidSignature)
         );
     }
 
@@ -302,7 +302,10 @@ mod tests {
 
         let signer_set = SignerSet::new(vec![signer_2.public_key()], 1);
 
-        assert_eq!(validate_signature(&tx, &signer_set), Err(Error::Signature));
+        assert_eq!(
+            validate_signature(&tx, &signer_set),
+            Err(Error::InvalidSignature)
+        );
     }
 
     #[test]
@@ -335,7 +338,10 @@ mod tests {
             prefix: prefix1,
             signature: signature.clone(),
         };
-        assert_eq!(validate_signature(&tx, &signer_set), Err(Error::Signature));
+        assert_eq!(
+            validate_signature(&tx, &signer_set),
+            Err(Error::InvalidSignature)
+        );
 
         let mut prefix2 = prefix.clone();
         prefix2.token_id += 1;
@@ -343,7 +349,10 @@ mod tests {
             prefix: prefix2,
             signature: signature.clone(),
         };
-        assert_eq!(validate_signature(&tx, &signer_set), Err(Error::Signature));
+        assert_eq!(
+            validate_signature(&tx, &signer_set),
+            Err(Error::InvalidSignature)
+        );
 
         let mut prefix3 = prefix.clone();
         prefix3.nonce.push(5);
@@ -351,6 +360,9 @@ mod tests {
             prefix: prefix3,
             signature,
         };
-        assert_eq!(validate_signature(&tx, &signer_set), Err(Error::Signature));
+        assert_eq!(
+            validate_signature(&tx, &signer_set),
+            Err(Error::InvalidSignature)
+        );
     }
 }

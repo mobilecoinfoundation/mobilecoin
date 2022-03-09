@@ -37,7 +37,7 @@ pub fn validate_tombstone(
 /// * `block_version` - The block version of the block currently being built.
 pub fn validate_block_version(block_version: BlockVersion) -> Result<(), Error> {
     if block_version < BlockVersion::THREE || BlockVersion::MAX < block_version {
-        return Err(Error::BlockVersion(block_version));
+        return Err(Error::InvalidBlockVersion(block_version));
     }
 
     Ok(())
@@ -49,7 +49,7 @@ pub fn validate_block_version(block_version: BlockVersion) -> Result<(), Error> 
 /// * `token_id` - The token id being minted.
 pub fn validate_token_id(token_id: u32) -> Result<(), Error> {
     if token_id == *TokenId::MOB {
-        return Err(Error::TokenId(token_id));
+        return Err(Error::InvalidTokenId(token_id));
     }
 
     Ok(())
@@ -61,7 +61,7 @@ pub fn validate_token_id(token_id: u32) -> Result<(), Error> {
 /// `nonce` - The nonce to validate.
 pub fn validate_nonce(nonce: &[u8]) -> Result<(), Error> {
     if nonce.len() != NONCE_LENGTH {
-        return Err(Error::NonceLength(nonce.len()));
+        return Err(Error::InvalidNonceLength(nonce.len()));
     }
 
     Ok(())
@@ -81,11 +81,11 @@ mod tests {
     fn validate_block_version_rejects_unsupported_block_versions() {
         assert_eq!(
             validate_block_version(BlockVersion::ONE),
-            Err(Error::BlockVersion(BlockVersion::ONE))
+            Err(Error::InvalidBlockVersion(BlockVersion::ONE))
         );
         assert_eq!(
             validate_block_version(BlockVersion::TWO),
-            Err(Error::BlockVersion(BlockVersion::TWO))
+            Err(Error::InvalidBlockVersion(BlockVersion::TWO))
         );
     }
 
@@ -97,7 +97,7 @@ mod tests {
 
     #[test]
     fn validate_token_id_rejects_invalid_token_ids() {
-        assert_eq!(validate_token_id(0), Err(Error::TokenId(0)));
+        assert_eq!(validate_token_id(0), Err(Error::InvalidTokenId(0)));
     }
 
     #[test]
@@ -107,14 +107,14 @@ mod tests {
 
     #[test]
     fn validate_nonce_rejects_invalid_nonces() {
-        assert_eq!(validate_nonce(&[]), Err(Error::NonceLength(0)));
+        assert_eq!(validate_nonce(&[]), Err(Error::InvalidNonceLength(0)));
         assert_eq!(
             validate_nonce(&[1u8; NONCE_LENGTH - 1]),
-            Err(Error::NonceLength(NONCE_LENGTH - 1))
+            Err(Error::InvalidNonceLength(NONCE_LENGTH - 1))
         );
         assert_eq!(
             validate_nonce(&[1u8; NONCE_LENGTH + 1]),
-            Err(Error::NonceLength(NONCE_LENGTH + 1))
+            Err(Error::InvalidNonceLength(NONCE_LENGTH + 1))
         );
     }
 }
