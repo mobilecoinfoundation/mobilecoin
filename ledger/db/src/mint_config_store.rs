@@ -10,9 +10,10 @@
 //!      2) It enables keeping track of how much was minted using a given
 //! configuration. This is used to enforce the per-configuration mint limit.
 //! 2) A mapping of nonce -> block index of the block containing the
-//! SetMintConfigTx with that nonce. This    is mainly used to prevent replay
-//! attacks. 3) A mapping of block index -> list of SetMintConfigTx objects
-//! included in    the block.
+//! SetMintConfigTx with that nonce. This is mainly used to prevent replay
+//! attacks.
+//! 3) A mapping of block index -> list of SetMintConfigTx objects
+//! included in the block.
 
 use crate::{key_bytes_to_u64, u32_to_key_bytes, u64_to_key_bytes, Error};
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
