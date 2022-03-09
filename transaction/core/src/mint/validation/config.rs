@@ -50,6 +50,10 @@ pub fn validate_set_mint_config_tx(
 
 /// The minting configurations must all point to the same token id, and must
 /// have a valid signer set.
+///
+/// # Arguments
+/// * `token_id` - The token id we are trying to mint.
+/// * `configs` - The minting configurations to validate.
 fn validate_configs(token_id: u32, configs: &[MintConfig]) -> Result<(), Error> {
     for config in configs {
         if config.token_id != token_id {
@@ -66,6 +70,10 @@ fn validate_configs(token_id: u32, configs: &[MintConfig]) -> Result<(), Error> 
 }
 
 /// The transaction must be properly signed by the master minters set.
+///
+/// # Arguments
+/// * `tx` - A pending transaction that is being validated.
+/// * `signer_set` - The signer set that is permitted to sign the transaction.
 fn validate_signature(
     tx: &SetMintConfigTx,
     master_minters: &SignerSet<Ed25519Public>,

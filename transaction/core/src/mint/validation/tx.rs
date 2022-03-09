@@ -48,6 +48,11 @@ pub fn validate_mint_tx(
 }
 
 /// Validate the trnasaction against a specific mint config.
+///
+/// # Arguments
+/// * `tx` - A pending transaction that is being validated.
+/// * `mint_config` - The mint config that the transaction is being validated
+///   against.
 pub fn validate_against_mint_config(tx: &MintTx, mint_config: &MintConfig) -> Result<(), Error> {
     // The token id must match.
     if tx.prefix.token_id != mint_config.token_id {
@@ -67,6 +72,10 @@ pub fn validate_against_mint_config(tx: &MintTx, mint_config: &MintConfig) -> Re
 }
 
 /// The transaction must be properly signed by the signer set.
+///
+/// # Arguments
+/// * `tx` - A pending transaction that is being validated.
+/// * `signer_set` - The signer set that is permitted to sign the transaction.
 fn validate_signature(tx: &MintTx, signer_set: &SignerSet<Ed25519Public>) -> Result<(), Error> {
     let message = tx.prefix.hash();
 

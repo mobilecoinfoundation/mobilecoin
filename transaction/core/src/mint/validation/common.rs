@@ -35,6 +35,9 @@ pub fn validate_tombstone(
 }
 
 /// The current block version being built must support minting.
+///
+/// # Arguments
+/// * `block_version` - The block version of the block currently being built.
 pub fn validate_block_version(block_version: BlockVersion) -> Result<(), Error> {
     // TODO this should actually be block version THREE!
     if block_version < BlockVersion::TWO || BlockVersion::MAX < block_version {
@@ -45,6 +48,9 @@ pub fn validate_block_version(block_version: BlockVersion) -> Result<(), Error> 
 }
 
 /// The token id being minted must be supported.
+///
+/// Arguments:
+/// * `token_id` - The token id being minted.
 pub fn validate_token_id(token_id: u32) -> Result<(), Error> {
     if token_id == *TokenId::MOB {
         return Err(Error::TokenId(token_id));
@@ -54,6 +60,9 @@ pub fn validate_token_id(token_id: u32) -> Result<(), Error> {
 }
 
 /// The nonce must be within the hardcoded lenght limit.
+///
+/// # Arguments
+/// `nonce` - The nonce to validate.
 pub fn validate_nonce(nonce: &[u8]) -> Result<(), Error> {
     if nonce.len() < NONCE_MIN_LENGTH || nonce.len() > NONCE_MAX_LENGTH {
         return Err(Error::NonceLength(nonce.len()));
