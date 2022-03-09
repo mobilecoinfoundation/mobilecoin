@@ -17,10 +17,9 @@ mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-uri = { path = "../../../util/uri" }
 
-displaydoc = { version = "0.2", default-features = false }
-futures = { version = "0.3.21" }
-grpcio = { version = "0.10.0" }
-protobuf = "2.22.1"
+displaydoc = "0.2"
+futures = "0.3"
+grpcio = "0.10"
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../../util/build/grpc" }
