@@ -5,13 +5,13 @@
 extern crate alloc;
 
 use crate::domain_separators::HASH_TO_POINT_DOMAIN_TAG;
-use blake2::{Blake2b, Digest};
 use bulletproofs_og::{BulletproofGens, PedersenGens};
 pub use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint};
 pub use curve_scalar::*;
 pub use error::Error;
 pub use key_image::*;
+use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::RistrettoPublic;
 pub use mlsag::*;
 pub use rct_bulletproofs::*;
@@ -40,7 +40,7 @@ lazy_static! {
 
 /// Applies a hash function and returns a RistrettoPoint.
 pub fn hash_to_point(ristretto_public: &RistrettoPublic) -> RistrettoPoint {
-    let mut hasher = Blake2b::new();
+    let mut hasher = Blake2b512::new();
     hasher.update(&HASH_TO_POINT_DOMAIN_TAG);
     hasher.update(&ristretto_public.to_bytes());
     RistrettoPoint::from_hash(hasher)

@@ -5,8 +5,8 @@
 extern crate proc_macro;
 
 mod error;
+use crate::error::{DiagnosticError, Result};
 
-use self::error::{DiagnosticError, Result};
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::parse_quote;

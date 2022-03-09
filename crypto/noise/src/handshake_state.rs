@@ -3,15 +3,13 @@
 //! The HandshakeState object as described in the noise framework.
 
 use crate::{
-    cipher_state::NoiseCipher,
+    cipher_state::{NoiseCipher, NoiseDigest},
     patterns::{HandshakePattern, MessagePattern, PreMessageToken, Token},
     protocol_name::ProtocolName,
     symmetric_state::{SymmetricError, SymmetricOutput, SymmetricState},
 };
-use aead::{AeadMut, NewAead};
 use alloc::vec::Vec;
 use core::convert::{TryFrom, TryInto};
-use digest::{BlockInput, Digest, FixedOutput, Reset, Update};
 use displaydoc::Display;
 use generic_array::typenum::Unsigned;
 use mc_crypto_keys::{Kex, KexReusablePrivate, ReprBytes};
@@ -100,44 +98,44 @@ const HANDSHAKE_ERROR: [[HandshakeError; ErrorIdx::Last as usize]; 2usize] = [
 ///
 /// This is pretty strange, but mostly because the two API methods have
 /// strange variable return types.
-pub struct HandshakeOutput<KexAlgo, Cipher, DigestType>
+pub struct HandshakeOutput<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
+    Cipher: NoiseCipher,
+    DigestAlgo: NoiseDigest,
 {
     /// The payload is the read plaintext or written ciphertext
     pub payload: Vec<u8>,
     /// The status indicates whether the handshake has been completed or not
-    pub status: HandshakeStatus<KexAlgo, Cipher, DigestType>,
+    pub status: HandshakeStatus<KexAlgo, Cipher, DigestAlgo>,
 }
 
 /// An enumeration of resulting states for a `ReadMessage()` and
 /// `WriteMessage()`.
-pub enum HandshakeStatus<KexAlgo, Cipher, DigestType>
+pub enum HandshakeStatus<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
+    Cipher: NoiseCipher,
+    DigestAlgo: NoiseDigest,
 {
-    InProgress(HandshakeState<KexAlgo, Cipher, DigestType>),
+    InProgress(HandshakeState<KexAlgo, Cipher, DigestAlgo>),
     Complete(SymmetricOutput<Cipher, KexAlgo::Public>),
 }
 
 /// A generic implementation of the HandshakeState object from
 /// [section 5.3](http://noiseprotocol.org/noise.html#the-handshakestate-object)
 /// of the Noise framework.
-pub struct HandshakeState<KexAlgo, Cipher, DigestType>
+pub struct HandshakeState<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
+    Cipher: NoiseCipher,
+    DigestAlgo: NoiseDigest,
 {
     /// Whether this state machine is an initiator (true) or a responder (false)
     is_initiator: bool,
 
     /// The symmetric/cipher state for the handshake.
-    symmetric_state: SymmetricState<KexAlgo, Cipher, DigestType>,
+    symmetric_state: SymmetricState<KexAlgo, Cipher, DigestAlgo>,
 
     /// An message pattern vector, reversed (last message first).
     ///
@@ -159,16 +157,16 @@ where
     remote_identity: Option<KexAlgo::Public>,
 }
 
-impl<KexAlgo, Cipher, DigestType> HandshakeState<KexAlgo, Cipher, DigestType>
+impl<KexAlgo, Cipher, DigestAlgo> HandshakeState<KexAlgo, Cipher, DigestAlgo>
 where
     KexAlgo: Kex,
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
+    Cipher: NoiseCipher,
+    DigestAlgo: NoiseDigest,
 {
     /// Static method, dispatched from new(), used to perform step 4 of
     /// `HandshakeState::Initialize()`.
     fn mix_premsg_keys<Handshake: HandshakePattern>(
-        symmetric_state: &mut SymmetricState<KexAlgo, Cipher, DigestType>,
+        symmetric_state: &mut SymmetricState<KexAlgo, Cipher, DigestAlgo>,
         initiator_identity: Option<&KexAlgo::Public>,
         initiator_ephemeral: Option<&KexAlgo::Public>,
         responder_identity: Option<&KexAlgo::Public>,
@@ -229,7 +227,7 @@ where
     /// given.
     pub fn new<Handshake: HandshakePattern>(
         is_initiator: bool,
-        protocol_name: ProtocolName<Handshake, KexAlgo, Cipher, DigestType>,
+        protocol_name: ProtocolName<Handshake, KexAlgo, Cipher, DigestAlgo>,
         prologue: &[u8],
         local_identity: Option<KexAlgo::Private>,
         local_ephemeral: Option<KexAlgo::Private>,
@@ -237,7 +235,7 @@ where
         remote_ephemeral: Option<KexAlgo::Public>,
     ) -> Result<Self, HandshakeError>
     where
-        ProtocolName<Handshake, KexAlgo, Cipher, DigestType>: AsRef<str>,
+        ProtocolName<Handshake, KexAlgo, Cipher, DigestAlgo>: AsRef<str>,
     {
         // Initialize step 1
         let mut symmetric_state = SymmetricState::from(protocol_name);
@@ -396,7 +394,7 @@ where
     fn make_handshake_output(
         self,
         output: Vec<u8>,
-    ) -> Result<HandshakeOutput<KexAlgo, Cipher, DigestType>, HandshakeError> {
+    ) -> Result<HandshakeOutput<KexAlgo, Cipher, DigestAlgo>, HandshakeError> {
         let status = if self.message_patterns.is_empty() {
             let mut output: SymmetricOutput<Cipher, KexAlgo::Public> =
                 self.symmetric_state.try_into()?;
@@ -422,7 +420,7 @@ where
         mut self,
         csprng: &mut (impl CryptoRng + RngCore),
         payload: &[u8],
-    ) -> Result<HandshakeOutput<KexAlgo, Cipher, DigestType>, HandshakeError> {
+    ) -> Result<HandshakeOutput<KexAlgo, Cipher, DigestAlgo>, HandshakeError> {
         // This method should not be capable of being called when there are no
         // message patterns, hence expect().
         let msg = self
@@ -539,7 +537,7 @@ where
     pub fn read_message(
         mut self,
         payload: &[u8],
-    ) -> Result<HandshakeOutput<KexAlgo, Cipher, DigestType>, HandshakeError> {
+    ) -> Result<HandshakeOutput<KexAlgo, Cipher, DigestAlgo>, HandshakeError> {
         // This method should not be capable of being called when there are no
         // message patterns, hence expect().
         let msg = self
@@ -721,7 +719,7 @@ mod test {
             .expect("Responder could not decrypt message 1");
         assert_eq!(message1.as_bytes(), decrypted1.as_slice());
 
-        let message2 = "It look's like you're trying to pay a friend without being it generating an advertisement. Would you like some help with that?";
+        let message2 = "It look's like you're trying to pay a friend without it generating an advertisement. Would you like some help with that?";
         let encrypted2 = responder_output
             .responder_cipher
             .encrypt_with_ad(prologue.as_bytes(), message2.as_bytes())
@@ -843,7 +841,7 @@ mod test {
             .expect("Responder could not decrypt message 1");
         assert_eq!(message1.as_bytes(), decrypted1.as_slice());
 
-        let message2 = "It look's like you're trying to pay a friend without being it generating an advertisement. Would you like some help with that?";
+        let message2 = "It look's like you're trying to pay a friend without it generating an advertisement. Would you like some help with that?";
         let encrypted2 = responder_output
             .responder_cipher
             .encrypt_with_ad(prologue.as_bytes(), message2.as_bytes())

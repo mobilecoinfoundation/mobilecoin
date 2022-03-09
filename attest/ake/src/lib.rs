@@ -18,7 +18,7 @@ mod responder;
 mod shared;
 mod state;
 
-pub use self::{
+pub use crate::{
     error::Error,
     event::{
         AuthRequestOutput, AuthResponseInput, AuthResponseOutput, Ciphertext,

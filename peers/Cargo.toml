@@ -25,7 +25,6 @@ mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }
 
 crossbeam-channel = "0.5"
-ed25519 = { version = "1.3.0", default-features = false, features = ["serde"] }
 displaydoc = "0.2"
 grpcio = "0.9.0"
 mockall = "0.11.0"

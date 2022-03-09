@@ -82,13 +82,14 @@ pub type intptr_t = isize;
 pub type uintptr_t = usize;
 pub type ssize_t = isize;
 
-mod types;
-pub use self::types::*;
-
 mod error;
-pub use self::error::*;
-
 mod function;
-pub use self::function::*;
+mod types;
+
+pub use crate::{
+    error::*,
+    function::*,
+    types::*,
+};
 
 pub mod marker;

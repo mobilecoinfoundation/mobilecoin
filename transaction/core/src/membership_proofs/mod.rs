@@ -2,8 +2,6 @@
 
 #![allow(clippy::if_same_then_else)]
 
-extern crate alloc;
-
 use crate::{
     domain_separators::{
         TXOUT_MERKLE_LEAF_DOMAIN_TAG, TXOUT_MERKLE_NIL_DOMAIN_TAG, TXOUT_MERKLE_NODE_DOMAIN_TAG,
@@ -12,17 +10,17 @@ use crate::{
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash, TxOutMembershipProof},
 };
 use alloc::vec::Vec;
-use blake2::digest::Update;
 use core::convert::TryInto;
-
-use mc_crypto_hashes::Blake2b256;
+use mc_crypto_hashes::{Blake2b256, Digest};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 mod errors;
 mod range;
 
-pub use errors::Error as MembershipProofError;
-pub use range::{Range, RangeError};
+pub use self::{
+    errors::Error as MembershipProofError,
+    range::{Range, RangeError},
+};
 
 lazy_static! {
     pub static ref NIL_HASH: [u8; 32] = hash_nil();
@@ -33,7 +31,7 @@ pub fn hash_leaf(tx_out: &TxOut) -> [u8; 32] {
     let mut hasher = Blake2b256::new();
     hasher.update(&TXOUT_MERKLE_LEAF_DOMAIN_TAG);
     hasher.update(&tx_out.hash());
-    hasher.result().try_into().unwrap()
+    hasher.finalize().try_into().unwrap()
 }
 
 /// Merkle tree hash function for an internal node.
@@ -42,14 +40,14 @@ pub fn hash_nodes(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
     hasher.update(&TXOUT_MERKLE_NODE_DOMAIN_TAG);
     hasher.update(left);
     hasher.update(right);
-    hasher.result().try_into().unwrap()
+    hasher.finalize().try_into().unwrap()
 }
 
 /// Merkle tree Hash function for hashing a "nil" value.
 fn hash_nil() -> [u8; 32] {
     let mut hasher = Blake2b256::new();
     hasher.update(&TXOUT_MERKLE_NIL_DOMAIN_TAG);
-    hasher.result().try_into().unwrap()
+    hasher.finalize().try_into().unwrap()
 }
 
 /// Compose two adjacent TxOutMembershipElements into a larger

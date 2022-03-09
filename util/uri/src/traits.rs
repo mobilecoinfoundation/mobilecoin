@@ -7,9 +7,8 @@ use core::{
     result::Result as StdResult,
 };
 use displaydoc::Display;
-use ed25519::signature::Error as SignatureError;
 use mc_common::{NodeID, ResponderId, ResponderIdParseError};
-use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, KeyError};
+use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, KeyError, SignatureError};
 use std::{path::PathBuf, str::FromStr};
 use url::Url;
 
