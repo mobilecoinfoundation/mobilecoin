@@ -86,7 +86,7 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
                 ConsensusValue::SetMintConfigTx(ref set_mint_config_tx) => {
                     if self
                         .mint_tx_manager
-                        .validate_set_mint_config_tx(&set_mint_config_tx)
+                        .validate_set_mint_config_tx(set_mint_config_tx)
                         .is_ok()
                     {
                         // The transaction is well-formed and valid.
@@ -146,7 +146,10 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tx_manager::{MockTxManager, TxManagerError};
+    use crate::{
+        mint_tx_manager::MockMintTxManager,
+        tx_manager::{MockTxManager, TxManagerError},
+    };
     use mc_transaction_core::{tx::TxHash, validation::TransactionValidationError};
     use mockall::predicate::eq;
     use std::{collections::HashSet, iter::FromIterator};
@@ -155,6 +158,7 @@ mod tests {
     /// Should only allow valid values to be pushed.
     fn test_push_skips_invalid_values() {
         let mut tx_manager = MockTxManager::new();
+        let mint_tx_manager = MockMintTxManager::new();
 
         // A few test values.
         let values = vec![TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
@@ -176,7 +180,8 @@ mod tests {
             .with(eq(values[2].clone()))
             .return_const(Ok(()));
 
-        let mut pending_values = PendingValues::new(Arc::new(tx_manager));
+        let mut pending_values =
+            PendingValues::new(Arc::new(tx_manager), Arc::new(mint_tx_manager));
         assert!(pending_values.push(values[0].clone().into(), None));
         assert!(!pending_values.push(values[1].clone().into(), None));
         assert!(pending_values.push(values[2].clone().into(), None));
@@ -198,6 +203,7 @@ mod tests {
     /// Should only allow a single instance of each value
     fn test_push_skips_already_present_values() {
         let mut tx_manager = MockTxManager::new();
+        let mint_tx_manager = MockMintTxManager::new();
 
         // A few test values.
         let values: Vec<ConsensusValue> = vec![
@@ -209,7 +215,8 @@ mod tests {
         // All values are considered valid for this test.
         tx_manager.expect_validate().return_const(Ok(()));
 
-        let mut pending_values = PendingValues::new(Arc::new(tx_manager));
+        let mut pending_values =
+            PendingValues::new(Arc::new(tx_manager), Arc::new(mint_tx_manager));
         assert!(pending_values.push(values[0].clone(), None));
         assert!(pending_values.push(values[1].clone(), None));
         assert!(pending_values.push(values[2].clone(), None));
@@ -233,6 +240,7 @@ mod tests {
     /// Should discard values that are no longer valid.
     fn test_clear_invalid_values_discards_invalid_values() {
         let mut tx_manager = MockTxManager::new();
+        let mint_tx_manager = MockMintTxManager::new();
 
         // A few test values.
         let tx_hashes = vec![TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
@@ -262,7 +270,8 @@ mod tests {
 
         // Create new PendingValues and forcefully shove the pending tx_hashes into it
         // in order to skip the validation call done by `push()`.
-        let mut pending_values = PendingValues::new(Arc::new(tx_manager));
+        let mut pending_values =
+            PendingValues::new(Arc::new(tx_manager), Arc::new(mint_tx_manager));
 
         pending_values.pending_values = values.clone();
         pending_values.pending_values_map = values

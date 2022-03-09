@@ -43,6 +43,9 @@ use mc_consensus_enclave_api::{
     BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeePublicKey,
     LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext, WellFormedEncryptedTx,
     WellFormedTxContext,
+    BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeeMapError,
+    FeePublicKey, FormBlockInputs, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
+    WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -458,7 +461,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
     fn form_block(
         &self,
         parent_block: &Block,
-        encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+        inputs: FormBlockInputs,
         root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)> {
         let config = self
@@ -474,7 +477,9 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // This implicitly converts Vec<Result<(Tx Vec<TxOutMembershipProof>),_>> into
         // Result<Vec<(Tx, Vec<TxOutMembershipProof>)>, _>, and terminates the
         // iteration when the first Error is encountered.
-        let transactions_with_proofs = encrypted_txs_with_proofs
+        // TODO move all this validation code into its own function
+        let transactions_with_proofs = inputs
+            .well_formed_encrypted_txs_with_proofs
             .iter()
             .map(|(encrypted_tx, proofs)| {
                 Ok((
@@ -484,46 +489,52 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             })
             .collect::<Result<Vec<(Tx, Vec<TxOutMembershipProof>)>>>()?;
 
-        // root_elements contains the root hash of the Merkle tree of all TxOuts in the
-        // ledger that were used to validate the transactions.
-        let mut root_elements = Vec::new();
-        let mut rng = McRng::default();
-
-        for (tx, proofs) in transactions_with_proofs.iter() {
+        // If we have standard ("original") transactions, we need to make sure they are
+        // all valid. We also ensure they all point at the same root membership
+        // element.
+        if !transactions_with_proofs.is_empty() {
+            // root_elements contains the root hash of the Merkle tree of all TxOuts in the
+            // ledger that were used to validate the transactions.
+            let mut root_elements = Vec::new();
+            let mut rng = McRng::default();
             let minimum_fee = config
                 .fee_map
                 .get_fee_for_token(&TokenId::from(tx.prefix.token_id))
                 .ok_or(TransactionValidationError::TokenNotYetConfigured)?;
 
-            mc_transaction_core::validation::validate(
-                tx,
-                parent_block.index + 1,
-                config.block_version,
-                proofs,
-                minimum_fee,
-                &mut rng,
-            )?;
 
-            for proof in proofs {
-                let root_element = compute_implied_merkle_root(proof)
-                    .map_err(|_e| TransactionValidationError::InvalidLedgerContext)?;
-                root_elements.push(root_element);
+            // Validate any regular transactions we might have.
+            for (tx, proofs) in transactions_with_proofs.iter() {
+                mc_transaction_core::validation::validate(
+                    tx,
+                    parent_block.index + 1,
+                    config.block_version,
+                    proofs,
+                    minimum_fee,
+                    &mut rng,
+                )?;
+
+                for proof in proofs {
+                    let root_element = compute_implied_merkle_root(proof)
+                        .map_err(|_e| TransactionValidationError::InvalidLedgerContext)?;
+                    root_elements.push(root_element);
+                }
             }
-        }
 
-        root_elements.sort();
-        root_elements.dedup();
+            root_elements.sort();
+            root_elements.dedup();
 
-        if root_elements.len() != 1 {
-            return Err(Error::InvalidLocalMembershipProof);
-        }
+            if root_elements.len() != 1 {
+                return Err(Error::InvalidLocalMembershipProof);
+            }
 
-        // Sanity check - since our caller (TxManager::tx_hashes_to_block) collects all
-        // proof of memberships and root element at a time the ledger is not
-        // expected to change, we should end with the same root element for all
-        // transactions.
-        if root_element != &root_elements[0] {
-            return Err(Error::InvalidLocalMembershipRootElement);
+            // Sanity check - since our caller (TxManager::tx_hashes_to_block) collects all
+            // proof of memberships and root element at a time the ledger is not
+            // expected to change, we should end with the same root element for all
+            // transactions.
+            if root_element != &root_elements[0] {
+                return Err(Error::InvalidLocalMembershipRootElement);
+            }
         }
 
         let transactions: Vec<Tx> = transactions_with_proofs
@@ -620,8 +631,11 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
         key_images.sort();
 
-        // Right now mint-config-txs and mint-txs are not actually created anywhere.
-        let mint_config_txs = Vec::new();
+       // Get the list of SetMintConfigTxs included in the block.
+        // TODO perform any last minute validation here.
+        let mint_config_txs = inputs.set_mint_config_txs;
+
+        // Right now mint-txs are not actually created anywhere.
         let mint_txs = Vec::new();
 
         // We purposefully do not ..Default::default() here so that new block fields
@@ -637,7 +651,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let block = Block::new_with_parent(
             config.block_version,
             parent_block,
-            &root_elements[0],
+            root_element,
             &block_contents,
         );
 
@@ -1018,7 +1032,10 @@ mod tests {
             let (block, block_contents, signature) = enclave
                 .form_block(
                     &parent_block,
-                    &well_formed_encrypted_txs_with_proofs,
+                    FormBlockInputs {
+                        well_formed_encrypted_txs_with_proofs,
+                        ..Default::default()
+                    },
                     &root_element,
                 )
                 .unwrap();
@@ -1170,7 +1187,10 @@ mod tests {
 
             let form_block_result = enclave.form_block(
                 &parent_block,
-                &well_formed_encrypted_txs_with_proofs,
+                FormBlockInputs {
+                    well_formed_encrypted_txs_with_proofs,
+                    ..Default::default()
+                },
                 &root_element,
             );
             let expected_duplicate_key_image = new_transactions[0].key_images()[0];
@@ -1285,7 +1305,10 @@ mod tests {
 
             let form_block_result = enclave.form_block(
                 &parent_block,
-                &well_formed_encrypted_txs_with_proofs,
+                FormBlockInputs {
+                    well_formed_encrypted_txs_with_proofs,
+                    ..Default::default()
+                },
                 &root_element,
             );
             let expected_duplicate_output_public_key = new_transactions[0].output_public_keys()[0];
@@ -1394,7 +1417,10 @@ mod tests {
 
             let form_block_result = enclave.form_block(
                 &parent_block,
-                &well_formed_encrypted_txs_with_proofs,
+                FormBlockInputs {
+                    well_formed_encrypted_txs_with_proofs,
+                    ..Default::default()
+                },
                 &root_element,
             );
 
@@ -1481,7 +1507,10 @@ mod tests {
 
             let form_block_result = enclave.form_block(
                 &parent_block,
-                &well_formed_encrypted_txs_with_proofs,
+                FormBlockInputs {
+                    well_formed_encrypted_txs_with_proofs,
+                    ..Default::default()
+                },
                 &root_element,
             );
 
@@ -1567,7 +1596,10 @@ mod tests {
 
             let form_block_result = enclave.form_block(
                 &parent_block,
-                &well_formed_encrypted_txs_with_proofs,
+                FormBlockInputs {
+                    well_formed_encrypted_txs_with_proofs,
+                    ..Default::default()
+                },
                 &root_element,
             );
 

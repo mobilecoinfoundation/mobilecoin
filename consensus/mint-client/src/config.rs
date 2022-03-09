@@ -2,8 +2,8 @@
 
 //! Command line configuration for the consensus mint client.
 
-use structopt::StructOpt;
 use mc_util_uri::ConsensusClientUri;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
