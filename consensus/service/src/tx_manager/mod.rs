@@ -272,8 +272,11 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         for value in values {
             match value {
                 ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
-                ConsensusValue::SetMintConfigTx(_set_mint_config_tx) => {
-                    todo!()
+                ConsensusValue::SetMintConfigTx(set_mint_config_tx) => {
+                    panic!(
+                        "forming a block with SetMintConfigTx {:?}",
+                        set_mint_config_tx
+                    );
                 }
             }
         }
