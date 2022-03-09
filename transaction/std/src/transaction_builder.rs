@@ -462,7 +462,8 @@ pub mod transaction_builder_tests {
     use crate::{EmptyMemoBuilder, MemoType, RTHMemoBuilder, SenderMemoCredential};
     use maplit::btreemap;
     use mc_account_keys::{
-        AccountKey, ShortAddressHash, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
+        burn_address, burn_address_view_private, AccountKey, ShortAddressHash,
+        CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
     };
     use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
     use mc_transaction_core::{
@@ -2258,6 +2259,98 @@ pub mod transaction_builder_tests {
             let mut expected_inputs = inputs.clone();
             expected_inputs.sort_by(|a, b| a.ring[0].public_key.cmp(&b.ring[0].public_key));
             assert_eq!(inputs, expected_inputs);
+        }
+    }
+
+    #[test]
+    // Test that sending money to a burn address works, and that view key scanning
+    // reveals the amount correctly.
+    fn test_burn_address() {
+        let mut rng: StdRng = SeedableRng::from_seed([18u8; 32]);
+
+        let block_version = BlockVersion::MAX;
+
+        let fog_resolver = MockFogResolver::default();
+        let sender = AccountKey::random(&mut rng);
+        let sender_change_dest = ChangeDestination::from(&sender);
+        let recipient = burn_address();
+
+        let value = 1475 * MILLIMOB_TO_PICOMOB;
+        let change_value = 128 * MILLIMOB_TO_PICOMOB;
+
+        for _ in 0..3 {
+            let mut memo_builder = RTHMemoBuilder::default();
+            memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
+            memo_builder.enable_destination_memo();
+
+            let mut transaction_builder =
+                TransactionBuilder::new(block_version, fog_resolver.clone(), memo_builder);
+
+            let input_credentials =
+                get_input_credentials(block_version, &sender, value, &fog_resolver, &mut rng);
+            transaction_builder.add_input(input_credentials);
+
+            let (burn_tx_out, _confirmation) = transaction_builder
+                .add_output(
+                    value - change_value - Mob::MINIMUM_FEE,
+                    &recipient,
+                    &mut rng,
+                )
+                .unwrap();
+
+            transaction_builder
+                .add_change_output(change_value, &sender_change_dest, &mut rng)
+                .unwrap();
+
+            let tx = transaction_builder.build(&mut rng).unwrap();
+
+            assert_eq!(tx.prefix.outputs.len(), 2);
+            let idx = tx
+                .prefix
+                .outputs
+                .iter()
+                .position(|tx_out| tx_out.public_key == burn_tx_out.public_key)
+                .unwrap();
+            let change_idx = 1 - idx;
+
+            let change_tx_out = &tx.prefix.outputs[change_idx];
+
+            // Test that sender's change subaddress owns the change, and not the burn tx out
+            assert!(
+                !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &burn_tx_out).unwrap()
+            );
+            assert!(
+                subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &change_tx_out)
+                    .unwrap()
+            );
+
+            // Test that view key matching works with the burn tx out with burn address view
+            // key
+            fn view_key_match(tx_out: &TxOut, view_private: &RistrettoPrivate) -> Option<u64> {
+                let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+                let shared_secret = get_tx_out_shared_secret(view_private, &tx_public_key);
+                tx_out
+                    .amount
+                    .get_value(&shared_secret)
+                    .ok()
+                    .map(|(num, _scalar)| num)
+            }
+
+            assert_eq!(
+                view_key_match(&burn_tx_out, &burn_address_view_private()).unwrap(),
+                value - change_value - Mob::MINIMUM_FEE
+            );
+
+            assert!(view_key_match(&change_tx_out, &burn_address_view_private()).is_none());
+
+            // Test that view key matching works with the change tx out with sender's view
+            // key
+            assert_eq!(
+                view_key_match(&change_tx_out, &sender.view_private_key()).unwrap(),
+                change_value
+            );
+
+            assert!(view_key_match(&burn_tx_out, &sender.view_private_key()).is_none());
         }
     }
 }
