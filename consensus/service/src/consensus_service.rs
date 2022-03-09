@@ -336,6 +336,7 @@ impl<
                 self.create_scp_client_value_sender_fn(),
                 Arc::new(self.ledger_db.clone()),
                 self.tx_manager.clone(),
+                self.mint_tx_manager.clone(),
                 self.create_is_serving_user_requests_fn(),
                 self.client_authenticator.clone(),
                 self.logger.clone(),

@@ -5,13 +5,31 @@
 syntax = "proto3";
 import "attest.proto";
 import "consensus_common.proto";
+import "external.proto";
 
 package consensus_client;
 
 option go_package = "mobilecoin/api";
 
+enum ProposeSetMintConfigTxResult {
+    Ok = 0;
+}
+
+/// Response from ProposeSetMintConfigTx RPC call.
+message ProposeSetMintConfigTxResponse {
+    /// Result.
+    ProposeSetMintConfigTxResult result = 1;
+
+    /// The number of blocks in the ledger at the time the request was received.
+    uint64 block_count = 2;
+}
+
+
 service ConsensusClientAPI {
     /// This API call is made with an encrypted payload for the enclave,
     /// indicating a new value to be acted upon.
     rpc ClientTxPropose(attest.Message) returns (consensus_common.ProposeTxResponse);
+
+    /// TODO
+    rpc ProposeSetMintConfigTx(external.SetMintConfigTx) returns (ProposeSetMintConfigTxResponse);
 }
