@@ -11,14 +11,11 @@ edition = "2018"
 test_utils = []
 
 [dependencies]
-mc-api = { path = "../../../api" }
 mc-common = { path = "../../../common" }
-mc-consensus-scp = { path = "../../../consensus/scp" }
 mc-ledger-streaming-api = { path = "../api" }
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-uri = { path = "../../../util/uri" }
-
 
 displaydoc = { version = "0.2", default-features = false }
 futures = { version = "0.3.21" }
@@ -33,5 +30,3 @@ cargo-emit = "0.2.1"
 
 [dev-dependencies]
 mc-common = { path = "../../../common", features = ["loggers"] }
-mc-consensus-scp = { path = "../../../consensus/scp", features = ["test_utils"] }
-mc-util-test-helper = { path = "../../../util/test-helper" }
