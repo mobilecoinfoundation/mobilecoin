@@ -506,7 +506,7 @@ mod tests {
         };
         let message = prefix.hash();
 
-        // Signing below threshold (duplicate isnger not counted twice)
+        // Signing below threshold (duplicate singer not counted twice)
         let signature = MultiSig::new(vec![
             master_minter_1.try_sign(message.as_ref()).unwrap(),
             master_minter_1.try_sign(message.as_ref()).unwrap(),
