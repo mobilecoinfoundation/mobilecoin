@@ -108,7 +108,7 @@ mod tests {
     }
 
     #[test]
-    fn validate_nonce_rejects_valid_nonces() {
+    fn validate_nonce_rejects_invalid_nonces() {
         assert_eq!(validate_nonce(&[]), Err(Error::NonceLength(0)));
         assert_eq!(
             validate_nonce(&[1u8; NONCE_MIN_LENGTH - 1]),
