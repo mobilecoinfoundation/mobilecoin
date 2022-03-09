@@ -8,6 +8,7 @@ use crate::{
     byzantine_ledger::ByzantineLedger,
     config::Config,
     counters,
+    mint_tx_manager::MintTxManager,
     peer_keepalive::PeerKeepalive,
     tx_manager::TxManager,
 };
@@ -101,6 +102,7 @@ pub struct ConsensusService<
     E: ConsensusEnclave + Clone + Send + Sync + 'static,
     R: RaClient + Send + Sync + 'static,
     TXM: TxManager + Clone + Send + Sync + 'static,
+    MTXM: MintTxManager + Clone + Send + Sync + 'static,
 > {
     config: Config,
     local_node_id: NodeID,
@@ -121,6 +123,7 @@ pub struct ConsensusService<
     // and the client and peer api services, via the ProposeTxCallback
     broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
     tx_manager: Arc<TXM>,
+    mint_tx_manager: Arc<MTXM>,
     // Option is only here because we need a way to drop the PeerKeepalive without mutex,
     // if we want to implement Stop as currently concieved
     peer_keepalive: Option<Arc<PeerKeepalive>>,
@@ -139,7 +142,8 @@ impl<
         E: ConsensusEnclave + Clone + Send + Sync + 'static,
         R: RaClient + Send + Sync + 'static,
         TXM: TxManager + Clone + Send + Sync + 'static,
-    > ConsensusService<E, R, TXM>
+        MTXM: MintTxManager + Clone + Send + Sync + 'static,
+    > ConsensusService<E, R, TXM, MTXM>
 {
     pub fn new<TP: TimeProvider + 'static>(
         config: Config,
@@ -147,6 +151,7 @@ impl<
         ledger_db: LedgerDB,
         ra_client: R,
         tx_manager: Arc<TXM>,
+        mint_tx_manager: Arc<MTXM>,
         time_provider: Arc<TP>,
         logger: Logger,
     ) -> Self {
@@ -224,6 +229,7 @@ impl<
             peer_manager,
             broadcaster,
             tx_manager,
+            mint_tx_manager,
             peer_keepalive,
             client_authenticator,
 
@@ -497,6 +503,7 @@ impl<
                 self.peer_manager.clone(),
                 self.ledger_db.clone(),
                 self.tx_manager.clone(),
+                self.mint_tx_manager.clone(),
                 self.broadcaster.clone(),
                 self.config.msg_signer_key.clone(),
                 self.config.network().tx_source_urls,
@@ -760,7 +767,8 @@ impl<
         E: ConsensusEnclave + Clone + Send + Sync + 'static,
         R: RaClient + Send + Sync + 'static,
         TXM: TxManager + Clone + Send + Sync + 'static,
-    > Drop for ConsensusService<E, R, TXM>
+        MTXM: MintTxManager + Clone + Send + Sync + 'static,
+    > Drop for ConsensusService<E, R, TXM, MTXM>
 {
     fn drop(&mut self) {
         let _ = self.stop();

@@ -2,7 +2,7 @@
 
 //! A utility object for keeping track of pending transaction hashes.
 
-use crate::tx_manager::TxManager;
+use crate::{mint_tx_manager::MintTxManager, tx_manager::TxManager};
 use mc_peers::ConsensusValue;
 use std::{
     collections::{hash_map::Entry::Vacant, HashMap},
@@ -13,9 +13,12 @@ use std::{
 /// A list of transactions that this node will attempt to submit to consensus.
 /// Invariant: each pending transaction is well-formed.
 /// Invariant: each pending transaction is valid w.r.t he current ledger.
-pub struct PendingValues<TXM: TxManager> {
+pub struct PendingValues<TXM: TxManager, MTXM: MintTxManager> {
     // Transaction manager instance, used for validating values.
     tx_manager: Arc<TXM>,
+
+    // Mint transaction manager instance, used for validating mint transactions.
+    mint_tx_manager: Arc<MTXM>,
 
     /// We need to store pending values vec so we can process values
     /// on a first-come first-served basis. However, we want to be able to:
@@ -35,11 +38,12 @@ pub struct PendingValues<TXM: TxManager> {
     pending_values_map: HashMap<ConsensusValue, Option<Instant>>,
 }
 
-impl<TXM: TxManager> PendingValues<TXM> {
+impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
     /// Create a new instance of `PendingValues`.
-    pub fn new(tx_manager: Arc<TXM>) -> Self {
+    pub fn new(tx_manager: Arc<TXM>, mint_tx_manager: Arc<MTXM>) -> Self {
         Self {
             tx_manager,
+            mint_tx_manager,
             pending_values: Vec::new(),
             pending_values_map: HashMap::new(),
         }
@@ -79,8 +83,19 @@ impl<TXM: TxManager> PendingValues<TXM> {
                     }
                 }
 
-                ConsensusValue::SetMintConfigTx(_set_mint_config_tx) => {
-                    todo!()
+                ConsensusValue::SetMintConfigTx(ref set_mint_config_tx) => {
+                    if self
+                        .mint_tx_manager
+                        .validate_set_mint_config_tx(&set_mint_config_tx)
+                        .is_ok()
+                    {
+                        // The transaction is well-formed and valid.
+                        entry.insert(timestamp);
+                        self.pending_values.push(value);
+                        true
+                    } else {
+                        false
+                    }
                 }
             }
         } else {
@@ -118,10 +133,11 @@ impl<TXM: TxManager> PendingValues<TXM> {
     /// Clear any pending values that are no longer valid.
     pub fn clear_invalid_values(&mut self) {
         let tx_manager = self.tx_manager.clone();
+        let mint_tx_manager = self.mint_tx_manager.clone();
         self.retain(|value| match value {
             ConsensusValue::TxHash(tx_hash) => tx_manager.validate(tx_hash).is_ok(),
-            ConsensusValue::SetMintConfigTx(_set_mint_config_tx) => {
-                todo!()
+            ConsensusValue::SetMintConfigTx(ref set_mint_config_tx) => {
+                mint_tx_manager.validate_set_mint_config_tx(set_mint_config_tx).is_ok()
             }
         });
     }

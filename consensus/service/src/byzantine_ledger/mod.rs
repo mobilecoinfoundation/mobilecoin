@@ -13,6 +13,7 @@ mod worker;
 use crate::{
     byzantine_ledger::{task_message::TaskMessage, worker::ByzantineLedgerWorker},
     counters,
+    mint_tx_manager::MintTxManager,
     tx_manager::TxManager,
 };
 use mc_common::{logger::Logger, NodeID, ResponderId};
@@ -63,6 +64,32 @@ pub struct ByzantineLedger {
     highest_issued_msg: Arc<Mutex<Option<ConsensusMsg>>>,
 }
 
+/// TODO
+use crate::mint_tx_manager::MintTxManagerError;
+use crate::tx_manager::TxManagerError;
+use displaydoc::Display;
+
+#[derive(Clone, Debug, Display)]
+enum UnifiedNodeError {
+    /// TxManager: {0}
+    TxManager(TxManagerError),
+
+    /// MintTxManager: {0}
+    MintTxManager(MintTxManagerError),
+}
+
+impl From<TxManagerError> for UnifiedNodeError {
+    fn from(src: TxManagerError) -> Self {
+        Self::TxManager(src)
+    }
+}
+
+impl From<MintTxManagerError> for UnifiedNodeError {
+    fn from(src: MintTxManagerError) -> Self {
+        Self::MintTxManager(src)
+    }
+}
+
 impl ByzantineLedger {
     /// Create a new ByzantineLedger
     ///
@@ -72,6 +99,7 @@ impl ByzantineLedger {
     /// * `peer_manager` - PeerManager
     /// * `ledger` - The local node's ledger.
     /// * `tx_manager` - TxManager
+    /// * `mint_tx_manager` - MintTxManager
     /// * `broadcaster` - Broadcaster
     /// * `msg_signer_key` - Signs consensus messages issued by this node.
     /// * `tx_source_urls` - Source URLs for fetching block contents.
@@ -82,12 +110,14 @@ impl ByzantineLedger {
         PC: BlockchainConnection + ConsensusConnection + 'static,
         L: Ledger + Clone + Sync + 'static,
         TXM: TxManager + Send + Sync + 'static,
+        MTXM: MintTxManager + Send + Sync + 'static,
     >(
         node_id: NodeID,
         quorum_set: QuorumSet,
         peer_manager: ConnectionManager<PC>,
         ledger: L,
         tx_manager: Arc<TXM>,
+        mint_tx_manager: Arc<MTXM>,
         broadcaster: Arc<Mutex<dyn Broadcast>>,
         msg_signer_key: Arc<Ed25519Pair>,
         tx_source_urls: Vec<String>,
@@ -98,31 +128,45 @@ impl ByzantineLedger {
         let scp_node: Box<dyn ScpNode<ConsensusValue>> = {
             let tx_manager_validate = tx_manager.clone();
             let tx_manager_combine = tx_manager.clone();
+            let mint_tx_manager_validate = mint_tx_manager.clone();
+            let mint_tx_manager_combine = mint_tx_manager.clone();
             let current_slot_index = ledger.num_blocks().unwrap();
             let node = Node::new(
                 node_id.clone(),
                 quorum_set,
+                // Validation callback
                 Arc::new(move |scp_value| match scp_value {
-                    ConsensusValue::TxHash(tx_hash) => tx_manager_validate.validate(tx_hash),
-                    ConsensusValue::SetMintConfigTx(_set_mint_config_tx) => {
-                        todo!()
-                    }
+                    ConsensusValue::TxHash(tx_hash) => tx_manager_validate
+                        .validate(tx_hash)
+                        .map_err(UnifiedNodeError::from),
+
+                    ConsensusValue::SetMintConfigTx(set_mint_config_tx) => mint_tx_manager_validate
+                        .validate_set_mint_config_tx(set_mint_config_tx)
+                        .map_err(UnifiedNodeError::from),
                 }),
+                // Combine callback
                 Arc::new(move |scp_values| {
                     let mut tx_hashes = Vec::new();
+                    let mut set_mint_config_txs = Vec::new();
 
                     for value in scp_values {
                         match value {
                             ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
-                            ConsensusValue::SetMintConfigTx(_set_mint_config_tx) => {
-                                todo!()
+                            ConsensusValue::SetMintConfigTx(set_mint_config_tx) => {
+                                set_mint_config_txs.push(set_mint_config_tx.clone());
                             }
                         }
                     }
                     let tx_hashes = tx_manager_combine.combine(&tx_hashes[..])?;
-
                     let tx_hashes_iter = tx_hashes.into_iter().map(ConsensusValue::TxHash);
-                    Ok(tx_hashes_iter.collect())
+
+                    let set_mint_config_txs = mint_tx_manager_combine
+                        .combine_set_mint_config_txs(&set_mint_config_txs[..])?;
+                    let set_mint_config_txs_iter = set_mint_config_txs
+                        .into_iter()
+                        .map(ConsensusValue::SetMintConfigTx);
+
+                    Ok(tx_hashes_iter.chain(set_mint_config_txs_iter).collect())
                 }),
                 current_slot_index,
                 logger.clone(),
@@ -162,6 +206,7 @@ impl ByzantineLedger {
                 ledger_sync_service,
                 peer_manager,
                 tx_manager,
+                mint_tx_manager,
                 broadcaster.clone(),
                 task_receiver,
                 is_behind.clone(),

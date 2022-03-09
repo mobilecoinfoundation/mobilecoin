@@ -810,6 +810,7 @@ mod tests {
                     };
                     tx_manager.lock_cache().insert(*tx_hash, cache_entry);
                 }
+                ConsensusValue::SetMintConfigTx(_) => panic!("Unexpected SetMintConfigTx"),
             };
         }
 
@@ -851,6 +852,7 @@ mod tests {
                     };
                     tx_manager.lock_cache().insert(*tx_hash, cache_entry);
                 }
+                ConsensusValue::SetMintConfigTx(_) => panic!("Unexpected SetMintConfigTx"),
             }
         }
 
