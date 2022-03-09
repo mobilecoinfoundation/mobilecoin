@@ -5,17 +5,19 @@ authors = ["MobileCoin"]
 license = "MIT OR Apache-2.0"
 edition = "2018"
 
-[lib]
-
 [features]
 test_utils = []
 
 [dependencies]
+
 mc-common = { path = "../../../common" }
+mc-api = { path = "../../../api" }
+mc-consensus-scp = { path = "../../../consensus/scp" }
 mc-ledger-streaming-api = { path = "../api" }
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-uri = { path = "../../../util/uri" }
+mc-ledger-db = { path = "../../../ledger/db" }
 
 displaydoc = { version = "0.2", default-features = false }
 futures = { version = "0.3.21" }
@@ -30,3 +32,5 @@ cargo-emit = "0.2.1"
 
 [dev-dependencies]
 mc-common = { path = "../../../common", features = ["loggers"] }
+mc-consensus-scp = { path = "../../../consensus/scp", features = ["test_utils"] }
+mc-util-test-helper = { path = "../../../util/test-helper" }

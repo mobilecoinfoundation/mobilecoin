@@ -5,12 +5,15 @@ use grpcio::Error as GrpcError;
 use mc_api::ConversionError;
 
 #[derive(Debug, Display)]
-pub enum Error {
+pub enum LedgerStreamingError {
     /// gRPC: {0}
     Grpc(GrpcError),
 
     /// Conversion: {0}
     Conversion(ConversionError),
+
+    /// Invalid block ID
+    InvalidBlockId,
 }
 
 impl From<GrpcError> for Error {

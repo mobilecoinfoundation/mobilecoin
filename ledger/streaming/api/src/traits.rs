@@ -1,5 +1,6 @@
 use crate::Result;
-use mc_transaction_core::BlockData;
+use mc_transaction_core::{BlockData, BlockIndex};
+
 
 pub trait BlockSource {
     type BlockStream: futures::Stream<Item = Result<BlockData>>;
