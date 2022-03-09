@@ -1,13 +1,16 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use crate::tx_manager::TxManagerError;
+use crate::{mint_tx_manager::MintTxManagerError, tx_manager::TxManagerError};
 use displaydoc::Display;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_common::logger::global_log;
-use mc_consensus_api::consensus_common::{ProposeTxResponse, ProposeTxResult};
+use mc_consensus_api::{
+    consensus_client::ProposeSetMintConfigTxResponse,
+    consensus_common::{ProposeTxResponse, ProposeTxResult},
+};
 use mc_consensus_enclave::Error as EnclaveError;
 use mc_ledger_db::Error as LedgerError;
-use mc_transaction_core::validation::TransactionValidationError;
+use mc_transaction_core::{mint::MintValidationError, validation::TransactionValidationError};
 
 #[derive(Debug, Display)]
 pub enum ConsensusGrpcError {
@@ -28,6 +31,9 @@ pub enum ConsensusGrpcError {
 
     /// Transaction validation error `{0}`
     TransactionValidation(TransactionValidationError),
+
+    /// Mint transaction validation error `{0}`
+    MintValidation(MintValidationError),
 
     /// Invalid argument `{0}`
     InvalidArgument(String),
@@ -63,6 +69,12 @@ impl From<TransactionValidationError> for ConsensusGrpcError {
     }
 }
 
+impl From<MintValidationError> for ConsensusGrpcError {
+    fn from(src: MintValidationError) -> Self {
+        Self::MintValidation(src)
+    }
+}
+
 impl From<TxManagerError> for ConsensusGrpcError {
     fn from(src: TxManagerError) -> Self {
         match src {
@@ -70,6 +82,15 @@ impl From<TxManagerError> for ConsensusGrpcError {
             TxManagerError::TransactionValidation(err) => Self::from(err),
             TxManagerError::LedgerDb(err) => Self::from(err),
             _ => Self::Other(format!("tx manager error: {}", src)),
+        }
+    }
+}
+
+impl From<MintTxManagerError> for ConsensusGrpcError {
+    fn from(src: MintTxManagerError) -> Self {
+        match src {
+            MintTxManagerError::MintValidation(err) => Self::from(err),
+            MintTxManagerError::LedgerDb(err) => Self::from(err),
         }
     }
 }
@@ -120,6 +141,22 @@ impl From<ConsensusGrpcError> for Result<ProposeTxResponse, RpcStatus> {
                 let mut resp = ProposeTxResponse::new();
                 resp.set_result(ProposeTxResult::from(err));
                 Ok(resp)
+            }
+            _ => Err(RpcStatus::from(src)),
+        }
+    }
+}
+
+/// Convert a `ConsensusGrpcError` into either `ProposeSetMintConfigTxResponse`
+/// or `RpcStatus`, depending on which error it holds.
+impl From<ConsensusGrpcError> for Result<ProposeSetMintConfigTxResponse, RpcStatus> {
+    fn from(src: ConsensusGrpcError) -> Result<ProposeSetMintConfigTxResponse, RpcStatus> {
+        match src {
+            ConsensusGrpcError::TransactionValidation(_err) => {
+                // let resp = ProposeSetMintConfigTxResponse::new();
+                // TODO resp.set_result(ProposeSetMintConfigTxResult::from(err));
+                // Ok(resp)
+                todo!()
             }
             _ => Err(RpcStatus::from(src)),
         }

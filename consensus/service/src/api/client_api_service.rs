@@ -6,21 +6,24 @@ use crate::{
     api::grpc_error::ConsensusGrpcError,
     consensus_service::ProposeTxCallback,
     counters,
+    mint_tx_manager::MintTxManager,
     tx_manager::{TxManager, TxManagerError},
 };
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
 use mc_common::logger::Logger;
 use mc_consensus_api::{
+    consensus_client::ProposeSetMintConfigTxResponse,
     consensus_client_grpc::ConsensusClientApi,
     consensus_common::{ProposeTxResponse, ProposeTxResult},
 };
 use mc_consensus_enclave::ConsensusEnclave;
 use mc_ledger_db::Ledger;
 use mc_peers::ConsensusValue;
+use mc_transaction_core::mint::SetMintConfigTx;
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
-use std::sync::Arc;
+use std::{convert::TryFrom, sync::Arc};
 
 /// Maximum number of pending values for consensus service before rejecting
 /// add_transaction requests.
@@ -30,6 +33,7 @@ const PENDING_LIMIT: i64 = 500;
 pub struct ClientApiService {
     enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
     tx_manager: Arc<dyn TxManager + Send + Sync>,
+    mint_tx_manager: Arc<dyn MintTxManager + Send + Sync>,
     ledger: Arc<dyn Ledger + Send + Sync>,
     /// Passes proposed transactions to the consensus service.
     propose_tx_callback: ProposeTxCallback,
@@ -45,6 +49,7 @@ impl ClientApiService {
         scp_client_value_sender: ProposeTxCallback,
         ledger: Arc<dyn Ledger + Send + Sync>,
         tx_manager: Arc<dyn TxManager + Send + Sync>,
+        mint_tx_manager: Arc<dyn MintTxManager + Send + Sync>,
         is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
@@ -52,6 +57,7 @@ impl ClientApiService {
         Self {
             enclave,
             tx_manager,
+            mint_tx_manager,
             ledger,
             propose_tx_callback: scp_client_value_sender,
             is_serving_fn,
@@ -93,6 +99,32 @@ impl ClientApiService {
         counters::ADD_TX.inc();
         Ok(response)
     }
+
+    /// TODO
+    fn handle_propose_set_mint_config_tx(
+        &mut self,
+        grpc_tx: mc_consensus_api::external::SetMintConfigTx,
+    ) -> Result<ProposeSetMintConfigTxResponse, ConsensusGrpcError> {
+        // TODO counters::ADD_TX_INITIATED.inc();
+        let set_mint_config_tx = SetMintConfigTx::try_from(&grpc_tx)
+            .map_err(|err| ConsensusGrpcError::InvalidArgument(format!("{:?}", err)))?;
+        let response = ProposeSetMintConfigTxResponse::new();
+
+        // Validate the transaction.
+        // This is done here as a courtesy to give clients immediate feedback about the
+        // transaction.
+        self.mint_tx_manager
+            .validate_set_mint_config_tx(&set_mint_config_tx)?;
+
+        // The transaction can be considered by the network.
+        (*self.propose_tx_callback)(
+            ConsensusValue::SetMintConfigTx(set_mint_config_tx),
+            None,
+            None,
+        );
+        // TODO counters::ADD_TX.inc();
+        Ok(response)
+    }
 }
 
 impl ConsensusClientApi for ClientApiService {
@@ -125,6 +157,39 @@ impl ConsensusClientApi for ClientApiService {
                 }
             } else {
                 self.handle_proposed_tx(msg)
+                    .or_else(ConsensusGrpcError::into)
+            };
+
+        result = result.and_then(|mut response| {
+            let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
+            response.set_block_count(num_blocks);
+            Ok(response)
+        });
+
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            send_result(ctx, sink, result, logger)
+        });
+    }
+
+    fn propose_set_mint_config_tx(
+        &mut self,
+        ctx: RpcContext,
+        grpc_tx: mc_consensus_api::external::SetMintConfigTx,
+        sink: UnarySink<ProposeSetMintConfigTxResponse>,
+    ) {
+        let _timer = SVC_COUNTERS.req(&ctx);
+
+        if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
+            return send_result(ctx, sink, err.into(), &self.logger);
+        }
+
+        let mut result: Result<ProposeSetMintConfigTxResponse, RpcStatus> =
+            if counters::CUR_NUM_PENDING_VALUES.get() >= PENDING_LIMIT {
+                ConsensusGrpcError::OverCapacity.into()
+            } else if !(self.is_serving_fn)() {
+                ConsensusGrpcError::NotServing.into()
+            } else {
+                self.handle_propose_set_mint_config_tx(grpc_tx)
                     .or_else(ConsensusGrpcError::into)
             };
 
