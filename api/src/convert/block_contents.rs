@@ -41,13 +41,13 @@ impl TryFrom<&blockchain::BlockContents> for mc_transaction_core::BlockContents 
     type Error = ConversionError;
 
     fn try_from(source: &blockchain::BlockContents) -> Result<Self, Self::Error> {
-        let key_images: Vec<KeyImage> = source
+        let key_images = source
             .get_key_images()
             .iter()
             .map(KeyImage::try_from)
             .collect::<Result<_, _>>()?;
 
-        let outputs: Vec<TxOut> = source
+        let outputs = source
             .get_outputs()
             .iter()
             .map(TxOut::try_from)
