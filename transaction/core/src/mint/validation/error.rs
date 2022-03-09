@@ -1,11 +1,12 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Error type of mint transactions validation.
+//! Error type for mint transactions validation.
 
 use crate::BlockVersion;
 use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 
+/// Error type for mint transactions validation.
 #[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum Error {
     /// Invalid block version: {0}

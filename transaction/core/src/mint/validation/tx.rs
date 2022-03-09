@@ -47,7 +47,7 @@ pub fn validate_mint_tx(
     Ok(())
 }
 
-/// Validate the trnasaction against a specific mint config.
+/// Validate the transaction against a specific mint config.
 ///
 /// # Arguments
 /// * `tx` - A pending transaction that is being validated.
