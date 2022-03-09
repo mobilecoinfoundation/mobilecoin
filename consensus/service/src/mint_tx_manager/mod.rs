@@ -15,10 +15,12 @@ use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
+use mc_crypto_keys::Ed25519Public;
+use mc_crypto_multisig::SignerSet;
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{
-    mint::{validate_set_mint_config_tx, SetMintConfigTx},
-    BlockVersion,
+    mint::{validate_set_mint_config_tx, MintValidationError, SetMintConfigTx},
+    BlockVersion, TokenId,
 };
 
 #[derive(Clone)]
@@ -59,14 +61,13 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         set_mint_config_tx: &SetMintConfigTx,
     ) -> MintTxManagerResult<()> {
         // Get the master minters for this token id.
-        let token_id = TokenID::from(set_mint_config_tx.prefix.token_id);
-        let master_minters = self
-            .token_id_to_master_minters
-            .get(&token_id)
-            .ok_or(MintTxManagerError::NoMasterMinters(token_id))?;
+        let token_id = TokenId::from(set_mint_config_tx.prefix.token_id);
+        let master_minters = self.token_id_to_master_minters.get(&token_id).ok_or(
+            MintTxManagerError::MintValidation(MintValidationError::NoMasterMinters(token_id)),
+        )?;
 
         // Get the current block index.
-        let current_block_index = self.ledger.num_blocks()? - 1;
+        let current_block_index = self.ledger_db.num_blocks()? - 1;
 
         // Perform the actual validation.
         validate_set_mint_config_tx(

@@ -2,7 +2,7 @@
 
 //! Error type for mint transactions validation.
 
-use crate::BlockVersion;
+use crate::{BlockVersion, TokenId};
 use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 
@@ -35,4 +35,7 @@ pub enum Error {
 
     /// Amount exceeds mint limit
     AmountExceedsMintLimit,
+
+    /// No master minters configured for token id {0}
+    NoMasterMinters(TokenId),
 }

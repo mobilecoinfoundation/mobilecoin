@@ -293,16 +293,20 @@ impl TokensConfig {
     }
 
     /// Get a map of token id -> master minters.
-    pub fn token_id_to_master_minters(&self) -> Result<HashMap<TokenId, SignerSet<Ed25519Public>>, ConsensusServiceError> {
+    pub fn token_id_to_master_minters(
+        &self,
+    ) -> Result<HashMap<TokenId, SignerSet<Ed25519Public>>, ConsensusServiceError> {
         self.validate()?;
 
-        HashMap::from_iter(self.tokens.iter().filter_map(|token_config| {
-            if let Some(master_minters) = &token_config.master_minters {
-                Some((token_config.token_id, master_minters.clone()))
-            } else {
-                None
-            }
-        }))
+        Ok(HashMap::from_iter(self.tokens.iter().filter_map(
+            |token_config| {
+                if let Some(master_minters) = &token_config.master_minters {
+                    Some((token_config.token_id, master_minters.clone()))
+                } else {
+                    None
+                }
+            },
+        )))
     }
 }
 
@@ -697,7 +701,6 @@ mod tests {
         // Keys were generated using:
         // ```sh
         // pri_pem=$(openssl genpkey -algorithm ED25519)
-        // pri_der=$(echo -n "${pri_pem}" | openssl pkey -outform DER | openssl base64)
         // echo -n "${pri_pem}" | openssl pkey -pubout
         // ```
 
