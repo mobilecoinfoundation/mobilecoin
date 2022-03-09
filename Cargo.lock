@@ -4556,7 +4556,6 @@ dependencies = [
  "mc-util-build-script",
  "mc-util-grpc",
  "mc-util-uri",
- "protobuf",
 ]
 
 [[package]]
