@@ -31,4 +31,7 @@ pub enum Error {
 
     /// Unknown error (should never happen)
     Unknown,
+
+    /// Amount exceeds mint limit
+    AmountExceedsMintLimit,
 }
