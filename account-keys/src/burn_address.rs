@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+
 //! A canonical burn address for the auditable burning of funds
 //!
 //! The requirements here are:
@@ -35,7 +37,7 @@
 //! So, we can derive it using that identity without knowing any of the spend
 //! private keys.
 
-use crate::PublicAddress;
+use crate::{domain_separators::BURN_ADDRESS_DOMAIN_SEPARATOR, PublicAddress};
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
@@ -44,10 +46,6 @@ use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 /// This is arbitrary but we decided to make it nonzero, because we are using
 /// this number to multiply, and multiplying by zero can lead to degeneracies.
 pub const BURN_ADDRESS_VIEW_PRIVATE: Scalar = Scalar::from_bits([1u8; 32]);
-
-// The constant used for hash-to-curve to produce burn address spend public.
-// This follows the style of the other domain separators in mc-transaction-core.
-const BURN_ADDRESS_DOMAIN_SEPARATOR: &[u8] = b"mc_burn_address_spend_public";
 
 /// The burn address view private key in the keys-crate wrapper type
 pub fn burn_address_view_private() -> RistrettoPrivate {
