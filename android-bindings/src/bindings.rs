@@ -1860,8 +1860,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_Util_recover_1onetime_1private_
     env: JNIEnv,
     _obj: JObject,
     tx_pub_key: JObject,
-    view_key: JObject,
-    spend_key: JObject,
+    tx_target_key: JObject,
+    account_key: JObject,
 ) -> jlong {
     jni_ffi_call_or(
         || Ok(0),
@@ -1869,12 +1869,29 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_Util_recover_1onetime_1private_
         |env| {
             let tx_pub_key: MutexGuard<RistrettoPublic> =
                 env.get_rust_field(tx_pub_key, RUST_OBJ_FIELD)?;
-            let view_key: MutexGuard<RistrettoPrivate> =
-                env.get_rust_field(view_key, RUST_OBJ_FIELD)?;
-            let spend_key: MutexGuard<RistrettoPrivate> =
-                env.get_rust_field(spend_key, RUST_OBJ_FIELD)?;
+            let tx_target_key: MutexGuard<RistrettoPublic> = 
+                env.get_rust_field(tx_target_key, RUST_OBJ_FIELD)?;
+            let account_key: MutexGuard<AccountKey> = 
+                env.get_rust_field(account_key, RUST_OBJ_FIELD)?;
 
-            let key = recover_onetime_private_key(&tx_pub_key, &view_key, &spend_key);
+            let subaddress_spk = recover_public_subaddress_spend_key(
+                account_key.view_private_key(),
+                &tx_target_key,
+                &tx_pub_key,
+            );
+            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (DEFAULT_SUBADDRESS_INDEX
+                ..=CHANGE_SUBADDRESS_INDEX)
+                .map(|index| (*account_key.subaddress(index).spend_public_key(), index))
+                .collect();
+            let subaddress_index = spsk_to_index
+                .get(&subaddress_spk)
+                .ok_or_else(|| McError::Other("Subaddress match error".to_owned()))?;
+
+            let key = recover_onetime_private_key(
+                &tx_pub_key,
+                account_key.view_private_key(),
+                &account_key.subaddress_spend_private(*subaddress_index),
+            );
 
             let mbox = Box::new(Mutex::new(key));
             let ptr: *mut Mutex<RistrettoPrivate> = Box::into_raw(mbox);
