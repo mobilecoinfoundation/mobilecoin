@@ -9,7 +9,7 @@ mod sync;
 mod thick;
 mod traits;
 
-pub use self::{
+pub use crate::{
     credentials::{
         AnyCredentialsError, AnyCredentialsProvider, AuthenticationError, CredentialsProvider,
         CredentialsProviderError, HardcodedCredentialsProvider, TokenBasicCredentialsProvider,

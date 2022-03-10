@@ -1,12 +1,11 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use alloc::vec::Vec;
-use blake2::digest::Update;
 use core::{convert::TryFrom, fmt};
 use mc_account_keys::PublicAddress;
 use mc_common::Hash;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
-use mc_crypto_hashes::Blake2b256;
+use mc_crypto_hashes::{Blake2b256, Digest};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_util_repr_bytes::{
     derive_prost_message_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
@@ -469,8 +468,8 @@ impl core::convert::From<[u8; 32]> for TxOutMembershipHash {
 }
 
 impl ReprBytes for TxOutMembershipHash {
-    type Error = &'static str;
     type Size = U32;
+    type Error = &'static str;
     fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, &'static str> {
         Ok(Self((*src).into()))
     }
@@ -530,15 +529,13 @@ impl core::convert::From<&RistrettoPublic> for TxOutConfirmationNumber {
         let mut hasher = Blake2b256::new();
         hasher.update(&TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG);
         hasher.update(shared_secret.to_bytes());
-
-        let result: [u8; 32] = hasher.result().into();
-        Self(result)
+        Self(hasher.finalize().into())
     }
 }
 
 impl ReprBytes for TxOutConfirmationNumber {
-    type Error = &'static str;
     type Size = U32;
+    type Error = &'static str;
     fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, &'static str> {
         Ok(Self((*src).into()))
     }
@@ -562,12 +559,12 @@ mod tests {
         Amount, Token,
     };
     use alloc::vec::Vec;
+    use core::convert::TryFrom;
     use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
     use prost::Message;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::convert::TryFrom;
 
     #[test]
     // `serialize_tx` should create a Tx, encode/decode it, and compare

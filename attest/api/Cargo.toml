@@ -22,7 +22,7 @@ mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-noise = { path = "../../crypto/noise" }
 
 aead = "0.4"
-digest = "0.9"
+digest = "0.10"
 futures = "0.3"
 grpcio = "0.9.0"
 protobuf = "2.22.1"

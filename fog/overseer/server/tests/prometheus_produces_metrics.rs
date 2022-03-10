@@ -111,6 +111,7 @@ fn one_active_node_idle_nodes_different_keys_produces_prometheus_metrics(logger:
             .unwrap();
     let rocket = server::initialize_rocket_server(rocket_config, overseer_state);
     let client = Client::new(rocket).expect("valid rocket instance");
+    client.post("/enable").dispatch();
 
     // Give overseer time to perform its logic.
     std::thread::sleep(Duration::from_secs(10));

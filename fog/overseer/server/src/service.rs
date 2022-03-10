@@ -61,7 +61,7 @@ where
             logger,
             overseer_worker: None,
             recovery_db,
-            is_enabled: Arc::new(AtomicBool::new(true)),
+            is_enabled: Arc::new(AtomicBool::new(false)),
         }
     }
 

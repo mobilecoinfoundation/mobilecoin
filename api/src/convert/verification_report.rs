@@ -31,7 +31,7 @@ impl From<&external::VerificationReport> for VerificationReport {
 mod tests {
     use super::*;
 
-    const IAS_JSON: &str = include_str!("ias_ok.json");
+    const IAS_JSON: &str = include_str!("../../tests/data/ias_ok.json");
 
     /// Test round-trip conversion of prost to protobuf to prost
     #[test]
