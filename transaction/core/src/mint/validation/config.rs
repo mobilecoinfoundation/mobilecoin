@@ -89,7 +89,7 @@ fn validate_signature(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mint::{config::SetMintConfigTxPrefix, constants::NONCE_MIN_LENGTH};
+    use crate::mint::{config::SetMintConfigTxPrefix, constants::NONCE_LENGTH};
     use mc_crypto_keys::{Ed25519Pair, Signer};
     use mc_crypto_multisig::MultiSig;
     use mc_util_from_random::FromRandom;
@@ -217,7 +217,7 @@ mod tests {
         let prefix = SetMintConfigTxPrefix {
             token_id: token_id,
             configs: vec![mint_config1.clone(), mint_config2.clone()],
-            nonce: vec![2u8; NONCE_MIN_LENGTH],
+            nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
         };
         let message = prefix.hash();
@@ -333,7 +333,7 @@ mod tests {
         let prefix = SetMintConfigTxPrefix {
             token_id: token_id,
             configs: vec![mint_config1.clone(), mint_config2.clone()],
-            nonce: vec![2u8; NONCE_MIN_LENGTH],
+            nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
         };
         let message = prefix.hash();
@@ -410,7 +410,7 @@ mod tests {
         let prefix = SetMintConfigTxPrefix {
             token_id: token_id,
             configs: vec![mint_config1.clone(), mint_config2.clone()],
-            nonce: vec![2u8; NONCE_MIN_LENGTH],
+            nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
         };
         let message = prefix.hash();
@@ -501,7 +501,7 @@ mod tests {
         let prefix = SetMintConfigTxPrefix {
             token_id: token_id,
             configs: vec![mint_config1.clone(), mint_config2.clone()],
-            nonce: vec![2u8; NONCE_MIN_LENGTH],
+            nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
         };
         let message = prefix.hash();

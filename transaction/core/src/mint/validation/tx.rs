@@ -88,7 +88,7 @@ fn validate_signature(tx: &MintTx, signer_set: &SignerSet<Ed25519Public>) -> Res
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mint::{constants::NONCE_MIN_LENGTH, MintTxPrefix};
+    use crate::mint::{constants::NONCE_LENGTH, MintTxPrefix};
     use mc_crypto_keys::{Ed25519Pair, RistrettoPublic, Signer};
     use mc_crypto_multisig::MultiSig;
     use mc_util_from_random::FromRandom;
@@ -120,7 +120,7 @@ mod tests {
             amount: 100,
             view_public_key: RistrettoPublic::from_random(&mut rng),
             spend_public_key: RistrettoPublic::from_random(&mut rng),
-            nonce: vec![1u8; NONCE_MIN_LENGTH],
+            nonce: vec![1u8; NONCE_LENGTH],
             tombstone_block: 10,
         };
         let message = prefix.hash();
@@ -159,7 +159,7 @@ mod tests {
             amount: 100,
             view_public_key: RistrettoPublic::from_random(&mut rng),
             spend_public_key: RistrettoPublic::from_random(&mut rng),
-            nonce: vec![1u8; NONCE_MIN_LENGTH],
+            nonce: vec![1u8; NONCE_LENGTH],
             tombstone_block: 10,
         };
         let message = prefix.hash();
@@ -201,7 +201,7 @@ mod tests {
             amount: mint_config.mint_limit + 1,
             view_public_key: RistrettoPublic::from_random(&mut rng),
             spend_public_key: RistrettoPublic::from_random(&mut rng),
-            nonce: vec![1u8; NONCE_MIN_LENGTH],
+            nonce: vec![1u8; NONCE_LENGTH],
             tombstone_block: 10,
         };
         let message = prefix.hash();
@@ -243,7 +243,7 @@ mod tests {
             amount: 1,
             view_public_key: RistrettoPublic::from_random(&mut rng),
             spend_public_key: RistrettoPublic::from_random(&mut rng),
-            nonce: vec![1u8; NONCE_MIN_LENGTH],
+            nonce: vec![1u8; NONCE_LENGTH],
             tombstone_block: 10,
         };
         let message = prefix.hash();
@@ -269,7 +269,7 @@ mod tests {
             amount: 10,
             view_public_key: RistrettoPublic::from_random(&mut rng),
             spend_public_key: RistrettoPublic::from_random(&mut rng),
-            nonce: vec![1u8; NONCE_MIN_LENGTH],
+            nonce: vec![1u8; NONCE_LENGTH],
             tombstone_block: 10,
         };
         let message = prefix.hash();
@@ -293,7 +293,7 @@ mod tests {
             amount: 1,
             view_public_key: RistrettoPublic::from_random(&mut rng),
             spend_public_key: RistrettoPublic::from_random(&mut rng),
-            nonce: vec![1u8; NONCE_MIN_LENGTH],
+            nonce: vec![1u8; NONCE_LENGTH],
             tombstone_block: 10,
         };
         let message = prefix.hash();
@@ -316,7 +316,7 @@ mod tests {
             amount: 1,
             view_public_key: RistrettoPublic::from_random(&mut rng),
             spend_public_key: RistrettoPublic::from_random(&mut rng),
-            nonce: vec![1u8; NONCE_MIN_LENGTH],
+            nonce: vec![1u8; NONCE_LENGTH],
             tombstone_block: 10,
         };
         let message = prefix.hash();

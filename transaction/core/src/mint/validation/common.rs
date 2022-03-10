@@ -3,10 +3,7 @@
 //! Common validation code shared between different mint transaction types.
 
 use crate::{
-    mint::{
-        constants::{NONCE_MAX_LENGTH, NONCE_MIN_LENGTH},
-        validation::error::Error,
-    },
+    mint::{constants::NONCE_LENGTH, validation::error::Error},
     validation::{
         validate_tombstone as transaction_validate_tombstone, TransactionValidationError,
     },
@@ -59,12 +56,12 @@ pub fn validate_token_id(token_id: u32) -> Result<(), Error> {
     Ok(())
 }
 
-/// The nonce must be within the hardcoded lenght limit.
+/// The nonce must be of the correct length.
 ///
 /// # Arguments
 /// `nonce` - The nonce to validate.
 pub fn validate_nonce(nonce: &[u8]) -> Result<(), Error> {
-    if nonce.len() < NONCE_MIN_LENGTH || nonce.len() > NONCE_MAX_LENGTH {
+    if nonce.len() != NONCE_LENGTH {
         return Err(Error::NonceLength(nonce.len()));
     }
 
@@ -102,21 +99,19 @@ mod tests {
 
     #[test]
     fn validate_nonce_accepts_valid_nonces() {
-        validate_nonce(&[1u8; NONCE_MIN_LENGTH]).unwrap();
-        validate_nonce(&[1u8; NONCE_MIN_LENGTH + 1]).unwrap();
-        validate_nonce(&[1u8; NONCE_MAX_LENGTH]).unwrap();
+        validate_nonce(&[1u8; NONCE_LENGTH]).unwrap();
     }
 
     #[test]
     fn validate_nonce_rejects_invalid_nonces() {
         assert_eq!(validate_nonce(&[]), Err(Error::NonceLength(0)));
         assert_eq!(
-            validate_nonce(&[1u8; NONCE_MIN_LENGTH - 1]),
-            Err(Error::NonceLength(NONCE_MIN_LENGTH - 1))
+            validate_nonce(&[1u8; NONCE_LENGTH - 1]),
+            Err(Error::NonceLength(NONCE_LENGTH - 1))
         );
         assert_eq!(
-            validate_nonce(&[1u8; NONCE_MAX_LENGTH + 1]),
-            Err(Error::NonceLength(NONCE_MAX_LENGTH + 1))
+            validate_nonce(&[1u8; NONCE_LENGTH + 1]),
+            Err(Error::NonceLength(NONCE_LENGTH + 1))
         );
     }
 }
