@@ -161,8 +161,8 @@ impl MintConfigStore {
                 self.block_index_by_set_mint_config_tx_nonce,
                 &set_mint_config_tx.prefix.nonce,
                 &block_index_bytes,
-                WriteFlags::NO_OVERWRITE, /* this ensures we do not overwrite a nonce that was
-                                           * already used */
+                //  ensures we do not overwrite a nonce that was already used
+                WriteFlags::NO_OVERWRITE,
             )?;
 
             db_transaction.put(
