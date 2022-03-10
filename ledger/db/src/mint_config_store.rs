@@ -266,7 +266,7 @@ impl MintConfigStore {
         Ok(())
     }
 
-    /// Returns true of the Ledger contains the given set-mint-config-tx nonce.
+    /// Returns true if the Ledger contains the given set-mint-config-tx nonce.
     pub fn contains_set_mint_config_tx_nonce(
         &self,
         nonce: &[u8],
