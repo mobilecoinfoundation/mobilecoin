@@ -2066,8 +2066,9 @@ mod ledger_db_test {
 
     #[test]
     #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: NoKeyImages")]
-    // Appending a non-origin block should fail if the block contains no key images.
-    fn test_append_block_fails_for_non_origin_blocks_without_key_images() {
+    // Appending a non-origin block should fail if the block contains no key images
+    // and no minting transactions.
+    fn test_append_block_fails_for_non_origin_non_minting_blocks_without_key_images() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
 
