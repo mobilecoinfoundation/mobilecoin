@@ -131,6 +131,9 @@ message ViewKey {
 ///
 /// Note that this is not an exhaustive list and clients should gracefully handle
 /// the scenario that they receive a tx out with a token id they don't know about yet.
+///
+/// If changing this, please keep it in sync with the list defined in
+/// mc-transaction-core in the tokens module.
 enum KnownTokenId {
     MOB = 0;
 }

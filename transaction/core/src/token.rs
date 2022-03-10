@@ -67,6 +67,9 @@ pub trait Token {
 }
 
 /// Exports structures which expose constants related to tokens.
+///
+/// If changing this, please keep it in sync with the enum defined in
+/// external.proto
 pub mod tokens {
     use super::*;
     use crate::constants::MICROMOB_TO_PICOMOB;
