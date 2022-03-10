@@ -46,6 +46,9 @@ pub enum Error {
     /// NoOutputs
     NoOutputs,
 
+    /// TooFewOutputs
+    TooFewOutputs,
+
     /// LMDB error, may mean database is opened multiple times in a process.
     BadRslot,
 
