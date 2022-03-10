@@ -9,9 +9,9 @@ use lmdb::{DatabaseFlags, Environment, Transaction, WriteFlags};
 use mc_common::logger::{log, Logger};
 use mc_ledger_db::{
     key_bytes_to_u64, tx_out_store::TX_OUT_INDEX_BY_PUBLIC_KEY_DB_NAME, u64_to_key_bytes, Error,
-    LedgerDbMetadataStoreSettings, MetadataStore, MintConfigStore, TxOutStore, TxOutsByBlockValue,
-    BLOCK_NUMBER_BY_TX_OUT_INDEX, COUNTS_DB_NAME, MAX_LMDB_DATABASES, MAX_LMDB_FILE_SIZE,
-    NUM_BLOCKS_KEY, TX_OUTS_BY_BLOCK_DB_NAME,
+    LedgerDbMetadataStoreSettings, MetadataStore, MintConfigStore, MintTxStore, TxOutStore,
+    TxOutsByBlockValue, BLOCK_NUMBER_BY_TX_OUT_INDEX, COUNTS_DB_NAME, MAX_LMDB_DATABASES,
+    MAX_LMDB_FILE_SIZE, NUM_BLOCKS_KEY, TX_OUTS_BY_BLOCK_DB_NAME,
 };
 use mc_util_lmdb::MetadataStoreError;
 use mc_util_serial::decode;
@@ -42,6 +42,7 @@ pub fn migrate(ledger_db_path: impl AsRef<Path>, logger: &Logger) {
 
         match version.is_compatible_with_latest() {
             Ok(_) => {
+                log::info!(logger, "Ledger db is compatible with latest version");
                 break;
             }
             // Version 2020_06_10 came after 2020_04_27 and introduced the TxOut public key -> index
@@ -89,6 +90,10 @@ pub fn migrate(ledger_db_path: impl AsRef<Path>, logger: &Logger) {
                     "Ledger db migrating from version 2020_07_07 to 2022_02_22..."
                 );
                 MintConfigStore::create(&env).expect("Failed creating MintConfigStore");
+                MintTxStore::create(&env).expect("Failed creating MintTxStore");
+
+                backfill_empty_mint_stores(&env, logger)
+                    .expect("Failed backfilling empty mint stores");
 
                 let mut db_txn = env.begin_rw_txn().expect("Failed starting rw transaction");
                 metadata_store
@@ -207,6 +212,38 @@ fn construct_block_number_by_tx_out_index_from_existing_data(
             log::info!(
                 logger,
                 "Constructing block_number_by_tx_out_index: {}% complete",
+                percents
+            );
+        }
+    }
+    Ok(db_txn.commit()?)
+}
+
+/// A utility function for backfilling empty mint tx data for all existing
+/// blocks. This is necessary because we store an empty list of mint txs for
+/// blocks that did not contain any.
+fn backfill_empty_mint_stores(env: &Environment, logger: &Logger) -> Result<(), Error> {
+    // Open pre-existing databases that has data we need.
+    let mint_config_store = MintConfigStore::new(env)?;
+    let mint_tx_store = MintTxStore::new(env)?;
+    let counts_db = env.open_db(Some(COUNTS_DB_NAME))?;
+
+    let mut db_txn = env.begin_rw_txn()?;
+
+    let num_blocks = key_bytes_to_u64(db_txn.get(counts_db, &NUM_BLOCKS_KEY)?);
+
+    let mut percents: u64 = 0;
+    for block_index in 0..num_blocks {
+        mint_config_store.write_set_mint_config_txs(block_index, &[], &mut db_txn)?;
+        mint_tx_store.write_mint_txs(block_index, &[], &mint_config_store, &mut db_txn)?;
+
+        // Throttled logging.
+        let new_percents = block_index * 100 / num_blocks;
+        if new_percents != percents {
+            percents = new_percents;
+            log::info!(
+                logger,
+                "Backfilling empty mint stores: {}% complete",
                 percents
             );
         }

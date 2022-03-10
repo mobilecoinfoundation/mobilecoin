@@ -5,7 +5,6 @@ use mc_account_keys::AccountKey;
 use mc_common::{HashMap, HashSet};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_transaction_core::{
-    mint::{MintConfig, SetMintConfigTx},
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion, TokenId,
@@ -191,15 +190,8 @@ impl Ledger for MockLedger {
     fn get_root_tx_out_membership_element(&self) -> Result<TxOutMembershipElement, Error> {
         unimplemented!();
     }
-    fn set_active_mint_configs(&self, _set_mint_config_tx: &SetMintConfigTx) -> Result<(), Error> {
-        unimplemented!()
-    }
 
     fn get_active_mint_configs(&self, _token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error> {
-        unimplemented!()
-    }
-
-    fn update_total_minted(&self, _mint_config: &MintConfig, _amount: u64) -> Result<(), Error> {
         unimplemented!()
     }
 }
@@ -243,7 +235,10 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
 
             let outputs = vec![tx_out];
             let origin_block = Block::new_origin_block(&outputs);
-            let block_contents = BlockContents::new(vec![], outputs);
+            let block_contents = BlockContents {
+                outputs,
+                ..Default::default()
+            };
             block_ids.push(origin_block.id.clone());
             blocks_and_contents.push((origin_block, block_contents));
         } else {
@@ -258,7 +253,11 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
 
             let outputs = vec![tx_out];
             let key_images = vec![KeyImage::from(rng.next_u64())];
-            let block_contents = BlockContents::new(key_images, outputs);
+            let block_contents = BlockContents {
+                key_images,
+                outputs,
+                ..Default::default()
+            };
 
             let block = Block::new_with_parent(
                 BlockVersion::ONE,
