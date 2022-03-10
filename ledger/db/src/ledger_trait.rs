@@ -92,7 +92,7 @@ pub trait Ledger: Send {
     }
 
     /// Get active mint configurations for a given token id.
-    /// Returns an empty array of no mint configurations are active for the
+    /// Returns an empty array if no mint configurations are active for the
     /// given token id.
     fn get_active_mint_configs(&self, token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error>;
 
