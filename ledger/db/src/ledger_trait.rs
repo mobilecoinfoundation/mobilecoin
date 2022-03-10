@@ -4,7 +4,6 @@ use crate::{mint_config_store::ActiveMintConfig, Error};
 use mc_common::Hash;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
-    mint::{MintConfig, SetMintConfigTx},
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockData, BlockIndex, BlockSignature, TokenId,
@@ -92,15 +91,8 @@ pub trait Ledger: Send {
         self.get_block(num_blocks - 1)
     }
 
-    /// Set active mint configurations for a given token id, based on a
-    /// set-mint-config transaction.
-    fn set_active_mint_configs(&self, set_mint_config_tx: &SetMintConfigTx) -> Result<(), Error>;
-
     /// Get active mint configurations for a given token id.
     /// Returns an empty array of no mint configurations are active for the
     /// given token id.
     fn get_active_mint_configs(&self, token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error>;
-
-    /// Update the total minted amount for a given MintConfig.
-    fn update_total_minted(&self, mint_config: &MintConfig, amount: u64) -> Result<(), Error>;
 }

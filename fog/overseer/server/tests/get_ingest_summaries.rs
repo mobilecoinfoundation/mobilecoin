@@ -43,6 +43,7 @@ fn one_active_node_produces_ingest_summaries(logger: Logger) {
     let origin_contents = BlockContents {
         key_images: Default::default(),
         outputs: origin_txo.clone(),
+        ..Default::default()
     };
     let origin_block = Block::new_origin_block(&origin_txo);
     ledger

@@ -4,7 +4,6 @@ use crate::{
     tx::{TxOut, TxOutMembershipElement},
     BlockContents, BlockContentsHash, BlockID, BlockVersion,
 };
-use alloc::vec::Vec;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use prost::Message;
 use serde::{Deserialize, Serialize};
@@ -61,9 +60,13 @@ impl Block {
         let index: BlockIndex = 0;
         let cumulative_txo_count = outputs.len() as u64;
         let root_element = TxOutMembershipElement::default();
-        // The origin block does not contain any key images.
-        let key_images = Vec::new();
-        let block_contents = BlockContents::new(key_images, outputs.to_vec());
+
+        // The origin block does not contain anything but TxOuts.
+        let block_contents = BlockContents {
+            outputs: outputs.to_vec(),
+            ..Default::default()
+        };
+
         let contents_hash = block_contents.hash();
         let id = compute_block_id(
             version,
@@ -218,7 +221,11 @@ mod block_tests {
 
     fn get_block_contents<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> BlockContents {
         let (key_images, outputs) = get_key_images_and_outputs(rng);
-        BlockContents::new(key_images, outputs)
+        BlockContents {
+            key_images,
+            outputs,
+            ..Default::default()
+        }
     }
 
     fn get_key_images_and_outputs<RNG: CryptoRng + RngCore>(
@@ -283,7 +290,11 @@ mod block_tests {
             output.e_memo = None;
         }
 
-        let block_contents = BlockContents::new(key_images, outputs);
+        let block_contents = BlockContents {
+            key_images,
+            outputs,
+            ..Default::default()
+        };
         Block::new(
             BLOCK_VERSION,
             &parent_id,

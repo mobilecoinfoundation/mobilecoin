@@ -113,7 +113,11 @@ pub fn bootstrap_ledger(
             Default::default()
         };
 
-        let block_contents = BlockContents::new(key_images, outputs.clone());
+        let block_contents = BlockContents {
+            key_images,
+            outputs: outputs.clone(),
+            ..Default::default()
+        };
 
         let block = match previous_block {
             Some(parent) => {

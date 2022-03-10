@@ -2,8 +2,9 @@
 
 //! Minting transactions.
 
+use crate::domain_separators::MINT_TX_PREFIX_DOMAIN_TAG;
 use alloc::vec::Vec;
-use mc_crypto_digestible::Digestible;
+use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{Ed25519Signature, RistrettoPublic};
 use mc_crypto_multisig::MultiSig;
 use mc_util_serial::Message;
@@ -37,6 +38,13 @@ pub struct MintTxPrefix {
     /// The block index at which this transaction is no longer valid.
     #[prost(uint64, tag = "6")]
     pub tombstone_block: u64,
+}
+
+impl MintTxPrefix {
+    /// Digestible-crate hash of `self` using Merlin
+    pub fn hash(&self) -> [u8; 32] {
+        self.digest32::<MerlinTranscript>(MINT_TX_PREFIX_DOMAIN_TAG.as_bytes())
+    }
 }
 
 /// A mint transaction coupled with a signature over it.

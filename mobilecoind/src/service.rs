@@ -3649,7 +3649,11 @@ mod test {
             let tx_proposal = TxProposal::try_from(response.get_tx_proposal()).unwrap();
             let key_images = tx_proposal.tx.key_images();
             let outputs = tx_proposal.tx.prefix.outputs.clone();
-            let block_contents = BlockContents::new(key_images, outputs);
+            let block_contents = BlockContents {
+                key_images,
+                outputs,
+                ..Default::default()
+            };
 
             // Append to ledger.
             let num_blocks = ledger_db.num_blocks().unwrap();

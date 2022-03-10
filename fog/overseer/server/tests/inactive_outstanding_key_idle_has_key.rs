@@ -60,6 +60,7 @@ fn inactive_oustanding_key_idle_node_has_original_key_node_is_activated_and_key_
     let origin_contents = BlockContents {
         key_images: Default::default(),
         outputs: origin_txo.clone(),
+        ..Default::default()
     };
     let origin_block = Block::new_origin_block(&origin_txo);
     ledger
