@@ -153,7 +153,6 @@ fn main() {
 
     let block_version = config
         .block_version
-        .clone()
         .unwrap_or_else(|| ledger_db.get_latest_block().unwrap().version);
 
     BLOCK_HEIGHT.store(ledger_db.num_blocks().unwrap(), Ordering::SeqCst);
