@@ -39,8 +39,8 @@ publishing {
             def localMavenUser = properties.getProperty("maven.user")
             def localMavenPassword = properties.getProperty("maven.apikey")
             // CI - Get Maven Creds from Env Vars if no local.properties
-            def mavenUser =  localMavenUser != null ? localMavenUser : System.getenv('MAVEN_USER')
-            def mavenPassword = localMavenPassword != null ? localMavenPassword : System.getenv('MAVEN_PASSWORD')
+            def mavenUser =  localMavenUser ?: System.getenv('MAVEN_USER')
+            def mavenPassword = localMavenPassword ?: System.getenv('MAVEN_PASSWORD')
             url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
             credentials {
                 username = mavenUser
