@@ -65,6 +65,16 @@ pub struct TestClientPolicy {
     pub test_rth_memos: bool,
 }
 
+/// Data associated with a test client transfer.
+struct TransferData {
+    /// The transaction that represents the transfer.
+    transaction: Tx,
+    /// The block count at which the transaction was submitted.
+    block_count: u64,
+    /// The fee associated with the transaction.
+    fee: u64,
+}
+
 impl Default for TestClientPolicy {
     fn default() -> Self {
         Self {
@@ -220,11 +230,13 @@ impl TestClient {
     /// to.
     ///
     /// This only builds and submits the transaction, it does not confirm it
+    ///
+    /// Returns:
     fn transfer(
         &self,
         source_client: &mut Client,
         target_client: &mut Client,
-    ) -> Result<(Tx, u64), TestClientError> {
+    ) -> Result<TransferData, TestClientError> {
         self.tx_info.clear();
         let target_address = target_client.get_account_key().default_subaddress();
         log::debug!(
@@ -269,7 +281,11 @@ impl TestClient {
             block_count
         };
         self.tx_info.set_tx_propose_block_count(block_count);
-        Ok((transaction, block_count))
+        Ok(TransferData {
+            transaction,
+            block_count,
+            fee,
+        })
     }
 
     /// Waits for a transaction to be accepted by the network
@@ -496,15 +512,13 @@ impl TestClient {
             },
         )?;
 
-        let fee = source_client_lk.get_fee().unwrap_or(Mob::MINIMUM_FEE);
         let transfer_start = std::time::SystemTime::now();
-        let (transaction, block_count) =
-            self.transfer(&mut source_client_lk, &mut target_client_lk)?;
+        let transfer_data = self.transfer(&mut source_client_lk, &mut target_client_lk)?;
 
-        let mut span = block_span_builder(&tracer, "test_iteration", block_count)
+        let mut span = block_span_builder(&tracer, "test_iteration", transfer_data.block_count)
             .with_start_time(transfer_start)
             .start(&tracer);
-        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(block_count as i64));
+        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(transfer_data.block_count as i64));
         let _active = mark_span_as_active(span);
 
         let start = Instant::now();
@@ -524,7 +538,7 @@ impl TestClient {
 
         // Wait for key images to land in ledger server
         let transaction_appeared =
-            self.ensure_transaction_is_accepted(&mut source_client_lk, &transaction)?;
+            self.ensure_transaction_is_accepted(&mut source_client_lk, &transfer_data.transaction)?;
 
         counters::TX_CONFIRMED_TIME.observe(start.elapsed().as_secs_f64());
 
@@ -538,7 +552,7 @@ impl TestClient {
             self.ensure_expected_balance_after_block(
                 &mut source_client_lk,
                 transaction_appeared,
-                src_balance - self.policy.transfer_amount - fee,
+                src_balance - self.policy.transfer_amount - transfer_data.fee,
             )
         })?;
 
@@ -554,16 +568,18 @@ impl TestClient {
                 match source_client_lk.get_last_memo() {
                     Ok(Some(memo)) => match memo {
                         MemoType::Destination(memo) => {
-                            if memo.get_total_outlay() != self.policy.transfer_amount + fee {
-                                log::error!(self.logger, "Destination memo had wrong total outlay, found {}, expected {}. Tx Info: {}", memo.get_total_outlay(), self.policy.transfer_amount + fee, self.tx_info);
+                            if memo.get_total_outlay()
+                                != self.policy.transfer_amount + transfer_data.fee
+                            {
+                                log::error!(self.logger, "Destination memo had wrong total outlay, found {}, expected {}. Tx Info: {}", memo.get_total_outlay(), self.policy.transfer_amount + transfer_data.fee, self.tx_info);
                                 return Err(TestClientError::UnexpectedMemo);
                             }
-                            if memo.get_fee() != fee {
+                            if memo.get_fee() != transfer_data.fee {
                                 log::error!(
                                     self.logger,
                                     "Destination memo had wrong fee, found {}, expected {}. Tx Info: {}",
                                     memo.get_fee(),
-                                    fee,
+                                    transfer_data.fee,
                                     self.tx_info
                                 );
                                 return Err(TestClientError::UnexpectedMemo);
@@ -606,7 +622,7 @@ impl TestClient {
                 }
             }
         }
-        Ok(transaction)
+        Ok(transfer_data.transaction)
     }
 
     /// Run a test that lasts a fixed duration and fails fast on an error

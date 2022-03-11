@@ -324,7 +324,7 @@ impl Client {
             .tx_data
             .get_transaction_inputs(amount + Mob::MINIMUM_FEE, TARGET_NUM_INPUTS)?;
         let inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = self.get_proofs(&inputs)?;
-        let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> = self.get_rings(inputs.len(), rng)?;
+        let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> = self.get_rings(&inputs, rng)?;
 
         let tombstone_block = self.compute_tombstone_block()?;
 
@@ -444,26 +444,35 @@ impl Client {
     /// self.ring_size elements.
     fn get_rings<T: RngCore + CryptoRng>(
         &mut self,
-        num_rings: usize,
+        true_inputs: &[(OwnedTxOut, TxOutMembershipProof)],
         rng: &mut T,
     ) -> Result<Vec<Vec<(TxOut, TxOutMembershipProof)>>> {
         mc_common::trace_time!(self.logger, "MobileCoinClient.get_rings");
 
+        let true_input_indices: HashSet<u64> = true_inputs
+            .iter()
+            .map(|input| input.0.global_index)
+            .collect();
+
+        let num_rings = true_inputs.len();
         let num_requested = num_rings * self.ring_size;
         let sample_limit = self.tx_data.get_global_txo_count() as usize;
 
-        // Randomly sample `num_requested` TxOuts, without replacement.
-        if sample_limit < num_requested {
+        // Randomly sample `num_requested` TxOuts, without replacement, not using
+        // true_inputs
+        if sample_limit < num_requested + true_inputs.len() {
             return Err(Error::InsufficientTxOutsInBlockchain(
                 sample_limit,
-                num_requested,
+                num_requested + true_inputs.len(),
             ));
         }
 
         let mut sampled_indices: HashSet<u64> = HashSet::default();
         while sampled_indices.len() < num_requested {
-            let index = rng.gen_range(0..sample_limit);
-            sampled_indices.insert(index as u64);
+            let index = rng.gen_range(0..sample_limit) as u64;
+            if !true_input_indices.contains(&index) {
+                sampled_indices.insert(index);
+            }
         }
         let indices: Vec<u64> = sampled_indices.iter().cloned().collect();
         // FIXME: We are not sure whether this is a necessary parameter under ORAM.
