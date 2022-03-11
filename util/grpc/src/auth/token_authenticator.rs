@@ -6,8 +6,9 @@
 use super::*;
 
 use displaydoc::Display;
-use hmac::{Hmac, Mac, NewMac};
+use hmac::{Hmac, Mac};
 use mc_common::time::TimeProvider;
+use sha2::Sha256;
 use std::{str, time::Duration};
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
@@ -103,7 +104,7 @@ impl<TP: TimeProvider> TokenAuthenticator<TP> {
         let their_suffix: Vec<u8> =
             hex::decode(signature).map_err(|_| AuthenticatorError::InvalidAuthorizationToken)?;
 
-        let mut mac = Hmac::<sha2::Sha256>::new_varkey(&self.shared_secret)
+        let mut mac = Hmac::<Sha256>::new_from_slice(&self.shared_secret)
             .map_err(|_| AuthenticatorError::Other("Invalid HMAC key".to_owned()))?;
         mac.update(data.as_bytes());
         let our_signature = mac.finalize().into_bytes();
@@ -155,7 +156,7 @@ impl<TP: TimeProvider> TokenBasicCredentialsGenerator<TP> {
             .as_secs();
         let prefix = format!("{}:{}", user_id, current_time_seconds);
 
-        let mut mac = Hmac::<sha2::Sha256>::new_varkey(&self.shared_secret)
+        let mut mac = Hmac::<Sha256>::new_from_slice(&self.shared_secret)
             .map_err(|_| TokenBasicCredentialsGeneratorError::InvalidHmacKey)?;
         mac.update(prefix.as_bytes());
         let signature = mac.finalize().into_bytes();

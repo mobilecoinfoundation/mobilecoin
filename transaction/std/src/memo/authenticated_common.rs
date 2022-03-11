@@ -5,7 +5,7 @@
 //! This validation scheme was proposed for standardization in
 //! mobilecoinfoundation/mcips/pull/4
 
-use hmac::{Hmac, Mac, NewMac};
+use hmac::{Hmac, Mac};
 use mc_account_keys::{PublicAddress, ShortAddressHash};
 use mc_crypto_keys::{CompressedRistrettoPublic, KexReusablePrivate, RistrettoPrivate};
 use sha2::Sha512;

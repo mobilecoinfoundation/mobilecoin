@@ -107,6 +107,7 @@ fn one_active_node_produces_ingest_summaries(logger: Logger) {
             .unwrap();
     let rocket = server::initialize_rocket_server(rocket_config, overseer_state);
     let client = Client::new(rocket).expect("valid rocket instance");
+    client.post("/enable").dispatch();
 
     // Give overseer time to perform its logic.
     std::thread::sleep(Duration::from_secs(10));

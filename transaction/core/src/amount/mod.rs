@@ -8,9 +8,9 @@
 #![cfg_attr(test, allow(clippy::unnecessary_operation))]
 
 use crate::domain_separators::{AMOUNT_BLINDING_DOMAIN_TAG, AMOUNT_VALUE_DOMAIN_TAG};
-use blake2::{Blake2b, Digest};
 use curve25519_dalek::scalar::Scalar;
 use mc_crypto_digestible::Digestible;
+use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::RistrettoPublic;
 use prost::Message;
 use serde::{Deserialize, Serialize};
@@ -97,7 +97,7 @@ impl Amount {
 /// # Arguments
 /// * `shared_secret` - The shared secret, e.g. `rB`.
 pub fn get_value_mask(shared_secret: &RistrettoPublic) -> u64 {
-    let mut hasher = Blake2b::new();
+    let mut hasher = Blake2b512::new();
     hasher.update(&AMOUNT_VALUE_DOMAIN_TAG);
     hasher.update(&shared_secret.to_bytes());
     let scalar = Scalar::from_hash(hasher);
@@ -111,7 +111,7 @@ pub fn get_value_mask(shared_secret: &RistrettoPublic) -> u64 {
 /// # Arguments
 /// * `shared_secret` - The shared secret, e.g. `rB`.
 fn get_blinding(shared_secret: &RistrettoPublic) -> Scalar {
-    let mut hasher = Blake2b::new();
+    let mut hasher = Blake2b512::new();
     hasher.update(&AMOUNT_BLINDING_DOMAIN_TAG);
     hasher.update(&shared_secret.to_bytes());
     Scalar::from_hash(hasher)

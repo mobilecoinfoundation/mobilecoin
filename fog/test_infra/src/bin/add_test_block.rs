@@ -25,10 +25,9 @@
 //! is returned.
 
 use core::convert::TryFrom;
-use digest::Digest;
 use mc_account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX};
 use mc_common::logger::create_root_logger;
-use mc_crypto_hashes::Blake2b256;
+use mc_crypto_hashes::{Blake2b256, Digest};
 use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate, RistrettoPublic};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
