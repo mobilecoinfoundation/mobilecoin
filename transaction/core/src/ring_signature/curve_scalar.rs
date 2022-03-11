@@ -18,9 +18,11 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
+/// A curve scalar
 #[derive(Copy, Clone, Default, Eq, Serialize, Deserialize, Digestible, Zeroize)]
 #[digestible(transparent)]
 pub struct CurveScalar {
+    /// The scalar value
     pub scalar: Scalar,
 }
 

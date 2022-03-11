@@ -216,6 +216,7 @@ derive_into_vec_from_repr_bytes!(MemoPayload);
 derive_serde_from_repr_bytes!(MemoPayload);
 derive_prost_message_from_repr_bytes!(MemoPayload);
 
+/// An error which can occur when handling memos
 #[derive(Display, Debug)]
 pub enum MemoError {
     /// Wrong length for memo payload: {0}

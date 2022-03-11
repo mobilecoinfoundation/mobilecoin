@@ -55,6 +55,7 @@ fn main() {
         0,
         seed,
         None,
+        0,
         logger.clone(),
     );
 

@@ -16,7 +16,9 @@ use zeroize::Zeroizing;
 
 use crate::{
     domain_separators::RING_MLSAG_CHALLENGE_DOMAIN_TAG,
-    ring_signature::{hash_to_point, CurveScalar, Error, KeyImage, Scalar, GENERATORS},
+    ring_signature::{
+        hash_to_point, CurveScalar, Error, KeyImage, PedersenGens, Scalar, B_BLINDING,
+    },
     Commitment, CompressedCommitment,
 };
 
@@ -40,21 +42,23 @@ pub struct RingMLSAG {
 }
 
 impl RingMLSAG {
-    // Sign a ring of input addresses and amount commitments.
-    //
-    // Sign a ring of input addresses and amount commitments using a modified MLSAG
-    // that omits the "key image" term for the amount commitments (which do not need
-    // to be linkable).
-    //
-    // # Arguments
-    // * `message` - Message to be signed.
-    // * `ring` - A ring of input onetime addresses and amount commitments.
-    // * `real_index` - The index in the ring of the real input.
-    // * `onetime_private_key` - The real input's private key.
-    // * `value` - Value of the real input.
-    // * `blinding` - Blinding of the real input.
-    // * `output_blinding` - The output amount's blinding factor.
-    // * `rng` - Randomness.
+    /// Sign a ring of input addresses and amount commitments.
+    ///
+    /// Sign a ring of input addresses and amount commitments using a modified
+    /// MLSAG that omits the "key image" term for the amount commitments
+    /// (which do not need to be linkable).
+    ///
+    /// # Arguments
+    /// * `message` - Message to be signed.
+    /// * `ring` - A ring of input onetime addresses and amount commitments.
+    /// * `real_index` - The index in the ring of the real input.
+    /// * `onetime_private_key` - The real input's private key.
+    /// * `value` - Value of the real input.
+    /// * `blinding` - Blinding of the real input.
+    /// * `output_blinding` - The output amount's blinding factor.
+    /// * `generator` - The pedersen generator to use for this commitment and
+    ///   signature
+    /// * `rng` - Randomness.
     pub fn sign<CSPRNG: RngCore + CryptoRng>(
         message: &[u8],
         ring: &[(CompressedRistrettoPublic, CompressedCommitment)],
@@ -63,6 +67,7 @@ impl RingMLSAG {
         value: u64,
         blinding: &Scalar,
         output_blinding: &Scalar,
+        generator: &PedersenGens,
         rng: &mut CSPRNG,
     ) -> Result<Self, Error> {
         RingMLSAG::sign_with_balance_check(
@@ -73,6 +78,7 @@ impl RingMLSAG {
             value,
             blinding,
             output_blinding,
+            generator,
             true,
             rng,
         )
@@ -92,6 +98,8 @@ impl RingMLSAG {
     // * `value` - Value of the real input.
     // * `blinding` - Blinding of the real input.
     // * `output_blinding` - The output amount's blinding factor.
+    // * `generator` - The pedersen generator to use for this commitment and
+    //   signature
     // * `check_value_is_preserved` - If true, check that the value of inputs equals
     //   value of outputs.
     // * `rng` - Randomness.
@@ -103,6 +111,7 @@ impl RingMLSAG {
         value: u64,
         blinding: &Scalar,
         output_blinding: &Scalar,
+        generator: &PedersenGens,
         check_value_is_preserved: bool,
         rng: &mut CSPRNG,
     ) -> Result<Self, Error> {
@@ -112,7 +121,11 @@ impl RingMLSAG {
             return Err(Error::IndexOutOfBounds);
         }
 
-        let G = GENERATORS.B_blinding;
+        let G = B_BLINDING;
+        debug_assert!(
+            generator.B_blinding == G,
+            "basepoint for blindings mismatch"
+        );
 
         let key_image = KeyImage::from(onetime_private_key);
 
@@ -122,7 +135,7 @@ impl RingMLSAG {
         // Uncompressed output commitment.
         // This ensures that each address and commitment encodes a valid Ristretto
         // point.
-        let output_commitment = Commitment::new(value, *output_blinding);
+        let output_commitment = Commitment::new(value, *output_blinding, generator);
 
         // Ring must decompress.
         let decompressed_ring = decompress_ring(ring)?;
@@ -228,7 +241,7 @@ impl RingMLSAG {
             return Err(Error::LengthMismatch(2 * ring_size, self.responses.len()));
         }
 
-        let G = GENERATORS.B_blinding;
+        let G = B_BLINDING;
 
         // The key image must decompress.
         // This ensures that the key image encodes a valid Ristretto point.
@@ -335,7 +348,9 @@ fn decompress_ring(
 #[cfg(test)]
 mod mlsag_tests {
     use crate::{
-        ring_signature::{mlsag::RingMLSAG, CurveScalar, Error, KeyImage, Scalar},
+        ring_signature::{
+            generators, mlsag::RingMLSAG, CurveScalar, Error, KeyImage, PedersenGens, Scalar,
+        },
         CompressedCommitment,
     };
     use alloc::vec::Vec;
@@ -348,7 +363,7 @@ mod mlsag_tests {
 
     extern crate std;
 
-    #[derive(Debug)]
+    #[derive(Clone)]
     struct RingMLSAGParameters {
         message: [u8; 32],
         ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)>,
@@ -357,6 +372,7 @@ mod mlsag_tests {
         value: u64,
         blinding: Scalar,
         pseudo_output_blinding: Scalar,
+        generator: PedersenGens,
     }
 
     impl RingMLSAGParameters {
@@ -368,13 +384,15 @@ mod mlsag_tests {
             let mut message = [0u8; 32];
             rng.fill_bytes(&mut message);
 
+            let generator = generators(rng.next_u32());
+
             let mut ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)> = Vec::new();
             for _i in 0..num_mixins {
                 let address = CompressedRistrettoPublic::from(RistrettoPublic::from_random(rng));
                 let commitment = {
                     let value = rng.next_u64();
                     let blinding = Scalar::random(rng);
-                    CompressedCommitment::new(value, blinding)
+                    CompressedCommitment::new(value, blinding, &generator)
                 };
                 ring.push((address, commitment));
             }
@@ -386,7 +404,7 @@ mod mlsag_tests {
 
             let value = rng.next_u64();
             let blinding = Scalar::random(rng);
-            let commitment = CompressedCommitment::new(value, blinding);
+            let commitment = CompressedCommitment::new(value, blinding, &generator);
 
             let real_index = rng.next_u64() as usize % (num_mixins + 1);
             ring.insert(real_index, (onetime_public_key, commitment));
@@ -400,12 +418,45 @@ mod mlsag_tests {
                 value,
                 blinding,
                 pseudo_output_blinding,
+                generator,
             }
+        }
+
+        fn sign<RNG: RngCore + CryptoRng>(&self, rng: &mut RNG) -> Result<RingMLSAG, Error> {
+            RingMLSAG::sign(
+                &self.message,
+                &self.ring,
+                self.real_index,
+                &self.onetime_private_key,
+                self.value,
+                &self.blinding,
+                &self.pseudo_output_blinding,
+                &self.generator,
+                rng,
+            )
+        }
+
+        fn sign_without_balance_check<RNG: RngCore + CryptoRng>(
+            &self,
+            rng: &mut RNG,
+        ) -> Result<RingMLSAG, Error> {
+            RingMLSAG::sign_with_balance_check(
+                &self.message,
+                &self.ring,
+                self.real_index,
+                &self.onetime_private_key,
+                self.value,
+                &self.blinding,
+                &self.pseudo_output_blinding,
+                &self.generator,
+                false,
+                rng,
+            )
         }
     }
 
     proptest! {
-        #![proptest_config(ProptestConfig::with_cases(3))]
+        #![proptest_config(ProptestConfig::with_cases(6))]
 
         #[test]
         // `sign` should return a signature with 2*ring_size responses.
@@ -416,20 +467,10 @@ mod mlsag_tests {
             let mut rng: StdRng = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
 
-            let ring_mlsag_parameters =
+            let params =
                 RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
-            let signature = RingMLSAG::sign(
-                &ring_mlsag_parameters.message,
-                &ring_mlsag_parameters.ring,
-                ring_mlsag_parameters.real_index,
-                &ring_mlsag_parameters.onetime_private_key,
-                ring_mlsag_parameters.value,
-                &ring_mlsag_parameters.blinding,
-                &ring_mlsag_parameters.pseudo_output_blinding,
-                &mut rng,
-            )
-            .unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
             let ring_size = num_mixins + 1;
             assert_eq!(signature.responses.len(), 2 * ring_size);
@@ -450,17 +491,7 @@ mod mlsag_tests {
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
-            let signature = RingMLSAG::sign(
-                &params.message,
-                &params.ring,
-                params.real_index,
-                &params.onetime_private_key,
-                params.value,
-                &params.blinding,
-                &params.pseudo_output_blinding,
-                &mut rng,
-            )
-            .unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
             let expected_key_image = KeyImage::from(&params.onetime_private_key);
             assert_eq!(signature.key_image, expected_key_image);
@@ -474,19 +505,11 @@ mod mlsag_tests {
         ) {
             let mut rng: StdRng = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
-            let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
+            let mut params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
             let wrong_value = rng.next_u64();
+            params.value = wrong_value;
 
-            let result = RingMLSAG::sign(
-                &params.message,
-                &params.ring,
-                params.real_index,
-                &params.onetime_private_key,
-                wrong_value,
-                &params.blinding,
-                &params.pseudo_output_blinding,
-                &mut rng,
-            );
+            let result = params.sign(&mut rng);
 
             match result {
                 Err(Error::ValueNotConserved) => {} // Expected
@@ -501,21 +524,14 @@ mod mlsag_tests {
         ) {
             let mut rng: StdRng = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
-            let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
+            let mut params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
             // The ring contains num_mixins + 1 elements, with indices 0..num_mixins.
             // This is the smallest out of bounds index.
             let wrong_real_index = num_mixins + 1;
 
-            let result = RingMLSAG::sign(
-                &params.message,
-                &params.ring,
-                wrong_real_index,
-                &params.onetime_private_key,
-                params.value,
-                &params.blinding,
-                &params.pseudo_output_blinding,
-                &mut rng,
-            );
+            params.real_index = wrong_real_index;
+
+            let result = params.sign(&mut rng);
 
             match result {
                 Err(Error::IndexOutOfBounds) => {} // Expected
@@ -533,19 +549,9 @@ mod mlsag_tests {
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
-            let signature = RingMLSAG::sign(
-                &params.message,
-                &params.ring,
-                params.real_index,
-                &params.onetime_private_key,
-                params.value,
-                &params.blinding,
-                &params.pseudo_output_blinding,
-                &mut rng,
-            )
-            .unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
-            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding);
+            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding, &params.generator);
 
             assert!(signature
                 .verify(&params.message, &params.ring, &output_commitment)
@@ -560,22 +566,13 @@ mod mlsag_tests {
         ) {
             let mut rng: StdRng = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
-            let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
+            let mut params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
             let wrong_onetime_private_key = RistrettoPrivate::from_random(&mut rng);
+            params.onetime_private_key = wrong_onetime_private_key;
 
-            let signature = RingMLSAG::sign(
-                &params.message,
-                &params.ring,
-                params.real_index,
-                &wrong_onetime_private_key,
-                params.value,
-                &params.blinding,
-                &params.pseudo_output_blinding,
-                &mut rng,
-            )
-            .unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
-            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding);
+            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding, &params.generator);
 
             match signature.verify(&params.message, &params.ring, &output_commitment) {
                 Err(Error::InvalidSignature) => {} // This is expected.
@@ -595,22 +592,13 @@ mod mlsag_tests {
 
             // Sign with an input value that differs from the real input's amount commitment.
             {
+                let mut params = params.clone();
                 let wrong_value = rng.next_u64();
+                params.value = wrong_value;
                 // Disable value checking in order to create an invalid signature.
-                let invalid_signature = RingMLSAG::sign_with_balance_check(
-                    &params.message,
-                    &params.ring,
-                    params.real_index,
-                    &params.onetime_private_key,
-                    wrong_value,
-                    &params.blinding,
-                    &params.pseudo_output_blinding,
-                    false,
-                    &mut rng,
-                )
-                .unwrap();
+                let invalid_signature = params.sign_without_balance_check(&mut rng).unwrap();
 
-                let output_commitment = CompressedCommitment::new(wrong_value, params.pseudo_output_blinding);
+                let output_commitment = CompressedCommitment::new(wrong_value, params.pseudo_output_blinding, &params.generator);
 
                 let result =
                     invalid_signature.verify(&params.message, &params.ring, &output_commitment);
@@ -623,23 +611,15 @@ mod mlsag_tests {
 
             // Sign with an input blinding that differs from the real input's amount commitment.
             {
+                let mut params = params.clone();
                 let wrong_blinding = Scalar::random(&mut rng);
 
-                // Disable value checking in order to create an invalid signature.
-                let invalid_signature = RingMLSAG::sign_with_balance_check(
-                    &params.message,
-                    &params.ring,
-                    params.real_index,
-                    &params.onetime_private_key,
-                    params.value,
-                    &wrong_blinding,
-                    &params.pseudo_output_blinding,
-                    false,
-                    &mut rng,
-                )
-                .unwrap();
+                params.blinding = wrong_blinding;
 
-                let output_commitment = CompressedCommitment::new(params.value, wrong_blinding);
+                // Disable value checking in order to create an invalid signature.
+                let invalid_signature = params.sign_without_balance_check(&mut rng).unwrap();
+
+                let output_commitment = CompressedCommitment::new(params.value, wrong_blinding, &params.generator);
 
                 let result =
                     invalid_signature.verify(&params.message, &params.ring, &output_commitment);
@@ -661,17 +641,7 @@ mod mlsag_tests {
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
-            let mut signature = RingMLSAG::sign(
-                &params.message,
-                &params.ring,
-                params.real_index,
-                &params.onetime_private_key,
-                params.value,
-                &params.blinding,
-                &params.pseudo_output_blinding,
-                &mut rng,
-            )
-            .unwrap();
+            let mut signature = params.sign(&mut rng).unwrap();
 
             // Replace the key image with a non-canonical compressed Ristretto point.
             // This is constants::EDWARDS_D.to_bytes(), which is a negative point, so decompression should fail.
@@ -682,7 +652,7 @@ mod mlsag_tests {
 
             signature.key_image = KeyImage{point: bad_compressed};
 
-            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding);
+            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding, &params.generator);
 
             match signature.verify(&params.message, &params.ring, &output_commitment) {
                 Err(Error::InvalidKeyImage) => {} // This is expected.
@@ -701,23 +671,13 @@ mod mlsag_tests {
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
-            let mut signature = RingMLSAG::sign(
-                &params.message,
-                &params.ring,
-                params.real_index,
-                &params.onetime_private_key,
-                params.value,
-                &params.blinding,
-                &params.pseudo_output_blinding,
-                &mut rng,
-            )
-            .unwrap();
+            let mut signature = params.sign(&mut rng).unwrap();
 
             // Modify the key image.
             let wrong_key_image = KeyImage::from(rng.next_u64());
             signature.key_image = wrong_key_image;
 
-            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding);
+            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding, &params.generator);
 
             match signature.verify(&params.message, &params.ring, &output_commitment) {
                 Err(Error::InvalidSignature) => {} // This is expected.
@@ -735,23 +695,13 @@ mod mlsag_tests {
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
-            let signature = RingMLSAG::sign(
-                &params.message,
-                &params.ring,
-                params.real_index,
-                &params.onetime_private_key,
-                params.value,
-                &params.blinding,
-                &params.pseudo_output_blinding,
-                &mut rng,
-            )
-            .unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
             // Modify the message.
             let mut wrong_message = [0u8; 32];
             rng.fill_bytes(&mut wrong_message);
 
-            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding);
+            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding, &params.generator);
 
             let result = signature.verify(&wrong_message, &params.ring, &output_commitment);
 
@@ -771,19 +721,9 @@ mod mlsag_tests {
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let mut params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
-            let signature = RingMLSAG::sign(
-                &params.message,
-                &params.ring,
-                params.real_index,
-                &params.onetime_private_key,
-                params.value,
-                &params.blinding,
-                &params.pseudo_output_blinding,
-                &mut rng,
-            )
-            .unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
-            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding);
+            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding, &params.generator);
 
             // Modify a ring element's public key.
             {
@@ -803,7 +743,7 @@ mod mlsag_tests {
                 let index = (rng.next_u64() as usize) % num_mixins;
                 let value = rng.next_u64();
                 let blinding = Scalar::random(&mut rng);
-                params.ring[index].1 = CompressedCommitment::new(value, blinding);
+                params.ring[index].1 = CompressedCommitment::new(value, blinding, &params.generator);
 
                 let result = signature.verify(&params.message, &params.ring, &output_commitment);
 
@@ -824,21 +764,11 @@ mod mlsag_tests {
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
-            let signature = RingMLSAG::sign(
-                &params.message,
-                &params.ring,
-                params.real_index,
-                &params.onetime_private_key,
-                params.value,
-                &params.blinding,
-                &params.pseudo_output_blinding,
-                &mut rng,
-            )
-            .unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
             // The output_commitment should match the value and pseudo_output_blinding used by the signature.
             // Here, the output_commitment uses a different value.
-            let wrong_output_commitment = CompressedCommitment::new(rng.next_u64(), params.pseudo_output_blinding);
+            let wrong_output_commitment = CompressedCommitment::new(rng.next_u64(), params.pseudo_output_blinding, &params.generator);
 
             let result = signature.verify(&params.message, &params.ring, &wrong_output_commitment);
 
@@ -858,19 +788,9 @@ mod mlsag_tests {
 
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
-            let signature = RingMLSAG::sign(
-                &params.message,
-                &params.ring,
-                params.real_index,
-                &params.onetime_private_key,
-                params.value,
-                &params.blinding,
-                &params.pseudo_output_blinding,
-                &mut rng,
-            )
-            .unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
-            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding);
+            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding, &params.generator);
 
             // Modify the signature to have too few responses.
             {
@@ -911,17 +831,7 @@ mod mlsag_tests {
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
-            let signature = RingMLSAG::sign(
-                &params.message,
-                &params.ring,
-                params.real_index,
-                &params.onetime_private_key,
-                params.value,
-                &params.blinding,
-                &params.pseudo_output_blinding,
-                &mut rng,
-            )
-            .unwrap();
+            let signature = params.sign(&mut rng).unwrap();
 
             use mc_util_serial::prost::Message;
 

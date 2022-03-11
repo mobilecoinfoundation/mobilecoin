@@ -745,7 +745,8 @@ mod ledger_db_test {
     use mc_account_keys::AccountKey;
     use mc_crypto_keys::RistrettoPrivate;
     use mc_transaction_core::{
-        compute_block_id, membership_proofs::compute_implied_merkle_root, BlockVersion,
+        compute_block_id, membership_proofs::compute_implied_merkle_root, tokens::Mob,
+        BlockVersion, Token,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -791,6 +792,7 @@ mod ledger_db_test {
                 .map(|_i| {
                     let mut result = TxOut::new(
                         initial_amount,
+                        Mob::ID,
                         &account_key.default_subaddress(),
                         &RistrettoPrivate::from_random(&mut rng),
                         Default::default(),
@@ -849,6 +851,7 @@ mod ledger_db_test {
 
         let mut output = TxOut::new(
             1000,
+            Mob::ID,
             &account_key.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
@@ -907,6 +910,7 @@ mod ledger_db_test {
             .map(|_i| {
                 TxOut::new(
                     1000,
+                    Mob::ID,
                     &recipient_account_key.default_subaddress(),
                     &RistrettoPrivate::from_random(&mut rng),
                     Default::default(),
@@ -988,6 +992,7 @@ mod ledger_db_test {
             .map(|_i| {
                 TxOut::new(
                     1000,
+                    Mob::ID,
                     &recipient_account_key.default_subaddress(),
                     &RistrettoPrivate::from_random(&mut rng),
                     Default::default(),
@@ -1150,6 +1155,7 @@ mod ledger_db_test {
 
         let tx_out = TxOut::new(
             10,
+            Mob::ID,
             &account_key.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
@@ -1195,6 +1201,7 @@ mod ledger_db_test {
 
         let tx_out = TxOut::new(
             10,
+            Mob::ID,
             &account_key.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
@@ -1312,6 +1319,7 @@ mod ledger_db_test {
                     .map(|_i| {
                         TxOut::new(
                             1000,
+                            Mob::ID,
                             &recipient_account_key.default_subaddress(),
                             &RistrettoPrivate::from_random(&mut rng),
                             Default::default(),
@@ -1356,6 +1364,7 @@ mod ledger_db_test {
                 .map(|_i| {
                     TxOut::new(
                         1000,
+                        Mob::ID,
                         &recipient_account_key.default_subaddress(),
                         &RistrettoPrivate::from_random(&mut rng),
                         Default::default(),
@@ -1413,6 +1422,7 @@ mod ledger_db_test {
 
         let tx_out = TxOut::new(
             100,
+            Mob::ID,
             &account_key.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
@@ -1470,6 +1480,7 @@ mod ledger_db_test {
         let block_one_contents = {
             let tx_out = TxOut::new(
                 10,
+                Mob::ID,
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -1494,6 +1505,7 @@ mod ledger_db_test {
         let block_two_contents = {
             let tx_out = TxOut::new(
                 33,
+                Mob::ID,
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -1538,6 +1550,7 @@ mod ledger_db_test {
         let block_one_contents = {
             let mut tx_out = TxOut::new(
                 33,
+                Mob::ID,
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -1599,6 +1612,7 @@ mod ledger_db_test {
         {
             let tx_out = TxOut::new(
                 100,
+                Mob::ID,
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),

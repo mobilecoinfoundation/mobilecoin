@@ -255,7 +255,9 @@ mod test {
     use mc_crypto_keys::RistrettoPublic;
     use mc_crypto_rand::{CryptoRng, RngCore};
     use mc_ledger_db::{Ledger, LedgerDB};
-    use mc_transaction_core::{onetime_keys::recover_onetime_private_key, tx::TxOut};
+    use mc_transaction_core::{
+        onetime_keys::recover_onetime_private_key, tokens::Mob, tx::TxOut, Token,
+    };
     use rand::{rngs::StdRng, SeedableRng};
     use std::iter::FromIterator;
     use tempdir::TempDir;
@@ -311,6 +313,7 @@ mod test {
                     value: DEFAULT_PER_RECIPIENT_AMOUNT,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
+                    token_id: *Mob::ID,
                 }
             })
             .collect();

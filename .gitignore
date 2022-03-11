@@ -36,6 +36,9 @@ logs
 *.so
 *.a
 
+# Proptest regression files for when proptest's fail
+**/proptest-regressions
+
 # fog-test directory from fog-local-network instructions
 /fog-test/
 

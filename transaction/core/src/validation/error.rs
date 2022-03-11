@@ -128,6 +128,15 @@ pub enum TransactionValidationError {
 
     /// A TxOut includes a memo, but this is not allowed yet
     MemosNotAllowed,
+
+    /// Tx indicates a token id that is not yet configured
+    TokenNotYetConfigured,
+
+    /// A TxOut is missing the required masked token id field
+    MissingMaskedTokenId,
+
+    /// A TxOut includes a masked token id, but this is not allowed yet
+    MaskedTokenIdNotAllowed,
 }
 
 impl From<mc_crypto_keys::KeyError> for TransactionValidationError {

@@ -56,6 +56,10 @@ pub struct UnspentTxOut {
     /// The tombstone block used when we attempted to spend the UTXO.
     #[prost(uint64, tag = "6")]
     pub attempted_spend_tombstone: u64,
+
+    /// The token id of this TxOut
+    #[prost(uint32, tag = "7")]
+    pub token_id: u32,
 }
 
 /// Type used as the key in the utxo_id_to_utxo  database.
@@ -426,6 +430,7 @@ mod test {
     };
     use mc_crypto_rand::{CryptoRng, RngCore};
     use mc_ledger_db::{Ledger, LedgerDB};
+    use mc_transaction_core::{tokens::Mob, Token};
     use rand::{rngs::StdRng, SeedableRng};
     use std::iter::FromIterator;
     use tempdir::TempDir;
@@ -449,6 +454,7 @@ mod test {
                     value: idx,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
+                    token_id: *Mob::ID,
                 }
             })
             .collect();

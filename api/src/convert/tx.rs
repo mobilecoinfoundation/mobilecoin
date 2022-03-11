@@ -32,8 +32,9 @@ mod tests {
     use mc_crypto_keys::RistrettoPublic;
     use mc_transaction_core::{
         onetime_keys::recover_onetime_private_key,
+        tokens::Mob,
         tx::{Tx, TxOut, TxOutMembershipProof},
-        BlockVersion,
+        BlockVersion, Token,
     };
     use mc_transaction_core_test_utils::MockFogResolver;
     use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
@@ -70,6 +71,7 @@ mod tests {
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
+                Mob::ID,
                 MockFogResolver::default(),
                 EmptyMemoBuilder::default(),
             );

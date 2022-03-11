@@ -20,9 +20,8 @@ use mc_transaction_core::{
     constants::{MAX_INPUTS, MILLIMOB_TO_PICOMOB, RING_SIZE},
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
-    tokens::Mob,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    BlockIndex, BlockVersion, Token,
+    BlockIndex, BlockVersion, TokenId,
 };
 use mc_transaction_std::{
     ChangeDestination, EmptyMemoBuilder, InputCredentials, TransactionBuilder,
@@ -103,17 +102,20 @@ pub struct TransactionsManager<
     /// Peer manager, for communicating with validator nodes.
     peer_manager: ConnectionManager<T>,
 
-    /// Logger.
-    logger: Logger,
-
     /// Monotonically increasing counter. This is used for node round-robin
     /// selection.
     submit_node_offset: Arc<AtomicUsize>,
+
+    /// Token id which we will transact in
+    token_id: TokenId,
 
     /// Fog resolver maker, used when constructing outputs to fog recipients.
     /// This is abstracted because in tests, we don't want to form grpc
     /// connections to fog
     fog_resolver_factory: Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
+
+    /// Logger.
+    logger: Logger,
 }
 
 impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver> Clone
@@ -124,15 +126,17 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             ledger_db: self.ledger_db.clone(),
             mobilecoind_db: self.mobilecoind_db.clone(),
             peer_manager: self.peer_manager.clone(),
-            logger: self.logger.clone(),
             submit_node_offset: self.submit_node_offset.clone(),
+            token_id: self.token_id,
             fog_resolver_factory: self.fog_resolver_factory.clone(),
+            logger: self.logger.clone(),
         }
     }
 }
 
 fn get_fee<T: BlockchainConnection + UserTxConnection + 'static>(
     peer_manager: &ConnectionManager<T>,
+    token_id: TokenId,
     opt_fee: u64,
 ) -> u64 {
     if opt_fee > 0 {
@@ -147,7 +151,7 @@ fn get_fee<T: BlockchainConnection + UserTxConnection + 'static>(
             .conns()
             .par_iter()
             .filter_map(|conn| conn.fetch_block_info(empty()).ok())
-            .filter_map(|block_info| block_info.minimum_fee_or_none(&Mob::ID))
+            .filter_map(|block_info| block_info.minimum_fee_or_none(&token_id))
             .max()
             .unwrap_or(FALLBACK_FEE)
     }
@@ -160,6 +164,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
         peer_manager: ConnectionManager<T>,
+        token_id: TokenId,
         fog_resolver_factory: Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
         logger: Logger,
     ) -> Self {
@@ -168,16 +173,18 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             ledger_db,
             mobilecoind_db,
             peer_manager,
-            logger,
             submit_node_offset: Arc::new(AtomicUsize::new(rng.next_u64() as usize)),
+            token_id,
             fog_resolver_factory,
+            logger,
         }
     }
 
     /// Create a TxProposal.
     ///
     /// # Arguments
-    /// * `send_monitor_id` - ???
+    /// * `sender_monitor_id` - Indicates the the account key needed to spend
+    ///   the txo's
     /// * `change_subaddress` - Recipient of any change.
     /// * `inputs` - UTXOs that will be spent by the transaction.
     /// * `outlays` - Output amounts and recipients.
@@ -213,11 +220,15 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Figure out the fee (involves network round-trips to consensus, unless
         // opt_fee is non-zero
-        let fee = get_fee(&self.peer_manager, opt_fee);
+        let fee = get_fee(&self.peer_manager, self.token_id, opt_fee);
 
         // Select the UTXOs to be used for this transaction.
-        let selected_utxos =
-            Self::select_utxos_for_value(inputs, total_value + fee, MAX_INPUTS as usize)?;
+        let selected_utxos = Self::select_utxos_for_value(
+            self.token_id,
+            inputs,
+            total_value + fee,
+            MAX_INPUTS as usize,
+        )?;
         log::trace!(
             logger,
             "Selected {} utxos ({:?})",
@@ -271,6 +282,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             &selected_utxos_with_proofs,
             rings,
             block_version,
+            self.token_id,
             fee,
             &sender_monitor_data.account_key,
             change_subaddress,
@@ -307,7 +319,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let num_blocks_in_ledger = self.ledger_db.num_blocks()?;
 
-        let fee = get_fee(&self.peer_manager, fee);
+        let fee = get_fee(&self.peer_manager, self.token_id, fee);
 
         // Select UTXOs that will be spent by this transaction.
         let selected_utxos = {
@@ -318,6 +330,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 num_blocks_in_ledger,
                 &inputs,
                 MAX_INPUTS as usize,
+                self.token_id,
                 fee,
             )?
         };
@@ -384,6 +397,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             &selected_utxos_with_proofs,
             rings,
             block_version,
+            self.token_id,
             fee,
             &monitor_data.account_key,
             subaddress_index,
@@ -403,7 +417,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     }
 
     /// Create a TxProposal that sends the total value of all inputs minus the
-    /// fee to a single receiver.
+    /// fee to a single receiver. (ignoring inputs with wrong token id)
     ///
     /// # Arguments
     /// * `account_key` -Account key that owns the inputs.
@@ -421,10 +435,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let logger = self.logger.new(o!("receiver" => receiver.to_string()));
         log::trace!(logger, "Generating txo list transaction...");
 
-        let fee = get_fee(&self.peer_manager, fee);
+        let fee = get_fee(&self.peer_manager, self.token_id, fee);
 
-        // All inputs are to be spent
-        let total_value: u64 = inputs.iter().map(|utxo| utxo.value).sum();
+        // All inputs are to be spent, except those with wrong token id
+        let total_value: u64 = inputs
+            .iter()
+            .filter(|utxo| utxo.token_id == self.token_id)
+            .map(|utxo| utxo.value)
+            .sum();
 
         if total_value < fee {
             return Err(Error::InsufficientFunds);
@@ -438,7 +456,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // The inputs with corresponding proofs of membership.
         let inputs_with_proofs: Vec<(UnspentTxOut, TxOutMembershipProof)> = {
-            let tx_outs: Vec<TxOut> = inputs.iter().map(|utxo| utxo.tx_out.clone()).collect();
+            let tx_outs: Vec<TxOut> = inputs
+                .iter()
+                .filter(|utxo| utxo.token_id == self.token_id)
+                .map(|utxo| utxo.tx_out.clone())
+                .collect();
             let proofs = self.get_membership_proofs(&tx_outs)?;
             inputs.iter().cloned().zip(proofs.into_iter()).collect()
         };
@@ -450,7 +472,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .map(|(_, membership_proof)| membership_proof.index)
             .collect();
 
-        let rings = self.get_rings(DEFAULT_RING_SIZE, inputs.len(), &input_indices)?;
+        let rings = self.get_rings(DEFAULT_RING_SIZE, inputs_with_proofs.len(), &input_indices)?;
         log::trace!(logger, "Got {} rings", rings.len());
 
         // Come up with tombstone block.
@@ -473,6 +495,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             &inputs_with_proofs,
             rings,
             block_version,
+            self.token_id,
             fee,
             account_key,
             0,
@@ -524,12 +547,17 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// Returns a subset of UTXOs totalling at least the given amount.
     // TODO: This method should take attempted_spend_height into account.
     fn select_utxos_for_value(
+        token_id: TokenId,
         utxos: &[UnspentTxOut],
         value: u64,
         max_inputs: usize,
     ) -> Result<Vec<UnspentTxOut>, Error> {
         // Sort the utxos in descending order by value.
-        let mut sorted_utxos = utxos.to_vec();
+        let mut sorted_utxos: Vec<UnspentTxOut> = utxos
+            .iter()
+            .filter(|utxo| utxo.token_id == token_id)
+            .cloned()
+            .collect();
         sorted_utxos.sort_by_key(|utxo| Reverse(utxo.value));
 
         // The maximum spendable is limited by the maximal number of inputs we can use.
@@ -592,6 +620,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         num_blocks_in_ledger: u64,
         inputs: &[UnspentTxOut],
         max_inputs: usize,
+        token_id: TokenId,
         fee: u64,
     ) -> Result<Vec<UnspentTxOut>, Error> {
         if max_inputs < 2 {
@@ -604,6 +633,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let mut spendable_inputs: Vec<&UnspentTxOut> = inputs
             .iter()
             .filter(|utxo| num_blocks_in_ledger >= utxo.attempted_spend_tombstone)
+            .filter(|utxo| token_id == utxo.token_id)
             .collect();
 
         // No point in merging if we are able to spend all inputs at once.
@@ -731,6 +761,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// # Arguments
     /// * `inputs` - UTXOs to spend, with membership proofs.
     /// * `rings` - A set of mixins for each input, with membership proofs.
+    /// * `block_version` - The block version to target for this transaction
+    /// * `token_id` - The token id to transact in
     /// * `fee` - Transaction fee, in picoMOB.
     /// * `from_account_key` - Owns the inputs. Also the recipient of any
     ///   change.
@@ -738,12 +770,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `destinations` - Outputs of the transaction.
     /// * `tombstone_block` - Tombstone block of the transaciton.
     /// * `fog_pubkey_resolver` - Provides Fog key report, when Fog is enabled.
-    /// * `rng` -
+    /// * `rng` - randomness
     /// * `logger` - Logger
     fn build_tx_proposal(
         inputs: &[(UnspentTxOut, TxOutMembershipProof)],
         rings: Vec<Vec<(TxOut, TxOutMembershipProof)>>,
         block_version: BlockVersion,
+        token_id: TokenId,
         fee: u64,
         from_account_key: &AccountKey,
         change_subaddress: u64,
@@ -784,8 +817,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         // TODO: Use RTH memo builder, optionally?
 
         // Create tx_builder.
-        let mut tx_builder =
-            TransactionBuilder::new(block_version, fog_resolver, EmptyMemoBuilder::default());
+        let mut tx_builder = TransactionBuilder::new(
+            block_version,
+            token_id,
+            fog_resolver,
+            EmptyMemoBuilder::default(),
+        );
 
         tx_builder
             .set_fee(fee)
@@ -980,8 +1017,11 @@ mod test {
         let alice = AccountKey::random(&mut rng);
         let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
+        let token_id = Mob::ID;
+
         let tx_out = TxOut::new(
             1,
+            token_id,
             &alice.default_subaddress(),
             &tx_secret_key_for_txo,
             Default::default(),
@@ -997,6 +1037,7 @@ mod test {
                 value: 1,
                 attempted_spend_height: 0,
                 attempted_spend_tombstone: 0,
+                token_id: *token_id,
             })
             .collect()
     }
@@ -1015,7 +1056,7 @@ mod test {
         let selected_utxos = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
-        >::select_utxos_for_value(&utxos, 300, utxos.len())
+        >::select_utxos_for_value(Mob::ID, &utxos, 300, utxos.len())
         .unwrap();
 
         assert_eq!(selected_utxos, vec![utxos[0].clone(), utxos[1].clone()]);
@@ -1024,7 +1065,7 @@ mod test {
         let selected_utxos = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
-        >::select_utxos_for_value(&utxos, 301, utxos.len())
+        >::select_utxos_for_value(Mob::ID, &utxos, 301, utxos.len())
         .unwrap();
 
         assert_eq!(
@@ -1036,7 +1077,7 @@ mod test {
         let selected_utxos = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
-        >::select_utxos_for_value(&utxos, 301, 2)
+        >::select_utxos_for_value(Mob::ID, &utxos, 301, 2)
         .unwrap();
 
         assert_eq!(selected_utxos, vec![utxos[1].clone(), utxos[2].clone()]);
@@ -1048,7 +1089,7 @@ mod test {
         // While we have enough utxos to sum to 5, if the input limit is 4 we should
         // fail.
         match TransactionsManager::<ThickClient<HardcodedCredentialsProvider>, MockFogPubkeyResolver>::select_utxos_for_value(
-            &utxos, 5, 4,
+            Mob::ID, &utxos, 5, 4,
         ) {
             Err(Error::InsufficientFundsFragmentedUtxos) => {
                 // Expected.
@@ -1063,7 +1104,7 @@ mod test {
         // While we have enough utxos to sum to 5, if the input limit is 4 we should
         // fail.
         match TransactionsManager::<ThickClient<HardcodedCredentialsProvider>, MockFogPubkeyResolver>::select_utxos_for_value(
-            &utxos, 50, 100,
+            Mob::ID, &utxos, 50, 100,
         ) {
             Err(Error::InsufficientFunds) => {
                 // Expected.
@@ -1085,12 +1126,13 @@ mod test {
             utxos[4].value = 2000 * MILLIMOB_TO_PICOMOB;
             utxos[5].value = 1000 * MILLIMOB_TO_PICOMOB;
 
-            let selected_utxos =
-                TransactionsManager::<
-                    ThickClient<HardcodedCredentialsProvider>,
-                    MockFogPubkeyResolver,
-                >::select_utxos_for_optimization(1000, &utxos, 2, Mob::MINIMUM_FEE)
-                .unwrap();
+            let selected_utxos = TransactionsManager::<
+                ThickClient<HardcodedCredentialsProvider>,
+                MockFogPubkeyResolver,
+            >::select_utxos_for_optimization(
+                1000, &utxos, 2, Mob::ID, Mob::MINIMUM_FEE
+            )
+            .unwrap();
 
             assert_eq!(selected_utxos, vec![utxos[0].clone(), utxos[4].clone()]);
         }
@@ -1106,12 +1148,13 @@ mod test {
             utxos[4].value = 2000 * MILLIMOB_TO_PICOMOB;
             utxos[5].value = 1000 * MILLIMOB_TO_PICOMOB;
 
-            let selected_utxos =
-                TransactionsManager::<
-                    ThickClient<HardcodedCredentialsProvider>,
-                    MockFogPubkeyResolver,
-                >::select_utxos_for_optimization(1000, &utxos, 3, Mob::MINIMUM_FEE)
-                .unwrap();
+            let selected_utxos = TransactionsManager::<
+                ThickClient<HardcodedCredentialsProvider>,
+                MockFogPubkeyResolver,
+            >::select_utxos_for_optimization(
+                1000, &utxos, 3, Mob::ID, Mob::MINIMUM_FEE
+            )
+            .unwrap();
 
             assert_eq!(
                 selected_utxos,
@@ -1144,7 +1187,7 @@ mod test {
                 ThickClient<HardcodedCredentialsProvider>,
                 MockFogPubkeyResolver,
             >::select_utxos_for_optimization(
-                1000, &utxos, 100, Mob::MINIMUM_FEE
+                1000, &utxos, 100, Mob::ID, Mob::MINIMUM_FEE
             );
             assert!(result.is_err());
         }
@@ -1161,7 +1204,7 @@ mod test {
                 ThickClient<HardcodedCredentialsProvider>,
                 MockFogPubkeyResolver,
             >::select_utxos_for_optimization(
-                1000, &utxos, 100, Mob::MINIMUM_FEE
+                1000, &utxos, 100, Mob::ID, Mob::MINIMUM_FEE
             );
             assert!(result.is_err());
         }
@@ -1175,12 +1218,13 @@ mod test {
             utxos[2].value = Mob::MINIMUM_FEE / 10;
             utxos[3].value = Mob::MINIMUM_FEE / 5;
 
-            let selected_utxos =
-                TransactionsManager::<
-                    ThickClient<HardcodedCredentialsProvider>,
-                    MockFogPubkeyResolver,
-                >::select_utxos_for_optimization(1000, &utxos, 3, Mob::MINIMUM_FEE)
-                .unwrap();
+            let selected_utxos = TransactionsManager::<
+                ThickClient<HardcodedCredentialsProvider>,
+                MockFogPubkeyResolver,
+            >::select_utxos_for_optimization(
+                1000, &utxos, 3, Mob::ID, Mob::MINIMUM_FEE
+            )
+            .unwrap();
             // Since we're limited to 3 inputs, the lowest input (of value 1) is going to
             // get excluded.
             assert_eq!(
@@ -1201,14 +1245,16 @@ mod test {
         let result = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
-        >::select_utxos_for_optimization(1000, &[], 100, Mob::MINIMUM_FEE);
+        >::select_utxos_for_optimization(
+            1000, &[], 100, Mob::ID, Mob::MINIMUM_FEE
+        );
         assert!(result.is_err());
 
         let result = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
         >::select_utxos_for_optimization(
-            1000, &utxos[0..1], 100, Mob::MINIMUM_FEE
+            1000, &utxos[0..1], 100, Mob::ID, Mob::MINIMUM_FEE
         );
         assert!(result.is_err());
 
@@ -1218,7 +1264,7 @@ mod test {
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
         >::select_utxos_for_optimization(
-            1000, &utxos[0..2], 2, Mob::MINIMUM_FEE
+            1000, &utxos[0..2], 2, Mob::ID, Mob::MINIMUM_FEE
         );
         assert!(result.is_ok());
 
@@ -1226,7 +1272,7 @@ mod test {
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,
         >::select_utxos_for_optimization(
-            1000, &utxos[0..2], 3, Mob::MINIMUM_FEE
+            1000, &utxos[0..2], 3, Mob::ID, Mob::MINIMUM_FEE
         );
         assert!(result.is_err());
     }

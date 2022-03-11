@@ -16,6 +16,7 @@ CARGO_BUILD_FLAGS += -Zunstable-options --profile=$(CARGO_PROFILE)
 BUILD_DEPS_FOLDER = /tmp/build/deps/
 MIN_API_LEVEL = 19
 MIN_API_LEVEL_64_BIT = 21
+JNI_LIBS_PATH = lib-wrapper/android-bindings/src/main/jniLibs
 
 aarch64-linux-android: CARGO_ENV_FLAGS += \
 	ISYSROOT=$(NDK_HOME)/toolchains/llvm/prebuilt/linux-x86_64/sysroot \
@@ -60,16 +61,32 @@ $(ARCHS):
 
 libs: $(ARCHS) strip copy_artifacts
 
+publish: $(ARCHS) strip copy_artifacts
+	cd lib-wrapper; \
+	./gradlew build; \
+	./gradlew publish
+
+ci: setup
+	docker run \
+		--rm \
+		-e MAVEN_USER \
+		-e MAVEN_PASSWORD \
+		-v $(pwd):/home/rust/ \
+		-v $(BUILD_DEPS_FOLDER):/usr/local/cargo/git \
+		-w /home/rust/android-bindings \
+		$(DOCKER_BUILDER_IMAGE_TAG) \
+		make publish
+
 copy_artifacts:
-	mkdir -p build/jniLibs/arm64-v8a
-	mkdir -p build/jniLibs/armeabi-v7a
-	mkdir -p build/jniLibs/x86
-	mkdir -p build/jniLibs/x86_64
+	mkdir -p $(JNI_LIBS_PATH)/arm64-v8a
+	mkdir -p $(JNI_LIBS_PATH)/armeabi-v7a
+	mkdir -p $(JNI_LIBS_PATH)/x86
+	mkdir -p $(JNI_LIBS_PATH)/x86_64
 	mkdir -p build/proto
-	cp -f ../target/aarch64-linux-android/$(CARGO_PROFILE)/libmobilecoin_android.so build/jniLibs/arm64-v8a/libmobilecoin.so
-	cp -f ../target/armv7-linux-androideabi/$(CARGO_PROFILE)/libmobilecoin_android.so build/jniLibs/armeabi-v7a/libmobilecoin.so
-	cp -f ../target/i686-linux-android/$(CARGO_PROFILE)/libmobilecoin_android.so build/jniLibs/x86/libmobilecoin.so
-	cp -f ../target/x86_64-linux-android/$(CARGO_PROFILE)/libmobilecoin_android.so build/jniLibs/x86_64/libmobilecoin.so
+	cp -f ../target/aarch64-linux-android/$(CARGO_PROFILE)/libmobilecoin_android.so $(JNI_LIBS_PATH)/arm64-v8a/libmobilecoin.so
+	cp -f ../target/armv7-linux-androideabi/$(CARGO_PROFILE)/libmobilecoin_android.so $(JNI_LIBS_PATH)/armeabi-v7a/libmobilecoin.so
+	cp -f ../target/i686-linux-android/$(CARGO_PROFILE)/libmobilecoin_android.so $(JNI_LIBS_PATH)/x86/libmobilecoin.so
+	cp -f ../target/x86_64-linux-android/$(CARGO_PROFILE)/libmobilecoin_android.so $(JNI_LIBS_PATH)/x86_64/libmobilecoin.so
 	cp -f ../api/proto/blockchain.proto build/proto/
 	cp -f ../api/proto/printable.proto build/proto/
 	cp -f ../consensus/api/proto/consensus_client.proto build/proto/

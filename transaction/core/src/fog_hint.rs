@@ -28,6 +28,7 @@ pub type PlaintextArray = GenericArray<
     Diff<EncryptedFogHintSize, <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize>,
 >;
 
+/// A (decrypted) Fog hint
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FogHint {
     view_pubkey: CompressedRistrettoPublic, // aka A from cryptonote public address
@@ -50,16 +51,21 @@ impl From<&PublicAddress> for FogHint {
 }
 
 impl FogHint {
+    /// Create a new fog hint payload
     pub fn new(view_pubkey: RistrettoPublic) -> Self {
         Self {
             view_pubkey: CompressedRistrettoPublic::from(view_pubkey),
         }
     }
+
+    /// Create from a byte slice
     pub fn from_slice(bytes: &[u8]) -> Result<Self, CryptoBoxError> {
         Ok(Self {
             view_pubkey: CompressedRistrettoPublic::try_from(bytes).map_err(CryptoBoxError::Key)?,
         })
     }
+
+    /// Convert to a byte array
     pub fn to_bytes(&self) -> [u8; RISTRETTO_PUBLIC_LEN] {
         *self.view_pubkey.as_bytes()
     }

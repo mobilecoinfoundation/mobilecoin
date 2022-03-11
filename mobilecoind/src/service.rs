@@ -36,6 +36,7 @@ use mc_transaction_core::{
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
+    TokenId,
 };
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
@@ -69,6 +70,7 @@ impl Service {
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
         listen_uri: &MobilecoindUri,
         num_workers: Option<usize>,
+        token_id: TokenId,
         logger: Logger,
     ) -> Self {
         let sync_thread = if mobilecoind_db.is_db_encrypted() {
@@ -109,6 +111,7 @@ impl Service {
             watcher_db,
             network_state,
             start_sync_thread,
+            token_id,
             logger.clone(),
         );
 
@@ -166,6 +169,7 @@ pub struct ServiceApi<
     watcher_db: Option<WatcherDB>,
     network_state: Arc<RwLock<PollingNetworkState<T>>>,
     start_sync_thread: Arc<dyn Fn() + Send + Sync>,
+    token_id: TokenId,
     logger: Logger,
 }
 
@@ -180,6 +184,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             watcher_db: self.watcher_db.clone(),
             network_state: self.network_state.clone(),
             start_sync_thread: self.start_sync_thread.clone(),
+            token_id: self.token_id,
             logger: self.logger.clone(),
         }
     }
@@ -195,6 +200,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         watcher_db: Option<WatcherDB>,
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
         start_sync_thread: Arc<dyn Fn() + Send + Sync>,
+        token_id: TokenId,
         logger: Logger,
     ) -> Self {
         Self {
@@ -204,6 +210,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             watcher_db,
             network_state,
             start_sync_thread,
+            token_id,
             logger,
         }
     }
@@ -321,6 +328,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .map_err(|err| {
                 rpc_internal_error("mobilecoind_db.get_utxos_for_subaddress", err, &self.logger)
             })?;
+
+        // Filter out those that don't have the right token id
+        // Note: This is meant to avoid breaking changes for users who are using
+        // mobilecoind with just one token id
+        let utxos: Vec<_> = utxos
+            .into_iter()
+            .filter(|utxo| utxo.token_id == self.token_id)
+            .collect();
 
         // Convert to protos.
         let proto_utxos: Vec<mc_mobilecoind_api::UnspentTxOut> =
@@ -559,7 +574,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let shared_secret =
             get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
 
-        let (value, _blinding) = tx_out
+        let (amount, _blinding) = tx_out
             .amount
             .get_value(&shared_secret)
             .map_err(|err| rpc_internal_error("amount.get_value", err, &self.logger))?;
@@ -576,7 +591,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             tx_out,
             subaddress_index: DEFAULT_SUBADDRESS_INDEX,
             key_image,
-            value,
+            value: amount.value,
+            token_id: *amount.token_id,
             attempted_spend_height: 0,
             attempted_spend_tombstone: 0,
         };
@@ -2261,6 +2277,7 @@ mod test {
                     subaddress_index: 0,
                     key_image,
                     value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT,
+                    token_id: *Mob::ID,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
                 }
@@ -2833,6 +2850,7 @@ mod test {
         let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
+            Mob::ID,
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
         );
@@ -2962,6 +2980,7 @@ mod test {
                     value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
+                    token_id: *Mob::ID,
                 }
             })
             .collect();
@@ -3465,7 +3484,7 @@ mod test {
             ] {
                 // Find the first output belonging to the account, and get its value.
                 // This assumes that each output is sent to a different account key.
-                let (value, _blinding) = tx
+                let (amount_data, _blinding) = tx
                     .prefix
                     .outputs
                     .iter()
@@ -3480,7 +3499,8 @@ mod test {
                     })
                     .expect("There should be an output belonging to the account key.");
 
-                assert_eq!(value, *expected_value);
+                assert_eq!(amount_data.token_id, Mob::ID);
+                assert_eq!(amount_data.value, *expected_value);
             }
 
             // Santity test fee
@@ -3770,8 +3790,9 @@ mod test {
         let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
         let shared_secret =
             get_tx_out_shared_secret(data.account_key.view_private_key(), &tx_public_key);
-        let (value, _blinding) = tx_out.amount.get_value(&shared_secret).unwrap();
-        assert_eq!(value, tx_proposal.outlays[0].value);
+        let (amount_data, _blinding) = tx_out.amount.get_value(&shared_secret).unwrap();
+        assert_eq!(amount_data.value, tx_proposal.outlays[0].value);
+        assert_eq!(amount_data.token_id, Mob::ID);
 
         // Santity test fee
         assert_eq!(tx_proposal.fee(), Mob::MINIMUM_FEE);
@@ -3849,8 +3870,9 @@ mod test {
         let tx_out = &tx_proposal.tx.prefix.outputs[0];
         let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
         let shared_secret = get_tx_out_shared_secret(receiver.view_private_key(), &tx_public_key);
-        let (value, _blinding) = tx_out.amount.get_value(&shared_secret).unwrap();
-        assert_eq!(value, expected_value);
+        let (amount_data, _blinding) = tx_out.amount.get_value(&shared_secret).unwrap();
+        assert_eq!(amount_data.value, expected_value);
+        assert_eq!(amount_data.token_id, Mob::ID);
     }
 
     #[test_with_logger]
@@ -4819,12 +4841,13 @@ mod test {
                         let shared_secret =
                             get_tx_out_shared_secret(sender.view_private_key(), &tx_public_key);
 
-                        let (change_value, _blinding) = tx_out
+                        let (amount_data, _blinding) = tx_out
                             .amount
                             .get_value(&shared_secret)
                             .expect("Malformed amount");
 
-                        assert_eq!(total_value - test_amount - fee, change_value);
+                        assert_eq!(total_value - test_amount - fee, amount_data.value);
+                        assert_eq!(amount_data.token_id, Mob::ID);
                     }
                 }
                 Err(Error::SubaddressSPKNotFound) => continue,
@@ -4949,6 +4972,7 @@ mod test {
 
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
+            Mob::ID,
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
         );
@@ -5065,6 +5089,7 @@ mod test {
 
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
+            Mob::ID,
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
         );
