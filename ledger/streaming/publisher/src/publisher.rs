@@ -99,7 +99,11 @@ mod tests {
 
     async fn exercise_fanout(logger: Logger) {
         let mut publisher = BlockPublisher::new(logger.clone());
-        let env = Arc::new(grpcio::EnvBuilder::new().name_prefix("test").build());
+        let env = Arc::new(
+            grpcio::EnvBuilder::new()
+                .name_prefix("test-publisher")
+                .build(),
+        );
         let (_server, uri) = create_local_server(&mut publisher, env.clone());
         let mut client_1 = TestClient::new(&uri, env.clone());
         client_1.subscribe().await;
