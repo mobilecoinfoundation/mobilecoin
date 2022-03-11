@@ -51,8 +51,8 @@ message BlockContents {
     // Outputs created in this block.
     repeated external.TxOut outputs = 2;
 
-    /// Set-mint-config transactions in this block.
-    repeated external.SetMintConfigTx set_mint_config_txs = 3;
+    /// mint-config transactions in this block.
+    repeated external.MintConfigTx mint_config_txs = 3;
 
     /// Mint transactions in this block.
     repeated external.MintTx mint_txs = 4;

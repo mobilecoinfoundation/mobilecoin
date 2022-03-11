@@ -352,9 +352,9 @@ message MintConfig {
     uint64 mint_limit = 3;
 }
 
-/// The contents of a set-mint-config transaction. This transaction alters the
+/// The contents of a mint-config transaction. This transaction alters the
 /// minting configuration for a single token ID.
-message SetMintConfigTxPrefix {
+message MintConfigTxPrefix {
     /// Token ID we are replacing the configuration set for.
     uint32 token_id = 1;
 
@@ -368,8 +368,8 @@ message SetMintConfigTxPrefix {
     uint64 tombstone_block = 4;
 }
 
-/// A set-mint-config transaction coupled with a signature over it.
-message SetMintConfigTx {
-    SetMintConfigTxPrefix prefix = 1;
+/// A mint-config transaction coupled with a signature over it.
+message MintConfigTx {
+    MintConfigTxPrefix prefix = 1;
     Ed25519MultiSig signature = 2;
 }

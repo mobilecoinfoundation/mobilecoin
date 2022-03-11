@@ -161,16 +161,16 @@ mod tests {
         let token_id2 = TokenId::from(2);
 
         // Generate and store a mint configurations.
-        let (set_mint_config_tx1, signers1) =
+        let (mint_config_tx1, signers1) =
             generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
 
-        let (set_mint_config_tx2, signers2) =
+        let (mint_config_tx2, signers2) =
             generate_test_mint_config_tx_and_signers(token_id2, &mut rng);
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
-            .write_set_mint_config_txs(
+            .write_mint_config_txs(
                 0,
-                &[set_mint_config_tx1.clone(), set_mint_config_tx2.clone()],
+                &[mint_config_tx1.clone(), mint_config_tx2.clone()],
                 &mut db_txn,
             )
             .unwrap();
@@ -193,11 +193,11 @@ mod tests {
             active_mint_configs,
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[0].clone(),
                     total_minted: 1,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 0,
                 }
             ]
@@ -221,11 +221,11 @@ mod tests {
             active_mint_configs,
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[0].clone(),
                     total_minted: 3,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 0,
                 }
             ]
@@ -254,11 +254,11 @@ mod tests {
             active_mint_configs,
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[0].clone(),
                     total_minted: 3,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 5,
                 }
             ]
@@ -272,11 +272,11 @@ mod tests {
             active_mint_configs,
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx2.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx2.prefix.configs[0].clone(),
                     total_minted: 0,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx2.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx2.prefix.configs[1].clone(),
                     total_minted: 0,
                 }
             ]
@@ -305,11 +305,11 @@ mod tests {
             active_mint_configs,
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[0].clone(),
                     total_minted: 3,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 5,
                 }
             ]
@@ -322,11 +322,11 @@ mod tests {
             active_mint_configs,
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx2.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx2.prefix.configs[0].clone(),
                     total_minted: 0,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx2.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx2.prefix.configs[1].clone(),
                     total_minted: 15,
                 }
             ]
@@ -340,12 +340,12 @@ mod tests {
         let token_id1 = TokenId::from(1);
 
         // Generate and store a mint configurations.
-        let (set_mint_config_tx1, signers1) =
+        let (mint_config_tx1, signers1) =
             generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
-            .write_set_mint_config_txs(0, &[set_mint_config_tx1.clone()], &mut db_txn)
+            .write_mint_config_txs(0, &[mint_config_tx1.clone()], &mut db_txn)
             .unwrap();
         db_txn.commit().unwrap();
 
@@ -381,12 +381,12 @@ mod tests {
         let token_id1 = TokenId::from(1);
 
         // Generate and store a mint configurations.
-        let (set_mint_config_tx1, signers1) =
+        let (mint_config_tx1, signers1) =
             generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
-            .write_set_mint_config_txs(0, &[set_mint_config_tx1.clone()], &mut db_txn)
+            .write_mint_config_txs(0, &[mint_config_tx1.clone()], &mut db_txn)
             .unwrap();
         db_txn.commit().unwrap();
 
@@ -415,11 +415,11 @@ mod tests {
             active_mint_configs,
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[0].clone(),
                     total_minted: 0,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 12,
                 }
             ]
@@ -434,12 +434,12 @@ mod tests {
         let token_id1 = TokenId::from(1);
 
         // Generate and store a mint configurations.
-        let (set_mint_config_tx1, _signers1) =
+        let (mint_config_tx1, _signers1) =
             generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
-            .write_set_mint_config_txs(0, &[set_mint_config_tx1.clone()], &mut db_txn)
+            .write_mint_config_txs(0, &[mint_config_tx1.clone()], &mut db_txn)
             .unwrap();
         db_txn.commit().unwrap();
 
@@ -467,12 +467,12 @@ mod tests {
         let token_id1 = TokenId::from(1);
 
         // Generate and store a mint configurations.
-        let (set_mint_config_tx1, signers1) =
+        let (mint_config_tx1, signers1) =
             generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
-            .write_set_mint_config_txs(0, &[set_mint_config_tx1.clone()], &mut db_txn)
+            .write_mint_config_txs(0, &[mint_config_tx1.clone()], &mut db_txn)
             .unwrap();
         db_txn.commit().unwrap();
 
@@ -493,12 +493,12 @@ mod tests {
         let token_id1 = TokenId::from(1);
 
         // Generate and store a mint configurations.
-        let (set_mint_config_tx1, signers1) =
+        let (mint_config_tx1, signers1) =
             generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
-            .write_set_mint_config_txs(0, &[set_mint_config_tx1.clone()], &mut db_txn)
+            .write_mint_config_txs(0, &[mint_config_tx1.clone()], &mut db_txn)
             .unwrap();
         db_txn.commit().unwrap();
 
@@ -508,8 +508,8 @@ mod tests {
             token_id1,
             &signers1,
             max(
-                set_mint_config_tx1.prefix.configs[0].mint_limit,
-                set_mint_config_tx1.prefix.configs[1].mint_limit,
+                mint_config_tx1.prefix.configs[0].mint_limit,
+                mint_config_tx1.prefix.configs[1].mint_limit,
             ) + 1,
             &mut rng,
         );
@@ -530,12 +530,12 @@ mod tests {
         let token_id1 = TokenId::from(1);
 
         // Generate and store a mint configurations.
-        let (set_mint_config_tx1, signers1) =
+        let (mint_config_tx1, signers1) =
             generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
-            .write_set_mint_config_txs(0, &[set_mint_config_tx1], &mut db_txn)
+            .write_mint_config_txs(0, &[mint_config_tx1], &mut db_txn)
             .unwrap();
         db_txn.commit().unwrap();
 

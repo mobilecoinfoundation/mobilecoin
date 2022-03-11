@@ -206,10 +206,10 @@ impl Ledger for LedgerDB {
             &mut db_transaction,
         )?;
 
-        // Write SetMintConfigTxs included in the block.
-        self.mint_config_store.write_set_mint_config_txs(
+        // Write MintConfigTxs included in the block.
+        self.mint_config_store.write_mint_config_txs(
             block.index,
-            &block_contents.set_mint_config_txs,
+            &block_contents.mint_config_txs,
             &mut db_transaction,
         )?;
 
@@ -387,13 +387,13 @@ impl Ledger for LedgerDB {
             .get_active_mint_configs(token_id, &db_transaction)
     }
 
-    /// Checks if the ledger contains a given SetMintConfigTx nonce.
+    /// Checks if the ledger contains a given MintConfigTx nonce.
     /// If so, returns the index of the block in which it entered the ledger.
     /// Ok(None) is returned when the nonce is not in the ledger.
-    fn check_set_mint_config_tx_nonce(&self, nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
+    fn check_mint_config_tx_nonce(&self, nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
         self.mint_config_store
-            .check_set_mint_config_tx_nonce(nonce, &db_transaction)
+            .check_mint_config_tx_nonce(nonce, &db_transaction)
     }
 
     /// Checks if the ledger contains a given MintTx nonce.
@@ -669,13 +669,13 @@ impl LedgerDB {
             }
         }
 
-        // A block must have outputs, unless it has set-mint-config transactions:
+        // A block must have outputs, unless it has mint-config transactions:
         // - Origin block had outputs only outputs in it.
         // - Blocks before minting was introduced always had outputs in them.
         // - Blocks that have MintTxs in them will also have the minted TxOuts in them.
-        // - Blocks with only SetMintConfigTxs are allowed to not have outputs.
-        let has_set_mint_config_txs = !block_contents.set_mint_config_txs.is_empty();
-        if block_contents.outputs.is_empty() && !has_set_mint_config_txs {
+        // - Blocks with only MintConfigTxs are allowed to not have outputs.
+        let has_mint_config_txs = !block_contents.mint_config_txs.is_empty();
+        if block_contents.outputs.is_empty() && !has_mint_config_txs {
             return Err(Error::NoOutputs);
         }
 
@@ -689,7 +689,7 @@ impl LedgerDB {
         // transactions. When we have minting transactions it implies we might've not
         // spent any pre-existing outputs and as such we will not have key images.
         let has_minting_txs =
-            !block_contents.set_mint_config_txs.is_empty() || !block_contents.mint_txs.is_empty();
+            !block_contents.mint_config_txs.is_empty() || !block_contents.mint_txs.is_empty();
         if block.index != 0 && block_contents.key_images.is_empty() && !has_minting_txs {
             return Err(Error::NoKeyImages);
         }
@@ -732,14 +732,14 @@ impl LedgerDB {
             }
         }
 
-        // Check that none of the set-mint-config-tx nonces appear in the ledger.
-        for set_mint_config_tx in block_contents.set_mint_config_txs.iter() {
+        // Check that none of the mint-config-tx nonces appear in the ledger.
+        for mint_config_tx in block_contents.mint_config_txs.iter() {
             if self
                 .mint_config_store
-                .check_set_mint_config_tx_nonce(&set_mint_config_tx.prefix.nonce, db_transaction)?
+                .check_mint_config_tx_nonce(&mint_config_tx.prefix.nonce, db_transaction)?
                 .is_some()
             {
-                return Err(Error::DuplicateSetMintConfigTx);
+                return Err(Error::DuplicateMintConfigTx);
             }
         }
 
@@ -791,10 +791,10 @@ impl LedgerDB {
         let key_image_list: KeyImageList =
             decode(db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?)?;
 
-        // Get all SetMintConfigTxs in block.
-        let set_mint_config_txs = self
+        // Get all MintConfigTxs in block.
+        let mint_config_txs = self
             .mint_config_store
-            .get_set_mint_config_txs_by_block_index(block_number, db_transaction)?;
+            .get_mint_config_txs_by_block_index(block_number, db_transaction)?;
 
         // Get all MintTxs in block.
         let mint_txs = self
@@ -805,7 +805,7 @@ impl LedgerDB {
         Ok(BlockContents {
             key_images: key_image_list.key_images,
             outputs,
-            set_mint_config_txs,
+            mint_config_txs,
             mint_txs,
         })
     }
@@ -1128,9 +1128,9 @@ mod ledger_db_test {
     }
 
     #[test]
-    // Appending a block with only SetMintConfigTxs should correctly update each
+    // Appending a block with only MintConfigTxs should correctly update each
     // LMDB database.
-    fn append_block_with_only_set_mint_config_tx() {
+    fn append_block_with_only_mint_config_tx() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
         let token_id1 = TokenId::from(1);
@@ -1156,11 +1156,11 @@ mod ledger_db_test {
             vec![]
         );
 
-        // === Append a block with only a single SetMintConfigTx. ===
-        let set_mint_config_tx1 = generate_test_mint_config_tx(token_id1, &mut rng);
+        // === Append a block with only a single MintConfigTx. ===
+        let mint_config_tx1 = generate_test_mint_config_tx(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
-            set_mint_config_txs: vec![set_mint_config_tx1.clone()],
+            mint_config_txs: vec![mint_config_tx1.clone()],
             ..Default::default()
         };
 
@@ -1193,23 +1193,23 @@ mod ledger_db_test {
             ledger_db.get_active_mint_configs(token_id1).unwrap(),
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[0].clone(),
                     total_minted: 0,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 0,
                 }
             ]
         );
 
-        // Append another block with two SetMintConfigTxs, one of which is updating the
+        // Append another block with two MintConfigTxs, one of which is updating the
         // active config for token_id1.
-        let set_mint_config_tx2 = generate_test_mint_config_tx(token_id1, &mut rng);
-        let set_mint_config_tx3 = generate_test_mint_config_tx(token_id2, &mut rng);
+        let mint_config_tx2 = generate_test_mint_config_tx(token_id1, &mut rng);
+        let mint_config_tx3 = generate_test_mint_config_tx(token_id2, &mut rng);
 
         let block_contents2 = BlockContents {
-            set_mint_config_txs: vec![set_mint_config_tx2.clone(), set_mint_config_tx3.clone()],
+            mint_config_txs: vec![mint_config_tx2.clone(), mint_config_tx3.clone()],
             ..Default::default()
         };
 
@@ -1240,11 +1240,11 @@ mod ledger_db_test {
             ledger_db.get_active_mint_configs(token_id1).unwrap(),
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx2.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx2.prefix.configs[0].clone(),
                     total_minted: 0,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx2.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx2.prefix.configs[1].clone(),
                     total_minted: 0,
                 }
             ]
@@ -1254,11 +1254,11 @@ mod ledger_db_test {
             ledger_db.get_active_mint_configs(token_id2).unwrap(),
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx3.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx3.prefix.configs[0].clone(),
                     total_minted: 0,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx3.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx3.prefix.configs[1].clone(),
                     total_minted: 0,
                 }
             ]
@@ -1266,12 +1266,10 @@ mod ledger_db_test {
     }
 
     #[test]
-    #[should_panic(
-        expected = "called `Result::unwrap()` on an `Err` value: DuplicateSetMintConfigTx"
-    )]
-    // Appending a block that contains a previously-seen SetMintConfigTx should
+    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: DuplicateMintConfigTx")]
+    // Appending a block that contains a previously-seen MintConfigTx should
     // fail.
-    fn test_append_block_fails_for_duplicate_set_mint_config_txs() {
+    fn test_append_block_fails_for_duplicate_mint_config_txs() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
         let token_id1 = TokenId::from(1);
@@ -1288,11 +1286,11 @@ mod ledger_db_test {
             .append_block(&origin_block, &origin_block_contents, None)
             .unwrap();
 
-        // === Append a block with only a single SetMintConfigTx. ===
-        let set_mint_config_tx1 = generate_test_mint_config_tx(token_id1, &mut rng);
+        // === Append a block with only a single MintConfigTx. ===
+        let mint_config_tx1 = generate_test_mint_config_tx(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
-            set_mint_config_txs: vec![set_mint_config_tx1.clone()],
+            mint_config_txs: vec![mint_config_tx1.clone()],
             ..Default::default()
         };
 
@@ -1308,10 +1306,10 @@ mod ledger_db_test {
             .unwrap();
 
         // Try appending a block that contains the same set mint config tx.
-        let set_mint_config_tx2 = generate_test_mint_config_tx(token_id1, &mut rng);
+        let mint_config_tx2 = generate_test_mint_config_tx(token_id1, &mut rng);
 
         let block_contents2 = BlockContents {
-            set_mint_config_txs: vec![set_mint_config_tx2.clone(), set_mint_config_tx1.clone()],
+            mint_config_txs: vec![mint_config_tx2.clone(), mint_config_tx1.clone()],
             ..Default::default()
         };
 
@@ -1356,13 +1354,13 @@ mod ledger_db_test {
             vec![]
         );
 
-        // === Append a block wth a SetMintConfigTx transaction. This is needed since
+        // === Append a block wth a MintConfigTx transaction. This is needed since
         // the MintTx must be matched with an active mint config.
-        let (set_mint_config_tx1, signers1) =
+        let (mint_config_tx1, signers1) =
             generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
-            set_mint_config_txs: vec![set_mint_config_tx1.clone()],
+            mint_config_txs: vec![mint_config_tx1.clone()],
             ..Default::default()
         };
 
@@ -1415,11 +1413,11 @@ mod ledger_db_test {
             ledger_db.get_active_mint_configs(token_id1).unwrap(),
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[0].clone(),
                     total_minted: mint_tx1.prefix.amount,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 0,
                 }
             ]
@@ -1473,11 +1471,11 @@ mod ledger_db_test {
             ledger_db.get_active_mint_configs(token_id1).unwrap(),
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[0].clone(),
                     total_minted: mint_tx1.prefix.amount,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: mint_tx2.prefix.amount,
                 }
             ]
@@ -1531,11 +1529,11 @@ mod ledger_db_test {
             ledger_db.get_active_mint_configs(token_id1).unwrap(),
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[0].clone(),
                     total_minted: mint_tx1.prefix.amount + mint_tx3.prefix.amount,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: mint_tx2.prefix.amount,
                 }
             ]
@@ -1598,14 +1596,14 @@ mod ledger_db_test {
             ledger_db.get_active_mint_configs(token_id1).unwrap(),
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[0].clone(),
                     total_minted: mint_tx1.prefix.amount
                         + mint_tx3.prefix.amount
                         + mint_tx4.prefix.amount
                         + mint_tx5.prefix.amount,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: mint_tx2.prefix.amount,
                 }
             ]
@@ -1669,7 +1667,7 @@ mod ledger_db_test {
             ledger_db.get_active_mint_configs(token_id1).unwrap(),
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[0].clone(),
                     total_minted: mint_tx1.prefix.amount
                         + mint_tx3.prefix.amount
                         + mint_tx4.prefix.amount
@@ -1677,7 +1675,7 @@ mod ledger_db_test {
                         + mint_tx6.prefix.amount,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: mint_tx2.prefix.amount + mint_tx7.prefix.amount,
                 }
             ]
@@ -1720,14 +1718,14 @@ mod ledger_db_test {
             .collect();
 
         let key_images1: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
-        let set_mint_config_tx1 = generate_test_mint_config_tx(token_id1, &mut rng);
-        let (set_mint_config_tx2, signers2) =
+        let mint_config_tx1 = generate_test_mint_config_tx(token_id1, &mut rng);
+        let (mint_config_tx2, signers2) =
             generate_test_mint_config_tx_and_signers(token_id2, &mut rng);
 
         let block_contents1 = BlockContents {
             key_images: key_images1,
             outputs: outputs1,
-            set_mint_config_txs: vec![set_mint_config_tx1.clone(), set_mint_config_tx2.clone()],
+            mint_config_txs: vec![mint_config_tx1.clone(), mint_config_tx2.clone()],
             mint_txs: vec![], /* For this block we cant include any mint txs since we need an
                                * active configuration first. */
         };
@@ -1755,11 +1753,11 @@ mod ledger_db_test {
             ledger_db.get_active_mint_configs(token_id1).unwrap(),
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[0].clone(),
                     total_minted: 0,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 0,
                 }
             ]
@@ -1769,11 +1767,11 @@ mod ledger_db_test {
             ledger_db.get_active_mint_configs(token_id2).unwrap(),
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx2.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx2.prefix.configs[0].clone(),
                     total_minted: 0,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx2.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx2.prefix.configs[1].clone(),
                     total_minted: 0,
                 }
             ]
@@ -1820,14 +1818,14 @@ mod ledger_db_test {
             .collect();
 
         let key_images2: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
-        let set_mint_config_tx3 = generate_test_mint_config_tx(token_id1, &mut rng);
+        let mint_config_tx3 = generate_test_mint_config_tx(token_id1, &mut rng);
         let mint_tx1 = generate_test_mint_tx(token_id2, &signers2, 10, &mut rng);
         let mint_tx2 = generate_test_mint_tx(token_id2, &signers2, 20, &mut rng);
 
         let block_contents2 = BlockContents {
             key_images: key_images2,
             outputs: outputs2,
-            set_mint_config_txs: vec![set_mint_config_tx3.clone()],
+            mint_config_txs: vec![mint_config_tx3.clone()],
             mint_txs: vec![mint_tx1.clone(), mint_tx2.clone()],
         };
         let block2 = Block::new_with_parent(
@@ -1859,11 +1857,11 @@ mod ledger_db_test {
             ledger_db.get_active_mint_configs(token_id1).unwrap(),
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx3.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx3.prefix.configs[0].clone(),
                     total_minted: 0,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx3.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx3.prefix.configs[1].clone(),
                     total_minted: 0,
                 }
             ]
@@ -1873,11 +1871,11 @@ mod ledger_db_test {
             ledger_db.get_active_mint_configs(token_id2).unwrap(),
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx2.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx2.prefix.configs[0].clone(),
                     total_minted: 30,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx2.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx2.prefix.configs[1].clone(),
                     total_minted: 0,
                 }
             ]
@@ -1929,13 +1927,13 @@ mod ledger_db_test {
             .append_block(&origin_block, &origin_block_contents, None)
             .unwrap();
 
-        // === Append a block wth a SetMintConfigTx transaction. This is needed since
+        // === Append a block wth a MintConfigTx transaction. This is needed since
         // the MintTx must be matched with an active mint config.
-        let (set_mint_config_tx1, signers1) =
+        let (mint_config_tx1, signers1) =
             generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
-            set_mint_config_txs: vec![set_mint_config_tx1.clone()],
+            mint_config_txs: vec![mint_config_tx1.clone()],
             ..Default::default()
         };
 
@@ -1994,13 +1992,13 @@ mod ledger_db_test {
             .append_block(&origin_block, &origin_block_contents, None)
             .unwrap();
 
-        // === Append a block wth a SetMintConfigTx transaction. This is needed since
+        // === Append a block wth a MintConfigTx transaction. This is needed since
         // the MintTx must be matched with an active mint config.
-        let (set_mint_config_tx1, signers1) =
+        let (mint_config_tx1, signers1) =
             generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
-            set_mint_config_txs: vec![set_mint_config_tx1.clone()],
+            mint_config_txs: vec![mint_config_tx1.clone()],
             ..Default::default()
         };
 
@@ -2086,13 +2084,13 @@ mod ledger_db_test {
             .append_block(&origin_block, &origin_block_contents, None)
             .unwrap();
 
-        // === Append a block wth a SetMintConfigTx transaction. This is needed since
+        // === Append a block wth a MintConfigTx transaction. This is needed since
         // the MintTx must be matched with an active mint config.
-        let (set_mint_config_tx1, _signers1) =
+        let (mint_config_tx1, _signers1) =
             generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
-            set_mint_config_txs: vec![set_mint_config_tx1.clone()],
+            mint_config_txs: vec![mint_config_tx1.clone()],
             ..Default::default()
         };
 
@@ -2161,13 +2159,13 @@ mod ledger_db_test {
             vec![]
         );
 
-        // === Append a block wth a SetMintConfigTx transaction. This is needed since
+        // === Append a block wth a MintConfigTx transaction. This is needed since
         // the MintTx must be matched with an active mint config.
-        let (set_mint_config_tx1, signers1) =
+        let (mint_config_tx1, signers1) =
             generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
-            set_mint_config_txs: vec![set_mint_config_tx1.clone()],
+            mint_config_txs: vec![mint_config_tx1.clone()],
             ..Default::default()
         };
 
@@ -2186,7 +2184,7 @@ mod ledger_db_test {
         let mint_tx1 = generate_test_mint_tx(
             token_id1,
             &signers1,
-            set_mint_config_tx1.prefix.configs[0].mint_limit - 10,
+            mint_config_tx1.prefix.configs[0].mint_limit - 10,
             &mut rng,
         );
 
@@ -2232,8 +2230,8 @@ mod ledger_db_test {
         assert_eq!(
             ledger_db.append_block(&block3, &block_contents3, None),
             Err(Error::MintLimitExceeded(
-                set_mint_config_tx1.prefix.configs[0].mint_limit + 1,
-                set_mint_config_tx1.prefix.configs[0].mint_limit
+                mint_config_tx1.prefix.configs[0].mint_limit + 1,
+                mint_config_tx1.prefix.configs[0].mint_limit
             ))
         );
 
@@ -2242,11 +2240,11 @@ mod ledger_db_test {
             ledger_db.get_active_mint_configs(token_id1).unwrap(),
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[0].clone(),
                     total_minted: mint_tx1.prefix.amount,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 0,
                 }
             ]
@@ -2278,11 +2276,11 @@ mod ledger_db_test {
             ledger_db.get_active_mint_configs(token_id1).unwrap(),
             vec![
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[0].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[0].clone(),
                     total_minted: mint_tx1.prefix.amount,
                 },
                 ActiveMintConfig {
-                    mint_config: set_mint_config_tx1.prefix.configs[1].clone(),
+                    mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 11,
                 }
             ]

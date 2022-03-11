@@ -44,8 +44,8 @@ pub const RING_MLSAG_CHALLENGE_DOMAIN_TAG: &str = "mc_ring_mlsag_challenge";
 /// Domain separator for hashing the confirmation number
 pub const TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG: &str = "mc_tx_out_confirmation_number";
 
-/// Domain separator for hashing SetMintConfigTxPrefixs
-pub const SET_MINT_CONFIG_TX_PREFIX_DOMAIN_TAG: &str = "mc_set_mint_config_tx_prefix";
+/// Domain separator for hashing MintConfigTxPrefixs
+pub const SET_MINT_CONFIG_TX_PREFIX_DOMAIN_TAG: &str = "mc_mint_config_tx_prefix";
 
 /// Domain separator for hashing MintTxPrefixs
 pub const MINT_TX_PREFIX_DOMAIN_TAG: &str = "mc_mint_tx_prefix";
