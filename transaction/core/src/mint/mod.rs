@@ -4,6 +4,12 @@
 
 mod config;
 mod tx;
+mod validation;
+
+pub mod constants;
 
 pub use config::{MintConfig, SetMintConfigTx, SetMintConfigTxPrefix};
 pub use tx::{MintTx, MintTxPrefix};
+pub use validation::{
+    config::validate_set_mint_config_tx, error::Error as MintValidationError, tx::validate_mint_tx,
+};
