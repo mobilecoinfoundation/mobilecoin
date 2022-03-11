@@ -9,24 +9,25 @@
 //! transaction is allowed to mint.
 //!      2) It enables keeping track of how much was minted using a given
 //! configuration. This is used to enforce the per-configuration mint limit.
-//! 2) A mapping of nonce -> SetMintConfigTx object containing the nonce. This
-//!    is mainly used to prevent replay attacks.
-//! 3) A mapping of block index -> list of SetMintConfigTx objects included in
-//!    the block.
+//! 2) A mapping of nonce -> block index of the block containing the
+//! SetMintConfigTx with that nonce. This is mainly used to prevent replay
+//! attacks.
+//! 3) A mapping of block index -> list of SetMintConfigTx objects
+//! included in the block.
 
-use crate::{u32_to_key_bytes, u64_to_key_bytes, Error};
+use crate::{key_bytes_to_u64, u32_to_key_bytes, u64_to_key_bytes, Error};
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_transaction_core::{
     mint::{MintConfig, MintTx, SetMintConfigTx},
-    TokenId,
+    BlockIndex, TokenId,
 };
 use mc_util_serial::{decode, encode, Message};
 
 // LMDB Database names.
 pub const ACTIVE_MINT_CONFIGS_BY_TOKEN_ID_DB_NAME: &str =
     "mint_config_store:active_mint_configs_by_token_id";
-pub const SET_MINT_CONFIG_TX_BY_NONCE_DB_NAME: &str =
-    "mint_config_store:set_mint_config_tx_by_nonce_db_name";
+pub const BLOCK_INDEX_BY_SET_MINT_CONFIG_TX_NONCE_DB_NAME: &str =
+    "mint_config_store:block_index_by_set_mint_config_tx_nonce";
 pub const SET_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME: &str =
     "mint_config_store:set_mint_config_txs_by_block";
 
@@ -79,8 +80,8 @@ pub struct MintConfigStore {
     /// token id -> Vec<ActiveMintConfig>
     active_mint_configs_by_token_id: Database,
 
-    /// nonce -> SetMintConfigTx
-    set_mint_config_tx_by_nonce: Database,
+    /// nonce -> block index
+    block_index_by_set_mint_config_tx_nonce: Database,
 
     /// block_index -> SetMintConfigTxList
     set_mint_config_txs_by_block: Database,
@@ -92,7 +93,8 @@ impl MintConfigStore {
         Ok(MintConfigStore {
             active_mint_configs_by_token_id: env
                 .open_db(Some(ACTIVE_MINT_CONFIGS_BY_TOKEN_ID_DB_NAME))?,
-            set_mint_config_tx_by_nonce: env.open_db(Some(SET_MINT_CONFIG_TX_BY_NONCE_DB_NAME))?,
+            block_index_by_set_mint_config_tx_nonce: env
+                .open_db(Some(BLOCK_INDEX_BY_SET_MINT_CONFIG_TX_NONCE_DB_NAME))?,
             set_mint_config_txs_by_block: env
                 .open_db(Some(SET_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME))?,
         })
@@ -105,7 +107,7 @@ impl MintConfigStore {
             DatabaseFlags::empty(),
         )?;
         env.create_db(
-            Some(SET_MINT_CONFIG_TX_BY_NONCE_DB_NAME),
+            Some(BLOCK_INDEX_BY_SET_MINT_CONFIG_TX_NONCE_DB_NAME),
             DatabaseFlags::empty(),
         )?;
         env.create_db(
@@ -139,8 +141,38 @@ impl MintConfigStore {
 
         // Update active mint configurations.
         for set_mint_config_tx in set_mint_config_txs {
-            self.set_active_mint_configs(set_mint_config_tx, db_transaction)?;
+            // All mint configurations must have the same token id.
+            if set_mint_config_tx
+                .prefix
+                .configs
+                .iter()
+                .any(|mint_config| mint_config.token_id != set_mint_config_tx.prefix.token_id)
+            {
+                return Err(Error::InvalidMintConfig(
+                    "All mint configurations must have the same token id".to_string(),
+                ));
+            }
+
+            // MintConfigs -> ActiveMintConfigs
+            let active_mint_configs = ActiveMintConfigs::from(set_mint_config_tx);
+
+            // Store in database
+            db_transaction.put(
+                self.block_index_by_set_mint_config_tx_nonce,
+                &set_mint_config_tx.prefix.nonce,
+                &block_index_bytes,
+                //  ensures we do not overwrite a nonce that was already used
+                WriteFlags::NO_OVERWRITE,
+            )?;
+
+            db_transaction.put(
+                self.active_mint_configs_by_token_id,
+                &u32_to_key_bytes(set_mint_config_tx.prefix.token_id),
+                &encode(&active_mint_configs),
+                WriteFlags::empty(),
+            )?;
         }
+
         Ok(())
     }
 
@@ -266,57 +298,16 @@ impl MintConfigStore {
         Ok(())
     }
 
-    /// Returns true if the Ledger contains the given set-mint-config-tx nonce.
-    pub fn contains_set_mint_config_tx_nonce(
+    pub fn check_set_mint_config_tx_nonce(
         &self,
         nonce: &[u8],
         db_transaction: &impl Transaction,
-    ) -> Result<bool, Error> {
-        match db_transaction.get(self.set_mint_config_tx_by_nonce, &nonce) {
-            Ok(_db_bytes) => Ok(true),
-            Err(lmdb::Error::NotFound) => Ok(false),
+    ) -> Result<Option<BlockIndex>, Error> {
+        match db_transaction.get(self.block_index_by_set_mint_config_tx_nonce, &nonce) {
+            Ok(db_bytes) => Ok(Some(key_bytes_to_u64(db_bytes))),
+            Err(lmdb::Error::NotFound) => Ok(None),
             Err(e) => Err(Error::Lmdb(e)),
         }
-    }
-
-    /// Set mint configurations for a given token.
-    fn set_active_mint_configs(
-        &self,
-        set_mint_config_tx: &SetMintConfigTx,
-        db_transaction: &mut RwTransaction,
-    ) -> Result<(), Error> {
-        // All mint configurations must have the same token id.
-        if set_mint_config_tx
-            .prefix
-            .configs
-            .iter()
-            .any(|mint_config| mint_config.token_id != set_mint_config_tx.prefix.token_id)
-        {
-            return Err(Error::InvalidMintConfig(
-                "All mint configurations must have the same token id".to_string(),
-            ));
-        }
-
-        // MintConfigs -> ActiveMintConfigs
-        let active_mint_configs = ActiveMintConfigs::from(set_mint_config_tx);
-
-        // Store in database
-        db_transaction.put(
-            self.set_mint_config_tx_by_nonce,
-            &set_mint_config_tx.prefix.nonce,
-            &encode(set_mint_config_tx),
-            WriteFlags::NO_OVERWRITE, /* this ensures we do not overwrite a nonce that was
-                                       * already used */
-        )?;
-
-        db_transaction.put(
-            self.active_mint_configs_by_token_id,
-            &u32_to_key_bytes(set_mint_config_tx.prefix.token_id),
-            &encode(&active_mint_configs),
-            WriteFlags::empty(),
-        )?;
-
-        Ok(())
     }
 }
 
@@ -432,7 +423,7 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .write_set_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -458,7 +449,7 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .set_active_mint_configs(&test_tx_2, &mut db_transaction)
+                .write_set_mint_config_txs(1, &[test_tx_2.clone()], &mut db_transaction)
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -495,7 +486,7 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .write_set_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -503,7 +494,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             assert_eq!(
-                mint_config_store.set_active_mint_configs(&test_tx_1, &mut db_transaction),
+                mint_config_store.write_set_mint_config_txs(
+                    1,
+                    &[test_tx_1.clone()],
+                    &mut db_transaction
+                ),
                 Err(Error::Lmdb(lmdb::Error::KeyExist))
             );
             db_transaction.commit().unwrap();
@@ -513,7 +508,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             assert_eq!(
-                mint_config_store.set_active_mint_configs(&test_tx_1, &mut db_transaction),
+                mint_config_store.write_set_mint_config_txs(
+                    2,
+                    &[test_tx_1.clone()],
+                    &mut db_transaction
+                ),
                 Err(Error::Lmdb(lmdb::Error::KeyExist))
             );
             db_transaction.commit().unwrap();
@@ -524,7 +523,7 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .set_active_mint_configs(&test_tx_2, &mut db_transaction)
+                .write_set_mint_config_txs(3, &[test_tx_2], &mut db_transaction)
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -543,7 +542,7 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .write_set_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -563,7 +562,7 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .set_active_mint_configs(&test_tx_2, &mut db_transaction)
+                .write_set_mint_config_txs(1, &[test_tx_2.clone()], &mut db_transaction)
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -601,7 +600,7 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .write_set_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -621,7 +620,7 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .set_active_mint_configs(&test_tx_2, &mut db_transaction)
+                .write_set_mint_config_txs(1, &[test_tx_2.clone()], &mut db_transaction)
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -648,7 +647,7 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .write_set_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -723,7 +722,7 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .write_set_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -754,7 +753,7 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .write_set_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -807,7 +806,7 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .write_set_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -857,7 +856,7 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .write_set_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -929,7 +928,7 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .write_set_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -1014,7 +1013,7 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .set_active_mint_configs(&test_tx_1, &mut db_transaction)
+                .write_set_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -1132,6 +1131,95 @@ pub mod tests {
             assert_eq!(
                 active_mint_configs,
                 ActiveMintConfigs::from(&test_tx_2).configs
+            );
+        }
+    }
+
+    #[test]
+    fn check_set_mint_config_tx_nonce_works() {
+        let (mint_config_store, env) = init_mint_config_store();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+
+        let test_tx_1 = generate_test_mint_config_tx(token_id1, &mut rng);
+        let test_tx_2 = generate_test_mint_config_tx(token_id2, &mut rng);
+        let test_tx_3 = generate_test_mint_config_tx(token_id2, &mut rng);
+
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .write_set_mint_config_txs(
+                    0,
+                    &[test_tx_1.clone(), test_tx_2.clone()],
+                    &mut db_transaction,
+                )
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+
+            assert_eq!(
+                mint_config_store
+                    .check_set_mint_config_tx_nonce(&test_tx_1.prefix.nonce, &db_transaction),
+                Ok(Some(0)),
+            );
+
+            assert_eq!(
+                mint_config_store
+                    .check_set_mint_config_tx_nonce(&test_tx_2.prefix.nonce, &db_transaction),
+                Ok(Some(0)),
+            );
+
+            assert_eq!(
+                mint_config_store.check_set_mint_config_tx_nonce(
+                    &test_tx_2.prefix.nonce[0..test_tx_2.prefix.nonce.len() - 1],
+                    &db_transaction
+                ),
+                Ok(None),
+            );
+
+            assert_eq!(
+                mint_config_store
+                    .check_set_mint_config_tx_nonce(&test_tx_3.prefix.nonce, &db_transaction),
+                Ok(None),
+            );
+
+            assert_eq!(
+                mint_config_store.check_set_mint_config_tx_nonce(&[1, 2, 3], &db_transaction),
+                Ok(None),
+            );
+        }
+
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .write_set_mint_config_txs(1, &[test_tx_3.clone()], &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+
+            assert_eq!(
+                mint_config_store
+                    .check_set_mint_config_tx_nonce(&test_tx_1.prefix.nonce, &db_transaction),
+                Ok(Some(0)),
+            );
+
+            assert_eq!(
+                mint_config_store
+                    .check_set_mint_config_tx_nonce(&test_tx_2.prefix.nonce, &db_transaction),
+                Ok(Some(0)),
+            );
+
+            assert_eq!(
+                mint_config_store
+                    .check_set_mint_config_tx_nonce(&test_tx_3.prefix.nonce, &db_transaction),
+                Ok(Some(1)),
             );
         }
     }

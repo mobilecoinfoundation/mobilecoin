@@ -7,14 +7,14 @@
 //! block.    This is used to provide the mint_txs inside BlockContents.
 //! 2) A mapping of hash -> MintTx. This is used to prevent replay attacks.
 
-use crate::{u64_to_key_bytes, Error, MintConfigStore};
+use crate::{key_bytes_to_u64, u64_to_key_bytes, Error, MintConfigStore};
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
-use mc_transaction_core::mint::MintTx;
+use mc_transaction_core::{mint::MintTx, BlockIndex};
 use mc_util_serial::{decode, encode, Message};
 
 // LMDB Database names.
 pub const MINT_TXS_BY_BLOCK_DB_NAME: &str = "mint_tx_store:set_txs_by_block";
-pub const MINT_TX_BY_NONCE_DB_NAME: &str = "mint_tx_store:mint_tx_by_nonce";
+pub const BLOCK_INDEX_BY_MINT_TX_NONCE_DB_NAME: &str = "mint_tx_store:block_index_by_mint_tx_nonce";
 
 /// A list of mint-txs that can be prost-encoded. This is needed since that's
 /// the only way to encode a Vec<MintTx>.
@@ -29,8 +29,8 @@ pub struct MintTxStore {
     /// MintTxs by block.
     mint_txs_by_block: Database,
 
-    /// MintTx by nonce.
-    mint_tx_by_nonce: Database,
+    /// block index by MintTx nonce.
+    block_index_by_mint_tx_nonce: Database,
 }
 
 impl MintTxStore {
@@ -38,14 +38,18 @@ impl MintTxStore {
     pub fn new(env: &Environment) -> Result<Self, Error> {
         Ok(MintTxStore {
             mint_txs_by_block: env.open_db(Some(MINT_TXS_BY_BLOCK_DB_NAME))?,
-            mint_tx_by_nonce: env.open_db(Some(MINT_TX_BY_NONCE_DB_NAME))?,
+            block_index_by_mint_tx_nonce: env
+                .open_db(Some(BLOCK_INDEX_BY_MINT_TX_NONCE_DB_NAME))?,
         })
     }
 
     /// Creates a fresh MintTxStore.
     pub fn create(env: &Environment) -> Result<(), Error> {
         env.create_db(Some(MINT_TXS_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
-        env.create_db(Some(MINT_TX_BY_NONCE_DB_NAME), DatabaseFlags::empty())?;
+        env.create_db(
+            Some(BLOCK_INDEX_BY_MINT_TX_NONCE_DB_NAME),
+            DatabaseFlags::empty(),
+        )?;
         Ok(())
     }
 
@@ -58,19 +62,6 @@ impl MintTxStore {
         let mint_txs: MintTxList =
             decode(db_transaction.get(self.mint_txs_by_block, &u64_to_key_bytes(block_index))?)?;
         Ok(mint_txs.mint_txs)
-    }
-
-    /// Returns true if the Ledger contains the given mint tx nonce
-    pub fn contains_mint_tx_nonce(
-        &self,
-        nonce: &[u8],
-        db_transaction: &impl Transaction,
-    ) -> Result<bool, Error> {
-        match db_transaction.get(self.mint_tx_by_nonce, &nonce) {
-            Ok(_db_bytes) => Ok(true),
-            Err(lmdb::Error::NotFound) => Ok(false),
-            Err(e) => Err(Error::Lmdb(e)),
-        }
     }
 
     /// Write mint txs in a given block.
@@ -113,15 +104,27 @@ impl MintTxStore {
 
             // Ensure nonce uniqueness
             db_transaction.put(
-                self.mint_tx_by_nonce,
+                self.block_index_by_mint_tx_nonce,
                 &mint_tx.prefix.nonce,
-                &encode(mint_tx),
+                &block_index_bytes,
                 WriteFlags::NO_OVERWRITE, /* this ensures we do not overwrite a nonce that was
                                            * already used */
             )?;
         }
 
         Ok(())
+    }
+
+    pub fn check_mint_tx_nonce(
+        &self,
+        nonce: &[u8],
+        db_transaction: &impl Transaction,
+    ) -> Result<Option<BlockIndex>, Error> {
+        match db_transaction.get(self.block_index_by_mint_tx_nonce, &nonce) {
+            Ok(db_bytes) => Ok(Some(key_bytes_to_u64(db_bytes))),
+            Err(lmdb::Error::NotFound) => Ok(None),
+            Err(e) => Err(Error::Lmdb(e)),
+        }
     }
 }
 
@@ -517,6 +520,85 @@ mod tests {
                 mint_tx1.prefix.amount,
                 mint_tx1.prefix.amount - 1
             ))
+        );
+    }
+
+    #[test]
+    fn check_mint_tx_nonce_works() {
+        let (mint_config_store, mint_tx_store, env) = init_test_stores();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+
+        // Generate and store a mint configurations.
+        let (set_mint_config_tx1, signers1) =
+            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_config_store
+            .write_set_mint_config_txs(0, &[set_mint_config_tx1], &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        // Generate some test transactions
+        let mint_tx1 = generate_test_mint_tx(token_id1, &signers1, 1, &mut rng);
+        let mint_tx2 = generate_test_mint_tx(token_id1, &signers1, 1, &mut rng);
+        let mint_tx3 = generate_test_mint_tx(token_id1, &signers1, 1, &mut rng);
+
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_tx_store
+            .write_mint_txs(
+                0,
+                &[mint_tx1.clone(), mint_tx2.clone()],
+                &mint_config_store,
+                &mut db_txn,
+            )
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        let db_txn = env.begin_ro_txn().unwrap();
+        assert_eq!(
+            mint_tx_store.check_mint_tx_nonce(&mint_tx1.prefix.nonce, &db_txn),
+            Ok(Some(0))
+        );
+        assert_eq!(
+            mint_tx_store.check_mint_tx_nonce(&mint_tx2.prefix.nonce, &db_txn),
+            Ok(Some(0))
+        );
+        assert_eq!(
+            mint_tx_store.check_mint_tx_nonce(&mint_tx3.prefix.nonce, &db_txn),
+            Ok(None)
+        );
+        assert_eq!(
+            mint_tx_store.check_mint_tx_nonce(
+                &mint_tx1.prefix.nonce[..mint_tx1.prefix.nonce.len() - 2],
+                &db_txn
+            ),
+            Ok(None)
+        );
+        assert_eq!(
+            mint_tx_store.check_mint_tx_nonce(&[1, 2, 3], &db_txn),
+            Ok(None)
+        );
+        drop(db_txn);
+
+        let mut db_txn = env.begin_rw_txn().unwrap();
+        mint_tx_store
+            .write_mint_txs(1, &[mint_tx3.clone()], &mint_config_store, &mut db_txn)
+            .unwrap();
+        db_txn.commit().unwrap();
+
+        let db_txn = env.begin_ro_txn().unwrap();
+        assert_eq!(
+            mint_tx_store.check_mint_tx_nonce(&mint_tx1.prefix.nonce, &db_txn),
+            Ok(Some(0))
+        );
+        assert_eq!(
+            mint_tx_store.check_mint_tx_nonce(&mint_tx2.prefix.nonce, &db_txn),
+            Ok(Some(0))
+        );
+        assert_eq!(
+            mint_tx_store.check_mint_tx_nonce(&mint_tx3.prefix.nonce, &db_txn),
+            Ok(Some(1))
         );
     }
 }

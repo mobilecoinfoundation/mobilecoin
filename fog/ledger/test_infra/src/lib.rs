@@ -15,7 +15,7 @@ use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResu
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockSignature, TokenId,
+    Block, BlockContents, BlockData, BlockIndex, BlockSignature, TokenId,
 };
 
 #[derive(Default, Clone)]
@@ -189,6 +189,14 @@ impl Ledger for MockLedger {
     }
 
     fn get_active_mint_configs(&self, _token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error> {
+        unimplemented!()
+    }
+
+    fn check_set_mint_config_tx_nonce(&self, _nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
+        unimplemented!()
+    }
+
+    fn check_mint_tx_nonce(&self, _nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
         unimplemented!()
     }
 }
