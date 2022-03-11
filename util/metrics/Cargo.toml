@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 chrono = "0.4"
 mc-common = { path = "../../common", features = ["log"] }
-grpcio = "0.9.0"
+grpcio = "0.10.0"
 lazy_static = "1.4"
 prometheus = "0.13"
 protobuf = "2.22.1"
