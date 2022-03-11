@@ -5,11 +5,6 @@
 #![allow(non_snake_case)]
 #![allow(clippy::missing_safety_doc)]
 
-extern crate android_logger;
-
-use android_logger::Config;
-use log::Level;
-
 use crate::{
     error::McError,
     ffi::{jni_big_int_to_u64, jni_ffi_call, jni_ffi_call_or, RUST_OBJ_FIELD},
@@ -1644,8 +1639,6 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1input(
     view_private_key: JObject,
 ) {
     jni_ffi_call(&env, |env| {
-        android_logger::init_once(Config::default().with_min_level(Level::Trace));
-        error!("this is printed by default");
         let mut tx_builder: MutexGuard<TransactionBuilder<FogResolver>> =
             env.get_rust_field(obj, RUST_OBJ_FIELD)?;
         let ring: Vec<TxOut> = (0..env.get_array_length(ring)?)
@@ -1655,10 +1648,6 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1input(
                 Ok(tx_out.clone())
             })
             .collect::<Result<_, jni::errors::Error>>()?;
-        //for tx_out in ring.iter() {
-        //debug!("[SAMDEALY][RUST] TxOut {}",
-        // hex::encode(mc_util_serial::encode(tx_out)));
-        //}
 
         let membership_proofs: Vec<TxOutMembershipProof> = (0..env
             .get_array_length(membership_proofs)?)
@@ -1669,19 +1658,12 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1input(
                 Ok(membership_proof.clone())
             })
             .collect::<Result<_, jni::errors::Error>>()?;
-        //for membership_proof in membership_proofs.iter() {
-        //debug!("[SAMDEALY][RUST] TxOutMembershipProof {}",
-        // hex::encode(mc_util_serial::encode(membership_proof))); }
 
         let onetime_private_key: MutexGuard<RistrettoPrivate> =
             env.get_rust_field(onetime_private_key, RUST_OBJ_FIELD)?;
-        //debug!("[SAMDEALY][RUST] Onetime private key {}",
-        // hex::encode(mc_util_serial::encode(&*onetime_private_key)));
 
         let view_private_key: MutexGuard<RistrettoPrivate> =
             env.get_rust_field(view_private_key, RUST_OBJ_FIELD)?;
-        //debug!("[SAMDEALY][RUST] View private key {}",
-        // hex::encode(mc_util_serial::encode(&*view_private_key)));
 
         let input_credentials_result = InputCredentials::new(
             ring,
@@ -1690,14 +1672,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1input(
             *onetime_private_key,
             *view_private_key,
         );
-        match input_credentials_result {
-            Ok(input_credentials) => {
-                //debug!("Input credentials are legit");
-                tx_builder.add_input(input_credentials);
-            }
-            Err(e) => debug!("[SAMDEALY][RUST] Build error: {}", e),
-        }
-        //debug!("[SAMDEALY][RUST] GOT TO THE END");
+        tx_builder.add_input(input_credentials_result?);
 
         Ok(())
     })
