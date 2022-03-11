@@ -1,4 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
+#![allow(dead_code)]
 
 use displaydoc::Display;
 use futures::{Stream, StreamExt};
@@ -6,7 +7,7 @@ use mc_common::logger::{log, o, Logger};
 use mc_ledger_streaming_api::{
     streaming_blocks::{SubscribeRequest, SubscribeResponse},
     streaming_blocks_grpc::LedgerUpdatesClient,
-    BlockSource, Error, Result,
+    BlockSource, LedgerStreamingError, StreamResult,
 };
 use mc_transaction_core::BlockData;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
@@ -32,9 +33,9 @@ impl GrpcBlockSource {
 }
 
 impl BlockSource for GrpcBlockSource {
-    type BlockStream = impl Stream<Item = Result<BlockData>>;
+    type BlockStream = impl Stream<Item = StreamResult<BlockData>>;
 
-    fn get_block_stream(&self, starting_height: u64) -> Result<Self::BlockStream> {
+    fn get_block_stream(&self, starting_height: u64) -> StreamResult<Self::BlockStream> {
         let logger = self.logger.clone();
 
         let mut req = SubscribeRequest::new();
@@ -42,7 +43,10 @@ impl BlockSource for GrpcBlockSource {
 
         let opt = grpcio::CallOption::default().timeout(Duration::from_secs(10));
 
-        let stream = self.client.subscribe_opt(&req, opt).map_err(Error::from)?;
+        let stream = self
+            .client
+            .subscribe_opt(&req, opt)
+            .map_err(LedgerStreamingError::from)?;
         Ok(stream.map(move |res| map_subscribe_response(res, &logger)))
     }
 }
@@ -50,12 +54,12 @@ impl BlockSource for GrpcBlockSource {
 fn map_subscribe_response(
     res: grpcio::Result<SubscribeResponse>,
     logger: &Logger,
-) -> Result<BlockData> {
+) -> StreamResult<BlockData> {
     log::trace!(logger, "map_subscribe_response");
-    let response = res.map_err(Error::from)?;
+    let response = res.map_err(LedgerStreamingError::from)?;
     // TODO: Validate result against result_signature
     let archive_block = response.get_result().get_block();
-    BlockData::try_from(archive_block).map_err(Error::from)
+    BlockData::try_from(archive_block).map_err(LedgerStreamingError::from)
 }
 
 #[cfg(test)]

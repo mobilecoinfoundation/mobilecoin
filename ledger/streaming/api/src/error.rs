@@ -16,16 +16,16 @@ pub enum LedgerStreamingError {
     InvalidBlockId,
 }
 
-impl From<GrpcError> for Error {
+impl From<GrpcError> for LedgerStreamingError {
     fn from(src: GrpcError) -> Self {
         Self::Grpc(src)
     }
 }
 
-impl From<ConversionError> for Error {
+impl From<ConversionError> for LedgerStreamingError {
     fn from(src: ConversionError) -> Self {
         Self::Conversion(src)
     }
 }
 
-pub type Result<T> = core::result::Result<T, Error>;
+pub type StreamResult<T> = core::result::Result<T, LedgerStreamingError>;

@@ -1,9 +1,8 @@
-use crate::Result;
-use mc_transaction_core::{BlockData, BlockIndex};
-
+use crate::StreamResult;
+use mc_transaction_core::BlockData;
 
 pub trait BlockSource {
-    type BlockStream: futures::Stream<Item = Result<BlockData>>;
+    type BlockStream: futures::Stream<Item = StreamResult<BlockData>>;
 
-    fn get_block_stream(&self, starting_height: u64) -> Result<Self::BlockStream>;
+    fn get_block_stream(&self, starting_height: u64) -> StreamResult<Self::BlockStream>;
 }

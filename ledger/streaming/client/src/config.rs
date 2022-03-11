@@ -1,13 +1,12 @@
-use crate::source::GrpcBlockSource;
-use mc_common::{logger::Logger, ResponderId};
+#![allow(dead_code)]
+use mc_common::ResponderId;
 use mc_consensus_scp::QuorumSet;
-use mc_ledger_db::Ledger;
-use mc_ledger_streaming_api::BlockSource;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
-use std::{path::PathBuf, sync::Arc, time::Duration};
+use std::path::PathBuf;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "mobilecoind", about = "The MobileCoin client daemon.")]
+#[structopt(name = "streaming client", about = "MobileCoin streaming client")]
 pub struct Config {
     /// Path to ledger db (lmdb).
     #[structopt(long, default_value = "/tmp/ledgerdb", parse(from_os_str))]
@@ -33,6 +32,17 @@ pub struct Config {
     /// Automatically migrate the ledger db into the most recent version.
     #[structopt(long)]
     pub ledger_db_migrate: bool,
+}
+
+fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet<ResponderId>, String> {
+    let quorum_set: QuorumSet<ResponderId> = serde_json::from_str(src)
+        .map_err(|err| format!("Error parsing quorum set {}: {:?}", src, err))?;
+
+    if !quorum_set.is_valid() {
+        return Err(format!("Invalid quorum set: {:?}", quorum_set));
+    }
+
+    Ok(quorum_set)
 }
 
 impl Config {

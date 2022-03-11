@@ -1,66 +1,58 @@
-use crate::{source::}
-use futures::stream::{select_all, Stream, StreamExt};
-use mc_common::{NodeID, logger::Logger};
-use mc_ledger_streaming_api::{BlockSource, LedgerStreamingError};
-use mc_ledger_streaming_client::GrpcBlockSource;
-use mc_ledger_db::{Ledger, LedgerDB};
-use mc_transaction_core::{Block, BlockData};
-use mc_util_uri::ConnectionUri;
-use std::sync::{atomic::AtomicBool, Arc};
-use futures::TryStreamExt;
-use crate::source::GrpcBlockSource;
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+#![allow(dead_code)]
+use futures::stream::{Stream, StreamExt};
+use mc_common::logger::{log, Logger};
+use mc_ledger_streaming_api::StreamResult;
+use mc_transaction_core::BlockData;
+use pin_project::pin_project;
 
-/// A connection manager manages a list of peers it is connected to.
-pub struct BlockSink<
-    BS: Stream<Item = Result<(NodeID, BlockData), LedgerStreamingError>>,
-    URI: ConnectionUri,
-> {
-    peers: Arc<Vec<URI>>,
-    streams: Arc<Vec<BS>>,
-    is_blocking_quorum_set: Arc<AtomicBool>,
+/// A block sink that takes blocks from a passed stream and puts them into
+/// ledger db. This sink should live downstream from a verification source that
+/// has already done block content, scp, and avr validation and thus is
+/// considered a trusted stream.
+#[pin_project]
+pub struct BlockSink<BS: Stream<Item = StreamResult<BlockData>> + std::marker::Unpin> {
+    stream: BS,
     logger: Logger,
 }
 
-impl<
-    BS: Stream<Item = Result<(NodeID, BlockData), LedgerStreamingError>>,
-    URI: ConnectionUri>
-    BlockSink<BS, URI>
-{
-    pub fn new(peer_nodes: Vec<URI>, logger: Logger) -> Self {
-        let peers = Arc::new(peer_nodes);
-        let is_blocking_quorum_set = Arc::new(AtomicBool::new(is_blocking_quorum(peers.clone())));
-        Self {
-            peers,
-            streams: Arc::new(Vec::new()),
-            is_blocking_quorum_set,
-            logger
-        }
-    }
-
-    // Initialize peers streams
-    pub fn initialize_peer_streams(&mut self, ledger: &impl Ledger) {
-        let start_height = ledger.num_blocks().unwrap();
-        self.streams = self.peers.iter().map(|uri| {
-            let env = grpcio::Environment::new(5);
-            GrpcBlockSource::new(uri, Arc::new(env), self.logger.clone()).
-                    get_block_stream(start_height, uri)
-        }).collect();
+impl<BS: Stream<Item = StreamResult<BlockData>> + std::marker::Unpin> BlockSink<BS> {
+    // generate new object from stream
+    pub fn new(stream: BS, logger: Logger) -> Self {
+        Self { stream, logger }
     }
 
     // Ingest blocks from stream into a sink for processing
-    async fn ingest(&self) {
-        let mut block_streams = select_all(self.streams.clone());
-        while let Ok(block) = block_streams.map_ok(|a| a ).try_next().await {
-            //
-            //
+    async fn ingest(&mut self) -> Vec<BlockData> {
+        let mut v: Vec<BlockData> = Vec::new();
+        while let Some(block) = self.stream.next().await {
+            v.push(block.unwrap());
         }
+
+        log::info!(self.logger, "vector is {:?}", v);
+        v
     }
+}
 
-    // Validate the blocks
-    async fn validate(&self) {
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use futures::executor::block_on;
+    use mc_common::logger::test_with_logger;
+    use mc_ledger_db::{test_utils::get_mock_ledger, Ledger};
 
+    #[test_with_logger]
+    fn assert_blocks_arrive(logger: Logger) {
+        let mock_ledger = get_mock_ledger(5);
+        let mut test_block_data: Vec<StreamResult<BlockData>> = Vec::new();
+        for i in 1..5 as u64 {
+            test_block_data.push(Ok(mock_ledger.get_block_data(i).unwrap()))
+        }
+
+        let stream = futures::stream::iter(test_block_data);
+
+        let mut bs = BlockSink::new(stream, logger);
+        let vec = block_on(bs.ingest());
+        assert_eq!(vec.len(), 4)
     }
-
-    // Sink puts validated blocks in the ledgerdb
-    async fn db_sink(&self) {}
 }
