@@ -148,7 +148,7 @@ pub struct LedgerDB {
     /// Storage abstraction for mint configurations.
     mint_config_store: MintConfigStore,
 
-    /// Storage abstraction for mint trnasactions.
+    /// Storage abstraction for mint transactions.
     mint_tx_store: MintTxStore,
 
     /// Location on filesystem.
@@ -987,6 +987,7 @@ mod ledger_db_test {
         let account_key = AccountKey::random(rng);
         TxOut::new(
             rng.next_u64(),
+            Mob::ID,
             &account_key.default_subaddress(),
             &RistrettoPrivate::from_random(rng),
             Default::default(),
@@ -1713,6 +1714,7 @@ mod ledger_db_test {
             .map(|_i| {
                 TxOut::new(
                     1000,
+                    Mob::ID,
                     &recipient_account_key.default_subaddress(),
                     &RistrettoPrivate::from_random(&mut rng),
                     Default::default(),
@@ -1813,6 +1815,7 @@ mod ledger_db_test {
             .map(|_i| {
                 TxOut::new(
                     1000,
+                    Mob::ID,
                     &recipient_account_key.default_subaddress(),
                     &RistrettoPrivate::from_random(&mut rng),
                     Default::default(),

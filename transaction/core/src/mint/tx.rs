@@ -52,9 +52,11 @@ impl MintTxPrefix {
     Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub struct MintTx {
+    /// The transaction contents.
     #[prost(message, required, tag = "1")]
     pub prefix: MintTxPrefix,
 
+    /// The transaction signature.
     #[prost(message, required, tag = "2")]
     pub signature: MultiSig<Ed25519Signature>,
 }
