@@ -37,7 +37,7 @@ pub struct BlockContents {
 }
 
 impl BlockContents {
-   /// The Merlin digest of `self`.
+    /// The Merlin digest of `self`.
     pub fn hash(&self) -> BlockContentsHash {
         BlockContentsHash(self.digest32::<MerlinTranscript>(b"block_contents"))
     }

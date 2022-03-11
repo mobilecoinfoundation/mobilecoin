@@ -8,7 +8,8 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion, Token, TokenId,
+    Block, BlockContents, BlockData, BlockID, BlockIndex, BlockSignature, BlockVersion, Token,
+    TokenId,
 };
 use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, SeedableRng};
@@ -193,6 +194,14 @@ impl Ledger for MockLedger {
     }
 
     fn get_active_mint_configs(&self, _token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error> {
+        unimplemented!()
+    }
+
+    fn check_set_mint_config_tx_nonce(&self, _nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
+        unimplemented!()
+    }
+
+    fn check_mint_tx_nonce(&self, _nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
         unimplemented!()
     }
 }
