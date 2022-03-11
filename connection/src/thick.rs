@@ -14,7 +14,10 @@ use crate::{
 use aes_gcm::Aes256Gcm;
 use cookie::CookieJar;
 use displaydoc::Display;
-use grpcio::{CallOption, ChannelBuilder, Environment, Error as GrpcError, MetadataBuilder};
+use grpcio::{
+    CallOption, ChannelBuilder, ClientUnaryReceiver, Environment, Error as GrpcError,
+    MetadataBuilder,
+};
 use mc_attest_ake::{
     AuthResponseInput, ClientInitiate, Error as AkeError, Ready, Start, Transition,
 };
@@ -42,7 +45,7 @@ use secrecy::{ExposeSecret, SecretVec};
 use sha2::Sha512;
 use std::{
     cmp::Ordering,
-    convert::{From, TryFrom},
+    convert::TryFrom,
     fmt::{Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
     ops::Range,
@@ -174,8 +177,7 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
         func: impl FnOnce(
             &mut Self,
             CallOption,
-        )
-            -> StdResult<grpcio::ClientUnaryReceiver<T>, ThickClientAttestationError>,
+        ) -> StdResult<ClientUnaryReceiver<T>, ThickClientAttestationError>,
     ) -> StdResult<T, ThickClientAttestationError> {
         // Make the actual RPC call.
         let result = func(self, self.call_option()?);
@@ -211,7 +213,7 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
     /// A convenience wrapper for performing authenticated+attested GRPC calls
     fn authenticated_attested_call<T>(
         &mut self,
-        func: impl FnOnce(&mut Self, CallOption) -> StdResult<grpcio::ClientUnaryReceiver<T>, GrpcError>,
+        func: impl FnOnce(&mut Self, CallOption) -> StdResult<ClientUnaryReceiver<T>, GrpcError>,
     ) -> StdResult<T, ThickClientAttestationError> {
         self.authenticated_call(|this, call_option| {
             this.attested_call(|this| func(this, call_option))
