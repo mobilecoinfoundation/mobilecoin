@@ -8,7 +8,7 @@ use mc_consensus_api::consensus_client_grpc::ConsensusClientApiClient;
 use mc_consensus_mint_client::Config;
 use mc_crypto_keys::{Ed25519Pair, Signer};
 use mc_crypto_multisig::{MultiSig, SignerSet};
-use mc_transaction_core::mint::{MintConfig, SetMintConfigTx, SetMintConfigTxPrefix};
+use mc_transaction_core::mint::{MintConfig, MintConfigTx, MintConfigTxPrefix};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::sync::Arc;
@@ -28,7 +28,7 @@ fn main() {
     let mut nonce: Vec<u8> = vec![0u8; 32];
     rng.fill_bytes(&mut nonce);
 
-    let prefix = SetMintConfigTxPrefix {
+    let prefix = MintConfigTxPrefix {
         token_id: 1,
         configs: vec![MintConfig {
             token_id: 1,
@@ -41,10 +41,10 @@ fn main() {
 
     let message = prefix.hash();
     let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
-    let tx = SetMintConfigTx { prefix, signature };
+    let tx = MintConfigTx { prefix, signature };
 
     let resp = api_client
-        .propose_set_mint_config_tx(&(&tx).into())
+        .propose_mint_config_tx(&(&tx).into())
         .expect("propose tx");
     println!("response: {:?}", resp);
 }

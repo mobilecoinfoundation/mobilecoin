@@ -120,7 +120,7 @@ impl From<MintValidationError> for MintValidationResult {
             },
             MintValidationError::InvalidTokenId(token_id) => Self {
                 code: MintValidationResultCode::InvalidTokenId,
-                token_id: token_id,
+                token_id,
                 ..Default::default()
             },
             MintValidationError::InvalidNonceLength(len) => Self {

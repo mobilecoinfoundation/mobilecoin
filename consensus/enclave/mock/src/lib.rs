@@ -218,7 +218,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         inputs: FormBlockInputs,
         _root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)> {
-        // TODO  consume the SetMintConfigTx inputs
+        // TODO  consume the MintConfigTx inputs
 
         let block_version = self.blockchain_config.lock().unwrap().block_version;
         let transactions_with_proofs: Vec<(Tx, Vec<TxOutMembershipProof>)> = inputs

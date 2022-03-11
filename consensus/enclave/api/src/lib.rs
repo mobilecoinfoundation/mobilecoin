@@ -30,7 +30,7 @@ use mc_common::ResponderId;
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, RistrettoPublic, X25519Public};
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_transaction_core::{
-    mint::SetMintConfigTx,
+    mint::MintConfigTx,
     ring_signature::KeyImage,
     tx::{Tx, TxHash, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockSignature, TokenId,
@@ -231,7 +231,7 @@ pub struct FormBlockInputs {
         Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>,
 
     /// Updating minting configuration transactions
-    pub set_mint_config_txs: Vec<SetMintConfigTx>,
+    pub mint_config_txs: Vec<MintConfigTx>,
 }
 
 /// The API for interacting with a consensus node's enclave.

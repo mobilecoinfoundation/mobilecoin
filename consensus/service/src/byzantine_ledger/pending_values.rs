@@ -83,10 +83,10 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
                     }
                 }
 
-                ConsensusValue::SetMintConfigTx(ref set_mint_config_tx) => {
+                ConsensusValue::MintConfigTx(ref mint_config_tx) => {
                     if self
                         .mint_tx_manager
-                        .validate_set_mint_config_tx(set_mint_config_tx)
+                        .validate_mint_config_tx(mint_config_tx)
                         .is_ok()
                     {
                         // The transaction is well-formed and valid.
@@ -136,8 +136,8 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
         let mint_tx_manager = self.mint_tx_manager.clone();
         self.retain(|value| match value {
             ConsensusValue::TxHash(tx_hash) => tx_manager.validate(tx_hash).is_ok(),
-            ConsensusValue::SetMintConfigTx(ref set_mint_config_tx) => mint_tx_manager
-                .validate_set_mint_config_tx(set_mint_config_tx)
+            ConsensusValue::MintConfigTx(ref mint_config_tx) => mint_tx_manager
+                .validate_mint_config_tx(mint_config_tx)
                 .is_ok(),
         });
     }

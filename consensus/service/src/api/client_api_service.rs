@@ -13,14 +13,14 @@ use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
 use mc_common::logger::Logger;
 use mc_consensus_api::{
-    consensus_client::ProposeSetMintConfigTxResponse,
+    consensus_client::ProposeMintConfigTxResponse,
     consensus_client_grpc::ConsensusClientApi,
     consensus_common::{ProposeTxResponse, ProposeTxResult},
 };
 use mc_consensus_enclave::ConsensusEnclave;
 use mc_ledger_db::Ledger;
 use mc_peers::ConsensusValue;
-use mc_transaction_core::mint::SetMintConfigTx;
+use mc_transaction_core::mint::MintConfigTx;
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use std::{convert::TryFrom, sync::Arc};
@@ -101,27 +101,23 @@ impl ClientApiService {
     }
 
     /// TODO
-    fn handle_propose_set_mint_config_tx(
+    fn handle_propose_mint_config_tx(
         &mut self,
-        grpc_tx: mc_consensus_api::external::SetMintConfigTx,
-    ) -> Result<ProposeSetMintConfigTxResponse, ConsensusGrpcError> {
+        grpc_tx: mc_consensus_api::external::MintConfigTx,
+    ) -> Result<ProposeMintConfigTxResponse, ConsensusGrpcError> {
         // TODO counters::ADD_TX_INITIATED.inc();
-        let set_mint_config_tx = SetMintConfigTx::try_from(&grpc_tx)
+        let mint_config_tx = MintConfigTx::try_from(&grpc_tx)
             .map_err(|err| ConsensusGrpcError::InvalidArgument(format!("{:?}", err)))?;
-        let response = ProposeSetMintConfigTxResponse::new();
+        let response = ProposeMintConfigTxResponse::new();
 
         // Validate the transaction.
         // This is done here as a courtesy to give clients immediate feedback about the
         // transaction.
         self.mint_tx_manager
-            .validate_set_mint_config_tx(&set_mint_config_tx)?;
+            .validate_mint_config_tx(&mint_config_tx)?;
 
         // The transaction can be considered by the network.
-        (*self.propose_tx_callback)(
-            ConsensusValue::SetMintConfigTx(set_mint_config_tx),
-            None,
-            None,
-        );
+        (*self.propose_tx_callback)(ConsensusValue::MintConfigTx(mint_config_tx), None, None);
         // TODO counters::ADD_TX.inc();
         Ok(response)
     }
@@ -171,11 +167,11 @@ impl ConsensusClientApi for ClientApiService {
         });
     }
 
-    fn propose_set_mint_config_tx(
+    fn propose_mint_config_tx(
         &mut self,
         ctx: RpcContext,
-        grpc_tx: mc_consensus_api::external::SetMintConfigTx,
-        sink: UnarySink<ProposeSetMintConfigTxResponse>,
+        grpc_tx: mc_consensus_api::external::MintConfigTx,
+        sink: UnarySink<ProposeMintConfigTxResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
 
@@ -183,13 +179,13 @@ impl ConsensusClientApi for ClientApiService {
             return send_result(ctx, sink, err.into(), &self.logger);
         }
 
-        let mut result: Result<ProposeSetMintConfigTxResponse, RpcStatus> =
+        let mut result: Result<ProposeMintConfigTxResponse, RpcStatus> =
             if counters::CUR_NUM_PENDING_VALUES.get() >= PENDING_LIMIT {
                 ConsensusGrpcError::OverCapacity.into()
             } else if !(self.is_serving_fn)() {
                 ConsensusGrpcError::NotServing.into()
             } else {
-                self.handle_propose_set_mint_config_tx(grpc_tx)
+                self.handle_propose_mint_config_tx(grpc_tx)
                     .or_else(ConsensusGrpcError::into)
             };
 

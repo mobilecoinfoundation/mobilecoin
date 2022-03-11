@@ -5,7 +5,7 @@ use displaydoc::Display;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_common::logger::global_log;
 use mc_consensus_api::{
-    consensus_client::{MintValidationResult, ProposeSetMintConfigTxResponse},
+    consensus_client::{MintValidationResult, ProposeMintConfigTxResponse},
     consensus_common::{ProposeTxResponse, ProposeTxResult},
 };
 use mc_consensus_enclave::Error as EnclaveError;
@@ -147,18 +147,18 @@ impl From<ConsensusGrpcError> for Result<ProposeTxResponse, RpcStatus> {
     }
 }
 
-/// Convert a `ConsensusGrpcError` into either `ProposeSetMintConfigTxResponse`
+/// Convert a `ConsensusGrpcError` into either `ProposeMintConfigTxResponse`
 /// or `RpcStatus`, depending on which error it holds.
-impl From<ConsensusGrpcError> for Result<ProposeSetMintConfigTxResponse, RpcStatus> {
-    fn from(src: ConsensusGrpcError) -> Result<ProposeSetMintConfigTxResponse, RpcStatus> {
+impl From<ConsensusGrpcError> for Result<ProposeMintConfigTxResponse, RpcStatus> {
+    fn from(src: ConsensusGrpcError) -> Result<ProposeMintConfigTxResponse, RpcStatus> {
         match src {
             ConsensusGrpcError::TransactionValidation(_err) => {
-                // let resp = ProposeSetMintConfigTxResponse::new();
-                // TODO resp.set_result(ProposeSetMintConfigTxResult::from(err));
+                // let resp = ProposeMintConfigTxResponse::new();
+                // TODO resp.set_result(ProposeMintConfigTxResult::from(err));
                 // Ok(resp)
                 todo!() // This should never happen
             }
-            ConsensusGrpcError::MintValidation(err) => Ok(ProposeSetMintConfigTxResponse {
+            ConsensusGrpcError::MintValidation(err) => Ok(ProposeMintConfigTxResponse {
                 result: Some(MintValidationResult::from(err)).into(),
                 ..Default::default()
             }),

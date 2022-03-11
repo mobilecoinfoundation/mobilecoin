@@ -91,7 +91,7 @@ pub struct TokenConfig {
     allow_any_fee: bool,
 
     /// Master minters - if set, controls the set of keys that can sign
-    /// set-minting-configuration transactions.
+    /// minting-configuration transactions.
     /// Not supported for MOB
     #[serde(default, with = "pem_signer_set")]
     master_minters: Option<SignerSet<Ed25519Public>>,
@@ -300,11 +300,10 @@ impl TokensConfig {
 
         Ok(HashMap::from_iter(self.tokens.iter().filter_map(
             |token_config| {
-                if let Some(master_minters) = &token_config.master_minters {
-                    Some((token_config.token_id, master_minters.clone()))
-                } else {
-                    None
-                }
+                token_config
+                    .master_minters
+                    .as_ref()
+                    .map(|master_minters| (token_config.token_id, master_minters.clone()))
             },
         )))
     }
