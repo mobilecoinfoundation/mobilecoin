@@ -26,9 +26,9 @@ use mc_util_serial::{decode, encode, Message};
 // LMDB Database names.
 pub const ACTIVE_MINT_CONFIGS_BY_TOKEN_ID_DB_NAME: &str =
     "mint_config_store:active_mint_configs_by_token_id";
-pub const BLOCK_INDEX_BY_SET_MINT_CONFIG_TX_NONCE_DB_NAME: &str =
+pub const BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_DB_NAME: &str =
     "mint_config_store:block_index_by_mint_config_tx_nonce";
-pub const SET_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME: &str = "mint_config_store:mint_config_txs_by_block";
+pub const MINT_CONFIG_TXS_BY_BLOCK_DB_NAME: &str = "mint_config_store:mint_config_txs_by_block";
 
 /// An active mint configuration for a single token.
 #[derive(Clone, Eq, Message, PartialEq)]
@@ -93,8 +93,8 @@ impl MintConfigStore {
             active_mint_configs_by_token_id: env
                 .open_db(Some(ACTIVE_MINT_CONFIGS_BY_TOKEN_ID_DB_NAME))?,
             block_index_by_mint_config_tx_nonce: env
-                .open_db(Some(BLOCK_INDEX_BY_SET_MINT_CONFIG_TX_NONCE_DB_NAME))?,
-            mint_config_txs_by_block: env.open_db(Some(SET_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME))?,
+                .open_db(Some(BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_DB_NAME))?,
+            mint_config_txs_by_block: env.open_db(Some(MINT_CONFIG_TXS_BY_BLOCK_DB_NAME))?,
         })
     }
 
@@ -105,11 +105,11 @@ impl MintConfigStore {
             DatabaseFlags::empty(),
         )?;
         env.create_db(
-            Some(BLOCK_INDEX_BY_SET_MINT_CONFIG_TX_NONCE_DB_NAME),
+            Some(BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_DB_NAME),
             DatabaseFlags::empty(),
         )?;
         env.create_db(
-            Some(SET_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME),
+            Some(MINT_CONFIG_TXS_BY_BLOCK_DB_NAME),
             DatabaseFlags::empty(),
         )?;
 

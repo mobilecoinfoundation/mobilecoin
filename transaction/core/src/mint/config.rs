@@ -2,7 +2,7 @@
 
 //! Minting transaction configuration.
 
-use crate::domain_separators::SET_MINT_CONFIG_TX_PREFIX_DOMAIN_TAG;
+use crate::domain_separators::MINT_CONFIG_TX_PREFIX_DOMAIN_TAG;
 use alloc::vec::Vec;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
@@ -57,7 +57,7 @@ pub struct MintConfigTxPrefix {
 impl MintConfigTxPrefix {
     /// Digestible-crate hash of `self` using Merlin
     pub fn hash(&self) -> [u8; 32] {
-        self.digest32::<MerlinTranscript>(SET_MINT_CONFIG_TX_PREFIX_DOMAIN_TAG.as_bytes())
+        self.digest32::<MerlinTranscript>(MINT_CONFIG_TX_PREFIX_DOMAIN_TAG.as_bytes())
     }
 }
 
