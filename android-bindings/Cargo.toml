@@ -37,7 +37,6 @@ mc-api = { path = "../api" }
 
 # third-party
 aes-gcm = { version = "0.9.4", default-features = false }
-android_logger = "0.10.1"
 anyhow = "1.0"
 displaydoc = { version = "0.2", default-features = false }
 generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
