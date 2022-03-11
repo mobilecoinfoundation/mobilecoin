@@ -3,22 +3,19 @@
 //! TODO
 
 use crate::mint_tx_manager::MintTxManagerResult;
-use mc_transaction_core::mint::SetMintConfigTx;
+use mc_transaction_core::mint::MintConfigTx;
 
 #[cfg(test)]
 use mockall::*;
 
 #[cfg_attr(test, automock)]
 pub trait MintTxManager: Send {
-    /// Validate a SetMintConfigTx transaction against the current ledger.
-    fn validate_set_mint_config_tx(
-        &self,
-        set_mint_config_tx: &SetMintConfigTx,
-    ) -> MintTxManagerResult<()>;
+    /// Validate a MintConfigTx transaction against the current ledger.
+    fn validate_mint_config_tx(&self, mint_config_tx: &MintConfigTx) -> MintTxManagerResult<()>;
 
     /// TODO
-    fn combine_set_mint_config_txs(
+    fn combine_mint_config_txs(
         &self,
-        txs: &[SetMintConfigTx],
-    ) -> MintTxManagerResult<Vec<SetMintConfigTx>>;
+        txs: &[MintConfigTx],
+    ) -> MintTxManagerResult<Vec<MintConfigTx>>;
 }

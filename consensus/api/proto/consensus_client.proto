@@ -39,8 +39,8 @@ message MintValidationResult {
     uint64 nonce_length = 4;
 }
 
-/// Response from ProposeSetMintConfigTx RPC call.
-message ProposeSetMintConfigTxResponse {
+/// Response from ProposeMintConfigTx RPC call.
+message ProposeMintConfigTxResponse {
     /// Result.
     MintValidationResult result = 1;
 
@@ -55,5 +55,5 @@ service ConsensusClientAPI {
     rpc ClientTxPropose(attest.Message) returns (consensus_common.ProposeTxResponse);
 
     /// TODO
-    rpc ProposeSetMintConfigTx(external.SetMintConfigTx) returns (ProposeSetMintConfigTxResponse);
+    rpc ProposeMintConfigTx(external.MintConfigTx) returns (ProposeMintConfigTxResponse);
 }

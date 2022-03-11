@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Convert to/from external:MintTx/SetMintTxPrefix.
+//! Convert to/from external:MintTx/MintTxPrefix.
 
 use crate::{convert::ConversionError, external};
 use mc_crypto_keys::RistrettoPublic;

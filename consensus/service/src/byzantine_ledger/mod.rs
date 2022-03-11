@@ -140,33 +140,33 @@ impl ByzantineLedger {
                         .validate(tx_hash)
                         .map_err(UnifiedNodeError::from),
 
-                    ConsensusValue::SetMintConfigTx(set_mint_config_tx) => mint_tx_manager_validate
-                        .validate_set_mint_config_tx(set_mint_config_tx)
+                    ConsensusValue::MintConfigTx(mint_config_tx) => mint_tx_manager_validate
+                        .validate_mint_config_tx(mint_config_tx)
                         .map_err(UnifiedNodeError::from),
                 }),
                 // Combine callback
                 Arc::new(move |scp_values| {
                     let mut tx_hashes = Vec::new();
-                    let mut set_mint_config_txs = Vec::new();
+                    let mut mint_config_txs = Vec::new();
 
                     for value in scp_values {
                         match value {
                             ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
-                            ConsensusValue::SetMintConfigTx(set_mint_config_tx) => {
-                                set_mint_config_txs.push(set_mint_config_tx.clone());
+                            ConsensusValue::MintConfigTx(mint_config_tx) => {
+                                mint_config_txs.push(mint_config_tx.clone());
                             }
                         }
                     }
                     let tx_hashes = tx_manager_combine.combine(&tx_hashes[..])?;
                     let tx_hashes_iter = tx_hashes.into_iter().map(ConsensusValue::TxHash);
 
-                    let set_mint_config_txs = mint_tx_manager_combine
-                        .combine_set_mint_config_txs(&set_mint_config_txs[..])?;
-                    let set_mint_config_txs_iter = set_mint_config_txs
+                    let mint_config_txs =
+                        mint_tx_manager_combine.combine_mint_config_txs(&mint_config_txs[..])?;
+                    let mint_config_txs_iter = mint_config_txs
                         .into_iter()
-                        .map(ConsensusValue::SetMintConfigTx);
+                        .map(ConsensusValue::MintConfigTx);
 
-                    Ok(tx_hashes_iter.chain(set_mint_config_txs_iter).collect())
+                    Ok(tx_hashes_iter.chain(mint_config_txs_iter).collect())
                 }),
                 current_slot_index,
                 logger.clone(),
@@ -525,7 +525,12 @@ mod tests {
             logger.clone(),
         ));
 
-        let mint_tx_manager = Arc::new(MintTxManagerImpl::new(ledger.clone(), logger.clone()));
+        let mint_tx_manager = Arc::new(MintTxManagerImpl::new(
+            ledger.clone(),
+            BLOCK_VERSION,
+            Default::default(),
+            logger.clone(),
+        ));
 
         let byzantine_ledger = ByzantineLedger::new(
             local_node_id.clone(),

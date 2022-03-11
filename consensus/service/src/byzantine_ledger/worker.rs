@@ -589,8 +589,8 @@ impl<
 
         self.pending_values.retain(|value| match value {
             ConsensusValue::TxHash(tx_hash) => !purged_hashes.contains(tx_hash),
-            ConsensusValue::SetMintConfigTx(set_mint_config_tx) => {
-                set_mint_config_tx.prefix.tombstone_block > expired_block_index
+            ConsensusValue::MintConfigTx(mint_config_tx) => {
+                mint_config_tx.prefix.tombstone_block > expired_block_index
             }
         });
 

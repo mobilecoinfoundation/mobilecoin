@@ -19,7 +19,7 @@ use mc_crypto_keys::Ed25519Public;
 use mc_crypto_multisig::SignerSet;
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{
-    mint::{validate_set_mint_config_tx, MintValidationError, SetMintConfigTx},
+    mint::{validate_mint_config_tx, MintConfigTx, MintValidationError},
     BlockVersion, TokenId,
 };
 
@@ -55,13 +55,10 @@ impl<L: Ledger> MintTxManagerImpl<L> {
 }
 
 impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
-    /// Validate a SetMintConfigTx transaction against the current ledger.
-    fn validate_set_mint_config_tx(
-        &self,
-        set_mint_config_tx: &SetMintConfigTx,
-    ) -> MintTxManagerResult<()> {
+    /// Validate a MintConfigTx transaction against the current ledger.
+    fn validate_mint_config_tx(&self, mint_config_tx: &MintConfigTx) -> MintTxManagerResult<()> {
         // Get the master minters for this token id.
-        let token_id = TokenId::from(set_mint_config_tx.prefix.token_id);
+        let token_id = TokenId::from(mint_config_tx.prefix.token_id);
         let master_minters = self.token_id_to_master_minters.get(&token_id).ok_or(
             MintTxManagerError::MintValidation(MintValidationError::NoMasterMinters(token_id)),
         )?;
@@ -70,8 +67,8 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         let current_block_index = self.ledger_db.num_blocks()? - 1;
 
         // Perform the actual validation.
-        validate_set_mint_config_tx(
-            set_mint_config_tx,
+        validate_mint_config_tx(
+            mint_config_tx,
             current_block_index,
             self.block_version,
             master_minters,
@@ -82,11 +79,11 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         Ok(())
     }
 
-    fn combine_set_mint_config_txs(
+    fn combine_mint_config_txs(
         &self,
-        txs: &[SetMintConfigTx],
-    ) -> MintTxManagerResult<Vec<SetMintConfigTx>> {
-        // TODO actually combine the set_mint_config_txs
+        txs: &[MintConfigTx],
+    ) -> MintTxManagerResult<Vec<MintConfigTx>> {
+        // TODO actually combine the mint_config_txs
         log::crit!(self.logger, "TODO: Combine {:?}", txs);
         Ok(txs.to_vec())
     }

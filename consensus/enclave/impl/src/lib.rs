@@ -657,9 +657,9 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
         key_images.sort();
 
-       // Get the list of SetMintConfigTxs included in the block.
+        // Get the list of MintConfigTxs included in the block.
         // TODO perform any last minute validation here.
-        let mint_config_txs = inputs.set_mint_config_txs;
+        let mint_config_txs = inputs.mint_config_txs;
 
         // Right now mint-txs are not actually created anywhere.
         let mint_txs = Vec::new();

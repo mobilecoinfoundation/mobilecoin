@@ -644,8 +644,8 @@ impl<
                     }
                 }
 
-                ConsensusValue::SetMintConfigTx(_) => {
-                    // SetMintConfigTxs do not need to be broadcasted to peers,
+                ConsensusValue::MintConfigTx(_) => {
+                    // MintConfigTxs do not need to be broadcasted to peers,
                     // they will learn about them directly via SCP messages.
                 }
             };
