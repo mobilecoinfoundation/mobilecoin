@@ -111,7 +111,6 @@ members = [
     "sgx/report-cache/api",
     "sgx/report-cache/untrusted",
     "sgx/slog-edl",
-    "slam",
     "test-vectors/account-keys",
     "test-vectors/b58-encodings",
     "transaction/core",

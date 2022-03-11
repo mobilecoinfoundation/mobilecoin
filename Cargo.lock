@@ -4876,35 +4876,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-slam"
-version = "1.3.0-pre0"
-dependencies = [
- "crossbeam-channel",
- "grpcio",
- "lazy_static",
- "mc-account-keys",
- "mc-attest-core",
- "mc-attest-verifier",
- "mc-common",
- "mc-connection",
- "mc-consensus-enclave-measurement",
- "mc-consensus-scp",
- "mc-crypto-keys",
- "mc-fog-report-validation",
- "mc-ledger-db",
- "mc-ledger-sync",
- "mc-mobilecoind",
- "mc-transaction-core",
- "mc-transaction-std",
- "mc-util-keyfile",
- "mc-util-uri",
- "rand 0.8.5",
- "rayon",
- "structopt",
- "tempdir",
-]
-
-[[package]]
 name = "mc-test-vectors-account-keys"
 version = "1.3.0-pre0"
 dependencies = [
