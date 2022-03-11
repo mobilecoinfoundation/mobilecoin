@@ -3,6 +3,8 @@
 use displaydoc::Display;
 use grpcio::Error as GrpcError;
 use mc_api::ConversionError;
+use mc_crypto_keys::SignatureError;
+use protobuf::ProtobufError;
 
 #[derive(Debug, Display)]
 pub enum Error {
@@ -11,6 +13,12 @@ pub enum Error {
 
     /// Conversion: {0}
     Conversion(ConversionError),
+
+    /// Protobuf de/serialization: {0}
+    Protobuf(ProtobufError),
+
+    /// Invalid signature: {0}
+    Signature(SignatureError),
 }
 
 impl From<GrpcError> for Error {
@@ -22,6 +30,18 @@ impl From<GrpcError> for Error {
 impl From<ConversionError> for Error {
     fn from(src: ConversionError) -> Self {
         Self::Conversion(src)
+    }
+}
+
+impl From<SignatureError> for Error {
+    fn from(src: SignatureError) -> Self {
+        Self::Signature(src)
+    }
+}
+
+impl From<ProtobufError> for Error {
+    fn from(src: ProtobufError) -> Self {
+        Self::Protobuf(src)
     }
 }
 

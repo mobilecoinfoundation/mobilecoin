@@ -12,6 +12,7 @@ test_utils = []
 
 [dependencies]
 mc-common = { path = "../../../common" }
+mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-ledger-streaming-api = { path = "../api" }
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-grpc = { path = "../../../util/grpc" }
@@ -25,7 +26,14 @@ grpcio = "0.10"
 mc-util-build-grpc = { path = "../../../util/build/grpc" }
 mc-util-build-script = { path = "../../../util/build/script" }
 
-cargo-emit = "0.2.1"
+cargo-emit = "0.2"
 
 [dev-dependencies]
+mc-attest-core = { path = "../../../attest/core" }
 mc-common = { path = "../../../common", features = ["loggers"] }
+mc-crypto-rand = { path = "../../../crypto/rand" }
+mc-util-from-random = { path = "../../../util/from-random" }
+mc-ledger-streaming-api = { path = "../api", features = ["test_utils"] }
+
+rand_core = "0.6"
+rand_hc = "0.3"

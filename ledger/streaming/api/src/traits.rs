@@ -1,8 +1,17 @@
 use crate::Result;
+use mc_attest_core::VerificationReport;
+use mc_consensus_scp::QuorumSet;
 use mc_transaction_core::BlockData;
 
-pub trait BlockSource {
-    type BlockStream: futures::Stream<Item = Result<BlockData>>;
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BlockStreamComponents {
+    pub block_data: BlockData,
+    pub quorum_set: QuorumSet,
+    pub verification_report: VerificationReport,
+}
 
-    fn get_block_stream(&self, starting_height: u64) -> Result<Self::BlockStream>;
+pub trait BlockStream {
+    type Stream: futures::Stream<Item = Result<BlockStreamComponents>>;
+
+    fn get_block_stream(&self, starting_height: u64) -> Result<Self::Stream>;
 }

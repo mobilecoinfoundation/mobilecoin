@@ -3,59 +3,73 @@
 use displaydoc::Display;
 use futures::{Stream, StreamExt};
 use mc_common::logger::{log, o, Logger};
+use mc_crypto_keys::Ed25519Public;
 use mc_ledger_streaming_api::{
+    parse_subscribe_response,
     streaming_blocks::{SubscribeRequest, SubscribeResponse},
     streaming_blocks_grpc::LedgerUpdatesClient,
-    BlockSource, Error, Result,
+    BlockStream, BlockStreamComponents, Result,
 };
-use mc_transaction_core::BlockData;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConnectionUri;
-use std::{convert::TryFrom, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 #[derive(Display)]
 pub struct GrpcBlockSource {
     /// The gRPC client
     client: LedgerUpdatesClient,
+    /// The public key of the consensus node we're streaming from.
+    public_key: Arc<Ed25519Public>,
     /// A logger object
     logger: Logger,
 }
 
 impl GrpcBlockSource {
-    pub fn new(uri: &impl ConnectionUri, env: Arc<grpcio::Environment>, logger: Logger) -> Self {
+    pub fn new(
+        uri: &impl ConnectionUri,
+        env: Arc<grpcio::Environment>,
+        public_key: Ed25519Public,
+        logger: Logger,
+    ) -> Self {
         let logger = logger.new(o!("uri" => uri.to_string()));
         let channel =
             grpcio::ChannelBuilder::default_channel_builder(env).connect_to_uri(uri, &logger);
         let client = LedgerUpdatesClient::new(channel);
-        Self { client, logger }
+        Self {
+            client,
+            public_key: Arc::new(public_key),
+            logger,
+        }
     }
 }
 
-impl BlockSource for GrpcBlockSource {
-    type BlockStream = impl Stream<Item = Result<BlockData>>;
+impl BlockStream for GrpcBlockSource {
+    type Stream = impl Stream<Item = Result<BlockStreamComponents>>;
 
-    fn get_block_stream(&self, starting_height: u64) -> Result<Self::BlockStream> {
+    fn get_block_stream(&self, starting_height: u64) -> Result<Self::Stream> {
+        // Clone members to satisfy 'static lifetime requirement.
         let logger = self.logger.clone();
+        let public_key = self.public_key.clone();
 
+        // Set up request.
         let mut req = SubscribeRequest::new();
         req.starting_height = starting_height;
 
         let opt = grpcio::CallOption::default().timeout(Duration::from_secs(10));
 
-        let stream = self.client.subscribe_opt(&req, opt).map_err(Error::from)?;
-        Ok(stream.map(move |res| map_subscribe_response(res, &logger)))
+        let stream = self.client.subscribe_opt(&req, opt)?;
+        Ok(stream.map(move |res| map_subscribe_response(res, &public_key, &logger)))
     }
 }
 
 fn map_subscribe_response(
-    res: grpcio::Result<SubscribeResponse>,
+    response: grpcio::Result<SubscribeResponse>,
+    public_key: &Ed25519Public,
     logger: &Logger,
-) -> Result<BlockData> {
+) -> Result<BlockStreamComponents> {
     log::trace!(logger, "map_subscribe_response");
-    let response = res.map_err(Error::from)?;
-    // TODO: Validate result against result_signature
-    let archive_block = response.get_result().get_block();
-    BlockData::try_from(archive_block).map_err(Error::from)
+    let response = response?;
+    parse_subscribe_response(&response, public_key)
 }
 
 #[cfg(test)]
@@ -63,10 +77,18 @@ mod tests {
     use super::*;
     use crate::test_utils::{setup_test_server, Responses};
     use futures::{executor::block_on, future::ready};
+    use mc_attest_core::VerificationReport;
     use mc_common::logger::test_with_logger;
-    use mc_transaction_core::{tx::TxOutMembershipElement, Block, BlockContents, BlockVersion};
+    use mc_crypto_keys::Ed25519Pair;
+    use mc_ledger_streaming_api::{make_subscribe_response, test_utils::make_quorum_set};
+    use mc_transaction_core::{
+        tx::TxOutMembershipElement, Block, BlockContents, BlockData, BlockVersion,
+    };
+    use mc_util_from_random::FromRandom;
+    use rand_core::SeedableRng;
+    use rand_hc::Hc128Rng;
 
-    fn make_responses(num_responses: usize) -> Responses {
+    fn make_responses(num_responses: usize, signer: &Ed25519Pair) -> Responses {
         let mut result: Responses = vec![];
         let mut parent: Option<Block> = None;
         for i in 0..num_responses {
@@ -84,8 +106,15 @@ mod tests {
             };
             parent = Some(block.clone());
             let block_data = BlockData::new(block, contents, None);
-            let mut response = SubscribeResponse::new();
-            response.mut_result().set_block((&block_data).into());
+            let quorum_set = make_quorum_set();
+            let verification_report = VerificationReport::default();
+            let components = BlockStreamComponents {
+                block_data,
+                quorum_set,
+                verification_report,
+            };
+            let response =
+                make_subscribe_response(&components, signer).expect("make_subscribe_response");
             result.push(Ok(response));
         }
         result
@@ -93,16 +122,18 @@ mod tests {
 
     #[test_with_logger]
     fn basic(logger: Logger) {
-        let responses = make_responses(3);
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let signer = Ed25519Pair::from_random(&mut rng);
+        let responses = make_responses(3, &signer);
         let (_server, uri, env) = setup_test_server(responses, None, None);
-        let source = GrpcBlockSource::new(&uri, env, logger.clone());
+        let source = GrpcBlockSource::new(&uri, env, signer.public_key(), logger.clone());
 
         let result_fut = source
             .get_block_stream(0)
             .expect("Failed to start block stream")
-            .map(|resp| {
-                let block_data = resp.expect("Error decoding block data");
-                block_data.block().index
+            .map(|result| {
+                let data = result.expect("Error decoding block data");
+                data.block_data.block().index
             })
             .collect();
 
@@ -112,18 +143,21 @@ mod tests {
 
     #[test_with_logger]
     fn propagates_errors(logger: Logger) {
-        let mut responses = make_responses(2);
+        let mut csprng = Hc128Rng::seed_from_u64(0);
+        let signer = Ed25519Pair::from_random(&mut csprng);
+
+        let mut responses = make_responses(2, &signer);
         responses.push(Err("meh".to_owned()));
 
         let (_server, uri, env) = setup_test_server(responses, None, None);
-        let source = GrpcBlockSource::new(&uri, env, logger.clone());
+        let source = GrpcBlockSource::new(&uri, env, signer.public_key(), logger.clone());
 
         let mut got_error = false;
         let result_fut = source
             .get_block_stream(0)
             .expect("Failed to start block stream")
             .filter_map(|resp| match resp {
-                Ok(block_data) => ready(Some(block_data.block().index)),
+                Ok(data) => ready(Some(data.block_data.block().index)),
                 Err(_) => {
                     got_error = true;
                     ready(None)
