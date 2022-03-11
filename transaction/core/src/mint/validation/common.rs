@@ -36,8 +36,7 @@ pub fn validate_tombstone(
 /// # Arguments
 /// * `block_version` - The block version of the block currently being built.
 pub fn validate_block_version(block_version: BlockVersion) -> Result<(), Error> {
-    // TODO this should actually be block version THREE!
-    if block_version < BlockVersion::TWO || BlockVersion::MAX < block_version {
+    if block_version < BlockVersion::THREE || BlockVersion::MAX < block_version {
         return Err(Error::BlockVersion(block_version));
     }
 
@@ -74,8 +73,8 @@ mod tests {
 
     #[test]
     fn validate_block_version_accepts_valid_block_versions() {
-        assert!(validate_block_version(BlockVersion::TWO).is_ok()); // TODO needs to be three
-        assert!(validate_block_version(BlockVersion::MAX).is_ok()); // TODO needs to be three
+        assert!(validate_block_version(BlockVersion::THREE).is_ok());
+        assert!(validate_block_version(BlockVersion::MAX).is_ok());
     }
 
     #[test]
@@ -83,6 +82,10 @@ mod tests {
         assert_eq!(
             validate_block_version(BlockVersion::ONE),
             Err(Error::BlockVersion(BlockVersion::ONE))
+        );
+        assert_eq!(
+            validate_block_version(BlockVersion::TWO),
+            Err(Error::BlockVersion(BlockVersion::TWO))
         );
     }
 

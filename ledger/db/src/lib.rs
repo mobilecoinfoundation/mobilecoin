@@ -148,7 +148,7 @@ pub struct LedgerDB {
     /// Storage abstraction for mint configurations.
     mint_config_store: MintConfigStore,
 
-    /// Storage abstraction for mint trnasactions.
+    /// Storage abstraction for mint transactions.
     mint_tx_store: MintTxStore,
 
     /// Location on filesystem.

@@ -66,9 +66,11 @@ impl MintConfigTxPrefix {
     Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub struct MintConfigTx {
+    /// The transaction contents.
     #[prost(message, required, tag = "1")]
     pub prefix: MintConfigTxPrefix,
 
+    /// The transaction signature.
     #[prost(message, required, tag = "2")]
     pub signature: MultiSig<Ed25519Signature>,
 }
