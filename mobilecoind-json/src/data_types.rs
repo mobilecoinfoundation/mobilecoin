@@ -497,6 +497,7 @@ impl TryFrom<&JsonOutlay> for mc_mobilecoind_api::Outlay {
 pub struct JsonAmount {
     pub commitment: String,
     pub masked_value: String,
+    pub masked_token_id: String,
 }
 
 impl From<&Amount> for JsonAmount {
@@ -504,6 +505,7 @@ impl From<&Amount> for JsonAmount {
         Self {
             commitment: hex::encode(src.get_commitment().get_data()),
             masked_value: src.get_masked_value().to_string(),
+            masked_token_id: hex::encode(src.get_masked_token_id()),
         }
     }
 }
@@ -546,6 +548,10 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
                 .masked_value
                 .parse::<u64>()
                 .map_err(|err| format!("Failed to parse u64 from value: {}", err))?,
+        );
+        amount.set_masked_token_id(
+            hex::decode(&src.amount.masked_token_id)
+                .map_err(|err| format!("Failed to decode masked token id hex: {}", err))?,
         );
         let mut target_key = CompressedRistretto::new();
         target_key.set_data(
@@ -835,7 +841,7 @@ impl From<&RingMLSAG> for JsonRingMLSAG {
 pub struct JsonSignatureRctBulletproofs {
     pub ring_signatures: Vec<JsonRingMLSAG>,
     pub pseudo_output_commitments: Vec<String>,
-    range_proofs: String,
+    pub range_proofs: String,
 }
 
 impl From<&SignatureRctBulletproofs> for JsonSignatureRctBulletproofs {
@@ -1300,7 +1306,10 @@ mod test {
     use super::*;
     use mc_crypto_keys::RistrettoPublic;
     use mc_ledger_db::Ledger;
-    use mc_transaction_core::{encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, Amount, BlockVersion};
+    use mc_transaction_core::{
+        encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, tokens::Mob, Amount, AmountData, BlockVersion,
+        Token,
+    };
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
@@ -1335,8 +1344,12 @@ mod test {
         };
 
         let utxo = {
+            let amount_data = AmountData {
+                value: 1u64 << 13,
+                token_id: Mob::ID,
+            };
             let tx_out = mc_transaction_core::tx::TxOut {
-                amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+                amount: Amount::new(amount_data, &RistrettoPublic::from_random(&mut rng)).unwrap(),
                 target_key: RistrettoPublic::from_random(&mut rng).into(),
                 public_key: RistrettoPublic::from_random(&mut rng).into(),
                 e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),

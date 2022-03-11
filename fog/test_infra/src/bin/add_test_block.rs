@@ -35,8 +35,9 @@ use mc_transaction_core::{
     membership_proofs::Range,
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
+    tokens::Mob,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Block, BlockContents, BlockData, BlockSignature, BlockVersion,
+    Block, BlockContents, BlockData, BlockSignature, BlockVersion, Token,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;
@@ -162,9 +163,13 @@ fn main() {
         );
         let e_fog_hint = fog_hint.encrypt(&fog_pubkey, &mut rng);
 
+        // Assume MOB token for these tests
+        let token_id = Mob::ID;
+
         let tx_private_key = RistrettoPrivate::from_random(&mut rng);
         let tx_out = TxOut::new(
             credit.amount,
+            token_id,
             &account_keys[credit.account].default_subaddress(),
             &tx_private_key,
             e_fog_hint,

@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 # External dependencies
 aes = { version = "0.7.5", default-features = false, features = ["ctr"] }
+crc = { version = "2.1.0", default-features = false }
 displaydoc = { version = "0.2", default-features = false }
 generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
 hex_fmt = "0.3"

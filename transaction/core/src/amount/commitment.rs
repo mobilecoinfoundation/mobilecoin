@@ -1,5 +1,5 @@
 use crate::{
-    ring_signature::{Error, Scalar, GENERATORS},
+    ring_signature::{Error, PedersenGens, Scalar},
     CompressedCommitment,
 };
 use core::{convert::TryFrom, fmt};
@@ -19,9 +19,19 @@ pub struct Commitment {
 }
 
 impl Commitment {
-    pub fn new(value: u64, blinding: Scalar) -> Self {
+    /// Create a new commitment, given a value, blinding factor, and pedersen
+    /// gens to use
+    ///
+    /// Note that the choice of generator implies what the token id is for this
+    /// value. The Pedersen generators should be `generators(token_id)`.
+    ///
+    /// Arguments:
+    /// * value: The (u64) value that we are committing to
+    /// * blinding: The blinding factor for the Pedersen commitment
+    /// * generators: The generators used to make the commitment
+    pub fn new(value: u64, blinding: Scalar, generators: &PedersenGens) -> Self {
         Self {
-            point: GENERATORS.commit(Scalar::from(value), blinding),
+            point: generators.commit(Scalar::from(value), blinding),
         }
     }
 }
@@ -66,7 +76,7 @@ derive_try_from_slice_from_repr_bytes!(Commitment);
 #[allow(non_snake_case)]
 mod commitment_tests {
     use crate::{
-        ring_signature::{Scalar, GENERATORS},
+        ring_signature::{generators, Scalar, B_BLINDING},
         Commitment,
     };
     use curve25519_dalek::ristretto::RistrettoPoint;
@@ -78,12 +88,13 @@ mod commitment_tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let value = rng.next_u64();
         let blinding = Scalar::random(&mut rng);
+        let gens = generators(rng.next_u32());
 
-        let commitment = Commitment::new(value, blinding);
+        let commitment = Commitment::new(value, blinding, &gens);
 
         let expected_point: RistrettoPoint = {
-            let H = GENERATORS.B;
-            let G = GENERATORS.B_blinding;
+            let H = gens.B;
+            let G = B_BLINDING;
             Scalar::from(value) * H + blinding * G
         };
 

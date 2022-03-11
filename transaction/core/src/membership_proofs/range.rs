@@ -6,6 +6,7 @@ use prost::Message;
 // These require the serde "derive" feature to be enabled.
 use serde::{Deserialize, Serialize};
 
+/// An error which occurs in connection to a membership proof range
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct RangeError {}
 
@@ -18,13 +19,16 @@ impl core::fmt::Display for RangeError {
 /// A range [from,to] of indices.
 #[derive(Clone, Copy, Deserialize, Eq, Hash, PartialEq, Serialize, Message, Digestible)]
 pub struct Range {
+    /// The left endpoint of the range
     #[prost(uint64, tag = "1")]
     pub from: u64,
+    /// The right endpoint of the range
     #[prost(uint64, tag = "2")]
     pub to: u64,
 }
 #[allow(clippy::len_without_is_empty)]
 impl Range {
+    /// Create a new range
     pub fn new(from: u64, to: u64) -> Result<Self, RangeError> {
         if from <= to {
             Ok(Self { from, to })

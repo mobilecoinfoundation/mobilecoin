@@ -24,4 +24,4 @@ rand_hc = "0.3"
 structopt = "0.3"
 
 [dev-dependencies]
-tempdir = "0.3"
+tempfile = "3.2"
