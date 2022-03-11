@@ -1,8 +1,9 @@
-use crate::Result;
-use mc_transaction_core::BlockData;
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-pub trait BlockSource {
-    type BlockStream: futures::Stream<Item = Result<BlockData>>;
+use crate::{BlockStreamComponents, Result};
 
-    fn get_block_stream(&self, starting_height: u64) -> Result<Self::BlockStream>;
+pub trait BlockStream {
+    type Stream: futures::Stream<Item = Result<BlockStreamComponents>>;
+
+    fn get_block_stream(&self, starting_height: u64) -> Result<Self::Stream>;
 }

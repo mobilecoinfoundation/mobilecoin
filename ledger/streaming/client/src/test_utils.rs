@@ -6,12 +6,12 @@ use futures::{FutureExt, StreamExt};
 use mc_ledger_streaming_api::{
     streaming_blocks::{SubscribeRequest, SubscribeResponse},
     streaming_blocks_grpc::{create_ledger_updates, LedgerUpdates},
+    Result,
 };
 use mc_util_uri::ConnectionUri;
 use std::{str::FromStr, sync::Arc};
 
-// Using String as the error type as grpcio::Error is not Clone-able.
-pub type Response = core::result::Result<SubscribeResponse, String>;
+pub type Response = Result<SubscribeResponse>;
 pub type Responses = Vec<Response>;
 
 pub fn setup_test_server(

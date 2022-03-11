@@ -7,10 +7,15 @@ links = "mc-ledger-streaming-api"
 build = "build.rs"
 edition = "2018"
 
+[features]
+test_utils = []
+
 [dependencies]
 mc-api = { path = "../../../api" }
+mc-attest-core = { path = "../../../attest/core" }
 mc-common = { path = "../../../common" }
 mc-consensus-scp = { path = "../../../consensus/scp" }
+mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-transaction-core = { path = "../../../transaction/core" }
 
 displaydoc = "0.2"

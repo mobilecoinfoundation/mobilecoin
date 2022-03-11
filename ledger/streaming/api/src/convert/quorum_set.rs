@@ -93,34 +93,11 @@ impl TryFrom<&QuorumSetProto> for QuorumSet<NodeID> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_consensus_scp::test_utils::test_node_id;
+    use crate::test_utils::make_quorum_set;
 
     #[test]
     fn test_roundtrip() {
-        let set = QuorumSet::new(
-            2,
-            vec![
-                QuorumSetMember::Node(test_node_id(1)),
-                QuorumSetMember::InnerSet(QuorumSet::new(
-                    2,
-                    vec![
-                        QuorumSetMember::Node(test_node_id(3)),
-                        QuorumSetMember::Node(test_node_id(4)),
-                    ],
-                )),
-                QuorumSetMember::Node(test_node_id(0)),
-                QuorumSetMember::InnerSet(QuorumSet::new(
-                    2,
-                    vec![
-                        QuorumSetMember::Node(test_node_id(5)),
-                        QuorumSetMember::Node(test_node_id(6)),
-                        QuorumSetMember::Node(test_node_id(7)),
-                    ],
-                )),
-            ],
-        );
-        assert!(set.is_valid());
-
+        let set = make_quorum_set();
         let proto = QuorumSetProto::from(&set);
         let set2 = QuorumSet::try_from(&proto).expect("conversion from proto failed");
         assert!(set2.is_valid());
