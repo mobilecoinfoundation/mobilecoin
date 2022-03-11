@@ -2497,10 +2497,16 @@ pub mod transaction_builder_tests {
             memo_builder.enable_destination_memo();
 
             let mut transaction_builder =
-                TransactionBuilder::new(block_version, fog_resolver.clone(), memo_builder);
+                TransactionBuilder::new(block_version, Mob::ID, fog_resolver.clone(), memo_builder);
 
-            let input_credentials =
-                get_input_credentials(block_version, &sender, value, &fog_resolver, &mut rng);
+            let input_credentials = get_input_credentials(
+                block_version,
+                Mob::ID,
+                &sender,
+                value,
+                &fog_resolver,
+                &mut rng,
+            );
             transaction_builder.add_input(input_credentials);
 
             let (burn_tx_out, _confirmation) = transaction_builder
@@ -2546,7 +2552,7 @@ pub mod transaction_builder_tests {
                     .amount
                     .get_value(&shared_secret)
                     .ok()
-                    .map(|(num, _scalar)| num)
+                    .map(|(amount, _scalar)| amount.value)
             }
 
             assert_eq!(
