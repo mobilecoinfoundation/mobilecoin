@@ -2,7 +2,7 @@
 
 use crate::{blockchain, convert::ConversionError, external};
 use mc_transaction_core::{
-    mint::{MintTx, SetMintConfigTx},
+    mint::{MintConfigTx, MintTx},
     ring_signature::KeyImage,
     tx::TxOut,
     BlockContents,
@@ -21,17 +21,17 @@ impl From<&mc_transaction_core::BlockContents> for blockchain::BlockContents {
 
         let outputs = source.outputs.iter().map(external::TxOut::from).collect();
 
-        let set_mint_config_txs = source
-            .set_mint_config_txs
+        let mint_config_txs = source
+            .mint_config_txs
             .iter()
-            .map(external::SetMintConfigTx::from)
+            .map(external::MintConfigTx::from)
             .collect();
 
         let mint_txs = source.mint_txs.iter().map(external::MintTx::from).collect();
 
         block_contents.set_key_images(key_images);
         block_contents.set_outputs(outputs);
-        block_contents.set_set_mint_config_txs(set_mint_config_txs);
+        block_contents.set_mint_config_txs(mint_config_txs);
         block_contents.set_mint_txs(mint_txs);
         block_contents
     }
@@ -53,10 +53,10 @@ impl TryFrom<&blockchain::BlockContents> for mc_transaction_core::BlockContents 
             .map(TxOut::try_from)
             .collect::<Result<_, _>>()?;
 
-        let set_mint_config_txs = source
-            .get_set_mint_config_txs()
+        let mint_config_txs = source
+            .get_mint_config_txs()
             .iter()
-            .map(SetMintConfigTx::try_from)
+            .map(MintConfigTx::try_from)
             .collect::<Result<_, _>>()?;
 
         let mint_txs = source
@@ -70,7 +70,7 @@ impl TryFrom<&blockchain::BlockContents> for mc_transaction_core::BlockContents 
         Ok(BlockContents {
             key_images,
             outputs,
-            set_mint_config_txs,
+            mint_config_txs,
             mint_txs,
         })
     }

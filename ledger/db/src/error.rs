@@ -79,8 +79,8 @@ pub enum Error {
     /// DuplicateMintTx
     DuplicateMintTx,
 
-    /// DuplicateSetMintConfigTx
-    DuplicateSetMintConfigTx,
+    /// DuplicateMintConfigTx
+    DuplicateMintConfigTx,
 }
 
 impl From<lmdb::Error> for Error {

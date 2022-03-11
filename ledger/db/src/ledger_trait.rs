@@ -96,10 +96,10 @@ pub trait Ledger: Send {
     /// given token id.
     fn get_active_mint_configs(&self, token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error>;
 
-    /// Checks if the ledger contains a given SetMintConfigTx nonce.
+    /// Checks if the ledger contains a given MintConfigTx nonce.
     /// If so, returns the index of the block in which it entered the ledger.
     /// Ok(None) is returned when the nonce is not in the ledger.
-    fn check_set_mint_config_tx_nonce(&self, nonce: &[u8]) -> Result<Option<BlockIndex>, Error>;
+    fn check_mint_config_tx_nonce(&self, nonce: &[u8]) -> Result<Option<BlockIndex>, Error>;
 
     /// Checks if the ledger contains a given MintTx nonce.
     /// If so, returns the index of the block in which it entered the ledger.

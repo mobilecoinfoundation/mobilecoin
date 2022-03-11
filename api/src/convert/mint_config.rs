@@ -1,10 +1,10 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Convert to/from external:MintConfig/SetMintConfigTxPrefix/SetMintConfigTx.
+//! Convert to/from external:MintConfig/MintConfigTxPrefix/MintConfigTx.
 
 use crate::{convert::ConversionError, external};
 use mc_crypto_multisig::{MultiSig, SignerSet};
-use mc_transaction_core::mint::{MintConfig, SetMintConfigTx, SetMintConfigTxPrefix};
+use mc_transaction_core::mint::{MintConfig, MintConfigTx, MintConfigTxPrefix};
 use protobuf::RepeatedField;
 
 use std::convert::TryFrom;
@@ -34,10 +34,10 @@ impl TryFrom<&external::MintConfig> for MintConfig {
     }
 }
 
-/// Convert SetMintConfigTxPrefix --> external::SetMintConfigTxPrefix.
-impl From<&SetMintConfigTxPrefix> for external::SetMintConfigTxPrefix {
-    fn from(src: &SetMintConfigTxPrefix) -> Self {
-        let mut dst = external::SetMintConfigTxPrefix::new();
+/// Convert MintConfigTxPrefix --> external::MintConfigTxPrefix.
+impl From<&MintConfigTxPrefix> for external::MintConfigTxPrefix {
+    fn from(src: &MintConfigTxPrefix) -> Self {
+        let mut dst = external::MintConfigTxPrefix::new();
         dst.set_token_id(src.token_id);
         dst.set_configs(RepeatedField::from_vec(
             src.configs.iter().map(external::MintConfig::from).collect(),
@@ -48,11 +48,11 @@ impl From<&SetMintConfigTxPrefix> for external::SetMintConfigTxPrefix {
     }
 }
 
-/// Convert external::SetMintConfigTxPrefix --> SetMintConfigTxPrefix.
-impl TryFrom<&external::SetMintConfigTxPrefix> for SetMintConfigTxPrefix {
+/// Convert external::MintConfigTxPrefix --> MintConfigTxPrefix.
+impl TryFrom<&external::MintConfigTxPrefix> for MintConfigTxPrefix {
     type Error = ConversionError;
 
-    fn try_from(source: &external::SetMintConfigTxPrefix) -> Result<Self, Self::Error> {
+    fn try_from(source: &external::MintConfigTxPrefix) -> Result<Self, Self::Error> {
         let configs: Vec<MintConfig> = source
             .get_configs()
             .iter()
@@ -68,22 +68,22 @@ impl TryFrom<&external::SetMintConfigTxPrefix> for SetMintConfigTxPrefix {
     }
 }
 
-/// Convert SetMintConfigTx --> external::SetMintConfigTx.
-impl From<&SetMintConfigTx> for external::SetMintConfigTx {
-    fn from(src: &SetMintConfigTx) -> Self {
-        let mut dst = external::SetMintConfigTx::new();
+/// Convert MintConfigTx --> external::MintConfigTx.
+impl From<&MintConfigTx> for external::MintConfigTx {
+    fn from(src: &MintConfigTx) -> Self {
+        let mut dst = external::MintConfigTx::new();
         dst.set_prefix((&src.prefix).into());
         dst.set_signature((&src.signature).into());
         dst
     }
 }
 
-/// Convert external::SetMintConfigTx --> SetMintConfigTx.
-impl TryFrom<&external::SetMintConfigTx> for SetMintConfigTx {
+/// Convert external::MintConfigTx --> MintConfigTx.
+impl TryFrom<&external::MintConfigTx> for MintConfigTx {
     type Error = ConversionError;
 
-    fn try_from(source: &external::SetMintConfigTx) -> Result<Self, Self::Error> {
-        let prefix = SetMintConfigTxPrefix::try_from(source.get_prefix())?;
+    fn try_from(source: &external::MintConfigTx) -> Result<Self, Self::Error> {
+        let prefix = MintConfigTxPrefix::try_from(source.get_prefix())?;
         let signature = MultiSig::try_from(source.get_signature())?;
 
         Ok(Self { prefix, signature })
@@ -140,11 +140,11 @@ mod tests {
     }
 
     #[test]
-    // SetMintConfigTx -> external::SetMintConfigTx -> SetMintConfigTx should be the
+    // MintConfigTx -> external::MintConfigTx -> MintConfigTx should be the
     // identity function.
-    fn test_convert_set_mint_config_tx() {
-        let source = SetMintConfigTx {
-            prefix: SetMintConfigTxPrefix {
+    fn test_convert_mint_config_tx() {
+        let source = MintConfigTx {
+            prefix: MintConfigTxPrefix {
                 token_id: 123,
                 configs: vec![
                     MintConfig {
@@ -171,12 +171,12 @@ mod tests {
             assert_eq!(source, recovered);
         }
 
-        // Converting mc_transaction_core::mint::SetMintConfigTx ->
-        // external::SetMintConfigTx -> mc_transaction_core::mint::
-        // SetMintConfigTx should be the identity function.
+        // Converting mc_transaction_core::mint::MintConfigTx ->
+        // external::MintConfigTx -> mc_transaction_core::mint::
+        // MintConfigTx should be the identity function.
         {
-            let external = external::SetMintConfigTx::from(&source);
-            let recovered = SetMintConfigTx::try_from(&external).unwrap();
+            let external = external::MintConfigTx::from(&source);
+            let recovered = MintConfigTx::try_from(&external).unwrap();
             assert_eq!(source, recovered);
         }
 
@@ -184,15 +184,15 @@ mod tests {
         // function.
         {
             let bytes = encode(&source);
-            let recovered = external::SetMintConfigTx::parse_from_bytes(&bytes).unwrap();
-            assert_eq!(recovered, external::SetMintConfigTx::from(&source));
+            let recovered = external::MintConfigTx::parse_from_bytes(&bytes).unwrap();
+            assert_eq!(recovered, external::MintConfigTx::from(&source));
         }
 
         // Encoding with protobuf, decoding with prost should be the identity function.
         {
-            let external = external::SetMintConfigTx::from(&source);
+            let external = external::MintConfigTx::from(&source);
             let bytes = external.write_to_bytes().unwrap();
-            let recovered: SetMintConfigTx = decode(&bytes).unwrap();
+            let recovered: MintConfigTx = decode(&bytes).unwrap();
             assert_eq!(source, recovered);
         }
     }

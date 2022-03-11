@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use crate::{
-    mint::{MintTx, SetMintConfigTx},
+    mint::{MintConfigTx, MintTx},
     ring_signature::KeyImage,
     tx::TxOut,
     ConvertError,
@@ -27,9 +27,9 @@ pub struct BlockContents {
     #[prost(message, repeated, tag = "2")]
     pub outputs: Vec<TxOut>,
 
-    /// Set-mint-config transactions in this block.
+    /// mint-config transactions in this block.
     #[prost(message, repeated, tag = "3")]
-    pub set_mint_config_txs: Vec<SetMintConfigTx>,
+    pub mint_config_txs: Vec<MintConfigTx>,
 
     /// Mint transactions in this block.
     #[prost(message, repeated, tag = "4")]

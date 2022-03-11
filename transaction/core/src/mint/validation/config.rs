@@ -1,10 +1,10 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! SetMintConfigTx transaction validation.
+//! MintConfigTx transaction validation.
 
 use crate::{
     mint::{
-        config::{MintConfig, SetMintConfigTx},
+        config::{MintConfig, MintConfigTx},
         validation::{
             common::{
                 validate_block_version, validate_nonce, validate_token_id, validate_tombstone,
@@ -26,9 +26,9 @@ use mc_crypto_multisig::SignerSet;
 ///   built.
 /// * `block_version` - The version of the block that is being built.
 /// * `master_minters` - The set of signers that are allowed to sign
-///   SetMintConfigTx transactions.
-pub fn validate_set_mint_config_tx(
-    tx: &SetMintConfigTx,
+///   MintConfigTx transactions.
+pub fn validate_mint_config_tx(
+    tx: &MintConfigTx,
     current_block_index: u64,
     block_version: BlockVersion,
     master_minters: &SignerSet<Ed25519Public>,
@@ -75,7 +75,7 @@ fn validate_configs(token_id: u32, configs: &[MintConfig]) -> Result<(), Error> 
 /// * `tx` - A pending transaction that is being validated.
 /// * `signer_set` - The signer set that is permitted to sign the transaction.
 fn validate_signature(
-    tx: &SetMintConfigTx,
+    tx: &MintConfigTx,
     master_minters: &SignerSet<Ed25519Public>,
 ) -> Result<(), Error> {
     let message = tx.prefix.hash();
@@ -89,7 +89,7 @@ fn validate_signature(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mint::{config::SetMintConfigTxPrefix, constants::NONCE_LENGTH};
+    use crate::mint::{config::MintConfigTxPrefix, constants::NONCE_LENGTH};
     use mc_crypto_keys::{Ed25519Pair, Signer};
     use mc_crypto_multisig::MultiSig;
     use mc_util_from_random::FromRandom;
@@ -214,7 +214,7 @@ mod tests {
         let master_minter_2 = Ed25519Pair::from_random(&mut rng);
         let master_minter_3 = Ed25519Pair::from_random(&mut rng);
 
-        let prefix = SetMintConfigTxPrefix {
+        let prefix = MintConfigTxPrefix {
             token_id: token_id,
             configs: vec![mint_config1.clone(), mint_config2.clone()],
             nonce: vec![2u8; NONCE_LENGTH],
@@ -224,7 +224,7 @@ mod tests {
 
         // Try with 1 out of 3 signers.
         let signature = MultiSig::new(vec![master_minter_1.try_sign(message.as_ref()).unwrap()]);
-        let tx = SetMintConfigTx {
+        let tx = MintConfigTx {
             prefix: prefix.clone(),
             signature,
         };
@@ -246,7 +246,7 @@ mod tests {
             master_minter_1.try_sign(message.as_ref()).unwrap(),
             master_minter_2.try_sign(message.as_ref()).unwrap(),
         ]);
-        let tx = SetMintConfigTx {
+        let tx = MintConfigTx {
             prefix: prefix.clone(),
             signature,
         };
@@ -268,7 +268,7 @@ mod tests {
             master_minter_3.try_sign(message.as_ref()).unwrap(),
             master_minter_1.try_sign(message.as_ref()).unwrap(),
         ]);
-        let tx = SetMintConfigTx {
+        let tx = MintConfigTx {
             prefix: prefix.clone(),
             signature,
         };
@@ -291,7 +291,7 @@ mod tests {
             master_minter_2.try_sign(message.as_ref()).unwrap(),
             master_minter_3.try_sign(message.as_ref()).unwrap(),
         ]);
-        let tx = SetMintConfigTx { prefix, signature };
+        let tx = MintConfigTx { prefix, signature };
         assert!(validate_signature(
             &tx,
             &SignerSet::new(
@@ -330,7 +330,7 @@ mod tests {
         let master_minter_2 = Ed25519Pair::from_random(&mut rng);
         let master_minter_3 = Ed25519Pair::from_random(&mut rng);
 
-        let prefix = SetMintConfigTxPrefix {
+        let prefix = MintConfigTxPrefix {
             token_id: token_id,
             configs: vec![mint_config1.clone(), mint_config2.clone()],
             nonce: vec![2u8; NONCE_LENGTH],
@@ -340,7 +340,7 @@ mod tests {
 
         // Tamper with the mint limit.
         let signature = MultiSig::new(vec![master_minter_1.try_sign(message.as_ref()).unwrap()]);
-        let mut tx = SetMintConfigTx {
+        let mut tx = MintConfigTx {
             prefix: prefix.clone(),
             signature,
         };
@@ -362,7 +362,7 @@ mod tests {
 
         // Tamper with the tombstone block.
         let signature = MultiSig::new(vec![master_minter_1.try_sign(message.as_ref()).unwrap()]);
-        let mut tx = SetMintConfigTx {
+        let mut tx = MintConfigTx {
             prefix: prefix.clone(),
             signature,
         };
@@ -407,7 +407,7 @@ mod tests {
         let master_minter_2 = Ed25519Pair::from_random(&mut rng);
         let master_minter_3 = Ed25519Pair::from_random(&mut rng);
 
-        let prefix = SetMintConfigTxPrefix {
+        let prefix = MintConfigTxPrefix {
             token_id: token_id,
             configs: vec![mint_config1.clone(), mint_config2.clone()],
             nonce: vec![2u8; NONCE_LENGTH],
@@ -417,7 +417,7 @@ mod tests {
 
         // Signing below threshold
         let signature = MultiSig::new(vec![master_minter_1.try_sign(message.as_ref()).unwrap()]);
-        let tx = SetMintConfigTx {
+        let tx = MintConfigTx {
             prefix: prefix.clone(),
             signature,
         };
@@ -438,7 +438,7 @@ mod tests {
 
         // Signing with unknown signers.
         let signature = MultiSig::new(vec![master_minter_1.try_sign(message.as_ref()).unwrap()]);
-        let tx = SetMintConfigTx {
+        let tx = MintConfigTx {
             prefix: prefix.clone(),
             signature,
         };
@@ -458,7 +458,7 @@ mod tests {
             master_minter_1.try_sign(message.as_ref()).unwrap(),
             master_minter_2.try_sign(message.as_ref()).unwrap(),
         ]);
-        let tx = SetMintConfigTx {
+        let tx = MintConfigTx {
             prefix: prefix.clone(),
             signature,
         };
@@ -498,7 +498,7 @@ mod tests {
         let master_minter_2 = Ed25519Pair::from_random(&mut rng);
         let master_minter_3 = Ed25519Pair::from_random(&mut rng);
 
-        let prefix = SetMintConfigTxPrefix {
+        let prefix = MintConfigTxPrefix {
             token_id: token_id,
             configs: vec![mint_config1.clone(), mint_config2.clone()],
             nonce: vec![2u8; NONCE_LENGTH],
@@ -511,7 +511,7 @@ mod tests {
             master_minter_1.try_sign(message.as_ref()).unwrap(),
             master_minter_1.try_sign(message.as_ref()).unwrap(),
         ]);
-        let tx = SetMintConfigTx {
+        let tx = MintConfigTx {
             prefix: prefix.clone(),
             signature,
         };

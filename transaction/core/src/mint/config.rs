@@ -2,7 +2,7 @@
 
 //! Minting transaction configuration.
 
-use crate::domain_separators::SET_MINT_CONFIG_TX_PREFIX_DOMAIN_TAG;
+use crate::domain_separators::MINT_CONFIG_TX_PREFIX_DOMAIN_TAG;
 use alloc::vec::Vec;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
@@ -31,12 +31,12 @@ pub struct MintConfig {
     pub mint_limit: u64,
 }
 
-/// The contents of a set-mint-config transaction. This transaction alters the
+/// The contents of a mint-config transaction. This transaction alters the
 /// minting configuration for a single token ID.
 #[derive(
     Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
 )]
-pub struct SetMintConfigTxPrefix {
+pub struct MintConfigTxPrefix {
     /// Token ID we are replacing the configuration set for.
     #[prost(uint32, tag = "1")]
     pub token_id: u32,
@@ -54,20 +54,20 @@ pub struct SetMintConfigTxPrefix {
     pub tombstone_block: u64,
 }
 
-impl SetMintConfigTxPrefix {
+impl MintConfigTxPrefix {
     /// Digestible-crate hash of `self` using Merlin
     pub fn hash(&self) -> [u8; 32] {
-        self.digest32::<MerlinTranscript>(SET_MINT_CONFIG_TX_PREFIX_DOMAIN_TAG.as_bytes())
+        self.digest32::<MerlinTranscript>(MINT_CONFIG_TX_PREFIX_DOMAIN_TAG.as_bytes())
     }
 }
 
-/// A set-mint-config transaction coupled with a signature over it.
+/// A mint-config transaction coupled with a signature over it.
 #[derive(
     Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
 )]
-pub struct SetMintConfigTx {
+pub struct MintConfigTx {
     #[prost(message, required, tag = "1")]
-    pub prefix: SetMintConfigTxPrefix,
+    pub prefix: MintConfigTxPrefix,
 
     #[prost(message, required, tag = "2")]
     pub signature: MultiSig<Ed25519Signature>,
