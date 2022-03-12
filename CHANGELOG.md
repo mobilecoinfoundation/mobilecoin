@@ -18,6 +18,15 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ### Added
 
+### Changed
+* Updated `rust-toolchain` version to newer nightly
+  * enables use of [Generic Associated Types](https://github.com/rust-lang/rust/issues/44265) and [static async fn in traits](https://github.com/rust-lang/rust/issues/91611)
+* Replaced `datatest` with a custom `test_with_data` macro.
+
+## [1.2.0] 2022-02-22
+
+### Added
+
  - Encrypted Memos ([MCIP #3](https://github.com/mobilecoinfoundation/mcips/pull/3))
  - Recoverable Transaction History ([MCIP #4](https://github.com/mobilecoinfoundation/mcips/pull/4))
  - Consensus/Fog repository merge
