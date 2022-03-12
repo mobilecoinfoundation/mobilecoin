@@ -8,7 +8,9 @@ use mc_consensus_api::consensus_client_grpc::ConsensusClientApiClient;
 use mc_consensus_mint_client::Config;
 use mc_crypto_keys::{Ed25519Pair, Signer};
 use mc_crypto_multisig::{MultiSig, SignerSet};
-use mc_transaction_core::mint::{MintConfig, MintConfigTx, MintConfigTxPrefix};
+use mc_transaction_core::mint::{
+    constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix,
+};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::sync::Arc;
@@ -25,7 +27,7 @@ fn main() {
     let signer_1 = Ed25519Pair::from(config.private_key);
 
     let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-    let mut nonce: Vec<u8> = vec![0u8; 32];
+    let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
     rng.fill_bytes(&mut nonce);
 
     let prefix = MintConfigTxPrefix {
