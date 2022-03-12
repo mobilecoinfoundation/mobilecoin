@@ -152,8 +152,6 @@ impl From<&MonitorData> for MonitorId {
 /// Wrapper for the monitor_id_to_monitor_data database
 #[derive(Clone)]
 pub struct MonitorStore {
-    env: Arc<Environment>,
-
     /// Crypto provider, used for managing database encryption.
     crypto_provider: DbCryptoProvider,
 
@@ -177,7 +175,6 @@ impl MonitorStore {
         )?;
 
         Ok(Self {
-            env,
             crypto_provider,
             monitor_id_to_monitor_data,
             logger,

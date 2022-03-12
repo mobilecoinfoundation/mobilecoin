@@ -130,27 +130,25 @@ impl ProcessedTxOut {
 /// the processed blocks database.
 #[derive(Clone)]
 pub struct ProcessedBlockStore {
-    /// LMDB Environment.
+    #[cfg(test)]
+    /// The LMDB environment is only actually used in tests
     env: Arc<Environment>,
 
     /// Mapping of ProcessedBlockKey -> [ProcessedTxOut].
     processed_block_key_to_processed_tx_outs: Database,
-
-    /// Logger.
-    logger: Logger,
 }
 
 impl ProcessedBlockStore {
-    pub fn new(env: Arc<Environment>, logger: Logger) -> Result<Self, Error> {
+    pub fn new(env: Arc<Environment>, _logger: Logger) -> Result<Self, Error> {
         let processed_block_key_to_processed_tx_outs = env.create_db(
             Some(PROCESSED_BLOCK_KEY_TO_PROCESSED_TX_OUTS_DB_NAME),
             DatabaseFlags::DUP_SORT,
         )?;
 
         Ok(Self {
+            #[cfg(test)]
             env,
             processed_block_key_to_processed_tx_outs,
-            logger,
         })
     }
 

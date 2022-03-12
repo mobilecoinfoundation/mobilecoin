@@ -125,9 +125,6 @@ pub struct LedgerDB {
     /// Key Images by Block
     key_images_by_block: Database,
 
-    /// Metadata - stores metadata information about the database.
-    metadata_store: MetadataStore<LedgerDbMetadataStoreSettings>,
-
     /// Storage abstraction for TxOuts.
     tx_out_store: TxOutStore,
 
@@ -408,7 +405,6 @@ impl LedgerDB {
             key_images_by_block,
             tx_outs_by_block,
             block_number_by_tx_out_index,
-            metadata_store,
             tx_out_store,
             metrics,
         };

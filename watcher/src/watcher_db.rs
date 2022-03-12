@@ -154,9 +154,6 @@ pub struct WatcherDB {
     /// Were we opened in write mode?
     write_allowed: bool,
 
-    /// Metadata store.
-    metadata_store: MetadataStore<WatcherDbMetadataStoreSettings>,
-
     /// Logger.
     logger: Logger,
 }
@@ -204,7 +201,6 @@ impl WatcherDB {
             last_synced,
             config,
             write_allowed: false,
-            metadata_store,
             logger,
         })
     }

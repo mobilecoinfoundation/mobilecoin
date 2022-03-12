@@ -100,12 +100,6 @@ impl<T: Send + 'static> BackgroundWorkQueue<T> {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    pub fn send(&self, msg: T) -> Result<(), BackgroundWorkQueueError> {
-        self.send_msg(QueueMsg::Handle(msg))
-    }
-
-    #[allow(dead_code)]
     pub fn get_sender_fn(&self) -> BackgroundWorkQueueSenderFn<T> {
         let sender = self.sender.clone();
         Arc::new(move |msg| {

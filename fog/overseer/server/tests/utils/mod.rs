@@ -105,7 +105,6 @@ pub fn make_node(
 // Add an arbitrary block to ledger and a timestamp for it
 // This method is used in integration tests, but cargo still complains that it's
 // not in use.
-#[allow(dead_code)]
 pub fn add_test_block<T: RngCore + CryptoRng>(
     ledger: &mut LedgerDB,
     watcher: &WatcherDB,
@@ -165,7 +164,6 @@ pub fn add_test_block<T: RngCore + CryptoRng>(
 // Make a random output for a block
 // This method is used in integration tests, but cargo still complains that it's
 // not in use.
-#[allow(dead_code)]
 pub fn random_output<T: RngCore + CryptoRng>(rng: &mut T) -> Vec<TxOut> {
     vec![TxOut {
         masked_amount: MaskedAmount::default(),

@@ -82,6 +82,8 @@ impl From<&KeyImage> for UtxoId {
 /// The outputs database.
 #[derive(Clone)]
 pub struct UtxoStore {
+    #[cfg(test)]
+    /// The LMDB environment is only actually used in tests
     env: Arc<Environment>,
 
     /// Mapping of SubaddressId -> [UtxoId].
@@ -122,6 +124,7 @@ impl UtxoStore {
         )?;
 
         Ok(Self {
+            #[cfg(test)]
             env,
             subaddress_id_to_utxo_id,
             key_image_to_subaddress_id,

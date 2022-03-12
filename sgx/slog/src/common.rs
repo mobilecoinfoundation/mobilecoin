@@ -33,9 +33,8 @@ pub struct EnclaveLogMessage {
 }
 
 impl EnclaveLogMessage {
-    // This is only used inside the enclace, so when building this for untrusted, we get an used
-    // warning.
-    #[allow(dead_code)]
+    // This is only used inside the enclave, so when building this for untrusted, we
+    // get an used warning.
     pub fn new(record: &slog::Record, values: &slog::OwnedKVList) -> Self {
         let mut enclave_log_message = Self {
             message: record.msg().to_string(),
@@ -47,8 +46,8 @@ impl EnclaveLogMessage {
             key_values: Default::default(),
         };
 
-        // Errors ignored as enclave logging is "best effort" but if it fails there isn't anything
-        // useful to do.
+        // Errors ignored as enclave logging is "best effort" but if it fails there
+        // isn't anything useful to do.
         let _ = record.kv().serialize(record, &mut enclave_log_message);
         let _ = values.serialize(record, &mut enclave_log_message);
 
