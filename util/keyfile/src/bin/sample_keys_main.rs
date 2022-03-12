@@ -67,7 +67,7 @@ fn main() {
     let spki = config
         .fog_authority_root
         .as_ref()
-        .or_else(|| config.fog_authority_spki.as_ref())
+        .or(config.fog_authority_spki.as_ref())
         .cloned();
 
     if config.fog_report_url.is_some() && spki.is_none() {
