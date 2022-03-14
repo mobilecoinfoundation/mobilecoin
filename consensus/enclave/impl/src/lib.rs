@@ -287,7 +287,6 @@ impl SgxConsensusEnclave {
     }
 }
 
-
 impl ReportableEnclave for SgxConsensusEnclave {
     fn new_ereport(&self, qe_info: TargetInfo) -> ReportableEnclaveResult<(Report, QuoteNonce)> {
         Ok(self.ake.new_ereport(qe_info)?)
