@@ -626,7 +626,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             &inputs.well_formed_encrypted_txs_with_proofs,
             parent_block,
             root_element,
-            &config,
+            config,
             &mut rng,
         )?;
 
