@@ -2,23 +2,23 @@
 
 //! Command line configuration for the consensus mint client.
 
+use clap::Parser;
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Private};
 use mc_util_uri::ConsensusClientUri;
 use std::fs;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-#[structopt(
+#[derive(Debug, Parser)]
+#[clap(
     name = "mc-consensus-mint-client",
     about = "MobileCoin Consensus Mint Client"
 )]
 pub struct Config {
     /// URI of consensus node to connect to.
-    #[structopt(long)]
+    #[clap(long, env = "MC_CONSENSUS_URI")]
     pub node: ConsensusClientUri,
 
     /// The key to sign the transaction with.
-    #[structopt(long, parse(try_from_str=load_key_from_pem))]
+    #[clap(long, parse(try_from_str=load_key_from_pem), env = "MC_PRIVATE_KEY")]
     pub private_key: Ed25519Private,
 }
 
