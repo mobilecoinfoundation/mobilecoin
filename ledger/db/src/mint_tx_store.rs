@@ -131,15 +131,10 @@ impl MintTxStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        mint_config_store::{
-            tests::{generate_test_mint_config_tx_and_signers, generate_test_mint_tx},
-            ActiveMintConfig,
-        },
-        tx_out_store::tx_out_store_tests::get_env,
-    };
+    use crate::{mint_config_store::ActiveMintConfig, tx_out_store::tx_out_store_tests::get_env};
     use mc_crypto_keys::Ed25519Pair;
     use mc_transaction_core::TokenId;
+    use mc_transaction_core_test_utils::{create_mint_config_tx_and_signers, create_mint_tx};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use std::cmp::max;
@@ -161,11 +156,9 @@ mod tests {
         let token_id2 = TokenId::from(2);
 
         // Generate and store a mint configurations.
-        let (mint_config_tx1, signers1) =
-            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
-        let (mint_config_tx2, signers2) =
-            generate_test_mint_config_tx_and_signers(token_id2, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
             .write_mint_config_txs(
@@ -177,7 +170,7 @@ mod tests {
         db_txn.commit().unwrap();
 
         // Generate a mint tx that mints 1 token.
-        let mint_tx1 = generate_test_mint_tx(token_id1, &signers1, 1, &mut rng);
+        let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_tx_store
             .write_mint_txs(0, &[mint_tx1], &mint_config_store, &mut db_txn)
@@ -205,7 +198,7 @@ mod tests {
         drop(db_txn);
 
         // Generate a mint tx that mints 2 tokens.
-        let mint_tx2 = generate_test_mint_tx(token_id1, &signers1, 2, &mut rng);
+        let mint_tx2 = create_mint_tx(token_id1, &signers1, 2, &mut rng);
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_tx_store
             .write_mint_txs(1, &[mint_tx2], &mint_config_store, &mut db_txn)
@@ -233,7 +226,7 @@ mod tests {
         drop(db_txn);
 
         // Mint using the 2nd configuration of the 1st token
-        let mint_tx3 = generate_test_mint_tx(
+        let mint_tx3 = create_mint_tx(
             token_id1,
             &[Ed25519Pair::from(signers1[1].private_key())],
             5,
@@ -284,7 +277,7 @@ mod tests {
         drop(db_txn);
 
         // Mint using the 2nd configuration of the 2nd token
-        let mint_tx4 = generate_test_mint_tx(
+        let mint_tx4 = create_mint_tx(
             token_id2,
             &[Ed25519Pair::from(signers2[1].private_key())],
             15,
@@ -340,8 +333,7 @@ mod tests {
         let token_id1 = TokenId::from(1);
 
         // Generate and store a mint configurations.
-        let (mint_config_tx1, signers1) =
-            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
@@ -350,7 +342,7 @@ mod tests {
         db_txn.commit().unwrap();
 
         // Generate a mint tx that mints 1 token on block 0
-        let mint_tx1 = generate_test_mint_tx(token_id1, &signers1, 1, &mut rng);
+        let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_tx_store
             .write_mint_txs(0, &[mint_tx1], &mint_config_store, &mut db_txn)
@@ -358,7 +350,7 @@ mod tests {
         db_txn.commit().unwrap();
 
         // Trying again on block 0 should fail.
-        let mint_tx2 = generate_test_mint_tx(token_id1, &signers1, 1, &mut rng);
+        let mint_tx2 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
         let mut db_txn = env.begin_rw_txn().unwrap();
         assert_eq!(
             mint_tx_store.write_mint_txs(0, &[mint_tx2.clone()], &mint_config_store, &mut db_txn),
@@ -381,8 +373,7 @@ mod tests {
         let token_id1 = TokenId::from(1);
 
         // Generate and store a mint configurations.
-        let (mint_config_tx1, signers1) =
-            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
@@ -391,7 +382,7 @@ mod tests {
         db_txn.commit().unwrap();
 
         // Generate a mint tx that mints 1 token on block 0 with unknown signers.
-        let mint_tx1 = generate_test_mint_tx(
+        let mint_tx1 = create_mint_tx(
             token_id1,
             &[
                 Ed25519Pair::from_random(&mut rng),
@@ -434,8 +425,7 @@ mod tests {
         let token_id1 = TokenId::from(1);
 
         // Generate and store a mint configurations.
-        let (mint_config_tx1, _signers1) =
-            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx1, _signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
@@ -444,7 +434,7 @@ mod tests {
         db_txn.commit().unwrap();
 
         // Generate a mint tx that mints 1 token on block 0 with unknown signers.
-        let mint_tx1 = generate_test_mint_tx(
+        let mint_tx1 = create_mint_tx(
             token_id1,
             &[
                 Ed25519Pair::from_random(&mut rng),
@@ -467,8 +457,7 @@ mod tests {
         let token_id1 = TokenId::from(1);
 
         // Generate and store a mint configurations.
-        let (mint_config_tx1, signers1) =
-            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
@@ -478,7 +467,7 @@ mod tests {
 
         // Generate a mint tx that mints 1 token on block 0 but corrupt the signature by
         // altering the amount.
-        let mut mint_tx1 = generate_test_mint_tx(token_id1, &signers1, 1, &mut rng);
+        let mut mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
         mint_tx1.prefix.amount += 1;
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_tx_store
@@ -493,8 +482,7 @@ mod tests {
         let token_id1 = TokenId::from(1);
 
         // Generate and store a mint configurations.
-        let (mint_config_tx1, signers1) =
-            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
@@ -504,7 +492,7 @@ mod tests {
 
         // Generate a mint tx that immediately exceeds the mint limit of both
         // configurations.
-        let mint_tx1 = generate_test_mint_tx(
+        let mint_tx1 = create_mint_tx(
             token_id1,
             &signers1,
             max(
@@ -530,8 +518,7 @@ mod tests {
         let token_id1 = TokenId::from(1);
 
         // Generate and store a mint configurations.
-        let (mint_config_tx1, signers1) =
-            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
@@ -540,9 +527,9 @@ mod tests {
         db_txn.commit().unwrap();
 
         // Generate some test transactions
-        let mint_tx1 = generate_test_mint_tx(token_id1, &signers1, 1, &mut rng);
-        let mint_tx2 = generate_test_mint_tx(token_id1, &signers1, 1, &mut rng);
-        let mint_tx3 = generate_test_mint_tx(token_id1, &signers1, 1, &mut rng);
+        let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
+        let mint_tx2 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
+        let mint_tx3 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_tx_store

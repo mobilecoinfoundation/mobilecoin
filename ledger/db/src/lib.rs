@@ -877,16 +877,15 @@ pub fn u32_to_key_bytes(value: u32) -> [u8; 4] {
 #[cfg(test)]
 mod ledger_db_test {
     use super::*;
-    use crate::mint_config_store::tests::{
-        generate_test_mint_config_tx, generate_test_mint_config_tx_and_signers,
-        generate_test_mint_tx,
-    };
     use core::convert::TryFrom;
     use mc_account_keys::AccountKey;
     use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate};
     use mc_transaction_core::{
         compute_block_id, membership_proofs::compute_implied_merkle_root, tokens::Mob,
         BlockVersion, Token,
+    };
+    use mc_transaction_core_test_utils::{
+        create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -1162,7 +1161,7 @@ mod ledger_db_test {
         );
 
         // === Append a block with only a single MintConfigTx. ===
-        let mint_config_tx1 = generate_test_mint_config_tx(token_id1, &mut rng);
+        let mint_config_tx1 = create_mint_config_tx(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
             mint_config_txs: vec![mint_config_tx1.clone()],
@@ -1210,8 +1209,8 @@ mod ledger_db_test {
 
         // Append another block with two MintConfigTxs, one of which is updating the
         // active config for token_id1.
-        let mint_config_tx2 = generate_test_mint_config_tx(token_id1, &mut rng);
-        let mint_config_tx3 = generate_test_mint_config_tx(token_id2, &mut rng);
+        let mint_config_tx2 = create_mint_config_tx(token_id1, &mut rng);
+        let mint_config_tx3 = create_mint_config_tx(token_id2, &mut rng);
 
         let block_contents2 = BlockContents {
             mint_config_txs: vec![mint_config_tx2.clone(), mint_config_tx3.clone()],
@@ -1292,7 +1291,7 @@ mod ledger_db_test {
             .unwrap();
 
         // === Append a block with only a single MintConfigTx. ===
-        let mint_config_tx1 = generate_test_mint_config_tx(token_id1, &mut rng);
+        let mint_config_tx1 = create_mint_config_tx(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
             mint_config_txs: vec![mint_config_tx1.clone()],
@@ -1311,7 +1310,7 @@ mod ledger_db_test {
             .unwrap();
 
         // Try appending a block that contains the same set mint config tx.
-        let mint_config_tx2 = generate_test_mint_config_tx(token_id1, &mut rng);
+        let mint_config_tx2 = create_mint_config_tx(token_id1, &mut rng);
 
         let block_contents2 = BlockContents {
             mint_config_txs: vec![mint_config_tx2.clone(), mint_config_tx1.clone()],
@@ -1361,8 +1360,7 @@ mod ledger_db_test {
 
         // === Append a block wth a MintConfigTx transaction. This is needed since
         // the MintTx must be matched with an active mint config.
-        let (mint_config_tx1, signers1) =
-            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
             mint_config_txs: vec![mint_config_tx1.clone()],
@@ -1381,7 +1379,7 @@ mod ledger_db_test {
             .unwrap();
 
         // === Append a block with only a single MintTx. ===
-        let mint_tx1 = generate_test_mint_tx(token_id1, &signers1, 10, &mut rng);
+        let mint_tx1 = create_mint_tx(token_id1, &signers1, 10, &mut rng);
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1.clone()],
@@ -1430,7 +1428,7 @@ mod ledger_db_test {
 
         // === Append another block with a MintTx, this one targetting the
         // second mint configuration.
-        let mint_tx2 = generate_test_mint_tx(
+        let mint_tx2 = create_mint_tx(
             token_id1,
             &[
                 Ed25519Pair::from(signers1[1].private_key()),
@@ -1489,7 +1487,7 @@ mod ledger_db_test {
         // === Append a third block with a MintTx, tragetting the first active
         // mint config which should result in the total minted amount
         // increasing.
-        let mint_tx3 = generate_test_mint_tx(
+        let mint_tx3 = create_mint_tx(
             token_id1,
             &[Ed25519Pair::from(signers1[0].private_key())],
             30,
@@ -1547,14 +1545,14 @@ mod ledger_db_test {
         // === Append a fourth block with two MintTxs, tragetting the first active
         // mint config which should result in the total minted amount
         // increasing.
-        let mint_tx4 = generate_test_mint_tx(
+        let mint_tx4 = create_mint_tx(
             token_id1,
             &[Ed25519Pair::from(signers1[0].private_key())],
             100,
             &mut rng,
         );
 
-        let mint_tx5 = generate_test_mint_tx(
+        let mint_tx5 = create_mint_tx(
             token_id1,
             &[Ed25519Pair::from(signers1[0].private_key())],
             200,
@@ -1616,14 +1614,14 @@ mod ledger_db_test {
 
         // === Append a fifth with two MintTxs, tragetting both mint configs which
         // should result in the total minted amount increasing.
-        let mint_tx6 = generate_test_mint_tx(
+        let mint_tx6 = create_mint_tx(
             token_id1,
             &[Ed25519Pair::from(signers1[0].private_key())],
             101,
             &mut rng,
         );
 
-        let mint_tx7 = generate_test_mint_tx(
+        let mint_tx7 = create_mint_tx(
             token_id1,
             &[Ed25519Pair::from(signers1[1].private_key())],
             201,
@@ -1724,9 +1722,8 @@ mod ledger_db_test {
             .collect();
 
         let key_images1: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
-        let mint_config_tx1 = generate_test_mint_config_tx(token_id1, &mut rng);
-        let (mint_config_tx2, signers2) =
-            generate_test_mint_config_tx_and_signers(token_id2, &mut rng);
+        let mint_config_tx1 = create_mint_config_tx(token_id1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
 
         let block_contents1 = BlockContents {
             key_images: key_images1,
@@ -1825,9 +1822,9 @@ mod ledger_db_test {
             .collect();
 
         let key_images2: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
-        let mint_config_tx3 = generate_test_mint_config_tx(token_id1, &mut rng);
-        let mint_tx1 = generate_test_mint_tx(token_id2, &signers2, 10, &mut rng);
-        let mint_tx2 = generate_test_mint_tx(token_id2, &signers2, 20, &mut rng);
+        let mint_config_tx3 = create_mint_config_tx(token_id1, &mut rng);
+        let mint_tx1 = create_mint_tx(token_id2, &signers2, 10, &mut rng);
+        let mint_tx2 = create_mint_tx(token_id2, &signers2, 20, &mut rng);
 
         let block_contents2 = BlockContents {
             key_images: key_images2,
@@ -1936,8 +1933,7 @@ mod ledger_db_test {
 
         // === Append a block wth a MintConfigTx transaction. This is needed since
         // the MintTx must be matched with an active mint config.
-        let (mint_config_tx1, signers1) =
-            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
             mint_config_txs: vec![mint_config_tx1.clone()],
@@ -1956,8 +1952,8 @@ mod ledger_db_test {
             .unwrap();
 
         // === Append a block with two MintTxs but only a single TxOut. ===
-        let mint_tx1 = generate_test_mint_tx(token_id1, &signers1, 10, &mut rng);
-        let mint_tx2 = generate_test_mint_tx(token_id1, &signers1, 10, &mut rng);
+        let mint_tx1 = create_mint_tx(token_id1, &signers1, 10, &mut rng);
+        let mint_tx2 = create_mint_tx(token_id1, &signers1, 10, &mut rng);
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1, mint_tx2],
@@ -2001,8 +1997,7 @@ mod ledger_db_test {
 
         // === Append a block wth a MintConfigTx transaction. This is needed since
         // the MintTx must be matched with an active mint config.
-        let (mint_config_tx1, signers1) =
-            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
             mint_config_txs: vec![mint_config_tx1.clone()],
@@ -2021,7 +2016,7 @@ mod ledger_db_test {
             .unwrap();
 
         // === Append a block with only a single MintTx. ===
-        let mint_tx1 = generate_test_mint_tx(token_id1, &signers1, 10, &mut rng);
+        let mint_tx1 = create_mint_tx(token_id1, &signers1, 10, &mut rng);
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1.clone()],
@@ -2041,7 +2036,7 @@ mod ledger_db_test {
             .unwrap();
 
         // === Append another block that includes the previous MintTx.
-        let mint_tx2 = generate_test_mint_tx(
+        let mint_tx2 = create_mint_tx(
             token_id1,
             &[
                 Ed25519Pair::from(signers1[1].private_key()),
@@ -2093,8 +2088,7 @@ mod ledger_db_test {
 
         // === Append a block wth a MintConfigTx transaction. This is needed since
         // the MintTx must be matched with an active mint config.
-        let (mint_config_tx1, _signers1) =
-            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx1, _signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
             mint_config_txs: vec![mint_config_tx1.clone()],
@@ -2113,7 +2107,7 @@ mod ledger_db_test {
             .unwrap();
 
         // === Append a block with only a single MintTx signed by an unknown signer. ===
-        let mint_tx1 = generate_test_mint_tx(
+        let mint_tx1 = create_mint_tx(
             token_id1,
             &[Ed25519Pair::from_random(&mut rng)],
             10,
@@ -2168,8 +2162,7 @@ mod ledger_db_test {
 
         // === Append a block wth a MintConfigTx transaction. This is needed since
         // the MintTx must be matched with an active mint config.
-        let (mint_config_tx1, signers1) =
-            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
             mint_config_txs: vec![mint_config_tx1.clone()],
@@ -2188,7 +2181,7 @@ mod ledger_db_test {
             .unwrap();
 
         // === Append a block with only a single MintTx. ===
-        let mint_tx1 = generate_test_mint_tx(
+        let mint_tx1 = create_mint_tx(
             token_id1,
             &signers1,
             mint_config_tx1.prefix.configs[0].mint_limit - 10,
@@ -2214,7 +2207,7 @@ mod ledger_db_test {
 
         // === Append another block with a MintTx that will exceed the mint limit, we
         // should fail.
-        let mint_tx2 = generate_test_mint_tx(
+        let mint_tx2 = create_mint_tx(
             token_id1,
             &[Ed25519Pair::from(signers1[0].private_key())], // Explicitly target the first config
             11,
@@ -2259,7 +2252,7 @@ mod ledger_db_test {
 
         // === Sanity: Allow the second mint configuration to match, which
         // should allow minting to succeeed.
-        let mint_tx3 = generate_test_mint_tx(token_id1, &signers1, 11, &mut rng);
+        let mint_tx3 = create_mint_tx(token_id1, &signers1, 11, &mut rng);
 
         let block_contents3 = BlockContents {
             mint_txs: vec![mint_tx3.clone()],

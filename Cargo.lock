@@ -5035,6 +5035,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "mc-account-keys",
  "mc-crypto-keys",
+ "mc-crypto-multisig",
  "mc-crypto-rand",
  "mc-fog-report-validation-test-utils",
  "mc-ledger-db",

@@ -116,4 +116,10 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
     }
 }
 
-// TODO tests
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_mint_config_tx_accepts_valid_tx() {}
+}
