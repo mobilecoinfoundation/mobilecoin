@@ -4,7 +4,9 @@ use mc_crypto_keys::{Ed25519Pair, RistrettoPublic, Signer};
 use mc_crypto_multisig::{MultiSig, SignerSet};
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_transaction_core::{
-    mint::{MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx, MintTxPrefix},
+    mint::{
+        constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx, MintTxPrefix,
+    },
     TokenId,
 };
 use mc_util_from_random::FromRandom;
@@ -23,7 +25,7 @@ pub fn create_mint_config_tx_and_signers(
     let signer_2 = Ed25519Pair::from_random(rng);
     let signer_3 = Ed25519Pair::from_random(rng);
 
-    let mut nonce: Vec<u8> = vec![0u8; 32];
+    let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
     rng.fill_bytes(&mut nonce);
 
     let prefix = MintConfigTxPrefix {
@@ -41,7 +43,7 @@ pub fn create_mint_config_tx_and_signers(
             },
         ],
         nonce,
-        tombstone_block: rng.next_u64(),
+        tombstone_block: 10,
     };
 
     let message = prefix.hash();
@@ -79,7 +81,7 @@ pub fn create_mint_tx(
     amount: u64,
     rng: &mut (impl RngCore + CryptoRng),
 ) -> MintTx {
-    let mut nonce: Vec<u8> = vec![0u8; 32];
+    let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
     rng.fill_bytes(&mut nonce);
 
     let prefix = MintTxPrefix {
@@ -88,7 +90,7 @@ pub fn create_mint_tx(
         view_public_key: RistrettoPublic::from_random(rng),
         spend_public_key: RistrettoPublic::from_random(rng),
         nonce,
-        tombstone_block: rng.next_u64(),
+        tombstone_block: 10,
     };
 
     let message = prefix.hash();
