@@ -538,21 +538,21 @@ mod tests {
         let client_tx_one = transactions.pop().unwrap();
         let client_tx_two = transactions.pop().unwrap();
 
-        let hash_tx_zero = tx_manager
+        let hash_tx_zero: ConsensusValue = tx_manager
             .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_zero,
             ))
             .unwrap()
             .into();
 
-        let hash_tx_one = tx_manager
+        let hash_tx_one: ConsensusValue = tx_manager
             .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_one,
             ))
             .unwrap()
             .into();
 
-        let hash_tx_two = tx_manager
+        let hash_tx_two: ConsensusValue = tx_manager
             .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_two,
             ))
@@ -560,7 +560,7 @@ mod tests {
             .into();
 
         byzantine_ledger.push_values(
-            vec![hash_tx_zero, hash_tx_one, hash_tx_two],
+            vec![hash_tx_zero.clone(), hash_tx_one.clone(), hash_tx_two.clone()],
             Some(Instant::now()),
         );
 
@@ -574,7 +574,7 @@ mod tests {
                 local_quorum_set.clone(),
                 slot_index,
                 Topic::Nominate(NominatePayload {
-                    X: BTreeSet::from_iter(vec![hash_tx_zero, hash_tx_one, hash_tx_two]),
+                    X: BTreeSet::from_iter(vec![hash_tx_zero.clone(), hash_tx_one.clone(), hash_tx_two.clone()]),
                     Y: BTreeSet::default(),
                 }),
             ),
@@ -619,7 +619,7 @@ mod tests {
                     node_a.quorum_set.clone(),
                     slot_index,
                     Topic::Commit(CommitPayload {
-                        B: Ballot::new(100, &[hash_tx_zero, hash_tx_one, hash_tx_two]),
+                        B: Ballot::new(100, &[hash_tx_zero.clone(), hash_tx_one.clone(), hash_tx_two.clone()]),
                         PN: 77,
                         CN: 55,
                         HN: 66,
@@ -641,7 +641,7 @@ mod tests {
                     node_b.quorum_set.clone(),
                     slot_index,
                     Topic::Commit(CommitPayload {
-                        B: Ballot::new(100, &[hash_tx_zero, hash_tx_one, hash_tx_two]),
+                        B: Ballot::new(100, &[hash_tx_zero.clone(), hash_tx_one.clone(), hash_tx_two.clone()]),
                         PN: 77,
                         CN: 55,
                         HN: 66,
