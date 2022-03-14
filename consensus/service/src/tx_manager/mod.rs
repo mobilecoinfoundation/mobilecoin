@@ -14,7 +14,7 @@ use mc_common::{
     HashMap, HashSet,
 };
 use mc_consensus_enclave::{
-    ConsensusEnclave, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    ConsensusEnclave, FormBlockInputs, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_peers::ConsensusValue;
 use mc_transaction_core::{
