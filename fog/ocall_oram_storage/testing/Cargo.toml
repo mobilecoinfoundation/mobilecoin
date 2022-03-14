@@ -7,7 +7,7 @@ license = "GPL-3.0"
 
 [dependencies]
 # mc-oblivious
-aligned-cmov = "2.0"
+aligned-cmov = "2.2"
 mc-oblivious-traits = "2.0"
 
 # fog
