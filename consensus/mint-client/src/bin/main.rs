@@ -2,6 +2,7 @@
 
 //! Entrypoint for the consensus mint client.
 
+use clap::Parser;
 use grpcio::{ChannelBuilder, EnvBuilder};
 use mc_common::logger::{create_app_logger, o};
 use mc_consensus_api::consensus_client_grpc::ConsensusClientApiClient;
@@ -14,11 +15,10 @@ use mc_transaction_core::mint::{
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::sync::Arc;
-use structopt::StructOpt;
 
 fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
-    let config = Config::from_args();
+    let config = Config::parse();
 
     let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
     let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&config.node, &logger);
