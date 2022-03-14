@@ -57,6 +57,8 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_inputs_are_sorted(&tx.prefix)?;
 
+    validate_outputs_are_sorted(&tx.prefix)?;
+
     validate_membership_proofs(&tx.prefix, root_proofs)?;
 
     validate_signature(block_version, tx, csprng)?;
@@ -94,6 +96,10 @@ pub fn validate<R: RngCore + CryptoRng>(
         validate_masked_token_ids_exist(tx)?;
     } else {
         validate_no_masked_token_ids_exist(tx)?;
+    }
+
+    if block_version.validate_transaction_outputs_sort_is_needed() {
+        validate_outputs_are_sorted(&tx.prefix)?;
     }
 
     Ok(())
@@ -164,26 +170,20 @@ fn validate_ring_elements_are_unique(tx_prefix: &TxPrefix) -> TransactionValidat
         .flat_map(|tx_in| tx_in.ring.iter())
         .collect();
 
-    let mut uniques = HashSet::default();
-    for tx_out in &ring_elements {
-        if !uniques.insert(tx_out) {
-            return Err(TransactionValidationError::DuplicateRingElements);
-        }
-    }
-
-    Ok(())
+    check_unique(
+        &ring_elements,
+        TransactionValidationError::DuplicateRingElements,
+    )
 }
 
 /// Elements in a ring must be sorted.
 fn validate_ring_elements_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidationResult<()> {
     for tx_in in &tx_prefix.inputs {
-        if !tx_in
-            .ring
-            .windows(2)
-            .all(|w| w[0].public_key < w[1].public_key)
-        {
-            return Err(TransactionValidationError::UnsortedRingElements);
-        }
+        check_sorted(
+            &tx_in.ring,
+            |a, b| a.public_key < b.public_key,
+            TransactionValidationError::UnsortedRingElements,
+        )?;
     }
 
     Ok(())
@@ -192,38 +192,37 @@ fn validate_ring_elements_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidat
 /// Inputs must be sorted by the public key of the first ring element of each
 /// input.
 fn validate_inputs_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidationResult<()> {
-    let inputs_are_sorted = tx_prefix.inputs.windows(2).all(|w| {
-        !w[0].ring.is_empty()
-            && !w[1].ring.is_empty()
-            && w[0].ring[0].public_key < w[1].ring[0].public_key
-    });
-    if !inputs_are_sorted {
-        return Err(TransactionValidationError::UnsortedInputs);
-    }
+    check_sorted(
+        &tx_prefix.inputs,
+        |a, b| {
+            !a.ring.is_empty() && !b.ring.is_empty() && a.ring[0].public_key < b.ring[0].public_key
+        },
+        TransactionValidationError::UnsortedInputs,
+    )
+}
 
-    Ok(())
+fn validate_outputs_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidationResult<()> {
+    check_sorted(
+        &tx_prefix.outputs,
+        |a, b| a.public_key < b.public_key,
+        TransactionValidationError::UnsortedOutputs,
+    )
 }
 
 /// All key images within the transaction must be unique.
 fn validate_key_images_are_unique(tx: &Tx) -> TransactionValidationResult<()> {
-    let mut uniques = HashSet::default();
-    for key_image in tx.key_images() {
-        if !uniques.insert(key_image) {
-            return Err(TransactionValidationError::DuplicateKeyImages);
-        }
-    }
-    Ok(())
+    check_unique(
+        &tx.key_images(),
+        TransactionValidationError::DuplicateKeyImages,
+    )
 }
 
 /// All output public keys within the transaction must be unique.
 fn validate_outputs_public_keys_are_unique(tx: &Tx) -> TransactionValidationResult<()> {
-    let mut uniques = HashSet::default();
-    for public_key in tx.output_public_keys() {
-        if !uniques.insert(public_key) {
-            return Err(TransactionValidationError::DuplicateOutputPublicKey);
-        }
-    }
-    Ok(())
+    check_unique(
+        &tx.output_public_keys(),
+        TransactionValidationError::DuplicateOutputPublicKey,
+    )
 }
 
 /// All outputs have no memo (new-style TxOuts (Post MCIP #3) are rejected)
@@ -462,6 +461,32 @@ pub fn validate_tombstone(
     let limit = current_block_index + MAX_TOMBSTONE_BLOCKS;
     if tombstone_block_index > limit {
         return Err(TransactionValidationError::TombstoneBlockTooFar);
+    }
+
+    Ok(())
+}
+
+fn check_sorted<T>(
+    values: &[T],
+    ordered: fn(&T, &T) -> bool,
+    err: TransactionValidationError,
+) -> TransactionValidationResult<()> {
+    if !values.windows(2).all(|pair| ordered(&pair[0], &pair[1])) {
+        return Err(err);
+    }
+
+    Ok(())
+}
+
+fn check_unique<T: Eq + core::hash::Hash>(
+    values: &[T],
+    err: TransactionValidationError,
+) -> TransactionValidationResult<()> {
+    let mut uniques = HashSet::default();
+    for x in values {
+        if !uniques.insert(x) {
+            return Err(err);
+        }
     }
 
     Ok(())
@@ -917,6 +942,46 @@ mod tests {
                 validate_inputs_are_sorted(&tx_prefix),
                 Err(TransactionValidationError::UnsortedInputs)
             );
+        }
+    }
+
+    #[test]
+    /// Should reject a transaction with unsorted outputs.
+    fn test_validate_outputs_are_sorted() {
+        for block_version in BlockVersion::iterator() {
+            let (tx, _ledger) = create_test_tx(block_version);
+
+            let mut output_a = tx.prefix.outputs.get(0).unwrap().clone();
+            output_a.public_key = CompressedRistrettoPublic::from(&[1u8; 32]);
+
+            let mut output_b = output_a.clone();
+            output_b.public_key = CompressedRistrettoPublic::from(&[2u8; 32]);
+
+            assert!(output_a.public_key < output_b.public_key);
+
+            {
+                let mut tx_prefix = tx.prefix.clone();
+                // A single output is trivially sorted.
+                tx_prefix.outputs = vec![output_a.clone()];
+                assert_eq!(validate_outputs_are_sorted(&tx_prefix), Ok(()));
+            }
+
+            {
+                let mut tx_prefix = tx.prefix.clone();
+                // Outputs sorted by public_key, ascending.
+                tx_prefix.outputs = vec![output_a.clone(), output_b.clone()];
+                assert_eq!(validate_outputs_are_sorted(&tx_prefix), Ok(()));
+            }
+
+            {
+                let mut tx_prefix = tx.prefix.clone();
+                // Outputs are not correctly sorted.
+                tx_prefix.outputs = vec![output_b.clone(), output_a.clone()];
+                assert_eq!(
+                    validate_outputs_are_sorted(&tx_prefix),
+                    Err(TransactionValidationError::UnsortedOutputs)
+                );
+            }
         }
     }
 

@@ -86,6 +86,11 @@ impl BlockVersion {
     pub fn masked_token_id_feature_is_supported(&self) -> bool {
         self.0 >= 3
     }
+
+    /// transactions shall be sorted after version 3
+    pub fn validate_transaction_outputs_sort_is_needed(&self) -> bool {
+        self.0 > 3
+    }
 }
 
 impl Deref for BlockVersion {
