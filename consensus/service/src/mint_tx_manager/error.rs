@@ -4,7 +4,7 @@ use displaydoc::Display;
 use mc_ledger_db::Error as LedgerDbError;
 use mc_transaction_core::mint::MintValidationError;
 
-#[derive(Clone, Debug, Display)]
+#[derive(Clone, Debug, Display, Eq, PartialEq)]
 pub enum MintTxManagerError {
     /// Mint validation error: {0}
     MintValidation(MintValidationError),
