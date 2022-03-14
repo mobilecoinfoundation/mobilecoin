@@ -4,8 +4,8 @@
 
 pub use mc_consensus_enclave_api::{
     BlockchainConfig, ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeeMap,
-    FeeMapError, FeePublicKey, LocallyEncryptedTx, Result, TxContext, WellFormedEncryptedTx,
-    WellFormedTxContext,
+    FeeMapError, FeePublicKey, FormBlockInputs, LocallyEncryptedTx, Result, TxContext,
+    WellFormedEncryptedTx, WellFormedTxContext,
 };
 
 use mc_attest_core::{
@@ -251,12 +251,12 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
     fn form_block(
         &self,
         parent_block: &Block,
-        encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+        inputs: FormBlockInputs,
         root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::FormBlock(
             parent_block.clone(),
-            encrypted_txs_with_proofs.to_vec(),
+            inputs,
             root_element.clone(),
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;

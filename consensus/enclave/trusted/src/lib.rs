@@ -73,8 +73,8 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         EnclaveCall::TxsForPeer(txs, aad, peer) => {
             serialize(&ENCLAVE.txs_for_peer(&txs, &aad, &peer))
         }
-        EnclaveCall::FormBlock(parent_block, encrypted_txs_with_proofs, root_element) => {
-            serialize(&ENCLAVE.form_block(&parent_block, &encrypted_txs_with_proofs, &root_element))
+        EnclaveCall::FormBlock(parent_block, inputs, root_element) => {
+            serialize(&ENCLAVE.form_block(&parent_block, inputs, &root_element))
         }
     }
     .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))

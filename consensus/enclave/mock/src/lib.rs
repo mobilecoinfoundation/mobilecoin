@@ -8,8 +8,8 @@ pub use mock_consensus_enclave::MockConsensusEnclave;
 
 pub use mc_consensus_enclave_api::{
     BlockchainConfig, ConsensusEnclave, ConsensusEnclaveProxy, Error, FeePublicKey,
-    LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext, WellFormedEncryptedTx,
-    WellFormedTxContext,
+    FormBlockInputs, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
+    WellFormedEncryptedTx, WellFormedTxContext,
 };
 
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
@@ -215,21 +215,21 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
     fn form_block(
         &self,
         parent_block: &Block,
-        encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+        inputs: FormBlockInputs,
         _root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)> {
         let block_version = self.blockchain_config.lock().unwrap().block_version;
-        let transactions_with_proofs: Vec<(Tx, Vec<TxOutMembershipProof>)> =
-            encrypted_txs_with_proofs
-                .iter()
-                .map(|(encrypted_tx, proofs)| {
-                    // These bytes are normally an enclave-encrypted Tx, but here, it is just
-                    // serialized.
-                    let ciphertext = &encrypted_tx.0;
-                    let tx = mc_util_serial::decode::<Tx>(ciphertext).unwrap();
-                    (tx, proofs.clone())
-                })
-                .collect();
+        let transactions_with_proofs: Vec<(Tx, Vec<TxOutMembershipProof>)> = inputs
+            .well_formed_encrypted_txs_with_proofs
+            .iter()
+            .map(|(encrypted_tx, proofs)| {
+                // These bytes are normally an enclave-encrypted Tx, but here, it is just
+                // serialized.
+                let ciphertext = &encrypted_tx.0;
+                let tx = mc_util_serial::decode::<Tx>(ciphertext).unwrap();
+                (tx, proofs.clone())
+            })
+            .collect();
 
         // root_elements contains the root hash of the Merkle tree of all TxOuts in the
         // ledger that were used to validate the tranasctions.
