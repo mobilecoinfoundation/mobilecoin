@@ -2,10 +2,11 @@
 
 //! Generate the binding code that lives inside the enclave and link it in.
 
-use cargo_emit::rustc_cfg;
+use cargo_emit::{rerun_if_env_changed, rustc_cfg, warning};
 use mc_util_build_script::Environment;
 use mc_util_build_sgx::{Edger8r, SgxEnvironment, SgxMode};
 use pkg_config::{Config, Error as PkgConfigError, Library};
+use std::env::var;
 
 // This should (for now) match the untrusted bridge code. Eventually if Intel
 // cleans up their build, this can use, e.g. libsgx_trts.
@@ -31,6 +32,12 @@ fn main() {
     } else {
         SGX_LIBS
     };
+
+    rerun_if_env_changed!("INGEST_ENCLAVE_CSS");
+    if let Ok(value) = var("INGEST_ENCLAVE_CSS") {
+        warning!("Found ingest enclave css: {}", value);
+        return;
+    }
 
     let libraries = libnames
         .iter()

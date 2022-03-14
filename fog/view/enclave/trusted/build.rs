@@ -2,10 +2,11 @@
 
 //! Generate the binding code that lives inside the enclave and link it in.
 
-use cargo_emit::rustc_cfg;
+use cargo_emit::{rerun_if_env_changed, rustc_cfg, warning};
 use mc_util_build_script::Environment;
 use mc_util_build_sgx::{Edger8r, SgxEnvironment, SgxMode};
 use pkg_config::{Config, Error as PkgConfigError, Library};
+use std::env::var;
 
 // This should (for now) match the untrusted bridge code. Eventually if Intel
 // cleans up their build, this can use, e.g. libsgx_trts.
@@ -25,6 +26,31 @@ fn main() {
         .cargo_metadata(false)
         .env_metadata(true);
 
+    // This is a hack for lint to run, this wouldn't be necessary after we move the
+    // enclave to its own crate
+
+    rerun_if_env_changed!("VIEW_ENCLAVE_CSS");
+    if let Ok(value) = var("INGEST_ENCLAVE_CSS") {
+        warning!("Found ingest enclave css: {}", value);
+        return;
+    }
+    // let value = env
+    //     .depvar("VIEW_ENCLAVE_CSS")
+    //     .expect("Could not read css file");
+    // warning!("Found view enclave css: {}", value);
+    // for depvar in env.depvars() {
+    //     warning!("Found var: {:?}", depvar);
+    // }
+    // // let value = env.var("VIEW_ENCLAVE_CSS");
+    // match value {
+    //     Some(css) => {
+    //         warning!("Found view enclave css: {}", css);
+    //         return;
+    //     }
+    //     None => {
+    //         warning!("Found no view enclave css");
+    //     }
+    // }
     let libnames = if sgx.sgx_mode() == SgxMode::Simulation {
         rustc_cfg!("feature=\"sgx-sim\"");
         SGX_SIMULATION_LIBS

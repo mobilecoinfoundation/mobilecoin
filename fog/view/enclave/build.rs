@@ -2,7 +2,7 @@
 
 //! Build script for fog view enclave
 
-use cargo_emit::rustc_cfg;
+use cargo_emit::{rerun_if_env_changed, rustc_cfg, warning};
 use mc_util_build_script::Environment;
 use mc_util_build_sgx::{Edger8r, SgxEnvironment, SgxLibraryCollection, SgxMode};
 use pkg_config::{Config, Error as PkgConfigError, Library};
@@ -17,7 +17,7 @@ const SGX_VERSION: &str = "2.15.100.3";
 fn main() {
     let env = Environment::default();
     let sgx = SgxEnvironment::new(&env).expect("Could not parse SGX environment");
-
+    warning!("view enclave build.rs");
     let mut cfg = Config::new();
     cfg.exactly_version(SGX_VERSION)
         .cargo_metadata(false)
@@ -28,7 +28,11 @@ fn main() {
     } else {
         SGX_LIBS
     };
-
+    rerun_if_env_changed!("VIEW_ENCLAVE_CSS");
+    if let Ok(value) = var("VIEW_ENCLAVE_CSS") {
+        warning!("Found view enclave css: {}", value);
+        return;
+    }
     let libraries = libnames
         .iter()
         .map(|libname| cfg.probe(libname))
