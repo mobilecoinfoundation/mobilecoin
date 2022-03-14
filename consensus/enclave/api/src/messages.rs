@@ -3,7 +3,8 @@
 //! The message types used by the consensus_enclave_api.
 
 use crate::{
-    BlockchainConfig, LocallyEncryptedTx, ResponderId, SealedBlockSigningKey, WellFormedEncryptedTx,
+    BlockchainConfig, FormBlockInputs, LocallyEncryptedTx, ResponderId, SealedBlockSigningKey,
+    WellFormedEncryptedTx,
 };
 use alloc::vec::Vec;
 use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
@@ -129,13 +130,8 @@ pub enum EnclaveCall {
 
     /// The [ConsensusEnclave::form_block()] method.
     ///
-    /// Converts a list of well-formed, encrypted txs + proofs into a block,
-    /// block contents (key images + tx outs) and a signature.
-    FormBlock(
-        Block,
-        Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>,
-        TxOutMembershipElement,
-    ),
+    /// Converts a list of inputs into a block, block contents and a signature.
+    FormBlock(Block, FormBlockInputs, TxOutMembershipElement),
 
     /// The [ConsensusEnclave::get_minimum_fee()] method.
     ///
