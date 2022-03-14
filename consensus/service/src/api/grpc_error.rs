@@ -152,12 +152,6 @@ impl From<ConsensusGrpcError> for Result<ProposeTxResponse, RpcStatus> {
 impl From<ConsensusGrpcError> for Result<ProposeMintConfigTxResponse, RpcStatus> {
     fn from(src: ConsensusGrpcError) -> Result<ProposeMintConfigTxResponse, RpcStatus> {
         match src {
-            ConsensusGrpcError::TransactionValidation(_err) => {
-                // let resp = ProposeMintConfigTxResponse::new();
-                // TODO resp.set_result(ProposeMintConfigTxResult::from(err));
-                // Ok(resp)
-                todo!() // This should never happen
-            }
             ConsensusGrpcError::MintValidation(err) => Ok(ProposeMintConfigTxResponse {
                 result: Some(MintValidationResult::from(err)).into(),
                 ..Default::default()

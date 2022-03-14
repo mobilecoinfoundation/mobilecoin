@@ -57,6 +57,7 @@ use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
+    mint::MintConfigTx,
     ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
@@ -288,6 +289,28 @@ impl SgxConsensusEnclave {
         }
 
         Ok(transactions)
+    }
+
+    /// Validate a list of MintConfigTxs.
+    fn validate_mint_config_txs(&self, mint_config_txs: &[MintConfigTx]) -> Result<()> {
+        // TODO: iterate over each indivdual transaction and validate it. This requires
+        // the enclave has knowledge of the master minters for each token id.
+        // This validation already happens in untruested, but it will be nice to do it
+        // here as well. This will get implemetend in a follow up PR.
+
+        // Ensure all nonces are unique.
+        let mut seen_nonces = BTreeSet::default();
+        for tx in mint_config_txs {
+            if seen_nonces.contains(&tx.prefix.nonce) {
+                return Err(Error::FormBlock(format!(
+                    "Duplicate MintConfigTx nonce: {:?}",
+                    tx.prefix.nonce
+                )));
+            }
+            seen_nonces.insert(tx.prefix.nonce.clone());
+        }
+
+        Ok(())
     }
 }
 
@@ -607,7 +630,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             &inputs.well_formed_encrypted_txs_with_proofs,
             parent_block,
             root_element,
-            config,
+            &config,
             &mut rng,
         )?;
 
@@ -658,7 +681,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         key_images.sort();
 
         // Get the list of MintConfigTxs included in the block.
-        // TODO perform any last minute validation here.
+        self.validate_mint_config_txs(&inputs.mint_config_txs)?;
         let mint_config_txs = inputs.mint_config_txs;
 
         // Right now mint-txs are not actually created anywhere.

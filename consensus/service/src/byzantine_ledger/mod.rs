@@ -13,9 +13,10 @@ mod worker;
 use crate::{
     byzantine_ledger::{task_message::TaskMessage, worker::ByzantineLedgerWorker},
     counters,
-    mint_tx_manager::MintTxManager,
-    tx_manager::TxManager,
+    mint_tx_manager::{MintTxManager, MintTxManagerError},
+    tx_manager::{TxManager, TxManagerError},
 };
+use displaydoc::Display;
 use mc_common::{logger::Logger, NodeID, ResponderId};
 use mc_connection::{BlockchainConnection, ConnectionManager};
 use mc_consensus_scp::{scp_log::LoggingScpNode, Node, QuorumSet, ScpNode};
@@ -25,6 +26,7 @@ use mc_ledger_sync::{LedgerSyncService, ReqwestTransactionsFetcher};
 use mc_peers::{
     Broadcast, ConsensusConnection, ConsensusMsg, ConsensusValue, VerifiedConsensusMsg,
 };
+use mc_transaction_core::mint::constants::MAX_MINT_CONFIG_TXS_PER_BLOCK;
 use mc_util_metered_channel::Sender;
 use std::{
     path::PathBuf,
@@ -64,11 +66,7 @@ pub struct ByzantineLedger {
     highest_issued_msg: Arc<Mutex<Option<ConsensusMsg>>>,
 }
 
-/// TODO
-use crate::mint_tx_manager::MintTxManagerError;
-use crate::tx_manager::TxManagerError;
-use displaydoc::Display;
-
+/// An error type for mc-consensus-scp validation/combine callbacks.
 #[derive(Clone, Debug, Display)]
 enum UnifiedNodeError {
     /// TxManager: {0}
@@ -160,8 +158,10 @@ impl ByzantineLedger {
                     let tx_hashes = tx_manager_combine.combine(&tx_hashes[..])?;
                     let tx_hashes_iter = tx_hashes.into_iter().map(ConsensusValue::TxHash);
 
-                    let mint_config_txs =
-                        mint_tx_manager_combine.combine_mint_config_txs(&mint_config_txs[..])?;
+                    let mint_config_txs = mint_tx_manager_combine.combine_mint_config_txs(
+                        &mint_config_txs[..],
+                        MAX_MINT_CONFIG_TXS_PER_BLOCK,
+                    )?;
                     let mint_config_txs_iter = mint_config_txs
                         .into_iter()
                         .map(ConsensusValue::MintConfigTx);

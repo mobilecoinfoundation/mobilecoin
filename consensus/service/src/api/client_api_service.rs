@@ -100,12 +100,16 @@ impl ClientApiService {
         Ok(response)
     }
 
-    /// TODO
+    /// Handles a client's proposal for a MintConfigTx to be included in the
+    /// ledger.
+    ///
+    /// # Arguments
+    /// `grpc_tx` - The protobuf MintConfigTx being proposed.
     fn handle_propose_mint_config_tx(
         &mut self,
         grpc_tx: mc_consensus_api::external::MintConfigTx,
     ) -> Result<ProposeMintConfigTxResponse, ConsensusGrpcError> {
-        // TODO counters::ADD_TX_INITIATED.inc();
+        counters::PROPOSE_MINT_CONFIG_TX_INITIATED.inc();
         let mint_config_tx = MintConfigTx::try_from(&grpc_tx)
             .map_err(|err| ConsensusGrpcError::InvalidArgument(format!("{:?}", err)))?;
         let response = ProposeMintConfigTxResponse::new();
@@ -118,7 +122,7 @@ impl ClientApiService {
 
         // The transaction can be considered by the network.
         (*self.propose_tx_callback)(ConsensusValue::MintConfigTx(mint_config_tx), None, None);
-        // TODO counters::ADD_TX.inc();
+        counters::PROPOSE_MINT_CONFIG_TX.inc();
         Ok(response)
     }
 }
