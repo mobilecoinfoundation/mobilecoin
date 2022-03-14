@@ -560,7 +560,11 @@ mod tests {
             .into();
 
         byzantine_ledger.push_values(
-            vec![hash_tx_zero.clone(), hash_tx_one.clone(), hash_tx_two.clone()],
+            vec![
+                hash_tx_zero.clone(),
+                hash_tx_one.clone(),
+                hash_tx_two.clone(),
+            ],
             Some(Instant::now()),
         );
 
@@ -574,7 +578,11 @@ mod tests {
                 local_quorum_set.clone(),
                 slot_index,
                 Topic::Nominate(NominatePayload {
-                    X: BTreeSet::from_iter(vec![hash_tx_zero.clone(), hash_tx_one.clone(), hash_tx_two.clone()]),
+                    X: BTreeSet::from_iter(vec![
+                        hash_tx_zero.clone(),
+                        hash_tx_one.clone(),
+                        hash_tx_two.clone(),
+                    ]),
                     Y: BTreeSet::default(),
                 }),
             ),
@@ -619,7 +627,14 @@ mod tests {
                     node_a.quorum_set.clone(),
                     slot_index,
                     Topic::Commit(CommitPayload {
-                        B: Ballot::new(100, &[hash_tx_zero.clone(), hash_tx_one.clone(), hash_tx_two.clone()]),
+                        B: Ballot::new(
+                            100,
+                            &[
+                                hash_tx_zero.clone(),
+                                hash_tx_one.clone(),
+                                hash_tx_two.clone(),
+                            ],
+                        ),
                         PN: 77,
                         CN: 55,
                         HN: 66,
@@ -641,7 +656,14 @@ mod tests {
                     node_b.quorum_set.clone(),
                     slot_index,
                     Topic::Commit(CommitPayload {
-                        B: Ballot::new(100, &[hash_tx_zero.clone(), hash_tx_one.clone(), hash_tx_two.clone()]),
+                        B: Ballot::new(
+                            100,
+                            &[
+                                hash_tx_zero.clone(),
+                                hash_tx_one.clone(),
+                                hash_tx_two.clone(),
+                            ],
+                        ),
                         PN: 77,
                         CN: 55,
                         HN: 66,
