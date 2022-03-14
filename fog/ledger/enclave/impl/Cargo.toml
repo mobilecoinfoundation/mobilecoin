@@ -23,7 +23,7 @@ mc-util-serial = { path = "../../../../util/serial" }
 mc-watcher-api = { path = "../../../../watcher/api" }
 
 # mc-oblivious
-aligned-cmov = "2.0"
+aligned-cmov = "2.2"
 mc-oblivious-map = "2.0"
 mc-oblivious-ram = "2.0"
 mc-oblivious-traits = "2.0"

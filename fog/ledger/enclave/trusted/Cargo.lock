@@ -59,9 +59,9 @@ dependencies = [
 
 [[package]]
 name = "aligned-cmov"
-version = "2.0.0"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42131cad0df1f867cc8c693912fe2ba04c67f29be3378c951dac62c80554301f"
+checksum = "ac09d3ea1089af7eb2784eca92ed14a41168352d47565f1eb1bdd23460909ba1"
 dependencies = [
  "aligned-array",
  "generic-array",
