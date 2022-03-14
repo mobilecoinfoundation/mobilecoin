@@ -11,6 +11,7 @@ tempdir = "0.3"
 # MobileCoin dependencies
 mc-account-keys = { path = "../../../account-keys" }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
+mc-crypto-multisig = { path = "../../../crypto/multisig" }
 mc-crypto-rand = { path = "../../../crypto/rand" }
 mc-fog-report-validation-test-utils = { path = "../../../fog/report/validation/test-utils" }
 mc-ledger-db = { path = "../../../ledger/db" }
