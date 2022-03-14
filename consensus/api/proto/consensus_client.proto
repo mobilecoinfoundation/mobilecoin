@@ -23,6 +23,7 @@ enum MintValidationResultCode {
     Unknown = 8;
     AmountExceedsMintLimit = 9;
     NoMasterMinters = 10;
+    NonceAlreadyUsed = 11;
 }
 
 message MintValidationResult {

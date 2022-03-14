@@ -38,4 +38,7 @@ pub enum Error {
 
     /// No master minters configured for token id {0}
     NoMasterMinters(TokenId),
+
+    /// Nonce already seen in ledger
+    NonceAlreadyUsed,
 }
