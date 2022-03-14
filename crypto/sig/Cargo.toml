@@ -10,7 +10,7 @@ mc-crypto-keys = { path = "../keys", default-features = false }
 merlin = { version = "3.0", default-features = false }
 rand_core = { version = "0.6", default-features = false }
 rand_hc = "0.3"
-schnorrkel-og = { version = "0.10.1", default-features = false }
+schnorrkel-og = { version = "0.11.0-pre.0", default-features = false }
 
 [dev-dependencies]
 mc-util-from-random = { path = "../../util/from-random" }

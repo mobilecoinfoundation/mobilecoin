@@ -45,7 +45,7 @@ mc-fog-uri = { path = "../../uri" }
 # third-party
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.9.0"
+grpcio = "0.10.0"
 hex = "0.4"
 lazy_static = "1.4"
 rand = "0.8"
@@ -76,9 +76,3 @@ mc-fog-test-infra = { path = "../../test_infra" }
 
 # third-party
 tempdir = "0.3"
-
-[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dev-dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["simd_backend", "nightly"] }
-
-[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dev-dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["nightly", "u64_backend"] }

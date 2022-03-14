@@ -11,6 +11,7 @@ impl From<&Amount> for external::Amount {
         let mut amount = external::Amount::new();
         amount.mut_commitment().set_data(commitment_bytes);
         amount.set_masked_value(source.masked_value);
+        amount.set_masked_token_id(source.masked_token_id.clone());
         amount
     }
 }
@@ -21,9 +22,11 @@ impl TryFrom<&external::Amount> for Amount {
     fn try_from(source: &external::Amount) -> Result<Self, Self::Error> {
         let commitment = CompressedCommitment::try_from(source.get_commitment())?;
         let masked_value = source.get_masked_value();
+        let masked_token_id = source.get_masked_token_id();
         let amount = Amount {
             commitment,
             masked_value,
+            masked_token_id: masked_token_id.to_vec(),
         };
         Ok(amount)
     }

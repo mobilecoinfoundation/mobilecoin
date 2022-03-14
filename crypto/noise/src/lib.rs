@@ -15,7 +15,7 @@ mod protocol_name;
 mod symmetric_state;
 
 pub use crate::{
-    cipher_state::{CipherError, CipherState, NoiseCipher},
+    cipher_state::{CipherError, CipherState, NoiseCipher, NoiseDigest},
     handshake_state::{HandshakeError, HandshakeOutput, HandshakeState, HandshakeStatus},
     patterns::{HandshakeIX, HandshakeNX, HandshakePattern},
     protocol_name::{ProtocolName, ProtocolNameError},

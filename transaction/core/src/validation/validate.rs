@@ -24,8 +24,11 @@ use rand_core::{CryptoRng, RngCore};
 /// * `tx` - A pending transaction.
 /// * `current_block_index` - The index of the current block that is being
 ///   built.
+/// * `block_version` - The version of the transaction rules we are testing
 /// * `root_proofs` - Membership proofs for each input ring element contained in
 ///   `tx`.
+/// * `minimum_fee` - The minimum fee for the token indicated by
+///   tx.prefix.token_id
 /// * `csprng` - Cryptographically secure random number generator.
 pub fn validate<R: RngCore + CryptoRng>(
     tx: &Tx,
@@ -56,7 +59,7 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_membership_proofs(&tx.prefix, root_proofs)?;
 
-    validate_signature(tx, csprng)?;
+    validate_signature(block_version, tx, csprng)?;
 
     validate_transaction_fee(tx, minimum_fee)?;
 
@@ -79,6 +82,18 @@ pub fn validate<R: RngCore + CryptoRng>(
         validate_memos_exist(tx)?;
     } else {
         validate_no_memos_exist(tx)?;
+    }
+
+    // If masked token id is supported, then all outputs must have masked_token_id
+    // If masked token id is not yet supported, then no outputs may have
+    // masked_token_id
+    //
+    // Note: This rct_bulletproofs code enforces that token_id = 0 if this feature
+    // is not enabled
+    if block_version.masked_token_id_feature_is_supported() {
+        validate_masked_token_ids_exist(tx)?;
+    } else {
+        validate_no_masked_token_ids_exist(tx)?;
     }
 
     Ok(())
@@ -237,6 +252,34 @@ fn validate_memos_exist(tx: &Tx) -> TransactionValidationResult<()> {
     Ok(())
 }
 
+/// All outputs have no masked token id (new-style TxOuts (Post MCIP #25) are
+/// rejected)
+fn validate_no_masked_token_ids_exist(tx: &Tx) -> TransactionValidationResult<()> {
+    if tx
+        .prefix
+        .outputs
+        .iter()
+        .any(|output| !output.amount.masked_token_id.is_empty())
+    {
+        return Err(TransactionValidationError::MaskedTokenIdNotAllowed);
+    }
+    Ok(())
+}
+
+/// All outputs have a masked token id (old-style TxOuts (Pre MCIP #25) are
+/// rejected)
+fn validate_masked_token_ids_exist(tx: &Tx) -> TransactionValidationResult<()> {
+    if tx
+        .prefix
+        .outputs
+        .iter()
+        .any(|output| output.amount.masked_token_id.len() != 4)
+    {
+        return Err(TransactionValidationError::MissingMaskedTokenId);
+    }
+    Ok(())
+}
+
 /// Verifies the transaction signature.
 ///
 /// A valid RctBulletproofs signature implies that:
@@ -245,7 +288,9 @@ fn validate_memos_exist(tx: &Tx) -> TransactionValidationResult<()> {
 /// * Each key image corresponds to the spent ring element,
 /// * The outputs have values in [0,2^64),
 /// * The transaction does not create or destroy mobilecoins.
+/// * The signature is valid according to the rules of this block version
 pub fn validate_signature<R: RngCore + CryptoRng>(
+    block_version: BlockVersion,
     tx: &Tx,
     rng: &mut R,
 ) -> TransactionValidationResult<()> {
@@ -268,7 +313,15 @@ pub fn validate_signature<R: RngCore + CryptoRng>(
     let message = tx_prefix_hash.as_bytes();
 
     tx.signature
-        .verify(message, &rings, &output_commitments, tx.prefix.fee, rng)
+        .verify(
+            block_version,
+            message,
+            &rings,
+            &output_commitments,
+            tx.prefix.fee,
+            tx.prefix.token_id,
+            rng,
+        )
         .map_err(TransactionValidationError::InvalidTransactionSignature)
 }
 
@@ -430,9 +483,7 @@ mod tests {
         Token,
     };
 
-    use crate::{
-        membership_proofs::Range, validation::validate::validate_ring_elements_are_sorted,
-    };
+    use crate::membership_proofs::Range;
     use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes};
     use mc_ledger_db::{Ledger, LedgerDB};
     use mc_transaction_core_test_utils::{
@@ -930,7 +981,7 @@ mod tests {
 
         for block_version in BlockVersion::iterator() {
             let (tx, _ledger) = create_test_tx(block_version);
-            assert_eq!(validate_signature(&tx, &mut rng), Ok(()));
+            assert_eq!(validate_signature(block_version, &tx, &mut rng), Ok(()));
         }
     }
 
@@ -945,7 +996,7 @@ mod tests {
             // Remove an input.
             tx.prefix.inputs[0].ring.pop();
 
-            match validate_signature(&tx, &mut rng) {
+            match validate_signature(block_version, &tx, &mut rng) {
                 Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
                 Err(e) => {
                     panic!("Unexpected error {}", e);
@@ -967,7 +1018,7 @@ mod tests {
             let output = tx.prefix.outputs.get(0).unwrap().clone();
             tx.prefix.outputs.push(output);
 
-            match validate_signature(&tx, &mut rng) {
+            match validate_signature(block_version, &tx, &mut rng) {
                 Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
                 Err(e) => {
                     panic!("Unexpected error {}", e);
@@ -987,7 +1038,65 @@ mod tests {
 
             tx.prefix.fee = tx.prefix.fee + 1;
 
-            match validate_signature(&tx, &mut rng) {
+            match validate_signature(block_version, &tx, &mut rng) {
+                Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
+                Err(e) => {
+                    panic!("Unexpected error {}", e);
+                }
+                Ok(()) => panic!("Unexpected success"),
+            }
+        }
+    }
+
+    #[test]
+    // Should return InvalidTransactionSignature if the token_id is modified
+    fn test_transaction_signature_err_modified_token_id() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        for _ in 0..3 {
+            let (mut tx, _ledger) = create_test_tx(BlockVersion::THREE);
+
+            tx.prefix.token_id = tx.prefix.token_id + 1;
+
+            match validate_signature(BlockVersion::THREE, &tx, &mut rng) {
+                Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
+                Err(e) => {
+                    panic!("Unexpected error {}", e);
+                }
+                Ok(()) => panic!("Unexpected success"),
+            }
+        }
+    }
+
+    #[test]
+    // Should return InvalidTransactionSignature if block version 2 is validated as
+    // 3
+    fn test_transaction_signature_err_version_two_as_three() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        for _ in 0..3 {
+            let (tx, _ledger) = create_test_tx(BlockVersion::TWO);
+
+            match validate_signature(BlockVersion::THREE, &tx, &mut rng) {
+                Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
+                Err(e) => {
+                    panic!("Unexpected error {}", e);
+                }
+                Ok(()) => panic!("Unexpected success"),
+            }
+        }
+    }
+
+    #[test]
+    // Should return InvalidTransactionSignature if block version 3 is validated as
+    // 2
+    fn test_transaction_signature_err_version_three_as_two() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        for _ in 0..3 {
+            let (tx, _ledger) = create_test_tx(BlockVersion::THREE);
+
+            match validate_signature(BlockVersion::TWO, &tx, &mut rng) {
                 Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
                 Err(e) => {
                     panic!("Unexpected error {}", e);

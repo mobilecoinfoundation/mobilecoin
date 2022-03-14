@@ -16,7 +16,7 @@ pub mod test_utils;
 mod utils;
 
 #[doc(inline)]
-pub use self::{
+pub use crate::{
     core_types::{CombineFn, GenericNodeId, Identifier, SlotIndex, ValidityFn, Value},
     msg::{Msg, Topic},
     node::{MockScpNode, Node, ScpNode},

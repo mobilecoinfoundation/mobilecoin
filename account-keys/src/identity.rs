@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! In cryptography, several private keys can be derived from a single source of
 //! entropy using a strong KDF (key derivation function).
@@ -19,7 +19,7 @@ use core::{
     hash::Hash,
 };
 use curve25519_dalek::scalar::Scalar;
-use hkdf::Hkdf;
+use hkdf::SimpleHkdf;
 use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::RistrettoPrivate;
 use mc_util_from_random::FromRandom;
@@ -169,7 +169,7 @@ impl From<&[u8; 32]> for RootIdentity {
 // Helper function for using hkdf to derive a key
 fn root_identity_hkdf_helper(ikm: &[u8], info: &[u8]) -> Scalar {
     let mut result = [0u8; 32];
-    let (_, hk) = Hkdf::<Blake2b256>::extract(None, ikm);
+    let hk = SimpleHkdf::<Blake2b256>::new(None, ikm);
 
     // expand cannot fail because 32 bytes is a valid keylength for blake2b/256
     hk.expand(info, &mut result)
@@ -186,10 +186,9 @@ fn root_identity_hkdf_helper(ikm: &[u8], info: &[u8]) -> Scalar {
 #[cfg(test)]
 mod testing {
     use super::*;
-    use alloc::boxed::Box;
-    use datatest::data;
-    use mc_test_vectors_account_keys::*;
+    use mc_test_vectors_account_keys::AcctPrivKeysFromRootEntropy;
     use mc_util_test_vector::TestVector;
+    use mc_util_test_with_data::test_with_data;
 
     // Protobuf deserialization should recover a serialized RootIdentity.
     #[test]
@@ -208,8 +207,7 @@ mod testing {
         })
     }
 
-    #[data(AcctPrivKeysFromRootEntropy::from_jsonl("../test-vectors/vectors"))]
-    #[test]
+    #[test_with_data(AcctPrivKeysFromRootEntropy::from_jsonl("../test-vectors/vectors"))]
     fn acct_priv_keys_from_root_entropy(case: AcctPrivKeysFromRootEntropy) {
         let account_key = AccountKey::from(&RootIdentity::from(&case.root_entropy));
         assert_eq!(

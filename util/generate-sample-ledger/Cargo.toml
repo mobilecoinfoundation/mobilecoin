@@ -23,16 +23,5 @@ rand = "0.8"
 rand_hc = "0.3"
 structopt = "0.3"
 
-[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["simd_backend", "nightly"] }
-
-[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["nightly", "u64_backend"] }
-
 [dev-dependencies]
-tempdir = "0.3"
-
-[build-dependencies]
-# Even though this is unused, it needs to be here otherwise Cargo brings in some weird mixture of packages/features that refuses to compile.
-# Go figure ¯\_(ツ)_/¯
-serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
+tempfile = "3.2"

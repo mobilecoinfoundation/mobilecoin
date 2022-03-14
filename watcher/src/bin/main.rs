@@ -6,8 +6,10 @@
 
 use displaydoc::Display;
 use mc_watcher::{
-    config::WatcherConfig, verification_reports_collector::VerificationReportsCollector,
-    watcher::Watcher, watcher_db::create_or_open_rw_watcher_db,
+    config::WatcherConfig,
+    verification_reports_collector::VerificationReportsCollector,
+    watcher::{SyncResult, Watcher},
+    watcher_db::create_or_open_rw_watcher_db,
 };
 
 use futures::executor::block_on;
@@ -109,6 +111,8 @@ pub struct WatcherSyncThread {
     stop_requested: Arc<AtomicBool>,
 }
 
+const MAX_BLOCKS_PER_SYNC_ITERATION: usize = 1000;
+
 impl WatcherSyncThread {
     pub fn start(watcher: Watcher, config: WatcherConfig, logger: Logger) -> Result<Self, Error> {
         let stop_requested = Arc::new(AtomicBool::new(false));
@@ -148,15 +152,28 @@ impl WatcherSyncThread {
             }
 
             // For now, ignore origin block, as it does not have a signature.
-            let syncing_done = watcher
-                .sync_blocks(1, config.max_block_height)
+            let sync_result = watcher
+                .sync_blocks(
+                    1,
+                    config.max_block_height,
+                    Some(MAX_BLOCKS_PER_SYNC_ITERATION),
+                    false,
+                )
                 .expect("Could not sync signatures");
-            if syncing_done {
-                log::info!(logger, "sync_signatures indicates we're done");
-                break;
-            }
 
-            sleep(config.poll_interval);
+            // Decide next step before continuing based on sync result
+            match sync_result {
+                SyncResult::AllBlocksSynced => {
+                    log::info!(logger, "sync_blocks indicates we're done");
+                    break;
+                }
+                SyncResult::BlockSyncError => {
+                    log::debug!(logger, "block sync error, sleeping before trying again");
+                    sleep(config.poll_interval);
+                }
+                // sync_blocks exited to check if stop has been requested
+                SyncResult::ReachedMaxBlocksPerIteration => {}
+            }
         }
     }
 }

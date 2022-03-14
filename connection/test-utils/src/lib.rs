@@ -13,4 +13,4 @@ pub fn test_client_uri(node_id: u32) -> ConsensusClientUri {
         .expect("Could not construct client uri from string")
 }
 
-pub use self::{blockchain::MockBlockchainConnection, user_tx::MockUserTxConnection};
+pub use crate::{blockchain::MockBlockchainConnection, user_tx::MockUserTxConnection};

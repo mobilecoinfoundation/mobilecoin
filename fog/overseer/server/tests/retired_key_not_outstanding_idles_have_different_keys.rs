@@ -133,7 +133,7 @@ fn active_key_is_retired_not_outstanding_idle_nodes_have_different_keys_new_key_
             .unwrap();
     let rocket = server::initialize_rocket_server(rocket_config, overseer_state);
     let client = Client::new(rocket).expect("valid rocket instance");
-    let _req = client.post("/arm");
+    let _req = client.post("/enable").dispatch();
 
     // Retire the current active node.
     node0.retire().unwrap();

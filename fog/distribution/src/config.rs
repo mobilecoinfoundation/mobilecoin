@@ -10,11 +10,15 @@ use mc_connection::{
 };
 use mc_mobilecoind::config::PeersConfig;
 use mc_util_uri::ConnectionUri;
-use std::{fs, path::PathBuf, str::FromStr, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 use structopt::StructOpt;
 
+/// Config options for the fog-distribution tool
 #[derive(Clone, Debug, StructOpt)]
-#[structopt(name = "fog-distribution", about = "Generate valid fog txs.")]
+#[structopt(
+    name = "fog-distribution",
+    about = "Transfer funds from source accounts (bootstrapped) to destination accounts (which may have fog). This slams the network with many Txs in parallel as a stress test."
+)]
 pub struct Config {
     /// Path to sample data for keys/ and ledger/
     #[structopt(long, parse(from_os_str))]
@@ -32,24 +36,25 @@ pub struct Config {
     #[structopt(long, default_value = "50")]
     pub tombstone_block: u64,
 
+    /// Number of inputs to use per transaction
     #[structopt(long, default_value = "1")]
     pub num_inputs: usize,
-
-    /// Ask consensus for the current block to set tombstone appropriately
-    #[structopt(long)]
-    pub query_consensus_for_cur_block: bool,
 
     /// Offset into transactions to start
     #[structopt(long, default_value = "0")]
     pub start_offset: usize,
 
-    /// Num transactions per account - must set this if using start_offset
+    /// Num transactions per source account in the bootstrapped ledger - must
+    /// set this if using start_offset
     #[structopt(long, default_value = "0")]
-    pub num_transactions_per_account: usize,
+    pub num_transactions_per_source_account: usize,
 
-    /// Offset into accounts
-    #[structopt(long, default_value = "0")]
-    pub account_offset: usize,
+    /// Num seed transactions per destination account. Each destination is
+    /// guaranteed to receive at least this many TxOuts. If the ledger is
+    /// bootstrapped with multiple token ids, this can be set to guarantee no
+    /// destination has a zero balance for any token.
+    #[structopt(long, default_value = "1")]
+    pub num_seed_transactions_per_destination_account: usize,
 
     /// Number of threads with which to submit transactions (threadpool uses min
     /// with cpu)
@@ -60,17 +65,26 @@ pub struct Config {
     #[structopt(long, default_value = "0")]
     pub add_tx_delay_ms: u64,
 
-    /// URLs to use for transaction data.
-    ///
-    /// For example: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.master.mobilecoin.com/
+    /// Block version to use (otherwise fall back to ledger)
+    #[structopt(long, env)]
+    pub block_version: Option<u32>,
+
+    /// Destination keys subdirectory. Defaults to `fog_keys`
     #[structopt(long, default_value = "fog_keys")]
     pub fog_keys_subdir: String,
 
+    /// Peers configuration
     #[structopt(flatten)]
     pub peers_config: PeersConfig,
+
+    /// Dry run (don't actually submit transactions, just load from bootstrapped
+    /// ledger)
+    #[structopt(long)]
+    pub dry_run: bool,
 }
 
 impl Config {
+    /// Get thick client connections to all configured consensus nodes
     pub fn get_connections(
         &self,
         logger: &Logger,
@@ -105,18 +119,5 @@ impl Config {
                 .map(|inner| SyncConnection::new(inner, logger))
             })
             .collect()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct FileData(pub Vec<u8>);
-
-impl FromStr for FileData {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(fs::read(s).map_err(|e| {
-            format!("Failed reading \"{}\": {:?}", s, e)
-        })?))
     }
 }

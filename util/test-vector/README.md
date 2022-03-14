@@ -78,23 +78,24 @@ The test vector files will be located in the `../vectors` folder relative the cr
 
 ### Reading test vectors
 
-`TestVector::from_jsonl` should be used in conjunction with the [datatest] crate. `from_jsonl` should be used with `datatest::data` when composing tests in order to read the corresponding `.jsonl` test vector file containing the test cases.
+`TestVector::from_jsonl` should be used in conjunction with the [`test_with_data`] attribute (or [`datatest`] crate if need be), in order to read the corresponding `.jsonl` test vector file containing the test cases.
 
 The `.jsonl` file that's loaded is the file pointed to by the `TestVector` implementation used in the `#[data()]` directive. Each line in the `.jsonl` file represents a test case and will be deserialized as the type implementing `TestVector`.
 
 The test function should have only 1 parameter. That parameter should be of the same type implementing `TestVector`. The test function will be called once per test case.
 
-[datatest]: https://github.com/commure/datatest
+[`test_with_data`]: ../util/test-with-data
+[`datatest`]: https://github.com/commure/datatest
 
 <details><summary>Example</summary>
 
 ```Rust
-use datatest::data;
 use mc_test_vectors_account_keys::AcctPrivKeysFromRootEntropy;
 use mc_util_test_vector::TestVector;
+use mc_util_test_with_data::test_with_data;
 
-#[data(AcctPrivKeysFromRootEntropy::from_jsonl("../test-vectors/vectors"))]
 #[test]
+#[test_with_data(AcctPrivKeysFromRootEntropy::from_jsonl("../test-vectors/vectors"))]
 fn acct_priv_keys_from_root_entropy(case: AcctPrivKeysFromRootEntropy) {
     let account_key = AccountKey::from(&RootIdentity::from(&case.root_entropy));
     assert_eq!(
@@ -110,7 +111,7 @@ fn acct_priv_keys_from_root_entropy(case: AcctPrivKeysFromRootEntropy) {
 
 In this example, `"../test-vectors/vectors"` is the location of the test vectors folder relative to the crate containing the test.
 
-This test will be run 10 times, once for each line in the corresponding `.jsonl` test vector file.
+This test will be run multiple times, once for each line in the corresponding `.jsonl` test vector file.
 
 Note: the `#[test]` line is not strictly necessary, but serves to ensure that IDEs will correctly parse the existence of a test.
 

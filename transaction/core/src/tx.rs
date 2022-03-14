@@ -1,12 +1,13 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+//! Definition of a MobileCoin transaction and a MobileCoin TxOut
+
 use alloc::vec::Vec;
-use blake2::digest::Update;
 use core::{convert::TryFrom, fmt};
 use mc_account_keys::PublicAddress;
 use mc_common::Hash;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
-use mc_crypto_hashes::Blake2b256;
+use mc_crypto_hashes::{Blake2b256, Digest};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_util_repr_bytes::{
     derive_prost_message_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
@@ -15,7 +16,7 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    amount::{Amount, AmountError},
+    amount::{Amount, AmountData, AmountError},
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
@@ -23,7 +24,7 @@ use crate::{
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
     ring_signature::{KeyImage, SignatureRctBulletproofs},
-    CompressedCommitment, NewMemoError, NewTxError,
+    CompressedCommitment, NewMemoError, NewTxError, TokenId,
 };
 
 /// Transaction hash length, in bytes.
@@ -162,6 +163,10 @@ pub struct TxPrefix {
     /// The block index at which this transaction is no longer valid.
     #[prost(uint64, tag = "4")]
     pub tombstone_block: u64,
+
+    /// Token id for this transaction
+    #[prost(fixed32, tag = "5")]
+    pub token_id: u32,
 }
 
 impl TxPrefix {
@@ -173,11 +178,18 @@ impl TxPrefix {
     /// * `fee` - Transaction fee.
     /// * `tombstone_block` - The block index at which this transaction is no
     ///   longer valid.
-    pub fn new(inputs: Vec<TxIn>, outputs: Vec<TxOut>, fee: u64, tombstone_block: u64) -> TxPrefix {
+    pub fn new(
+        inputs: Vec<TxIn>,
+        outputs: Vec<TxOut>,
+        fee: u64,
+        token_id: u32,
+        tombstone_block: u64,
+    ) -> TxPrefix {
         TxPrefix {
             inputs,
             outputs,
             fee,
+            token_id,
             tombstone_block,
         }
     }
@@ -284,11 +296,12 @@ impl TxOut {
     /// * `hint` - Encrypted Fog hint for this output.
     pub fn new(
         value: u64,
+        token_id: TokenId,
         recipient: &PublicAddress,
         tx_private_key: &RistrettoPrivate,
         hint: EncryptedFogHint,
     ) -> Result<Self, AmountError> {
-        TxOut::new_with_memo(value, recipient, tx_private_key, hint, |_| {
+        TxOut::new_with_memo(value, token_id, recipient, tx_private_key, hint, |_| {
             Ok(Some(MemoPayload::default()))
         })
         .map_err(|err| match err {
@@ -311,6 +324,7 @@ impl TxOut {
     ///   MemoPayload, or a NewMemo error
     pub fn new_with_memo(
         value: u64,
+        token_id: TokenId,
         recipient: &PublicAddress,
         tx_private_key: &RistrettoPrivate,
         hint: EncryptedFogHint,
@@ -321,7 +335,8 @@ impl TxOut {
 
         let shared_secret = create_shared_secret(recipient.view_public_key(), tx_private_key);
 
-        let amount = Amount::new(value, &shared_secret)?;
+        let amount_data = AmountData { value, token_id };
+        let amount = Amount::new(amount_data, &shared_secret)?;
 
         let memo_ctxt = MemoContext {
             tx_public_key: &public_key,
@@ -425,6 +440,7 @@ pub struct TxOutMembershipElement {
 }
 
 impl TxOutMembershipElement {
+    /// Create a new membership element
     pub fn new(range: Range, hash: [u8; 32]) -> Self {
         Self {
             range,
@@ -469,8 +485,8 @@ impl core::convert::From<[u8; 32]> for TxOutMembershipHash {
 }
 
 impl ReprBytes for TxOutMembershipHash {
-    type Error = &'static str;
     type Size = U32;
+    type Error = &'static str;
     fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, &'static str> {
         Ok(Self((*src).into()))
     }
@@ -493,6 +509,7 @@ impl TxOutConfirmationNumber {
         self.0.to_vec()
     }
 
+    /// Validate a confirmation number against tx pubkey and view private key
     pub fn validate(
         &self,
         tx_pubkey: &RistrettoPublic,
@@ -530,15 +547,13 @@ impl core::convert::From<&RistrettoPublic> for TxOutConfirmationNumber {
         let mut hasher = Blake2b256::new();
         hasher.update(&TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG);
         hasher.update(shared_secret.to_bytes());
-
-        let result: [u8; 32] = hasher.result().into();
-        Self(result)
+        Self(hasher.finalize().into())
     }
 }
 
 impl ReprBytes for TxOutConfirmationNumber {
-    type Error = &'static str;
     type Size = U32;
+    type Error = &'static str;
     fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, &'static str> {
         Ok(Self((*src).into()))
     }
@@ -559,15 +574,15 @@ mod tests {
         subaddress_matches_tx_out,
         tokens::Mob,
         tx::{Tx, TxIn, TxOut, TxPrefix},
-        Amount, Token,
+        Amount, AmountData, Token,
     };
     use alloc::vec::Vec;
+    use core::convert::TryFrom;
     use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
     use prost::Message;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::convert::TryFrom;
 
     #[test]
     // `serialize_tx` should create a Tx, encode/decode it, and compare
@@ -577,7 +592,11 @@ mod tests {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
             let public_key = RistrettoPublic::from_random(&mut rng).into();
-            let amount = Amount::new(23u64, &shared_secret).unwrap();
+            let amount_data = AmountData {
+                value: 23u64,
+                token_id: Mob::ID,
+            };
+            let amount = Amount::new(amount_data, &shared_secret).unwrap();
             TxOut {
                 amount,
                 target_key,
@@ -606,6 +625,7 @@ mod tests {
             inputs: vec![tx_in],
             outputs: vec![tx_out],
             fee: Mob::MINIMUM_FEE,
+            token_id: *Mob::ID,
             tombstone_block: 23,
         };
 
@@ -635,7 +655,11 @@ mod tests {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
             let public_key = RistrettoPublic::from_random(&mut rng).into();
-            let amount = Amount::new(23u64, &shared_secret).unwrap();
+            let amount_data = AmountData {
+                value: 23u64,
+                token_id: Mob::ID,
+            };
+            let amount = Amount::new(amount_data, &shared_secret).unwrap();
             TxOut {
                 amount,
                 target_key,
@@ -664,6 +688,7 @@ mod tests {
             inputs: vec![tx_in],
             outputs: vec![tx_out],
             fee: Mob::MINIMUM_FEE,
+            token_id: *Mob::ID,
             tombstone_block: 23,
         };
 
@@ -700,8 +725,14 @@ mod tests {
             let tx_private_key = RistrettoPrivate::from_random(&mut rng);
 
             // A tx out with an empty memo
-            let mut tx_out =
-                TxOut::new(13u64, &bob_addr, &tx_private_key, Default::default()).unwrap();
+            let mut tx_out = TxOut::new(
+                13u64,
+                Mob::ID,
+                &bob_addr,
+                &tx_private_key,
+                Default::default(),
+            )
+            .unwrap();
             assert!(
                 tx_out.e_memo.is_some(),
                 "All TxOut (except preexisting) should have a memo"
@@ -736,6 +767,7 @@ mod tests {
             // A tx out with a memo
             let tx_out = TxOut::new_with_memo(
                 13u64,
+                Mob::ID,
                 &bob_addr,
                 &tx_private_key,
                 Default::default(),
@@ -769,6 +801,7 @@ mod tests {
             // A tx out with a memo
             let tx_out = TxOut::new_with_memo(
                 13u64,
+                Mob::ID,
                 &bob.change_subaddress(),
                 &tx_private_key,
                 Default::default(),

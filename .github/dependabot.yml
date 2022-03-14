@@ -5,33 +5,38 @@ updates:
   schedule:
     interval: daily
   open-pull-requests-limit: 25
+  milestone: 2
   reviewers:
-    - "mobilecoinfoundation/eng"
+    - "mobilecoinfoundation/fogcore"
 - package-ecosystem: cargo
   directory: "/consensus/enclave/trusted/"
   schedule:
     interval: daily
   open-pull-requests-limit: 5
+  milestone: 2
   reviewers:
-    - "mobilecoinfoundation/eng"
+    - "mobilecoinfoundation/fogcore"
 - package-ecosystem: cargo
   directory: "/fog/ingest/enclave/trusted/"
   schedule:
     interval: daily
   open-pull-requests-limit: 5
+  milestone: 2
   reviewers:
-    - "mobilecoinfoundation/eng"
+    - "mobilecoinfoundation/fogcore"
 - package-ecosystem: cargo
   directory: "/fog/ledger/enclave/trusted/"
   schedule:
     interval: daily
   open-pull-requests-limit: 5
+  milestone: 2
   reviewers:
-    - "mobilecoinfoundation/eng"
+    - "mobilecoinfoundation/fogcore"
 - package-ecosystem: cargo
   directory: "/fog/view/enclave/trusted/"
   schedule:
     interval: daily
   open-pull-requests-limit: 5
+  milestone: 2
   reviewers:
-    - "mobilecoinfoundation/eng"
+    - "mobilecoinfoundation/fogcore"

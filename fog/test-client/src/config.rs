@@ -3,7 +3,7 @@
 //! Configuration parameters for the test client binary
 
 use mc_common::logger::{log, Logger};
-use mc_fog_sample_paykit::AccountKey;
+use mc_fog_sample_paykit::{AccountKey, TokenId};
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_util_grpc::GrpcRetryConfig;
 use mc_util_parse::parse_duration_in_seconds;
@@ -120,6 +120,10 @@ pub struct TestClientConfig {
     /// Grpc retry config
     #[structopt(flatten)]
     pub grpc_retry_config: GrpcRetryConfig,
+
+    /// What token id to use for the test
+    #[structopt(long, env = "MC_TOKEN_ID", default_value = "0")]
+    pub token_id: TokenId,
 }
 
 impl TestClientConfig {

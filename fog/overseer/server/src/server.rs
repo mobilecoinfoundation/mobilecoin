@@ -55,6 +55,7 @@ where
 }
 
 /// Returns an instance of a Rocket server.
+#[must_use = "Use with a Client or call launch"]
 pub fn initialize_rocket_server(
     rocket_config: rocket::Config,
     state: OverseerState<SqlRecoveryDb>,

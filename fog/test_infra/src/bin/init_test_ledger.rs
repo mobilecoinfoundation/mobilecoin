@@ -5,9 +5,8 @@
 //!
 //! Use command line arguments to configure locations of keys and ledger etc.
 
-use digest::Digest;
 use mc_common::logger::create_root_logger;
-use mc_crypto_hashes::Blake2b256;
+use mc_crypto_hashes::{Blake2b256, Digest};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -56,6 +55,7 @@ fn main() {
         0,
         seed,
         None,
+        0,
         logger.clone(),
     );
 

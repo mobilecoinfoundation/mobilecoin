@@ -11,7 +11,7 @@ use core::{
     result::Result as StdResult,
 };
 use displaydoc::Display;
-use sha2::{digest::Digest, Sha256};
+use sha2::{Digest, Sha256};
 
 type Result = StdResult<Signature, Error>;
 

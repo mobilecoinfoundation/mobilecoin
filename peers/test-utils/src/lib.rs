@@ -24,7 +24,7 @@ use mc_util_from_random::FromRandom;
 use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
 use rand::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;
-use sha2::{digest::Digest, Sha512Trunc256};
+use sha2::{Digest, Sha512_256};
 use std::{
     cmp::{min, Ordering},
     collections::{BTreeSet, VecDeque},
@@ -230,10 +230,9 @@ pub fn create_consensus_msg(
     msg: &str,
     signer_key: &Ed25519Pair,
 ) -> ConsensusMsg {
-    let value = ConsensusValue::TxHash(
-        TxHash::try_from(Sha512Trunc256::digest(msg.as_bytes()).as_slice())
-            .expect("Could not hash message into TxHash"),
-    );
+    let msg_hash = TxHash::try_from(Sha512_256::digest(msg.as_bytes()).as_slice())
+        .expect("Could not hash message into TxHash");
+    let value = ConsensusValue::TxHash(msg_hash);
     let mut payload = NominatePayload {
         X: BTreeSet::default(),
         Y: BTreeSet::default(),

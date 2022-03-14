@@ -5,13 +5,15 @@
 use alloc::vec;
 
 use aead::{AeadMut, Error as AeadError, NewAead, Payload};
-use aes_gcm::Aes256Gcm;
 use alloc::vec::Vec;
 use core::cmp::min;
+use digest::{core_api::BlockSizeUser, Digest};
 use displaydoc::Display;
 use generic_array::{typenum::Unsigned, GenericArray};
 use secrecy::{ExposeSecret, SecretVec};
 use serde::{Deserialize, Serialize};
+
+const MAX_BYTES_SENT: u64 = (1u64 << 56) + 4;
 
 #[derive(
     Copy, Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
@@ -111,20 +113,24 @@ pub trait NoiseCipher: AeadMut + NewAead + Sized {
     }
 }
 
-impl NoiseCipher for Aes256Gcm {}
+impl<C> NoiseCipher for C where C: AeadMut + NewAead + Sized {}
+
+// Essentially an alias for Digest + BlockSizeUser + Clone.
+pub trait NoiseDigest: Digest + BlockSizeUser + Clone {}
+impl<D> NoiseDigest for D where D: Digest + BlockSizeUser + Clone {}
 
 /// The Noise Protocol CipherState object, modified to support AEADs with
 /// differing key/nonce lengths.
 ///
 /// This is defined by [section 5.1](http://noiseprotocol.org/noise.html#the-cipherstate-object)
 /// of the specification.
-pub struct CipherState<Cipher: AeadMut + NewAead + Sized + NoiseCipher> {
+pub struct CipherState<Cipher: NoiseCipher> {
     cipher: Option<Cipher>,
     nonce: u64,
     bytes_sent: u64,
 }
 
-impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> CipherState<Cipher> {
+impl<Cipher: NoiseCipher> CipherState<Cipher> {
     /// The noise protocol `InitializeKey(k)` operation.
     ///
     /// This will reset the internal key, create a new AEAD cipher instance,
@@ -170,7 +176,7 @@ impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> CipherState<Cipher> {
     /// implementation returned an error.
     pub fn encrypt_with_ad(&mut self, aad: &[u8], msg: &[u8]) -> Result<Vec<u8>, CipherError> {
         let msg_len = msg.len() as u64;
-        if self.nonce == core::u64::MAX || self.bytes_sent + msg_len > 72_057_594_037_927_940 {
+        if self.nonce == core::u64::MAX || self.bytes_sent + msg_len > MAX_BYTES_SENT {
             return Err(CipherError::ReKeyNeeded);
         }
 
@@ -211,7 +217,7 @@ impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> CipherState<Cipher> {
 
             // This is a little weird down here, but it indicates the far side
             // encrypted some data it shouldn't have...
-            if self.bytes_sent + retval.len() as u64 > 72_057_594_037_927_940 {
+            if self.bytes_sent + retval.len() as u64 > MAX_BYTES_SENT {
                 return Err(CipherError::ReKeyNeeded);
             }
 
@@ -242,7 +248,7 @@ impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> CipherState<Cipher> {
 }
 
 /// Initialize a new `CipherState` with no existing data.
-impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> Default for CipherState<Cipher> {
+impl<Cipher: NoiseCipher> Default for CipherState<Cipher> {
     fn default() -> Self {
         Self {
             cipher: None,
@@ -255,6 +261,7 @@ impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> Default for CipherState<Ci
 #[cfg(test)]
 mod test {
     use super::*;
+    use aes_gcm::Aes256Gcm;
 
     #[test]
     fn default() {

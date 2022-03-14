@@ -78,9 +78,11 @@ mod display_tests {
         external,
         printable::{PaymentRequest, PrintableWrapper, TransferPayload},
     };
-    use datatest::data;
-    use mc_test_vectors_b58_encodings::*;
+    use mc_test_vectors_b58_encodings::{
+        B58EncodePublicAddressWithFog, B58EncodePublicAddressWithoutFog,
+    };
     use mc_util_test_vector::TestVector;
+    use mc_util_test_with_data::test_with_data;
 
     fn sample_public_address() -> external::PublicAddress {
         let mut public_address = external::PublicAddress::new();
@@ -127,15 +129,13 @@ mod display_tests {
         wrapper
     }
 
-    #[data(B58EncodePublicAddressWithoutFog::from_jsonl("../test-vectors/vectors"))]
-    #[test]
+    #[test_with_data(B58EncodePublicAddressWithoutFog::from_jsonl("../test-vectors/vectors"))]
     fn test_b58_encode_public_address_without_fog(case: B58EncodePublicAddressWithoutFog) {
         let wrapper = printable_wrapper_from_b58_encode_public_address_without_fog(&case);
         assert_eq!(wrapper.b58_encode().unwrap(), case.b58_encoded);
     }
 
-    #[data(B58EncodePublicAddressWithoutFog::from_jsonl("../test-vectors/vectors"))]
-    #[test]
+    #[test_with_data(B58EncodePublicAddressWithoutFog::from_jsonl("../test-vectors/vectors"))]
     fn test_b58_decode_public_address_without_fog(case: B58EncodePublicAddressWithoutFog) {
         let decoded_wrapper = PrintableWrapper::b58_decode(case.b58_encoded.clone()).unwrap();
         let expected = printable_wrapper_from_b58_encode_public_address_without_fog(&case);
@@ -165,15 +165,13 @@ mod display_tests {
         wrapper
     }
 
-    #[data(B58EncodePublicAddressWithFog::from_jsonl("../test-vectors/vectors"))]
-    #[test]
+    #[test_with_data(B58EncodePublicAddressWithFog::from_jsonl("../test-vectors/vectors"))]
     fn test_b58_encode_public_address_with_fog(case: B58EncodePublicAddressWithFog) {
         let wrapper = printable_wrapper_from_b58_encode_public_address_with_fog(&case);
         assert_eq!(wrapper.b58_encode().unwrap(), case.b58_encoded);
     }
 
-    #[data(B58EncodePublicAddressWithFog::from_jsonl("../test-vectors/vectors"))]
-    #[test]
+    #[test_with_data(B58EncodePublicAddressWithFog::from_jsonl("../test-vectors/vectors"))]
     fn test_b58_decode_public_address_with_fog(case: B58EncodePublicAddressWithFog) {
         let decoded_wrapper = PrintableWrapper::b58_decode(case.b58_encoded.clone()).unwrap();
         let expected = printable_wrapper_from_b58_encode_public_address_with_fog(&case);

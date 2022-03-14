@@ -41,5 +41,6 @@ fn main() {
             .port(config.overseer_listen_port)
             .unwrap();
 
-    server::initialize_rocket_server(rocket_config, overseer_state);
+    let rocket = server::initialize_rocket_server(rocket_config, overseer_state);
+    rocket.launch();
 }

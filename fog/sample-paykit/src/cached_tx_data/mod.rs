@@ -8,10 +8,7 @@ use core::{
 };
 use displaydoc::Display;
 use mc_account_keys::{AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX};
-use mc_common::{
-    logger::{log, Logger},
-    HashMap,
-};
+use mc_common::logger::{log, Logger};
 use mc_crypto_keys::RistrettoPublic;
 use mc_fog_api::{fog_common, ledger};
 use mc_fog_ledger_connection::{
@@ -30,11 +27,11 @@ use mc_transaction_core::{
     onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
     ring_signature::KeyImage,
     tx::TxOut,
-    BlockIndex,
+    AmountData, BlockIndex, TokenId,
 };
 use mc_transaction_std::MemoType;
 use mc_util_telemetry::{telemetry_static_key, tracer, Key, TraceContextExt, Tracer};
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 mod memo_handler;
 pub use memo_handler::{MemoHandler, MemoHandlerError};
@@ -220,11 +217,11 @@ impl CachedTxData {
 
     /// Compute our current balance
     ///
-    /// Returns (balance, block_count)
-    /// where balance is the correct balance when the ledger has exactly
-    /// block_count blocks
+    /// Returns (map<TokenId, u64>, block_count)
+    /// where the map indicates our balances of all tokens, in our account
+    /// when the ledger has exactly block_count blocks
     #[allow(clippy::nonminimal_bool)]
-    pub fn get_balance(&self) -> (u64, BlockCount) {
+    pub fn get_balance(&self) -> (HashMap<TokenId, u64>, BlockCount) {
         let num_blocks = self.get_num_blocks();
         assert!(
             self.key_image_data_completeness >= num_blocks,
@@ -278,15 +275,16 @@ impl CachedTxData {
                             true
                         }
                     };
-                log::trace!(self.logger, "{}: global_index {} block_index {} value {} status {}", result, our_txo.global_index, our_txo.block_index, our_txo.value, our_txo.status);
+                log::trace!(self.logger, "{}: global_index {} block_index {} amount {:?} status {}", result, our_txo.global_index, our_txo.block_index, our_txo.amount, our_txo.status);
                 result
             })
-            .fold(0u64, |running_balance, our_txo| {
-                running_balance + our_txo.value
+            .fold(HashMap::default(), |mut running_balance, our_txo| {
+                *running_balance.entry(our_txo.amount.token_id).or_default() += our_txo.amount.value;
+                running_balance
             });
         log::trace!(
             self.logger,
-            "Computed balance: {}, num_blocks {}",
+            "Computed balance: {:?}, num_blocks {}",
             balance,
             num_blocks
         );
@@ -319,19 +317,24 @@ impl CachedTxData {
     ///   lower.
     pub fn get_transaction_inputs(
         &self,
-        amount: u64,
+        amount: AmountData,
         max_inputs: usize,
     ) -> Result<Vec<OwnedTxOut>> {
         // All transactions that we could choose to use as an input
-        let available = self.get_unspent_txos();
+        let available = self
+            .get_unspent_txos()
+            .iter()
+            .cloned()
+            .filter(|txo| txo.amount.token_id == amount.token_id)
+            .collect::<Vec<&OwnedTxOut>>();
 
-        let tx_values: Vec<_> = available.iter().map(|txo| txo.value).collect();
+        let tx_values: Vec<u64> = available.iter().map(|txo| txo.amount.value).collect();
 
-        let selected = input_selection_heuristic(&tx_values, amount, max_inputs)?;
+        let selected = input_selection_heuristic(&tx_values, amount.value, max_inputs)?;
 
         Ok(selected
             .into_iter()
-            .map(|idx| available[idx].clone())
+            .map(|idx| (*available[idx]).clone())
             .collect())
     }
 
@@ -353,10 +356,10 @@ impl CachedTxData {
                     // Insert into owned_tx_outs
                     log::trace!(
                         self.logger,
-                        "Found new txo: global_index {}, block_index {}, value {}",
+                        "Found new txo: global_index {}, block_index {}, amount {:?}",
                         otxo.global_index,
                         otxo.block_index,
-                        otxo.value
+                        otxo.amount
                     );
                     let maybe_prev = self.owned_tx_outs.insert(otxo.global_index, otxo.clone());
                     if let Some(prev) = maybe_prev {
@@ -365,8 +368,8 @@ impl CachedTxData {
                             "Saw {}'th tx out a second time",
                             otxo.global_index
                         );
-                        if prev.value != otxo.value {
-                            log::warn!(self.logger, "Got two different values after view key scanning new and old versions of {}'th tx_out", otxo.global_index);
+                        if prev.amount != otxo.amount {
+                            log::warn!(self.logger, "Got two different amounts after view key scanning new and old versions of {}'th tx_out", otxo.global_index);
                         }
                     }
                     // Keep the invariant of key_image_data_completeness working
@@ -853,10 +856,10 @@ pub struct OwnedTxOut {
     /// The tx_out that we recovered from the view server, or from view-key
     /// scanning a missed block.
     pub tx_out: TxOut,
-    /// The value of the TxOut, computed when we matched this tx_out
+    /// The value of the TxOut, computed when we matched this tx out
     /// successfully against our account key.
-    pub value: u64,
-    // The subaddress index this tx_out was sent to.
+    pub amount: AmountData,
+    /// The subaddress index this tx_out was sent to.
     pub subaddress_index: u64,
     /// The key image that we computed when matching this tx_out against our
     /// account key.
@@ -886,7 +889,7 @@ impl OwnedTxOut {
         let decompressed_tx_pub = RistrettoPublic::try_from(&tx_out.public_key)?;
         let shared_secret =
             get_tx_out_shared_secret(account_key.view_private_key(), &decompressed_tx_pub);
-        let (value, _blinding) = tx_out.amount.get_value(&shared_secret)?;
+        let (amount_data, _blinding) = tx_out.amount.get_value(&shared_secret)?;
 
         // Calculate the subaddress spend public key for tx_out.
         let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key)?;
@@ -918,7 +921,7 @@ impl OwnedTxOut {
             block_index: rec.block_index,
             tx_out,
             key_image,
-            value,
+            amount: amount_data,
             subaddress_index: *subaddress_index,
             status,
         })

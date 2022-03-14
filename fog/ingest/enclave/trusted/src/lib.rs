@@ -34,84 +34,37 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         deserialize(inbuf).or(Err(sgx_status_t::SGX_ERROR_INVALID_PARAMETER))?;
 
     // And actually do it
-    let outdata = match call_details {
+    match call_details {
         // Utility methods
-        EnclaveCall::EnclaveInit(params) => {
-            serialize(&ENCLAVE.enclave_init(params)).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-
-        EnclaveCall::NewKeys => {
-            serialize(&ENCLAVE.new_keys()).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-
-        EnclaveCall::NewEgressKey => {
-            serialize(&ENCLAVE.new_egress_key()).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-
+        EnclaveCall::EnclaveInit(params) => serialize(&ENCLAVE.enclave_init(params)),
+        EnclaveCall::NewKeys => serialize(&ENCLAVE.new_keys()),
+        EnclaveCall::NewEgressKey => serialize(&ENCLAVE.new_egress_key()),
         // Public Key for Fog Hints
-        EnclaveCall::GetIngressPubkey => {
-            serialize(&ENCLAVE.get_ingress_pubkey()).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-
+        EnclaveCall::GetIngressPubkey => serialize(&ENCLAVE.get_ingress_pubkey()),
         EnclaveCall::GetSealedIngressPrivateKey => {
             serialize(&ENCLAVE.get_sealed_ingress_private_key())
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
-
         EnclaveCall::GetIngressPrivateKey(peer_session) => {
             serialize(&ENCLAVE.get_ingress_private_key(peer_session))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
-
-        EnclaveCall::SetIngressPrivateKey(msg) => serialize(&ENCLAVE.set_ingress_private_key(msg))
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
-
+        EnclaveCall::SetIngressPrivateKey(msg) => serialize(&ENCLAVE.set_ingress_private_key(msg)),
         // Public key for rng's
-        EnclaveCall::GetKexRngPubkey => {
-            serialize(&ENCLAVE.get_kex_rng_pubkey()).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-
-        EnclaveCall::IngestTxs(chunk) => {
-            serialize(&ENCLAVE.ingest_txs(chunk)).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-
+        EnclaveCall::GetKexRngPubkey => serialize(&ENCLAVE.get_kex_rng_pubkey()),
+        EnclaveCall::IngestTxs(chunk) => serialize(&ENCLAVE.ingest_txs(chunk)),
         // Report Caching
-        EnclaveCall::GetIdentity => {
-            serialize(&ENCLAVE.get_identity()).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-
-        EnclaveCall::NewEreport(qe_info) => {
-            serialize(&ENCLAVE.new_ereport(qe_info)).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-
+        EnclaveCall::GetIdentity => serialize(&ENCLAVE.get_identity()),
+        EnclaveCall::NewEreport(qe_info) => serialize(&ENCLAVE.new_ereport(qe_info)),
         EnclaveCall::VerifyQuote(quote, qe_report) => {
             serialize(&ENCLAVE.verify_quote(quote, qe_report))
-                .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
-
-        EnclaveCall::VerifyReport(ias_report) => serialize(&ENCLAVE.verify_ias_report(ias_report))
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
-
-        EnclaveCall::GetReport => {
-            serialize(&ENCLAVE.get_ias_report()).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-
-        EnclaveCall::PeerInit(peer_id) => {
-            serialize(&ENCLAVE.peer_init(&peer_id)).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-
-        EnclaveCall::PeerAccept(req) => {
-            serialize(&ENCLAVE.peer_accept(req)).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
-        }
-
-        EnclaveCall::PeerConnect(peer_id, msg) => serialize(&ENCLAVE.peer_connect(&peer_id, msg))
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
-
-        EnclaveCall::PeerClose(session_id) => serialize(&ENCLAVE.peer_close(&session_id))
-            .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?,
-    };
-
-    Ok(outdata)
+        EnclaveCall::VerifyReport(ias_report) => serialize(&ENCLAVE.verify_ias_report(ias_report)),
+        EnclaveCall::GetReport => serialize(&ENCLAVE.get_ias_report()),
+        EnclaveCall::PeerInit(peer_id) => serialize(&ENCLAVE.peer_init(&peer_id)),
+        EnclaveCall::PeerAccept(req) => serialize(&ENCLAVE.peer_accept(req)),
+        EnclaveCall::PeerConnect(peer_id, msg) => serialize(&ENCLAVE.peer_connect(&peer_id, msg)),
+        EnclaveCall::PeerClose(session_id) => serialize(&ENCLAVE.peer_close(&session_id)),
+    }
+    .or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))
 }
 
 /// The entry point implementation for ingest_enclave_api
