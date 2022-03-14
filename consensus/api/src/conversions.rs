@@ -157,6 +157,10 @@ impl From<MintValidationError> for MintValidationResult {
                 token_id: *token_id,
                 ..Default::default()
             },
+            MintValidationError::NonceAlreadyUsed => Self {
+                code: MintValidationResultCode::NonceAlreadyUsed,
+                ..Default::default()
+            },
         }
     }
 }
@@ -196,6 +200,7 @@ impl TryInto<MintValidationError> for MintValidationResult {
             MintValidationResultCode::NoMasterMinters => Ok(MintValidationError::NoMasterMinters(
                 TokenId::from(self.token_id),
             )),
+            MintValidationResultCode::NonceAlreadyUsed => Ok(MintValidationError::NonceAlreadyUsed),
         }
     }
 }

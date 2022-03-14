@@ -11,10 +11,7 @@ pub use traits::MintTxManager;
 #[cfg(test)]
 pub use traits::MockMintTxManager;
 
-use mc_common::{
-    logger::{log, Logger},
-    HashMap,
-};
+use mc_common::{logger::Logger, HashMap, HashSet};
 use mc_crypto_keys::Ed25519Public;
 use mc_crypto_multisig::SignerSet;
 use mc_ledger_db::Ledger;
@@ -57,6 +54,17 @@ impl<L: Ledger> MintTxManagerImpl<L> {
 impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
     /// Validate a MintConfigTx transaction against the current ledger.
     fn validate_mint_config_tx(&self, mint_config_tx: &MintConfigTx) -> MintTxManagerResult<()> {
+        // Ensure that we have not seen this transaction before.
+        if self
+            .ledger_db
+            .check_mint_config_tx_nonce(&mint_config_tx.prefix.nonce)?
+            .is_some()
+        {
+            return Err(MintTxManagerError::MintValidation(
+                MintValidationError::NonceAlreadyUsed,
+            ));
+        }
+
         // Get the master minters for this token id.
         let token_id = TokenId::from(mint_config_tx.prefix.token_id);
         let master_minters = self.token_id_to_master_minters.get(&token_id).ok_or(
@@ -74,8 +82,6 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
             master_minters,
         )?;
 
-        // Ensure that we have not seen this transaction before.
-
         Ok(())
     }
 
@@ -83,8 +89,21 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         &self,
         txs: &[MintConfigTx],
     ) -> MintTxManagerResult<Vec<MintConfigTx>> {
-        // TODO actually combine the mint_config_txs
-        log::crit!(self.logger, "TODO: Combine {:?}", txs);
-        Ok(txs.to_vec())
+        let mut seen_nonces = HashSet::default();
+
+        let mut candidates = txs.to_vec();
+        candidates.sort();
+
+        let (allowed_txs, _rejected_txs) = candidates.into_iter().partition(|tx| {
+            if seen_nonces.contains(&tx.prefix.nonce) {
+                return false;
+            }
+            seen_nonces.insert(tx.prefix.nonce.clone());
+            true
+        });
+
+        Ok(allowed_txs)
     }
 }
+
+// TODO tests
