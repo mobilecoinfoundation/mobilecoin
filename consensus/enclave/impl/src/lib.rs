@@ -53,6 +53,7 @@ use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
+    mint::MintConfigTx,
     ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
@@ -158,6 +159,154 @@ impl SgxConsensusEnclave {
         let plaintext = cipher.decrypt_bytes(encrypted.0.clone())?;
         let well_formed_tx: WellFormedTx = mc_util_serial::decode(&plaintext)?;
         Ok(well_formed_tx)
+    }
+
+    /// Given a list of well formed encrypted txs + proofs and a root membership
+    /// element, decrypt and validate "original" Tx transactions, and if
+    /// successful return the list of transactions.
+    fn get_txs_from_inputs(
+        &self,
+        well_formed_encrypted_txs_with_proofs: &[(
+            WellFormedEncryptedTx,
+            Vec<TxOutMembershipProof>,
+        )],
+        parent_block: &Block,
+        root_element: &TxOutMembershipElement,
+        config: &BlockchainConfig,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> Result<Vec<Tx>> {
+        // Short-circuit if there are no transactions.
+        if well_formed_encrypted_txs_with_proofs.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // This implicitly converts Vec<Result<(Tx Vec<TxOutMembershipProof>),_>> into
+        // Result<Vec<(Tx, Vec<TxOutMembershipProof>)>, _>, and terminates the
+        // iteration when the first Error is encountered.
+        let transactions_with_proofs = well_formed_encrypted_txs_with_proofs
+            .iter()
+            .map(|(encrypted_tx, proofs)| {
+                Ok((
+                    self.decrypt_well_formed_tx(encrypted_tx)?.tx,
+                    proofs.clone(),
+                ))
+            })
+            .collect::<Result<Vec<(Tx, Vec<TxOutMembershipProof>)>>>()?;
+
+        // root_elements contains the root hash of the Merkle tree of all TxOuts in the
+        // ledger that were used to validate the transactions.
+        let mut root_elements = Vec::new();
+
+        // We need to make sure all transacctions are all valid. We also ensure they all
+        // point at the same root membership element.
+        for (tx, proofs) in transactions_with_proofs.iter() {
+            let minimum_fee = config
+                .fee_map
+                .get_fee_for_token(&TokenId::from(tx.prefix.token_id))
+                .ok_or(TransactionValidationError::TokenNotYetConfigured)?;
+
+            mc_transaction_core::validation::validate(
+                tx,
+                parent_block.index + 1,
+                config.block_version,
+                proofs,
+                minimum_fee,
+                rng,
+            )?;
+
+            for proof in proofs {
+                let root_element = compute_implied_merkle_root(proof)
+                    .map_err(|_e| TransactionValidationError::InvalidLedgerContext)?;
+                root_elements.push(root_element);
+            }
+        }
+
+        root_elements.sort();
+        root_elements.dedup();
+
+        if root_elements.len() != 1 {
+            return Err(Error::InvalidLocalMembershipProof);
+        }
+
+        // Sanity check - since our caller (TxManager::tx_hashes_to_block) collects all
+        // proof of memberships and root element at a time the ledger is not
+        // expected to change, we should end with the same root element for all
+        // transactions.
+        if root_element != &root_elements[0] {
+            return Err(Error::InvalidLocalMembershipRootElement);
+        }
+
+        let transactions: Vec<Tx> = transactions_with_proofs
+            .into_iter()
+            .map(|(tx, _proofs)| tx)
+            .collect();
+
+        // Duplicate transactions are not allowed.
+        // This check is redundant with the duplicate key image check, but might be
+        // helpful for early debugging.
+        let mut tx_hashes = BTreeSet::new();
+        for tx in &transactions {
+            let tx_hash = tx.tx_hash();
+            if tx_hashes.contains(&tx_hash) {
+                return Err(Error::FormBlock(format!(
+                    "Duplicate transaction: {}",
+                    tx_hash
+                )));
+            }
+            tx_hashes.insert(tx_hash);
+        }
+
+        // Duplicate key images are not allowed.
+        let mut used_key_images = BTreeSet::default();
+        for tx in &transactions {
+            for key_image in tx.key_images() {
+                if used_key_images.contains(&key_image) {
+                    return Err(Error::FormBlock(format!(
+                        "Duplicate key image: {:?}",
+                        key_image
+                    )));
+                }
+                used_key_images.insert(key_image);
+            }
+        }
+
+        // Duplicate output public keys are not allowed.
+        let mut seen_output_public_keys = BTreeSet::default();
+        for tx in &transactions {
+            for public_key in tx.output_public_keys() {
+                if seen_output_public_keys.contains(&public_key) {
+                    return Err(Error::FormBlock(format!(
+                        "Duplicate output public key: {:?}",
+                        public_key
+                    )));
+                }
+                seen_output_public_keys.insert(public_key);
+            }
+        }
+
+        Ok(transactions)
+    }
+
+    /// Validate a list of MintConfigTxs.
+    fn validate_mint_config_txs(&self, mint_config_txs: &[MintConfigTx]) -> Result<()> {
+        // TODO: iterate over each indivdual transaction and validate it. This requires
+        // the enclave has knowledge of the master minters for each token id.
+        // This validation already happens in untruested, but it will be nice to do it
+        // here as well. This will get implemetend in a follow up PR.
+
+        // Ensure all nonces are unique.
+        let mut seen_nonces = BTreeSet::default();
+        for tx in mint_config_txs {
+            if seen_nonces.contains(&tx.prefix.nonce) {
+                return Err(Error::FormBlock(format!(
+                    "Duplicate MintConfigTx nonce: {:?}",
+                    tx.prefix.nonce
+                )));
+            }
+            seen_nonces.insert(tx.prefix.nonce.clone());
+        }
+
+        Ok(())
     }
 }
 
@@ -461,6 +610,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         inputs: FormBlockInputs,
         root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)> {
+        let mut rng = McRng::default();
         let config = self
             .blockchain_config
             .get()
@@ -471,118 +621,16 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             return Err(Error::BlockVersion(format!("Block version cannot decrease: parent_block.version = {}, config.block_version = {}", parent_block.version, config.block_version)));
         }
 
-        // This implicitly converts Vec<Result<(Tx Vec<TxOutMembershipProof>),_>> into
-        // Result<Vec<(Tx, Vec<TxOutMembershipProof>)>, _>, and terminates the
-        // iteration when the first Error is encountered.
-        // TODO move all this validation code into its own function
-        let transactions_with_proofs = inputs
-            .well_formed_encrypted_txs_with_proofs
-            .iter()
-            .map(|(encrypted_tx, proofs)| {
-                Ok((
-                    self.decrypt_well_formed_tx(encrypted_tx)?.tx,
-                    proofs.clone(),
-                ))
-            })
-            .collect::<Result<Vec<(Tx, Vec<TxOutMembershipProof>)>>>()?;
+        // Get any "original" Tx transactions included in the inputs.
+        let transactions = self.get_txs_from_inputs(
+            &inputs.well_formed_encrypted_txs_with_proofs,
+            parent_block,
+            root_element,
+            &config,
+            &mut rng,
+        )?;
 
-        // If we have standard ("original") transactions, we need to make sure they are
-        // all valid. We also ensure they all point at the same root membership
-        // element.
-        if !transactions_with_proofs.is_empty() {
-            // root_elements contains the root hash of the Merkle tree of all TxOuts in the
-            // ledger that were used to validate the transactions.
-            let mut root_elements = Vec::new();
-            let mut rng = McRng::default();
-
-            // Validate any regular transactions we might have.
-            for (tx, proofs) in transactions_with_proofs.iter() {
-                let minimum_fee = config
-                    .fee_map
-                    .get_fee_for_token(&TokenId::from(tx.prefix.token_id))
-                    .ok_or(TransactionValidationError::TokenNotYetConfigured)?;
-
-                mc_transaction_core::validation::validate(
-                    tx,
-                    parent_block.index + 1,
-                    config.block_version,
-                    proofs,
-                    minimum_fee,
-                    &mut rng,
-                )?;
-
-                for proof in proofs {
-                    let root_element = compute_implied_merkle_root(proof)
-                        .map_err(|_e| TransactionValidationError::InvalidLedgerContext)?;
-                    root_elements.push(root_element);
-                }
-            }
-
-            root_elements.sort();
-            root_elements.dedup();
-
-            if root_elements.len() != 1 {
-                return Err(Error::InvalidLocalMembershipProof);
-            }
-
-            // Sanity check - since our caller (TxManager::tx_hashes_to_block) collects all
-            // proof of memberships and root element at a time the ledger is not
-            // expected to change, we should end with the same root element for all
-            // transactions.
-            if root_element != &root_elements[0] {
-                return Err(Error::InvalidLocalMembershipRootElement);
-            }
-        }
-
-        let transactions: Vec<Tx> = transactions_with_proofs
-            .into_iter()
-            .map(|(tx, _proofs)| tx)
-            .collect();
-
-        // Duplicate transactions are not allowed.
-        // This check is redundant with the duplicate key image check, but might be
-        // helpful for early debugging.
-        let mut tx_hashes = BTreeSet::new();
-        for tx in &transactions {
-            let tx_hash = tx.tx_hash();
-            if tx_hashes.contains(&tx_hash) {
-                return Err(Error::FormBlock(format!(
-                    "Duplicate transaction: {}",
-                    tx_hash
-                )));
-            }
-            tx_hashes.insert(tx_hash);
-        }
-
-        // Duplicate key images are not allowed.
-        let mut used_key_images = BTreeSet::default();
-        for tx in &transactions {
-            for key_image in tx.key_images() {
-                if used_key_images.contains(&key_image) {
-                    return Err(Error::FormBlock(format!(
-                        "Duplicate key image: {:?}",
-                        key_image
-                    )));
-                }
-                used_key_images.insert(key_image);
-            }
-        }
-
-        // Duplicate output public keys are not allowed.
-        let mut seen_output_public_keys = BTreeSet::default();
-        for tx in &transactions {
-            for public_key in tx.output_public_keys() {
-                if seen_output_public_keys.contains(&public_key) {
-                    return Err(Error::FormBlock(format!(
-                        "Duplicate output public key: {:?}",
-                        public_key
-                    )));
-                }
-                seen_output_public_keys.insert(public_key);
-            }
-        }
-
-        // Create an aggregate fee output.
+        // Create an aggregate fee output for each token id we encounter.
         // TODO #1597: This should be constant time with respect to token id
         let mut total_fees_by_token_id = BTreeMap::<u32, u64>::default();
         for tx in transactions.iter() {
@@ -629,7 +677,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         key_images.sort();
 
         // Get the list of MintConfigTxs included in the block.
-        // TODO perform any last minute validation here.
+        self.validate_mint_config_txs(&inputs.mint_config_txs)?;
         let mint_config_txs = inputs.mint_config_txs;
 
         // Right now mint-txs are not actually created anywhere.

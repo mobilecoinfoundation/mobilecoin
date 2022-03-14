@@ -1,6 +1,10 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! TODO
+//! MintTxManager provides the backend for the mc-consensus-scp validation and
+//! combine callbacks.
+//!
+//! This file contains the actual implementation of the validation and combine
+//! logic mint-related transactions.
 
 mod error;
 mod traits;
@@ -88,6 +92,7 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
     fn combine_mint_config_txs(
         &self,
         txs: &[MintConfigTx],
+        max_elements: usize,
     ) -> MintTxManagerResult<Vec<MintConfigTx>> {
         let mut seen_nonces = HashSet::default();
 
@@ -95,9 +100,14 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         candidates.sort();
 
         let (allowed_txs, _rejected_txs) = candidates.into_iter().partition(|tx| {
+            if seen_nonces.len() >= max_elements {
+                return false;
+            }
+
             if seen_nonces.contains(&tx.prefix.nonce) {
                 return false;
             }
+
             seen_nonces.insert(tx.prefix.nonce.clone());
             true
         });

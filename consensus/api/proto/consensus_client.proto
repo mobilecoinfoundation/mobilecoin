@@ -55,6 +55,6 @@ service ConsensusClientAPI {
     /// indicating a new value to be acted upon.
     rpc ClientTxPropose(attest.Message) returns (consensus_common.ProposeTxResponse);
 
-    /// TODO
+    /// Propose a new MintConfigTx.
     rpc ProposeMintConfigTx(external.MintConfigTx) returns (ProposeMintConfigTxResponse);
 }

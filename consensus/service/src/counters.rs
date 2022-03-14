@@ -102,6 +102,11 @@ lazy_static::lazy_static! {
     // Consensus enclave report timestamp, represented as seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z.
     pub static ref ENCLAVE_REPORT_TIMESTAMP: IntGauge = OP_COUNTERS.gauge("enclave_report_timestamp");
 
+    // Number of times a ProposeMintConfigTx call has been initiated.
+    pub static ref PROPOSE_MINT_CONFIG_TX_INITIATED: IntCounter = OP_COUNTERS.counter("propose_mint_config_tx_initiated");
+
+    // Number of times a ProposeMintConfigTx call has returned a response.
+    pub static ref PROPOSE_MINT_CONFIG_TX: IntCounter = OP_COUNTERS.counter("propose_mint_config_tx");
 }
 
 /// TxValidationErrorMetrics keeps track of tx validation errors upon ingress
