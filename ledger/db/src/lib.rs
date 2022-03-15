@@ -27,6 +27,7 @@ use mc_common::logger::global_log;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     membership_proofs::Range,
+    mint::MintTx,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockData, BlockID, BlockIndex, BlockSignature, TokenId,
@@ -403,6 +404,17 @@ impl Ledger for LedgerDB {
         let db_transaction = self.env.begin_ro_txn()?;
         self.mint_tx_store
             .check_mint_tx_nonce(nonce, &db_transaction)
+    }
+
+    /// Attempt to get an active mint configuration that is able to verify and
+    /// accommodate a given MintTx.
+    fn get_active_mint_config_for_mint_tx(
+        &self,
+        mint_tx: &MintTx,
+    ) -> Result<ActiveMintConfig, Error> {
+        let db_transaction = self.env.begin_ro_txn()?;
+        self.mint_config_store
+            .get_active_mint_config_for_mint_tx(mint_tx, &db_transaction)
     }
 }
 

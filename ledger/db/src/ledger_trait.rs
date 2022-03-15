@@ -4,6 +4,7 @@ use crate::{mint_config_store::ActiveMintConfig, Error};
 use mc_common::Hash;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
+    mint::MintTx,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockData, BlockIndex, BlockSignature, TokenId,
@@ -105,4 +106,11 @@ pub trait Ledger: Send {
     /// If so, returns the index of the block in which it entered the ledger.
     /// Ok(None) is returned when the nonce is not in the ledger.
     fn check_mint_tx_nonce(&self, nonce: &[u8]) -> Result<Option<BlockIndex>, Error>;
+
+    /// Attempt to get an active mint configuration that is able to verify and
+    /// accommodate a given MintTx.
+    fn get_active_mint_config_for_mint_tx(
+        &self,
+        mint_tx: &MintTx,
+    ) -> Result<ActiveMintConfig, Error>;
 }

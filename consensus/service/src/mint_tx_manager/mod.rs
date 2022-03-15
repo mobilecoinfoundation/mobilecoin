@@ -20,7 +20,7 @@ use mc_crypto_keys::Ed25519Public;
 use mc_crypto_multisig::SignerSet;
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{
-    mint::{validate_mint_config_tx, MintConfigTx, MintValidationError},
+    mint::{validate_mint_config_tx, MintConfigTx, MintTx, MintValidationError},
     BlockVersion, TokenId,
 };
 
@@ -111,10 +111,59 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
 
         Ok(allowed_txs)
     }
+
+    fn validate_mint_tx(&self, mint_tx: &MintTx) -> MintTxManagerResult<()> {
+        // Ensure that we have not seen this transaction before.
+        if self
+            .ledger_db
+            .check_mint_tx_nonce(&mint_tx.prefix.nonce)?
+            .is_some()
+        {
+            return Err(MintTxManagerError::MintValidation(
+                MintValidationError::NonceAlreadyUsed,
+            ));
+        }
+
+        // Try and get an active minting configuration that can validate the signature
+        // of this transaction.
+        /* let active_mint_config = self.ledger_db.
+        let token_id = TokenId::from(mint_config_tx.prefix.token_id);
+        let master_minters = self.token_id_to_master_minters.get(&token_id).ok_or(
+            MintTxManagerError::MintValidation(MintValidationError::NoMasterMinters(token_id)),
+        )?;
+
+        // Get the current block index.
+        let current_block_index = self.ledger_db.num_blocks()? - 1;
+
+        // Perform the actual validation.
+        validate_mint_config_tx(
+            mint_config_tx,
+            current_block_index,
+            self.block_version,
+            master_minters,
+        )?;*/
+
+        // todo
+
+        Ok(())
+    }
+
+    fn combine_mint_txs(
+        &self,
+        txs: &[MintTx],
+        max_elements: usize,
+    ) -> MintTxManagerResult<Vec<MintTx>> {
+        let mut candidates = txs.to_vec();
+        candidates.sort();
+        candidates.dedup_by(|a, b| a.prefix.nonce == b.prefix.nonce);
+        candidates.truncate(max_elements);
+
+        Ok(candidates)
+    }
 }
 
 #[cfg(test)]
-mod tests {
+mod mint_config_tx_tests {
     use super::*;
     use mc_common::logger::test_with_logger;
     use mc_crypto_multisig::SignerSet;
@@ -453,4 +502,9 @@ mod tests {
             Ok(expected_result)
         );
     }
+}
+
+#[cfg(test)]
+mod mint_tx_tests {
+    // TODO
 }

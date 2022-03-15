@@ -136,15 +136,14 @@ impl ClientApiService {
         grpc_tx: mc_consensus_api::external::MintTx,
     ) -> Result<ProposeMintTxResponse, ConsensusGrpcError> {
         counters::PROPOSE_MINT_TX_INITIATED.inc();
-        let _mint_tx = MintTx::try_from(&grpc_tx)
+        let mint_tx = MintTx::try_from(&grpc_tx)
             .map_err(|err| ConsensusGrpcError::InvalidArgument(format!("{:?}", err)))?;
         let response = ProposeMintTxResponse::new();
 
         // Validate the transaction.
         // This is done here as a courtesy to give clients immediate feedback about the
         // transaction.
-        // TODO self.mint_tx_manager
-        //    .validate_mint_config_tx(&mint_config_tx)?;
+        self.mint_tx_manager.validate_mint_tx(&mint_tx)?;
 
         // The transaction can be considered by the network.
         // TODO (*self.propose_tx_callback)(ConsensusValue::

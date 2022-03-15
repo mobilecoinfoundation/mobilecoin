@@ -4,7 +4,7 @@
 //! combine callbacks.
 
 use crate::mint_tx_manager::MintTxManagerResult;
-use mc_transaction_core::mint::MintConfigTx;
+use mc_transaction_core::mint::{MintConfigTx, MintTx};
 
 #[cfg(test)]
 use mockall::*;
@@ -30,4 +30,24 @@ pub trait MintTxManager: Send {
         txs: &[MintConfigTx],
         max_elements: usize,
     ) -> MintTxManagerResult<Vec<MintConfigTx>>;
+
+    /// Validate a MintTx transaction against the current ledger.
+    fn validate_mint_tx(&self, mint_tx: &MintTx) -> MintTxManagerResult<()>;
+
+    /// Combines a set of "candidate values" into a "composite value".
+    /// This assumes all values are well-formed and safe to append to the ledger
+    /// individually.
+    ///
+    /// # Arguments
+    /// * `txs` - "Candidate" transactions. Each is assumed to be individually
+    ///   valid.
+    /// * `max_elements` - Maximal number of elements to output.
+    ///
+    /// Returns a bounded, deterministically-ordered list of transactions that
+    /// are safe to append to the ledger.
+    fn combine_mint_txs(
+        &self,
+        txs: &[MintTx],
+        max_elements: usize,
+    ) -> MintTxManagerResult<Vec<MintTx>>;
 }

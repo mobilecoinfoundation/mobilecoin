@@ -5,6 +5,7 @@ use mc_account_keys::AccountKey;
 use mc_common::{HashMap, HashSet};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_transaction_core::{
+    mint::MintTx,
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
@@ -202,6 +203,13 @@ impl Ledger for MockLedger {
     }
 
     fn check_mint_tx_nonce(&self, _nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
+        unimplemented!()
+    }
+
+    fn get_active_mint_config_for_mint_tx(
+        &self,
+        _mint_tx: &MintTx,
+    ) -> Result<ActiveMintConfig, Error> {
         unimplemented!()
     }
 }
