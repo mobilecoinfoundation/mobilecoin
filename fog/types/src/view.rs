@@ -9,7 +9,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, KeyError, RistrettoPrivate, Rist
 use mc_transaction_core::{
     encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
     tx::TxOut,
-    Amount, AmountError, EncryptedMemo, MemoError,
+    AmountError, EncryptedMemo, MaskedAmount, MemoError,
 };
 use prost::Message;
 use serde::{Deserialize, Serialize};
@@ -381,7 +381,7 @@ impl FogTxOut {
         let tx_out_shared_secret =
             mc_transaction_core::get_tx_out_shared_secret(view_key, &public_key);
 
-        let (amount, _) = Amount::reconstruct(
+        let (amount, _) = MaskedAmount::reconstruct(
             self.amount_masked_value,
             &self.amount_masked_token_id,
             &tx_out_shared_secret,

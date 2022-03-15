@@ -38,7 +38,7 @@ pub mod validation;
 #[cfg(test)]
 pub mod proptest_fixtures;
 
-pub use amount::{Amount, AmountData, AmountError, Commitment, CompressedCommitment};
+pub use amount::{AmountData, AmountError, Commitment, CompressedCommitment, MaskedAmount};
 pub use blockchain::*;
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
 pub use token::{tokens, Token, TokenId};

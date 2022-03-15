@@ -2,7 +2,7 @@
 
 use crate::{convert::ConversionError, external};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
-use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, tx, Amount, EncryptedMemo};
+use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, tx, EncryptedMemo, MaskedAmount};
 use std::convert::TryFrom;
 
 /// Convert tx::TxOut --> external::TxOut.
@@ -10,7 +10,7 @@ impl From<&tx::TxOut> for external::TxOut {
     fn from(source: &tx::TxOut) -> Self {
         let mut tx_out = external::TxOut::new();
 
-        let amount = external::Amount::from(&source.amount);
+        let amount = external::MaskedAmount::from(&source.amount);
         tx_out.set_amount(amount);
 
         let target_key_bytes = source.target_key.as_bytes().to_vec();
@@ -37,7 +37,7 @@ impl TryFrom<&external::TxOut> for tx::TxOut {
     type Error = ConversionError;
 
     fn try_from(source: &external::TxOut) -> Result<Self, Self::Error> {
-        let amount = Amount::try_from(source.get_amount())?;
+        let amount = MaskedAmount::try_from(source.get_amount())?;
 
         let target_key_bytes: &[u8] = source.get_target_key().get_data();
         let target_key: CompressedRistrettoPublic = RistrettoPublic::try_from(target_key_bytes)
@@ -79,7 +79,7 @@ mod tests {
     use generic_array::GenericArray;
     use mc_crypto_keys::RistrettoPublic;
     use mc_transaction_core::{
-        encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, tokens::Mob, Amount, AmountData, Token,
+        encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, tokens::Mob, AmountData, MaskedAmount, Token,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -94,7 +94,8 @@ mod tests {
             token_id: Mob::ID,
         };
         let source = tx::TxOut {
-            amount: Amount::new(amount_data, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+            amount: MaskedAmount::new(amount_data, &RistrettoPublic::from_random(&mut rng))
+                .unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
             e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
@@ -117,7 +118,8 @@ mod tests {
             token_id: Mob::ID,
         };
         let source = tx::TxOut {
-            amount: Amount::new(amount_data, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+            amount: MaskedAmount::new(amount_data, &RistrettoPublic::from_random(&mut rng))
+                .unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
             e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),

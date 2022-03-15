@@ -790,7 +790,7 @@ pub mod tx_out_store_tests {
         onetime_keys::*,
         tokens::Mob,
         tx::TxOut,
-        Amount, AmountData, MemoPayload, Token,
+        AmountData, MaskedAmount, MemoPayload, Token,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -835,7 +835,7 @@ pub mod tx_out_store_tests {
             );
             let shared_secret: RistrettoPublic = create_shared_secret(&target_key, &tx_private_key);
             let amount_data = AmountData { value, token_id };
-            let amount = Amount::new(amount_data, &shared_secret).unwrap();
+            let amount = MaskedAmount::new(amount_data, &shared_secret).unwrap();
             let tx_out = TxOut {
                 amount,
                 target_key: target_key.into(),

@@ -123,8 +123,8 @@ mod tests {
         ring_signature::KeyImage,
         tokens::Mob,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-        Amount, AmountData, Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion,
-        Token,
+        AmountData, Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion,
+        MaskedAmount, Token,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -140,7 +140,8 @@ mod tests {
                 token_id: Mob::ID,
             };
             let tx_out = TxOut {
-                amount: Amount::new(amount_data, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+                amount: MaskedAmount::new(amount_data, &RistrettoPublic::from_random(&mut rng))
+                    .unwrap(),
                 target_key: RistrettoPublic::from_random(&mut rng).into(),
                 public_key: RistrettoPublic::from_random(&mut rng).into(),
                 e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),

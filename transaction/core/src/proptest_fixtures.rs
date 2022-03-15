@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use crate::{ring_signature::CurveScalar, tokens::Mob, Amount, AmountData, Token};
+use crate::{ring_signature::CurveScalar, tokens::Mob, AmountData, MaskedAmount, Token};
 use curve25519_dalek::scalar::Scalar;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use proptest::prelude::*;
@@ -29,11 +29,11 @@ prop_compose! {
     /// Generates an arbitrary amount with value in [0,max_value].
     /// Of token_id = 0
     pub fn arbitrary_amount(max_value: u64, shared_secret: RistrettoPublic)
-                (value in 0..=max_value) -> Amount {
+                (value in 0..=max_value) -> MaskedAmount {
             let amount_data = AmountData {
                 value,
                 token_id: Mob::ID,
             };
-            Amount::new(amount_data, &shared_secret).unwrap()
+            MaskedAmount::new(amount_data, &shared_secret).unwrap()
     }
 }

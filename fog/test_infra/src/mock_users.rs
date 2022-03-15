@@ -11,7 +11,9 @@ use mc_fog_types::{
     BlockCount,
 };
 use mc_fog_view_protocol::{FogViewConnection, UserPrivate, UserRngSet};
-use mc_transaction_core::{fog_hint::FogHint, tokens::Mob, tx::TxOut, Amount, AmountData, Token};
+use mc_transaction_core::{
+    fog_hint::FogHint, tokens::Mob, tx::TxOut, AmountData, MaskedAmount, Token,
+};
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 use std::collections::{HashMap, HashSet};
@@ -115,7 +117,7 @@ pub fn make_random_tx<T: RngCore + CryptoRng>(
         token_id: Mob::ID,
     };
     TxOut {
-        amount: Amount::new(amount_data, &public_key).expect("amount failed unexpectedly"),
+        amount: MaskedAmount::new(amount_data, &public_key).expect("amount failed unexpectedly"),
         target_key: target_key.into(),
         public_key: public_key.into(),
         e_fog_hint: recipient.encrypt(acct_server_pubkey, rng),

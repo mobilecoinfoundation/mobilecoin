@@ -16,7 +16,7 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    amount::{Amount, AmountData, AmountError},
+    amount::{AmountData, AmountError, MaskedAmount},
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
@@ -245,7 +245,7 @@ pub struct TxIn {
 pub struct TxOut {
     /// The amount being sent.
     #[prost(message, required, tag = "1")]
-    pub amount: Amount,
+    pub amount: MaskedAmount,
 
     /// The one-time public address of this output.
     #[prost(message, required, tag = "2")]
@@ -336,7 +336,7 @@ impl TxOut {
         let shared_secret = create_shared_secret(recipient.view_public_key(), tx_private_key);
 
         let amount_data = AmountData { value, token_id };
-        let amount = Amount::new(amount_data, &shared_secret)?;
+        let amount = MaskedAmount::new(amount_data, &shared_secret)?;
 
         let memo_ctxt = MemoContext {
             tx_public_key: &public_key,
@@ -574,7 +574,7 @@ mod tests {
         subaddress_matches_tx_out,
         tokens::Mob,
         tx::{Tx, TxIn, TxOut, TxPrefix},
-        Amount, AmountData, Token,
+        AmountData, MaskedAmount, Token,
     };
     use alloc::vec::Vec;
     use core::convert::TryFrom;
@@ -596,7 +596,7 @@ mod tests {
                 value: 23u64,
                 token_id: Mob::ID,
             };
-            let amount = Amount::new(amount_data, &shared_secret).unwrap();
+            let amount = MaskedAmount::new(amount_data, &shared_secret).unwrap();
             TxOut {
                 amount,
                 target_key,
@@ -659,7 +659,7 @@ mod tests {
                 value: 23u64,
                 token_id: Mob::ID,
             };
-            let amount = Amount::new(amount_data, &shared_secret).unwrap();
+            let amount = MaskedAmount::new(amount_data, &shared_secret).unwrap();
             TxOut {
                 amount,
                 target_key,
