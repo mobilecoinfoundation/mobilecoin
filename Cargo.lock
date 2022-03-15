@@ -279,25 +279,6 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
-version = "0.57.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd4865004a46a0aafb2a0a5eb19d3c9fc46ee5f063a6cfc605c69ac9ecf5263d"
-dependencies = [
- "bitflags",
- "cexpr 0.4.0",
- "clang-sys",
- "lazy_static",
- "lazycell",
- "peeking_take_while",
- "proc-macro2 1.0.36",
- "quote 1.0.15",
- "regex",
- "rustc-hash",
- "shlex 0.1.1",
-]
-
-[[package]]
-name = "bindgen"
 version = "0.58.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f8523b410d7187a43085e7e064416ea32ded16bd0a4e6fc025e21616d01258f"
@@ -426,15 +407,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa79dedbb091f449f1f39e53edf88d5dbe95f895dae6135a8d7b881fb5af73f5"
 dependencies = [
  "byte-tools",
-]
-
-[[package]]
-name = "boringssl-src"
-version = "0.3.0+688fc5c"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f901accdf830d2ea2f4e27f923a5e1125cd8b1a39ab578b9db1a42d578a6922b"
-dependencies = [
- "cmake",
 ]
 
 [[package]]
@@ -1759,7 +1731,7 @@ version = "1.0.0"
 dependencies = [
  "displaydoc",
  "futures 0.3.21",
- "grpcio 0.10.0",
+ "grpcio",
  "mc-attest-core",
  "mc-common",
  "mc-crypto-keys",
@@ -1774,27 +1746,13 @@ dependencies = [
 
 [[package]]
 name = "grpcio"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24d99e00eed7e0a04ee2705112e7cfdbe1a3cc771147f22f016a8cd2d002187b"
-dependencies = [
- "futures 0.3.21",
- "grpcio-sys 0.9.1+1.38.0",
- "libc",
- "log 0.4.11",
- "parking_lot 0.11.2",
- "protobuf",
-]
-
-[[package]]
-name = "grpcio"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c6b007f9db2cf73dae2664bc723b4dd21c67d7a97024e07cca7b9d4171c395c0"
 dependencies = [
  "futures-executor",
  "futures-util",
- "grpcio-sys 0.10.0+1.44.0",
+ "grpcio-sys",
  "libc",
  "log 0.4.11",
  "parking_lot 0.11.2",
@@ -1812,28 +1770,12 @@ dependencies = [
 
 [[package]]
 name = "grpcio-sys"
-version = "0.9.1+1.38.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9447d1a926beeef466606cc45717f80897998b548e7dc622873d453e1ecb4be4"
-dependencies = [
- "bindgen 0.57.0",
- "boringssl-src 0.3.0+688fc5c",
- "cc",
- "cmake",
- "libc",
- "libz-sys",
- "pkg-config",
- "walkdir",
-]
-
-[[package]]
-name = "grpcio-sys"
 version = "0.10.0+1.44.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "842c75c8037bee3058ce0998b4e3d7c8d2554f2c26135aa9297fe64fab3079d3"
 dependencies = [
  "bindgen 0.59.2",
- "boringssl-src 0.5.1+b9232f9",
+ "boringssl-src",
  "cc",
  "cmake",
  "libc",
@@ -2601,7 +2543,7 @@ dependencies = [
 name = "mc-admin-http-gateway"
 version = "1.3.0-pre0"
 dependencies = [
- "grpcio 0.10.0",
+ "grpcio",
  "mc-common",
  "mc-util-grpc",
  "mc-util-uri",
@@ -2718,7 +2660,7 @@ dependencies = [
  "cargo-emit",
  "digest 0.10.3",
  "futures 0.3.21",
- "grpcio 0.10.0",
+ "grpcio",
  "mc-attest-ake",
  "mc-attest-enclave-api",
  "mc-crypto-keys",
@@ -2883,7 +2825,7 @@ dependencies = [
  "aes-gcm",
  "cookie 0.16.0",
  "displaydoc",
- "grpcio 0.10.0",
+ "grpcio",
  "mc-attest-ake",
  "mc-attest-api",
  "mc-attest-core",
@@ -2922,7 +2864,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "cargo-emit",
  "futures 0.3.21",
- "grpcio 0.10.0",
+ "grpcio",
  "mc-api",
  "mc-attest-api",
  "mc-transaction-core",
@@ -3054,7 +2996,7 @@ name = "mc-consensus-mint-client"
 version = "1.3.0-pre0"
 dependencies = [
  "clap 3.1.6",
- "grpcio 0.9.1",
+ "grpcio",
  "mc-common",
  "mc-consensus-api",
  "mc-crypto-keys",
@@ -3114,7 +3056,7 @@ dependencies = [
  "displaydoc",
  "fs_extra",
  "futures 0.3.21",
- "grpcio 0.10.0",
+ "grpcio",
  "hex",
  "lazy_static",
  "mc-attest-api",
@@ -3405,7 +3347,7 @@ dependencies = [
  "cargo-emit",
  "displaydoc",
  "futures 0.3.21",
- "grpcio 0.10.0",
+ "grpcio",
  "mc-api",
  "mc-attest-api",
  "mc-attest-core",
@@ -3436,7 +3378,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "crossbeam-channel",
  "curve25519-dalek",
- "grpcio 0.10.0",
+ "grpcio",
  "lazy_static",
  "mc-account-keys",
  "mc-attest-core",
@@ -3469,7 +3411,7 @@ dependencies = [
  "aes-gcm",
  "cookie 0.16.0",
  "displaydoc",
- "grpcio 0.10.0",
+ "grpcio",
  "mc-attest-ake",
  "mc-attest-api",
  "mc-attest-core",
@@ -3492,7 +3434,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "assert_cmd",
  "displaydoc",
- "grpcio 0.10.0",
+ "grpcio",
  "hex",
  "maplit",
  "mc-account-keys",
@@ -3637,7 +3579,7 @@ dependencies = [
  "dirs 4.0.0",
  "displaydoc",
  "futures 0.3.21",
- "grpcio 0.10.0",
+ "grpcio",
  "hex",
  "itertools",
  "lazy_static",
@@ -3707,7 +3649,7 @@ name = "mc-fog-ledger-connection"
 version = "1.3.0-pre0"
 dependencies = [
  "displaydoc",
- "grpcio 0.10.0",
+ "grpcio",
  "mc-api",
  "mc-attest-verifier",
  "mc-common",
@@ -3820,7 +3762,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "displaydoc",
  "futures 0.3.21",
- "grpcio 0.10.0",
+ "grpcio",
  "hex",
  "lazy_static",
  "mc-account-keys",
@@ -3886,7 +3828,7 @@ dependencies = [
 name = "mc-fog-load-testing"
 version = "1.3.0-pre0"
 dependencies = [
- "grpcio 0.10.0",
+ "grpcio",
  "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",
@@ -3958,7 +3900,7 @@ name = "mc-fog-overseer-server"
 version = "1.3.0-pre0"
 dependencies = [
  "displaydoc",
- "grpcio 0.10.0",
+ "grpcio",
  "lazy_static",
  "mc-api",
  "mc-attest-net",
@@ -4011,7 +3953,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "cargo-emit",
  "futures 0.3.21",
- "grpcio 0.10.0",
+ "grpcio",
  "mc-api",
  "mc-attest-api",
  "mc-attest-core",
@@ -4039,7 +3981,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "base64 0.13.0",
  "binascii",
- "grpcio 0.10.0",
+ "grpcio",
  "mc-account-keys",
  "mc-attest-core",
  "mc-attest-verifier",
@@ -4059,7 +4001,7 @@ name = "mc-fog-report-connection"
 version = "1.3.0-pre0"
 dependencies = [
  "displaydoc",
- "grpcio 0.10.0",
+ "grpcio",
  "mc-account-keys",
  "mc-attest-core",
  "mc-common",
@@ -4077,7 +4019,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "displaydoc",
  "futures 0.3.21",
- "grpcio 0.10.0",
+ "grpcio",
  "mc-attest-core",
  "mc-common",
  "mc-crypto-keys",
@@ -4148,7 +4090,7 @@ dependencies = [
  "cargo-emit",
  "displaydoc",
  "futures 0.3.21",
- "grpcio 0.10.0",
+ "grpcio",
  "link-cplusplus",
  "mc-account-keys",
  "mc-api",
@@ -4272,7 +4214,7 @@ name = "mc-fog-test-client"
 version = "1.3.0-pre0"
 dependencies = [
  "displaydoc",
- "grpcio 0.10.0",
+ "grpcio",
  "hex_fmt",
  "lazy_static",
  "mc-account-keys",
@@ -4354,7 +4296,7 @@ dependencies = [
 name = "mc-fog-view-connection"
 version = "1.3.0-pre0"
 dependencies = [
- "grpcio 0.10.0",
+ "grpcio",
  "mc-attest-core",
  "mc-attest-verifier",
  "mc-common",
@@ -4470,7 +4412,7 @@ dependencies = [
 name = "mc-fog-view-load-test"
 version = "1.3.0-pre0"
 dependencies = [
- "grpcio 0.10.0",
+ "grpcio",
  "mc-account-keys",
  "mc-attest-verifier",
  "mc-common",
@@ -4513,7 +4455,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "displaydoc",
  "futures 0.3.21",
- "grpcio 0.10.0",
+ "grpcio",
  "hex",
  "lazy_static",
  "mc-attest-api",
@@ -4633,7 +4575,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "crossbeam-channel",
  "displaydoc",
- "grpcio 0.10.0",
+ "grpcio",
  "mc-account-keys",
  "mc-api",
  "mc-attest-verifier",
@@ -4665,7 +4607,7 @@ dependencies = [
  "aes-gcm",
  "crossbeam-channel",
  "displaydoc",
- "grpcio 0.10.0",
+ "grpcio",
  "hex",
  "hex_fmt",
  "libz-sys",
@@ -4728,7 +4670,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "cargo-emit",
  "futures 0.3.21",
- "grpcio 0.10.0",
+ "grpcio",
  "hex_fmt",
  "mc-api",
  "mc-common",
@@ -4744,7 +4686,7 @@ dependencies = [
 name = "mc-mobilecoind-json"
 version = "1.3.0-pre0"
 dependencies = [
- "grpcio 0.10.0",
+ "grpcio",
  "hex",
  "mc-api",
  "mc-common",
@@ -4822,7 +4764,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "crossbeam-channel",
  "displaydoc",
- "grpcio 0.10.0",
+ "grpcio",
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-enclave-api",
@@ -4852,7 +4794,7 @@ dependencies = [
 name = "mc-peers-test-utils"
 version = "1.3.0-pre0"
 dependencies = [
- "grpcio 0.10.0",
+ "grpcio",
  "hex",
  "mc-common",
  "mc-connection",
@@ -5214,7 +5156,7 @@ dependencies = [
  "cookie 0.16.0",
  "displaydoc",
  "futures 0.3.21",
- "grpcio 0.10.0",
+ "grpcio",
  "hex",
  "hex_fmt",
  "hmac 0.12.1",
@@ -5244,7 +5186,7 @@ dependencies = [
 name = "mc-util-grpc-admin-tool"
 version = "1.3.0-pre0"
 dependencies = [
- "grpcio 0.10.0",
+ "grpcio",
  "mc-common",
  "mc-util-grpc",
  "mc-util-uri",
@@ -5320,7 +5262,7 @@ name = "mc-util-metrics"
 version = "1.3.0-pre0"
 dependencies = [
  "chrono",
- "grpcio 0.10.0",
+ "grpcio",
  "lazy_static",
  "mc-common",
  "prometheus",
@@ -5421,7 +5363,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "displaydoc",
  "futures 0.3.21",
- "grpcio 0.10.0",
+ "grpcio",
  "hex",
  "lazy_static",
  "lmdb-rkv",

@@ -42,10 +42,6 @@ use mc_common::{
 use mc_consensus_enclave_api::{
     BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeePublicKey,
     FormBlockInputs, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
-    LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext, WellFormedEncryptedTx,
-    WellFormedTxContext,
-    BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeeMapError,
-    FeePublicKey, FormBlockInputs, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
     WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;

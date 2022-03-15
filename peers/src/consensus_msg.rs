@@ -19,6 +19,8 @@ use std::{convert::TryFrom, hash::Hash, result::Result as StdResult};
 pub enum ConsensusValue {
     /// TxHash({0})
     TxHash(TxHash),
+
+    /// MintConfigTx({0})
     MintConfigTx(MintConfigTx),
 }
 
