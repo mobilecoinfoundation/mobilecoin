@@ -2,24 +2,34 @@
 
 //! Command line configuration for the consensus mint client.
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Private};
 use mc_util_uri::ConsensusClientUri;
 use std::fs;
 
-#[derive(Debug, Parser)]
+#[derive(Subcommand)]
+pub enum Commands {
+    /// Generate and submit a MintConfigTx transsaction.
+    #[clap(arg_required_else_help = true)]
+    GenerateAndSubmitMintConfigTx {
+        /// URI of consensus node to connect to.
+        #[clap(long, env = "MC_CONSENSUS_URI")]
+        node: ConsensusClientUri,
+
+        /// The key to sign the transaction with.
+        #[clap(long, parse(try_from_str = load_key_from_pem), env = "MC_MINTING_PRIVATE_KEY")]
+        private_key: Ed25519Private,
+    },
+}
+
+#[derive(Parser)]
 #[clap(
     name = "mc-consensus-mint-client",
     about = "MobileCoin Consensus Mint Client"
 )]
 pub struct Config {
-    /// URI of consensus node to connect to.
-    #[clap(long, env = "MC_CONSENSUS_URI")]
-    pub node: ConsensusClientUri,
-
-    /// The key to sign the transaction with.
-    #[clap(long, parse(try_from_str = load_key_from_pem), env = "MC_MINTING_PRIVATE_KEY")]
-    pub private_key: Ed25519Private,
+    #[clap(subcommand)]
+    pub command: Commands,
 }
 
 pub fn load_key_from_pem(filename: &str) -> Result<Ed25519Private, String> {
