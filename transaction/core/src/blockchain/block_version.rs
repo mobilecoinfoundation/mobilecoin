@@ -88,7 +88,7 @@ impl BlockVersion {
     }
 
     /// transactions shall be sorted after version 3
-    pub fn validate_transaction_outputs_sort_is_needed(&self) -> bool {
+    pub fn validate_transaction_outputs_are_sorted(&self) -> bool {
         self.0 > 3
     }
 }

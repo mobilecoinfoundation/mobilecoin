@@ -57,8 +57,6 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_inputs_are_sorted(&tx.prefix)?;
 
-    validate_outputs_are_sorted(&tx.prefix)?;
-
     validate_membership_proofs(&tx.prefix, root_proofs)?;
 
     validate_signature(block_version, tx, csprng)?;
@@ -98,7 +96,7 @@ pub fn validate<R: RngCore + CryptoRng>(
         validate_no_masked_token_ids_exist(tx)?;
     }
 
-    if block_version.validate_transaction_outputs_sort_is_needed() {
+    if block_version.validate_transaction_outputs_are_sorted() {
         validate_outputs_are_sorted(&tx.prefix)?;
     }
 

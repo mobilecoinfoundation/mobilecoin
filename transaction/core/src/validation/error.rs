@@ -78,9 +78,6 @@ pub enum TransactionValidationError {
      */
     UnsortedInputs,
 
-    /// Outputs must be sorted by public key, asceding
-    UnsortedOutputs,
-
     /// Key Images must be sorted.
     UnsortedKeyImages,
 
@@ -140,6 +137,9 @@ pub enum TransactionValidationError {
 
     /// A TxOut includes a masked token id, but this is not allowed yet
     MaskedTokenIdNotAllowed,
+
+    /// Outputs must be sorted by public key, ascending
+    UnsortedOutputs,
 }
 
 impl From<mc_crypto_keys::KeyError> for TransactionValidationError {
