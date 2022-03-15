@@ -5,8 +5,8 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
-mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-connection = { path = "../../connection" }
 mc-consensus-enclave-api = { path = "../../consensus/enclave/api" }
-mc-util-uri = { path = "../../util/uri" }
+mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-transaction-core = { path = "../../transaction/core" }
+mc-util-uri = { path = "../../util/uri" }

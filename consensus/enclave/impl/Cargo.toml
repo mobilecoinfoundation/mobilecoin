@@ -34,8 +34,8 @@ mc-consensus-enclave-api = { path = "../api", default-features = false }
 mc-crypto-ake-enclave = { path = "../../../crypto/ake/enclave" }
 mc-crypto-digestible = { path = "../../../crypto/digestible" }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
-mc-crypto-rand = { path = "../../../crypto/rand" }
 mc-crypto-message-cipher = { path = "../../../crypto/message-cipher" }
+mc-crypto-rand = { path = "../../../crypto/rand" }
 mc-sgx-compat = { path = "../../../sgx/compat" }
 mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
 mc-transaction-core = { path = "../../../transaction/core" }
@@ -48,11 +48,11 @@ prost = { version = "0.9", default-features = false, features = ["prost-derive"]
 rand_core = { version = "0.6", default-features = false }
 
 [dev-dependencies]
-rand = "0.8"
-rand_hc = "0.3"
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-ledger-db = { path = "../../../ledger/db" }
 mc-transaction-core-test-utils = { path = "../../../transaction/core/test-utils" }
+rand = "0.8"
+rand_hc = "0.3"
 
 [build-dependencies]
 mc-util-build-script = { path = "../../../util/build/script" }
