@@ -15,12 +15,15 @@ pub use traits::MintTxManager;
 #[cfg(test)]
 pub use traits::MockMintTxManager;
 
-use mc_common::{logger::Logger, HashMap, HashSet};
+use mc_common::{
+    logger::{log, Logger},
+    HashMap, HashSet,
+};
 use mc_crypto_keys::Ed25519Public;
 use mc_crypto_multisig::SignerSet;
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{
-    mint::{validate_mint_config_tx, MintConfigTx, MintTx, MintValidationError},
+    mint::{validate_mint_config_tx, validate_mint_tx, MintConfigTx, MintTx, MintValidationError},
     BlockVersion, TokenId,
 };
 
@@ -126,24 +129,18 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
 
         // Try and get an active minting configuration that can validate the signature
         // of this transaction.
-        /* let active_mint_config = self.ledger_db.
-        let token_id = TokenId::from(mint_config_tx.prefix.token_id);
-        let master_minters = self.token_id_to_master_minters.get(&token_id).ok_or(
-            MintTxManagerError::MintValidation(MintValidationError::NoMasterMinters(token_id)),
-        )?;
+        let active_mint_config = self.ledger_db.get_active_mint_config_for_mint_tx(mint_tx)?;
 
         // Get the current block index.
         let current_block_index = self.ledger_db.num_blocks()? - 1;
 
         // Perform the actual validation.
-        validate_mint_config_tx(
-            mint_config_tx,
+        validate_mint_tx(
+            mint_tx,
             current_block_index,
             self.block_version,
-            master_minters,
-        )?;*/
-
-        // todo
+            &active_mint_config.mint_config,
+        )?;
 
         Ok(())
     }
@@ -157,6 +154,7 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         candidates.sort();
 
         let mut seen_nonces = HashSet::default();
+        let mut seen_mint_configs = HashSet::default();
         let (allowed_txs, _rejected_txs) = candidates.into_iter().partition(|tx| {
             if seen_nonces.len() >= max_elements {
                 return false;
@@ -164,7 +162,27 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
             if seen_nonces.contains(&tx.prefix.nonce) {
                 return false;
             }
+
+            // We allow a specific MintConfig to be used only once per block - this
+            // simplifies enforcing the total mint limit.
+            let active_mint_config = match self.ledger_db.get_active_mint_config_for_mint_tx(tx) {
+                Ok(active_mint_config) => active_mint_config,
+                Err(err) => {
+                    log::warn!(
+                        self.logger,
+                        "failed finding an active mint config for mint tx {}: {}",
+                        tx,
+                        err
+                    );
+                    return false;
+                }
+            };
+            if seen_mint_configs.contains(&active_mint_config.mint_config) {
+                return false;
+            }
+
             seen_nonces.insert(tx.prefix.nonce.clone());
+            seen_mint_configs.insert(active_mint_config.mint_config);
             true
         });
 

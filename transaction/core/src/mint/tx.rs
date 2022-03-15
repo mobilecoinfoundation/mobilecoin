@@ -4,6 +4,7 @@
 
 use crate::domain_separators::MINT_TX_PREFIX_DOMAIN_TAG;
 use alloc::vec::Vec;
+use core::fmt;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{Ed25519Signature, RistrettoPublic};
 use mc_crypto_multisig::MultiSig;
@@ -59,4 +60,10 @@ pub struct MintTx {
     /// The transaction signature.
     #[prost(message, required, tag = "2")]
     pub signature: MultiSig<Ed25519Signature>,
+}
+
+impl fmt::Display for MintTx {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", hex_fmt::HexFmt(&self.prefix.nonce))
+    }
 }
