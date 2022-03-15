@@ -51,7 +51,9 @@ impl From<KeyError> for NodeIDError {
 /// key
 #[derive(Clone, Serialize, Deserialize, Digestible)]
 pub struct NodeID {
+    /// The Responder ID for this node
     pub responder_id: ResponderId,
+    /// The public key for this node
     pub public_key: Ed25519Public,
 }
 

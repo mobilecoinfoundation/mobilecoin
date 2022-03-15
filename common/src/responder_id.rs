@@ -1,5 +1,4 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
-#![deny(missing_docs)]
 
 //! The Responder ID type
 
