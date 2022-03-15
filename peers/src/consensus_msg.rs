@@ -14,18 +14,7 @@ use std::{convert::TryFrom, hash::Hash, result::Result as StdResult};
 
 /// A single value in a consensus round.
 #[derive(
-    Clone,
-    Copy,
-    Display,
-    Debug,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Serialize,
-    Deserialize,
-    Digestible,
+    Clone, Debug, Deserialize, Digestible, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub enum ConsensusValue {
     /// TxHash({0})

@@ -20,7 +20,7 @@ pub mod report_parse;
 
 pub mod conversions;
 
-use grpcio::{CallOption, Metadata};
+use grpcio::{CallOption, Metadata, Result as GrpcResult};
 use mc_fog_uri::{IngestPeerUri, UriParseError};
 use std::{collections::BTreeSet, str::FromStr};
 
@@ -51,15 +51,15 @@ impl EnclaveGrpcChannel for view_grpc::FogViewApiClient {
         &mut self,
         msg: &attest::AuthMessage,
         call_option: CallOption,
-    ) -> Result<(Option<Metadata>, attest::AuthMessage, Option<Metadata>), grpcio::Error> {
-        <Self>::auth_full(self, msg, call_option)
+    ) -> GrpcResult<(Metadata, attest::AuthMessage, Metadata)> {
+        <Self>::auth_async_opt(self, msg, call_option)?.receive_sync()
     }
     fn enclave_request(
         &mut self,
         msg: &attest::Message,
         call_option: CallOption,
-    ) -> Result<(Option<Metadata>, attest::Message, Option<Metadata>), grpcio::Error> {
-        <Self>::query_full(self, msg, call_option)
+    ) -> GrpcResult<(Metadata, attest::Message, Metadata)> {
+        <Self>::query_async_opt(self, msg, call_option)?.receive_sync()
     }
 }
 
@@ -68,15 +68,15 @@ impl EnclaveGrpcChannel for ledger_grpc::FogKeyImageApiClient {
         &mut self,
         msg: &attest::AuthMessage,
         call_option: CallOption,
-    ) -> Result<(Option<Metadata>, attest::AuthMessage, Option<Metadata>), grpcio::Error> {
-        <Self>::auth_full(self, msg, call_option)
+    ) -> GrpcResult<(Metadata, attest::AuthMessage, Metadata)> {
+        <Self>::auth_async_opt(self, msg, call_option)?.receive_sync()
     }
     fn enclave_request(
         &mut self,
         msg: &attest::Message,
         call_option: CallOption,
-    ) -> Result<(Option<Metadata>, attest::Message, Option<Metadata>), grpcio::Error> {
-        <Self>::check_key_images_full(self, msg, call_option)
+    ) -> GrpcResult<(Metadata, attest::Message, Metadata)> {
+        <Self>::check_key_images_async_opt(self, msg, call_option)?.receive_sync()
     }
 }
 
@@ -85,14 +85,14 @@ impl EnclaveGrpcChannel for ledger_grpc::FogMerkleProofApiClient {
         &mut self,
         msg: &attest::AuthMessage,
         call_option: CallOption,
-    ) -> Result<(Option<Metadata>, attest::AuthMessage, Option<Metadata>), grpcio::Error> {
-        <Self>::auth_full(self, msg, call_option)
+    ) -> GrpcResult<(Metadata, attest::AuthMessage, Metadata)> {
+        <Self>::auth_async_opt(self, msg, call_option)?.receive_sync()
     }
     fn enclave_request(
         &mut self,
         msg: &attest::Message,
         call_option: CallOption,
-    ) -> Result<(Option<Metadata>, attest::Message, Option<Metadata>), grpcio::Error> {
-        <Self>::get_outputs_full(self, msg, call_option)
+    ) -> GrpcResult<(Metadata, attest::Message, Metadata)> {
+        <Self>::get_outputs_async_opt(self, msg, call_option)?.receive_sync()
     }
 }

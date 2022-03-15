@@ -222,6 +222,14 @@ pub struct FeePublicKey {
     pub view_public_key: RistrettoPublic,
 }
 
+/// The collection of transaction types we form blocks from.
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct FormBlockInputs {
+    /// The original transactions (the ones that are used to move tokens)
+    pub well_formed_encrypted_txs_with_proofs:
+        Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>,
+}
+
 /// The API for interacting with a consensus node's enclave.
 pub trait ConsensusEnclave: ReportableEnclave {
     // UTILITY METHODS
@@ -318,7 +326,7 @@ pub trait ConsensusEnclave: ReportableEnclave {
     fn form_block(
         &self,
         parent_block: &Block,
-        encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+        inputs: FormBlockInputs,
         root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)>;
 }

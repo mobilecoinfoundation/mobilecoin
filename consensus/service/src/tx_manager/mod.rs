@@ -14,7 +14,7 @@ use mc_common::{
     HashMap, HashSet,
 };
 use mc_consensus_enclave::{
-    ConsensusEnclave, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    ConsensusEnclave, FormBlockInputs, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_peers::ConsensusValue;
 use mc_transaction_core::{
@@ -279,7 +279,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         let cache_entries = Self::get_cache_entries(&cache, tx_hashes.iter())?;
 
         // Proceed with forming the block.
-        let encrypted_txs_with_proofs = cache_entries
+        let well_formed_encrypted_txs_with_proofs = cache_entries
             .into_iter()
             .map(|entry| {
                 // Highest indices proofs must be w.r.t. the current ledger.
@@ -294,9 +294,13 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
 
         let root_element = self.untrusted.get_root_tx_out_membership_element()?;
 
-        let (block, block_contents, mut signature) =
-            self.enclave
-                .form_block(parent_block, &encrypted_txs_with_proofs, &root_element)?;
+        let (block, block_contents, mut signature) = self.enclave.form_block(
+            parent_block,
+            FormBlockInputs {
+                well_formed_encrypted_txs_with_proofs,
+            },
+            &root_element,
+        )?;
 
         // The enclave cannot provide a timestamp, so this happens in untrusted.
         signature.set_signed_at(chrono::Utc::now().timestamp() as u64);

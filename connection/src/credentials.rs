@@ -95,7 +95,7 @@ impl<TP: TimeProvider> CredentialsProvider for TokenBasicCredentialsProvider<TP>
     type Error = TokenBasicCredentialsGeneratorError;
 
     fn get_credentials(&self) -> Result<Option<BasicCredentials>, Self::Error> {
-        Ok(Some(self.generator.generate_for(&self.username)?))
+        Some(self.generator.generate_for(&self.username)).transpose()
     }
 }
 

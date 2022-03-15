@@ -14,7 +14,7 @@ mc-common = { path = "../common", features = ["loggers"] }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
 mc-util-grpc = { path = "../util/grpc" }
 
-grpcio = "0.9.0"
+grpcio = "0.10.0"
 hex = "0.4"
 rocket = { version = "0.4.10", default-features = false }
 rocket_contrib = { version = "0.4.10", default-features = false, features = ["json"] }
