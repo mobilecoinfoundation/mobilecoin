@@ -228,7 +228,7 @@ mod test {
         onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
         tokens::Mob,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-        AmountData, MaskedAmount, Token,
+        Amount, MaskedAmount, Token,
     };
     use mc_util_from_random::FromRandom;
     use mc_util_grpc::AnonymousAuthenticator;
@@ -256,11 +256,11 @@ mod test {
             let shared_secret: RistrettoPublic = create_shared_secret(&target_key, &tx_secret_key);
             // FIXME: Without a different value, the txouts are identical - that
             // may be fine, or we may want a more robust mock ledger populator.
-            let amount_data = AmountData {
+            let amount = Amount {
                 value: value + output_index as u64,
                 token_id: Mob::ID,
             };
-            let amount = MaskedAmount::new(amount_data, &shared_secret).unwrap();
+            let amount = MaskedAmount::new(amount, &shared_secret).unwrap();
             let tx_out = TxOut {
                 amount,
                 target_key: target_key.into(),

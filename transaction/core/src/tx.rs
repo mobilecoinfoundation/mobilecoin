@@ -16,7 +16,7 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    amount::{AmountData, AmountError, MaskedAmount},
+    amount::{Amount, AmountError, MaskedAmount},
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
@@ -335,8 +335,8 @@ impl TxOut {
 
         let shared_secret = create_shared_secret(recipient.view_public_key(), tx_private_key);
 
-        let amount_data = AmountData { value, token_id };
-        let amount = MaskedAmount::new(amount_data, &shared_secret)?;
+        let amount = Amount { value, token_id };
+        let amount = MaskedAmount::new(amount, &shared_secret)?;
 
         let memo_ctxt = MemoContext {
             tx_public_key: &public_key,
@@ -574,7 +574,7 @@ mod tests {
         subaddress_matches_tx_out,
         tokens::Mob,
         tx::{Tx, TxIn, TxOut, TxPrefix},
-        AmountData, MaskedAmount, Token,
+        Amount, MaskedAmount, Token,
     };
     use alloc::vec::Vec;
     use core::convert::TryFrom;
@@ -592,11 +592,11 @@ mod tests {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
             let public_key = RistrettoPublic::from_random(&mut rng).into();
-            let amount_data = AmountData {
+            let amount = Amount {
                 value: 23u64,
                 token_id: Mob::ID,
             };
-            let amount = MaskedAmount::new(amount_data, &shared_secret).unwrap();
+            let amount = MaskedAmount::new(amount, &shared_secret).unwrap();
             TxOut {
                 amount,
                 target_key,
@@ -655,11 +655,11 @@ mod tests {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
             let public_key = RistrettoPublic::from_random(&mut rng).into();
-            let amount_data = AmountData {
+            let amount = Amount {
                 value: 23u64,
                 token_id: Mob::ID,
             };
-            let amount = MaskedAmount::new(amount_data, &shared_secret).unwrap();
+            let amount = MaskedAmount::new(amount, &shared_secret).unwrap();
             TxOut {
                 amount,
                 target_key,

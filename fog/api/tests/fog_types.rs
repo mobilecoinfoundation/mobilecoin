@@ -12,7 +12,7 @@ use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     membership_proofs::Range,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash, TxOutMembershipProof},
-    AmountData, EncryptedMemo, MaskedAmount,
+    Amount, EncryptedMemo, MaskedAmount,
 };
 use mc_util_from_random::FromRandom;
 use mc_util_test_helper::{run_with_several_seeds, CryptoRng, RngCore};
@@ -439,11 +439,11 @@ impl Sample for mc_fog_types::view::TxOutSearchResult {
 
 impl Sample for MaskedAmount {
     fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
-        let amount_data = AmountData {
+        let amount = Amount {
             value: rng.next_u32() as u64,
             token_id: rng.next_u32().into(),
         };
-        MaskedAmount::new(amount_data, &RistrettoPublic::from_random(rng)).unwrap()
+        MaskedAmount::new(amount, &RistrettoPublic::from_random(rng)).unwrap()
     }
 }
 

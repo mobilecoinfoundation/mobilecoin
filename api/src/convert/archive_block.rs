@@ -123,7 +123,7 @@ mod tests {
         ring_signature::KeyImage,
         tokens::Mob,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-        AmountData, Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion,
+        Amount, Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion,
         MaskedAmount, Token,
     };
     use mc_util_from_random::FromRandom;
@@ -135,13 +135,12 @@ mod tests {
         let mut last_block: Option<Block> = None;
 
         for block_idx in 0..num_blocks {
-            let amount_data = AmountData {
+            let amount = Amount {
                 value: 1u64 << 13,
                 token_id: Mob::ID,
             };
             let tx_out = TxOut {
-                amount: MaskedAmount::new(amount_data, &RistrettoPublic::from_random(&mut rng))
-                    .unwrap(),
+                amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng)).unwrap(),
                 target_key: RistrettoPublic::from_random(&mut rng).into(),
                 public_key: RistrettoPublic::from_random(&mut rng).into(),
                 e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),

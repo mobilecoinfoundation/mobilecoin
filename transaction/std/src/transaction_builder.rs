@@ -369,11 +369,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .outputs_and_shared_secrets
             .iter()
             .map(|(tx_out, shared_secret)| {
-                let amount = &tx_out.amount;
-                let (amount_data, blinding) = amount
+                let masked_amount = &tx_out.amount;
+                let (amount, blinding) = masked_amount
                     .get_value(shared_secret)
                     .expect("TransactionBuilder created an invalid Amount");
-                (amount_data.value, blinding)
+                (amount.value, blinding)
             })
             .collect();
 
@@ -408,19 +408,19 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         let mut input_secrets: Vec<(RistrettoPrivate, u64, Scalar)> = Vec::new();
         for input_credential in &self.input_credentials {
             let onetime_private_key = input_credential.onetime_private_key;
-            let amount = &input_credential.ring[input_credential.real_index].amount;
+            let masked_amount = &input_credential.ring[input_credential.real_index].amount;
             let shared_secret = create_shared_secret(
                 &input_credential.real_output_public_key,
                 &input_credential.view_private_key,
             );
-            let (amount_data, blinding) = amount.get_value(&shared_secret)?;
-            if amount_data.token_id != self.token_id {
+            let (amount, blinding) = masked_amount.get_value(&shared_secret)?;
+            if amount.token_id != self.token_id {
                 return Err(TxBuilderError::WrongTokenType(
                     self.token_id,
-                    amount_data.token_id,
+                    amount.token_id,
                 ));
             }
-            input_secrets.push((onetime_private_key, amount_data.value, blinding));
+            input_secrets.push((onetime_private_key, amount.value, blinding));
         }
 
         let message = tx_prefix.hash().0;

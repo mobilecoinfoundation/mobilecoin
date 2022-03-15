@@ -41,7 +41,7 @@ use mc_transaction_core::{
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
-    AmountData, BlockVersion, Token,
+    Amount, BlockVersion, Token,
 };
 use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_util_uri::FogUri;
@@ -109,7 +109,7 @@ pub struct SpendableTxOut {
     /// The tx out that is spendable
     pub tx_out: TxOut,
     /// The amount of the tx out
-    pub amount: AmountData,
+    pub amount: Amount,
     /// The account that owns this tx out
     pub from_account_key: AccountKey,
 }

@@ -53,16 +53,16 @@ pub fn create_transaction<L: Ledger, R: RngCore + CryptoRng>(
     // Get the output value.
     let tx_out_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
     let shared_secret = get_tx_out_shared_secret(sender.view_private_key(), &tx_out_public_key);
-    let (amount_data, _blinding) = tx_out.amount.get_value(&shared_secret).unwrap();
+    let (amount, _blinding) = tx_out.amount.get_value(&shared_secret).unwrap();
 
-    assert!(amount_data.value >= Mob::MINIMUM_FEE);
+    assert!(amount.value >= Mob::MINIMUM_FEE);
     create_transaction_with_amount(
         block_version,
         ledger,
         tx_out,
         sender,
         recipient,
-        amount_data.value - Mob::MINIMUM_FEE,
+        amount.value - Mob::MINIMUM_FEE,
         Mob::MINIMUM_FEE,
         tombstone_block,
         rng,
