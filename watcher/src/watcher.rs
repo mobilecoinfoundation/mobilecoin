@@ -1,18 +1,17 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Basic Watcher Node
 
 use crate::{
     error::{WatcherDBError, WatcherError},
+    metrics::WatcherMetrics,
     watcher_db::WatcherDB,
 };
-
 use mc_api::block_num_to_s3block_path;
 use mc_common::logger::{log, Logger};
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::ReqwestTransactionsFetcher;
 use mc_transaction_core::{BlockData, BlockIndex};
-
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     collections::HashMap,
@@ -41,6 +40,7 @@ pub struct Watcher {
     watcher_db: WatcherDB,
     store_block_data: bool,
     logger: Logger,
+    metrics: WatcherMetrics,
 }
 
 /// Result of sync loop
@@ -87,11 +87,14 @@ impl Watcher {
                 .collect::<Result<HashMap<_, _>, WatcherError>>()?,
         );
 
+        let metrics = WatcherMetrics::new();
+
         Ok(Self {
             transactions_fetcher_by_url,
             watcher_db,
             store_block_data,
             logger,
+            metrics,
         })
     }
 
@@ -110,6 +113,15 @@ impl Watcher {
             .unwrap_or(0))
     }
 
+    /// Collect number of blocks synced per peer and ledger height (if
+    /// available)
+    pub fn collect_metrics(&self, ledger_height: Option<u64>) {
+        let last_synced = self.watcher_db.last_synced_blocks().unwrap_or_default();
+        self.metrics.collect_peer_blocks_synced(last_synced);
+        if let Some(ledger_height) = ledger_height {
+            self.metrics.ledger_block_height.set(ledger_height as i64);
+        }
+    }
     /// Sync blocks and collect signatures (and block data, when enabled).
     ///
     /// * `start` - starting block to sync.
@@ -389,6 +401,11 @@ impl WatcherSyncThread {
 
             // Maybe sync, maybe wait and check again.
             if is_behind {
+                watcher
+                    .metrics
+                    .ledger_block_height
+                    .set(ledger_num_blocks as i64);
+
                 let sync_result = watcher
                     .sync_blocks(
                         lowest_next_block_to_sync,
@@ -397,6 +414,9 @@ impl WatcherSyncThread {
                         true,
                     )
                     .expect("Could not sync blocks");
+
+                // Collect blocks synced so far vs. ledger height
+                watcher.collect_metrics(Some(ledger_num_blocks));
 
                 // Pause for a second if a node is having trouble
                 if let SyncResult::BlockSyncError = sync_result {
