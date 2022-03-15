@@ -6,8 +6,8 @@ use mc_transaction_core::BlockData;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockStreamComponents {
     pub block_data: BlockData,
-    pub quorum_set: QuorumSet,
-    pub verification_report: VerificationReport,
+    pub quorum_set: Option<QuorumSet>,
+    pub verification_report: Option<VerificationReport>,
 }
 
 pub trait BlockStream {

@@ -4,14 +4,20 @@
 
 use crate::{streaming_blocks::BlockWithQuorumSet, BlockStreamComponents};
 use mc_api::ConversionError;
+use mc_attest_core::VerificationReport;
+use mc_consensus_scp::QuorumSet;
 use std::convert::{TryFrom, TryInto};
 
 impl From<&BlockStreamComponents> for BlockWithQuorumSet {
     fn from(data: &BlockStreamComponents) -> Self {
         let mut proto = BlockWithQuorumSet::new();
         proto.set_block((&data.block_data).into());
-        proto.set_quorum_set((&data.quorum_set).into());
-        proto.set_report((&data.verification_report).into());
+        if let Some(ref quorum_set) = data.quorum_set {
+            proto.set_quorum_set(quorum_set.into());
+        }
+        if let Some(ref report) = data.verification_report {
+            proto.set_report(report.into());
+        }
         proto
     }
 }
@@ -21,8 +27,16 @@ impl TryFrom<&BlockWithQuorumSet> for BlockStreamComponents {
 
     fn try_from(proto: &BlockWithQuorumSet) -> Result<Self, Self::Error> {
         let block_data = proto.get_block().try_into()?;
-        let quorum_set = proto.get_quorum_set().try_into()?;
-        let verification_report = proto.get_report().try_into()?;
+        let quorum_set = proto
+            .quorum_set
+            .as_ref()
+            .map(QuorumSet::try_from)
+            .transpose()?;
+        let verification_report = proto
+            .report
+            .as_ref()
+            .map(VerificationReport::try_from)
+            .transpose()?;
         Ok(BlockStreamComponents {
             block_data,
             quorum_set,
@@ -35,7 +49,6 @@ impl TryFrom<&BlockWithQuorumSet> for BlockStreamComponents {
 mod tests {
     use super::*;
     use crate::test_utils::make_quorum_set;
-    use mc_attest_core::VerificationReport;
     use mc_transaction_core::{Block, BlockContents, BlockData};
 
     #[test]
@@ -44,11 +57,10 @@ mod tests {
         let block = Block::new_origin_block(&[]);
         let block_data = BlockData::new(block, contents, None);
         let quorum_set = make_quorum_set();
-        let verification_report = VerificationReport::default();
         let data = BlockStreamComponents {
             block_data,
-            quorum_set,
-            verification_report,
+            quorum_set: Some(quorum_set),
+            verification_report: None,
         };
 
         let proto = BlockWithQuorumSet::from(&data);
