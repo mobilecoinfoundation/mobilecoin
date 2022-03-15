@@ -24,7 +24,7 @@ fn main() {
     let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&config.node, &logger);
     let api_client = ConsensusClientApiClient::new(ch);
 
-    let signer_1 = Ed25519Pair::from(config.private_key);
+    let signer = Ed25519Pair::from(config.private_key);
 
     let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
     let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
@@ -34,7 +34,7 @@ fn main() {
         token_id: 1,
         configs: vec![MintConfig {
             token_id: 1,
-            signer_set: SignerSet::new(vec![signer_1.public_key()], 1),
+            signer_set: SignerSet::new(vec![signer.public_key()], 1),
             mint_limit: 1000,
         }],
         nonce,
@@ -42,7 +42,7 @@ fn main() {
     };
 
     let message = prefix.hash();
-    let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
+    let signature = MultiSig::new(vec![signer.try_sign(message.as_ref()).unwrap()]);
     let tx = MintConfigTx { prefix, signature };
 
     let resp = api_client
