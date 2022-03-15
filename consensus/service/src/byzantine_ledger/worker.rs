@@ -600,10 +600,10 @@ impl<
 
         log::info!(
             self.logger,
-            "Number of pending values post cleanup: {} (before purge: {}, before clear_invalid: {})",
+            "Number of pending values post cleanup: {} (purged: {}, invalidated: {})",
             self.pending_values.len(),
-            pending_values_len_before_purge,
-            pending_values_len_before_clear_invalid,
+            pending_values_len_before_purge - pending_values_len_before_clear_invalid,
+            pending_values_len_before_clear_invalid - self.pending_values.len(),
         );
 
         // Previous slot metrics.

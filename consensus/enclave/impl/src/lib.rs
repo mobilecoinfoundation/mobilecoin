@@ -297,13 +297,12 @@ impl SgxConsensusEnclave {
         // Ensure all nonces are unique.
         let mut seen_nonces = BTreeSet::default();
         for tx in mint_config_txs {
-            if seen_nonces.contains(&tx.prefix.nonce) {
+            if !seen_nonces.insert(tx.prefix.nonce.clone()) {
                 return Err(Error::FormBlock(format!(
                     "Duplicate MintConfigTx nonce: {:?}",
                     tx.prefix.nonce
                 )));
             }
-            seen_nonces.insert(tx.prefix.nonce.clone());
         }
 
         Ok(())
