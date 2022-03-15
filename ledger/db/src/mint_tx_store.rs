@@ -503,7 +503,7 @@ mod tests {
         );
         let mut db_txn = env.begin_rw_txn().unwrap();
 
-        // The mint limit we get in the error will be dependant on the order of the mint
+        // The mint limit we get in the error will be dependent on the order of the mint
         // configurations, so we should accept both possibitilies.
         match mint_tx_store.write_mint_txs(0, &[mint_tx1.clone()], &mint_config_store, &mut db_txn)
         {
