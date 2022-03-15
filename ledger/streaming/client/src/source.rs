@@ -77,7 +77,6 @@ mod tests {
     use super::*;
     use crate::test_utils::{setup_test_server, Responses};
     use futures::{executor::block_on, future::ready};
-    use mc_attest_core::VerificationReport;
     use mc_common::logger::test_with_logger;
     use mc_crypto_keys::Ed25519Pair;
     use mc_ledger_streaming_api::{make_subscribe_response, test_utils::make_quorum_set};
@@ -106,12 +105,11 @@ mod tests {
             };
             parent = Some(block.clone());
             let block_data = BlockData::new(block, contents, None);
-            let quorum_set = make_quorum_set();
-            let verification_report = VerificationReport::default();
+            let quorum_set = Some(make_quorum_set());
             let components = BlockStreamComponents {
                 block_data,
                 quorum_set,
-                verification_report,
+                verification_report: None,
             };
             let response =
                 make_subscribe_response(&components, signer).expect("make_subscribe_response");
