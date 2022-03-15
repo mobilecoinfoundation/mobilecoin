@@ -462,8 +462,8 @@ where
                         Ok(_) => {
                             log::info!(
                                 self.logger,
-                                "New keys successfully set on the ingest node at index {}.",
-                                i
+                                "New keys successfully set on the ingest node {}.",
+                                ingest_client.get_uri()
                             );
                             OperationResult::Ok(())
                         }
@@ -472,8 +472,8 @@ where
                             let number_of_remaining_tries =
                                 Self::NUMBER_OF_TRIES - current_try as usize;
                             let error_message = match number_of_remaining_tries {
-                                0 => format!("Did not succeed in setting a new key on node at index {}. Underlying error: {}", i, err),
-                                _ => format!("New keys were not successfully set on the ingest node at index {}. Will try {} more times. Underlying error: {}", i, number_of_remaining_tries, err),
+                                0 => format!("Did not succeed in setting a new key on node {}. Underlying error: {}", ingest_client.get_uri(), err),
+                                _ => format!("New keys were not successfully set on the ingest node {}. Will try {} more times. Underlying error: {}", ingest_client.get_uri(), number_of_remaining_tries, err),
                             };
                             OperationResult::Retry(OverseerError::SetNewKey(error_message))
                         }
@@ -496,12 +496,13 @@ where
         let result = retry_with_index(
             Fixed::from_millis(200).take(Self::NUMBER_OF_TRIES),
             |current_try| {
-                match self.ingest_clients[activated_node_index].activate() {
+                let ingest_client = &self.ingest_clients[activated_node_index];
+                match ingest_client.activate() {
                     Ok(_) => {
                         log::info!(
                             self.logger,
-                            "Node at index {} successfully activated.",
-                            activated_node_index
+                            "Node {} successfully activated.",
+                            ingest_client.get_uri(),
                         );
                         OperationResult::Ok(())
                     }
@@ -511,13 +512,14 @@ where
                             Self::NUMBER_OF_TRIES - current_try as usize;
                         let error_message = match number_of_remaining_tries {
                             0 => format!(
-                                "Did not succeed in setting a new key on node at index {}. Underlying error: {}",
-                                activated_node_index,
+                                "Did not succeed in setting a new key on node {}. Underlying error: {}",
+                                ingest_client.get_uri(),
                                 err
                             ),
                             _ => format!(
                                 "Node at index {} not activated. Will try {} more times. Underlying error: {}",
-                                activated_node_index, number_of_remaining_tries, err
+                                ingest_client.get_uri(),
+                                number_of_remaining_tries, err
                             ),
                         };
                         OperationResult::Retry(OverseerError::ActivateNode(error_message))
