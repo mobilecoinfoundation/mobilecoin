@@ -401,11 +401,6 @@ impl WatcherSyncThread {
 
             // Maybe sync, maybe wait and check again.
             if is_behind {
-                watcher
-                    .metrics
-                    .ledger_block_height
-                    .set(ledger_num_blocks as i64);
-
                 let sync_result = watcher
                     .sync_blocks(
                         lowest_next_block_to_sync,
