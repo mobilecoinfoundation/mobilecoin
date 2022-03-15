@@ -18,7 +18,7 @@ pub struct Config {
     pub node: ConsensusClientUri,
 
     /// The key to sign the transaction with.
-    #[clap(long, parse(try_from_str=load_key_from_pem), env = "MC_PRIVATE_KEY")]
+    #[clap(long, parse(try_from_str = load_key_from_pem), env = "MC_PRIVATE_KEY")]
     pub private_key: Ed25519Private,
 }
 
