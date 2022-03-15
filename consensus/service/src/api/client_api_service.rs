@@ -13,14 +13,14 @@ use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
 use mc_common::logger::Logger;
 use mc_consensus_api::{
-    consensus_client::ProposeMintConfigTxResponse,
+    consensus_client::{ProposeMintConfigTxResponse, ProposeMintTxResponse},
     consensus_client_grpc::ConsensusClientApi,
     consensus_common::{ProposeTxResponse, ProposeTxResult},
 };
 use mc_consensus_enclave::ConsensusEnclave;
 use mc_ledger_db::Ledger;
 use mc_peers::ConsensusValue;
-use mc_transaction_core::mint::MintConfigTx;
+use mc_transaction_core::mint::{MintConfigTx, MintTx};
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use std::{convert::TryFrom, sync::Arc};
@@ -125,6 +125,33 @@ impl ClientApiService {
         counters::PROPOSE_MINT_CONFIG_TX.inc();
         Ok(response)
     }
+
+    /// Handles a client's proposal for a MintTx to be included in the
+    /// ledger.
+    ///
+    /// # Arguments
+    /// `grpc_tx` - The protobuf MintTx being proposed.
+    fn handle_propose_mint_tx(
+        &mut self,
+        grpc_tx: mc_consensus_api::external::MintTx,
+    ) -> Result<ProposeMintTxResponse, ConsensusGrpcError> {
+        counters::PROPOSE_MINT_TX_INITIATED.inc();
+        let _mint_tx = MintTx::try_from(&grpc_tx)
+            .map_err(|err| ConsensusGrpcError::InvalidArgument(format!("{:?}", err)))?;
+        let response = ProposeMintTxResponse::new();
+
+        // Validate the transaction.
+        // This is done here as a courtesy to give clients immediate feedback about the
+        // transaction.
+        // TODO self.mint_tx_manager
+        //    .validate_mint_config_tx(&mint_config_tx)?;
+
+        // The transaction can be considered by the network.
+        // TODO (*self.propose_tx_callback)(ConsensusValue::
+        // MintConfigTx(mint_config_tx), None, None);
+        counters::PROPOSE_MINT_TX.inc();
+        Ok(response)
+    }
 }
 
 impl ConsensusClientApi for ClientApiService {
@@ -190,6 +217,38 @@ impl ConsensusClientApi for ClientApiService {
                 ConsensusGrpcError::NotServing.into()
             } else {
                 self.handle_propose_mint_config_tx(grpc_tx)
+                    .or_else(ConsensusGrpcError::into)
+            };
+
+        result = result.and_then(|mut response| {
+            let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
+            response.set_block_count(num_blocks);
+            Ok(response)
+        });
+
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            send_result(ctx, sink, result, logger)
+        });
+    }
+    fn propose_mint_tx(
+        &mut self,
+        ctx: RpcContext,
+        grpc_tx: mc_consensus_api::external::MintTx,
+        sink: UnarySink<ProposeMintTxResponse>,
+    ) {
+        let _timer = SVC_COUNTERS.req(&ctx);
+
+        if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
+            return send_result(ctx, sink, err.into(), &self.logger);
+        }
+
+        let mut result: Result<ProposeMintTxResponse, RpcStatus> =
+            if counters::CUR_NUM_PENDING_VALUES.get() >= PENDING_LIMIT {
+                ConsensusGrpcError::OverCapacity.into()
+            } else if !(self.is_serving_fn)() {
+                ConsensusGrpcError::NotServing.into()
+            } else {
+                self.handle_propose_mint_tx(grpc_tx)
                     .or_else(ConsensusGrpcError::into)
             };
 
