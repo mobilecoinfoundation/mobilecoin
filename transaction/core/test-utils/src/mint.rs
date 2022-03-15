@@ -1,4 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
+//! Test helpers for minting transactions
 
 use mc_crypto_keys::{Ed25519Pair, RistrettoPublic, Signer};
 use mc_crypto_multisig::{MultiSig, SignerSet};
