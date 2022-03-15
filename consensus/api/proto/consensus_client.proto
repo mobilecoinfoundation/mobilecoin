@@ -49,7 +49,6 @@ message ProposeMintConfigTxResponse {
     uint64 block_count = 2;
 }
 
-
 service ConsensusClientAPI {
     /// This API call is made with an encrypted payload for the enclave,
     /// indicating a new value to be acted upon.

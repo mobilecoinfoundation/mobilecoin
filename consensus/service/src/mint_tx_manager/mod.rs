@@ -15,7 +15,7 @@ pub use traits::MintTxManager;
 #[cfg(test)]
 pub use traits::MockMintTxManager;
 
-use mc_common::{logger::Logger, HashMap, HashSet};
+use mc_common::{logger::Logger, HashMap};
 use mc_crypto_keys::Ed25519Public;
 use mc_crypto_multisig::SignerSet;
 use mc_ledger_db::Ledger;
@@ -94,25 +94,12 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         txs: &[MintConfigTx],
         max_elements: usize,
     ) -> MintTxManagerResult<Vec<MintConfigTx>> {
-        let mut seen_nonces = HashSet::default();
-
         let mut candidates = txs.to_vec();
         candidates.sort();
+        candidates.dedup_by(|a, b| a.prefix.nonce == b.prefix.nonce);
+        candidates.truncate(max_elements);
 
-        let (allowed_txs, _rejected_txs) = candidates.into_iter().partition(|tx| {
-            if seen_nonces.len() >= max_elements {
-                return false;
-            }
-
-            if seen_nonces.contains(&tx.prefix.nonce) {
-                return false;
-            }
-
-            seen_nonces.insert(tx.prefix.nonce.clone());
-            true
-        });
-
-        Ok(allowed_txs)
+        Ok(candidates)
     }
 }
 
