@@ -155,10 +155,20 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
     ) -> MintTxManagerResult<Vec<MintTx>> {
         let mut candidates = txs.to_vec();
         candidates.sort();
-        candidates.dedup_by(|a, b| a.prefix.nonce == b.prefix.nonce);
-        candidates.truncate(max_elements);
 
-        Ok(candidates)
+        let mut seen_nonces = HashSet::default();
+        let (allowed_txs, _rejected_txs) = candidates.into_iter().partition(|tx| {
+            if seen_nonces.len() >= max_elements {
+                return false;
+            }
+            if seen_nonces.contains(&tx.prefix.nonce) {
+                return false;
+            }
+            seen_nonces.insert(tx.prefix.nonce.clone());
+            true
+        });
+
+        Ok(allowed_txs)
     }
 }
 
