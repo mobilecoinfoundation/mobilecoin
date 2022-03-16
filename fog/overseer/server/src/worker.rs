@@ -14,8 +14,10 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::ingest_common::{IngestControllerMode, IngestSummary};
 use mc_fog_ingest_client::FogIngestGrpcClient;
 use mc_fog_recovery_db_iface::{IngressPublicKeyRecord, IngressPublicKeyRecordFilters, RecoveryDb};
+use mc_fog_uri::FogIngestUri;
 use retry::{delay::Fixed, retry_with_index, OperationResult};
 use std::{
+    collections::HashSet,
     convert::TryFrom,
     iter::Iterator,
     sync::{
@@ -63,6 +65,7 @@ impl OverseerWorker {
                         recovery_db,
                         thread_is_enabled,
                         thread_stop_requested,
+                        HashSet::new(),
                         logger,
                     )
                 })
@@ -108,6 +111,11 @@ struct OverseerWorkerThread<DB: RecoveryDb> {
     /// If this is true, the thread will stop.
     stop_requested: Arc<AtomicBool>,
 
+    /// If a node doesn't respond to a status request, it goes here.
+    ///
+    /// This helps us debug when a node starts responding again.
+    unresponsive_node_urls: HashSet<FogIngestUri>,
+
     logger: Logger,
 }
 
@@ -135,6 +143,7 @@ where
         recovery_db: DB,
         is_enabled: Arc<AtomicBool>,
         stop_requested: Arc<AtomicBool>,
+        unresponsive_node_urls: HashSet<FogIngestUri>,
         logger: Logger,
     ) {
         let thread = Self {
@@ -142,12 +151,13 @@ where
             recovery_db,
             is_enabled,
             stop_requested,
+            unresponsive_node_urls,
             logger,
         };
         thread.run();
     }
 
-    fn run(self) {
+    fn run(mut self) {
         loop {
             log::trace!(self.logger, "Overseer worker start of thread.");
             std::thread::sleep(Self::POLLING_FREQUENCY);
@@ -235,12 +245,23 @@ where
     /// Returns the latest round of ingest summaries for each
     /// FogIngestGrpcClient that communicates with a node that is online.
     fn retrieve_ingest_summary_node_mappings(
-        &self,
+        &mut self,
     ) -> Result<Vec<IngestSummaryNodeMapping>, OverseerError> {
         let mut ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping> = Vec::new();
         for (ingest_client_index, ingest_client) in self.ingest_clients.iter().enumerate() {
             match ingest_client.get_status() {
                 Ok(ingest_summary) => {
+                    if self
+                        .unresponsive_node_urls
+                        .contains(ingest_client.get_uri())
+                    {
+                        self.unresponsive_node_urls.remove(ingest_client.get_uri());
+                        log::info!(
+                            self.logger,
+                            "Node {} was previously unresponsive, but just successfully responded!",
+                            ingest_client.get_uri(),
+                        );
+                    }
                     log::trace!(
                         self.logger,
                         "Ingest summary retrieved: {:?}",
@@ -257,6 +278,7 @@ where
                         ingest_client.get_uri(),
                         err
                     );
+                    self.unresponsive_node_urls.insert(ingest_client.get_uri().clone());
                     return Err(OverseerError::UnresponsiveNodeError(error_message));
                 }
             }
