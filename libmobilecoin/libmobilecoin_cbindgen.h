@@ -725,7 +725,9 @@ bool mc_transaction_builder_ring_add_element(FfiMutPtr<McTransactionBuilderRing>
 
 FfiOptOwnedPtr<McTransactionBuilder> mc_transaction_builder_create(uint64_t fee,
                                                                    uint64_t tombstone_block,
-                                                                   FfiOptRefPtr<McFogResolver> fog_resolver);
+                                                                   FfiOptRefPtr<McFogResolver> fog_resolver,
+                                                                   FfiOptRefPtr<McTxOutMemoBuilder> memo_builder,
+                                                                   uint32_t block_version);
 
 void mc_transaction_builder_free(FfiOptOwnedPtr<McTransactionBuilder> transaction_builder);
 

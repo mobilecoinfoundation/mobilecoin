@@ -170,7 +170,9 @@ MC_ATTRIBUTE_NONNULL(1, 2, 3);
 McTransactionBuilder* MC_NULLABLE mc_transaction_builder_create(
   uint64_t fee,
   uint64_t tombstone_block,
-  const McFogResolver* MC_NULLABLE fog_resolver
+  const McFogResolver* MC_NULLABLE fog_resolver,
+  McTxOutMemoBuilder* MC_NONNULL memo_builder,
+  uint32_t block_version
 );
 
 void mc_transaction_builder_free(

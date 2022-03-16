@@ -351,6 +351,8 @@ pub extern "C" fn mc_transaction_builder_create(
     fee: u64,
     tombstone_block: u64,
     fog_resolver: FfiOptRefPtr<McFogResolver>,
+    memo_builder: FfiMutPtr<McTxOutMemoBuilder>,
+    block_version: u32,
 ) -> FfiOptOwnedPtr<McTransactionBuilder> {
     ffi_boundary(|| {
         let fog_resolver =
@@ -363,19 +365,19 @@ pub extern "C" fn mc_transaction_builder_create(
                     FogResolver::new(fog_resolver.0.clone(), &fog_resolver.1)
                         .expect("FogResolver could not be constructed from the provided materials")
                 });
-        // FIXME: block version should be a parameter, it should be the latest
-        // version that fog ledger told us about, or that we got from ledger-db
-        let block_version = BlockVersion::ONE;
-        // Note: RTHMemoBuilder can be selected here, but we will only actually
-        // write memos if block_version is large enough that memos are supported.
-        // If block version is < 2, then transaction builder will filter out memos.
-        let mut memo_builder = RTHMemoBuilder::default();
-        // FIXME: we need to pass the source account key to build sender memo
-        // credentials memo_builder.set_sender_credential(SenderMemoCredential::
-        // from(source_account_key));
-        memo_builder.enable_destination_memo();
+
+
+
+        let block_version = BlockVersion::try_from(block_version).unwrap();
+
+        let memo_builder_box = memo_builder
+            .into_mut()
+            .take()
+            .expect("McTxOutMemoBuilder has already been used to build a Tx");
+
         let mut transaction_builder =
-            TransactionBuilder::new(block_version, fog_resolver, memo_builder);
+            TransactionBuilder::new_with_box(block_version, fog_resolver, memo_builder_box);
+
         transaction_builder
             .set_fee(fee)
             .expect("failure not expected");
