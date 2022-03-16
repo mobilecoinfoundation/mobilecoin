@@ -80,6 +80,7 @@ enum ProposeTxResult {
     TokenNotYetConfigured = 42;
     MissingMaskedTokenId = 43;
     MaskedTokenIdNotAllowed = 44;
+    UnsortedOutputs = 45;
 }
 
 /// Response from TxPropose RPC call.
