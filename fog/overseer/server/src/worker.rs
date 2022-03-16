@@ -433,6 +433,11 @@ where
         // and none of them matches the inactive outstanding key. We must
         // report the inactive outstanding key as lost, set new keys
         // on an idle node, and activate that node.
+        log::warn!(
+            self.logger,
+            "Could not find a node that has the inactive outstanding key: {:?}",
+            &inactive_outstanding_key
+        );
         self.report_lost_ingress_key(inactive_outstanding_key)?;
         let activated_node_index = self.set_new_key_on_a_node()?;
         self.activate_a_node(activated_node_index)?;
