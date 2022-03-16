@@ -228,6 +228,7 @@ impl ConsensusClientApi for ClientApiService {
             send_result(ctx, sink, result, logger)
         });
     }
+
     fn propose_mint_tx(
         &mut self,
         ctx: RpcContext,
