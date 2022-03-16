@@ -55,9 +55,10 @@ use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
     mint::{MintConfigTx, MintTx},
     ring_signature::{KeyImage, Scalar},
+    tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Block, BlockContents, BlockSignature, TokenId,
+    Block, BlockContents, BlockSignature, Token, TokenId,
 };
 // Race here refers to, this is thread-safe, first-one-wins behavior, without
 // blocking
@@ -65,8 +66,11 @@ use once_cell::race::OnceBox;
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 
-/// Domain seperator for unified fees transaction private key.
+/// Domain separator for unified fees transaction private key.
 pub const FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG: &str = "mc_fees_output_private_key";
+
+/// Domain separator for minted txouts public keys.
+pub const MINTED_OUTPUT_PRIVATE_KEY_DOMAIN_TAG: &str = "mc_minted_output_private_key";
 
 include!(concat!(env!("OUT_DIR"), "/target_features.rs"));
 
@@ -680,6 +684,9 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 )
             })
             .collect::<Result<Vec<TxOut>>>()?;
+        // Get the list of MintTxs included in the block.
+        self.validate_mint_txs(&inputs.mint_txs)?;
+        let mint_txs = inputs.mint_txs;
 
         // Collect outputs and key images.
         let mut outputs: Vec<TxOut> = Vec::new();
@@ -690,6 +697,29 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         }
         outputs.extend(fee_outputs);
 
+        // Perform minting.
+        for mint_tx in &mint_txs {
+            // One last chance to prevent minting MOB.
+            if mint_tx.prefix.token_id == Mob::ID {
+                return Err(Error::FormBlock("Attempted to mint MOB".into()));
+            }
+
+            let recipient = PublicAddress::new(
+                &mint_tx.prefix.spend_public_key,
+                &mint_tx.prefix.view_public_key,
+            );
+            let output = mint_output(
+                &recipient,
+                MINTED_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.as_bytes(),
+                parent_block,
+                &mint_txs,
+                mint_tx.prefix.amount,
+                TokenId::from(mint_tx.prefix.token_id),
+            )?;
+
+            outputs.push(output);
+        }
+
         // Sort outputs and key images. This removes ordering information which could be
         // used to infer the per-transaction relationships among outputs and/or
         // key images.
@@ -699,10 +729,6 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // Get the list of MintConfigTxs included in the block.
         self.validate_mint_config_txs(&inputs.mint_config_txs)?;
         let mint_config_txs = inputs.mint_config_txs;
-
-        // Get the list of MintTxs included in the block.
-        self.validate_mint_txs(&inputs.mint_txs)?;
-        let mint_txs = inputs.mint_txs;
 
         // We purposefully do not ..Default::default() here so that new block fields
         // show up as a compilation error until addressed.

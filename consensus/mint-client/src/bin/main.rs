@@ -7,14 +7,13 @@ use grpcio::{ChannelBuilder, EnvBuilder};
 use mc_common::logger::{create_app_logger, o};
 use mc_consensus_api::consensus_client_grpc::ConsensusClientApiClient;
 use mc_consensus_mint_client::{Commands, Config};
-use mc_crypto_keys::{Ed25519Pair, Signer, RistrettoPublic};
+use mc_crypto_keys::{Ed25519Pair, Signer};
 use mc_crypto_multisig::{MultiSig, SignerSet};
 use mc_transaction_core::mint::{
     constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx, MintTxPrefix,
 };
-use mc_util_from_random::FromRandom;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
-use rand::{rngs::StdRng, RngCore, SeedableRng};
+use rand::{rngs::StdRng, thread_rng, RngCore, SeedableRng};
 use std::sync::Arc;
 
 fn main() {
@@ -22,12 +21,12 @@ fn main() {
     let config = Config::parse();
 
     match config.command {
-        Commands::GenerateAndSubmitMintConfigTx { node, private_key } => {
+        Commands::GenerateAndSubmitMintConfigTx { node, signing_key } => {
             let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
             let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
             let api_client = ConsensusClientApiClient::new(ch);
 
-            let signer = Ed25519Pair::from(private_key);
+            let signer = Ed25519Pair::from(signing_key);
 
             let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
             let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
@@ -54,22 +53,26 @@ fn main() {
             println!("response: {:?}", resp);
         }
 
-        Commands::GenerateAndSubmitMintTx { node, private_key } => {
+        Commands::GenerateAndSubmitMintTx {
+            node,
+            signing_key,
+            recipient,
+        } => {
             let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
             let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
             let api_client = ConsensusClientApiClient::new(ch);
 
-            let signer = Ed25519Pair::from(private_key);
+            let signer = Ed25519Pair::from(signing_key);
 
-            let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+            let mut rng = thread_rng();
             let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
             rng.fill_bytes(&mut nonce);
 
             let prefix = MintTxPrefix {
                 token_id: 1,
                 amount: 123,
-                view_public_key: RistrettoPublic::from_random(&mut rng),
-                spend_public_key: RistrettoPublic::from_random(&mut rng),
+                view_public_key: *recipient.view_public_key(),
+                spend_public_key: *recipient.spend_public_key(),
                 nonce,
                 tombstone_block: 10,
             };

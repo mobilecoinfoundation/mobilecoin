@@ -12,6 +12,8 @@ name = "mc-consensus-mint-client"
 path = "src/bin/main.rs"
 
 [dependencies]
+mc-account-keys = { path = "../../account-keys" }
+mc-api = { path = "../../api" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-consensus-api = { path = "../../consensus/api" }
 mc-crypto-keys = { path = "../../crypto/keys" }
