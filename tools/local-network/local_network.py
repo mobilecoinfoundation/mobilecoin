@@ -249,7 +249,7 @@ class Node:
             f'--ias-api-key={IAS_API_KEY}',
             f'--ias-spid={IAS_SPID}',
             f'--origin-block-path {LEDGER_BASE}',
-            f'--block-version 3',
+            # f'--block-version 3',
             f'--ledger-path {self.ledger_dir}',
             f'--admin-listen-uri="insecure-mca://0.0.0.0:{self.admin_port}/"',
             f'--client-listen-uri="insecure-mc://0.0.0.0:{self.client_port}/"',
