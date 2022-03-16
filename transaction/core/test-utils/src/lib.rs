@@ -13,7 +13,7 @@ pub use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Block, BlockID, BlockIndex, BlockVersion, Token,
+    Amount, Block, BlockID, BlockIndex, BlockVersion, Token,
 };
 use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_util_from_random::FromRandom;
@@ -173,6 +173,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
     rng: &mut R,
 ) -> Vec<Block> {
     let value: u64 = INITIALIZE_LEDGER_AMOUNT;
+    let token_id = Mob::ID;
 
     // TxOut from the previous block
     let mut to_spend: Option<TxOut> = None;
@@ -214,8 +215,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                 let outputs: Vec<TxOut> = (0..RING_SIZE)
                     .map(|_i| {
                         let mut tx_out = TxOut::new(
-                            value,
-                            Mob::ID,
+                            Amount { value, token_id },
                             &account_key.default_subaddress(),
                             &RistrettoPrivate::from_random(rng),
                             Default::default(),
@@ -309,8 +309,10 @@ pub fn get_outputs<T: RngCore + CryptoRng>(
         .iter()
         .map(|(recipient, value)| {
             let mut result = TxOut::new(
-                *value,
-                Mob::ID,
+                Amount {
+                    value: *value,
+                    token_id: Mob::ID,
+                },
                 recipient,
                 &RistrettoPrivate::from_random(rng),
                 Default::default(),

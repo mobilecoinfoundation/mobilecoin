@@ -1008,7 +1008,7 @@ mod test {
     use mc_connection::{HardcodedCredentialsProvider, ThickClient};
     use mc_crypto_keys::RistrettoPrivate;
     use mc_fog_report_validation::MockFogPubkeyResolver;
-    use mc_transaction_core::{constants::MILLIMOB_TO_PICOMOB, tokens::Mob, Token};
+    use mc_transaction_core::{constants::MILLIMOB_TO_PICOMOB, tokens::Mob, Amount, Token};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 
@@ -1020,8 +1020,7 @@ mod test {
         let token_id = Mob::ID;
 
         let tx_out = TxOut::new(
-            1,
-            token_id,
+            Amount { value: 1, token_id },
             &alice.default_subaddress(),
             &tx_secret_key_for_txo,
             Default::default(),

@@ -56,7 +56,7 @@ use mc_transaction_core::{
     ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Block, BlockContents, BlockSignature, TokenId,
+    Amount, Block, BlockContents, BlockSignature, TokenId,
 };
 // Race here refers to, this is thread-safe, first-one-wins behavior, without
 // blocking
@@ -632,8 +632,10 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                     FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.as_bytes(),
                     parent_block,
                     &transactions,
-                    *total_fee,
-                    TokenId::from(*token_id),
+                    Amount {
+                        value: *total_fee,
+                        token_id: TokenId::from(*token_id),
+                    },
                 )
             })
             .collect::<Result<Vec<TxOut>>>()?;
@@ -685,8 +687,7 @@ fn mint_output<T: Digestible>(
     domain_tag: &'static [u8],
     parent_block: &Block,
     transactions: &[T],
-    amount: u64,
-    token_id: TokenId,
+    amount: Amount,
 ) -> Result<TxOut> {
     // Create a determinstic private key based on the block contents.
     let tx_private_key = {
@@ -707,14 +708,8 @@ fn mint_output<T: Digestible>(
     };
 
     // Create a single TxOut
-    let output = TxOut::new(
-        amount,
-        token_id,
-        recipient,
-        &tx_private_key,
-        Default::default(),
-    )
-    .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?;
+    let output = TxOut::new(amount, recipient, &tx_private_key, Default::default())
+        .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?;
 
     Ok(output)
 }

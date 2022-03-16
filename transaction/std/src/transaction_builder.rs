@@ -17,7 +17,8 @@ use mc_transaction_core::{
     ring_signature::SignatureRctBulletproofs,
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
-    BlockVersion, CompressedCommitment, MemoContext, MemoPayload, NewMemoError, Token, TokenId,
+    Amount, BlockVersion, CompressedCommitment, MemoContext, MemoPayload, NewMemoError, Token,
+    TokenId,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
@@ -463,8 +464,8 @@ fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
     rng: &mut RNG,
 ) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
     let private_key = RistrettoPrivate::from_random(rng);
-    let mut tx_out =
-        TxOut::new_with_memo(value, token_id, recipient, &private_key, fog_hint, memo_fn)?;
+    let amount = Amount { value, token_id };
+    let mut tx_out = TxOut::new_with_memo(amount, recipient, &private_key, fog_hint, memo_fn)?;
 
     if !block_version.e_memo_feature_is_supported() {
         tx_out.e_memo = None;
