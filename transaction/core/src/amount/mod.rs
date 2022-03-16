@@ -291,7 +291,7 @@ mod amount_tests {
                 shared_secret in arbitrary_ristretto_public())
             {
                 let amount = Amount { value, token_id: token_id.into() };
-                let amount = MaskedAmount::new(amount, &shared_secret).unwrap();
+                let masked_amount = MaskedAmount::new(amount, &shared_secret).unwrap();
                 assert_eq!(
                     value,
                     MaskedAmount::unmask_value(amount.masked_value, &shared_secret)
