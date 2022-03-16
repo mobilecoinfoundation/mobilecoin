@@ -144,7 +144,7 @@ impl MaskedAmount {
     /// * shared_secret: The shared secret curve point
     ///
     /// Returns:
-    /// * Amount
+    /// * MaskedAmount
     /// * Amount (token id and value)
     /// or
     /// * An amount error
@@ -165,6 +165,9 @@ impl MaskedAmount {
         Ok((result, amount))
     }
 
+    /// Compute the expected commitment corresponding to a masked value, masked
+    /// token id, and shared secret, returning errors if the masked token id
+    /// is malformed.
     fn compute_commitment(
         masked_value: u64,
         masked_token_id: &[u8],
