@@ -195,7 +195,7 @@ pub extern "C" fn mc_tx_out_get_value(
         let view_private_key = RistrettoPrivate::try_from_ffi(&view_private_key)?;
 
         let shared_secret = get_tx_out_shared_secret(&view_private_key, &tx_out_public_key);
-        let (_amount, amount) =
+        let (_masked_amount, amount) =
             MaskedAmount::reconstruct(tx_out_amount.masked_value, &[], &shared_secret)?;
 
         // FIXME #1596: This should also return the amount.token_id
