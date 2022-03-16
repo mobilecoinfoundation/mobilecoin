@@ -39,6 +39,7 @@ ed25519-dalek = { version = "2.0.0-pre.1", default-features = false, features = 
 mc-crypto-hashes = { path = "../hashes" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 mc-util-test-helper = { path = "../../util/test-helper" }
+
 pem = "1.0"
 rand_hc = "0.3"
 semver = "1.0"
