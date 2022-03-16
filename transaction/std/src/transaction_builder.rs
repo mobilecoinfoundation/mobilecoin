@@ -248,15 +248,12 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
         let (hint, pubkey_expiry) = create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
-        let (tx_out, shared_secret) = create_output_with_fog_hint(
-            self.block_version,
+        let amount = Amount {
             value,
-            self.token_id,
-            recipient,
-            hint,
-            memo_fn,
-            rng,
-        )?;
+            token_id: self.token_id,
+        };
+        let (tx_out, shared_secret) =
+            create_output_with_fog_hint(self.block_version, amount, recipient, hint, memo_fn, rng)?;
 
         self.impose_tombstone_block_limit(pubkey_expiry);
 
@@ -456,15 +453,13 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 /// * `rng` -
 fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
     block_version: BlockVersion,
-    value: u64,
-    token_id: TokenId,
+    amount: Amount,
     recipient: &PublicAddress,
     fog_hint: EncryptedFogHint,
     memo_fn: impl FnOnce(MemoContext) -> Result<Option<MemoPayload>, NewMemoError>,
     rng: &mut RNG,
 ) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
     let private_key = RistrettoPrivate::from_random(rng);
-    let amount = Amount { value, token_id };
     let mut tx_out = TxOut::new_with_memo(amount, recipient, &private_key, fog_hint, memo_fn)?;
 
     if !block_version.e_memo_feature_is_supported() {
@@ -544,8 +539,7 @@ pub mod transaction_builder_tests {
     /// * A transaction output, and the shared secret for this TxOut.
     fn create_output<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
         block_version: BlockVersion,
-        token_id: TokenId,
-        value: u64,
+        amount: Amount,
         recipient: &PublicAddress,
         fog_resolver: &FPR,
         rng: &mut RNG,
@@ -553,8 +547,7 @@ pub mod transaction_builder_tests {
         let (hint, _pubkey_expiry) = create_fog_hint(recipient, fog_resolver, rng)?;
         create_output_with_fog_hint(
             block_version,
-            value,
-            token_id,
+            amount,
             recipient,
             hint,
             |_| {
@@ -582,10 +575,9 @@ pub mod transaction_builder_tests {
     /// Returns (ring, real_index)
     fn get_ring<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
         block_version: BlockVersion,
-        token_id: TokenId,
+        amount: Amount,
         ring_size: usize,
         account: &AccountKey,
-        value: u64,
         fog_resolver: &FPR,
         rng: &mut RNG,
     ) -> (Vec<TxOut>, usize) {
@@ -599,8 +591,12 @@ pub mod transaction_builder_tests {
             } else {
                 Mob::ID
             };
+            let amount = Amount {
+                value: amount.value,
+                token_id,
+            };
             let (tx_out, _) =
-                create_output(block_version, token_id, value, &address, fog_resolver, rng).unwrap();
+                create_output(block_version, amount, &address, fog_resolver, rng).unwrap();
             ring.push(tx_out);
         }
 
@@ -608,8 +604,7 @@ pub mod transaction_builder_tests {
         let real_index = (rng.next_u64() % ring_size as u64) as usize;
         let (tx_out, _) = create_output(
             block_version,
-            token_id,
-            value,
+            amount,
             &account.default_subaddress(),
             fog_resolver,
             rng,
@@ -634,21 +629,12 @@ pub mod transaction_builder_tests {
     /// Returns (input_credentials)
     fn get_input_credentials<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
         block_version: BlockVersion,
-        token_id: TokenId,
+        amount: Amount,
         account: &AccountKey,
-        value: u64,
         fog_resolver: &FPR,
         rng: &mut RNG,
     ) -> InputCredentials {
-        let (ring, real_index) = get_ring(
-            block_version,
-            token_id,
-            3,
-            account,
-            value,
-            fog_resolver,
-            rng,
-        );
+        let (ring, real_index) = get_ring(block_version, amount, 3, account, fog_resolver, rng);
         let real_output = ring[real_index].clone();
 
         let onetime_private_key = recover_onetime_private_key(
@@ -700,9 +686,11 @@ pub mod transaction_builder_tests {
         for _i in 0..num_inputs {
             let input_credentials = get_input_credentials(
                 block_version,
-                token_id,
+                Amount {
+                    value: input_value,
+                    token_id,
+                },
                 sender,
-                input_value,
                 &fog_resolver,
                 rng,
             );
@@ -745,10 +733,11 @@ pub mod transaction_builder_tests {
             let sender = AccountKey::random(&mut rng);
             let recipient = AccountKey::random(&mut rng);
             let value = 1475 * MILLIMOB_TO_PICOMOB;
+            let amount = Amount { value, token_id };
 
             // Mint an initial collection of outputs, including one belonging to Alice.
             let input_credentials =
-                get_input_credentials(block_version, token_id, &sender, value, &fpr, &mut rng);
+                get_input_credentials(block_version, amount, &sender, &fpr, &mut rng);
 
             let membership_proofs = input_credentials.membership_proofs.clone();
             let key_image = KeyImage::from(&input_credentials.onetime_private_key);
@@ -820,15 +809,10 @@ pub mod transaction_builder_tests {
             });
 
             let value = 1475 * MILLIMOB_TO_PICOMOB;
+            let amount = Amount { value, token_id };
 
-            let input_credentials = get_input_credentials(
-                block_version,
-                token_id,
-                &sender,
-                value,
-                &fog_resolver,
-                &mut rng,
-            );
+            let input_credentials =
+                get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
 
             let membership_proofs = input_credentials.membership_proofs.clone();
             let key_image = KeyImage::from(&input_credentials.onetime_private_key);
@@ -907,6 +891,7 @@ pub mod transaction_builder_tests {
             let fog_hint_address = AccountKey::random_with_fog(&mut rng).default_subaddress();
             let ingest_private_key = RistrettoPrivate::from_random(&mut rng);
             let value = 1475 * MILLIMOB_TO_PICOMOB;
+            let amount = Amount { value, token_id };
 
             let fog_resolver = MockFogResolver(btreemap! {
                                 fog_hint_address
@@ -927,14 +912,8 @@ pub mod transaction_builder_tests {
                 EmptyMemoBuilder::default(),
             );
 
-            let input_credentials = get_input_credentials(
-                block_version,
-                token_id,
-                &sender,
-                value,
-                &fog_resolver,
-                &mut rng,
-            );
+            let input_credentials =
+                get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
             transaction_builder.add_input(input_credentials);
 
             let (_txout, _confirmation) = transaction_builder
@@ -986,6 +965,7 @@ pub mod transaction_builder_tests {
             let recipient_address = recipient.default_subaddress();
             let ingest_private_key = RistrettoPrivate::from_random(&mut rng);
             let value = 1475 * MILLIMOB_TO_PICOMOB;
+            let amount = Amount { value, token_id };
 
             let fog_resolver = MockFogResolver(btreemap! {
                                 recipient_address
@@ -1009,14 +989,8 @@ pub mod transaction_builder_tests {
 
                 transaction_builder.set_tombstone_block(2000);
 
-                let input_credentials = get_input_credentials(
-                    block_version,
-                    token_id,
-                    &sender,
-                    value,
-                    &fog_resolver,
-                    &mut rng,
-                );
+                let input_credentials =
+                    get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
                 transaction_builder.add_input(input_credentials);
 
                 let (_txout, _confirmation) = transaction_builder
@@ -1043,14 +1017,8 @@ pub mod transaction_builder_tests {
 
                 transaction_builder.set_tombstone_block(500);
 
-                let input_credentials = get_input_credentials(
-                    block_version,
-                    token_id,
-                    &sender,
-                    value,
-                    &fog_resolver,
-                    &mut rng,
-                );
+                let input_credentials =
+                    get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
                 transaction_builder.add_input(input_credentials);
 
                 let (_txout, _confirmation) = transaction_builder
@@ -1108,9 +1076,8 @@ pub mod transaction_builder_tests {
 
                 let input_credentials = get_input_credentials(
                     block_version,
-                    token_id,
+                    Amount { value, token_id },
                     &sender,
-                    value,
                     &fog_resolver,
                     &mut rng,
                 );
@@ -1282,9 +1249,8 @@ pub mod transaction_builder_tests {
 
                 let input_credentials = get_input_credentials(
                     block_version,
-                    token_id,
+                    Amount { value, token_id },
                     &sender,
-                    value,
                     &fog_resolver,
                     &mut rng,
                 );
@@ -1437,9 +1403,8 @@ pub mod transaction_builder_tests {
 
                 let input_credentials = get_input_credentials(
                     block_version,
-                    token_id,
+                    Amount { value, token_id },
                     &sender,
-                    value,
                     &fog_resolver,
                     &mut rng,
                 );
@@ -1592,9 +1557,8 @@ pub mod transaction_builder_tests {
 
                 let input_credentials = get_input_credentials(
                     block_version,
-                    token_id,
+                    Amount { value, token_id },
                     &sender,
-                    value,
                     &fog_resolver,
                     &mut rng,
                 );
@@ -1747,9 +1711,8 @@ pub mod transaction_builder_tests {
 
                 let input_credentials = get_input_credentials(
                     block_version,
-                    token_id,
+                    Amount { value, token_id },
                     &sender,
-                    value,
                     &fog_resolver,
                     &mut rng,
                 );
@@ -1890,9 +1853,8 @@ pub mod transaction_builder_tests {
 
                 let input_credentials = get_input_credentials(
                     block_version,
-                    token_id,
+                    Amount { value, token_id },
                     &sender,
-                    value,
                     &fog_resolver,
                     &mut rng,
                 );
@@ -2058,9 +2020,8 @@ pub mod transaction_builder_tests {
 
                 let input_credentials = get_input_credentials(
                     block_version,
-                    token_id,
+                    Amount { value, token_id },
                     &alice,
-                    value,
                     &fog_resolver,
                     &mut rng,
                 );
@@ -2247,9 +2208,8 @@ pub mod transaction_builder_tests {
 
                 let input_credentials = get_input_credentials(
                     block_version,
-                    token_id,
+                    Amount { value, token_id },
                     &sender,
-                    value,
                     &fog_resolver,
                     &mut rng,
                 );
@@ -2310,10 +2270,10 @@ pub mod transaction_builder_tests {
             let alice = AccountKey::random(&mut rng);
             let bob = AccountKey::random(&mut rng);
             let value = 1475;
+            let amount = Amount { value, token_id };
 
             // Mint an initial collection of outputs, including one belonging to Alice.
-            let (ring, real_index) =
-                get_ring(block_version, token_id, 3, &alice, value, &fpr, &mut rng);
+            let (ring, real_index) = get_ring(block_version, amount, 3, &alice, &fpr, &mut rng);
             let real_output = ring[real_index].clone();
 
             let onetime_private_key = recover_onetime_private_key(
@@ -2492,19 +2452,24 @@ pub mod transaction_builder_tests {
         let value = 1475 * MILLIMOB_TO_PICOMOB;
         let change_value = 128 * MILLIMOB_TO_PICOMOB;
 
+        let token_id = Mob::ID;
+
         for _ in 0..3 {
             let mut memo_builder = RTHMemoBuilder::default();
             memo_builder.set_sender_credential(SenderMemoCredential::from(&sender));
             memo_builder.enable_destination_memo();
 
-            let mut transaction_builder =
-                TransactionBuilder::new(block_version, Mob::ID, fog_resolver.clone(), memo_builder);
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                token_id,
+                fog_resolver.clone(),
+                memo_builder,
+            );
 
             let input_credentials = get_input_credentials(
                 block_version,
-                Mob::ID,
+                Amount { value, token_id },
                 &sender,
-                value,
                 &fog_resolver,
                 &mut rng,
             );
