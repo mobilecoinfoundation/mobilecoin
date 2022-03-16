@@ -776,6 +776,26 @@ FfiOptOwnedPtr<McData> mc_transaction_builder_add_output(FfiMutPtr<McTransaction
 /**
  * # Preconditions
  *
+ * * `account_kay` - must be a valid account key, default change address computed from account key
+ * * `transaction_builder` - must not have been previously consumed by a call
+ *   to `build`.
+ * * `out_tx_out_confirmation_number` - length must be >= 32.
+ *
+ * # Errors
+ *
+ * * `LibMcError::AttestationVerification`
+ * * `LibMcError::InvalidInput`
+ */
+FfiOptOwnedPtr<McData> mc_transaction_builder_add_change_output(FfiRefPtr<McAccountKey> account_key,
+                                                                FfiMutPtr<McTransactionBuilder> transaction_builder,
+                                                                uint64_t amount,
+                                                                FfiOptMutPtr<McRngCallback> rng_callback,
+                                                                FfiMutPtr<McMutableBuffer> out_tx_out_confirmation_number,
+                                                                FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
  * * `transaction_builder` - must not have been previously consumed by a call
  *   to `build`.
  * * `recipient_address` - must be a valid `PublicAddress`.
