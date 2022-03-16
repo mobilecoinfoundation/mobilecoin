@@ -22,6 +22,8 @@ pub enum UriParseError {
     PercentDecoding(String),
 }
 
+impl std::error::Error for UriParseError {}
+
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Uri<Scheme: UriScheme> {
     /// The original Url object used to construct this object.

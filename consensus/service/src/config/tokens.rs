@@ -3,7 +3,7 @@
 //! Tokens configuration.
 
 use crate::consensus_service::ConsensusServiceError;
-use mc_common::HashSet;
+use mc_common::{HashMap, HashSet};
 use mc_consensus_enclave::FeeMap;
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
 use mc_crypto_multisig::SignerSet;
@@ -91,7 +91,7 @@ pub struct TokenConfig {
     allow_any_fee: bool,
 
     /// Master minters - if set, controls the set of keys that can sign
-    /// set-minting-configuration transactions.
+    /// minting-configuration transactions.
     /// Not supported for MOB
     #[serde(default, with = "pem_signer_set")]
     master_minters: Option<SignerSet<Ed25519Public>>,
@@ -290,6 +290,22 @@ impl TokensConfig {
     /// Get the entire set of configured tokens.
     pub fn tokens(&self) -> &[TokenConfig] {
         &self.tokens
+    }
+
+    /// Get a map of token id -> master minters.
+    pub fn token_id_to_master_minters(
+        &self,
+    ) -> Result<HashMap<TokenId, SignerSet<Ed25519Public>>, ConsensusServiceError> {
+        self.validate()?;
+
+        Ok(HashMap::from_iter(self.tokens.iter().filter_map(
+            |token_config| {
+                token_config
+                    .master_minters
+                    .as_ref()
+                    .map(|master_minters| (token_config.token_id, master_minters.clone()))
+            },
+        )))
     }
 }
 
@@ -684,7 +700,6 @@ mod tests {
         // Keys were generated using:
         // ```sh
         // pri_pem=$(openssl genpkey -algorithm ED25519)
-        // pri_der=$(echo -n "${pri_pem}" | openssl pkey -outform DER | openssl base64)
         // echo -n "${pri_pem}" | openssl pkey -pubout
         // ```
 

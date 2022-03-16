@@ -313,12 +313,15 @@ impl MintConfigStore {
 pub mod tests {
     use super::*;
     use crate::tx_out_store::tx_out_store_tests::get_env;
-    use mc_crypto_keys::{Ed25519Pair, RistrettoPublic, Signer};
-    use mc_crypto_multisig::{MultiSig, SignerSet};
-    use mc_transaction_core::mint::{MintConfig, MintConfigTx, MintConfigTxPrefix, MintTxPrefix};
+    use mc_crypto_keys::{Ed25519Pair, Signer};
+    use mc_crypto_multisig::MultiSig;
+    use mc_transaction_core::mint::{MintConfigTx, MintConfigTxPrefix};
+    use mc_transaction_core_test_utils::{
+        create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx,
+    };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use rand_core::{CryptoRng, RngCore};
+    use rand_core::RngCore;
 
     pub fn init_mint_config_store() -> (MintConfigStore, Environment) {
         let env = get_env();
@@ -327,92 +330,13 @@ pub mod tests {
         (mint_config_store, env)
     }
 
-    pub fn generate_test_mint_config_tx_and_signers(
-        token_id: TokenId,
-        rng: &mut (impl RngCore + CryptoRng),
-    ) -> (MintConfigTx, Vec<Ed25519Pair>) {
-        let signer_1 = Ed25519Pair::from_random(rng);
-        let signer_2 = Ed25519Pair::from_random(rng);
-        let signer_3 = Ed25519Pair::from_random(rng);
-
-        let mut nonce: Vec<u8> = vec![0u8; 32];
-        rng.fill_bytes(&mut nonce);
-
-        let prefix = MintConfigTxPrefix {
-            token_id: *token_id,
-            configs: vec![
-                MintConfig {
-                    token_id: *token_id,
-                    signer_set: SignerSet::new(vec![signer_1.public_key()], 1),
-                    mint_limit: rng.next_u64(),
-                },
-                MintConfig {
-                    token_id: *token_id,
-                    signer_set: SignerSet::new(
-                        vec![signer_2.public_key(), signer_3.public_key()],
-                        1,
-                    ),
-                    mint_limit: rng.next_u64(),
-                },
-            ],
-            nonce,
-            tombstone_block: rng.next_u64(),
-        };
-
-        let message = prefix.hash();
-        let signature = MultiSig::new(vec![signer_1.try_sign(message.as_ref()).unwrap()]);
-
-        (
-            MintConfigTx { prefix, signature },
-            vec![signer_1, signer_2, signer_3],
-        )
-    }
-
-    pub fn generate_test_mint_config_tx(
-        token_id: TokenId,
-        rng: &mut (impl RngCore + CryptoRng),
-    ) -> MintConfigTx {
-        let (mint_config_tx, _signers) = generate_test_mint_config_tx_and_signers(token_id, rng);
-        mint_config_tx
-    }
-
-    // Generate a random mint tx
-    pub fn generate_test_mint_tx(
-        token_id: TokenId,
-        signers: &[Ed25519Pair],
-        amount: u64,
-        rng: &mut (impl RngCore + CryptoRng),
-    ) -> MintTx {
-        let mut nonce: Vec<u8> = vec![0u8; 32];
-        rng.fill_bytes(&mut nonce);
-
-        let prefix = MintTxPrefix {
-            token_id: *token_id,
-            amount,
-            view_public_key: RistrettoPublic::from_random(rng),
-            spend_public_key: RistrettoPublic::from_random(rng),
-            nonce,
-            tombstone_block: rng.next_u64(),
-        };
-
-        let message = prefix.hash();
-
-        let signatures = signers
-            .iter()
-            .map(|signer| signer.try_sign(message.as_ref()).unwrap())
-            .collect();
-        let signature = MultiSig::new(signatures);
-
-        MintTx { prefix, signature }
-    }
-
     #[test]
     fn set_get_behaves_correctly() {
         let (mint_config_store, env) = init_mint_config_store();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
-        let test_tx_2 = generate_test_mint_config_tx(TokenId::from(2), &mut rng);
+        let test_tx_1 = create_mint_config_tx(TokenId::from(1), &mut rng);
+        let test_tx_2 = create_mint_config_tx(TokenId::from(2), &mut rng);
 
         // Should be able to set a valid mint configuration and then get it back.
         {
@@ -475,8 +399,8 @@ pub mod tests {
         let (mint_config_store, env) = init_mint_config_store();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
-        let mut test_tx_2 = generate_test_mint_config_tx(TokenId::from(2), &mut rng);
+        let test_tx_1 = create_mint_config_tx(TokenId::from(1), &mut rng);
+        let mut test_tx_2 = create_mint_config_tx(TokenId::from(2), &mut rng);
 
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
@@ -529,8 +453,8 @@ pub mod tests {
         let (mint_config_store, env) = init_mint_config_store();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
-        let test_tx_2 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
+        let test_tx_1 = create_mint_config_tx(TokenId::from(1), &mut rng);
+        let test_tx_2 = create_mint_config_tx(TokenId::from(1), &mut rng);
 
         assert_ne!(test_tx_1, test_tx_2);
 
@@ -579,7 +503,7 @@ pub mod tests {
         let (mint_config_store, env) = init_mint_config_store();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
+        let test_tx_1 = create_mint_config_tx(TokenId::from(1), &mut rng);
         let test_tx_2 = MintConfigTx {
             prefix: MintConfigTxPrefix {
                 token_id: test_tx_1.prefix.token_id,
@@ -637,7 +561,7 @@ pub mod tests {
         let (mint_config_store, env) = init_mint_config_store();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
+        let test_tx_1 = create_mint_config_tx(TokenId::from(1), &mut rng);
 
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
@@ -712,7 +636,7 @@ pub mod tests {
         let (mint_config_store, env) = init_mint_config_store();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
+        let test_tx_1 = create_mint_config_tx(TokenId::from(1), &mut rng);
 
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
@@ -743,7 +667,7 @@ pub mod tests {
         let (mint_config_store, env) = init_mint_config_store();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
+        let test_tx_1 = create_mint_config_tx(TokenId::from(1), &mut rng);
 
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
@@ -779,8 +703,8 @@ pub mod tests {
         let (mint_config_store, env) = init_mint_config_store();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let mut test_tx_1 = generate_test_mint_config_tx(TokenId::from(1), &mut rng);
-        let test_tx_2 = generate_test_mint_config_tx(TokenId::from(2), &mut rng);
+        let mut test_tx_1 = create_mint_config_tx(TokenId::from(1), &mut rng);
+        let test_tx_2 = create_mint_config_tx(TokenId::from(2), &mut rng);
 
         // Try to update when nothing has been written yet.
         {
@@ -845,7 +769,7 @@ pub mod tests {
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(2);
 
-        let (test_tx_1, signers1) = generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (test_tx_1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         // Store mint config
         {
@@ -859,7 +783,7 @@ pub mod tests {
         // Generate a test mint tx that matches the first mint config and see that we
         // can get it back.
         let db_transaction = env.begin_ro_txn().unwrap();
-        let mint_tx1 = generate_test_mint_tx(
+        let mint_tx1 = create_mint_tx(
             token_id1,
             &[Ed25519Pair::from(signers1[0].private_key())],
             10,
@@ -875,7 +799,7 @@ pub mod tests {
 
         // Generate a test mint tx that matches the second mint config and see that we
         // can get it back.
-        let mint_tx2 = generate_test_mint_tx(
+        let mint_tx2 = create_mint_tx(
             token_id1,
             &[Ed25519Pair::from(signers1[1].private_key())],
             10,
@@ -891,7 +815,7 @@ pub mod tests {
 
         // Generate a test mint tx that is signed by an unknown signer, we shouldn't get
         // anything back.
-        let mint_tx3 = generate_test_mint_tx(
+        let mint_tx3 = create_mint_tx(
             token_id1,
             &[Ed25519Pair::from_random(&mut rng)],
             10,
@@ -904,7 +828,7 @@ pub mod tests {
 
         // Generate a test mint tx that is signed by all known signers but a different
         // token id.
-        let mint_tx4 = generate_test_mint_tx(token_id2, &signers1, 10, &mut rng);
+        let mint_tx4 = create_mint_tx(token_id2, &signers1, 10, &mut rng);
         assert_eq!(
             mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx4, &db_transaction),
             Err(Error::NotFound)
@@ -917,7 +841,7 @@ pub mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let token_id1 = TokenId::from(1);
 
-        let (test_tx_1, signers1) = generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (test_tx_1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         // Store mint config
         {
@@ -931,7 +855,7 @@ pub mod tests {
         // Generate a test mint tx that will immediately exceed the mint limit.
         {
             let db_transaction = env.begin_ro_txn().unwrap();
-            let mint_tx = generate_test_mint_tx(
+            let mint_tx = create_mint_tx(
                 token_id1,
                 &[Ed25519Pair::from(signers1[0].private_key())],
                 test_tx_1.prefix.configs[0].mint_limit + 1,
@@ -957,7 +881,7 @@ pub mod tests {
 
         {
             let db_transaction = env.begin_ro_txn().unwrap();
-            let mint_tx = generate_test_mint_tx(
+            let mint_tx = create_mint_tx(
                 token_id1,
                 &[Ed25519Pair::from(signers1[0].private_key())],
                 test_tx_1.prefix.configs[0].mint_limit - 9,
@@ -976,7 +900,7 @@ pub mod tests {
         // over-minting.
         {
             let db_transaction = env.begin_ro_txn().unwrap();
-            let mint_tx = generate_test_mint_tx(
+            let mint_tx = create_mint_tx(
                 token_id1,
                 &[Ed25519Pair::from(signers1[0].private_key())],
                 20,
@@ -998,8 +922,7 @@ pub mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let token_id1 = TokenId::from(1);
 
-        let (mut test_tx_1, signers1) =
-            generate_test_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mut test_tx_1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         // This test requires that the 2nd minting configuration is >= the first one.
         test_tx_1.prefix.configs[1].mint_limit = test_tx_1.prefix.configs[0].mint_limit;
@@ -1027,7 +950,7 @@ pub mod tests {
 
         {
             let db_transaction = env.begin_ro_txn().unwrap();
-            let mint_tx = generate_test_mint_tx(
+            let mint_tx = create_mint_tx(
                 token_id1,
                 &signers1,
                 test_tx_1.prefix.configs[0].mint_limit - 9,
@@ -1050,8 +973,8 @@ pub mod tests {
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(2);
 
-        let test_tx_1 = generate_test_mint_config_tx(token_id1, &mut rng);
-        let test_tx_2 = generate_test_mint_config_tx(token_id2, &mut rng);
+        let test_tx_1 = create_mint_config_tx(token_id1, &mut rng);
+        let test_tx_2 = create_mint_config_tx(token_id2, &mut rng);
 
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
@@ -1137,9 +1060,9 @@ pub mod tests {
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(2);
 
-        let test_tx_1 = generate_test_mint_config_tx(token_id1, &mut rng);
-        let test_tx_2 = generate_test_mint_config_tx(token_id2, &mut rng);
-        let test_tx_3 = generate_test_mint_config_tx(token_id2, &mut rng);
+        let test_tx_1 = create_mint_config_tx(token_id1, &mut rng);
+        let test_tx_2 = create_mint_config_tx(token_id2, &mut rng);
+        let test_tx_3 = create_mint_config_tx(token_id2, &mut rng);
 
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();

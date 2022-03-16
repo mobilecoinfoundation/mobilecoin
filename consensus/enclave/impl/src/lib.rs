@@ -53,6 +53,7 @@ use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
+    mint::MintConfigTx,
     ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
@@ -284,6 +285,27 @@ impl SgxConsensusEnclave {
         }
 
         Ok(transactions)
+    }
+
+    /// Validate a list of MintConfigTxs.
+    fn validate_mint_config_txs(&self, mint_config_txs: &[MintConfigTx]) -> Result<()> {
+        // TODO: iterate over each indivdual transaction and validate it. This requires
+        // the enclave has knowledge of the master minters for each token id.
+        // This validation already happens in untruested, but it will be nice to do it
+        // here as well. This will get implemetend in a follow up PR.
+
+        // Ensure all nonces are unique.
+        let mut seen_nonces = BTreeSet::default();
+        for tx in mint_config_txs {
+            if !seen_nonces.insert(tx.prefix.nonce.clone()) {
+                return Err(Error::FormBlock(format!(
+                    "Duplicate MintConfigTx nonce: {:?}",
+                    tx.prefix.nonce
+                )));
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -653,8 +675,11 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
         key_images.sort();
 
-        // Right now mint-config-txs and mint-txs are not actually created anywhere.
-        let mint_config_txs = Vec::new();
+        // Get the list of MintConfigTxs included in the block.
+        self.validate_mint_config_txs(&inputs.mint_config_txs)?;
+        let mint_config_txs = inputs.mint_config_txs;
+
+        // Right now mint-txs are not actually created anywhere.
         let mint_txs = Vec::new();
 
         // We purposefully do not ..Default::default() here so that new block fields

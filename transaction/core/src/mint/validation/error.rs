@@ -2,7 +2,7 @@
 
 //! Error type for mint transactions validation.
 
-use crate::BlockVersion;
+use crate::{BlockVersion, TokenId};
 use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 
@@ -10,19 +10,19 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum Error {
     /// Invalid block version: {0}
-    BlockVersion(BlockVersion),
+    InvalidBlockVersion(BlockVersion),
 
     /// Invalid token id: {0}
-    TokenId(u32),
+    InvalidTokenId(u32),
 
     /// Invalid nonce length: {0}
-    NonceLength(usize),
+    InvalidNonceLength(usize),
 
     /// Invalid signer set
-    SignerSet,
+    InvalidSignerSet,
 
     /// Invalid signature
-    Signature,
+    InvalidSignature,
 
     /// Number of blocks in ledger exceeds the tombstone block number
     TombstoneBlockExceeded,
@@ -35,4 +35,10 @@ pub enum Error {
 
     /// Amount exceeds mint limit
     AmountExceedsMintLimit,
+
+    /// No master minters configured for token id {0}
+    NoMasterMinters(TokenId),
+
+    /// Nonce already seen in ledger
+    NonceAlreadyUsed,
 }

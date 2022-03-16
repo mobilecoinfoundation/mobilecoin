@@ -6,21 +6,24 @@ use crate::{
     api::grpc_error::ConsensusGrpcError,
     consensus_service::ProposeTxCallback,
     counters,
+    mint_tx_manager::MintTxManager,
     tx_manager::{TxManager, TxManagerError},
 };
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
 use mc_common::logger::Logger;
 use mc_consensus_api::{
+    consensus_client::ProposeMintConfigTxResponse,
     consensus_client_grpc::ConsensusClientApi,
     consensus_common::{ProposeTxResponse, ProposeTxResult},
 };
 use mc_consensus_enclave::ConsensusEnclave;
 use mc_ledger_db::Ledger;
 use mc_peers::ConsensusValue;
+use mc_transaction_core::mint::MintConfigTx;
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
-use std::sync::Arc;
+use std::{convert::TryFrom, sync::Arc};
 
 /// Maximum number of pending values for consensus service before rejecting
 /// add_transaction requests.
@@ -30,6 +33,7 @@ const PENDING_LIMIT: i64 = 500;
 pub struct ClientApiService {
     enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
     tx_manager: Arc<dyn TxManager + Send + Sync>,
+    mint_tx_manager: Arc<dyn MintTxManager + Send + Sync>,
     ledger: Arc<dyn Ledger + Send + Sync>,
     /// Passes proposed transactions to the consensus service.
     propose_tx_callback: ProposeTxCallback,
@@ -45,6 +49,7 @@ impl ClientApiService {
         scp_client_value_sender: ProposeTxCallback,
         ledger: Arc<dyn Ledger + Send + Sync>,
         tx_manager: Arc<dyn TxManager + Send + Sync>,
+        mint_tx_manager: Arc<dyn MintTxManager + Send + Sync>,
         is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
@@ -52,6 +57,7 @@ impl ClientApiService {
         Self {
             enclave,
             tx_manager,
+            mint_tx_manager,
             ledger,
             propose_tx_callback: scp_client_value_sender,
             is_serving_fn,
@@ -91,6 +97,32 @@ impl ClientApiService {
         // The transaction can be considered by the network.
         (*self.propose_tx_callback)(ConsensusValue::TxHash(tx_hash), None, None);
         counters::ADD_TX.inc();
+        Ok(response)
+    }
+
+    /// Handles a client's proposal for a MintConfigTx to be included in the
+    /// ledger.
+    ///
+    /// # Arguments
+    /// `grpc_tx` - The protobuf MintConfigTx being proposed.
+    fn handle_propose_mint_config_tx(
+        &mut self,
+        grpc_tx: mc_consensus_api::external::MintConfigTx,
+    ) -> Result<ProposeMintConfigTxResponse, ConsensusGrpcError> {
+        counters::PROPOSE_MINT_CONFIG_TX_INITIATED.inc();
+        let mint_config_tx = MintConfigTx::try_from(&grpc_tx)
+            .map_err(|err| ConsensusGrpcError::InvalidArgument(format!("{:?}", err)))?;
+        let response = ProposeMintConfigTxResponse::new();
+
+        // Validate the transaction.
+        // This is done here as a courtesy to give clients immediate feedback about the
+        // transaction.
+        self.mint_tx_manager
+            .validate_mint_config_tx(&mint_config_tx)?;
+
+        // The transaction can be considered by the network.
+        (*self.propose_tx_callback)(ConsensusValue::MintConfigTx(mint_config_tx), None, None);
+        counters::PROPOSE_MINT_CONFIG_TX.inc();
         Ok(response)
     }
 }
@@ -138,6 +170,39 @@ impl ConsensusClientApi for ClientApiService {
             send_result(ctx, sink, result, logger)
         });
     }
+
+    fn propose_mint_config_tx(
+        &mut self,
+        ctx: RpcContext,
+        grpc_tx: mc_consensus_api::external::MintConfigTx,
+        sink: UnarySink<ProposeMintConfigTxResponse>,
+    ) {
+        let _timer = SVC_COUNTERS.req(&ctx);
+
+        if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
+            return send_result(ctx, sink, err.into(), &self.logger);
+        }
+
+        let mut result: Result<ProposeMintConfigTxResponse, RpcStatus> =
+            if counters::CUR_NUM_PENDING_VALUES.get() >= PENDING_LIMIT {
+                ConsensusGrpcError::OverCapacity.into()
+            } else if !(self.is_serving_fn)() {
+                ConsensusGrpcError::NotServing.into()
+            } else {
+                self.handle_propose_mint_config_tx(grpc_tx)
+                    .or_else(ConsensusGrpcError::into)
+            };
+
+        result = result.and_then(|mut response| {
+            let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
+            response.set_block_count(num_blocks);
+            Ok(response)
+        });
+
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            send_result(ctx, sink, result, logger)
+        });
+    }
 }
 
 #[cfg(test)]
@@ -145,6 +210,7 @@ mod client_api_tests {
     use crate::{
         api::client_api_service::{ClientApiService, PENDING_LIMIT},
         counters,
+        mint_tx_manager::MockMintTxManager,
         tx_manager::{MockTxManager, TxManagerError},
     };
     use grpcio::{
@@ -235,6 +301,7 @@ mod client_api_tests {
             scp_client_value_sender,
             Arc::new(ledger),
             Arc::new(tx_manager),
+            Arc::new(MockMintTxManager::new()),
             is_serving_fn,
             Arc::new(authenticator),
             logger,
@@ -305,6 +372,7 @@ mod client_api_tests {
             scp_client_value_sender,
             Arc::new(ledger),
             Arc::new(tx_manager),
+            Arc::new(MockMintTxManager::new()),
             is_serving_fn,
             Arc::new(authenticator),
             logger,
@@ -369,6 +437,7 @@ mod client_api_tests {
             scp_client_value_sender,
             Arc::new(ledger),
             Arc::new(tx_manager),
+            Arc::new(MockMintTxManager::new()),
             is_serving_fn,
             Arc::new(authenticator),
             logger,
@@ -415,6 +484,7 @@ mod client_api_tests {
             scp_client_value_sender,
             Arc::new(MockLedger::new()),
             Arc::new(MockTxManager::new()),
+            Arc::new(MockMintTxManager::new()),
             is_serving_fn,
             Arc::new(authenticator),
             logger,
@@ -463,6 +533,7 @@ mod client_api_tests {
             scp_client_value_sender,
             Arc::new(MockLedger::new()),
             Arc::new(MockTxManager::new()),
+            Arc::new(MockMintTxManager::new()),
             is_serving_fn,
             Arc::new(authenticator),
             logger,
@@ -515,6 +586,7 @@ mod client_api_tests {
             scp_client_value_sender,
             Arc::new(MockLedger::new()),
             Arc::new(MockTxManager::new()),
+            Arc::new(MockMintTxManager::new()),
             is_serving_fn,
             Arc::new(authenticator),
             logger,

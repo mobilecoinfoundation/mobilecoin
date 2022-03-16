@@ -6,6 +6,7 @@ use crate::{
         task_message::TaskMessage, IS_BEHIND_GRACE_PERIOD, MAX_PENDING_VALUES_TO_NOMINATE,
     },
     counters,
+    mint_tx_manager::MintTxManager,
     tx_manager::TxManager,
 };
 use mc_common::{
@@ -47,6 +48,7 @@ pub struct ByzantineLedgerWorker<
     LS: LedgerSync<SCPNetworkState> + Send + 'static,
     PC: BlockchainConnection + ConsensusConnection + 'static,
     TXM: TxManager,
+    MTXM: MintTxManager,
 > {
     scp_node: Box<dyn ScpNode<ConsensusValue>>,
     msg_signer_key: Arc<Ed25519Pair>,
@@ -85,7 +87,7 @@ pub struct ByzantineLedgerWorker<
     pending_consensus_msgs: Vec<(VerifiedConsensusMsg, ResponderId)>,
 
     // Transactions that this node will attempt to submit to consensus.
-    pending_values: PendingValues<TXM>,
+    pending_values: PendingValues<TXM, MTXM>,
 
     // Set to true when the worker has pending values that have not yet been proposed to the
     // scp_node.
@@ -99,7 +101,8 @@ impl<
         LS: LedgerSync<SCPNetworkState> + Send + 'static,
         PC: BlockchainConnection + ConsensusConnection + 'static,
         TXM: TxManager + Send + Sync,
-    > ByzantineLedgerWorker<L, LS, PC, TXM>
+        MTXM: MintTxManager + Send + Sync,
+    > ByzantineLedgerWorker<L, LS, PC, TXM, MTXM>
 {
     /// Create a new ByzantineLedgerWorker.
     ///
@@ -110,6 +113,7 @@ impl<
     /// * `ledger_sync_service` - LedgerSyncService
     /// * `connection_manager` - Manages connections to peers.
     /// * `tx_manager` - TxManager
+    /// * `mint_tx_manager` - MintTxManager
     /// * `broadcaster` - Broadcaster
     /// * `tasks` - Receiver-end of a queue of task messages for this worker to
     ///   process.
@@ -127,6 +131,7 @@ impl<
         ledger_sync_service: LS,
         connection_manager: ConnectionManager<PC>,
         tx_manager: Arc<TXM>,
+        mint_tx_manager: Arc<MTXM>,
         broadcaster: Arc<Mutex<dyn Broadcast>>,
         tasks: Receiver<TaskMessage>,
         is_behind: Arc<AtomicBool>,
@@ -152,7 +157,7 @@ impl<
             logger,
             current_slot_index,
             pending_consensus_msgs: Default::default(),
-            pending_values: PendingValues::new(tx_manager),
+            pending_values: PendingValues::new(tx_manager, mint_tx_manager),
             need_nominate: false,
             network_state,
             ledger_sync_service,
@@ -527,7 +532,7 @@ impl<
         // Invariant: pending_values only contains valid values that were not
         // externalized.
         self.pending_values
-            .retain(|tx_hash| !externalized.contains(tx_hash));
+            .retain(|value| !externalized.contains(value));
 
         log::info!(
             self.logger,
@@ -547,7 +552,7 @@ impl<
             .expect("Ledger must contain a block.");
         let (block, block_contents, signature) = self
             .tx_manager
-            .tx_hashes_to_block(&externalized, &parent_block)
+            .tx_hashes_to_block(externalized.clone(), &parent_block)
             .unwrap_or_else(|e| panic!("Failed to build block from {:?}: {:?}", externalized, e));
 
         log::info!(
@@ -576,25 +581,29 @@ impl<
         // Purge transactions that can no longer be processed based on their tombstone
         // block.
         let max_externalized_slots = self.scp_node.max_externalized_slots() as u64;
-        let purged_hashes = {
-            let index = self
-                .current_slot_index
-                .saturating_sub(max_externalized_slots);
-            self.tx_manager.remove_expired(index)
-        };
+        let expired_block_index = self
+            .current_slot_index
+            .saturating_sub(max_externalized_slots);
+        let purged_hashes = self.tx_manager.remove_expired(expired_block_index);
+        let pending_values_len_before_purge = self.pending_values.len();
 
         self.pending_values.retain(|value| match value {
             ConsensusValue::TxHash(tx_hash) => !purged_hashes.contains(tx_hash),
+            ConsensusValue::MintConfigTx(mint_config_tx) => {
+                mint_config_tx.prefix.tombstone_block > expired_block_index
+            }
         });
 
         // Drop pending values that are no longer considered valid.
+        let pending_values_len_before_clear_invalid = self.pending_values.len();
         self.pending_values.clear_invalid_values();
 
         log::info!(
             self.logger,
-            "Number of pending values post cleanup: {} ({} expired)",
+            "Number of pending values post cleanup: {} (purged: {}, invalidated: {})",
             self.pending_values.len(),
-            purged_hashes.len(),
+            pending_values_len_before_purge - pending_values_len_before_clear_invalid,
+            pending_values_len_before_clear_invalid - self.pending_values.len(),
         );
 
         // Previous slot metrics.
@@ -632,13 +641,15 @@ impl<
         let missing_hashes: Vec<TxHash> = scp_msg
             .values()
             .into_iter()
-            .filter_map(|value| match value {
-                ConsensusValue::TxHash(tx_hash) => {
+            .filter_map(|value| {
+                if let ConsensusValue::TxHash(tx_hash) = value {
                     if self.tx_manager.contains(&tx_hash) {
                         None
                     } else {
                         Some(tx_hash)
                     }
+                } else {
+                    None
                 }
             })
             .collect();
@@ -795,6 +806,7 @@ mod tests {
             worker::ByzantineLedgerWorker,
             IS_BEHIND_GRACE_PERIOD, MAX_PENDING_VALUES_TO_NOMINATE,
         },
+        mint_tx_manager::MockMintTxManager,
         tx_manager::{MockTxManager, TxManagerError},
     };
     use mc_common::{
@@ -842,6 +854,7 @@ mod tests {
         MockLedger,
         MockLedgerSync<SCPNetworkState>,
         MockTxManager,
+        MockMintTxManager,
         MockBroadcast,
     ) {
         let mut scp_node = MockScpNode::new();
@@ -857,6 +870,7 @@ mod tests {
             ledger,
             MockLedgerSync::new(),
             MockTxManager::new(),
+            MockMintTxManager::new(),
             MockBroadcast::new(),
         )
     }
@@ -894,7 +908,7 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 15;
-        let (scp_node, ledger, ledger_sync, tx_manager, broadcast) =
+        let (scp_node, ledger, ledger_sync, tx_manager, mint_tx_manager, broadcast) =
             get_mocks(&local_node_id, &quorum_set, num_blocks);
 
         let connection_manager = get_connection_manager(&local_node_id, &peers, &logger);
@@ -908,6 +922,7 @@ mod tests {
             ledger_sync,
             connection_manager,
             Arc::new(tx_manager),
+            Arc::new(mint_tx_manager),
             Arc::new(Mutex::new(broadcast)),
             task_receiver,
             Arc::new(AtomicBool::new(false)),
@@ -941,7 +956,7 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 12;
-        let (scp_node, ledger, mut ledger_sync, tx_manager, broadcast) =
+        let (scp_node, ledger, mut ledger_sync, tx_manager, mint_tx_manager, broadcast) =
             get_mocks(&node_id, &quorum_set, num_blocks);
 
         // Mock returns `is_behind`.
@@ -958,6 +973,7 @@ mod tests {
             ledger_sync,
             connection_manager,
             Arc::new(tx_manager),
+            Arc::new(mint_tx_manager),
             Arc::new(Mutex::new(broadcast)),
             task_receiver,
             Arc::new(AtomicBool::new(false)),
@@ -1058,7 +1074,7 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 12;
-        let (scp_node, ledger, mut ledger_sync, tx_manager, broadcast) =
+        let (scp_node, ledger, mut ledger_sync, tx_manager, mint_tx_manager, broadcast) =
             get_mocks(&node_id, &quorum_set, num_blocks);
         let connection_manager = get_connection_manager(&node_id, &peers, &logger);
         let (_task_sender, task_receiver) = get_channel();
@@ -1075,6 +1091,7 @@ mod tests {
             ledger_sync,
             connection_manager,
             Arc::new(tx_manager),
+            Arc::new(mint_tx_manager),
             Arc::new(Mutex::new(broadcast)),
             task_receiver,
             Arc::new(AtomicBool::new(false)),
@@ -1117,7 +1134,7 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 12;
-        let (scp_node, ledger, mut ledger_sync, tx_manager, broadcast) =
+        let (scp_node, ledger, mut ledger_sync, tx_manager, mint_tx_manager, broadcast) =
             get_mocks(&node_id, &quorum_set, num_blocks);
         let connection_manager = get_connection_manager(&node_id, &peers, &logger);
         let (_task_sender, task_receiver) = get_channel();
@@ -1134,6 +1151,7 @@ mod tests {
             ledger_sync,
             connection_manager,
             Arc::new(tx_manager),
+            Arc::new(mint_tx_manager),
             Arc::new(Mutex::new(broadcast)),
             task_receiver,
             Arc::new(AtomicBool::new(false)),
@@ -1175,7 +1193,7 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 12;
-        let (scp_node, mut ledger, ledger_sync, mut tx_manager, broadcast) =
+        let (scp_node, mut ledger, ledger_sync, mut tx_manager, mint_tx_manager, broadcast) =
             get_mocks(&node_id, &quorum_set, num_blocks);
 
         // Transaction hashes that will be submitted by clients.
@@ -1226,6 +1244,7 @@ mod tests {
             ledger_sync,
             connection_manager,
             Arc::new(tx_manager),
+            Arc::new(mint_tx_manager),
             Arc::new(Mutex::new(broadcast)),
             task_receiver,
             Arc::new(AtomicBool::new(false)),
@@ -1284,7 +1303,7 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 12;
-        let (scp_node, ledger, ledger_sync, mut tx_manager, broadcast) =
+        let (scp_node, ledger, ledger_sync, mut tx_manager, mint_tx_manager, broadcast) =
             get_mocks(&node_id, &quorum_set, num_blocks);
 
         let connection_manager = get_connection_manager(&node_id, &peers, &logger);
@@ -1310,6 +1329,7 @@ mod tests {
             ledger_sync,
             connection_manager,
             Arc::new(tx_manager),
+            Arc::new(mint_tx_manager),
             Arc::new(Mutex::new(broadcast)),
             task_receiver,
             Arc::new(AtomicBool::new(false)),
@@ -1375,7 +1395,7 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 12;
-        let (mut scp_node, ledger, ledger_sync, mut tx_manager, broadcast) =
+        let (mut scp_node, ledger, ledger_sync, mut tx_manager, mint_tx_manager, broadcast) =
             get_mocks(&node_id, &quorum_set, num_blocks);
         let connection_manager = get_connection_manager(&node_id, &peers, &logger);
         let (_task_sender, task_receiver) = get_channel();
@@ -1398,6 +1418,7 @@ mod tests {
             ledger_sync,
             connection_manager,
             Arc::new(tx_manager),
+            Arc::new(mint_tx_manager),
             Arc::new(Mutex::new(broadcast)),
             task_receiver,
             Arc::new(AtomicBool::new(false)),
