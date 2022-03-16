@@ -339,3 +339,16 @@ pub fn get_outputs<T: RngCore + CryptoRng>(
         })
         .collect()
 }
+
+/// Generate a dummy txout for testing.
+pub fn create_test_tx_out(rng: &mut (impl RngCore + CryptoRng)) -> TxOut {
+    let account_key = AccountKey::random(rng);
+    TxOut::new(
+        rng.next_u64(),
+        Mob::ID,
+        &account_key.default_subaddress(),
+        &RistrettoPrivate::from_random(rng),
+        Default::default(),
+    )
+    .unwrap()
+}

@@ -898,10 +898,11 @@ mod ledger_db_test {
     };
     use mc_transaction_core_test_utils::{
         create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx,
+        create_test_tx_out,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use rand_core::{CryptoRng, RngCore};
+    use rand_core::RngCore;
     use tempdir::TempDir;
     use test::Bencher;
 
@@ -992,18 +993,6 @@ mod ledger_db_test {
         assert_eq!(db.num_blocks().unwrap(), num_blocks as u64);
 
         (blocks, blocks_contents)
-    }
-    /// Generate a dummy txout for testing.
-    fn get_test_tx_out(rng: &mut (impl RngCore + CryptoRng)) -> TxOut {
-        let account_key = AccountKey::random(rng);
-        TxOut::new(
-            rng.next_u64(),
-            Mob::ID,
-            &account_key.default_subaddress(),
-            &RistrettoPrivate::from_random(rng),
-            Default::default(),
-        )
-        .unwrap()
     }
 
     #[test]
@@ -1395,7 +1384,7 @@ mod ledger_db_test {
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1.clone()],
-            outputs: vec![get_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(&mut rng)],
             ..Default::default()
         };
 
@@ -1452,7 +1441,7 @@ mod ledger_db_test {
 
         let block_contents3 = BlockContents {
             mint_txs: vec![mint_tx2.clone()],
-            outputs: vec![get_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(&mut rng)],
             ..Default::default()
         };
 
@@ -1508,7 +1497,7 @@ mod ledger_db_test {
 
         let block_contents4 = BlockContents {
             mint_txs: vec![mint_tx3.clone()],
-            outputs: vec![get_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(&mut rng)],
             ..Default::default()
         };
 
@@ -1573,7 +1562,7 @@ mod ledger_db_test {
 
         let block_contents5 = BlockContents {
             mint_txs: vec![mint_tx4.clone(), mint_tx5.clone()],
-            outputs: vec![get_test_tx_out(&mut rng), get_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(&mut rng), create_test_tx_out(&mut rng)],
             ..Default::default()
         };
 
@@ -1642,7 +1631,7 @@ mod ledger_db_test {
 
         let block_contents6 = BlockContents {
             mint_txs: vec![mint_tx6.clone(), mint_tx7.clone()],
-            outputs: vec![get_test_tx_out(&mut rng), get_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(&mut rng), create_test_tx_out(&mut rng)],
             ..Default::default()
         };
 
@@ -1969,7 +1958,7 @@ mod ledger_db_test {
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1, mint_tx2],
-            outputs: vec![get_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(&mut rng)],
             ..Default::default()
         };
 
@@ -2032,7 +2021,7 @@ mod ledger_db_test {
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1.clone()],
-            outputs: vec![get_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(&mut rng)],
             ..Default::default()
         };
 
@@ -2060,7 +2049,7 @@ mod ledger_db_test {
 
         let block_contents3 = BlockContents {
             mint_txs: vec![mint_tx2.clone(), mint_tx1.clone()],
-            outputs: vec![get_test_tx_out(&mut rng), get_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(&mut rng), create_test_tx_out(&mut rng)],
             ..Default::default()
         };
 
@@ -2128,7 +2117,7 @@ mod ledger_db_test {
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1.clone()],
-            outputs: vec![get_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(&mut rng)],
             ..Default::default()
         };
 
@@ -2202,7 +2191,7 @@ mod ledger_db_test {
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1.clone()],
-            outputs: vec![get_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(&mut rng)],
             ..Default::default()
         };
 
@@ -2228,7 +2217,7 @@ mod ledger_db_test {
 
         let block_contents3 = BlockContents {
             mint_txs: vec![mint_tx2.clone()],
-            outputs: vec![get_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(&mut rng)],
             ..Default::default()
         };
 
@@ -2268,7 +2257,7 @@ mod ledger_db_test {
 
         let block_contents3 = BlockContents {
             mint_txs: vec![mint_tx3.clone()],
-            outputs: vec![get_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(&mut rng)],
             ..Default::default()
         };
 

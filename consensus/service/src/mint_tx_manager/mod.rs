@@ -551,8 +551,8 @@ mod mint_tx_tests {
     use mc_crypto_multisig::SignerSet;
     use mc_transaction_core::{Block, BlockContents};
     use mc_transaction_core_test_utils::{
-        create_ledger, create_mint_config_tx_and_signers, create_mint_tx, initialize_ledger,
-        AccountKey,
+        create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_test_tx_out,
+        initialize_ledger, AccountKey,
     };
     use rand::{rngs::StdRng, SeedableRng};
     use std::iter::FromIterator;
@@ -612,8 +612,7 @@ mod mint_tx_tests {
         assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
     }
 
-    /// validate_mint_tx accepts a valid mint tx when only two token are
-    /// configured.
+    /// validate_mint_tx accepts a valid mint tx when two tokens are configured.
     #[test_with_logger]
     fn validate_mint_tx_accepts_valid_tx_two_tokens(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([78u8; 32]);
@@ -654,8 +653,8 @@ mod mint_tx_tests {
             ),
             (
                 token_id_2,
-                SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 2),
-            ), // require 2 signatures
+                SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1),
+            ),
         ]);
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger,
@@ -730,8 +729,8 @@ mod mint_tx_tests {
             ),
             (
                 token_id_2,
-                SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 2),
-            ), // require 2 signatures
+                SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1),
+            ),
         ]);
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger,
@@ -755,10 +754,11 @@ mod mint_tx_tests {
             ))
         );
 
-        // Dont cross the signing threshold
+        // Dont cross the signing threshold (the 4th signer is part of a SigningSet with
+        // threshold=2)
         let mint_tx = create_mint_tx(
             token_id_2,
-            &[Ed25519Pair::from(signers2[0].private_key())],
+            &[Ed25519Pair::from(signers2[3].private_key())],
             1,
             &mut rng,
         );
@@ -784,5 +784,117 @@ mod mint_tx_tests {
                 MintValidationError::NoMatchingMintConfig
             ))
         );
+    }
+
+    /// validate_mint_tx rejects a mint tx that exceeds the mint limit.
+    #[test_with_logger]
+    fn validate_mint_tx_refused_over_minting(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let token_id_1 = TokenId::from(1);
+
+        let mut ledger = create_ledger();
+        let n_blocks = 3;
+        let block_version = BlockVersion::MAX;
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+        // Create a mint configuration and append it to the ledger.
+        let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
+
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+        let block_contents = BlockContents {
+            mint_config_txs: vec![mint_config_tx.clone()],
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        // Create MintTxManagerImpl
+        let token_id_to_master_minters = HashMap::from_iter(vec![(
+            token_id_1,
+            SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+        )]);
+        let mint_tx_manager = MintTxManagerImpl::new(
+            ledger.clone(),
+            BlockVersion::MAX,
+            token_id_to_master_minters,
+            logger,
+        );
+
+        // Create a MintTx that exceeds the mint limit
+        let mint_tx = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            mint_config_tx.prefix.configs[0].mint_limit + 1,
+            &mut rng,
+        );
+
+        assert_eq!(
+            mint_tx_manager.validate_mint_tx(&mint_tx),
+            Err(MintTxManagerError::MintValidation(
+                MintValidationError::AmountExceedsMintLimit
+            ))
+        );
+
+        // Append a block that contains a valid MintTx, to test that the allowed
+        // minting limit decreases.
+        let mint_tx = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            mint_config_tx.prefix.configs[0].mint_limit - 1,
+            &mut rng,
+        );
+
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
+
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+        let block_contents = BlockContents {
+            mint_txs: vec![mint_tx],
+            outputs: vec![create_test_tx_out(&mut rng)],
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        // Create a MintTx that exceeds the mint limit
+        let mint_tx = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            2,
+            &mut rng,
+        );
+
+        assert_eq!(
+            mint_tx_manager.validate_mint_tx(&mint_tx),
+            Err(MintTxManagerError::MintValidation(
+                MintValidationError::AmountExceedsMintLimit
+            ))
+        );
+
+        // Sanity that a MintTx that does not exceed the limit passes validation.
+        let mint_tx = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            1,
+            &mut rng,
+        );
+
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
     }
 }
