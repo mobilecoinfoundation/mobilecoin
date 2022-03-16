@@ -292,7 +292,7 @@ message Receipt {
 
     // Amount of the TxOut.
     // Note: This value is self-reported by the sender and is unverifiable.
-    MaskedAmount amount = 4;
+    MaskedAmount masked_amount = 4;
 }
 
 /// The signature over an IAS JSON reponse, created by Intel
