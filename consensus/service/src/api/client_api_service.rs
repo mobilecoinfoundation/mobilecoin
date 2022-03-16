@@ -146,8 +146,7 @@ impl ClientApiService {
         self.mint_tx_manager.validate_mint_tx(&mint_tx)?;
 
         // The transaction can be considered by the network.
-        // TODO (*self.propose_tx_callback)(ConsensusValue::
-        // MintConfigTx(mint_config_tx), None, None);
+        (*self.propose_tx_callback)(ConsensusValue::MintTx(mint_tx), None, None);
         counters::PROPOSE_MINT_TX.inc();
         Ok(response)
     }

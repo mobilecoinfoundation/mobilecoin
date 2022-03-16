@@ -592,6 +592,7 @@ impl<
             ConsensusValue::MintConfigTx(mint_config_tx) => {
                 mint_config_tx.prefix.tombstone_block > expired_block_index
             }
+            ConsensusValue::MintTx(mint_tx) => mint_tx.prefix.tombstone_block > expired_block_index,
         });
 
         // Drop pending values that are no longer considered valid.

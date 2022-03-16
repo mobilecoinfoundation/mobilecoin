@@ -9,9 +9,21 @@ use std::fs;
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Generate and submit a MintConfigTx transsaction.
+    /// Generate and submit a MintConfigTx transaction.
     #[clap(arg_required_else_help = true)]
     GenerateAndSubmitMintConfigTx {
+        /// URI of consensus node to connect to.
+        #[clap(long, env = "MC_CONSENSUS_URI")]
+        node: ConsensusClientUri,
+
+        /// The key to sign the transaction with.
+        #[clap(long, parse(try_from_str = load_key_from_pem), env = "MC_MINTING_PRIVATE_KEY")]
+        private_key: Ed25519Private,
+    },
+
+    /// Generate and submit a MintTx transaction.
+    #[clap(arg_required_else_help = true)]
+    GenerateAndSubmitMintTx {
         /// URI of consensus node to connect to.
         #[clap(long, env = "MC_CONSENSUS_URI")]
         node: ConsensusClientUri,

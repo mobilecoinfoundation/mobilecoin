@@ -53,7 +53,7 @@ use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
-    mint::MintConfigTx,
+    mint::{MintConfigTx, MintTx},
     ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
@@ -300,6 +300,27 @@ impl SgxConsensusEnclave {
             if !seen_nonces.insert(tx.prefix.nonce.clone()) {
                 return Err(Error::FormBlock(format!(
                     "Duplicate MintConfigTx nonce: {:?}",
+                    tx.prefix.nonce
+                )));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Validate a list of MintTxs.
+    fn validate_mint_txs(&self, mint_txs: &[MintTx]) -> Result<()> {
+        // TODO: iterate over each indivdual transaction and validate it. This requires
+        // the enclave has knowledge of active minting configurations.
+        // This validation already happens in untruested, but it will be nice to do it
+        // here as well. This will get implemetend in a follow up PR.
+
+        // Ensure all nonces are unique.
+        let mut seen_nonces = BTreeSet::default();
+        for tx in mint_txs {
+            if !seen_nonces.insert(tx.prefix.nonce.clone()) {
+                return Err(Error::FormBlock(format!(
+                    "Duplicate MintTx nonce: {:?}",
                     tx.prefix.nonce
                 )));
             }
@@ -679,8 +700,9 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         self.validate_mint_config_txs(&inputs.mint_config_txs)?;
         let mint_config_txs = inputs.mint_config_txs;
 
-        // Right now mint-txs are not actually created anywhere.
-        let mint_txs = Vec::new();
+        // Get the list of MintTxs included in the block.
+        self.validate_mint_txs(&inputs.mint_txs)?;
+        let mint_txs = inputs.mint_txs;
 
         // We purposefully do not ..Default::default() here so that new block fields
         // show up as a compilation error until addressed.

@@ -269,12 +269,16 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)> {
         let mut tx_hashes = Vec::new();
         let mut mint_config_txs = Vec::new();
+        let mut mint_txs = Vec::new();
 
         for value in values {
             match value {
                 ConsensusValue::TxHash(tx_hash) => tx_hashes.push(tx_hash),
                 ConsensusValue::MintConfigTx(mint_config_tx) => {
                     mint_config_txs.push(mint_config_tx);
+                }
+                ConsensusValue::MintTx(mint_tx) => {
+                    mint_txs.push(mint_tx);
                 }
             }
         }
@@ -303,6 +307,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             FormBlockInputs {
                 well_formed_encrypted_txs_with_proofs,
                 mint_config_txs,
+                mint_txs,
             },
             &root_element,
         )?;
@@ -817,6 +822,7 @@ mod tests {
                     tx_manager.lock_cache().insert(*tx_hash, cache_entry);
                 }
                 ConsensusValue::MintConfigTx(_) => panic!("Unexpected MintConfigTx"),
+                ConsensusValue::MintTx(_) => panic!("Unexpected MintTx"),
             };
         }
 

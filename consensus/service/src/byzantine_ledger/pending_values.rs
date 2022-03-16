@@ -97,6 +97,17 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
                         false
                     }
                 }
+
+                ConsensusValue::MintTx(ref mint_tx) => {
+                    if self.mint_tx_manager.validate_mint_tx(mint_tx).is_ok() {
+                        // The transaction is well-formed and valid.
+                        entry.insert(timestamp);
+                        self.pending_values.push(value);
+                        true
+                    } else {
+                        false
+                    }
+                }
             }
         } else {
             false
@@ -139,6 +150,9 @@ impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
             ConsensusValue::MintConfigTx(ref mint_config_tx) => mint_tx_manager
                 .validate_mint_config_tx(mint_config_tx)
                 .is_ok(),
+            ConsensusValue::MintTx(ref mint_tx) => {
+                mint_tx_manager.validate_mint_tx(mint_tx).is_ok()
+            }
         });
     }
 }

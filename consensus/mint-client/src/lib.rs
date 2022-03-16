@@ -2,4 +2,4 @@
 
 mod config;
 
-pub use config::{Config, Commands};
+pub use config::{Commands, Config};
