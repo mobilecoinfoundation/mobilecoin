@@ -15,7 +15,7 @@ pub struct OverseerConfig {
     pub overseer_listen_host: String,
 
     /// Port to start the Overseer webserver on.
-    #[structopt(long, env, default_value = "9090")]
+    #[structopt(long, env, default_value = "4266")]
     pub overseer_listen_port: u16,
 
     /// gRPC listening URIs for client requests.
