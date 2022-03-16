@@ -864,7 +864,7 @@ mod tests {
                     };
                     tx_manager.lock_cache().insert(*tx_hash, cache_entry);
                 }
-                ConsensusValue::MintConfigTx(_) => panic!("Unexpected MintConfigTx"),
+                _ => panic!("unexpected value"),
             }
         }
 
