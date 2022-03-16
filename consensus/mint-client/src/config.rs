@@ -3,9 +3,11 @@
 //! Command line configuration for the consensus mint client.
 
 use clap::{Parser, Subcommand};
+use hex::FromHex;
 use mc_account_keys::PublicAddress;
 use mc_api::printable::PrintableWrapper;
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Private};
+use mc_transaction_core::mint::constants::NONCE_LENGTH;
 use mc_util_uri::ConsensusClientUri;
 use std::{convert::TryFrom, fs};
 
@@ -21,6 +23,18 @@ pub enum Commands {
         /// The key to sign the transaction with.
         #[clap(long, parse(try_from_str = load_key_from_pem), env = "MC_MINTING_SIGNING_KEY")]
         signing_key: Ed25519Private,
+
+        /// The token id we are minting.
+        #[clap(long, env = "MC_MINTING_TOKEN_ID")]
+        token_id: u32,
+
+        /// Tombstone block.
+        #[clap(long, env = "MC_MINTING_TOMBSTONE")]
+        tombstone: Option<u64>,
+
+        /// Nonce.
+        #[clap(long, parse(try_from_str = FromHex::from_hex), env = "MC_MINTING_NONCE")]
+        nonce: Option<[u8; NONCE_LENGTH]>,
     },
 
     /// Generate and submit a MintTx transaction.
@@ -37,6 +51,22 @@ pub enum Commands {
         /// The b58 address we are minting to.
         #[clap(long, parse(try_from_str = parse_public_address), env = "MC_MINTING_RECIPIENT")]
         recipient: PublicAddress,
+
+        /// The token id we are minting.
+        #[clap(long, env = "MC_MINTING_TOKEN_ID")]
+        token_id: u32,
+
+        /// The amount we are minting.
+        #[clap(long, env = "MC_MINTING_AMOUNT")]
+        amount: u64,
+
+        /// Tombstone block.
+        #[clap(long, env = "MC_MINTING_TOMBSTONE")]
+        tombstone: Option<u64>,
+
+        /// Nonce.
+        #[clap(long, parse(try_from_str = FromHex::from_hex), env = "MC_MINTING_NONCE")]
+        nonce: Option<[u8; NONCE_LENGTH]>,
     },
 }
 

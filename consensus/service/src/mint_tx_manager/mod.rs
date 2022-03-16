@@ -21,7 +21,7 @@ use mc_common::{
 };
 use mc_crypto_keys::Ed25519Public;
 use mc_crypto_multisig::SignerSet;
-use mc_ledger_db::Ledger;
+use mc_ledger_db::{Error as LedgerError, Ledger};
 use mc_transaction_core::{
     mint::{validate_mint_config_tx, validate_mint_tx, MintConfigTx, MintTx, MintValidationError},
     BlockVersion, TokenId,
@@ -129,7 +129,18 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
 
         // Try and get an active minting configuration that can validate the signature
         // of this transaction.
-        let active_mint_config = self.ledger_db.get_active_mint_config_for_mint_tx(mint_tx)?;
+        let active_mint_config = self
+            .ledger_db
+            .get_active_mint_config_for_mint_tx(mint_tx)
+            .map_err(|err| match err {
+                LedgerError::NotFound => {
+                    MintTxManagerError::MintValidation(MintValidationError::NoMatchingMintConfig)
+                }
+                LedgerError::MintLimitExceeded(_, _) => {
+                    MintTxManagerError::MintValidation(MintValidationError::AmountExceedsMintLimit)
+                }
+                err => err.into(),
+            })?;
 
         // Get the current block index.
         let current_block_index = self.ledger_db.num_blocks()? - 1;

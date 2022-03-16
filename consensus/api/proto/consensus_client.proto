@@ -24,6 +24,7 @@ enum MintValidationResultCode {
     AmountExceedsMintLimit = 9;
     NoMasterMinters = 10;
     NonceAlreadyUsed = 11;
+    NoMatchingMintConfig = 12;
 }
 
 message MintValidationResult {
