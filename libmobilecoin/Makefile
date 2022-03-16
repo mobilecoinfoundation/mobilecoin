@@ -90,6 +90,9 @@ bitcode-init:
 
 .PHONY: setup
 setup:
+setup:
+	$(info "Checking selected Xcode is version 12")
+	xcodebuild -version | grep 'Xcode 12'
 	mkdir -p rust-bitcode
 	cd rust-bitcode && \
 	git init && \
