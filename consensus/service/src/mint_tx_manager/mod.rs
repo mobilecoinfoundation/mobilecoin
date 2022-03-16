@@ -897,4 +897,67 @@ mod mint_tx_tests {
 
         assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
     }
+
+    /// validate_mint_tx rejects invalid signature.
+    #[test_with_logger]
+    fn validate_mint_tx_rejectS_invalid_signature(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let token_id_1 = TokenId::from(1);
+
+        let mut ledger = create_ledger();
+        let n_blocks = 3;
+        let block_version = BlockVersion::MAX;
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+        // Create a mint configuration and append it to the ledger.
+        let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
+
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+        let block_contents = BlockContents {
+            mint_config_txs: vec![mint_config_tx.clone()],
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        // Create MintTxManagerImpl
+        let token_id_to_master_minters = HashMap::from_iter(vec![(
+            token_id_1,
+            SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+        )]);
+        let mint_tx_manager = MintTxManagerImpl::new(
+            ledger,
+            BlockVersion::MAX,
+            token_id_to_master_minters,
+            logger,
+        );
+
+        // Create a valid MintTx signed by the master minter.
+        let mut mint_tx = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            1,
+            &mut rng,
+        );
+
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
+
+        // Now mess with the data so the signature is no longer valid.
+        mint_tx.amount += 1;
+        assert_eq!(
+            mint_tx_manager.validate_mint_tx(&mint_tx),
+            Err(MintTxManagerError::MintValidation(
+                MintValidationError::InvalidSignature
+            ))
+        );
+    }
 }

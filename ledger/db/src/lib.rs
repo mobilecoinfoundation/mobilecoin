@@ -1204,7 +1204,11 @@ mod ledger_db_test {
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 0,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx1.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
 
@@ -1251,7 +1255,11 @@ mod ledger_db_test {
                 ActiveMintConfig {
                     mint_config: mint_config_tx2.prefix.configs[1].clone(),
                     total_minted: 0,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx2.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
 
@@ -1265,7 +1273,11 @@ mod ledger_db_test {
                 ActiveMintConfig {
                     mint_config: mint_config_tx3.prefix.configs[1].clone(),
                     total_minted: 0,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx3.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
     }
@@ -1423,7 +1435,11 @@ mod ledger_db_test {
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 0,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx1.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
 
@@ -1481,7 +1497,11 @@ mod ledger_db_test {
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: mint_tx2.prefix.amount,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx1.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
 
@@ -1539,7 +1559,11 @@ mod ledger_db_test {
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: mint_tx2.prefix.amount,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx1.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
 
@@ -1609,7 +1633,11 @@ mod ledger_db_test {
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: mint_tx2.prefix.amount,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx1.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
 
@@ -1681,7 +1709,11 @@ mod ledger_db_test {
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: mint_tx2.prefix.amount + mint_tx7.prefix.amount,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx1.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
     }
@@ -1763,7 +1795,11 @@ mod ledger_db_test {
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 0,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx1.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
 
@@ -1777,7 +1813,11 @@ mod ledger_db_test {
                 ActiveMintConfig {
                     mint_config: mint_config_tx2.prefix.configs[1].clone(),
                     total_minted: 0,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx2.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
 
@@ -1868,7 +1908,11 @@ mod ledger_db_test {
                 ActiveMintConfig {
                     mint_config: mint_config_tx3.prefix.configs[1].clone(),
                     total_minted: 0,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx3.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
 
@@ -1882,7 +1926,11 @@ mod ledger_db_test {
                 ActiveMintConfig {
                     mint_config: mint_config_tx2.prefix.configs[1].clone(),
                     total_minted: 0,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx2.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
 
@@ -2247,7 +2295,11 @@ mod ledger_db_test {
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 0,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx1.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
 
@@ -2283,7 +2335,11 @@ mod ledger_db_test {
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 11,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx1.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
     }
