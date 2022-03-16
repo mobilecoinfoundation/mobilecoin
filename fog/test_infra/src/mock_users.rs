@@ -115,7 +115,7 @@ pub fn make_random_tx<T: RngCore + CryptoRng>(
         token_id: Mob::ID,
     };
     TxOut {
-        amount: MaskedAmount::new(amount, &public_key).expect("amount failed unexpectedly"),
+        masked_amount: MaskedAmount::new(amount, &public_key).expect("amount failed unexpectedly"),
         target_key: target_key.into(),
         public_key: public_key.into(),
         e_fog_hint: recipient.encrypt(acct_server_pubkey, rng),

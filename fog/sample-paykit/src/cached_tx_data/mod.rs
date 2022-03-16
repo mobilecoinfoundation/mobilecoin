@@ -889,7 +889,7 @@ impl OwnedTxOut {
         let decompressed_tx_pub = RistrettoPublic::try_from(&tx_out.public_key)?;
         let shared_secret =
             get_tx_out_shared_secret(account_key.view_private_key(), &decompressed_tx_pub);
-        let (amount, _blinding) = tx_out.amount.get_value(&shared_secret)?;
+        let (amount, _blinding) = tx_out.masked_amount.get_value(&shared_secret)?;
 
         // Calculate the subaddress spend public key for tx_out.
         let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key)?;

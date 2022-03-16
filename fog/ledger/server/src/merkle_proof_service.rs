@@ -260,9 +260,9 @@ mod test {
                 value: value + output_index as u64,
                 token_id: Mob::ID,
             };
-            let amount = MaskedAmount::new(amount, &shared_secret).unwrap();
+            let masked_amount = MaskedAmount::new(amount, &shared_secret).unwrap();
             let tx_out = TxOut {
-                amount,
+                masked_amount,
                 target_key: target_key.into(),
                 public_key: public_key.into(),
                 e_fog_hint: EncryptedFogHint::new(&[7u8; ENCRYPTED_FOG_HINT_LEN]),

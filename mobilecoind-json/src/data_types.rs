@@ -512,7 +512,7 @@ impl From<&MaskedAmount> for JsonMaskedAmount {
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonTxOut {
-    pub amount: JsonMaskedAmount,
+    pub masked_amount: JsonMaskedAmount,
     pub target_key: String,
     pub public_key: String,
     pub e_fog_hint: String,
@@ -522,7 +522,7 @@ pub struct JsonTxOut {
 impl From<&mc_api::external::TxOut> for JsonTxOut {
     fn from(src: &mc_api::external::TxOut) -> Self {
         Self {
-            amount: src.get_amount().into(),
+            masked_amount: src.get_masked_amount().into(),
             target_key: hex::encode(src.get_target_key().get_data()),
             public_key: hex::encode(src.get_public_key().get_data()),
             e_fog_hint: hex::encode(src.get_e_fog_hint().get_data()),
@@ -538,19 +538,19 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
     fn try_from(src: &JsonTxOut) -> Result<mc_api::external::TxOut, String> {
         let mut commitment = CompressedRistretto::new();
         commitment.set_data(
-            hex::decode(&src.amount.commitment)
+            hex::decode(&src.masked_amount.commitment)
                 .map_err(|err| format!("Failed to decode commitment hex: {}", err))?,
         );
         let mut masked_amount = MaskedAmount::new();
         masked_amount.set_commitment(commitment);
         masked_amount.set_masked_value(
-            src.amount
+            src.masked_amount
                 .masked_value
                 .parse::<u64>()
                 .map_err(|err| format!("Failed to parse u64 from value: {}", err))?,
         );
         masked_amount.set_masked_token_id(
-            hex::decode(&src.amount.masked_token_id)
+            hex::decode(&src.masked_amount.masked_token_id)
                 .map_err(|err| format!("Failed to decode masked token id hex: {}", err))?,
         );
         let mut target_key = CompressedRistretto::new();
@@ -575,7 +575,7 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
         );
 
         let mut txo = mc_api::external::TxOut::new();
-        txo.set_amount(masked_amount);
+        txo.set_masked_amount(masked_amount);
         txo.set_target_key(target_key);
         txo.set_public_key(public_key);
         txo.set_e_fog_hint(e_fog_hint);
@@ -1349,7 +1349,8 @@ mod test {
                 token_id: Mob::ID,
             };
             let tx_out = mc_transaction_core::tx::TxOut {
-                amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+                masked_amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng))
+                    .unwrap(),
                 target_key: RistrettoPublic::from_random(&mut rng).into(),
                 public_key: RistrettoPublic::from_random(&mut rng).into(),
                 e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),

@@ -404,7 +404,7 @@ fn select_spendable_tx_outs(
                     get_tx_out_shared_secret(account.view_private_key(), &public_key);
 
                 let (amount, _blinding_factor) = tx_out
-                    .amount
+                    .masked_amount
                     .get_value(&shared_secret)
                     .unwrap_or_else(|err| {
                         panic!(

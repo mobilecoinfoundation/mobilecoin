@@ -219,7 +219,7 @@ impl TxPrefix {
     pub fn output_commitments(&self) -> Vec<CompressedCommitment> {
         self.outputs
             .iter()
-            .map(|output| output.amount.commitment)
+            .map(|output| output.masked_amount.commitment)
             .collect()
     }
 }
@@ -245,7 +245,8 @@ pub struct TxIn {
 pub struct TxOut {
     /// The amount being sent.
     #[prost(message, required, tag = "1")]
-    pub amount: MaskedAmount,
+    #[digestible(name = "amount")]
+    pub masked_amount: MaskedAmount,
 
     /// The one-time public address of this output.
     #[prost(message, required, tag = "2")]
@@ -336,7 +337,7 @@ impl TxOut {
         let shared_secret = create_shared_secret(recipient.view_public_key(), tx_private_key);
 
         let amount = Amount { value, token_id };
-        let amount = MaskedAmount::new(amount, &shared_secret)?;
+        let masked_amount = MaskedAmount::new(amount, &shared_secret)?;
 
         let memo_ctxt = MemoContext {
             tx_public_key: &public_key,
@@ -345,7 +346,7 @@ impl TxOut {
         let e_memo = memo.map(|memo| memo.encrypt(&shared_secret));
 
         Ok(TxOut {
-            amount,
+            masked_amount,
             target_key,
             public_key: public_key.into(),
             e_fog_hint: hint,
@@ -596,9 +597,9 @@ mod tests {
                 value: 23u64,
                 token_id: Mob::ID,
             };
-            let amount = MaskedAmount::new(amount, &shared_secret).unwrap();
+            let masked_amount = MaskedAmount::new(amount, &shared_secret).unwrap();
             TxOut {
-                amount,
+                masked_amount,
                 target_key,
                 public_key,
                 e_fog_hint: EncryptedFogHint::from(&[1u8; ENCRYPTED_FOG_HINT_LEN]),
@@ -659,9 +660,9 @@ mod tests {
                 value: 23u64,
                 token_id: Mob::ID,
             };
-            let amount = MaskedAmount::new(amount, &shared_secret).unwrap();
+            let masked_amount = MaskedAmount::new(amount, &shared_secret).unwrap();
             TxOut {
-                amount,
+                masked_amount,
                 target_key,
                 public_key,
                 e_fog_hint: EncryptedFogHint::from(&[1u8; ENCRYPTED_FOG_HINT_LEN]),

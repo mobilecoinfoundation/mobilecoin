@@ -10,8 +10,8 @@ impl From<&tx::TxOut> for external::TxOut {
     fn from(source: &tx::TxOut) -> Self {
         let mut tx_out = external::TxOut::new();
 
-        let amount = external::MaskedAmount::from(&source.amount);
-        tx_out.set_amount(amount);
+        let masked_amount = external::MaskedAmount::from(&source.masked_amount);
+        tx_out.set_masked_amount(masked_amount);
 
         let target_key_bytes = source.target_key.as_bytes().to_vec();
         tx_out.mut_target_key().set_data(target_key_bytes);
@@ -37,7 +37,7 @@ impl TryFrom<&external::TxOut> for tx::TxOut {
     type Error = ConversionError;
 
     fn try_from(source: &external::TxOut) -> Result<Self, Self::Error> {
-        let amount = MaskedAmount::try_from(source.get_amount())?;
+        let masked_amount = MaskedAmount::try_from(source.get_masked_amount())?;
 
         let target_key_bytes: &[u8] = source.get_target_key().get_data();
         let target_key: CompressedRistrettoPublic = RistrettoPublic::try_from(target_key_bytes)
@@ -63,7 +63,7 @@ impl TryFrom<&external::TxOut> for tx::TxOut {
         };
 
         let tx_out = tx::TxOut {
-            amount,
+            masked_amount,
             target_key,
             public_key,
             e_fog_hint,
@@ -94,7 +94,8 @@ mod tests {
             token_id: Mob::ID,
         };
         let source = tx::TxOut {
-            amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+            masked_amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng))
+                .unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
             e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
@@ -104,7 +105,7 @@ mod tests {
         let converted = external::TxOut::from(&source);
 
         let recovered_tx_out = tx::TxOut::try_from(&converted).unwrap();
-        assert_eq!(source.amount, recovered_tx_out.amount);
+        assert_eq!(source.masked_amount, recovered_tx_out.masked_amount);
     }
 
     #[test]
@@ -117,7 +118,8 @@ mod tests {
             token_id: Mob::ID,
         };
         let source = tx::TxOut {
-            amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+            masked_amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng))
+                .unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
             e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
@@ -127,7 +129,7 @@ mod tests {
         let converted = external::TxOut::from(&source);
 
         let recovered_tx_out = tx::TxOut::try_from(&converted).unwrap();
-        assert_eq!(source.amount, recovered_tx_out.amount);
+        assert_eq!(source.masked_amount, recovered_tx_out.masked_amount);
         assert_eq!(source.target_key, recovered_tx_out.target_key);
         assert_eq!(source.public_key, recovered_tx_out.public_key);
         assert_eq!(source.e_fog_hint, recovered_tx_out.e_fog_hint);

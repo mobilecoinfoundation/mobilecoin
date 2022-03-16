@@ -204,7 +204,7 @@ message EncryptedMemo {
 // A Transaction Output.
 message TxOut {
     // Amount.
-    MaskedAmount amount = 1;
+    MaskedAmount masked_amount = 1;
 
     // Public key.
     CompressedRistretto target_key = 2;

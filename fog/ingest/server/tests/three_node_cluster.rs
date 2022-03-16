@@ -160,7 +160,7 @@ fn add_test_block<T: RngCore + CryptoRng>(ledger: &mut LedgerDB, watcher: &Watch
 // Make a random output for a block
 fn random_output<T: RngCore + CryptoRng>(rng: &mut T) -> Vec<TxOut> {
     vec![TxOut {
-        amount: MaskedAmount::default(),
+        masked_amount: MaskedAmount::default(),
         target_key: RistrettoPublic::from_random(rng).into(),
         public_key: RistrettoPublic::from_random(rng).into(),
         e_fog_hint: EncryptedFogHint::default(),

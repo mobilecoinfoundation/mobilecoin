@@ -835,9 +835,9 @@ pub mod tx_out_store_tests {
             );
             let shared_secret: RistrettoPublic = create_shared_secret(&target_key, &tx_private_key);
             let amount = Amount { value, token_id };
-            let amount = MaskedAmount::new(amount, &shared_secret).unwrap();
+            let masked_amount = MaskedAmount::new(amount, &shared_secret).unwrap();
             let tx_out = TxOut {
-                amount,
+                masked_amount,
                 target_key: target_key.into(),
                 public_key: public_key.into(),
                 e_fog_hint: EncryptedFogHint::new(&[7u8; ENCRYPTED_FOG_HINT_LEN]),

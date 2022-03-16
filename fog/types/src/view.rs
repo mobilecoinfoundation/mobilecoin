@@ -349,10 +349,10 @@ impl core::convert::From<&TxOut> for FogTxOut {
         Self {
             target_key: src.target_key,
             public_key: src.public_key,
-            amount_masked_value: src.amount.masked_value,
-            amount_masked_token_id: src.amount.masked_token_id.clone(),
+            amount_masked_value: src.masked_amount.masked_value,
+            amount_masked_token_id: src.masked_amount.masked_token_id.clone(),
             amount_commitment_data_crc32: Crc::<u32>::new(&crc::CRC_32_ISO_HDLC)
-                .checksum(src.amount.commitment.point.as_bytes()),
+                .checksum(src.masked_amount.commitment.point.as_bytes()),
             e_memo: src.e_memo,
         }
     }
@@ -381,19 +381,19 @@ impl FogTxOut {
         let tx_out_shared_secret =
             mc_transaction_core::get_tx_out_shared_secret(view_key, &public_key);
 
-        let (amount, _) = MaskedAmount::reconstruct(
+        let (masked_amount, _) = MaskedAmount::reconstruct(
             self.amount_masked_value,
             &self.amount_masked_token_id,
             &tx_out_shared_secret,
         )
         .map_err(|_| FogTxOutError::ChecksumMismatch)?;
 
-        if amount.commitment_crc32() != self.amount_commitment_data_crc32 {
+        if masked_amount.commitment_crc32() != self.amount_commitment_data_crc32 {
             return Err(FogTxOutError::ChecksumMismatch);
         }
 
         Ok(TxOut {
-            amount,
+            masked_amount,
             target_key: self.target_key,
             public_key: self.public_key,
             e_fog_hint: EncryptedFogHint::from(&[0u8; ENCRYPTED_FOG_HINT_LEN]),

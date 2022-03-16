@@ -196,7 +196,8 @@ mod test {
             token_id: Mob::ID,
         };
         let tx_out = TxOut {
-            amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+            masked_amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng))
+                .unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
             e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
@@ -287,7 +288,8 @@ mod test {
                 token_id: Mob::ID,
             };
             let tx_out = TxOut {
-                amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+                masked_amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng))
+                    .unwrap(),
                 target_key: RistrettoPublic::from_random(&mut rng).into(),
                 public_key: RistrettoPublic::from_random(&mut rng).into(),
                 e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),

@@ -450,7 +450,7 @@ impl Sample for MaskedAmount {
 impl Sample for TxOut {
     fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
         TxOut {
-            amount: MaskedAmount::sample(rng),
+            masked_amount: MaskedAmount::sample(rng),
             target_key: RistrettoPublic::from_random(rng).into(),
             public_key: RistrettoPublic::from_random(rng).into(),
             e_fog_hint: EncryptedFogHint::fake_onetime_hint(rng),
