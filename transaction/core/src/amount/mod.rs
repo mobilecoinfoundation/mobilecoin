@@ -294,7 +294,7 @@ mod amount_tests {
                 let masked_amount = MaskedAmount::new(amount, &shared_secret).unwrap();
                 assert_eq!(
                     value,
-                    MaskedAmount::unmask_value(amount.masked_value, &shared_secret)
+                    MaskedAmount::unmask_value(masked_amount.masked_value, &shared_secret)
                 );
             }
 
