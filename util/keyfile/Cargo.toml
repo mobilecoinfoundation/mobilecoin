@@ -41,5 +41,6 @@ structopt = "0.3"
 x509-signature = "0.5"
 
 [dev-dependencies]
-tempdir = "0.3"
 mc-util-test-helper = { path = "../../util/test-helper" }
+
+tempdir = "0.3"

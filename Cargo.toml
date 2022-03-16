@@ -31,8 +31,8 @@ members = [
     "crypto/box",
     "crypto/digestible",
     "crypto/digestible/derive/test",
-    "crypto/digestible/test-utils",
     "crypto/digestible/signature",
+    "crypto/digestible/test-utils",
     "crypto/keys",
     "crypto/message-cipher",
     "crypto/multisig",
@@ -145,14 +145,14 @@ members = [
     "watcher/api",
 ]
 exclude = [
-    # mc-util-serial should only be accessed via the `common` crate.
-    "util/serial",
     # N.B. for some reason, putting these crates under `exclude` helps with
     # making `cargo test --all` work, when `consensus-enclave-impl` is part of workspace
-    "sgx",
     "fog/ingest/enclave/trusted",
     "fog/ledger/enclave/trusted",
     "fog/view/enclave/trusted",
+    "sgx",
+    # mc-util-serial should only be accessed via the `common` crate.
+    "util/serial",
 ]
 
 [profile.dev]

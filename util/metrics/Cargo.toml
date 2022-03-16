@@ -5,8 +5,9 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
-chrono = "0.4"
 mc-common = { path = "../../common", features = ["log"] }
+
+chrono = "0.4"
 grpcio = "0.10.0"
 lazy_static = "1.4"
 prometheus = "0.13"
