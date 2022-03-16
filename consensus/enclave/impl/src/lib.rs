@@ -1098,7 +1098,7 @@ mod tests {
             // The value of the aggregate fee should equal the total value of fees in the
             // input transaction.
             let shared_secret = create_shared_secret(&fee_output_public_key, &view_secret_key);
-            let (amount, _blinding) = fee_output.amount.get_value(&shared_secret).unwrap();
+            let (amount, _blinding) = fee_output.masked_amount.get_value(&shared_secret).unwrap();
             assert_eq!(amount.value, total_fee);
             assert_eq!(amount.token_id, Mob::ID);
         }

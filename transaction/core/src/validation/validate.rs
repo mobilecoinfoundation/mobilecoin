@@ -256,7 +256,7 @@ fn validate_no_masked_token_ids_exist(tx: &Tx) -> TransactionValidationResult<()
         .prefix
         .outputs
         .iter()
-        .any(|output| !output.amount.masked_token_id.is_empty())
+        .any(|output| !output.masked_amount.masked_token_id.is_empty())
     {
         return Err(TransactionValidationError::MaskedTokenIdNotAllowed);
     }
@@ -270,7 +270,7 @@ fn validate_masked_token_ids_exist(tx: &Tx) -> TransactionValidationResult<()> {
         .prefix
         .outputs
         .iter()
-        .any(|output| output.amount.masked_token_id.len() != 4)
+        .any(|output| output.masked_amount.masked_token_id.len() != 4)
     {
         return Err(TransactionValidationError::MissingMaskedTokenId);
     }
@@ -299,7 +299,7 @@ pub fn validate_signature<R: RngCore + CryptoRng>(
             input
                 .ring
                 .iter()
-                .map(|tx_out| (tx_out.target_key, tx_out.amount.commitment))
+                .map(|tx_out| (tx_out.target_key, tx_out.masked_amount.commitment))
                 .collect()
         })
         .collect();

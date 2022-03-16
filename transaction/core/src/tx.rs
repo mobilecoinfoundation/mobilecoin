@@ -16,7 +16,7 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    amount::{Amount, AmountData, AmountError},
+    amount::{Amount, AmountError, MaskedAmount},
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
@@ -219,7 +219,7 @@ impl TxPrefix {
     pub fn output_commitments(&self) -> Vec<CompressedCommitment> {
         self.outputs
             .iter()
-            .map(|output| output.amount.commitment)
+            .map(|output| output.masked_amount.commitment)
             .collect()
     }
 }
@@ -245,7 +245,8 @@ pub struct TxIn {
 pub struct TxOut {
     /// The amount being sent.
     #[prost(message, required, tag = "1")]
-    pub amount: Amount,
+    #[digestible(name = "amount")]
+    pub masked_amount: MaskedAmount,
 
     /// The one-time public address of this output.
     #[prost(message, required, tag = "2")]
@@ -335,8 +336,8 @@ impl TxOut {
 
         let shared_secret = create_shared_secret(recipient.view_public_key(), tx_private_key);
 
-        let amount_data = AmountData { value, token_id };
-        let amount = Amount::new(amount_data, &shared_secret)?;
+        let amount = Amount { value, token_id };
+        let masked_amount = MaskedAmount::new(amount, &shared_secret)?;
 
         let memo_ctxt = MemoContext {
             tx_public_key: &public_key,
@@ -345,7 +346,7 @@ impl TxOut {
         let e_memo = memo.map(|memo| memo.encrypt(&shared_secret));
 
         Ok(TxOut {
-            amount,
+            masked_amount,
             target_key,
             public_key: public_key.into(),
             e_fog_hint: hint,
@@ -574,7 +575,7 @@ mod tests {
         subaddress_matches_tx_out,
         tokens::Mob,
         tx::{Tx, TxIn, TxOut, TxPrefix},
-        Amount, AmountData, Token,
+        Amount, MaskedAmount, Token,
     };
     use alloc::vec::Vec;
     use core::convert::TryFrom;
@@ -592,13 +593,13 @@ mod tests {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
             let public_key = RistrettoPublic::from_random(&mut rng).into();
-            let amount_data = AmountData {
+            let amount = Amount {
                 value: 23u64,
                 token_id: Mob::ID,
             };
-            let amount = Amount::new(amount_data, &shared_secret).unwrap();
+            let masked_amount = MaskedAmount::new(amount, &shared_secret).unwrap();
             TxOut {
-                amount,
+                masked_amount,
                 target_key,
                 public_key,
                 e_fog_hint: EncryptedFogHint::from(&[1u8; ENCRYPTED_FOG_HINT_LEN]),
@@ -655,13 +656,13 @@ mod tests {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
             let public_key = RistrettoPublic::from_random(&mut rng).into();
-            let amount_data = AmountData {
+            let amount = Amount {
                 value: 23u64,
                 token_id: Mob::ID,
             };
-            let amount = Amount::new(amount_data, &shared_secret).unwrap();
+            let masked_amount = MaskedAmount::new(amount, &shared_secret).unwrap();
             TxOut {
-                amount,
+                masked_amount,
                 target_key,
                 public_key,
                 e_fog_hint: EncryptedFogHint::from(&[1u8; ENCRYPTED_FOG_HINT_LEN]),
