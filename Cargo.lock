@@ -5332,7 +5332,6 @@ dependencies = [
  "mc-util-test-helper",
  "mc-util-uri",
  "mc-watcher-api",
- "prometheus",
  "prost",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",

@@ -119,7 +119,7 @@ impl Watcher {
         let last_synced = self.watcher_db.last_synced_blocks().unwrap_or_default();
         self.metrics.collect_peer_blocks_synced(last_synced);
         if let Some(ledger_height) = ledger_height {
-            self.metrics.ledger_block_height.set(ledger_height as i64);
+            self.metrics.set_ledger_height(ledger_height as i64);
         }
     }
     /// Sync blocks and collect signatures (and block data, when enabled).

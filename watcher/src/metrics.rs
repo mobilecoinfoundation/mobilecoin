@@ -14,7 +14,7 @@ lazy_static::lazy_static! {
 /// Watcher metrics tracker used to report metrics on watcher to Prometheus
 pub struct WatcherMetrics {
     /// Number of blocks in the ledger
-    pub ledger_block_height: IntGauge,
+    ledger_block_height: IntGauge,
 }
 
 impl Default for WatcherMetrics {
@@ -32,10 +32,14 @@ impl WatcherMetrics {
         }
     }
 
+    /// Record current ledger height
+    pub fn set_ledger_height(&self, ledger_height: i64) {
+        self.ledger_block_height.set(ledger_height);
+    }
+
     /// Measure blocks synced so far for each peer
     pub fn collect_peer_blocks_synced(&self, peer_sync_states: HashMap<Url, Option<u64>>) {
-        peer_sync_states.iter().for_each(|metric| {
-            let (url, num_blocks) = metric;
+        peer_sync_states.iter().for_each(|(url, num_blocks)| {
             COLLECTOR
                 .peer_gauge("watcher_blocks_synced", url.as_str())
                 .set(num_blocks.unwrap_or(0) as i64);
