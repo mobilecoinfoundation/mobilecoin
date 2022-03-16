@@ -273,17 +273,17 @@ fn try_digestible_struct(
 
                     if attr_config.never_omit {
                         Ok(quote! {
-                            self.#field_ident.append_to_transcript(stringify!(#hashing_name).as_bytes(), transcript);
+                            self.#field_ident.append_to_transcript(#hashing_name.as_bytes(), transcript);
                         })
                     } else if let Some(omit_when) = attr_config.omit_when {
                         Ok(quote! {
                             if self.#field_ident != #omit_when {
-                                self.#field_ident.append_to_transcript_allow_omit(stringify!(#hashing_name).as_bytes(), transcript);
+                                self.#field_ident.append_to_transcript_allow_omit(#hashing_name.as_bytes(), transcript);
                             }
                         })
                     } else {
                         Ok(quote! {
-                            self.#field_ident.append_to_transcript_allow_omit(stringify!(#hashing_name).as_bytes(), transcript);
+                            self.#field_ident.append_to_transcript_allow_omit(#hashing_name.as_bytes(), transcript);
                         })
                     }
                 }
@@ -292,6 +292,8 @@ fn try_digestible_struct(
                 None => {
                     // Read any #[digestible(...)]` attributes on this field and parse them
                     let attr_config = FieldAttributeConfig::try_from(&field.attrs[..])?;
+
+                    if attr_config.rename.is_some() { panic!("name attribute is not supported on fields of tuple structs") }
 
                     let index = syn::Index::from(idx);
 
