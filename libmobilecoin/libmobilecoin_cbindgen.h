@@ -32,6 +32,8 @@ typedef struct McFogResolver McFogResolver;
 
 typedef struct McTransactionBuilderRing McTransactionBuilderRing;
 
+typedef struct McTxOutMemoBuilder McTxOutMemoBuilder;
+
 typedef struct Option_TransactionBuilder_FogResolver Option_TransactionBuilder_FogResolver;
 
 typedef struct Vec_u8 Vec_u8;
@@ -804,3 +806,22 @@ FfiOptOwnedPtr<McData> mc_transaction_builder_add_output_with_fog_hint_address(F
 FfiOptOwnedPtr<McData> mc_transaction_builder_build(FfiMutPtr<McTransactionBuilder> transaction_builder,
                                                     FfiOptMutPtr<McRngCallback> rng_callback,
                                                     FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `account_key` - must be a valid `AccountKey` with `fog_info`.
+ */
+FfiOptOwnedPtr<McTxOutMemoBuilder> mc_memo_builder_sender_and_destination_create(FfiRefPtr<McAccountKey> account_key);
+
+/**
+ * # Preconditions
+ *
+ * * `account_key` - must be a valid `AccountKey` with `fog_info`.
+ */
+FfiOptOwnedPtr<McTxOutMemoBuilder> mc_memo_builder_sender_payment_request_and_destination_create(uint64_t payment_request_id,
+                                                                                                 FfiRefPtr<McAccountKey> account_key);
+
+FfiOptOwnedPtr<McTxOutMemoBuilder> mc_memo_builder_default_create(void);
+
+void mc_memo_builder_free(FfiOptOwnedPtr<McTxOutMemoBuilder> memo_builder);
