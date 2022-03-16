@@ -900,7 +900,7 @@ mod mint_tx_tests {
 
     /// validate_mint_tx rejects invalid signature.
     #[test_with_logger]
-    fn validate_mint_tx_rejectS_invalid_signature(logger: Logger) {
+    fn validate_mint_tx_rejects_invalid_signature(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
         let token_id_1 = TokenId::from(1);
 
@@ -952,12 +952,231 @@ mod mint_tx_tests {
         assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
 
         // Now mess with the data so the signature is no longer valid.
-        mint_tx.amount += 1;
+        mint_tx.prefix.amount += 1;
         assert_eq!(
             mint_tx_manager.validate_mint_tx(&mint_tx),
             Err(MintTxManagerError::MintValidation(
-                MintValidationError::InvalidSignature
+                MintValidationError::NoMatchingMintConfig
             ))
+        );
+    }
+
+    /// combine_mint_txs adequately sorts inputs and disposes of
+    /// duplicates.
+    #[test_with_logger]
+    fn combine_mint_txs_sorts_and_removes_dupe_nonces(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let token_id_1 = TokenId::from(1);
+
+        let mut ledger = create_ledger();
+        let n_blocks = 3;
+        let block_version = BlockVersion::MAX;
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+        // Create a mint configuration and append it to the ledger.
+        let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
+
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+        let block_contents = BlockContents {
+            mint_config_txs: vec![mint_config_tx.clone()],
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        // Test txs, each one using a different mint configuration (determined by the
+        // signers)
+        let mint_txs = vec![
+            create_mint_tx(
+                token_id_1,
+                &[Ed25519Pair::from(signers[0].private_key())],
+                1,
+                &mut rng,
+            ),
+            create_mint_tx(
+                token_id_1,
+                &[Ed25519Pair::from(signers[1].private_key())],
+                1,
+                &mut rng,
+            ),
+            create_mint_tx(
+                token_id_1,
+                &[
+                    Ed25519Pair::from(signers[3].private_key()),
+                    Ed25519Pair::from(signers[4].private_key()),
+                ],
+                1,
+                &mut rng,
+            ),
+        ];
+
+        // Create MintTxManagerImpl
+        let token_id_to_master_minters = HashMap::from_iter(vec![(
+            token_id_1,
+            SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+        )]);
+        let mint_tx_manager = MintTxManagerImpl::new(
+            ledger,
+            BlockVersion::MAX,
+            token_id_to_master_minters,
+            logger,
+        );
+
+        let mut expected_result = mint_txs.clone();
+        expected_result.sort();
+
+        assert_eq!(
+            mint_tx_manager.combine_mint_txs(
+                &[
+                    mint_txs[0].clone(),
+                    mint_txs[0].clone(),
+                    mint_txs[1].clone(),
+                    mint_txs[2].clone(),
+                    mint_txs[1].clone(),
+                    mint_txs[0].clone(),
+                    mint_txs[0].clone(),
+                    mint_txs[2].clone(),
+                    mint_txs[1].clone(),
+                    mint_txs[0].clone(),
+                    mint_txs[1].clone(),
+                    mint_txs[2].clone(),
+                ],
+                100
+            ),
+            Ok(expected_result)
+        );
+    }
+
+    /// combine_mint_txs only accepts one transaction for each mint
+    /// configuration.
+    #[test_with_logger]
+    fn combine_mint_txs_sorts_and_removes_dupe_configs(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let token_id_1 = TokenId::from(1);
+
+        let mut ledger = create_ledger();
+        let n_blocks = 3;
+        let block_version = BlockVersion::MAX;
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+        // Create a mint configuration and append it to the ledger.
+        let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
+
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+        let block_contents = BlockContents {
+            mint_config_txs: vec![mint_config_tx.clone()],
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        // Test txs that have overlapping minting configurations
+        let mint_txs = vec![
+            create_mint_tx(
+                token_id_1,
+                &[Ed25519Pair::from(signers[0].private_key())],
+                10,
+                &mut rng,
+            ),
+            create_mint_tx(
+                token_id_1,
+                &[Ed25519Pair::from(signers[1].private_key())],
+                20,
+                &mut rng,
+            ),
+            create_mint_tx(
+                token_id_1,
+                &[
+                    Ed25519Pair::from(signers[3].private_key()),
+                    Ed25519Pair::from(signers[4].private_key()),
+                ],
+                30,
+                &mut rng,
+            ),
+            create_mint_tx(
+                token_id_1,
+                &[Ed25519Pair::from(signers[0].private_key())],
+                10,
+                &mut rng,
+            ),
+            create_mint_tx(
+                token_id_1,
+                &[Ed25519Pair::from(signers[1].private_key())],
+                20,
+                &mut rng,
+            ),
+            create_mint_tx(
+                token_id_1,
+                &[
+                    Ed25519Pair::from(signers[3].private_key()),
+                    Ed25519Pair::from(signers[4].private_key()),
+                ],
+                30,
+                &mut rng,
+            ),
+        ];
+
+        // Create MintTxManagerImpl
+        let token_id_to_master_minters = HashMap::from_iter(vec![(
+            token_id_1,
+            SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+        )]);
+        let mint_tx_manager = MintTxManagerImpl::new(
+            ledger,
+            BlockVersion::MAX,
+            token_id_to_master_minters,
+            logger,
+        );
+
+        // The expected result is that we get 3 transactions, one for each
+        // configuration. We use the amount to sanity check this.
+        let combined = mint_tx_manager
+            .combine_mint_txs(
+                &[
+                    mint_txs[0].clone(),
+                    mint_txs[1].clone(),
+                    mint_txs[2].clone(),
+                    mint_txs[3].clone(),
+                    mint_txs[4].clone(),
+                    mint_txs[3].clone(),
+                    mint_txs[4].clone(),
+                    mint_txs[5].clone(),
+                    mint_txs[5].clone(),
+                    mint_txs[5].clone(),
+                    mint_txs[0].clone(),
+                    mint_txs[1].clone(),
+                    mint_txs[2].clone(),
+                    mint_txs[2].clone(),
+                    mint_txs[3].clone(),
+                    mint_txs[3].clone(),
+                    mint_txs[4].clone(),
+                    mint_txs[5].clone(),
+                ],
+                100,
+            )
+            .unwrap();
+
+        assert_eq!(
+            HashSet::from_iter([10, 20, 30]),
+            HashSet::from_iter(combined.iter().map(|tx| tx.prefix.amount))
         );
     }
 }

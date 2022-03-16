@@ -26,6 +26,7 @@ pub fn create_mint_config_tx_and_signers(
     let signer_2 = Ed25519Pair::from_random(rng);
     let signer_3 = Ed25519Pair::from_random(rng);
     let signer_4 = Ed25519Pair::from_random(rng);
+    let signer_5 = Ed25519Pair::from_random(rng);
 
     let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
     rng.fill_bytes(&mut nonce);
@@ -45,7 +46,14 @@ pub fn create_mint_config_tx_and_signers(
             },
             MintConfig {
                 token_id: *token_id,
-                signer_set: SignerSet::new(vec![signer_3.public_key(), signer_4.public_key()], 2),
+                signer_set: SignerSet::new(
+                    vec![
+                        signer_3.public_key(),
+                        signer_4.public_key(),
+                        signer_5.public_key(),
+                    ],
+                    2,
+                ),
                 mint_limit: rng.next_u64(),
             },
         ],
@@ -58,7 +66,7 @@ pub fn create_mint_config_tx_and_signers(
 
     (
         MintConfigTx { prefix, signature },
-        vec![signer_1, signer_2, signer_3, signer_4],
+        vec![signer_1, signer_2, signer_3, signer_4, signer_5],
     )
 }
 
