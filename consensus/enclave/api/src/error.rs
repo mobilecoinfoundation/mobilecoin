@@ -16,7 +16,7 @@ use mc_util_serial::{
     DecodeError as ProstDecodeError, EncodeError as ProstEncodeError,
 };
 use serde::{Deserialize, Serialize};
-use mc_attest_core::IntelSealingError;
+use mc_attest_core::{IntelSealingError, ParseSealedError};
 
 /// An enumeration of errors which can occur inside a consensus enclave.
 #[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
@@ -65,6 +65,12 @@ pub enum Error {
     
     /// Sealing Error: {0}
     IntelSealing(IntelSealingError)
+}
+
+impl From<ParseSealedError> for Error {
+    fn from(src: ParseSealedError) -> Self {
+        Error::IntelSealing(src.into())
+    }
 }
 
 impl From<IntelSealingError> for Error {

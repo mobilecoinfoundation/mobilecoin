@@ -20,12 +20,12 @@ use aligned_cmov::{typenum::U32, A8Bytes, Aligned, GenericArray};
 use alloc::vec::Vec;
 use core::convert::TryFrom;
 use mc_attest_core::{
-    IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
+    IasNonce, IntelSealed, IntelSealingError, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
     EnclaveMessage, Error as AttestEnclaveError, PeerAuthRequest, PeerAuthResponse, PeerSession,
 };
-use mc_attest_trusted::{IntelSealingError, SealAlgo};
+use mc_attest_trusted::SealAlgo;
 use mc_common::{logger::Logger, ResponderId};
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
@@ -391,7 +391,7 @@ fn seal_private_key(src: &RistrettoPrivate) -> Result<SealedIngestKey> {
 // Helper for converting error type living only in mc_attest_trusted to the
 // error type in enclave_api (The attest_trusted crate will not compile in
 // non-sgx environment.)
-fn map_sealing_error(src: mc_attest_trusted::IntelSealingError) -> Error {
+fn map_sealing_error(src: IntelSealingError) -> Error {
     match src {
         IntelSealingError::Sgx(err) => err.into(),
         IntelSealingError::SealFormat(err) => err.into(),

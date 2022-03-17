@@ -11,7 +11,7 @@ use core::{convert::TryFrom, fmt::Display as DisplayTrait};
 use displaydoc::Display;
 use prost::Message;
 use mc_sgx_types::sgx_status_t;
-use serde::{ser::Serialize, de::Deserialize};
+use serde::{Serialize, Deserialize};
 
 
 /// A `Sealed<T>` is a Sealed representation of a T, with some additional
@@ -190,7 +190,7 @@ pub fn get_add_mac_txt_offset(sealed_data: &[u8]) -> Result<u32, ParseSealedErro
     Ok(result)
 }
 
-#[derive(Clone, Debug, Display, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, PartialEq, PartialOrd, Serialize)]
 pub enum ParseSealedError {
     /// Byte range is too short to be a sealed blob: {0} < {1}
     TooShort(usize, usize),
@@ -205,7 +205,7 @@ pub enum ParseSealedError {
 
 /// Represents an error that can occur during sealing an IntelSealed blob
 /// This is the error type of seal_raw
-#[derive(Clone, Debug, Deserialize, Display, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, PartialEq, PartialOrd, Serialize)]
 pub enum IntelSealingError {
     /// SGX error: {0}
     Sgx(SgxError),
