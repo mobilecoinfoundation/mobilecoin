@@ -317,7 +317,7 @@ impl Client {
         );
 
         let required_input_amount = {
-            let mut amount = amount.clone();
+            let mut amount = amount;
             amount.value += fee;
             amount
         };
