@@ -745,7 +745,7 @@ mod ledger_db_test {
     use mc_account_keys::AccountKey;
     use mc_crypto_keys::RistrettoPrivate;
     use mc_transaction_core::{
-        compute_block_id, membership_proofs::compute_implied_merkle_root, tokens::Mob,
+        compute_block_id, membership_proofs::compute_implied_merkle_root, tokens::Mob, Amount,
         BlockVersion, Token,
     };
     use mc_util_from_random::FromRandom;
@@ -791,8 +791,10 @@ mod ledger_db_test {
             let outputs: Vec<TxOut> = (0..num_outputs_per_block)
                 .map(|_i| {
                     let mut result = TxOut::new(
-                        initial_amount,
-                        Mob::ID,
+                        Amount {
+                            value: initial_amount,
+                            token_id: Mob::ID,
+                        },
                         &account_key.default_subaddress(),
                         &RistrettoPrivate::from_random(&mut rng),
                         Default::default(),
@@ -850,8 +852,10 @@ mod ledger_db_test {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         let mut output = TxOut::new(
-            1000,
-            Mob::ID,
+            Amount {
+                value: 1000,
+                token_id: Mob::ID,
+            },
             &account_key.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
@@ -909,8 +913,10 @@ mod ledger_db_test {
         let outputs: Vec<TxOut> = (0..4)
             .map(|_i| {
                 TxOut::new(
-                    1000,
-                    Mob::ID,
+                    Amount {
+                        value: 1000,
+                        token_id: Mob::ID,
+                    },
                     &recipient_account_key.default_subaddress(),
                     &RistrettoPrivate::from_random(&mut rng),
                     Default::default(),
@@ -991,8 +997,10 @@ mod ledger_db_test {
         let outputs: Vec<TxOut> = (0..4)
             .map(|_i| {
                 TxOut::new(
-                    1000,
-                    Mob::ID,
+                    Amount {
+                        value: 1000,
+                        token_id: Mob::ID,
+                    },
                     &recipient_account_key.default_subaddress(),
                     &RistrettoPrivate::from_random(&mut rng),
                     Default::default(),
@@ -1154,8 +1162,10 @@ mod ledger_db_test {
             .collect();
 
         let tx_out = TxOut::new(
-            10,
-            Mob::ID,
+            Amount {
+                value: 10,
+                token_id: Mob::ID,
+            },
             &account_key.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
@@ -1200,8 +1210,10 @@ mod ledger_db_test {
             .collect();
 
         let tx_out = TxOut::new(
-            10,
-            Mob::ID,
+            Amount {
+                value: 10,
+                token_id: Mob::ID,
+            },
             &account_key.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
@@ -1318,8 +1330,10 @@ mod ledger_db_test {
                 let outputs: Vec<TxOut> = (0..4)
                     .map(|_i| {
                         TxOut::new(
-                            1000,
-                            Mob::ID,
+                            Amount {
+                                value: 1000,
+                                token_id: Mob::ID,
+                            },
                             &recipient_account_key.default_subaddress(),
                             &RistrettoPrivate::from_random(&mut rng),
                             Default::default(),
@@ -1363,8 +1377,10 @@ mod ledger_db_test {
             let outputs: Vec<TxOut> = (0..4)
                 .map(|_i| {
                     TxOut::new(
-                        1000,
-                        Mob::ID,
+                        Amount {
+                            value: 1000,
+                            token_id: Mob::ID,
+                        },
                         &recipient_account_key.default_subaddress(),
                         &RistrettoPrivate::from_random(&mut rng),
                         Default::default(),
@@ -1421,8 +1437,10 @@ mod ledger_db_test {
         let key_images = vec![KeyImage::from(rng.next_u64())];
 
         let tx_out = TxOut::new(
-            100,
-            Mob::ID,
+            Amount {
+                value: 100,
+                token_id: Mob::ID,
+            },
             &account_key.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
@@ -1479,8 +1497,10 @@ mod ledger_db_test {
 
         let block_one_contents = {
             let tx_out = TxOut::new(
-                10,
-                Mob::ID,
+                Amount {
+                    value: 10,
+                    token_id: Mob::ID,
+                },
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -1504,8 +1524,10 @@ mod ledger_db_test {
         // The next block reuses a key image.
         let block_two_contents = {
             let tx_out = TxOut::new(
-                33,
-                Mob::ID,
+                Amount {
+                    value: 33,
+                    token_id: Mob::ID,
+                },
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -1549,8 +1571,10 @@ mod ledger_db_test {
 
         let block_one_contents = {
             let mut tx_out = TxOut::new(
-                33,
-                Mob::ID,
+                Amount {
+                    value: 33,
+                    token_id: Mob::ID,
+                },
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -1611,8 +1635,10 @@ mod ledger_db_test {
         // append_block rejects a block with non-existent parent.
         {
             let tx_out = TxOut::new(
-                100,
-                Mob::ID,
+                Amount {
+                    value: 100,
+                    token_id: Mob::ID,
+                },
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),

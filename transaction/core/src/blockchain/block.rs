@@ -205,7 +205,7 @@ mod block_tests {
         ring_signature::KeyImage,
         tokens::Mob,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-        Block, BlockContents, BlockContentsHash, BlockID, BlockVersion, Token,
+        Amount, Block, BlockContents, BlockContentsHash, BlockID, BlockVersion, Token,
     };
     use alloc::vec::Vec;
     use core::convert::TryFrom;
@@ -229,8 +229,10 @@ mod block_tests {
         let outputs: Vec<TxOut> = (0..8)
             .map(|_i| {
                 let mut result = TxOut::new(
-                    rng.next_u64(),
-                    Mob::ID,
+                    Amount {
+                        value: rng.next_u64(),
+                        token_id: Mob::ID,
+                    },
                     &recipient.default_subaddress(),
                     &RistrettoPrivate::from_random(rng),
                     EncryptedFogHint::fake_onetime_hint(rng),

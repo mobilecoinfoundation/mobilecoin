@@ -164,14 +164,7 @@ fn create_output(
         EncryptedFogHint::fake_onetime_hint(rng)
     };
 
-    let output = TxOut::new(
-        amount.value,
-        amount.token_id,
-        recipient,
-        &tx_private_key,
-        hint,
-    )
-    .unwrap();
+    let output = TxOut::new(amount, recipient, &tx_private_key, hint).unwrap();
     log::debug!(logger, "Creating output: {:?}", output);
     output
 }

@@ -24,7 +24,7 @@ use mc_fog_test_infra::get_enclave_path;
 use mc_fog_uri::{ConnectionUri, FogLedgerUri};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
-    ring_signature::KeyImage, tokens::Mob, tx::TxOut, Block, BlockContents, BlockSignature,
+    ring_signature::KeyImage, tokens::Mob, tx::TxOut, Amount, Block, BlockContents, BlockSignature,
     BlockVersion, Token,
 };
 use mc_util_from_random::FromRandom;
@@ -788,8 +788,10 @@ fn add_block_to_ledger_db(
         .map(|recipient| {
             TxOut::new(
                 // TODO: allow for subaddress index!
-                value,
-                Mob::ID,
+                Amount {
+                    value,
+                    token_id: Mob::ID,
+                },
                 recipient,
                 &RistrettoPrivate::from_random(rng),
                 Default::default(),
