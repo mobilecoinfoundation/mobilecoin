@@ -47,3 +47,5 @@ generic-array = "0.14"
 pem = "1.0"
 prost = { version = "0.9", default-features = false }
 rand = "0.8"
+rand_core = "0.6"
+rand_hc = "0.3"
