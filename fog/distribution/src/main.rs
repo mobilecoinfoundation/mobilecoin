@@ -891,7 +891,7 @@ fn get_num_transactions_per_account(
     for (i, tx_out) in transactions.iter().enumerate() {
         // Make sure the view_key matches for this output that we are about to send
         // Assume accounts are numbered in order that they were processed by bootstrap
-        if tx_out.view_key_match(&account.view_private_key()).is_err() {
+        if tx_out.view_key_match(account.view_private_key()).is_err() {
             log::trace!(
                 logger,
                 "Transaction {:?} does not belong to account. Total txs per account = {:?}",
