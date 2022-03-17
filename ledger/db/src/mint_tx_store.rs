@@ -107,8 +107,8 @@ impl MintTxStore {
                 self.block_index_by_mint_tx_nonce,
                 &mint_tx.prefix.nonce,
                 &block_index_bytes,
-                WriteFlags::NO_OVERWRITE, /* this ensures we do not overwrite a nonce that was
-                                           * already used */
+                // do not overwrite a nonce that was already used
+                WriteFlags::NO_OVERWRITE,
             )?;
         }
 
