@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use core::convert::TryFrom;
-pub use mc_account_keys::{AccountKey, PublicAddress, ViewKey, DEFAULT_SUBADDRESS_INDEX};
+pub use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_crypto_rand::{CryptoRng, RngCore};
 pub use mc_fog_report_validation_test_utils::MockFogResolver;
