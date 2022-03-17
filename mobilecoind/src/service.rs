@@ -575,7 +575,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
 
         let (amount, _blinding) = tx_out
-            .amount
+            .masked_amount
             .get_value(&shared_secret)
             .map_err(|err| rpc_internal_error("amount.get_value", err, &self.logger))?;
 
@@ -3512,7 +3512,7 @@ mod test {
             ] {
                 // Find the first output belonging to the account, and get its value.
                 // This assumes that each output is sent to a different account key.
-                let (amount_data, _blinding) = tx
+                let (amount, _blinding) = tx
                     .prefix
                     .outputs
                     .iter()
@@ -3523,12 +3523,12 @@ mod test {
                             account_key.view_private_key(),
                             &output_public_key,
                         );
-                        tx_out.amount.get_value(&shared_secret).ok()
+                        tx_out.masked_amount.get_value(&shared_secret).ok()
                     })
                     .expect("There should be an output belonging to the account key.");
 
-                assert_eq!(amount_data.token_id, Mob::ID);
-                assert_eq!(amount_data.value, *expected_value);
+                assert_eq!(amount.token_id, Mob::ID);
+                assert_eq!(amount.value, *expected_value);
             }
 
             // Santity test fee
@@ -3822,9 +3822,9 @@ mod test {
         let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
         let shared_secret =
             get_tx_out_shared_secret(data.account_key.view_private_key(), &tx_public_key);
-        let (amount_data, _blinding) = tx_out.amount.get_value(&shared_secret).unwrap();
-        assert_eq!(amount_data.value, tx_proposal.outlays[0].value);
-        assert_eq!(amount_data.token_id, Mob::ID);
+        let (amount, _blinding) = tx_out.masked_amount.get_value(&shared_secret).unwrap();
+        assert_eq!(amount.value, tx_proposal.outlays[0].value);
+        assert_eq!(amount.token_id, Mob::ID);
 
         // Santity test fee
         assert_eq!(tx_proposal.fee(), Mob::MINIMUM_FEE);
@@ -3902,9 +3902,9 @@ mod test {
         let tx_out = &tx_proposal.tx.prefix.outputs[0];
         let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
         let shared_secret = get_tx_out_shared_secret(receiver.view_private_key(), &tx_public_key);
-        let (amount_data, _blinding) = tx_out.amount.get_value(&shared_secret).unwrap();
-        assert_eq!(amount_data.value, expected_value);
-        assert_eq!(amount_data.token_id, Mob::ID);
+        let (amount, _blinding) = tx_out.masked_amount.get_value(&shared_secret).unwrap();
+        assert_eq!(amount.value, expected_value);
+        assert_eq!(amount.token_id, Mob::ID);
     }
 
     #[test_with_logger]
@@ -4873,13 +4873,13 @@ mod test {
                         let shared_secret =
                             get_tx_out_shared_secret(sender.view_private_key(), &tx_public_key);
 
-                        let (amount_data, _blinding) = tx_out
-                            .amount
+                        let (amount, _blinding) = tx_out
+                            .masked_amount
                             .get_value(&shared_secret)
                             .expect("Malformed amount");
 
-                        assert_eq!(total_value - test_amount - fee, amount_data.value);
-                        assert_eq!(amount_data.token_id, Mob::ID);
+                        assert_eq!(total_value - test_amount - fee, amount.value);
+                        assert_eq!(amount.token_id, Mob::ID);
                     }
                 }
                 Err(Error::SubaddressSPKNotFound) => continue,

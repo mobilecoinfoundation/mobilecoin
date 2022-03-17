@@ -9,10 +9,10 @@ displaydoc = { version = "0.2", default-features = false }
 retry = "1.3"
 
 mc-attest-core = { path = "../../../attest/core" }
-mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
 mc-attest-net = { path = "../../../attest/net" }
 mc-attest-untrusted = { path = "../../../attest/untrusted" }
+mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-sgx-report-cache-api = { path = "../api" }
 mc-util-metrics = { path = "../../../util/metrics" }

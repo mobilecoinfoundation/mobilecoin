@@ -5292,6 +5292,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-util-seeded-ed25519-key-gen"
+version = "1.3.0-pre0"
+dependencies = [
+ "clap 3.1.6",
+ "hex",
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "pem",
+ "rand 0.8.5",
+ "rand_hc 0.3.1",
+]
+
+[[package]]
 name = "mc-util-serial"
 version = "1.3.0-pre0"
 dependencies = [

@@ -24,7 +24,7 @@ use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::PollingNetworkState;
 use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
 use mc_transaction_core::{
-    ring_signature::KeyImage, tokens::Mob, tx::TxOut, Block, BlockContents, Token,
+    ring_signature::KeyImage, tokens::Mob, tx::TxOut, Amount, Block, BlockContents, Token,
 };
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
@@ -168,9 +168,11 @@ pub fn add_block_to_ledger_db(
         .map(|recipient| {
             let mut result = TxOut::new(
                 // TODO: allow for subaddress index!
-                output_value,
-                // TODO: allow for other token id
-                Mob::ID,
+                Amount {
+                    value: output_value,
+                    // TODO: allow for other token id
+                    token_id: Mob::ID,
+                },
                 recipient,
                 &RistrettoPrivate::from_random(rng),
                 Default::default(),

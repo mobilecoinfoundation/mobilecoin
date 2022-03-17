@@ -9,7 +9,7 @@ edition = "2018"
 # because rmp-ser../../alloc doesn't build against ser../../std,
 # so if anything else in your build plan will activate ser../../std, then mcseri../../std is
 # required.
-std = [ "serde/std", "serde_cbor/std" ]
+std = ["serde/std", "serde_cbor/std"]
 
 [dependencies]
 prost = { version = "0.9", default-features = false, features = ["prost-derive"] }

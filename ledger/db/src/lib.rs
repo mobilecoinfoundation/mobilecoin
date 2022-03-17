@@ -893,7 +893,7 @@ mod ledger_db_test {
     use mc_account_keys::AccountKey;
     use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate};
     use mc_transaction_core::{
-        compute_block_id, membership_proofs::compute_implied_merkle_root, tokens::Mob,
+        compute_block_id, membership_proofs::compute_implied_merkle_root, tokens::Mob, Amount,
         BlockVersion, Token,
     };
     use mc_transaction_core_test_utils::{
@@ -943,8 +943,10 @@ mod ledger_db_test {
             let outputs: Vec<TxOut> = (0..num_outputs_per_block)
                 .map(|_i| {
                     let mut result = TxOut::new(
-                        initial_amount,
-                        Mob::ID,
+                        Amount {
+                            value: initial_amount,
+                            token_id: Mob::ID,
+                        },
                         &account_key.default_subaddress(),
                         &RistrettoPrivate::from_random(&mut rng),
                         Default::default(),
@@ -1007,8 +1009,10 @@ mod ledger_db_test {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         let mut output = TxOut::new(
-            1000,
-            Mob::ID,
+            Amount {
+                value: 1000,
+                token_id: Mob::ID,
+            },
             &account_key.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
@@ -1066,19 +1070,7 @@ mod ledger_db_test {
 
         // === Create and append a non-origin block. ===
 
-        let recipient_account_key = AccountKey::random(&mut rng);
-        let outputs: Vec<TxOut> = (0..4)
-            .map(|_i| {
-                TxOut::new(
-                    1000,
-                    Mob::ID,
-                    &recipient_account_key.default_subaddress(),
-                    &RistrettoPrivate::from_random(&mut rng),
-                    Default::default(),
-                )
-                .unwrap()
-            })
-            .collect();
+        let outputs: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
 
         let key_images: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
 
@@ -1740,19 +1732,7 @@ mod ledger_db_test {
             .unwrap();
 
         // === Create and append a non-origin block. ===
-        let recipient_account_key = AccountKey::random(&mut rng);
-        let outputs1: Vec<TxOut> = (0..4)
-            .map(|_i| {
-                TxOut::new(
-                    1000,
-                    Mob::ID,
-                    &recipient_account_key.default_subaddress(),
-                    &RistrettoPrivate::from_random(&mut rng),
-                    Default::default(),
-                )
-                .unwrap()
-            })
-            .collect();
+        let outputs1: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
 
         let key_images1: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
         let mint_config_tx1 = create_mint_config_tx(token_id1, &mut rng);
@@ -1849,18 +1829,7 @@ mod ledger_db_test {
 
         //  === Write another block - this one has a MintTx in addition to all
         // the other txs.
-        let outputs2: Vec<TxOut> = (0..4)
-            .map(|_i| {
-                TxOut::new(
-                    1000,
-                    Mob::ID,
-                    &recipient_account_key.default_subaddress(),
-                    &RistrettoPrivate::from_random(&mut rng),
-                    Default::default(),
-                )
-                .unwrap()
-            })
-            .collect();
+        let outputs2: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
 
         let key_images2: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
         let mint_config_tx3 = create_mint_config_tx(token_id1, &mut rng);
@@ -2400,19 +2369,7 @@ mod ledger_db_test {
             .unwrap();
 
         // === Attempt to append a block without key images ===
-        let recipient_account_key = AccountKey::random(&mut rng);
-        let outputs: Vec<TxOut> = (0..4)
-            .map(|_i| {
-                TxOut::new(
-                    1000,
-                    Mob::ID,
-                    &recipient_account_key.default_subaddress(),
-                    &RistrettoPrivate::from_random(&mut rng),
-                    Default::default(),
-                )
-                .unwrap()
-            })
-            .collect();
+        let outputs: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
 
         let block_contents = BlockContents {
             outputs,
@@ -2561,20 +2518,12 @@ mod ledger_db_test {
             .unwrap();
 
         // Write the next block, containing several key images.
-        let account_key = AccountKey::random(&mut rng);
         let num_key_images = 3;
         let key_images: Vec<KeyImage> = (0..num_key_images)
             .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
-        let tx_out = TxOut::new(
-            10,
-            Mob::ID,
-            &account_key.default_subaddress(),
-            &RistrettoPrivate::from_random(&mut rng),
-            Default::default(),
-        )
-        .unwrap();
+        let tx_out = create_test_tx_out(&mut rng);
         let outputs = vec![tx_out];
 
         let block_contents = BlockContents {
@@ -2611,20 +2560,12 @@ mod ledger_db_test {
         populate_db(&mut ledger_db, n_blocks, 2);
 
         // Append a new block to the ledger.
-        let account_key = AccountKey::random(&mut rng);
         let num_key_images = 3;
         let key_images: Vec<KeyImage> = (0..num_key_images)
             .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
-        let tx_out = TxOut::new(
-            10,
-            Mob::ID,
-            &account_key.default_subaddress(),
-            &RistrettoPrivate::from_random(&mut rng),
-            Default::default(),
-        )
-        .unwrap();
+        let tx_out = create_test_tx_out(&mut rng);
         let outputs = vec![tx_out];
 
         let block_contents = BlockContents {
@@ -2737,19 +2678,7 @@ mod ledger_db_test {
         for block_version in BlockVersion::iterator() {
             // In each iteration we add a few blocks with the same version.
             for _ in 0..3 {
-                let recipient_account_key = AccountKey::random(&mut rng);
-                let outputs: Vec<TxOut> = (0..4)
-                    .map(|_i| {
-                        TxOut::new(
-                            1000,
-                            Mob::ID,
-                            &recipient_account_key.default_subaddress(),
-                            &RistrettoPrivate::from_random(&mut rng),
-                            Default::default(),
-                        )
-                        .unwrap()
-                    })
-                    .collect();
+                let outputs: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
 
                 let key_images: Vec<KeyImage> =
                     (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
@@ -2786,19 +2715,7 @@ mod ledger_db_test {
 
         // Appending a block with version < previous block version should fail.
         {
-            let recipient_account_key = AccountKey::random(&mut rng);
-            let outputs: Vec<TxOut> = (0..4)
-                .map(|_i| {
-                    TxOut::new(
-                        1000,
-                        Mob::ID,
-                        &recipient_account_key.default_subaddress(),
-                        &RistrettoPrivate::from_random(&mut rng),
-                        Default::default(),
-                    )
-                    .unwrap()
-                })
-                .collect();
+            let outputs: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
 
             let key_images: Vec<KeyImage> =
                 (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
@@ -2842,7 +2759,6 @@ mod ledger_db_test {
     fn test_append_block_at_wrong_location() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
-        let account_key = AccountKey::random(&mut rng);
 
         // initialize a ledger with 3 blocks.
         let n_blocks = 3;
@@ -2851,14 +2767,7 @@ mod ledger_db_test {
 
         let key_images = vec![KeyImage::from(rng.next_u64())];
 
-        let tx_out = TxOut::new(
-            100,
-            Mob::ID,
-            &account_key.default_subaddress(),
-            &RistrettoPrivate::from_random(&mut rng),
-            Default::default(),
-        )
-        .unwrap();
+        let tx_out = create_test_tx_out(&mut rng);
 
         let outputs = vec![tx_out];
         let block_contents = BlockContents {
@@ -2906,21 +2815,13 @@ mod ledger_db_test {
             .unwrap();
 
         // Write the next block, containing several key images.
-        let account_key = AccountKey::random(&mut rng);
         let num_key_images = 3;
         let block_one_key_images: Vec<KeyImage> = (0..num_key_images)
             .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
         let block_one_contents = {
-            let tx_out = TxOut::new(
-                10,
-                Mob::ID,
-                &account_key.default_subaddress(),
-                &RistrettoPrivate::from_random(&mut rng),
-                Default::default(),
-            )
-            .unwrap();
+            let tx_out = create_test_tx_out(&mut rng);
             let outputs = vec![tx_out];
             BlockContents {
                 key_images: block_one_key_images.clone(),
@@ -2942,14 +2843,7 @@ mod ledger_db_test {
 
         // The next block reuses a key image.
         let block_two_contents = {
-            let tx_out = TxOut::new(
-                33,
-                Mob::ID,
-                &account_key.default_subaddress(),
-                &RistrettoPrivate::from_random(&mut rng),
-                Default::default(),
-            )
-            .unwrap();
+            let tx_out = create_test_tx_out(&mut rng);
             let outputs = vec![tx_out];
             BlockContents {
                 key_images: block_one_key_images.clone(),
@@ -2988,17 +2882,9 @@ mod ledger_db_test {
 
         // The next block reuses a public key.
         let existing_tx_out = ledger_db.get_tx_out_by_index(0).unwrap();
-        let account_key = AccountKey::random(&mut rng);
 
         let block_one_contents = {
-            let mut tx_out = TxOut::new(
-                33,
-                Mob::ID,
-                &account_key.default_subaddress(),
-                &RistrettoPrivate::from_random(&mut rng),
-                Default::default(),
-            )
-            .unwrap();
+            let mut tx_out = create_test_tx_out(&mut rng);
             tx_out.public_key = existing_tx_out.public_key.clone();
             let outputs = vec![tx_out];
             let key_images = vec![KeyImage::from(rng.next_u64())];
@@ -3058,14 +2944,7 @@ mod ledger_db_test {
 
         // append_block rejects a block with non-existent parent.
         {
-            let tx_out = TxOut::new(
-                100,
-                Mob::ID,
-                &account_key.default_subaddress(),
-                &RistrettoPrivate::from_random(&mut rng),
-                Default::default(),
-            )
-            .unwrap();
+            let tx_out = create_test_tx_out(&mut rng);
 
             let key_images = vec![KeyImage::from(rng.next_u64())];
             let outputs = vec![tx_out];

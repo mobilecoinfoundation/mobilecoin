@@ -9,8 +9,8 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockID, BlockIndex, BlockSignature, BlockVersion, Token,
-    TokenId,
+    Amount, Block, BlockContents, BlockData, BlockID, BlockIndex, BlockSignature, BlockVersion,
+    Token, TokenId,
 };
 use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, SeedableRng};
@@ -234,6 +234,7 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
     // The owner of all outputs in the mock ledger.
     let account_key = AccountKey::random(&mut rng);
     let value = 134_217_728; // 2^27
+    let token_id = Mob::ID;
 
     let mut block_ids: Vec<BlockID> = Vec::with_capacity(n_blocks);
     let mut blocks_and_contents: Vec<(Block, BlockContents)> = Vec::with_capacity(n_blocks);
@@ -242,8 +243,7 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
         if block_index == 0 {
             // Create the origin block.
             let mut tx_out = TxOut::new(
-                value,
-                Mob::ID,
+                Amount { value, token_id },
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -263,8 +263,10 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
         } else {
             // Create a normal block.
             let tx_out = TxOut::new(
-                16,
-                Mob::ID,
+                Amount {
+                    value: 16,
+                    token_id,
+                },
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),

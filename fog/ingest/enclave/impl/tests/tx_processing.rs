@@ -18,7 +18,7 @@ use mc_transaction_core::{
     fog_hint::{FogHint, PlaintextArray},
     tokens::Mob,
     tx::TxOut,
-    Token,
+    Amount, Token,
 };
 use mc_util_from_random::FromRandom;
 use mc_util_logger_macros::test_with_logger;
@@ -59,8 +59,10 @@ fn test_ingest_enclave(logger: Logger) {
                 let tx_private_key = RistrettoPrivate::from_random(&mut rng);
                 let e_fog_hint = FogHint::from(&bob_public_address).encrypt(&fog_pubkey, &mut rng);
                 TxOut::new(
-                    10,
-                    token_id,
+                    Amount {
+                        value: 10,
+                        token_id,
+                    },
                     &bob_account.default_subaddress(),
                     &tx_private_key,
                     e_fog_hint,
@@ -229,8 +231,10 @@ fn test_ingest_enclave_malformed_txos(logger: Logger) {
                     _ => panic!("this should be unreachable"),
                 };
                 TxOut::new(
-                    10,
-                    token_id,
+                    Amount {
+                        value: 10,
+                        token_id,
+                    },
                     &bob_account.default_subaddress(),
                     &tx_private_key,
                     e_fog_hint,
@@ -372,7 +376,16 @@ fn test_ingest_enclave_overflow(logger: Logger) {
                     };
                     let tx_private_key = RistrettoPrivate::from_random(&mut rng);
                     let e_fog_hint = FogHint::from(pub_addr).encrypt(&fog_pubkey, &mut rng);
-                    TxOut::new(10, token_id, pub_addr, &tx_private_key, e_fog_hint).unwrap()
+                    TxOut::new(
+                        Amount {
+                            value: 10,
+                            token_id,
+                        },
+                        pub_addr,
+                        &tx_private_key,
+                        e_fog_hint,
+                    )
+                    .unwrap()
                 })
                 .collect();
 

@@ -22,9 +22,9 @@ serde = "1"
 structopt = "0.3"
 
 # mc
-mc-api = { path = "../../../api"}
+mc-api = { path = "../../../api" }
 mc-common = { path = "../../../common", features = ["loggers"] }
-mc-crypto-keys = { path = "../../../crypto/keys"}
+mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-metrics = { path = "../../../util/metrics" }
 
@@ -38,9 +38,9 @@ mc-fog-uri = { path = "../../uri" }
 
 [dev-dependencies]
 # third-party
-regex = "1"
 rand_core = "0.6"
 rand_hc = "0.3"
+regex = "1"
 tempdir = "0.3"
 url = "2.2.2"
 

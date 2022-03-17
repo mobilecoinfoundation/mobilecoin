@@ -13,7 +13,6 @@ path = "src/lib.rs"
 name = "fog-sql-recovery-db-migrations"
 path = "src/bin/fog_sql_recovery_db_migrations.rs"
 
-
 [[bin]]
 name = "fog-sql-recovery-db-write-bench"
 path = "src/bin/fog_sql_recovery_db_write_bench.rs"

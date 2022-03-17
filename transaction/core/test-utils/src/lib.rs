@@ -10,7 +10,7 @@ pub use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Block, BlockID, BlockIndex, BlockVersion, Token,
+    Amount, Block, BlockID, BlockIndex, BlockVersion, Token,
 };
 pub use mint::{create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx};
 
@@ -57,16 +57,16 @@ pub fn create_transaction<L: Ledger, R: RngCore + CryptoRng>(
     // Get the output value.
     let tx_out_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
     let shared_secret = get_tx_out_shared_secret(sender.view_private_key(), &tx_out_public_key);
-    let (amount_data, _blinding) = tx_out.amount.get_value(&shared_secret).unwrap();
+    let (amount, _blinding) = tx_out.masked_amount.get_value(&shared_secret).unwrap();
 
-    assert!(amount_data.value >= Mob::MINIMUM_FEE);
+    assert!(amount.value >= Mob::MINIMUM_FEE);
     create_transaction_with_amount(
         block_version,
         ledger,
         tx_out,
         sender,
         recipient,
-        amount_data.value - Mob::MINIMUM_FEE,
+        amount.value - Mob::MINIMUM_FEE,
         Mob::MINIMUM_FEE,
         tombstone_block,
         rng,
@@ -177,6 +177,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
     rng: &mut R,
 ) -> Vec<Block> {
     let value: u64 = INITIALIZE_LEDGER_AMOUNT;
+    let token_id = Mob::ID;
 
     // TxOut from the previous block
     let mut to_spend: Option<TxOut> = None;
@@ -222,8 +223,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                 let outputs: Vec<TxOut> = (0..RING_SIZE)
                     .map(|_i| {
                         let mut tx_out = TxOut::new(
-                            value,
-                            Mob::ID,
+                            Amount { value, token_id },
                             &account_key.default_subaddress(),
                             &RistrettoPrivate::from_random(rng),
                             Default::default(),
@@ -324,8 +324,10 @@ pub fn get_outputs<T: RngCore + CryptoRng>(
         .iter()
         .map(|(recipient, value)| {
             let mut result = TxOut::new(
-                *value,
-                Mob::ID,
+                Amount {
+                    value: *value,
+                    token_id: Mob::ID,
+                },
                 recipient,
                 &RistrettoPrivate::from_random(rng),
                 Default::default(),
@@ -334,7 +336,7 @@ pub fn get_outputs<T: RngCore + CryptoRng>(
             if !block_version.e_memo_feature_is_supported() {
                 result.e_memo = None;
             }
-            result.amount.masked_token_id = Default::default();
+            result.masked_amount.masked_token_id = Default::default();
             result
         })
         .collect()
@@ -344,8 +346,10 @@ pub fn get_outputs<T: RngCore + CryptoRng>(
 pub fn create_test_tx_out(rng: &mut (impl RngCore + CryptoRng)) -> TxOut {
     let account_key = AccountKey::random(rng);
     TxOut::new(
-        rng.next_u64(),
-        Mob::ID,
+        Amount {
+            value: rng.next_u64(),
+            token_id: Mob::ID,
+        },
         &account_key.default_subaddress(),
         &RistrettoPrivate::from_random(rng),
         Default::default(),

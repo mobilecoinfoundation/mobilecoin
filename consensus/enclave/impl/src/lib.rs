@@ -58,7 +58,7 @@ use mc_transaction_core::{
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Block, BlockContents, BlockSignature, Token, TokenId,
+    Amount, Block, BlockContents, BlockSignature, Token, TokenId,
 };
 // Race here refers to, this is thread-safe, first-one-wins behavior, without
 // blocking
@@ -679,8 +679,10 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                     FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.as_bytes(),
                     parent_block,
                     &transactions,
-                    *total_fee,
-                    TokenId::from(*token_id),
+                    Amount {
+                        value: *total_fee,
+                        token_id: TokenId::from(*token_id),
+                    },
                 )
             })
             .collect::<Result<Vec<TxOut>>>()?;
@@ -713,8 +715,10 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 MINTED_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.as_bytes(),
                 parent_block,
                 &mint_txs,
-                mint_tx.prefix.amount,
-                TokenId::from(mint_tx.prefix.token_id),
+                Amount {
+                    value: mint_tx.prefix.amount,
+                    token_id: TokenId::from(mint_tx.prefix.token_id),
+                },
             )?;
 
             outputs.push(output);
@@ -770,8 +774,7 @@ fn mint_output<T: Digestible>(
     domain_tag: &'static [u8],
     parent_block: &Block,
     transactions: &[T],
-    amount: u64,
-    token_id: TokenId,
+    amount: Amount,
 ) -> Result<TxOut> {
     // Create a determinstic private key based on the block contents.
     let tx_private_key = {
@@ -792,14 +795,8 @@ fn mint_output<T: Digestible>(
     };
 
     // Create a single TxOut
-    let output = TxOut::new(
-        amount,
-        token_id,
-        recipient,
-        &tx_private_key,
-        Default::default(),
-    )
-    .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?;
+    let output = TxOut::new(amount, recipient, &tx_private_key, Default::default())
+        .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?;
 
     Ok(output)
 }
@@ -1183,7 +1180,7 @@ mod tests {
             // The value of the aggregate fee should equal the total value of fees in the
             // input transaction.
             let shared_secret = create_shared_secret(&fee_output_public_key, &view_secret_key);
-            let (amount, _blinding) = fee_output.amount.get_value(&shared_secret).unwrap();
+            let (amount, _blinding) = fee_output.masked_amount.get_value(&shared_secret).unwrap();
             assert_eq!(amount.value, total_fee);
             assert_eq!(amount.token_id, Mob::ID);
         }

@@ -13,7 +13,7 @@ use mc_transaction_core::{
     encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
     ring_signature::KeyImage,
     tx::TxOut,
-    AmountData, Block, BlockContents, BlockVersion,
+    Amount, Block, BlockContents, BlockVersion,
 };
 use mc_util_from_random::FromRandom;
 use rand::{RngCore, SeedableRng};
@@ -93,7 +93,7 @@ pub fn bootstrap_ledger(
             for _i in 0..outputs_per_recipient_per_block {
                 // Create outputs of each token id in round-robin
                 for token_id in 0..=max_token_id {
-                    let amount = AmountData {
+                    let amount = Amount {
                         value: picomob_per_output,
                         token_id: token_id.into(),
                     };
@@ -148,7 +148,7 @@ pub fn bootstrap_ledger(
 
 fn create_output(
     recipient: &PublicAddress,
-    amount: AmountData,
+    amount: Amount,
     rng: &mut FixedRng,
     hint_slice: Option<&str>,
     logger: &Logger,
@@ -168,14 +168,7 @@ fn create_output(
         EncryptedFogHint::fake_onetime_hint(rng)
     };
 
-    let output = TxOut::new(
-        amount.value,
-        amount.token_id,
-        recipient,
-        &tx_private_key,
-        hint,
-    )
-    .unwrap();
+    let output = TxOut::new(amount, recipient, &tx_private_key, hint).unwrap();
     log::debug!(logger, "Creating output: {:?}", output);
     output
 }
@@ -193,7 +186,7 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([20u8; 32]);
         let mut fixed_rng: FixedRng = SeedableRng::from_seed([33u8; 32]);
 
-        let amount = AmountData {
+        let amount = Amount {
             value: 10,
             token_id: Mob::ID,
         };

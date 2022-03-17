@@ -30,7 +30,7 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
-    AmountData, BlockIndex, BlockVersion, Token, TokenId,
+    Amount, BlockIndex, BlockVersion, Token, TokenId,
 };
 use mc_transaction_std::{
     ChangeDestination, InputCredentials, MemoType, RTHMemoBuilder, SenderMemoCredential,
@@ -301,7 +301,7 @@ impl Client {
     /// * `fee` - The transaction fee to use
     pub fn build_transaction<T: RngCore + CryptoRng>(
         &mut self,
-        amount: AmountData,
+        amount: Amount,
         target_address: &PublicAddress,
         rng: &mut T,
         fee: u64,
@@ -317,7 +317,7 @@ impl Client {
         );
 
         let required_input_amount = {
-            let mut amount = amount.clone();
+            let mut amount = amount;
             amount.value += fee;
             amount
         };
@@ -573,7 +573,7 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     block_version: BlockVersion,
     inputs: Vec<(OwnedTxOut, TxOutMembershipProof)>,
     rings: Vec<Vec<(TxOut, TxOutMembershipProof)>>,
-    amount: AmountData,
+    amount: Amount,
     source_account_key: &AccountKey,
     target_address: &PublicAddress,
     tombstone_block: BlockIndex,
@@ -721,7 +721,7 @@ mod test_build_transaction_helper {
     use mc_transaction_core::{
         constants::MILLIMOB_TO_PICOMOB,
         tx::{TxOut, TxOutMembershipProof},
-        AmountData,
+        Amount,
     };
     use mc_transaction_core_test_utils::get_outputs;
     use rand::{rngs::StdRng, SeedableRng};
@@ -750,7 +750,7 @@ mod test_build_transaction_helper {
 
             // Amount per input.
             let initial_amount = 300 * MILLIMOB_TO_PICOMOB;
-            let amount_to_send = AmountData {
+            let amount_to_send = Amount {
                 value: 457 * MILLIMOB_TO_PICOMOB,
                 token_id: Mob::ID,
             };

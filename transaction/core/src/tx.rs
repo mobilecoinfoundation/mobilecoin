@@ -16,7 +16,7 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    amount::{Amount, AmountData, AmountError},
+    amount::{Amount, AmountError, MaskedAmount},
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
@@ -24,7 +24,7 @@ use crate::{
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
     ring_signature::{KeyImage, SignatureRctBulletproofs},
-    CompressedCommitment, NewMemoError, NewTxError, TokenId,
+    CompressedCommitment, NewMemoError, NewTxError,
 };
 
 /// Transaction hash length, in bytes.
@@ -219,7 +219,7 @@ impl TxPrefix {
     pub fn output_commitments(&self) -> Vec<CompressedCommitment> {
         self.outputs
             .iter()
-            .map(|output| output.amount.commitment)
+            .map(|output| output.masked_amount.commitment)
             .collect()
     }
 }
@@ -245,7 +245,8 @@ pub struct TxIn {
 pub struct TxOut {
     /// The amount being sent.
     #[prost(message, required, tag = "1")]
-    pub amount: Amount,
+    #[digestible(name = "amount")]
+    pub masked_amount: MaskedAmount,
 
     /// The one-time public address of this output.
     #[prost(message, required, tag = "2")]
@@ -290,18 +291,17 @@ impl TxOut {
     /// This uses a defaulted (all zeroes) MemoPayload.
     ///
     /// # Arguments
-    /// * `value` - Value of the output.
+    /// * `amount` - Amount contained within the TxOut
     /// * `recipient` - Recipient's address.
     /// * `tx_private_key` - The transaction's private key
     /// * `hint` - Encrypted Fog hint for this output.
     pub fn new(
-        value: u64,
-        token_id: TokenId,
+        amount: Amount,
         recipient: &PublicAddress,
         tx_private_key: &RistrettoPrivate,
         hint: EncryptedFogHint,
     ) -> Result<Self, AmountError> {
-        TxOut::new_with_memo(value, token_id, recipient, tx_private_key, hint, |_| {
+        TxOut::new_with_memo(amount, recipient, tx_private_key, hint, |_| {
             Ok(Some(MemoPayload::default()))
         })
         .map_err(|err| match err {
@@ -316,15 +316,14 @@ impl TxOut {
     /// passed the value and tx_public_key.
     ///
     /// # Arguments
-    /// * `value` - Value of the output.
+    /// * `amount` - Amount contained within the TxOut
     /// * `recipient` - Recipient's address.
     /// * `tx_private_key` - The transaction's private key
     /// * `hint` - Encrypted Fog hint.
     /// * `memo_fn` - A callback taking MemoContext, which produces a
     ///   MemoPayload, or a NewMemo error
     pub fn new_with_memo(
-        value: u64,
-        token_id: TokenId,
+        amount: Amount,
         recipient: &PublicAddress,
         tx_private_key: &RistrettoPrivate,
         hint: EncryptedFogHint,
@@ -335,8 +334,7 @@ impl TxOut {
 
         let shared_secret = create_shared_secret(recipient.view_public_key(), tx_private_key);
 
-        let amount_data = AmountData { value, token_id };
-        let amount = Amount::new(amount_data, &shared_secret)?;
+        let masked_amount = MaskedAmount::new(amount, &shared_secret)?;
 
         let memo_ctxt = MemoContext {
             tx_public_key: &public_key,
@@ -345,7 +343,7 @@ impl TxOut {
         let e_memo = memo.map(|memo| memo.encrypt(&shared_secret));
 
         Ok(TxOut {
-            amount,
+            masked_amount,
             target_key,
             public_key: public_key.into(),
             e_fog_hint: hint,
@@ -574,7 +572,7 @@ mod tests {
         subaddress_matches_tx_out,
         tokens::Mob,
         tx::{Tx, TxIn, TxOut, TxPrefix},
-        Amount, AmountData, Token,
+        Amount, MaskedAmount, Token,
     };
     use alloc::vec::Vec;
     use core::convert::TryFrom;
@@ -592,13 +590,13 @@ mod tests {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
             let public_key = RistrettoPublic::from_random(&mut rng).into();
-            let amount_data = AmountData {
+            let amount = Amount {
                 value: 23u64,
                 token_id: Mob::ID,
             };
-            let amount = Amount::new(amount_data, &shared_secret).unwrap();
+            let masked_amount = MaskedAmount::new(amount, &shared_secret).unwrap();
             TxOut {
-                amount,
+                masked_amount,
                 target_key,
                 public_key,
                 e_fog_hint: EncryptedFogHint::from(&[1u8; ENCRYPTED_FOG_HINT_LEN]),
@@ -655,13 +653,13 @@ mod tests {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
             let public_key = RistrettoPublic::from_random(&mut rng).into();
-            let amount_data = AmountData {
-                value: 23u64,
+            let amount = Amount {
+                value: 23,
                 token_id: Mob::ID,
             };
-            let amount = Amount::new(amount_data, &shared_secret).unwrap();
+            let masked_amount = MaskedAmount::new(amount, &shared_secret).unwrap();
             TxOut {
-                amount,
+                masked_amount,
                 target_key,
                 public_key,
                 e_fog_hint: EncryptedFogHint::from(&[1u8; ENCRYPTED_FOG_HINT_LEN]),
@@ -726,8 +724,10 @@ mod tests {
 
             // A tx out with an empty memo
             let mut tx_out = TxOut::new(
-                13u64,
-                Mob::ID,
+                Amount {
+                    value: 13,
+                    token_id: Mob::ID,
+                },
                 &bob_addr,
                 &tx_private_key,
                 Default::default(),
@@ -766,8 +766,10 @@ mod tests {
             let memo_val = MemoPayload::new([2u8; 2], [4u8; 64]);
             // A tx out with a memo
             let tx_out = TxOut::new_with_memo(
-                13u64,
-                Mob::ID,
+                Amount {
+                    value: 13,
+                    token_id: Mob::ID,
+                },
                 &bob_addr,
                 &tx_private_key,
                 Default::default(),
@@ -800,8 +802,10 @@ mod tests {
             let memo_val = MemoPayload::new([4u8; 2], [9u8; 64]);
             // A tx out with a memo
             let tx_out = TxOut::new_with_memo(
-                13u64,
-                Mob::ID,
+                Amount {
+                    value: 13,
+                    token_id: Mob::ID,
+                },
                 &bob.change_subaddress(),
                 &tx_private_key,
                 Default::default(),
