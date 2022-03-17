@@ -9,7 +9,10 @@ use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
 use mc_crypto_multisig::SignerSet;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{fs, iter::FromIterator, path::Path};
+use std::{fs, iter::FromIterator, ops::Range, path::Path};
+
+/// Sane values for MOB, enforced unless the allow_any_fee option is used.
+pub const ACCEPTABLE_MOB_FEE_VALUES: Range<u64> = 10_000..1_000_000_000_000u64;
 
 mod pem_signer_set {
     use super::*;
@@ -131,7 +134,7 @@ impl TokenConfig {
         // By default, we restrict MOB minimum fee to a sane value.
         if self.token_id == Mob::ID {
             let mob_fee = self.minimum_fee_or_default().unwrap(); // We are guaranteed to have a minimum fee for MOB.
-            if !self.allow_any_fee && !(10_000..1_000_000_000_000u64).contains(&mob_fee) {
+            if !self.allow_any_fee && !ACCEPTABLE_MOB_FEE_VALUES.contains(&mob_fee) {
                 return Err(ConsensusServiceError::Configuration(format!(
                     "Fee {} picoMOB is out of bounds",
                     mob_fee
