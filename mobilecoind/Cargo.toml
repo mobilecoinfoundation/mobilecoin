@@ -74,8 +74,8 @@ mc-util-from-random = { path = "../util/from-random" }
 hex = "0.4"
 more-asserts = "0.2"
 pem = "1.0"
-rand_core = "0.6"
 rand_chacha = "0.3"
+rand_core = "0.6"
 tempdir = "0.3"
 
 [build-dependencies]

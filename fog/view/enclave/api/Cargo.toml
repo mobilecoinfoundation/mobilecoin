@@ -11,10 +11,10 @@ mc-attest-core = { path = "../../../../attest/core", default-features = false }
 mc-attest-enclave-api = { path = "../../../../attest/enclave-api", default-features = false }
 mc-common = { path = "../../../../common", default-features = false }
 mc-crypto-keys = { path = "../../../../crypto/keys", default-features = false }
-mc-util-serial = { path = "../../../../util/serial", default-features = false }
 mc-sgx-compat = { path = "../../../../sgx/compat", default-features = false }
 mc-sgx-report-cache-api = { path = "../../../../sgx/report-cache/api" }
 mc-sgx-types = { path = "../../../../sgx/types", default-features = false }
+mc-util-serial = { path = "../../../../util/serial", default-features = false }
 
 # fog
 mc-fog-recovery-db-iface = { path = "../../../recovery_db_iface" }

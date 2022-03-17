@@ -2,7 +2,7 @@ use mc_account_keys::AccountKey;
 use mc_crypto_digestible_test_utils::*;
 use mc_crypto_keys::RistrettoPrivate;
 use mc_transaction_core::{
-    encrypted_fog_hint::EncryptedFogHint, tokens::Mob, tx::TxOut, Block, BlockContents,
+    encrypted_fog_hint::EncryptedFogHint, tokens::Mob, tx::TxOut, Amount, Block, BlockContents,
     BlockVersion, Token,
 };
 use mc_util_from_random::FromRandom;
@@ -23,8 +23,10 @@ fn test_origin_tx_outs() -> Vec<TxOut> {
         .iter()
         .map(|acct| {
             let mut tx_out = TxOut::new(
-                rng.next_u32() as u64,
-                Mob::ID,
+                Amount {
+                    value: rng.next_u32() as u64,
+                    token_id: Mob::ID,
+                },
                 &acct.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 EncryptedFogHint::fake_onetime_hint(&mut rng),
@@ -33,7 +35,7 @@ fn test_origin_tx_outs() -> Vec<TxOut> {
             // Origin TxOuts do not have encrypted memo fields.
             tx_out.e_memo = None;
             // Origin TxOuts do not have masked token id
-            tx_out.amount.masked_token_id = Default::default();
+            tx_out.masked_amount.masked_token_id = Default::default();
             tx_out
         })
         .collect()

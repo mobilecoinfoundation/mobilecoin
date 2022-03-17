@@ -16,9 +16,9 @@ mc-consensus-api = { path = "../../../consensus/api" }
 mc-fog-report-types = { path = "../types" }
 
 [dev-dependencies]
-prost = { version = "0.9", default-features = false, features = ["prost-derive"] }
 mc-attest-core = { path = "../../../attest/core", default-features = false }
 mc-fog-report-api-test-utils = { path = "test-utils" }
+prost = { version = "0.9", default-features = false, features = ["prost-derive"] }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../../util/build/grpc" }

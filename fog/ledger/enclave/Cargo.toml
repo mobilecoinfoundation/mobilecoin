@@ -8,8 +8,8 @@ license = "GPL-3.0"
 [dependencies]
 # mobilecoin
 mc-attest-core = { path = "../../../attest/core" }
-mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
+mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common" }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-enclave-boundary = { path = "../../../enclave-boundary" }
@@ -22,16 +22,16 @@ mc-sgx-urts = { path = "../../../sgx/urts" }
 mc-util-serial = { path = "../../../util/serial" }
 
 # fog
-mc-fog-types = { path = "../../types" }
 mc-fog-ledger-enclave-api = { path = "./api" }
 mc-fog-ledger-enclave-edl = { path = "./edl" }
 mc-fog-ledger-enclave-measurement = { path = "./measurement" }
 mc-fog-ocall-oram-storage-edl = { path = "../../ocall_oram_storage/edl" }
 mc-fog-ocall-oram-storage-untrusted = { path = "../../ocall_oram_storage/untrusted" }
+mc-fog-types = { path = "../../types" }
 
 [build-dependencies]
-mc-util-build-sgx = { path = "../../../util/build/sgx" }
 mc-util-build-script = { path = "../../../util/build/script" }
+mc-util-build-sgx = { path = "../../../util/build/sgx" }
 
 cargo-emit = "0.2.1"
 pkg-config = "0.3"

@@ -8,4 +8,5 @@ license = "GPL-3.0"
 
 [build-dependencies]
 mc-util-build-script = { path = "../../../../util/build/script" }
+
 cargo-emit = "0.2"

@@ -51,6 +51,7 @@ impl From<Error> for ProposeTxResult {
             Error::TokenNotYetConfigured => Self::TokenNotYetConfigured,
             Error::MissingMaskedTokenId => Self::MissingMaskedTokenId,
             Error::MaskedTokenIdNotAllowed => Self::MaskedTokenIdNotAllowed,
+            Error::UnsortedOutputs => Self::UnsortedOutputs,
         }
     }
 }
@@ -99,6 +100,7 @@ impl TryInto<Error> for ProposeTxResult {
             Self::TokenNotYetConfigured => Ok(Error::TokenNotYetConfigured),
             Self::MissingMaskedTokenId => Ok(Error::MissingMaskedTokenId),
             Self::MaskedTokenIdNotAllowed => Ok(Error::MaskedTokenIdNotAllowed),
+            Self::UnsortedOutputs => Ok(Error::UnsortedOutputs),
         }
     }
 }

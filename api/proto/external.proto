@@ -179,8 +179,8 @@ message TxOutConfirmationNumber {
     bytes hash = 1;
 }
 
-// Amount.
-message Amount {
+// MaskedAmount.
+message MaskedAmount {
     // A Pedersen commitment `v*G + s*H`
     CompressedRistretto commitment = 1;
 
@@ -204,7 +204,7 @@ message EncryptedMemo {
 // A Transaction Output.
 message TxOut {
     // Amount.
-    Amount amount = 1;
+    MaskedAmount masked_amount = 1;
 
     // Public key.
     CompressedRistretto target_key = 2;
@@ -292,7 +292,7 @@ message Receipt {
 
     // Amount of the TxOut.
     // Note: This value is self-reported by the sender and is unverifiable.
-    Amount amount = 4;
+    MaskedAmount masked_amount = 4;
 }
 
 /// The signature over an IAS JSON reponse, created by Intel

@@ -16,18 +16,18 @@ mc-util-grpc = { path = "../util/grpc" }
 
 grpcio = "0.10.0"
 hex = "0.4"
+protobuf = "2.22.1"
 rocket = { version = "0.4.10", default-features = false }
 rocket_contrib = { version = "0.4.10", default-features = false, features = ["json"] }
 serde = "1.0"
 serde_derive = "1.0"
 structopt = "0.3"
-protobuf = "2.22.1"
 
 [dev-dependencies]
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-ledger-db = { path = "../ledger/db" }
-mc-util-from-random = { path = "../util/from-random" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
+mc-util-from-random = { path = "../util/from-random" }
 
 rand = "0.8"
