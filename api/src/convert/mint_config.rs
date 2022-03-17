@@ -5,7 +5,6 @@
 use crate::{convert::ConversionError, external};
 use mc_crypto_multisig::{MultiSig, SignerSet};
 use mc_transaction_core::mint::{MintConfig, MintConfigTx, MintConfigTxPrefix};
-use protobuf::RepeatedField;
 
 use std::convert::TryFrom;
 
@@ -39,9 +38,7 @@ impl From<&MintConfigTxPrefix> for external::MintConfigTxPrefix {
     fn from(src: &MintConfigTxPrefix) -> Self {
         let mut dst = external::MintConfigTxPrefix::new();
         dst.set_token_id(src.token_id);
-        dst.set_configs(RepeatedField::from_vec(
-            src.configs.iter().map(external::MintConfig::from).collect(),
-        ));
+        dst.set_configs(src.configs.iter().map(external::MintConfig::from).collect());
         dst.set_nonce(src.nonce.clone());
         dst.set_tombstone_block(src.tombstone_block);
         dst

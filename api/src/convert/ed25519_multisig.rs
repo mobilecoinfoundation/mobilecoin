@@ -5,19 +5,18 @@
 use crate::{convert::ConversionError, external};
 use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
 use mc_crypto_multisig::{MultiSig, SignerSet};
-use protobuf::RepeatedField;
 use std::convert::TryFrom;
 
 /// Convert MultiSig<Ed25519Signature> --> external::Ed25519MultiSig.
 impl From<&MultiSig<Ed25519Signature>> for external::Ed25519MultiSig {
     fn from(src: &MultiSig<Ed25519Signature>) -> Self {
         let mut dst = external::Ed25519MultiSig::new();
-        dst.set_signatures(RepeatedField::from_vec(
+        dst.set_signatures(
             src.signatures()
                 .iter()
                 .map(external::Ed25519Signature::from)
                 .collect(),
-        ));
+        );
         dst
     }
 }
@@ -41,12 +40,12 @@ impl TryFrom<&external::Ed25519MultiSig> for MultiSig<Ed25519Signature> {
 impl From<&SignerSet<Ed25519Public>> for external::Ed25519SignerSet {
     fn from(src: &SignerSet<Ed25519Public>) -> Self {
         let mut dst = external::Ed25519SignerSet::new();
-        dst.set_signers(RepeatedField::from_vec(
+        dst.set_signers(
             src.signers()
                 .iter()
                 .map(external::Ed25519Public::from)
                 .collect(),
-        ));
+        );
         dst.set_threshold(src.threshold());
         dst
     }
