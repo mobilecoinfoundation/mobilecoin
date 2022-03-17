@@ -7,9 +7,9 @@ description = "Enclave build assistance, from MobileCoin."
 readme = "README.md"
 
 [dependencies]
+mc-sgx-css = { path = "../../../sgx/css" }
 mc-util-build-script = { path = "../script" }
 mc-util-build-sgx = { path = "../sgx" }
-mc-sgx-css = { path = "../../../sgx/css" }
 
 cargo-emit = "0.2.1"
 cargo_metadata = "0.14"

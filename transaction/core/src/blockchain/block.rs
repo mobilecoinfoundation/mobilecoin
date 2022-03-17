@@ -243,7 +243,7 @@ mod block_tests {
                     EncryptedFogHint::fake_onetime_hint(rng),
                 )
                 .unwrap();
-                result.amount.masked_token_id = Default::default();
+                result.masked_amount.masked_token_id = Default::default();
                 result
             })
             .collect();

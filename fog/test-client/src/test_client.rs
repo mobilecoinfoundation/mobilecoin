@@ -15,7 +15,7 @@ use mc_fog_sample_paykit::{AccountKey, Client, ClientBuilder, TokenId, Transacti
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_sgx_css::Signature;
 use mc_transaction_core::{
-    constants::RING_SIZE, tokens::Mob, AmountData, BlockIndex, BlockVersion, Token,
+    constants::RING_SIZE, tokens::Mob, Amount, BlockIndex, BlockVersion, Token,
 };
 use mc_transaction_std::MemoType;
 use mc_util_grpc::GrpcRetryConfig;
@@ -96,8 +96,8 @@ impl Default for TestClientPolicy {
 
 impl TestClientPolicy {
     /// Get the amount that should be transfered according to the policy
-    pub fn amount(&self) -> AmountData {
-        AmountData {
+    pub fn amount(&self) -> Amount {
+        Amount {
             value: self.transfer_amount,
             token_id: self.token_id,
         }

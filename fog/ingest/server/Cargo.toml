@@ -60,8 +60,8 @@ mc-fog-uri = { path = "../../uri" }
 [dev-dependencies]
 mc-fog-test-infra = { path = "../../test_infra" }
 mc-util-build-info = { path = "../../../util/build/info" }
-mc-util-test-helper = { path = "../../../util/test-helper" }
 mc-util-from-random = { path = "../../../util/from-random" }
+mc-util-test-helper = { path = "../../../util/test-helper" }
 
 maplit = "1"
 rand_core = "0.6"

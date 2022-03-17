@@ -27,7 +27,7 @@ use mc_transaction_core::{
     onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
     ring_signature::KeyImage,
     tx::TxOut,
-    AmountData, BlockIndex, TokenId,
+    Amount, BlockIndex, TokenId,
 };
 use mc_transaction_std::MemoType;
 use mc_util_telemetry::{telemetry_static_key, tracer, Key, TraceContextExt, Tracer};
@@ -317,7 +317,7 @@ impl CachedTxData {
     ///   lower.
     pub fn get_transaction_inputs(
         &self,
-        amount: AmountData,
+        amount: Amount,
         max_inputs: usize,
     ) -> Result<Vec<OwnedTxOut>> {
         // All transactions that we could choose to use as an input
@@ -858,7 +858,7 @@ pub struct OwnedTxOut {
     pub tx_out: TxOut,
     /// The value of the TxOut, computed when we matched this tx out
     /// successfully against our account key.
-    pub amount: AmountData,
+    pub amount: Amount,
     /// The subaddress index this tx_out was sent to.
     pub subaddress_index: u64,
     /// The key image that we computed when matching this tx_out against our
@@ -889,7 +889,7 @@ impl OwnedTxOut {
         let decompressed_tx_pub = RistrettoPublic::try_from(&tx_out.public_key)?;
         let shared_secret =
             get_tx_out_shared_secret(account_key.view_private_key(), &decompressed_tx_pub);
-        let (amount_data, _blinding) = tx_out.amount.get_value(&shared_secret)?;
+        let (amount, _blinding) = tx_out.masked_amount.get_value(&shared_secret)?;
 
         // Calculate the subaddress spend public key for tx_out.
         let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key)?;
@@ -921,7 +921,7 @@ impl OwnedTxOut {
             block_index: rec.block_index,
             tx_out,
             key_image,
-            amount: amount_data,
+            amount,
             subaddress_index: *subaddress_index,
             status,
         })

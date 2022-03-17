@@ -19,8 +19,8 @@ mc-consensus-api = { path = "../../consensus/api" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-fog-enclave-connection = { path = "../enclave_connection" }
 mc-fog-report-api = { path = "../../fog/report/api" }
+mc-fog-types = { path = "../types" }
 mc-fog-uri = { path = "../uri" }
-mc-fog-types = { path = "../types"}
 mc-util-encodings = { path = "../../util/encodings" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-grpc = { path = "../../util/grpc" }

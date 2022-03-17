@@ -23,7 +23,7 @@ use mc_transaction_core::{
     membership_proofs::Range,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Amount, Block, BlockContents, BlockData, BlockSignature, BlockVersion,
+    Block, BlockContents, BlockData, BlockSignature, BlockVersion, MaskedAmount,
 };
 use mc_util_from_random::FromRandom;
 use mc_watcher::watcher_db::WatcherDB;
@@ -164,7 +164,7 @@ fn add_test_block<T: RngCore + CryptoRng>(ledger: &mut LedgerDB, watcher: &Watch
 // Make a random output for a block
 fn random_output<T: RngCore + CryptoRng>(rng: &mut T) -> Vec<TxOut> {
     vec![TxOut {
-        amount: Amount::default(),
+        masked_amount: MaskedAmount::default(),
         target_key: RistrettoPublic::from_random(rng).into(),
         public_key: RistrettoPublic::from_random(rng).into(),
         e_fog_hint: EncryptedFogHint::default(),

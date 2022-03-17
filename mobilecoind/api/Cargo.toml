@@ -18,8 +18,8 @@ protobuf = "2.22.1"
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-transaction-std = { path = "../../transaction/std" }
 
-rand = "0.8"
 hex_fmt = "0.3"
+rand = "0.8"
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../util/build/grpc" }
