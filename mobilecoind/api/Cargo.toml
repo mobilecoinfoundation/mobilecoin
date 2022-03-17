@@ -11,15 +11,15 @@ mc-api = { path = "../../api" }
 mc-util-uri = { path = "../../util/uri" }
 
 futures = "0.3"
-grpcio = "0.9.0"
+grpcio = "0.10.0"
 protobuf = "2.22.1"
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-transaction-std = { path = "../../transaction/std" }
 
-rand = "0.8"
 hex_fmt = "0.3"
+rand = "0.8"
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../util/build/grpc" }

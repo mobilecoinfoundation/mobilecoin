@@ -26,12 +26,12 @@ mc-util-telemetry = { path = "../../util/telemetry", features = ["jaeger"] }
 mc-util-uri = { path = "../../util/uri" }
 
 # fog
-mc-fog-uri = { path = "../uri" }
 mc-fog-sample-paykit = { path = "../sample-paykit" }
+mc-fog-uri = { path = "../uri" }
 
 # third-party
 displaydoc = "0.2"
-grpcio = "0.9"
+grpcio = "0.10"
 hex_fmt = "0.3"
 lazy_static = "1.4"
 more-asserts = "0.2"

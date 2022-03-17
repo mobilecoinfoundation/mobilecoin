@@ -8,7 +8,7 @@ use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, Verificati
 use mc_attest_enclave_api::*;
 use mc_common::ResponderId;
 use mc_consensus_enclave_api::{
-    BlockchainConfig, ConsensusEnclave, FeePublicKey, LocallyEncryptedTx,
+    BlockchainConfig, ConsensusEnclave, FeePublicKey, FormBlockInputs, LocallyEncryptedTx,
     Result as ConsensusEnclaveResult, SealedBlockSigningKey, TxContext, WellFormedEncryptedTx,
     WellFormedTxContext,
 };
@@ -79,7 +79,7 @@ mock! {
         fn form_block(
             &self,
             parent_block: &Block,
-            encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+            inputs: FormBlockInputs,
             root_element: &TxOutMembershipElement,
         ) -> ConsensusEnclaveResult<(Block, BlockContents, BlockSignature)>;
     }

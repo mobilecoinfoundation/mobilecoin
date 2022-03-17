@@ -177,7 +177,7 @@ mod test {
     use mc_crypto_keys::RistrettoPublic;
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{
-        encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, tokens::Mob, Amount, AmountData, Token,
+        encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, tokens::Mob, Amount, MaskedAmount, Token,
     };
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey, BlockVersion,
@@ -191,12 +191,13 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         // Rust -> Proto
-        let amount_data = AmountData {
+        let amount = Amount {
             value: 1u64 << 13,
             token_id: Mob::ID,
         };
         let tx_out = TxOut {
-            amount: Amount::new(amount_data, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+            masked_amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng))
+                .unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
             e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
@@ -282,12 +283,13 @@ mod test {
         };
 
         let utxo = {
-            let amount_data = AmountData {
+            let amount = Amount {
                 value: 1u64 << 13,
                 token_id: Mob::ID,
             };
             let tx_out = TxOut {
-                amount: Amount::new(amount_data, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+                masked_amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng))
+                    .unwrap(),
                 target_key: RistrettoPublic::from_random(&mut rng).into(),
                 public_key: RistrettoPublic::from_random(&mut rng).into(),
                 e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),

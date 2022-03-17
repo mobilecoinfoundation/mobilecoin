@@ -27,6 +27,7 @@ mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-util-from-random = { path = "../util/from-random" }
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-lmdb = { path = "../util/lmdb" }
+mc-util-metrics = { path = "../util/metrics" }
 mc-util-parse = { path = "../util/parse" }
 mc-util-repr-bytes = { path = "../util/repr-bytes" }
 mc-util-serial = { path = "../util/serial" }
@@ -35,8 +36,9 @@ mc-watcher-api = { path = "api" }
 
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.9.0"
+grpcio = "0.10.0"
 hex = "0.4"
+lazy_static = "1.4"
 lmdb-rkv = "0.14.0"
 prost = { version = "0.9", default-features = false, features = ["prost-derive"] }
 rayon = "1.5"
@@ -44,6 +46,7 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 structopt = "0.3"
 toml = "0.5"
 url = "2.2"
+
 
 [dev-dependencies]
 mc-account-keys = { path = "../account-keys" }

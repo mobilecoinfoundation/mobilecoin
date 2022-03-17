@@ -12,7 +12,7 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    Amount, BlockVersion, CompressedCommitment, Token,
+    BlockVersion, CompressedCommitment, MaskedAmount, Token,
 };
 use mc_transaction_std::{InputCredentials, RTHMemoBuilder, TransactionBuilder};
 use mc_util_ffi::*;
@@ -45,14 +45,15 @@ pub extern "C" fn mc_tx_out_reconstruct_commitment(
 
         // FIXME #1596: McTxOutAmount should include the masked_token_id bytes, which
         // are 0 or 4 bytes For now zero to avoid breaking changes to FFI
-        let (amount, _) = Amount::reconstruct(tx_out_amount.masked_value, &[], &shared_secret)?;
+        let (masked_amount, _) =
+            MaskedAmount::reconstruct(tx_out_amount.masked_value, &[], &shared_secret)?;
 
         let out_tx_out_commitment = out_tx_out_commitment
             .into_mut()
             .as_slice_mut_of_len(RistrettoPublic::size())
             .expect("out_tx_out_commitment length is insufficient");
 
-        out_tx_out_commitment.copy_from_slice(&amount.commitment.to_bytes());
+        out_tx_out_commitment.copy_from_slice(&masked_amount.commitment.to_bytes());
         Ok(())
     })
 }
@@ -194,11 +195,11 @@ pub extern "C" fn mc_tx_out_get_value(
         let view_private_key = RistrettoPrivate::try_from_ffi(&view_private_key)?;
 
         let shared_secret = get_tx_out_shared_secret(&view_private_key, &tx_out_public_key);
-        let (_amount, amount_data) =
-            Amount::reconstruct(tx_out_amount.masked_value, &[], &shared_secret)?;
+        let (_masked_amount, amount) =
+            MaskedAmount::reconstruct(tx_out_amount.masked_value, &[], &shared_secret)?;
 
-        // FIXME #1596: This should also return the amount_data.token_id
-        *out_value.into_mut() = amount_data.value;
+        // FIXME #1596: This should also return the amount.token_id
+        *out_value.into_mut() = amount.value;
         Ok(())
     })
 }

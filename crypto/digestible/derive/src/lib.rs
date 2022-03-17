@@ -115,6 +115,11 @@ struct FieldAttributeConfig {
     /// fields that are now omitted when not set (the behavior for
     /// &[u8]/Vec<u8>/&str/String has changed over time).
     pub never_omit: bool,
+
+    /// Whether we should rename this field, using the given
+    /// string for the new name, for purpose of hashing.
+    /// This is a backwards compatibility tool.
+    pub rename: Option<String>,
 }
 
 impl FieldAttributeConfig {
@@ -133,6 +138,17 @@ impl FieldAttributeConfig {
                             return Err("omit_when cannot appear twice as an attribute");
                         } else {
                             self.omit_when = Some(mnv.lit.clone());
+                        }
+                    } else if mnv.path.is_ident("name") {
+                        if self.rename.is_some() {
+                            return Err("name = cannot appear twice in digestible attributes");
+                        } else {
+                            self.rename = match &mnv.lit {
+                                Lit::Str(litstr) => Some(litstr.value()),
+                                _ => {
+                                    return Err("name = must be set to string literal in digestible attributes");
+                                }
+                            }
                         }
                     } else {
                         return Err("unexpected digestible feature attribute");
@@ -253,19 +269,21 @@ fn try_digestible_struct(
                     // Read any #[digestible(...)]` attributes on this field and parse them
                     let attr_config = FieldAttributeConfig::try_from(&field.attrs[..])?;
 
+                    let hashing_name: String = attr_config.rename.clone().unwrap_or_else(|| field_ident.to_string());
+
                     if attr_config.never_omit {
                         Ok(quote! {
-                            self.#field_ident.append_to_transcript(stringify!(#field_ident).as_bytes(), transcript);
+                            self.#field_ident.append_to_transcript(#hashing_name.as_bytes(), transcript);
                         })
                     } else if let Some(omit_when) = attr_config.omit_when {
                         Ok(quote! {
                             if self.#field_ident != #omit_when {
-                                self.#field_ident.append_to_transcript_allow_omit(stringify!(#field_ident).as_bytes(), transcript);
+                                self.#field_ident.append_to_transcript_allow_omit(#hashing_name.as_bytes(), transcript);
                             }
                         })
                     } else {
                         Ok(quote! {
-                            self.#field_ident.append_to_transcript_allow_omit(stringify!(#field_ident).as_bytes(), transcript);
+                            self.#field_ident.append_to_transcript_allow_omit(#hashing_name.as_bytes(), transcript);
                         })
                     }
                 }
@@ -274,6 +292,8 @@ fn try_digestible_struct(
                 None => {
                     // Read any #[digestible(...)]` attributes on this field and parse them
                     let attr_config = FieldAttributeConfig::try_from(&field.attrs[..])?;
+
+                    if attr_config.rename.is_some() { panic!("name attribute is not supported on fields of tuple structs") }
 
                     let index = syn::Index::from(idx);
 

@@ -31,8 +31,8 @@ members = [
     "crypto/box",
     "crypto/digestible",
     "crypto/digestible/derive/test",
-    "crypto/digestible/test-utils",
     "crypto/digestible/signature",
+    "crypto/digestible/test-utils",
     "crypto/keys",
     "crypto/message-cipher",
     "crypto/multisig",
@@ -111,7 +111,6 @@ members = [
     "sgx/report-cache/api",
     "sgx/report-cache/untrusted",
     "sgx/slog-edl",
-    "slam",
     "test-vectors/account-keys",
     "test-vectors/b58-encodings",
     "transaction/core",
@@ -137,6 +136,7 @@ members = [
     "util/metrics",
     "util/parse",
     "util/repr-bytes",
+    "util/seeded-ed25519-key-gen",
     "util/serial",
     "util/telemetry",
     "util/test-helper",
@@ -146,14 +146,14 @@ members = [
     "watcher/api",
 ]
 exclude = [
-    # mc-util-serial should only be accessed via the `common` crate.
-    "util/serial",
     # N.B. for some reason, putting these crates under `exclude` helps with
     # making `cargo test --all` work, when `consensus-enclave-impl` is part of workspace
-    "sgx",
     "fog/ingest/enclave/trusted",
     "fog/ledger/enclave/trusted",
     "fog/view/enclave/trusted",
+    "sgx",
+    # mc-util-serial should only be accessed via the `common` crate.
+    "util/serial",
 ]
 
 [profile.dev]
@@ -190,10 +190,6 @@ cmake = { git = "https://github.com/alexcrichton/cmake-rs", rev = "5f89f90ee5d77
 # Fix issues with recent nightlies, bump curve25519-dalek version
 curve25519-dalek = { git = "https://github.com/mobilecoinfoundation/curve25519-dalek.git", rev = "8791722e0273762552c9a056eaccb7df6baf44d7" }
 ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "4194e36abc75722e6fba7d552e719448fc38c51f" }
-
-# grpcio patched with metadata
-grpcio = { git = "https://github.com/mobilecoinofficial/grpc-rs", rev = "10ba9f8f4546916c7e7532c4d1c6cdcf5df62553" }
-protoc-grpcio = { git = "https://github.com/mobilecoinofficial/protoc-grpcio", rev = "9e63f09ec408722f731c9cb60bf06c3d46bcabec" }
 
 # mbedtls patched to allow certificate verification with a profile
 mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "49a293a5f4b1ef571c71174e3fa1f301925f3915" }

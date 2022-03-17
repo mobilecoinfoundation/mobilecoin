@@ -43,5 +43,5 @@ hex = "0.4.3"
 mc-account-keys = { path = "../../../../account-keys" }
 mc-common = { path = "../../../../common", features = ["loggers"] }
 mc-fog-view-protocol = { path = "../../../view/protocol" }
-mc-util-test-helper = { path = "../../../../util/test-helper" }
 mc-util-logger-macros = { path = "../../../../util/logger-macros" }
+mc-util-test-helper = { path = "../../../../util/test-helper" }
