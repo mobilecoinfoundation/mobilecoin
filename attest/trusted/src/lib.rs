@@ -13,10 +13,10 @@ use alloc::vec::Vec;
 use core::convert::TryFrom;
 use displaydoc::Display;
 use mc_attest_core::{
-    IntelSealed, ParseSealedError, Report, ReportData, Sealed, SgxError, SgxResult, TargetInfo,
+    IntelSealed, IntelSealingError, ParseSealedError, Report, ReportData, Sealed, SgxError,
+    SgxResult, TargetInfo,
 };
 use prost::Message;
-use mc_attest_core::IntelSealingError;
 
 /// Methods on the `mc_attest_core::Report` object which are only usable inside
 /// a running SGX enclave.

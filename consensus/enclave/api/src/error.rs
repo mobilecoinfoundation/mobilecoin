@@ -5,7 +5,7 @@
 use crate::FeeMapError;
 use alloc::string::String;
 use displaydoc::Display;
-use mc_attest_core::SgxError;
+use mc_attest_core::{IntelSealingError, ParseSealedError, SgxError};
 use mc_attest_enclave_api::Error as AttestEnclaveError;
 use mc_crypto_keys::SignatureError;
 use mc_crypto_message_cipher::CipherError as MessageCipherError;
@@ -16,7 +16,6 @@ use mc_util_serial::{
     DecodeError as ProstDecodeError, EncodeError as ProstEncodeError,
 };
 use serde::{Deserialize, Serialize};
-use mc_attest_core::{IntelSealingError, ParseSealedError};
 
 /// An enumeration of errors which can occur inside a consensus enclave.
 #[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
@@ -62,9 +61,9 @@ pub enum Error {
 
     /// Block Version Error: {0}
     BlockVersion(String),
-    
+
     /// Sealing Error: {0}
-    IntelSealing(IntelSealingError)
+    IntelSealing(IntelSealingError),
 }
 
 impl From<ParseSealedError> for Error {

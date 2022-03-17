@@ -20,7 +20,8 @@ use aligned_cmov::{typenum::U32, A8Bytes, Aligned, GenericArray};
 use alloc::vec::Vec;
 use core::convert::TryFrom;
 use mc_attest_core::{
-    IasNonce, IntelSealed, IntelSealingError, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
+    IasNonce, IntelSealed, IntelSealingError, Quote, QuoteNonce, Report, TargetInfo,
+    VerificationReport,
 };
 use mc_attest_enclave_api::{
     EnclaveMessage, Error as AttestEnclaveError, PeerAuthRequest, PeerAuthResponse, PeerSession,

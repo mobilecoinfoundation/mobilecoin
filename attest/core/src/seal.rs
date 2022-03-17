@@ -9,10 +9,9 @@ use crate::SgxError;
 use alloc::vec::Vec;
 use core::{convert::TryFrom, fmt::Display as DisplayTrait};
 use displaydoc::Display;
-use prost::Message;
 use mc_sgx_types::sgx_status_t;
-use serde::{Serialize, Deserialize};
-
+use prost::Message;
+use serde::{Deserialize, Serialize};
 
 /// A `Sealed<T>` is a Sealed representation of a T, with some additional
 /// mac text which has been computed from T and whcih is visible.
