@@ -178,6 +178,7 @@ where
                 Ok(ingest_summary_node_mappings) => ingest_summary_node_mappings,
                 Err(err) => {
                     log::error!(self.logger, "Encountered an error while retrieving ingest summaries: {}. Returning to beginning of overseer logic.", err);
+                    metrics::utils::increment_unresponsive_node_count(&self.logger);
                     continue;
                 }
             };
@@ -278,7 +279,8 @@ where
                         ingest_client.get_uri(),
                         err
                     );
-                    self.unresponsive_node_urls.insert(ingest_client.get_uri().clone());
+                    self.unresponsive_node_urls
+                        .insert(ingest_client.get_uri().clone());
                     return Err(OverseerError::UnresponsiveNodeError(error_message));
                 }
             }

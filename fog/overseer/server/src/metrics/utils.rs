@@ -6,6 +6,11 @@ use mc_common::logger::{log, Logger};
 use mc_fog_api::ingest_common::{IngestControllerMode, IngestSummary};
 use std::{collections::HashSet, convert::TryInto};
 
+pub fn increment_unresponsive_node_count(logger: &Logger) {
+    log::trace!(logger, "Setting unresponsive node metric.");
+    counters::UNRESPONSIVE_NODE_COUNT.inc();
+}
+
 /// Sets prometheus metrics.
 pub fn set_metrics(logger: &Logger, ingest_summaries: &[IngestSummary]) {
     log::trace!(logger, "Setting prometheus metrics.");
