@@ -107,6 +107,12 @@ lazy_static::lazy_static! {
 
     // Number of times a ProposeMintConfigTx call has returned a response.
     pub static ref PROPOSE_MINT_CONFIG_TX: IntCounter = OP_COUNTERS.counter("propose_mint_config_tx");
+
+    // Number of times a ProposeMintTx call has been initiated.
+    pub static ref PROPOSE_MINT_TX_INITIATED: IntCounter = OP_COUNTERS.counter("propose_mint_tx_initiated");
+
+    // Number of times a ProposeMintTx call has returned a response.
+    pub static ref PROPOSE_MINT_TX: IntCounter = OP_COUNTERS.counter("propose_mint_tx");
 }
 
 /// TxValidationErrorMetrics keeps track of tx validation errors upon ingress

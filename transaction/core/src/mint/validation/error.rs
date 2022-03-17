@@ -41,4 +41,7 @@ pub enum Error {
 
     /// Nonce already seen in ledger
     NonceAlreadyUsed,
+
+    /// No matching mint configuration
+    NoMatchingMintConfig,
 }

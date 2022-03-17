@@ -26,7 +26,7 @@ use mc_ledger_sync::{LedgerSyncService, ReqwestTransactionsFetcher};
 use mc_peers::{
     Broadcast, ConsensusConnection, ConsensusMsg, ConsensusValue, VerifiedConsensusMsg,
 };
-use mc_transaction_core::mint::constants::MAX_MINT_CONFIG_TXS_PER_BLOCK;
+use mc_transaction_core::mint::constants::{MAX_MINT_CONFIG_TXS_PER_BLOCK, MAX_MINT_TXS_PER_BLOCK};
 use mc_util_metered_channel::Sender;
 use std::{
     path::PathBuf,
@@ -141,17 +141,25 @@ impl ByzantineLedger {
                     ConsensusValue::MintConfigTx(mint_config_tx) => mint_tx_manager_validate
                         .validate_mint_config_tx(mint_config_tx)
                         .map_err(UnifiedNodeError::from),
+
+                    ConsensusValue::MintTx(mint_tx) => mint_tx_manager_validate
+                        .validate_mint_tx(mint_tx)
+                        .map_err(UnifiedNodeError::from),
                 }),
                 // Combine callback
                 Arc::new(move |scp_values| {
                     let mut tx_hashes = Vec::new();
                     let mut mint_config_txs = Vec::new();
+                    let mut mint_txs = Vec::new();
 
                     for value in scp_values {
                         match value {
                             ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
                             ConsensusValue::MintConfigTx(mint_config_tx) => {
                                 mint_config_txs.push(mint_config_tx.clone());
+                            }
+                            ConsensusValue::MintTx(mint_tx) => {
+                                mint_txs.push(mint_tx.clone());
                             }
                         }
                     }
@@ -166,7 +174,14 @@ impl ByzantineLedger {
                         .into_iter()
                         .map(ConsensusValue::MintConfigTx);
 
-                    Ok(tx_hashes_iter.chain(mint_config_txs_iter).collect())
+                    let mint_txs = mint_tx_manager_combine
+                        .combine_mint_txs(&mint_txs[..], MAX_MINT_TXS_PER_BLOCK)?;
+                    let mint_txs_iter = mint_txs.into_iter().map(ConsensusValue::MintTx);
+
+                    Ok(tx_hashes_iter
+                        .chain(mint_config_txs_iter)
+                        .chain(mint_txs_iter)
+                        .collect())
                 }),
                 current_slot_index,
                 logger.clone(),

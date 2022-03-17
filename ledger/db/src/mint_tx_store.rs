@@ -192,7 +192,11 @@ mod tests {
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 0,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx1.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
         drop(db_txn);
@@ -220,7 +224,11 @@ mod tests {
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 0,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx1.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
         drop(db_txn);
@@ -253,7 +261,11 @@ mod tests {
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 5,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx1.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
 
@@ -271,7 +283,11 @@ mod tests {
                 ActiveMintConfig {
                     mint_config: mint_config_tx2.prefix.configs[1].clone(),
                     total_minted: 0,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx2.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
         drop(db_txn);
@@ -304,7 +320,11 @@ mod tests {
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 5,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx1.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
 
@@ -321,7 +341,11 @@ mod tests {
                 ActiveMintConfig {
                     mint_config: mint_config_tx2.prefix.configs[1].clone(),
                     total_minted: 15,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx2.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
     }
@@ -412,7 +436,11 @@ mod tests {
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[1].clone(),
                     total_minted: 12,
-                }
+                },
+                ActiveMintConfig {
+                    mint_config: mint_config_tx1.prefix.configs[2].clone(),
+                    total_minted: 0,
+                },
             ]
         );
     }
@@ -494,7 +522,7 @@ mod tests {
         // configurations.
         let mint_tx1 = create_mint_tx(
             token_id1,
-            &signers1,
+            &signers1[..2],
             max(
                 mint_config_tx1.prefix.configs[0].mint_limit,
                 mint_config_tx1.prefix.configs[1].mint_limit,

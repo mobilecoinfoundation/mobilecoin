@@ -161,6 +161,10 @@ impl From<MintValidationError> for MintValidationResult {
                 code: MintValidationResultCode::NonceAlreadyUsed,
                 ..Default::default()
             },
+            MintValidationError::NoMatchingMintConfig => Self {
+                code: MintValidationResultCode::NoMatchingMintConfig,
+                ..Default::default()
+            },
         }
     }
 }
@@ -201,6 +205,9 @@ impl TryInto<MintValidationError> for MintValidationResult {
                 TokenId::from(self.token_id),
             )),
             MintValidationResultCode::NonceAlreadyUsed => Ok(MintValidationError::NonceAlreadyUsed),
+            MintValidationResultCode::NoMatchingMintConfig => {
+                Ok(MintValidationError::NoMatchingMintConfig)
+            }
         }
     }
 }

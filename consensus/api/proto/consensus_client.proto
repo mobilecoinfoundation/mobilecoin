@@ -24,6 +24,7 @@ enum MintValidationResultCode {
     AmountExceedsMintLimit = 9;
     NoMasterMinters = 10;
     NonceAlreadyUsed = 11;
+    NoMatchingMintConfig = 12;
 }
 
 message MintValidationResult {
@@ -49,6 +50,15 @@ message ProposeMintConfigTxResponse {
     uint64 block_count = 2;
 }
 
+/// Response from ProposeMintTx RPC call.
+message ProposeMintTxResponse {
+    /// Result.
+    MintValidationResult result = 1;
+
+    /// The number of blocks in the ledger at the time the request was received.
+    uint64 block_count = 2;
+}
+
 service ConsensusClientAPI {
     /// This API call is made with an encrypted payload for the enclave,
     /// indicating a new value to be acted upon.
@@ -56,4 +66,7 @@ service ConsensusClientAPI {
 
     /// Propose a new MintConfigTx.
     rpc ProposeMintConfigTx(external.MintConfigTx) returns (ProposeMintConfigTxResponse);
+
+    /// Propose a new MintTx.
+    rpc ProposeMintTx(external.MintTx) returns (ProposeMintTxResponse);
 }
