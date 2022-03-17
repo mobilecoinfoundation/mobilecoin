@@ -65,7 +65,7 @@ impl<TXM: TxManager> PendingValues<TXM> {
     /// list. Returns `true` if the value is valid and not already on the
     /// list, false otherwise.
     pub fn push(&mut self, value: ConsensusValue, timestamp: Option<Instant>) -> bool {
-        if let Vacant(entry) = self.pending_values_map.entry(value) {
+        if let Vacant(entry) = self.pending_values_map.entry(value.clone()) {
             match value {
                 ConsensusValue::TxHash(tx_hash) => {
                     // A new transaction.

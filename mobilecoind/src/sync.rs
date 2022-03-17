@@ -385,7 +385,7 @@ fn match_tx_outs_into_utxos(
             get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
 
         let (amount, _blinding) = tx_out
-            .amount
+            .masked_amount
             .get_value(&shared_secret)
             .expect("Malformed amount"); // TODO
 

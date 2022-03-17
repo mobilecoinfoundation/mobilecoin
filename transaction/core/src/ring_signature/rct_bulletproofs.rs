@@ -403,8 +403,7 @@ fn compute_extended_message_either_version(
     }
 }
 
-/// Computes a merlin digest of message, pseudo_output_commitments, range proof,
-/// proof_of_opening
+/// Computes a merlin digest of message, pseudo_output_commitments, range proof
 fn digest_extended_message(
     message: &[u8],
     pseudo_output_commitments: &[CompressedCommitment],

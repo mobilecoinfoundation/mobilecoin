@@ -9,6 +9,9 @@ name = "generate-account-keys"
 path = "src/bin/generate_account_keys.rs"
 
 [dependencies]
+# MobileCoin dependencies
+mc-account-keys = { path = "../../account-keys" }
+
 # External dependencies
 lazy_static = "1.4"
 rand = "0.8"
@@ -16,9 +19,7 @@ rand_core = "0.6"
 rand_hc = "0.3"
 structopt = "0.3"
 
-# MobileCoin dependencies
-mc-account-keys = { path = "../../account-keys" }
-
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
+
 itertools = "0.10.3"

@@ -17,14 +17,15 @@ mc-fog-kex-rng = { path = "../fog/kex_rng" }
 # mobilecoin
 mc-account-keys = { path = "../account-keys" }
 mc-account-keys-slip10 = { path = "../account-keys/slip10" }
+mc-api = { path = "../api" }
 mc-attest-ake = { path = "../attest/ake", default-features = false }
 mc-attest-core = { path = "../attest/core", default-features = false }
 mc-attest-verifier = { path = "../attest/verifier", default-features = false }
+mc-common = { path = "../common" }
 mc-crypto-box = { path = "../crypto/box" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-noise = { path = "../crypto/noise" }
 mc-crypto-rand = { path = "../crypto/rand", features = ["std"] }
-mc-common = { path = "../common" }
 mc-fog-report-types = { path = "../fog/report/types" }
 mc-fog-report-validation = { path = "../fog/report/validation" }
 mc-transaction-core = { path = "../transaction/core" }
@@ -33,7 +34,6 @@ mc-util-encodings = { path = "../util/encodings" }
 mc-util-from-random = { path = "../util/from-random" }
 mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }
-mc-api = { path = "../api" }
 
 # third-party
 aes-gcm = { version = "0.9.4", default-features = false }

@@ -28,7 +28,7 @@ mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-uri = { path = "../../util/uri" }
 
 crossbeam-channel = "0.5"
-grpcio = "0.9.0"
+grpcio = "0.10.0"
 lazy_static = "1.4"
 rand = "0.8"
 rayon = "1.5"
