@@ -233,6 +233,8 @@ impl MintConfigStore {
 
             // This mint config has signed the mint tx. Is it allowed to mint the given
             // amount of tokens?
+            // If we overflow (checked_add returns None) then we will keep looking for an
+            // active mint configuration that is able to accommodate the MintTx.
             if let Some(new_total_minted) = active_mint_config
                 .total_minted
                 .checked_add(mint_tx.prefix.amount)
