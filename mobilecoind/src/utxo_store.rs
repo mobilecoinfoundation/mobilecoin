@@ -82,6 +82,9 @@ impl From<&KeyImage> for UtxoId {
 /// The outputs database.
 #[derive(Clone)]
 pub struct UtxoStore {
+    /// Retain a reference to the Environment so the Database handles are valid.
+    _env: Arc<Environment>,
+
     /// Mapping of SubaddressId -> [UtxoId].
     /// This holds the list of UtxoIds associated with a (monitor id, subaddress
     /// index tuple) and is used to lookup utxos for a specific index.
@@ -120,6 +123,7 @@ impl UtxoStore {
         )?;
 
         Ok(Self {
+            _env: env,
             subaddress_id_to_utxo_id,
             key_image_to_subaddress_id,
             utxo_id_to_utxo,

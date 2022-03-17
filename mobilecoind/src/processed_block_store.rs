@@ -130,6 +130,9 @@ impl ProcessedTxOut {
 /// the processed blocks database.
 #[derive(Clone)]
 pub struct ProcessedBlockStore {
+    /// Retain a reference to the Environment so the Database handles are valid.
+    _env: Arc<Environment>,
+
     /// Mapping of ProcessedBlockKey -> [ProcessedTxOut].
     processed_block_key_to_processed_tx_outs: Database,
 }
@@ -142,6 +145,7 @@ impl ProcessedBlockStore {
         )?;
 
         Ok(Self {
+            _env: env,
             processed_block_key_to_processed_tx_outs,
         })
     }

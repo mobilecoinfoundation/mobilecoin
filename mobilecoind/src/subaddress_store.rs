@@ -87,6 +87,8 @@ impl From<&RistrettoPublic> for SubaddressSPKId {
 
 #[derive(Clone)]
 pub struct SubaddressStore {
+    /// Retain a reference to the Environment so the Database handles are valid.
+    _env: Arc<Environment>,
     /// Mapping of Subaddress Spend Public Key -> SubaddressId
     spk_to_index_data: Database,
 
@@ -101,6 +103,7 @@ impl SubaddressStore {
             DatabaseFlags::empty(),
         )?;
         Ok(Self {
+            _env: env,
             spk_to_index_data,
             logger,
         })
