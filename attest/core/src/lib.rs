@@ -23,7 +23,7 @@ pub use crate::{
         EpidPseudonymError, IasQuoteError, IasQuoteResult, JsonError, NonceError, PibError,
         PseManifestError, PseManifestHashError, PseManifestResult, QuoteError, QuoteSignTypeError,
         QuoteVerifyError, ReportBodyVerifyError, ReportDetailsError, RevocationCause, SgxError,
-        SgxResult, SignatureError, TargetInfoError, VerifyError,
+        SgxResult, SignatureError, TargetInfoError, VerifyError
     },
     ias::verify::{
         EpidPseudonym, VerificationReport, VerificationReportData, VerificationSignature,
@@ -31,7 +31,7 @@ pub use crate::{
     nonce::{IasNonce, Nonce, QuoteNonce},
     quote::{Quote, QuoteSignType},
     report::Report,
-    seal::{IntelSealed, ParseSealedError, Sealed},
+    seal::{IntelSealed, ParseSealedError, Sealed, IntelSealingError},
     sigrl::SigRL,
     types::{
         attributes::Attributes,

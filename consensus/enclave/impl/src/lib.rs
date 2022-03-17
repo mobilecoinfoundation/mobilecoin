@@ -329,10 +329,10 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         match sealed_key {
             Some(sealed) => {
                 log::trace!(self.logger, "trying to unseal key");
-                let cached = IntelSealed::try_from(sealed.clone()).unwrap();
+                let cached = IntelSealed::try_from(sealed.clone())?;
                 let (key, _mac) = cached.unseal_raw()?;
                 let mut lock = self.ake.get_identity().signing_keypair.lock().unwrap();
-                *lock = Ed25519Pair::try_from(&key[..]).unwrap();
+                *lock = Ed25519Pair::try_from(&key[..])?;
             }
             None => (),
         }
@@ -340,7 +340,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // Either way seal the private key and return it.
         let lock = self.ake.get_identity().signing_keypair.lock().unwrap();
         let key = (*lock).private_key();
-        let sealed = IntelSealed::seal_raw(key.as_ref(), &[]).unwrap();
+        let sealed = IntelSealed::seal_raw(key.as_ref(), &[])?;
 
         Ok((
             sealed.as_ref().to_vec(),

@@ -10,6 +10,9 @@ use alloc::vec::Vec;
 use core::{convert::TryFrom, fmt::Display as DisplayTrait};
 use displaydoc::Display;
 use prost::Message;
+use mc_sgx_types::sgx_status_t;
+use serde::{ser::Serialize, de::Deserialize};
+
 
 /// A `Sealed<T>` is a Sealed representation of a T, with some additional
 /// mac text which has been computed from T and whcih is visible.
@@ -200,16 +203,44 @@ pub enum ParseSealedError {
     UnexpectedMacTextLen(usize, usize),
 }
 
+/// Represents an error that can occur during sealing an IntelSealed blob
+/// This is the error type of seal_raw
+#[derive(Clone, Debug, Deserialize, Display, Eq, PartialEq, Serialize)]
+pub enum IntelSealingError {
+    /// SGX error: {0}
+    Sgx(SgxError),
+    /// Bad sealed format: {0}
+    SealFormat(ParseSealedError),
+}
+
+impl From<SgxError> for IntelSealingError {
+    fn from(src: SgxError) -> Self {
+        Self::Sgx(src)
+    }
+}
+
+impl From<sgx_status_t> for IntelSealingError {
+    fn from(src: sgx_status_t) -> Self {
+        Self::Sgx(SgxError::from(src))
+    }
+}
+
+impl From<ParseSealedError> for IntelSealingError {
+    fn from(src: ParseSealedError) -> Self {
+        Self::SealFormat(src)
+    }
+}
+
 // Serde implementations for IntelSealed
 
-impl ::serde::ser::Serialize for IntelSealed {
+impl Serialize for IntelSealed {
     #[inline]
     fn serialize<S: ::serde::ser::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_bytes(self.as_ref())
     }
 }
 
-impl<'de> ::serde::de::Deserialize<'de> for IntelSealed {
+impl<'de> Deserialize<'de> for IntelSealed {
     fn deserialize<DS: ::serde::de::Deserializer<'de>>(
         deserializer: DS,
     ) -> Result<Self, DS::Error> {

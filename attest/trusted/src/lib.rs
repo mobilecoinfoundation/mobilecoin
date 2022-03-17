@@ -15,8 +15,8 @@ use displaydoc::Display;
 use mc_attest_core::{
     IntelSealed, ParseSealedError, Report, ReportData, Sealed, SgxError, SgxResult, TargetInfo,
 };
-use mc_sgx_types::sgx_status_t;
 use prost::Message;
+use mc_attest_core::IntelSealingError;
 
 /// Methods on the `mc_attest_core::Report` object which are only usable inside
 /// a running SGX enclave.
@@ -92,34 +92,6 @@ impl SealAlgo for IntelSealed {
         let mut mac_txt = vec![0u8; mac_txt_len as usize];
         mc_sgx_compat::unseal_data(self.as_ref(), &mut plaintext[..], &mut mac_txt[..])?;
         Ok((plaintext, mac_txt))
-    }
-}
-
-/// Represents an error that can occur during sealing an IntelSealed blob
-/// This is the error type of seal_raw
-#[derive(Clone, Debug, Display, Eq, PartialEq)]
-pub enum IntelSealingError {
-    /// SGX error: {0}
-    Sgx(SgxError),
-    /// Bad sealed format: {0}
-    SealFormat(ParseSealedError),
-}
-
-impl From<SgxError> for IntelSealingError {
-    fn from(src: SgxError) -> Self {
-        Self::Sgx(src)
-    }
-}
-
-impl From<sgx_status_t> for IntelSealingError {
-    fn from(src: sgx_status_t) -> Self {
-        Self::Sgx(SgxError::from(src))
-    }
-}
-
-impl From<ParseSealedError> for IntelSealingError {
-    fn from(src: ParseSealedError) -> Self {
-        Self::SealFormat(src)
     }
 }
 
