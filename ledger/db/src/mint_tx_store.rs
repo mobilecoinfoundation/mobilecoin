@@ -94,7 +94,10 @@ impl MintTxStore {
             let active_mint_config =
                 mint_config_store.get_active_mint_config_for_mint_tx(mint_tx, db_transaction)?;
 
-            let new_total_minted = active_mint_config.total_minted.checked_add(mint_tx.prefix.amount).expect("shouldn't have failed because get_active_mint_config_for_mint_tx guards against this");
+            let new_total_minted = active_mint_config
+                .total_minted
+                .checked_add(mint_tx.prefix.amount)
+                .ok_or(Error::NotFound)?;
 
             mint_config_store.update_total_minted(
                 &active_mint_config.mint_config,
