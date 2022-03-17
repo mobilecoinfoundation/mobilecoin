@@ -354,7 +354,7 @@ fn match_tx_outs_into_utxos(
         let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key)?;
 
         let subaddress_spk = SubaddressSPKId::from(&recover_public_subaddress_spend_key(
-            &account_key.view_private_key(),
+            account_key.view_private_key(),
             &tx_out_target_key,
             &tx_public_key,
         ));
