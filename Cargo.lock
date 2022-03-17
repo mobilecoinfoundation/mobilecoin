@@ -4937,6 +4937,22 @@ version = "1.3.0-pre0"
 dependencies = [
  "mc-util-test-vector",
  "serde",
+ "serde-big-array",
+]
+
+[[package]]
+name = "mc-test-vectors-memos"
+version = "1.3.0-pre0"
+dependencies = [
+ "hex",
+ "mc-account-keys",
+ "mc-crypto-keys",
+ "mc-test-vectors-definitions",
+ "mc-transaction-std",
+ "mc-util-from-random",
+ "mc-util-serial",
+ "mc-util-test-vector",
+ "rand 0.8.5",
 ]
 
 [[package]]
@@ -7074,6 +7090,16 @@ version = "1.0.136"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce31e24b01e1e524df96f1c2fdd054405f8d7376249a5110886fb4b658484789"
 dependencies = [
+ "serde_derive",
+]
+
+[[package]]
+name = "serde-big-array"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18b20e7752957bbe9661cff4e0bb04d183d0948cdab2ea58cdb9df36a61dfe62"
+dependencies = [
+ "serde",
  "serde_derive",
 ]
 

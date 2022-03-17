@@ -8,7 +8,7 @@
 mod change_destination;
 mod error;
 mod input_credentials;
-mod memo;
+pub mod memo;
 mod memo_builder;
 mod transaction_builder;
 
