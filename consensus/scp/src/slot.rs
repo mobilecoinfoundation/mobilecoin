@@ -2408,7 +2408,6 @@ mod ballot_protocol_tests {
     use crate::{core_types::*, quorum_set::*, test_utils::*};
     use maplit::{btreeset, hashset};
     use mc_common::logger::test_with_logger;
-    use pretty_assertions::assert_eq;
     use std::iter::FromIterator;
 
     // TODO: reject a message if it contains a ballot containing incorrectly ordered
