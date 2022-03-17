@@ -1,7 +1,7 @@
 // Copyright 2018-2021 The MobileCoin Foundation
 
 use crate::{common::*, LibMcError};
-use mc_account_keys::{AccountKey, PublicAddress};
+use mc_account_keys::{AccountKey, PublicAddress, ShortAddressHash};
 use mc_crypto_keys::{ReprBytes, RistrettoPrivate, RistrettoPublic};
 use mc_util_ffi::*;
 
@@ -148,6 +148,23 @@ pub extern "C" fn mc_account_key_get_public_address_fog_authority_sig(
 
         out_fog_authority_sig.copy_from_slice(fog_authority_sig);
     })
+}
+
+/* ==== TxOutMemoBuilder ==== */
+#[no_mangle]
+pub extern "C" fn mc_account_key_get_short_address_hash(
+    public_address: FfiRefPtr<McPublicAddress>,
+    out_short_address_hash: FfiMutPtr<McShortAddressHash>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>
+) -> bool {
+    ffi_boundary_with_error(out_error, || {
+            let public_address = PublicAddress::try_from_ffi(&public_address)?;
+
+            let short_address_hash: ShortAddressHash = ShortAddressHash::from(&*public_address);
+            let hash_data: [u8; 16] = short_address_hash.into();
+
+            Ok(env.byte_array_from_slice(&hash_data)?)
+    )
 }
 
 /* ==== PublicAddress ==== */
