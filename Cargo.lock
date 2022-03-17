@@ -5368,6 +5368,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-lmdb",
+ "mc-util-metrics",
  "mc-util-parse",
  "mc-util-repr-bytes",
  "mc-util-serial",

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 #![doc = include_str!("../../README.md")]
 
@@ -160,6 +160,8 @@ impl WatcherSyncThread {
                     false,
                 )
                 .expect("Could not sync signatures");
+
+            watcher.collect_metrics(None);
 
             // Decide next step before continuing based on sync result
             match sync_result {
