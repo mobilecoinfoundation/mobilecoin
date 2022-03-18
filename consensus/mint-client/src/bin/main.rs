@@ -10,9 +10,11 @@ use mc_consensus_api::{
     empty::Empty,
 };
 use mc_consensus_mint_client::{Commands, Config};
-use mc_transaction_core::constants::MAX_TOMBSTONE_BLOCKS;
+use mc_crypto_multisig::MultiSig;
+use mc_transaction_core::{constants::MAX_TOMBSTONE_BLOCKS, mint::MintConfigTx};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
-use std::sync::Arc;
+use serde_json::to_string_pretty;
+use std::{fs, sync::Arc};
 
 fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
@@ -36,6 +38,59 @@ fn main() {
 
             let resp = client_api
                 .propose_mint_config_tx(&(&tx).into())
+                .expect("propose tx");
+            println!("response: {:?}", resp);
+        }
+
+        Commands::GenerateMintConfigTx { out, params } => {
+            let tx = params
+                .try_into_mint_config_tx(|| panic!("missing tombstone block"))
+                .expect("failed creating tx");
+
+            let json = to_string_pretty(&tx).expect("failed serializing tx");
+
+            fs::write(out, json).expect("failed writing output file");
+        }
+
+        Commands::SubmitMintConfigTxs { node, tx_filenames } => {
+            // Load all txs.
+            let txs = tx_filenames
+                .iter()
+                .map(|filename| {
+                    let bytes = fs::read_to_string(filename).unwrap_or_else(|err| {
+                        panic!("Failed reading file {:?}: {}", filename, err)
+                    });
+                    serde_json::from_str(&bytes).unwrap_or_else(|err| {
+                        panic!("Failed parsing tx from file {:?}: {}", filename, err)
+                    })
+                })
+                .collect::<Vec<MintConfigTx>>();
+
+            // All tx prefixes should be the same.
+            if !txs.windows(2).all(|pair| pair[0] == pair[1]) {
+                panic!("All txs must have the same prefix");
+            }
+
+            // Collect all signatures.
+            let mut signatures = txs
+                .iter()
+                .flat_map(|tx| tx.signature.signatures())
+                .cloned()
+                .collect::<Vec<_>>();
+            signatures.sort();
+            signatures.dedup();
+
+            let merged_tx = MintConfigTx {
+                prefix: txs[0].prefix.clone(),
+                signature: MultiSig::new(signatures),
+            };
+
+            let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
+            let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
+            let client_api = ConsensusClientApiClient::new(ch);
+
+            let resp = client_api
+                .propose_mint_config_tx(&(&merged_tx).into())
                 .expect("propose tx");
             println!("response: {:?}", resp);
         }

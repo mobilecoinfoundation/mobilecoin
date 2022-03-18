@@ -13,7 +13,7 @@ use mc_transaction_core::mint::{
 };
 use mc_util_uri::ConsensusClientUri;
 use rand::{thread_rng, RngCore};
-use std::{convert::TryFrom, fs};
+use std::{convert::TryFrom, fs, path::PathBuf};
 
 #[derive(Args)]
 pub struct MintConfigTxParams {
@@ -165,6 +165,28 @@ pub enum Commands {
 
         #[clap(flatten)]
         params: MintConfigTxParams,
+    },
+
+    // Generate a MintConfigTx and write it to a JSON file.
+    GenerateMintConfigTx {
+        /// Filename to write the mint configuration to.
+        #[clap(long, env = "MC_MINTING_OUT_FILE")]
+        out: PathBuf,
+
+        #[clap(flatten)]
+        params: MintConfigTxParams,
+    },
+
+    // Submit json-encoded MintConfigTx(s). If multiple transactions are provided, signatures will
+    // be merged.
+    SubmitMintConfigTxs {
+        /// URI of consensus node to connect to.
+        #[clap(long, env = "MC_CONSENSUS_URI")]
+        node: ConsensusClientUri,
+
+        /// Filename to read the mint configuration from.
+        #[clap(long = "tx", required(true), env = "MC_MINTING_TXS")]
+        tx_filenames: Vec<PathBuf>,
     },
 
     /// Generate and submit a MintTx transaction.
