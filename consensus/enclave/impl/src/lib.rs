@@ -53,7 +53,7 @@ use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
-    mint::{MintConfigTx, MintTx},
+    mint::{validate_mint_config_tx, MintConfigTx, MintTx, MintValidationError},
     ring_signature::{KeyImage, Scalar},
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
@@ -292,21 +292,38 @@ impl SgxConsensusEnclave {
     }
 
     /// Validate a list of MintConfigTxs.
-    fn validate_mint_config_txs(&self, mint_config_txs: &[MintConfigTx]) -> Result<()> {
-        // TODO: iterate over each indivdual transaction and validate it. This requires
-        // the enclave has knowledge of the master minters for each token id.
-        // This validation already happens in untruested, but it will be nice to do it
-        // here as well. This will get implemetend in a follow up PR.
-
-        // Ensure all nonces are unique.
+    fn validate_mint_config_txs(
+        &self,
+        mint_config_txs: &[MintConfigTx],
+        current_block_index: u64,
+        config: &BlockchainConfig,
+    ) -> Result<()> {
         let mut seen_nonces = BTreeSet::default();
         for tx in mint_config_txs {
+            // Ensure all nonces are unique.
             if !seen_nonces.insert(tx.prefix.nonce.clone()) {
                 return Err(Error::FormBlock(format!(
                     "Duplicate MintConfigTx nonce: {:?}",
                     tx.prefix.nonce
                 )));
             }
+
+            // Get the master minters for the token being minted.
+            let token_id = TokenId::from(tx.prefix.token_id);
+            let master_minters = config
+                .master_minters_map
+                .get_master_minters_for_token(&token_id)
+                .ok_or(Error::MalformedMintingTx(
+                    MintValidationError::NoMasterMinters(token_id),
+                ))?;
+
+            // Ensure transaction is valid.
+            validate_mint_config_tx(
+                tx,
+                current_block_index,
+                config.block_version,
+                &master_minters,
+            )?;
         }
 
         Ok(())
@@ -731,7 +748,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         key_images.sort();
 
         // Get the list of MintConfigTxs included in the block.
-        self.validate_mint_config_txs(&inputs.mint_config_txs)?;
+        self.validate_mint_config_txs(&inputs.mint_config_txs, parent_block.index, &config)?;
         let mint_config_txs = inputs.mint_config_txs;
 
         // We purposefully do not ..Default::default() here so that new block fields
