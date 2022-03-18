@@ -28,7 +28,6 @@ fn main() {
 
     // This is a hack for lint to run, this wouldn't be necessary after we move the
     // enclave to its own crate
-
     rerun_if_env_changed!("VIEW_ENCLAVE_CSS");
     if let Ok(value) = var("VIEW_ENCLAVE_CSS") {
         warning!("Found view enclave css: {}", value);

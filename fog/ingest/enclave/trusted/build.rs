@@ -33,6 +33,8 @@ fn main() {
         SGX_LIBS
     };
 
+    // This is a hack for lint to run, this wouldn't be necessary after we move the
+    // enclave to its own crate
     rerun_if_env_changed!("INGEST_ENCLAVE_CSS");
     if let Ok(value) = var("INGEST_ENCLAVE_CSS") {
         warning!("Found ingest enclave css: {}", value);
