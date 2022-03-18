@@ -3,6 +3,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_test_vectors_definitions::memos::{
     CorrectEncryptedDestinationMemoData, CorrectEncryptedSenderMemoData,
     CorrectEncryptedSenderWithPaymentRequestIdMemoData, IncorrectEncryptedSenderMemoData,
+    IncorrectEncryptedSenderWithPaymentRequestIdMemoData,
 };
 use mc_transaction_std::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
@@ -22,6 +23,7 @@ fn main() {
     write_incorrect_encrypted_destination_memos();
 
     write_correct_encrypted_sender_with_payment_request_id_memos();
+    write_incorrect_encrypted_sender_with_payment_request_id_memos();
 }
 
 fn write_correct_encrypted_sender_memos() {
@@ -255,6 +257,61 @@ fn write_correct_encrypted_sender_with_payment_request_id_memos() {
                     )),
                     recipient_view_public_key: hex::encode(
                         recipient_public_address.view_public_key().to_bytes(),
+                    ),
+                    payment_request_id,
+                    encrypted_sender_with_payment_request_id_memo: hex::encode(
+                        sender_with_payment_request_id_memo_bytes,
+                    ),
+                };
+            encrypted_sender_with_payment_request_id_memos
+                .push(encrypted_sender_memo_with_payment_request_id_data);
+        }
+
+        encrypted_sender_with_payment_request_id_memos
+    })
+    .expect("Unable to write test vectors");
+}
+
+fn write_incorrect_encrypted_sender_with_payment_request_id_memos() {
+    write_jsonl("../vectors", || {
+        let mut rng: StdRng = SeedableRng::from_seed([2u8; 32]);
+        let mut encrypted_sender_with_payment_request_id_memos: Vec<
+            IncorrectEncryptedSenderWithPaymentRequestIdMemoData,
+        > = Vec::new();
+        for _ in 0..10 {
+            let sender_account_key = AccountKey::new(
+                &RistrettoPrivate::from_random(&mut rng),
+                &RistrettoPrivate::from_random(&mut rng),
+            );
+            let sender_credential = SenderMemoCredential::from(&sender_account_key);
+            let sender_public_address = sender_account_key.default_subaddress();
+
+            let recipient_account_key = AccountKey::new(
+                &RistrettoPrivate::from_random(&mut rng),
+                &RistrettoPrivate::from_random(&mut rng),
+            );
+            let recipient_public_address = recipient_account_key.default_subaddress();
+
+            let tx_public_key = CompressedRistrettoPublic::from_random(&mut rng);
+            let payment_request_id = 23u64;
+
+            let encrypted_sender_with_payment_request_id_memo =
+                AuthenticatedSenderWithPaymentRequestIdMemo::new(
+                    &sender_credential,
+                    recipient_public_address.view_public_key(),
+                    &tx_public_key,
+                    payment_request_id,
+                );
+            let sender_with_payment_request_id_memo_bytes: [u8; 64] =
+                encrypted_sender_with_payment_request_id_memo.clone().into();
+
+            let encrypted_sender_memo_with_payment_request_id_data =
+                IncorrectEncryptedSenderWithPaymentRequestIdMemoData {
+                    incorrect_sender_public_address: hex::encode(mc_util_serial::encode(
+                        &recipient_public_address.clone(),
+                    )),
+                    incorrect_recipient_view_public_key: hex::encode(
+                        sender_public_address.view_public_key().to_bytes(),
                     ),
                     payment_request_id,
                     encrypted_sender_with_payment_request_id_memo: hex::encode(
