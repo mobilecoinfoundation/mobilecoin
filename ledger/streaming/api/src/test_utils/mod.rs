@@ -4,8 +4,10 @@
 
 pub mod components;
 pub mod quorum_set;
+pub mod response;
 
 pub use self::{
     components::make_components,
     quorum_set::make_quorum_set,
+    response::{make_responses, Response, Responses},
 };

@@ -75,11 +75,15 @@ fn map_subscribe_response(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{setup_test_server, Responses};
+    use crate::test_utils::setup_test_server;
     use futures::{executor::block_on, future::ready};
     use mc_common::logger::test_with_logger;
     use mc_crypto_keys::Ed25519Pair;
-    use mc_ledger_streaming_api::{make_subscribe_response, test_utils::make_quorum_set, Error};
+    use mc_ledger_streaming_api::{
+        make_subscribe_response,
+        test_utils::{make_quorum_set, Responses},
+        Error,
+    };
     use mc_transaction_core::{
         tx::TxOutMembershipElement, Block, BlockContents, BlockData, BlockVersion,
     };

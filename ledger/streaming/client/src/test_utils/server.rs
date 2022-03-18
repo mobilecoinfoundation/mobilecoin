@@ -1,19 +1,18 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Helpers for tests.
+//! Mock [LedgerUpdates] server for tests.
 
 use futures::{FutureExt, StreamExt};
 use mc_ledger_streaming_api::{
     streaming_blocks::{SubscribeRequest, SubscribeResponse},
     streaming_blocks_grpc::{create_ledger_updates, LedgerUpdates},
-    Result,
+    test_utils::Responses,
 };
 use mc_util_uri::ConnectionUri;
 use std::{str::FromStr, sync::Arc};
 
-pub type Response = Result<SubscribeResponse>;
-pub type Responses = Vec<Response>;
-
+/// Test helper: Set up a local [LedgerUpdates] server serving the given
+/// [Responses].
 pub fn setup_test_server(
     responses: Responses,
     // Allows `None`, `Ok(42)`, or simply `42`.
@@ -36,20 +35,25 @@ pub fn setup_test_server(
     (server, uri, env)
 }
 
+/// Mock implementation of [LedgerUpdates] serving the specified [Responses].
 #[derive(Clone, Debug)]
 pub struct MockLedgerUpdates {
+    /// The [Responses].
     pub responses: Responses,
 }
 
 impl MockLedgerUpdates {
+    /// Instantiate this type
     pub fn new(responses: Responses) -> Self {
         Self { responses }
     }
 
+    /// Create a [grpcio::Service] implementing [LedgerUpdates]
     pub fn into_service(self) -> grpcio::Service {
         create_ledger_updates(self)
     }
 
+    /// Create a [grpcio::Server] with a Service implementing [LedgerUpdates]
     pub fn into_server(
         self,
         env: Arc<grpcio::Environment>,
@@ -75,10 +79,7 @@ impl LedgerUpdates for MockLedgerUpdates {
             .responses
             .iter()
             .cloned()
-            .map(|r| {
-                r.map(|r| (r, grpcio::WriteFlags::default()))
-                    .map_err(|str| grpcio::Error::Codec(str.into()))
-            })
+            .map(|r| r.with_write_flags(grpcio::WriteFlags::default()))
             // Collect to avoid an error like "`self` has an anonymous lifetime
             // `'_` but it needs to satisfy a `'static` lifetime requirement"
             .collect::<Vec<_>>();
