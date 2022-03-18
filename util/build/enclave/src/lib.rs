@@ -380,7 +380,6 @@ impl Builder {
     ///
     /// If an unsigned enclave does not exist, it will build it.
     pub fn build(&mut self) -> Result<Signature, Error> {
-        warning!("Entering Build Section");
         let mut packages = self.staticlib.packages.clone();
         packages.sort_by_cached_key(|p| p.name.clone());
         // Emit correct "rerun-if-changed" diagnostics for cargo
