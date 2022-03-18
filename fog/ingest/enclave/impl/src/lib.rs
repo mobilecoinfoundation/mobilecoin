@@ -20,8 +20,7 @@ use aligned_cmov::{typenum::U32, A8Bytes, Aligned, GenericArray};
 use alloc::vec::Vec;
 use core::convert::TryFrom;
 use mc_attest_core::{
-    IasNonce, IntelSealed, IntelSealingError, Quote, QuoteNonce, Report, TargetInfo,
-    VerificationReport,
+    IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
     EnclaveMessage, Error as AttestEnclaveError, PeerAuthRequest, PeerAuthResponse, PeerSession,
@@ -383,18 +382,5 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> IngestEnclave
 
 // Helper for sealing a key, which maps the error to IngestEnclaveError
 fn seal_private_key(src: &RistrettoPrivate) -> Result<SealedIngestKey> {
-    Ok(IntelSealed::seal_raw(src.as_ref(), &[])
-        .map_err(map_sealing_error)?
-        .as_ref()
-        .to_vec())
-}
-
-// Helper for converting error type living only in mc_attest_trusted to the
-// error type in enclave_api (The attest_trusted crate will not compile in
-// non-sgx environment.)
-fn map_sealing_error(src: IntelSealingError) -> Error {
-    match src {
-        IntelSealingError::Sgx(err) => err.into(),
-        IntelSealingError::SealFormat(err) => err.into(),
-    }
+    Ok(IntelSealed::seal_raw(src.as_ref(), &[])?.as_ref().to_vec())
 }
