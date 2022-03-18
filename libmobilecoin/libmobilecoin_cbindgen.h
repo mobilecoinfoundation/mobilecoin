@@ -851,3 +851,21 @@ FfiOptOwnedPtr<McTxOutMemoBuilder> mc_memo_builder_sender_payment_request_and_de
 FfiOptOwnedPtr<McTxOutMemoBuilder> mc_memo_builder_default_create(void);
 
 void mc_memo_builder_free(FfiOptOwnedPtr<McTxOutMemoBuilder> memo_builder);
+
+bool mc_memo_sender_memo_is_valid(FfiRefPtr<McBuffer> sender_memo_data,
+                                  FfiRefPtr<McPublicAddress> sender_public_address,
+                                  FfiRefPtr<McBuffer> receiving_subaddress_view_private_key,
+                                  FfiRefPtr<McBuffer> tx_out_public_key,
+                                  FfiMutPtr<bool> out_valid,
+                                  FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+bool mc_memo_sender_memo_create(FfiRefPtr<McAccountKey> sender_account_key,
+                                FfiRefPtr<McBuffer> recipient_subaddress_view_public_key,
+                                FfiRefPtr<McBuffer> tx_out_public_key,
+                                FfiMutPtr<McMutableBuffer> out_memo_data,
+                                FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+bool mc_memo_sender_memo_get_address_hash(FfiRefPtr<McBuffer> sender_memo_data,
+                                          FfiMutPtr<McMutableBuffer> out_short_address_hash,
+                                          FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
