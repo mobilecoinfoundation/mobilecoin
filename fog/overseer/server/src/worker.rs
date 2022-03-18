@@ -254,9 +254,8 @@ where
                 Ok(ingest_summary) => {
                     if self
                         .unresponsive_node_urls
-                        .contains(ingest_client.get_uri())
+                        .remove(ingest_client.get_uri())
                     {
-                        self.unresponsive_node_urls.remove(ingest_client.get_uri());
                         log::info!(
                             self.logger,
                             "Node {} was previously unresponsive, but just successfully responded!",
