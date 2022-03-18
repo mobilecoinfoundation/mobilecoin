@@ -1,49 +1,86 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::BlockPublisher;
-use futures::{Future, Stream, StreamExt};
+use futures::{lock::Mutex, Stream, StreamExt, TryStreamExt};
 use mc_common::logger::Logger;
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_streaming_api::{
-    make_subscribe_response, streaming_blocks::SubscribeResponse, BlockStreamComponents,
+    make_subscribe_response, streaming_blocks::SubscribeResponse, BlockStream,
+    BlockStreamComponents, Result,
 };
 use mc_util_grpc::ConnectionUriGrpcioServer;
 use mc_util_uri::ConnectionUri;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 // A sink that consumes a block stream and publishes the results over gRPC.
 pub struct GrpcServerSink {
-    publisher: Arc<RwLock<BlockPublisher>>,
-    signer: Arc<RwLock<Ed25519Pair>>,
+    publisher: Arc<Mutex<BlockPublisher>>,
+    signer: Arc<Mutex<Ed25519Pair>>,
     logger: Logger,
 }
 
 impl GrpcServerSink {
     pub fn new(signer: Ed25519Pair, logger: Logger) -> Self {
         Self {
-            publisher: Arc::new(RwLock::new(BlockPublisher::new(logger.clone()))),
-            signer: Arc::new(RwLock::new(signer)),
+            publisher: Arc::new(Mutex::new(BlockPublisher::new(logger.clone()))),
+            signer: Arc::new(Mutex::new(signer)),
             logger,
         }
     }
 
+    /// Consume the given `BlockStream`.
+    /// The returned value is a `Stream` where the `Output` type is
+    /// `Result<()>`; it is executed entirely for its side effects, while
+    /// propagating errors back to the caller.
     pub fn consume<'a>(
         &mut self,
-        stream: impl Stream<Item = BlockStreamComponents> + 'a,
-    ) -> impl Future<Output = ()> + 'a {
+        stream: impl BlockStream + 'a,
+        starting_height: u64,
+    ) -> Result<impl Stream<Item = Result<()>> + 'a> {
+        Ok(self.consume_components(stream.get_block_stream(starting_height)?))
+    }
+
+    /// Consume a stream of `BlockStreamComponents`.
+    /// The returned value is a `Stream` where the `Output` type is
+    /// `Result<()>`; it is executed entirely for its side effects, while
+    /// propagating errors back to the caller.
+    pub fn consume_components<'a>(
+        &mut self,
+        stream: impl Stream<Item = Result<BlockStreamComponents>> + 'a,
+    ) -> impl Stream<Item = Result<()>> + 'a {
         let signer = self.signer.clone();
-        self.consume_protos(stream.map(move |data| {
-            make_subscribe_response(&data, &signer.read().unwrap())
-                .expect("Failed to create SubscribeResponse")
+        self.consume_protos(stream.then(move |result| {
+            let signer = signer.clone();
+            async move {
+                let data = result?;
+                let signer = signer.lock().await;
+                make_subscribe_response(&data, &signer)
+            }
         }))
     }
 
+    /// Consume a stream of `SubscribeResponse`.
+    /// The returned value is a `Stream` where the `Output` type is
+    /// `Result<()>`; it is executed entirely for its side effects, while
+    /// propagating errors back to the caller.
     pub fn consume_protos<'a>(
         &mut self,
-        stream: impl Stream<Item = SubscribeResponse> + 'a,
-    ) -> impl Future<Output = ()> + 'a {
+        stream: impl Stream<Item = Result<SubscribeResponse>> + 'a,
+    ) -> impl Stream<Item = Result<()>> + 'a {
         let publisher = self.publisher.clone();
-        stream.for_each(move |data| publisher.write().unwrap().publish(data))
+        stream.and_then(move |data| {
+            let publisher = publisher.clone();
+            async move {
+                let mut publisher = publisher.lock().await;
+                Ok(publisher.publish(data).await)
+            }
+        })
+    }
+
+    /// Create a `Service` with a `LedgerUpdates` handler.
+    pub fn create_service(&mut self) -> grpcio::Service {
+        let mut publisher = futures::executor::block_on(self.publisher.lock());
+        publisher.create_service()
     }
 
     pub fn create_server(
@@ -52,7 +89,7 @@ impl GrpcServerSink {
         env: Arc<grpcio::Environment>,
     ) -> grpcio::Result<grpcio::Server> {
         grpcio::ServerBuilder::new(env)
-            .register_service(self.publisher.write().unwrap().create_service())
+            .register_service(self.create_service())
             .bind_using_uri(uri, self.logger.clone())
             .build()
     }
@@ -103,7 +140,10 @@ mod tests {
 
         let (mut sender, receiver) = futures::channel::mpsc::channel(5);
         executor
-            .spawn(sink.consume_protos(receiver))
+            .spawn(
+                sink.consume_protos(receiver)
+                    .for_each(|result| async move { result.unwrap() }),
+            )
             .expect("spawn error");
 
         executor
@@ -118,7 +158,7 @@ mod tests {
                     .mut_v1()
                     .mut_block()
                     .set_index(0);
-                sender.try_send(response.clone()).expect("send failed");
+                sender.try_send(Ok(response.clone())).expect("send failed");
 
                 let mut client_2 = TestClient::new(&uri, env.clone());
                 client_2.subscribe().await;
@@ -129,7 +169,7 @@ mod tests {
                     .mut_v1()
                     .mut_block()
                     .set_index(1);
-                sender.try_send(response.clone()).expect("send failed");
+                sender.try_send(Ok(response.clone())).expect("send failed");
 
                 let mut client_3 = TestClient::new(&uri, env.clone());
                 client_3.subscribe().await;
@@ -140,7 +180,7 @@ mod tests {
                     .mut_v1()
                     .mut_block()
                     .set_index(2);
-                sender.try_send(response.clone()).expect("send failed");
+                sender.try_send(Ok(response.clone())).expect("send failed");
 
                 assert_eq!(3, client_1.response_count());
                 assert_eq!(2, client_2.response_count());
