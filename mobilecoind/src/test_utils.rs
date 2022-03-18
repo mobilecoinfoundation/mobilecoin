@@ -2,9 +2,6 @@
 
 //! Utilities for mobilecoind unit tests
 
-// TODO
-#![allow(dead_code)]
-
 use crate::{
     database::Database,
     monitor_store::{MonitorData, MonitorId},
