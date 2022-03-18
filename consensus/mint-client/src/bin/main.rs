@@ -11,7 +11,7 @@ use mc_consensus_api::{
 };
 use mc_consensus_mint_client::{Commands, Config};
 use mc_crypto_keys::{Ed25519Pair, Signer};
-use mc_crypto_multisig::{MultiSig, SignerSet};
+use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::{
     constants::MAX_TOMBSTONE_BLOCKS,
     mint::{
@@ -33,6 +33,7 @@ fn main() {
             token_id,
             tombstone,
             nonce,
+            configs,
         } => {
             let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
             let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
@@ -57,11 +58,14 @@ fn main() {
 
             let prefix = MintConfigTxPrefix {
                 token_id,
-                configs: vec![MintConfig {
-                    token_id,
-                    signer_set: SignerSet::new(vec![signer.public_key()], 1),
-                    mint_limit: 1000,
-                }],
+                configs: configs
+                    .into_iter()
+                    .map(|(mint_limit, signer_set)| MintConfig {
+                        token_id,
+                        mint_limit,
+                        signer_set,
+                    })
+                    .collect(),
                 nonce,
                 tombstone_block,
             };
@@ -78,7 +82,7 @@ fn main() {
 
         Commands::GenerateAndSubmitMintTx {
             node,
-            signing_key,
+            signing_keys,
             recipient,
             token_id,
             amount,
@@ -89,8 +93,6 @@ fn main() {
             let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
             let client_api = ConsensusClientApiClient::new(ch.clone());
             let blockchain_api = BlockchainApiClient::new(ch);
-
-            let signer = Ed25519Pair::from(signing_key);
 
             let tombstone_block = tombstone.unwrap_or_else(|| {
                 let last_block_info = blockchain_api
@@ -116,7 +118,16 @@ fn main() {
             };
 
             let message = prefix.hash();
-            let signature = MultiSig::new(vec![signer.try_sign(message.as_ref()).unwrap()]);
+            let signature = MultiSig::new(
+                signing_keys
+                    .into_iter()
+                    .map(|signer| {
+                        Ed25519Pair::from(signer)
+                            .try_sign(message.as_ref())
+                            .unwrap()
+                    })
+                    .collect(),
+            );
             let tx = MintTx { prefix, signature };
 
             let resp = client_api
