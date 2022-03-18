@@ -25,6 +25,7 @@ mc-common = { path = "../../../common", default-features = false }
 mc-crypto-digestible = { path = "../../../crypto/digestible", features = ["derive"] }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
 mc-crypto-message-cipher = { path = "../../../crypto/message-cipher" }
+mc-crypto-multisig = { path = "../../../crypto/multisig" }
 mc-sgx-compat = { path = "../../../sgx/compat" }
 mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
 mc-transaction-core = { path = "../../../transaction/core" }

@@ -10,12 +10,14 @@ extern crate alloc;
 mod config;
 mod error;
 mod fee_map;
+mod master_minters_map;
 mod messages;
 
 pub use crate::{
     config::{BlockchainConfig, BlockchainConfigWithDigest},
     error::Error,
     fee_map::{Error as FeeMapError, FeeMap},
+    master_minters_map::{Error as MasterMintersMapError, MasterMintersMap},
     messages::EnclaveCall,
 };
 

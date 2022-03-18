@@ -9,7 +9,7 @@ use mc_crypto_digestible::Digestible;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Serialize};
 
-/// A thread-safe object that contains a map of fee value by token id.
+/// A map of fee value by token id.
 #[derive(Clone, Debug, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize)]
 pub struct FeeMap {
     /// The actual map of token_id to fee.

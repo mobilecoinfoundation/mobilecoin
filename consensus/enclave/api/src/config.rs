@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 pub struct BlockchainConfig {
     /// The map from tokens to their minimum fees
     pub fee_map: FeeMap,
+
     /// The block version that this enclave will be applying rules for and
     /// publishing
     pub block_version: BlockVersion,
