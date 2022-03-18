@@ -179,13 +179,13 @@ pub enum Commands {
 
     // Submit json-encoded MintConfigTx(s). If multiple transactions are provided, signatures will
     // be merged.
-    SubmitMintConfigTxs {
+    SubmitMintConfigTx {
         /// URI of consensus node to connect to.
         #[clap(long, env = "MC_CONSENSUS_URI")]
         node: ConsensusClientUri,
 
         /// Filename to read the mint configuration from.
-        #[clap(long = "tx", required(true), env = "MC_MINTING_TXS")]
+        #[clap(long = "tx", required(true), env = "MC_MINTING_CONFIG_TXS")]
         tx_filenames: Vec<PathBuf>,
     },
 
@@ -198,6 +198,28 @@ pub enum Commands {
 
         #[clap(flatten)]
         params: MintTxParams,
+    },
+
+    // Generate a MintTx and write it to a JSON file.
+    GenerateMintTx {
+        /// Filename to write the mint configuration to.
+        #[clap(long, env = "MC_MINTING_OUT_FILE")]
+        out: PathBuf,
+
+        #[clap(flatten)]
+        params: MintTxParams,
+    },
+
+    // Submit json-encoded MintTx(s). If multiple transactions are provided, signatures will
+    // be merged.
+    SubmitMintTx {
+        /// URI of consensus node to connect to.
+        #[clap(long, env = "MC_CONSENSUS_URI")]
+        node: ConsensusClientUri,
+
+        /// Filename to read the mint configuration from.
+        #[clap(long = "tx", required(true), env = "MC_MINTING_TXS")]
+        tx_filenames: Vec<PathBuf>,
     },
 }
 
