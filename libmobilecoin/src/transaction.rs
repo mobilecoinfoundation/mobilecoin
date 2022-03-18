@@ -1397,7 +1397,6 @@ pub extern "C" fn mc_memo_destination_memo_get_total_outlay(
 
 
 
->>>>>>> task/rth-sender-memo-ffis-back-2
 impl<'a> TryFromFfi<&McBuffer<'a>> for CompressedCommitment {
     type Error = LibMcError;
 
