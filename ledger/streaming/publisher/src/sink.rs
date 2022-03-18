@@ -12,7 +12,7 @@ use mc_util_grpc::ConnectionUriGrpcioServer;
 use mc_util_uri::ConnectionUri;
 use std::sync::Arc;
 
-// A sink that consumes a block stream and publishes the results over gRPC.
+/// A sink that consumes a block stream and publishes the results over gRPC.
 pub struct GrpcServerSink {
     publisher: Arc<Mutex<BlockPublisher>>,
     signer: Arc<Mutex<Ed25519Pair>>,
@@ -20,6 +20,8 @@ pub struct GrpcServerSink {
 }
 
 impl GrpcServerSink {
+    /// Instantiate a sink that publishes blocks, signed with the given
+    /// `signer`.
     pub fn new(signer: Ed25519Pair, logger: Logger) -> Self {
         Self {
             publisher: Arc::new(Mutex::new(BlockPublisher::new(logger.clone()))),
@@ -72,7 +74,8 @@ impl GrpcServerSink {
             let publisher = publisher.clone();
             async move {
                 let mut publisher = publisher.lock().await;
-                Ok(publisher.publish(data).await)
+                publisher.publish(data).await;
+                Ok(())
             }
         })
     }
@@ -83,6 +86,8 @@ impl GrpcServerSink {
         publisher.create_service()
     }
 
+    /// Create a gRPC `Server` with a `LedgerUpdates` service using this
+    /// instance.
     pub fn create_server(
         &mut self,
         uri: &impl ConnectionUri,

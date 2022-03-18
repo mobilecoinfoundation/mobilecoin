@@ -9,24 +9,31 @@ use mc_ledger_streaming_api::{
     streaming_blocks_grpc::{create_ledger_updates, LedgerUpdates},
 };
 
+/// A helper for publishing blocks to multiple gRPC streams.
 pub struct BlockPublisher {
     publisher: ExpiringPublisher<SubscribeResponse>,
 }
 
 impl BlockPublisher {
+    /// Instantiate a publisher.
     pub fn new(_logger: Logger) -> Self {
         let publisher = ExpiringPublisher::new(3); // buffer a few responses.
         Self { publisher }
     }
 
+    /// Publish a `SubscribeResponse` to all current subscribers.
+    /// The returned value is a `Future` where the `Output` type is `()`; it is
+    /// executed entirely for its side effects.
     pub fn publish(&mut self, response: SubscribeResponse) -> BoxFuture<'static, ()> {
         self.publisher.publish(response)
     }
 
+    /// Create a `LedgerUpdates` handler.
     pub fn create_handler(&mut self) -> impl LedgerUpdates + Clone + Send + Sync + 'static {
         PublishHelper::new(self.publisher.subscribe())
     }
 
+    /// Create a Service with a `LedgerUpdates` handler.
     pub fn create_service(&mut self) -> grpcio::Service {
         create_ledger_updates(self.create_handler())
     }
