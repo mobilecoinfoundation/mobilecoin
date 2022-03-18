@@ -2,15 +2,152 @@
 
 //! Command line configuration for the consensus mint client.
 
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use hex::FromHex;
 use mc_account_keys::PublicAddress;
 use mc_api::printable::PrintableWrapper;
-use mc_crypto_keys::{DistinguishedEncoding, Ed25519Private, Ed25519Public};
-use mc_crypto_multisig::SignerSet;
-use mc_transaction_core::mint::constants::NONCE_LENGTH;
+use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private, Ed25519Public, Signer};
+use mc_crypto_multisig::{MultiSig, SignerSet};
+use mc_transaction_core::mint::{
+    constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx, MintTxPrefix,
+};
 use mc_util_uri::ConsensusClientUri;
+use rand::{thread_rng, RngCore};
 use std::{convert::TryFrom, fs};
+
+#[derive(Args)]
+pub struct MintConfigTxParams {
+    /// The key to sign the transaction with.
+    #[clap(long, parse(try_from_str = load_key_from_pem), env = "MC_MINTING_SIGNING_KEY")]
+    signing_key: Ed25519Private,
+
+    /// The token id we are minting.
+    #[clap(long, env = "MC_MINTING_TOKEN_ID")]
+    token_id: u32,
+
+    /// Tombstone block.
+    #[clap(long, env = "MC_MINTING_TOMBSTONE")]
+    tombstone: Option<u64>,
+
+    /// Nonce.
+    #[clap(long, parse(try_from_str = FromHex::from_hex), env = "MC_MINTING_NONCE")]
+    nonce: Option<[u8; NONCE_LENGTH]>,
+
+    /// Mint configs. Each configuration must be of the format: <mint
+    /// limit>:<signing threshold>:<signer 1 public keyfile>[:<signer 2
+    /// public keyfile....>]. For example:
+    /// 10000:2:signer1.pem:signer2.pem:signer3.pem defines a minting
+    /// configuration capable of minting up to 1000 tokens: and requiring 2
+    /// out of 3 signers.
+    #[clap(long = "config", parse(try_from_str = parse_mint_config), env = "MC_MINTING_CONFIGS")]
+    // Tuple of (mint limit, SignerSet)
+    configs: Vec<(u64, SignerSet<Ed25519Public>)>,
+}
+
+impl MintConfigTxParams {
+    pub fn try_into_mint_config_tx(
+        self,
+        fallback_tombstone_block: impl Fn() -> u64,
+    ) -> Result<MintConfigTx, String> {
+        let signer = Ed25519Pair::from(self.signing_key);
+
+        let tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
+
+        let nonce = self.nonce.map(|n| n.to_vec()).unwrap_or_else(|| {
+            let mut rng = thread_rng();
+            let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
+            rng.fill_bytes(&mut nonce);
+            nonce
+        });
+
+        let token_id = self.token_id;
+        let prefix = MintConfigTxPrefix {
+            token_id,
+            configs: self
+                .configs
+                .into_iter()
+                .map(|(mint_limit, signer_set)| MintConfig {
+                    token_id,
+                    mint_limit,
+                    signer_set,
+                })
+                .collect(),
+            nonce,
+            tombstone_block,
+        };
+
+        let message = prefix.hash();
+        let signature = MultiSig::new(vec![signer
+            .try_sign(message.as_ref())
+            .map_err(|e| e.to_string())?]);
+        Ok(MintConfigTx { prefix, signature })
+    }
+}
+
+#[derive(Args)]
+pub struct MintTxParams {
+    /// The key(s) to sign the transaction with.
+    #[clap(long = "signing-key", required(true), parse(try_from_str = load_key_from_pem), env = "MC_MINTING_SIGNING_KEY")]
+    signing_keys: Vec<Ed25519Private>,
+
+    /// The b58 address we are minting to.
+    #[clap(long, parse(try_from_str = parse_public_address), env = "MC_MINTING_RECIPIENT")]
+    recipient: PublicAddress,
+
+    /// The token id we are minting.
+    #[clap(long, env = "MC_MINTING_TOKEN_ID")]
+    token_id: u32,
+
+    /// The amount we are minting.
+    #[clap(long, env = "MC_MINTING_AMOUNT")]
+    amount: u64,
+
+    /// Tombstone block.
+    #[clap(long, env = "MC_MINTING_TOMBSTONE")]
+    tombstone: Option<u64>,
+
+    /// Nonce.
+    #[clap(long, parse(try_from_str = FromHex::from_hex), env = "MC_MINTING_NONCE")]
+    nonce: Option<[u8; NONCE_LENGTH]>,
+}
+
+impl MintTxParams {
+    pub fn try_into_mint_tx(
+        self,
+        fallback_tombstone_block: impl Fn() -> u64,
+    ) -> Result<MintTx, String> {
+        let tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
+
+        let nonce = self.nonce.map(|n| n.to_vec()).unwrap_or_else(|| {
+            let mut rng = thread_rng();
+            let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
+            rng.fill_bytes(&mut nonce);
+            nonce
+        });
+
+        let prefix = MintTxPrefix {
+            token_id: self.token_id,
+            amount: self.amount,
+            view_public_key: *self.recipient.view_public_key(),
+            spend_public_key: *self.recipient.spend_public_key(),
+            nonce,
+            tombstone_block,
+        };
+
+        let message = prefix.hash();
+        let signature = MultiSig::new(
+            self.signing_keys
+                .into_iter()
+                .map(|signer| {
+                    Ed25519Pair::from(signer)
+                        .try_sign(message.as_ref())
+                        .unwrap()
+                })
+                .collect(),
+        );
+        Ok(MintTx { prefix, signature })
+    }
+}
 
 #[derive(Subcommand)]
 pub enum Commands {
@@ -21,31 +158,8 @@ pub enum Commands {
         #[clap(long, env = "MC_CONSENSUS_URI")]
         node: ConsensusClientUri,
 
-        /// The key to sign the transaction with.
-        #[clap(long, parse(try_from_str = load_key_from_pem), env = "MC_MINTING_SIGNING_KEY")]
-        signing_key: Ed25519Private,
-
-        /// The token id we are minting.
-        #[clap(long, env = "MC_MINTING_TOKEN_ID")]
-        token_id: u32,
-
-        /// Tombstone block.
-        #[clap(long, env = "MC_MINTING_TOMBSTONE")]
-        tombstone: Option<u64>,
-
-        /// Nonce.
-        #[clap(long, parse(try_from_str = FromHex::from_hex), env = "MC_MINTING_NONCE")]
-        nonce: Option<[u8; NONCE_LENGTH]>,
-
-        /// Mint configs. Each configuration must be of the format: <mint
-        /// limit>:<signing threshold>:<signer 1 public keyfile>[:<signer 2
-        /// public keyfile....>]. For example:
-        /// 10000:2:signer1.pem:signer2.pem:signer3.pem defines a minting
-        /// configuration capable of minting up to 1000 tokens: and requiring 2
-        /// out of 3 signers.
-        #[clap(long = "config", parse(try_from_str = parse_mint_config), env = "MC_MINTING_CONFIGS")]
-        // Tuple of (mint limit, SignerSet)
-        configs: Vec<(u64, SignerSet<Ed25519Public>)>,
+        #[clap(flatten)]
+        params: MintConfigTxParams,
     },
 
     /// Generate and submit a MintTx transaction.
@@ -55,29 +169,8 @@ pub enum Commands {
         #[clap(long, env = "MC_CONSENSUS_URI")]
         node: ConsensusClientUri,
 
-        /// The key(s) to sign the transaction with.
-        #[clap(long = "signing-key", required(true), parse(try_from_str = load_key_from_pem), env = "MC_MINTING_SIGNING_KEY")]
-        signing_keys: Vec<Ed25519Private>,
-
-        /// The b58 address we are minting to.
-        #[clap(long, parse(try_from_str = parse_public_address), env = "MC_MINTING_RECIPIENT")]
-        recipient: PublicAddress,
-
-        /// The token id we are minting.
-        #[clap(long, env = "MC_MINTING_TOKEN_ID")]
-        token_id: u32,
-
-        /// The amount we are minting.
-        #[clap(long, env = "MC_MINTING_AMOUNT")]
-        amount: u64,
-
-        /// Tombstone block.
-        #[clap(long, env = "MC_MINTING_TOMBSTONE")]
-        tombstone: Option<u64>,
-
-        /// Nonce.
-        #[clap(long, parse(try_from_str = FromHex::from_hex), env = "MC_MINTING_NONCE")]
-        nonce: Option<[u8; NONCE_LENGTH]>,
+        #[clap(flatten)]
+        params: MintTxParams,
     },
 }
 
