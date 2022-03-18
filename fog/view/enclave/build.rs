@@ -6,6 +6,7 @@ use cargo_emit::{rerun_if_env_changed, rustc_cfg, warning};
 use mc_util_build_script::Environment;
 use mc_util_build_sgx::{Edger8r, SgxEnvironment, SgxLibraryCollection, SgxMode};
 use pkg_config::{Config, Error as PkgConfigError, Library};
+use std::env::var;
 
 const SGX_LIBS: &[&str] = &["libsgx_urts", "libsgx_epid"];
 const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_urts_sim", "libsgx_epid_sim"];
@@ -28,11 +29,15 @@ fn main() {
     } else {
         SGX_LIBS
     };
+
+    // This is a hack for lint to run, this wouldn't be necessary after we move the
+    // enclave to its own crate
     rerun_if_env_changed!("VIEW_ENCLAVE_CSS");
     if let Ok(value) = var("VIEW_ENCLAVE_CSS") {
         warning!("Found view enclave css: {}", value);
         return;
     }
+
     let libraries = libnames
         .iter()
         .map(|libname| cfg.probe(libname))

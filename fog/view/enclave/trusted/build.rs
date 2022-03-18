@@ -30,27 +30,11 @@ fn main() {
     // enclave to its own crate
 
     rerun_if_env_changed!("VIEW_ENCLAVE_CSS");
-    if let Ok(value) = var("INGEST_ENCLAVE_CSS") {
-        warning!("Found ingest enclave css: {}", value);
+    if let Ok(value) = var("VIEW_ENCLAVE_CSS") {
+        warning!("Found view enclave css: {}", value);
         return;
     }
-    // let value = env
-    //     .depvar("VIEW_ENCLAVE_CSS")
-    //     .expect("Could not read css file");
-    // warning!("Found view enclave css: {}", value);
-    // for depvar in env.depvars() {
-    //     warning!("Found var: {:?}", depvar);
-    // }
-    // // let value = env.var("VIEW_ENCLAVE_CSS");
-    // match value {
-    //     Some(css) => {
-    //         warning!("Found view enclave css: {}", css);
-    //         return;
-    //     }
-    //     None => {
-    //         warning!("Found no view enclave css");
-    //     }
-    // }
+
     let libnames = if sgx.sgx_mode() == SgxMode::Simulation {
         rustc_cfg!("feature=\"sgx-sim\"");
         SGX_SIMULATION_LIBS
