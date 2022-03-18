@@ -3,8 +3,8 @@
 //! Tokens configuration.
 
 use crate::consensus_service::ConsensusServiceError;
-use mc_common::{HashMap, HashSet};
-use mc_consensus_enclave::FeeMap;
+use mc_common::HashSet;
+use mc_consensus_enclave::{FeeMap, MasterMintersMap};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
 use mc_crypto_multisig::SignerSet;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
@@ -296,19 +296,23 @@ impl TokensConfig {
     }
 
     /// Get a map of token id -> master minters.
-    pub fn token_id_to_master_minters(
-        &self,
-    ) -> Result<HashMap<TokenId, SignerSet<Ed25519Public>>, ConsensusServiceError> {
+    pub fn token_id_to_master_minters(&self) -> Result<MasterMintersMap, ConsensusServiceError> {
         self.validate()?;
 
-        Ok(HashMap::from_iter(self.tokens.iter().filter_map(
-            |token_config| {
+        Ok(
+            MasterMintersMap::try_from_iter(self.tokens.iter().filter_map(|token_config| {
                 token_config
                     .master_minters
                     .as_ref()
                     .map(|master_minters| (token_config.token_id, master_minters.clone()))
-            },
-        )))
+            }))
+            .map_err(|err| {
+                ConsensusServiceError::Configuration(format!(
+                    "MasterMintersMap: {}",
+                    err.to_string()
+                ))
+            })?,
+        )
     }
 }
 
