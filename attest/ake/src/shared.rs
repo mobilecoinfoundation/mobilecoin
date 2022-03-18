@@ -7,7 +7,6 @@ use crate::{
     mealy::Transition,
     state::Ready,
 };
-use aead::{AeadMut, NewAead};
 use alloc::vec::Vec;
 use mc_crypto_noise::{CipherError, NoiseCipher};
 use rand_core::{CryptoRng, RngCore};
@@ -15,7 +14,7 @@ use rand_core::{CryptoRng, RngCore};
 /// Ready + Ciphertext => Ready + Vec-of-plaintext
 impl<Cipher> Transition<Ready<Cipher>, Ciphertext<'_, '_>, Vec<u8>> for Ready<Cipher>
 where
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
+    Cipher: NoiseCipher,
 {
     type Error = CipherError;
 
@@ -33,7 +32,7 @@ where
 /// Ready + Plaintext => Ready + Vec-of-ciphertext
 impl<Cipher> Transition<Ready<Cipher>, Plaintext<'_, '_>, Vec<u8>> for Ready<Cipher>
 where
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
+    Cipher: NoiseCipher,
 {
     type Error = CipherError;
 

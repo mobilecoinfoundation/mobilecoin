@@ -3,7 +3,7 @@
 use displaydoc::Display;
 use mc_fog_report_validation::FogPubkeyError;
 use mc_transaction_core::{
-    ring_signature, ring_signature::Error, AmountError, NewMemoError, NewTxError,
+    ring_signature, ring_signature::Error, AmountError, NewMemoError, NewTxError, TokenId,
 };
 
 /// An error that can occur when using the TransactionBuilder
@@ -23,6 +23,9 @@ pub enum TxBuilderError {
 
     /// Bad Amount: {0}
     BadAmount(AmountError),
+
+    /// Input had wrong token id: Expected {0}, Found {1}
+    WrongTokenType(TokenId, TokenId),
 
     /// New Tx: {0}
     NewTx(NewTxError),
@@ -50,6 +53,9 @@ pub enum TxBuilderError {
 
     /// Block version ({0} > {1}) is too new to be supported
     BlockVersionTooNew(u32, u32),
+
+    /// Feature is not supported at this block version ({0}): {1}
+    FeatureNotSupportedAtBlockVersion(u32, &'static str),
 }
 
 impl From<mc_util_serial::encode::Error> for TxBuilderError {

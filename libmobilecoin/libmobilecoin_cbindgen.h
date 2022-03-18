@@ -625,7 +625,7 @@ bool mc_tx_out_commitment_crc32(FfiRefPtr<McBuffer> tx_out_commitment,
  *
  * * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
  */
-bool mc_tx_out_matches_any_subaddress(FfiRefPtr<McTxOutAmount> tx_out_amount,
+bool mc_tx_out_matches_any_subaddress(FfiRefPtr<McTxOutAmount> _tx_out_amount,
                                       FfiRefPtr<McBuffer> tx_out_public_key,
                                       FfiRefPtr<McBuffer> view_private_key,
                                       FfiMutPtr<bool> out_matches);

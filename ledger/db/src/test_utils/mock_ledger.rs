@@ -6,8 +6,9 @@ use mc_common::{HashMap, HashSet};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_transaction_core::{
     ring_signature::KeyImage,
+    tokens::Mob,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion,
+    Amount, Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion, Token,
 };
 use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, SeedableRng};
@@ -192,7 +193,6 @@ impl Ledger for MockLedger {
     }
 }
 
-#[allow(dead_code)]
 /// Creates a MockLedger and populates it with blocks and transactions.
 pub fn get_mock_ledger(n_blocks: usize) -> MockLedger {
     let mut mock_ledger = MockLedger::default();
@@ -203,7 +203,6 @@ pub fn get_mock_ledger(n_blocks: usize) -> MockLedger {
     mock_ledger
 }
 
-#[allow(dead_code)]
 /// Creates a sequence of `Block`s and the transactions corresponding to each
 /// block.
 pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
@@ -212,6 +211,7 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
     // The owner of all outputs in the mock ledger.
     let account_key = AccountKey::random(&mut rng);
     let value = 134_217_728; // 2^27
+    let token_id = Mob::ID;
 
     let mut block_ids: Vec<BlockID> = Vec::with_capacity(n_blocks);
     let mut blocks_and_contents: Vec<(Block, BlockContents)> = Vec::with_capacity(n_blocks);
@@ -220,7 +220,7 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
         if block_index == 0 {
             // Create the origin block.
             let mut tx_out = TxOut::new(
-                value,
+                Amount { value, token_id },
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -237,7 +237,10 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
         } else {
             // Create a normal block.
             let tx_out = TxOut::new(
-                16,
+                Amount {
+                    value: 16,
+                    token_id,
+                },
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),

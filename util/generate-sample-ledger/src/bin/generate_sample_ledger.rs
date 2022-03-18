@@ -14,17 +14,27 @@ struct Config {
     #[structopt(long = "blocks", short = "b", default_value = "1")]
     pub num_blocks: usize,
 
-    /// Key images per transaction
-    #[structopt(long = "key-images", short = "k", default_value = "0")]
+    /// Key images per block
+    #[structopt(long = "key-images", short = "k", default_value = "1")]
     pub num_key_images: usize,
 
-    // Seed to use when generating blocks (e.g.
+    /// Seed to use when generating blocks (e.g.
     // 1234567812345678123456781234567812345678123456781234567812345678).
     #[structopt(long = "seed", short = "s", parse(try_from_str=hex::FromHex::from_hex))]
     pub seed: Option<[u8; 32]>,
 
+    /// Text to embed in the fog hints of the bootstrapped block, as an easter
+    /// egg
     #[structopt(long = "hint-text")]
     pub hint_text: Option<String>,
+
+    /// Max token id. If set to 1, then this will double the number of tx's in
+    /// the bootstrap. First will come all token id 0, then all token id 1.
+    ///
+    /// Historically this was not present, and is only added to support testing
+    /// of confidential token ids.
+    #[structopt(long, default_value = "0")]
+    pub max_token_id: u32,
 }
 
 fn main() {
@@ -47,6 +57,7 @@ fn main() {
         config.num_key_images,
         config.seed,
         config.hint_text.as_deref(),
+        config.max_token_id,
         logger,
     );
 }

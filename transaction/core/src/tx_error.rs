@@ -5,6 +5,7 @@
 use crate::AmountError;
 use alloc::string::String;
 use displaydoc::Display;
+use mc_crypto_keys::KeyError;
 
 /// An error that occurs when creating a new TxOut
 #[derive(Debug, Display)]
@@ -24,6 +25,27 @@ impl From<AmountError> for NewTxError {
 impl From<NewMemoError> for NewTxError {
     fn from(src: NewMemoError) -> NewTxError {
         NewTxError::Memo(src)
+    }
+}
+
+/// An error that occurs when view key matching a TxOut
+#[derive(Debug, Display)]
+pub enum ViewKeyMatchError {
+    /// Key: {0}
+    Key(KeyError),
+    /// Amount: {0}
+    Amount(AmountError),
+}
+
+impl From<KeyError> for ViewKeyMatchError {
+    fn from(src: KeyError) -> Self {
+        Self::Key(src)
+    }
+}
+
+impl From<AmountError> for ViewKeyMatchError {
+    fn from(src: AmountError) -> Self {
+        Self::Amount(src)
     }
 }
 

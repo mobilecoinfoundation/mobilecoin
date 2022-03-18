@@ -24,6 +24,7 @@ pub struct BlockContents {
 }
 
 impl BlockContents {
+    /// Create new BlockContents from a set of KeyImages and Outputs
     pub fn new(key_images: Vec<KeyImage>, outputs: Vec<TxOut>) -> Self {
         Self {
             key_images,

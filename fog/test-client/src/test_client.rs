@@ -11,10 +11,12 @@ use hex_fmt::HexList;
 use mc_account_keys::ShortAddressHash;
 use mc_common::logger::{log, Logger};
 use mc_crypto_rand::McRng;
-use mc_fog_sample_paykit::{AccountKey, Client, ClientBuilder, TransactionStatus, Tx};
+use mc_fog_sample_paykit::{AccountKey, Client, ClientBuilder, TokenId, TransactionStatus, Tx};
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_sgx_css::Signature;
-use mc_transaction_core::{constants::RING_SIZE, tokens::Mob, BlockIndex, BlockVersion, Token};
+use mc_transaction_core::{
+    constants::RING_SIZE, tokens::Mob, Amount, BlockIndex, BlockVersion, Token,
+};
 use mc_transaction_std::MemoType;
 use mc_util_grpc::GrpcRetryConfig;
 use mc_util_telemetry::{
@@ -61,8 +63,20 @@ pub struct TestClientPolicy {
     pub polling_wait: Duration,
     /// A transaction amount to send
     pub transfer_amount: u64,
+    /// A token id to use
+    pub token_id: TokenId,
     /// Whether to test RTH memos
     pub test_rth_memos: bool,
+}
+
+/// Data associated with a test client transfer.
+struct TransferData {
+    /// The transaction that represents the transfer.
+    transaction: Tx,
+    /// The block count at which the transaction was submitted.
+    block_count: u64,
+    /// The fee associated with the transaction.
+    fee: u64,
 }
 
 impl Default for TestClientPolicy {
@@ -74,7 +88,18 @@ impl Default for TestClientPolicy {
             double_spend_wait: Duration::from_secs(10),
             polling_wait: Duration::from_millis(50),
             transfer_amount: Mob::MINIMUM_FEE,
+            token_id: Mob::ID,
             test_rth_memos: false,
+        }
+    }
+}
+
+impl TestClientPolicy {
+    /// Get the amount that should be transfered according to the policy
+    pub fn amount(&self) -> Amount {
+        Amount {
+            value: self.transfer_amount,
+            token_id: self.token_id,
         }
     }
 }
@@ -143,31 +168,31 @@ impl TestClient {
     }
 
     /// Set the consensus sigstruct used by the clients
-    pub fn consensus_sigstruct(self, sig: Option<Signature>) -> Self {
-        let mut retval = self;
-        retval.consensus_sig = sig;
-        retval
+    #[must_use]
+    pub fn consensus_sigstruct(mut self, sig: Option<Signature>) -> Self {
+        self.consensus_sig = sig;
+        self
     }
 
     /// Set the fog ingest sigstruct used by the clients
-    pub fn fog_ingest_sigstruct(self, sig: Option<Signature>) -> Self {
-        let mut retval = self;
-        retval.fog_ingest_sig = sig;
-        retval
+    #[must_use]
+    pub fn fog_ingest_sigstruct(mut self, sig: Option<Signature>) -> Self {
+        self.fog_ingest_sig = sig;
+        self
     }
 
     /// Set the fog ledger sigstruct used by the clients
-    pub fn fog_ledger_sigstruct(self, sig: Option<Signature>) -> Self {
-        let mut retval = self;
-        retval.fog_ledger_sig = sig;
-        retval
+    #[must_use]
+    pub fn fog_ledger_sigstruct(mut self, sig: Option<Signature>) -> Self {
+        self.fog_ledger_sig = sig;
+        self
     }
 
     /// Set the fog view sigstruct used by the clients
-    pub fn fog_view_sigstruct(self, sig: Option<Signature>) -> Self {
-        let mut retval = self;
-        retval.fog_view_sig = sig;
-        retval
+    #[must_use]
+    pub fn fog_view_sigstruct(mut self, sig: Option<Signature>) -> Self {
+        self.fog_view_sig = sig;
+        self
     }
 
     /// Build the clients
@@ -220,11 +245,13 @@ impl TestClient {
     /// to.
     ///
     /// This only builds and submits the transaction, it does not confirm it
+    ///
+    /// Returns:
     fn transfer(
         &self,
         source_client: &mut Client,
         target_client: &mut Client,
-    ) -> Result<(Tx, u64), TestClientError> {
+    ) -> Result<TransferData, TestClientError> {
         self.tx_info.clear();
         let target_address = target_client.get_account_key().default_subaddress();
         log::debug!(
@@ -252,7 +279,7 @@ impl TestClient {
         let transaction = {
             let start = Instant::now();
             let transaction = source_client
-                .build_transaction(self.policy.transfer_amount, &target_address, &mut rng, fee)
+                .build_transaction(self.policy.amount(), &target_address, &mut rng, fee)
                 .map_err(TestClientError::BuildTx)?;
             counters::TX_BUILD_TIME.observe(start.elapsed().as_secs_f64());
             transaction
@@ -269,7 +296,11 @@ impl TestClient {
             block_count
         };
         self.tx_info.set_tx_propose_block_count(block_count);
-        Ok((transaction, block_count))
+        Ok(TransferData {
+            transaction,
+            block_count,
+            fee,
+        })
     }
 
     /// Waits for a transaction to be accepted by the network
@@ -347,15 +378,17 @@ impl TestClient {
         &self,
         client: &mut Client,
         block_index: BlockIndex,
+        token_id: TokenId,
         expected_balance: u64,
     ) -> Result<(), TestClientError> {
         let start = Instant::now();
         let mut deadline = Some(start + self.policy.tx_receive_deadline);
 
         loop {
-            let (new_balance, new_block_count) = client
+            let (new_balances, new_block_count) = client
                 .check_balance()
                 .map_err(TestClientError::CheckBalance)?;
+            let new_balance = new_balances.get(&token_id).cloned().unwrap_or_default();
 
             // Wait for client cursor to include the index where the transaction landed.
             if u64::from(new_block_count) > block_index {
@@ -442,6 +475,7 @@ impl TestClient {
     /// Conduct a test transfer from source client to target client
     ///
     /// Arguments:
+    /// * token_id: The token id to use for the test transfer
     /// * source_client: The client to send from
     /// * source_client_index: The index of this client in the list of clients
     ///   (for debugging info)
@@ -450,6 +484,7 @@ impl TestClient {
     ///   (for debugging info)
     fn test_transfer(
         &self,
+        token_id: TokenId,
         source_client: Arc<Mutex<Client>>,
         source_client_index: usize,
         target_client: Arc<Mutex<Client>>,
@@ -468,23 +503,29 @@ impl TestClient {
         let (src_balance, tgt_balance) = tracer.in_span(
             "test_transfer_pre_checks",
             |_cx| -> Result<(u64, u64), TestClientError> {
-                let (src_balance, src_cursor) = source_client_lk
+                let (src_balances, src_cursor) = source_client_lk
                     .check_balance()
                     .map_err(TestClientError::CheckBalance)?;
+                let src_balance = src_balances.get(&token_id).cloned().unwrap_or_default();
+
                 log::info!(
                     self.logger,
-                    "client {} has a balance of {} after {} blocks",
+                    "client {} has a TokenId({}) balance of {} after {} blocks",
                     source_client_index,
+                    token_id,
                     src_balance,
                     src_cursor
                 );
-                let (tgt_balance, tgt_cursor) = target_client_lk
+                let (tgt_balances, tgt_cursor) = target_client_lk
                     .check_balance()
                     .map_err(TestClientError::CheckBalance)?;
+                let tgt_balance = tgt_balances.get(&token_id).cloned().unwrap_or_default();
+
                 log::info!(
                     self.logger,
-                    "client {} has a balance of {} after {} blocks",
+                    "client {} has a TokenId({}) balance of {} after {} blocks",
                     target_client_index,
+                    token_id,
                     tgt_balance,
                     tgt_cursor
                 );
@@ -496,15 +537,13 @@ impl TestClient {
             },
         )?;
 
-        let fee = source_client_lk.get_fee().unwrap_or(Mob::MINIMUM_FEE);
         let transfer_start = std::time::SystemTime::now();
-        let (transaction, block_count) =
-            self.transfer(&mut source_client_lk, &mut target_client_lk)?;
+        let transfer_data = self.transfer(&mut source_client_lk, &mut target_client_lk)?;
 
-        let mut span = block_span_builder(&tracer, "test_iteration", block_count)
+        let mut span = block_span_builder(&tracer, "test_iteration", transfer_data.block_count)
             .with_start_time(transfer_start)
             .start(&tracer);
-        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(block_count as i64));
+        span.set_attribute(TELEMETRY_BLOCK_INDEX_KEY.i64(transfer_data.block_count as i64));
         let _active = mark_span_as_active(span);
 
         let start = Instant::now();
@@ -512,6 +551,7 @@ impl TestClient {
         drop(target_client_lk);
         let mut receive_tx_worker = ReceiveTxWorker::new(
             target_client,
+            token_id,
             tgt_balance,
             tgt_balance + self.policy.transfer_amount,
             self.policy.clone(),
@@ -524,7 +564,7 @@ impl TestClient {
 
         // Wait for key images to land in ledger server
         let transaction_appeared =
-            self.ensure_transaction_is_accepted(&mut source_client_lk, &transaction)?;
+            self.ensure_transaction_is_accepted(&mut source_client_lk, &transfer_data.transaction)?;
 
         counters::TX_CONFIRMED_TIME.observe(start.elapsed().as_secs_f64());
 
@@ -538,7 +578,8 @@ impl TestClient {
             self.ensure_expected_balance_after_block(
                 &mut source_client_lk,
                 transaction_appeared,
-                src_balance - self.policy.transfer_amount - fee,
+                token_id,
+                src_balance - self.policy.transfer_amount - transfer_data.fee,
             )
         })?;
 
@@ -554,16 +595,18 @@ impl TestClient {
                 match source_client_lk.get_last_memo() {
                     Ok(Some(memo)) => match memo {
                         MemoType::Destination(memo) => {
-                            if memo.get_total_outlay() != self.policy.transfer_amount + fee {
-                                log::error!(self.logger, "Destination memo had wrong total outlay, found {}, expected {}. Tx Info: {}", memo.get_total_outlay(), self.policy.transfer_amount + fee, self.tx_info);
+                            if memo.get_total_outlay()
+                                != self.policy.transfer_amount + transfer_data.fee
+                            {
+                                log::error!(self.logger, "Destination memo had wrong total outlay, found {}, expected {}. Tx Info: {}", memo.get_total_outlay(), self.policy.transfer_amount + transfer_data.fee, self.tx_info);
                                 return Err(TestClientError::UnexpectedMemo);
                             }
-                            if memo.get_fee() != fee {
+                            if memo.get_fee() != transfer_data.fee {
                                 log::error!(
                                     self.logger,
                                     "Destination memo had wrong fee, found {}, expected {}. Tx Info: {}",
                                     memo.get_fee(),
-                                    fee,
+                                    transfer_data.fee,
                                     self.tx_info
                                 );
                                 return Err(TestClientError::UnexpectedMemo);
@@ -606,12 +649,13 @@ impl TestClient {
                 }
             }
         }
-        Ok(transaction)
+        Ok(transfer_data.transaction)
     }
 
     /// Run a test that lasts a fixed duration and fails fast on an error
     ///
     /// Arguments:
+    /// * token_id: The token id to use
     /// * num_transactions: The number of transactions to run
     pub fn run_test(&self, num_transactions: usize) -> Result<(), TestClientError> {
         let client_count = self.account_keys.len() as usize;
@@ -631,6 +675,7 @@ impl TestClient {
             let target_client = clients[target_index].clone();
 
             let transaction = self.test_transfer(
+                self.policy.token_id,
                 source_client.clone(),
                 source_index,
                 target_client,
@@ -688,7 +733,13 @@ impl TestClient {
             let target_client = clients[target_index].clone();
 
             let transfer_start = Instant::now();
-            match self.test_transfer(source_client, source_index, target_client, target_index) {
+            match self.test_transfer(
+                self.policy.token_id,
+                source_client,
+                source_index,
+                target_client,
+                target_index,
+            ) {
                 Ok(_) => {
                     log::info!(self.logger, "Transfer succeeded");
                     counters::TX_SUCCESS_COUNT.inc();
@@ -781,7 +832,8 @@ impl ReceiveTxWorker {
     ///
     /// Arguments:
     /// * client: The receiving client to check
-    /// * current balance: The current balance of that client
+    /// * token_id: The token id we are transferring
+    /// * current balance: The current balance of that client (in this token id)
     /// * expected balance: The expected balance after the Tx is received
     /// * policy: The test client policy object
     /// * expected_memo_contents: Optional short address hash matching the
@@ -789,6 +841,7 @@ impl ReceiveTxWorker {
     /// * logger
     pub fn new(
         client: Arc<Mutex<Client>>,
+        token_id: TokenId,
         current_balance: u64,
         expected_balance: u64,
         policy: TestClientPolicy,
@@ -822,9 +875,11 @@ impl ReceiveTxWorker {
                         return Ok(());
                     }
 
-                    let (new_balance, new_block_count) = client
+                    let (new_balances, new_block_count) = client
                         .check_balance()
                         .map_err(TestClientError::CheckBalance)?;
+
+                    let new_balance = new_balances.get(&token_id).cloned().unwrap_or_default();
 
                     if new_balance == expected_balance {
                         counters::TX_RECEIVED_TIME.observe(start.elapsed().as_secs_f64());

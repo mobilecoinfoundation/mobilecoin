@@ -21,7 +21,7 @@ mc-fog-ingest-enclave-measurement = { path = "../ingest/enclave/measurement" }
 mc-fog-report-connection = { path = "../../fog/report/connection" }
 mc-fog-report-validation = { path = "../../fog/report/validation" }
 mc-ledger-db = { path = "../../ledger/db" }
-mc-mobilecoind = { path = "../../mobilecoind" }
+mc-mobilecoind = { path = "../../mobilecoind" } # This is needed for PeersConfig
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-std = { path = "../../transaction/std" }
 mc-util-keyfile = { path = "../../util/keyfile" }
@@ -37,10 +37,11 @@ structopt = "0.3"
 tempfile = "3.0"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["simd_backend", "nightly"] }
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
 
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["nightly", "u64_backend"] }
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
+mc-util-generate-sample-ledger = { path = "../../util/generate-sample-ledger" }

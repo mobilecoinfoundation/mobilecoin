@@ -499,8 +499,9 @@ mod combine_tests {
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_transaction_core::{
         onetime_keys::recover_onetime_private_key,
+        tokens::Mob,
         tx::{TxOut, TxOutMembershipProof},
-        BlockVersion,
+        Amount, BlockVersion, Token,
     };
     use mc_transaction_core_test_utils::{AccountKey, MockFogResolver};
     use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
@@ -541,7 +542,10 @@ mod combine_tests {
             let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
             let tx_out = TxOut::new(
-                123,
+                Amount {
+                    value: 123,
+                    token_id: Mob::ID,
+                },
                 &alice.default_subaddress(),
                 &tx_secret_key_for_txo,
                 Default::default(),
@@ -580,6 +584,7 @@ mod combine_tests {
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
+                Mob::ID,
                 MockFogResolver::default(),
                 EmptyMemoBuilder::default(),
             );
@@ -619,7 +624,10 @@ mod combine_tests {
                     let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
                     let tx_out = TxOut::new(
-                        88,
+                        Amount {
+                            value: 88,
+                            token_id: Mob::ID,
+                        },
                         &alice.default_subaddress(),
                         &tx_secret_key_for_txo,
                         Default::default(),
@@ -634,6 +642,7 @@ mod combine_tests {
 
                     let mut transaction_builder = TransactionBuilder::new(
                         block_version,
+                        Mob::ID,
                         MockFogResolver::default(),
                         EmptyMemoBuilder::default(),
                     );
@@ -695,7 +704,10 @@ mod combine_tests {
 
             // Create a TxOut that was sent to Alice.
             let tx_out = TxOut::new(
-                123,
+                Amount {
+                    value: 123,
+                    token_id: Mob::ID,
+                },
                 &alice.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -731,6 +743,7 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
+                    Mob::ID,
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
                 );
@@ -767,6 +780,7 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
+                    Mob::ID,
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
                 );
@@ -788,7 +802,10 @@ mod combine_tests {
                 // The transaction keys.
                 let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
                 let tx_out = TxOut::new(
-                    123,
+                    Amount {
+                        value: 123,
+                        token_id: Mob::ID,
+                    },
                     &alice.default_subaddress(),
                     &tx_secret_key_for_txo,
                     Default::default(),
@@ -826,6 +843,7 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
+                    Mob::ID,
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
                 );
@@ -862,7 +880,10 @@ mod combine_tests {
 
             // Create two TxOuts that were sent to Alice.
             let tx_out1 = TxOut::new(
-                123,
+                Amount {
+                    value: 123,
+                    token_id: Mob::ID,
+                },
                 &alice.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -870,7 +891,10 @@ mod combine_tests {
             .unwrap();
 
             let tx_out2 = TxOut::new(
-                123,
+                Amount {
+                    value: 123,
+                    token_id: Mob::ID,
+                },
                 &alice.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -912,6 +936,7 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
+                    Mob::ID,
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
                 );
@@ -949,6 +974,7 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
+                    Mob::ID,
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
                 );
@@ -971,7 +997,10 @@ mod combine_tests {
                 // The transaction keys.
                 let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
                 let tx_out = TxOut::new(
-                    123,
+                    Amount {
+                        value: 123,
+                        token_id: Mob::ID,
+                    },
                     &alice.default_subaddress(),
                     &tx_secret_key_for_txo,
                     Default::default(),
@@ -1009,6 +1038,7 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
+                    Mob::ID,
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
                 );

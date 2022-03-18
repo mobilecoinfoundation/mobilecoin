@@ -23,7 +23,7 @@ mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-ledger-db = { path = "../../../ledger/db" }
 mc-sgx-report-cache-untrusted = { path = "../../../sgx/report-cache/untrusted" }
-mc-transaction-core = {  path = "../../../transaction/core" }
+mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-encodings = { path = "../../../util/encodings" }
 mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-grpc = { path = "../../../util/grpc" }
@@ -56,8 +56,8 @@ structopt = "0.3"
 url = "2.2"
 
 [build-dependencies]
-mc-util-build-sgx = { path = "../../../util/build/sgx" }
 mc-util-build-script = { path = "../../../util/build/script" }
+mc-util-build-sgx = { path = "../../../util/build/sgx" }
 
 [dev-dependencies]
 # mobilecoin
@@ -69,16 +69,10 @@ mc-util-test-helper = { path = "../../../util/test-helper" }
 mc-util-uri = { path = "../../../util/uri" }
 
 # fog
-mc-fog-ledger-test-infra = { path = "../test_infra" }
 mc-fog-ledger-connection = { path = "../connection" }
 mc-fog-ledger-enclave-measurement = { path = "../enclave/measurement" }
+mc-fog-ledger-test-infra = { path = "../test_infra" }
 mc-fog-test-infra = { path = "../../test_infra" }
 
 # third-party
 tempdir = "0.3"
-
-[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dev-dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["simd_backend", "nightly"] }
-
-[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dev-dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["nightly", "u64_backend"] }

@@ -1,5 +1,22 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+//! Fog distribution is a transfer script which moves funds from a set of
+//! accounts funded by a ledger bootstrap, to another set of accounts (which may
+//! have fog).
+//!
+//! This is necessary because it is generally impossible to fund fog accounts
+//! with bootstrap, because fog would have to exist and a public key be
+//! available before the network has been stood up, or we cannot encrypt fog
+//! hints.
+//!
+//! Fog distribution also has a secondary purpose of "slamming" the network with
+//! as high of a volume of Tx's as possible. Fog distro fires and forgets its
+//! Tx's rather than checking to see if they land, once it is in the slam step.
+//!
+//! Fog distro guarantees to pay each destination account at least once.
+
+#![deny(missing_docs)]
+
 use core::{cell::RefCell, convert::TryFrom};
 use lazy_static::lazy_static;
 use mc_account_keys::AccountKey;
@@ -19,12 +36,12 @@ use mc_fog_report_validation::FogResolver;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
     get_tx_out_shared_secret,
-    onetime_keys::{recover_onetime_private_key, view_key_matches_output},
+    onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
-    BlockVersion, Token,
+    Amount, BlockVersion, Token,
 };
 use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_util_uri::FogUri;
@@ -32,6 +49,7 @@ use rand::{seq::SliceRandom, thread_rng, Rng};
 use rayon::prelude::*;
 use retry::{delay, retry, OperationResult};
 use std::{
+    collections::BTreeMap,
     convert::TryInto,
     iter::empty,
     path::Path,
@@ -47,6 +65,7 @@ use structopt::StructOpt;
 use tempfile::tempdir;
 
 thread_local! {
+    /// global variable storing connections to the consensus network
     pub static CONNS: RefCell<Option<Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>>>> = RefCell::new(None);
 }
 
@@ -70,22 +89,29 @@ fn get_conns(
 }
 
 lazy_static! {
+    /// Keeps track of current block height of the block chain
     pub static ref BLOCK_HEIGHT: AtomicU64 = AtomicU64::default();
+
+    /// Keeps track of block version we are targetting
     pub static ref BLOCK_VERSION: AtomicU32 = AtomicU32::new(1);
 
+    /// Keeps track of the current fee value
     pub static ref FEE: AtomicU64 = AtomicU64::default();
 
-    // A map of tx pub keys to account index. This is used in conjunction with ledger syncing to
-    // identify which new txs belong to which accounts without having to do any slow crypto.
+    /// A map of tx pub keys to account index. This is used in conjunction with ledger syncing to
+    /// identify which new txs belong to which accounts without having to do any slow crypto.
     pub static ref TX_PUB_KEY_TO_ACCOUNT_KEY: Mutex<HashMap::<CompressedRistrettoPublic, AccountKey>> = Mutex::new(HashMap::default());
-
 }
 
+/// A TxOut found from the bootstrapped ledger that we can spend
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SpendableTxOut {
+    /// The tx out that is spendable
     pub tx_out: TxOut,
-    pub amount: u64,
-    from_account_key: AccountKey,
+    /// The amount of the tx out
+    pub amount: Amount,
+    /// The account that owns this tx out
+    pub from_account_key: AccountKey,
 }
 
 fn main() {
@@ -95,7 +121,7 @@ fn main() {
     let config = Config::from_args();
 
     // Read account root_entropies from disk
-    let accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_root_entropies(
+    let src_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_root_entropies(
         config.sample_data_dir.join(Path::new("keys")),
     )
     .expect("Could not read default root entropies from keys")
@@ -103,7 +129,7 @@ fn main() {
     .map(AccountKey::from)
     .collect();
 
-    let fog_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_root_entropies(
+    let dest_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_root_entropies(
         config
             .sample_data_dir
             .join(Path::new(&config.fog_keys_subdir)),
@@ -125,11 +151,12 @@ fn main() {
 
     let ledger_db = LedgerDB::open(ledger_dir.path()).expect("Could not open ledger_db");
 
+    let block_version = config
+        .block_version
+        .unwrap_or_else(|| ledger_db.get_latest_block().unwrap().version);
+
     BLOCK_HEIGHT.store(ledger_db.num_blocks().unwrap(), Ordering::SeqCst);
-    BLOCK_VERSION.store(
-        ledger_db.get_latest_block().unwrap().version,
-        Ordering::SeqCst,
-    );
+    BLOCK_VERSION.store(block_version, Ordering::SeqCst);
 
     // Use the maximum fee of all configured consensus nodes
     FEE.store(
@@ -142,87 +169,35 @@ fn main() {
         Ordering::SeqCst,
     );
 
-    // The number of blocks we've processed so far.
-    let mut block_count = 0;
-
     // Load the bootstrapped transactions.
-    log::info!(logger, "Processing transactions");
-    let mut num_transactions_per_account = config.num_transactions_per_account;
+    let spendable_tx_outs = select_spendable_tx_outs(&ledger_db, &config, src_accounts, &logger);
 
-    let (spendable_txouts_sender, spendable_txouts_receiver) =
-        crossbeam_channel::unbounded::<SpendableTxOut>();
-
-    let mut spendable_txouts: Vec<SpendableTxOut> = Vec::new();
-
-    while let Ok(block_contents) = ledger_db.get_block_contents(block_count) {
-        let transactions = block_contents.outputs;
-        // Only get num_transactions per account for the first block, then assume
-        // future blocks that were bootstrapped are similar
-        if num_transactions_per_account == 0 {
-            num_transactions_per_account =
-                get_num_transactions_per_account(&accounts[0], &transactions, &logger);
+    // Count how many of each token type
+    {
+        let mut token_count: BTreeMap<u32, usize> = Default::default();
+        for tx_out in &spendable_tx_outs {
+            *token_count.entry(*tx_out.amount.token_id).or_default() += 1;
         }
+
         log::info!(
             logger,
-            "Loaded {:?} transactions from block {:?}",
-            transactions.len(),
-            block_count
+            "Loaded {} spendable tx outs",
+            spendable_tx_outs.len()
         );
-
-        // NOTE: This will start at the same offset per block - we may want just the
-        // first offset
-        let mut account_index = config.account_offset;
-        let mut account = &accounts[account_index];
-        let mut num_per_account_processed = 0;
-        for (index, tx_out) in transactions.iter().enumerate().skip(config.start_offset) {
-            // Makes strong assumption about bootstrapped ledger layout
-            if num_per_account_processed >= num_transactions_per_account {
-                log::trace!(
-                    logger,
-                    "Moving on to next account {:?} at tx index {:?}",
-                    account_index + 1,
-                    index
-                );
-                account_index += 1;
-                if account_index >= accounts.len() {
-                    log::info!(logger, "Finished processing accounts. If no transactions sent, you may need to re-bootstrap.");
-                    break;
-                }
-                account = &accounts[account_index];
-                num_per_account_processed = 0;
-            }
-
-            if config.num_tx_to_send == -1
-                || num_per_account_processed < config.num_tx_to_send.try_into().unwrap()
-            {
-                let public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
-                let shared_secret =
-                    get_tx_out_shared_secret(account.view_private_key(), &public_key);
-
-                let (input_amount, _blinding_factor) = tx_out
-                    .amount
-                    .get_value(&shared_secret)
-                    .expect("Malformed amount");
-
-                log::trace!(
-                    logger,
-                    "(account = {:?}) and (tx_index {:?}) = {}",
-                    account_index,
-                    index,
-                    input_amount,
-                );
-
-                // Push to queue
-                spendable_txouts.push(SpendableTxOut {
-                    tx_out: tx_out.clone(),
-                    amount: input_amount,
-                    from_account_key: account.clone(),
-                });
-            }
-            num_per_account_processed += 1;
+        for (token_id, count) in token_count {
+            log::info!(logger, "TokenId({}): {} tx outs", token_id, count);
         }
-        block_count += 1;
     }
+
+    // If we got this far and it's a dry-run, end successfully
+    if config.dry_run {
+        return;
+    }
+
+    // A channel to load with spendable tx outs, where worker threads will grab them
+    // from.
+    let (spendable_txouts_sender, spendable_txouts_receiver) =
+        crossbeam_channel::unbounded::<SpendableTxOut>();
 
     let env = Arc::new(
         grpcio::EnvBuilder::new()
@@ -231,13 +206,14 @@ fn main() {
     );
 
     let fog_uri = FogUri::from_str(
-        fog_accounts[0]
+        dest_accounts[0]
             .default_subaddress()
             .fog_report_url()
             .expect("No fog report url"),
     )
     .expect("Could not parse fog url");
 
+    // A channel for worker threads to communicate when they have finished
     let (running_threads_sender, running_threads_receiver) =
         crossbeam_channel::unbounded::<usize>();
 
@@ -249,30 +225,51 @@ fn main() {
     let mut seed_fog_resolver = build_fog_resolver(&fog_uri, &env, &logger);
     let conns = get_conns(&config, &logger);
 
-    log::info!(logger, "Seeding Fog Accounts with initial TxOuts.");
-    for (i, fog_account) in fog_accounts.iter().enumerate() {
-        seed_fog_resolver = build_and_submit_transaction(
+    // Split tx outs into a group for the seed step and a group for the slam step
+    let (seed_tx_outs, slam_tx_outs) = spendable_tx_outs
+        .split_at(dest_accounts.len() * config.num_seed_transactions_per_destination_account);
+
+    log::info!(
+        logger,
+        "Seeding Fog Accounts with {} initial TxOuts.",
+        seed_tx_outs.len()
+    );
+    for (i, fog_account) in dest_accounts.iter().enumerate() {
+        // We now send this account the next j seed tx outs, looping infinitely
+        // until success
+        for j in 0..config.num_seed_transactions_per_destination_account {
+            let idx = i * config.num_seed_transactions_per_destination_account + j;
+            seed_fog_resolver = build_and_submit_transaction(
+                idx,
+                // For this seed phase, only use one TxOut for each transaction.
+                vec![seed_tx_outs[idx].clone()],
+                fog_account,
+                &config,
+                &ledger_db,
+                seed_fog_resolver,
+                &logger,
+                &conns,
+                &env,
+                &fog_uri,
+            );
+        }
+        log::info!(
+            logger,
+            "Seeded {} / {} accounts successfully",
             i,
-            // For this seed phase, only use one TxOut for each transaction.
-            vec![spendable_txouts[i].clone()],
-            fog_account,
-            &config,
-            &ledger_db,
-            seed_fog_resolver,
-            &logger,
-            &conns,
-            &env,
-            &fog_uri,
+            dest_accounts.len()
         );
     }
 
-    // Don't use spendable_txouts that were used in the seed step.
-    spendable_txouts = spendable_txouts[fog_accounts.len()..].to_vec();
-    for spendable_txout in spendable_txouts {
+    // Submit remaining tx outs to the crossbeam queue where the worker threads will
+    // find them. Don't use spendable_txouts that were used in the seed step.
+    for spendable_txout in slam_tx_outs {
         spendable_txouts_sender
-            .send(spendable_txout)
+            .send(spendable_txout.clone())
             .expect("failed sending to spendable_txouts_sender");
     }
+
+    log::info!(logger, "Spawning workers for slam step");
 
     // Spawn worker threads
     for i in 0..config.max_threads {
@@ -280,7 +277,7 @@ fn main() {
         let running_threads_sender2 = running_threads_sender.clone();
         let config2 = config.clone();
         let ledger_db2 = ledger_db.clone();
-        let fog_accounts2 = fog_accounts.clone();
+        let dest_accounts2 = dest_accounts.clone();
         let logger2 = logger.new(o!("num" => i));
         let env2 = env.clone();
         let fog_resolver = build_fog_resolver(&fog_uri, &env2, &logger);
@@ -293,7 +290,7 @@ fn main() {
                     running_threads_sender2,
                     config2,
                     ledger_db2,
-                    fog_accounts2,
+                    dest_accounts2,
                     fog_resolver,
                     logger2,
                     env2,
@@ -309,7 +306,7 @@ fn main() {
         let _thread_died = running_threads_receiver.recv().unwrap();
         running_threads -= 1;
 
-        log::info!(logger, "A thread died {} remaining", running_threads);
+        log::info!(logger, "A thread finished, {} remaining", running_threads);
     }
 
     log::info!(logger, "Done!");
@@ -318,6 +315,128 @@ fn main() {
     thread::sleep(Duration::from_secs(1));
 }
 
+/// Reads TxOut's from the ledger, adding them to a queue of spendable TxOuts:
+/// * Confirms that they are owned by the expected owner
+/// * Notes their amount and token id
+///
+/// This function assumes that:
+/// * Bootstrap assigned a fixed number of outputs to consecutive accounts
+///   (src_accounts)
+/// * We either discover that number from the ledger, or take it as config
+///
+/// Returns all the tx outs we matched, their amounts, and the account that owns
+/// them.
+///
+/// Arguments:
+/// * ledger_db: The ledger db to read tx outs from
+/// * config: configuration options:
+///     * config.num_transactions_per_source_account: Override the automatic
+///       detection of num_transactions_per_account in ledger
+///     * config.num_tx_to_send: Caps the number of tx outs per account which
+///       this slam will actually spend
+///     * config.start_offset: Instructs to skip the first N transactions in
+///       each block
+/// * src_accounts: The source accounts which currently own the TxOut's in the
+///   ledger db
+fn select_spendable_tx_outs(
+    ledger_db: &LedgerDB,
+    config: &Config,
+    src_accounts: Vec<AccountKey>,
+    logger: &Logger,
+) -> Vec<SpendableTxOut> {
+    log::info!(logger, "Processing transactions");
+    let mut num_transactions_per_account = config.num_transactions_per_source_account;
+
+    let mut spendable_tx_outs: Vec<SpendableTxOut> = Vec::new();
+
+    let mut block_count = 0;
+    while let Ok(block_contents) = ledger_db.get_block_contents(block_count) {
+        let transactions = block_contents.outputs;
+        // If num_transactions_per_source_account is zero, then automatically detect
+        // the number of transactions.
+        // Only get num_transactions per account for the first block, then assume
+        // future blocks that were bootstrapped are similar.
+        if num_transactions_per_account == 0 {
+            num_transactions_per_account =
+                get_num_transactions_per_account(&src_accounts[0], &transactions, logger);
+        }
+        log::info!(
+            logger,
+            "Loaded {:?} transactions from block {:?}",
+            transactions.len(),
+            block_count
+        );
+
+        // NOTE: This will start at the same offset per block - we may want just the
+        // first offset
+
+        // The index of the account we expect to own the next Tx
+        let mut account_index = 0;
+        let mut account = &src_accounts[account_index];
+        // The number of tx's we have processed for this account
+        let mut num_processed_this_account = 0;
+        for (index, tx_out) in transactions.iter().enumerate().skip(config.start_offset) {
+            // If we have already seen num_transactions_per_account on this account, then we
+            // have to increment account index
+            if num_processed_this_account >= num_transactions_per_account {
+                log::trace!(
+                    logger,
+                    "Moving on to next account {:?} at tx index {:?}",
+                    account_index + 1,
+                    index
+                );
+                account_index += 1;
+                if account_index >= src_accounts.len() {
+                    log::info!(logger, "Finished processing accounts. If no transactions sent, you may need to re-bootstrap.");
+                    break;
+                }
+                account = &src_accounts[account_index];
+                num_processed_this_account = 0;
+            }
+
+            // Num tx_to_send is a cap on how many Tx's of this accounts that we actually
+            // spend If it is -1 then there is no cap.
+            if config.num_tx_to_send == -1
+                || num_processed_this_account < config.num_tx_to_send.try_into().unwrap()
+            {
+                let public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+                let shared_secret =
+                    get_tx_out_shared_secret(account.view_private_key(), &public_key);
+
+                let (amount, _blinding_factor) = tx_out
+                    .masked_amount
+                    .get_value(&shared_secret)
+                    .unwrap_or_else(|err| {
+                        panic!(
+                        "TX ownership is not as expected: tx #{} not owned by account_index {}: {}",
+                        index, account_index, err
+                    )
+                    });
+
+                log::trace!(
+                    logger,
+                    "(account = {:?}) and (tx_index {:?}) = {:?}",
+                    account_index,
+                    index,
+                    amount,
+                );
+
+                // Push to queue
+                spendable_tx_outs.push(SpendableTxOut {
+                    tx_out: tx_out.clone(),
+                    amount,
+                    from_account_key: account.clone(),
+                });
+            }
+            num_processed_this_account += 1;
+        }
+        block_count += 1;
+    }
+
+    spendable_tx_outs
+}
+
+/// Make a request to fog report server, return fog resolver object
 fn build_fog_resolver(
     fog_uri: &FogUri,
     env: &Arc<grpcio::Environment>,
@@ -360,12 +479,14 @@ fn build_fog_resolver(
     FogResolver::new(responses, &report_verifier).expect("Could not get FogResolver")
 }
 
+/// Entry point for a worker thread which tries to pull spendable tx outs rom
+/// queue and then build and submit transactions from them.
 fn worker_thread_entry(
     spendable_txouts_receiver: crossbeam_channel::Receiver<SpendableTxOut>,
     running_threads_sender: crossbeam_channel::Sender<usize>,
     config: Config,
     ledger_db: LedgerDB,
-    fog_accounts: Vec<AccountKey>,
+    dest_accounts: Vec<AccountKey>,
     mut fog_resolver: FogResolver,
     logger: Logger,
     env: Arc<grpcio::Environment>,
@@ -397,9 +518,9 @@ fn worker_thread_entry(
         }
 
         // Send to the next fog account
-        let to_account = &fog_accounts[txs_created % fog_accounts.len()];
+        let to_account = &dest_accounts[txs_created % dest_accounts.len()];
         let fog_uri = FogUri::from_str(
-            fog_accounts[0]
+            dest_accounts[0]
                 .default_subaddress()
                 .fog_report_url()
                 .expect("No fog report url"),
@@ -423,6 +544,7 @@ fn worker_thread_entry(
 }
 
 /// Builds and submits a transaction to a given FogAccount.
+/// This retries infinitely until the tx succeeds, possibly rebuilding it.
 ///
 /// If a transaction submit errors, then we get and use a new FogResolver
 /// to build and submit transactions. In this case, we return this new
@@ -470,6 +592,8 @@ fn build_and_submit_transaction(
     }
 }
 
+/// Submit a built tx to any of the possible connections, with retries.
+/// Returns true on success and false on failure
 fn submit_tx(
     counter: usize,
     conns: &[SyncConnection<ThickClient<HardcodedCredentialsProvider>>],
@@ -484,7 +608,7 @@ fn submit_tx(
         // Submit to a node in round robin fashion, starting with a random node
         let node_index = (i + counter) % conns.len();
         let conn = &conns[node_index];
-        log::debug!(
+        log::info!(
             logger,
             "Submitting transaction {} to node {} (attempt {} / {})",
             counter,
@@ -507,39 +631,48 @@ fn submit_tx(
                 BLOCK_HEIGHT.fetch_max(block_height, Ordering::SeqCst);
                 return true;
             }
-            Err(RetryError::Operation { error, .. }) => {
+            Err(RetryError::Operation {
+                error,
+                total_delay,
+                tries,
+            }) => {
                 if let ConnectionError::TransactionValidation(
                     TransactionValidationError::TombstoneBlockExceeded,
                 ) = error
                 {
-                    log::warn!(
+                    log::debug!(
                             logger,
                             "Transaction {:?} could not be submitted before tombstone block passed, giving up", counter);
                     return false;
                 }
+                if let ConnectionError::TransactionValidation(
+                    TransactionValidationError::ContainsSpentKeyImage,
+                ) = error
+                {
+                    log::info!(
+                        logger,
+                        "Transaction {:?} contains a spent key image. Moving to next transaction",
+                        counter
+                    );
+                    return true;
+                }
 
                 log::warn!(
                     logger,
-                    "Failed to submit transaction {:?} to node {} (attempt {} / {}): {}",
+                    "Failed to submit transaction {:?} to node {} (attempt {} / {}): {}. Total Delay: {:?}. Retry Crate 'tries': {}.",
                     counter,
                     conn,
                     i,
                     max_retries,
-                    error
+                    error,
+                    total_delay,
+                    tries
                 );
                 thread::sleep(retry_sleep_duration);
             }
-            Err(RetryError::Internal(s)) => {
-                log::warn!(
-                    logger,
-                    "Internal retry error while submitting transaction {:?} to node {} (attempt {} / {}): {}",
-                    counter,
-                    conn,
-                    i,
-                    max_retries,
-                    s
-                );
-                return false;
+            Err(RetryError::Internal(_s)) => {
+                // Retry crate never actually returns Internal on any code path
+                unreachable!()
             }
         }
     }
@@ -552,6 +685,7 @@ fn submit_tx(
     false
 }
 
+/// Build a tx using one or more spendable tx outs, to a particualr account.
 fn build_tx(
     spendable_txouts: &[SpendableTxOut],
     to_account: &AccountKey,
@@ -573,9 +707,16 @@ fn build_tx(
     let block_version = BlockVersion::try_from(BLOCK_VERSION.load(Ordering::SeqCst))
         .expect("Unsupported block version");
 
+    // Use token id for first spendable tx out
+    let token_id = spendable_txouts.first().unwrap().amount.token_id;
+
     // Create tx_builder.
-    let mut tx_builder =
-        TransactionBuilder::new(block_version, fog_resolver, EmptyMemoBuilder::default());
+    let mut tx_builder = TransactionBuilder::new(
+        block_version,
+        token_id,
+        fog_resolver,
+        EmptyMemoBuilder::default(),
+    );
 
     tx_builder.set_fee(FEE.load(Ordering::SeqCst)).unwrap();
 
@@ -656,17 +797,19 @@ fn build_tx(
 
     // Add ouputs
     for (i, (utxo, _proof)) in utxos_with_proofs.iter().enumerate() {
-        let mut amount = utxo.amount;
-        // Use the first input to pay for the fee.
-        if i == 0 {
-            amount -= FEE.load(Ordering::SeqCst);
+        if utxo.amount.token_id == token_id {
+            let mut value = utxo.amount.value;
+            // Use the first input to pay for the fee.
+            if i == 0 {
+                value -= FEE.load(Ordering::SeqCst);
+            }
+
+            let target_address = to_account.default_subaddress();
+
+            tx_builder
+                .add_output(value, &target_address, &mut rng)
+                .expect("failed to add output");
         }
-
-        let target_address = to_account.default_subaddress();
-
-        tx_builder
-            .add_output(amount, &target_address, &mut rng)
-            .expect("failed to add output");
     }
 
     // Set tombstone block.
@@ -677,6 +820,7 @@ fn build_tx(
     tx_builder.build(&mut rng).expect("failed building tx")
 }
 
+/// Get merkle proofs of membership from the ledger for several utxos
 fn get_membership_proofs(
     ledger_db: &LedgerDB,
     utxos: &[SpendableTxOut],
@@ -694,6 +838,7 @@ fn get_membership_proofs(
     utxos.iter().cloned().zip(proofs.into_iter()).collect()
 }
 
+/// Get ring mixins for a transaction from the ledger
 fn get_rings(
     ledger_db: &LedgerDB,
     ring_size: usize,
@@ -737,18 +882,16 @@ fn get_rings(
     rings_with_proofs
 }
 
+/// Count how many consecutive TxOut's in a range are owned by a given account
 fn get_num_transactions_per_account(
     account: &AccountKey,
     transactions: &[TxOut],
     logger: &Logger,
 ) -> usize {
     for (i, tx_out) in transactions.iter().enumerate() {
-        let target_key = RistrettoPublic::try_from(&tx_out.target_key).unwrap();
-        let public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
-
-        // Make sure the viewkey matches for this output that we are about to send
+        // Make sure the view_key matches for this output that we are about to send
         // Assume accounts are numbered in order that they were processed by bootstrap
-        if !view_key_matches_output(&account.view_key(), &target_key, &public_key) {
+        if tx_out.view_key_match(account.view_private_key()).is_err() {
             log::trace!(
                 logger,
                 "Transaction {:?} does not belong to account. Total txs per account = {:?}",

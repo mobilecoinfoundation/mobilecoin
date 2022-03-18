@@ -25,8 +25,8 @@ MOBILECOIND_PORT = 4444
 
 # TODO make these command line arguments
 LEDGER_BASE = os.path.abspath(os.getenv('LEDGER_BASE'))
-IAS_API_KEY = os.getenv('IAS_API_KEY')
-IAS_SPID = os.getenv('IAS_SPID')
+IAS_API_KEY = os.getenv('IAS_API_KEY', default='0'*64) # 32 bytes
+IAS_SPID = os.getenv('IAS_SPID', default='0'*32) # 16 bytes
 PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 MOB_RELEASE = os.getenv('MOB_RELEASE', '1')
 CARGO_FLAGS = '--release'
@@ -152,7 +152,7 @@ class Node:
         self.admin_http_gateway_port = admin_http_gateway_port
         self.peers = peers
         self.quorum_set = quorum_set
-        self.minimum_fee = 10_000_000_000
+        self.minimum_fee = 400_000_000
 
         self.consensus_process = None
         self.ledger_distribution_process = None
@@ -433,7 +433,7 @@ class Network:
             )
 
         subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-slam -p mc-crypto-x509-test-vectors {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mobilecoind -p mc-crypto-x509-test-vectors {CARGO_FLAGS}',
             shell=True,
             check=True,
         )

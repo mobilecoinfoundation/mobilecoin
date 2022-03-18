@@ -1,0 +1,52 @@
+apply plugin: 'maven-publish'
+
+version '1.3.0-pre0'
+group 'com.mobilecoin'
+
+Properties properties = new Properties()
+try {
+    properties.load(project.rootProject.file('local.properties').newDataInputStream())
+} catch (Exception ignored) { }
+
+publishing {
+    publications {
+        Production(MavenPublication) {
+            artifact("$buildDir/outputs/aar/android-bindings-release.aar")
+            groupId
+            artifactId 'android-bindings'
+            version this.version
+
+            pom.withXml {
+                def dependenciesNode = asNode().appendNode('dependencies')
+                configurations.implementation.allDependencies.each {
+                    // Ensure dependencies such as fileTree are not included in the pom.
+                    if (it.name != 'unspecified') {
+                        def dependencyNode = dependenciesNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', it.group)
+                        dependencyNode.appendNode('artifactId', it.name)
+                        dependencyNode.appendNode('version', it.version)
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = "cloudsmith"
+            url = "https://maven.cloudsmith.io/mobilecoin/mobilecoin/"
+            def releasesRepoUrl = "https://maven.cloudsmith.io/mobilecoin/mobilecoin/"
+            def snapshotsRepoUrl = "https://maven.cloudsmith.io/mobilecoin/mobilecoin/"
+            def localMavenUser = properties.getProperty("maven.user")
+            def localMavenPassword = properties.getProperty("maven.apikey")
+            // CI - Get Maven Creds from Env Vars if no local.properties
+            def mavenUser =  localMavenUser ?: System.getenv('MAVEN_USER')
+            def mavenPassword = localMavenPassword ?: System.getenv('MAVEN_PASSWORD')
+            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            credentials {
+                username = mavenUser
+                password = mavenPassword
+            }
+        }
+    }
+}
+

@@ -513,7 +513,7 @@ mod ed25519_tests {
             <Ed25519Public as ReprBytes>::Size::USIZE
         );
         assert_eq!(
-            ed25519_dalek::SIGNATURE_LENGTH,
+            ed25519_dalek::Signature::BYTE_SIZE,
             <Ed25519Signature as ReprBytes>::Size::USIZE
         );
     }

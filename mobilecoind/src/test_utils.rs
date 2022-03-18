@@ -2,9 +2,6 @@
 
 //! Utilities for mobilecoind unit tests
 
-// TODO
-#![allow(dead_code)]
-
 use crate::{
     database::Database,
     monitor_store::{MonitorData, MonitorId},
@@ -23,7 +20,9 @@ use mc_fog_report_validation_test_utils::{FogPubkeyResolver, MockFogResolver};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::PollingNetworkState;
 use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
-use mc_transaction_core::{ring_signature::KeyImage, tx::TxOut, Block, BlockContents};
+use mc_transaction_core::{
+    ring_signature::KeyImage, tokens::Mob, tx::TxOut, Amount, Block, BlockContents, Token,
+};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::{ConnectionUri, FogUri};
@@ -166,7 +165,11 @@ pub fn add_block_to_ledger_db(
         .map(|recipient| {
             let mut result = TxOut::new(
                 // TODO: allow for subaddress index!
-                output_value,
+                Amount {
+                    value: output_value,
+                    // TODO: allow for other token id
+                    token_id: Mob::ID,
+                },
                 recipient,
                 &RistrettoPrivate::from_random(rng),
                 Default::default(),
@@ -277,6 +280,7 @@ pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(
         ledger_db.clone(),
         mobilecoind_db.clone(),
         conn_manager.clone(),
+        Mob::ID,
         fog_resolver_factory.unwrap_or(Arc::new(|_| Ok(FPR::default()))),
         logger.clone(),
     );
@@ -289,6 +293,7 @@ pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(
         network_state,
         uri,
         None,
+        Mob::ID,
         logger,
     );
 

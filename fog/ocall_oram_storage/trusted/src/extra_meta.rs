@@ -5,7 +5,7 @@ use aligned_cmov::{
     typenum::{Unsigned, U40},
     GenericArray,
 };
-use blake2::{digest::Digest, Blake2b};
+use blake2::{Blake2b512, Digest};
 use core::convert::TryInto;
 
 /// The ExtraMeta is additional bytes we stick onto the end of user-provided
@@ -54,7 +54,7 @@ pub fn compute_block_hash(
     block_idx: u64,
     extended_metadata: &[u8],
 ) -> Hash {
-    let mut hasher = Blake2b::new();
+    let mut hasher = Blake2b512::new();
     hasher.update("oram");
     hasher.update(hash_key);
     hasher.update(e_data);

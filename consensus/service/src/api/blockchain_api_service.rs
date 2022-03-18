@@ -54,7 +54,7 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
     }
 
     // Set the maximum number of items returned for a single request.
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn set_max_page_size(&mut self, max_page_size: u16) {
         self.max_page_size = max_page_size;
     }

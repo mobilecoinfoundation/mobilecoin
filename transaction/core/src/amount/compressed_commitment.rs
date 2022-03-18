@@ -1,5 +1,5 @@
 use crate::{
-    ring_signature::{Error, Scalar, GENERATORS},
+    ring_signature::{Error, PedersenGens, Scalar},
     Commitment,
 };
 use core::fmt;
@@ -20,10 +20,10 @@ pub struct CompressedCommitment {
 }
 
 impl CompressedCommitment {
-    pub fn new(value: u64, blinding: Scalar) -> Self {
-        Self {
-            point: GENERATORS.commit(Scalar::from(value), blinding).compress(),
-        }
+    /// Create a new compressed commitment from value, blinding factor, and
+    /// pedersen generators
+    pub fn new(value: u64, blinding: Scalar, generator: &PedersenGens) -> Self {
+        Self::from(&Commitment::new(value, blinding, generator))
     }
 }
 
@@ -87,7 +87,7 @@ derive_try_from_slice_from_repr_bytes!(CompressedCommitment);
 #[allow(non_snake_case)]
 mod compressed_commitment_tests {
     use crate::{
-        ring_signature::{Scalar, GENERATORS},
+        ring_signature::{generators, Scalar},
         CompressedCommitment,
     };
     use curve25519_dalek::ristretto::CompressedRistretto;
@@ -99,12 +99,13 @@ mod compressed_commitment_tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let value = rng.next_u64();
         let blinding = Scalar::random(&mut rng);
+        let generator = generators(0);
 
-        let commitment = CompressedCommitment::new(value, blinding);
+        let commitment = CompressedCommitment::new(value, blinding, &generator);
 
         let expected_point: CompressedRistretto = {
-            let H = GENERATORS.B;
-            let G = GENERATORS.B_blinding;
+            let H = generator.B;
+            let G = generator.B_blinding;
             let point = Scalar::from(value) * H + blinding * G;
             point.compress()
         };

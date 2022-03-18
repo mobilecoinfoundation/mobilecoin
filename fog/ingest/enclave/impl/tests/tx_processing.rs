@@ -16,7 +16,9 @@ use mc_oblivious_traits::HeapORAMStorageCreator;
 use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::{FogHint, PlaintextArray},
+    tokens::Mob,
     tx::TxOut,
+    Amount, Token,
 };
 use mc_util_from_random::FromRandom;
 use mc_util_logger_macros::test_with_logger;
@@ -27,6 +29,7 @@ use std::collections::HashMap;
 #[test_with_logger]
 fn test_ingest_enclave(logger: Logger) {
     mc_util_test_helper::run_with_several_seeds(|mut rng| {
+        let token_id = Mob::ID;
         // make alice and bob
         let alice_account = AccountKey::random_with_fog(&mut rng);
         let bob_account = AccountKey::random_with_fog(&mut rng);
@@ -56,7 +59,10 @@ fn test_ingest_enclave(logger: Logger) {
                 let tx_private_key = RistrettoPrivate::from_random(&mut rng);
                 let e_fog_hint = FogHint::from(&bob_public_address).encrypt(&fog_pubkey, &mut rng);
                 TxOut::new(
-                    10,
+                    Amount {
+                        value: 10,
+                        token_id,
+                    },
                     &bob_account.default_subaddress(),
                     &tx_private_key,
                     e_fog_hint,
@@ -82,7 +88,7 @@ fn test_ingest_enclave(logger: Logger) {
         assert_eq!(tx_rows.len(), 10);
 
         // Check that the tx row ciphertexts have the right size
-        const EXPECTED_PAYLOAD_SIZE: usize = 227; // The observed tx_row.payload size
+        const EXPECTED_PAYLOAD_SIZE: usize = 233; // The observed tx_row.payload size
         for tx_row in tx_rows.iter() {
             assert_eq!(
                 tx_row.payload.len(), EXPECTED_PAYLOAD_SIZE,
@@ -206,6 +212,8 @@ fn test_ingest_enclave_malformed_txos(logger: Logger) {
 
         let bob_public_address = bob_account.default_subaddress();
 
+        let token_id = Mob::ID;
+
         // make some tx outs
         let tx_outs: Vec<_> = (0..40usize)
             .map(|idx| {
@@ -223,7 +231,10 @@ fn test_ingest_enclave_malformed_txos(logger: Logger) {
                     _ => panic!("this should be unreachable"),
                 };
                 TxOut::new(
-                    10,
+                    Amount {
+                        value: 10,
+                        token_id,
+                    },
                     &bob_account.default_subaddress(),
                     &tx_private_key,
                     e_fog_hint,
@@ -317,6 +328,8 @@ fn test_ingest_enclave_overflow(logger: Logger) {
     let alice_public_address = alice_account.default_subaddress();
     let bob_public_address = bob_account.default_subaddress();
 
+    let token_id = Mob::ID;
+
     // Repeat the test 5 times to try to smoke out failures
     let repetitions = 5;
     for iteration in 0..repetitions {
@@ -363,7 +376,16 @@ fn test_ingest_enclave_overflow(logger: Logger) {
                     };
                     let tx_private_key = RistrettoPrivate::from_random(&mut rng);
                     let e_fog_hint = FogHint::from(pub_addr).encrypt(&fog_pubkey, &mut rng);
-                    TxOut::new(10, pub_addr, &tx_private_key, e_fog_hint).unwrap()
+                    TxOut::new(
+                        Amount {
+                            value: 10,
+                            token_id,
+                        },
+                        pub_addr,
+                        &tx_private_key,
+                        e_fog_hint,
+                    )
+                    .unwrap()
                 })
                 .collect();
 

@@ -24,21 +24,21 @@ std = [
 mc-common = { path = "../../common", default-features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible" }
 mc-crypto-rand = { path = "../../crypto/rand" }
-mc-util-encodings = { path = "../../util/encodings" }
 mc-sgx-css = { path = "../../sgx/css" }
 mc-sgx-types = { path = "../../sgx/types" }
+mc-util-encodings = { path = "../../util/encodings" }
 
 binascii = "0.1.2"
 bitflags = "1.2"
 chrono = { version = "0.4.19", default-features = false, features = ["alloc"] }
-digest = { version = "0.9", default-features = false }
+digest = "0.10"
 displaydoc = { version = "0.2", default-features = false }
 hex_fmt = "0.3"
+prost = { version = "0.9", default-features = false }
 rjson = "0.3.1"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-sha2 = { version = "0.9.8", default-features = false }
+sha2 = { version = "0.10", default-features = false }
 subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
-prost = { version = "0.9", default-features = false }
 
 [dev-dependencies]
 mc-util-serial = { path = "../../util/serial" }

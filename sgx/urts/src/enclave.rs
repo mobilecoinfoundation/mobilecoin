@@ -31,7 +31,7 @@ use std::{
     ffi::{CStr, CString},
     io,
     os::unix::ffi::OsStrExt,
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 ///
@@ -205,7 +205,6 @@ use std::{
 /// **SGX_ERROR_UNEXPECTED**
 ///
 /// An unexpected error is detected.
-///
 pub fn rsgx_create_enclave(
     file_name: &CStr,
     debug: i32,
@@ -262,7 +261,6 @@ pub fn rsgx_create_enclave(
 ///
 /// The enclave ID (handle) is not valid. The enclave has not been loaded or the
 /// enclave has already been destroyed.
-///
 pub fn rsgx_destroy_enclave(enclave_id: sgx_enclave_id_t) -> SgxError {
     let ret = unsafe { sgx_destroy_enclave(enclave_id) };
     match ret {
@@ -278,8 +276,10 @@ fn cstr(path: &Path) -> io::Result<CString> {
 #[derive(Default, Debug)]
 pub struct SgxEnclave {
     id: sgx_enclave_id_t,
+    #[cfg(feature = "backtrace")]
     debug: i32,
-    path: PathBuf,
+    #[cfg(feature = "backtrace")]
+    path: std::path::PathBuf,
 }
 
 impl SgxEnclave {
@@ -302,7 +302,9 @@ impl SgxEnclave {
         )
         .map(|eid| SgxEnclave {
             id: eid,
+            #[cfg(feature = "backtrace")]
             debug,
+            #[cfg(feature = "backtrace")]
             path: file_name.as_ref().to_owned(),
         })?;
 

@@ -1,18 +1,17 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Basic Watcher Node
 
 use crate::{
     error::{WatcherDBError, WatcherError},
+    metrics::WatcherMetrics,
     watcher_db::WatcherDB,
 };
-
 use mc_api::block_num_to_s3block_path;
 use mc_common::logger::{log, Logger};
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::ReqwestTransactionsFetcher;
 use mc_transaction_core::{BlockData, BlockIndex};
-
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     collections::HashMap,
@@ -41,6 +40,19 @@ pub struct Watcher {
     watcher_db: WatcherDB,
     store_block_data: bool,
     logger: Logger,
+    metrics: WatcherMetrics,
+}
+
+/// Result of sync loop
+pub enum SyncResult {
+    /// Reached max allowed blocks per iteration
+    ReachedMaxBlocksPerIteration,
+
+    /// All blocks have been synced
+    AllBlocksSynced,
+
+    /// Block syncing error
+    BlockSyncError,
 }
 
 impl Watcher {
@@ -75,11 +87,14 @@ impl Watcher {
                 .collect::<Result<HashMap<_, _>, WatcherError>>()?,
         );
 
+        let metrics = WatcherMetrics::new();
+
         Ok(Self {
             transactions_fetcher_by_url,
             watcher_db,
             store_block_data,
             logger,
+            metrics,
         })
     }
 
@@ -98,11 +113,21 @@ impl Watcher {
             .unwrap_or(0))
     }
 
+    /// Collect number of blocks synced per peer and ledger height (if
+    /// available)
+    pub fn collect_metrics(&self, ledger_height: Option<u64>) {
+        let last_synced = self.watcher_db.last_synced_blocks().unwrap_or_default();
+        self.metrics.collect_peer_blocks_synced(last_synced);
+        if let Some(ledger_height) = ledger_height {
+            self.metrics.set_ledger_height(ledger_height as i64);
+        }
+    }
     /// Sync blocks and collect signatures (and block data, when enabled).
     ///
     /// * `start` - starting block to sync.
-    /// * `max_block_height` - the max block height to sync per archive url. If
-    ///   None, continue polling.
+    /// * `max_block_height` - max block height to sync to
+    /// * `max_blocks_per_iteration` - max blocks to check for in a sync loop
+    /// * `log_sync_failures` - log node syncing failures at error! level
     ///
     /// Returns true if syncing has reached max_block_height, false if more
     /// blocks still need to be synced.
@@ -110,14 +135,17 @@ impl Watcher {
         &self,
         start: u64,
         max_block_height: Option<u64>,
+        max_blocks_per_iteration: Option<usize>,
         log_sync_failures: bool,
-    ) -> Result<bool, WatcherError> {
+    ) -> Result<SyncResult, WatcherError> {
         log::info!(
             self.logger,
             "Now syncing signatures from {} to {:?}",
             start,
             max_block_height,
         );
+
+        let mut counter = 0usize;
 
         loop {
             // Get the last synced block for each URL we are tracking.
@@ -132,7 +160,7 @@ impl Watcher {
                 });
             }
             if last_synced.is_empty() {
-                return Ok(true);
+                return Ok(SyncResult::AllBlocksSynced);
             }
 
             // Construct a map of src_url -> next block index we want to attempt to sync.
@@ -217,7 +245,20 @@ impl Watcher {
             // If nothing succeeded, maybe we are synced all the way through or something
             // else is wrong.
             if !had_success {
-                return Ok(false);
+                return Ok(SyncResult::BlockSyncError);
+            }
+
+            // If iteration limit was specified, check to see if it's been reached
+            if let Some(max_blocks_per_iteration) = max_blocks_per_iteration {
+                counter += 1;
+                if counter > max_blocks_per_iteration {
+                    log::debug!(
+                        self.logger,
+                        "reached max iteration limit of {} blocks before fully syncing nodes",
+                        max_blocks_per_iteration,
+                    );
+                    return Ok(SyncResult::ReachedMaxBlocksPerIteration);
+                }
             }
         }
     }
@@ -252,7 +293,7 @@ fn parallel_fetch_blocks(
 }
 
 /// Maximal number of blocks to attempt to sync at each loop iteration.
-const MAX_BLOCKS_PER_SYNC_ITERATION: u32 = 1000;
+const MAX_BLOCKS_PER_SYNC_ITERATION: usize = 1000;
 
 /// Syncs new ledger materials for the watcher when the local ledger
 /// appends new blocks.
@@ -360,13 +401,27 @@ impl WatcherSyncThread {
 
             // Maybe sync, maybe wait and check again.
             if is_behind {
-                let max_blocks = std::cmp::min(
-                    ledger_num_blocks - 1,
-                    lowest_next_block_to_sync + MAX_BLOCKS_PER_SYNC_ITERATION as u64,
-                );
-                watcher
-                    .sync_blocks(lowest_next_block_to_sync, Some(max_blocks), true)
+                let sync_result = watcher
+                    .sync_blocks(
+                        lowest_next_block_to_sync,
+                        Some(ledger_num_blocks - 1),
+                        Some(MAX_BLOCKS_PER_SYNC_ITERATION),
+                        true,
+                    )
                     .expect("Could not sync blocks");
+
+                // Collect blocks synced so far vs. ledger height
+                watcher.collect_metrics(Some(ledger_num_blocks));
+
+                // Pause for a second if a node is having trouble
+                if let SyncResult::BlockSyncError = sync_result {
+                    log::trace!(
+                        logger,
+                        "Sleeping due to sync error, lowest watcher block synced = {}... ",
+                        lowest_next_block_to_sync
+                    );
+                    std::thread::sleep(poll_interval);
+                }
             } else if !stop_requested.load(Ordering::SeqCst) {
                 log::trace!(
                     logger,

@@ -31,8 +31,8 @@ members = [
     "crypto/box",
     "crypto/digestible",
     "crypto/digestible/derive/test",
-    "crypto/digestible/test-utils",
     "crypto/digestible/signature",
+    "crypto/digestible/test-utils",
     "crypto/keys",
     "crypto/message-cipher",
     "crypto/multisig",
@@ -113,7 +113,6 @@ members = [
     "sgx/report-cache/api",
     "sgx/report-cache/untrusted",
     "sgx/slog-edl",
-    "slam",
     "test-vectors/account-keys",
     "test-vectors/b58-encodings",
     "transaction/core",
@@ -139,6 +138,7 @@ members = [
     "util/metrics",
     "util/parse",
     "util/repr-bytes",
+    "util/seeded-ed25519-key-gen",
     "util/serial",
     "util/telemetry",
     "util/test-helper",
@@ -148,14 +148,14 @@ members = [
     "watcher/api",
 ]
 exclude = [
-    # mc-util-serial should only be accessed via the `common` crate.
-    "util/serial",
     # N.B. for some reason, putting these crates under `exclude` helps with
     # making `cargo test --all` work, when `consensus-enclave-impl` is part of workspace
-    "sgx",
     "fog/ingest/enclave/trusted",
     "fog/ledger/enclave/trusted",
     "fog/view/enclave/trusted",
+    "sgx",
+    # mc-util-serial should only be accessed via the `common` crate.
+    "util/serial",
 ]
 
 [profile.dev]
@@ -183,27 +183,25 @@ codegen-units = 1
 rpath = true
 
 [patch.crates-io]
-# Fork and rename to use "OG" dalek-cryptography.
-bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "675330c754f28876dbf94fc303fe73666cf8f8f4" }
+# Fork and rename to use "OG" dalek-cryptography with latest dependencies.
+bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e" }
 
 # This version contains iOS build fixes
 cmake = { git = "https://github.com/alexcrichton/cmake-rs", rev = "5f89f90ee5d7789832963bffdb2dcb5939e6199c" }
 
 # Fix issues with recent nightlies, bump curve25519-dalek version
-ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "78bdc2a0b0af852cb4e47a0ca9be74bdf77c57b6" }
+curve25519-dalek = { git = "https://github.com/mobilecoinfoundation/curve25519-dalek.git", rev = "8791722e0273762552c9a056eaccb7df6baf44d7" }
+ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "4194e36abc75722e6fba7d552e719448fc38c51f" }
 
 # mbedtls patched to allow certificate verification with a profile
 mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "49a293a5f4b1ef571c71174e3fa1f301925f3915" }
 mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "49a293a5f4b1ef571c71174e3fa1f301925f3915" }
 
-# packed_simd_2 has unreleased fixes for build issues we're experiencing
-packed_simd_2 = { git = "https://github.com/rust-lang/packed_simd.git", rev = "f60e900f4ceb71303baa37ff8b41ee7d490c01bf" }
-
 # Override lmdb-rkv for a necessary bugfix (see https://github.com/mozilla/lmdb-rs/pull/80)
 lmdb-rkv = { git = "https://github.com/mozilla/lmdb-rs", rev = "df1c2f5" }
 
 # Fork and rename to use "OG" dalek-cryptography.
-schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "9b48418556b0af476be2313309bc5a23fb8b351d" }
+schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "5c98ae068ee4652d6df6463b549fbf2d5d132faa" }
 
 # Fixes the following:
 # * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.
@@ -211,4 +209,4 @@ schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git"
 serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a7c1d523aae1ec4aa7386f402cb2f4341b5" }
 
 # Fix issues with recent nightlies, bump curve25519-dalek version
-x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "672f29ef4b3addd9a3c4888cf4b836b243bda595" }
+x25519-dalek = { git = "https://github.com/mobilecoinfoundation/x25519-dalek.git", rev = "c1966b8743d320cd07a54191475e5c0f94b2ea30" }

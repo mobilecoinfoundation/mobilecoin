@@ -43,7 +43,7 @@ pub struct Uri<Scheme: UriScheme> {
     password: String,
 
     /// The uri scheme
-    _scheme: PhantomData<fn() -> Scheme>,
+    _scheme: PhantomData<Scheme>,
 }
 
 impl<Scheme: UriScheme> ConnectionUri for Uri<Scheme> {

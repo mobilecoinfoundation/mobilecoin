@@ -18,6 +18,12 @@ pub struct BlockData {
 }
 
 impl BlockData {
+    /// Create new block data:
+    ///
+    /// Arguments:
+    /// `block`: The block header
+    /// `contents`: The block contents
+    /// `signature`: A signature over the block
     pub fn new(block: Block, contents: BlockContents, signature: Option<BlockSignature>) -> Self {
         Self {
             block,
@@ -26,14 +32,17 @@ impl BlockData {
         }
     }
 
+    /// Get the block
     pub fn block(&self) -> &Block {
         &self.block
     }
 
+    /// Get the contents
     pub fn contents(&self) -> &BlockContents {
         &self.contents
     }
 
+    /// Get the signature
     pub fn signature(&self) -> &Option<BlockSignature> {
         &self.signature
     }
