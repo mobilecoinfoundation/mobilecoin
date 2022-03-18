@@ -41,3 +41,31 @@ impl TestVector for IncorrectEncryptedSenderMemoData {
     const FILE_NAME: &'static str = "incorrect_encrypted_sender_memos";
     const MODULE_SUBDIR: &'static str = "memos";
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+/// Contains data associated with an encrypted destination memo that has the
+/// correct sender and recipient data.
+pub struct CorrectEncryptedDestinationMemoData {
+    /// The transaction sender's public address bytes encoded as hex. This user
+    /// wrote the destination memo.
+    pub sender_public_address: String,
+
+    /// The transaction recipient's view public key bytes encoded as hex. This
+    /// user received the TxOut that this  memo describes.
+    pub recipient_short_address_hash: String,
+
+    /// The sum of all the outlays in the transaction. See destinatoin memo
+    /// documentation for more info.
+    pub total_outlay: u64,
+
+    /// The fee for the transaction.
+    pub fee: u64,
+
+    /// The encrypted destination memo bytes encoded as hex.
+    pub encrypted_destination_memo: String,
+}
+
+impl TestVector for CorrectEncryptedDestinationMemoData {
+    const FILE_NAME: &'static str = "correct_encrypted_destination_memos";
+    const MODULE_SUBDIR: &'static str = "memos";
+}
