@@ -12,7 +12,7 @@
 
 #![allow(non_snake_case)]
 
-use crate::{domain_separators::SUBADDRESS_DOMAIN_TAG, view_key::ViewKey};
+use crate::domain_separators::SUBADDRESS_DOMAIN_TAG;
 use alloc::{
     string::{String, ToString},
     vec::Vec,
@@ -324,14 +324,6 @@ impl AccountKey {
             None
         } else {
             Some(&self.fog_report_id)
-        }
-    }
-
-    /// Returns the default subaddress view key (a, D).
-    pub fn view_key(&self) -> ViewKey {
-        ViewKey {
-            spend_public_key: self.default_subaddress().spend_public_key,
-            view_private_key: self.view_private_key,
         }
     }
 

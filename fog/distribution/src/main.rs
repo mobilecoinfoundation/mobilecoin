@@ -39,7 +39,7 @@ use mc_fog_report_validation::FogResolver;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
     get_tx_out_shared_secret,
-    onetime_keys::{recover_onetime_private_key, view_key_matches_output},
+    onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
@@ -890,12 +890,9 @@ fn get_num_transactions_per_account(
     logger: &Logger,
 ) -> usize {
     for (i, tx_out) in transactions.iter().enumerate() {
-        let target_key = RistrettoPublic::try_from(&tx_out.target_key).unwrap();
-        let public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
-
-        // Make sure the viewkey matches for this output that we are about to send
+        // Make sure the view_key matches for this output that we are about to send
         // Assume accounts are numbered in order that they were processed by bootstrap
-        if !view_key_matches_output(&account.view_key(), &target_key, &public_key) {
+        if tx_out.view_key_match(account.view_private_key()).is_err() {
             log::trace!(
                 logger,
                 "Transaction {:?} does not belong to account. Total txs per account = {:?}",

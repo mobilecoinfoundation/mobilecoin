@@ -168,31 +168,31 @@ impl TestClient {
     }
 
     /// Set the consensus sigstruct used by the clients
-    pub fn consensus_sigstruct(self, sig: Option<Signature>) -> Self {
-        let mut retval = self;
-        retval.consensus_sig = sig;
-        retval
+    #[must_use]
+    pub fn consensus_sigstruct(mut self, sig: Option<Signature>) -> Self {
+        self.consensus_sig = sig;
+        self
     }
 
     /// Set the fog ingest sigstruct used by the clients
-    pub fn fog_ingest_sigstruct(self, sig: Option<Signature>) -> Self {
-        let mut retval = self;
-        retval.fog_ingest_sig = sig;
-        retval
+    #[must_use]
+    pub fn fog_ingest_sigstruct(mut self, sig: Option<Signature>) -> Self {
+        self.fog_ingest_sig = sig;
+        self
     }
 
     /// Set the fog ledger sigstruct used by the clients
-    pub fn fog_ledger_sigstruct(self, sig: Option<Signature>) -> Self {
-        let mut retval = self;
-        retval.fog_ledger_sig = sig;
-        retval
+    #[must_use]
+    pub fn fog_ledger_sigstruct(mut self, sig: Option<Signature>) -> Self {
+        self.fog_ledger_sig = sig;
+        self
     }
 
     /// Set the fog view sigstruct used by the clients
-    pub fn fog_view_sigstruct(self, sig: Option<Signature>) -> Self {
-        let mut retval = self;
-        retval.fog_view_sig = sig;
-        retval
+    #[must_use]
+    pub fn fog_view_sigstruct(mut self, sig: Option<Signature>) -> Self {
+        self.fog_view_sig = sig;
+        self
     }
 
     /// Build the clients

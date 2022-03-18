@@ -35,6 +35,6 @@ fn main() {
     println!("Password: {}", creds.password());
     println!(
         "Password (percent-encoded): {}",
-        utf8_percent_encode(creds.password(), NON_ALPHANUMERIC).to_string()
+        utf8_percent_encode(creds.password(), NON_ALPHANUMERIC)
     );
 }

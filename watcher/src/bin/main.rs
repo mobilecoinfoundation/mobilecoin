@@ -164,6 +164,8 @@ impl WatcherSyncThread {
                 )
                 .expect("Could not sync signatures");
 
+            watcher.collect_metrics(None);
+
             // Decide next step before continuing based on sync result
             match sync_result {
                 SyncResult::AllBlocksSynced => {

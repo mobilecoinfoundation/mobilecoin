@@ -1,9 +1,8 @@
 //! Tests that prost-versions of structures round-trip with the versions
 //! generated from external.proto
 
-use mc_account_keys::{AccountKey, PublicAddress, RootIdentity, ViewKey};
+use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use mc_api::external;
-use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_util_from_random::FromRandom;
 use mc_util_test_helper::{run_with_several_seeds, CryptoRng, RngCore};
 use prost::Message as ProstMessage;
@@ -66,17 +65,5 @@ fn public_address_round_trip() {
                 &AccountKey::from(example).default_subaddress(),
             );
         }
-    })
-}
-
-// Test that ViewKey roundtrips through .proto structure
-#[test]
-fn view_key_round_trip() {
-    run_with_several_seeds(|mut rng| {
-        let vk = ViewKey::new(
-            RistrettoPrivate::from_random(&mut rng),
-            RistrettoPublic::from_random(&mut rng),
-        );
-        round_trip_message::<ViewKey, external::ViewKey>(&vk);
     })
 }

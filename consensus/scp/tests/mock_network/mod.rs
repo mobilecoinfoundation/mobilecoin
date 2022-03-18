@@ -1,6 +1,10 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-// Thread-based simulation for consensus networks.
+//! Thread-based simulation for consensus networks.
+
+// We allow dead code because not all integration tests use all of the common
+// code. https://github.com/rust-lang/rust/issues/46379
+#![allow(dead_code)]
 
 use mc_common::{
     logger::{log, Logger},
