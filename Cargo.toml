@@ -115,6 +115,7 @@ members = [
     "test-vectors/account-keys",
     "test-vectors/b58-encodings",
     "test-vectors/memos",
+    "test-vectors/tx-out-records",
     "transaction/core",
     "transaction/core/test-utils",
     "transaction/std",
