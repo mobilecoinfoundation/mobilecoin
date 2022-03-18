@@ -273,9 +273,19 @@ impl TestClient {
         assert!(target_address.fog_report_url().is_some());
 
         // Get the current minimum fee from consensus
-        let fee = source_client
-            .get_minimum_fee(self.policy.token_id)
-            .map_err(TestClientError::GetFee)?
+        // FIXME: #1671, this retry should be inside ThickClient and not here.
+        let fee = self
+            .grpc_retry_config
+            .retry(|| -> Result<Option<u64>, _> {
+                source_client.get_minimum_fee(self.policy.token_id)
+            })
+            .map_err(|retry_error| {
+                if let retry::Error::Operation { error, .. } = retry_error {
+                    TestClientError::GetFee(error)
+                } else {
+                    panic!("other types of retry error are unreachable")
+                }
+            })?
             .ok_or(TestClientError::TokenNotConfigured(self.policy.token_id))?;
 
         // Scope for build operation
