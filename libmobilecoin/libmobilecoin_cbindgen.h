@@ -581,6 +581,10 @@ bool mc_account_key_get_public_address_fog_authority_sig(FfiRefPtr<McAccountKey>
                                                          uint64_t subaddress_index,
                                                          FfiMutPtr<McMutableBuffer> out_fog_authority_sig);
 
+bool mc_account_key_get_short_address_hash(FfiRefPtr<McPublicAddress> public_address,
+                                           FfiMutPtr<McMutableBuffer> out_short_address_hash,
+                                           FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
 /**
  * # Preconditions
  *
@@ -726,7 +730,7 @@ bool mc_transaction_builder_ring_add_element(FfiMutPtr<McTransactionBuilderRing>
 FfiOptOwnedPtr<McTransactionBuilder> mc_transaction_builder_create(uint64_t fee,
                                                                    uint64_t tombstone_block,
                                                                    FfiOptRefPtr<McFogResolver> fog_resolver,
-                                                                   FfiOptRefPtr<McTxOutMemoBuilder> memo_builder,
+                                                                   FfiMutPtr<McTxOutMemoBuilder> memo_builder,
                                                                    uint32_t block_version);
 
 void mc_transaction_builder_free(FfiOptOwnedPtr<McTransactionBuilder> transaction_builder);

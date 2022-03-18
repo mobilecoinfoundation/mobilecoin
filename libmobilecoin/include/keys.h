@@ -80,6 +80,13 @@ bool mc_account_key_get_public_address_fog_authority_sig(
 )
 MC_ATTRIBUTE_NONNULL(1, 3);
 
+bool mc_account_key_get_short_address_hash(
+  const McPublicAddress* MC_NONNULL public_address,
+  McMutableBuffer* MC_NONNULL out_short_address_hash,
+  McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2, 3);
+
 #ifdef __cplusplus
 }
 #endif
