@@ -17,9 +17,9 @@ use std::{convert::TryFrom, fs};
 
 #[derive(Args)]
 pub struct MintConfigTxParams {
-    /// The key to sign the transaction with.
-    #[clap(long, parse(try_from_str = load_key_from_pem), env = "MC_MINTING_SIGNING_KEY")]
-    signing_key: Ed25519Private,
+    /// The key(s) to sign the transaction with.
+    #[clap(long = "signing-key", required(true), parse(try_from_str = load_key_from_pem), env = "MC_MINTING_SIGNING_KEYS")]
+    signing_keys: Vec<Ed25519Private>,
 
     /// The token id we are minting.
     #[clap(long, env = "MC_MINTING_TOKEN_ID")]
@@ -49,8 +49,6 @@ impl MintConfigTxParams {
         self,
         fallback_tombstone_block: impl Fn() -> u64,
     ) -> Result<MintConfigTx, String> {
-        let signer = Ed25519Pair::from(self.signing_key);
-
         let tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
 
         let nonce = self.nonce.map(|n| n.to_vec()).unwrap_or_else(|| {
@@ -77,9 +75,16 @@ impl MintConfigTxParams {
         };
 
         let message = prefix.hash();
-        let signature = MultiSig::new(vec![signer
-            .try_sign(message.as_ref())
-            .map_err(|e| e.to_string())?]);
+        let signature = MultiSig::new(
+            self.signing_keys
+                .into_iter()
+                .map(|signer| {
+                    Ed25519Pair::from(signer)
+                        .try_sign(message.as_ref())
+                        .unwrap()
+                })
+                .collect(),
+        );
         Ok(MintConfigTx { prefix, signature })
     }
 }
@@ -87,7 +92,7 @@ impl MintConfigTxParams {
 #[derive(Args)]
 pub struct MintTxParams {
     /// The key(s) to sign the transaction with.
-    #[clap(long = "signing-key", required(true), parse(try_from_str = load_key_from_pem), env = "MC_MINTING_SIGNING_KEY")]
+    #[clap(long = "signing-key", required(true), parse(try_from_str = load_key_from_pem), env = "MC_MINTING_SIGNING_KEYS")]
     signing_keys: Vec<Ed25519Private>,
 
     /// The b58 address we are minting to.
