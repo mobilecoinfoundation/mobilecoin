@@ -139,12 +139,9 @@ fn write_correct_encrypted_destination_memos() {
             let total_outlay = 12u64;
             let fee = 13u64;
 
-            let encrypted_destination_memo = DestinationMemo::new(
-                ShortAddressHash::from(&sender_public_address),
-                total_outlay,
-                fee,
-            )
-            .unwrap();
+            let encrypted_destination_memo =
+                DestinationMemo::new(recipient_short_address_hash.clone(), total_outlay, fee)
+                    .unwrap();
             let destination_memo_bytes: [u8; 64] = encrypted_destination_memo.clone().into();
 
             let encrypted_destination_memo_data = CorrectEncryptedDestinationMemoData {
@@ -188,12 +185,8 @@ fn write_incorrect_encrypted_destination_memos() {
             let total_outlay = 12u64;
             let fee = 13u64;
 
-            let encrypted_destination_memo = DestinationMemo::new(
-                recipient_short_address_hash,
-                total_outlay,
-                fee,
-            )
-            .unwrap();
+            let encrypted_destination_memo =
+                DestinationMemo::new(recipient_short_address_hash, total_outlay, fee).unwrap();
             let destination_memo_bytes: [u8; 64] = encrypted_destination_memo.clone().into();
 
             let sender_short_address_hash = ShortAddressHash::from(&sender_public_address);
