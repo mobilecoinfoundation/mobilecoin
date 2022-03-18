@@ -722,7 +722,7 @@ mod test_build_transaction_helper {
     use mc_fog_types::view::{FogTxOut, FogTxOutMetadata, TxOutRecord};
     use mc_transaction_core::{
         constants::MILLIMOB_TO_PICOMOB,
-        one_time_keys::recover_public_subaddress_spend_key,
+        onetime_keys::recover_public_subaddress_spend_key,
         tokens::Mob,
         tx::{TxOut, TxOutMembershipProof},
         Amount, Token,
