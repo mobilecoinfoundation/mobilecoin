@@ -4183,6 +4183,7 @@ dependencies = [
  "mc-util-uri",
  "more-asserts",
  "once_cell",
+ "retry",
  "serde",
  "serde_json",
  "structopt",
