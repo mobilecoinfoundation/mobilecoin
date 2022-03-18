@@ -2,9 +2,9 @@
 
 #![feature(type_alias_impl_trait)]
 
-mod source;
+mod grpc;
 
 #[cfg(any(test, feature = "test_utils"))]
 pub mod test_utils;
 
-pub use self::source::GrpcBlockSource;
+pub use self::grpc::GrpcBlockSource;
