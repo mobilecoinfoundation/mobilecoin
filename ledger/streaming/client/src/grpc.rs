@@ -14,6 +14,7 @@ use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConnectionUri;
 use std::{sync::Arc, time::Duration};
 
+/// A BlockStream that streams blocks using the `LedgerUpdates` gRPC API.
 #[derive(Display)]
 pub struct GrpcBlockSource {
     /// The gRPC client
@@ -25,6 +26,8 @@ pub struct GrpcBlockSource {
 }
 
 impl GrpcBlockSource {
+    /// Instantiate a [GrpcBlockSource] pulling from the given `uri`, which
+    /// verifies [SubscribeResponse]s are signed with the given `public_key`.
     pub fn new(
         uri: &impl ConnectionUri,
         env: Arc<grpcio::Environment>,

@@ -5,6 +5,7 @@ use mc_crypto_keys::{Ed25519Pair, Ed25519Public, Ed25519Signature, Signer, Verif
 use protobuf::Message;
 use std::convert::TryFrom;
 
+/// Creates a signed SubscribeResponse from the given components and signer.
 pub fn make_subscribe_response(
     data: &BlockStreamComponents,
     signer: &Ed25519Pair,
@@ -18,6 +19,8 @@ pub fn make_subscribe_response(
     Ok(proto)
 }
 
+/// Parses and validates BlockStreamComponents from a given SubscribeResponse
+/// and public key.
 pub fn parse_subscribe_response(
     proto: &SubscribeResponse,
     public_key: &Ed25519Public,

@@ -1,5 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+//! Clients for the Ledger Streaming API.
+
+#![deny(missing_docs)]
 #![feature(type_alias_impl_trait)]
 
 mod grpc;
