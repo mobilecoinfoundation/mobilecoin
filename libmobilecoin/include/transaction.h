@@ -302,6 +302,8 @@ void mc_memo_builder_free(
 );
 
 
+/* ==== SenderMemo ==== */
+
 bool mc_memo_sender_memo_is_valid(
   const McBuffer* MC_NONNULL sender_memo_data,
   const McPublicAddress* MC_NONNULL sender_public_address,
@@ -310,7 +312,7 @@ bool mc_memo_sender_memo_is_valid(
   bool* MC_NONNULL out_valid,
   McError* MC_NULLABLE * MC_NULLABLE out_error
 )
-MC_ATTRIBUTE_NONNULL(1, 2, 3, 4, 5, 6);
+MC_ATTRIBUTE_NONNULL(1, 2, 3, 4, 5);
 
 bool mc_memo_sender_memo_create(
   const McAccountKey* MC_NONNULL sender_account_key,
@@ -327,7 +329,52 @@ bool mc_memo_sender_memo_get_address_hash(
   McMutableBuffer* MC_NONNULL out_short_address_hash,
   McError* MC_NULLABLE * MC_NULLABLE out_error
 )
-MC_ATTRIBUTE_NONNULL(1, 2, 3);
+MC_ATTRIBUTE_NONNULL(1, 2);
+
+
+/* ==== DestinationMemo ==== */
+
+bool mc_memo_destination_memo_create(
+  const McPublicAddress* MC_NONNULL destination_public_address,
+  uint8_t number_of_recipients,
+  uint64_t fee,
+  uint64_t total_outlay,
+  McMutableBuffer* MC_NONNULL out_memo_data,
+  McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
+
+
+bool mc_memo_destination_memo_get_address_hash(
+  const McBuffer* MC_NONNULL destination_memo_data,
+  McMutableBuffer* MC_NONNULL out_short_address_hash,
+  McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2);
+
+
+bool mc_memo_destination_memo_get_number_of_recipients(
+  const McBuffer* MC_NONNULL destination_memo_data,
+  uint8_t* MC_NONNULL out_number_of_recipients,
+  McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2);
+
+
+bool mc_memo_destination_memo_get_total_outlay(
+  const McBuffer* MC_NONNULL destination_memo_data,
+  uint64_t* MC_NONNULL out_total_outlay,
+  McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2);
+
+bool mc_memo_destination_memo_get_fee(
+  const McBuffer* MC_NONNULL destination_memo_data,
+  uint64_t* MC_NONNULL out_fee,
+  McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2);
+
 
 #ifdef __cplusplus
 }
