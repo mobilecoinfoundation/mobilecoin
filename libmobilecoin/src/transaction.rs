@@ -1038,9 +1038,9 @@ pub extern "C" fn mc_memo_sender_memo_get_address_hash(
 #[no_mangle]
 pub extern "C" fn mc_memo_destination_memo_create(
   destination_public_address: FfiRefPtr<McPublicAddress>,
-  _number_of_recipients: FfiRefPtr<u8>,
-  _fee: FfiRefPtr<u64>,
-  _total_outlay: FfiRefPtr<u64>,
+  number_of_recipients: u8,
+  fee: u64,
+  total_outlay: u64,
   out_memo_data: FfiMutPtr<McMutableBuffer>,
   out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
 ) -> bool {
@@ -1048,8 +1048,9 @@ pub extern "C" fn mc_memo_destination_memo_create(
         let destination_public_address =
             PublicAddress::try_from_ffi(&destination_public_address).expect("destination_public_address is invalid");
 
-        let memo =
+        let mut memo =
             DestinationMemo::new(ShortAddressHash::from(&destination_public_address), total_outlay, fee).unwrap();
+        memo.set_num_recipients(number_of_recipients);
 
         let memo_bytes: [u8; 64] = memo.clone().into();
 
