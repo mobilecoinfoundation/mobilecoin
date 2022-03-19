@@ -376,6 +376,47 @@ bool mc_memo_destination_memo_get_fee(
 MC_ATTRIBUTE_NONNULL(1, 2);
 
 
+/* ==== SenderWithPaymentRequestMemo ==== */
+
+
+bool mc_memo_sender_with_payment_request_memo_is_valid(
+  const McBuffer* MC_NONNULL sender_with_payment_request_memo_data,
+  const McPublicAddress* MC_NONNULL sender_public_address,
+  const McBuffer* MC_NONNULL receiving_subaddress_view_private_key,
+  const McBuffer* MC_NONNULL tx_out_public_key,
+  bool* MC_NONNULL out_valid,
+  McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2, 3, 4, 5);
+
+bool mc_memo_sender_with_payment_request_memo_create(
+  const McAccountKey* MC_NONNULL sender_account_key,
+  const McBuffer* MC_NONNULL recipient_subaddress_view_public_key,
+  const McBuffer* MC_NONNULL tx_out_public_key,
+  uint64_t payment_request_id,
+  McMutableBuffer* MC_NONNULL out_memo_data,
+  McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2, 3, 5);
+
+bool mc_memo_sender_with_payment_request_memo_get_address_hash(
+  const McBuffer* MC_NONNULL sender_with_payment_request_memo_data,
+  McMutableBuffer* MC_NONNULL out_short_address_hash,
+  McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2);
+
+bool mc_memo_sender_with_payment_request_memo_get_payment_request_id(
+  const McBuffer* MC_NONNULL sender_with_payment_request_memo_data,
+  uint64_t* MC_NONNULL out_payment_request_id,
+  McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2);
+
+
+
+
+
 #ifdef __cplusplus
 }
 #endif
