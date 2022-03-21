@@ -82,14 +82,7 @@ mod tests {
     use futures::{executor::block_on, future::ready};
     use mc_common::logger::test_with_logger;
     use mc_crypto_keys::Ed25519Pair;
-    use mc_ledger_streaming_api::{
-        make_subscribe_response,
-        test_utils::{make_quorum_set, make_responses, Responses},
-        Error,
-    };
-    use mc_transaction_core::{
-        tx::TxOutMembershipElement, Block, BlockContents, BlockData, BlockVersion,
-    };
+    use mc_ledger_streaming_api::{test_utils::make_responses, Error};
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
