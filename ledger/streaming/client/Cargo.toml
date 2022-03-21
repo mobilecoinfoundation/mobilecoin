@@ -29,9 +29,7 @@ mc-util-build-script = { path = "../../../util/build/script" }
 cargo-emit = "0.2"
 
 [dev-dependencies]
-mc-attest-core = { path = "../../../attest/core" }
 mc-common = { path = "../../../common", features = ["loggers"] }
-mc-crypto-rand = { path = "../../../crypto/rand" }
 mc-ledger-streaming-api = { path = "../api", features = ["test_utils"] }
 mc-util-from-random = { path = "../../../util/from-random" }
 
