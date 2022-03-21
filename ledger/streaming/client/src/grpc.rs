@@ -14,7 +14,7 @@ use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConnectionUri;
 use std::{sync::Arc, time::Duration};
 
-/// A BlockStream that streams blocks using the `LedgerUpdates` gRPC API.
+/// A [BlockStream] that streams blocks using the `LedgerUpdates` gRPC API.
 #[derive(Display)]
 pub struct GrpcBlockSource {
     /// The gRPC client
