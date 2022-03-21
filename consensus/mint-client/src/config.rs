@@ -93,7 +93,7 @@ pub fn load_key_from_pem(filename: &str) -> Result<Ed25519Private, String> {
 
 fn parse_public_address(b58: &str) -> Result<PublicAddress, String> {
     let printable_wrapper = PrintableWrapper::b58_decode(b58.into())
-        .map_err(|err| format!("failed parsing b58 address '{}': {}", b58, err.to_string()))?;
+        .map_err(|err| format!("failed parsing b58 address '{}': {}", b58, err))?;
 
     if printable_wrapper.has_public_address() {
         let public_address = PublicAddress::try_from(printable_wrapper.get_public_address())
