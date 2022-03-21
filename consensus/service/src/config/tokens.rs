@@ -204,7 +204,7 @@ impl TokensConfig {
 
         // Read configuration file.
         let data = fs::read_to_string(path).map_err(|err| {
-            ConsensusServiceError::Configuration(format!("error reading file: {}", err.to_string()))
+            ConsensusServiceError::Configuration(format!("error reading file: {}", err))
         })?;
 
         // Parse configuration file.
@@ -288,7 +288,7 @@ impl TokensConfig {
                 })
                 .collect::<Result<Vec<_>, ConsensusServiceError>>()?,
         )
-        .map_err(|err| ConsensusServiceError::Configuration(format!("FeeMap: {}", err.to_string())))
+        .map_err(|err| ConsensusServiceError::Configuration(format!("FeeMap: {}", err)))
     }
     /// Get the entire set of configured tokens.
     pub fn tokens(&self) -> &[TokenConfig] {

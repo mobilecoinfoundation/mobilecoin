@@ -122,21 +122,6 @@ message RootEntropy {
     bytes data = 1;
 }
 
-/// A ViewKey is a reduced AccountKey -- it contains the private key necessary to
-/// view your transactions and see the amounts, but not to send new transactions.
-/// This concept is part of Cryptonote.
-/// In Mobilecoin, all public addresses correspond to subaddresses, and often
-/// the "default subaddress" is used.
-/// The ViewKey similarly corresponds to a particular subaddress.
-message ViewKey {
-    /// The view-private-key of the account. This enables to check if a transaction
-    /// corresponds to this subaddress, and to interact with fog.
-    RistrettoPrivate view_private_key = 1;
-    /// The spend public key of the account.
-    /// This value also appears in the public address.
-    CompressedRistretto spend_public_key = 2;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // `trasaction/core` crate
 ///////////////////////////////////////////////////////////////////////////////

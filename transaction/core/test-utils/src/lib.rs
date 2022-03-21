@@ -2,7 +2,7 @@
 
 mod mint;
 
-pub use mc_account_keys::{AccountKey, PublicAddress, ViewKey, DEFAULT_SUBADDRESS_INDEX};
+pub use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
 pub use mc_fog_report_validation_test_utils::MockFogResolver;
 pub use mc_transaction_core::{
     get_tx_out_shared_secret,

@@ -2511,31 +2511,25 @@ pub mod transaction_builder_tests {
 
             // Test that view key matching works with the burn tx out with burn address view
             // key
-            fn view_key_match(tx_out: &TxOut, view_private: &RistrettoPrivate) -> Option<u64> {
-                let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
-                let shared_secret = get_tx_out_shared_secret(view_private, &tx_public_key);
-                tx_out
-                    .masked_amount
-                    .get_value(&shared_secret)
-                    .ok()
-                    .map(|(amount, _scalar)| amount.value)
-            }
+            let (amount, _) = burn_tx_out
+                .view_key_match(&burn_address_view_private())
+                .unwrap();
+            assert_eq!(amount.value, value - change_value - Mob::MINIMUM_FEE);
 
-            assert_eq!(
-                view_key_match(&burn_tx_out, &burn_address_view_private()).unwrap(),
-                value - change_value - Mob::MINIMUM_FEE
-            );
-
-            assert!(view_key_match(&change_tx_out, &burn_address_view_private()).is_none());
+            assert!(change_tx_out
+                .view_key_match(&burn_address_view_private())
+                .is_err());
 
             // Test that view key matching works with the change tx out with sender's view
             // key
-            assert_eq!(
-                view_key_match(&change_tx_out, &sender.view_private_key()).unwrap(),
-                change_value
-            );
+            let (amount, _) = change_tx_out
+                .view_key_match(&sender.view_private_key())
+                .unwrap();
+            assert_eq!(amount.value, change_value);
 
-            assert!(view_key_match(&burn_tx_out, &sender.view_private_key()).is_none());
+            assert!(burn_tx_out
+                .view_key_match(&sender.view_private_key())
+                .is_err());
         }
     }
 }

@@ -308,7 +308,6 @@ impl<
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub fn wait_for_all_threads(&mut self) -> Result<(), ConsensusServiceError> {
         log::debug!(
             self.logger,

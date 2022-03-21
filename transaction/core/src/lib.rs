@@ -44,7 +44,7 @@ pub use blockchain::*;
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
 pub use token::{tokens, Token, TokenId};
 pub use tx::MemoContext;
-pub use tx_error::{NewMemoError, NewTxError};
+pub use tx_error::{NewMemoError, NewTxError, ViewKeyMatchError};
 
 use core::convert::TryFrom;
 use mc_account_keys::AccountKey;

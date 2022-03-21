@@ -214,7 +214,6 @@ impl Ledger for MockLedger {
     }
 }
 
-#[allow(dead_code)]
 /// Creates a MockLedger and populates it with blocks and transactions.
 pub fn get_mock_ledger(n_blocks: usize) -> MockLedger {
     let mut mock_ledger = MockLedger::default();
@@ -225,7 +224,6 @@ pub fn get_mock_ledger(n_blocks: usize) -> MockLedger {
     mock_ledger
 }
 
-#[allow(dead_code)]
 /// Creates a sequence of `Block`s and the transactions corresponding to each
 /// block.
 pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {

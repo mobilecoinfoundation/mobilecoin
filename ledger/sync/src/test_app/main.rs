@@ -75,7 +75,7 @@ fn main() {
     }
 
     std::fs::copy(
-        "../../target/sample_data/ledger/data.mdb".to_string(),
+        "../../target/sample_data/ledger/data.mdb",
         format!("{}/data.mdb", ledger_path_str),
     )
     .expect("failed copying ledger");

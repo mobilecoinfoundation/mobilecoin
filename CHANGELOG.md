@@ -12,6 +12,9 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 ### Changed
 
 ### Rust Dependencies
+* Updated `rust-toolchain` version to newer nightly
+  * enables use of [Generic Associated Types](https://github.com/rust-lang/rust/issues/44265) and [static async fn in traits](https://github.com/rust-lang/rust/issues/91611)
+* Replaced `datatest` with a custom `test_with_data` macro.
 * Updated grpcio from 0.9 to 0.10.
 
 ## [1.2.0] 2022-02-22

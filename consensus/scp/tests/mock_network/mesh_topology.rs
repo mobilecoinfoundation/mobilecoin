@@ -1,10 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-// Mesh style network topologies.
-
-// We allow dead code because not all integration tests use all of the common
-// code. https://github.com/rust-lang/rust/issues/46379
-#![allow(dead_code)]
+//! Mesh style network topologies.
 
 use crate::mock_network;
 use mc_common::NodeID;
