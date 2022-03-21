@@ -10,6 +10,7 @@ use serde::Serialize;
 
 /// Parser configuration options for an Overseer Server
 #[derive(Clone, Serialize, Parser)]
+#[clap(version)]
 pub struct OverseerConfig {
     /// Host to listen on.
     #[clap(long, default_value = "127.0.0.1", env = "MC_OVERSEER_LISTEN_HOST")]

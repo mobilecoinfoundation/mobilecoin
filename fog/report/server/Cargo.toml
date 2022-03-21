@@ -23,6 +23,7 @@ mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
 mc-fog-report-types = { path = "../../report/types" }
 mc-fog-sig-report = { path = "../../sig/report" }
 mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
+mc-util-cli = { path = "../../../util/cli" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-metrics = { path = "../../../util/metrics" }
 mc-util-parse = { path = "../../../util/parse" }

@@ -26,6 +26,7 @@ mc-api = { path = "../../../api" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-transaction-core = { path = "../../../transaction/core" }
+mc-util-cli = { path = "../../../util/cli" }
 mc-util-metrics = { path = "../../../util/metrics" }
 
 # fog

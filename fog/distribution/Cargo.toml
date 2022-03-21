@@ -23,6 +23,7 @@ mc-fog-report-validation = { path = "../../fog/report/validation" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-std = { path = "../../transaction/std" }
+mc-util-cli = { path = "../../util/cli" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-uri = { path = "../../util/uri" }
 

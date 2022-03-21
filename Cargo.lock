@@ -3061,6 +3061,7 @@ dependencies = [
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-transaction-std",
+ "mc-util-cli",
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-logger-macros",
@@ -3372,6 +3373,7 @@ dependencies = [
  "mc-ledger-db",
  "mc-transaction-core",
  "mc-transaction-std",
+ "mc-util-cli",
  "mc-util-generate-sample-ledger",
  "mc-util-keyfile",
  "mc-util-uri",
@@ -3429,6 +3431,7 @@ dependencies = [
  "mc-fog-types",
  "mc-fog-uri",
  "mc-ledger-db",
+ "mc-util-cli",
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-keyfile",
@@ -3585,6 +3588,7 @@ dependencies = [
  "mc-sgx-report-cache-untrusted",
  "mc-transaction-core",
  "mc-util-build-info",
+ "mc-util-cli",
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-metrics",
@@ -3766,6 +3770,7 @@ dependencies = [
  "mc-transaction-core",
  "mc-util-build-script",
  "mc-util-build-sgx",
+ "mc-util-cli",
  "mc-util-encodings",
  "mc-util-from-random",
  "mc-util-grpc",
@@ -3895,6 +3900,7 @@ dependencies = [
  "mc-fog-uri",
  "mc-ledger-db",
  "mc-transaction-core",
+ "mc-util-cli",
  "mc-util-from-random",
  "mc-util-metrics",
  "mc-watcher",
@@ -3969,6 +3975,7 @@ dependencies = [
  "mc-fog-ingest-enclave-measurement",
  "mc-fog-report-connection",
  "mc-fog-report-validation",
+ "mc-util-cli",
  "mc-util-keyfile",
  "mc-util-uri",
 ]
@@ -4009,6 +4016,7 @@ dependencies = [
  "mc-fog-sig-report",
  "mc-fog-sql-recovery-db",
  "mc-fog-test-infra",
+ "mc-util-cli",
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-metrics",
@@ -4203,6 +4211,7 @@ dependencies = [
  "mc-sgx-css",
  "mc-transaction-core",
  "mc-transaction-std",
+ "mc-util-cli",
  "mc-util-grpc",
  "mc-util-keyfile",
  "mc-util-metrics",
@@ -4400,6 +4409,7 @@ dependencies = [
  "mc-fog-view-connection",
  "mc-fog-view-enclave-measurement",
  "mc-fog-view-protocol",
+ "mc-util-cli",
  "mc-util-grpc",
  "mc-util-keyfile",
 ]
@@ -4458,6 +4468,7 @@ dependencies = [
  "mc-fog-view-protocol",
  "mc-sgx-report-cache-untrusted",
  "mc-transaction-core",
+ "mc-util-cli",
  "mc-util-encodings",
  "mc-util-from-random",
  "mc-util-grpc",
@@ -5082,6 +5093,14 @@ dependencies = [
  "displaydoc",
  "mc-util-build-script",
  "pkg-config",
+]
+
+[[package]]
+name = "mc-util-cli"
+version = "0.1.0"
+dependencies = [
+ "clap 3.1.6",
+ "mc-util-build-info",
 ]
 
 [[package]]

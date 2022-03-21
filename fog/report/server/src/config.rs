@@ -16,7 +16,11 @@ use x509_signature::X509Certificate;
 
 /// Configuration options for the report server
 #[derive(Clone, Debug, Parser, Serialize)]
-#[clap(name = "report-server", about = "Ingest Attestation Report Server.")]
+#[clap(
+    name = "report-server",
+    about = "Ingest Attestation Report Server.",
+    version
+)]
 pub struct Config {
     /// gRPC listening URI for client requests.
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]

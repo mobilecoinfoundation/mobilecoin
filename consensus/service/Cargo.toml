@@ -31,6 +31,7 @@ mc-peers = { path = "../../peers" }
 mc-sgx-report-cache-untrusted = { path = "../../sgx/report-cache/untrusted" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-std = { path = "../../transaction/std" }
+mc-util-cli = { path = "../../util/cli" }
 mc-util-grpc = { path = "../../util/grpc" }
 mc-util-metered-channel = { path = "../../util/metered-channel" }
 mc-util-metrics = { path = "../../util/metrics" }

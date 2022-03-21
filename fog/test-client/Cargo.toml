@@ -18,6 +18,7 @@ mc-crypto-rand = { path = "../../crypto/rand" }
 mc-sgx-css = { path = "../../sgx/css" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-std = { path = "../../transaction/std" }
+mc-util-cli = { path = "../../util/cli" }
 mc-util-grpc = { path = "../../util/grpc" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 mc-util-metrics = { path = "../../util/metrics" }
