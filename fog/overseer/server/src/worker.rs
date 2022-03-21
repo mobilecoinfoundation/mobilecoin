@@ -252,10 +252,7 @@ where
         for (ingest_client_index, ingest_client) in self.ingest_clients.iter().enumerate() {
             match ingest_client.get_status() {
                 Ok(ingest_summary) => {
-                    if self
-                        .unresponsive_node_urls
-                        .remove(ingest_client.get_uri())
-                    {
+                    if self.unresponsive_node_urls.remove(ingest_client.get_uri()) {
                         log::info!(
                             self.logger,
                             "Node {} was previously unresponsive, but just successfully responded!",
