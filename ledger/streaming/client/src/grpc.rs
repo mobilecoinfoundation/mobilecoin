@@ -84,7 +84,7 @@ mod tests {
     use mc_crypto_keys::Ed25519Pair;
     use mc_ledger_streaming_api::{
         make_subscribe_response,
-        test_utils::{make_quorum_set, Responses},
+        test_utils::{make_quorum_set, make_responses, Responses},
         Error,
     };
     use mc_transaction_core::{
@@ -93,35 +93,6 @@ mod tests {
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
-
-    fn make_responses(num_responses: usize, signer: &Ed25519Pair) -> Responses {
-        let mut result: Responses = vec![];
-        let mut parent: Option<Block> = None;
-        for i in 0..num_responses {
-            let contents = BlockContents::new(vec![], vec![]);
-            let block = if i == 0 {
-                Block::new_origin_block(&[])
-            } else {
-                let root_element = TxOutMembershipElement::default();
-                Block::new_with_parent(
-                    BlockVersion::MAX,
-                    &parent.unwrap(),
-                    &root_element,
-                    &contents,
-                )
-            };
-            parent = Some(block.clone());
-            let block_data = BlockData::new(block, contents, None);
-            let quorum_set = Some(make_quorum_set());
-            let components = BlockStreamComponents {
-                block_data,
-                quorum_set,
-                verification_report: None,
-            };
-            result.push(make_subscribe_response(&components, signer).into());
-        }
-        result
-    }
 
     #[test_with_logger]
     fn basic(logger: Logger) {
