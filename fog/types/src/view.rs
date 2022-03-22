@@ -460,12 +460,13 @@ mod view_tests {
         case: &CorrectTxOutRecordData,
     ) {
         let view_private_key: RistrettoPrivate = mc_util_serial::decode(
-            &hex::decode(&case.recipient_view_private_key)
+            &hex::decode(&case.recipient_view_private_key_hex_proto_bytes)
                 .expect("Could not decode RistrettoPrivate hex for view private key."),
         )
         .expect("Could not convert bytes to RistrettoPrivate for view private key");
         let tx_out_record: TxOutRecord = mc_util_serial::decode(
-            &hex::decode(&case.tx_out_record).expect("Could not decode TxOutRecord hex."),
+            &hex::decode(&case.tx_out_record_hex_proto_bytes)
+                .expect("Could not decode TxOutRecord hex."),
         )
         .expect("Could not convert bytes to TxOutRecord.");
         let fog_tx_out: FogTxOut = tx_out_record.get_fog_tx_out().unwrap();
@@ -479,12 +480,13 @@ mod view_tests {
         case: &IncorrectTxOutRecordData,
     ) {
         let view_private_key: RistrettoPrivate = mc_util_serial::decode(
-            &hex::decode(&case.spurious_view_private_key)
+            &hex::decode(&case.spurious_view_private_key_hex_proto_bytes)
                 .expect("Could not decode RistrettoPrivate hex for view private key."),
         )
         .expect("Could not convert bytes to RistrettoPrivate for view private key");
         let tx_out_record: TxOutRecord = mc_util_serial::decode(
-            &hex::decode(&case.tx_out_record).expect("Could not decode TxOutRecord hex."),
+            &hex::decode(&case.tx_out_record_hex_proto_bytes)
+                .expect("Could not decode TxOutRecord hex."),
         )
         .expect("Could not convert bytes to TxOutRecord.");
         let fog_tx_out: FogTxOut = tx_out_record.get_fog_tx_out().unwrap();

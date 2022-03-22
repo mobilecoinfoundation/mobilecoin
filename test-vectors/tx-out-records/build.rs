@@ -28,10 +28,10 @@ fn write_correct_tx_out_records() {
         let tx_out_record_data = generate_tx_out_record_data();
         for tx_out_record in &tx_out_record_data.tx_out_records {
             let correct_tx_out_record_data = CorrectTxOutRecordData {
-                recipient_view_private_key: hex::encode(mc_util_serial::encode(
+                recipient_view_private_key_hex_proto_bytes: hex::encode(mc_util_serial::encode(
                     &tx_out_record_data.recipient_view_private_key,
                 )),
-                tx_out_record: hex::encode(mc_util_serial::encode(tx_out_record)),
+                tx_out_record_hex_proto_bytes: hex::encode(mc_util_serial::encode(tx_out_record)),
             };
 
             correct_tx_out_record_data_set.push(correct_tx_out_record_data);
@@ -48,10 +48,10 @@ fn write_incorrect_tx_out_records() {
         let tx_out_record_data = generate_tx_out_record_data();
         for tx_out_record in &tx_out_record_data.tx_out_records {
             let incorrect_tx_out_record_data = IncorrectTxOutRecordData {
-                spurious_view_private_key: hex::encode(mc_util_serial::encode(
+                spurious_view_private_key_hex_proto_bytes: hex::encode(mc_util_serial::encode(
                     &tx_out_record_data.spurious_view_private_key,
                 )),
-                tx_out_record: hex::encode(mc_util_serial::encode(tx_out_record)),
+                tx_out_record_hex_proto_bytes: hex::encode(mc_util_serial::encode(tx_out_record)),
             };
 
             incorrect_tx_out_record_data_set.push(incorrect_tx_out_record_data);

@@ -7,11 +7,11 @@ use serde::{Deserialize, Serialize};
 /// TxOutRecord.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CorrectTxOutRecordData {
-    /// The TxOut recipient's view private key's bytes encoded in hex.
-    pub recipient_view_private_key: String,
+    /// The TxOut recipient's view private key's proto bytes encoded in hex.
+    pub recipient_view_private_key_hex_proto_bytes: String,
 
-    /// The TxOutRecord bytes encoded in hex.
-    pub tx_out_record: String,
+    /// The TxOutRecord proto bytes encoded in hex.
+    pub tx_out_record_hex_proto_bytes: String,
 }
 
 impl TestVector for CorrectTxOutRecordData {
@@ -25,11 +25,11 @@ impl TestVector for CorrectTxOutRecordData {
 /// associated with the TxOutRecord.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IncorrectTxOutRecordData {
-    /// An unrelated view private key's bytes encoded in hex.
-    pub spurious_view_private_key: String,
+    /// An unrelated view private key's proto bytes encoded in hex.
+    pub spurious_view_private_key_hex_proto_bytes: String,
 
-    /// The TxOutRecord bytes encoded in hex.
-    pub tx_out_record: String,
+    /// The TxOutRecord proto bytes encoded in hex.
+    pub tx_out_record_hex_proto_bytes: String,
 }
 
 impl TestVector for IncorrectTxOutRecordData {
