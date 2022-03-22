@@ -6,10 +6,15 @@
 #![feature(type_alias_impl_trait)]
 #![deny(missing_docs)]
 
-mod backfill;
-mod grpc;
+pub mod backfill;
+pub mod grpc;
+pub mod http_fetcher;
+pub mod url;
 
 #[cfg(any(test, feature = "test_utils"))]
 pub mod test_utils;
 
-pub use self::{backfill::BackfillingStream, grpc::GrpcBlockSource};
+pub use crate::{
+    backfill::BackfillingStream, grpc::GrpcBlockSource, http_fetcher::HttpBlockFetcher,
+    url::BlockchainUrl,
+};
