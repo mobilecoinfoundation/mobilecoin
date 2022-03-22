@@ -87,7 +87,7 @@ impl MasterMintersMap {
                 return Err(Error::InsufficientSigners(*token_id));
             }
 
-            // Musth ave at least one signer.
+            // Must have at least one signer.
             if signer_set.signers().is_empty() {
                 return Err(Error::InsufficientSigners(*token_id));
             }
