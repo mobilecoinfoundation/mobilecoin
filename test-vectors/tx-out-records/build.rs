@@ -9,7 +9,9 @@ use mc_fog_types::{
 };
 use mc_fog_view_protocol::UserPrivate;
 use mc_oblivious_traits::HeapORAMStorageCreator;
-use mc_test_vectors_definitions::tx_out_records::CorrectTxOutRecordData;
+use mc_test_vectors_definitions::tx_out_records::{
+    CorrectTxOutRecordData, IncorrectTxOutRecordData,
+};
 use mc_transaction_core::{fog_hint::FogHint, tokens::Mob, tx::TxOut, Amount, Token};
 use mc_util_from_random::FromRandom;
 use mc_util_test_vector::write_jsonl;
@@ -17,6 +19,7 @@ use rand::{rngs::StdRng, SeedableRng};
 
 fn main() {
     write_correct_tx_out_records();
+    write_incorrect_tx_out_records();
 }
 
 fn write_correct_tx_out_records() {
@@ -39,6 +42,26 @@ fn write_correct_tx_out_records() {
     .expect("Unable to write test vectors");
 }
 
+fn write_incorrect_tx_out_records() {
+    write_jsonl("../vectors", || {
+        let mut incorrect_tx_out_record_data_set: Vec<IncorrectTxOutRecordData> = Vec::new();
+        let tx_out_record_data = generate_tx_out_record_data();
+        for tx_out_record in &tx_out_record_data.tx_out_records {
+            let incorrect_tx_out_record_data = IncorrectTxOutRecordData {
+                spurious_view_private_key: hex::encode(mc_util_serial::encode(
+                    &tx_out_record_data.spurious_view_private_key,
+                )),
+                tx_out_record: hex::encode(mc_util_serial::encode(tx_out_record)),
+            };
+
+            incorrect_tx_out_record_data_set.push(incorrect_tx_out_record_data);
+        }
+
+        incorrect_tx_out_record_data_set
+    })
+    .expect("Unable to write test vectors");
+}
+
 /// Contains data needed for test vectors related to TxOutRecords.
 struct TxOutRecordData {
     /// The generated TxOutRecords.
@@ -47,9 +70,9 @@ struct TxOutRecordData {
     /// The view private key that owns the TxOut described by the TxOutRecord.
     pub recipient_view_private_key: RistrettoPrivate,
 
-    /// An view private key that does not own the TxOut described by the
+    /// A view private key that does not own the TxOut described by the
     /// TxOutRecord.
-    pub _spurious_view_private_key: RistrettoPrivate,
+    pub spurious_view_private_key: RistrettoPrivate,
 }
 
 fn generate_tx_out_record_data() -> TxOutRecordData {
@@ -133,6 +156,6 @@ fn generate_tx_out_record_data() -> TxOutRecordData {
     TxOutRecordData {
         tx_out_records,
         recipient_view_private_key: *recipient_account.view_private_key(),
-        _spurious_view_private_key: *spurious_account.view_private_key(),
+        spurious_view_private_key: *spurious_account.view_private_key(),
     }
 }

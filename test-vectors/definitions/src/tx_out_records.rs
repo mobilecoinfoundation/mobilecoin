@@ -15,3 +15,18 @@ impl TestVector for CorrectTxOutRecordData {
     const FILE_NAME: &'static str = "correct_tx_out_records";
     const MODULE_SUBDIR: &'static str = "tx_out_records";
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+/// Contains data associated with a TxOutRecord that is correct.
+pub struct IncorrectTxOutRecordData {
+    /// An unrelated view private key bytes encoded in hex.
+    pub spurious_view_private_key: String,
+
+    /// TxOutRecord bytes encoded in hex.
+    pub tx_out_record: String,
+}
+
+impl TestVector for IncorrectTxOutRecordData {
+    const FILE_NAME: &'static str = "incorrect_tx_out_records";
+    const MODULE_SUBDIR: &'static str = "tx_out_records";
+}

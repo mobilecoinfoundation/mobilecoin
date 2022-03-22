@@ -368,7 +368,6 @@ impl FogTxOut {
     ///
     /// Arguments:
     /// * view_key: the private view key of the recipient of this TxOut
-    ///
     /// Returns:
     /// * TxOut,
     /// Or
@@ -448,9 +447,10 @@ pub struct FogTxOutMetadata {
 
 #[cfg(test)]
 mod view_tests {
+    extern crate std;
     use super::*;
 
-    use mc_test_vectors_tx_out_records::CorrectTxOutRecordData;
+    use mc_test_vectors_tx_out_records::{CorrectTxOutRecordData, IncorrectTxOutRecordData};
     use mc_util_test_vector::TestVector;
     use mc_util_test_with_data::test_with_data;
 
@@ -471,5 +471,25 @@ mod view_tests {
 
         let result = fog_tx_out.try_recover_tx_out(&view_private_key);
         assert!(result.is_ok());
+    }
+
+    #[test_with_data(IncorrectTxOutRecordData::from_jsonl("../../test-vectors/vectors"))]
+    fn recover_fog_tx_out_from_tx_out_record_and_incorrect_view_key_fails(
+        case: &IncorrectTxOutRecordData,
+    ) {
+        let view_private_key: RistrettoPrivate = mc_util_serial::decode(
+            &hex::decode(&case.spurious_view_private_key)
+                .expect("Could not decode RistrettoPrivate hex for view private key."),
+        )
+        .expect("Could not convert bytes to RistrettoPrivate for view private key");
+        let tx_out_record: TxOutRecord = mc_util_serial::decode(
+            &hex::decode(&case.tx_out_record).expect("Could not decode TxOutRecord hex."),
+        )
+        .expect("Could not convert bytes to TxOutRecord.");
+        let fog_tx_out: FogTxOut = tx_out_record.get_fog_tx_out().unwrap();
+
+        let result = fog_tx_out.try_recover_tx_out(&view_private_key);
+
+        assert!(result.is_err());
     }
 }
