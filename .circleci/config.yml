@@ -333,7 +333,7 @@ commands:
     parameters:
       test_command:
         type: string
-        default: cargo test --workspace --exclude "mc-fog-*" --exclude "mc-consensus-*" --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests -j 4
+        default: cargo test --workspace --exclude "mc-fog-*" --exclude "mc-consensus-*" --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests -j 2
     steps:
       - run:
           name: Run mobilecoin tests
@@ -375,7 +375,7 @@ commands:
           command: |
             # tell the operating system to remove the file size limit on core dump files
             ulimit -c unlimited
-            cargo test --package "mc-consensus-*" -j 4 --frozen --no-fail-fast
+            cargo test --package "mc-consensus-*" -j 2 --frozen --no-fail-fast
       - run:
           command: |
             mkdir -p /tmp/core_dumps
@@ -392,7 +392,7 @@ commands:
           command: |
             # tell the operating system to remove the file size limit on core dump files
             ulimit -c unlimited
-            cargo test --workspace --package "mc-fog-*" --exclude "mc-fog-ingest-*" -j 4 --frozen --no-fail-fast
+            cargo test --workspace --package "mc-fog-*" --exclude "mc-fog-ingest-*" -j 2 --frozen --no-fail-fast
       - run:
           command: |
             mkdir -p /tmp/core_dumps
@@ -408,7 +408,7 @@ commands:
           command: |
             # tell the operating system to remove the file size limit on core dump files
             ulimit -c unlimited
-            cargo test --release --package "mc-fog-ingest-*" -j 4 --frozen --no-fail-fast
+            cargo test --release --package "mc-fog-ingest-*" -j 2 --frozen --no-fail-fast
       - run:
           command: |
             mkdir -p /tmp/core_dumps
@@ -669,14 +669,14 @@ jobs:
       - prepare-for-build
       - run:
           name: Cargo build (SW/IAS dev)
-          command: cargo build --frozen --target "$HOST_TARGET_TRIPLE" -j 4
+          command: cargo build --frozen --target "$HOST_TARGET_TRIPLE" -j 2
       - check-dirty-git
       - run:
           name: Cargo build (HW/IAS prod)
           environment:
             SGX_MODE: HW
             IAS_MODE: PROD
-          command: cargo build --frozen --target "$HOST_TARGET_TRIPLE" -j 4
+          command: cargo build --frozen --target "$HOST_TARGET_TRIPLE" -j 2
 
       # The lint and saving of caches happens here since this job is faster than the run-tests job.
       # This results in shorter CI times.
