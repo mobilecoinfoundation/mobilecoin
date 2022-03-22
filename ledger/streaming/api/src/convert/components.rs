@@ -12,6 +12,7 @@ impl From<&BlockStreamComponents> for BlockWithQuorumSet {
     fn from(data: &BlockStreamComponents) -> Self {
         let mut proto = BlockWithQuorumSet::new();
         proto.set_block((&data.block_data).into());
+        // TODO(#1682): Error when fields are missing.
         if let Some(ref quorum_set) = data.quorum_set {
             proto.set_quorum_set(quorum_set.into());
         }
@@ -27,6 +28,7 @@ impl TryFrom<&BlockWithQuorumSet> for BlockStreamComponents {
 
     fn try_from(proto: &BlockWithQuorumSet) -> Result<Self, Self::Error> {
         let block_data = proto.get_block().try_into()?;
+        // TODO(#1682): Error when fields are missing.
         let quorum_set = proto
             .quorum_set
             .as_ref()

@@ -10,9 +10,9 @@ pub struct BlockStreamComponents {
     /// The block data.
     pub block_data: BlockData,
     /// The SCP quorum set for this block.
-    /// Currently optional, will become required with a future BlockVersion.
+    /// Optional; will be required with a future BlockVersion (see #1682).
     pub quorum_set: Option<QuorumSet>,
     /// The AVR for this block.
-    /// Currently optional, will become required with a future BlockVersion.
+    /// Optional; will be required with a future BlockVersion (see #1682).
     pub verification_report: Option<VerificationReport>,
 }
