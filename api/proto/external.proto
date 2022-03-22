@@ -327,6 +327,7 @@ message MintTxPrefix {
     CompressedRistretto spend_public_key = 4;
 
     /// Nonce, to prevent replay attacks.
+    /// Must be exactly 64 bytes long (see constant constants::NONCE_LENGTH).
     bytes nonce = 5;
 
     /// The block index at which this transaction is no longer valid.
@@ -364,6 +365,7 @@ message MintConfigTxPrefix {
     repeated MintConfig configs = 2;
 
     /// Nonce, to prevent replay attacks.
+    /// Must be exactly 64 bytes long (see constant constants::NONCE_LENGTH).
     bytes nonce = 3;
 
     /// The block index at which this transaction is no longer valid.
