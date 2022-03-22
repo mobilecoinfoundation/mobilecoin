@@ -58,6 +58,7 @@ impl BlockStream for GrpcBlockSource {
         let mut req = SubscribeRequest::new();
         req.starting_height = starting_height;
 
+        // TODO: Make timeout configurable.
         let opt = grpcio::CallOption::default().timeout(Duration::from_secs(10));
 
         let stream = self.client.subscribe_opt(&req, opt)?;
@@ -66,12 +67,12 @@ impl BlockStream for GrpcBlockSource {
 }
 
 fn map_subscribe_response(
-    response: grpcio::Result<SubscribeResponse>,
+    result: grpcio::Result<SubscribeResponse>,
     public_key: &Ed25519Public,
     logger: &Logger,
 ) -> Result<BlockStreamComponents> {
     log::trace!(logger, "map_subscribe_response");
-    let response = response?;
+    let response = result?;
     parse_subscribe_response(&response, public_key)
 }
 
@@ -117,7 +118,7 @@ mod tests {
         responses.push(Err(Error::Grpc("meh".to_owned())).into());
 
         let (_server, uri, env) = setup_test_server(responses, None, None);
-        let source = GrpcBlockSource::new(&uri, env, signer.public_key(), logger.clone());
+        let source = GrpcBlockSource::new(&uri, env, signer.public_key(), logger);
 
         let mut got_error = false;
         let result_fut = source

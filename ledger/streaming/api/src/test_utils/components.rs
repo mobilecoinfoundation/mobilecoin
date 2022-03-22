@@ -27,11 +27,12 @@ pub fn make_components(count: usize) -> Vec<BlockStreamComponents> {
             };
             parent = Some(block.clone());
             let block_data = BlockData::new(block, contents, None);
-            let quorum_set = make_quorum_set();
+            let quorum_set = Some(make_quorum_set());
+            let verification_report = None;
             BlockStreamComponents {
                 block_data,
-                quorum_set: Some(quorum_set),
-                verification_report: None,
+                quorum_set,
+                verification_report,
             }
         })
         .collect()

@@ -7,6 +7,14 @@ use crate::{make_subscribe_response, streaming_blocks::SubscribeResponse, Error,
 use grpcio::WriteFlags;
 use mc_crypto_keys::Ed25519Pair;
 
+/// Generate the requested number of [Responses], signed with the given signer.
+pub fn make_responses(num_responses: usize, signer: &Ed25519Pair) -> Responses {
+    make_components(num_responses)
+        .into_iter()
+        .map(|components| make_subscribe_response(&components, signer).into())
+        .collect()
+}
+
 /// Helper for a hard-coded [Result<SubscribeResponse>].
 #[derive(Clone, Debug)]
 pub struct Response(pub Result<SubscribeResponse>);
@@ -52,12 +60,4 @@ impl From<Response> for grpcio::Result<SubscribeResponse> {
     fn from(src: Response) -> grpcio::Result<SubscribeResponse> {
         src.0.map_err(|err| grpcio::Error::Codec(err.into()))
     }
-}
-
-/// Generate the requested number of [Responses], signed with the given signer.
-pub fn make_responses(num_responses: usize, signer: &Ed25519Pair) -> Responses {
-    make_components(num_responses)
-        .into_iter()
-        .map(|components| make_subscribe_response(&components, signer).into())
-        .collect()
 }
