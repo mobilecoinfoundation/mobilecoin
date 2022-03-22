@@ -47,6 +47,7 @@ pub struct MintConfigTxPrefix {
     pub configs: Vec<MintConfig>,
 
     /// Nonce, to prevent replay attacks.
+    /// Must be exactly 64 bytes long (see constant constants::NONCE_LENGTH).
     #[prost(bytes, tag = "3")]
     pub nonce: Vec<u8>,
 

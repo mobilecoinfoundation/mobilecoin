@@ -33,6 +33,7 @@ pub struct MintTxPrefix {
     pub spend_public_key: RistrettoPublic,
 
     /// Nonce, to prevent replay attacks.
+    /// Must be exactly 64 bytes long (see constant constants::NONCE_LENGTH).
     #[prost(bytes, tag = "5")]
     pub nonce: Vec<u8>,
 
