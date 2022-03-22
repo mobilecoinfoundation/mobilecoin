@@ -464,10 +464,7 @@ where
                 }
                 Err(err) => {
                     let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try as usize;
-                    let error_message = match number_of_remaining_tries {
-                        0 => format!("Did not succeed in reporting lost ingress key {} within {} tries. Underlying error: {}", inactive_outstanding_key, Self::NUMBER_OF_TRIES, err),
-                        _ => format!("The following key was not successfully reported as lost: {}. Will try {} more times. Underlying error: {}", inactive_outstanding_key, number_of_remaining_tries, err),
-                    };
+                    let error_message = format!("The following key was not successfully reported as lost: {}. Will try {} more times. Underlying error: {}", inactive_outstanding_key, number_of_remaining_tries, err);
                     OperationResult::Retry(OverseerError::ReportLostKey(error_message))
                 }
             },
@@ -496,10 +493,7 @@ where
                         Err(err) => {
                             let number_of_remaining_tries =
                                 Self::NUMBER_OF_TRIES - current_try as usize;
-                            let error_message = match number_of_remaining_tries {
-                                0 => format!("Did not succeed in setting a new key on node {}. Underlying error: {}", ingest_client.get_uri(), err),
-                                _ => format!("New keys were not successfully set on the ingest node {}. Will try {} more times. Underlying error: {}", ingest_client.get_uri(), number_of_remaining_tries, err),
-                            };
+                            let error_message = format!("Did not succeed in setting a new key on ingest node {}. Will try {} more times. Underlying error: {}", ingest_client.get_uri(), number_of_remaining_tries, err);
                             OperationResult::Retry(OverseerError::SetNewKey(error_message))
                         }
                     }
@@ -535,18 +529,7 @@ where
                     Err(err) => {
                         let number_of_remaining_tries =
                             Self::NUMBER_OF_TRIES - current_try as usize;
-                        let error_message = match number_of_remaining_tries {
-                            0 => format!(
-                                "Did not succeed in setting a new key on node {}. Underlying error: {}",
-                                ingest_client.get_uri(),
-                                err
-                            ),
-                            _ => format!(
-                                "Node at index {} not activated. Will try {} more times. Underlying error: {}",
-                                ingest_client.get_uri(),
-                                number_of_remaining_tries, err
-                            ),
-                        };
+                        let error_message = format!("Node at index {} not activated. Will try {} more times. Underlying error: {}",ingest_client.get_uri(), number_of_remaining_tries, err);
                         OperationResult::Retry(OverseerError::ActivateNode(error_message))
                     }
                 }
