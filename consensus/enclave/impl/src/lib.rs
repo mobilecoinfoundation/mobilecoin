@@ -376,10 +376,10 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         match sealed_key {
             Some(sealed) => {
                 log::trace!(self.logger, "trying to unseal key");
-                let cached = IntelSealed::try_from(sealed.clone()).unwrap();
+                let cached = IntelSealed::try_from(sealed.clone())?;
                 let (key, _mac) = cached.unseal_raw()?;
                 let mut lock = self.ake.get_identity().signing_keypair.lock().unwrap();
-                *lock = Ed25519Pair::try_from(&key[..]).unwrap();
+                *lock = Ed25519Pair::try_from(&key[..])?;
             }
             None => (),
         }
@@ -387,7 +387,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // Either way seal the private key and return it.
         let lock = self.ake.get_identity().signing_keypair.lock().unwrap();
         let key = (*lock).private_key();
-        let sealed = IntelSealed::seal_raw(key.as_ref(), &[]).unwrap();
+        let sealed = IntelSealed::seal_raw(key.as_ref(), &[])?;
 
         Ok((
             sealed.as_ref().to_vec(),
@@ -807,14 +807,11 @@ mod tests {
     use mc_common::logger::test_with_logger;
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{
-        onetime_keys::{create_shared_secret, view_key_matches_output},
-        tokens::Mob,
-        tx::TxOutMembershipHash,
-        validation::TransactionValidationError,
-        BlockVersion, Token,
+        tokens::Mob, tx::TxOutMembershipHash, validation::TransactionValidationError, BlockVersion,
+        Token,
     };
     use mc_transaction_core_test_utils::{
-        create_ledger, create_transaction, initialize_ledger, AccountKey, ViewKey,
+        create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
@@ -1154,33 +1151,17 @@ mod tests {
             assert_eq!(num_outputs + 1, block_contents.outputs.len());
 
             // One of the outputs should be the aggregate fee.
-            let view_secret_key = RistrettoPrivate::try_from(&FEE_VIEW_PRIVATE_KEY).unwrap();
-
-            let fee_view_key = {
-                let fee_recipient_pubkeys = enclave.get_fee_recipient().unwrap();
-                let public_address = PublicAddress::new(
-                    &fee_recipient_pubkeys.spend_public_key,
-                    &RistrettoPublic::from(&view_secret_key),
-                );
-                ViewKey::new(view_secret_key, *public_address.spend_public_key())
-            };
+            let fee_view_key = RistrettoPrivate::try_from(&FEE_VIEW_PRIVATE_KEY).unwrap();
 
             let fee_output = block_contents
                 .outputs
                 .iter()
-                .find(|output| {
-                    let output_public_key = RistrettoPublic::try_from(&output.public_key).unwrap();
-                    let output_target_key = RistrettoPublic::try_from(&output.target_key).unwrap();
-                    view_key_matches_output(&fee_view_key, &output_target_key, &output_public_key)
-                })
+                .find(|output| output.view_key_match(&fee_view_key).is_ok())
                 .unwrap();
-
-            let fee_output_public_key = RistrettoPublic::try_from(&fee_output.public_key).unwrap();
 
             // The value of the aggregate fee should equal the total value of fees in the
             // input transaction.
-            let shared_secret = create_shared_secret(&fee_output_public_key, &view_secret_key);
-            let (amount, _blinding) = fee_output.masked_amount.get_value(&shared_secret).unwrap();
+            let (amount, _) = fee_output.view_key_match(&fee_view_key).unwrap();
             assert_eq!(amount.value, total_fee);
             assert_eq!(amount.token_id, Mob::ID);
         }

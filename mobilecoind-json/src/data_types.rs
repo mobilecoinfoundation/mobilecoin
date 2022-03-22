@@ -857,7 +857,7 @@ impl From<&SignatureRctBulletproofs> for JsonSignatureRctBulletproofs {
                 .iter()
                 .map(|x| hex::encode(x.get_data()))
                 .collect(),
-            range_proofs: hex::encode(src.get_range_proofs().to_vec()),
+            range_proofs: hex::encode(src.get_range_proofs()),
         }
     }
 }

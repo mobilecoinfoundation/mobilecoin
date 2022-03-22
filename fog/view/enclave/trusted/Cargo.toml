@@ -86,10 +86,6 @@ ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.g
 mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "49a293a5f4b1ef571c71174e3fa1f301925f3915" }
 mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "49a293a5f4b1ef571c71174e3fa1f301925f3915" }
 
-# Pin packed_simd_2 to the commit right before they renamed the `const_generics` feature override.
-# TODO: Remove when we upgrade to a newer rust version (where const_generics was renamed to `adt_const_params`)
-packed_simd_2 = { git = "https://github.com/rust-lang/packed_simd.git", rev = "064df9b1869b942fa768bfa83596f6965fa858c8" }
-
 # Fork and rename to use "OG" dalek-cryptography.
 schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "5c98ae068ee4652d6df6463b549fbf2d5d132faa" }
 

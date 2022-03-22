@@ -24,7 +24,7 @@ use crate::{
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
     ring_signature::{KeyImage, SignatureRctBulletproofs},
-    CompressedCommitment, NewMemoError, NewTxError,
+    CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
 };
 
 /// Transaction hash length, in bytes.
@@ -356,6 +356,31 @@ impl TxOut {
         self.digest32::<MerlinTranscript>(b"mobilecoin-txout")
     }
 
+    /// Try to establish ownership of this TxOut, using the view private key.
+    ///
+    /// Arguments:
+    /// * view_private_key: The account view private key for the (possible)
+    ///   owner
+    ///
+    /// Returns:
+    /// * An (unmasked) Amount
+    /// * The shared secret
+    /// Or, an error if recovery failed.
+    pub fn view_key_match(
+        &self,
+        view_private_key: &RistrettoPrivate,
+    ) -> Result<(Amount, RistrettoPublic), ViewKeyMatchError> {
+        // Reconstruct compressed commitment based on our view key.
+        // The first step is reconstructing the TxOut shared secret
+        let public_key = RistrettoPublic::try_from(&self.public_key)?;
+
+        let tx_out_shared_secret = get_tx_out_shared_secret(view_private_key, &public_key);
+
+        let (amount, _scalar) = self.masked_amount.get_value(&tx_out_shared_secret)?;
+
+        Ok((amount, tx_out_shared_secret))
+    }
+
     /// Try to decrypt the e_memo field, using the TxOut shared secret.
     ///
     /// This function is backwards-compatible in the following sense:
@@ -367,7 +392,8 @@ impl TxOut {
     /// Note that the results of this function call are unauthenticated.
     ///
     /// The next step is usually to call MemoType::try_from to determine what
-    /// memo type this is, see transaction_std::memo module.
+    /// memo type this is, see transaction_std::memo module. Then, if it has
+    /// authentication, such as an hmac, check the hmac.
     pub fn decrypt_memo(&self, tx_out_shared_secret: &RistrettoPublic) -> MemoPayload {
         if let Some(e_memo) = self.e_memo {
             e_memo.decrypt(tx_out_shared_secret)

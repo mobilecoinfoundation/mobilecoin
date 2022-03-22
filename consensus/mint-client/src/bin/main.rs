@@ -112,7 +112,6 @@ fn main() {
                     last_block_info.index + MAX_TOMBSTONE_BLOCKS - 1
                 })
                 .expect("failed creating tx");
-
             let resp = client_api
                 .propose_mint_tx(&(&tx).into())
                 .expect("propose tx");

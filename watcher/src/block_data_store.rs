@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! An store object for managing storage of BlockData objects in the database,
 //! while taking care of de-duplicating contents when possible.

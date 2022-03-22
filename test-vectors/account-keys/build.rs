@@ -123,7 +123,7 @@ fn main() {
 
     write_jsonl("../vectors", || {
         (0..2)
-            .map(|account_index| {
+            .flat_map(|account_index| {
                 BIP39_VECTORS
                     .iter()
                     .map(move |(entropy_hex, mnemonic_text)| {
@@ -148,7 +148,6 @@ fn main() {
                         }
                     })
             })
-            .flatten()
             .collect::<Vec<AcctPrivKeysFromBip39>>()
     })
     .expect("Unable to write test vectors");

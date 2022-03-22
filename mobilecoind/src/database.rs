@@ -63,9 +63,6 @@ pub struct Database {
     /// Processed block store.
     processed_block_store: ProcessedBlockStore,
 
-    /// Metadata store.
-    metadata_store: MetadataStore<MobilecoindDbMetadataStoreSettings>,
-
     /// Logger.
     logger: Logger,
 }
@@ -108,7 +105,6 @@ impl Database {
             subaddress_store,
             utxo_store,
             processed_block_store,
-            metadata_store,
             logger,
         })
     }
