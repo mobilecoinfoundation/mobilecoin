@@ -368,6 +368,7 @@ impl FogTxOut {
     ///
     /// Arguments:
     /// * view_key: the private view key of the recipient of this TxOut
+    ///
     /// Returns:
     /// * TxOut,
     /// Or
