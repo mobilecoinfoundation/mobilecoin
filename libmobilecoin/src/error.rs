@@ -7,6 +7,7 @@ use mc_attest_ake::Error as AttestAkeError;
 use mc_attest_verifier::Error as VerifierError;
 use mc_crypto_box::{AeadError, Error as CryptoBoxError};
 use mc_crypto_noise::CipherError;
+use mc_crypto_keys::KeyError;
 use mc_fog_kex_rng::Error as FogKexRngError;
 use mc_fog_report_validation::{ingest_report::Error as IngestReportError, FogPubkeyError};
 use mc_transaction_core::AmountError;
@@ -107,6 +108,12 @@ impl From<AeadError> for LibMcError {
 
 impl From<AmountError> for LibMcError {
     fn from(err: AmountError) -> Self {
+        LibMcError::TransactionCrypto(format!("{:?}", err))
+    }
+}
+
+impl From<KeyError> for LibMcError {
+    fn from(err: KeyError) -> Self {
         LibMcError::TransactionCrypto(format!("{:?}", err))
     }
 }

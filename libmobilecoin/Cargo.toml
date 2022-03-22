@@ -21,6 +21,7 @@ slip10_ed25519 = "0.1.3"
 tiny-bip39 = "0.8"
 zeroize = "1.5"
 hex = "0.4.3"
+generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
 
 # Lock a specific cmake version that plays nicely with iOS. Note that 0.1.45 does not actually do that,
 # but there is an override to a specific commit of a currently-unreleased version in the root Cargo.toml.

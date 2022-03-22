@@ -414,7 +414,15 @@ bool mc_memo_sender_with_payment_request_memo_get_payment_request_id(
 MC_ATTRIBUTE_NONNULL(1, 2);
 
 
+/* ==== Decrypt Memo Payload ==== */
 
+bool mc_memo_decrypt_e_memo_payload(
+  const McBuffer* MC_NONNULL tx_out_proto_bytes,
+  const McAccountKey* MC_NONNULL account_key,
+  McMutableBuffer* MC_NONNULL out_memo_data,
+  McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
 
 
 #ifdef __cplusplus

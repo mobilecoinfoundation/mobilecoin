@@ -8,6 +8,7 @@ use crate::{
 };
 use hex;
 use core::convert::TryFrom;
+use generic_array::{typenum::U66, GenericArray};
 use crc::Crc;
 use mc_account_keys::{PublicAddress, AccountKey, ShortAddressHash};
 use mc_crypto_keys::{ReprBytes, RistrettoPrivate, RistrettoPublic, CompressedRistrettoPublic};
@@ -36,6 +37,7 @@ use mc_transaction_std::{
     AuthenticatedSenderMemo,
     AuthenticatedSenderWithPaymentRequestIdMemo,
     DestinationMemo,
+    MemoPayload,
     ChangeDestination
 };
 //use mc_transaction_std::{InputCredentials, NoMemoBuilder, TransactionBuilder, ChangeDestination};
@@ -1121,12 +1123,42 @@ pub extern "C" fn mc_memo_sender_with_payment_request_memo_get_payment_request_i
 
 
 
+/********************************************************************
+ * Decrypt Memo Payload
+ */
+
+#[no_mangle]
+pub extern "C" fn mc_memo_decrypt_e_memo_payload(
+    tx_out_proto_bytes: FfiRefPtr<McBuffer>,
+    account_key: FfiRefPtr<McAccountKey>,
+    out_memo_payload: FfiMutPtr<McMutableBuffer>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+) -> bool {
+    ffi_boundary_with_error(out_error, || {
+        let tx_out: TxOut = mc_util_serial::decode(tx_out_proto_bytes.as_slice())
+            .expect("tx_out_proto_bytes could not be converted to TxOut");
+        let account_key_obj = AccountKey::try_from_ffi(&account_key).expect("account_key is invalid");
+        let tx_out_public_key: RistrettoPublic = RistrettoPublic::try_from(&tx_out.public_key)?;
+        let shared_secret =
+            get_tx_out_shared_secret(&*account_key_obj.view_private_key(), &tx_out_public_key);
+
+        let memo_payload: MemoPayload = tx_out.decrypt_memo(&shared_secret);
+        //let memo_payload_generic_array: [u8; 66] = memo_payload.clone().into();
+        let memo_payload_generic_array: GenericArray<u8, U66> = memo_payload.into();
+        //let memo_bytes: [u8; 64] = memo.clone().into();
+        //let memo_payload_bytes: &[u8] = memo_payload_generic_array.as_slice();
+        //let memo_payload_bytes: &[u8] = memo_payload_generic_array.as_slice();
+
+        let out_memo_payload = out_memo_payload
+            .into_mut()
+            .as_slice_mut_of_len(core::mem::size_of_val(&memo_payload_generic_array))
+            .expect("Memo payload length is insufficient");
 
 
-
-
-
-
+        out_memo_payload.copy_from_slice(&memo_payload_generic_array);
+        Ok(())
+    })
+}
 
 
 
