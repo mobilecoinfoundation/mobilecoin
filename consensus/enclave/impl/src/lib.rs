@@ -1906,7 +1906,11 @@ mod tests {
                 &root_element,
             );
 
-            assert!(form_block_result.is_err());
+            if let Err(Error::FormBlock(description)) = form_block_result {
+                assert!(description.contains("Duplicate MintTx"));
+            } else {
+                panic!("Expected result");
+            }
         }
     }
 
@@ -2122,6 +2126,66 @@ mod tests {
                     MintValidationError::InvalidSignature
                 ))
             );
+        }
+    }
+
+    #[test_with_logger]
+    fn form_block_rejects_duplicate_mint_config_tx(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+
+        let token_id1 = TokenId::from(1);
+
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
+
+        let master_minters_map =
+            MasterMintersMap::try_from_iter([(token_id1, signer_set1)]).unwrap();
+
+        for block_version in BlockVersion::iterator() {
+            if !block_version.mint_transactions_are_supported() {
+                continue;
+            }
+
+            let enclave = SgxConsensusEnclave::new(logger.clone());
+            let blockchain_config = BlockchainConfig {
+                block_version,
+                master_minters_map: master_minters_map.clone(),
+                ..Default::default()
+            };
+            enclave
+                .enclave_init(
+                    &Default::default(),
+                    &Default::default(),
+                    &None,
+                    blockchain_config,
+                )
+                .unwrap();
+
+            // Initialize a ledger.
+            let sender = AccountKey::random(&mut rng);
+            let mut ledger = create_ledger();
+            let n_blocks = 3;
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+            // Form block
+            let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+            let root_element = ledger.get_root_tx_out_membership_element().unwrap();
+
+            let form_block_result = enclave.form_block(
+                &parent_block,
+                FormBlockInputs {
+                    mint_config_txs: vec![mint_config_tx1.clone(), mint_config_tx1.clone()],
+                    ..Default::default()
+                },
+                &root_element,
+            );
+            if let Err(Error::FormBlock(description)) = form_block_result {
+                assert!(description.contains("Duplicate MintConfigTx"));
+            } else {
+                panic!("Expected result");
+            }
         }
     }
 }
