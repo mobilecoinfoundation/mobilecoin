@@ -5,7 +5,7 @@
 use crate::FeeMapError;
 use alloc::string::String;
 use displaydoc::Display;
-use mc_attest_core::SgxError;
+use mc_attest_core::{IntelSealingError, ParseSealedError, SgxError};
 use mc_attest_enclave_api::Error as AttestEnclaveError;
 use mc_crypto_keys::SignatureError;
 use mc_crypto_message_cipher::CipherError as MessageCipherError;
@@ -64,6 +64,21 @@ pub enum Error {
 
     /// Block Version Error: {0}
     BlockVersion(String),
+
+    /// Sealing Error: {0}
+    IntelSealing(IntelSealingError),
+}
+
+impl From<ParseSealedError> for Error {
+    fn from(src: ParseSealedError) -> Self {
+        Error::IntelSealing(src.into())
+    }
+}
+
+impl From<IntelSealingError> for Error {
+    fn from(src: IntelSealingError) -> Self {
+        Error::IntelSealing(src)
+    }
 }
 
 impl From<MessageCipherError> for Error {
