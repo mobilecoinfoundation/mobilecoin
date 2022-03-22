@@ -2886,6 +2886,7 @@ dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-message-cipher",
+ "mc-crypto-multisig",
  "mc-sgx-compat",
  "mc-sgx-report-cache-api",
  "mc-transaction-core",

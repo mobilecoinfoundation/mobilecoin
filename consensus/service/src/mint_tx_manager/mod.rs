@@ -17,10 +17,9 @@ pub use traits::MockMintTxManager;
 
 use mc_common::{
     logger::{log, Logger},
-    HashMap, HashSet,
+    HashSet,
 };
-use mc_crypto_keys::Ed25519Public;
-use mc_crypto_multisig::SignerSet;
+use mc_consensus_enclave::MasterMintersMap;
 use mc_ledger_db::{Error as LedgerError, Ledger};
 use mc_transaction_core::{
     mint::{validate_mint_config_tx, validate_mint_tx, MintConfigTx, MintTx, MintValidationError},
@@ -36,7 +35,7 @@ pub struct MintTxManagerImpl<L: Ledger> {
     block_version: BlockVersion,
 
     /// A map of token id -> master minters.
-    token_id_to_master_minters: HashMap<TokenId, SignerSet<Ed25519Public>>,
+    token_id_to_master_minters: MasterMintersMap,
 
     /// Logger.
     logger: Logger,
@@ -46,7 +45,7 @@ impl<L: Ledger> MintTxManagerImpl<L> {
     pub fn new(
         ledger_db: L,
         block_version: BlockVersion,
-        token_id_to_master_minters: HashMap<TokenId, SignerSet<Ed25519Public>>,
+        token_id_to_master_minters: MasterMintersMap,
         logger: Logger,
     ) -> Self {
         Self {
@@ -74,9 +73,12 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
 
         // Get the master minters for this token id.
         let token_id = TokenId::from(mint_config_tx.prefix.token_id);
-        let master_minters = self.token_id_to_master_minters.get(&token_id).ok_or(
-            MintTxManagerError::MintValidation(MintValidationError::NoMasterMinters(token_id)),
-        )?;
+        let master_minters = self
+            .token_id_to_master_minters
+            .get_master_minters_for_token(&token_id)
+            .ok_or(MintTxManagerError::MintValidation(
+                MintValidationError::NoMasterMinters(token_id),
+            ))?;
 
         // Get the current block index.
         let current_block_index = self.ledger_db.num_blocks()? - 1;
@@ -86,7 +88,7 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
             mint_config_tx,
             current_block_index,
             self.block_version,
-            master_minters,
+            &master_minters,
         )?;
 
         Ok(())
@@ -211,7 +213,6 @@ mod mint_config_tx_tests {
         create_ledger, create_mint_config_tx_and_signers, initialize_ledger, AccountKey,
     };
     use rand::{rngs::StdRng, SeedableRng};
-    use std::iter::FromIterator;
 
     /// validate_mint_config_tx accepts a valid mint config tx when only a
     /// single token is configured.
@@ -227,10 +228,11 @@ mod mint_config_tx_tests {
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
         let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
-        let token_id_to_master_minters = HashMap::from_iter(vec![(
+        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
-        )]);
+        )])
+        .unwrap();
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger,
             BlockVersion::MAX,
@@ -262,7 +264,7 @@ mod mint_config_tx_tests {
         let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id_2, &mut rng);
         let (mint_config_tx3, signers3) = create_mint_config_tx_and_signers(token_id_3, &mut rng);
-        let token_id_to_master_minters = HashMap::from_iter(vec![
+        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![
             (
                 token_id_1,
                 SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1),
@@ -275,7 +277,8 @@ mod mint_config_tx_tests {
                 token_id_3,
                 SignerSet::new(signers3.iter().map(|s| s.public_key()).collect(), 1),
             ),
-        ]);
+        ])
+        .unwrap();
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger,
             BlockVersion::MAX,
@@ -313,10 +316,11 @@ mod mint_config_tx_tests {
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
         let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
-        let token_id_to_master_minters = HashMap::from_iter(vec![(
+        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
-        )]);
+        )])
+        .unwrap();
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger.clone(),
             BlockVersion::MAX,
@@ -371,10 +375,11 @@ mod mint_config_tx_tests {
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
         let (_mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
-        let token_id_to_master_minters = HashMap::from_iter(vec![(
+        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
-        )]);
+        )])
+        .unwrap();
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger,
             BlockVersion::MAX,
@@ -406,10 +411,11 @@ mod mint_config_tx_tests {
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
         let (mut mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
-        let token_id_to_master_minters = HashMap::from_iter(vec![(
+        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
-        )]);
+        )])
+        .unwrap();
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger,
             BlockVersion::MAX,
@@ -444,10 +450,11 @@ mod mint_config_tx_tests {
         let (mint_config_tx2, _) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let (mint_config_tx3, _) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let (mint_config_tx4, _) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
-        let token_id_to_master_minters = HashMap::from_iter(vec![(
+        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
-        )]);
+        )])
+        .unwrap();
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger,
             BlockVersion::MAX,
@@ -500,10 +507,11 @@ mod mint_config_tx_tests {
         let (mint_config_tx4, _) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let (mint_config_tx5, _) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let (mint_config_tx6, _) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
-        let token_id_to_master_minters = HashMap::from_iter(vec![(
+        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
-        )]);
+        )])
+        .unwrap();
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger,
             BlockVersion::MAX,
@@ -590,10 +598,11 @@ mod mint_tx_tests {
         ledger.append_block(&block, &block_contents, None).unwrap();
 
         // Create MintTxManagerImpl
-        let token_id_to_master_minters = HashMap::from_iter(vec![(
+        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
-        )]);
+        )])
+        .unwrap();
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger,
             BlockVersion::MAX,
@@ -646,7 +655,7 @@ mod mint_tx_tests {
         ledger.append_block(&block, &block_contents, None).unwrap();
 
         // Create MintTxManagerImpl
-        let token_id_to_master_minters = HashMap::from_iter(vec![
+        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![
             (
                 token_id_1,
                 SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1),
@@ -655,7 +664,8 @@ mod mint_tx_tests {
                 token_id_2,
                 SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1),
             ),
-        ]);
+        ])
+        .unwrap();
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger,
             BlockVersion::MAX,
@@ -722,7 +732,7 @@ mod mint_tx_tests {
         ledger.append_block(&block, &block_contents, None).unwrap();
 
         // Create MintTxManagerImpl
-        let token_id_to_master_minters = HashMap::from_iter(vec![
+        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![
             (
                 token_id_1,
                 SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1),
@@ -731,7 +741,8 @@ mod mint_tx_tests {
                 token_id_2,
                 SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1),
             ),
-        ]);
+        ])
+        .unwrap();
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger,
             BlockVersion::MAX,
@@ -818,10 +829,11 @@ mod mint_tx_tests {
         ledger.append_block(&block, &block_contents, None).unwrap();
 
         // Create MintTxManagerImpl
-        let token_id_to_master_minters = HashMap::from_iter(vec![(
+        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
-        )]);
+        )])
+        .unwrap();
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger.clone(),
             BlockVersion::MAX,
@@ -930,10 +942,11 @@ mod mint_tx_tests {
         ledger.append_block(&block, &block_contents, None).unwrap();
 
         // Create MintTxManagerImpl
-        let token_id_to_master_minters = HashMap::from_iter(vec![(
+        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
-        )]);
+        )])
+        .unwrap();
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger,
             BlockVersion::MAX,
@@ -1020,10 +1033,11 @@ mod mint_tx_tests {
         ];
 
         // Create MintTxManagerImpl
-        let token_id_to_master_minters = HashMap::from_iter(vec![(
+        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
-        )]);
+        )])
+        .unwrap();
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger,
             BlockVersion::MAX,
@@ -1135,10 +1149,11 @@ mod mint_tx_tests {
         ];
 
         // Create MintTxManagerImpl
-        let token_id_to_master_minters = HashMap::from_iter(vec![(
+        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
-        )]);
+        )])
+        .unwrap();
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger,
             BlockVersion::MAX,

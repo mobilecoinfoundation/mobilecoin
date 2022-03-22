@@ -10,7 +10,7 @@ use mc_attest_enclave_api::Error as AttestEnclaveError;
 use mc_crypto_keys::SignatureError;
 use mc_crypto_message_cipher::CipherError as MessageCipherError;
 use mc_sgx_compat::sync::PoisonError;
-use mc_transaction_core::validation::TransactionValidationError;
+use mc_transaction_core::{mint::MintValidationError, validation::TransactionValidationError};
 use mc_util_serial::{
     decode::Error as RmpDecodeError, encode::Error as RmpEncodeError,
     DecodeError as ProstDecodeError, EncodeError as ProstEncodeError,
@@ -37,6 +37,9 @@ pub enum Error {
 
     /// Malformed transaction: {0}
     MalformedTx(TransactionValidationError),
+
+    /// Malformed minting transaction: {0}
+    MalformedMintingTx(MintValidationError),
 
     /// Invalid membership proof provided by local system
     InvalidLocalMembershipProof,
@@ -123,6 +126,12 @@ impl From<ProstDecodeError> for Error {
 impl From<TransactionValidationError> for Error {
     fn from(src: TransactionValidationError) -> Error {
         Error::MalformedTx(src)
+    }
+}
+
+impl From<MintValidationError> for Error {
+    fn from(src: MintValidationError) -> Error {
+        Error::MalformedMintingTx(src)
     }
 }
 
