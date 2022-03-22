@@ -53,10 +53,12 @@ use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
+    mint::{MintConfigTx, MintTx},
     ring_signature::{KeyImage, Scalar},
+    tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Amount, Block, BlockContents, BlockSignature, TokenId,
+    Amount, Block, BlockContents, BlockSignature, Token, TokenId,
 };
 // Race here refers to, this is thread-safe, first-one-wins behavior, without
 // blocking
@@ -64,8 +66,11 @@ use once_cell::race::OnceBox;
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 
-/// Domain seperator for unified fees transaction private key.
+/// Domain separator for unified fees transaction private key.
 pub const FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG: &str = "mc_fees_output_private_key";
+
+/// Domain separator for minted txouts public keys.
+pub const MINTED_OUTPUT_PRIVATE_KEY_DOMAIN_TAG: &str = "mc_minted_output_private_key";
 
 include!(concat!(env!("OUT_DIR"), "/target_features.rs"));
 
@@ -284,6 +289,48 @@ impl SgxConsensusEnclave {
         }
 
         Ok(transactions)
+    }
+
+    /// Validate a list of MintConfigTxs.
+    fn validate_mint_config_txs(&self, mint_config_txs: &[MintConfigTx]) -> Result<()> {
+        // TODO: iterate over each indivdual transaction and validate it. This requires
+        // the enclave has knowledge of the master minters for each token id.
+        // This validation already happens in untruested, but it will be nice to do it
+        // here as well. This will get implemetend in a follow up PR.
+
+        // Ensure all nonces are unique.
+        let mut seen_nonces = BTreeSet::default();
+        for tx in mint_config_txs {
+            if !seen_nonces.insert(tx.prefix.nonce.clone()) {
+                return Err(Error::FormBlock(format!(
+                    "Duplicate MintConfigTx nonce: {:?}",
+                    tx.prefix.nonce
+                )));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Validate a list of MintTxs.
+    fn validate_mint_txs(&self, mint_txs: &[MintTx]) -> Result<()> {
+        // TODO: iterate over each indivdual transaction and validate it. This requires
+        // the enclave has knowledge of active minting configurations.
+        // This validation already happens in untruested, but it will be nice to do it
+        // here as well. This will get implemetend in a follow up PR.
+
+        // Ensure all nonces are unique.
+        let mut seen_nonces = BTreeSet::default();
+        for tx in mint_txs {
+            if !seen_nonces.insert(tx.prefix.nonce.clone()) {
+                return Err(Error::FormBlock(format!(
+                    "Duplicate MintTx nonce: {:?}",
+                    tx.prefix.nonce
+                )));
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -639,6 +686,9 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 )
             })
             .collect::<Result<Vec<TxOut>>>()?;
+        // Get the list of MintTxs included in the block.
+        self.validate_mint_txs(&inputs.mint_txs)?;
+        let mint_txs = inputs.mint_txs;
 
         // Collect outputs and key images.
         let mut outputs: Vec<TxOut> = Vec::new();
@@ -649,13 +699,50 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         }
         outputs.extend(fee_outputs);
 
+        // Perform minting.
+        for mint_tx in &mint_txs {
+            // One last chance to prevent minting MOB.
+            if mint_tx.prefix.token_id == Mob::ID {
+                return Err(Error::FormBlock("Attempted to mint MOB".into()));
+            }
+
+            let recipient = PublicAddress::new(
+                &mint_tx.prefix.spend_public_key,
+                &mint_tx.prefix.view_public_key,
+            );
+            let output = mint_output(
+                &recipient,
+                MINTED_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.as_bytes(),
+                parent_block,
+                &mint_txs,
+                Amount {
+                    value: mint_tx.prefix.amount,
+                    token_id: TokenId::from(mint_tx.prefix.token_id),
+                },
+            )?;
+
+            outputs.push(output);
+        }
+
         // Sort outputs and key images. This removes ordering information which could be
         // used to infer the per-transaction relationships among outputs and/or
         // key images.
         outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
         key_images.sort();
-        let block_contents = BlockContents::new(key_images, outputs);
 
+        // Get the list of MintConfigTxs included in the block.
+        self.validate_mint_config_txs(&inputs.mint_config_txs)?;
+        let mint_config_txs = inputs.mint_config_txs;
+
+        // We purposefully do not ..Default::default() here so that new block fields
+        // show up as a compilation error until addressed.
+        let block_contents = BlockContents {
+            key_images,
+            outputs,
+            mint_config_txs,
+            mint_txs,
+        };
+        //
         // Form the block.
         let block = Block::new_with_parent(
             config.block_version,

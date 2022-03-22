@@ -153,7 +153,11 @@ mod tests {
                 .map(|block| block.id.clone())
                 .unwrap_or_else(|| BlockID::try_from(&[1u8; 32][..]).unwrap());
 
-            let block_contents = BlockContents::new(vec![key_image.clone()], vec![tx_out.clone()]);
+            let block_contents = BlockContents {
+                key_images: vec![key_image.clone()],
+                outputs: vec![tx_out.clone()],
+                ..Default::default()
+            };
             let block = Block::new(
                 BlockVersion::ONE,
                 &parent_block_id,

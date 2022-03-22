@@ -30,6 +30,7 @@ use mc_common::ResponderId;
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, RistrettoPublic, X25519Public};
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_transaction_core::{
+    mint::{MintConfigTx, MintTx},
     ring_signature::KeyImage,
     tx::{Tx, TxHash, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockSignature, TokenId,
@@ -228,6 +229,12 @@ pub struct FormBlockInputs {
     /// The original transactions (the ones that are used to move tokens)
     pub well_formed_encrypted_txs_with_proofs:
         Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>,
+
+    /// Updating minting configuration transactions
+    pub mint_config_txs: Vec<MintConfigTx>,
+
+    /// Minting transactions
+    pub mint_txs: Vec<MintTx>,
 }
 
 /// The API for interacting with a consensus node's enclave.
