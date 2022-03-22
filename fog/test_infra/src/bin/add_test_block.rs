@@ -100,13 +100,17 @@ fn main() {
     let fog_pubkey = RistrettoPublic::try_from(&config.fog_pubkey)
         .expect("Could not parse fog_pubkey as Ristretto");
 
-    // Read user root entropy keys from disk
-    let root_entropies = mc_util_keyfile::keygen::read_default_root_entropies(config.keys)
-        .expect("Could not read root identity files");
-    assert_ne!(0, root_entropies.len());
+    // Read user slip10 identities from disk
+    let slip10_identities = mc_util_keyfile::keygen::read_default_slip10_identities(config.keys)
+        .expect("Could not read slip10 identity files");
+    assert_ne!(0, slip10_identities.len());
 
     // Create account keys from this
-    let account_keys: Vec<AccountKey> = root_entropies.iter().map(AccountKey::from).collect();
+    let account_keys: Vec<AccountKey> = slip10_identities
+        .iter()
+        .map(AccountKey::try_from)
+        .collect::<Result<Vec<AccountKey>, _>>()
+        .expect("Could not convert private key file to account key");
 
     // Open the ledger db
     let mut ledger = LedgerDB::open(&config.ledger).expect("Could not open ledger db");

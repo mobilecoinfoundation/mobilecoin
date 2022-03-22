@@ -154,7 +154,7 @@ class RemoteWallet:
         with grpc.insecure_channel(self.remote_wallet_host_port) as channel:
             stub = remote_wallet_pb2_grpc.RemoteWalletApiStub(channel)
             response = self._retrying_grpc_request(stub.FreshBalanceCheck, remote_wallet_pb2.FreshBalanceCheckRequest(
-                root_entropy=bytes(key['root_entropy']),
+                slip10_key=bytes.fromhex(key['slip10_key']),
                 fog_uri=self.fog_url,
             ))
 

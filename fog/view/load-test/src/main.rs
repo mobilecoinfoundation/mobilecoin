@@ -12,6 +12,7 @@ use mc_fog_view_connection::FogViewGrpcClient;
 use mc_fog_view_protocol::FogViewConnection;
 use mc_util_grpc::GrpcRetryConfig;
 use std::{
+    convert::TryFrom,
     path::PathBuf,
     str::FromStr,
     sync::{
@@ -83,7 +84,8 @@ fn main() {
 
     let root_identity =
         mc_util_keyfile::read_keyfile(config.keyfile).expect("Could not read private key file");
-    let account_key = AccountKey::from(&root_identity);
+    let account_key = AccountKey::try_from(&root_identity)
+        .expect("Could not convert private key file to account key");
 
     let num_reqs = Arc::new(AtomicU64::new(0));
     for _ in 0..config.num_workers {

@@ -1,39 +1,39 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 mod json_format;
-
+pub use json_format::Slip10IdentityJson;
 pub mod config;
 pub mod keygen;
 
-use json_format::RootIdentityJson;
-use mc_account_keys::{PublicAddress, RootIdentity};
+use mc_account_keys::PublicAddress;
 use mc_api::printable::PrintableWrapper;
 use std::{convert::TryInto, fs::File, io::prelude::*, path::Path};
 
-/// Write user root identity to disk
+/// Write user slip10 identity to disk
 pub fn write_keyfile<P: AsRef<Path>>(
     path: P,
-    root_id: &RootIdentity,
+    id: &Slip10IdentityJson,
 ) -> Result<(), std::io::Error> {
-    let json = RootIdentityJson::from(root_id);
-    File::create(path)?.write_all(&serde_json::to_vec(&json).map_err(to_io_error)?)?;
+    File::create(path)?.write_all(&serde_json::to_vec(&id).map_err(to_io_error)?)?;
     Ok(())
 }
 
-/// Read user root identity from disk
-pub fn read_keyfile<P: AsRef<Path>>(path: P) -> Result<RootIdentity, std::io::Error> {
+/// Read user slip10 identity from disk
+pub fn read_keyfile<P: AsRef<Path>>(path: P) -> Result<Slip10IdentityJson, std::io::Error> {
     read_keyfile_data(&mut File::open(path)?)
 }
 
 /// Read user root identity from any implementor of `Read`
-pub fn read_keyfile_data<R: std::io::Read>(buffer: &mut R) -> Result<RootIdentity, std::io::Error> {
+pub fn read_keyfile_data<R: std::io::Read>(
+    buffer: &mut R,
+) -> Result<Slip10IdentityJson, std::io::Error> {
     let data = {
         let mut data = Vec::new();
         buffer.read_to_end(&mut data)?;
         data
     };
-    let result: RootIdentityJson = serde_json::from_slice(&data).map_err(to_io_error)?;
-    Ok(RootIdentity::from(result))
+    let result: Slip10IdentityJson = serde_json::from_slice(&data).map_err(to_io_error)?;
+    Ok(result)
 }
 
 /// Write user public address to disk
@@ -136,7 +136,6 @@ mod testing {
     use super::*;
 
     use mc_account_keys::AccountKey;
-    use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use tempdir::TempDir;
 
@@ -146,7 +145,7 @@ mod testing {
         let dir = TempDir::new("test").unwrap();
 
         {
-            let entropy = RootIdentity::from_random(&mut rng);
+            let entropy = Slip10IdentityJson::random(&mut rng);
             let f1 = dir.path().join("f1");
             write_keyfile(&f1, &entropy).unwrap();
             let result = read_keyfile(&f1).unwrap();
@@ -154,7 +153,7 @@ mod testing {
         }
 
         {
-            let entropy = RootIdentity::random_with_fog(
+            let entropy = Slip10IdentityJson::random_with_fog(
                 &mut rng,
                 "fog://foobar.com",
                 "",

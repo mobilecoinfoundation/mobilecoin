@@ -5162,6 +5162,7 @@ dependencies = [
  "base64 0.13.0",
  "hex",
  "mc-account-keys",
+ "mc-account-keys-slip10",
  "mc-api",
  "mc-crypto-rand",
  "mc-util-from-random",

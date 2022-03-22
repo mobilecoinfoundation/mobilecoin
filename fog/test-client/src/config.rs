@@ -9,7 +9,7 @@ use mc_util_grpc::GrpcRetryConfig;
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::{AdminUri, ConsensusClientUri};
 use serde::Serialize;
-use std::{path::PathBuf, time::Duration};
+use std::{convert::TryFrom, path::PathBuf, time::Duration};
 use structopt::StructOpt;
 
 /// StructOpt for test-client binary
@@ -135,12 +135,13 @@ impl TestClientConfig {
 
         // Load the key files
         log::info!(logger, "Loading account keys from {:?}", key_dir);
-        mc_util_keyfile::keygen::read_default_root_entropies(&key_dir)
+        mc_util_keyfile::keygen::read_default_slip10_identities(&key_dir)
             .unwrap()
             .iter()
             .take(self.num_clients)
-            .map(AccountKey::from)
-            .collect()
+            .map(AccountKey::try_from)
+            .collect::<Result<_, _>>()
+            .expect("Could not decode slip10 account key")
     }
 }
 
