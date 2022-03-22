@@ -748,7 +748,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         key_images.sort();
 
         // Get the list of MintConfigTxs included in the block.
-        self.validate_mint_config_txs(&inputs.mint_config_txs, parent_block.index, config)?;
+        self.validate_mint_config_txs(&inputs.mint_config_txs, parent_block.index + 1, config)?;
         let mint_config_txs = inputs.mint_config_txs;
 
         // We purposefully do not ..Default::default() here so that new block fields
