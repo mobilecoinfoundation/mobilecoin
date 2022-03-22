@@ -9,8 +9,12 @@ use mc_util_grpc::GrpcRetryConfig;
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::{AdminUri, ConsensusClientUri};
 use serde::Serialize;
-use std::{convert::TryFrom, path::PathBuf, time::Duration};
+use std::{path::PathBuf, time::Duration};
 use structopt::StructOpt;
+
+// Hack to work around Vec special handling in structopt
+#[allow(dead_code)]
+type VecBytes = Vec<u8>;
 
 /// StructOpt for test-client binary
 ///
@@ -135,13 +139,11 @@ impl TestClientConfig {
 
         // Load the key files
         log::info!(logger, "Loading account keys from {:?}", key_dir);
-        mc_util_keyfile::keygen::read_default_slip10_identities(&key_dir)
+        mc_util_keyfile::keygen::read_default_mnemonics(&key_dir)
             .unwrap()
-            .iter()
+            .into_iter()
             .take(self.num_clients)
-            .map(AccountKey::try_from)
-            .collect::<Result<_, _>>()
-            .expect("Could not decode slip10 account key")
+            .collect::<_>()
     }
 }
 

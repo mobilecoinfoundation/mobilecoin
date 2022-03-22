@@ -120,26 +120,18 @@ fn main() {
 
     let config = Config::from_args();
 
-    // Read account root_entropies from disk
-    let src_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_slip10_identities(
+    // Read account keys from disk
+    let src_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_mnemonics(
         config.sample_data_dir.join(Path::new("keys")),
     )
-    .expect("Could not read default slip10 identities from keys")
-    .iter()
-    .map(AccountKey::try_from)
-    .collect::<Result<_, _>>()
-    .expect("could not convert slip10 identity to account key");
+    .expect("Could not read default mnemonics from keys");
 
-    let dest_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_slip10_identities(
+    let dest_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_mnemonics(
         config
             .sample_data_dir
             .join(Path::new(&config.fog_keys_subdir)),
     )
-    .expect("Could not read fog keys")
-    .iter()
-    .map(AccountKey::try_from)
-    .collect::<Result<_, _>>()
-    .expect("could not convert slip10 identity to account key");
+    .expect("Could not read fog keys");
 
     // Open the ledger_db to process the bootstrapped ledger
     log::info!(logger, "Loading ledger");

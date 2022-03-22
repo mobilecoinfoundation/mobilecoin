@@ -5,19 +5,36 @@
 //! stdout
 
 use mc_account_keys::AccountKey;
-use mc_util_keyfile::Slip10IdentityJson;
-use std::convert::TryFrom;
+use std::{
+    env, fs, io,
+    io::{Cursor, Read},
+};
 
-fn main() {
-    let slip10_id: Slip10IdentityJson = {
-        let args: Vec<String> = std::env::args().collect();
-        match args.get(1) {
-            None => mc_util_keyfile::read_keyfile_data(&mut std::io::stdin())
-                .unwrap_or_else(|_| panic!("Failed when reading from stdin")),
-            Some(arg) => mc_util_keyfile::read_keyfile(arg)
-                .unwrap_or_else(|_| panic!("Failed when reading from {}", arg)),
-        }
+fn print_keyfile_bytes(bytes: Vec<u8>) {
+    let acct_key = if let Ok(identity) =
+        mc_util_keyfile::read_root_entropy_keyfile_data(Cursor::new(bytes.as_slice()))
+    {
+        println!("{:?}", identity);
+        AccountKey::from(&identity)
+    } else {
+        mc_util_keyfile::read_keyfile_data(Cursor::new(bytes.as_slice()))
+            .expect("Could not parse key file as either mnemonic or legacy entropy")
     };
-    let acct_key = AccountKey::try_from(&slip10_id).expect("Failed to build account key");
-    println!("{:?}\n{:?}", slip10_id, acct_key,);
+
+    println!("{:?}", acct_key);
+}
+fn main() {
+    let mut n_files = 0usize;
+    for file_str in env::args() {
+        print_keyfile_bytes(fs::read(file_str).expect("Could not read file"));
+        n_files += 1;
+    }
+
+    if n_files == 0 {
+        let mut buf = Vec::with_capacity(256);
+        io::stdin()
+            .read_to_end(&mut buf)
+            .expect("No files provided, and no stdin");
+        print_keyfile_bytes(buf);
+    }
 }

@@ -25,7 +25,7 @@
 //! is returned.
 
 use core::convert::TryFrom;
-use mc_account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX};
+use mc_account_keys::DEFAULT_SUBADDRESS_INDEX;
 use mc_common::logger::create_root_logger;
 use mc_crypto_hashes::{Blake2b256, Digest};
 use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate, RistrettoPublic};
@@ -100,17 +100,10 @@ fn main() {
     let fog_pubkey = RistrettoPublic::try_from(&config.fog_pubkey)
         .expect("Could not parse fog_pubkey as Ristretto");
 
-    // Read user slip10 identities from disk
-    let slip10_identities = mc_util_keyfile::keygen::read_default_slip10_identities(config.keys)
+    // Read account keys from disk
+    let account_keys = mc_util_keyfile::keygen::read_default_mnemonics(config.keys)
         .expect("Could not read slip10 identity files");
-    assert_ne!(0, slip10_identities.len());
-
-    // Create account keys from this
-    let account_keys: Vec<AccountKey> = slip10_identities
-        .iter()
-        .map(AccountKey::try_from)
-        .collect::<Result<Vec<AccountKey>, _>>()
-        .expect("Could not convert private key file to account key");
+    assert_ne!(0, account_keys.len());
 
     // Open the ledger db
     let mut ledger = LedgerDB::open(&config.ledger).expect("Could not open ledger db");
