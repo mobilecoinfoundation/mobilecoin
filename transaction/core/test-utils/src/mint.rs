@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 //! Test helpers for minting transactions
 
+use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{Ed25519Pair, RistrettoPublic, Signer};
 use mc_crypto_multisig::{MultiSig, SignerSet};
 use mc_crypto_rand::{CryptoRng, RngCore};
@@ -89,11 +90,13 @@ pub fn create_mint_config_tx(
 /// * `token_id` - The token id to use.
 /// * `signers` - The signing keys to sign the transaction with.
 /// * `amount` - The amount to mint.
+/// * `recipient` - The recipient of the minting.
 /// * `rng` - Randomness source.
-pub fn create_mint_tx(
+pub fn create_mint_tx_to_recipient(
     token_id: TokenId,
     signers: &[Ed25519Pair],
     amount: u64,
+    recipient: &PublicAddress,
     rng: &mut (impl RngCore + CryptoRng),
 ) -> MintTx {
     let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
@@ -102,8 +105,8 @@ pub fn create_mint_tx(
     let prefix = MintTxPrefix {
         token_id: *token_id,
         amount,
-        view_public_key: RistrettoPublic::from_random(rng),
-        spend_public_key: RistrettoPublic::from_random(rng),
+        view_public_key: *recipient.view_public_key(),
+        spend_public_key: *recipient.spend_public_key(),
         nonce,
         tombstone_block: 10,
     };
@@ -117,4 +120,24 @@ pub fn create_mint_tx(
     let signature = MultiSig::new(signatures);
 
     MintTx { prefix, signature }
+}
+
+/// Generate a random, valid mint tx
+///
+/// # Arguments
+/// * `token_id` - The token id to use.
+/// * `signers` - The signing keys to sign the transaction with.
+/// * `amount` - The amount to mint.
+/// * `rng` - Randomness source.
+pub fn create_mint_tx(
+    token_id: TokenId,
+    signers: &[Ed25519Pair],
+    amount: u64,
+    rng: &mut (impl RngCore + CryptoRng),
+) -> MintTx {
+    let public_address = PublicAddress::new(
+        &RistrettoPublic::from_random(rng),
+        &RistrettoPublic::from_random(rng),
+    );
+    create_mint_tx_to_recipient(token_id, signers, amount, &public_address, rng)
 }

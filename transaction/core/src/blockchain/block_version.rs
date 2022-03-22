@@ -91,6 +91,11 @@ impl BlockVersion {
     pub fn validate_transaction_outputs_are_sorted(&self) -> bool {
         self.0 > 3
     }
+
+    /// mint transactions are introduced in block version 3
+    pub fn mint_transactions_are_supported(&self) -> bool {
+        self.0 >= 3
+    }
 }
 
 impl Deref for BlockVersion {

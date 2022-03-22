@@ -821,14 +821,18 @@ fn mint_output<T: Digestible>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
     use mc_common::logger::test_with_logger;
+    use mc_consensus_enclave_api::MasterMintersMap;
+    use mc_crypto_multisig::SignerSet;
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{
         tokens::Mob, tx::TxOutMembershipHash, validation::TransactionValidationError, BlockVersion,
         Token,
     };
     use mc_transaction_core_test_utils::{
-        create_ledger, create_transaction, initialize_ledger, AccountKey,
+        create_ledger, create_mint_config_tx_and_signers, create_mint_tx_to_recipient,
+        create_transaction, initialize_ledger, AccountKey,
     };
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
@@ -1699,6 +1703,142 @@ mod tests {
                     "Expected a BlockVersion error due to config.block_version being less than parent"
                 ),
             }
+        }
+    }
+
+    #[test_with_logger]
+    fn form_block_can_mint_new_tokens(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+
+        let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (_mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+
+        let recipient1 = AccountKey::random(&mut rng);
+        let recipient2 = AccountKey::random(&mut rng);
+
+        let mint_tx1 = create_mint_tx_to_recipient(
+            token_id1,
+            &signers1,
+            12,
+            &recipient1.default_subaddress(),
+            &mut rng,
+        );
+        let mint_tx2 = create_mint_tx_to_recipient(
+            token_id2,
+            &signers2,
+            200,
+            &recipient2.default_subaddress(),
+            &mut rng,
+        );
+
+        let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set2 = SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
+
+        let master_minters_map =
+            MasterMintersMap::try_from_iter([(token_id1, signer_set1), (token_id2, signer_set2)])
+                .unwrap();
+
+        for block_version in BlockVersion::iterator() {
+            if !block_version.mint_transactions_are_supported() {
+                continue;
+            }
+
+            let enclave = SgxConsensusEnclave::new(logger.clone());
+            let blockchain_config = BlockchainConfig {
+                block_version,
+                master_minters_map: master_minters_map.clone(),
+                ..Default::default()
+            };
+            enclave
+                .enclave_init(
+                    &Default::default(),
+                    &Default::default(),
+                    &None,
+                    blockchain_config,
+                )
+                .unwrap();
+
+            // Initialize a ledger.
+            let sender = AccountKey::random(&mut rng);
+            let mut ledger = create_ledger();
+            let n_blocks = 3;
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+            // Form block
+            let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+            let root_element = ledger.get_root_tx_out_membership_element().unwrap();
+
+            let (block, block_contents, signature) = enclave
+                .form_block(
+                    &parent_block,
+                    FormBlockInputs {
+                        mint_txs: vec![mint_tx1.clone(), mint_tx2.clone()],
+                        ..Default::default()
+                    },
+                    &root_element,
+                )
+                .unwrap();
+
+            // Verify signature
+            assert_eq!(
+                signature.signer(),
+                &enclave
+                    .ake
+                    .get_identity()
+                    .signing_keypair
+                    .lock()
+                    .unwrap()
+                    .public_key()
+            );
+
+            assert!(signature.verify(&block).is_ok());
+
+            // The block contents should contain the two mint txs.
+            assert_eq!(
+                block_contents.mint_txs,
+                vec![mint_tx1.clone(), mint_tx2.clone()]
+            );
+
+            // There should be no key images or mint config txs
+            assert!(block_contents.key_images.is_empty());
+            assert!(block_contents.mint_config_txs.is_empty());
+
+            // The block contents should contain the minted tx outs.
+            assert_eq!(block_contents.outputs.len(), 2);
+
+            let output1 = block_contents
+                .outputs
+                .iter()
+                .find(|output| {
+                    output
+                        .view_key_match(&recipient1.view_private_key())
+                        .is_ok()
+                })
+                .unwrap();
+            let (amount, _) = output1
+                .view_key_match(&recipient1.view_private_key())
+                .unwrap();
+            assert_eq!(amount.value, 12);
+            assert_eq!(amount.token_id, token_id1);
+
+            let output2 = block_contents
+                .outputs
+                .iter()
+                .find(|output| {
+                    output
+                        .view_key_match(&recipient2.view_private_key())
+                        .is_ok()
+                })
+                .unwrap();
+            let (amount, _) = output2
+                .view_key_match(&recipient2.view_private_key())
+                .unwrap();
+            assert_eq!(amount.value, 200);
+            assert_eq!(amount.token_id, token_id2);
         }
     }
 }
