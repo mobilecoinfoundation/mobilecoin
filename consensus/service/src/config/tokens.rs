@@ -299,20 +299,13 @@ impl TokensConfig {
     pub fn token_id_to_master_minters(&self) -> Result<MasterMintersMap, ConsensusServiceError> {
         self.validate()?;
 
-        Ok(
-            MasterMintersMap::try_from_iter(self.tokens.iter().filter_map(|token_config| {
-                token_config
-                    .master_minters
-                    .as_ref()
-                    .map(|master_minters| (token_config.token_id, master_minters.clone()))
-            }))
-            .map_err(|err| {
-                ConsensusServiceError::Configuration(format!(
-                    "MasterMintersMap: {}",
-                    err.to_string()
-                ))
-            })?,
-        )
+        MasterMintersMap::try_from_iter(self.tokens.iter().filter_map(|token_config| {
+            token_config
+                .master_minters
+                .as_ref()
+                .map(|master_minters| (token_config.token_id, master_minters.clone()))
+        }))
+        .map_err(|err| ConsensusServiceError::Configuration(format!("MasterMintersMap: {}", err)))
     }
 }
 
