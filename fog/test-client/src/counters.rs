@@ -85,6 +85,12 @@ lazy_static::lazy_static! {
     /// Number of times that the test failed because a balance check operation failed
     pub static ref CHECK_BALANCE_ERROR_COUNT: IntCounter = OP_COUNTERS.counter("check_balance_error_count");
 
+    /// Number of times that the test failed because a get fee operation failed
+    pub static ref GET_FEE_ERROR_COUNT: IntCounter = OP_COUNTERS.counter("get_fee_error_count");
+
+    /// Number of times that the test failed because the token id is not configured
+    pub static ref TOKEN_NOT_CONFIGURED_ERROR_COUNT: IntCounter = OP_COUNTERS.counter("token_not_configured_error_count");
+
     /// Number of times that the test failed because a build tx operation failed
     pub static ref BUILD_TX_ERROR_COUNT: IntCounter = OP_COUNTERS.counter("build_tx_error_count");
 

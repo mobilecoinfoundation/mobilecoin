@@ -8,6 +8,7 @@ use crate::{
     byzantine_ledger::ByzantineLedger,
     config::Config,
     counters,
+    mint_tx_manager::MintTxManager,
     peer_keepalive::PeerKeepalive,
     tx_manager::TxManager,
 };
@@ -101,6 +102,7 @@ pub struct ConsensusService<
     E: ConsensusEnclave + Clone + Send + Sync + 'static,
     R: RaClient + Send + Sync + 'static,
     TXM: TxManager + Clone + Send + Sync + 'static,
+    MTXM: MintTxManager + Clone + Send + Sync + 'static,
 > {
     config: Config,
     local_node_id: NodeID,
@@ -121,6 +123,7 @@ pub struct ConsensusService<
     // and the client and peer api services, via the ProposeTxCallback
     broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
     tx_manager: Arc<TXM>,
+    mint_tx_manager: Arc<MTXM>,
     // Option is only here because we need a way to drop the PeerKeepalive without mutex,
     // if we want to implement Stop as currently concieved
     peer_keepalive: Option<Arc<PeerKeepalive>>,
@@ -139,7 +142,8 @@ impl<
         E: ConsensusEnclave + Clone + Send + Sync + 'static,
         R: RaClient + Send + Sync + 'static,
         TXM: TxManager + Clone + Send + Sync + 'static,
-    > ConsensusService<E, R, TXM>
+        MTXM: MintTxManager + Clone + Send + Sync + 'static,
+    > ConsensusService<E, R, TXM, MTXM>
 {
     pub fn new<TP: TimeProvider + 'static>(
         config: Config,
@@ -147,6 +151,7 @@ impl<
         ledger_db: LedgerDB,
         ra_client: R,
         tx_manager: Arc<TXM>,
+        mint_tx_manager: Arc<MTXM>,
         time_provider: Arc<TP>,
         logger: Logger,
     ) -> Self {
@@ -224,6 +229,7 @@ impl<
             peer_manager,
             broadcaster,
             tx_manager,
+            mint_tx_manager,
             peer_keepalive,
             client_authenticator,
 
@@ -329,6 +335,7 @@ impl<
                 self.create_scp_client_value_sender_fn(),
                 Arc::new(self.ledger_db.clone()),
                 self.tx_manager.clone(),
+                self.mint_tx_manager.clone(),
                 self.create_is_serving_user_requests_fn(),
                 self.client_authenticator.clone(),
                 self.logger.clone(),
@@ -496,6 +503,7 @@ impl<
                 self.peer_manager.clone(),
                 self.ledger_db.clone(),
                 self.tx_manager.clone(),
+                self.mint_tx_manager.clone(),
                 self.broadcaster.clone(),
                 self.config.msg_signer_key.clone(),
                 self.config.network().tx_source_urls,
@@ -601,37 +609,46 @@ impl<
 
         Arc::new(move |scp_value, origin_node, relayed_from| {
             let origin_node = origin_node.unwrap_or(&local_node_id);
-            let ConsensusValue::TxHash(tx_hash) = scp_value;
-
-            // Broadcast to peers.
-            //
-            // Nodes always relay transactions sent to them by clients to all their peers.
-            // As such, in mesh network configurations there is no need to relay
-            // transactions received from other peers since the originating node
-            // will already take care of sending the transaction to all
-            // of it's peers.
-            // However, in non-mesh configurations, network operators might want to
-            // selectively have incoming transactions from certain peers be
-            // relayed to other peers in order to improve consensus time.
-            if origin_node == &local_node_id || relay_from_nodes.contains(&origin_node.responder_id)
-            {
-                if let Some(encrypted_tx) = tx_manager.get_encrypted_tx(&tx_hash) {
-                    broadcaster
-                        .lock()
-                        .expect("lock poisoned")
-                        .broadcast_propose_tx_msg(
-                            &tx_hash,
-                            encrypted_tx,
-                            origin_node,
-                            relayed_from.unwrap_or(&local_node_id.responder_id),
-                        );
-                } else {
-                    // If a value was submitted to `scp_client_value_sender` that means it
-                    // should've found it's way into the cache. Suddenly not having it there
-                    // indicates something is broken, so for the time being we will panic.
-                    panic!("tx hash {} expected to be in cache but wasn't", tx_hash);
+            match scp_value {
+                ConsensusValue::TxHash(tx_hash) => {
+                    // Broadcast to peers.
+                    //
+                    // Nodes always relay transactions sent to them by clients to all their peers.
+                    // As such, in mesh network configurations there is no need to relay
+                    // transactions received from other peers since the originating node
+                    // will already take care of sending the transaction to all
+                    // of it's peers.
+                    // However, in non-mesh configurations, network operators might want to
+                    // selectively have incoming transactions from certain peers be
+                    // relayed to other peers in order to improve consensus time.
+                    if origin_node == &local_node_id
+                        || relay_from_nodes.contains(&origin_node.responder_id)
+                    {
+                        if let Some(encrypted_tx) = tx_manager.get_encrypted_tx(&tx_hash) {
+                            broadcaster
+                                .lock()
+                                .expect("lock poisoned")
+                                .broadcast_propose_tx_msg(
+                                    &tx_hash,
+                                    encrypted_tx,
+                                    origin_node,
+                                    relayed_from.unwrap_or(&local_node_id.responder_id),
+                                );
+                        } else {
+                            // If a value was submitted to `scp_client_value_sender` that means it
+                            // should've found it's way into the cache. Suddenly not having it there
+                            // indicates something is broken, so for the time being we will panic.
+                            panic!("tx hash {} expected to be in cache but wasn't", tx_hash);
+                        }
+                    }
                 }
-            }
+
+                ConsensusValue::MintTx(_) | ConsensusValue::MintConfigTx(_) => {
+                    // MintTxs and MintConfigTxs do not need to be broadcasted
+                    // to peers, they will learn about them
+                    // directly via SCP messages.
+                }
+            };
 
             // Feed into ByzantineLedger.
             let timestamp = if origin_node == &local_node_id {
@@ -751,7 +768,8 @@ impl<
         E: ConsensusEnclave + Clone + Send + Sync + 'static,
         R: RaClient + Send + Sync + 'static,
         TXM: TxManager + Clone + Send + Sync + 'static,
-    > Drop for ConsensusService<E, R, TXM>
+        MTXM: MintTxManager + Clone + Send + Sync + 'static,
+    > Drop for ConsensusService<E, R, TXM, MTXM>
 {
     fn drop(&mut self) {
         let _ = self.stop();

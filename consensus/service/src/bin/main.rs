@@ -14,6 +14,7 @@ use mc_consensus_enclave::{BlockchainConfig, ConsensusServiceSgxEnclave, ENCLAVE
 use mc_consensus_service::{
     config::Config,
     consensus_service::{ConsensusService, ConsensusServiceError},
+    mint_tx_manager::MintTxManagerImpl,
     tx_manager::TxManagerImpl,
     validators::DefaultTxManagerUntrustedInterfaces,
 };
@@ -107,12 +108,23 @@ fn main() -> Result<(), ConsensusServiceError> {
         logger.clone(),
     );
 
+    let mint_tx_manager = MintTxManagerImpl::new(
+        local_ledger.clone(),
+        config.block_version,
+        config
+            .tokens()
+            .token_id_to_master_minters()
+            .expect("failed getting token_id_to_master_minters"),
+        logger.clone(),
+    );
+
     let mut consensus_service = ConsensusService::new(
         config,
         enclave,
         local_ledger,
         ias_client,
         Arc::new(tx_manager),
+        Arc::new(mint_tx_manager),
         Arc::new(SystemTimeProvider::default()),
         logger.clone(),
     );
