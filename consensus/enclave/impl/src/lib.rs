@@ -1909,4 +1909,154 @@ mod tests {
             assert!(form_block_result.is_err());
         }
     }
+
+    #[test_with_logger]
+    fn form_block_accepts_valid_mint_config_txs(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+
+        let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
+        let signer_set2 = SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
+
+        let master_minters_map =
+            MasterMintersMap::try_from_iter([(token_id1, signer_set1), (token_id2, signer_set2)])
+                .unwrap();
+
+        for block_version in BlockVersion::iterator() {
+            if !block_version.mint_transactions_are_supported() {
+                continue;
+            }
+
+            let enclave = SgxConsensusEnclave::new(logger.clone());
+            let blockchain_config = BlockchainConfig {
+                block_version,
+                master_minters_map: master_minters_map.clone(),
+                ..Default::default()
+            };
+            enclave
+                .enclave_init(
+                    &Default::default(),
+                    &Default::default(),
+                    &None,
+                    blockchain_config,
+                )
+                .unwrap();
+
+            // Initialize a ledger.
+            let sender = AccountKey::random(&mut rng);
+            let mut ledger = create_ledger();
+            let n_blocks = 3;
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+            // Form block
+            let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+            let root_element = ledger.get_root_tx_out_membership_element().unwrap();
+
+            let (block, block_contents, signature) = enclave
+                .form_block(
+                    &parent_block,
+                    FormBlockInputs {
+                        mint_config_txs: vec![mint_config_tx1.clone(), mint_config_tx2.clone()],
+                        ..Default::default()
+                    },
+                    &root_element,
+                )
+                .unwrap();
+
+            // Verify signature
+            assert_eq!(
+                signature.signer(),
+                &enclave
+                    .ake
+                    .get_identity()
+                    .signing_keypair
+                    .lock()
+                    .unwrap()
+                    .public_key()
+            );
+
+            assert!(signature.verify(&block).is_ok());
+
+            // The block contents should contain the two mint config txs.
+            assert_eq!(
+                block_contents.mint_config_txs,
+                vec![mint_config_tx1.clone(), mint_config_tx2.clone()]
+            );
+
+            // There should be no outputs, key images or mint txs
+            assert!(block_contents.outputs.is_empty());
+            assert!(block_contents.key_images.is_empty());
+            assert!(block_contents.mint_txs.is_empty());
+        }
+    }
+
+    #[test_with_logger]
+    fn form_block_rejects_mint_config_tx_for_unknown_token(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+
+        let (mint_config_tx1, _signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (_mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+
+        let signer_set2 = SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
+
+        let master_minters_map =
+            MasterMintersMap::try_from_iter([(token_id2, signer_set2)]).unwrap();
+
+        for block_version in BlockVersion::iterator() {
+            if !block_version.mint_transactions_are_supported() {
+                continue;
+            }
+
+            let enclave = SgxConsensusEnclave::new(logger.clone());
+            let blockchain_config = BlockchainConfig {
+                block_version,
+                master_minters_map: master_minters_map.clone(),
+                ..Default::default()
+            };
+            enclave
+                .enclave_init(
+                    &Default::default(),
+                    &Default::default(),
+                    &None,
+                    blockchain_config,
+                )
+                .unwrap();
+
+            // Initialize a ledger.
+            let sender = AccountKey::random(&mut rng);
+            let mut ledger = create_ledger();
+            let n_blocks = 3;
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+            // Form block
+            let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+            let root_element = ledger.get_root_tx_out_membership_element().unwrap();
+
+            let form_block_result = enclave.form_block(
+                &parent_block,
+                FormBlockInputs {
+                    mint_config_txs: vec![mint_config_tx1.clone()],
+                    ..Default::default()
+                },
+                &root_element,
+            );
+
+            assert_eq!(
+                form_block_result,
+                Err(Error::MalformedMintingTx(
+                    MintValidationError::NoMasterMinters(TokenId::from(1))
+                ))
+            )
+        }
+    }
 }
