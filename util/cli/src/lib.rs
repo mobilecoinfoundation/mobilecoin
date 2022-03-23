@@ -24,8 +24,8 @@ pub trait ParserWithBuildInfo: Parser {
         command
     }
 
-    /// Similar to clap::Command::parse(), but will update the version on the
-    /// clap::Command to have build information.
+    /// Similar to clap::Command::parse(), augmenting the version on the
+    /// clap::Command with build information from [mc_util_build_info].
     fn parse() -> Self {
         let mut build_info = String::new();
         let command = Self::command_with_build_info(&mut build_info);
