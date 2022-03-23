@@ -218,6 +218,26 @@ impl<'a> TryFromFfi<&McBuffer<'a>> for [u8; 64] {
     }
 }
 
+impl<'a> TryFromFfi<&McBuffer<'a>> for &'a [u8; 66] {
+    type Error = LibMcError;
+
+    #[inline]
+    fn try_from_ffi(src: &McBuffer<'a>) -> Result<Self, LibMcError> {
+        let src = src.as_slice_of_len(66)?;
+        // SAFETY: ok to unwrap because we just checked length
+        Ok(<&[u8; 66]>::try_from(src).unwrap())
+    }
+}
+
+impl<'a> TryFromFfi<&McBuffer<'a>> for [u8; 66] {
+    type Error = LibMcError;
+
+    #[inline]
+    fn try_from_ffi(src: &McBuffer<'a>) -> Result<Self, LibMcError> {
+        Ok(*<&'a [u8; 66]>::try_from_ffi(src)?)
+    }
+}
+
 impl<'a> FfiTryFrom<size_t> for ssize_t {
     type Error = LibMcError;
 

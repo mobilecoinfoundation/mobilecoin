@@ -18,7 +18,7 @@ use mc_transaction_core::{
     onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
     ring_signature::KeyImage,
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    Amount, BlockVersion, CompressedCommitment,
+    Amount, BlockVersion, EncryptedMemo, CompressedCommitment,
 };
 use std::convert::TryInto;
 
@@ -40,6 +40,7 @@ use mc_transaction_std::{
     MemoPayload,
     ChangeDestination
 };
+
 //use mc_transaction_std::{InputCredentials, NoMemoBuilder, TransactionBuilder, ChangeDestination};
 use mc_util_ffi::*;
 
@@ -1129,20 +1130,20 @@ pub extern "C" fn mc_memo_sender_with_payment_request_memo_get_payment_request_i
 
 #[no_mangle]
 pub extern "C" fn mc_memo_decrypt_e_memo_payload(
-    tx_out_proto_bytes: FfiRefPtr<McBuffer>,
+    encrypted_memo: FfiRefPtr<McBuffer>,
+    tx_out_public_key: FfiRefPtr<McBuffer>,
     account_key: FfiRefPtr<McAccountKey>,
     out_memo_payload: FfiMutPtr<McMutableBuffer>,
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
 ) -> bool {
     ffi_boundary_with_error(out_error, || {
-        let tx_out: TxOut = mc_util_serial::decode(tx_out_proto_bytes.as_slice())
-            .expect("tx_out_proto_bytes could not be converted to TxOut");
+        let tx_out_public_key = RistrettoPublic::try_from_ffi(&tx_out_public_key)?;
         let account_key_obj = AccountKey::try_from_ffi(&account_key).expect("account_key is invalid");
-        let tx_out_public_key: RistrettoPublic = RistrettoPublic::try_from(&tx_out.public_key)?;
+        let e_memo = EncryptedMemo::try_from_ffi(&encrypted_memo)?;
         let shared_secret =
             get_tx_out_shared_secret(&*account_key_obj.view_private_key(), &tx_out_public_key);
 
-        let memo_payload: MemoPayload = tx_out.decrypt_memo(&shared_secret);
+        let memo_payload: MemoPayload = e_memo.decrypt(&shared_secret);
         //let memo_payload_generic_array: [u8; 66] = memo_payload.clone().into();
         let memo_payload_generic_array: GenericArray<u8, U66> = memo_payload.into();
         //let memo_bytes: [u8; 64] = memo.clone().into();
@@ -1153,7 +1154,6 @@ pub extern "C" fn mc_memo_decrypt_e_memo_payload(
             .into_mut()
             .as_slice_mut_of_len(core::mem::size_of_val(&memo_payload_generic_array))
             .expect("Memo payload length is insufficient");
-
 
         out_memo_payload.copy_from_slice(&memo_payload_generic_array);
         Ok(())
@@ -1191,6 +1191,19 @@ impl<'a> TryFromFfi<&McBuffer<'a>> for CompressedRistrettoPublic {
     fn try_from_ffi(src: &McBuffer<'a>) -> Result<Self, LibMcError> {
         let src = <&[u8; 32]>::try_from_ffi(src)?;
         CompressedRistrettoPublic::try_from(src)
+            .map_err(|err| LibMcError::InvalidInput(format!("{:?}", err)))
+    }
+}
+
+/* ==== EncryptedMemo ==== */
+
+impl<'a> TryFromFfi<&McBuffer<'a>> for EncryptedMemo {
+    type Error = LibMcError;
+
+    fn try_from_ffi(src: &McBuffer<'a>) -> Result<Self, LibMcError> {
+        let src = <&[u8; 66]>::try_from_ffi(src)?;
+        let memo_payload_generic_array: GenericArray<u8, U66> = GenericArray::clone_from_slice(src);
+        EncryptedMemo::try_from(memo_payload_generic_array)
             .map_err(|err| LibMcError::InvalidInput(format!("{:?}", err)))
     }
 }

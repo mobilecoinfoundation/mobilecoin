@@ -417,7 +417,8 @@ MC_ATTRIBUTE_NONNULL(1, 2);
 /* ==== Decrypt Memo Payload ==== */
 
 bool mc_memo_decrypt_e_memo_payload(
-  const McBuffer* MC_NONNULL tx_out_proto_bytes,
+  const McBuffer* MC_NONNULL encrypted_memo,
+  const McBuffer* MC_NONNULL tx_out_public_key,
   const McAccountKey* MC_NONNULL account_key,
   McMutableBuffer* MC_NONNULL out_memo_data,
   McError* MC_NULLABLE * MC_NULLABLE out_error
