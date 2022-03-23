@@ -18,7 +18,11 @@ pub trait ParserWithBuildInfo: Parser {
     fn command_with_build_info(build_info: &mut String) -> clap::Command {
         let mut command = <Self as CommandFactory>::command();
         if let Some(version) = command.get_version() {
-            *build_info = format!("{} commit: {}", version, mc_util_build_info::git_commit());
+            *build_info = format!(
+                "{} commit: {}",
+                version,
+                mc_util_build_info::mobilecoin_git_commit()
+            );
             command = command.long_version(&**build_info);
         }
         command
@@ -61,7 +65,7 @@ mod tests {
         let expected_long_version = format!(
             "{} commit: {}",
             command.get_version().unwrap(),
-            mc_util_build_info::git_commit()
+            mc_util_build_info::mobilecoin_git_commit()
         );
         assert_eq!(command.get_long_version(), Some(&*expected_long_version));
     }
