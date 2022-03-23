@@ -10,7 +10,6 @@ use mc_transaction_std::{
     SenderMemoCredential,
 };
 use mc_util_from_random::FromRandom;
-use mc_util_serial;
 use mc_util_test_vector::write_jsonl;
 
 use rand::{rngs::StdRng, SeedableRng};
