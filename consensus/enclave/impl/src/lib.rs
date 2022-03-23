@@ -2184,7 +2184,7 @@ mod tests {
             if let Err(Error::FormBlock(description)) = form_block_result {
                 assert!(description.contains("Duplicate MintConfigTx"));
             } else {
-                panic!("Expected result");
+                panic!("Expected FormBlock error, got: {:#?}", form_block_result);
             }
         }
     }
