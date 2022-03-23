@@ -9,10 +9,10 @@ use clap::{CommandFactory, FromArgMatches, Parser};
 ///
 /// Using the `version` argument:
 /// ```rust
+/// use clap::Parser;
 /// #[derive(Clone, Debug, Parser)]
 /// #[clap(version)]
 /// pub struct CommandLine {
-///     verbose: bool,
 ///     name: Option<String>,
 /// }
 /// ```
