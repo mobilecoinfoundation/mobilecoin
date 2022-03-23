@@ -529,7 +529,12 @@ where
                     Err(err) => {
                         let number_of_remaining_tries =
                             Self::NUMBER_OF_TRIES - current_try as usize;
-                        let error_message = format!("Node {} not activated. Will try {} more times. Underlying error: {}",ingest_client.get_uri(), number_of_remaining_tries, err);
+                        let error_message = format!(
+                            "Node {} not activated. Will try {} more times. Underlying error: {}",
+                            ingest_client.get_uri(),
+                            number_of_remaining_tries,
+                            err
+                        );
                         OperationResult::Retry(OverseerError::ActivateNode(error_message))
                     }
                 }
