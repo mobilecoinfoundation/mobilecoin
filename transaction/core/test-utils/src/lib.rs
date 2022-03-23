@@ -1,12 +1,9 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use core::convert::TryFrom;
+mod mint;
+
 pub use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
-use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
-use mc_crypto_rand::{CryptoRng, RngCore};
 pub use mc_fog_report_validation_test_utils::MockFogResolver;
-use mc_ledger_db::{Ledger, LedgerDB};
-use mc_transaction_core::{constants::RING_SIZE, membership_proofs::Range, BlockContents};
 pub use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
@@ -15,6 +12,13 @@ pub use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
     Amount, Block, BlockID, BlockIndex, BlockVersion, Token,
 };
+pub use mint::{create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx};
+
+use core::convert::TryFrom;
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use mc_crypto_rand::{CryptoRng, RngCore};
+use mc_ledger_db::{Ledger, LedgerDB};
+use mc_transaction_core::{constants::RING_SIZE, membership_proofs::Range, BlockContents};
 use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_util_from_random::FromRandom;
 use rand::{seq::SliceRandom, Rng};
@@ -197,7 +201,11 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                 let key_images = tx.key_images();
                 let outputs = tx.prefix.outputs.clone();
 
-                let block_contents = BlockContents::new(key_images, outputs);
+                let block_contents = BlockContents {
+                    key_images,
+                    outputs,
+                    ..Default::default()
+                };
 
                 let block = Block::new(
                     block_version,
@@ -228,7 +236,10 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                     .collect();
 
                 let block = Block::new_origin_block(&outputs);
-                let block_contents = BlockContents::new(Vec::new(), outputs);
+                let block_contents = BlockContents {
+                    outputs,
+                    ..Default::default()
+                };
                 (block, block_contents)
             }
         };
@@ -280,7 +291,11 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
         // Non-origin blocks must have at least one key image.
         let key_images = vec![KeyImage::from(block_index as u64)];
 
-        let block_contents = BlockContents::new(key_images, outputs);
+        let block_contents = BlockContents {
+            key_images,
+            outputs,
+            ..Default::default()
+        };
 
         // Fake proofs
         let root_element = TxOutMembershipElement {
@@ -325,4 +340,19 @@ pub fn get_outputs<T: RngCore + CryptoRng>(
             result
         })
         .collect()
+}
+
+/// Generate a dummy txout for testing.
+pub fn create_test_tx_out(rng: &mut (impl RngCore + CryptoRng)) -> TxOut {
+    let account_key = AccountKey::random(rng);
+    TxOut::new(
+        Amount {
+            value: rng.next_u64(),
+            token_id: Mob::ID,
+        },
+        &account_key.default_subaddress(),
+        &RistrettoPrivate::from_random(rng),
+        Default::default(),
+    )
+    .unwrap()
 }

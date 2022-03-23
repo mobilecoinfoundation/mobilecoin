@@ -1,25 +1,38 @@
 //! Convert to/from blockchain::BlockContents
 
 use crate::{blockchain, convert::ConversionError, external};
-use mc_transaction_core::{ring_signature::KeyImage, tx, BlockContents};
-use protobuf::RepeatedField;
+use mc_transaction_core::{
+    mint::{MintConfigTx, MintTx},
+    ring_signature::KeyImage,
+    tx::TxOut,
+    BlockContents,
+};
 use std::convert::TryFrom;
 
 impl From<&mc_transaction_core::BlockContents> for blockchain::BlockContents {
     fn from(source: &mc_transaction_core::BlockContents) -> Self {
         let mut block_contents = blockchain::BlockContents::new();
 
-        let key_images: Vec<external::KeyImage> = source
+        let key_images = source
             .key_images
             .iter()
             .map(external::KeyImage::from)
             .collect();
 
-        let outputs: Vec<external::TxOut> =
-            source.outputs.iter().map(external::TxOut::from).collect();
+        let outputs = source.outputs.iter().map(external::TxOut::from).collect();
 
-        block_contents.set_key_images(RepeatedField::from_vec(key_images));
-        block_contents.set_outputs(RepeatedField::from_vec(outputs));
+        let mint_config_txs = source
+            .mint_config_txs
+            .iter()
+            .map(external::MintConfigTx::from)
+            .collect();
+
+        let mint_txs = source.mint_txs.iter().map(external::MintTx::from).collect();
+
+        block_contents.set_key_images(key_images);
+        block_contents.set_outputs(outputs);
+        block_contents.set_mint_config_txs(mint_config_txs);
+        block_contents.set_mint_txs(mint_txs);
         block_contents
     }
 }
@@ -28,15 +41,37 @@ impl TryFrom<&blockchain::BlockContents> for mc_transaction_core::BlockContents 
     type Error = ConversionError;
 
     fn try_from(source: &blockchain::BlockContents) -> Result<Self, Self::Error> {
-        let mut key_images: Vec<KeyImage> = Vec::new();
-        for key_image in source.get_key_images() {
-            key_images.push(KeyImage::try_from(key_image)?);
-        }
+        let key_images = source
+            .get_key_images()
+            .iter()
+            .map(KeyImage::try_from)
+            .collect::<Result<_, _>>()?;
 
-        let mut outputs: Vec<tx::TxOut> = Vec::new();
-        for output in source.get_outputs() {
-            outputs.push(tx::TxOut::try_from(output)?);
-        }
-        Ok(BlockContents::new(key_images, outputs))
+        let outputs = source
+            .get_outputs()
+            .iter()
+            .map(TxOut::try_from)
+            .collect::<Result<_, _>>()?;
+
+        let mint_config_txs = source
+            .get_mint_config_txs()
+            .iter()
+            .map(MintConfigTx::try_from)
+            .collect::<Result<_, _>>()?;
+
+        let mint_txs = source
+            .get_mint_txs()
+            .iter()
+            .map(MintTx::try_from)
+            .collect::<Result<_, _>>()?;
+
+        // We purposefully do not ..Default::default() here so that new fields are not
+        // missed.
+        Ok(BlockContents {
+            key_images,
+            outputs,
+            mint_config_txs,
+            mint_txs,
+        })
     }
 }

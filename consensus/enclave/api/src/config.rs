@@ -1,4 +1,4 @@
-use crate::FeeMap;
+use crate::{FeeMap, MasterMintersMap};
 use alloc::{format, string::String};
 use mc_common::ResponderId;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
@@ -12,10 +12,14 @@ use serde::{Deserialize, Serialize};
 /// signing key)
 #[derive(Clone, Deserialize, Debug, Digestible, Eq, Hash, PartialEq, Serialize)]
 pub struct BlockchainConfig {
-    /// The map from tokens to their minimum fees
+    /// The map from tokens to their minimum fees.
     pub fee_map: FeeMap,
+
+    /// The map from tokens to master minters.
+    pub master_minters_map: MasterMintersMap,
+
     /// The block version that this enclave will be applying rules for and
-    /// publishing
+    /// publishing.
     pub block_version: BlockVersion,
 }
 
@@ -23,6 +27,7 @@ impl Default for BlockchainConfig {
     fn default() -> Self {
         Self {
             fee_map: FeeMap::default(),
+            master_minters_map: MasterMintersMap::default(),
             block_version: BlockVersion::MAX,
         }
     }
@@ -76,7 +81,9 @@ impl BlockchainConfigWithDigest {
 #[cfg(test)]
 mod test {
     use super::*;
-    use alloc::string::ToString;
+    use alloc::{string::ToString, vec};
+    use mc_crypto_keys::Ed25519Public;
+    use mc_crypto_multisig::SignerSet;
     use mc_transaction_core::{tokens::Mob, Token, TokenId};
 
     /// Different block_version/fee maps/responder ids should result in
@@ -85,16 +92,19 @@ mod test {
     fn different_fee_maps_result_in_different_responder_ids() {
         let config1: BlockchainConfigWithDigest = BlockchainConfig {
             fee_map: FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(2), 2000)]).unwrap(),
+            master_minters_map: MasterMintersMap::default(),
             block_version: BlockVersion::ONE,
         }
         .into();
         let config2: BlockchainConfigWithDigest = BlockchainConfig {
             fee_map: FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(2), 300)]).unwrap(),
+            master_minters_map: MasterMintersMap::default(),
             block_version: BlockVersion::ONE,
         }
         .into();
         let config3: BlockchainConfigWithDigest = BlockchainConfig {
             fee_map: FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(30), 300)]).unwrap(),
+            master_minters_map: MasterMintersMap::default(),
             block_version: BlockVersion::ONE,
         }
         .into();
@@ -129,6 +139,7 @@ mod test {
 
         let config4: BlockchainConfigWithDigest = BlockchainConfig {
             fee_map: FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(30), 300)]).unwrap(),
+            master_minters_map: MasterMintersMap::default(),
             block_version: BlockVersion::TWO,
         }
         .into();
@@ -141,6 +152,57 @@ mod test {
         assert_ne!(
             config3.responder_id(&responder_id2),
             config4.responder_id(&responder_id2)
+        );
+    }
+
+    // Different master minter maps result in differnet responder ids.
+    #[test]
+    fn different_master_minter_maps_result_in_different_responder_ids() {
+        let config1: BlockchainConfigWithDigest = BlockchainConfig {
+            fee_map: FeeMap::default(),
+            master_minters_map: MasterMintersMap::try_from_iter([(
+                TokenId::from(1),
+                SignerSet::new(vec![Ed25519Public::default()], 1),
+            )])
+            .unwrap(),
+            block_version: BlockVersion::ONE,
+        }
+        .into();
+        let config2: BlockchainConfigWithDigest = BlockchainConfig {
+            fee_map: FeeMap::default(),
+            master_minters_map: MasterMintersMap::try_from_iter([(
+                TokenId::from(2),
+                SignerSet::new(vec![Ed25519Public::default()], 1),
+            )])
+            .unwrap(),
+            block_version: BlockVersion::ONE,
+        }
+        .into();
+        let config3: BlockchainConfigWithDigest = BlockchainConfig {
+            fee_map: FeeMap::default(),
+            master_minters_map: MasterMintersMap::try_from_iter([(
+                TokenId::from(2),
+                SignerSet::new(vec![Ed25519Public::default(), Ed25519Public::default()], 1),
+            )])
+            .unwrap(),
+            block_version: BlockVersion::ONE,
+        }
+        .into();
+
+        let responder_id1 = ResponderId("1.2.3.4:5".to_string());
+        assert_ne!(
+            config1.responder_id(&responder_id1),
+            config2.responder_id(&responder_id1)
+        );
+
+        assert_ne!(
+            config1.responder_id(&responder_id1),
+            config3.responder_id(&responder_id1)
+        );
+
+        assert_ne!(
+            config2.responder_id(&responder_id1),
+            config3.responder_id(&responder_id1)
         );
     }
 }

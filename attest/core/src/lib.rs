@@ -31,7 +31,7 @@ pub use crate::{
     nonce::{IasNonce, Nonce, QuoteNonce},
     quote::{Quote, QuoteSignType},
     report::Report,
-    seal::{IntelSealed, ParseSealedError, Sealed},
+    seal::{IntelSealed, IntelSealingError, ParseSealedError, Sealed},
     sigrl::SigRL,
     types::{
         attributes::Attributes,

@@ -8,9 +8,15 @@
 //! such as `mc_consensus_api::consensus_common::ProposeTxResult` and
 //! `mc_transaction_core::validation::TransactionValidationError`.
 
-use crate::consensus_common::ProposeTxResult;
-use mc_transaction_core::{ring_signature, validation::TransactionValidationError as Error};
-use std::convert::{From, TryInto};
+use crate::{
+    consensus_client::{MintValidationResult, MintValidationResultCode},
+    consensus_common::ProposeTxResult,
+};
+use mc_transaction_core::{
+    mint::MintValidationError, ring_signature, validation::TransactionValidationError as Error,
+    BlockVersion, TokenId,
+};
+use std::convert::{From, TryFrom, TryInto};
 
 /// Convert TransactionValidationError --> ProposeTxResult.
 impl From<Error> for ProposeTxResult {
@@ -101,6 +107,109 @@ impl TryInto<Error> for ProposeTxResult {
             Self::MissingMaskedTokenId => Ok(Error::MissingMaskedTokenId),
             Self::MaskedTokenIdNotAllowed => Ok(Error::MaskedTokenIdNotAllowed),
             Self::UnsortedOutputs => Ok(Error::UnsortedOutputs),
+        }
+    }
+}
+
+/// Convert MintValidationError -> MintValidationResult.
+impl From<MintValidationError> for MintValidationResult {
+    fn from(src: MintValidationError) -> Self {
+        match src {
+            MintValidationError::InvalidBlockVersion(block_version) => Self {
+                code: MintValidationResultCode::InvalidBlockVersion,
+                block_version: *block_version,
+                ..Default::default()
+            },
+            MintValidationError::InvalidTokenId(token_id) => Self {
+                code: MintValidationResultCode::InvalidTokenId,
+                token_id,
+                ..Default::default()
+            },
+            MintValidationError::InvalidNonceLength(len) => Self {
+                code: MintValidationResultCode::InvalidNonceLength,
+                nonce_length: len as u64,
+                ..Default::default()
+            },
+            MintValidationError::InvalidSignerSet => Self {
+                code: MintValidationResultCode::InvalidSignerSet,
+                ..Default::default()
+            },
+            MintValidationError::InvalidSignature => Self {
+                code: MintValidationResultCode::InvalidSignature,
+                ..Default::default()
+            },
+            MintValidationError::TombstoneBlockExceeded => Self {
+                code: MintValidationResultCode::TombstoneBlockExceeded,
+                ..Default::default()
+            },
+            MintValidationError::TombstoneBlockTooFar => Self {
+                code: MintValidationResultCode::TombstoneBlockTooFar,
+                ..Default::default()
+            },
+            MintValidationError::Unknown => Self {
+                code: MintValidationResultCode::Unknown,
+                ..Default::default()
+            },
+            MintValidationError::AmountExceedsMintLimit => Self {
+                code: MintValidationResultCode::AmountExceedsMintLimit,
+                ..Default::default()
+            },
+            MintValidationError::NoMasterMinters(token_id) => Self {
+                code: MintValidationResultCode::NoMasterMinters,
+                token_id: *token_id,
+                ..Default::default()
+            },
+            MintValidationError::NonceAlreadyUsed => Self {
+                code: MintValidationResultCode::NonceAlreadyUsed,
+                ..Default::default()
+            },
+            MintValidationError::NoMatchingMintConfig => Self {
+                code: MintValidationResultCode::NoMatchingMintConfig,
+                ..Default::default()
+            },
+        }
+    }
+}
+
+/// Convert MintValidationResult -> MintValidationError.
+impl TryInto<MintValidationError> for MintValidationResult {
+    type Error = String;
+
+    fn try_into(self) -> Result<MintValidationError, Self::Error> {
+        match self.code {
+            MintValidationResultCode::Ok => {
+                Err("Ok value cannot be converted into MintValidationError".to_string())
+            }
+            MintValidationResultCode::InvalidBlockVersion => {
+                Ok(MintValidationError::InvalidBlockVersion(
+                    BlockVersion::try_from(self.block_version).map_err(|err| err.to_string())?,
+                ))
+            }
+            MintValidationResultCode::InvalidTokenId => {
+                Ok(MintValidationError::InvalidTokenId(self.token_id))
+            }
+            MintValidationResultCode::InvalidNonceLength => Ok(
+                MintValidationError::InvalidNonceLength(self.nonce_length as usize),
+            ),
+            MintValidationResultCode::InvalidSignerSet => Ok(MintValidationError::InvalidSignerSet),
+            MintValidationResultCode::InvalidSignature => Ok(MintValidationError::InvalidSignature),
+            MintValidationResultCode::TombstoneBlockExceeded => {
+                Ok(MintValidationError::TombstoneBlockExceeded)
+            }
+            MintValidationResultCode::TombstoneBlockTooFar => {
+                Ok(MintValidationError::TombstoneBlockTooFar)
+            }
+            MintValidationResultCode::Unknown => Ok(MintValidationError::Unknown),
+            MintValidationResultCode::AmountExceedsMintLimit => {
+                Ok(MintValidationError::AmountExceedsMintLimit)
+            }
+            MintValidationResultCode::NoMasterMinters => Ok(MintValidationError::NoMasterMinters(
+                TokenId::from(self.token_id),
+            )),
+            MintValidationResultCode::NonceAlreadyUsed => Ok(MintValidationError::NonceAlreadyUsed),
+            MintValidationResultCode::NoMatchingMintConfig => {
+                Ok(MintValidationError::NoMatchingMintConfig)
+            }
         }
     }
 }
