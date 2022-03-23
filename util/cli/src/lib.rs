@@ -17,12 +17,14 @@ use clap::{CommandFactory, FromArgMatches, Parser};
 /// }
 /// ```
 pub trait ParserWithBuildInfo: Parser {
-    /// Returns the `clap::Command` with the long version appended with the git commit information
+    /// Returns the `clap::Command` with the long version appended with the git
+    /// commit information
     ///
     /// # Arguments
     ///
-    /// * `build_info` - A String that will be populated with the build info (git commit).
-    ///     This is passed in as it needs to live as long as the `clap::Command`.
+    /// * `build_info` - A String that will be populated with the build info
+    ///   (git commit). This is passed in as it needs to live as long as the
+    ///   `clap::Command`.
     fn command_with_build_info(build_info: &mut String) -> clap::Command {
         let mut command = <Self as CommandFactory>::command();
         if let Some(version) = command.get_version() {
@@ -42,9 +44,7 @@ pub trait ParserWithBuildInfo: Parser {
             <Self as FromArgMatches>::from_arg_matches(&matches).map_err(format_error::<Self>);
         match res {
             Ok(s) => s,
-            Err(e) => {
-                e.exit()
-            }
+            Err(e) => e.exit(),
         }
     }
 }
