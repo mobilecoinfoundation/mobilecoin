@@ -6,16 +6,6 @@ use clap::{CommandFactory, FromArgMatches, Parser};
 /// string. In order to use this, one must pass in the `version` argument to the
 /// `clap` attribute.  When the `version` flag is present it will be extended to
 /// include the git commit of the crate.
-///
-/// Using the `version` argument:
-/// ```rust
-/// use clap::Parser;
-/// #[derive(Clone, Debug, Parser)]
-/// #[clap(version)]
-/// pub struct CommandLine {
-///     name: Option<String>,
-/// }
-/// ```
 pub trait ParserWithBuildInfo: Parser {
     /// Returns the `clap::Command` with the long version appended with the git
     /// commit information
