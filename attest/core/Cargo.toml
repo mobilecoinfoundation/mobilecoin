@@ -14,9 +14,10 @@ verify the contents of the report as returned by Intel.
 [features]
 default = ["std"]
 std = [
-    "mc-common/std",
     "digest/std",
     "displaydoc/std",
+    "mc-common/std",
+    "mc-util-encodings/std",
     "sha2/std",
 ]
 

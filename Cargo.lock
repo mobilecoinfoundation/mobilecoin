@@ -1704,6 +1704,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 name = "go-grpc-gateway-testing"
 version = "1.0.0"
 dependencies = [
+ "clap 3.1.6",
  "displaydoc",
  "futures 0.3.21",
  "grpcio",
@@ -1716,7 +1717,6 @@ dependencies = [
  "mc-util-metrics",
  "mc-util-uri",
  "serde",
- "structopt",
 ]
 
 [[package]]
@@ -2518,6 +2518,7 @@ dependencies = [
 name = "mc-admin-http-gateway"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "grpcio",
  "mc-common",
  "mc-util-grpc",
@@ -2527,7 +2528,6 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "structopt",
 ]
 
 [[package]]
@@ -3016,12 +3016,12 @@ dependencies = [
 name = "mc-consensus-scp-play"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "mc-common",
  "mc-consensus-scp",
  "mc-transaction-core",
  "mc-util-uri",
  "serde_json",
- "structopt",
 ]
 
 [[package]]
@@ -3030,6 +3030,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "base64 0.13.0",
  "chrono",
+ "clap 3.1.6",
  "curve25519-dalek",
  "displaydoc",
  "fs_extra",
@@ -3081,7 +3082,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
- "structopt",
  "tempdir",
  "toml 0.5.8",
 ]
@@ -3289,10 +3289,10 @@ name = "mc-crypto-x509-test-vectors"
 version = "1.3.0-pre0"
 dependencies = [
  "cargo-emit",
+ "clap 3.1.6",
  "mc-crypto-keys",
  "mc-util-build-script",
  "pem",
- "structopt",
  "x509-signature",
 ]
 
@@ -3354,6 +3354,7 @@ dependencies = [
 name = "mc-fog-distribution"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "crossbeam-channel",
  "curve25519-dalek",
  "grpcio",
@@ -3369,7 +3370,6 @@ dependencies = [
  "mc-fog-report-connection",
  "mc-fog-report-validation",
  "mc-ledger-db",
- "mc-mobilecoind",
  "mc-transaction-core",
  "mc-transaction-std",
  "mc-util-generate-sample-ledger",
@@ -3378,7 +3378,6 @@ dependencies = [
  "rand 0.8.5",
  "rayon",
  "retry",
- "structopt",
  "tempfile",
 ]
 
@@ -3411,6 +3410,7 @@ name = "mc-fog-ingest-client"
 version = "1.3.0-pre0"
 dependencies = [
  "assert_cmd",
+ "clap 3.1.6",
  "displaydoc",
  "grpcio",
  "hex",
@@ -3440,7 +3440,6 @@ dependencies = [
  "rand 0.8.5",
  "retry",
  "serde_json",
- "structopt",
  "tempdir",
 ]
 
@@ -3554,6 +3553,7 @@ dependencies = [
 name = "mc-fog-ingest-server"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "dirs 4.0.0",
  "displaydoc",
  "futures 0.3.21",
@@ -3601,7 +3601,6 @@ dependencies = [
  "retry",
  "serde",
  "serde_json",
- "structopt",
  "tempdir",
  "url 2.2.2",
 ]
@@ -3738,6 +3737,7 @@ dependencies = [
 name = "mc-fog-ledger-server"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "displaydoc",
  "futures 0.3.21",
  "grpcio",
@@ -3781,7 +3781,6 @@ dependencies = [
  "retry",
  "serde",
  "serde_json",
- "structopt",
  "tempdir",
  "url 2.2.2",
 ]
@@ -3806,6 +3805,7 @@ dependencies = [
 name = "mc-fog-load-testing"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "grpcio",
  "mc-account-keys",
  "mc-common",
@@ -3827,7 +3827,6 @@ dependencies = [
  "mc-watcher",
  "rand 0.8.5",
  "retry",
- "structopt",
  "tempdir",
 ]
 
@@ -3877,6 +3876,7 @@ dependencies = [
 name = "mc-fog-overseer-server"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "displaydoc",
  "grpcio",
  "lazy_static",
@@ -3906,7 +3906,6 @@ dependencies = [
  "rocket",
  "rocket_contrib",
  "serde",
- "structopt",
  "tempdir",
  "url 2.2.2",
 ]
@@ -3959,6 +3958,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "base64 0.13.0",
  "binascii",
+ "clap 3.1.6",
  "grpcio",
  "mc-account-keys",
  "mc-attest-core",
@@ -3971,7 +3971,6 @@ dependencies = [
  "mc-fog-report-validation",
  "mc-util-keyfile",
  "mc-util-uri",
- "structopt",
 ]
 
 [[package]]
@@ -3995,6 +3994,7 @@ dependencies = [
 name = "mc-fog-report-server"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "displaydoc",
  "futures 0.3.21",
  "grpcio",
@@ -4020,7 +4020,6 @@ dependencies = [
  "serde",
  "serde_json",
  "signature",
- "structopt",
  "tempdir",
  "x509-signature",
  "zeroize",
@@ -4066,6 +4065,7 @@ name = "mc-fog-sample-paykit"
 version = "1.3.0-pre0"
 dependencies = [
  "cargo-emit",
+ "clap 3.1.6",
  "displaydoc",
  "futures 0.3.21",
  "grpcio",
@@ -4104,7 +4104,6 @@ dependencies = [
  "protobuf",
  "rand 0.8.5",
  "serde_json",
- "structopt",
 ]
 
 [[package]]
@@ -4159,6 +4158,7 @@ name = "mc-fog-sql-recovery-db"
 version = "1.3.0-pre0"
 dependencies = [
  "chrono",
+ "clap 3.1.6",
  "diesel",
  "diesel-derive-enum",
  "diesel_migrations",
@@ -4183,7 +4183,6 @@ dependencies = [
  "rand_core 0.6.3",
  "retry",
  "serde",
- "structopt",
  "tempdir",
 ]
 
@@ -4191,6 +4190,7 @@ dependencies = [
 name = "mc-fog-test-client"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "displaydoc",
  "grpcio",
  "hex_fmt",
@@ -4214,13 +4214,13 @@ dependencies = [
  "retry",
  "serde",
  "serde_json",
- "structopt",
 ]
 
 [[package]]
 name = "mc-fog-test-infra"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "digest 0.10.3",
  "hex",
  "mc-account-keys",
@@ -4244,7 +4244,6 @@ dependencies = [
  "rand_hc 0.3.1",
  "serde",
  "serde_json",
- "structopt",
  "url 2.2.2",
 ]
 
@@ -4391,6 +4390,7 @@ dependencies = [
 name = "mc-fog-view-load-test"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "grpcio",
  "mc-account-keys",
  "mc-attest-verifier",
@@ -4402,7 +4402,6 @@ dependencies = [
  "mc-fog-view-protocol",
  "mc-util-grpc",
  "mc-util-keyfile",
- "structopt",
 ]
 
 [[package]]
@@ -4432,6 +4431,7 @@ dependencies = [
 name = "mc-fog-view-server"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "displaydoc",
  "futures 0.3.21",
  "grpcio",
@@ -4473,7 +4473,6 @@ dependencies = [
  "rand_core 0.6.3",
  "serde",
  "serde_json",
- "structopt",
  "tempdir",
 ]
 
@@ -4507,6 +4506,7 @@ dependencies = [
 name = "mc-ledger-distribution"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "dirs 4.0.0",
  "displaydoc",
  "mc-api",
@@ -4520,7 +4520,6 @@ dependencies = [
  "rusoto_s3",
  "serde",
  "serde_json",
- "structopt",
  "url 2.2.2",
 ]
 
@@ -4528,24 +4527,24 @@ dependencies = [
 name = "mc-ledger-from-archive"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "mc-api",
  "mc-common",
  "mc-ledger-db",
  "mc-ledger-sync",
- "structopt",
 ]
 
 [[package]]
 name = "mc-ledger-migration"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "lmdb-rkv",
  "mc-common",
  "mc-ledger-db",
  "mc-util-lmdb",
  "mc-util-serial",
  "serde",
- "structopt",
 ]
 
 [[package]]
@@ -4584,6 +4583,7 @@ name = "mc-mobilecoind"
 version = "1.3.0-pre0"
 dependencies = [
  "aes-gcm",
+ "clap 3.1.6",
  "crossbeam-channel",
  "displaydoc",
  "grpcio",
@@ -4638,7 +4638,6 @@ dependencies = [
  "reqwest",
  "retry",
  "serde_json",
- "structopt",
  "tempdir",
  "tiny-bip39",
 ]
@@ -4665,6 +4664,7 @@ dependencies = [
 name = "mc-mobilecoind-json"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "grpcio",
  "hex",
  "mc-api",
@@ -4682,7 +4682,6 @@ dependencies = [
  "rocket_contrib",
  "serde",
  "serde_derive",
- "structopt",
 ]
 
 [[package]]
@@ -4831,9 +4830,9 @@ dependencies = [
 name = "mc-sgx-css-dump"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "hex_fmt",
  "mc-sgx-css",
- "structopt",
 ]
 
 [[package]]
@@ -5026,9 +5025,9 @@ dependencies = [
 name = "mc-util-b58-decoder"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "hex",
  "mc-api",
- "structopt",
 ]
 
 [[package]]
@@ -5112,6 +5111,7 @@ dependencies = [
 name = "mc-util-generate-sample-ledger"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "hex",
  "mc-account-keys",
  "mc-common",
@@ -5123,7 +5123,6 @@ dependencies = [
  "mc-util-keyfile",
  "rand 0.8.5",
  "rand_hc 0.3.1",
- "structopt",
  "tempfile",
 ]
 
@@ -5132,6 +5131,7 @@ name = "mc-util-grpc"
 version = "1.3.0-pre0"
 dependencies = [
  "base64 0.13.0",
+ "clap 3.1.6",
  "cookie 0.16.0",
  "displaydoc",
  "futures 0.3.21",
@@ -5155,7 +5155,6 @@ dependencies = [
  "serde",
  "sha2 0.10.1",
  "signal-hook",
- "structopt",
  "subtle 2.4.1",
  "tempfile",
  "zeroize",
@@ -5165,22 +5164,22 @@ dependencies = [
 name = "mc-util-grpc-admin-tool"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "grpcio",
  "mc-common",
  "mc-util-grpc",
  "mc-util-uri",
- "structopt",
 ]
 
 [[package]]
 name = "mc-util-grpc-token-generator"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "hex",
  "mc-common",
  "mc-util-grpc",
  "percent-encoding 2.1.0",
- "structopt",
 ]
 
 [[package]]
@@ -5192,6 +5191,7 @@ name = "mc-util-keyfile"
 version = "1.3.0-pre0"
 dependencies = [
  "base64 0.13.0",
+ "clap 3.1.6",
  "hex",
  "mc-account-keys",
  "mc-api",
@@ -5204,7 +5204,6 @@ dependencies = [
  "rand_hc 0.3.1",
  "serde",
  "serde_json",
- "structopt",
  "tempdir",
  "x509-signature",
 ]
@@ -5304,6 +5303,7 @@ dependencies = [
 name = "mc-util-test-helper"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "itertools",
  "lazy_static",
  "mc-account-keys",
@@ -5311,7 +5311,6 @@ dependencies = [
  "rand 0.8.5",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
- "structopt",
 ]
 
 [[package]]
@@ -5353,6 +5352,7 @@ dependencies = [
 name = "mc-watcher"
 version = "1.3.0-pre0"
 dependencies = [
+ "clap 3.1.6",
  "displaydoc",
  "futures 0.3.21",
  "grpcio",
@@ -5387,7 +5387,6 @@ dependencies = [
  "rayon",
  "serde",
  "serial_test",
- "structopt",
  "tempdir",
  "toml 0.5.8",
  "url 2.2.2",
@@ -7468,30 +7467,6 @@ name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
-
-[[package]]
-name = "structopt"
-version = "0.3.26"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c6b5c64445ba8094a6ab0c3cd2ad323e07171012d9c98b0b15651daf1787a10"
-dependencies = [
- "clap 2.33.0",
- "lazy_static",
- "structopt-derive",
-]
-
-[[package]]
-name = "structopt-derive"
-version = "0.4.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcb5ae327f9cc13b68763b5749770cb9e048a99bd9dfdfa58d0cf05d5f64afe0"
-dependencies = [
- "heck 0.3.1",
- "proc-macro-error",
- "proc-macro2 1.0.36",
- "quote 1.0.15",
- "syn 1.0.86",
-]
 
 [[package]]
 name = "subtle"

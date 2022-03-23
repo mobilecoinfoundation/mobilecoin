@@ -9,13 +9,13 @@ mc-common = { path = "../common", features = ["loggers"] }
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-uri = { path = "../util/uri" }
 
+clap = { version = "3.1", features = ["derive", "env"] }
 grpcio = "0.10.0"
 rocket = { version = "0.4.10", default-features = false }
 rocket_contrib = { version = "0.4.10", default-features = false, features = ["json"] }
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
-structopt = "0.3"
 
 [build-dependencies]
 serde = { version = "1", default-features = false, features = ["alloc", "derive"] }

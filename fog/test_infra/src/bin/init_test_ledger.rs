@@ -1,38 +1,39 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! Initialize a ledger db with genesis block,
 //! and a watcher db suitable for conformance testing
 //!
 //! Use command line arguments to configure locations of keys and ledger etc.
 
+use clap::Parser;
 use mc_common::logger::create_root_logger;
 use mc_crypto_hashes::{Blake2b256, Digest};
 use std::path::PathBuf;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Config {
     /// Path to keys
-    #[structopt(long)]
+    #[clap(long, env = "MC_KEYS")]
     pub keys: PathBuf,
 
     /// Path to output ledger
-    #[structopt(long = "ledger-db")]
+    #[clap(long = "ledger-db", env = "MC_LEDGER_DB")]
     pub ledger: PathBuf,
 
     /// Path to output watcher db
-    #[structopt(long = "watcher-db")]
+    #[clap(long = "watcher-db", env = "MC_WATCHER_DB")]
     pub watcher: PathBuf,
 
     // Seed to use when generating blocks
-    #[structopt(long, default_value = "42")]
+    #[clap(long, default_value = "42", env = "MC_SEED")]
     pub seed: u64,
 }
 
 fn main() {
     // Logging must go to stderr to not interfere with STDOUT
     std::env::set_var("MC_LOG_STDERR", "1");
-    let config = Config::from_args();
+    let config = Config::parse();
 
     let logger = create_root_logger();
 

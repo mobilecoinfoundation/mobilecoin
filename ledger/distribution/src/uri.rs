@@ -1,16 +1,31 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
+
+//! Distribution target URI
 
 use displaydoc::Display;
 use rusoto_core::{region::ParseRegionError, Region};
 use std::{path::PathBuf, str::FromStr};
 use url::Url;
 
+/// Destinations for distribution.
 #[derive(Clone, Debug)]
 pub enum Destination {
-    S3 { path: PathBuf, region: Region },
-    Local { path: PathBuf },
+    /// Write to S3.
+    S3 {
+        /// AWS Region.
+        region: Region,
+        /// S3 path.
+        path: PathBuf,
+    },
+    /// Write to local disk.
+    Local {
+        /// Local path.
+        path: PathBuf,
+    },
 }
 
+/// Wrapper for URL and associated Destination.
 #[derive(Clone, Debug)]
 pub struct Uri {
     /// The original Url used to construct this object.
@@ -20,6 +35,7 @@ pub struct Uri {
     pub destination: Destination,
 }
 
+/// URI parse errors.
 #[derive(Debug, Display)]
 pub enum UriParseError {
     /// Url parse error: {0}
@@ -34,6 +50,8 @@ pub enum UriParseError {
     /// Invalid S3 region: {0}
     InvalidS3Region(ParseRegionError),
 }
+
+impl std::error::Error for UriParseError {}
 
 impl FromStr for Uri {
     type Err = UriParseError;

@@ -1,5 +1,9 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+//! Helpers for load-testing Fog.
+
+#![deny(missing_docs)]
+
 use std::{
     env,
     path::{Path, PathBuf},
