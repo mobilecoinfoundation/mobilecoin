@@ -39,7 +39,7 @@ pub struct MintConfigTxParams {
     /// 10000:2:signer1.pem:signer2.pem:signer3.pem defines a minting
     /// configuration capable of minting up to 1000 tokens: and requiring 2
     /// out of 3 signers.
-    #[clap(long = "config", parse(try_from_str = parse_mint_config), env = "MC_MINTING_CONFIGS")]
+    #[clap(long = "config", parse(try_from_str = parse_mint_config), required = true, use_value_delimiter = true, env = "MC_MINTING_CONFIGS")]
     // Tuple of (mint limit, SignerSet)
     configs: Vec<(u64, SignerSet<Ed25519Public>)>,
 }
@@ -74,9 +74,9 @@ impl MintConfigTxParams {
                 .map(|signer| {
                     Ed25519Pair::from(signer)
                         .try_sign(message.as_ref())
-                        .map_err(|e| format!("Failed to sign MintConfigTxPrefix: {}", e))?
+                        .map_err(|e| format!("Failed to sign MintConfigTxPrefix: {}", e))
                 })
-                .collect::<Result<Vec<_>, _>()?,
+                .collect::<Result<Vec<_>, _>>()?,
         );
         Ok(MintConfigTx { prefix, signature })
     }
@@ -132,9 +132,9 @@ impl MintTxParams {
                 .map(|signer| {
                     Ed25519Pair::from(signer)
                         .try_sign(message.as_ref())
-                        .unwrap()
+                        .map_err(|e| format!("Failed to sign MintTxPrefix: {}", e))
                 })
-                .collect(),
+                .collect::<Result<Vec<_>, _>>()?,
         );
         Ok(MintTx { prefix, signature })
     }
