@@ -185,7 +185,7 @@ pub enum Commands {
         node: ConsensusClientUri,
 
         /// Filename to read the mint configuration from.
-        #[clap(long = "tx", required(true), env = "MC_MINTING_CONFIG_TXS")]
+        #[clap(long = "tx", required =true, use_value_delimiter = true, env = "MC_MINTING_CONFIG_TXS")]
         tx_filenames: Vec<PathBuf>,
     },
 
