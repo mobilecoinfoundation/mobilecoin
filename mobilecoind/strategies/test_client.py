@@ -17,7 +17,7 @@ import mobilecoind_api_pb2
 import mobilecoind_api_pb2_grpc
 import os
 import time
-from accounts import *
+from accounts import connect, load_key_and_register, poll, wait_for_accounts_sync, TransferStatus
 from google.protobuf.empty_pb2 import Empty
 
 
@@ -42,14 +42,15 @@ def parse_args() -> argparse.ArgumentParser:
 
 
 def run_test(stub, amount, monitor_id, dest, max_seconds):
-    resp = stub.GetBalance(
-        mobilecoind_api_pb2.GetBalanceRequest(monitor_id=monitor_id))
-    starting_balance = resp.balance
-    print("Starting balance prior to transfer:", starting_balance)
     tx_stats = {}
     sync_start = time.time()
     wait_for_accounts_sync(stub, [monitor_id, dest.monitor_id], 3)
     print("Time to sync:", time.time() - sync_start)
+
+    resp = stub.GetBalance(
+        mobilecoind_api_pb2.GetBalanceRequest(monitor_id=monitor_id))
+    starting_balance = resp.balance
+    print("Starting balance prior to transfer:", starting_balance)
     tx_resp = stub.SendPayment(
         mobilecoind_api_pb2.SendPaymentRequest(
             sender_monitor_id=monitor_id,
