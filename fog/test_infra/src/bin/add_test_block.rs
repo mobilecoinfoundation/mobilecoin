@@ -102,7 +102,7 @@ fn main() {
 
     // Read account keys from disk
     let account_keys = mc_util_keyfile::keygen::read_default_mnemonics(config.keys)
-        .expect("Could not read slip10 identity files");
+        .expect("Could not read mnemonic files");
     assert_ne!(0, account_keys.len());
 
     // Open the ledger db

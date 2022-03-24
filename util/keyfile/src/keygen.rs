@@ -46,7 +46,7 @@ pub fn write_keyfiles<P: AsRef<Path>>(
 
     write_keyfile(
         path.as_ref().join(name).with_extension("json"),
-        &mnemonic,
+        mnemonic,
         account_index,
         fog_report_url,
         fog_report_id,

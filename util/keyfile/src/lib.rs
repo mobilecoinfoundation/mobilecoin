@@ -4,10 +4,11 @@ mod error;
 mod json_format;
 mod mnemonic_acct;
 pub use json_format::{RootIdentityJson, Slip10IdentityJson};
+pub use mnemonic_acct::UncheckedMnemonicAccount;
 pub mod config;
 pub mod keygen;
 
-use crate::{error::Error, mnemonic_acct::UncheckedMnemonicAccount};
+use crate::error::Error;
 use bip39::Mnemonic;
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use mc_api::printable::PrintableWrapper;
@@ -31,26 +32,6 @@ pub fn write_keyfile<P: AsRef<Path>>(
         fog_authority_spki: fog_authority_spki.map(ToOwned::to_owned),
     };
     Ok(serde_json::to_writer(File::create(path)?, &json)?)
-}
-
-/// Read a keyfile intended for use with the `slip10`
-/// key-derivation method.
-pub fn read_slip10_keyfile<P: AsRef<Path>>(path: P) -> Result<Slip10IdentityJson, Error> {
-    read_slip10_keyfile_data(&mut File::open(path)?)
-}
-
-/// Read keyfile data from the given buffer into a slip10
-/// structure
-pub fn read_slip10_keyfile_data<R: std::io::Read>(
-    buffer: &mut R,
-) -> Result<Slip10IdentityJson, Error> {
-    let data = {
-        let mut data = Vec::new();
-        buffer.read_to_end(&mut data)?;
-        data
-    };
-    let result: Slip10IdentityJson = serde_json::from_slice(&data).map_err(to_io_error)?;
-    Ok(result)
 }
 
 /// Read a keyfile intended for use with the legacy `RootEntropy`

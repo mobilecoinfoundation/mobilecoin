@@ -21,11 +21,11 @@ use mc_transaction_core::{tokens::Mob, Token};
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, send_result, ConnectionUriGrpcioServer,
 };
-use mc_util_keyfile::Slip10IdentityJson;
+use mc_util_keyfile::UncheckedMnemonicAccount;
 use mc_util_uri::{ConsensusClientUri, Uri, UriScheme};
 use std::{
-    convert::{TryFrom, TryInto},
-    str::FromStr,
+    convert::TryFrom,
+    str::{from_utf8, FromStr},
     sync::{Arc, Mutex},
     thread::sleep,
     time::Duration,
@@ -78,14 +78,15 @@ impl RemoteWalletService {
         &self,
         request: FreshBalanceCheckRequest,
     ) -> Result<BalanceCheckResponse, RpcStatus> {
-        let id = Slip10IdentityJson {
-            slip10_key: (&request.slip10_key[..])
-                .try_into()
-                .map_err(|err| rpc_invalid_arg_error("slip10 key", err, &self.logger))?,
+        let id = UncheckedMnemonicAccount {
+            mnemonic: Some(
+                from_utf8(&request.mnemonic[..])
+                    .map_err(|err| rpc_invalid_arg_error("mnemonic key", err, &self.logger))?
+                    .to_string(),
+            ),
             ..Default::default()
         };
-
-        let account_key = AccountKey::try_from(&id).map_err(|err| {
+        let account_key = AccountKey::try_from(id).map_err(|err| {
             rpc_invalid_arg_error("could not build account key", err, &self.logger)
         })?;
 

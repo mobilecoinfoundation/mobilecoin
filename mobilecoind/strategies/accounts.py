@@ -37,8 +37,8 @@ def connect(host, port):
 def register_account(key_data, stub) -> AccountData:
     # Generate an account key from this root entropy
     resp = stub.GetAccountKeyFromRootEntropy(
-        mobilecoind_api_pb2.GetAccountKeyFromSlip10Request(
-            slip10_key=bytes.fromhex(key_data['slip10_key'])))
+        mobilecoind_api_pb2.GetAccountKeyFromMnemonic(
+            mnemonic=bytes.fromhex(key_data['mnemonic'])))
     account_key = resp.account_key
 
     # Add this account to the wallet
