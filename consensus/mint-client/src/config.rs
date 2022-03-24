@@ -170,8 +170,14 @@ pub enum Commands {
         #[clap(long, env = "MC_CONSENSUS_URI")]
         node: ConsensusClientUri,
 
-        /// Filename to read the mint configuration from.
-        #[clap(long = "tx", required =true, use_value_delimiter = true, env = "MC_MINTING_CONFIG_TXS")]
+        /// Paths for the JSON-formatted mint configuration tx files, each
+        /// containing a serde-serialized MintConfigTx object.
+        #[clap(
+            long = "tx",
+            required = true,
+            use_value_delimiter = true,
+            env = "MC_MINTING_CONFIG_TXS"
+        )]
         tx_filenames: Vec<PathBuf>,
     },
 
@@ -203,8 +209,14 @@ pub enum Commands {
         #[clap(long, env = "MC_CONSENSUS_URI")]
         node: ConsensusClientUri,
 
-        /// Filename to read the mint configuration from.
-        #[clap(long = "tx", required =true, use_value_delimiter = true, env = "MC_MINTING_TXS")]
+        /// Paths for the JSON-formatted mint tx files, each containing a
+        /// serde-serialized MintTx object.
+        #[clap(
+            long = "tx",
+            required = true,
+            use_value_delimiter = true,
+            env = "MC_MINTING_TXS"
+        )]
         tx_filenames: Vec<PathBuf>,
     },
 }
