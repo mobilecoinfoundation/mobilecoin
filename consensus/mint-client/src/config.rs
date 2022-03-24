@@ -74,9 +74,9 @@ impl MintConfigTxParams {
                 .map(|signer| {
                     Ed25519Pair::from(signer)
                         .try_sign(message.as_ref())
-                        .unwrap()
+                        .map_err(|e| format!("Failed to sign MintConfigTxPrefix: {}", e))?
                 })
-                .collect(),
+                .collect::<Result<Vec<_>, _>()?,
         );
         Ok(MintConfigTx { prefix, signature })
     }
