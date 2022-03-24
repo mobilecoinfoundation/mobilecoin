@@ -274,7 +274,7 @@ fn parse_mint_config(src: &str) -> Result<(u64, SignerSet<Ed25519Public>), Strin
     // public key file
     if parts.len() < 3 {
         return Err(format!(
-            "mint config '{}' is not in the correct format",
+            "mint config '{}' is not in the correct format. Expected format is '<mint_limit>:<signing_threshold>:keyfile1.pem[:keyfile2.pem:...]'",
             src
         ));
     }
