@@ -77,8 +77,7 @@ fn main() {
             // Collect all signatures.
             let mut signatures = txs
                 .iter()
-                .flat_map(|tx| tx.signature.signatures())
-                .cloned()
+                .flat_map(|tx| tx.signature.signatures().clone())
                 .collect::<Vec<_>>();
             signatures.sort();
             signatures.dedup();
