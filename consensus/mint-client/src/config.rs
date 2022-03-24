@@ -18,7 +18,7 @@ use std::{convert::TryFrom, fs, path::PathBuf};
 #[derive(Args)]
 pub struct MintConfigTxParams {
     /// The key(s) to sign the transaction with.
-    #[clap(long = "signing-key", required(true), parse(try_from_str = load_key_from_pem), env = "MC_MINTING_SIGNING_KEYS")]
+    #[clap(long = "signing-key", required =true, use_value_delimiter = true, parse(try_from_str = load_key_from_pem), env = "MC_MINTING_SIGNING_KEYS")]
     signing_keys: Vec<Ed25519Private>,
 
     /// The token id we are minting.
