@@ -16,8 +16,9 @@ use mc_transaction_core::{
     mint::{MintConfigTx, MintTx},
 };
 use mc_util_grpc::ConnectionUriGrpcioChannel;
+use serde::de::DeserializeOwned;
 use serde_json::to_string_pretty;
-use std::{fs, sync::Arc};
+use std::{fs, path::PathBuf, sync::Arc};
 
 fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
@@ -57,17 +58,7 @@ fn main() {
 
         Commands::SubmitMintConfigTx { node, tx_filenames } => {
             // Load all txs.
-            let txs = tx_filenames
-                .iter()
-                .map(|filename| {
-                    let bytes = fs::read_to_string(filename).unwrap_or_else(|err| {
-                        panic!("Failed reading file {:?}: {}", filename, err)
-                    });
-                    serde_json::from_str(&bytes).unwrap_or_else(|err| {
-                        panic!("Failed parsing tx from file {:?}: {}", filename, err)
-                    })
-                })
-                .collect::<Vec<MintConfigTx>>();
+            let txs: Vec<MintConfigTx> = load_json_files(&tx_filenames);
 
             // All tx prefixes should be the same.
             if !txs.windows(2).all(|pair| pair[0].prefix == pair[1].prefix) {
@@ -130,17 +121,7 @@ fn main() {
 
         Commands::SubmitMintTx { node, tx_filenames } => {
             // Load all txs.
-            let txs = tx_filenames
-                .iter()
-                .map(|filename| {
-                    let bytes = fs::read_to_string(filename).unwrap_or_else(|err| {
-                        panic!("Failed reading file {:?}: {}", filename, err)
-                    });
-                    serde_json::from_str(&bytes).unwrap_or_else(|err| {
-                        panic!("Failed parsing tx from file {:?}: {}", filename, err)
-                    })
-                })
-                .collect::<Vec<MintTx>>();
+            let txs: Vec<MintTx> = load_json_files(&tx_filenames);
 
             // All tx prefixes should be the same.
             if !txs.windows(2).all(|pair| pair[0].prefix == pair[1].prefix) {
@@ -171,4 +152,16 @@ fn main() {
             println!("response: {:?}", resp);
         }
     }
+}
+
+fn load_json_files<T: DeserializeOwned>(filenames: &[PathBuf]) -> Vec<T> {
+    filenames
+        .iter()
+        .map(|filename| {
+            let bytes = fs::read_to_string(filename)
+                .unwrap_or_else(|err| panic!("Failed reading file {:?}: {}", filename, err));
+            serde_json::from_str(&bytes)
+                .unwrap_or_else(|err| panic!("Failed parsing tx from file {:?}: {}", filename, err))
+        })
+        .collect()
 }
