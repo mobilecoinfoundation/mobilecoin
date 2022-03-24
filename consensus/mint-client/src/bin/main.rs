@@ -158,9 +158,9 @@ fn load_json_files<T: DeserializeOwned>(filenames: &[PathBuf]) -> Vec<T> {
     filenames
         .iter()
         .map(|filename| {
-            let bytes = fs::read_to_string(filename)
+            let json = fs::read_to_string(filename)
                 .unwrap_or_else(|err| panic!("Failed reading file {:?}: {}", filename, err));
-            serde_json::from_str(&bytes)
+            serde_json::from_str(&json)
                 .unwrap_or_else(|err| panic!("Failed parsing tx from file {:?}: {}", filename, err))
         })
         .collect()
