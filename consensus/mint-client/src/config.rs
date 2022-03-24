@@ -50,14 +50,7 @@ impl MintConfigTxParams {
         fallback_tombstone_block: impl Fn() -> u64,
     ) -> Result<MintConfigTx, String> {
         let tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
-
-        let nonce = self.nonce.map(|n| n.to_vec()).unwrap_or_else(|| {
-            let mut rng = thread_rng();
-            let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
-            rng.fill_bytes(&mut nonce);
-            nonce
-        });
-
+        let nonce = get_or_generate_nonce(self.nonce);
         let token_id = self.token_id;
         let prefix = MintConfigTxPrefix {
             token_id,
@@ -122,14 +115,7 @@ impl MintTxParams {
         fallback_tombstone_block: impl Fn() -> u64,
     ) -> Result<MintTx, String> {
         let tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
-
-        let nonce = self.nonce.map(|n| n.to_vec()).unwrap_or_else(|| {
-            let mut rng = thread_rng();
-            let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
-            rng.fill_bytes(&mut nonce);
-            nonce
-        });
-
+        let nonce = get_or_generate_nonce(self.nonce);
         let prefix = MintTxPrefix {
             token_id: self.token_id,
             amount: self.amount,
@@ -313,4 +299,13 @@ fn parse_mint_config(src: &str) -> Result<(u64, SignerSet<Ed25519Public>), Strin
 
     // Success.
     Ok((mint_limit, SignerSet::new(public_keys, threshold)))
+}
+
+fn get_or_generate_nonce(nonce: Option<[u8; NONCE_LENGTH]>) -> Vec<u8> {
+    nonce.map(|n| n.to_vec()).unwrap_or_else(|| {
+        let mut rng = thread_rng();
+        let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
+        rng.fill_bytes(&mut nonce);
+        nonce
+    })
 }
