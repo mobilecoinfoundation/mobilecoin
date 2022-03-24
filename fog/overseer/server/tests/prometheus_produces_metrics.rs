@@ -47,6 +47,7 @@ fn one_active_node_idle_nodes_different_keys_produces_prometheus_metrics(logger:
     let origin_contents = BlockContents {
         key_images: Default::default(),
         outputs: origin_txo.clone(),
+        ..Default::default()
     };
     let origin_block = Block::new_origin_block(&origin_txo);
     ledger
