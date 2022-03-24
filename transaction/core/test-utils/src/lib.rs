@@ -12,7 +12,10 @@ pub use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
     Amount, Block, BlockID, BlockIndex, BlockVersion, Token,
 };
-pub use mint::{create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx};
+pub use mint::{
+    create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx,
+    create_mint_tx_to_recipient,
+};
 
 use core::convert::TryFrom;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};

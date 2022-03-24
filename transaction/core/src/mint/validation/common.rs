@@ -36,7 +36,7 @@ pub fn validate_tombstone(
 /// # Arguments
 /// * `block_version` - The block version of the block currently being built.
 pub fn validate_block_version(block_version: BlockVersion) -> Result<(), Error> {
-    if block_version < BlockVersion::THREE || BlockVersion::MAX < block_version {
+    if !block_version.mint_transactions_are_supported() || BlockVersion::MAX < block_version {
         return Err(Error::InvalidBlockVersion(block_version));
     }
 
