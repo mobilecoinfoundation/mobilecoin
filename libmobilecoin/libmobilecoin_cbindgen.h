@@ -780,7 +780,8 @@ FfiOptOwnedPtr<McData> mc_transaction_builder_add_output(FfiMutPtr<McTransaction
 /**
  * # Preconditions
  *
- * * `account_kay` - must be a valid account key, default change address computed from account key
+ * * `account_kay` - must be a valid account key, default change address
+ *   computed from account key
  * * `transaction_builder` - must not have been previously consumed by a call
  *   to `build`.
  * * `out_tx_out_confirmation_number` - length must be >= 32.
@@ -869,3 +870,53 @@ bool mc_memo_sender_memo_get_address_hash(FfiRefPtr<McBuffer> sender_memo_data,
                                           FfiMutPtr<McMutableBuffer> out_short_address_hash,
                                           FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
+bool mc_memo_destination_memo_create(FfiRefPtr<McPublicAddress> destination_public_address,
+                                     uint8_t number_of_recipients,
+                                     uint64_t fee,
+                                     uint64_t total_outlay,
+                                     FfiMutPtr<McMutableBuffer> out_memo_data,
+                                     FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+bool mc_memo_destination_memo_get_address_hash(FfiRefPtr<McBuffer> destination_memo_data,
+                                               FfiMutPtr<McMutableBuffer> out_short_address_hash,
+                                               FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+bool mc_memo_destination_memo_get_number_of_recipients(FfiRefPtr<McBuffer> destination_memo_data,
+                                                       FfiMutPtr<uint8_t> out_number_of_recipients,
+                                                       FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+bool mc_memo_destination_memo_get_fee(FfiRefPtr<McBuffer> destination_memo_data,
+                                      FfiMutPtr<uint64_t> out_fee,
+                                      FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+bool mc_memo_destination_memo_get_total_outlay(FfiRefPtr<McBuffer> destination_memo_data,
+                                               FfiMutPtr<uint64_t> out_total_outlay,
+                                               FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+bool mc_memo_sender_with_payment_request_memo_is_valid(FfiRefPtr<McBuffer> sender_with_payment_request_memo_data,
+                                                       FfiRefPtr<McPublicAddress> sender_public_address,
+                                                       FfiRefPtr<McBuffer> receiving_subaddress_view_private_key,
+                                                       FfiRefPtr<McBuffer> tx_out_public_key,
+                                                       FfiMutPtr<bool> out_valid,
+                                                       FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+bool mc_memo_sender_with_payment_request_memo_create(FfiRefPtr<McAccountKey> sender_account_key,
+                                                     FfiRefPtr<McBuffer> recipient_subaddress_view_public_key,
+                                                     FfiRefPtr<McBuffer> tx_out_public_key,
+                                                     uint64_t payment_request_id,
+                                                     FfiMutPtr<McMutableBuffer> out_memo_data,
+                                                     FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+bool mc_memo_sender_with_payment_request_memo_get_address_hash(FfiRefPtr<McBuffer> sender_with_payment_request_memo_data,
+                                                               FfiMutPtr<McMutableBuffer> out_short_address_hash,
+                                                               FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+bool mc_memo_sender_with_payment_request_memo_get_payment_request_id(FfiRefPtr<McBuffer> sender_with_payment_request_memo_data,
+                                                                     FfiMutPtr<uint64_t> out_payment_request_id,
+                                                                     FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+bool mc_memo_decrypt_e_memo_payload(FfiRefPtr<McBuffer> encrypted_memo,
+                                    FfiRefPtr<McBuffer> tx_out_public_key,
+                                    FfiRefPtr<McAccountKey> account_key,
+                                    FfiMutPtr<McMutableBuffer> out_memo_payload,
+                                    FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
