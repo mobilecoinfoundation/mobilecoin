@@ -1,4 +1,6 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Entry point for the fog distribution utility
 
 //! Fog distribution is a transfer script which moves funds from a set of
 //! accounts funded by a ledger bootstrap, to another set of accounts (which may
@@ -17,6 +19,7 @@
 
 #![deny(missing_docs)]
 
+use clap::Parser;
 use core::{cell::RefCell, convert::TryFrom};
 use lazy_static::lazy_static;
 use mc_account_keys::AccountKey;
@@ -36,7 +39,7 @@ use mc_fog_report_validation::FogResolver;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
     get_tx_out_shared_secret,
-    onetime_keys::{recover_onetime_private_key, view_key_matches_output},
+    onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
@@ -61,17 +64,16 @@ use std::{
     thread,
     time::Duration,
 };
-use structopt::StructOpt;
 use tempfile::tempdir;
 
 thread_local! {
     /// global variable storing connections to the consensus network
-    pub static CONNS: RefCell<Option<Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>>>> = RefCell::new(None);
+    static CONNS: RefCell<Option<Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>>>> = RefCell::new(None);
 }
 
 fn set_conns(config: &Config, logger: &Logger) {
     let conns = config.get_connections(logger).unwrap();
-    CONNS.with(|c| *c.borrow_mut() = Some(conns));
+    CONNS.with(|c| c.replace(Some(conns)));
 }
 
 fn get_conns(
@@ -105,8 +107,7 @@ lazy_static! {
 
 /// A TxOut found from the bootstrapped ledger that we can spend
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SpendableTxOut {
-    /// The tx out that is spendable
+struct SpendableTxOut {
     pub tx_out: TxOut,
     /// The amount of the tx out
     pub amount: Amount,
@@ -118,7 +119,7 @@ fn main() {
     mc_common::setup_panic_handler();
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
-    let config = Config::from_args();
+    let config = Config::parse();
 
     // Read account root_entropies from disk
     let src_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_root_entropies(
@@ -889,12 +890,9 @@ fn get_num_transactions_per_account(
     logger: &Logger,
 ) -> usize {
     for (i, tx_out) in transactions.iter().enumerate() {
-        let target_key = RistrettoPublic::try_from(&tx_out.target_key).unwrap();
-        let public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
-
-        // Make sure the viewkey matches for this output that we are about to send
+        // Make sure the view_key matches for this output that we are about to send
         // Assume accounts are numbered in order that they were processed by bootstrap
-        if !view_key_matches_output(&account.view_key(), &target_key, &public_key) {
+        if tx_out.view_key_match(account.view_private_key()).is_err() {
             log::trace!(
                 logger,
                 "Transaction {:?} does not belong to account. Total txs per account = {:?}",

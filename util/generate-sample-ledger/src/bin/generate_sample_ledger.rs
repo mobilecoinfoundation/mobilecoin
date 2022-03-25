@@ -1,31 +1,33 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
+//! A utility to generate a sample ledger.
+
+use clap::Parser;
 use mc_common::logger::create_root_logger;
 use std::path::PathBuf;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+/// Configuration.
+#[derive(Debug, Parser)]
 struct Config {
     /// Number of transactions per key to generate
-    #[structopt(long = "txs", short = "t", default_value = "100")]
-    pub num_txs: usize,
+    #[clap(long, short, default_value = "100", env = "MC_TXS")]
+    pub txs: usize,
 
     /// Number of blocks to divide transactions.
-    #[structopt(long = "blocks", short = "b", default_value = "1")]
-    pub num_blocks: usize,
+    #[clap(long, short, default_value = "1", env = "MC_BLOCKS")]
+    pub blocks: usize,
 
-    /// Key images per block
-    #[structopt(long = "key-images", short = "k", default_value = "1")]
-    pub num_key_images: usize,
+    /// Key images per transaction
+    #[clap(long, short, default_value = "1", env = "MC_KEY_IMAGES")]
+    pub key_images: usize,
 
     /// Seed to use when generating blocks (e.g.
     // 1234567812345678123456781234567812345678123456781234567812345678).
-    #[structopt(long = "seed", short = "s", parse(try_from_str=hex::FromHex::from_hex))]
+    #[clap(long, short, parse(try_from_str = hex::FromHex::from_hex), env = "MC_SEED")]
     pub seed: Option<[u8; 32]>,
 
-    /// Text to embed in the fog hints of the bootstrapped block, as an easter
-    /// egg
-    #[structopt(long = "hint-text")]
+    #[clap(long, short, env = "MC_HINT_TEXT")]
     pub hint_text: Option<String>,
 
     /// Max token id. If set to 1, then this will double the number of tx's in
@@ -38,7 +40,7 @@ struct Config {
 }
 
 fn main() {
-    let config = Config::from_args();
+    let config = Config::parse();
 
     mc_common::setup_panic_handler();
     let logger = create_root_logger();
@@ -52,9 +54,9 @@ fn main() {
     mc_util_generate_sample_ledger::bootstrap_ledger(
         &PathBuf::from("ledger"),
         &pub_addrs,
-        config.num_txs,
-        config.num_blocks,
-        config.num_key_images,
+        config.txs,
+        config.blocks,
+        config.key_images,
         config.seed,
         config.hint_text.as_deref(),
         config.max_token_id,

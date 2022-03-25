@@ -10,6 +10,7 @@ links = "mc-api"
 mc-account-keys = { path = "../account-keys" }
 mc-attest-core = { path = "../attest/core" }
 mc-crypto-keys = { path = "../crypto/keys" }
+mc-crypto-multisig = { path = "../crypto/multisig" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-util-repr-bytes = { path = "../util/repr-bytes" }
 mc-util-serial = { path = "../util/serial" }
@@ -46,3 +47,5 @@ generic-array = "0.14"
 pem = "1.0"
 prost = { version = "0.9", default-features = false }
 rand = "0.8"
+rand_core = "0.6"
+rand_hc = "0.3"

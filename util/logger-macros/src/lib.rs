@@ -4,115 +4,46 @@
 
 extern crate proc_macro;
 
-mod error;
-use crate::error::{DiagnosticError, Result};
-
 use proc_macro::TokenStream;
+use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::parse_quote;
 
 #[proc_macro_attribute]
 pub fn test_with_logger(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    match test_with_logger_impl(item.clone()) {
-        Ok(tokens) => tokens,
-        Err(e) => {
-            e.emit();
-            item
-        }
-    }
-}
-
-fn test_with_logger_impl(item: TokenStream) -> Result<TokenStream> {
-    let mut original_fn: syn::ItemFn = match syn::parse(item) {
-        Ok(ast) => ast,
-        Err(e) => {
-            let diag = proc_macro2::Span::call_site()
-                .unstable()
-                .error("lru_cache may only be used on functions");
-            return Err(DiagnosticError::new_with_syn_error(diag, e));
-        }
-    };
-
-    let orig_ident = original_fn.sig.ident.clone();
-    let orig_name = original_fn.sig.ident.to_string();
-
-    let new_name = format!("__wrapped_{}", original_fn.sig.ident.to_string());
-    original_fn.sig.ident = syn::Ident::new(&new_name[..], original_fn.sig.ident.span());
-    let new_ident = original_fn.sig.ident.clone();
-
-    let mut new_fn: syn::ItemFn = parse_quote! {
-        #[test]
-        fn #orig_ident() {
-            let test_name = format!("{}::{}", module_path!(), #orig_name);
-            let logger = mc_common::logger::create_test_logger(test_name);
-            mc_common::logger::slog_scope::scope(
-                &logger.clone(),
-                || {
-                    #new_ident(logger);
-                }
-            );
-        }
-    };
-    new_fn.attrs.extend(original_fn.attrs.clone());
-    original_fn.attrs = Vec::new();
-
-    let out = quote! {
-        #new_fn
-        #original_fn
-
-    };
-    Ok(out.into())
+    impl_with_logger(item, quote!(), quote!())
 }
 
 #[proc_macro_attribute]
 pub fn bench_with_logger(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    match bench_with_logger_impl(item.clone()) {
-        Ok(tokens) => tokens,
-        Err(e) => {
-            e.emit();
-            item
-        }
-    }
+    impl_with_logger(item, quote!(b: &mut Bencher), quote!(,b))
 }
 
-fn bench_with_logger_impl(item: TokenStream) -> Result<TokenStream> {
-    let mut original_fn: syn::ItemFn = match syn::parse(item) {
-        Ok(ast) => ast,
-        Err(e) => {
-            let diag = proc_macro2::Span::call_site()
-                .unstable()
-                .error("lru_cache may only be used on functions");
-            return Err(DiagnosticError::new_with_syn_error(diag, e));
-        }
-    };
+fn impl_with_logger(item: TokenStream, params: TokenStream2, args: TokenStream2) -> TokenStream {
+    let mut original_fn = syn::parse_macro_input!(item as syn::ItemFn);
 
     let orig_ident = original_fn.sig.ident.clone();
-    let orig_name = original_fn.sig.ident.to_string();
+    let orig_name = orig_ident.to_string();
 
-    let new_name = format!("__wrapped_{}", original_fn.sig.ident.to_string());
-    original_fn.sig.ident = syn::Ident::new(&new_name[..], original_fn.sig.ident.span());
-    let new_ident = original_fn.sig.ident.clone();
+    let new_ident = quote::format_ident!("__wrapped_{}", orig_ident);
+    original_fn.sig.ident = new_ident.clone();
 
-    let mut new_fn: syn::ItemFn = parse_quote! {
-        #[bench]
-        fn #orig_ident(b: &mut Bencher) {
-            let bench_name = format!("{}::{}", module_path!(), #orig_name);
-            let logger = mc_common::logger::create_test_logger(bench_name);
+    let mut new_fn: syn::ItemFn = syn::parse_quote! {
+        #[test]
+        fn #orig_ident(#params) {
+            let test_name = format!("{}::{}", module_path!(), #orig_name);
+            let logger = mc_common::logger::create_test_logger(test_name);
             mc_common::logger::slog_scope::scope(
                 &logger.clone(),
-                || {
-                    #new_ident(logger, b);
-                }
+                || #new_ident(logger #args)
             );
         }
     };
-    new_fn.attrs.extend(original_fn.attrs.clone());
-    original_fn.attrs = Vec::new();
+    // Move other attributes to the new method.
+    new_fn.attrs.append(&mut original_fn.attrs);
 
-    let out = quote! {
+    quote! {
         #new_fn
         #original_fn
-
-    };
-    Ok(out.into())
+    }
+    .into()
 }

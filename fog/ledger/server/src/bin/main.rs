@@ -1,7 +1,9 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! Ledger Server target
 
+use clap::Parser;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_attest_net::{Client, RaClient};
 use mc_common::{
@@ -14,14 +16,13 @@ use mc_ledger_db::LedgerDB;
 use mc_util_grpc::AdminServer;
 use mc_watcher::watcher_db::WatcherDB;
 use std::{env, sync::Arc};
-use structopt::StructOpt;
 
 fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
 
     let (logger, _global_logger_guard) = create_app_logger(o!());
-    let config = LedgerServerConfig::from_args();
+    let config = LedgerServerConfig::parse();
 
     let _tracer = mc_util_telemetry::setup_default_tracer_with_tags(
         env!("CARGO_PKG_NAME"),

@@ -35,8 +35,7 @@ pub const ENCLAVE_FILE: &str = "libledger-enclave.signed.so";
 pub struct LedgerSgxEnclave {
     eid: sgx_enclave_id_t,
     // Hold a reference counter to the enclave to prevent destruction.
-    enclave: Arc<SgxEnclave>,
-    logger: Logger,
+    _enclave: Arc<SgxEnclave>,
 }
 
 impl ReportableEnclave for LedgerSgxEnclave {
@@ -79,7 +78,7 @@ impl LedgerSgxEnclave {
         enclave_path: path::PathBuf,
         self_id: &ResponderId,
         desired_capacity: u64,
-        logger: Logger,
+        _logger: Logger,
     ) -> LedgerSgxEnclave {
         let mut launch_token: sgx_launch_token_t = [0; 1024];
         let mut launch_token_updated: i32 = 0;
@@ -103,8 +102,7 @@ impl LedgerSgxEnclave {
         });
         let sgx_enclave = LedgerSgxEnclave {
             eid: enclave.geteid(),
-            enclave: Arc::new(enclave),
-            logger: logger.clone(),
+            _enclave: Arc::new(enclave),
         };
 
         sgx_enclave

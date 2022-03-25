@@ -800,7 +800,11 @@ fn add_block_to_ledger_db(
         })
         .collect();
 
-    let block_contents = BlockContents::new(key_images.to_vec(), outputs.clone());
+    let block_contents = BlockContents {
+        key_images: key_images.to_vec(),
+        outputs: outputs.clone(),
+        ..Default::default()
+    };
 
     let num_blocks = ledger_db.num_blocks().expect("failed to get block height");
 

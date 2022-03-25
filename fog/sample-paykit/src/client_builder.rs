@@ -74,52 +74,52 @@ impl ClientBuilder {
     }
 
     /// Sets the grpc retry configuration
-    pub fn grpc_retry_config(self, config: GrpcRetryConfig) -> Self {
-        let mut retval = self;
-        retval.grpc_retry_config = config;
-        retval
+    #[must_use]
+    pub fn grpc_retry_config(mut self, config: GrpcRetryConfig) -> Self {
+        self.grpc_retry_config = config;
+        self
     }
 
     /// Sets the ring size to be used when generating transactions.
-    pub fn ring_size(self, ring_size: usize) -> Self {
-        let mut retval = self;
-        retval.ring_size = ring_size;
-        retval
+    #[must_use]
+    pub fn ring_size(mut self, ring_size: usize) -> Self {
+        self.ring_size = ring_size;
+        self
     }
 
     /// Sets the address book for the client, used with memos
-    pub fn address_book(self, address_book: Vec<PublicAddress>) -> Self {
-        let mut retval = self;
-        retval.address_book = address_book;
-        retval
+    #[must_use]
+    pub fn address_book(mut self, address_book: Vec<PublicAddress>) -> Self {
+        self.address_book = address_book;
+        self
     }
 
     /// Sets the consensus sigstruct
-    pub fn consensus_sig(self, sig: Option<Signature>) -> Self {
-        let mut retval = self;
-        retval.consensus_sigstruct = sig;
-        retval
+    #[must_use]
+    pub fn consensus_sig(mut self, sig: Option<Signature>) -> Self {
+        self.consensus_sigstruct = sig;
+        self
     }
 
     /// Sets the fog ingest sigstruct
-    pub fn fog_ingest_sig(self, sig: Option<Signature>) -> Self {
-        let mut retval = self;
-        retval.fog_ingest_sigstruct = sig;
-        retval
+    #[must_use]
+    pub fn fog_ingest_sig(mut self, sig: Option<Signature>) -> Self {
+        self.fog_ingest_sigstruct = sig;
+        self
     }
 
     /// Sets the fog ledger sigstruct
-    pub fn fog_ledger_sig(self, sig: Option<Signature>) -> Self {
-        let mut retval = self;
-        retval.fog_ledger_sigstruct = sig;
-        retval
+    #[must_use]
+    pub fn fog_ledger_sig(mut self, sig: Option<Signature>) -> Self {
+        self.fog_ledger_sigstruct = sig;
+        self
     }
 
     /// Sets the fog view sigstruct
-    pub fn fog_view_sig(self, sig: Option<Signature>) -> Self {
-        let mut retval = self;
-        retval.fog_view_sigstruct = sig;
-        retval
+    #[must_use]
+    pub fn fog_view_sig(mut self, sig: Option<Signature>) -> Self {
+        self.fog_view_sigstruct = sig;
+        self
     }
 
     /// Create the client
@@ -177,9 +177,9 @@ impl ClientBuilder {
             fog_ingest_verifier,
             fog_untrusted,
             self.ring_size,
-            self.key.clone(),
-            self.address_book.clone(),
-            self.logger.clone(),
+            self.key,
+            self.address_book,
+            self.logger,
         )
     }
 

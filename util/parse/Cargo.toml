@@ -3,7 +3,7 @@ name = "mc-util-parse"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
 edition = "2018"
-description = "Helpers for parsing, particularly, for use with structopt and similar"
+description = "Helpers for parsing, particularly, for use with Clap and similar"
 readme = "README.md"
 
 [dependencies]

@@ -75,7 +75,7 @@ use crate::domain_separators::HASH_TO_SCALAR_DOMAIN_TAG;
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
 };
-use mc_account_keys::{PublicAddress, ViewKey};
+use mc_account_keys::PublicAddress;
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
@@ -154,30 +154,6 @@ pub fn recover_public_subaddress_spend_key(
 
     let P = tx_out_target_key.as_ref();
     RistrettoPublic::from(P - Hs * G)
-}
-
-/// Returns true if the output was sent to the recipient's i^th subaddress.
-///
-/// If you are checking an output against multiple subadresses, it is more
-/// efficient to use `recover_public_subaddress_spend_key` and compare the
-/// result against a table of D_i keys.
-///
-/// # Arguments
-/// * `view_key` - The recipient's private view key and public subaddress spend
-///   key, `(a, D_i)`.
-/// * `tx_out_target_key` - The output's target_key
-/// * `tx_out_public_key` - The output's public_key `R`.
-pub fn view_key_matches_output(
-    view_key: &ViewKey,
-    tx_out_target_key: &RistrettoPublic,
-    tx_out_public_key: &RistrettoPublic,
-) -> bool {
-    let D_prime = recover_public_subaddress_spend_key(
-        &view_key.view_private_key,
-        tx_out_target_key,
-        tx_out_public_key,
-    );
-    view_key.spend_public_key == D_prime
 }
 
 /// Computes the onetime private key `Hs( a * R ) + d`.
@@ -266,17 +242,23 @@ mod tests {
         let tx_private_key = RistrettoPrivate::from_random(&mut rng);
         let (tx_target_key, tx_public_key) = get_output_public_keys(&tx_private_key, &recipient);
 
-        assert!(view_key_matches_output(
-            &account.view_key(), // (a, D_0)
-            &tx_target_key,
-            &tx_public_key
-        ));
+        assert_eq!(
+            recipient.spend_public_key(),
+            &recover_public_subaddress_spend_key(
+                &account.view_private_key(), // (a, D_0)
+                &tx_target_key,
+                &tx_public_key
+            )
+        );
 
         let other_account = AccountKey::random(&mut rng);
-        let bad_view_key = other_account.view_key();
-        assert_eq!(
-            view_key_matches_output(&bad_view_key, &tx_target_key, &tx_public_key),
-            false,
+        assert_ne!(
+            other_account.default_subaddress().spend_public_key(),
+            &recover_public_subaddress_spend_key(
+                &other_account.view_private_key(),
+                &tx_target_key,
+                &tx_public_key
+            ),
             "The one-time public key should not match other view keys."
         );
     }
@@ -317,16 +299,14 @@ mod tests {
 
         assert_eq!(D_prime, *recipient.spend_public_key()); // D_7
 
-        // view_key_matches_output should return true.
-        let view_key = ViewKey::new(
-            account.view_private_key().clone(),   //a
-            recipient.spend_public_key().clone(), // D_7
+        assert_eq!(
+            recipient.spend_public_key(),
+            &recover_public_subaddress_spend_key(
+                account.view_private_key(),
+                &tx_target_key,
+                &tx_public_key
+            )
         );
-        assert!(view_key_matches_output(
-            &view_key,
-            &tx_target_key,
-            &tx_public_key
-        ));
     }
 
     #[test]
@@ -349,17 +329,6 @@ mod tests {
 
         // Returns meaningless public key.
         assert!(D_prime != *recipient.spend_public_key());
-
-        // view_key_matches_output should return false.
-        let view_key = ViewKey::new(
-            account.view_private_key().clone(),   // a
-            recipient.spend_public_key().clone(), // D_7
-        );
-        assert!(!view_key_matches_output(
-            &view_key,
-            &wrong_tx_target_key,
-            &tx_public_key
-        ));
     }
 
     #[test]
@@ -382,17 +351,6 @@ mod tests {
 
         // Returns meaningless public key.
         assert!(D_prime != *recipient.spend_public_key());
-
-        // view_key_matches_output should return false.
-        let view_key = ViewKey::new(
-            account.view_private_key().clone(),   // a
-            recipient.spend_public_key().clone(), // D_7
-        );
-        assert!(!view_key_matches_output(
-            &view_key,
-            &tx_target_key,
-            &wrong_tx_public_key
-        ));
     }
 
     #[test]

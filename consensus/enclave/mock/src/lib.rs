@@ -267,7 +267,11 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
             outputs.extend(tx.prefix.outputs.into_iter());
         }
 
-        let block_contents = BlockContents::new(key_images, outputs);
+        let block_contents = BlockContents {
+            key_images,
+            outputs,
+            ..Default::default()
+        };
 
         let block = Block::new_with_parent(
             block_version,

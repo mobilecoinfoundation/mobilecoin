@@ -58,6 +58,7 @@ fn active_key_is_retired_not_outstanding_new_key_is_set_node_activated(logger: L
     let origin_contents = BlockContents {
         key_images: Default::default(),
         outputs: origin_txo.clone(),
+        ..Default::default()
     };
     let origin_block = Block::new_origin_block(&origin_txo);
     ledger

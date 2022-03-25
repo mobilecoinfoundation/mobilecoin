@@ -29,6 +29,7 @@ pub mod constants;
 pub mod encrypted_fog_hint;
 pub mod fog_hint;
 pub mod membership_proofs;
+pub mod mint;
 pub mod onetime_keys;
 pub mod range_proofs;
 pub mod ring_signature;
@@ -43,7 +44,7 @@ pub use blockchain::*;
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
 pub use token::{tokens, Token, TokenId};
 pub use tx::MemoContext;
-pub use tx_error::{NewMemoError, NewTxError};
+pub use tx_error::{NewMemoError, NewTxError, ViewKeyMatchError};
 
 use core::convert::TryFrom;
 use mc_account_keys::AccountKey;

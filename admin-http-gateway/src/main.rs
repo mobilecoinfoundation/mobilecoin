@@ -1,9 +1,11 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! An HTTP frontend for a MobileCoin service's admin GRPC interface.
 
+#![deny(missing_docs)]
 #![feature(proc_macro_hygiene, decl_macro)]
 
+use clap::Parser;
 use grpcio::ChannelBuilder;
 use mc_common::logger::{create_app_logger, log, o};
 use mc_util_grpc::{admin, admin_grpc::AdminApiClient, ConnectionUriGrpcioChannel, Empty};
@@ -17,24 +19,24 @@ use rocket::{
 use rocket_contrib::json::Json;
 use serde_derive::Serialize;
 use std::{convert::TryFrom, sync::Arc};
-use structopt::StructOpt;
 
-#[derive(Clone, Debug, StructOpt)]
-#[structopt(
+/// Gateway options.
+#[derive(Clone, Debug, Parser)]
+#[clap(
     name = "mc-admin-http-gateway",
     about = "An HTTP frontend for a MobileCoin service's admin GRPC interface."
 )]
 pub struct Config {
     /// Host to listen on.
-    #[structopt(long, default_value = "127.0.0.1")]
+    #[clap(long, default_value = "127.0.0.1", env = "MC_LISTEN_HOST")]
     pub listen_host: String,
 
     /// Post to start webserver on.
-    #[structopt(long, default_value = "9090")]
+    #[clap(long, default_value = "9090", env = "MC_LISTEN_PORT")]
     pub listen_port: u16,
 
     /// Service admin URI to connect to.
-    #[structopt(long)]
+    #[clap(long, env = "MC_ADMIN_URI")]
     pub admin_uri: AdminUri,
 }
 
@@ -120,7 +122,7 @@ fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
 
-    let config = Config::from_args();
+    let config = Config::parse();
 
     let (logger, _global_logger_guard) = create_app_logger(o!());
     log::info!(

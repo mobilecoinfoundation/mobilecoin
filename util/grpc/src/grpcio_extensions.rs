@@ -59,6 +59,7 @@ impl ConnectionUriGrpcioChannel for ChannelBuilder {
 pub trait ConnectionUriGrpcioServer {
     /// Bind a ServerBuilder using information from a URI and enable support for
     /// hot-reloading certificates when TLS is used.
+    #[must_use]
     fn bind_using_uri(self, uri: &impl ConnectionUri, logger: Logger) -> Self;
 }
 
