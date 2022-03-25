@@ -1,6 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! MobileCoin Fog View target
+use clap::Parser;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_attest_net::{Client, RaClient};
 use mc_common::{logger::log, time::SystemTimeProvider};
@@ -9,14 +11,13 @@ use mc_fog_view_enclave::{SgxViewEnclave, ENCLAVE_FILE};
 use mc_fog_view_server::{config::MobileAcctViewConfig, server::ViewServer};
 use mc_util_grpc::AdminServer;
 use std::{env, sync::Arc};
-use structopt::StructOpt;
 
 fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) =
         mc_common::logger::create_app_logger(mc_common::logger::o!());
-    let config = MobileAcctViewConfig::from_args();
+    let config = MobileAcctViewConfig::parse();
 
     let recovery_db = SqlRecoveryDb::new_from_url(
         &std::env::var("DATABASE_URL").expect("DATABASE_URL environment variable missing"),

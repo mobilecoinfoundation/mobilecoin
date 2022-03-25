@@ -14,7 +14,7 @@ diff -urN mobilecoin-1.0.1/mobilecoind/src/bin/main.rs new/mobilecoind/src/bin/m
 +++ new/mobilecoind/src/bin/main.rs	2021-03-14 19:00:36.468939590 -0700
 @@ -16,7 +16,45 @@
  };
- use structopt::StructOpt;
+ use clap::Parser;
 
 +use mc_mobilecoind::monitor_store::{MonitorId, MonitorData};
 +use rand::prelude::*;
@@ -55,7 +55,7 @@ diff -urN mobilecoin-1.0.1/mobilecoind/src/bin/main.rs new/mobilecoind/src/bin/m
 +    let fog_id = MonitorId::from(&fog_data);
 +    eprintln!("{}", HexFmt(fog_id));
 +
-     let config = Config::from_args();
+     let config = Config::parse();
      if !cfg!(debug_assertions) && !config.offline {
          config.validate_host().expect("Could not validate host");
 diff -urN mobilecoin-1.0.1/mobilecoind/src/lib.rs new/mobilecoind/src/lib.rs

@@ -1,7 +1,9 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! mobilecoind daemon entry point
 
+use clap::Parser;
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
@@ -14,10 +16,9 @@ use std::{
     path::Path,
     sync::{Arc, RwLock},
 };
-use structopt::StructOpt;
 
 fn main() {
-    let config = Config::from_args();
+    let config = Config::parse();
     if !cfg!(debug_assertions) && !config.offline {
         config.validate_host().expect("Could not validate host");
     }

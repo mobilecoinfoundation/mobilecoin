@@ -5,6 +5,8 @@
 //!   bootstrapped directly)
 //! * Slam the network with transactions as a load test
 
+#![deny(missing_docs)]
+
 pub mod config;
 
 pub use crate::config::Config;

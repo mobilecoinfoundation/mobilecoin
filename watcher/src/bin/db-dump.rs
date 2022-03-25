@@ -1,32 +1,38 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! A utility for examining the contents of a given watcher db.
 
+use clap::Parser;
 use mc_attest_core::VerificationReportData;
 use mc_common::logger::{create_app_logger, o};
 use mc_crypto_keys::Ed25519Public;
 use mc_util_repr_bytes::ReprBytes;
 use mc_watcher::{error::WatcherDBError, watcher_db::WatcherDB};
 use std::{convert::TryFrom, path::PathBuf};
-use structopt::StructOpt;
 use url::Url;
 
 /// Command line configuration.
-#[derive(Debug, StructOpt)]
-#[structopt(
+#[derive(Debug, Parser)]
+#[clap(
     name = "mc-watcher-db-dump",
     about = "A utility for examining the contents of a given watcher db"
 )]
 pub struct Config {
     /// Path to watcher db (lmdb).
-    #[structopt(long, default_value = "/tmp/watcher-db", parse(from_os_str))]
+    #[clap(
+        long,
+        default_value = "/tmp/watcher-db",
+        parse(from_os_str),
+        env = "MC_WATCHER_DB"
+    )]
     pub watcher_db: PathBuf,
 }
 
 fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
-    let config = Config::from_args();
+    let config = Config::parse();
     let watcher_db =
         WatcherDB::open_ro(&config.watcher_db, logger).expect("Failed opening watcher db");
 

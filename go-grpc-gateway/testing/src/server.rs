@@ -14,6 +14,7 @@ pub struct Server {
 }
 
 impl Server {
+    /// Instantiate a server, ready to listen at the given URI
     pub fn new(client_listen_uri: &FogUri, logger: Logger) -> Self {
         let env = Arc::new(
             grpcio::EnvBuilder::new()
@@ -45,6 +46,7 @@ impl Server {
         Self { server, logger }
     }
 
+    /// Start the server.
     pub fn start(&mut self) {
         self.server.start();
         for (host, port) in self.server.bind_addrs() {
@@ -52,6 +54,7 @@ impl Server {
         }
     }
 
+    /// Stop the server.
     pub fn stop(&mut self) {
         block_on(self.server.shutdown()).expect("Could not stop grpc server");
     }

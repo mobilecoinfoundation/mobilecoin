@@ -134,6 +134,11 @@ mod tests {
     }
 
     #[test]
+    fn validate_configs_accepts_no_configs() {
+        assert!(validate_configs(123, &[]).is_ok());
+    }
+
+    #[test]
     fn validate_configs_rejects_mismatching_token_ids() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let signer_1 = Ed25519Pair::from_random(&mut rng);

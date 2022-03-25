@@ -1,7 +1,9 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! Entrypoint for the MobileCoin server.
 
+use clap::Parser;
 use mc_attest_net::{Client, RaClient};
 use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{
@@ -24,13 +26,12 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use structopt::StructOpt;
 
 fn main() -> Result<(), ConsensusServiceError> {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
 
-    let config = Config::from_args();
+    let config = Config::parse();
     let local_node_id = config.node_id();
     let fee_map = config.tokens().fee_map().expect("Could not parse fee map");
     let master_minters_map = config

@@ -1,19 +1,22 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
+
+use clap::Parser;
 use retry::delay;
 use serde::Serialize;
 use std::time::Duration;
-use structopt::StructOpt;
 
 /// An object which represents a retry policy for retriable errors for a grpc
 /// connection
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize, StructOpt)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Parser, Serialize)]
 pub struct GrpcRetryConfig {
     /// How many times to retry when we get retriable errors (grpc connection)
-    #[structopt(long, env, default_value = "3")]
+    #[clap(long, default_value = "3", env = "MC_GRPC_RETRY_COUNT")]
     pub grpc_retry_count: usize,
 
     /// How long to back off (milliseconds) when we get retriable errors (grpc
     /// connection)
-    #[structopt(long, env, default_value = "20")]
+    #[clap(long, default_value = "20", env = "MC_GRPC_RETRY_MILLIS")]
     pub grpc_retry_millis: u64,
 }
 

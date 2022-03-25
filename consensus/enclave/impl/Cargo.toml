@@ -49,6 +49,7 @@ rand_core = { version = "0.6", default-features = false }
 
 [dev-dependencies]
 mc-common = { path = "../../../common", features = ["loggers"] }
+mc-crypto-multisig = { path = "../../../crypto/multisig" }
 mc-ledger-db = { path = "../../../ledger/db" }
 mc-transaction-core-test-utils = { path = "../../../transaction/core/test-utils" }
 
