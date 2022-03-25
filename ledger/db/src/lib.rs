@@ -1338,7 +1338,7 @@ mod ledger_db_test {
             // All blocks should've been written (+ origin block).
             assert_eq!(
                 ledger_db.num_blocks().unwrap(),
-                1 + (3 * (*block_version)) as u64
+                1 + (3 * ((*block_version) + 1)) as u64
             );
         }
 
