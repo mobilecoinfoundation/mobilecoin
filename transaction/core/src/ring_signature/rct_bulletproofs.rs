@@ -612,7 +612,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -634,7 +634,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -655,7 +655,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -680,7 +680,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -706,7 +706,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -738,7 +738,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -773,7 +773,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -814,7 +814,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 4..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -848,7 +848,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 4..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -873,7 +873,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 2..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
