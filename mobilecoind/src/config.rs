@@ -253,6 +253,9 @@ impl Config {
         }
     }
 
+    /// Ensure local IP address is valid
+    ///
+    /// This does nothing when ip-check is disabled.
     #[cfg(not(feature = "ip-check"))]
     pub fn validate_host(&self) -> Result<(), ConfigError> {
         Ok(())
