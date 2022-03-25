@@ -753,7 +753,7 @@ mod ledger_db_test {
     use test::Bencher;
 
     // TODO: Should these tests run over several block versions?
-    const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
+    const BLOCK_VERSION: BlockVersion = BlockVersion::ZERO;
 
     /// Creates a LedgerDB instance.
     fn create_db() -> LedgerDB {
@@ -1158,7 +1158,7 @@ mod ledger_db_test {
 
         let block_contents = BlockContents::new(key_images.clone(), outputs);
         let block = Block::new_with_parent(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &origin_block,
             &Default::default(),
             &block_contents,
@@ -1204,7 +1204,7 @@ mod ledger_db_test {
         let block_contents = BlockContents::new(key_images.clone(), outputs);
         let parent = ledger_db.get_block(n_blocks - 1).unwrap();
         let block = Block::new_with_parent(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &parent,
             &Default::default(),
             &block_contents,
@@ -1242,7 +1242,7 @@ mod ledger_db_test {
 
         let block_contents = BlockContents::new(key_images.clone(), outputs);
         let block = Block::new_with_parent(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &origin_block,
             &Default::default(),
             &block_contents,
@@ -1338,7 +1338,7 @@ mod ledger_db_test {
             // All blocks should've been written (+ origin block).
             assert_eq!(
                 ledger_db.num_blocks().unwrap(),
-                1 + (3 * (*block_version)) as u64
+                1 + (3 * ((*block_version) + 1)) as u64
             );
         }
 

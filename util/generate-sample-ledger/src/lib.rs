@@ -17,7 +17,7 @@ use rand_hc::Hc128Rng as FixedRng;
 use std::{path::Path, vec::Vec};
 
 // This is historically the version created by bootstrap
-const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
+const BLOCK_VERSION: BlockVersion = BlockVersion::ZERO;
 
 /// Deterministically populates a testnet ledger.
 ///

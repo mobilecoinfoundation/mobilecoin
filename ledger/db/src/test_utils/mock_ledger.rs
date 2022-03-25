@@ -249,7 +249,7 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
             let block_contents = BlockContents::new(key_images, outputs);
 
             let block = Block::new_with_parent(
-                BlockVersion::ONE,
+                BlockVersion::ZERO,
                 &blocks_and_contents[block_index - 1].0,
                 &TxOutMembershipElement::default(),
                 &block_contents,

@@ -35,7 +35,7 @@ pub fn validate<R: RngCore + CryptoRng>(
     minimum_fee: u64,
     csprng: &mut R,
 ) -> TransactionValidationResult<()> {
-    if block_version < BlockVersion::ONE || BlockVersion::MAX < block_version {
+    if BlockVersion::MAX < block_version {
         return Err(TransactionValidationError::Ledger(format!(
             "Invalid block version: {}",
             block_version
@@ -528,7 +528,7 @@ mod tests {
     #[test]
     // Should return MissingMemo when memos are missing in any the outputs
     fn test_validate_memos_exist() {
-        let (tx, _) = create_test_tx(BlockVersion::ONE);
+        let (tx, _) = create_test_tx(BlockVersion::ZERO);
 
         assert!(tx.prefix.outputs.first().unwrap().e_memo.is_none());
         assert_eq!(
@@ -536,7 +536,7 @@ mod tests {
             Err(TransactionValidationError::MissingMemo)
         );
 
-        let (tx, _) = create_test_tx(BlockVersion::TWO);
+        let (tx, _) = create_test_tx(BlockVersion::ONE);
 
         assert!(tx.prefix.outputs.first().unwrap().e_memo.is_some());
         assert_eq!(validate_memos_exist(&tx), Ok(()));
@@ -545,12 +545,12 @@ mod tests {
     #[test]
     // Should return MemosNotAllowed when memos are present in any of the outputs
     fn test_validate_no_memos_exist() {
-        let (tx, _) = create_test_tx(BlockVersion::ONE);
+        let (tx, _) = create_test_tx(BlockVersion::ZERO);
 
         assert!(tx.prefix.outputs.first().unwrap().e_memo.is_none());
         assert_eq!(validate_no_memos_exist(&tx), Ok(()));
 
-        let (tx, _) = create_test_tx(BlockVersion::TWO);
+        let (tx, _) = create_test_tx(BlockVersion::ONE);
 
         assert!(tx.prefix.outputs.first().unwrap().e_memo.is_some());
         assert_eq!(

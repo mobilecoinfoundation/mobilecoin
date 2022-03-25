@@ -1,6 +1,6 @@
 [package]
 name = "mc-attest-api"
-version = "1.2.0-pre1"
+version = "1.2.0-pre2"
 authors = ["MobileCoin"]
 license = "MIT/Apache-2.0"
 edition = "2018"
