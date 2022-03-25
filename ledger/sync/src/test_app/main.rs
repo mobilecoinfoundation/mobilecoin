@@ -32,7 +32,7 @@ fn _make_ledger_long(ledger: &mut LedgerDB) {
         .collect::<Vec<_>>();
 
     let results: Vec<(Block, BlockContents)> = mc_transaction_core_test_utils::get_blocks(
-        BlockVersion::ONE,
+        BlockVersion::ZERO,
         &recipient_pub_keys[..],
         1,
         1000,

@@ -135,7 +135,7 @@ pub fn add_test_block<T: RngCore + CryptoRng>(
     };
 
     let block = Block::new_with_parent(
-        BlockVersion::ONE,
+        BlockVersion::ZERO,
         &last_block,
         &root_element,
         &block_contents,

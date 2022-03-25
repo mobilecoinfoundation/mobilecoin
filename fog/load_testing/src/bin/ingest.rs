@@ -204,7 +204,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         LedgerDB::create(ledger_db_path.path()).unwrap();
         let mut ledger_db = LedgerDB::open(ledger_db_path.path()).unwrap();
 
-        let block_version = BlockVersion::ONE;
+        let block_version = BlockVersion::ZERO;
 
         mc_transaction_core_test_utils::initialize_ledger(
             block_version,

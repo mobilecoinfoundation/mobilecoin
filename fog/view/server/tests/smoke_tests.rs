@@ -146,7 +146,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id1,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             0,
             2,
@@ -161,7 +161,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id1,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             1,
             6,
@@ -184,7 +184,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id2,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             2,
             12,
@@ -219,7 +219,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id2,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             3,
             12,
@@ -234,7 +234,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id2,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             4,
             16,
@@ -251,7 +251,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id2,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             5,
             20,
