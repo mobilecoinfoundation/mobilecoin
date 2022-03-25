@@ -57,10 +57,12 @@ impl FromStr for BlockVersion {
 impl BlockVersion {
     /// The maximum value of block_version that this build of
     /// mc-transaction-core has support for
-    pub const MAX: Self = Self(2);
+    pub const MAX: Self = Self(1);
 
     /// Refers to the block version number at network launch.
-    /// Note: The origin blocks use block version zero.
+    pub const ZERO: Self = Self(0);
+
+    /// Constant for block version one
     pub const ONE: Self = Self(1);
 
     /// Constant for block version two
@@ -69,13 +71,13 @@ impl BlockVersion {
     /// Iterator over block versions from one up to max, inclusive. For use in
     /// tests.
     pub fn iterator() -> BlockVersionIterator {
-        BlockVersionIterator(1)
+        BlockVersionIterator(0)
     }
 
     /// The encrypted memos [MCIP #3](https://github.com/mobilecoinfoundation/mcips/pull/3)
-    /// feature is introduced in block version 2.
+    /// feature is introduced in block version 1.
     pub fn e_memo_feature_is_supported(&self) -> bool {
-        self.0 >= 2
+        self.0 >= 1
     }
 }
 
@@ -126,7 +128,7 @@ mod tests {
     #[test]
     fn test_block_version_iterator() {
         let observed = BlockVersion::iterator().map(|x| *x).collect::<Vec<u32>>();
-        let expected = (1..=*BlockVersion::MAX).collect::<Vec<u32>>();
+        let expected = (0..=*BlockVersion::MAX).collect::<Vec<u32>>();
         assert_eq!(observed, expected);
     }
 

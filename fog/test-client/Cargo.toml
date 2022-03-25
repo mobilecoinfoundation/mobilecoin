@@ -1,6 +1,6 @@
 [package]
 name = "mc-fog-test-client"
-version = "1.2.0-pre1"
+version = "1.2.0-pre2"
 authors = ["MobileCoin"]
 edition = "2018"
 readme = "README.md"

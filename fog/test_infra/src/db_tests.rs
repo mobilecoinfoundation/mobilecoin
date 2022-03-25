@@ -661,7 +661,7 @@ pub fn random_block(
     num_txs: usize,
 ) -> (Block, Vec<ETxOutRecord>) {
     let block = Block::new(
-        BlockVersion::ONE,
+        BlockVersion::ZERO,
         &BlockID::default(),
         block_index,
         0,
