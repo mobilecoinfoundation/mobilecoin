@@ -594,7 +594,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Local network tester')
     parser.add_argument('--network-type', help='Type of network to create', required=True)
     parser.add_argument('--skip-build', help='Skip building binaries', action='store_true')
-    parser.add_argument('--block-version', help='Set the block version argument', action='store_true')
+    parser.add_argument('--block-version', help='Set the block version argument', type=int)
     args = parser.parse_args()
 
     Network().default_entry_point(args.network_type, args.skip_build, args.block_version)
