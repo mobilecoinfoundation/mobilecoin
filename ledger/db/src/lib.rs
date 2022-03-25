@@ -2528,7 +2528,7 @@ mod ledger_db_test {
             ..Default::default()
         };
         let block = Block::new_with_parent(
-            BlockVersion::ZERO,
+            BLOCK_VERSION,
             &origin_block,
             &Default::default(),
             &block_contents,
@@ -2570,12 +2570,8 @@ mod ledger_db_test {
             ..Default::default()
         };
         let parent = ledger_db.get_block(n_blocks - 1).unwrap();
-        let block = Block::new_with_parent(
-            BlockVersion::ZERO,
-            &parent,
-            &Default::default(),
-            &block_contents,
-        );
+        let block =
+            Block::new_with_parent(BLOCK_VERSION, &parent, &Default::default(), &block_contents);
 
         ledger_db
             .append_block(&block, &block_contents, None)
@@ -2610,7 +2606,7 @@ mod ledger_db_test {
             ..Default::default()
         };
         let block = Block::new_with_parent(
-            BlockVersion::ZERO,
+            BLOCK_VERSION,
             &origin_block,
             &Default::default(),
             &block_contents,
