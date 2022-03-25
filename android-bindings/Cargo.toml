@@ -37,12 +37,8 @@ mc-util-uri = { path = "../util/uri" }
 
 # third-party
 aes-gcm = { version = "0.9.4", default-features = false }
-android_logger = "0.10.1"
 anyhow = "1.0"
 displaydoc = { version = "0.2", default-features = false }
-generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
-hex = "0.4.3"
-log = "0.4.14"
 jni = { version = "0.19.0", default-features = false }
 protobuf = "2.22.1"
 rand = { version = "0.8", default-features = false }
