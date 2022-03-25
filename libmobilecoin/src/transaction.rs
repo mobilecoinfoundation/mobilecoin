@@ -9,7 +9,6 @@ use crate::{
 use core::convert::TryFrom;
 use crc::Crc;
 use generic_array::{typenum::U66, GenericArray};
-use hex;
 use mc_account_keys::{AccountKey, PublicAddress, ShortAddressHash};
 use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes, RistrettoPrivate, RistrettoPublic};
 use mc_fog_report_validation::FogResolver;
@@ -20,7 +19,6 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     Amount, BlockVersion, CompressedCommitment, EncryptedMemo,
 };
-use std::convert::TryInto;
 
 use mc_transaction_std::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, ChangeDestination,
