@@ -281,19 +281,25 @@ mod client_api_tests {
         NodeID, ResponderId,
     };
     use mc_consensus_api::{
-        consensus_client_grpc, consensus_client_grpc::ConsensusClientApiClient,
-        consensus_common::ProposeTxResult,
+        consensus_client::MintValidationResultCode, consensus_client_grpc,
+        consensus_client_grpc::ConsensusClientApiClient, consensus_common::ProposeTxResult,
     };
     use mc_consensus_enclave::TxContext;
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_ledger_db::MockLedger;
     use mc_peers::ConsensusValue;
     use mc_transaction_core::{
-        ring_signature::KeyImage, tx::TxHash, validation::TransactionValidationError,
+        ring_signature::KeyImage, tx::TxHash, validation::TransactionValidationError, TokenId,
     };
+    use mc_transaction_core_test_utils::create_mint_config_tx;
     use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator};
+    use rand_core::SeedableRng;
+    use rand_hc::Hc128Rng;
     use serial_test::serial;
-    use std::{sync::Arc, time::Duration};
+    use std::{
+        sync::{Arc, Mutex},
+        time::Duration,
+    };
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server(instance: ClientApiService) -> (ConsensusClientApiClient, Server) {
@@ -665,5 +671,69 @@ mod client_api_tests {
                 panic!("Unexpected error {:?}", err);
             }
         };
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    fn test_propose_mint_config_tx_ok(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let consensus_enclave = MockConsensusEnclave::new();
+        let submitted_values = Arc::new(Mutex::new(Vec::new()));
+
+        let submitted_values2 = submitted_values.clone();
+        let scp_client_value_sender = Arc::new(
+            move |value: ConsensusValue,
+                  _node_id: Option<&NodeID>,
+                  _responder_id: Option<&ResponderId>| {
+                submitted_values2.lock().unwrap().push(value);
+            },
+        );
+
+        let num_blocks = 5;
+        let mut ledger = MockLedger::new();
+        // The service should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
+
+        let mut mint_tx_manager = MockMintTxManager::new();
+        mint_tx_manager
+            .expect_validate_mint_config_tx()
+            .times(1)
+            .return_const(Ok(()));
+
+        let is_serving_fn = Arc::new(|| -> bool { true });
+        let authenticator = AnonymousAuthenticator::default();
+
+        let instance = ClientApiService::new(
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(MockTxManager::new()),
+            Arc::new(mint_tx_manager),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        let tx = create_mint_config_tx(TokenId::from(5), &mut rng);
+        match client.propose_mint_config_tx(&(&tx).into()) {
+            Ok(propose_tx_response) => {
+                assert_eq!(
+                    propose_tx_response.get_result().get_code(),
+                    MintValidationResultCode::Ok
+                );
+                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+
+        assert_eq!(
+            *submitted_values.lock().unwrap(),
+            vec![ConsensusValue::MintConfigTx(tx)]
+        );
     }
 }
