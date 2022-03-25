@@ -1,11 +1,12 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use crate::{Block, BlockContents, BlockSignature};
+use mc_crypto_digestible::Digestible;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
 /// An object that holds all data included in and associated with a block.
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Message)]
+#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize)]
 pub struct BlockData {
     #[prost(message, required, tag = "1")]
     block: Block,

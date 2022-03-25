@@ -10,7 +10,7 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 
 /// A block signature.
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Message)]
+#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize)]
 pub struct BlockSignature {
     /// The actual signature of the block.
     #[prost(message, required, tag = "1")]

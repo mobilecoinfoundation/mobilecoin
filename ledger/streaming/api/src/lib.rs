@@ -2,6 +2,7 @@
 
 //! Ledger Streaming API.
 
+#![feature(assert_matches)]
 #![feature(type_alias_impl_trait)]
 #![deny(missing_docs)]
 

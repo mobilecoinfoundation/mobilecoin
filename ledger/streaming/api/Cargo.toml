@@ -15,6 +15,7 @@ mc-api = { path = "../../../api" }
 mc-attest-core = { path = "../../../attest/core" }
 mc-common = { path = "../../../common" }
 mc-consensus-scp = { path = "../../../consensus/scp" }
+mc-crypto-digestible = { path = "../../../crypto/digestible", features = ["dalek", "derive"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-transaction-core = { path = "../../../transaction/core" }
 
@@ -28,3 +29,9 @@ mc-util-build-grpc = { path = "../../../util/build/grpc" }
 mc-util-build-script = { path = "../../../util/build/script" }
 
 cargo-emit = "0.2"
+
+[dev-dependencies]
+mc-util-from-random = { path = "../../../util/from-random" }
+
+rand_core = "0.6"
+rand_hc = "0.3"
