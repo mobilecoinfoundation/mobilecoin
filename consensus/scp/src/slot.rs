@@ -308,7 +308,7 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
         // Omit any invalid values.
         let valid_values: Vec<V> = values
             .iter()
-            .filter(|value| self.is_valid(value).is_ok())
+            .filter(|value| self.validate(value).is_ok())
             .cloned()
             .collect();
 
@@ -366,7 +366,7 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
                     // because this node no longer changes its ballot values.
                     if self.phase != Phase::Externalize {
                         for value in msg.values() {
-                            if self.is_valid(&value).is_err() {
+                            if self.validate(&value).is_err() {
                                 // Ignore this msg because it contains an invalid value.
                                 continue 'msg_loop;
                             }
@@ -447,7 +447,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         slot
     }
 
-    fn is_valid(&mut self, value: &V) -> Result<(), String> {
+    fn validate(&mut self, value: &V) -> Result<(), String> {
         if self.valid_values.contains(value) {
             return Ok(());
         }
@@ -2408,7 +2408,6 @@ mod ballot_protocol_tests {
     use crate::{core_types::*, quorum_set::*, test_utils::*};
     use maplit::{btreeset, hashset};
     use mc_common::logger::test_with_logger;
-    use pretty_assertions::assert_eq;
     use std::iter::FromIterator;
 
     // TODO: reject a message if it contains a ballot containing incorrectly ordered

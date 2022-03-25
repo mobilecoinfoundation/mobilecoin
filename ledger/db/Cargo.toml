@@ -29,14 +29,9 @@ prost = { version = "0.9", default-features = false, features = ["prost-derive"]
 rand = { version = "0.8", optional = true }
 rand_core = "0.6"
 
-[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["simd_backend", "nightly"] }
-
-[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["nightly", "u64_backend"] }
-
 [dev-dependencies]
 mc-crypto-keys = { path = "../../crypto/keys" }
+mc-crypto-multisig = { path = "../../crypto/multisig" }
 mc-crypto-rand = { path = "../../crypto/rand" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 rand = "0.8"

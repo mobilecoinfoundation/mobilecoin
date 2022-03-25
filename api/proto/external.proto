@@ -35,6 +35,20 @@ message Ed25519Signature {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// `mc-crypto-multisig` crate
+///////////////////////////////////////////////////////////////////////////////
+
+message Ed25519MultiSig {
+    repeated Ed25519Signature signatures = 1;
+}
+
+message Ed25519SignerSet {
+    repeated Ed25519Public signers = 1;
+    uint32 threshold = 2;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
 // `account-keys` crate
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -108,24 +122,20 @@ message RootEntropy {
     bytes data = 1;
 }
 
-/// A ViewKey is a reduced AccountKey -- it contains the private key necessary to
-/// view your transactions and see the amounts, but not to send new transactions.
-/// This concept is part of Cryptonote.
-/// In Mobilecoin, all public addresses correspond to subaddresses, and often
-/// the "default subaddress" is used.
-/// The ViewKey similarly corresponds to a particular subaddress.
-message ViewKey {
-    /// The view-private-key of the account. This enables to check if a transaction
-    /// corresponds to this subaddress, and to interact with fog.
-    RistrettoPrivate view_private_key = 1;
-    /// The spend public key of the account.
-    /// This value also appears in the public address.
-    CompressedRistretto spend_public_key = 2;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // `trasaction/core` crate
 ///////////////////////////////////////////////////////////////////////////////
+
+/// A list of "known" token id's and their names.
+///
+/// Note that this is not an exhaustive list and clients should gracefully handle
+/// the scenario that they receive a tx out with a token id they don't know about yet.
+///
+/// If changing this, please keep it in sync with the list defined in
+/// mc-transaction-core in the tokens module.
+enum KnownTokenId {
+    MOB = 0;
+}
 
 /// A 32-byte scalar associated to the ristretto group.
 /// This is the same as RistrettoPrivate, but they are used in different places.
@@ -168,13 +178,16 @@ message TxOutConfirmationNumber {
     bytes hash = 1;
 }
 
-// Amount.
-message Amount {
+// MaskedAmount.
+message MaskedAmount {
     // A Pedersen commitment `v*G + s*H`
     CompressedRistretto commitment = 1;
 
     // `masked_value = value XOR_8 Blake2B("value_mask" || shared_secret)`
     fixed64 masked_value = 2;
+
+    // `masked_token_id = token_id XOR_8 Blake2B("token_id_mask" || shared_secret)`
+    bytes masked_token_id = 3;
 }
 
 // The bytes of encrypted fog hint
@@ -190,7 +203,7 @@ message EncryptedMemo {
 // A Transaction Output.
 message TxOut {
     // Amount.
-    Amount amount = 1;
+    MaskedAmount masked_amount = 1;
 
     // Public key.
     CompressedRistretto target_key = 2;
@@ -228,6 +241,9 @@ message TxPrefix {
 
     // The block index at which this transaction is no longer valid.
     uint64 tombstone_block = 4;
+
+    // Token id for this transaction
+    fixed32 token_id = 5;
 }
 
 message RingMLSAG {
@@ -275,7 +291,7 @@ message Receipt {
 
     // Amount of the TxOut.
     // Note: This value is self-reported by the sender and is unverifiable.
-    Amount amount = 4;
+    MaskedAmount masked_amount = 4;
 }
 
 /// The signature over an IAS JSON reponse, created by Intel
@@ -294,4 +310,70 @@ message VerificationReport {
 
     /// The raw report body JSON, as a byte sequence
     string http_body = 3;
+}
+
+/// The contents of a mint-tx, which is a transaction to mint new tokens.
+message MintTxPrefix {
+    /// Token ID we are minting.
+    uint32 token_id = 1;
+
+    /// Amount we are minting.
+    uint64 amount = 2;
+
+    /// The destination's public subaddress view key 'C'.
+    CompressedRistretto view_public_key = 3;
+
+    /// The destination's public subaddress spend key `D`.
+    CompressedRistretto spend_public_key = 4;
+
+    /// Nonce, to prevent replay attacks.
+    /// Must be exactly 64 bytes long (see constant constants::NONCE_LENGTH).
+    bytes nonce = 5;
+
+    /// The block index at which this transaction is no longer valid.
+    uint64 tombstone_block = 6;
+}
+
+/// A mint transaction coupled with a signature over it.
+message MintTx {
+    MintTxPrefix prefix = 1;
+    Ed25519MultiSig signature = 2;
+}
+
+/// A minting configuration for a single token ID.
+/// The minting configuration specifies who is allowed to submit mint
+/// transactions, for which token and at what total limit.
+message MintConfig {
+    /// Token ID this configuration applies to.
+    uint32 token_id = 1;
+
+    /// The set of keys that can sign a minting transaction.
+    Ed25519SignerSet signer_set = 2;
+
+    /// The maximal amount this configuration can mint from the moment it has
+    /// been applied.
+    uint64 mint_limit = 3;
+}
+
+/// The contents of a mint-config transaction. This transaction alters the
+/// minting configuration for a single token ID.
+message MintConfigTxPrefix {
+    /// Token ID we are replacing the configuration set for.
+    uint32 token_id = 1;
+
+    /// The new configuration.
+    repeated MintConfig configs = 2;
+
+    /// Nonce, to prevent replay attacks.
+    /// Must be exactly 64 bytes long (see constant constants::NONCE_LENGTH).
+    bytes nonce = 3;
+
+    /// The block index at which this transaction is no longer valid.
+    uint64 tombstone_block = 4;
+}
+
+/// A mint-config transaction coupled with a signature over it.
+message MintConfigTx {
+    MintConfigTxPrefix prefix = 1;
+    Ed25519MultiSig signature = 2;
 }

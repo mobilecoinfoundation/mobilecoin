@@ -57,7 +57,7 @@ impl FromStr for BlockVersion {
 impl BlockVersion {
     /// The maximum value of block_version that this build of
     /// mc-transaction-core has support for
-    pub const MAX: Self = Self(2);
+    pub const MAX: Self = Self(3);
 
     /// Refers to the block version number at network launch.
     /// Note: The origin blocks use block version zero.
@@ -65,6 +65,9 @@ impl BlockVersion {
 
     /// Constant for block version two
     pub const TWO: Self = Self(2);
+
+    /// Constant for block version three
+    pub const THREE: Self = Self(3);
 
     /// Iterator over block versions from one up to max, inclusive. For use in
     /// tests.
@@ -76,6 +79,22 @@ impl BlockVersion {
     /// feature is introduced in block version 2.
     pub fn e_memo_feature_is_supported(&self) -> bool {
         self.0 >= 2
+    }
+
+    /// The confidential token ids [MCIP #25](https://github.com/mobilecoinfoundation/mcips/pull/3)
+    /// feature is introduced in block version 3.
+    pub fn masked_token_id_feature_is_supported(&self) -> bool {
+        self.0 >= 3
+    }
+
+    /// transactions shall be sorted after version 3
+    pub fn validate_transaction_outputs_are_sorted(&self) -> bool {
+        self.0 > 3
+    }
+
+    /// mint transactions are introduced in block version 3
+    pub fn mint_transactions_are_supported(&self) -> bool {
+        self.0 >= 3
     }
 }
 
@@ -93,6 +112,7 @@ impl fmt::Display for BlockVersion {
     }
 }
 
+/// An iterator over block versions from 1 up to Max, for use in test code
 #[derive(Debug, Clone)]
 pub struct BlockVersionIterator(u32);
 
@@ -109,6 +129,8 @@ impl Iterator for BlockVersionIterator {
     }
 }
 
+/// An error that can occur when parsing a block version or interpreting u32 as
+/// a block version
 #[derive(Clone, Display, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum BlockVersionError {
     /// Unsupported block version: {0} > {1}. Try upgrading your software

@@ -1,7 +1,9 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! A utility to play back SCP messages logged by `LoggingScpNode`.
 
+use clap::Parser;
 use mc_common::{logger::log, NodeID};
 use mc_consensus_scp::{
     scp_log::{LoggedMsg, ScpLogReader, StoredMsg},
@@ -14,15 +16,15 @@ use std::{
     collections::VecDeque, fmt, path::PathBuf, str::FromStr, sync::Arc, thread::sleep,
     time::Duration,
 };
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+/// Configurable options.
+#[derive(Debug, Parser)]
 pub struct Config {
     /// Node Id
     ///
     /// Should be specified with a PeerURI, with consensus-msg-key param
     /// provided
-    #[structopt(long, parse(try_from_str=parse_node_id_from_uri))]
+    #[clap(long, parse(try_from_str = parse_node_id_from_uri), env = "MC_NODE_ID")]
     pub node_id: Option<NodeID>,
 
     /// Quorum set.
@@ -30,11 +32,11 @@ pub struct Config {
     /// The quorum set is represented in JSON. For example:
     /// {"threshold":1,"members":[{"type":"Node","args":"node2.test.mobilecoin.
     /// com:8443"},{"type":"Node","args":"node3.test.mobilecoin.com:4843"}]}
-    #[structopt(long, parse(try_from_str=parse_quorum_set_from_json))]
+    #[clap(long, parse(try_from_str = parse_quorum_set_from_json), env = "MC_QUORUM_SET")]
     pub quorum_set: Option<QuorumSet>,
 
     /// SCP debug dump.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str), env = "MC_SCP_DEBUG_DUMP")]
     pub scp_debug_dump: PathBuf,
 }
 
@@ -65,7 +67,7 @@ impl fmt::Display for TransactionValidationError {
 fn main() {
     let (logger, _global_logger_guard) =
         mc_common::logger::create_app_logger(mc_common::logger::o!());
-    let config = Config::from_args();
+    let config = Config::parse();
 
     let validity_fn = Arc::new(trivial_validity_fn);
     let combine_fn = Arc::new(get_bounded_combine_fn(MAX_TRANSACTIONS_PER_BLOCK));

@@ -1,43 +1,53 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! Configuration parameters for the watcher test utility.
 
+use clap::Parser;
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::{ConsensusClientUri, WatcherUri};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf, str::FromStr, time::Duration};
-use structopt::StructOpt;
 use url::Url;
 
-#[derive(Clone, Debug, StructOpt)]
-#[structopt(
+#[derive(Clone, Debug, Parser)]
+#[clap(
     name = "mc-watcher",
     about = "Sync data from multiple sources, reconcile blocks, and verify signatures."
 )]
 /// Configuration for the Watcher Node.
 pub struct WatcherConfig {
     /// Path to watcher db (lmdb).
-    #[structopt(long, default_value = "/tmp/watcher-db", parse(from_os_str))]
+    #[clap(
+        long,
+        default_value = "/tmp/watcher-db",
+        parse(from_os_str),
+        env = "MC_WATCHER_DB"
+    )]
     pub watcher_db: PathBuf,
 
     /// The location of the sources.toml file. This file configures the list of
     /// block sources and consensus nodes that are being watched.
-    #[structopt(long)]
+    #[clap(long, env = "MC_SOURCES_PATH")]
     pub sources_path: PathBuf,
 
     /// (Optional) Number of blocks to sync
-    #[structopt(long)]
+    #[clap(long, env = "MC_MAX_BLOCK_HEIGHT")]
     pub max_block_height: Option<u64>,
 
     /// How many seconds to wait between polling.
-    #[structopt(long, default_value = "1", parse(try_from_str=parse_duration_in_seconds))]
+    #[clap(long, default_value = "1", parse(try_from_str = parse_duration_in_seconds), env = "MC_POLL_INTERVAL")]
     pub poll_interval: Duration,
     /// Store block data for every fetched block.
-    #[structopt(long)]
+    #[clap(long, env = "MC_STORE_BLOCK_DATA")]
     pub store_block_data: bool,
 
     /// gRPC listening URI.
-    #[structopt(long, default_value = "insecure-watcher://0.0.0.0:3226/")]
+    #[clap(
+        long,
+        default_value = "insecure-watcher://0.0.0.0:3226/",
+        env = "MC_CLIENT_LISTEN_URI"
+    )]
     pub client_listen_uri: WatcherUri,
 }
 

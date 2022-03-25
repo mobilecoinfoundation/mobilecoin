@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::traits::{ConnectionUri, UriScheme};
 use displaydoc::Display;
@@ -10,6 +10,7 @@ use std::{
 };
 use url::Url;
 
+/// Error type for URI parsing.
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum UriParseError {
     /// Url parse error: "{0}", "{1}"
@@ -22,6 +23,9 @@ pub enum UriParseError {
     PercentDecoding(String),
 }
 
+impl std::error::Error for UriParseError {}
+
+/// Represents a URI with custom scheme validation and other helpers.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Uri<Scheme: UriScheme> {
     /// The original Url object used to construct this object.
@@ -43,7 +47,7 @@ pub struct Uri<Scheme: UriScheme> {
     password: String,
 
     /// The uri scheme
-    _scheme: PhantomData<fn() -> Scheme>,
+    _scheme: PhantomData<Scheme>,
 }
 
 impl<Scheme: UriScheme> ConnectionUri for Uri<Scheme> {

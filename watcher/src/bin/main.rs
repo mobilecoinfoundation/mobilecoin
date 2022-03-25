@@ -1,15 +1,18 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
-
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 #![doc = include_str!("../../README.md")]
 
 //! A standalone watcher program that can sync data from multiple sources.
 
 use displaydoc::Display;
 use mc_watcher::{
-    config::WatcherConfig, verification_reports_collector::VerificationReportsCollector,
-    watcher::Watcher, watcher_db::create_or_open_rw_watcher_db,
+    config::WatcherConfig,
+    verification_reports_collector::VerificationReportsCollector,
+    watcher::{SyncResult, Watcher},
+    watcher_db::create_or_open_rw_watcher_db,
 };
 
+use clap::Parser;
 use futures::executor::block_on;
 use grpcio::{EnvBuilder, ServerBuilder};
 use mc_common::logger::{create_app_logger, log, o, Logger};
@@ -22,13 +25,12 @@ use std::{
     },
     thread::{sleep, Builder as ThreadBuilder, JoinHandle},
 };
-use structopt::StructOpt;
 
 fn main() {
     mc_common::setup_panic_handler();
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
-    let config = WatcherConfig::from_args();
+    let config = WatcherConfig::parse();
     let sources_config = config.sources_config();
 
     let watcher_db = create_or_open_rw_watcher_db(
@@ -101,6 +103,7 @@ impl From<IOError> for Error {
     }
 }
 
+/// Thread wrapper for watcher sync.
 pub struct WatcherSyncThread {
     /// Join handle used to wait for the thread to terminate.
     join_handle: Option<JoinHandle<()>>,
@@ -109,7 +112,10 @@ pub struct WatcherSyncThread {
     stop_requested: Arc<AtomicBool>,
 }
 
+const MAX_BLOCKS_PER_SYNC_ITERATION: usize = 1000;
+
 impl WatcherSyncThread {
+    /// Start the sync thread.
     pub fn start(watcher: Watcher, config: WatcherConfig, logger: Logger) -> Result<Self, Error> {
         let stop_requested = Arc::new(AtomicBool::new(false));
         let thread_stop_requested = stop_requested.clone();
@@ -124,6 +130,7 @@ impl WatcherSyncThread {
         })
     }
 
+    /// Stop and join the sync thread.
     pub fn stop(&mut self) -> Result<(), Error> {
         if let Some(join_handle) = self.join_handle.take() {
             self.stop_requested.store(true, Ordering::SeqCst);
@@ -148,15 +155,30 @@ impl WatcherSyncThread {
             }
 
             // For now, ignore origin block, as it does not have a signature.
-            let syncing_done = watcher
-                .sync_blocks(1, config.max_block_height, false)
+            let sync_result = watcher
+                .sync_blocks(
+                    1,
+                    config.max_block_height,
+                    Some(MAX_BLOCKS_PER_SYNC_ITERATION),
+                    false,
+                )
                 .expect("Could not sync signatures");
-            if syncing_done {
-                log::info!(logger, "sync_signatures indicates we're done");
-                break;
-            }
 
-            sleep(config.poll_interval);
+            watcher.collect_metrics(None);
+
+            // Decide next step before continuing based on sync result
+            match sync_result {
+                SyncResult::AllBlocksSynced => {
+                    log::info!(logger, "sync_blocks indicates we're done");
+                    break;
+                }
+                SyncResult::BlockSyncError => {
+                    log::debug!(logger, "block sync error, sleeping before trying again");
+                    sleep(config.poll_interval);
+                }
+                // sync_blocks exited to check if stop has been requested
+                SyncResult::ReachedMaxBlocksPerIteration => {}
+            }
         }
     }
 }

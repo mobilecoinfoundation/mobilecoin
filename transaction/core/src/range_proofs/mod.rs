@@ -1,5 +1,12 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+//! Range proofs are used to prove that a set of committed values are all
+//! in a well-defined range, without revealing the values.
+//!
+//! A range proof is relative to a Pedersen Generator. If a prover can construct
+//! a range proof relative to one generator, they cannot construct a range proof
+//! relative to another generator, if those generators are orthogonal.
+
 extern crate alloc;
 use alloc::vec::Vec;
 use bulletproofs_og::RangeProof;
@@ -10,7 +17,7 @@ use rand_core::{CryptoRng, RngCore};
 pub mod error;
 use crate::{
     domain_separators::BULLETPROOF_DOMAIN_TAG,
-    ring_signature::{BP_GENERATORS, GENERATORS},
+    ring_signature::{PedersenGens, BP_GENERATORS},
 };
 use error::Error;
 
@@ -21,6 +28,8 @@ use error::Error;
 /// # Arguments
 /// `values` - Secret values that we want to prove are in [0,2^64).
 /// `blindings` - Pedersen commitment blinding for each value.
+/// `pedersen_generators` - Generators on which the commitments are based
+/// `rng` - randomness
 ///
 /// # Returns
 /// The proof and the Pedersen commitments from `values` and `blindings` (padded
@@ -28,6 +37,7 @@ use error::Error;
 pub fn generate_range_proofs<T: RngCore + CryptoRng>(
     values: &[u64],
     blindings: &[Scalar],
+    pedersen_generators: &PedersenGens,
     rng: &mut T,
 ) -> Result<(RangeProof, Vec<CompressedRistretto>), Error> {
     // Most of this comes directly from the example at
@@ -41,7 +51,7 @@ pub fn generate_range_proofs<T: RngCore + CryptoRng>(
     // Create a 64-bit RangeProof and corresponding commitments.
     RangeProof::prove_multiple_with_rng(
         &BP_GENERATORS,
-        &GENERATORS,
+        pedersen_generators,
         &mut Transcript::new(BULLETPROOF_DOMAIN_TAG.as_ref()),
         &values_padded,
         &blindings_padded,
@@ -58,10 +68,12 @@ pub fn generate_range_proofs<T: RngCore + CryptoRng>(
 /// # Arguments
 /// `range_proof` - A RangeProof.
 /// `commitments` - Commitments to secret values that lie in the range [0,2^64).
-/// `rng` - Randomness.
+/// `pedersen_generators` - Pedersen generators on which the commitments are
+/// based `rng` - Randomness.
 pub fn check_range_proofs<T: RngCore + CryptoRng>(
     range_proof: &RangeProof,
     commitments: &[CompressedRistretto],
+    pedersen_generators: &PedersenGens,
     rng: &mut T,
 ) -> Result<(), Error> {
     // The length of `commitments` must be a power of 2. If not, resize it.
@@ -69,7 +81,7 @@ pub fn check_range_proofs<T: RngCore + CryptoRng>(
     range_proof
         .verify_multiple_with_rng(
             &BP_GENERATORS,
-            &GENERATORS,
+            pedersen_generators,
             &mut Transcript::new(BULLETPROOF_DOMAIN_TAG.as_ref()),
             &resized_commitments,
             64,
@@ -103,15 +115,17 @@ fn resize_slice_to_pow2<T: Clone>(slice: &[T]) -> Result<Vec<T>, Error> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use crate::ring_signature::generators;
     use curve25519_dalek::ristretto::RistrettoPoint;
     use rand::{rngs::StdRng, SeedableRng};
     use rand_core::RngCore;
 
     fn generate_and_check(values: Vec<u64>, blindings: Vec<Scalar>) {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let (proof, commitments) = generate_range_proofs(&values, &blindings, &mut rng).unwrap();
+        let (proof, commitments) =
+            generate_range_proofs(&values, &blindings, &generators(0), &mut rng).unwrap();
 
-        match check_range_proofs(&proof, &commitments, &mut rng) {
+        match check_range_proofs(&proof, &commitments, &generators(0), &mut rng) {
             Ok(_) => {} // This is expected.
             Err(e) => panic!("{:?}", e),
         }
@@ -142,13 +156,14 @@ pub mod tests {
         let num_values: usize = 4;
         let values: Vec<u64> = (0..num_values).map(|_| rng.next_u64()).collect();
         let blindings: Vec<Scalar> = (0..num_values).map(|_| Scalar::random(&mut rng)).collect();
-        let (proof, commitments) = generate_range_proofs(&values, &blindings, &mut rng).unwrap();
+        let (proof, commitments) =
+            generate_range_proofs(&values, &blindings, &generators(0), &mut rng).unwrap();
 
         // Modify a commitment.
         let mut wrong_commitments = commitments.clone();
         wrong_commitments[0] = RistrettoPoint::random(&mut rng).compress();
 
-        match check_range_proofs(&proof, &wrong_commitments, &mut rng) {
+        match check_range_proofs(&proof, &wrong_commitments, &generators(0), &mut rng) {
             Ok(_) => panic!(),
             Err(_e) => {} // This is expected.
         }

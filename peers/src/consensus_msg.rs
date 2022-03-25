@@ -3,34 +3,32 @@
 //! Messages used in Consensus by Peers
 
 use displaydoc::Display;
-use ed25519::signature::Error as SignatureError;
 use mc_common::{NodeID, ResponderId};
 use mc_consensus_scp::Msg;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
-use mc_crypto_keys::{Ed25519Pair, Ed25519Signature, KeyError, Signer, Verifier};
+use mc_crypto_keys::{Ed25519Pair, Ed25519Signature, KeyError, SignatureError, Signer, Verifier};
 use mc_ledger_db::Ledger;
-use mc_transaction_core::{tx::TxHash, BlockID};
+use mc_transaction_core::{
+    mint::{MintConfigTx, MintTx},
+    tx::TxHash,
+    BlockID,
+};
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, hash::Hash, result::Result as StdResult};
 
 /// A single value in a consensus round.
 #[derive(
-    Clone,
-    Copy,
-    Display,
-    Debug,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Serialize,
-    Deserialize,
-    Digestible,
+    Clone, Debug, Deserialize, Digestible, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
 pub enum ConsensusValue {
     /// TxHash({0})
     TxHash(TxHash),
+
+    /// MintConfigTx({0})
+    MintConfigTx(MintConfigTx),
+
+    /// MintTx({0})
+    MintTx(MintTx),
 }
 
 impl From<TxHash> for ConsensusValue {

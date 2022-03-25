@@ -788,15 +788,17 @@ pub mod tx_out_store_tests {
         encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
         membership_proofs::{hash_leaf, hash_nodes, Range, NIL_HASH},
         onetime_keys::*,
+        tokens::Mob,
         tx::TxOut,
-        Amount, MemoPayload,
+        Amount, MaskedAmount, MemoPayload, Token,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use std::path::Path;
     use tempdir::TempDir;
 
-    fn get_env() -> Environment {
+    /// Create an LMDB environment that can be used for testing.
+    pub fn get_env() -> Environment {
         let temp_dir = TempDir::new("test").unwrap();
         let path = temp_dir.path().to_str().unwrap().to_string();
         Environment::new()
@@ -822,6 +824,7 @@ pub mod tx_out_store_tests {
         let mut tx_outs: Vec<TxOut> = Vec::new();
         let recipient_account = AccountKey::random(&mut rng);
         let value: u64 = 100;
+        let token_id = Mob::ID;
 
         for _i in 0..num_tx_outs {
             let tx_private_key = RistrettoPrivate::from_random(&mut rng);
@@ -832,9 +835,10 @@ pub mod tx_out_store_tests {
                 recipient_account.default_subaddress().spend_public_key(),
             );
             let shared_secret: RistrettoPublic = create_shared_secret(&target_key, &tx_private_key);
-            let amount = Amount::new(value, &shared_secret).unwrap();
+            let amount = Amount { value, token_id };
+            let masked_amount = MaskedAmount::new(amount, &shared_secret).unwrap();
             let tx_out = TxOut {
-                amount,
+                masked_amount,
                 target_key: target_key.into(),
                 public_key: public_key.into(),
                 e_fog_hint: EncryptedFogHint::new(&[7u8; ENCRYPTED_FOG_HINT_LEN]),

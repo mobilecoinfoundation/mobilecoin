@@ -6,12 +6,11 @@ edition = "2018"
 
 [dependencies]
 mc-common = { path = "../../common", default-features = false }
-mc-util-host-cert = { path = "../../util/host-cert", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys" }
+mc-util-host-cert = { path = "../../util/host-cert", default-features = false }
 
 base64 = "0.13"
 displaydoc = { version = "0.2", default-features = false }
-ed25519 = { version = "1.3.0", default-features = false, features = ["serde"] }
 hex = "0.4"
 percent-encoding = "2.1.0"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

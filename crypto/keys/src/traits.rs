@@ -61,27 +61,28 @@ pub trait DistinguishedEncoding: Sized {
 /// A trait indicating that a string fingerprint can be generated for an
 /// object.
 pub trait Fingerprintable {
-    fn fingerprint<D: digest::Digest>(&self) -> Result<String, KeyError>;
+    fn fingerprint<D: Digest>(&self) -> Result<String, KeyError>;
 }
 
 /// Blanket implementation of fingerprinting for any public key which also
 /// implements the DistinguishedEncoding trait.
 impl<T: PublicKey + DistinguishedEncoding> Fingerprintable for T {
-    fn fingerprint<D: digest::Digest>(&self) -> Result<String, KeyError> {
+    fn fingerprint<D: Digest>(&self) -> Result<String, KeyError> {
         // Get the hash of the DER bytes
         let hash = D::digest(&self.to_der());
         // Get the hex string of the hash as bytes
-        let mut hash_strbuf: Vec<u8> = vec![0u8; D::output_size() * 2];
+        let output_size = D::OutputSize::to_usize();
+        let mut hash_strbuf: Vec<u8> = vec![0u8; output_size * 2];
         let hash_len = hash_strbuf.len();
         let hash_len = {
             let hash_slice = binascii::bin2hex(&hash, &mut hash_strbuf)
-                .map_err(|_e| KeyError::LengthMismatch(hash_len, D::output_size() * 2))?;
+                .map_err(|_e| KeyError::LengthMismatch(hash_len, output_size * 2))?;
             hash_slice.len()
         };
         hash_strbuf.truncate(hash_len);
 
         // Add byte separators (i.e. make it "50:55:55:55..."
-        let mut retval = String::with_capacity(D::output_size() * 3 + 1);
+        let mut retval = String::with_capacity(output_size * 3 + 1);
         retval.push_str(
             core::str::from_utf8(&hash_strbuf[..2]).map_err(|_e| KeyError::InvalidPublicKey)?,
         );

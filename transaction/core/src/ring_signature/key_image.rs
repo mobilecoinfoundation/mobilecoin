@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 #[digestible(transparent)]
 /// The "image" of a private key `x`: I = x * Hp(x * G) = x * Hp(P).
 pub struct KeyImage {
+    /// The curve point corresponding to the key image
     pub point: CompressedRistretto,
 }
 

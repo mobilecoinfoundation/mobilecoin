@@ -29,7 +29,6 @@ pub fn thread_panicking() -> bool {
 
 /// Entry point of panic from the libcore crate.
 #[panic_handler]
-#[unwind(allowed)]
 fn rust_begin_panic(info: &PanicInfo) -> ! {
     log_and_panic(info)
 }
@@ -152,6 +151,5 @@ extern "C" {
         data_ptr: *mut usize,
         vtable_ptr: *mut usize,
     ) -> u32;
-    #[unwind(allowed)]
     fn __rust_start_panic(data: usize, vtable: usize) -> u32;
 }

@@ -23,10 +23,10 @@ mc-util-from-random = { path = "../../../../util/from-random" }
 mc-util-serial = { path = "../../../../util/serial" }
 
 # mc-oblivious
-aligned-cmov = "2.0"
-mc-oblivious-map = "2.0"
-mc-oblivious-ram = "2.0"
-mc-oblivious-traits = "2.0"
+aligned-cmov = "2.2"
+mc-oblivious-map = "2.2"
+mc-oblivious-ram = "2.2"
+mc-oblivious-traits = "2.2"
 
 # fog
 mc-fog-ingest-enclave-api = { path = "../api", default-features = false }
@@ -43,5 +43,5 @@ hex = "0.4.3"
 mc-account-keys = { path = "../../../../account-keys" }
 mc-common = { path = "../../../../common", features = ["loggers"] }
 mc-fog-view-protocol = { path = "../../../view/protocol" }
-mc-util-test-helper = { path = "../../../../util/test-helper" }
 mc-util-logger-macros = { path = "../../../../util/logger-macros" }
+mc-util-test-helper = { path = "../../../../util/test-helper" }

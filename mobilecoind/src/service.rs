@@ -36,6 +36,7 @@ use mc_transaction_core::{
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
+    TokenId,
 };
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
@@ -69,6 +70,7 @@ impl Service {
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
         listen_uri: &MobilecoindUri,
         num_workers: Option<usize>,
+        token_id: TokenId,
         logger: Logger,
     ) -> Self {
         let sync_thread = if mobilecoind_db.is_db_encrypted() {
@@ -109,6 +111,7 @@ impl Service {
             watcher_db,
             network_state,
             start_sync_thread,
+            token_id,
             logger.clone(),
         );
 
@@ -166,6 +169,7 @@ pub struct ServiceApi<
     watcher_db: Option<WatcherDB>,
     network_state: Arc<RwLock<PollingNetworkState<T>>>,
     start_sync_thread: Arc<dyn Fn() + Send + Sync>,
+    token_id: TokenId,
     logger: Logger,
 }
 
@@ -180,6 +184,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             watcher_db: self.watcher_db.clone(),
             network_state: self.network_state.clone(),
             start_sync_thread: self.start_sync_thread.clone(),
+            token_id: self.token_id,
             logger: self.logger.clone(),
         }
     }
@@ -195,6 +200,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         watcher_db: Option<WatcherDB>,
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
         start_sync_thread: Arc<dyn Fn() + Send + Sync>,
+        token_id: TokenId,
         logger: Logger,
     ) -> Self {
         Self {
@@ -204,6 +210,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             watcher_db,
             network_state,
             start_sync_thread,
+            token_id,
             logger,
         }
     }
@@ -321,6 +328,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .map_err(|err| {
                 rpc_internal_error("mobilecoind_db.get_utxos_for_subaddress", err, &self.logger)
             })?;
+
+        // Filter out those that don't have the right token id
+        // Note: This is meant to avoid breaking changes for users who are using
+        // mobilecoind with just one token id
+        let utxos: Vec<_> = utxos
+            .into_iter()
+            .filter(|utxo| utxo.token_id == self.token_id)
+            .collect();
 
         // Convert to protos.
         let proto_utxos: Vec<mc_mobilecoind_api::UnspentTxOut> =
@@ -559,8 +574,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let shared_secret =
             get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
 
-        let (value, _blinding) = tx_out
-            .amount
+        let (amount, _blinding) = tx_out
+            .masked_amount
             .get_value(&shared_secret)
             .map_err(|err| rpc_internal_error("amount.get_value", err, &self.logger))?;
 
@@ -576,7 +591,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             tx_out,
             subaddress_index: DEFAULT_SUBADDRESS_INDEX,
             key_image,
-            value,
+            value: amount.value,
+            token_id: *amount.token_id,
             attempted_spend_height: 0,
             attempted_spend_tombstone: 0,
         };
@@ -817,6 +833,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                     rpc_internal_error("unspent_tx_out.try_from", err, &self.logger)
                 })?;
 
+                // Verify token id matches.
+                if utxo.token_id != self.token_id {
+                    return Err(RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        format!("input_list[{}].token_id", i),
+                    ));
+                }
+
                 // Verify this output belongs to the monitor.
                 let subaddress_id = self
                     .mobilecoind_db
@@ -912,10 +936,22 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let input_list: Vec<UnspentTxOut> = request
             .get_input_list()
             .iter()
-            .map(|proto_utxo| {
+            .enumerate()
+            .map(|(i, proto_utxo)| {
                 // Proto -> Rust struct conversion.
-                UnspentTxOut::try_from(proto_utxo)
-                    .map_err(|err| rpc_internal_error("unspent_tx_out.try_from", err, &self.logger))
+                let utxo = UnspentTxOut::try_from(proto_utxo).map_err(|err| {
+                    rpc_internal_error("unspent_tx_out.try_from", err, &self.logger)
+                })?;
+
+                // Ensure token id matches.
+                if utxo.token_id != self.token_id {
+                    return Err(RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        format!("input_list[{}].token_id", i),
+                    ));
+                }
+
+                Ok(utxo)
             })
             .collect::<Result<Vec<UnspentTxOut>, RpcStatus>>()?;
 
@@ -1619,7 +1655,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             })?;
 
         // Sum them up.
-        let balance = utxos.iter().map(|utxo| utxo.value as u128).sum::<u128>();
+        let balance = utxos
+            .iter()
+            // Filter only to the currently active token id.
+            .filter(|utxo| utxo.token_id == self.token_id)
+            .map(|utxo| utxo.value as u128)
+            .sum::<u128>();
 
         // It's possible the balance does not fit into a u64.
         if balance > u64::max_value().into() {
@@ -1658,6 +1699,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if request.max_input_utxo_value > 0 {
             utxos.retain(|utxo| utxo.value <= request.max_input_utxo_value);
         }
+
+        // Filter for the currently active token id.
+        utxos.retain(|utxo| utxo.token_id == self.token_id);
 
         // Get the list of outlays.
         let outlays: Vec<Outlay> = request
@@ -2261,6 +2305,7 @@ mod test {
                     subaddress_index: 0,
                     key_image,
                     value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT,
+                    token_id: *Mob::ID,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
                 }
@@ -2833,6 +2878,7 @@ mod test {
         let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
+            Mob::ID,
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
         );
@@ -2962,6 +3008,7 @@ mod test {
                     value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
+                    token_id: *Mob::ID,
                 }
             })
             .collect();
@@ -3465,7 +3512,7 @@ mod test {
             ] {
                 // Find the first output belonging to the account, and get its value.
                 // This assumes that each output is sent to a different account key.
-                let (value, _blinding) = tx
+                let (amount, _blinding) = tx
                     .prefix
                     .outputs
                     .iter()
@@ -3476,11 +3523,12 @@ mod test {
                             account_key.view_private_key(),
                             &output_public_key,
                         );
-                        tx_out.amount.get_value(&shared_secret).ok()
+                        tx_out.masked_amount.get_value(&shared_secret).ok()
                     })
                     .expect("There should be an output belonging to the account key.");
 
-                assert_eq!(value, *expected_value);
+                assert_eq!(amount.token_id, Mob::ID);
+                assert_eq!(amount.value, *expected_value);
             }
 
             // Santity test fee
@@ -3629,7 +3677,11 @@ mod test {
             let tx_proposal = TxProposal::try_from(response.get_tx_proposal()).unwrap();
             let key_images = tx_proposal.tx.key_images();
             let outputs = tx_proposal.tx.prefix.outputs.clone();
-            let block_contents = BlockContents::new(key_images, outputs);
+            let block_contents = BlockContents {
+                key_images,
+                outputs,
+                ..Default::default()
+            };
 
             // Append to ledger.
             let num_blocks = ledger_db.num_blocks().unwrap();
@@ -3770,8 +3822,9 @@ mod test {
         let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
         let shared_secret =
             get_tx_out_shared_secret(data.account_key.view_private_key(), &tx_public_key);
-        let (value, _blinding) = tx_out.amount.get_value(&shared_secret).unwrap();
-        assert_eq!(value, tx_proposal.outlays[0].value);
+        let (amount, _blinding) = tx_out.masked_amount.get_value(&shared_secret).unwrap();
+        assert_eq!(amount.value, tx_proposal.outlays[0].value);
+        assert_eq!(amount.token_id, Mob::ID);
 
         // Santity test fee
         assert_eq!(tx_proposal.fee(), Mob::MINIMUM_FEE);
@@ -3849,8 +3902,9 @@ mod test {
         let tx_out = &tx_proposal.tx.prefix.outputs[0];
         let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
         let shared_secret = get_tx_out_shared_secret(receiver.view_private_key(), &tx_public_key);
-        let (value, _blinding) = tx_out.amount.get_value(&shared_secret).unwrap();
-        assert_eq!(value, expected_value);
+        let (amount, _blinding) = tx_out.masked_amount.get_value(&shared_secret).unwrap();
+        assert_eq!(amount.value, expected_value);
+        assert_eq!(amount.token_id, Mob::ID);
     }
 
     #[test_with_logger]
@@ -4819,12 +4873,13 @@ mod test {
                         let shared_secret =
                             get_tx_out_shared_secret(sender.view_private_key(), &tx_public_key);
 
-                        let (change_value, _blinding) = tx_out
-                            .amount
+                        let (amount, _blinding) = tx_out
+                            .masked_amount
                             .get_value(&shared_secret)
                             .expect("Malformed amount");
 
-                        assert_eq!(total_value - test_amount - fee, change_value);
+                        assert_eq!(total_value - test_amount - fee, amount.value);
+                        assert_eq!(amount.token_id, Mob::ID);
                     }
                 }
                 Err(Error::SubaddressSPKNotFound) => continue,
@@ -4949,6 +5004,7 @@ mod test {
 
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
+            Mob::ID,
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
         );
@@ -5065,6 +5121,7 @@ mod test {
 
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
+            Mob::ID,
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
         );

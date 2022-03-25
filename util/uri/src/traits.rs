@@ -7,12 +7,12 @@ use core::{
     result::Result as StdResult,
 };
 use displaydoc::Display;
-use ed25519::signature::Error as SignatureError;
 use mc_common::{NodeID, ResponderId, ResponderIdParseError};
-use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, KeyError};
+use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, KeyError, SignatureError};
 use std::{path::PathBuf, str::FromStr};
 use url::Url;
 
+/// Wrapper for errors that can occur during conversion to/from `Uri`
 #[derive(Debug, Display, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub enum UriConversionError {
     /// Error converting key: {0}
@@ -95,6 +95,7 @@ pub trait ConnectionUri:
         Ok(ResponderId::from_str(&responder_id_string)?)
     }
 
+    /// Retrieve the `NodeID` for this connection.
     fn node_id(&self) -> StdResult<NodeID, UriConversionError> {
         Ok(NodeID {
             responder_id: self.responder_id()?,
@@ -192,9 +193,13 @@ pub trait ConnectionUri:
 pub trait UriScheme:
     Debug + Hash + Ord + PartialOrd + Eq + PartialEq + Send + Sync + Clone
 {
+    /// The prefix for secure URIs
     const SCHEME_SECURE: &'static str;
+    /// The prefix for insecure URIs
     const SCHEME_INSECURE: &'static str;
+    /// The default port for secure URIs
     const DEFAULT_SECURE_PORT: u16;
+    /// The default port for insecure URIs
     const DEFAULT_INSECURE_PORT: u16;
 
     /// When true, ensure the path components of a URI ends with a slash.

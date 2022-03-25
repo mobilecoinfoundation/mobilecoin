@@ -1,8 +1,8 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use crate::{Error, KexRngPubkey, StoredRng};
-use blake2::digest::generic_array::{ArrayLength, GenericArray};
 use core::{convert::TryFrom, marker::Sized};
+use digest::generic_array::{ArrayLength, GenericArray};
 use mc_crypto_keys::Kex;
 use mc_util_repr_bytes::ReprBytes;
 use rand_core::{CryptoRng, RngCore};

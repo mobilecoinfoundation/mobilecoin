@@ -3,25 +3,23 @@
 //! Conversions from gRPC message types into consensus_enclave_api types.
 
 use crate::attest::{AuthMessage, Message};
-use aead::{AeadMut, NewAead};
-use digest::{BlockInput, FixedOutput, Reset, Update};
 use mc_attest_ake::{AuthRequestOutput, AuthResponseOutput};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, EnclaveMessage, PeerAuthRequest, PeerAuthResponse,
     Session,
 };
 use mc_crypto_keys::Kex;
-use mc_crypto_noise::{HandshakePattern, NoiseCipher};
+use mc_crypto_noise::{HandshakePattern, NoiseCipher, NoiseDigest};
 
-impl<Handshake, KexAlgo, Cipher, DigestType>
-    From<AuthRequestOutput<Handshake, KexAlgo, Cipher, DigestType>> for AuthMessage
+impl<Handshake, KexAlgo, Cipher, DigestAlgo>
+    From<AuthRequestOutput<Handshake, KexAlgo, Cipher, DigestAlgo>> for AuthMessage
 where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
-    Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
+    Cipher: NoiseCipher,
+    DigestAlgo: NoiseDigest,
 {
-    fn from(src: AuthRequestOutput<Handshake, KexAlgo, Cipher, DigestType>) -> Self {
+    fn from(src: AuthRequestOutput<Handshake, KexAlgo, Cipher, DigestAlgo>) -> Self {
         let mut retval = Self::default();
         retval.set_data(src.into());
         retval

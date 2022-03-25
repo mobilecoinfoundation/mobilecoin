@@ -14,9 +14,9 @@ path = "src/bin/main.rs"
 [dependencies]
 mc-attest-api = { path = "../../attest/api" }
 mc-attest-core = { path = "../../attest/core" }
-mc-attest-verifier = { path = "../../attest/verifier" }
 mc-attest-enclave-api = { path = "../../attest/enclave-api" }
 mc-attest-net = { path = "../../attest/net" }
+mc-attest-verifier = { path = "../../attest/verifier" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
 mc-consensus-api = { path = "../../consensus/api" }
@@ -24,36 +24,38 @@ mc-consensus-enclave = { path = "../../consensus/enclave" }
 mc-consensus-scp = { path = "../../consensus/scp" }
 mc-crypto-digestible = { path = "../../crypto/digestible" }
 mc-crypto-keys = { path = "../../crypto/keys" }
+mc-crypto-multisig = { path = "../../crypto/multisig" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-ledger-sync = { path = "../../ledger/sync" }
 mc-peers = { path = "../../peers" }
 mc-sgx-report-cache-untrusted = { path = "../../sgx/report-cache/untrusted" }
-mc-transaction-core = { path = "../../transaction/core"}
-mc-transaction-std = { path = "../../transaction/std"}
+mc-transaction-core = { path = "../../transaction/core" }
+mc-transaction-std = { path = "../../transaction/std" }
 mc-util-grpc = { path = "../../util/grpc" }
-mc-util-parse = { path = "../../util/parse" }
 mc-util-metered-channel = { path = "../../util/metered-channel" }
 mc-util-metrics = { path = "../../util/metrics" }
+mc-util-parse = { path = "../../util/parse" }
 mc-util-serial = { path = "../../util/serial" }
 mc-util-telemetry = { path = "../../util/telemetry", features = ["jaeger"] }
 mc-util-uri = { path = "../../util/uri" }
 
 base64 = "0.13"
 chrono = "0.4"
+clap = { version = "3.1", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 fs_extra = "1.1"
 futures = "0.3"
-grpcio = "0.9.0"
+grpcio = "0.10.0"
 hex = "0.4"
 lazy_static = "1.4"
-once_cell = "1.9"
+once_cell = "1.10"
+pem = "1.0"
 protobuf = "2.22.1"
 rand = "0.8"
 rayon = "1.5"
 retry = "1.3"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_json = "1.0"
-structopt = "0.3"
 toml = "0.5"
 
 [build-dependencies]
@@ -75,7 +77,7 @@ serial_test = "0.6"
 tempdir = "0.3"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dev-dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["simd_backend", "nightly"] }
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
 
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dev-dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["nightly", "u64_backend"] }
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }

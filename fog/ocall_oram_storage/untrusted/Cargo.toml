@@ -7,4 +7,5 @@ license = "GPL-3.0"
 
 [dependencies]
 mc-common = { path = "../../../common", features = ["log"] }
+
 lazy_static = "1.4"

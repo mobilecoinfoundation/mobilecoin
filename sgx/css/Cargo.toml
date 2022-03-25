@@ -5,5 +5,5 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
-displaydoc = {version = "0.2", default-features = false }
-sha2 = { version = "0.9.8", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
+sha2 = { version = "0.10", default-features = false }

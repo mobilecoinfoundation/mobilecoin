@@ -1,0 +1,20 @@
+apply plugin: 'com.android.library'
+apply from:   'publish.gradle'
+
+android {
+    compileSdk 31
+    defaultConfig {
+        minSdk 19
+        targetSdk 31
+    }
+
+    buildTypes {
+        release { }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies { }

@@ -1,35 +1,38 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
+//! Configuration for generating key files for a new user identity.
+
+use clap::Parser;
 use rand::{rngs::StdRng, SeedableRng};
 use std::path::PathBuf;
-use structopt::StructOpt;
 
-/// Configuration for generating key files for a new user identity
-#[derive(Debug, StructOpt)]
+/// Configuration for generating key files for a new user identity.
+#[derive(Debug, Parser)]
 pub struct Config {
     /// Optional FogURL for the accounts
-    #[structopt(short, long)]
+    #[clap(short, long, env = "MC_ACCT")]
     pub acct: Option<String>,
 
     /// Desired name of keyfiles e.g. 'alice' -> alice.pub, alice.bin.
-    #[structopt(short, long)]
+    #[clap(short, long, env = "MC_NAME")]
     pub name: String,
 
-    // Root entropy to use, in hex format (e.g.
-    // 1234567812345678123456781234567812345678123456781234567812345678).
-    #[structopt(short, long, parse(try_from_str=hex::FromHex::from_hex), conflicts_with("seed"))]
+    /// Root entropy to use, in hex format
+    /// (e.g. 1234567812345678123456781234567812345678123456781234567812345678).
+    #[clap(short, long, parse(try_from_str = hex::FromHex::from_hex), conflicts_with("seed"), env = "MC_ROOT")]
     pub root: Option<[u8; 32]>,
 
     /// Seed to use to generate root entropy.
-    #[structopt(short, long, conflicts_with("root"))]
+    #[clap(short, long, conflicts_with("root"), env = "MC_SEED")]
     pub seed: Option<u8>,
 
     /// Output directory, defaults to current directory.
-    #[structopt(long)]
+    #[clap(long, env = "MC_OUTPUT_DIR")]
     pub output_dir: Option<PathBuf>,
 }
 
 impl Config {
+    /// Get or generate root entropy.
     // This consumes self because it might not be deterministic
     pub fn get_root_entropy(self) -> [u8; 32] {
         if let Some(root) = self.root {

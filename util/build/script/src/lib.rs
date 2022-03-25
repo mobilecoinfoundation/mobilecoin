@@ -7,7 +7,7 @@ mod env;
 mod utils;
 mod vars;
 
-pub use self::{
+pub use crate::{
     cargo_build::CargoBuilder,
     env::{
         Endianness, EndiannessError, Environment, EnvironmentError, TargetFamily, TargetFamilyError,

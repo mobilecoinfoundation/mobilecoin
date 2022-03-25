@@ -8,7 +8,7 @@ extern crate core;
 
 mod traits;
 
-pub use self::traits::{Error, RaClient, Result};
+pub use crate::traits::{Error, RaClient, Result};
 
 // Export the "build-configured" RaClient so that downstream doesn't need
 // to copy paste this cfg_if every where and have a build.rs unnecessarily

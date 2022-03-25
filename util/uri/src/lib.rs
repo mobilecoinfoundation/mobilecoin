@@ -1,5 +1,9 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+//! Validated URIs with custom schemes.
+
+#![deny(missing_docs)]
+
 use mc_common::NodeID;
 
 mod traits;
@@ -12,10 +16,15 @@ pub use uri::{Uri, UriParseError};
 // Mobile-coin specific uri schemes and objects associated to them
 //
 
+/// A URI with the Admin scheme ([insecure-]mca://)
 pub type AdminUri = Uri<AdminScheme>;
+/// A URI with the Consensus Client scheme ([insecure-]mc://)
 pub type ConsensusClientUri = Uri<ConsensusClientScheme>;
+/// A URI with the Consensus Peer scheme ([insecure-]mcp://)
 pub type ConsensusPeerUri = Uri<ConsensusPeerScheme>;
+/// A URI with the Fog scheme ([insecure-]fog://)
 pub type FogUri = Uri<FogScheme>;
+/// A URI with the Watcher scheme ([insecure-]watcher://)
 pub type WatcherUri = Uri<WatcherScheme>;
 
 // Conversions
@@ -32,12 +41,12 @@ impl From<&ConsensusPeerUri> for NodeID {
     }
 }
 
-// Extra ConsensusPeerUri api
+/// Extend ConsensusPeerUri API
 pub trait ConsensusPeerUriApi {
+    /// Whether we should relay incoming txs from this peer.
     fn consensus_relay_incoming_txs(&self) -> bool;
 }
 impl ConsensusPeerUriApi for ConsensusPeerUri {
-    /// Whether we should relay incoming txs from this peer.
     fn consensus_relay_incoming_txs(&self) -> bool {
         self.get_bool_param("consensus-relay-incoming-txs")
     }

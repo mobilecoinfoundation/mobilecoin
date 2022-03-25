@@ -10,9 +10,10 @@ links = "mc-api"
 mc-account-keys = { path = "../account-keys" }
 mc-attest-core = { path = "../attest/core" }
 mc-crypto-keys = { path = "../crypto/keys" }
+mc-crypto-multisig = { path = "../crypto/multisig" }
+mc-transaction-core = { path = "../transaction/core" }
 mc-util-repr-bytes = { path = "../util/repr-bytes" }
 mc-util-serial = { path = "../util/serial" }
-mc-transaction-core = { path = "../transaction/core" }
 mc-watcher-api = { path = "../watcher/api" }
 
 bs58 = "0.4.0"
@@ -21,10 +22,10 @@ displaydoc = { version = "0.2", default-features = false }
 protobuf = "2.22.1"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["simd_backend", "nightly"] }
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
 
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["nightly", "u64_backend"] }
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../util/build/grpc" }
@@ -46,3 +47,5 @@ generic-array = "0.14"
 pem = "1.0"
 prost = { version = "0.9", default-features = false }
 rand = "0.8"
+rand_core = "0.6"
+rand_hc = "0.3"

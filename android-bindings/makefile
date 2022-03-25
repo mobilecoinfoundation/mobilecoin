@@ -3,7 +3,7 @@
 # Working directory is the root of the project
 pwd=$(shell pwd)/../
 
-.PHONY : build test libs docker_image clean setup all default strip copy_artifacts dist
+.PHONY : build test libs docker_image clean setup-docker all default strip copy_artifacts dist
 default: build
 
 export SGX_MODE ?= HW
@@ -16,6 +16,13 @@ CARGO_BUILD_FLAGS += -Zunstable-options --profile=$(CARGO_PROFILE)
 BUILD_DEPS_FOLDER = /tmp/build/deps/
 MIN_API_LEVEL = 19
 MIN_API_LEVEL_64_BIT = 21
+JNI_LIBS_PATH = lib-wrapper/android-bindings/src/main/jniLibs
+
+setup-rust:
+	rustup toolchain install $(file < ../rust-toolchain)
+	rustup component add rustfmt
+	rustup target add $(ARCHS)
+	rustup update
 
 aarch64-linux-android: CARGO_ENV_FLAGS += \
 	ISYSROOT=$(NDK_HOME)/toolchains/llvm/prebuilt/linux-x86_64/sysroot \
@@ -53,23 +60,39 @@ x86_64-linux-android: CARGO_ENV_FLAGS += \
 	CARGO_TARGET_X86_64_LINUX_ANDROID_AR=x86_64-linux-android-ar \
 	CMAKE_TARGET_OVERRIDE=x86_64-linux-android$(MIN_API_LEVEL_64_BIT)
 
-$(ARCHS):
+$(ARCHS): setup-rust
 	$(CARGO_ENV_FLAGS) cargo build \
 		$(CARGO_BUILD_FLAGS) \
 		--target $@
 
 libs: $(ARCHS) strip copy_artifacts
 
+publish: libs
+	cd lib-wrapper && \
+	./gradlew build && \
+	./gradlew publish
+
+ci: setup-docker
+	docker run \
+		--rm \
+		-e MAVEN_USER \
+		-e MAVEN_PASSWORD \
+		-v $(pwd):/home/rust/ \
+		-v $(BUILD_DEPS_FOLDER):/usr/local/cargo/git \
+		-w /home/rust/android-bindings \
+		$(DOCKER_BUILDER_IMAGE_TAG) \
+		make publish
+
 copy_artifacts:
-	mkdir -p build/jniLibs/arm64-v8a
-	mkdir -p build/jniLibs/armeabi-v7a
-	mkdir -p build/jniLibs/x86
-	mkdir -p build/jniLibs/x86_64
+	mkdir -p $(JNI_LIBS_PATH)/arm64-v8a
+	mkdir -p $(JNI_LIBS_PATH)/armeabi-v7a
+	mkdir -p $(JNI_LIBS_PATH)/x86
+	mkdir -p $(JNI_LIBS_PATH)/x86_64
 	mkdir -p build/proto
-	cp -f ../target/aarch64-linux-android/$(CARGO_PROFILE)/libmobilecoin_android.so build/jniLibs/arm64-v8a/libmobilecoin.so
-	cp -f ../target/armv7-linux-androideabi/$(CARGO_PROFILE)/libmobilecoin_android.so build/jniLibs/armeabi-v7a/libmobilecoin.so
-	cp -f ../target/i686-linux-android/$(CARGO_PROFILE)/libmobilecoin_android.so build/jniLibs/x86/libmobilecoin.so
-	cp -f ../target/x86_64-linux-android/$(CARGO_PROFILE)/libmobilecoin_android.so build/jniLibs/x86_64/libmobilecoin.so
+	cp -f ../target/aarch64-linux-android/$(CARGO_PROFILE)/libmobilecoin_android.so $(JNI_LIBS_PATH)/arm64-v8a/libmobilecoin.so
+	cp -f ../target/armv7-linux-androideabi/$(CARGO_PROFILE)/libmobilecoin_android.so $(JNI_LIBS_PATH)/armeabi-v7a/libmobilecoin.so
+	cp -f ../target/i686-linux-android/$(CARGO_PROFILE)/libmobilecoin_android.so $(JNI_LIBS_PATH)/x86/libmobilecoin.so
+	cp -f ../target/x86_64-linux-android/$(CARGO_PROFILE)/libmobilecoin_android.so $(JNI_LIBS_PATH)/x86_64/libmobilecoin.so
 	cp -f ../api/proto/blockchain.proto build/proto/
 	cp -f ../api/proto/printable.proto build/proto/
 	cp -f ../consensus/api/proto/consensus_client.proto build/proto/
@@ -91,7 +114,7 @@ strip:
 	i686-linux-android-strip ../target/i686-linux-android/$(CARGO_PROFILE)/libmobilecoin_android.so
 	x86_64-linux-android-strip ../target/x86_64-linux-android/$(CARGO_PROFILE)/libmobilecoin_android.so
 
-build: setup
+build: setup-docker
 	docker run \
 		--rm \
 		-v $(pwd):/home/rust/ \
@@ -115,22 +138,22 @@ clean:
 	docker run \
 		--rm \
 		-v $(pwd):/home/rust/ \
-		-v /tmp/deps:/usr/local/cargo/git \
+		-v $(BUILD_DEPS_FOLDER):/usr/local/cargo/git \
 		-w /home/rust/android-bindings \
 		$(DOCKER_BUILDER_IMAGE_TAG) \
 		cargo clean
 
-bash: setup
+bash: setup-docker
 	docker run \
 		--rm \
 		-it \
 		-v $(pwd):/home/rust/ \
-		-v /tmp/deps:/usr/local/cargo/git \
+		-v $(BUILD_DEPS_FOLDER):/usr/local/cargo/git \
 		-w /home/rust/android-bindings \
 		$(DOCKER_BUILDER_IMAGE_TAG) \
 		bash
 
-setup: docker_image
+setup-docker: docker_image
 	mkdir -p $(BUILD_DEPS_FOLDER)
 
-all: setup clean dist
+all: setup-docker clean dist

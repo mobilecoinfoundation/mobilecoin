@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use crate::{ring_signature::CurveScalar, Amount};
+use crate::{ring_signature::CurveScalar, tokens::Mob, Amount, MaskedAmount, Token};
 use curve25519_dalek::scalar::Scalar;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use proptest::prelude::*;
@@ -26,9 +26,14 @@ pub fn arbitrary_ristretto_public() -> impl Strategy<Value = RistrettoPublic> {
 }
 
 prop_compose! {
-    /// Generates an arbitrary amount with value in [0,max_value].
-    pub fn arbitrary_amount(max_value: u64, shared_secret: RistrettoPublic)
-                (value in 0..=max_value) -> Amount {
-            Amount::new(value, &shared_secret).unwrap()
+    /// Generates an arbitrary masked_amount with value in [0,max_value].
+    /// Of token_id = 0
+    pub fn arbitrary_masked_amount(max_value: u64, shared_secret: RistrettoPublic)
+                (value in 0..=max_value) -> MaskedAmount {
+            let amount = Amount {
+                value,
+                token_id: Mob::ID,
+            };
+            MaskedAmount::new(amount, &shared_secret).unwrap()
     }
 }

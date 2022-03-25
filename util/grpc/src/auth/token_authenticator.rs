@@ -6,8 +6,9 @@
 use super::*;
 
 use displaydoc::Display;
-use hmac::{Hmac, Mac, NewMac};
+use hmac::{Hmac, Mac};
 use mc_common::time::TimeProvider;
+use sha2::Sha256;
 use std::{str, time::Duration};
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
@@ -91,7 +92,7 @@ impl<TP: TimeProvider> TokenAuthenticator<TP> {
         );
         let our_time = self
             .time_provider
-            .from_epoch()
+            .since_epoch()
             .map_err(|_| AuthenticatorError::ExpiredAuthorizationToken)?;
         let distance: Duration = our_time
             .checked_sub(token_time)
@@ -103,7 +104,7 @@ impl<TP: TimeProvider> TokenAuthenticator<TP> {
         let their_suffix: Vec<u8> =
             hex::decode(signature).map_err(|_| AuthenticatorError::InvalidAuthorizationToken)?;
 
-        let mut mac = Hmac::<sha2::Sha256>::new_varkey(&self.shared_secret)
+        let mut mac = Hmac::<Sha256>::new_from_slice(&self.shared_secret)
             .map_err(|_| AuthenticatorError::Other("Invalid HMAC key".to_owned()))?;
         mac.update(data.as_bytes());
         let our_signature = mac.finalize().into_bytes();
@@ -150,12 +151,12 @@ impl<TP: TimeProvider> TokenBasicCredentialsGenerator<TP> {
     ) -> Result<BasicCredentials, TokenBasicCredentialsGeneratorError> {
         let current_time_seconds = self
             .time_provider
-            .from_epoch()
+            .since_epoch()
             .map_err(|_| TokenBasicCredentialsGeneratorError::TimeProvider)?
             .as_secs();
         let prefix = format!("{}:{}", user_id, current_time_seconds);
 
-        let mut mac = Hmac::<sha2::Sha256>::new_varkey(&self.shared_secret)
+        let mut mac = Hmac::<Sha256>::new_from_slice(&self.shared_secret)
             .map_err(|_| TokenBasicCredentialsGeneratorError::InvalidHmacKey)?;
         mac.update(prefix.as_bytes());
         let signature = mac.finalize().into_bytes();
@@ -247,14 +248,14 @@ mod tests {
             TokenAuthenticator::new([4; 32], TOKEN_MAX_LIFETIME, time_provider.clone());
 
         // Initially, we should be valid.
-        let now_in_seconds = time_provider.from_epoch().unwrap().as_secs();
+        let now_in_seconds = time_provider.since_epoch().unwrap().as_secs();
         assert!(authenticator
             .is_valid_time(&now_in_seconds.to_string())
             .unwrap());
 
         // Set the time such that we are no longer considered vald.
-        let expired = time_provider.from_epoch().unwrap() + TOKEN_MAX_LIFETIME;
-        time_provider.set_cur_from_epoch(expired);
+        let expired = time_provider.since_epoch().unwrap() + TOKEN_MAX_LIFETIME;
+        time_provider.set_cur_since_epoch(expired);
 
         assert!(!authenticator
             .is_valid_time(&now_in_seconds.to_string())

@@ -23,7 +23,7 @@ use mc_crypto_digestible::DigestTranscript;
 pub struct PseudoMerlin<D>
 where
     D: Digest,
-    <D as Digest>::OutputSize: IsGreaterOrEqual<U32, Output = B1>,
+    D::OutputSize: IsGreaterOrEqual<U32, Output = B1>,
 {
     pub inner: D,
 }
@@ -33,7 +33,7 @@ where
 pub fn PseudoMerlin<D>(digest: D) -> PseudoMerlin<D>
 where
     D: Digest,
-    <D as Digest>::OutputSize: IsGreaterOrEqual<U32, Output = B1>,
+    D::OutputSize: IsGreaterOrEqual<U32, Output = B1>,
 {
     PseudoMerlin { inner: digest }
 }
@@ -41,13 +41,11 @@ where
 impl<D> DigestTranscript for PseudoMerlin<D>
 where
     D: Digest,
-    <D as Digest>::OutputSize: IsGreaterOrEqual<U32, Output = B1>,
+    D::OutputSize: IsGreaterOrEqual<U32, Output = B1>,
 {
     #[inline]
     fn new() -> Self {
-        Self {
-            inner: <D as Digest>::new(),
-        }
+        Self { inner: D::new() }
     }
 
     #[inline]

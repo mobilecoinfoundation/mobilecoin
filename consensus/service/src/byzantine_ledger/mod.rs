@@ -13,8 +13,10 @@ mod worker;
 use crate::{
     byzantine_ledger::{task_message::TaskMessage, worker::ByzantineLedgerWorker},
     counters,
-    tx_manager::TxManager,
+    mint_tx_manager::{MintTxManager, MintTxManagerError},
+    tx_manager::{TxManager, TxManagerError},
 };
+use displaydoc::Display;
 use mc_common::{logger::Logger, NodeID, ResponderId};
 use mc_connection::{BlockchainConnection, ConnectionManager};
 use mc_consensus_scp::{scp_log::LoggingScpNode, Node, QuorumSet, ScpNode};
@@ -24,6 +26,7 @@ use mc_ledger_sync::{LedgerSyncService, ReqwestTransactionsFetcher};
 use mc_peers::{
     Broadcast, ConsensusConnection, ConsensusMsg, ConsensusValue, VerifiedConsensusMsg,
 };
+use mc_transaction_core::mint::constants::{MAX_MINT_CONFIG_TXS_PER_BLOCK, MAX_MINT_TXS_PER_BLOCK};
 use mc_util_metered_channel::Sender;
 use std::{
     path::PathBuf,
@@ -63,6 +66,28 @@ pub struct ByzantineLedger {
     highest_issued_msg: Arc<Mutex<Option<ConsensusMsg>>>,
 }
 
+/// An error type for mc-consensus-scp validation/combine callbacks.
+#[derive(Clone, Debug, Display)]
+enum UnifiedNodeError {
+    /// TxManager: {0}
+    TxManager(TxManagerError),
+
+    /// MintTxManager: {0}
+    MintTxManager(MintTxManagerError),
+}
+
+impl From<TxManagerError> for UnifiedNodeError {
+    fn from(src: TxManagerError) -> Self {
+        Self::TxManager(src)
+    }
+}
+
+impl From<MintTxManagerError> for UnifiedNodeError {
+    fn from(src: MintTxManagerError) -> Self {
+        Self::MintTxManager(src)
+    }
+}
+
 impl ByzantineLedger {
     /// Create a new ByzantineLedger
     ///
@@ -72,6 +97,7 @@ impl ByzantineLedger {
     /// * `peer_manager` - PeerManager
     /// * `ledger` - The local node's ledger.
     /// * `tx_manager` - TxManager
+    /// * `mint_tx_manager` - MintTxManager
     /// * `broadcaster` - Broadcaster
     /// * `msg_signer_key` - Signs consensus messages issued by this node.
     /// * `tx_source_urls` - Source URLs for fetching block contents.
@@ -82,12 +108,14 @@ impl ByzantineLedger {
         PC: BlockchainConnection + ConsensusConnection + 'static,
         L: Ledger + Clone + Sync + 'static,
         TXM: TxManager + Send + Sync + 'static,
+        MTXM: MintTxManager + Send + Sync + 'static,
     >(
         node_id: NodeID,
         quorum_set: QuorumSet,
         peer_manager: ConnectionManager<PC>,
         ledger: L,
         tx_manager: Arc<TXM>,
+        mint_tx_manager: Arc<MTXM>,
         broadcaster: Arc<Mutex<dyn Broadcast>>,
         msg_signer_key: Arc<Ed25519Pair>,
         tx_source_urls: Vec<String>,
@@ -98,25 +126,62 @@ impl ByzantineLedger {
         let scp_node: Box<dyn ScpNode<ConsensusValue>> = {
             let tx_manager_validate = tx_manager.clone();
             let tx_manager_combine = tx_manager.clone();
+            let mint_tx_manager_validate = mint_tx_manager.clone();
+            let mint_tx_manager_combine = mint_tx_manager.clone();
             let current_slot_index = ledger.num_blocks().unwrap();
             let node = Node::new(
                 node_id.clone(),
                 quorum_set,
+                // Validation callback
                 Arc::new(move |scp_value| match scp_value {
-                    ConsensusValue::TxHash(tx_hash) => tx_manager_validate.validate(tx_hash),
+                    ConsensusValue::TxHash(tx_hash) => tx_manager_validate
+                        .validate(tx_hash)
+                        .map_err(UnifiedNodeError::from),
+
+                    ConsensusValue::MintConfigTx(mint_config_tx) => mint_tx_manager_validate
+                        .validate_mint_config_tx(mint_config_tx)
+                        .map_err(UnifiedNodeError::from),
+
+                    ConsensusValue::MintTx(mint_tx) => mint_tx_manager_validate
+                        .validate_mint_tx(mint_tx)
+                        .map_err(UnifiedNodeError::from),
                 }),
+                // Combine callback
                 Arc::new(move |scp_values| {
                     let mut tx_hashes = Vec::new();
+                    let mut mint_config_txs = Vec::new();
+                    let mut mint_txs = Vec::new();
 
                     for value in scp_values {
                         match value {
                             ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
+                            ConsensusValue::MintConfigTx(mint_config_tx) => {
+                                mint_config_txs.push(mint_config_tx.clone());
+                            }
+                            ConsensusValue::MintTx(mint_tx) => {
+                                mint_txs.push(mint_tx.clone());
+                            }
                         }
                     }
                     let tx_hashes = tx_manager_combine.combine(&tx_hashes[..])?;
-
                     let tx_hashes_iter = tx_hashes.into_iter().map(ConsensusValue::TxHash);
-                    Ok(tx_hashes_iter.collect())
+
+                    let mint_config_txs = mint_tx_manager_combine.combine_mint_config_txs(
+                        &mint_config_txs[..],
+                        MAX_MINT_CONFIG_TXS_PER_BLOCK,
+                    )?;
+                    let mint_config_txs_iter = mint_config_txs
+                        .into_iter()
+                        .map(ConsensusValue::MintConfigTx);
+
+                    let mint_txs = mint_tx_manager_combine
+                        .combine_mint_txs(&mint_txs[..], MAX_MINT_TXS_PER_BLOCK)?;
+                    let mint_txs_iter = mint_txs.into_iter().map(ConsensusValue::MintTx);
+
+                    Ok(tx_hashes_iter
+                        .chain(mint_config_txs_iter)
+                        .chain(mint_txs_iter)
+                        .collect())
                 }),
                 current_slot_index,
                 logger.clone(),
@@ -156,6 +221,7 @@ impl ByzantineLedger {
                 ledger_sync_service,
                 peer_manager,
                 tx_manager,
+                mint_tx_manager,
                 broadcaster.clone(),
                 task_receiver,
                 is_behind.clone(),
@@ -244,6 +310,7 @@ impl Drop for ByzantineLedger {
 mod tests {
     use super::*;
     use crate::{
+        mint_tx_manager::{MintTxManagerImpl, MockMintTxManager},
         tx_manager::{MockTxManager, TxManagerImpl},
         validators::DefaultTxManagerUntrustedInterfaces,
     };
@@ -384,6 +451,9 @@ mod tests {
         // Mock tx_manager
         let tx_manager = Arc::new(MockTxManager::new());
 
+        // Mock mint_tx_manager
+        let mint_tx_manager = Arc::new(MockMintTxManager::new());
+
         // Mock broadcaster
         let broadcaster = Arc::new(Mutex::new(MockBroadcast::new()));
 
@@ -393,6 +463,7 @@ mod tests {
             peer_manager,
             ledger.clone(),
             tx_manager.clone(),
+            mint_tx_manager,
             broadcaster,
             msg_signer_key.clone(),
             Vec::new(),
@@ -469,12 +540,20 @@ mod tests {
             logger.clone(),
         ));
 
+        let mint_tx_manager = Arc::new(MintTxManagerImpl::new(
+            ledger.clone(),
+            BLOCK_VERSION,
+            Default::default(),
+            logger.clone(),
+        ));
+
         let byzantine_ledger = ByzantineLedger::new(
             local_node_id.clone(),
             local_quorum_set.clone(),
             peer_manager,
             ledger.clone(),
             tx_manager.clone(),
+            mint_tx_manager,
             broadcaster,
             local_signer_key.clone(),
             Vec::new(),
@@ -538,21 +617,21 @@ mod tests {
         let client_tx_one = transactions.pop().unwrap();
         let client_tx_two = transactions.pop().unwrap();
 
-        let hash_tx_zero = tx_manager
+        let hash_tx_zero: ConsensusValue = tx_manager
             .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_zero,
             ))
             .unwrap()
             .into();
 
-        let hash_tx_one = tx_manager
+        let hash_tx_one: ConsensusValue = tx_manager
             .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_one,
             ))
             .unwrap()
             .into();
 
-        let hash_tx_two = tx_manager
+        let hash_tx_two: ConsensusValue = tx_manager
             .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_two,
             ))
@@ -560,7 +639,11 @@ mod tests {
             .into();
 
         byzantine_ledger.push_values(
-            vec![hash_tx_zero, hash_tx_one, hash_tx_two],
+            vec![
+                hash_tx_zero.clone(),
+                hash_tx_one.clone(),
+                hash_tx_two.clone(),
+            ],
             Some(Instant::now()),
         );
 
@@ -574,7 +657,11 @@ mod tests {
                 local_quorum_set.clone(),
                 slot_index,
                 Topic::Nominate(NominatePayload {
-                    X: BTreeSet::from_iter(vec![hash_tx_zero, hash_tx_one, hash_tx_two]),
+                    X: BTreeSet::from_iter(vec![
+                        hash_tx_zero.clone(),
+                        hash_tx_one.clone(),
+                        hash_tx_two.clone(),
+                    ]),
                     Y: BTreeSet::default(),
                 }),
             ),
@@ -619,7 +706,14 @@ mod tests {
                     node_a.quorum_set.clone(),
                     slot_index,
                     Topic::Commit(CommitPayload {
-                        B: Ballot::new(100, &[hash_tx_zero, hash_tx_one, hash_tx_two]),
+                        B: Ballot::new(
+                            100,
+                            &[
+                                hash_tx_zero.clone(),
+                                hash_tx_one.clone(),
+                                hash_tx_two.clone(),
+                            ],
+                        ),
                         PN: 77,
                         CN: 55,
                         HN: 66,
@@ -641,7 +735,14 @@ mod tests {
                     node_b.quorum_set.clone(),
                     slot_index,
                     Topic::Commit(CommitPayload {
-                        B: Ballot::new(100, &[hash_tx_zero, hash_tx_one, hash_tx_two]),
+                        B: Ballot::new(
+                            100,
+                            &[
+                                hash_tx_zero.clone(),
+                                hash_tx_one.clone(),
+                                hash_tx_two.clone(),
+                            ],
+                        ),
                         PN: 77,
                         CN: 55,
                         HN: 66,

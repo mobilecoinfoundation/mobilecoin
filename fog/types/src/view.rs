@@ -9,7 +9,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, KeyError, RistrettoPrivate, Rist
 use mc_transaction_core::{
     encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
     tx::TxOut,
-    Amount, AmountError, EncryptedMemo, MemoError,
+    AmountError, EncryptedMemo, MaskedAmount, MemoError,
 };
 use prost::Message;
 use serde::{Deserialize, Serialize};
@@ -234,6 +234,11 @@ pub struct TxOutRecord {
     /// The encrypted memo bytes of the TxOut
     #[prost(bytes, tag = "9")]
     pub tx_out_e_memo_data: Vec<u8>,
+
+    /// The masked token id associated to the amount field in the TxOut that
+    /// was recovered
+    #[prost(bytes, tag = "10")]
+    pub tx_out_amount_masked_token_id: Vec<u8>,
 }
 
 impl TxOutRecord {
@@ -249,6 +254,7 @@ impl TxOutRecord {
             tx_out_amount_commitment_data: Default::default(),
             tx_out_amount_commitment_data_crc32: fog_tx_out.amount_commitment_data_crc32,
             tx_out_amount_masked_value: fog_tx_out.amount_masked_value,
+            tx_out_amount_masked_token_id: fog_tx_out.amount_masked_token_id,
             tx_out_target_key_data: fog_tx_out.target_key.as_bytes().to_vec(),
             tx_out_public_key_data: fog_tx_out.public_key.as_bytes().to_vec(),
             tx_out_e_memo_data: fog_tx_out
@@ -269,6 +275,7 @@ impl TxOutRecord {
             target_key: CompressedRistrettoPublic::try_from(&self.tx_out_target_key_data[..])?,
             public_key: CompressedRistrettoPublic::try_from(&self.tx_out_public_key_data[..])?,
             amount_masked_value: self.tx_out_amount_masked_value,
+            amount_masked_token_id: self.tx_out_amount_masked_token_id.clone(),
             amount_commitment_data_crc32: self.get_amount_data_crc32()?,
             e_memo: self.get_e_memo()?,
         })
@@ -324,6 +331,9 @@ pub struct FogTxOut {
     /// The tx out masked amount
     pub amount_masked_value: u64,
 
+    /// The tx out masked token id
+    pub amount_masked_token_id: Vec<u8>,
+
     /// The crc32 of the tx out amount commitment bytes
     pub amount_commitment_data_crc32: u32,
 
@@ -339,9 +349,10 @@ impl core::convert::From<&TxOut> for FogTxOut {
         Self {
             target_key: src.target_key,
             public_key: src.public_key,
-            amount_masked_value: src.amount.masked_value,
+            amount_masked_value: src.masked_amount.masked_value,
+            amount_masked_token_id: src.masked_amount.masked_token_id.clone(),
             amount_commitment_data_crc32: Crc::<u32>::new(&crc::CRC_32_ISO_HDLC)
-                .checksum(src.amount.commitment.point.as_bytes()),
+                .checksum(src.masked_amount.commitment.point.as_bytes()),
             e_memo: src.e_memo,
         }
     }
@@ -366,25 +377,23 @@ impl FogTxOut {
         // Reconstruct compressed commitment based on our view key.
         // The first step is reconstructing the TxOut shared secret
         let public_key = RistrettoPublic::try_from(&self.public_key)?;
+
         let tx_out_shared_secret =
             mc_transaction_core::get_tx_out_shared_secret(view_key, &public_key);
 
-        // The next step is unblinding the amount value
-        let value =
-            self.amount_masked_value ^ mc_transaction_core::get_value_mask(&tx_out_shared_secret);
+        let (masked_amount, _) = MaskedAmount::reconstruct(
+            self.amount_masked_value,
+            &self.amount_masked_token_id,
+            &tx_out_shared_secret,
+        )
+        .map_err(|_| FogTxOutError::ChecksumMismatch)?;
 
-        // Now we can rebuild the Amount object from the value and shared secret
-        let amount = Amount::new(value, &tx_out_shared_secret)?;
-
-        // Check that the crc32 of amount compressed commitment matches
-        if self.amount_commitment_data_crc32
-            != Crc::<u32>::new(&crc::CRC_32_ISO_HDLC).checksum(amount.commitment.point.as_bytes())
-        {
+        if masked_amount.commitment_crc32() != self.amount_commitment_data_crc32 {
             return Err(FogTxOutError::ChecksumMismatch);
         }
 
         Ok(TxOut {
-            amount,
+            masked_amount,
             target_key: self.target_key,
             public_key: self.public_key,
             e_fog_hint: EncryptedFogHint::from(&[0u8; ENCRYPTED_FOG_HINT_LEN]),
@@ -435,4 +444,55 @@ pub struct FogTxOutMetadata {
     /// The timestamp of the block in which this TxOut appeared, in seconds
     /// since the Unix epoch.
     pub timestamp: u64,
+}
+
+#[cfg(test)]
+mod view_tests {
+    extern crate std;
+    use super::*;
+
+    use mc_test_vectors_tx_out_records::{CorrectTxOutRecordData, IncorrectTxOutRecordData};
+    use mc_util_test_vector::TestVector;
+    use mc_util_test_with_data::test_with_data;
+
+    #[test_with_data(CorrectTxOutRecordData::from_jsonl("../../test-vectors/vectors"))]
+    fn recover_fog_tx_out_from_tx_out_record_and_correct_view_key_succeeds(
+        case: &CorrectTxOutRecordData,
+    ) {
+        let view_private_key: RistrettoPrivate = mc_util_serial::decode(
+            &hex::decode(&case.recipient_view_private_key_hex_proto_bytes)
+                .expect("Could not decode RistrettoPrivate hex for view private key."),
+        )
+        .expect("Could not convert bytes to RistrettoPrivate for view private key");
+        let tx_out_record: TxOutRecord = mc_util_serial::decode(
+            &hex::decode(&case.tx_out_record_hex_proto_bytes)
+                .expect("Could not decode TxOutRecord hex."),
+        )
+        .expect("Could not convert bytes to TxOutRecord.");
+        let fog_tx_out: FogTxOut = tx_out_record.get_fog_tx_out().unwrap();
+
+        let result = fog_tx_out.try_recover_tx_out(&view_private_key);
+        assert!(result.is_ok());
+    }
+
+    #[test_with_data(IncorrectTxOutRecordData::from_jsonl("../../test-vectors/vectors"))]
+    fn recover_fog_tx_out_from_tx_out_record_and_incorrect_view_key_fails(
+        case: &IncorrectTxOutRecordData,
+    ) {
+        let view_private_key: RistrettoPrivate = mc_util_serial::decode(
+            &hex::decode(&case.spurious_view_private_key_hex_proto_bytes)
+                .expect("Could not decode RistrettoPrivate hex for view private key."),
+        )
+        .expect("Could not convert bytes to RistrettoPrivate for view private key");
+        let tx_out_record: TxOutRecord = mc_util_serial::decode(
+            &hex::decode(&case.tx_out_record_hex_proto_bytes)
+                .expect("Could not decode TxOutRecord hex."),
+        )
+        .expect("Could not convert bytes to TxOutRecord.");
+        let fog_tx_out: FogTxOut = tx_out_record.get_fog_tx_out().unwrap();
+
+        let result = fog_tx_out.try_recover_tx_out(&view_private_key);
+
+        assert!(result.is_err());
+    }
 }

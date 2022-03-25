@@ -58,6 +58,7 @@ fn active_key_is_retired_not_outstanding_new_key_is_set_node_activated(logger: L
     let origin_contents = BlockContents {
         key_images: Default::default(),
         outputs: origin_txo.clone(),
+        ..Default::default()
     };
     let origin_block = Block::new_origin_block(&origin_txo);
     ledger
@@ -132,7 +133,7 @@ fn active_key_is_retired_not_outstanding_new_key_is_set_node_activated(logger: L
     let overseer_state = OverseerState { overseer_service };
     let rocket = server::initialize_rocket_server(rocket_config, overseer_state);
     let client = Client::new(rocket).expect("valid rocket instance");
-    let _req = client.post("/arm");
+    let _req = client.post("/enable").dispatch();
 
     // Retire the current active node.
     node0.retire().unwrap();
@@ -144,7 +145,7 @@ fn active_key_is_retired_not_outstanding_new_key_is_set_node_activated(logger: L
     }
     // Process the next block to make sure that the node gets retired
     // Give Overseer time to perform logic
-    std::thread::sleep(Duration::from_secs(25));
+    std::thread::sleep(Duration::from_secs(60));
 
     // Fog Overseer should have activated any node.
     assert!(node0.is_active() || node1.is_active() || node2.is_active());

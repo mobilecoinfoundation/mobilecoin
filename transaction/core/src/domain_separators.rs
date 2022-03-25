@@ -17,6 +17,9 @@
 /// Domain separator for Amount's value mask hash function.
 pub const AMOUNT_VALUE_DOMAIN_TAG: &str = "mc_amount_value";
 
+/// Domain separator for Amount's token_id mask hash function.
+pub const AMOUNT_TOKEN_ID_DOMAIN_TAG: &str = "mc_amount_token_id";
+
 /// Domain separator for Amount's blinding mask hash function.
 pub const AMOUNT_BLINDING_DOMAIN_TAG: &str = "mc_amount_blinding";
 
@@ -43,3 +46,12 @@ pub const RING_MLSAG_CHALLENGE_DOMAIN_TAG: &str = "mc_ring_mlsag_challenge";
 
 /// Domain separator for hashing the confirmation number
 pub const TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG: &str = "mc_tx_out_confirmation_number";
+
+/// Domain separator for computing the extended message digest
+pub const EXTENDED_MESSAGE_DOMAIN_TAG: &str = "mc_extended_message";
+
+// Domain separator for hashing MintConfigTxPrefixs
+pub const MINT_CONFIG_TX_PREFIX_DOMAIN_TAG: &str = "mc_mint_config_tx_prefix";
+
+/// Domain separator for hashing MintTxPrefixs
+pub const MINT_TX_PREFIX_DOMAIN_TAG: &str = "mc_mint_tx_prefix";

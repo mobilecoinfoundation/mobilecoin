@@ -121,8 +121,10 @@ mod tests {
         encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN,
         membership_proofs::Range,
         ring_signature::KeyImage,
+        tokens::Mob,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
         Amount, Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion,
+        MaskedAmount, Token,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -133,8 +135,13 @@ mod tests {
         let mut last_block: Option<Block> = None;
 
         for block_idx in 0..num_blocks {
+            let amount = Amount {
+                value: 1u64 << 13,
+                token_id: Mob::ID,
+            };
             let tx_out = TxOut {
-                amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
+                masked_amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng))
+                    .unwrap(),
                 target_key: RistrettoPublic::from_random(&mut rng).into(),
                 public_key: RistrettoPublic::from_random(&mut rng).into(),
                 e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
@@ -146,7 +153,11 @@ mod tests {
                 .map(|block| block.id.clone())
                 .unwrap_or_else(|| BlockID::try_from(&[1u8; 32][..]).unwrap());
 
-            let block_contents = BlockContents::new(vec![key_image.clone()], vec![tx_out.clone()]);
+            let block_contents = BlockContents {
+                key_images: vec![key_image.clone()],
+                outputs: vec![tx_out.clone()],
+                ..Default::default()
+            };
             let block = Block::new(
                 BlockVersion::ONE,
                 &parent_block_id,

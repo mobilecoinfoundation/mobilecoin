@@ -12,8 +12,8 @@ test_utils = []
 
 [dependencies]
 mc-common = { path = "../../common", features = ["log"] }
-mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["derive"] }
+mc-crypto-keys = { path = "../../crypto/keys" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 
@@ -31,6 +31,5 @@ mc-util-logger-macros = { path = "../../util/logger-macros" }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
 crossbeam-channel = "0.5"
-pretty_assertions = "1.1.0"
 serial_test = "0.6"
 tempdir = "0.3"

@@ -41,20 +41,20 @@ mc-fog-ledger-connection = { path = "../ledger/connection" }
 mc-fog-ledger-enclave-measurement = { path = "../ledger/enclave/measurement" }
 mc-fog-report-connection = { path = "../../fog/report/connection" }
 mc-fog-report-validation = { path = "../../fog/report/validation" }
-mc-fog-types =  {path = "../types" }
+mc-fog-types =  { path = "../types" }
 mc-fog-uri = { path = "../uri" }
 mc-fog-view-connection = { path = "../view/connection" }
 mc-fog-view-enclave-measurement = { path = "../view/enclave/measurement" }
 mc-fog-view-protocol = { path = "../view/protocol" }
 
+clap = { version = "3.1", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.9.0"
+grpcio = "0.10.0"
 link-cplusplus = "1.0" # This is needed to support building on darwin which only has libc++ and not libstdc++
 protobuf = "2.22.1"
 rand = "0.8"
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
-structopt = "0.3"
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }

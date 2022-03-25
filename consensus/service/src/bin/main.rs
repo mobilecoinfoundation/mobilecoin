@@ -1,7 +1,9 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! Entrypoint for the MobileCoin server.
 
+use clap::Parser;
 use mc_attest_net::{Client, RaClient};
 use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{
@@ -12,6 +14,7 @@ use mc_consensus_enclave::{BlockchainConfig, ConsensusServiceSgxEnclave, ENCLAVE
 use mc_consensus_service::{
     config::Config,
     consensus_service::{ConsensusService, ConsensusServiceError},
+    mint_tx_manager::MintTxManagerImpl,
     tx_manager::TxManagerImpl,
     validators::DefaultTxManagerUntrustedInterfaces,
 };
@@ -23,15 +26,18 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use structopt::StructOpt;
 
 fn main() -> Result<(), ConsensusServiceError> {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
 
-    let config = Config::from_args();
+    let config = Config::parse();
     let local_node_id = config.node_id();
     let fee_map = config.tokens().fee_map().expect("Could not parse fee map");
+    let master_minters_map = config
+        .tokens()
+        .token_id_to_master_minters()
+        .expect("Could not parse master minters map");
 
     let (logger, _global_logger_guard) = create_app_logger(o!(
         "mc.local_node_id" => local_node_id.responder_id.to_string(),
@@ -61,6 +67,7 @@ fn main() -> Result<(), ConsensusServiceError> {
 
     let blockchain_config = BlockchainConfig {
         fee_map: fee_map.clone(),
+        master_minters_map: master_minters_map.clone(),
         block_version: config.block_version,
     };
 
@@ -106,12 +113,20 @@ fn main() -> Result<(), ConsensusServiceError> {
         logger.clone(),
     );
 
+    let mint_tx_manager = MintTxManagerImpl::new(
+        local_ledger.clone(),
+        config.block_version,
+        master_minters_map,
+        logger.clone(),
+    );
+
     let mut consensus_service = ConsensusService::new(
         config,
         enclave,
         local_ledger,
         ias_client,
         Arc::new(tx_manager),
+        Arc::new(mint_tx_manager),
         Arc::new(SystemTimeProvider::default()),
         logger.clone(),
     );

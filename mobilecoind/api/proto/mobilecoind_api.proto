@@ -126,6 +126,9 @@ message UnspentTxOut {
     // The tombstone block used when we attempted to spend the UTXO.
     uint64 attempted_spend_tombstone = 6;
 
+    // The token id of the TxOut
+    uint32 token_id = 7;
+
     // The monitor id this UnspentTxOut belongs to.
     // Note that this field is not included in the Rust `utxo_store::UnspentTxOut` struct.
     bytes monitor_id = 10;

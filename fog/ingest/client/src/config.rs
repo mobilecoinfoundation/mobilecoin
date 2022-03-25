@@ -1,23 +1,26 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! Configuration parameters for the Fog ingest client
 
+use clap::{Parser, Subcommand};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_util_parse::parse_duration_in_seconds;
 use std::time::Duration;
-use structopt::StructOpt;
 
-#[derive(Clone, StructOpt)]
+/// Configuration parameters for the Fog ingest client
+#[derive(Clone, Debug, Parser)]
 pub struct IngestConfig {
     /// URI for ingest server
-    #[structopt(long)]
+    #[clap(long, env = "MC_URI")]
     pub uri: String,
 
     /// How long to retry if unavailable, this is useful for tests
-    #[structopt(long, short = "r", default_value = "10", parse(try_from_str=parse_duration_in_seconds))]
+    #[clap(long, short, default_value = "10", parse(try_from_str = parse_duration_in_seconds), env = "MC_RETRY_SECONDS")]
     pub retry_seconds: Duration,
 
-    #[structopt(subcommand)]
+    /// The command to run.
+    #[clap(subcommand)]
     pub cmd: IngestConfigCommand,
 }
 
@@ -28,7 +31,8 @@ fn parse_ristretto_hex(src: &str) -> Result<CompressedRistrettoPublic, String> {
     Ok(CompressedRistrettoPublic::from(&key_bytes))
 }
 
-#[derive(Clone, StructOpt)]
+/// The command to run.
+#[derive(Clone, Debug, Subcommand)]
 pub enum IngestConfigCommand {
     /// Get a summary of the state of the ingest server.
     GetStatus,
@@ -38,12 +42,16 @@ pub enum IngestConfigCommand {
     NewKeys,
 
     /// Set the list of peers of this ingest server.
-    SetPeers { peer_uris: Vec<String> },
+    SetPeers {
+        /// The peer URIs.
+        peer_uris: Vec<String>,
+    },
 
     /// Set the pubkey_expiry_window of the ingest server.
     SetPubkeyExpiryWindow {
         /// This value is a number of blocks that is added to the current block
         /// index to compute the "pubkey_expiry" value of fog reports.
+        #[clap(env = "MC_PUBKEY_EXPIRY_WINDOW")]
         pubkey_expiry_window: u64,
     },
 
@@ -59,7 +67,8 @@ pub enum IngestConfigCommand {
 
     /// Report a lost ingress key, with pubkey bytes specified in hex
     ReportLostIngressKey {
-        #[structopt(long, short = "k", parse(try_from_str=parse_ristretto_hex))]
+        /// The lost key.
+        #[clap(long, short, parse(try_from_str = parse_ristretto_hex), env = "MC_KEY")]
         key: CompressedRistrettoPublic,
     },
 
@@ -68,7 +77,11 @@ pub enum IngestConfigCommand {
 
     /// Retrieves a private key from a remote ingest enclave and sets it as
     /// the current enclaves's private key.
-    SyncKeysFromRemote { peer_uri: String },
+    SyncKeysFromRemote {
+        /// The Fog Ingest Peer URI.
+        #[clap(env = "MC_PEER_URI")]
+        peer_uri: String,
+    },
 
     ///  Retrieves the ingress public keys for the entire system (as opposed to
     ///  those of a single IngestServer) and filters according to the provided
@@ -76,14 +89,14 @@ pub enum IngestConfigCommand {
     GetIngressPublicKeyRecords {
         /// Ingress keys are "started" at certain blocks. Only ingress keys that
         /// are "started"  at this block index will be included in the response.
-        #[structopt(default_value, short = "s", long = "start-block-at-least")]
+        #[clap(short, long, env = "MC_START_BLOCK_AT_LEAST", default_value_t)]
         start_block_at_least: u64,
         /// If true the response will include ingress keys that have been lost.
-        #[structopt(short = "l", long = "include-lost")]
+        #[clap(short = 'l', long = "include-lost", env = "MC_INCLUDE_LOST")]
         should_include_lost_keys: bool,
         /// If true the response will include ingress keys that have been
         /// retired.
-        #[structopt(short = "r", long = "include-retired")]
+        #[clap(short = 'r', long = "include-retired", env = "MC_INCLUDE_RETIRED")]
         should_include_retired_keys: bool,
     },
 }

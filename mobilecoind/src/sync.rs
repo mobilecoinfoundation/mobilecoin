@@ -346,7 +346,6 @@ fn match_tx_outs_into_utxos(
     logger: &Logger,
 ) -> Result<Vec<UnspentTxOut>, Error> {
     let account_key = &monitor_data.account_key;
-    let view_key = account_key.view_key();
     let mut results = Vec::new();
 
     for tx_out in outputs {
@@ -355,7 +354,7 @@ fn match_tx_outs_into_utxos(
         let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key)?;
 
         let subaddress_spk = SubaddressSPKId::from(&recover_public_subaddress_spend_key(
-            &view_key.view_private_key,
+            account_key.view_private_key(),
             &tx_out_target_key,
             &tx_public_key,
         ));
@@ -384,8 +383,8 @@ fn match_tx_outs_into_utxos(
         let shared_secret =
             get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
 
-        let (value, _blinding) = tx_out
-            .amount
+        let (amount, _blinding) = tx_out
+            .masked_amount
             .get_value(&shared_secret)
             .expect("Malformed amount"); // TODO
 
@@ -401,9 +400,10 @@ fn match_tx_outs_into_utxos(
             tx_out: tx_out.clone(),
             subaddress_index: subaddress_id.index,
             key_image,
-            value,
+            value: amount.value,
             attempted_spend_height: 0,
             attempted_spend_tombstone: 0,
+            token_id: *amount.token_id,
         });
     }
 

@@ -11,8 +11,8 @@ path = "src/main.rs"
 
 [dependencies]
 # third party
-grpcio = "0.9.0"
-structopt = "0.3"
+clap = { version = "3.1", features = ["derive", "env"] }
+grpcio = "0.10.0"
 
 # mobilecoin
 mc-account-keys = { path = "../../../account-keys" }

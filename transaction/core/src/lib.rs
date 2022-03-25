@@ -1,7 +1,10 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+//! MobileCoin transaction data types, transaction construction and validation
+//! routines
+
 #![no_std]
-// #![deny(missing_docs)]
+#![deny(missing_docs)]
 
 extern crate alloc;
 
@@ -26,6 +29,7 @@ pub mod constants;
 pub mod encrypted_fog_hint;
 pub mod fog_hint;
 pub mod membership_proofs;
+pub mod mint;
 pub mod onetime_keys;
 pub mod range_proofs;
 pub mod ring_signature;
@@ -35,12 +39,12 @@ pub mod validation;
 #[cfg(test)]
 pub mod proptest_fixtures;
 
-pub use amount::{get_value_mask, Amount, AmountError, Commitment, CompressedCommitment};
+pub use amount::{Amount, AmountError, Commitment, CompressedCommitment, MaskedAmount};
 pub use blockchain::*;
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
 pub use token::{tokens, Token, TokenId};
 pub use tx::MemoContext;
-pub use tx_error::{NewMemoError, NewTxError};
+pub use tx_error::{NewMemoError, NewTxError, ViewKeyMatchError};
 
 use core::convert::TryFrom;
 use mc_account_keys::AccountKey;

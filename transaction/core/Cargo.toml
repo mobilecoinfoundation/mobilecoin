@@ -7,16 +7,17 @@ edition = "2018"
 [dependencies]
 # External dependencies
 aes = { version = "0.7.5", default-features = false, features = ["ctr"] }
+crc = { version = "2.1.0", default-features = false }
 displaydoc = { version = "0.2", default-features = false }
 generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
 hex_fmt = "0.3"
-hkdf = { version = "0.9", default-features = false }
+hkdf = "0.12"
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 merlin = { version = "3.0", default-features = false }
 prost = { version = "0.9", default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.6", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-sha2 = { version = "0.9.8", default-features = false }
+sha2 = { version = "0.10", default-features = false }
 subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
 zeroize = { version = "1", default-features = false }
 
@@ -27,23 +28,28 @@ mc-crypto-box = { path = "../../crypto/box" }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-crypto-multisig = { path = "../../crypto/multisig", default-features = false }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 mc-util-serial = { path = "../../util/serial" }
 
 [target.'cfg(target_feature = "avx2")'.dependencies]
-bulletproofs-og = {version = "3.0.0-pre.0", default-features = false, features = ["avx2_backend"]}
+bulletproofs-og = { version = "3.0.0-pre.1", default-features = false, features = ["avx2_backend"] }
 
 [target.'cfg(not(target_feature = "avx2"))'.dependencies]
-bulletproofs-og = {version = "3.0.0-pre.0", default-features = false}
+bulletproofs-og = { version = "3.0.0-pre.1", default-features = false }
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["simd_backend", "nightly"] }
-blake2 = { version = "0.9.2", default-features = false, features = ["simd"] }
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
+
+[dev-dependencies.proptest]
+version = "1.0" # Only works for 0.9.1 or newer
+default-features = false
+# Enable all default features not known to break code coverage builds
+features = ["default-code-coverage"]
 
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "4.0.0-pre.1", default-features = false, features = ["nightly", "u64_backend"] }
-blake2 = { version = "0.9.2", default-features = false }
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
 
 [dev-dependencies]
 rand = "0.8"
@@ -56,9 +62,3 @@ mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 mc-util-test-helper = { path = "../../util/test-helper" }
-
-[dev-dependencies.proptest]
-version = "1.0" # Only works for 0.9.1 or newer
-default-features = false
-# Enable all default features not known to break code coverage builds
-features = ["default-code-coverage"]

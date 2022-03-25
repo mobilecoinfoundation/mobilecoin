@@ -5,15 +5,12 @@
 use crate::{
     cached_tx_data::{CachedTxData, OwnedTxOut},
     error::{Error, Result},
-    MemoHandlerError, TransactionStatus,
+    BlockInfo, MemoHandlerError, TransactionStatus,
 };
 use core::{convert::TryFrom, result::Result as StdResult, str::FromStr};
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_attest_verifier::Verifier;
-use mc_common::{
-    logger::{log, Logger},
-    HashSet,
-};
+use mc_common::logger::{log, Logger};
 use mc_connection::{
     BlockchainConnection, Connection, HardcodedCredentialsProvider, ThickClient, UserTxConnection,
 };
@@ -29,11 +26,10 @@ use mc_fog_report_validation::{FogPubkeyResolver, FogResolver};
 use mc_fog_types::BlockCount;
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_transaction_core::{
-    onetime_keys::*,
+    onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
-    tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
-    BlockIndex, BlockVersion, Token,
+    Amount, BlockIndex, BlockVersion, TokenId,
 };
 use mc_transaction_std::{
     ChangeDestination, InputCredentials, MemoType, RTHMemoBuilder, SenderMemoCredential,
@@ -42,6 +38,7 @@ use mc_transaction_std::{
 use mc_util_telemetry::{block_span_builder, telemetry_static_key, tracer, Key, Span};
 use mc_util_uri::{ConnectionUri, FogUri};
 use rand::Rng;
+use std::collections::{HashMap, HashSet};
 
 /// Default number of blocks used for calculating transaction tombstone block
 /// number. See `new_tx_block_attempts` below.
@@ -134,10 +131,10 @@ impl Client {
     /// Check this user's current available balance.
     ///
     /// Returns:
-    /// * Balance (in picomob)
+    /// * Balances (for all token types) (in picomob)
     /// * Number of blocks in the chain at the time that this was the correct
     ///   balance
-    pub fn check_balance(&mut self) -> Result<(u64, BlockCount)> {
+    pub fn check_balance(&mut self) -> Result<(HashMap<TokenId, u64>, BlockCount)> {
         mc_common::trace_time!(self.logger, "MobileCoinClient.get_balance");
         self.tx_data.poll_fog(
             &mut self.fog_view,
@@ -151,10 +148,11 @@ impl Client {
     /// Does NOT make any new network calls.
     ///
     /// Returns:
-    /// * Balance (in picomob)
+    /// * HashMap<TokenId, u64> Balance (in picomob or equivalent for each
+    ///   token)
     /// * Number of blocks in the chain at the time that this was the correct
     ///   balance
-    pub fn compute_balance(&self) -> (u64, BlockCount) {
+    pub fn compute_balance(&self) -> (HashMap<TokenId, u64>, BlockCount) {
         self.tx_data.get_balance()
     }
 
@@ -302,7 +300,7 @@ impl Client {
     /// * `fee` - The transaction fee to use
     pub fn build_transaction<T: RngCore + CryptoRng>(
         &mut self,
-        amount: u64,
+        amount: Amount,
         target_address: &PublicAddress,
         rng: &mut T,
         fee: u64,
@@ -317,14 +315,20 @@ impl Client {
             target_address
         );
 
+        let required_input_amount = {
+            let mut amount = amount;
+            amount.value += fee;
+            amount
+        };
+
         // Arbitrarily choose 3 as the maximum number of inputs
         // TODO: Should be based on fee scaling and fee choice
         const TARGET_NUM_INPUTS: usize = 3;
         let inputs = self
             .tx_data
-            .get_transaction_inputs(amount + Mob::MINIMUM_FEE, TARGET_NUM_INPUTS)?;
+            .get_transaction_inputs(required_input_amount, TARGET_NUM_INPUTS)?;
         let inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = self.get_proofs(&inputs)?;
-        let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> = self.get_rings(inputs.len(), rng)?;
+        let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> = self.get_rings(&inputs, rng)?;
 
         let tombstone_block = self.compute_tombstone_block()?;
 
@@ -444,26 +448,35 @@ impl Client {
     /// self.ring_size elements.
     fn get_rings<T: RngCore + CryptoRng>(
         &mut self,
-        num_rings: usize,
+        true_inputs: &[(OwnedTxOut, TxOutMembershipProof)],
         rng: &mut T,
     ) -> Result<Vec<Vec<(TxOut, TxOutMembershipProof)>>> {
         mc_common::trace_time!(self.logger, "MobileCoinClient.get_rings");
 
+        let true_input_indices: HashSet<u64> = true_inputs
+            .iter()
+            .map(|input| input.0.global_index)
+            .collect();
+
+        let num_rings = true_inputs.len();
         let num_requested = num_rings * self.ring_size;
         let sample_limit = self.tx_data.get_global_txo_count() as usize;
 
-        // Randomly sample `num_requested` TxOuts, without replacement.
-        if sample_limit < num_requested {
+        // Randomly sample `num_requested` TxOuts, without replacement, not using
+        // true_inputs
+        if sample_limit < num_requested + true_inputs.len() {
             return Err(Error::InsufficientTxOutsInBlockchain(
                 sample_limit,
-                num_requested,
+                num_requested + true_inputs.len(),
             ));
         }
 
         let mut sampled_indices: HashSet<u64> = HashSet::default();
         while sampled_indices.len() < num_requested {
-            let index = rng.gen_range(0..sample_limit);
-            sampled_indices.insert(index as u64);
+            let index = rng.gen_range(0..sample_limit) as u64;
+            if !true_input_indices.contains(&index) {
+                sampled_indices.insert(index);
+            }
         }
         let indices: Vec<u64> = sampled_indices.iter().cloned().collect();
         // FIXME: We are not sure whether this is a necessary parameter under ORAM.
@@ -520,13 +533,16 @@ impl Client {
         Ok(res.num_blocks + self.new_tx_block_attempts as u64)
     }
 
-    /// Retrieve the currently configured minimum fee from the consensus service
-    pub fn get_fee(&mut self) -> Result<u64> {
-        Ok(self
-            .consensus_service_conn
-            .fetch_block_info()?
-            .minimum_fee_or_none(&Mob::ID)
-            .unwrap_or(0))
+    /// Retrieve the current last block info structure from consensus service.
+    /// This includes fee data and last block index
+    pub fn get_last_block_info(&mut self) -> Result<BlockInfo> {
+        Ok(self.consensus_service_conn.fetch_block_info()?)
+    }
+
+    /// Retrieve the currently configured minimum fee for a token id from the
+    /// consensus service
+    pub fn get_minimum_fee(&mut self, token_id: TokenId) -> Result<Option<u64>> {
+        Ok(self.get_last_block_info()?.minimum_fee_or_none(&token_id))
     }
 
     /// Get the public b58 address for this client
@@ -559,7 +575,7 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     block_version: BlockVersion,
     inputs: Vec<(OwnedTxOut, TxOutMembershipProof)>,
     rings: Vec<Vec<(TxOut, TxOutMembershipProof)>>,
-    amount: u64,
+    amount: Amount,
     source_account_key: &AccountKey,
     target_address: &PublicAddress,
     tombstone_block: BlockIndex,
@@ -585,16 +601,18 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
         memo_builder.set_sender_credential(SenderMemoCredential::from(source_account_key));
         memo_builder.enable_destination_memo();
 
-        TransactionBuilder::new(block_version, fog_resolver, memo_builder)
+        TransactionBuilder::new(block_version, amount.token_id, fog_resolver, memo_builder)
     };
     tx_builder.set_fee(fee)?;
 
-    let input_amount = inputs.iter().fold(0, |acc, (txo, _)| acc + txo.value);
+    let input_amount = inputs
+        .iter()
+        .fold(0, |acc, (txo, _)| acc + txo.amount.value);
     let fee = tx_builder.get_fee();
-    if (amount + fee) > input_amount {
+    if (amount.value + fee) > input_amount {
         return Err(Error::InsufficientFunds);
     }
-    let change = input_amount - (amount + fee);
+    let change = input_amount - (amount.value + fee);
 
     // Unzip each vec of tuples into a tuple of vecs.
     let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
@@ -677,7 +695,7 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     // Resolve account server key if the receiver specifies an account service in
     // their public address
     tx_builder
-        .add_output(amount, target_address, rng)
+        .add_output(amount.value, target_address, rng)
         .map_err(Error::AddOutput)?;
 
     let change_destination = ChangeDestination::from(source_account_key);
@@ -699,19 +717,19 @@ mod test_build_transaction_helper {
     use super::*;
     use core::result::Result as StdResult;
     use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
-    use mc_common::{
-        logger::{test_with_logger, Logger},
-        HashMap,
-    };
+    use mc_common::logger::{test_with_logger, Logger};
     use mc_fog_report_validation::{FogPubkeyError, FullyValidatedFogPubkey};
     use mc_fog_types::view::{FogTxOut, FogTxOutMetadata, TxOutRecord};
     use mc_transaction_core::{
         constants::MILLIMOB_TO_PICOMOB,
+        onetime_keys::recover_public_subaddress_spend_key,
+        tokens::Mob,
         tx::{TxOut, TxOutMembershipProof},
+        Amount, Token,
     };
     use mc_transaction_core_test_utils::get_outputs;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::iter::FromIterator;
+    use std::{collections::HashMap, iter::FromIterator};
 
     // Mock of FogPubkeyResolver
     struct FakeAcctResolver {}
@@ -736,7 +754,10 @@ mod test_build_transaction_helper {
 
             // Amount per input.
             let initial_amount = 300 * MILLIMOB_TO_PICOMOB;
-            let amount_to_send = 457 * MILLIMOB_TO_PICOMOB;
+            let amount_to_send = Amount {
+                value: 457 * MILLIMOB_TO_PICOMOB,
+                token_id: Mob::ID,
+            };
             let num_inputs = 3;
             let ring_size = 1;
 

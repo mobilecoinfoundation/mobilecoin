@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! MobileCoin account keys.
 //!
@@ -12,12 +12,11 @@
 
 #![allow(non_snake_case)]
 
-use crate::{domain_separators::SUBADDRESS_DOMAIN_TAG, view_key::ViewKey};
+use crate::domain_separators::SUBADDRESS_DOMAIN_TAG;
 use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use blake2::{Blake2b, Digest};
 use core::{
     cmp::Ordering,
     fmt,
@@ -25,6 +24,7 @@ use core::{
 };
 use curve25519_dalek::scalar::Scalar;
 use mc_crypto_digestible::Digestible;
+use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_fog_sig_authority::{Signer as AuthoritySigner, Verifier as AuthorityVerifier};
 use mc_util_from_random::FromRandom;
@@ -327,14 +327,6 @@ impl AccountKey {
         }
     }
 
-    /// Returns the default subaddress view key (a, D).
-    pub fn view_key(&self) -> ViewKey {
-        ViewKey {
-            spend_public_key: self.default_subaddress().spend_public_key,
-            view_private_key: self.view_private_key,
-        }
-    }
-
     /// Create an account key with random secret keys, and no fog service
     /// (intended for tests).
     pub fn random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
@@ -418,11 +410,11 @@ impl AccountKey {
         // `Hs(a || n)`
         let Hs: Scalar = {
             let n = Scalar::from(index);
-            let mut digest = Blake2b::new();
+            let mut digest = Blake2b512::new();
             digest.update(SUBADDRESS_DOMAIN_TAG);
             digest.update(a.as_bytes());
             digest.update(n.as_bytes());
-            Scalar::from_hash::<Blake2b>(digest)
+            Scalar::from_hash(digest)
         };
 
         let b: &Scalar = self.spend_private_key.as_ref();
@@ -446,11 +438,11 @@ impl AccountKey {
         // `Hs(a || n)`
         let Hs: Scalar = {
             let n = Scalar::from(index);
-            let mut digest = Blake2b::new();
+            let mut digest = Blake2b512::new();
             digest.update(SUBADDRESS_DOMAIN_TAG);
             digest.update(a.as_bytes());
             digest.update(n.as_bytes());
-            Scalar::from_hash::<Blake2b>(digest)
+            Scalar::from_hash(digest)
         };
 
         let b: &Scalar = self.spend_private_key.as_ref();

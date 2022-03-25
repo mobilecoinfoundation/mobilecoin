@@ -20,11 +20,13 @@ displaydoc = { version = "0.2", default-features = false }
 prost = { version = "0.9", default-features = false, features = ["prost-derive"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 
-[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-blake2 = { version = "0.9.2", default-features = false, features = ["simd"] }
-
-[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-blake2 = { version = "0.9.2", default-features = false }
-
 [dev_dependencies]
+# mobilecoin
+mc-test-vectors-tx-out-records = { path = "../../test-vectors/tx-out-records" }
+mc-util-serial = { path = "../../util/serial", default-features = false }
 mc-util-test-helper = { path = "../../util/test-helper" }
+mc-util-test-vector = { path = "../../util/test-vector" }
+mc-util-test-with-data = { path = "../../util/test-with-data" }
+
+# third-party
+hex = "0.4"

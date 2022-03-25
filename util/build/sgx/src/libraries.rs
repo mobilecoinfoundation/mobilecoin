@@ -2,7 +2,10 @@
 
 use cargo_emit::{rustc_link_lib, rustc_link_search};
 use pkg_config::Library;
-use std::{collections::HashSet, path::Path};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 
 /// A trait which adds SGX functionality onto a [`Library`] collection.
 pub trait SgxLibraryCollection {
@@ -26,25 +29,22 @@ impl SgxLibraryCollection for [Library] {
     /// Gather the include paths for all the include libraries together.
     fn include_paths(&self) -> HashSet<&Path> {
         self.iter()
-            .map(|library| library.include_paths.iter().map(AsRef::<Path>::as_ref))
-            .flatten()
-            .collect::<HashSet<&Path>>()
+            .flat_map(|library| library.include_paths.iter().map(PathBuf::as_path))
+            .collect()
     }
 
     /// Gather all the library search paths together.
     fn link_paths(&self) -> HashSet<&Path> {
         self.iter()
-            .map(|library| library.link_paths.iter().map(AsRef::<Path>::as_ref))
-            .flatten()
-            .collect::<HashSet<&Path>>()
+            .flat_map(|library| library.link_paths.iter().map(PathBuf::as_path))
+            .collect()
     }
 
     /// Gather a list of SONAMEs which are used by the libraries
     fn libs(&self) -> HashSet<&str> {
         self.iter()
-            .map(|library| library.libs.iter().map(AsRef::<str>::as_ref))
-            .flatten()
-            .collect::<HashSet<&str>>()
+            .flat_map(|library| library.libs.iter().map(String::as_str))
+            .collect()
     }
 
     /// Emit the relevant instructions to cargo to link the current rust crate

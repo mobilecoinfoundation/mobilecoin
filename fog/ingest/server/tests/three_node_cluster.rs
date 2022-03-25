@@ -23,7 +23,7 @@ use mc_transaction_core::{
     membership_proofs::Range,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Amount, Block, BlockContents, BlockData, BlockSignature, BlockVersion,
+    Block, BlockContents, BlockData, BlockSignature, BlockVersion, MaskedAmount,
 };
 use mc_util_from_random::FromRandom;
 use mc_watcher::watcher_db::WatcherDB;
@@ -117,7 +117,11 @@ fn add_test_block<T: RngCore + CryptoRng>(ledger: &mut LedgerDB, watcher: &Watch
 
     let key_images = vec![KeyImage::from(rng.next_u64())];
 
-    let block_contents = BlockContents::new(key_images, random_output(rng));
+    let block_contents = BlockContents {
+        key_images,
+        outputs: random_output(rng),
+        ..Default::default()
+    };
 
     // Fake proofs
     let root_element = TxOutMembershipElement {
@@ -160,7 +164,7 @@ fn add_test_block<T: RngCore + CryptoRng>(ledger: &mut LedgerDB, watcher: &Watch
 // Make a random output for a block
 fn random_output<T: RngCore + CryptoRng>(rng: &mut T) -> Vec<TxOut> {
     vec![TxOut {
-        amount: Amount::default(),
+        masked_amount: MaskedAmount::default(),
         target_key: RistrettoPublic::from_random(rng).into(),
         public_key: RistrettoPublic::from_random(rng).into(),
         e_fog_hint: EncryptedFogHint::default(),
@@ -233,6 +237,7 @@ fn three_node_cluster_activation_retiry(logger: Logger) {
     let origin_contents = BlockContents {
         key_images: Default::default(),
         outputs: origin_txo.clone(),
+        ..Default::default()
     };
     let origin_block = Block::new_origin_block(&origin_txo);
     ledger
@@ -446,6 +451,7 @@ fn three_node_cluster_fencing(logger: Logger) {
     let origin_contents = BlockContents {
         key_images: Default::default(),
         outputs: origin_txo.clone(),
+        ..Default::default()
     };
     let origin_block = Block::new_origin_block(&origin_txo);
     ledger

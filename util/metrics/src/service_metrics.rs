@@ -182,7 +182,7 @@ fn path_from_byte_slice(bytes: &[u8]) -> Option<String> {
     let mut method_raw = vec![0u8; bytes.len() - 1];
     method_raw.copy_from_slice(&bytes[1..]);
     if let Ok(name) = str::from_utf8(&method_raw) {
-        return Some(name.replace("/", "."));
+        return Some(name.replace('/', "."));
     }
     global_log::info!("failed to convert byte slice to string: {:?}", &method_raw);
     None

@@ -1,9 +1,10 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A GRPC server that implements the `RemoteWallet` service using the sample
 //! paykit. This can be used by the fog conformance tests to run tests against
 //! the sample paykit.
 
+use clap::Parser;
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_account_keys::{AccountKey, RootEntropy, RootIdentity};
 use mc_common::logger::{create_root_logger, log, Logger};
@@ -17,6 +18,7 @@ use mc_fog_sample_paykit::{
     Client, ClientBuilder,
 };
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
+use mc_transaction_core::{tokens::Mob, Token};
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, send_result, ConnectionUriGrpcioServer,
 };
@@ -28,7 +30,6 @@ use std::{
     thread::sleep,
     time::Duration,
 };
-use structopt::StructOpt;
 
 /// Remote Wallet Uri Scheme
 #[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
@@ -54,10 +55,14 @@ struct State {
     clients: Vec<Option<Client>>,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Config {
     /// gRPC listening URI for client requests.
-    #[structopt(long, default_value = "insecure-remote-wallet://127.0.0.1:9090")]
+    #[clap(
+        long,
+        default_value = "insecure-remote-wallet://127.0.0.1:9090",
+        env = "MC_LISTEN_URI"
+    )]
     pub listen_uri: RemoteWalletUri,
 }
 
@@ -125,9 +130,12 @@ impl RemoteWalletService {
         )
         .build();
 
-        let (balance, block_count) = client
+        let (balances, block_count) = client
             .check_balance()
             .map_err(|err| rpc_internal_error("check_balance", err, &self.logger))?;
+
+        // conformance tests only does MOB right now
+        let balance = balances.get(&Mob::ID).cloned().unwrap_or_default();
 
         let mut state = self.state.lock().expect("mutex poisoned");
         let client_id = state.clients.len();
@@ -150,9 +158,11 @@ impl RemoteWalletService {
         let mut state = self.state.lock().expect("mutex poisoned");
         match state.clients.get_mut(request.client_id as usize) {
             Some(Some(client)) => {
-                let (balance, block_count) = client
+                let (balances, block_count) = client
                     .check_balance()
                     .map_err(|err| rpc_internal_error("check_balance", err, &self.logger))?;
+
+                let balance = balances.get(&Mob::ID).cloned().unwrap_or_default();
 
                 let response = BalanceCheckResponse {
                     client_id: request.client_id,
@@ -256,7 +266,7 @@ impl RemoteWalletApi for RemoteWalletService {
 }
 
 fn main() {
-    let config = Config::from_args();
+    let config = Config::parse();
     let logger = create_root_logger();
 
     log::info!(logger, "Starting RPC server.");

@@ -17,12 +17,12 @@ mc-transaction-core = { path = "../../transaction/core" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-uri = { path = "../../util/uri" }
 
-grpcio = "0.9.0"
+grpcio = "0.10.0"
 hex = "0.4"
 rand = "0.8"
 rand_hc = "0.3"
 retry = "1.3"
-sha2 = { version = "0.9.8", features = ["asm"] }
+sha2 = { version = "0.10", features = ["asm"] }
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
