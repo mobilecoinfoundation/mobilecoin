@@ -154,7 +154,7 @@ class Node:
         self.peers = peers
         self.quorum_set = quorum_set
         self.minimum_fee = 400_000_000
-        self.block_verison = block_version or 2
+        self.block_version = block_version or 2
 
         self.consensus_process = None
         self.ledger_distribution_process = None
@@ -435,7 +435,6 @@ class Network:
         self.nodes = []
         self.ledger_distribution = None
         self.cli = None
-        self.block_version = None
         try:
             shutil.rmtree(WORK_DIR)
         except FileNotFoundError:
