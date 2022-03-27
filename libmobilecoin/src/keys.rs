@@ -152,6 +152,14 @@ pub extern "C" fn mc_account_key_get_public_address_fog_authority_sig(
 
 /* ==== TxOutMemoBuilder ==== */
 
+/// # Preconditions
+///
+/// * `public_address` - must be a valid `PublicAddress`.
+/// * `out_short_address_hash` - length must be >= 16 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 #[no_mangle]
 pub extern "C" fn mc_account_key_get_short_address_hash(
     public_address: FfiRefPtr<McPublicAddress>,
