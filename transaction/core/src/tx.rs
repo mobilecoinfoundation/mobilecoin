@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 use core::{convert::TryFrom, fmt};
 use mc_account_keys::PublicAddress;
 use mc_common::Hash;
-use mc_crypto_digestible::{Digestible, MerlinTranscript, DigestTranscript};
+use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_hashes::{Blake2b256, Digest};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_util_repr_bytes::{
@@ -24,7 +24,7 @@ use crate::{
     membership_proofs::Range,
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
-    ring_signature::{KeyImage, SignatureRctBulletproofs, Scalar},
+    ring_signature::{KeyImage, Scalar, SignatureRctBulletproofs},
     CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
 };
 
@@ -404,14 +404,15 @@ impl TxOut {
     }
 
     /// Creates a single output belonging to a specific recipient account.
-    /// The output is created using a predictable private key that is derived from
-    /// the input parameters.
+    /// The output is created using a predictable private key that is derived
+    /// from the input parameters.
     ///
     /// # Arguments:
     /// * `recipient` - The recipient of the output.
     /// * `domain_tag` - Domain separator for hashing the input parameters.
     /// * `parent_block` - The parent block.
-    /// * `transactions` - The transactions that are included in the current block.
+    /// * `transactions` - The transactions that are included in the current
+    ///   block.
     /// * `amount` - Output amount.
     pub fn mint<T: Digestible>(
         recipient: &PublicAddress,
