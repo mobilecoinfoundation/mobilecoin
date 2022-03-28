@@ -16,7 +16,7 @@ pub struct OverseerConfig {
     pub overseer_listen_host: String,
 
     /// Port to start webserver on.
-    #[clap(long, default_value = "9090", env = "MC_OVERSEER_LISTEN_PORT")]
+    #[clap(long, default_value = "4266", env = "MC_OVERSEER_LISTEN_PORT")]
     pub overseer_listen_port: u16,
 
     /// TODO: Make this an environment variable that can be dynamically
