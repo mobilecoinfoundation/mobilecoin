@@ -19,7 +19,6 @@ It's practical purpose is to "bake in" those values for a release, and if no met
 |`LEDGER_ENCLAVE_GENDATA`|`.dat`|Data previously extracted from `LEDGER_ENCLAVE_UNSIGNED` which has been signed offline.|
 |`LEDGER_ENCLAVE_SIGNATURE`|`.sig`|The signature over `LEDGER_ENCLAVE_GENDATA` produced by the owner of `LEDGER_ENCLAVE_PUBKEY`.|
 |`LEDGER_ENCLAVE_PUBKEY`|`.pem`|The public key of the signing key which generated `LEDGER_ENCLAVE_SIGNATURE`.|
-|`LEDGER_ENCLAVE_LDS`|`.lds`|An optional linker script to provide when building `LEDGER_ENCLAVE_UNSIGNED` from scratch.|
 
  The basic procedure here is:
 

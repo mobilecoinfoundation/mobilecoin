@@ -178,7 +178,6 @@ pub struct Environment {
     target_arch: String,
     target_endian: Endianness,
     target_env: String,
-    target_family: TargetFamily,
     target_has_atomic: HashSet<String>,
     target_has_atomic_load_store: HashSet<String>,
     target_os: String,
@@ -353,11 +352,6 @@ impl Environment {
             )?,
             target_env: var(ENV_CARGO_CFG_TARGET_ENV)
                 .map_err(|e| EnvironmentError::Var(ENV_CARGO_CFG_TARGET_ENV.to_owned(), e))?,
-            target_family: TargetFamily::try_from(
-                var(ENV_CARGO_CFG_TARGET_FAMILY)
-                    .map_err(|e| EnvironmentError::Var(ENV_CARGO_CFG_TARGET_FAMILY.to_owned(), e))?
-                    .as_ref(),
-            )?,
             target_features: var(ENV_CARGO_CFG_TARGET_FEATURE)
                 .map_err(|e| EnvironmentError::Var(ENV_CARGO_CFG_TARGET_FEATURE.to_owned(), e))?
                 .split(',')
@@ -546,11 +540,6 @@ impl Environment {
     /// Get the target environment
     pub fn target_env(&self) -> &str {
         &self.target_env
-    }
-
-    /// Get the target architecture family
-    pub fn target_family(&self) -> TargetFamily {
-        self.target_family
     }
 
     /// Get a reference to the target feature set

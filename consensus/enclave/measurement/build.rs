@@ -8,10 +8,6 @@ use mc_util_build_script::Environment;
 use mc_util_build_sgx::{IasMode, SgxEnvironment, SgxMode, TcsPolicy};
 use std::{env::var, path::PathBuf};
 
-// Changing this version is a breaking change, you must update the crate version
-// if you do.
-const SGX_VERSION: &str = "2.15.100.3";
-
 const CONSENSUS_ENCLAVE_PRODUCT_ID: u16 = 1;
 const CONSENSUS_ENCLAVE_SECURITY_VERSION: u16 = 3;
 const CONSENSUS_ENCLAVE_NAME: &str = "consensus-enclave";
@@ -28,7 +24,6 @@ fn main() {
     let mut builder = Builder::new(
         &env,
         &sgx,
-        SGX_VERSION,
         CONSENSUS_ENCLAVE_NAME,
         CONSENSUS_ENCLAVE_DIR.as_ref(),
     )
@@ -47,11 +42,6 @@ fn main() {
     rerun_if_env_changed!("CONSENSUS_ENCLAVE_SIGNED");
     if let Ok(value) = var("CONSENSUS_ENCLAVE_SIGNED") {
         builder.signed_enclave(PathBuf::from(&value));
-    }
-
-    rerun_if_env_changed!("CONSENSUS_ENCLAVE_LDS");
-    if let Ok(value) = var("CONSENSUS_ENCLAVE_LDS") {
-        builder.lds(PathBuf::from(&value));
     }
 
     rerun_if_env_changed!("CONSENSUS_ENCLAVE_PRIVKEY");

@@ -3,6 +3,7 @@
 //! MobileCoin Fog Ingest Enclave
 
 #![no_std]
+#![no_main]
 
 extern crate alloc;
 

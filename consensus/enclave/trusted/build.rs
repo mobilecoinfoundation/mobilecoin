@@ -4,7 +4,7 @@
 
 use cargo_emit::rustc_cfg;
 use mc_util_build_script::Environment;
-use mc_util_build_sgx::{Edger8r, SgxEnvironment, SgxMode};
+use mc_util_build_sgx::{link_to_sgx_libraries, Edger8r, SgxEnvironment, SgxMode};
 use pkg_config::{Config, Error as PkgConfigError, Library};
 
 // This should (for now) match the untrusted bridge code. Eventually if Intel
@@ -60,4 +60,6 @@ fn main() {
         .generate()
         .expect("Could not generate code")
         .build();
+
+    link_to_sgx_libraries(&sgx).expect("The SGX libraries didn't link.");
 }

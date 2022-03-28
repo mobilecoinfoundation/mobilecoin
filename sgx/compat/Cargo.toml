@@ -7,21 +7,11 @@ edition = "2018"
 # All dependencies are optional
 [dependencies]
 cfg-if = "1.0"
-mc-sgx-alloc = { path = "../alloc", optional = true }
-mc-sgx-panic = { path = "../panic", optional = true }
-mc-sgx-sync = { path = "../sync", optional = true }
-mc-sgx-debug = { path = "../debug", optional = true }
-mc-sgx-service = { path = "../service", optional = true }
 mc-sgx-types = { path = "../types" }
 
-[features]
-# In default mode we depend on std, which is appropriate for `cargo test`
-default = []
-# In sgx mode we bring in sgx-only implementations
-sgx = [
-    'mc-sgx-alloc', 'mc-sgx-alloc/oom_panic',
-    'mc-sgx-panic', 'mc-sgx-panic/panic_abort',
-    'mc-sgx-sync', 'mc-sgx-sync/mc-sgx-panic',
-    'mc-sgx-debug',
-    'mc-sgx-service',
-]
+[target.'cfg(target_env = "sgx")'.dependencies]
+mc-sgx-alloc = { path = "../alloc" }
+mc-sgx-panic = { path = "../panic" }
+mc-sgx-sync = { path = "../sync" }
+mc-sgx-debug = { path = "../debug" }
+mc-sgx-service = { path = "../service" }

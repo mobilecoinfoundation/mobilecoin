@@ -8,7 +8,7 @@ mod common;
 pub use common::EnclaveLogMessage;
 
 cfg_if::cfg_if! {
-    if #[cfg(feature="sgx")] {
+    if #[cfg(target_env="sgx")] {
         mod trusted;
         pub use trusted::*;
     }

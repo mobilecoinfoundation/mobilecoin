@@ -3,6 +3,7 @@
 //! Mobilenode Ledger Enclave
 
 #![no_std]
+#![no_main]
 
 extern crate alloc;
 

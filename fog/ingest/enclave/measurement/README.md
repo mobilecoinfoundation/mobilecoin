@@ -22,7 +22,6 @@ It's practical purpose is to "bake in" those values for a release, and if no met
 |`INGEST_ENCLAVE_GENDATA`|`.dat`|Data previously extracted from `INGEST_ENCLAVE_UNSIGNED` which has been signed offline.|
 |`INGEST_ENCLAVE_SIGNATURE`|`.sig`|The signature over `INGEST_ENCLAVE_GENDATA` produced by the owner of `INGEST_ENCLAVE_PUBKEY`.|
 |`INGEST_ENCLAVE_PUBKEY`|`.pem`|The public key of the signing key which generated `INGEST_ENCLAVE_SIGNATURE`.|
-|`INGEST_ENCLAVE_LDS`|`.lds`|An optional linker script to provide when building `INGEST_ENCLAVE_UNSIGNED` from scratch.|
 
  The basic procedure here is:
 

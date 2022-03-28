@@ -3,6 +3,7 @@
 //! Mobilenode Consensus Enclave
 
 #![no_std]
+#![no_main]
 
 extern crate alloc;
 

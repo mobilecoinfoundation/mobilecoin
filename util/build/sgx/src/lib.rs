@@ -15,6 +15,6 @@ pub use crate::{
     config::{ConfigBuilder, TcsPolicy},
     edger8r::{Edger8r, Error as Edger8rError},
     env::{Error as EnvironmentError, IasMode, SgxEnvironment, SgxMode},
-    libraries::SgxLibraryCollection,
+    libraries::{link_to_sgx_libraries, SgxLibraryCollection},
     sign::SgxSign,
 };

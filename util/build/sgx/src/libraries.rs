@@ -1,11 +1,31 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use cargo_emit::{rustc_link_lib, rustc_link_search};
-use pkg_config::Library;
+use crate::{SgxEnvironment, SgxMode};
+use cargo_emit::{rustc_link_arg, rustc_link_lib, rustc_link_search};
+use displaydoc::Display;
+use pkg_config::{Config, Error as PkgConfigError, Library};
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
 };
+
+// Changing this version is a breaking change, you must update the crate version
+// if you do.
+const SGX_VERSION: &str = "2.15.100.3";
+const SGX_LIBS: &[&str] = &["libsgx_urts"];
+const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_urts_sim"];
+
+/// An enumeration of builder errors.
+#[derive(Debug, Display)]
+pub enum Error {
+    /// There was an error executing pkg-config
+    PkgConfig(PkgConfigError),
+}
+impl From<PkgConfigError> for Error {
+    fn from(src: PkgConfigError) -> Error {
+        Error::PkgConfig(src)
+    }
+}
 
 /// A trait which adds SGX functionality onto a [`Library`] collection.
 pub trait SgxLibraryCollection {
@@ -60,4 +80,59 @@ impl SgxLibraryCollection for [Library] {
             }
         }
     }
+}
+
+/// Provides the necessary linker flags to link SGX libraries to the crate being
+/// built.
+///
+/// # Arguments
+///
+/// * `sgx` - The SGX environment for the current build.  This helps to determine if one needs to
+///     link to sim or hw libraries.
+///
+pub fn link_to_sgx_libraries(sgx: &SgxEnvironment) -> Result<(), Error> {
+    let mut config = Config::new();
+    config
+        .exactly_version(SGX_VERSION)
+        .print_system_libs(true)
+        .cargo_metadata(false)
+        .env_metadata(true);
+    let lib_paths = if sgx.sgx_mode() == SgxMode::Simulation {
+        SGX_SIMULATION_LIBS
+    } else {
+        SGX_LIBS
+    }
+    .iter()
+    .map(|libname| Ok(config.probe(libname)?.link_paths))
+    .collect::<Result<Vec<Vec<PathBuf>>, PkgConfigError>>()?
+    .into_iter()
+    .flatten()
+    .collect::<HashSet<PathBuf>>();
+
+    for path in lib_paths {
+        if sgx.sgx_mode() == SgxMode::Simulation {
+            let cve_load = path.join("cve_2020_0551_load");
+            if cve_load.exists() {
+                rustc_link_search!(cve_load.display());
+            }
+        }
+        rustc_link_search!(path.display());
+    }
+
+    let sim_postfix = match sgx.sgx_mode() {
+        SgxMode::Hardware => "",
+        SgxMode::Simulation => "_sim",
+    };
+
+    // These need to be linked after the rest of the code so can't use the
+    // `rustc_lib_arg`
+    rustc_link_arg!("--whole-archive", 
+        &format!("-lsgx_trts{}", sim_postfix),
+        "--no-whole-archive",
+        "-lsgx_tcxx",
+        "-lsgx_tcrypto",
+        &format!("-lsgx_tservice{}", sim_postfix),
+        "-lsgx_tstdc");
+
+    Ok(())
 }

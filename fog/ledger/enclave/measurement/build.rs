@@ -8,10 +8,6 @@ use mc_util_build_script::Environment;
 use mc_util_build_sgx::{IasMode, SgxEnvironment, SgxMode, TcsPolicy};
 use std::{env::var, path::PathBuf};
 
-// Changing this version is a breaking change, you must update the crate version
-// if you do.
-const SGX_VERSION: &str = "2.15.100.3";
-
 const LEDGER_ENCLAVE_PRODUCT_ID: u16 = 2;
 const LEDGER_ENCLAVE_SECURITY_VERSION: u16 = 2;
 const LEDGER_ENCLAVE_NAME: &str = "ledger-enclave";
@@ -25,14 +21,8 @@ fn main() {
         rustc_cfg!("feature=\"sgx-sim\"");
     }
 
-    let mut builder = Builder::new(
-        &env,
-        &sgx,
-        SGX_VERSION,
-        LEDGER_ENCLAVE_NAME,
-        LEDGER_ENCLAVE_DIR.as_ref(),
-    )
-    .expect("Could not construct builder");
+    let mut builder = Builder::new(&env, &sgx, LEDGER_ENCLAVE_NAME, LEDGER_ENCLAVE_DIR.as_ref())
+        .expect("Could not construct builder");
 
     rerun_if_env_changed!("LEDGER_ENCLAVE_CSS");
     if let Ok(value) = var("LEDGER_ENCLAVE_CSS") {
@@ -47,11 +37,6 @@ fn main() {
     rerun_if_env_changed!("LEDGER_ENCLAVE_SIGNED");
     if let Ok(value) = var("LEDGER_ENCLAVE_SIGNED") {
         builder.signed_enclave(PathBuf::from(&value));
-    }
-
-    rerun_if_env_changed!("LEDGER_ENCLAVE_LDS");
-    if let Ok(value) = var("LEDGER_ENCLAVE_LDS") {
-        builder.lds(PathBuf::from(&value));
     }
 
     rerun_if_env_changed!("LEDGER_ENCLAVE_PRIVKEY");

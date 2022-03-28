@@ -13,22 +13,18 @@ use mbedtls_sys::types::{
 use mc_sgx_css::{Error as SignatureError, Signature};
 use mc_util_build_script::{rerun_if_path_changed, CargoBuilder, Environment};
 use mc_util_build_sgx::{ConfigBuilder, IasMode, SgxEnvironment, SgxMode, SgxSign};
-use pkg_config::{Config, Error as PkgConfigError};
+use pkg_config::Error as PkgConfigError;
 use rand::{thread_rng, RngCore};
 use std::{
-    collections::HashSet,
     convert::TryFrom,
     fs,
     io::Error as IoError,
     path::{Path, PathBuf},
-    process::Command,
     ptr, slice,
     sync::PoisonError,
 };
 
-const SGX_LIBS: &[&str] = &["libsgx_urts"];
-const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_urts_sim"];
-const ENCLAVE_TARGET_TRIPLE: &str = "x86_64-unknown-linux-gnu";
+const ENCLAVE_TARGET_TRIPLE: &str = "x86_64-mobilecoin-none-sgx";
 
 struct ThreadRngForMbedTls;
 
@@ -59,7 +55,7 @@ pub enum Error {
     Io(String),
 
     /**
-     * There was an error executing cargo metadata against the staticlib
+     * There was an error executing cargo metadata against the enclave
      * crate: {0}
      */
     Metadata(MetadataError),
@@ -91,10 +87,7 @@ pub enum Error {
     /// The enclave staticlib's crate name was in a screwy format
     TrustedCrateName,
 
-    /// The enclave staticlib's crate name was in a screwy format
-    TrustedLink,
-
-    /// The enclave staticlib's crate name was in a screwy format
+    /// The enclave crate failed to build
     TrustedBuild,
 }
 
@@ -143,11 +136,8 @@ pub struct Builder {
     /// The name of the enclave
     name: String,
 
-    /// A set of PkgConfig configurations and the libraries to use with it
-    sgx_version: String,
-
-    /// The cargo metadata of the trusted crate
-    staticlib: Metadata,
+    /// The cargo metadata of the enclave crate
+    enclave_crate: Metadata,
 
     /// The OUT_DIR path
     out_dir: PathBuf,
@@ -163,12 +153,6 @@ pub struct Builder {
 
     /// The name of the profile we're building for
     profile: String,
-
-    /// The path to the linker to use
-    linker: PathBuf,
-
-    /// The configured SGX mode
-    sgx_mode: SgxMode,
 
     /// An optional explicit path to an existing CSS (sigstruct) file
     css: Option<PathBuf>,
@@ -196,9 +180,6 @@ pub struct Builder {
 
     /// An optional explicit path to a file containing a detached signature
     signature: Option<PathBuf>,
-
-    /// an option explicit path to a linker script
-    lds: Option<PathBuf>,
 }
 
 impl Builder {
@@ -206,9 +187,8 @@ impl Builder {
     pub fn new(
         env: &Environment,
         sgx: &SgxEnvironment,
-        sgx_version: &str,
         enclave_name: &str,
-        staticlib_dir: &Path,
+        enclave_dir: &Path,
     ) -> Result<Self, Error> {
         // Collect metadata about dependencies of enclave
         let mut features_vec = Vec::new();
@@ -219,13 +199,13 @@ impl Builder {
             features_vec.push("ias-dev".to_owned());
         }
 
-        let staticlib = MetadataCommand::new()
+        let enclave_crate = MetadataCommand::new()
             .cargo_path(env.cargo())
-            .current_dir(staticlib_dir)
+            .current_dir(enclave_dir)
             .features(CargoOpt::SomeFeatures(features_vec))
             .exec()?;
 
-        let mut cargo_builder = CargoBuilder::new(env, staticlib_dir, false);
+        let mut cargo_builder = CargoBuilder::new(env, enclave_dir, false);
 
         // copy our target features to the enclave's build
         let features = env.target_features();
@@ -244,23 +224,18 @@ impl Builder {
             }
         }
 
-        cargo_builder
-            .target(ENCLAVE_TARGET_TRIPLE)
-            .add_rust_flags(&["-D", "warnings", "-C", &feature_buf]);
+        cargo_builder.add_rust_flags(&["-D", "warnings", "-C", &feature_buf]);
 
         Ok(Self {
             cargo_builder,
             config_builder: ConfigBuilder::default(),
             name: enclave_name.to_owned(),
-            staticlib,
+            enclave_crate,
             target_arch: env.target_arch().to_owned(),
             out_dir: env.out_dir().to_owned(),
             target_dir: env.target_dir().to_owned(),
             profile_target_dir: env.profile_target_dir().to_owned(),
             profile: env.profile().to_owned(),
-            sgx_version: sgx_version.to_owned(),
-            linker: env.linker().to_owned(),
-            sgx_mode: sgx.sgx_mode(),
             css: None,
             dump: None,
             signed_enclave: None,
@@ -270,7 +245,6 @@ impl Builder {
             privkey: None,
             gendata: None,
             signature: None,
-            lds: None,
         })
     }
 
@@ -357,16 +331,6 @@ impl Builder {
         self
     }
 
-    /// Set the LDS path explicitly.
-    ///
-    /// If unset, the builder will expect the static crate to provide an
-    /// "enclave.lds" file. If that file does not exist, one will be created
-    /// automatically in the output dir.
-    pub fn lds(&mut self, lds: PathBuf) -> &mut Self {
-        self.lds = Some(lds);
-        self
-    }
-
     /// This method will extract the signature from a signed enclave sigstruct
     /// dump.
     ///
@@ -381,7 +345,7 @@ impl Builder {
     ///
     /// If an unsigned enclave does not exist, it will build it.
     pub fn build(&mut self) -> Result<Signature, Error> {
-        let mut packages = self.staticlib.packages.clone();
+        let mut packages = self.enclave_crate.packages.clone();
         packages.sort_by_cached_key(|p| p.name.clone());
         // Emit correct "rerun-if-changed" diagnostics for cargo
         for package in packages.iter() {
@@ -479,7 +443,7 @@ impl Builder {
 
         let mut enclave_rebuilt = false;
 
-        // Link the static archive into an enclave lib if one doesn't exist already
+        // Build the unsigned enclave if one doesn't exist already
         let unsigned_enclave = if let Some(unsigned_enclave) = &self.unsigned_enclave {
             rerun_if_changed!(unsigned_enclave
                 .as_os_str()
@@ -488,14 +452,11 @@ impl Builder {
             unsigned_enclave.clone()
         } else {
             warning!(
-                "Unsigned enclave {} not provided, trying to link a new one...",
+                "Unsigned enclave {} not provided, trying to build a new one...",
                 self.name
             );
-            let mut name = "lib".to_owned();
-            name.push_str(&self.name);
-            let mut unsigned_enclave = self.out_dir.join(&name);
-            unsigned_enclave.set_extension("so");
-            self.link_unsigned(&unsigned_enclave)?;
+            let unsigned_enclave = self.out_dir.join(dynamic_library_filename(&self.name));
+            self.build_enclave(&unsigned_enclave)?;
             enclave_rebuilt = true;
             unsigned_enclave
         };
@@ -612,176 +573,48 @@ impl Builder {
         }
     }
 
-    /// Using the static archive generated from the staticlib crate, link an
-    /// unsigned dynamic object.
-    fn link_unsigned(&mut self, unsigned_enclave: &Path) -> Result<(), Error> {
-        let lds = if let Some(lds) = &self.lds {
-            rerun_if_changed!(lds.as_os_str().to_str().expect("Invalid UTF-8 in LDS path"));
-            lds.clone()
-        } else {
-            let mut lds = self.out_dir.to_owned();
-            lds.push(&self.name);
-            lds.set_extension("lds");
-            lds
-        };
+    /// Build the enclave outputting it to `unsigned_enclave`.
+    fn build_enclave(&mut self, unsigned_enclave: &Path) -> Result<(), Error> {
+        self.run_cargo()?;
 
-        if !lds.exists() {
-            fs::write(
-                &lds,
-                "{
-    global:
-        g_global_data_sim;
-        g_global_data;
-        enclave_entry;
-        g_peak_heap_used;
-        g_peak_rsrv_mem_committed;
-    local:
-        *;
-};
-",
-            )?;
-        }
-
-        let sim_postfix = match self.sgx_mode {
-            SgxMode::Hardware => "",
-            SgxMode::Simulation => "_sim",
-        };
-
-        // "target/mc_foo_enclave"
-        let staticlib_target_dir = self.target_dir.join(&self.name);
-
-        // e.g. "mc_foo_enclave_trusted"
-        let staticlib_crate_name = self.staticlib.workspace_members[0]
+        let library_dir = self.target_dir.join(&self.name);
+        let library_crate_name = self.enclave_crate.workspace_members[0]
             .repr
             .split_whitespace()
             .next()
             .ok_or(Error::TrustedCrateName)?;
 
-        // "target/name/<profile>/libmc_foo_enclave_trusted.a" -- not xplatform, but
-        // neither is our use of SGX, so meh.
-        let static_archive_name = format!("lib{}", staticlib_crate_name.replace('-', "_"));
+        let mut full_library_path = library_dir.join(ENCLAVE_TARGET_TRIPLE);
+        full_library_path.push(&self.profile);
+        full_library_path.push(library_crate_name);
+        fs::copy(full_library_path, unsigned_enclave)?;
 
-        let mut static_archive = staticlib_target_dir.join(ENCLAVE_TARGET_TRIPLE);
-        static_archive.push(&self.profile);
-        static_archive.push(static_archive_name);
-        static_archive.set_extension("a");
-        self.build_enclave()?;
-
-        // Note: Some of the linker flags here are important for security [1]
-        //
-        // -noexecstack makes the stack not executable. This is also called NX [3]
-        //
-        // -pie is relevant to making sure there are no relocatable text sections
-        // in the enclave. If there are relocatable text sections, then those
-        // pages will writeable. See discussion in [2] second paragraph.
-        //
-        // -relro is also relevant to that -- relro means that relocated text
-        //  segments will be made read-only after relocation. But there is no mechanism
-        //  for that in SGX [4]. So I think perhaps relro is not needed with -pie,
-        //  but we should include it if it is in [1], and it likely has no effect.
-        //
-        // -now means that the usual "lazily resolve symbol on first use" strategy
-        //  for shared libraries is disabled and all symbols get resolved immediately on
-        // load.  Since the enclave is ultimatley a self-contained static blob,
-        // we don't need or  want any of those trampolines. [4]
-        //
-        // Note: [2] suggests in the last sentence that the sgx_sign utility
-        // *should* issue a warning if there are any text relocations.
-        // We might also want to use `checksec.sh` [3] against the signed enclave (?)
-        // because that can also check for PIE and for NX.
-        //
-        // [1] https://github.com/intel/linux-sgx/blob/master/SampleCode/SampleEnclave/Makefile#L135
-        // [2] https://software.intel.com/sites/default/files/managed/ae/48/Software-Guard-Extensions-Enclave-Writers-Guide.pdf), in section 10, page 30
-        // [3] https://github.com/slimm609/checksec.sh
-        // [4] man ld(1)
-
-        let mut command = Command::new(&self.linker);
-
-        command
-            .args(&[
-                "-o",
-                unsigned_enclave
-                    .to_str()
-                    .expect("Invalid UTF-8 in unsigned enclave path"),
-            ])
-            .args(&["-z", "relro", "-z", "now", "-z", "noexecstack"])
-            .args(&["--no-undefined", "-nostdlib"]);
-
-        let mut config = Config::new();
-        config
-            .exactly_version(&self.sgx_version)
-            .print_system_libs(true)
-            .cargo_metadata(false)
-            .env_metadata(true);
-
-        let lib_paths = if self.sgx_mode == SgxMode::Simulation {
-            SGX_SIMULATION_LIBS
-        } else {
-            SGX_LIBS
-        }
-        .iter()
-        .map(|libname| Ok(config.probe(libname)?.link_paths))
-        .collect::<Result<Vec<Vec<PathBuf>>, PkgConfigError>>()?
-        .into_iter()
-        .flatten()
-        .collect::<HashSet<PathBuf>>();
-
-        for path in lib_paths {
-            if self.sgx_mode == SgxMode::Simulation {
-                let cve_load = path.join("cve_2020_0551_load");
-                if cve_load.exists() {
-                    command.arg(format!("-L{}", cve_load.display()));
-                }
-            }
-            command.arg(format!("-L{}", path.display()));
-        }
-
-        command
-            .args(&[
-                "--whole-archive",
-                &format!("-lsgx_trts{}", sim_postfix),
-                "--no-whole-archive",
-            ])
-            .args(&[
-                "--start-group",
-                "-lsgx_tstdc",
-                "-lsgx_tcxx",
-                "-lsgx_tcrypto",
-                &format!("-lsgx_tservice{}", sim_postfix),
-                static_archive
-                    .to_str()
-                    .expect("Invalid UTF-8 in enclave staticlib filename"),
-                "--end-group",
-            ])
-            .args(&["-Bstatic", "-Bsymbolic", "--no-undefined"])
-            .args(&["-pie", "-eenclave_entry", "--export-dynamic"])
-            .args(&["--defsym", "__ImageBase=0"])
-            .arg("--gc-sections")
-            .arg(format!(
-                "--version-script={}",
-                lds.to_str()
-                    .expect("Invalid UTF-8 in linker version-script filename")
-            ));
-
-        if command.status()?.success() {
-            let unsigned_artifact = self.profile_target_dir.join(
-                unsigned_enclave
-                    .file_name()
-                    .expect("Could not figure out filename from unsigned archive path"),
-            );
-            fs::copy(unsigned_enclave, unsigned_artifact)?;
-            Ok(())
-        } else {
-            Err(Error::TrustedLink)
-        }
+        Ok(())
     }
 
-    /// Run cargo to build the static archive.
-    fn build_enclave(&mut self) -> Result<(), Error> {
+    /// Run cargo to build the enclave crate.
+    fn run_cargo(&mut self) -> Result<(), Error> {
         if self.cargo_builder.construct().status()?.success() {
             Ok(())
         } else {
             Err(Error::TrustedBuild)
         }
     }
+}
+
+/// Create a filename for a dynamic library.  The returned library name will
+/// have the platform appropriate prefix and suffix.
+///
+/// Note: currently only supports *nix
+///
+/// Arguments:
+///
+/// * `bare_name`: The bare library name, which will have the necessary prefix
+///   and suffix added.
+fn dynamic_library_filename(bare_name: &str) -> PathBuf {
+    let mut basename = "lib".to_owned();
+    basename.push_str(bare_name);
+    let mut full_name = PathBuf::from(basename);
+    full_name.set_extension("so");
+    full_name
 }

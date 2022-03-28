@@ -19,7 +19,6 @@ It's practical purpose is to "bake in" those values for a release, and if no met
  |`CONSENSUS_ENCLAVE_GENDATA`|`.dat`|Data previously extracted from `CONSENSUS_ENCLAVE_UNSIGNED` which has been signed offline.|
  |`CONSENSUS_ENCLAVE_SIGNATURE`|`.sig`|The signature over `CONSENSUS_ENCLAVE_GENDATA` produced by the owner of `CONSENSUS_ENCLAVE_PUBKEY`.|
  |`CONSENSUS_ENCLAVE_PUBKEY`|`.pem`|The public key of the signing key which generated `CONSENSUS_ENCLAVE_SIGNATURE`.|
- |`CONSENSUS_ENCLAVE_LDS`|`.lds`|An optional linker script to provide when building `CONSENSUS_ENCLAVE_UNSIGNED` from scratch.|
 
  The basic procedure here is:
 

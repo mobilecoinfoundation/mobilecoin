@@ -15,7 +15,6 @@ It's practical purpose is to "bake in" those values for a release, and if no met
 |`VIEW_ENCLAVE_GENDATA`|`.dat`|Data previously extracted from `VIEW_ENCLAVE_UNSIGNED` which has been signed offline.|
 |`VIEW_ENCLAVE_SIGNATURE`|`.sig`|The signature over `VIEW_ENCLAVE_GENDATA` produced by the owner of `VIEW_ENCLAVE_PUBKEY`.|
 |`VIEW_ENCLAVE_PUBKEY`|`.pem`|The public key of the signing key which generated `VIEW_ENCLAVE_SIGNATURE`.|
-|`VIEW_ENCLAVE_LDS`|`.lds`|An optional linker script to provide when building `VIEW_ENCLAVE_UNSIGNED` from scratch.|
 
  The basic procedure here is:
 

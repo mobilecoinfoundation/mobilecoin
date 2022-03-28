@@ -1,0 +1,40 @@
+{
+  "arch": "x86_64",
+  "cpu": "skylake",
+  "data-layout": "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128",
+  "env": "sgx",
+  "executables": true,
+  "features": "+rdrnd,+rdseed,+lvi-cfi,+lvi-load-hardening",
+  "linker": "ld",
+  "linker-flavor": "ld",
+  "llvm-args": [
+    "--x86-experimental-lvi-inline-asm-hardening"
+  ],
+  "llvm-target": "x86_64-elf",
+  "max-atomic-width": 64,
+  "os": "unknown",
+  "override-export-symbols":[
+    "g_global_data_sim",
+    "g_global_data",
+    "enclave_entry",
+    "g_peak_heap_used",
+    "g_peak_rsrv_mem_committed"
+  ],
+  "position-independent-executables": true,
+  "post-link-args": {
+    "ld": [
+      "--no-undefined",
+      "-nostdlib",
+      "-Bsymbolic",
+      "-e",
+      "enclave_entry",
+      "--export-dynamic",
+      "--defsym",
+      "__ImageBase=0"
+    ]
+  },
+  "relro-level": "full",
+  "target-pointer-width": "64",
+  "vendor": "mobilecoin"
+}
+

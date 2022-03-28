@@ -8,7 +8,7 @@
 use cfg_if::cfg_if;
 
 cfg_if! {
-    if #[cfg(feature = "sgx")] {
+    if #[cfg(target_env = "sgx")] {
         extern crate mc_sgx_alloc;
         pub use mc_sgx_panic as panic;
 

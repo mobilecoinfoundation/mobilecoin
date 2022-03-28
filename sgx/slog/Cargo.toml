@@ -6,7 +6,6 @@ edition = "2018"
 
 [features]
 default = []
-sgx = []
 
 [dependencies]
 cfg-if = "1.0"
