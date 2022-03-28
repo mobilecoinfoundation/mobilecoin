@@ -887,7 +887,7 @@ mod tests {
     #[test_with_logger]
     fn test_hashes_to_block(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
-        let block_version = BlockVersion::ONE;
+        let block_version = BlockVersion::ZERO;
         let sender = AccountKey::random(&mut rng);
         let mut ledger = create_ledger();
         let n_blocks = 3;

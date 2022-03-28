@@ -364,13 +364,15 @@ pub extern "C" fn mc_transaction_builder_create(
                     FogResolver::new(fog_resolver.0.clone(), &fog_resolver.1)
                         .expect("FogResolver could not be constructed from the provided materials")
                 });
-
         let block_version = BlockVersion::try_from(block_version).unwrap();
 
         let memo_builder_box = memo_builder
             .into_mut()
             .take()
             .expect("McTxOutMemoBuilder has already been used to build a Tx");
+        // FIXME: block version should be a parameter, it should be the latest
+        // version that fog ledger told us about, or that we got from ledger-db
+        let block_version = BlockVersion::ZERO;
 
         // TODO #1596: Support token id other than Mob
         let token_id = Mob::ID;
