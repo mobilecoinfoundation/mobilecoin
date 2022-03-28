@@ -780,7 +780,7 @@ FfiOptOwnedPtr<McData> mc_transaction_builder_add_output(FfiMutPtr<McTransaction
 /**
  * # Preconditions
  *
- * * `account_kay` - must be a valid account key, default change address
+ * * `account_key` - must be a valid account key, default change address
  *   computed from account key
  * * `transaction_builder` - must not have been previously consumed by a call
  *   to `build`.
