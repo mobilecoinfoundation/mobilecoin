@@ -1,0 +1,12 @@
+[profile.ci]
+# Do not cancel the test run on the first failure.
+fail-fast = false
+# Output failures as soon as they happen and at the end of the test run.
+failure-output = "immediate-final"
+# Show failed, flaky and retried, and slow tests.
+status-level = "slow"
+
+[profile.ci.junit]
+# Output a JUnit report under `target/nextest/ci/junit.xml`.
+# See https://nexte.st/book/junit.html for more details.
+path = "junit.xml"

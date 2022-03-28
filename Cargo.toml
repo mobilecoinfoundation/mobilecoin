@@ -189,6 +189,14 @@ codegen-units = 1
 [profile.test]
 rpath = true
 
+[profile.ci]
+# Build config.
+inherits = "test"
+# Enable some compiler optimizations.
+opt-level = 2
+# LLVM's Link-Time Optimization: Some, relatively quick to generate.
+lto = "thin"
+
 [patch.crates-io]
 # Fork and rename to use "OG" dalek-cryptography with latest dependencies.
 bulletproofs-og = { git = "https://github.com/mobilecoinfoundation/bulletproofs.git", rev = "65f8af4ca0bc1cb2fd2148c3259a0a76b155ff3e" }
