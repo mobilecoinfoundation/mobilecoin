@@ -1,4 +1,5 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
+//
 
 use crate::{
     common::*,
@@ -20,7 +21,6 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     Amount, BlockVersion, CompressedCommitment, EncryptedMemo,
 };
-use std::convert::TryInto;
 
 use mc_transaction_std::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, ChangeDestination,
@@ -503,7 +503,7 @@ pub extern "C" fn mc_transaction_builder_add_output(
 
 /// # Preconditions
 ///
-/// * `account_kay` - must be a valid account key, default change address
+/// * `account_key` - must be a valid account key, default change address
 ///   computed from account key
 /// * `transaction_builder` - must not have been previously consumed by a call
 ///   to `build`.
@@ -661,6 +661,18 @@ pub extern "C" fn mc_memo_builder_free(memo_builder: FfiOptOwnedPtr<McTxOutMemoB
 
 /* ==== SenderMemo ==== */
 
+
+/// # Preconditions
+///
+/// * `sender_memo_data` - must be 64 bytes 
+/// * `sender_public_address` - must be a valid `PublicAddress`.
+/// * `receiving_subaddress_view_private_key` - must be a valid 
+///     32-byte Ristretto-format scalar.
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 #[no_mangle]
 pub extern "C" fn mc_memo_sender_memo_is_valid(
     sender_memo_data: FfiRefPtr<McBuffer>,
@@ -700,6 +712,17 @@ pub extern "C" fn mc_memo_sender_memo_is_valid(
     })
 }
 
+/// # Preconditions
+///
+/// * `sender_account_key` - must be a valid account key
+/// * `recipient_subaddress_view_public_key` - must be a valid 
+///     32-byte Ristretto-format scalar.
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+/// * `out_memo_data` - length must be >= 64.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 #[no_mangle]
 pub extern "C" fn mc_memo_sender_memo_create(
     sender_account_key: FfiRefPtr<McAccountKey>,
@@ -734,6 +757,14 @@ pub extern "C" fn mc_memo_sender_memo_create(
     })
 }
 
+/// # Preconditions
+///
+/// * `sender_memo_data` - must be 64 bytes
+/// * `out_short_address_hash` - length must be >= 16 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 #[no_mangle]
 pub extern "C" fn mc_memo_sender_memo_get_address_hash(
     sender_memo_data: FfiRefPtr<McBuffer>,
@@ -765,6 +796,17 @@ pub extern "C" fn mc_memo_sender_memo_get_address_hash(
  * DestinationMemo
  */
 
+
+/// # Preconditions
+///
+/// * `destination_public_address` - must be a valid 32-byte
+///     Ristretto-format scalar.
+/// * `number_of_recipients` - must be > 0
+/// * `out_memo_data` - length must be >= 64.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 #[no_mangle]
 pub extern "C" fn mc_memo_destination_memo_create(
     destination_public_address: FfiRefPtr<McPublicAddress>,
@@ -799,6 +841,14 @@ pub extern "C" fn mc_memo_destination_memo_create(
     })
 }
 
+/// # Preconditions
+///
+/// * `destination_memo_data` - must be 64 bytes
+/// * `out_short_address_hash` - length must be >= 16 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 #[no_mangle]
 pub extern "C" fn mc_memo_destination_memo_get_address_hash(
     destination_memo_data: FfiRefPtr<McBuffer>,
@@ -826,6 +876,13 @@ pub extern "C" fn mc_memo_destination_memo_get_address_hash(
     })
 }
 
+/// # Preconditions
+///
+/// * `destination_memo_data` - must be 64 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 #[no_mangle]
 pub extern "C" fn mc_memo_destination_memo_get_number_of_recipients(
     destination_memo_data: FfiRefPtr<McBuffer>,
@@ -846,6 +903,13 @@ pub extern "C" fn mc_memo_destination_memo_get_number_of_recipients(
     })
 }
 
+/// # Preconditions
+///
+/// * `destination_memo_data` - must be 64 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 #[no_mangle]
 pub extern "C" fn mc_memo_destination_memo_get_fee(
     destination_memo_data: FfiRefPtr<McBuffer>,
@@ -866,6 +930,13 @@ pub extern "C" fn mc_memo_destination_memo_get_fee(
     })
 }
 
+/// # Preconditions
+///
+/// * `destination_memo_data` - must be 64 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 #[no_mangle]
 pub extern "C" fn mc_memo_destination_memo_get_total_outlay(
     destination_memo_data: FfiRefPtr<McBuffer>,
@@ -890,6 +961,18 @@ pub extern "C" fn mc_memo_destination_memo_get_total_outlay(
  * SenderWithPaymentRequestMemo
  */
 
+
+/// # Preconditions
+///
+/// * `sender_with_payment_request_memo_data` - must be 64 bytes 
+/// * `sender_public_address` - must be a valid `PublicAddress`.
+/// * `receiving_subaddress_view_private_key` - must be a valid 
+///     32-byte Ristretto-format scalar.
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 #[no_mangle]
 pub extern "C" fn mc_memo_sender_with_payment_request_memo_is_valid(
     sender_with_payment_request_memo_data: FfiRefPtr<McBuffer>,
@@ -929,6 +1012,17 @@ pub extern "C" fn mc_memo_sender_with_payment_request_memo_is_valid(
     })
 }
 
+/// # Preconditions
+///
+/// * `sender_account_key` - must be a valid account key
+/// * `recipient_subaddress_view_public_key` - must be a valid 
+///     32-byte Ristretto-format scalar.
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+/// * `out_memo_data` - length must be >= 64.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 #[no_mangle]
 pub extern "C" fn mc_memo_sender_with_payment_request_memo_create(
     sender_account_key: FfiRefPtr<McAccountKey>,
@@ -966,6 +1060,14 @@ pub extern "C" fn mc_memo_sender_with_payment_request_memo_create(
     })
 }
 
+/// # Preconditions
+///
+/// * `sender_with_payment_request_memo_data` - must be 64 bytes
+/// * `out_short_address_hash` - length must be >= 16 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 #[no_mangle]
 pub extern "C" fn mc_memo_sender_with_payment_request_memo_get_address_hash(
     sender_with_payment_request_memo_data: FfiRefPtr<McBuffer>,
@@ -995,6 +1097,13 @@ pub extern "C" fn mc_memo_sender_with_payment_request_memo_get_address_hash(
     })
 }
 
+/// # Preconditions
+///
+/// * `sender_with_payment_request_memo_data` - must be 64 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 #[no_mangle]
 pub extern "C" fn mc_memo_sender_with_payment_request_memo_get_payment_request_id(
     sender_with_payment_request_memo_data: FfiRefPtr<McBuffer>,
