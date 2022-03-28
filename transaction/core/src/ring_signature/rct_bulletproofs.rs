@@ -394,7 +394,7 @@ fn compute_extended_message_either_version(
     pseudo_output_commitments: &[CompressedCommitment],
     range_proof_bytes: &[u8],
 ) -> Vec<u8> {
-    if block_version >= BlockVersion::THREE {
+    if block_version >= BlockVersion::TWO {
         // New-style extended message using merlin
         digest_extended_message(message, pseudo_output_commitments, range_proof_bytes).to_vec()
     } else {
@@ -420,7 +420,7 @@ fn digest_extended_message(
 }
 
 /// Concatenates [message || pseudo_output_commitments || range_proof].
-/// (Used before block version three)
+/// (Used before block version two)
 fn extend_message(
     message: &[u8],
     pseudo_output_commitments: &[CompressedCommitment],
@@ -612,7 +612,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -634,7 +634,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -655,7 +655,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -680,7 +680,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -706,7 +706,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -738,7 +738,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -773,7 +773,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -814,7 +814,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 4..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -848,7 +848,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 4..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -873,7 +873,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 2..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 2..=3u32,
+            block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -915,40 +915,14 @@ mod rct_bulletproofs_tests {
         }
 
         #[test]
-        // block version two signatures should not validate at block version three
-        fn validate_block_version_two_as_three_should_fail(
+        // block version two signatures should not validate at block version two
+        fn validate_block_version_one_as_two_should_fail(
             num_inputs in 2..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
             let mut rng: StdRng = SeedableRng::from_seed(seed);
-            let mut params = SignatureParams::random(BlockVersion::TWO, num_inputs, num_mixins, &mut rng);
-            // Remove one of the outputs, and use its value as the fee. This conserves value.
-            let (fee, _) = params.output_values_and_blindings.pop().unwrap();
-
-            let signature = params.sign(fee, &mut rng).unwrap();
-
-            let result = signature.verify(
-                BlockVersion::THREE,
-                &params.message,
-                &params.rings,
-                &params.get_output_commitments(),
-                fee,
-                params.token_id,
-                &mut rng,
-            );
-            assert!(result.is_err());
-        }
-
-        #[test]
-        // block version three signatures should not validate at block version two
-        fn validate_block_version_three_as_two_should_fail(
-            num_inputs in 2..8usize,
-            num_mixins in 1..17usize,
-            seed in any::<[u8; 32]>(),
-        ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
-            let mut params = SignatureParams::random(BlockVersion::THREE, num_inputs, num_mixins, &mut rng);
+            let mut params = SignatureParams::random(BlockVersion::ONE, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let (fee, _) = params.output_values_and_blindings.pop().unwrap();
 
@@ -967,21 +941,47 @@ mod rct_bulletproofs_tests {
         }
 
         #[test]
-        // block version three signatures should not validate if we change the token id
-        fn validate_block_version_three_with_changed_token_id_should_fail(
+        // block version two signatures should not validate at block version one
+        fn validate_block_version_two_as_one_should_fail(
             num_inputs in 2..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
             let mut rng: StdRng = SeedableRng::from_seed(seed);
-            let mut params = SignatureParams::random(BlockVersion::THREE, num_inputs, num_mixins, &mut rng);
+            let mut params = SignatureParams::random(BlockVersion::TWO, num_inputs, num_mixins, &mut rng);
+            // Remove one of the outputs, and use its value as the fee. This conserves value.
+            let (fee, _) = params.output_values_and_blindings.pop().unwrap();
+
+            let signature = params.sign(fee, &mut rng).unwrap();
+
+            let result = signature.verify(
+                BlockVersion::ONE,
+                &params.message,
+                &params.rings,
+                &params.get_output_commitments(),
+                fee,
+                params.token_id,
+                &mut rng,
+            );
+            assert!(result.is_err());
+        }
+
+        #[test]
+        // block version two signatures should not validate if we change the token id
+        fn validate_block_version_two_with_changed_token_id_should_fail(
+            num_inputs in 2..8usize,
+            num_mixins in 1..17usize,
+            seed in any::<[u8; 32]>(),
+        ) {
+            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut params = SignatureParams::random(BlockVersion::TWO, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let (fee, _) = params.output_values_and_blindings.pop().unwrap();
 
             let signature = params.sign(fee, &mut rng).unwrap();
 
             signature.verify(
-                BlockVersion::THREE,
+                BlockVersion::TWO,
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
@@ -992,7 +992,7 @@ mod rct_bulletproofs_tests {
 
 
             let result = signature.verify(
-                BlockVersion::THREE,
+                BlockVersion::TWO,
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
@@ -1004,14 +1004,14 @@ mod rct_bulletproofs_tests {
         }
 
         #[test]
-        // block version two signatures should not work if token id is not zero
-        fn validate_block_version_two_with_token_id_should_fail(
+        // block version one signatures should not work if token id is not zero
+        fn validate_block_version_one_with_token_id_should_fail(
             num_inputs in 2..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
             let mut rng: StdRng = SeedableRng::from_seed(seed);
-            let mut params = SignatureParams::random(BlockVersion::TWO, num_inputs, num_mixins, &mut rng);
+            let mut params = SignatureParams::random(BlockVersion::ONE, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let (fee, _) = params.output_values_and_blindings.pop().unwrap();
 

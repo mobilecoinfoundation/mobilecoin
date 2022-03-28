@@ -478,14 +478,14 @@ commands:
 
             MC_LOG="info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
             LEDGER_BASE=$(pwd)/ledger \
-            python3 tools/fog-local-network/fog_local_network.py --network-type dense5 --skip-build &
+            python3 tools/fog-local-network/fog_local_network.py --network-type dense5 --skip-build --block-version 2 &
 
             sleep 20
 
             ./target/release/sample-keys --num 4 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $FOG_AUTHORITY_ROOT
 
             ./target/release/fog-distribution \
-                --block-version 3 \
+                --block-version 2 \
                 --sample-data-dir . \
                 --max-threads 1 \
                 --peer insecure-mc://localhost:3200/ \
