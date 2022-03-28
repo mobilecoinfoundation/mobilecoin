@@ -823,7 +823,6 @@ dependencies = [
  "mc-common",
  "mc-consensus-enclave-api",
  "mc-crypto-ake-enclave",
- "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-message-cipher",
  "mc-crypto-rand",
