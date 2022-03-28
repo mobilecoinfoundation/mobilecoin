@@ -316,17 +316,17 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 
     /// Consume the builder and return the transaction with a comparer.
     /// Used only in testing library.
-   #[cfg(feature = "test-only")]
-   pub fn build_with_comparer<RNG: CryptoRng + RngCore>(
-       self,
-       rng: &mut RNG,
-       comparer_option: TxOutputsComparerOption,
-   ) -> Result<Tx, TxBuilderError> {
-       match comparer_option {
-           Some(_) => return self.build_with_comparer_internal(rng, comparer_option),
-           _ => panic!("A valid comparer must be provided or use build() method."),
-       }
-   }
+    #[cfg(feature = "test-only")]
+    pub fn build_with_comparer<RNG: CryptoRng + RngCore>(
+        self,
+        rng: &mut RNG,
+        comparer_option: TxOutputsComparerOption,
+    ) -> Result<Tx, TxBuilderError> {
+        match comparer_option {
+            Some(_) => return self.build_with_comparer_internal(rng, comparer_option),
+            _ => panic!("A valid comparer must be provided or use build() method."),
+        }
+    }
 
     /// Consume the builder and return the transaction with a comparer
     /// (internal usage only).
