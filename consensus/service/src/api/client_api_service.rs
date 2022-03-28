@@ -188,6 +188,14 @@ impl ConsensusClientApi for ClientApiService {
         result = result.and_then(|mut response| {
             let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
             response.set_block_count(num_blocks);
+
+            // This is okay because it is invalid to start consensus without an origin block
+            // anyways
+            let block = self
+                .ledger
+                .get_block(num_blocks - 1)
+                .map_err(ConsensusGrpcError::from)?;
+            response.set_block_version(block.version);
             Ok(response)
         });
 
@@ -221,6 +229,14 @@ impl ConsensusClientApi for ClientApiService {
         result = result.and_then(|mut response| {
             let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
             response.set_block_count(num_blocks);
+
+            // This is okay because it is invalid to start consensus without an origin block
+            // anyways
+            let block = self
+                .ledger
+                .get_block(num_blocks - 1)
+                .map_err(ConsensusGrpcError::from)?;
+            response.set_block_version(block.version);
             Ok(response)
         });
 
@@ -254,6 +270,14 @@ impl ConsensusClientApi for ClientApiService {
         result = result.and_then(|mut response| {
             let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
             response.set_block_count(num_blocks);
+
+            // This is okay because it is invalid to start consensus without an origin block
+            // anyways
+            let block = self
+                .ledger
+                .get_block(num_blocks - 1)
+                .map_err(ConsensusGrpcError::from)?;
+            response.set_block_version(block.version);
             Ok(response)
         });
 
