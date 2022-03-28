@@ -1124,6 +1124,17 @@ pub extern "C" fn mc_memo_sender_with_payment_request_memo_get_payment_request_i
  * Decrypt Memo Payload
  */
 
+
+/// # Preconditions
+///
+/// * `encrypted_memo` - must be 66 bytes
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+/// * `account_key` - must be a valid account key
+/// * `out_memo_payload` - length must be >= 16 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 #[no_mangle]
 pub extern "C" fn mc_memo_decrypt_e_memo_payload(
     encrypted_memo: FfiRefPtr<McBuffer>,

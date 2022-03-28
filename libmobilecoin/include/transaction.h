@@ -304,6 +304,17 @@ void mc_memo_builder_free(
 
 /* ==== SenderMemo ==== */
 
+/// # Preconditions
+///
+/// * `sender_memo_data` - must be 64 bytes 
+/// * `sender_public_address` - must be a valid `PublicAddress`.
+/// * `receiving_subaddress_view_private_key` - must be a valid 
+///     32-byte Ristretto-format scalar.
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 bool mc_memo_sender_memo_is_valid(
   const McBuffer* MC_NONNULL sender_memo_data,
   const McPublicAddress* MC_NONNULL sender_public_address,
@@ -314,6 +325,17 @@ bool mc_memo_sender_memo_is_valid(
 )
 MC_ATTRIBUTE_NONNULL(1, 2, 3, 4, 5);
 
+/// # Preconditions
+///
+/// * `sender_account_key` - must be a valid account key
+/// * `recipient_subaddress_view_public_key` - must be a valid 
+///     32-byte Ristretto-format scalar.
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+/// * `out_memo_data` - length must be >= 64.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 bool mc_memo_sender_memo_create(
   const McAccountKey* MC_NONNULL sender_account_key,
   const McBuffer* MC_NONNULL recipient_subaddress_view_public_key,
@@ -323,7 +345,14 @@ bool mc_memo_sender_memo_create(
 )
 MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
 
-
+/// # Preconditions
+///
+/// * `sender_memo_data` - must be 64 bytes
+/// * `out_short_address_hash` - length must be >= 16 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 bool mc_memo_sender_memo_get_address_hash(
   const McBuffer* MC_NONNULL sender_memo_data,
   McMutableBuffer* MC_NONNULL out_short_address_hash,
@@ -334,6 +363,16 @@ MC_ATTRIBUTE_NONNULL(1, 2);
 
 /* ==== DestinationMemo ==== */
 
+/// # Preconditions
+///
+/// * `destination_public_address` - must be a valid 32-byte
+///     Ristretto-format scalar.
+/// * `number_of_recipients` - must be > 0
+/// * `out_memo_data` - length must be >= 64.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 bool mc_memo_destination_memo_create(
   const McPublicAddress* MC_NONNULL destination_public_address,
   uint8_t number_of_recipients,
@@ -344,7 +383,14 @@ bool mc_memo_destination_memo_create(
 )
 MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
 
-
+/// # Preconditions
+///
+/// * `destination_memo_data` - must be 64 bytes
+/// * `out_short_address_hash` - length must be >= 16 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 bool mc_memo_destination_memo_get_address_hash(
   const McBuffer* MC_NONNULL destination_memo_data,
   McMutableBuffer* MC_NONNULL out_short_address_hash,
@@ -352,7 +398,13 @@ bool mc_memo_destination_memo_get_address_hash(
 )
 MC_ATTRIBUTE_NONNULL(1, 2);
 
-
+/// # Preconditions
+///
+/// * `destination_memo_data` - must be 64 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 bool mc_memo_destination_memo_get_number_of_recipients(
   const McBuffer* MC_NONNULL destination_memo_data,
   uint8_t* MC_NONNULL out_number_of_recipients,
@@ -360,17 +412,30 @@ bool mc_memo_destination_memo_get_number_of_recipients(
 )
 MC_ATTRIBUTE_NONNULL(1, 2);
 
-
-bool mc_memo_destination_memo_get_total_outlay(
+/// # Preconditions
+///
+/// * `destination_memo_data` - must be 64 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+bool mc_memo_destination_memo_get_fee(
   const McBuffer* MC_NONNULL destination_memo_data,
-  uint64_t* MC_NONNULL out_total_outlay,
+  uint64_t* MC_NONNULL out_fee,
   McError* MC_NULLABLE * MC_NULLABLE out_error
 )
 MC_ATTRIBUTE_NONNULL(1, 2);
 
-bool mc_memo_destination_memo_get_fee(
+/// # Preconditions
+///
+/// * `destination_memo_data` - must be 64 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+bool mc_memo_destination_memo_get_total_outlay(
   const McBuffer* MC_NONNULL destination_memo_data,
-  uint64_t* MC_NONNULL out_fee,
+  uint64_t* MC_NONNULL out_total_outlay,
   McError* MC_NULLABLE * MC_NULLABLE out_error
 )
 MC_ATTRIBUTE_NONNULL(1, 2);
@@ -379,6 +444,17 @@ MC_ATTRIBUTE_NONNULL(1, 2);
 /* ==== SenderWithPaymentRequestMemo ==== */
 
 
+/// # Preconditions
+///
+/// * `sender_with_payment_request_memo_data` - must be 64 bytes 
+/// * `sender_public_address` - must be a valid `PublicAddress`.
+/// * `receiving_subaddress_view_private_key` - must be a valid 
+///     32-byte Ristretto-format scalar.
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 bool mc_memo_sender_with_payment_request_memo_is_valid(
   const McBuffer* MC_NONNULL sender_with_payment_request_memo_data,
   const McPublicAddress* MC_NONNULL sender_public_address,
@@ -389,6 +465,17 @@ bool mc_memo_sender_with_payment_request_memo_is_valid(
 )
 MC_ATTRIBUTE_NONNULL(1, 2, 3, 4, 5);
 
+/// # Preconditions
+///
+/// * `sender_account_key` - must be a valid account key
+/// * `recipient_subaddress_view_public_key` - must be a valid 
+///     32-byte Ristretto-format scalar.
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+/// * `out_memo_data` - length must be >= 64.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 bool mc_memo_sender_with_payment_request_memo_create(
   const McAccountKey* MC_NONNULL sender_account_key,
   const McBuffer* MC_NONNULL recipient_subaddress_view_public_key,
@@ -399,6 +486,14 @@ bool mc_memo_sender_with_payment_request_memo_create(
 )
 MC_ATTRIBUTE_NONNULL(1, 2, 3, 5);
 
+/// # Preconditions
+///
+/// * `sender_with_payment_request_memo_data` - must be 64 bytes
+/// * `out_short_address_hash` - length must be >= 16 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 bool mc_memo_sender_with_payment_request_memo_get_address_hash(
   const McBuffer* MC_NONNULL sender_with_payment_request_memo_data,
   McMutableBuffer* MC_NONNULL out_short_address_hash,
@@ -406,6 +501,13 @@ bool mc_memo_sender_with_payment_request_memo_get_address_hash(
 )
 MC_ATTRIBUTE_NONNULL(1, 2);
 
+/// # Preconditions
+///
+/// * `sender_with_payment_request_memo_data` - must be 64 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 bool mc_memo_sender_with_payment_request_memo_get_payment_request_id(
   const McBuffer* MC_NONNULL sender_with_payment_request_memo_data,
   uint64_t* MC_NONNULL out_payment_request_id,
@@ -416,6 +518,17 @@ MC_ATTRIBUTE_NONNULL(1, 2);
 
 /* ==== Decrypt Memo Payload ==== */
 
+
+/// # Preconditions
+///
+/// * `encrypted_memo` - must be 66 bytes
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+/// * `account_key` - must be a valid account key
+/// * `out_memo_payload` - length must be >= 16 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
 bool mc_memo_decrypt_e_memo_payload(
   const McBuffer* MC_NONNULL encrypted_memo,
   const McBuffer* MC_NONNULL tx_out_public_key,
