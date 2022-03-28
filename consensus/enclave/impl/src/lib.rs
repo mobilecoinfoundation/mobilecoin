@@ -1616,7 +1616,7 @@ mod tests {
     fn form_block_refuses_decreasing_block_version(logger: Logger) {
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
-        for block_version in BlockVersion::iterator() {
+        for block_version in BlockVersion::iterator().skip(1) {
             let enclave = SgxConsensusEnclave::new(logger.clone());
             let blockchain_config = BlockchainConfig {
                 block_version: BlockVersion::try_from(*block_version - 1).unwrap(),

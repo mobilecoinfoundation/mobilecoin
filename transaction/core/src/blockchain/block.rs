@@ -217,6 +217,7 @@ mod block_tests {
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, CryptoRng, RngCore, SeedableRng};
 
+    // This is block version 1 to avoid messing with test vectors
     const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
 
     fn get_block_contents<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> BlockContents {
@@ -388,7 +389,7 @@ mod block_tests {
     /// actual block id into the test. This should hopefully catches cases where
     /// we add/change Block/BlockContents and accidentally break id
     /// calculation of old blocks.
-    fn test_hashing_is_consistent() {
+    fn test_hashing_is_consistent_block_version_one() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         //Check hash with memo

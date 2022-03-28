@@ -753,11 +753,11 @@ pub mod transaction_builder_tests {
     // in tests
     fn get_block_version_token_id_pairs() -> Vec<(BlockVersion, TokenId)> {
         vec![
+            (BlockVersion::try_from(0).unwrap(), TokenId::from(0)),
             (BlockVersion::try_from(1).unwrap(), TokenId::from(0)),
             (BlockVersion::try_from(2).unwrap(), TokenId::from(0)),
-            (BlockVersion::try_from(3).unwrap(), TokenId::from(0)),
-            (BlockVersion::try_from(3).unwrap(), TokenId::from(1)),
-            (BlockVersion::try_from(3).unwrap(), TokenId::from(2)),
+            (BlockVersion::try_from(2).unwrap(), TokenId::from(1)),
+            (BlockVersion::try_from(2).unwrap(), TokenId::from(2)),
         ]
     }
 

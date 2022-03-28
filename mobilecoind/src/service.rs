@@ -1985,7 +1985,7 @@ mod test {
     };
 
     // None of these tests really depend on any of the new features
-    const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
+    const BLOCK_VERSION: BlockVersion = BlockVersion::ZERO;
 
     #[test_with_logger]
     fn test_add_monitor_impl(logger: Logger) {
