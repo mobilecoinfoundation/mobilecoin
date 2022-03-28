@@ -323,7 +323,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         comparer_option: TxOutputsComparerOption,
     ) -> Result<Tx, TxBuilderError> {
         match comparer_option {
-            Some(_) => return self.build_with_comparer_internal(rng, comparer_option),
+            Some(_) => self.build_with_comparer_internal(rng, comparer_option),
             _ => panic!("A valid comparer must be provided or use build() method."),
         }
     }
