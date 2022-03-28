@@ -89,7 +89,7 @@ impl BlockVersion {
 
     /// transactions shall be sorted after version 3
     pub fn validate_transaction_outputs_are_sorted(&self) -> bool {
-        self.0 > 3
+        self.0 >= 3
     }
 
     /// mint transactions are introduced in block version 3
