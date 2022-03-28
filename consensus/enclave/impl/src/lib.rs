@@ -45,8 +45,7 @@ use mc_consensus_enclave_api::{
     WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
-use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
-use mc_crypto_keys::{Ed25519Pair, Ed25519Public, RistrettoPrivate, RistrettoPublic, X25519Public};
+use mc_crypto_keys::{Ed25519Pair, Ed25519Public, RistrettoPublic, X25519Public};
 use mc_crypto_message_cipher::{AesMessageCipher, MessageCipher};
 use mc_crypto_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
@@ -54,7 +53,7 @@ use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResu
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
     mint::{validate_mint_config_tx, MintConfigTx, MintTx, MintValidationError},
-    ring_signature::{KeyImage, Scalar},
+    ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
@@ -691,7 +690,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let fee_outputs = total_fees_by_token_id
             .iter()
             .map(|(token_id, total_fee)| {
-                mint_output(
+                TxOut::mint(
                     &fee_recipient,
                     FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.as_bytes(),
                     parent_block,
@@ -701,6 +700,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                         token_id: TokenId::from(*token_id),
                     },
                 )
+                .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))
             })
             .collect::<Result<Vec<TxOut>>>()?;
 
@@ -728,7 +728,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 &mint_tx.prefix.spend_public_key,
                 &mint_tx.prefix.view_public_key,
             );
-            let output = mint_output(
+            let output = TxOut::mint(
                 &recipient,
                 MINTED_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.as_bytes(),
                 parent_block,
@@ -737,7 +737,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                     value: mint_tx.prefix.amount,
                     token_id: TokenId::from(mint_tx.prefix.token_id),
                 },
-            )?;
+            )
+            .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?;
 
             outputs.push(output);
         }
@@ -777,54 +778,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
     }
 }
 
-/// Creates a single output belonging to a specific recipient account.
-/// The output is created using a predictable private key that is derived from
-/// the input parameters.
-///
-/// # Arguments:
-/// * `recipient` - The recipient of the output.
-/// * `domain_tag` - Domain separator for hashing the input parameters.
-/// * `parent_block` - The parent block.
-/// * `transactions` - The transactions that are included in the current block.
-/// * `amount` - Output amount.
-fn mint_output<T: Digestible>(
-    recipient: &PublicAddress,
-    domain_tag: &'static [u8],
-    parent_block: &Block,
-    transactions: &[T],
-    amount: Amount,
-) -> Result<TxOut> {
-    // Create a determinstic private key based on the block contents.
-    let tx_private_key = {
-        let mut hash_value = [0u8; 32];
-        {
-            let mut transcript = MerlinTranscript::new(domain_tag);
-            parent_block
-                .id
-                .append_to_transcript(b"parent_block_id", &mut transcript);
-            transactions.append_to_transcript(b"transactions", &mut transcript);
-            transcript.extract_digest(&mut hash_value);
-        };
-
-        // This private key is generated from the hash of all transactions in this
-        // block. This ensures that all nodes generate the same fee output
-        // transaction.
-        RistrettoPrivate::from(Scalar::from_bytes_mod_order(hash_value))
-    };
-
-    // Create a single TxOut
-    let output = TxOut::new(amount, recipient, &tx_private_key, Default::default())
-        .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?;
-
-    Ok(output)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use alloc::vec;
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_api::MasterMintersMap;
+    use mc_crypto_keys::RistrettoPrivate;
     use mc_crypto_multisig::SignerSet;
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{

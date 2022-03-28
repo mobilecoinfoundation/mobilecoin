@@ -12,6 +12,7 @@ pub use mc_consensus_enclave_api::{
     WellFormedEncryptedTx, WellFormedTxContext,
 };
 
+use mc_account_keys::PublicAddress;
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
@@ -29,15 +30,18 @@ use mc_transaction_core::{
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Block, BlockContents, BlockSignature, Token, TokenId,
+    Amount, Block, BlockContents, BlockSignature, Token, TokenId,
 };
 use mc_util_from_random::FromRandom;
-use rand_core::SeedableRng;
+use rand_core::{CryptoRng, RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
 use std::{
     convert::TryFrom,
     sync::{Arc, Mutex},
 };
+
+/// Domain separator for minted txouts public keys.
+pub const MINTED_OUTPUT_PRIVATE_KEY_DOMAIN_TAG: &str = "mc_minted_output_private_key";
 
 #[derive(Clone)]
 pub struct ConsensusServiceMockEnclave {
@@ -73,6 +77,74 @@ impl ConsensusServiceMockEnclave {
             key_images,
             output_public_keys,
         }
+    }
+
+    /// Given a list of well formed encrypted txs + proofs and a root membership
+    /// element, decrypt and validate "original" Tx transactions, and if
+    /// successful return the list of transactions.
+    fn get_txs_from_inputs(
+        &self,
+        well_formed_encrypted_txs_with_proofs: &[(
+            WellFormedEncryptedTx,
+            Vec<TxOutMembershipProof>,
+        )],
+        parent_block: &Block,
+        root_element: &TxOutMembershipElement,
+        config: &BlockchainConfig,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> Result<Vec<Tx>> {
+        if well_formed_encrypted_txs_with_proofs.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let transactions_with_proofs: Vec<(Tx, Vec<TxOutMembershipProof>)> =
+            well_formed_encrypted_txs_with_proofs
+                .iter()
+                .map(|(encrypted_tx, proofs)| {
+                    // These bytes are normally an enclave-encrypted Tx, but here, it is just
+                    // serialized.
+                    let ciphertext = &encrypted_tx.0;
+                    let tx = mc_util_serial::decode::<Tx>(ciphertext).unwrap();
+                    (tx, proofs.clone())
+                })
+                .collect();
+
+        // root_elements contains the root hash of the Merkle tree of all TxOuts in the
+        // ledger that were used to validate the tranasctions.
+        let mut root_elements = Vec::new();
+
+        for (tx, proofs) in transactions_with_proofs.iter() {
+            mc_transaction_core::validation::validate(
+                tx,
+                parent_block.index + 1,
+                config.block_version,
+                proofs,
+                Mob::MINIMUM_FEE,
+                rng,
+            )?;
+
+            for proof in proofs {
+                let root_element = compute_implied_merkle_root(proof)
+                    .map_err(|_e| TransactionValidationError::InvalidLedgerContext)?;
+                root_elements.push(root_element.clone());
+            }
+        }
+
+        root_elements.sort();
+        root_elements.dedup();
+
+        if root_elements.len() != 1 {
+            return Err(Error::InvalidLocalMembershipProof);
+        }
+
+        if root_element != &root_elements[0] {
+            return Err(Error::InvalidLocalMembershipRootElement);
+        }
+
+        Ok(transactions_with_proofs
+            .into_iter()
+            .map(|(tx, _proofs)| tx)
+            .collect())
     }
 }
 
@@ -216,67 +288,61 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         &self,
         parent_block: &Block,
         inputs: FormBlockInputs,
-        _root_element: &TxOutMembershipElement,
+        root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)> {
-        let block_version = self.blockchain_config.lock().unwrap().block_version;
-        let transactions_with_proofs: Vec<(Tx, Vec<TxOutMembershipProof>)> = inputs
-            .well_formed_encrypted_txs_with_proofs
-            .iter()
-            .map(|(encrypted_tx, proofs)| {
-                // These bytes are normally an enclave-encrypted Tx, but here, it is just
-                // serialized.
-                let ciphertext = &encrypted_tx.0;
-                let tx = mc_util_serial::decode::<Tx>(ciphertext).unwrap();
-                (tx, proofs.clone())
-            })
-            .collect();
-
-        // root_elements contains the root hash of the Merkle tree of all TxOuts in the
-        // ledger that were used to validate the tranasctions.
-        let mut root_elements = Vec::new();
         let mut rng = McRng::default();
+        let config = self.blockchain_config.lock().unwrap();
 
-        for (tx, proofs) in transactions_with_proofs.iter() {
-            mc_transaction_core::validation::validate(
-                tx,
-                parent_block.index + 1,
-                block_version,
-                proofs,
-                Mob::MINIMUM_FEE,
-                &mut rng,
-            )?;
-
-            for proof in proofs {
-                let root_element = compute_implied_merkle_root(proof)
-                    .map_err(|_e| TransactionValidationError::InvalidLedgerContext)?;
-                root_elements.push(root_element.clone());
-            }
-        }
-
-        root_elements.sort();
-        root_elements.dedup();
-
-        if root_elements.len() != 1 {
-            return Err(Error::InvalidLocalMembershipProof);
-        }
+        // Get any "original" Tx transactions included in the inputs.
+        let transactions = self.get_txs_from_inputs(
+            &inputs.well_formed_encrypted_txs_with_proofs,
+            parent_block,
+            root_element,
+            &config,
+            &mut rng,
+        )?;
 
         let mut key_images: Vec<KeyImage> = Vec::new();
         let mut outputs: Vec<TxOut> = Vec::new();
-        for (tx, _proofs) in transactions_with_proofs {
+        for tx in transactions {
             key_images.extend(tx.key_images().into_iter());
             outputs.extend(tx.prefix.outputs.into_iter());
         }
 
+        for mint_tx in &inputs.mint_txs {
+            let recipient = PublicAddress::new(
+                &mint_tx.prefix.spend_public_key,
+                &mint_tx.prefix.view_public_key,
+            );
+            let output = TxOut::mint(
+                &recipient,
+                MINTED_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.as_bytes(),
+                parent_block,
+                &inputs.mint_txs,
+                Amount {
+                    value: mint_tx.prefix.amount,
+                    token_id: TokenId::from(mint_tx.prefix.token_id),
+                },
+            )
+            .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?;
+
+            outputs.push(output);
+        }
+
+        outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
+        key_images.sort();
+
         let block_contents = BlockContents {
             key_images,
             outputs,
-            ..Default::default()
+            mint_txs: inputs.mint_txs,
+            mint_config_txs: inputs.mint_config_txs,
         };
 
         let block = Block::new_with_parent(
-            block_version,
+            config.block_version,
             parent_block,
-            &root_elements[0],
+            root_element,
             &block_contents,
         );
 

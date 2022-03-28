@@ -32,7 +32,6 @@ mc-attest-trusted = { path = "../../../attest/trusted", default-features = false
 mc-common = { path = "../../../common", default-features = false }
 mc-consensus-enclave-api = { path = "../api", default-features = false }
 mc-crypto-ake-enclave = { path = "../../../crypto/ake/enclave" }
-mc-crypto-digestible = { path = "../../../crypto/digestible" }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
 mc-crypto-message-cipher = { path = "../../../crypto/message-cipher" }
 mc-crypto-rand = { path = "../../../crypto/rand" }

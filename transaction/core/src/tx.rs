@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 use core::{convert::TryFrom, fmt};
 use mc_account_keys::PublicAddress;
 use mc_common::Hash;
-use mc_crypto_digestible::{Digestible, MerlinTranscript};
+use mc_crypto_digestible::{Digestible, MerlinTranscript, DigestTranscript};
 use mc_crypto_hashes::{Blake2b256, Digest};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_util_repr_bytes::{
@@ -17,13 +17,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     amount::{Amount, AmountError, MaskedAmount},
+    blockchain::Block,
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
     membership_proofs::Range,
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
-    ring_signature::{KeyImage, SignatureRctBulletproofs},
+    ring_signature::{KeyImage, SignatureRctBulletproofs, Scalar},
     CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
 };
 
@@ -400,6 +401,45 @@ impl TxOut {
         } else {
             MemoPayload::default()
         }
+    }
+
+    /// Creates a single output belonging to a specific recipient account.
+    /// The output is created using a predictable private key that is derived from
+    /// the input parameters.
+    ///
+    /// # Arguments:
+    /// * `recipient` - The recipient of the output.
+    /// * `domain_tag` - Domain separator for hashing the input parameters.
+    /// * `parent_block` - The parent block.
+    /// * `transactions` - The transactions that are included in the current block.
+    /// * `amount` - Output amount.
+    pub fn mint<T: Digestible>(
+        recipient: &PublicAddress,
+        domain_tag: &'static [u8],
+        parent_block: &Block,
+        transactions: &[T],
+        amount: Amount,
+    ) -> Result<Self, AmountError> {
+        // Create a determinstic private key based on the block contents.
+        let tx_private_key = {
+            let mut hash_value = [0u8; 32];
+            {
+                let mut transcript = MerlinTranscript::new(domain_tag);
+                parent_block
+                    .id
+                    .append_to_transcript(b"parent_block_id", &mut transcript);
+                transactions.append_to_transcript(b"transactions", &mut transcript);
+                transcript.extract_digest(&mut hash_value);
+            };
+
+            // This private key is generated from the hash of all transactions in this
+            // block. This ensures that all nodes generate the same fee output
+            // transaction.
+            RistrettoPrivate::from(Scalar::from_bytes_mod_order(hash_value))
+        };
+
+        // Create a single TxOut
+        Self::new(amount, recipient, &tx_private_key, Default::default())
     }
 }
 
