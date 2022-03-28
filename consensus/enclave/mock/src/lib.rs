@@ -329,9 +329,6 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
             outputs.push(output);
         }
 
-        outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
-        key_images.sort();
-
         let block_contents = BlockContents {
             key_images,
             outputs,
