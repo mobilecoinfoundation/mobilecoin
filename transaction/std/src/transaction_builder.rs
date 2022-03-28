@@ -23,6 +23,12 @@ use mc_transaction_core::{
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 
+/// This is a datatype for the comparer of the transaction outputs
+pub type TxComparerFn = fn(&TxOut, &TxOut) -> core::cmp::Ordering;
+
+/// This is a datatype helper used for transaction outputs sorting mechanism
+pub type TxOutputsComparerOption = Option<TxComparerFn>;
+
 /// Helper utility for building and signing a CryptoNote-style transaction,
 /// and attaching fog hint and memos as appropriate.
 ///
@@ -304,11 +310,35 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     }
 
     /// Consume the builder and return the transaction.
-    pub fn build<RNG: CryptoRng + RngCore>(mut self, rng: &mut RNG) -> Result<Tx, TxBuilderError> {
+    pub fn build<RNG: CryptoRng + RngCore>(self, rng: &mut RNG) -> Result<Tx, TxBuilderError> {
+        self.build_with_comparer_internal(rng, None)
+    }
+
+    /// Consume the builder and return the transaction with a comparer.
+    /// Used only in testing library.
+   #[cfg(feature = "test-only")]
+   pub fn build_with_comparer<RNG: CryptoRng + RngCore>(
+       self,
+       rng: &mut RNG,
+       comparer_option: TxOutputsComparerOption,
+   ) -> Result<Tx, TxBuilderError> {
+       match comparer_option {
+           Some(_) => return self.build_with_comparer_internal(rng, comparer_option),
+           _ => panic!("A valid comparer must be provided or use build() method."),
+       }
+   }
+
+    /// Consume the builder and return the transaction with a comparer
+    /// (internal usage only).
+    fn build_with_comparer_internal<RNG: CryptoRng + RngCore>(
+        mut self,
+        rng: &mut RNG,
+        comparer_option: TxOutputsComparerOption,
+    ) -> Result<Tx, TxBuilderError> {
         // Note: Origin block has block version zero, so some clients like slam that
         // start with a bootstrapped ledger will target block version 0. However,
-        // block version zero has no special rules and so targetting block version 0
-        // should be the same as targetting block version 1, for the transaction
+        // block version zero has no special rules and so targeting block version 0
+        // should be the same as targeting block version 1, for the transaction
         // builder. This test is mainly here in case we decide that the
         // transaction builder should stop supporting sufficiently old block
         // versions in the future, then we can replace the zero here with
@@ -359,9 +389,17 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             })
             .collect();
 
-        // Sort outputs by public key.
-        self.outputs_and_shared_secrets
-            .sort_by(|(a, _), (b, _)| a.public_key.cmp(&b.public_key));
+        match comparer_option {
+            Some(comparer) => {
+                self.outputs_and_shared_secrets
+                    .sort_by(|(a, _), (b, _)| comparer(a, b));
+            }
+            _ => {
+                // Sort outputs by public key.
+                self.outputs_and_shared_secrets
+                    .sort_by(|(a, _), (b, _)| a.public_key.cmp(&b.public_key));
+            }
+        }
 
         let output_values_and_blindings: Vec<(u64, Scalar)> = self
             .outputs_and_shared_secrets
@@ -865,7 +903,7 @@ pub mod transaction_builder_tests {
                 assert!(bool::from(FogHint::ct_decrypt(
                     &ingest_private_key,
                     &output.e_fog_hint,
-                    &mut output_fog_hint
+                    &mut output_fog_hint,
                 )));
                 assert_eq!(
                     output_fog_hint.get_view_pubkey(),
@@ -944,7 +982,7 @@ pub mod transaction_builder_tests {
                 assert!(bool::from(FogHint::ct_decrypt(
                     &ingest_private_key,
                     &output.e_fog_hint,
-                    &mut output_fog_hint
+                    &mut output_fog_hint,
                 )));
                 assert_eq!(
                     output_fog_hint.get_view_pubkey(),
@@ -1160,7 +1198,7 @@ pub mod transaction_builder_tests {
                     assert!(bool::from(FogHint::ct_decrypt(
                         &ingest_private_key,
                         &output.e_fog_hint,
-                        &mut output_fog_hint
+                        &mut output_fog_hint,
                     )));
                     assert_eq!(
                         output_fog_hint.get_view_pubkey(),
@@ -1191,7 +1229,7 @@ pub mod transaction_builder_tests {
                     assert!(bool::from(FogHint::ct_decrypt(
                         &ingest_private_key,
                         &change.e_fog_hint,
-                        &mut output_fog_hint
+                        &mut output_fog_hint,
                     )));
                     assert_eq!(
                         output_fog_hint.get_view_pubkey(),
@@ -1336,7 +1374,7 @@ pub mod transaction_builder_tests {
                                             &sender_addr,
                                             &recipient
                                                 .subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
-                                            &output.public_key
+                                            &output.public_key,
                                         )
                                     ),
                                     "hmac validation failed"
@@ -1490,7 +1528,7 @@ pub mod transaction_builder_tests {
                                             &sender_addr,
                                             &recipient
                                                 .subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
-                                            &output.public_key
+                                            &output.public_key,
                                         )
                                     ),
                                     "hmac validation failed"
@@ -1644,7 +1682,7 @@ pub mod transaction_builder_tests {
                                             &sender_addr,
                                             &recipient
                                                 .subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
-                                            &output.public_key
+                                            &output.public_key,
                                         )
                                     ),
                                     "hmac validation failed"
@@ -1798,7 +1836,7 @@ pub mod transaction_builder_tests {
                                             &sender_addr,
                                             &recipient
                                                 .subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
-                                            &output.public_key
+                                            &output.public_key,
                                         )
                                     ),
                                     "hmac validation failed"
@@ -2110,7 +2148,7 @@ pub mod transaction_builder_tests {
                                     bool::from(memo.validate(
                                         &charlie_addr,
                                         &bob.subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
-                                        &output.public_key
+                                        &output.public_key,
                                     )),
                                     "hmac validation failed"
                                 );
@@ -2234,7 +2272,7 @@ pub mod transaction_builder_tests {
 
                 assert!(
                     transaction_builder
-                        .add_output(Mob::MINIMUM_FEE, &recipient_address, &mut rng,)
+                        .add_output(Mob::MINIMUM_FEE, &recipient_address, &mut rng)
                         .is_err(),
                     "Adding another output after chnage output should be rejected"
                 );

@@ -22,7 +22,9 @@ use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{constants::RING_SIZE, membership_proofs::Range, BlockContents};
-use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
+use mc_transaction_std::{
+    EmptyMemoBuilder, InputCredentials, TransactionBuilder, TxOutputsComparerOption,
+};
 use mc_util_from_random::FromRandom;
 use rand::{seq::SliceRandom, Rng};
 use tempdir::TempDir;
@@ -36,6 +38,14 @@ pub fn create_ledger() -> LedgerDB {
     let path = temp_dir.path();
     LedgerDB::create(path).unwrap();
     LedgerDB::open(path).unwrap()
+}
+
+pub fn outputs_comparer_normal(a: &TxOut, b: &TxOut) -> core::cmp::Ordering {
+    a.public_key.cmp(&b.public_key)
+}
+
+pub fn outputs_comparer_inverse(a: &TxOut, b: &TxOut) -> core::cmp::Ordering {
+    b.public_key.cmp(&a.public_key)
 }
 
 /// Creates a transaction that sends the full value of `tx_out` to a single
@@ -97,6 +107,42 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
     tombstone_block: BlockIndex,
     rng: &mut R,
 ) -> Tx {
+    create_transaction_with_amount_and_comparer(
+        block_version,
+        ledger,
+        tx_out,
+        sender,
+        recipient,
+        amount,
+        fee,
+        tombstone_block,
+        rng,
+        Some(outputs_comparer_normal),
+    )
+}
+
+/// Creates a transaction that sends an arbitrary amount to a single recipient.
+///
+/// # Arguments:
+/// * `ledger` - A ledger containing `tx_out`.
+/// * `tx_out` - The TxOut that will be spent.
+/// * `sender` - The owner of `tx_out`.
+/// * `recipient` - The recipient of the new transaction.
+/// * `amount` - Amount to send.
+/// * `tombstone_block` - The tombstone block for the new transaction.
+/// * `rng` - The randomness used by this function
+pub fn create_transaction_with_amount_and_comparer<L: Ledger, R: RngCore + CryptoRng>(
+    block_version: BlockVersion,
+    ledger: &mut L,
+    tx_out: &TxOut,
+    sender: &AccountKey,
+    recipient: &PublicAddress,
+    amount: u64,
+    fee: u64,
+    tombstone_block: BlockIndex,
+    rng: &mut R,
+    outputs_comparer_option: TxOutputsComparerOption,
+) -> Tx {
     let mut transaction_builder = TransactionBuilder::new(
         block_version,
         Mob::ID,
@@ -153,7 +199,9 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
     transaction_builder.set_fee(fee).unwrap();
 
     // Build and return the transaction
-    transaction_builder.build(rng).unwrap()
+    transaction_builder
+        .build_with_comparer(rng, outputs_comparer_option)
+        .unwrap()
 }
 
 /// Populates the LedgerDB with initial data.
