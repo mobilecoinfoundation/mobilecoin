@@ -1,0 +1,71 @@
+name: Set up Rust and associated tools
+
+inputs:
+  components:
+    description: Comma-separated list of the additional components to install, e.g. 'clippy, rustfmt'
+    default:
+    required: false
+  default:
+    description: Set installed toolchain as a default toolchain
+    default: "true"
+    required: false
+  profile:
+    description: Rust toolchain profile
+    default: minimal
+    required: false
+  sgx_sdk:
+    description: Whether to install SGX SDK
+    default: "true"
+    required: false
+  sccache:
+    description: Whether to use sccache
+    default: "false"
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        # Honors rust-toolchain file, installing that version.
+        components: ${{ inputs.components }}
+        default: ${{ inputs.default }}
+        profile: ${{ inputs.profile }}
+    # TODO(remoun): Re-enable after fixing missing binaries in target/ dirs.
+    #- name: Set up dependency cache
+    #  uses: Swatinem/rust-cache@v1
+    - name: Set up env vars
+      shell: bash
+      # "You can make an environment variable available to any subsequent steps
+      # in a workflow job by defining or updating the environment variable
+      # and writing this to the GITHUB_ENV environment file."
+      # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-environment-variable
+      run: |
+        # build config
+        echo 'IAS_MODE=DEV' >> $GITHUB_ENV
+        echo 'SGX_MODE=SW' >> $GITHUB_ENV
+        # test/run config
+        echo 'RUST_BACKTRACE=1' >> $GITHUB_ENV
+        echo 'SKIP_SLOW_TESTS=1' >> $GITHUB_ENV
+        # Remove the file size limit on core dump files
+        ulimit -c unlimited
+
+        HOST_TARGET_TRIPLE="$(rustc -Vv | sed -n 's/^host: //p')"
+        echo "HOST_TARGET_TRIPLE=$HOST_TARGET_TRIPLE" >> $GITHUB_ENV
+    - name: Install SGX SDK
+      # NB: Actions' inputs are all strings.
+      if: ${{ inputs.sgx_sdk == 'true' }}
+      shell: bash
+      run: |
+        [[ -d /opt/intel/sgxsdk ]] || sudo ./docker/install_sgx.sh
+        # Ideally we'd just add "source /opt/intel/sgxsdk/environment" to
+        # GITHUB_ENV, but it has a custom parser that rejects that.
+        source /opt/intel/sgxsdk/environment
+        echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        echo "$SGX_SDK/bin" >> $GITHUB_PATH
+        echo "$SGX_SDK/bin/x64" >> $GITHUB_PATH
+    - name: Setup sccache
+      if: ${{ inputs.sccache == 'true' }}
+      uses: ./.github/actions/sccache
