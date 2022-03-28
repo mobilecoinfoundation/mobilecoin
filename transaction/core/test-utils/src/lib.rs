@@ -18,15 +18,17 @@ pub use mint::{
 };
 
 use core::convert::TryFrom;
-use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{constants::RING_SIZE, membership_proofs::Range, BlockContents};
 use mc_transaction_std::{
-    EmptyMemoBuilder, InputCredentials, TransactionBuilder, TxOutputsComparerOption,
+    DefaultTxOutputsOrdering, EmptyMemoBuilder, InputCredentials, TransactionBuilder,
+    TxOutputsOrdering,
 };
 use mc_util_from_random::FromRandom;
 use rand::{seq::SliceRandom, Rng};
+use std::cmp::Ordering;
 use tempdir::TempDir;
 
 /// The amount minted by `initialize_ledger`, 1 million milliMOB.
@@ -40,12 +42,12 @@ pub fn create_ledger() -> LedgerDB {
     LedgerDB::open(path).unwrap()
 }
 
-pub fn outputs_comparer_normal(a: &TxOut, b: &TxOut) -> core::cmp::Ordering {
-    a.public_key.cmp(&b.public_key)
-}
+pub struct InverseTxOutputsOrdering;
 
-pub fn outputs_comparer_inverse(a: &TxOut, b: &TxOut) -> core::cmp::Ordering {
-    b.public_key.cmp(&a.public_key)
+impl TxOutputsOrdering for InverseTxOutputsOrdering {
+    fn cmp(&self, a: &CompressedRistrettoPublic, b: &CompressedRistrettoPublic) -> Ordering {
+        b.cmp(&a)
+    }
 }
 
 /// Creates a transaction that sends the full value of `tx_out` to a single
@@ -117,7 +119,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
         fee,
         tombstone_block,
         rng,
-        Some(outputs_comparer_normal),
+        DefaultTxOutputsOrdering,
     )
 }
 
@@ -131,7 +133,11 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
 /// * `amount` - Amount to send.
 /// * `tombstone_block` - The tombstone block for the new transaction.
 /// * `rng` - The randomness used by this function
-pub fn create_transaction_with_amount_and_comparer<L: Ledger, R: RngCore + CryptoRng>(
+pub fn create_transaction_with_amount_and_comparer<
+    L: Ledger,
+    R: RngCore + CryptoRng,
+    O: TxOutputsOrdering,
+>(
     block_version: BlockVersion,
     ledger: &mut L,
     tx_out: &TxOut,
@@ -141,7 +147,7 @@ pub fn create_transaction_with_amount_and_comparer<L: Ledger, R: RngCore + Crypt
     fee: u64,
     tombstone_block: BlockIndex,
     rng: &mut R,
-    outputs_comparer_option: TxOutputsComparerOption,
+    outputs_ordering: O,
 ) -> Tx {
     let mut transaction_builder = TransactionBuilder::new(
         block_version,
@@ -200,7 +206,7 @@ pub fn create_transaction_with_amount_and_comparer<L: Ledger, R: RngCore + Crypt
 
     // Build and return the transaction
     transaction_builder
-        .build_with_comparer(rng, outputs_comparer_option)
+        .build_with_sorter(rng, &outputs_ordering)
         .unwrap()
 }
 

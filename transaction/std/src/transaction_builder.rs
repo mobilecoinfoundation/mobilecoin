@@ -22,12 +22,22 @@ use mc_transaction_core::{
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
+use std::cmp::Ordering;
 
-/// This is a datatype for the comparer of the transaction outputs
-pub type TxComparerFn = fn(&TxOut, &TxOut) -> core::cmp::Ordering;
+/// A trait used to compare the transaction outputs
+pub trait TxOutputsOrdering {
+    /// comparer method
+    fn cmp(&self, a: &CompressedRistrettoPublic, b: &CompressedRistrettoPublic) -> Ordering;
+}
 
-/// This is a datatype helper used for transaction outputs sorting mechanism
-pub type TxOutputsComparerOption = Option<TxComparerFn>;
+/// Default implementation for transaction outputs
+pub struct DefaultTxOutputsOrdering;
+
+impl TxOutputsOrdering for DefaultTxOutputsOrdering {
+    fn cmp(&self, a: &CompressedRistrettoPublic, b: &CompressedRistrettoPublic) -> Ordering {
+        a.cmp(&b)
+    }
+}
 
 /// Helper utility for building and signing a CryptoNote-style transaction,
 /// and attaching fog hint and memos as appropriate.
@@ -39,7 +49,7 @@ pub type TxOutputsComparerOption = Option<TxComparerFn>;
 /// use the memos in the TxOuts.
 #[derive(Debug)]
 pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
-    /// The block version that we are targetting for this transaction
+    /// The block version that we are targeting for this transaction
     block_version: BlockVersion,
     /// The input credentials used to form the transaction
     input_credentials: Vec<InputCredentials>,
@@ -311,29 +321,26 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 
     /// Consume the builder and return the transaction.
     pub fn build<RNG: CryptoRng + RngCore>(self, rng: &mut RNG) -> Result<Tx, TxBuilderError> {
-        self.build_with_comparer_internal(rng, None)
+        self.build_with_comparer_internal(rng, &DefaultTxOutputsOrdering)
     }
 
     /// Consume the builder and return the transaction with a comparer.
     /// Used only in testing library.
     #[cfg(feature = "test-only")]
-    pub fn build_with_comparer<RNG: CryptoRng + RngCore>(
+    pub fn build_with_sorter<RNG: CryptoRng + RngCore, O: TxOutputsOrdering>(
         self,
         rng: &mut RNG,
-        comparer_option: TxOutputsComparerOption,
+        tx_out_ordering: &O,
     ) -> Result<Tx, TxBuilderError> {
-        match comparer_option {
-            Some(_) => self.build_with_comparer_internal(rng, comparer_option),
-            _ => panic!("A valid comparer must be provided or use build() method."),
-        }
+        self.build_with_comparer_internal(rng, tx_out_ordering)
     }
 
     /// Consume the builder and return the transaction with a comparer
     /// (internal usage only).
-    fn build_with_comparer_internal<RNG: CryptoRng + RngCore>(
+    fn build_with_comparer_internal<RNG: CryptoRng + RngCore, O: TxOutputsOrdering>(
         mut self,
         rng: &mut RNG,
-        comparer_option: TxOutputsComparerOption,
+        tx_out_ordering: &O,
     ) -> Result<Tx, TxBuilderError> {
         // Note: Origin block has block version zero, so some clients like slam that
         // start with a bootstrapped ledger will target block version 0. However,
@@ -389,17 +396,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             })
             .collect();
 
-        match comparer_option {
-            Some(comparer) => {
-                self.outputs_and_shared_secrets
-                    .sort_by(|(a, _), (b, _)| comparer(a, b));
-            }
-            _ => {
-                // Sort outputs by public key.
-                self.outputs_and_shared_secrets
-                    .sort_by(|(a, _), (b, _)| a.public_key.cmp(&b.public_key));
-            }
-        }
+        self.outputs_and_shared_secrets
+            .sort_by(|(a, _), (b, _)| tx_out_ordering.cmp(&a.public_key, &b.public_key));
 
         let output_values_and_blindings: Vec<(u64, Scalar)> = self
             .outputs_and_shared_secrets

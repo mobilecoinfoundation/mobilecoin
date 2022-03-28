@@ -511,10 +511,9 @@ mod tests {
     use mc_ledger_db::{Ledger, LedgerDB};
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, create_transaction_with_amount_and_comparer,
-        initialize_ledger, outputs_comparer_inverse, outputs_comparer_normal, AccountKey,
-        INITIALIZE_LEDGER_AMOUNT,
+        initialize_ledger, AccountKey, InverseTxOutputsOrdering, INITIALIZE_LEDGER_AMOUNT,
     };
-    use mc_transaction_std::TxOutputsComparerOption;
+    use mc_transaction_std::{DefaultTxOutputsOrdering, TxOutputsOrdering};
     use rand::{rngs::StdRng, SeedableRng};
     use serde::{de::DeserializeOwned, ser::Serialize};
 
@@ -573,15 +572,15 @@ mod tests {
             block_version,
             amount,
             fee,
-            Some(outputs_comparer_normal),
+            DefaultTxOutputsOrdering,
         )
     }
 
-    fn create_test_tx_with_amount_and_comparer(
+    fn create_test_tx_with_amount_and_comparer<O: TxOutputsOrdering>(
         block_version: BlockVersion,
         amount: u64,
         fee: u64,
-        outputs_comparer_option: TxOutputsComparerOption,
+        outputs_ordering: O,
     ) -> (Tx, LedgerDB) {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let sender = AccountKey::random(&mut rng);
@@ -610,7 +609,7 @@ mod tests {
             fee,
             n_blocks + 1,
             &mut rng,
-            outputs_comparer_option,
+            outputs_ordering,
         );
 
         (adapt_hack(&tx), ledger)
@@ -1308,7 +1307,7 @@ mod tests {
                 fee,
                 // for block version < 3 it doesn't matter
                 // for >= 3 it shall return an error about unsorted outputs
-                Some(outputs_comparer_inverse),
+                InverseTxOutputsOrdering,
             );
 
             let highest_indices = tx.get_membership_proof_highest_indices();
