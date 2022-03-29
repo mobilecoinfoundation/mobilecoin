@@ -685,7 +685,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "mc-util-serial",
- "prost",
+ "prost 0.9.0",
  "rand_core",
  "subtle",
  "zeroize",
@@ -705,7 +705,7 @@ dependencies = [
  "mc-crypto-noise",
  "mc-util-build-script",
  "mc-util-build-sgx",
- "prost",
+ "prost 0.9.0",
  "rand_core",
  "serde",
 ]
@@ -729,7 +729,7 @@ dependencies = [
  "mc-util-build-script",
  "mc-util-build-sgx",
  "mc-util-encodings",
- "prost",
+ "prost 0.10.0",
  "rjson",
  "serde",
  "sha2",
@@ -757,7 +757,7 @@ dependencies = [
  "mc-attest-core",
  "mc-sgx-compat",
  "mc-sgx-types",
- "prost",
+ "prost 0.9.0",
 ]
 
 [[package]]
@@ -910,7 +910,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-keys",
- "prost",
+ "prost 0.9.0",
  "serde",
 ]
 
@@ -966,7 +966,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-repr-bytes",
- "prost",
+ "prost 0.9.0",
  "rand_core",
  "serde",
 ]
@@ -1092,7 +1092,7 @@ dependencies = [
  "mc-fog-kex-rng",
  "mc-transaction-core",
  "mc-watcher-api",
- "prost",
+ "prost 0.9.0",
  "serde",
 ]
 
@@ -1238,7 +1238,7 @@ dependencies = [
  "cfg-if",
  "mc-common",
  "mc-sgx-build",
- "prost",
+ "prost 0.10.0",
 ]
 
 [[package]]
@@ -1284,7 +1284,7 @@ dependencies = [
  "mc-util-repr-bytes",
  "mc-util-serial",
  "merlin",
- "prost",
+ "prost 0.9.0",
  "rand_core",
  "serde",
  "sha2",
@@ -1338,7 +1338,7 @@ name = "mc-util-repr-bytes"
 version = "1.3.0-pre0"
 dependencies = [
  "generic-array",
- "prost",
+ "prost 0.9.0",
  "serde",
 ]
 
@@ -1346,7 +1346,7 @@ dependencies = [
 name = "mc-util-serial"
 version = "1.3.0-pre0"
 dependencies = [
- "prost",
+ "prost 0.10.0",
  "serde",
  "serde_cbor",
 ]
@@ -1485,7 +1485,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "444879275cb4fd84958b1a1d5420d15e6fcf7c235fe47f053c9c2a80aceb6001"
 dependencies = [
  "bytes",
- "prost-derive",
+ "prost-derive 0.9.0",
+]
+
+[[package]]
+name = "prost"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1bd5316aa8f5c82add416dfbc25116b84b748a21153f512917e8143640a71bbd"
+dependencies = [
+ "bytes",
+ "prost-derive 0.10.0",
 ]
 
 [[package]]
@@ -1493,6 +1503,19 @@ name = "prost-derive"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9cc1a3263e07e0bf68e96268f37665207b49560d98739662cdfaae215c720fe"
+dependencies = [
+ "anyhow",
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "prost-derive"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df35198f0777b75e9ff669737c6da5136b59dba33cf5a010a6d1cc4d56defc6f"
 dependencies = [
  "anyhow",
  "itertools",
