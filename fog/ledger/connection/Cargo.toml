@@ -23,7 +23,7 @@ mc-fog-uri = { path = "../../uri" }
 
 # third-party
 displaydoc = { version = "0.2", default-features = false }
-grpcio = "0.10.0"
+grpcio = "0.10.1"
 protobuf = "2.22.1"
 retry = "1.3"
 
