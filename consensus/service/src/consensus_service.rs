@@ -331,6 +331,7 @@ impl<
 
         let client_service =
             consensus_client_grpc::create_consensus_client_api(ClientApiService::new(
+                self.config.clone(),
                 enclave.clone(),
                 self.create_scp_client_value_sender_fn(),
                 Arc::new(self.ledger_db.clone()),
