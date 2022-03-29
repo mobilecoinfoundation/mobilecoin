@@ -35,7 +35,7 @@ pub struct DefaultTxOutputsOrdering;
 
 impl TxOutputsOrdering for DefaultTxOutputsOrdering {
     fn cmp(&self, a: &CompressedRistrettoPublic, b: &CompressedRistrettoPublic) -> Ordering {
-        a.cmp(&b)
+        a.cmp(b)
     }
 }
 
