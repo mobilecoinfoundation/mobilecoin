@@ -4730,11 +4730,13 @@ dependencies = [
  "mc-consensus-scp",
  "mc-crypto-digestible",
  "mc-crypto-keys",
+ "mc-ledger-streaming-api",
  "mc-transaction-core",
  "mc-util-build-grpc",
  "mc-util-build-script",
  "mc-util-from-random",
  "protobuf",
+ "rand 0.8.5",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
 ]

@@ -9,7 +9,9 @@
 //! such as `mc_ledger_streaming_api::QuorumSet` and
 //! `mc_consensus_scp::QuorumSet`.
 
+mod archive_block;
 mod components;
 mod quorum_set;
 
+pub use self::{archive_block::*, components::*, quorum_set::*};
 pub use mc_api::ConversionError;
