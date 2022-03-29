@@ -15,7 +15,6 @@
 //! useful diagnostic tool.
 
 use binascii::bin2hex;
-use clap::Parser;
 use grpcio::EnvBuilder;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
@@ -26,6 +25,7 @@ use mc_fog_report_connection::{Error, GrpcFogReportConnection};
 use mc_fog_report_validation::{
     FogPubkeyResolver, FogReportResponses, FogResolver, FullyValidatedFogPubkey,
 };
+use mc_util_cli::ParserWithBuildInfo;
 use mc_util_uri::FogUri;
 use std::{
     convert::TryFrom,
@@ -51,7 +51,8 @@ use std::{
 ///   would be performed for a fog user with these values in their address.
 /// - Supply only a fog-url. This can only be used with the "no-validate"
 ///   option.
-#[derive(Debug, Parser)]
+#[derive(Debug, clap::Parser)]
+#[clap(version)]
 struct Config {
     /// Path to mobilecoin public address. Fog url and spki will be extracted,
     /// and fog signature will be checked, unless no-validate is passed.

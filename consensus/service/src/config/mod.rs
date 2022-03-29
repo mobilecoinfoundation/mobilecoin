@@ -20,7 +20,8 @@ use std::{fmt::Debug, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 #[derive(Clone, Debug, Parser)]
 #[clap(
     name = "consensus_service",
-    about = "The MobileCoin Consensus Service."
+    about = "The MobileCoin Consensus Service.",
+    version
 )]
 pub struct Config {
     /// Peer Responder ID

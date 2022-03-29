@@ -3,7 +3,6 @@
 
 //! Ledger Server target
 
-use clap::Parser;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_attest_net::{Client, RaClient};
 use mc_common::{
@@ -13,6 +12,7 @@ use mc_common::{
 use mc_fog_ledger_enclave::{LedgerSgxEnclave, ENCLAVE_FILE};
 use mc_fog_ledger_server::{LedgerServer, LedgerServerConfig};
 use mc_ledger_db::LedgerDB;
+use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
 use mc_watcher::watcher_db::WatcherDB;
 use std::{env, sync::Arc};

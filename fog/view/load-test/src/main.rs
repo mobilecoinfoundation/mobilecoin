@@ -3,7 +3,6 @@
 
 //! A utility to load-test a fog-view server.
 
-use clap::Parser;
 use grpcio::EnvBuilder;
 use mc_account_keys::AccountKey;
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
@@ -12,6 +11,7 @@ use mc_fog_kex_rng::{NewFromKex, VersionedKexRng};
 use mc_fog_uri::FogViewUri;
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_fog_view_protocol::FogViewConnection;
+use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::GrpcRetryConfig;
 use std::{
     path::PathBuf,
@@ -24,7 +24,8 @@ use std::{
     time::Duration,
 };
 
-#[derive(Debug, Parser)]
+#[derive(Debug, clap::Parser)]
+#[clap(version)]
 struct Config {
     /// Path to root identity file to use
     /// Note: This contains the fog-url which is the same as the report-server

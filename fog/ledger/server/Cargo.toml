@@ -24,6 +24,7 @@ mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-ledger-db = { path = "../../../ledger/db" }
 mc-sgx-report-cache-untrusted = { path = "../../../sgx/report-cache/untrusted" }
 mc-transaction-core = { path = "../../../transaction/core" }
+mc-util-cli = { path = "../../../util/cli" }
 mc-util-encodings = { path = "../../../util/encodings" }
 mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-grpc = { path = "../../../util/grpc" }

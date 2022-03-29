@@ -17,7 +17,11 @@ use std::{path::PathBuf, time::Duration};
 ///
 /// Serialize is used to create a json summary
 #[derive(Clone, Debug, Parser, Serialize)]
-#[clap(name = "test-client", about = "Test client for Fog infrastructure.")]
+#[clap(
+    name = "test-client",
+    about = "Test client for Fog infrastructure.",
+    version
+)]
 pub struct TestClientConfig {
     /// A URI to host the prometheus data at.
     ///

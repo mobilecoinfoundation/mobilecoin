@@ -19,7 +19,6 @@
 
 #![deny(missing_docs)]
 
-use clap::Parser;
 use core::{cell::RefCell, convert::TryFrom};
 use lazy_static::lazy_static;
 use mc_account_keys::AccountKey;
@@ -47,6 +46,7 @@ use mc_transaction_core::{
     Amount, BlockVersion, Token,
 };
 use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
+use mc_util_cli::ParserWithBuildInfo;
 use mc_util_uri::FogUri;
 use rand::{seq::SliceRandom, thread_rng, Rng};
 use rayon::prelude::*;

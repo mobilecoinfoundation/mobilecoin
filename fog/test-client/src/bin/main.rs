@@ -5,13 +5,13 @@
 
 use mc_common::logger::{create_app_logger, log, o};
 
-use clap::Parser;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_fog_test_client::{
     config::TestClientConfig,
     error::TestClientError,
     test_client::{TestClient, TestClientPolicy},
 };
+use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
 use mc_util_parse::{load_css_file, CssSignature};
 use serde::Serialize;

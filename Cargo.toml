@@ -124,6 +124,7 @@ members = [
     "util/build/grpc",
     "util/build/script",
     "util/build/sgx",
+    "util/cli",
     "util/encodings",
     "util/ffi",
     "util/from-random",

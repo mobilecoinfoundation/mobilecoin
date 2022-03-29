@@ -2,13 +2,13 @@
 #![deny(missing_docs)]
 
 //! MobileCoin Fog View target
-use clap::Parser;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_attest_net::{Client, RaClient};
 use mc_common::{logger::log, time::SystemTimeProvider};
 use mc_fog_sql_recovery_db::SqlRecoveryDb;
 use mc_fog_view_enclave::{SgxViewEnclave, ENCLAVE_FILE};
 use mc_fog_view_server::{config::MobileAcctViewConfig, server::ViewServer};
+use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
 use std::{env, sync::Arc};
 

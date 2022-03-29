@@ -46,6 +46,7 @@ mc-account-keys = { path = "../../../account-keys" }
 mc-api = { path = "../../../api" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
+mc-util-cli = { path = "../../../util/cli" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-keyfile = { path = "../../../util/keyfile" }
 mc-util-parse = { path = "../../../util/parse" }
