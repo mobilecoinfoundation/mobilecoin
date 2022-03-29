@@ -258,10 +258,10 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         root_elements.sort();
         root_elements.dedup();
 
-        if !transactions_with_proofs.is_empty() {
-            if root_elements.len() != 1 || root_elements[0] != *root_element {
-                return Err(Error::InvalidLocalMembershipProof);
-            }
+        if !transactions_with_proofs.is_empty()
+            && (root_elements.len() != 1 || root_elements[0] != *root_element)
+        {
+            return Err(Error::InvalidLocalMembershipProof);
         }
 
         let mut key_images: Vec<KeyImage> = Vec::new();
