@@ -320,6 +320,11 @@ mod client_api_tests {
         (client, server)
     }
 
+    // A note about `#[serial(counters)]`: some of the tests here rely on
+    // manipulating and observing the value of the global prometheus counters.
+    // Since the client API calls that are being tested also manipulate them, the
+    // tests have to be serialized so that they do not interfere with eachother.
+
     #[test_with_logger]
     #[serial(counters)]
     fn test_client_tx_propose_ok(logger: Logger) {
@@ -677,6 +682,7 @@ mod client_api_tests {
     }
 
     #[test_with_logger]
+    #[serial(counters)]
     fn test_propose_mint_config_tx_ok(logger: Logger) {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
         let consensus_enclave = MockConsensusEnclave::new();
@@ -740,6 +746,7 @@ mod client_api_tests {
     }
 
     #[test_with_logger]
+    #[serial(counters)]
     // Should return NonceAlreadyUsed if the tx contains a nonce that is already
     // used.
     fn test_propose_mint_config_tx_duplicate_nonce(logger: Logger) {
@@ -804,6 +811,7 @@ mod client_api_tests {
     }
 
     #[test_with_logger]
+    #[serial(counters)]
     // Should return RpcStatus Unavailable if the node is not serving.
     fn test_propose_mint_config_tx_not_serving(logger: Logger) {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
@@ -912,6 +920,7 @@ mod client_api_tests {
     }
 
     #[test_with_logger]
+    #[serial(counters)]
     fn test_propose_mint_config_tx_unauthenticated(logger: Logger) {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
         let tx = create_mint_config_tx(TokenId::from(5), &mut rng);
@@ -964,6 +973,7 @@ mod client_api_tests {
     }
 
     #[test_with_logger]
+    #[serial(counters)]
     fn test_propose_mint_tx_ok(logger: Logger) {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
         let consensus_enclave = MockConsensusEnclave::new();
@@ -1032,6 +1042,7 @@ mod client_api_tests {
     }
 
     #[test_with_logger]
+    #[serial(counters)]
     // Should return NonceAlreadyUsed if the tx contains a nonce that is already
     // used.
     fn test_propose_mint_tx_duplicate_nonce(logger: Logger) {
@@ -1101,6 +1112,7 @@ mod client_api_tests {
     }
 
     #[test_with_logger]
+    #[serial(counters)]
     // Should return RpcStatus Unavailable if the node is not serving.
     fn test_propose_mint_tx_not_serving(logger: Logger) {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
@@ -1219,6 +1231,7 @@ mod client_api_tests {
     }
 
     #[test_with_logger]
+    #[serial(counters)]
     fn test_propose_mint_tx_unauthenticated(logger: Logger) {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
         let tx = create_mint_tx(
