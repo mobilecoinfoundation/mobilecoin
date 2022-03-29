@@ -330,6 +330,7 @@ mod tests {
     use mc_util_from_random::FromRandom;
     use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri, ConsensusPeerUri};
     use rand::{rngs::StdRng, SeedableRng};
+    use serial_test::serial;
     use std::{
         collections::BTreeSet,
         convert::TryInto,
@@ -411,6 +412,7 @@ mod tests {
     }
 
     #[test_with_logger]
+    #[serial(counters)]
     fn test_is_behind(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([216u8; 32]);
 
@@ -479,6 +481,7 @@ mod tests {
     // Initially, ByzantineLedger should emit the normal SCPStatements from
     // single-slot consensus.
     #[test_with_logger]
+    #[serial(counters)]
     fn test_single_slot_consensus(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([209u8; 32]);
 
@@ -837,6 +840,7 @@ mod tests {
     // ByzantineLedger should emit the normal SCPStatements from
     // single-slot consensus that contains mint txs.
     #[test_with_logger]
+    #[serial(counters)]
     fn test_single_slot_consensus_on_mint_txs(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([209u8; 32]);
 
