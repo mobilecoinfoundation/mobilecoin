@@ -20,6 +20,12 @@ pub enum Error {
 
     /// Invalid signature: {0}
     Signature(String),
+
+    /// IO Error: {0}
+    IO(String, std::io::ErrorKind),
+
+    /// {0}
+    Other(String),
 }
 
 impl std::error::Error for Error {}
