@@ -291,7 +291,7 @@ mod tests {
     use tempfile::tempdir;
 
     #[test_with_logger]
-    fn test_sync_block(logger: Logger) {
+    fn test_sync_block_happy_flow(logger: Logger) {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(22);
@@ -454,5 +454,118 @@ mod tests {
                 ]),
             }
         );
+    }
+
+    // Attempting to skip a block when syncing should fail.
+    #[test_with_logger]
+    fn test_sync_block_refuses_skipping_a_block(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+
+        let mint_audit_db_path = tempdir().unwrap();
+        let mint_audit_db = MintAuditorDb::create_or_open(&mint_audit_db_path, logger).unwrap();
+
+        let mut ledger_db = create_ledger();
+        let account_key = AccountKey::random(&mut rng);
+        let initial_num_blocks = 3;
+        initialize_ledger(
+            BlockVersion::MAX,
+            &mut ledger_db,
+            initial_num_blocks,
+            &account_key,
+            &mut rng,
+        );
+
+        // Sync the first block, this should succeed.
+        let block_data = ledger_db.get_block_data(0).unwrap();
+        mint_audit_db
+            .sync_block(block_data.block(), block_data.contents())
+            .unwrap();
+
+        // Syncing the third block should fail since we haven't synced the second block.
+        let block_data = ledger_db.get_block_data(2).unwrap();
+        match mint_audit_db.sync_block(block_data.block(), block_data.contents()) {
+            Err(Error::UnexpectedBlockIndex(2, 1)) => {
+                // Expected
+            }
+            err @ _ => {
+                panic!("Unexpected result: {:?}", err);
+            }
+        }
+    }
+
+    // Attempting to sync the same block twice should fail.
+    #[test_with_logger]
+    fn test_sync_block_refuses_same_block(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+
+        let mint_audit_db_path = tempdir().unwrap();
+        let mint_audit_db = MintAuditorDb::create_or_open(&mint_audit_db_path, logger).unwrap();
+
+        let mut ledger_db = create_ledger();
+        let account_key = AccountKey::random(&mut rng);
+        let initial_num_blocks = 3;
+        initialize_ledger(
+            BlockVersion::MAX,
+            &mut ledger_db,
+            initial_num_blocks,
+            &account_key,
+            &mut rng,
+        );
+
+        // Sync the first block, this should succeed.
+        let block_data = ledger_db.get_block_data(0).unwrap();
+        mint_audit_db
+            .sync_block(block_data.block(), block_data.contents())
+            .unwrap();
+
+        // Syncing it again should fail.
+        match mint_audit_db.sync_block(block_data.block(), block_data.contents()) {
+            Err(Error::UnexpectedBlockIndex(0, 1)) => {
+                // Expected
+            }
+            err @ _ => {
+                panic!("Unexpected result: {:?}", err);
+            }
+        }
+    }
+
+    // Attempting to sync an old block should fail.
+    #[test_with_logger]
+    fn test_sync_block_refuses_going_backwards(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+
+        let mint_audit_db_path = tempdir().unwrap();
+        let mint_audit_db = MintAuditorDb::create_or_open(&mint_audit_db_path, logger).unwrap();
+
+        let mut ledger_db = create_ledger();
+        let account_key = AccountKey::random(&mut rng);
+        let initial_num_blocks = 3;
+        initialize_ledger(
+            BlockVersion::MAX,
+            &mut ledger_db,
+            initial_num_blocks,
+            &account_key,
+            &mut rng,
+        );
+
+        for block_index in 0..initial_num_blocks {
+            let block_data = ledger_db.get_block_data(block_index).unwrap();
+
+            let mint_audit_data = mint_audit_db
+                .sync_block(block_data.block(), block_data.contents())
+                .unwrap();
+
+            assert_eq!(mint_audit_data, BlockAuditData::default());
+        }
+        // Syncing the first block should fail since we already synced it.
+        let block_data = ledger_db.get_block_data(0).unwrap();
+        match mint_audit_db.sync_block(block_data.block(), block_data.contents()) {
+            Err(Error::UnexpectedBlockIndex(0, 3)) => {
+                // Expected
+            }
+            err @ _ => {
+                panic!("Unexpected result: {:?}", err);
+            }
+        }
     }
 }
