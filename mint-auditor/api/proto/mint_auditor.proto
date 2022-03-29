@@ -1,0 +1,31 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+// MUST BE KEPT IN SYNC WITH RUST CODE!
+
+// Mint auditor client data types and service descriptors.
+
+syntax = "proto3";
+
+package mint_auditor_api;
+
+
+option java_package = "com.mobilecoin.mint_auditor";
+option java_outer_classname = "MintAuditorAPI";
+
+service MintAuditorApi {
+    rpc GetBlockAuditData(GetBlockAuditDataRequest) returns (GetBlockAuditDataResponse) {}
+}
+
+message BlockAuditData {
+    // Current balance in circulation (excluding MOB).
+    map<uint32, uint64> balance = 1;
+}
+
+message GetBlockAuditDataRequest {
+    // The block index we are getting data for.
+    uint64 block_index = 1;
+}
+
+message GetBlockAuditDataResponse {
+    BlockAuditData block_audit_data = 1;
+}

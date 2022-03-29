@@ -100,6 +100,7 @@ members = [
     "ledger/sync",
     "libmobilecoin",
     "mint-auditor",
+    "mint-auditor/api",
     "mobilecoind",
     "mobilecoind-json",
     "mobilecoind/api",

@@ -4610,6 +4610,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-mint-auditor-api"
+version = "1.3.0-pre0"
+dependencies = [
+ "cargo-emit",
+ "grpcio",
+ "mc-util-build-grpc",
+ "mc-util-build-script",
+ "mc-util-serial",
+ "protobuf",
+]
+
+[[package]]
 name = "mc-mobilecoind"
 version = "1.3.0-pre0"
 dependencies = [
