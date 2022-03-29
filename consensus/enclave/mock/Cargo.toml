@@ -5,8 +5,8 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
-mc-attest-core = { path = "../../../attest/core" }
 mc-account-keys = { path = "../../../account-keys" }
+mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
 mc-common = { path = "../../../common" }
 mc-consensus-enclave-api = { path = "../api" }
