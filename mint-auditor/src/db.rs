@@ -158,7 +158,7 @@ impl MintAuditorDb {
         let mut db_txn = self.env.begin_rw_txn()?;
 
         let block_index = block.index;
-        log::debug!(self.logger, "Syncing block {}", block_index);
+        log::info!(self.logger, "Syncing block {}", block_index);
 
         // Ensure that we are syncing the next block and haven't skipped any blocks (or
         // went backwards).
