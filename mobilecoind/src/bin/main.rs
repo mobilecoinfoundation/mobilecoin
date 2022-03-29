@@ -34,7 +34,7 @@ fn main() {
 
     let _tracer = if !telemetry_enabled {
         Some(mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
-            .expect("Failed setting telemetry tracer"));
+            .expect("Failed setting telemetry tracer"))
     } else {
         None
     };
