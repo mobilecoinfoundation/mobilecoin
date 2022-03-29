@@ -352,7 +352,7 @@ mod client_api_tests {
     // manipulating and observing the value of the global prometheus counters.
     // Since the client API calls that are being tested also manipulate them, the
     // tests have to be serialized so that they do not interfere with eachother.
-  
+
     #[test_with_logger]
     #[serial(counters)]
     fn test_client_tx_propose_ok(logger: Logger) {
@@ -749,6 +749,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
@@ -818,6 +819,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
@@ -868,6 +870,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
@@ -920,6 +923,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
@@ -981,6 +985,7 @@ mod client_api_tests {
         );
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
@@ -1040,6 +1045,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
@@ -1119,6 +1125,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
@@ -1174,6 +1181,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
@@ -1231,6 +1239,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
@@ -1297,6 +1306,7 @@ mod client_api_tests {
         );
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
