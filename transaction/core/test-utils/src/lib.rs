@@ -45,7 +45,7 @@ pub fn create_ledger() -> LedgerDB {
 pub struct InverseTxOutputsOrdering;
 
 impl TxOutputsOrdering for InverseTxOutputsOrdering {
-    fn cmp(&self, a: &CompressedRistrettoPublic, b: &CompressedRistrettoPublic) -> Ordering {
+    fn cmp(a: &CompressedRistrettoPublic, b: &CompressedRistrettoPublic) -> Ordering {
         b.cmp(a)
     }
 }
@@ -109,7 +109,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
     tombstone_block: BlockIndex,
     rng: &mut R,
 ) -> Tx {
-    create_transaction_with_amount_and_comparer(
+    create_transaction_with_amount_and_comparer::<L, R, DefaultTxOutputsOrdering>(
         block_version,
         ledger,
         tx_out,
@@ -119,7 +119,6 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
         fee,
         tombstone_block,
         rng,
-        DefaultTxOutputsOrdering,
     )
 }
 
@@ -147,7 +146,6 @@ pub fn create_transaction_with_amount_and_comparer<
     fee: u64,
     tombstone_block: BlockIndex,
     rng: &mut R,
-    outputs_ordering: O,
 ) -> Tx {
     let mut transaction_builder = TransactionBuilder::new(
         block_version,
@@ -205,9 +203,7 @@ pub fn create_transaction_with_amount_and_comparer<
     transaction_builder.set_fee(fee).unwrap();
 
     // Build and return the transaction
-    transaction_builder
-        .build_with_sorter(rng, &outputs_ordering)
-        .unwrap()
+    transaction_builder.build_with_sorter::<R, O>(rng).unwrap()
 }
 
 /// Populates the LedgerDB with initial data.

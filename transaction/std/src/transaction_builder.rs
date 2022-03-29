@@ -27,14 +27,14 @@ use std::cmp::Ordering;
 /// A trait used to compare the transaction outputs
 pub trait TxOutputsOrdering {
     /// comparer method
-    fn cmp(&self, a: &CompressedRistrettoPublic, b: &CompressedRistrettoPublic) -> Ordering;
+    fn cmp(a: &CompressedRistrettoPublic, b: &CompressedRistrettoPublic) -> Ordering;
 }
 
 /// Default implementation for transaction outputs
 pub struct DefaultTxOutputsOrdering;
 
 impl TxOutputsOrdering for DefaultTxOutputsOrdering {
-    fn cmp(&self, a: &CompressedRistrettoPublic, b: &CompressedRistrettoPublic) -> Ordering {
+    fn cmp(a: &CompressedRistrettoPublic, b: &CompressedRistrettoPublic) -> Ordering {
         a.cmp(b)
     }
 }
@@ -321,7 +321,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 
     /// Consume the builder and return the transaction.
     pub fn build<RNG: CryptoRng + RngCore>(self, rng: &mut RNG) -> Result<Tx, TxBuilderError> {
-        self.build_with_comparer_internal(rng, &DefaultTxOutputsOrdering)
+        self.build_with_comparer_internal::<RNG, DefaultTxOutputsOrdering>(rng)
     }
 
     /// Consume the builder and return the transaction with a comparer.
@@ -330,9 +330,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     pub fn build_with_sorter<RNG: CryptoRng + RngCore, O: TxOutputsOrdering>(
         self,
         rng: &mut RNG,
-        tx_out_ordering: &O,
     ) -> Result<Tx, TxBuilderError> {
-        self.build_with_comparer_internal(rng, tx_out_ordering)
+        self.build_with_comparer_internal::<RNG, O>(rng)
     }
 
     /// Consume the builder and return the transaction with a comparer
@@ -340,7 +339,6 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     fn build_with_comparer_internal<RNG: CryptoRng + RngCore, O: TxOutputsOrdering>(
         mut self,
         rng: &mut RNG,
-        tx_out_ordering: &O,
     ) -> Result<Tx, TxBuilderError> {
         // Note: Origin block has block version zero, so some clients like slam that
         // start with a bootstrapped ledger will target block version 0. However,
@@ -397,7 +395,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .collect();
 
         self.outputs_and_shared_secrets
-            .sort_by(|(a, _), (b, _)| tx_out_ordering.cmp(&a.public_key, &b.public_key));
+            .sort_by(|(a, _), (b, _)| O::cmp(&a.public_key, &b.public_key));
 
         let output_values_and_blindings: Vec<(u64, Scalar)> = self
             .outputs_and_shared_secrets

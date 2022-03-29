@@ -568,11 +568,10 @@ mod tests {
         amount: u64,
         fee: u64,
     ) -> (Tx, LedgerDB) {
-        create_test_tx_with_amount_and_comparer(
+        create_test_tx_with_amount_and_comparer::<DefaultTxOutputsOrdering>(
             block_version,
             amount,
             fee,
-            DefaultTxOutputsOrdering,
         )
     }
 
@@ -580,7 +579,6 @@ mod tests {
         block_version: BlockVersion,
         amount: u64,
         fee: u64,
-        outputs_ordering: O,
     ) -> (Tx, LedgerDB) {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let sender = AccountKey::random(&mut rng);
@@ -599,7 +597,7 @@ mod tests {
         let tx_out = block_contents.outputs[0].clone();
 
         let recipient = AccountKey::random(&mut rng);
-        let tx = create_transaction_with_amount_and_comparer(
+        let tx = create_transaction_with_amount_and_comparer::<_, _, O>(
             adapt_hack(&block_version),
             &mut ledger,
             &tx_out,
@@ -609,7 +607,6 @@ mod tests {
             fee,
             n_blocks + 1,
             &mut rng,
-            outputs_ordering,
         );
 
         (adapt_hack(&tx), ledger)
@@ -1301,13 +1298,12 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let fee = Mob::MINIMUM_FEE + 1;
         for block_version in BlockVersion::iterator() {
-            let (tx, _ledger) = create_test_tx_with_amount_and_comparer(
+            // for block version < 3 it doesn't matter
+            // for >= 3 it shall return an error about unsorted outputs
+            let (tx, _ledger) = create_test_tx_with_amount_and_comparer::<InverseTxOutputsOrdering>(
                 block_version,
                 INITIALIZE_LEDGER_AMOUNT - fee,
                 fee,
-                // for block version < 3 it doesn't matter
-                // for >= 3 it shall return an error about unsorted outputs
-                InverseTxOutputsOrdering,
             );
 
             let highest_indices = tx.get_membership_proof_highest_indices();
