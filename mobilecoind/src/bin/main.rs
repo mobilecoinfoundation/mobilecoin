@@ -27,8 +27,14 @@ fn main() {
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
-    let _tracer = mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
-        .expect("Failed setting telemetry tracer");
+    // Telemetry is disabled if MC_TELEMETRY is set to "0"
+    let telemetry_disabled = std::env::var("MC_TELEMETRY")
+        .map(|val| val == "0")
+        .unwrap_or(false);
+    if !telemetry_disabled {
+        let _tracer = mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
+            .expect("Failed setting telemetry tracer");
+    }
 
     let mut mr_signer_verifier =
         MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
