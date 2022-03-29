@@ -46,7 +46,7 @@ pub struct InverseTxOutputsOrdering;
 
 impl TxOutputsOrdering for InverseTxOutputsOrdering {
     fn cmp(&self, a: &CompressedRistrettoPublic, b: &CompressedRistrettoPublic) -> Ordering {
-        b.cmp(&a)
+        b.cmp(a)
     }
 }
 
