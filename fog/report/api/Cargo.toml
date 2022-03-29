@@ -7,7 +7,7 @@ links = "mc-fog-report-api"
 
 [dependencies]
 futures = "0.3"
-grpcio = "0.10.0"
+grpcio = "0.10.1"
 protobuf = "2.22.1"
 
 mc-api = { path = "../../../api" }

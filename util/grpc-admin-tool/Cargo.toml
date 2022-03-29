@@ -14,4 +14,4 @@ mc-util-grpc = { path = "../grpc" }
 mc-util-uri = { path = "../uri" }
 
 clap = { version = "3.1", features = ["derive", "env"] }
-grpcio = "0.10.0"
+grpcio = "0.10.1"

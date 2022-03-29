@@ -32,7 +32,7 @@ mc-util-uri = { path = "../../../util/uri" }
 clap = { version = "3.1", features = ["derive", "env"] }
 displaydoc = "0.2"
 futures = "0.3"
-grpcio = "0.10.0"
+grpcio = "0.10.1"
 pem = "1.0"
 prost = "0.9"
 serde = { version = "1.0", features = ["derive"] }

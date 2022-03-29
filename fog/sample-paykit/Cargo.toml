@@ -50,7 +50,7 @@ mc-fog-view-protocol = { path = "../view/protocol" }
 clap = { version = "3.1", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.10.0"
+grpcio = "0.10.1"
 link-cplusplus = "1.0" # This is needed to support building on darwin which only has libc++ and not libstdc++
 protobuf = "2.22.1"
 rand = "0.8"
