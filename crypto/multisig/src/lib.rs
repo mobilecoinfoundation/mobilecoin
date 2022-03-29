@@ -147,7 +147,7 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
         for signature in signatures.iter() {
             let matched_signer = potential_signers.iter().find_map(|signer| {
                 signer
-                    .verify(message, signature)
+                    .verify_strict(message, signature)
                     .ok()
                     .map(|_| signer.clone())
             });
