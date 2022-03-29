@@ -4,6 +4,7 @@
 
 use crate::{
     api::grpc_error::ConsensusGrpcError,
+    config::Config,
     consensus_service::ProposeTxCallback,
     counters,
     mint_tx_manager::MintTxManager,
@@ -31,6 +32,7 @@ const PENDING_LIMIT: i64 = 500;
 
 #[derive(Clone)]
 pub struct ClientApiService {
+    config: Config,
     enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
     tx_manager: Arc<dyn TxManager + Send + Sync>,
     mint_tx_manager: Arc<dyn MintTxManager + Send + Sync>,
@@ -45,6 +47,7 @@ pub struct ClientApiService {
 
 impl ClientApiService {
     pub fn new(
+        config: Config,
         enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
         scp_client_value_sender: ProposeTxCallback,
         ledger: Arc<dyn Ledger + Send + Sync>,
@@ -55,6 +58,7 @@ impl ClientApiService {
         logger: Logger,
     ) -> Self {
         Self {
+            config,
             enclave,
             tx_manager,
             mint_tx_manager,
@@ -188,14 +192,7 @@ impl ConsensusClientApi for ClientApiService {
         result = result.and_then(|mut response| {
             let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
             response.set_block_count(num_blocks);
-
-            // This is okay because it is invalid to start consensus without an origin block
-            // anyways
-            let block = self
-                .ledger
-                .get_block(num_blocks - 1)
-                .map_err(ConsensusGrpcError::from)?;
-            response.set_block_version(block.version);
+            response.set_block_version(*self.config.block_version);
             Ok(response)
         });
 
@@ -229,14 +226,7 @@ impl ConsensusClientApi for ClientApiService {
         result = result.and_then(|mut response| {
             let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
             response.set_block_count(num_blocks);
-
-            // This is okay because it is invalid to start consensus without an origin block
-            // anyways
-            let block = self
-                .ledger
-                .get_block(num_blocks - 1)
-                .map_err(ConsensusGrpcError::from)?;
-            response.set_block_version(block.version);
+            response.set_block_version(*self.config.block_version);
             Ok(response)
         });
 
@@ -270,14 +260,7 @@ impl ConsensusClientApi for ClientApiService {
         result = result.and_then(|mut response| {
             let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
             response.set_block_count(num_blocks);
-
-            // This is okay because it is invalid to start consensus without an origin block
-            // anyways
-            let block = self
-                .ledger
-                .get_block(num_blocks - 1)
-                .map_err(ConsensusGrpcError::from)?;
-            response.set_block_version(block.version);
+            response.set_block_version(*self.config.block_version);
             Ok(response)
         });
 
