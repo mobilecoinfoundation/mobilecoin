@@ -24,6 +24,7 @@ mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-ledger-db = { path = "../../../ledger/db" }
 mc-sgx-report-cache-untrusted = { path = "../../../sgx/report-cache/untrusted" }
 mc-transaction-core = { path = "../../../transaction/core" }
+mc-util-cli = { path = "../../../util/cli" }
 mc-util-encodings = { path = "../../../util/encodings" }
 mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-grpc = { path = "../../../util/grpc" }
@@ -46,7 +47,7 @@ mc-fog-uri = { path = "../../uri" }
 clap = { version = "3.1", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.10.0"
+grpcio = "0.10.1"
 hex = "0.4"
 lazy_static = "1.4"
 rand = "0.8"

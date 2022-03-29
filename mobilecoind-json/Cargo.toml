@@ -15,7 +15,7 @@ mc-mobilecoind-api = { path = "../mobilecoind/api" }
 mc-util-grpc = { path = "../util/grpc" }
 
 clap = { version = "3.1", features = ["derive", "env"] }
-grpcio = "0.10.0"
+grpcio = "0.10.1"
 hex = "0.4"
 protobuf = "2.22.1"
 rocket = { version = "0.4.10", default-features = false }

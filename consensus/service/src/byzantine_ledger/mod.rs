@@ -341,7 +341,7 @@ mod tests {
     };
 
     // Run these tests with a particular block version
-    const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
+    const BLOCK_VERSION: BlockVersion = BlockVersion::ZERO;
 
     fn test_peer_uri(node_id: u32, pubkey: String) -> PeerUri {
         PeerUri::from_str(&format!(

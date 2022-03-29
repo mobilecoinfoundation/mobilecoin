@@ -2,11 +2,11 @@
 
 //! Main Method for the Fog Report Server
 
-use clap::Parser;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_common::{logger, sentry};
 use mc_fog_report_server::{Config, Materials, Server};
 use mc_fog_sql_recovery_db::SqlRecoveryDb;
+use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
 use std::{convert::TryFrom, env, sync::Arc};
 

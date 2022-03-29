@@ -38,7 +38,7 @@ pub fn validate<R: RngCore + CryptoRng>(
     minimum_fee: u64,
     csprng: &mut R,
 ) -> TransactionValidationResult<()> {
-    if block_version < BlockVersion::ONE || BlockVersion::MAX < block_version {
+    if BlockVersion::MAX < block_version {
         return Err(TransactionValidationError::Ledger(format!(
             "Invalid block version: {}",
             block_version
@@ -510,9 +510,10 @@ mod tests {
     use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes};
     use mc_ledger_db::{Ledger, LedgerDB};
     use mc_transaction_core_test_utils::{
-        create_ledger, create_transaction, create_transaction_with_amount, initialize_ledger,
-        AccountKey, INITIALIZE_LEDGER_AMOUNT,
+        create_ledger, create_transaction, create_transaction_with_amount_and_comparer,
+        initialize_ledger, AccountKey, InverseTxOutputsOrdering, INITIALIZE_LEDGER_AMOUNT,
     };
+    use mc_transaction_std::{DefaultTxOutputsOrdering, TxOutputsOrdering};
     use rand::{rngs::StdRng, SeedableRng};
     use serde::{de::DeserializeOwned, ser::Serialize};
 
@@ -567,6 +568,18 @@ mod tests {
         amount: u64,
         fee: u64,
     ) -> (Tx, LedgerDB) {
+        create_test_tx_with_amount_and_comparer::<DefaultTxOutputsOrdering>(
+            block_version,
+            amount,
+            fee,
+        )
+    }
+
+    fn create_test_tx_with_amount_and_comparer<O: TxOutputsOrdering>(
+        block_version: BlockVersion,
+        amount: u64,
+        fee: u64,
+    ) -> (Tx, LedgerDB) {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let sender = AccountKey::random(&mut rng);
         let mut ledger = create_ledger();
@@ -584,7 +597,7 @@ mod tests {
         let tx_out = block_contents.outputs[0].clone();
 
         let recipient = AccountKey::random(&mut rng);
-        let tx = create_transaction_with_amount(
+        let tx = create_transaction_with_amount_and_comparer::<_, _, O>(
             adapt_hack(&block_version),
             &mut ledger,
             &tx_out,
@@ -602,7 +615,7 @@ mod tests {
     #[test]
     // Should return MissingMemo when memos are missing in any the outputs
     fn test_validate_memos_exist() {
-        let (tx, _) = create_test_tx(BlockVersion::ONE);
+        let (tx, _) = create_test_tx(BlockVersion::ZERO);
 
         assert!(tx.prefix.outputs.first().unwrap().e_memo.is_none());
         assert_eq!(
@@ -610,7 +623,7 @@ mod tests {
             Err(TransactionValidationError::MissingMemo)
         );
 
-        let (tx, _) = create_test_tx(BlockVersion::TWO);
+        let (tx, _) = create_test_tx(BlockVersion::ONE);
 
         assert!(tx.prefix.outputs.first().unwrap().e_memo.is_some());
         assert_eq!(validate_memos_exist(&tx), Ok(()));
@@ -619,12 +632,12 @@ mod tests {
     #[test]
     // Should return MemosNotAllowed when memos are present in any of the outputs
     fn test_validate_no_memos_exist() {
-        let (tx, _) = create_test_tx(BlockVersion::ONE);
+        let (tx, _) = create_test_tx(BlockVersion::ZERO);
 
         assert!(tx.prefix.outputs.first().unwrap().e_memo.is_none());
         assert_eq!(validate_no_memos_exist(&tx), Ok(()));
 
-        let (tx, _) = create_test_tx(BlockVersion::TWO);
+        let (tx, _) = create_test_tx(BlockVersion::ONE);
 
         assert!(tx.prefix.outputs.first().unwrap().e_memo.is_some());
         assert_eq!(
@@ -1117,11 +1130,11 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         for _ in 0..3 {
-            let (mut tx, _ledger) = create_test_tx(BlockVersion::THREE);
+            let (mut tx, _ledger) = create_test_tx(BlockVersion::TWO);
 
             tx.prefix.token_id = tx.prefix.token_id + 1;
 
-            match validate_signature(BlockVersion::THREE, &tx, &mut rng) {
+            match validate_signature(BlockVersion::TWO, &tx, &mut rng) {
                 Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
                 Err(e) => {
                     panic!("Unexpected error {}", e);
@@ -1132,34 +1145,32 @@ mod tests {
     }
 
     #[test]
-    // Should return InvalidTransactionSignature if block version 2 is validated as
-    // 3
-    fn test_transaction_signature_err_version_two_as_three() {
+    // Should return InvalidTransactionSignature if block v 1 is validated as 2
+    fn test_transaction_signature_err_version_one_as_two() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        for _ in 0..3 {
+            let (tx, _ledger) = create_test_tx(BlockVersion::ONE);
+
+            match validate_signature(BlockVersion::TWO, &tx, &mut rng) {
+                Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
+                Err(e) => {
+                    panic!("Unexpected error {}", e);
+                }
+                Ok(()) => panic!("Unexpected success"),
+            }
+        }
+    }
+
+    #[test]
+    // Should return InvalidTransactionSignature if block v 2 is validated as 1
+    fn test_transaction_signature_err_version_two_as_one() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         for _ in 0..3 {
             let (tx, _ledger) = create_test_tx(BlockVersion::TWO);
 
-            match validate_signature(BlockVersion::THREE, &tx, &mut rng) {
-                Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
-                Err(e) => {
-                    panic!("Unexpected error {}", e);
-                }
-                Ok(()) => panic!("Unexpected success"),
-            }
-        }
-    }
-
-    #[test]
-    // Should return InvalidTransactionSignature if block version 3 is validated as
-    // 2
-    fn test_transaction_signature_err_version_three_as_two() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-
-        for _ in 0..3 {
-            let (tx, _ledger) = create_test_tx(BlockVersion::THREE);
-
-            match validate_signature(BlockVersion::TWO, &tx, &mut rng) {
+            match validate_signature(BlockVersion::ONE, &tx, &mut rng) {
                 Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
                 Err(e) => {
                     panic!("Unexpected error {}", e);
@@ -1279,6 +1290,45 @@ mod tests {
                 validate_tombstone(current_block_index, tombstone_block_index),
                 Err(TransactionValidationError::TombstoneBlockTooFar)
             );
+        }
+    }
+
+    #[test]
+    fn test_global_validate_for_blocks_with_sorted_outputs() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let fee = Mob::MINIMUM_FEE + 1;
+        for block_version in BlockVersion::iterator() {
+            // for block version < 3 it doesn't matter
+            // for >= 3 it shall return an error about unsorted outputs
+            let (tx, _ledger) = create_test_tx_with_amount_and_comparer::<InverseTxOutputsOrdering>(
+                block_version,
+                INITIALIZE_LEDGER_AMOUNT - fee,
+                fee,
+            );
+
+            let highest_indices = tx.get_membership_proof_highest_indices();
+            let root_proofs: Vec<TxOutMembershipProof> = adapt_hack(
+                &_ledger
+                    .get_tx_out_proof_of_memberships(&highest_indices)
+                    .expect("failed getting proofs"),
+            );
+
+            let result = validate(
+                &tx,
+                tx.prefix.tombstone_block - 1,
+                block_version,
+                &root_proofs,
+                0,
+                &mut rng,
+            );
+
+            assert_eq!(
+                result,
+                match block_version.validate_transaction_outputs_are_sorted() {
+                    true => Err(TransactionValidationError::UnsortedOutputs),
+                    false => Ok(()),
+                }
+            )
         }
     }
 }

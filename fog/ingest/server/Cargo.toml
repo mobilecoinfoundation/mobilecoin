@@ -15,7 +15,7 @@ clap = { version = "3.1", features = ["derive", "env"] }
 dirs = "4.0"
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.10.0"
+grpcio = "0.10.1"
 hex = "0.4"
 itertools = "0.10"
 lazy_static = "1.4"
@@ -37,6 +37,7 @@ mc-ledger-db = { path = "../../../ledger/db" }
 mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
 mc-sgx-report-cache-untrusted = { path = "../../../sgx/report-cache/untrusted" }
 mc-transaction-core = { path = "../../../transaction/core" }
+mc-util-cli = { path = "../../../util/cli" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-metrics = { path = "../../../util/metrics" }
 mc-util-parse = { path = "../../../util/parse" }

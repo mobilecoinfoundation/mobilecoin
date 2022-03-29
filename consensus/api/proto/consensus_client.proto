@@ -48,6 +48,9 @@ message ProposeMintConfigTxResponse {
 
     /// The number of blocks in the ledger at the time the request was received.
     uint64 block_count = 2;
+
+    /// The block version which is in effect right now
+    uint32 block_version = 3;
 }
 
 /// Response from ProposeMintTx RPC call.
@@ -57,6 +60,9 @@ message ProposeMintTxResponse {
 
     /// The number of blocks in the ledger at the time the request was received.
     uint64 block_count = 2;
+
+    /// The block version which is in effect right now
+    uint32 block_version = 3;
 }
 
 service ConsensusClientAPI {

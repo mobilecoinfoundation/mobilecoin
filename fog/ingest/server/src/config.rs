@@ -15,6 +15,7 @@ use std::{path::PathBuf, time::Duration};
 
 /// Command-line configuration options for an Ingest Server
 #[derive(Clone, Serialize, Parser)]
+#[clap(version)]
 pub struct IngestConfig {
     /// The IAS SPID to use when getting a quote
     #[clap(long, env = "MC_IAS_SPID")]

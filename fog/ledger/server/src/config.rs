@@ -15,6 +15,7 @@ use std::{path::PathBuf, time::Duration};
 
 /// Configuration parameters for the ledger server
 #[derive(Clone, Parser, Serialize)]
+#[clap(version)]
 pub struct LedgerServerConfig {
     /// gRPC listening URI for client requests.
     #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
