@@ -28,12 +28,15 @@ fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
     // Telemetry is disabled if MC_TELEMETRY is set to "0"
-    let telemetry_disabled = std::env::var("MC_TELEMETRY")
+    let telemetry_enabled = !std::env::var("MC_TELEMETRY")
         .map(|val| val == "0")
         .unwrap_or(false);
-    if !telemetry_disabled {
-        let _tracer = mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
-            .expect("Failed setting telemetry tracer");
+
+    let _tracer = if !telemetry_enabled {
+        let _tracer = Some(mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
+            .expect("Failed setting telemetry tracer"));
+    } else {
+        None
     }
 
     let mut mr_signer_verifier =
