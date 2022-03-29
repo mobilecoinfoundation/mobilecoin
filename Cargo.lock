@@ -2953,6 +2953,7 @@ dependencies = [
 name = "mc-consensus-enclave-mock"
 version = "1.3.0-pre0"
 dependencies = [
+ "mc-account-keys",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",
@@ -2961,6 +2962,7 @@ dependencies = [
  "mc-crypto-rand",
  "mc-sgx-report-cache-api",
  "mc-transaction-core",
+ "mc-transaction-core-test-utils",
  "mc-util-from-random",
  "mc-util-serial",
  "mockall",
