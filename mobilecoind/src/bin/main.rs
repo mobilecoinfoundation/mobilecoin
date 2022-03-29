@@ -33,11 +33,11 @@ fn main() {
         .unwrap_or(false);
 
     let _tracer = if !telemetry_enabled {
-        let _tracer = Some(mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
+        Some(mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
             .expect("Failed setting telemetry tracer"));
     } else {
         None
-    }
+    };
 
     let mut mr_signer_verifier =
         MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
