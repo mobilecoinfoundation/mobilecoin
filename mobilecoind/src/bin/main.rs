@@ -11,6 +11,7 @@ use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransa
 use mc_mobilecoind::{
     config::Config, database::Database, payments::TransactionsManager, service::Service,
 };
+use mc_util_telemetry::setup_default_tracer;
 use mc_watcher::{watcher::WatcherSyncThread, watcher_db::create_or_open_rw_watcher_db};
 use std::{
     path::Path,
@@ -33,8 +34,7 @@ fn main() {
         .unwrap_or(false);
 
     let _tracer = if !telemetry_enabled {
-        Some(mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
-            .expect("Failed setting telemetry tracer"))
+        Some(setup_default_tracer(env!("CARGO_PKG_NAME")).expect("Failed setting telemetry tracer"))
     } else {
         None
     };
