@@ -153,7 +153,6 @@ mod client_api_tests {
         counters,
         tx_manager::{MockTxManager, TxManagerError},
     };
-    use clap::Parser;
     use grpcio::{
         ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
     };
@@ -177,6 +176,7 @@ mod client_api_tests {
     use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator};
     use serial_test_derive::serial;
     use std::{sync::Arc, time::Duration};
+    use structopt::StructOpt;
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server(instance: ClientApiService) -> (ConsensusClientApiClient, Server) {
@@ -196,7 +196,7 @@ mod client_api_tests {
 
     /// Get a dummy config object
     fn get_config() -> Config {
-        Config::try_parse_from(&[
+        Config::from_iter(&[
             "foo",
             "--peer-responder-id=localhost:8081",
             "--client-responder-id=localhost:3223",
@@ -210,7 +210,6 @@ mod client_api_tests {
             "--ias-spid=22222222222222222222222222222222",
             "--ias-api-key=asdf",
         ])
-        .unwrap()
     }
 
     #[test_with_logger]
