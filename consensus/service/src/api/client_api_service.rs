@@ -4,6 +4,7 @@
 
 use crate::{
     api::grpc_error::ConsensusGrpcError,
+    config::Config,
     consensus_service::ProposeTxCallback,
     counters,
     tx_manager::{TxManager, TxManagerError},
@@ -28,6 +29,7 @@ const PENDING_LIMIT: i64 = 500;
 
 #[derive(Clone)]
 pub struct ClientApiService {
+    config: Config,
     enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
     tx_manager: Arc<dyn TxManager + Send + Sync>,
     ledger: Arc<dyn Ledger + Send + Sync>,
@@ -41,6 +43,7 @@ pub struct ClientApiService {
 
 impl ClientApiService {
     pub fn new(
+        config: Config,
         enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
         scp_client_value_sender: ProposeTxCallback,
         ledger: Arc<dyn Ledger + Send + Sync>,
@@ -50,6 +53,7 @@ impl ClientApiService {
         logger: Logger,
     ) -> Self {
         Self {
+            config,
             enclave,
             tx_manager,
             ledger,
@@ -131,6 +135,7 @@ impl ConsensusClientApi for ClientApiService {
         result = result.and_then(|mut response| {
             let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
             response.set_block_count(num_blocks);
+            response.set_block_version(*self.config.block_version);
             Ok(response)
         });
 
@@ -144,6 +149,7 @@ impl ConsensusClientApi for ClientApiService {
 mod client_api_tests {
     use crate::{
         api::client_api_service::{ClientApiService, PENDING_LIMIT},
+        config::Config,
         counters,
         tx_manager::{MockTxManager, TxManagerError},
     };
@@ -170,6 +176,7 @@ mod client_api_tests {
     use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator};
     use serial_test_derive::serial;
     use std::{sync::Arc, time::Duration};
+    use structopt::StructOpt;
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server(instance: ClientApiService) -> (ConsensusClientApiClient, Server) {
@@ -185,6 +192,24 @@ mod client_api_tests {
         let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
         let client = ConsensusClientApiClient::new(ch);
         (client, server)
+    }
+
+    /// Get a dummy config object
+    fn get_config() -> Config {
+        Config::from_iter(&[
+            "foo",
+            "--peer-responder-id=localhost:8081",
+            "--client-responder-id=localhost:3223",
+            "--msg-signer-key=MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo",
+            "--network=network.toml",
+            "--peer-listen-uri=insecure-mcp://0.0.0.0:8081/",
+            "--client-listen-uri=insecure-mc://0.0.0.0:3223/",
+            "--admin-listen-uri=insecure-mca://0.0.0.0:9090/",
+            "--sealed-block-signing-key=/tmp/key",
+            "--ledger-path=/tmp/ledger",
+            "--ias-spid=22222222222222222222222222222222",
+            "--ias-api-key=asdf",
+        ])
     }
 
     #[test_with_logger]
@@ -231,6 +256,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
@@ -301,6 +327,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
@@ -365,6 +392,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
@@ -411,6 +439,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(enclave),
             scp_client_value_sender,
             Arc::new(MockLedger::new()),
@@ -459,6 +488,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(enclave),
             scp_client_value_sender,
             Arc::new(MockLedger::new()),
@@ -511,6 +541,7 @@ mod client_api_tests {
         );
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(enclave),
             scp_client_value_sender,
             Arc::new(MockLedger::new()),
