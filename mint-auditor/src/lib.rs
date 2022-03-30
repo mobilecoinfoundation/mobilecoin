@@ -2,6 +2,8 @@
 
 //! A utility for keeping track of token minting and burning.
 
+#![deny(missing_docs)]
+
 mod convert;
 mod db;
 mod error;

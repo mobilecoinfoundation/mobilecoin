@@ -53,7 +53,7 @@ pub struct BlockAuditData {
     pub balance_map: BTreeMap<u32, u64>,
 }
 
-// Mint Auditor Database.
+/// Mint Auditor Database.
 #[derive(Clone)]
 pub struct MintAuditorDb {
     /// LMDB Environment (database).
@@ -71,6 +71,7 @@ pub struct MintAuditorDb {
 }
 
 impl MintAuditorDb {
+    /// Opens a database previously created by `create`.
     pub fn open(path: &impl AsRef<Path>, logger: Logger) -> Result<Self, Error> {
         let env = Arc::new(
             Environment::new()
@@ -104,6 +105,7 @@ impl MintAuditorDb {
         })
     }
 
+    /// Create an empty database.
     pub fn create(path: &impl AsRef<Path>) -> Result<(), Error> {
         let env = Arc::new(
             Environment::new()
@@ -124,6 +126,7 @@ impl MintAuditorDb {
         Ok(())
     }
 
+    /// Open an existing database, or create one if it does not already exist.
     pub fn create_or_open(path: &impl AsRef<Path>, logger: Logger) -> Result<Self, Error> {
         if !path.as_ref().exists() {
             std::fs::create_dir_all(path)?;
@@ -142,16 +145,19 @@ impl MintAuditorDb {
         Self::open(path, logger)
     }
 
+    /// Get the last synced block index, or None if no blocks were synced.
     pub fn last_synced_block_index(&self) -> Result<Option<u64>, Error> {
         let db_txn = self.env.begin_ro_txn()?;
         self.last_synced_block_index_impl(&db_txn)
     }
 
+    /// Get the audit data for a given block index.
     pub fn get_block_audit_data(&self, block_index: BlockIndex) -> Result<BlockAuditData, Error> {
         let db_txn = self.env.begin_ro_txn()?;
         self.get_block_audit_data_impl(block_index, &db_txn)
     }
 
+    /// Sync mint data from a given block.
     pub fn sync_block(
         &self,
         block: &Block,
