@@ -15,6 +15,9 @@ pub enum Error {
     /// LMDB: {0}
     Lmdb(lmdb::Error),
 
+    /// Not found
+    NotFound,
+
     /// Metadata store: {0}
     MetadataStore(MetadataStoreError),
 
@@ -33,7 +36,10 @@ pub enum Error {
 
 impl From<lmdb::Error> for Error {
     fn from(err: lmdb::Error) -> Self {
-        Self::Lmdb(err)
+        match err {
+            lmdb::Error::NotFound => Self::NotFound,
+            err @ _ => Self::Lmdb(err),
+        }
     }
 }
 

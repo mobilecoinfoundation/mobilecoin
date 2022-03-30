@@ -6,11 +6,11 @@
 
 syntax = "proto3";
 
-package mint_auditor_api;
+package mint_auditor;
 
 
 option java_package = "com.mobilecoin.mint_auditor";
-option java_outer_classname = "MintAuditorAPI";
+option java_outer_classname = "MintAuditor";
 
 service MintAuditorApi {
     rpc GetBlockAuditData(GetBlockAuditDataRequest) returns (GetBlockAuditDataResponse) {}
@@ -18,7 +18,7 @@ service MintAuditorApi {
 
 message BlockAuditData {
     // Current balance in circulation (excluding MOB).
-    map<uint32, uint64> balance = 1;
+    map<uint32, uint64> balance_map = 1;
 }
 
 message GetBlockAuditDataRequest {
