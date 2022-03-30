@@ -47,7 +47,6 @@ structopt = "0.3"
 toml = "0.5"
 url = "2.2"
 
-
 [dev-dependencies]
 mc-account-keys = { path = "../account-keys" }
 mc-common = { path = "../common", features = ["loggers"] }

@@ -7,19 +7,31 @@ links = "mc-ledger-streaming-api"
 build = "build.rs"
 edition = "2018"
 
+[features]
+test_utils = []
+
 [dependencies]
 mc-api = { path = "../../../api" }
+mc-attest-core = { path = "../../../attest/core" }
 mc-common = { path = "../../../common" }
 mc-consensus-scp = { path = "../../../consensus/scp" }
+mc-crypto-digestible = { path = "../../../crypto/digestible", features = ["dalek", "derive"] }
+mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-transaction-core = { path = "../../../transaction/core" }
 
-displaydoc = { version = "0.2", default-features = false }
-futures = { version = "0.3.21" }
-grpcio = { version = "0.10.0" }
-protobuf = "2.22.1"
+displaydoc = "0.2"
+futures = "0.3"
+grpcio = "0.10"
+protobuf = "2.22"
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../../util/build/grpc" }
 mc-util-build-script = { path = "../../../util/build/script" }
 
-cargo-emit = "0.2.1"
+cargo-emit = "0.2"
+
+[dev-dependencies]
+mc-util-from-random = { path = "../../../util/from-random" }
+
+rand_core = "0.6"
+rand_hc = "0.3"
