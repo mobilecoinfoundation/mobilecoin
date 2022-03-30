@@ -249,9 +249,9 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
             )?;
 
             for proof in proofs {
-                let root_element = compute_implied_merkle_root(proof)
+                let implied_root = compute_implied_merkle_root(proof)
                     .map_err(|_e| TransactionValidationError::InvalidLedgerContext)?;
-                root_elements.push(root_element);
+                root_elements.push(implied_root);
             }
         }
 
