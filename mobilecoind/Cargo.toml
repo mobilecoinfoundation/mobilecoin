@@ -54,7 +54,7 @@ grpcio = "0.10.1"
 hex_fmt = "0.3"
 lmdb-rkv = "0.14.0"
 num_cpus = "1.13"
-prost = { version = "0.9", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
 protobuf = "2.22.1"
 rand = "0.8"
 rayon = "1.5"
