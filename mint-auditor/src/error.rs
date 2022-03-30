@@ -38,7 +38,7 @@ impl From<lmdb::Error> for Error {
     fn from(err: lmdb::Error) -> Self {
         match err {
             lmdb::Error::NotFound => Self::NotFound,
-            err @ _ => Self::Lmdb(err),
+            err => Self::Lmdb(err),
         }
     }
 }

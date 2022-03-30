@@ -27,6 +27,7 @@ impl MetadataStoreSettings for WatcherDbMetadataStoreSettings {
     // introduced. If this is properly maintained, we could check during
     // db opening for any incompatibilities, and either refuse to open or
     // perform a migration.
+    #[allow(clippy::inconsistent_digit_grouping)]
     const LATEST_VERSION: u64 = 2022_03_28;
 
     /// The current crate version that manages the database.
@@ -258,7 +259,7 @@ impl MintAuditorDb {
             self.mint_audit_data_by_block_index,
             &u64_to_key_bytes(block_index),
         )?;
-        Ok(decode(&bytes)?)
+        Ok(decode(bytes)?)
     }
 
     fn last_synced_block_index_impl(

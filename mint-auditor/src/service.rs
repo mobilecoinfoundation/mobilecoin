@@ -58,7 +58,7 @@ impl MintAuditorApi for MintAuditorService {
                         req.get_block_index()
                     ),
                 ),
-                err @ _ => RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()),
+                err => RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()),
             })
             .map(|block_audit_data| {
                 let mut resp = GetBlockAuditDataResponse::new();
@@ -114,7 +114,7 @@ impl MintAuditorApi for MintAuditorService {
                         last_synced_block_index
                     ),
                 ),
-                err @ _ => RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()),
+                err => RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()),
             })
             .map(|block_audit_data| {
                 let mut resp = GetLastBlockAuditDataResponse::new();

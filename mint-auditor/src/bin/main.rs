@@ -10,7 +10,7 @@ use mc_mint_auditor::{Error, MintAuditorDb, MintAuditorService};
 use mc_mint_auditor_api::MintAuditorUri;
 use mc_util_grpc::{BuildInfoService, ConnectionUriGrpcioServer, HealthService};
 use mc_util_parse::parse_duration_in_seconds;
-use std::{path::PathBuf, sync::Arc, thread::sleep, time::Duration};
+use std::{cmp::Ordering, path::PathBuf, sync::Arc, thread::sleep, time::Duration};
 
 /// Clap configuration for each subcommand this program supports.
 #[derive(Clone, Subcommand)]
@@ -216,7 +216,7 @@ fn cmd_rpc_server(
     log::info!(logger, "Entering loop");
     loop {
         if let Some(ref ledger_db) = ledger_db {
-            sync_loop(&mint_auditor_db, &ledger_db, &logger).expect("sync_loop failed");
+            sync_loop(&mint_auditor_db, ledger_db, &logger).expect("sync_loop failed");
         }
 
         sleep(poll_interval);
@@ -238,17 +238,22 @@ fn sync_loop(
             .map(|block_index| block_index + 1)
             .unwrap_or(0);
 
-        if num_blocks_synced == num_blocks_in_ledger {
-            // Nothing more to sync.
-            break;
-        } else if num_blocks_synced > num_blocks_in_ledger {
-            log::error!(logger, "Somehow synced more blocks ({}) than what is in the ledger ({}) - this should never happen.", num_blocks_synced, num_blocks_in_ledger);
-            break;
-        }
+        match num_blocks_synced.cmp(&num_blocks_in_ledger) {
+            Ordering::Equal => {
+                // Nothing more to sync.
+                break;
+            }
+            Ordering::Greater => {
+                log::error!(logger, "Somehow synced more blocks ({}) than what is in the ledger ({}) - this should never happen.", num_blocks_synced, num_blocks_in_ledger);
+                break;
+            }
 
-        // Sync the next block.
-        let block_data = ledger_db.get_block_data(num_blocks_synced)?;
-        mint_auditor_db.sync_block(block_data.block(), block_data.contents())?;
+            Ordering::Less => {
+                // Sync the next block.
+                let block_data = ledger_db.get_block_data(num_blocks_synced)?;
+                mint_auditor_db.sync_block(block_data.block(), block_data.contents())?;
+            }
+        };
     }
 
     Ok(())
