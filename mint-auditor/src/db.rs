@@ -10,6 +10,7 @@ use mc_ledger_db::{key_bytes_to_u64, u64_to_key_bytes};
 use mc_transaction_core::{Block, BlockContents, BlockIndex};
 use mc_util_lmdb::{MetadataStore, MetadataStoreSettings};
 use mc_util_serial::{decode, encode, Message};
+use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::Path, sync::Arc};
 
 /// Max LMDB file size.
@@ -44,7 +45,7 @@ pub const MINT_AUDIT_DATA_BY_BLOCK_INDEX_DB_NAME: &str =
 pub const LAST_SYNCED_BLOCK_INDEX: &str = "last_synced_block_index";
 
 /// Mint audit data that we store per block.
-#[derive(Message, Eq, PartialEq)]
+#[derive(Deserialize, Eq, Message, PartialEq, Serialize)]
 pub struct BlockAuditData {
     /// A map of token id -> calculated balance.
     #[prost(btree_map = "uint32, uint64", tag = 1)]
