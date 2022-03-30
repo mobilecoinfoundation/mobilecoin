@@ -2480,7 +2480,7 @@ dependencies = [
  "mc-util-test-helper",
  "mc-util-test-vector",
  "mc-util-test-with-data",
- "prost 0.10.0",
+ "prost",
  "rand 0.8.5",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
@@ -2586,7 +2586,7 @@ dependencies = [
  "mc-util-test-with-data",
  "mc-watcher-api",
  "pem",
- "prost 0.10.0",
+ "prost",
  "protobuf",
  "rand 0.8.5",
  "rand_core 0.6.3",
@@ -2611,7 +2611,7 @@ dependencies = [
  "mc-util-build-sgx",
  "mc-util-encodings",
  "mc-util-from-random",
- "prost 0.10.0",
+ "prost",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
  "serde",
@@ -2659,7 +2659,7 @@ dependencies = [
  "mc-util-encodings",
  "mc-util-serial",
  "pem",
- "prost 0.10.0",
+ "prost",
  "rand 0.8.5",
  "rand_hc 0.3.1",
  "rjson",
@@ -2709,7 +2709,7 @@ dependencies = [
  "mc-attest-core",
  "mc-sgx-compat",
  "mc-sgx-types",
- "prost 0.10.0",
+ "prost",
 ]
 
 [[package]]
@@ -2921,7 +2921,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-serial",
  "once_cell",
- "prost 0.10.0",
+ "prost",
  "rand 0.8.5",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
@@ -3228,7 +3228,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-serial",
- "prost 0.10.0",
+ "prost",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
  "serde",
@@ -3341,7 +3341,7 @@ dependencies = [
  "mc-util-serial",
  "mc-util-test-helper",
  "mc-watcher-api",
- "prost 0.10.0",
+ "prost",
  "protobuf",
 ]
 
@@ -3614,7 +3614,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "mc-util-test-helper",
- "prost 0.10.0",
+ "prost",
  "rand_core 0.6.3",
  "serde",
 ]
@@ -3939,7 +3939,7 @@ dependencies = [
  "mc-fog-report-types",
  "mc-util-build-grpc",
  "mc-util-build-script",
- "prost 0.10.0",
+ "prost",
  "protobuf",
 ]
 
@@ -3948,7 +3948,7 @@ name = "mc-fog-report-api-test-utils"
 version = "1.3.0-pre0"
 dependencies = [
  "mc-util-serial",
- "prost 0.9.0",
+ "prost",
  "protobuf",
 ]
 
@@ -4017,7 +4017,7 @@ dependencies = [
  "mc-util-parse",
  "mc-util-uri",
  "pem",
- "prost 0.10.0",
+ "prost",
  "rand 0.8.5",
  "serde",
  "serde_json",
@@ -4033,7 +4033,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "mc-attest-core",
  "mc-crypto-digestible",
- "prost 0.10.0",
+ "prost",
  "serde",
 ]
 
@@ -4179,7 +4179,7 @@ dependencies = [
  "mc-util-repr-bytes",
  "mc-util-test-helper",
  "pem",
- "prost 0.10.0",
+ "prost",
  "r2d2",
  "rand 0.8.5",
  "rand_core 0.6.3",
@@ -4266,7 +4266,7 @@ dependencies = [
  "mc-util-test-vector",
  "mc-util-test-with-data",
  "mc-watcher-api",
- "prost 0.10.0",
+ "prost",
  "serde",
 ]
 
@@ -4506,7 +4506,7 @@ dependencies = [
  "mc-util-serial",
  "mc-util-telemetry",
  "mockall",
- "prost 0.10.0",
+ "prost",
  "rand 0.8.5",
  "rand_core 0.6.3",
  "tempdir",
@@ -4639,7 +4639,7 @@ dependencies = [
  "more-asserts",
  "num_cpus",
  "pem",
- "prost 0.10.0",
+ "prost",
  "protobuf",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
@@ -4893,7 +4893,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "mc-common",
  "mc-sgx-build",
- "prost 0.9.0",
+ "prost",
 ]
 
 [[package]]
@@ -4915,7 +4915,7 @@ dependencies = [
  "mc-sgx-build",
  "mc-sgx-slog",
  "mc-sgx-types",
- "prost 0.9.0",
+ "prost",
 ]
 
 [[package]]
@@ -5017,7 +5017,7 @@ dependencies = [
  "mc-util-test-helper",
  "merlin",
  "proptest",
- "prost 0.10.0",
+ "prost",
  "rand 0.8.5",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
@@ -5062,7 +5062,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-serial",
  "mc-util-test-helper",
- "prost 0.10.0",
+ "prost",
  "rand 0.8.5",
  "rand_core 0.6.3",
  "sha2 0.10.2",
@@ -5273,7 +5273,7 @@ dependencies = [
  "displaydoc",
  "lmdb-rkv",
  "mc-util-serial",
- "prost 0.10.0",
+ "prost",
 ]
 
 [[package]]
@@ -5319,7 +5319,7 @@ name = "mc-util-repr-bytes"
 version = "1.3.0-pre0"
 dependencies = [
  "generic-array 0.14.5",
- "prost 0.10.0",
+ "prost",
  "serde",
  "serde_cbor",
 ]
@@ -5341,7 +5341,7 @@ dependencies = [
 name = "mc-util-serial"
 version = "1.3.0-pre0"
 dependencies = [
- "prost 0.9.0",
+ "prost",
  "serde",
  "serde_cbor",
 ]
@@ -5439,7 +5439,7 @@ dependencies = [
  "mc-util-test-helper",
  "mc-util-uri",
  "mc-watcher-api",
- "prost 0.10.0",
+ "prost",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
  "rayon",
@@ -6247,35 +6247,12 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "444879275cb4fd84958b1a1d5420d15e6fcf7c235fe47f053c9c2a80aceb6001"
-dependencies = [
- "bytes 1.1.0",
- "prost-derive 0.9.0",
-]
-
-[[package]]
-name = "prost"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1bd5316aa8f5c82add416dfbc25116b84b748a21153f512917e8143640a71bbd"
 dependencies = [
  "bytes 1.1.0",
- "prost-derive 0.10.0",
-]
-
-[[package]]
-name = "prost-derive"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9cc1a3263e07e0bf68e96268f37665207b49560d98739662cdfaae215c720fe"
-dependencies = [
- "anyhow",
- "itertools",
- "proc-macro2 1.0.36",
- "quote 1.0.16",
- "syn 1.0.90",
+ "prost-derive",
 ]
 
 [[package]]
