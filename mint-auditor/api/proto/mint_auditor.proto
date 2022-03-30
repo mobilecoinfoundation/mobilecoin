@@ -5,6 +5,7 @@
 // Mint auditor client data types and service descriptors.
 
 syntax = "proto3";
+import "google/protobuf/empty.proto";
 
 package mint_auditor;
 
@@ -14,6 +15,7 @@ option java_outer_classname = "MintAuditor";
 
 service MintAuditorApi {
     rpc GetBlockAuditData(GetBlockAuditDataRequest) returns (GetBlockAuditDataResponse) {}
+    rpc GetLastBlockAuditData(google.protobuf.Empty) returns (GetLastBlockAuditDataResponse) {}
 }
 
 message BlockAuditData {
@@ -27,5 +29,14 @@ message GetBlockAuditDataRequest {
 }
 
 message GetBlockAuditDataResponse {
+    // Audit data for the requested block
     BlockAuditData block_audit_data = 1;
+}
+
+message GetLastBlockAuditDataResponse {
+    // Audit data for the last block
+    BlockAuditData block_audit_data = 1;
+
+    // The last block index in the audit db
+    uint64 block_index = 2;
 }

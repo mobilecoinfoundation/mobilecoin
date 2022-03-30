@@ -6,7 +6,10 @@ use crate::{Error, MintAuditorDb};
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, Service, UnarySink};
 use mc_common::logger::Logger;
 use mc_mint_auditor_api::{
-    mint_auditor::{GetBlockAuditDataRequest, GetBlockAuditDataResponse},
+    empty::Empty,
+    mint_auditor::{
+        GetBlockAuditDataRequest, GetBlockAuditDataResponse, GetLastBlockAuditDataResponse,
+    },
     mint_auditor_grpc::{create_mint_auditor_api, MintAuditorApi},
 };
 use mc_util_grpc::{rpc_logger, send_result};
@@ -60,6 +63,63 @@ impl MintAuditorApi for MintAuditorService {
             .map(|block_audit_data| {
                 let mut resp = GetBlockAuditDataResponse::new();
                 resp.set_block_audit_data((&block_audit_data).into());
+                resp
+            });
+
+        send_result(ctx, sink, result, &logger);
+    }
+
+    fn get_last_block_audit_data(
+        &mut self,
+        ctx: RpcContext,
+        _req: Empty,
+        sink: UnarySink<GetLastBlockAuditDataResponse>,
+    ) {
+        let logger = rpc_logger(&ctx, &self.logger);
+
+        let last_synced_block_index = match self.mint_auditor_db.last_synced_block_index() {
+            Ok(Some(block_index)) => block_index,
+            Ok(None) => {
+                return send_result(
+                    ctx,
+                    sink,
+                    Err(RpcStatus::with_message(
+                        RpcStatusCode::NOT_FOUND,
+                        "No last synced block index".to_string(),
+                    )),
+                    &logger,
+                );
+            }
+            Err(err) => {
+                return send_result(
+                    ctx,
+                    sink,
+                    Err(RpcStatus::with_message(
+                        RpcStatusCode::INTERNAL,
+                        err.to_string(),
+                    )),
+                    &logger,
+                );
+            }
+        };
+
+        let result = self
+            .mint_auditor_db
+            .get_block_audit_data(last_synced_block_index)
+            .map_err(|err| match err {
+                Error::NotFound => RpcStatus::with_message(
+                    RpcStatusCode::NOT_FOUND,
+                    format!(
+                        "Block audit data not found for block index {}",
+                        last_synced_block_index
+                    ),
+                ),
+                err @ _ => RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()),
+            })
+            .map(|block_audit_data| {
+                let mut resp = GetLastBlockAuditDataResponse::new();
+                resp.set_block_audit_data((&block_audit_data).into());
+                resp.set_block_index(last_synced_block_index);
                 resp
             });
 
@@ -182,6 +242,27 @@ mod tests {
                     ..Default::default()
                 })
                 .into(),
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test_with_logger]
+    fn test_get_last_block_audit_data(logger: Logger) {
+        let mint_audit_db = get_test_db(&logger);
+        let (client, _server) = get_client_server(&mint_audit_db, &logger);
+
+        let response = client.get_last_block_audit_data(&Empty::default()).unwrap();
+
+        assert_eq!(
+            response,
+            GetLastBlockAuditDataResponse {
+                block_audit_data: Some(BlockAuditData {
+                    balance_map: HashMap::from_iter([(1, 101), (22, 2)]),
+                    ..Default::default()
+                })
+                .into(),
+                block_index: 1,
                 ..Default::default()
             }
         );
