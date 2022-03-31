@@ -27,6 +27,7 @@ mod tests {
     use super::*;
     use mc_util_serial::{decode, encode};
     use protobuf::Message;
+    use std::{collections::BTreeMap, iter::FromIterator};
 
     #[test]
     // BlockAuditData --> mc_mint_auditor_api::BlockAuditData --> BlockAuditData
