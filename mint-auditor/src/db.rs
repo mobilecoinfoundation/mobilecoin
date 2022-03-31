@@ -59,11 +59,11 @@ pub struct BlockAuditData {
 pub struct Counters {
     /// Number of blocks we've synced so far.
     #[prost(uint64, tag = 1)]
-    num_blocks_synced: u64,
+    pub num_blocks_synced: u64,
 
     // Number of times we've encountered a burn that exceeds the calculated balance.
     #[prost(uint64, tag = 2)]
-    num_burns_exceeding_balance: u64,
+    pub num_burns_exceeding_balance: u64,
 }
 
 /// Mint Auditor Database.

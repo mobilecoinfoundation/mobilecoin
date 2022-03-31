@@ -2,6 +2,8 @@
 
 //! A utility for keeping track of token minting and burning.
 
+mod counters;
+
 use clap::{Parser, Subcommand};
 use grpcio::{EnvBuilder, ServerBuilder};
 use mc_common::logger::{log, o, Logger};
@@ -252,9 +254,20 @@ fn sync_loop(
                 // Sync the next block.
                 let block_data = ledger_db.get_block_data(num_blocks_synced)?;
                 mint_auditor_db.sync_block(block_data.block(), block_data.contents())?;
+                update_counters(&mint_auditor_db)?;
             }
         };
     }
+
+    Ok(())
+}
+
+// Update prometheus counters.
+fn update_counters(mint_auditor_db: &MintAuditorDb) -> Result<(), Error> {
+    let counters = mint_auditor_db.get_counters()?;
+
+    counters::NUM_BLOCKS_SYNCED.set(counters.num_blocks_synced as i64);
+    counters::NUM_BURNS_EXCEEDING_BALANCE.set(counters.num_burns_exceeding_balance as i64);
 
     Ok(())
 }
