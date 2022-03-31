@@ -3,10 +3,12 @@
 //! LMDB database abstraction.
 
 use crate::Error;
-use lmdb::{Database, DatabaseFlags, Environment, EnvironmentFlags, Transaction, WriteFlags};
+use lmdb::{
+    Database, DatabaseFlags, Environment, EnvironmentFlags, RwTransaction, Transaction, WriteFlags,
+};
 use mc_account_keys::burn_address_view_private;
 use mc_common::logger::{log, Logger};
-use mc_ledger_db::{key_bytes_to_u64, u64_to_key_bytes};
+use mc_ledger_db::u64_to_key_bytes;
 use mc_transaction_core::{Block, BlockContents, BlockIndex};
 use mc_util_lmdb::{MetadataStore, MetadataStoreSettings};
 use mc_util_serial::{decode, encode, Message};
@@ -38,12 +40,12 @@ impl MetadataStoreSettings for WatcherDbMetadataStoreSettings {
 }
 
 /// LMDB database names.
-pub const COUNTS_DB_NAME: &str = "mint_auditor_db_counts";
+pub const KEY_VAL_DB_NAME: &str = "mint_auditor_db:key_val";
 pub const MINT_AUDIT_DATA_BY_BLOCK_INDEX_DB_NAME: &str =
     "mint_auditor_db:mint_audit_data_by_block_index";
 
-/// Keys used by the `counts` database.
-pub const LAST_SYNCED_BLOCK_INDEX: &str = "last_synced_block_index";
+/// Keys used by the `key_val` database.
+pub const COUNTERS_KEY: &str = "counters";
 
 /// Mint audit data that we store per block.
 #[derive(Deserialize, Eq, Message, PartialEq, Serialize)]
@@ -53,15 +55,22 @@ pub struct BlockAuditData {
     pub balance_map: BTreeMap<u32, u64>,
 }
 
+#[derive(Deserialize, Eq, Message, PartialEq, Serialize)]
+pub struct Counters {
+    /// Number of blocks we've synced so far.
+    #[prost(uint64, tag = 1)]
+    num_blocks_synced: u64,
+}
+
 /// Mint Auditor Database.
 #[derive(Clone)]
 pub struct MintAuditorDb {
     /// LMDB Environment (database).
     env: Arc<Environment>,
 
-    /// Aggregate counts.
-    /// * `LAST_SYNCED_BLOCK_INDEX`: The last block index that we've synced.
-    counts: Database,
+    /// General-purpose key-value store.
+    /// * `COUNTERS`: A serialized `Counters` object.
+    key_val: Database,
 
     /// block index -> BlockAuditData database.
     mint_audit_data_by_block_index: Database,
@@ -93,13 +102,13 @@ impl MintAuditorDb {
         );
         db_txn.commit()?;
 
-        let counts = env.open_db(Some(COUNTS_DB_NAME))?;
+        let key_val = env.open_db(Some(KEY_VAL_DB_NAME))?;
         let mint_audit_data_by_block_index =
             env.open_db(Some(MINT_AUDIT_DATA_BY_BLOCK_INDEX_DB_NAME))?;
 
         Ok(Self {
             env,
-            counts,
+            key_val,
             mint_audit_data_by_block_index,
             logger,
         })
@@ -118,7 +127,7 @@ impl MintAuditorDb {
 
         MetadataStore::<WatcherDbMetadataStoreSettings>::create(&env)?;
 
-        env.create_db(Some(COUNTS_DB_NAME), DatabaseFlags::empty())?;
+        env.create_db(Some(KEY_VAL_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(
             Some(MINT_AUDIT_DATA_BY_BLOCK_INDEX_DB_NAME),
             DatabaseFlags::DUP_SORT,
@@ -145,10 +154,18 @@ impl MintAuditorDb {
         Self::open(path, logger)
     }
 
+    /// Get all counters.
+    pub fn get_counters(&self) -> Result<Counters, Error> {
+        let db_txn = self.env.begin_ro_txn()?;
+        self.get_counters_impl(&db_txn)
+    }
+
     /// Get the last synced block index, or None if no blocks were synced.
     pub fn last_synced_block_index(&self) -> Result<Option<u64>, Error> {
-        let db_txn = self.env.begin_ro_txn()?;
-        self.last_synced_block_index_impl(&db_txn)
+        match self.get_counters()?.num_blocks_synced {
+            0 => Ok(None),
+            val => Ok(Some(val - 1)),
+        }
     }
 
     /// Get the audit data for a given block index.
@@ -168,12 +185,11 @@ impl MintAuditorDb {
         let block_index = block.index;
         log::info!(self.logger, "Syncing block {}", block_index);
 
+        let mut counters = self.get_counters_impl(&db_txn)?;
+
         // Ensure that we are syncing the next block and haven't skipped any blocks (or
         // went backwards).
-        let last_synced_block_index = self.last_synced_block_index_impl(&db_txn)?;
-        let next_block_index = last_synced_block_index
-            .map(|block_index| block_index + 1)
-            .unwrap_or(0);
+        let next_block_index = counters.num_blocks_synced;
         if block_index != next_block_index {
             return Err(Error::UnexpectedBlockIndex(block_index, next_block_index));
         }
@@ -243,12 +259,8 @@ impl MintAuditorDb {
             WriteFlags::NO_OVERWRITE,
         )?;
 
-        db_txn.put(
-            self.counts,
-            &LAST_SYNCED_BLOCK_INDEX,
-            &u64_to_key_bytes(block_index),
-            WriteFlags::empty(),
-        )?;
+        counters.num_blocks_synced += 1;
+        self.set_counters_impl(&counters, &mut db_txn)?;
 
         db_txn.commit()?;
 
@@ -268,15 +280,26 @@ impl MintAuditorDb {
         Ok(decode(bytes)?)
     }
 
-    fn last_synced_block_index_impl(
-        &self,
-        db_txn: &impl Transaction,
-    ) -> Result<Option<u64>, Error> {
-        match db_txn.get(self.counts, &LAST_SYNCED_BLOCK_INDEX) {
-            Ok(bytes) => Ok(Some(key_bytes_to_u64(bytes))),
-            Err(lmdb::Error::NotFound) => Ok(None),
+    fn get_counters_impl(&self, db_txn: &impl Transaction) -> Result<Counters, Error> {
+        match db_txn.get(self.key_val, &COUNTERS_KEY) {
+            Ok(bytes) => Ok(decode(bytes)?),
+            Err(lmdb::Error::NotFound) => Ok(Counters::default()),
             Err(err) => Err(err.into()),
         }
+    }
+
+    fn set_counters_impl<'env>(
+        &self,
+        counters: &Counters,
+        db_txn: &mut RwTransaction<'env>,
+    ) -> Result<(), Error> {
+        db_txn.put(
+            self.key_val,
+            &COUNTERS_KEY,
+            &encode(counters),
+            WriteFlags::empty(),
+        )?;
+        Ok(())
     }
 }
 
