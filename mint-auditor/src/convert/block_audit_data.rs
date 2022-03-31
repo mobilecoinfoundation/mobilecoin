@@ -3,16 +3,12 @@
 //! Convert to/from mc_mint_auditor_api::BlockAuditData.
 
 use crate::BlockAuditData;
-use std::{
-    collections::{BTreeMap, HashMap},
-    iter::FromIterator,
-};
 
 /// Convert BlockAuditData --> mc_mint_auditor_api::BlockAuditData
 impl From<&BlockAuditData> for mc_mint_auditor_api::BlockAuditData {
     fn from(src: &BlockAuditData) -> Self {
         let mut dst = mc_mint_auditor_api::BlockAuditData::new();
-        dst.set_balance_map(HashMap::from_iter(src.balance_map.clone().into_iter()));
+        dst.set_balance_map(src.balance_map.clone().into_iter().collect());
         dst
     }
 }
@@ -21,7 +17,7 @@ impl From<&BlockAuditData> for mc_mint_auditor_api::BlockAuditData {
 impl From<&mc_mint_auditor_api::BlockAuditData> for BlockAuditData {
     fn from(src: &mc_mint_auditor_api::BlockAuditData) -> Self {
         Self {
-            balance_map: BTreeMap::from_iter(src.get_balance_map().clone().into_iter()),
+            balance_map: src.get_balance_map().clone().into_iter().collect(),
         }
     }
 }
