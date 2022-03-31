@@ -3,13 +3,11 @@
 import argparse
 import os
 import subprocess
-import sys
 
-MOBILECOIN_PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
-# FIXME: Avoid modifying sys.path
-sys.path.append(os.path.join(MOBILECOIN_PROJECT_DIR, 'tools', 'local-network'))
 from local_network import *
 from local_fog import *
+
+MOBILECOIN_PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 
 class FogNetwork(Network):
     def build_binaries(self):
