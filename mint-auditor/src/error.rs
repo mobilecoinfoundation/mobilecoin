@@ -24,7 +24,7 @@ pub enum Error {
     /// IO: {0}
     Io(IoError),
 
-    /// Ledger db: {0}
+    /// Ledger DB: {0}
     LedgerDb(LedgerDbError),
 
     /// Decode: {0}
