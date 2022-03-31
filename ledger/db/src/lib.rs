@@ -204,10 +204,10 @@ impl Ledger for LedgerDB {
             &mut db_transaction,
         )?;
 
-        // Write MintConfigTxs included in the block.
-        self.mint_config_store.write_mint_config_txs(
+        // Write ValidatedMintConfigTxs included in the block.
+        self.mint_config_store.write_validated_mint_config_txs(
             block.index,
-            &block_contents.mint_config_txs,
+            &block_contents.validated_mint_config_txs,
             &mut db_transaction,
         )?;
 
@@ -682,7 +682,7 @@ impl LedgerDB {
         // - Blocks before minting was introduced always had outputs in them.
         // - Blocks that have MintTxs in them will also have the minted TxOuts in them.
         // - Blocks with only MintConfigTxs are allowed to not have outputs.
-        let has_mint_config_txs = !block_contents.mint_config_txs.is_empty();
+        let has_mint_config_txs = !block_contents.validated_mint_config_txs.is_empty();
         if block_contents.outputs.is_empty() && !has_mint_config_txs {
             return Err(Error::NoOutputs);
         }
@@ -696,8 +696,8 @@ impl LedgerDB {
         // Non-origin blocks must have key images, unless it has minting-related
         // transactions. When we have minting transactions it implies we might've not
         // spent any pre-existing outputs and as such we will not have key images.
-        let has_minting_txs =
-            !block_contents.mint_config_txs.is_empty() || !block_contents.mint_txs.is_empty();
+        let has_minting_txs = !block_contents.validated_mint_config_txs.is_empty()
+            || !block_contents.mint_txs.is_empty();
         if block.index != 0 && block_contents.key_images.is_empty() && !has_minting_txs {
             return Err(Error::NoKeyImages);
         }
@@ -741,10 +741,13 @@ impl LedgerDB {
         }
 
         // Check that none of the mint-config-tx nonces appear in the ledger.
-        for mint_config_tx in block_contents.mint_config_txs.iter() {
+        for validated_mint_config_tx in block_contents.validated_mint_config_txs.iter() {
             if self
                 .mint_config_store
-                .check_mint_config_tx_nonce(&mint_config_tx.prefix.nonce, db_transaction)?
+                .check_mint_config_tx_nonce(
+                    &validated_mint_config_tx.mint_config_tx.prefix.nonce,
+                    db_transaction,
+                )?
                 .is_some()
             {
                 return Err(Error::DuplicateMintConfigTx);
@@ -799,10 +802,10 @@ impl LedgerDB {
         let key_image_list: KeyImageList =
             decode(db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?)?;
 
-        // Get all MintConfigTxs in block.
-        let mint_config_txs = self
+        // Get all ValidatedMintConfigTxs in block.
+        let validated_mint_config_txs = self
             .mint_config_store
-            .get_mint_config_txs_by_block_index(block_number, db_transaction)?;
+            .get_validated_mint_config_txs_by_block_index(block_number, db_transaction)?;
 
         // Get all MintTxs in block.
         let mint_txs = self
@@ -813,7 +816,7 @@ impl LedgerDB {
         Ok(BlockContents {
             key_images: key_image_list.key_images,
             outputs,
-            mint_config_txs,
+            validated_mint_config_txs,
             mint_txs,
         })
     }

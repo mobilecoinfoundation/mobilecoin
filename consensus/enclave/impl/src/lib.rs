@@ -53,7 +53,9 @@ use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
-    mint::{validate_mint_config_tx, MintConfigTx, MintTx, MintValidationError},
+    mint::{
+        validate_mint_config_tx, MintConfigTx, MintTx, MintValidationError, ValidatedMintConfigTx,
+    },
     ring_signature::{KeyImage, Scalar},
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
@@ -294,11 +296,13 @@ impl SgxConsensusEnclave {
     /// Validate a list of MintConfigTxs.
     fn validate_mint_config_txs(
         &self,
-        mint_config_txs: &[MintConfigTx],
+        mint_config_txs: Vec<MintConfigTx>,
         current_block_index: u64,
         config: &BlockchainConfig,
-    ) -> Result<()> {
+    ) -> Result<Vec<ValidatedMintConfigTx>> {
         let mut seen_nonces = BTreeSet::default();
+        let mut validated_txs = Vec::with_capacity(mint_config_txs.len());
+
         for tx in mint_config_txs {
             // Ensure all nonces are unique.
             if !seen_nonces.insert(tx.prefix.nonce.clone()) {
@@ -319,14 +323,19 @@ impl SgxConsensusEnclave {
 
             // Ensure transaction is valid.
             validate_mint_config_tx(
-                tx,
+                &tx,
                 current_block_index,
                 config.block_version,
                 &master_minters,
             )?;
+
+            validated_txs.push(ValidatedMintConfigTx {
+                mint_config_tx: tx,
+                signer_set: master_minters,
+            });
         }
 
-        Ok(())
+        Ok(validated_txs)
     }
 
     /// Validate a list of MintTxs.
@@ -749,15 +758,15 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         key_images.sort();
 
         // Get the list of MintConfigTxs included in the block.
-        self.validate_mint_config_txs(&inputs.mint_config_txs, parent_block.index + 1, config)?;
-        let mint_config_txs = inputs.mint_config_txs;
+        let validated_mint_config_txs =
+            self.validate_mint_config_txs(inputs.mint_config_txs, parent_block.index + 1, config)?;
 
         // We purposefully do not ..Default::default() here so that new block fields
         // show up as a compilation error until addressed.
         let block_contents = BlockContents {
             key_images,
             outputs,
-            mint_config_txs,
+            validated_mint_config_txs,
             mint_txs,
         };
         //
