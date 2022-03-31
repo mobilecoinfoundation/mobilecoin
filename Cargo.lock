@@ -769,7 +769,7 @@ version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94d4706de1b0fa5b132270cddffa8585166037822e260a944fe161acd137ca05"
 dependencies = [
- "time 0.3.5",
+ "time 0.3.9",
  "version_check 0.9.3",
 ]
 
@@ -2480,7 +2480,7 @@ dependencies = [
  "mc-util-test-helper",
  "mc-util-test-vector",
  "mc-util-test-with-data",
- "prost",
+ "prost 0.10.0",
  "rand 0.8.5",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
@@ -2586,7 +2586,7 @@ dependencies = [
  "mc-util-test-with-data",
  "mc-watcher-api",
  "pem",
- "prost",
+ "prost 0.10.0",
  "protobuf",
  "rand 0.8.5",
  "rand_core 0.6.3",
@@ -2611,7 +2611,7 @@ dependencies = [
  "mc-util-build-sgx",
  "mc-util-encodings",
  "mc-util-from-random",
- "prost",
+ "prost 0.10.0",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
  "serde",
@@ -2659,7 +2659,7 @@ dependencies = [
  "mc-util-encodings",
  "mc-util-serial",
  "pem",
- "prost",
+ "prost 0.10.0",
  "rand 0.8.5",
  "rand_hc 0.3.1",
  "rjson",
@@ -2709,7 +2709,7 @@ dependencies = [
  "mc-attest-core",
  "mc-sgx-compat",
  "mc-sgx-types",
- "prost",
+ "prost 0.10.0",
 ]
 
 [[package]]
@@ -2921,7 +2921,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-serial",
  "once_cell",
- "prost",
+ "prost 0.10.0",
  "rand 0.8.5",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
@@ -3230,7 +3230,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-serial",
- "prost",
+ "prost 0.10.0",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
  "serde",
@@ -3343,7 +3343,7 @@ dependencies = [
  "mc-util-serial",
  "mc-util-test-helper",
  "mc-watcher-api",
- "prost",
+ "prost 0.10.0",
  "protobuf",
 ]
 
@@ -3616,7 +3616,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "mc-util-test-helper",
- "prost",
+ "prost 0.10.0",
  "rand_core 0.6.3",
  "serde",
 ]
@@ -3942,7 +3942,7 @@ dependencies = [
  "mc-fog-report-types",
  "mc-util-build-grpc",
  "mc-util-build-script",
- "prost",
+ "prost 0.10.0",
  "protobuf",
 ]
 
@@ -3951,7 +3951,7 @@ name = "mc-fog-report-api-test-utils"
 version = "1.3.0-pre0"
 dependencies = [
  "mc-util-serial",
- "prost",
+ "prost 0.10.0",
  "protobuf",
 ]
 
@@ -4020,7 +4020,7 @@ dependencies = [
  "mc-util-parse",
  "mc-util-uri",
  "pem",
- "prost",
+ "prost 0.10.0",
  "rand 0.8.5",
  "serde",
  "serde_json",
@@ -4036,7 +4036,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "mc-attest-core",
  "mc-crypto-digestible",
- "prost",
+ "prost 0.10.0",
  "serde",
 ]
 
@@ -4182,7 +4182,7 @@ dependencies = [
  "mc-util-repr-bytes",
  "mc-util-test-helper",
  "pem",
- "prost",
+ "prost 0.10.0",
  "r2d2",
  "rand 0.8.5",
  "rand_core 0.6.3",
@@ -4269,7 +4269,7 @@ dependencies = [
  "mc-util-test-vector",
  "mc-util-test-with-data",
  "mc-watcher-api",
- "prost",
+ "prost 0.10.0",
  "serde",
 ]
 
@@ -4509,7 +4509,7 @@ dependencies = [
  "mc-util-serial",
  "mc-util-telemetry",
  "mockall",
- "prost",
+ "prost 0.10.0",
  "rand 0.8.5",
  "rand_core 0.6.3",
  "tempdir",
@@ -4611,7 +4611,7 @@ dependencies = [
  "mc-util-lmdb",
  "mc-util-parse",
  "mc-util-serial",
- "prost",
+ "prost 0.9.0",
  "protobuf",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
@@ -4685,7 +4685,7 @@ dependencies = [
  "more-asserts",
  "num_cpus",
  "pem",
- "prost",
+ "prost 0.10.0",
  "protobuf",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
@@ -4939,7 +4939,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "mc-common",
  "mc-sgx-build",
- "prost",
+ "prost 0.10.0",
 ]
 
 [[package]]
@@ -4961,7 +4961,7 @@ dependencies = [
  "mc-sgx-build",
  "mc-sgx-slog",
  "mc-sgx-types",
- "prost",
+ "prost 0.10.0",
 ]
 
 [[package]]
@@ -5063,7 +5063,7 @@ dependencies = [
  "mc-util-test-helper",
  "merlin",
  "proptest",
- "prost",
+ "prost 0.10.0",
  "rand 0.8.5",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
@@ -5108,7 +5108,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-serial",
  "mc-util-test-helper",
- "prost",
+ "prost 0.10.0",
  "rand 0.8.5",
  "rand_core 0.6.3",
  "sha2 0.10.2",
@@ -5319,7 +5319,7 @@ dependencies = [
  "displaydoc",
  "lmdb-rkv",
  "mc-util-serial",
- "prost",
+ "prost 0.10.0",
 ]
 
 [[package]]
@@ -5365,7 +5365,7 @@ name = "mc-util-repr-bytes"
 version = "1.3.0-pre0"
 dependencies = [
  "generic-array 0.14.5",
- "prost",
+ "prost 0.10.0",
  "serde",
  "serde_cbor",
 ]
@@ -5387,7 +5387,7 @@ dependencies = [
 name = "mc-util-serial"
 version = "1.3.0-pre0"
 dependencies = [
- "prost",
+ "prost 0.10.0",
  "serde",
  "serde_cbor",
 ]
@@ -5485,7 +5485,7 @@ dependencies = [
  "mc-util-test-helper",
  "mc-util-uri",
  "mc-watcher-api",
- "prost",
+ "prost 0.10.0",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
  "rayon",
@@ -5821,6 +5821,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19e64526ebdee182341572e50e9ad03965aa510cd94427a4549448f285e957a1"
 dependencies = [
  "hermit-abi",
+ "libc",
+]
+
+[[package]]
+name = "num_threads"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aba1801fb138d8e85e11d0fc70baf4fe1cdfffda7c6cd34a854905df588e5ed0"
+dependencies = [
  "libc",
 ]
 
@@ -6293,12 +6302,35 @@ dependencies = [
 
 [[package]]
 name = "prost"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "444879275cb4fd84958b1a1d5420d15e6fcf7c235fe47f053c9c2a80aceb6001"
+dependencies = [
+ "bytes 1.1.0",
+ "prost-derive 0.9.0",
+]
+
+[[package]]
+name = "prost"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1bd5316aa8f5c82add416dfbc25116b84b748a21153f512917e8143640a71bbd"
 dependencies = [
  "bytes 1.1.0",
- "prost-derive",
+ "prost-derive 0.10.0",
+]
+
+[[package]]
+name = "prost-derive"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9cc1a3263e07e0bf68e96268f37665207b49560d98739662cdfaae215c720fe"
+dependencies = [
+ "anyhow",
+ "itertools",
+ "proc-macro2 1.0.36",
+ "quote 1.0.17",
+ "syn 1.0.90",
 ]
 
 [[package]]
@@ -7166,7 +7198,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
- "time 0.3.5",
+ "time 0.3.9",
  "url 2.2.2",
  "uuid",
 ]
@@ -7462,14 +7494,14 @@ dependencies = [
 
 [[package]]
 name = "slog-json"
-version = "2.5.0"
+version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f7f7a952ce80fca9da17bf0a53895d11f8aa1ba063668ca53fc72e7869329e9"
+checksum = "3e1e53f61af1e3c8b852eef0a9dee29008f55d6dd63794f3f12cef786cf0f219"
 dependencies = [
- "chrono",
  "serde",
  "serde_json",
  "slog",
+ "time 0.3.9",
 ]
 
 [[package]]
@@ -7504,7 +7536,7 @@ dependencies = [
  "slog",
  "term",
  "thread_local",
- "time 0.3.5",
+ "time 0.3.9",
 ]
 
 [[package]]
@@ -7767,20 +7799,21 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.5"
+version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41effe7cfa8af36f439fac33861b66b049edc6f9a32331e2312660529c1c24ad"
+checksum = "c2702e08a7a860f005826c6815dcac101b19b5eb330c27fe4a5928fec1d20ddd"
 dependencies = [
- "itoa 0.4.8",
+ "itoa 1.0.1",
  "libc",
+ "num_threads",
  "time-macros",
 ]
 
 [[package]]
 name = "time-macros"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25eb0ca3468fc0acc11828786797f6ef9aa1555e4a211a60d64cc8e4d1be47d6"
+checksum = "42657b1a6f4d817cda8e7a0ace261fe0cc946cf3a80314390b22cc61ae080792"
 
 [[package]]
 name = "tiny-bip39"
