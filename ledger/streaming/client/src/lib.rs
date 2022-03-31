@@ -2,8 +2,9 @@
 
 //! Clients for the Ledger Streaming API.
 
-#![deny(missing_docs)]
+#![feature(generic_associated_types)]
 #![feature(type_alias_impl_trait)]
+#![deny(missing_docs)]
 
 mod backfill;
 mod grpc;

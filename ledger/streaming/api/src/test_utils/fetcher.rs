@@ -3,7 +3,7 @@
 //! Mock [BlockFetcher]
 
 use crate::{test_utils::make_components, BlockFetcher, BlockStreamComponents, Result};
-use futures::{Future, FutureExt, Stream, StreamExt};
+use futures::{Future, Stream, StreamExt};
 use mc_transaction_core::BlockIndex;
 use std::ops::Range;
 
@@ -32,20 +32,15 @@ impl MockFetcher {
 }
 
 impl BlockFetcher for MockFetcher {
-    type Single = impl Future<Output = Result<BlockStreamComponents>>;
-    type Multiple = impl Stream<Item = Result<BlockStreamComponents>>;
+    type Single<'s> = impl Future<Output = Result<BlockStreamComponents>> + 's;
+    type Multiple<'s> = impl Stream<Item = Result<BlockStreamComponents>> + 's;
 
-    fn fetch_single(&self, index: BlockIndex) -> Result<Self::Single> {
+    fn fetch_single(&self, index: BlockIndex) -> Self::Single<'_> {
         let result = self.results[index as usize].clone();
-        Ok(async { result })
+        async { result }
     }
 
-    fn fetch_range(&self, range: Range<BlockIndex>) -> Result<Self::Multiple> {
-        let streams = range
-            .map(|idx| self.fetch_single(idx).map(FutureExt::into_stream))
-            // Aggregate the results and propagate errors.
-            .collect::<Result<Vec<_>>>()?;
-        let result = futures::stream::iter(streams).flatten();
-        Ok(result)
+    fn fetch_range(&self, indexes: Range<BlockIndex>) -> Self::Multiple<'_> {
+        futures::stream::iter(indexes).then(move |idx| self.fetch_single(idx))
     }
 }
