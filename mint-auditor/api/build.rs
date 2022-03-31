@@ -12,8 +12,5 @@ fn main() {
         .expect("Invalid UTF-8 in proto dir");
     cargo_emit::pair!("PROTOS_PATH", "{}", proto_str);
 
-    mc_util_build_grpc::compile_protos_and_generate_mod_rs(
-        &[proto_str],
-        &["mint_auditor.proto"],
-    );
+    mc_util_build_grpc::compile_protos_and_generate_mod_rs(&[proto_str], &["mint_auditor.proto"]);
 }

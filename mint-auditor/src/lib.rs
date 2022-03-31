@@ -10,7 +10,7 @@ mod error;
 mod service;
 
 pub use crate::{
-  db::{BlockAuditData, MintAuditorDb},
-  error::Error,
-  service::MintAuditorService,
+    db::{BlockAuditData, MintAuditorDb},
+    error::Error,
+    service::MintAuditorService,
 };
