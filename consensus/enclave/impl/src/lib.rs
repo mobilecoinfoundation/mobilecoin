@@ -50,7 +50,7 @@ use mc_transaction_core::{
     ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Block, BlockContents, BlockSignature, TokenId,
+    Block, BlockContents, BlockSignature, BlockVersion, TokenId,
 };
 // Race here refers to, this is thread-safe, first-one-wins behavior, without
 // blocking
@@ -580,6 +580,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         );
 
         let fee_output = mint_output(
+            config.block_version,
             &fee_recipient,
             FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.as_bytes(),
             parent_block,
@@ -624,12 +625,14 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 /// the input parameters.
 ///
 /// # Arguments:
+/// * `block_version` - The current block version rules for outputs
 /// * `recipient` - The recipient of the output.
 /// * `domain_tag` - Domain separator for hashing the input parameters.
 /// * `parent_block` - The parent block.
 /// * `transactions` - The transactions that are included in the current block.
 /// * `amount` - Output amount.
 fn mint_output<T: Digestible>(
+    block_version: BlockVersion,
     recipient: &PublicAddress,
     domain_tag: &'static [u8],
     parent_block: &Block,
@@ -655,8 +658,13 @@ fn mint_output<T: Digestible>(
     };
 
     // Create a single TxOut
-    let output = TxOut::new(amount, recipient, &tx_private_key, Default::default())
+    let mut output = TxOut::new(amount, recipient, &tx_private_key, Default::default())
         .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?;
+
+    // The output must conform to block version rules
+    if !block_version.e_memo_feature_is_supported() {
+        output.e_memo = None;
+    }
 
     Ok(output)
 }
@@ -1038,6 +1046,15 @@ mod tests {
             let shared_secret = create_shared_secret(&fee_output_public_key, &view_secret_key);
             let (value, _blinding) = fee_output.amount.get_value(&shared_secret).unwrap();
             assert_eq!(value, total_fee);
+
+            // The outputs should all conform to block version rules
+            for output in block_contents.outputs.iter() {
+                if block_version.e_memo_feature_is_supported() {
+                    assert!(output.e_memo.is_some());
+                } else {
+                    assert!(output.e_memo.is_none());
+                }
+            }
         }
     }
 
