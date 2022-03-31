@@ -6,7 +6,7 @@ use clap::{Parser, Subcommand};
 use grpcio::{EnvBuilder, ServerBuilder};
 use mc_common::logger::{log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_mint_auditor::{Error, MintAuditorDb, MintAuditorService, counters};
+use mc_mint_auditor::{counters, Error, MintAuditorDb, MintAuditorService};
 use mc_mint_auditor_api::MintAuditorUri;
 use mc_util_grpc::{BuildInfoService, ConnectionUriGrpcioServer, HealthService};
 use mc_util_parse::parse_duration_in_seconds;
