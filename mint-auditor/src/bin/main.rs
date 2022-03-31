@@ -252,7 +252,7 @@ fn sync_loop(
                 // Sync the next block.
                 let block_data = ledger_db.get_block_data(num_blocks_synced)?;
                 mint_auditor_db.sync_block(block_data.block(), block_data.contents())?;
-                update_counters(&mint_auditor_db)?;
+                update_counters(mint_auditor_db)?;
             }
         };
     }
