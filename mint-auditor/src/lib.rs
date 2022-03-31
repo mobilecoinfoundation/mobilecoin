@@ -9,6 +9,8 @@ mod db;
 mod error;
 mod service;
 
-pub use db::{BlockAuditData, MintAuditorDb};
-pub use error::Error;
-pub use service::MintAuditorService;
+pub use crate::{
+  db::{BlockAuditData, MintAuditorDb},
+  error::Error,
+  service::MintAuditorService,
+};
