@@ -84,15 +84,13 @@ lazy_static! {
     // Yogseh Swami "Intel SGX Remote Attestation is not sufficient" discusses such issues in detail:
     // https://www.blackhat.com/docs/us-17/thursday/us-17-Swami-SGX-Remote-Attestation-Is-Not-Sufficient-wp.pdf
     //
-    // A simliar measure is in place for the trusted side fog-recovery-db-iface.
-    //
     // It is not clear that this is actually needed to prevent problems,
     // we just haven't done a detailed anaysis.
     //
     // If you do such an analysis and conclude it's safe, you could remove this and leave a code comment.
     // However, the cost of this is likely very low since the mutex is uncontended -- our real enclaves
     // only have one OMAP object, and its API is &mut, so the caller must wrap it in a mutex anyways,
-    // and this is unlikely to change.
+    // and this is unlikely to change anytime soon. (Maybe we will have parallel ORAM someday???)
     static ref OCALL_REENTRANCY_MUTEX: Mutex<()> = Mutex::new(());
 }
 
@@ -166,14 +164,11 @@ where
         } else {
             // eprintln!("count = {} > TREETOP_MAX_COUNT = {}, we must allocate in
             // untrusted", count, treetop_max_count);
-            unsafe {
-                allocate_oram_storage(
-                    count - treetop_max_count,
-                    DataSize::U64,
-                    MetaSize::U64 + ExtraMetaSize::U64,
-                    &mut allocation_id,
-                );
-            }
+            allocation_id = helpers::allocate_ocall(
+                count - treetop_max_count,
+                DataSize::U64,
+                MetaSize::U64 + ExtraMetaSize::U64,
+            );
             if allocation_id == 0 {
                 panic!("Untrusted could not allocate storage! count = {}, data_size = {}, meta_size + extra_meta_size = {}",
                        count - treetop_max_count,
@@ -223,7 +218,7 @@ where
             let _lk = OCALL_REENTRANCY_MUTEX
                 .lock()
                 .expect("could not lock our mutex");
-            unsafe { release_oram_storage(self.allocation_id) }
+            helpers::release_ocall(self.allocation_id);
         }
     }
 }
@@ -327,19 +322,6 @@ where
                         }
                     }
 
-                    // Check with trusted merkle root if this is the last treetop index
-                    if idx == first_treetop_index
-                        && !bool::from(
-                            self.trusted_merkle_roots[indices[idx] as usize]
-                                .ct_eq(&this_block_hash),
-                        )
-                    {
-                        panic!(
-                            "authentication failed, trusted merkle root {}",
-                            indices[idx]
-                        );
-                    }
-
                     // Store this hash for next round
                     last_hash = Some((indices[idx], this_block_hash));
 
@@ -351,6 +333,16 @@ where
                     dest_meta[idx].copy_from_slice(meta);
                 }
             }
+
+            // Check the last hash with the trusted merkle root storage
+            // This unwrap is valid because if first_treetop_index is zero, then we didn't
+            // enter this `if`
+            let (last_idx, last_hash) = last_hash.expect("should not be empty at this point");
+            assert!(
+                bool::from(self.trusted_merkle_roots[last_idx as usize].ct_eq(&last_hash)),
+                "authentication failed, trusted merkle root mismatch at {}",
+                last_idx
+            );
         }
     }
 
@@ -445,6 +437,8 @@ where
             }
 
             // The last one from the treetop goes in self.trusted_merkle_roots
+            // This unwrap is valid because if first_treetop_index is zero, then we didn't
+            // enter this `if`
             let (last_idx, last_hash) = last_hash.expect("should not be empty at this point");
             self.trusted_merkle_roots[last_idx as usize] = last_hash;
 
@@ -495,8 +489,38 @@ pub enum UntrustedStorageError {
     AllocationFailed,
 }
 
+// Helpers module contains wrappers that directly call to the unsafe ocalls.
+//
+// These shims exist partly so that we can more easily scope unsafe code, and
+// also so that we can swap them out for testing
+#[cfg(not(test))]
 mod helpers {
     use super::*;
+
+    // Helper for invoking the allocate OCALL safely
+    //
+    // Arguments:
+    // * count: The number of (data, metadata) pairs that untrusted must agree to
+    //   store
+    // * data_size: The size of a data segment
+    // * total_meta_size: The size of a meta segment
+    //
+    // Returns:
+    // * An id number for the allocation. This is zero if the allocation failed.
+    pub fn allocate_ocall(count: u64, data_size: u64, total_meta_size: u64) -> u64 {
+        let mut allocation_id = 0u64;
+        unsafe { allocate_oram_storage(count, data_size, total_meta_size, &mut allocation_id) }
+        allocation_id
+    }
+
+    // Helper for invoking the release OCALL safely
+    //
+    // Arguments:
+    // * id: The id of the allocation to release. Should not be zero or earlier
+    //   released.
+    pub fn release_ocall(id: u64) {
+        unsafe { release_oram_storage(id) }
+    }
 
     // Helper for invoking the checkout OCALL safely
     pub fn checkout_ocall<
@@ -549,6 +573,7 @@ mod helpers {
 }
 
 // This stuff must match edl file
+#[cfg(not(test))]
 extern "C" {
     fn allocate_oram_storage(count: u64, data_size: u64, meta_size: u64, id: *mut u64);
     fn release_oram_storage(id: u64);
@@ -570,4 +595,848 @@ extern "C" {
         metabuf: *const u64,
         metabuf_size: usize,
     );
+}
+
+// Test version of the helpers to make it easier to test what trusted side does
+// when untrusted memory is tampered with
+#[cfg(test)]
+mod helpers {
+    use super::*;
+
+    extern crate std;
+    use lazy_static::lazy_static;
+    use mc_util_test_helper::get_seeded_rng;
+    use std::panic::{catch_unwind, AssertUnwindSafe};
+    use typenum::{U1024, U16};
+
+    fn a64_bytes<N: ArrayLength<u8>>(src: u8) -> A64Bytes<N> {
+        let mut result = A64Bytes::<N>::default();
+        for byte in result.as_mut_slice() {
+            *byte = src;
+        }
+        result
+    }
+
+    fn a8_bytes<N: ArrayLength<u8>>(src: u8) -> A8Bytes<N> {
+        let mut result = A8Bytes::<N>::default();
+        for byte in result.as_mut_slice() {
+            *byte = src;
+        }
+        result
+    }
+
+    // Test version of UntrustedAllocation (see Untrusted crate)
+    #[derive(Default)]
+    struct Allocation {
+        #[allow(unused)]
+        count: u64,
+        data_size: u64,
+        meta_size: u64,
+        data: Vec<u8>,
+        meta: Vec<u8>,
+    }
+
+    impl Allocation {
+        // Make a new mock allocation object
+        pub fn new(count: u64, data_size: u64, meta_size: u64) -> Self {
+            let data = vec![0u8; (count * data_size) as usize];
+            let meta = vec![0u8; (count * meta_size) as usize];
+            Self {
+                count,
+                data_size,
+                meta_size,
+                data,
+                meta,
+            }
+        }
+    }
+
+    lazy_static! {
+        static ref ALLOCATIONS: Mutex<Vec<Allocation>> = Mutex::new(Vec::new());
+    }
+
+    // Mocks the allocation ocall
+    pub fn allocate_ocall(count: u64, data_size: u64, total_meta_size: u64) -> u64 {
+        let mut allocations = ALLOCATIONS.lock().unwrap();
+
+        // Now actually make the allocation
+        allocations.push(Allocation::new(count, data_size, total_meta_size));
+
+        // The id we return is the length of the vector now (index + 1)
+        allocations.len() as u64
+    }
+
+    // Mocks the release ocall
+    // This is a no-op for purposes of testing
+    pub fn release_ocall(_id: u64) {}
+
+    // Mocks the checkout ocall
+    pub fn checkout_ocall<
+        DataSize: ArrayLength<u8> + PartialDiv<U8>,
+        MetaSize: ArrayLength<u8> + PartialDiv<U8>,
+    >(
+        id: u64,
+        idx: &[u64],
+        data: &mut [A64Bytes<DataSize>],
+        meta: &mut [A8Bytes<MetaSize>],
+    ) {
+        debug_assert!(idx.len() == data.len());
+        debug_assert!(idx.len() == meta.len());
+
+        let allocations = ALLOCATIONS.lock().unwrap();
+        let allocation = &allocations[id as usize - 1];
+
+        debug_assert!(allocation.data_size == DataSize::U64);
+        debug_assert!(allocation.meta_size == MetaSize::U64);
+
+        for (x, idx) in idx.iter().enumerate() {
+            let byte_index = (idx * DataSize::U64) as usize;
+            (&mut data[x])
+                .copy_from_slice(&allocation.data[byte_index..byte_index + DataSize::USIZE]);
+            let byte_index = (idx * MetaSize::U64) as usize;
+            (&mut meta[x])
+                .copy_from_slice(&allocation.meta[byte_index..byte_index + MetaSize::USIZE]);
+        }
+    }
+
+    // Mocks the checkin ocall
+    pub fn checkin_ocall<
+        DataSize: ArrayLength<u8> + PartialDiv<U8>,
+        MetaSize: ArrayLength<u8> + PartialDiv<U8>,
+    >(
+        id: u64,
+        idx: &[u64],
+        data: &[A64Bytes<DataSize>],
+        meta: &[A8Bytes<MetaSize>],
+    ) {
+        debug_assert!(idx.len() == data.len());
+        debug_assert!(idx.len() == meta.len());
+
+        let mut allocations = ALLOCATIONS.lock().unwrap();
+        let allocation = &mut allocations[id as usize - 1];
+
+        debug_assert!(allocation.data_size == DataSize::U64);
+        debug_assert!(allocation.meta_size == MetaSize::U64);
+
+        for (x, idx) in idx.iter().enumerate() {
+            let byte_index = (idx * DataSize::U64) as usize;
+            allocation.data[byte_index..byte_index + DataSize::USIZE]
+                .copy_from_slice(data[x].as_ref());
+            let byte_index = (idx * MetaSize::U64) as usize;
+            allocation.meta[byte_index..byte_index + MetaSize::USIZE]
+                .copy_from_slice(meta[x].as_ref());
+        }
+    }
+
+    // Test what happens when we exercise the ORAM
+    // This is simlar to the integration test in `mc-fog-ocall-oram-storage-testing`
+    #[test]
+    fn exercise_oram_storage_shims() {
+        let mut rng = get_seeded_rng();
+        type StorageType = OcallORAMStorage<U1024, U16>;
+
+        // Set tree-top level to 1KB
+        TREETOP_CACHING_THRESHOLD_LOG2.store(10, Ordering::SeqCst);
+
+        let mut st = StorageType::new(131072, &mut rng);
+
+        let mut data_scratch = vec![A64Bytes::<U1024>::default(); 17];
+        let mut meta_scratch = vec![A8Bytes::<U16>::default(); 17];
+
+        // Write 1's along branch at 131072 - 1
+        {
+            st.checkout(131072 - 1, &mut data_scratch, &mut meta_scratch);
+
+            // Initially the data might not be zeroed, but the meta must be
+            for meta in meta_scratch.iter() {
+                assert_eq!(meta, &a8_bytes(0));
+            }
+
+            // Write to the data and metadata
+            for data in data_scratch.iter_mut() {
+                *data = a64_bytes(1);
+            }
+            for meta in meta_scratch.iter_mut() {
+                *meta = a8_bytes(1);
+            }
+
+            st.checkin(131072 - 1, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Check that 1's are along branch at 131072 - 1
+        {
+            st.checkout(131072 - 1, &mut data_scratch, &mut meta_scratch);
+
+            // Now both should be initialized
+            for data in data_scratch.iter() {
+                assert_eq!(data, &a64_bytes(1));
+            }
+            for meta in meta_scratch.iter() {
+                assert_eq!(meta, &a8_bytes(1));
+            }
+
+            st.checkin(131072 - 1, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Write 2's along branch at 131072 - 4
+        {
+            st.checkout(131072 - 4, &mut data_scratch, &mut meta_scratch);
+
+            // The first two data (lowest in branch) might not be initialized
+            assert_eq!(data_scratch[0], a64_bytes(0));
+            for data in &data_scratch[2..17] {
+                assert_eq!(data, &a64_bytes(1));
+            }
+
+            // The first two meta should be zeros
+            assert_eq!(meta_scratch[0], a8_bytes(0));
+            assert_eq!(meta_scratch[1], a8_bytes(0));
+            for meta in &meta_scratch[2..] {
+                assert_eq!(meta, &a8_bytes(1));
+            }
+
+            // write 2's
+            for data in data_scratch.iter_mut() {
+                *data = a64_bytes(2);
+            }
+            for meta in meta_scratch.iter_mut() {
+                *meta = a8_bytes(2);
+            }
+
+            st.checkin(131072 - 4, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Check that the 2's are visible along branch 131072 - 1, and some 1's
+        {
+            st.checkout(131072 - 1, &mut data_scratch, &mut meta_scratch);
+
+            // the first two data should be 1's
+            assert_eq!(data_scratch[0], a64_bytes(1));
+            assert_eq!(data_scratch[1], a64_bytes(1));
+            for data in &data_scratch[2..] {
+                assert_eq!(data, &a64_bytes(2));
+            }
+
+            // the first two meta should be 1's
+            assert_eq!(meta_scratch[0], a8_bytes(1));
+            assert_eq!(meta_scratch[1], a8_bytes(1));
+            for meta in &meta_scratch[2..] {
+                assert_eq!(meta, &a8_bytes(2));
+            }
+
+            st.checkin(131072 - 1, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Write 3's along branch 131072 / 2 + 1, and check if 1's and 2's are visible
+        {
+            st.checkout(131072 / 2 + 1, &mut data_scratch, &mut meta_scratch);
+
+            assert_eq!(data_scratch[16], a64_bytes(2));
+            assert_eq!(meta_scratch[16], a8_bytes(2));
+            for meta in &meta_scratch[0..16] {
+                assert_eq!(meta, &a8_bytes(0));
+            }
+
+            // write 3's
+            for data in data_scratch.iter_mut() {
+                *data = a64_bytes(3);
+            }
+            for meta in meta_scratch.iter_mut() {
+                *meta = a8_bytes(3);
+            }
+
+            st.checkin(131072 / 2 + 1, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Check that 3's are along branch at 131072/2 + 1
+        {
+            st.checkout(131072 / 2 + 1, &mut data_scratch, &mut meta_scratch);
+
+            for data in data_scratch.iter() {
+                assert_eq!(data, &a64_bytes(3));
+            }
+            for meta in meta_scratch.iter() {
+                assert_eq!(meta, &a8_bytes(3));
+            }
+
+            st.checkin(131072 / 2 + 1, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Check that 1's, 2's and 3's are visible along branch 131072 - 1
+        {
+            st.checkout(131072 - 1, &mut data_scratch, &mut meta_scratch);
+
+            // the first two data should be 1's
+            assert_eq!(data_scratch[0], a64_bytes(1));
+            assert_eq!(data_scratch[1], a64_bytes(1));
+            for data in &data_scratch[2..16] {
+                assert_eq!(data, &a64_bytes(2));
+            }
+            // this 3 at the root should be visible
+            assert_eq!(data_scratch[16], a64_bytes(3));
+
+            // the first two meta should be 1's
+            assert_eq!(meta_scratch[0], a8_bytes(1));
+            assert_eq!(meta_scratch[1], a8_bytes(1));
+            for meta in &meta_scratch[2..16] {
+                assert_eq!(meta, &a8_bytes(2));
+            }
+            // this 3 at the root should be visible
+            assert_eq!(meta_scratch[16], a8_bytes(3));
+
+            st.checkin(131072 - 1, &mut data_scratch, &mut meta_scratch);
+        }
+    }
+
+    // Test what happens when we start screwing with the untrusted memory,
+    // by hammering it with junk value
+    #[test]
+    fn exercise_oram_storage_hammer_data() {
+        let mut rng = get_seeded_rng();
+        type StorageType = OcallORAMStorage<U1024, U16>;
+
+        // Set tree-top level to 1KB
+        TREETOP_CACHING_THRESHOLD_LOG2.store(10, Ordering::SeqCst);
+
+        let mut st = StorageType::new(131072, &mut rng);
+        let test_element_index = 131072 - 1;
+        let neighboring_element_index_twice_removed = test_element_index - 3;
+        let neighboring_element_index_thrice_removed = test_element_index - 7;
+        let allocation_id = st.allocation_id;
+
+        let mut data_scratch = vec![A64Bytes::<U1024>::default(); 17];
+        let mut meta_scratch = vec![A8Bytes::<U16>::default(); 17];
+
+        // Write 1's along branch at 131072 - 1
+        {
+            st.checkout(test_element_index, &mut data_scratch, &mut meta_scratch);
+
+            // Initially the data might not be zeroed, but the meta must be
+            for meta in meta_scratch.iter() {
+                assert_eq!(meta, &a8_bytes(0));
+            }
+
+            // Write to the data and metadata
+            for data in data_scratch.iter_mut() {
+                *data = a64_bytes(1);
+            }
+            for meta in meta_scratch.iter_mut() {
+                *meta = a8_bytes(1);
+            }
+
+            st.checkin(test_element_index, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Check that 1's are along branch at 131072 - 1
+        {
+            st.checkout(test_element_index, &mut data_scratch, &mut meta_scratch);
+
+            // Now both should be initialized
+            for data in data_scratch.iter() {
+                assert_eq!(data, &a64_bytes(1));
+            }
+            for meta in meta_scratch.iter() {
+                assert_eq!(meta, &a8_bytes(1));
+            }
+
+            st.checkin(test_element_index, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Write 2's along a neighboring branch twice removed
+        {
+            st.checkout(
+                neighboring_element_index_twice_removed,
+                &mut data_scratch,
+                &mut meta_scratch,
+            );
+
+            // The first two data (lowest in branch) might not be initialized so we skip
+            // those 2.
+            assert_eq!(data_scratch[0], a64_bytes(0));
+            for data in &data_scratch[2..17] {
+                assert_eq!(data, &a64_bytes(1));
+            }
+
+            // The first two meta should be zeros
+            assert_eq!(meta_scratch[0], a8_bytes(0));
+            assert_eq!(meta_scratch[1], a8_bytes(0));
+            for meta in &meta_scratch[2..] {
+                assert_eq!(meta, &a8_bytes(1));
+            }
+
+            // write 2's
+            for data in data_scratch.iter_mut() {
+                *data = a64_bytes(2);
+            }
+            for meta in meta_scratch.iter_mut() {
+                *meta = a8_bytes(2);
+            }
+
+            st.checkin(
+                neighboring_element_index_twice_removed,
+                &mut data_scratch,
+                &mut meta_scratch,
+            );
+        }
+
+        // Check that the 2's are visible along branch 131072 - 1, and some 1's
+        {
+            st.checkout(test_element_index, &mut data_scratch, &mut meta_scratch);
+
+            // the first two data should be 1's
+            assert_eq!(data_scratch[0], a64_bytes(1));
+            assert_eq!(data_scratch[1], a64_bytes(1));
+            for data in &data_scratch[2..] {
+                assert_eq!(data, &a64_bytes(2));
+            }
+
+            // the first two meta should be 1's
+            assert_eq!(meta_scratch[0], a8_bytes(1));
+            assert_eq!(meta_scratch[1], a8_bytes(1));
+            for meta in &meta_scratch[2..] {
+                assert_eq!(meta, &a8_bytes(2));
+            }
+
+            st.checkin(test_element_index, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Now hammer the untrusted data
+        {
+            let mut allocations = ALLOCATIONS.lock().unwrap();
+            let allocation = &mut allocations[allocation_id as usize - 1];
+
+            for item in allocation.data.iter_mut() {
+                *item = 16;
+            }
+        }
+
+        // Now we should panic when we checkout any branches which share a trusted
+        // merkle root with the test element
+        assert!(catch_unwind(AssertUnwindSafe(|| st.checkout(
+            test_element_index / 2,
+            &mut data_scratch,
+            &mut meta_scratch
+        )))
+        .is_err());
+        assert!(catch_unwind(AssertUnwindSafe(|| st.checkout(
+            neighboring_element_index_thrice_removed,
+            &mut data_scratch,
+            &mut meta_scratch
+        )))
+        .is_err());
+    }
+
+    // Test what happens when we start screwing with the untrusted memory,
+    // by clearing the data
+    #[test]
+    fn exercise_oram_storage_clear_data() {
+        let mut rng = get_seeded_rng();
+        type StorageType = OcallORAMStorage<U1024, U16>;
+
+        // Set tree-top level to 1KB
+        TREETOP_CACHING_THRESHOLD_LOG2.store(10, Ordering::SeqCst);
+
+        let mut st = StorageType::new(131072, &mut rng);
+        let test_element_index = 131072 - 1;
+        let neighboring_element_index_twice_removed = test_element_index - 3;
+        let neighboring_element_index_thrice_removed = test_element_index - 7;
+        let allocation_id = st.allocation_id;
+
+        let mut data_scratch = vec![A64Bytes::<U1024>::default(); 17];
+        let mut meta_scratch = vec![A8Bytes::<U16>::default(); 17];
+
+        // Write 1's along branch at 131072 - 1
+        {
+            st.checkout(test_element_index, &mut data_scratch, &mut meta_scratch);
+
+            // Initially the data might not be zeroed, but the meta must be
+            for meta in meta_scratch.iter() {
+                assert_eq!(meta, &a8_bytes(0));
+            }
+
+            // Write to the data and metadata
+            for data in data_scratch.iter_mut() {
+                *data = a64_bytes(1);
+            }
+            for meta in meta_scratch.iter_mut() {
+                *meta = a8_bytes(1);
+            }
+
+            st.checkin(test_element_index, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Check that 1's are along branch at 131072 - 1
+        {
+            st.checkout(test_element_index, &mut data_scratch, &mut meta_scratch);
+
+            // Now both should be initialized
+            for data in data_scratch.iter() {
+                assert_eq!(data, &a64_bytes(1));
+            }
+            for meta in meta_scratch.iter() {
+                assert_eq!(meta, &a8_bytes(1));
+            }
+
+            st.checkin(test_element_index, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Write 2's along a neighboring branch twice removed
+        {
+            st.checkout(
+                neighboring_element_index_twice_removed,
+                &mut data_scratch,
+                &mut meta_scratch,
+            );
+
+            // The first two data (lowest in branch) might not be initialized so we skip
+            // those 2.
+            assert_eq!(data_scratch[0], a64_bytes(0));
+            for data in &data_scratch[2..17] {
+                assert_eq!(data, &a64_bytes(1));
+            }
+
+            // The first two meta should be zeros
+            assert_eq!(meta_scratch[0], a8_bytes(0));
+            assert_eq!(meta_scratch[1], a8_bytes(0));
+            for meta in &meta_scratch[2..] {
+                assert_eq!(meta, &a8_bytes(1));
+            }
+
+            // write 2's
+            for data in data_scratch.iter_mut() {
+                *data = a64_bytes(2);
+            }
+            for meta in meta_scratch.iter_mut() {
+                *meta = a8_bytes(2);
+            }
+
+            st.checkin(
+                neighboring_element_index_twice_removed,
+                &mut data_scratch,
+                &mut meta_scratch,
+            );
+        }
+
+        // Check that the 2's are visible along branch 131072 - 1, and some 1's
+        {
+            st.checkout(test_element_index, &mut data_scratch, &mut meta_scratch);
+
+            // the first two data should be 1's
+            assert_eq!(data_scratch[0], a64_bytes(1));
+            assert_eq!(data_scratch[1], a64_bytes(1));
+            for data in &data_scratch[2..] {
+                assert_eq!(data, &a64_bytes(2));
+            }
+
+            // the first two meta should be 1's
+            assert_eq!(meta_scratch[0], a8_bytes(1));
+            assert_eq!(meta_scratch[1], a8_bytes(1));
+            for meta in &meta_scratch[2..] {
+                assert_eq!(meta, &a8_bytes(2));
+            }
+
+            st.checkin(test_element_index, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Now clear the untrusted data
+        {
+            let mut allocations = ALLOCATIONS.lock().unwrap();
+            let allocation = &mut allocations[allocation_id as usize - 1];
+
+            for item in allocation.data.iter_mut() {
+                *item = 0;
+            }
+        }
+
+        // Now we should panic when we checkout any branches which share a trusted
+        // merkle root with the test element
+        assert!(catch_unwind(AssertUnwindSafe(|| st.checkout(
+            test_element_index / 2,
+            &mut data_scratch,
+            &mut meta_scratch
+        )))
+        .is_err());
+        assert!(catch_unwind(AssertUnwindSafe(|| st.checkout(
+            neighboring_element_index_thrice_removed,
+            &mut data_scratch,
+            &mut meta_scratch
+        )))
+        .is_err());
+    }
+
+    // Test what happens when we start screwing with the untrusted memory,
+    // by hammering the metadata with junk value
+    #[test]
+    fn exercise_oram_storage_hammer_metadata() {
+        let mut rng = get_seeded_rng();
+        type StorageType = OcallORAMStorage<U1024, U16>;
+
+        // Set tree-top level to 1KB
+        TREETOP_CACHING_THRESHOLD_LOG2.store(10, Ordering::SeqCst);
+
+        let mut st = StorageType::new(131072, &mut rng);
+        let test_element_index = 131072 - 1;
+        let neighboring_element_index_twice_removed = test_element_index - 3;
+        let neighboring_element_index_thrice_removed = test_element_index - 7;
+        let allocation_id = st.allocation_id;
+
+        let mut data_scratch = vec![A64Bytes::<U1024>::default(); 17];
+        let mut meta_scratch = vec![A8Bytes::<U16>::default(); 17];
+
+        // Write 1's along branch at 131072 - 1
+        {
+            st.checkout(test_element_index, &mut data_scratch, &mut meta_scratch);
+
+            // Initially the data might not be zeroed, but the meta must be
+            for meta in meta_scratch.iter() {
+                assert_eq!(meta, &a8_bytes(0));
+            }
+
+            // Write to the data and metadata
+            for data in data_scratch.iter_mut() {
+                *data = a64_bytes(1);
+            }
+            for meta in meta_scratch.iter_mut() {
+                *meta = a8_bytes(1);
+            }
+
+            st.checkin(test_element_index, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Check that 1's are along branch at 131072 - 1
+        {
+            st.checkout(test_element_index, &mut data_scratch, &mut meta_scratch);
+
+            // Now both should be initialized
+            for data in data_scratch.iter() {
+                assert_eq!(data, &a64_bytes(1));
+            }
+            for meta in meta_scratch.iter() {
+                assert_eq!(meta, &a8_bytes(1));
+            }
+
+            st.checkin(test_element_index, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Write 2's along a neighboring branch twice removed
+        {
+            st.checkout(
+                neighboring_element_index_twice_removed,
+                &mut data_scratch,
+                &mut meta_scratch,
+            );
+
+            // The first two data (lowest in branch) might not be initialized so we skip
+            // those 2.
+            assert_eq!(data_scratch[0], a64_bytes(0));
+            for data in &data_scratch[2..17] {
+                assert_eq!(data, &a64_bytes(1));
+            }
+
+            // The first two meta should be zeros
+            assert_eq!(meta_scratch[0], a8_bytes(0));
+            assert_eq!(meta_scratch[1], a8_bytes(0));
+            for meta in &meta_scratch[2..] {
+                assert_eq!(meta, &a8_bytes(1));
+            }
+
+            // write 2's
+            for data in data_scratch.iter_mut() {
+                *data = a64_bytes(2);
+            }
+            for meta in meta_scratch.iter_mut() {
+                *meta = a8_bytes(2);
+            }
+
+            st.checkin(
+                neighboring_element_index_twice_removed,
+                &mut data_scratch,
+                &mut meta_scratch,
+            );
+        }
+
+        // Check that the 2's are visible along branch 131072 - 1, and some 1's
+        {
+            st.checkout(test_element_index, &mut data_scratch, &mut meta_scratch);
+
+            // the first two data should be 1's
+            assert_eq!(data_scratch[0], a64_bytes(1));
+            assert_eq!(data_scratch[1], a64_bytes(1));
+            for data in &data_scratch[2..] {
+                assert_eq!(data, &a64_bytes(2));
+            }
+
+            // the first two meta should be 1's
+            assert_eq!(meta_scratch[0], a8_bytes(1));
+            assert_eq!(meta_scratch[1], a8_bytes(1));
+            for meta in &meta_scratch[2..] {
+                assert_eq!(meta, &a8_bytes(2));
+            }
+
+            st.checkin(test_element_index, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Now hammer the untrusted meta data
+        {
+            let mut allocations = ALLOCATIONS.lock().unwrap();
+            let allocation = &mut allocations[allocation_id as usize - 1];
+
+            for item in allocation.meta.iter_mut() {
+                *item = 19;
+            }
+        }
+
+        // Now we should panic when we checkout any branches which share a trusted
+        // merkle root with the test element
+        assert!(catch_unwind(AssertUnwindSafe(|| st.checkout(
+            test_element_index / 2,
+            &mut data_scratch,
+            &mut meta_scratch
+        )))
+        .is_err());
+        assert!(catch_unwind(AssertUnwindSafe(|| st.checkout(
+            neighboring_element_index_thrice_removed,
+            &mut data_scratch,
+            &mut meta_scratch
+        )))
+        .is_err());
+    }
+
+    // Test what happens when we start screwing with the untrusted memory,
+    // by clearing the metadata
+    #[test]
+    fn exercise_oram_storage_clear_metadata() {
+        let mut rng = get_seeded_rng();
+        type StorageType = OcallORAMStorage<U1024, U16>;
+
+        // Set tree-top level to 1KB
+        TREETOP_CACHING_THRESHOLD_LOG2.store(10, Ordering::SeqCst);
+
+        let mut st = StorageType::new(131072, &mut rng);
+        let test_element_index = 131072 - 1;
+        let neighboring_element_index_twice_removed = test_element_index - 3;
+        let neighboring_element_index_thrice_removed = test_element_index - 7;
+        let allocation_id = st.allocation_id;
+
+        let mut data_scratch = vec![A64Bytes::<U1024>::default(); 17];
+        let mut meta_scratch = vec![A8Bytes::<U16>::default(); 17];
+
+        // Write 1's along branch at 131072 - 1
+        {
+            st.checkout(test_element_index, &mut data_scratch, &mut meta_scratch);
+
+            // Initially the data might not be zeroed, but the meta must be
+            for meta in meta_scratch.iter() {
+                assert_eq!(meta, &a8_bytes(0));
+            }
+
+            // Write to the data and metadata
+            for data in data_scratch.iter_mut() {
+                *data = a64_bytes(1);
+            }
+            for meta in meta_scratch.iter_mut() {
+                *meta = a8_bytes(1);
+            }
+
+            st.checkin(test_element_index, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Check that 1's are along branch at 131072 - 1
+        {
+            st.checkout(test_element_index, &mut data_scratch, &mut meta_scratch);
+
+            // Now both should be initialized
+            for data in data_scratch.iter() {
+                assert_eq!(data, &a64_bytes(1));
+            }
+            for meta in meta_scratch.iter() {
+                assert_eq!(meta, &a8_bytes(1));
+            }
+
+            st.checkin(test_element_index, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Write 2's along a neighboring branch twice removed
+        {
+            st.checkout(
+                neighboring_element_index_twice_removed,
+                &mut data_scratch,
+                &mut meta_scratch,
+            );
+
+            // The first two data (lowest in branch) might not be initialized so we skip
+            // those 2.
+            assert_eq!(data_scratch[0], a64_bytes(0));
+            for data in &data_scratch[2..17] {
+                assert_eq!(data, &a64_bytes(1));
+            }
+
+            // The first two meta should be zeros
+            assert_eq!(meta_scratch[0], a8_bytes(0));
+            assert_eq!(meta_scratch[1], a8_bytes(0));
+            for meta in &meta_scratch[2..] {
+                assert_eq!(meta, &a8_bytes(1));
+            }
+
+            // write 2's
+            for data in data_scratch.iter_mut() {
+                *data = a64_bytes(2);
+            }
+            for meta in meta_scratch.iter_mut() {
+                *meta = a8_bytes(2);
+            }
+
+            st.checkin(
+                neighboring_element_index_twice_removed,
+                &mut data_scratch,
+                &mut meta_scratch,
+            );
+        }
+
+        // Check that the 2's are visible along branch 131072 - 1, and some 1's
+        {
+            st.checkout(test_element_index, &mut data_scratch, &mut meta_scratch);
+
+            // the first two data should be 1's
+            assert_eq!(data_scratch[0], a64_bytes(1));
+            assert_eq!(data_scratch[1], a64_bytes(1));
+            for data in &data_scratch[2..] {
+                assert_eq!(data, &a64_bytes(2));
+            }
+
+            // the first two meta should be 1's
+            assert_eq!(meta_scratch[0], a8_bytes(1));
+            assert_eq!(meta_scratch[1], a8_bytes(1));
+            for meta in &meta_scratch[2..] {
+                assert_eq!(meta, &a8_bytes(2));
+            }
+
+            st.checkin(test_element_index, &mut data_scratch, &mut meta_scratch);
+        }
+
+        // Now clear the untrusted meta data
+        {
+            let mut allocations = ALLOCATIONS.lock().unwrap();
+            let allocation = &mut allocations[allocation_id as usize - 1];
+
+            for item in allocation.meta.iter_mut() {
+                *item = 0;
+            }
+        }
+
+        // Now we should panic when we checkout any branches which share a trusted
+        // merkle root with the test element
+        assert!(catch_unwind(AssertUnwindSafe(|| st.checkout(
+            test_element_index / 2,
+            &mut data_scratch,
+            &mut meta_scratch
+        )))
+        .is_err());
+        assert!(catch_unwind(AssertUnwindSafe(|| st.checkout(
+            neighboring_element_index_thrice_removed,
+            &mut data_scratch,
+            &mut meta_scratch
+        )))
+        .is_err());
+    }
 }
