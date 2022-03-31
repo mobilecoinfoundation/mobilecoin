@@ -4,6 +4,8 @@
 
 #![deny(missing_docs)]
 
+pub mod counters;
+
 mod convert;
 mod db;
 mod error;
