@@ -8,7 +8,7 @@ use lmdb::{
 };
 use mc_account_keys::burn_address_view_private;
 use mc_common::logger::{log, Logger};
-use mc_ledger_db::u64_to_key_bytes;
+use mc_ledger_db::{u64_to_key_bytes, Error as LedgerDbError, MintConfigStore};
 use mc_transaction_core::{Block, BlockContents, BlockIndex};
 use mc_util_lmdb::{MetadataStore, MetadataStoreSettings};
 use mc_util_serial::{decode, encode, Message};
@@ -19,7 +19,7 @@ use std::{collections::BTreeMap, path::Path, sync::Arc};
 const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
 
 /// Number of LMDB databases.
-const NUM_LMDB_DATABASES: u32 = 3;
+const NUM_LMDB_DATABASES: u32 = 6;
 
 /// Metadata store settings that are used for version control.
 #[derive(Clone, Default, Debug)]
@@ -64,6 +64,10 @@ pub struct Counters {
     // Number of times we've encountered a burn that exceeds the calculated balance.
     #[prost(uint64, tag = 2)]
     pub num_burns_exceeding_balance: u64,
+
+    // Number of `MintTx`s that did not match an active mint config.
+    #[prost(uint64, tag = 3)]
+    pub num_mint_txs_without_matching_mint_config: u64,
 }
 
 /// Mint Auditor Database.
@@ -78,6 +82,9 @@ pub struct MintAuditorDb {
 
     /// block index -> BlockAuditData database.
     mint_audit_data_by_block_index: Database,
+
+    /// Mint config store.
+    mint_config_store: MintConfigStore,
 
     /// Logger.
     logger: Logger,
@@ -109,11 +116,13 @@ impl MintAuditorDb {
         let key_val = env.open_db(Some(KEY_VAL_DB_NAME))?;
         let mint_audit_data_by_block_index =
             env.open_db(Some(MINT_AUDIT_DATA_BY_BLOCK_INDEX_DB_NAME))?;
+        let mint_config_store = MintConfigStore::new(&env)?;
 
         Ok(Self {
             env,
             key_val,
             mint_audit_data_by_block_index,
+            mint_config_store,
             logger,
         })
     }
@@ -136,6 +145,7 @@ impl MintAuditorDb {
             Some(MINT_AUDIT_DATA_BY_BLOCK_INDEX_DB_NAME),
             DatabaseFlags::DUP_SORT,
         )?;
+        MintConfigStore::create(&env)?;
         Ok(())
     }
 
@@ -221,6 +231,29 @@ impl MintAuditorDb {
                 mint_tx.prefix.token_id,
                 balance,
             );
+
+            // See if this mint matches an active mint configuration.
+            match self
+                .mint_config_store
+                .get_active_mint_config_for_mint_tx(mint_tx, &db_txn)
+            {
+                Ok(_) => {
+                    // Got a match, which is what we were hoping would happen.
+                }
+                Err(LedgerDbError::NotFound) | Err(LedgerDbError::MintLimitExceeded(_, _)) => {
+                    log::crit!(
+                        self.logger,
+                        "Block {}: Found mint tx {} that did not match any active mint config!",
+                        block_index,
+                        mint_tx,
+                    );
+
+                    counters.num_mint_txs_without_matching_mint_config += 1;
+                }
+                Err(err) => {
+                    return Err(err.into());
+                }
+            }
         }
 
         // Count burns.
@@ -262,6 +295,12 @@ impl MintAuditorDb {
             &u64_to_key_bytes(block_index),
             &encode(&block_audit_data),
             WriteFlags::NO_OVERWRITE,
+        )?;
+
+        self.mint_config_store.write_mint_config_txs(
+            block_index,
+            &block_contents.mint_config_txs,
+            &mut db_txn,
         )?;
 
         counters.num_blocks_synced += 1;
@@ -358,10 +397,36 @@ mod tests {
             assert_eq!(mint_audit_data, BlockAuditData::default());
         }
 
-        // Sync a block that contains a few mint transactions.
-        let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
-        let (_mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+        // Sync a block that contains MintConfigTxs so that we have valid active
+        // configs.
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+        let (mint_config_tx3, signers3) = create_mint_config_tx_and_signers(token_id3, &mut rng);
 
+        let block_contents = BlockContents {
+            mint_config_txs: vec![mint_config_tx1, mint_config_tx2, mint_config_tx3],
+            ..Default::default()
+        };
+
+        let parent_block = ledger_db
+            .get_block(ledger_db.num_blocks().unwrap() - 1)
+            .unwrap();
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        let mint_audit_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        assert_eq!(
+            mint_audit_data,
+            BlockAuditData {
+                balance_map: BTreeMap::default(),
+            }
+        );
+
+        // Sync a block that contains a few mint transactions.
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
         let mint_tx2 = create_mint_tx(token_id2, &signers2, 2, &mut rng);
         let mint_tx3 = create_mint_tx(token_id1, &signers1, 100, &mut rng);
@@ -372,12 +437,9 @@ mod tests {
             ..Default::default()
         };
 
-        let parent_block = ledger_db
-            .get_block(ledger_db.num_blocks().unwrap() - 1)
-            .unwrap();
         let block = Block::new_with_parent(
             BlockVersion::MAX,
-            &parent_block,
+            &block,
             &Default::default(),
             &block_contents,
         );
@@ -439,8 +501,8 @@ mod tests {
 
         // Sync a block that mixes burning and minting.
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 1000, &mut rng);
-        let mint_tx2 = create_mint_tx(token_id2, &signers1, 2000, &mut rng);
-        let mint_tx3 = create_mint_tx(token_id3, &signers1, 20000, &mut rng);
+        let mint_tx2 = create_mint_tx(token_id2, &signers2, 2000, &mut rng);
+        let mint_tx3 = create_mint_tx(token_id3, &signers3, 20000, &mut rng);
 
         let tx_out1 = TxOut::new(
             Amount {
@@ -497,6 +559,7 @@ mod tests {
             Counters {
                 num_blocks_synced: block.index + 1,
                 num_burns_exceeding_balance: 0,
+                num_mint_txs_without_matching_mint_config: 0,
             }
         );
     }
