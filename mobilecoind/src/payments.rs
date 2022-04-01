@@ -198,7 +198,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             (opt_fee, candidate_block_version)
         } else {
             let block_infos = get_block_infos(&self.peer_manager);
-            let fee = get_fee(&block_infos, self.token_id, opt_fee);
+            let fee = get_fee(&block_infos, opt_fee);
             let block_version = max(
                 candidate_block_version,
                 get_network_block_version(&block_infos),
