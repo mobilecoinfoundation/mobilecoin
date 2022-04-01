@@ -534,9 +534,13 @@ impl Client {
     }
 
     /// Retrieve the current last block info structure from consensus service.
-    /// This includes fee data and last block index
+    /// This includes fee data and last block index, and the configured block
+    /// version
     pub fn get_last_block_info(&mut self) -> Result<BlockInfo> {
-        Ok(self.consensus_service_conn.fetch_block_info()?)
+        let block_info = self.consensus_service_conn.fetch_block_info()?;
+        // Opportunistically update our cached block version value
+        self.tx_data.notify_block_version(block_info.block_version);
+        Ok(block_info)
     }
 
     /// Retrieve the currently configured minimum fee for a token id from the
