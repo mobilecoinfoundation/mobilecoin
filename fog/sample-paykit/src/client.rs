@@ -15,7 +15,8 @@ use mc_common::{
     HashSet,
 };
 use mc_connection::{
-    BlockchainConnection, Connection, HardcodedCredentialsProvider, ThickClient, UserTxConnection,
+    BlockInfo, BlockchainConnection, Connection, HardcodedCredentialsProvider, ThickClient,
+    UserTxConnection,
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_crypto_rand::{CryptoRng, RngCore};
