@@ -353,6 +353,7 @@ impl<
                 self.ledger_db.clone(),
                 self.client_authenticator.clone(),
                 self.config.tokens().fee_map()?,
+                self.config.block_version,
                 self.logger.clone(),
             ));
 
@@ -446,6 +447,7 @@ impl<
                 self.ledger_db.clone(),
                 peer_authenticator.clone(),
                 self.config.tokens().fee_map()?,
+                self.config.block_version,
                 self.logger.clone(),
             ));
 
