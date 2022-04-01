@@ -190,6 +190,12 @@ impl CachedTxData {
         self.latest_block_version
     }
 
+    /// Update the latest block version. This may include e.g. knowledge of how
+    /// consensus nodes are actually configured
+    pub fn notify_block_version(&mut self, network_block_version: u32) {
+        self.latest_block_version = max(self.latest_block_version, network_block_version);
+    }
+
     /// Helper function: Compute the set of Txos contributing to the balance,
     /// not known to be spent at all.
     /// These can be used creating transaction input sets.

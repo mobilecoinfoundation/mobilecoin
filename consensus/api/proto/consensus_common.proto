@@ -26,6 +26,14 @@ message LastBlockInfoResponse {
 
     // A map of token id -> minimum fee
     map<uint32, uint64> minimum_fees = 3;
+
+    // Current block version, appropriate for new transactions.
+    //
+    // Note that if the server was just reconfigured, this may be HIGHER than
+    // the highest block version in the ledger, so for clients this is a better
+    // source of truth than the local ledger, if the client might possibly be
+    // creating the first transaction after a reconfigure / redeploy.
+    uint32 block_version = 4;
 }
 
 // Requests a range [offset, offset+limit) of Blocks.

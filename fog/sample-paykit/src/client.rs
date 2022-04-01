@@ -520,12 +520,22 @@ impl Client {
         Ok(res.num_blocks + self.new_tx_block_attempts as u64)
     }
 
-    /// Retrieve the currently configured minimum fee from the consensus service
+    /// Retrieve the current last block info structure from consensus service.
+    /// This includes fee data and last block index, and the configured block
+    /// version
+    pub fn get_last_block_info(&mut self) -> Result<BlockInfo> {
+        let block_info = self.consensus_service_conn.fetch_block_info()?;
+        // Opportunistically update our cached block version value
+        self.tx_data.notify_block_version(block_info.block_version);
+        Ok(block_info)
+    }
+
+    /// Retrieve the currently configured minimum fee for MOB from the
+    /// consensus service
     pub fn get_fee(&mut self) -> Result<u64> {
         Ok(self
-            .consensus_service_conn
-            .fetch_block_info()?
-            .minimum_fee_or_none(&Mob::ID)
+            .get_last_block_info()?
+            .minimum_fee_or_none(&token_id)
             .unwrap_or(0))
     }
 
