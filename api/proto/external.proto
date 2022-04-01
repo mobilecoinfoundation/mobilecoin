@@ -383,4 +383,3 @@ message ValidatedMintConfigTx {
     MintConfigTx mint_config_tx = 1;
     Ed25519SignerSet signer_set = 2;
 }
-
