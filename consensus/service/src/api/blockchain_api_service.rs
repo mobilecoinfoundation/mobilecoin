@@ -241,6 +241,7 @@ mod tests {
         expected_response.set_index(block_entities.last().unwrap().index);
         expected_response.set_mob_minimum_fee(12345);
         expected_response.set_minimum_fees(HashMap::from_iter(vec![(0, 12345), (60, 10203040)]));
+        expected_response.set_block_version(*BlockVersion::MAX);
         assert_eq!(
             block_entities.last().unwrap().index,
             ledger_db.num_blocks().unwrap() - 1
