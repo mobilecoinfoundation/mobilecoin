@@ -12,6 +12,7 @@ Example setup and usage:
 """
 import argparse
 import concurrent.futures
+import glob
 import grpc
 import mobilecoind_api_pb2
 import mobilecoind_api_pb2_grpc
@@ -87,8 +88,7 @@ if __name__ == '__main__':
     stub = connect(args.mobilecoind_host, args.mobilecoind_port)
     accounts = [
         load_key_and_register(os.path.join(args.key_dir, k), stub)
-        for k in sorted(
-            filter(lambda x: x.endswith(".json"), os.listdir(args.key_dir)))
+        for k in sorted(glob.glob(os.path.join(args.key_dir, '*.json')))
     ]
 
     monitor_ids = [a.monitor_id for a in accounts]

@@ -23,6 +23,7 @@ Example setup and usage:
 ```
 """
 import argparse
+import glob
 import grpc
 import mobilecoind_api_pb2
 import mobilecoind_api_pb2_grpc
@@ -117,14 +118,12 @@ if __name__ == '__main__':
     stub = connect(args.mobilecoind_host, args.mobilecoind_port)
     source_accounts = [
         load_key_and_register(os.path.join(args.key_dir, k), stub)
-        for k in sorted(
-            filter(lambda x: x.endswith(".json"), os.listdir(args.key_dir)), key=filename_key)
+        for k in sorted(glob.glob(os.path.join(args.key_dir, '*.json')), key=filename_key)
     ]
 
     dest_b58addresses = [
         read_file(os.path.join(args.dest_key_dir, b58pubfile))
-        for b58pubfile in sorted(
-            filter(lambda x: x.endswith(".b58pub"), os.listdir(args.dest_key_dir)), key=filename_key)
+        for b58pubfile in sorted(glob.glob(os.path.join(args.key_dir, '*.b58pub')), key=filename_key)
     ]
 
     # convert from b58 to external.PublicAddress using mobilecoind helpers
