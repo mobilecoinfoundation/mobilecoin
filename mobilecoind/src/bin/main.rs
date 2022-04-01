@@ -33,7 +33,7 @@ fn main() {
         .map(|val| val == "0")
         .unwrap_or(false);
 
-    let _tracer = if !telemetry_enabled {
+    let _tracer = if telemetry_enabled {
         Some(setup_default_tracer(env!("CARGO_PKG_NAME")).expect("Failed setting telemetry tracer"))
     } else {
         None
