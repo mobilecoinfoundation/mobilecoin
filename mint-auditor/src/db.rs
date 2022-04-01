@@ -297,9 +297,9 @@ impl MintAuditorDb {
             WriteFlags::NO_OVERWRITE,
         )?;
 
-        self.mint_config_store.write_mint_config_txs(
+        self.mint_config_store.write_validated_mint_config_txs(
             block_index,
-            &block_contents.mint_config_txs,
+            &block_contents.validated_mint_config_txs,
             &mut db_txn,
         )?;
 
@@ -357,7 +357,7 @@ mod tests {
     use mc_transaction_core::{tx::TxOut, Amount, BlockVersion, TokenId};
     use mc_transaction_core_test_utils::{
         create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_test_tx_out,
-        initialize_ledger,
+        initialize_ledger, mint_config_tx_to_validated as to_validated,
     };
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
@@ -404,7 +404,11 @@ mod tests {
         let (mint_config_tx3, signers3) = create_mint_config_tx_and_signers(token_id3, &mut rng);
 
         let block_contents = BlockContents {
-            mint_config_txs: vec![mint_config_tx1, mint_config_tx2, mint_config_tx3],
+            validated_mint_config_txs: vec![
+                to_validated(&mint_config_tx1),
+                to_validated(&mint_config_tx2),
+                to_validated(&mint_config_tx3),
+            ],
             ..Default::default()
         };
 
@@ -866,7 +870,10 @@ mod tests {
         let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
 
         let block_contents = BlockContents {
-            mint_config_txs: vec![mint_config_tx1, mint_config_tx2],
+            validated_mint_config_txs: vec![
+                to_validated(&mint_config_tx1),
+                to_validated(&mint_config_tx2),
+            ],
             ..Default::default()
         };
 
@@ -919,7 +926,7 @@ mod tests {
         let (mint_config_tx3, signers3) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let block_contents = BlockContents {
-            mint_config_txs: vec![mint_config_tx3],
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx3)],
             ..Default::default()
         };
 
