@@ -3,10 +3,12 @@
 //! LMDB database abstraction.
 
 use crate::Error;
-use lmdb::{Database, DatabaseFlags, Environment, EnvironmentFlags, Transaction, WriteFlags};
+use lmdb::{
+    Database, DatabaseFlags, Environment, EnvironmentFlags, RwTransaction, Transaction, WriteFlags,
+};
 use mc_account_keys::burn_address_view_private;
 use mc_common::logger::{log, Logger};
-use mc_ledger_db::{key_bytes_to_u64, u64_to_key_bytes};
+use mc_ledger_db::u64_to_key_bytes;
 use mc_transaction_core::{Block, BlockContents, BlockIndex};
 use mc_util_lmdb::{MetadataStore, MetadataStoreSettings};
 use mc_util_serial::{decode, encode, Message};
@@ -38,12 +40,12 @@ impl MetadataStoreSettings for WatcherDbMetadataStoreSettings {
 }
 
 /// LMDB database names.
-pub const COUNTS_DB_NAME: &str = "mint_auditor_db_counts";
+pub const KEY_VAL_DB_NAME: &str = "mint_auditor_db:key_val";
 pub const MINT_AUDIT_DATA_BY_BLOCK_INDEX_DB_NAME: &str =
     "mint_auditor_db:mint_audit_data_by_block_index";
 
-/// Keys used by the `counts` database.
-pub const LAST_SYNCED_BLOCK_INDEX: &str = "last_synced_block_index";
+/// Keys used by the `key_val` database.
+pub const COUNTERS_KEY: &str = "counters";
 
 /// Mint audit data that we store per block.
 #[derive(Deserialize, Eq, Message, PartialEq, Serialize)]
@@ -53,15 +55,26 @@ pub struct BlockAuditData {
     pub balance_map: BTreeMap<u32, u64>,
 }
 
+#[derive(Deserialize, Eq, Message, PartialEq, Serialize)]
+pub struct Counters {
+    /// Number of blocks we've synced so far.
+    #[prost(uint64, tag = 1)]
+    pub num_blocks_synced: u64,
+
+    // Number of times we've encountered a burn that exceeds the calculated balance.
+    #[prost(uint64, tag = 2)]
+    pub num_burns_exceeding_balance: u64,
+}
+
 /// Mint Auditor Database.
 #[derive(Clone)]
 pub struct MintAuditorDb {
     /// LMDB Environment (database).
     env: Arc<Environment>,
 
-    /// Aggregate counts.
-    /// * `LAST_SYNCED_BLOCK_INDEX`: The last block index that we've synced.
-    counts: Database,
+    /// General-purpose key-value store.
+    /// * `COUNTERS`: A serialized `Counters` object.
+    key_val: Database,
 
     /// block index -> BlockAuditData database.
     mint_audit_data_by_block_index: Database,
@@ -93,13 +106,13 @@ impl MintAuditorDb {
         );
         db_txn.commit()?;
 
-        let counts = env.open_db(Some(COUNTS_DB_NAME))?;
+        let key_val = env.open_db(Some(KEY_VAL_DB_NAME))?;
         let mint_audit_data_by_block_index =
             env.open_db(Some(MINT_AUDIT_DATA_BY_BLOCK_INDEX_DB_NAME))?;
 
         Ok(Self {
             env,
-            counts,
+            key_val,
             mint_audit_data_by_block_index,
             logger,
         })
@@ -118,7 +131,7 @@ impl MintAuditorDb {
 
         MetadataStore::<WatcherDbMetadataStoreSettings>::create(&env)?;
 
-        env.create_db(Some(COUNTS_DB_NAME), DatabaseFlags::empty())?;
+        env.create_db(Some(KEY_VAL_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(
             Some(MINT_AUDIT_DATA_BY_BLOCK_INDEX_DB_NAME),
             DatabaseFlags::DUP_SORT,
@@ -145,10 +158,18 @@ impl MintAuditorDb {
         Self::open(path, logger)
     }
 
+    /// Get all counters.
+    pub fn get_counters(&self) -> Result<Counters, Error> {
+        let db_txn = self.env.begin_ro_txn()?;
+        self.get_counters_impl(&db_txn)
+    }
+
     /// Get the last synced block index, or None if no blocks were synced.
     pub fn last_synced_block_index(&self) -> Result<Option<u64>, Error> {
-        let db_txn = self.env.begin_ro_txn()?;
-        self.last_synced_block_index_impl(&db_txn)
+        match self.get_counters()?.num_blocks_synced {
+            0 => Ok(None),
+            val => Ok(Some(val - 1)),
+        }
     }
 
     /// Get the audit data for a given block index.
@@ -168,12 +189,11 @@ impl MintAuditorDb {
         let block_index = block.index;
         log::info!(self.logger, "Syncing block {}", block_index);
 
+        let mut counters = self.get_counters_impl(&db_txn)?;
+
         // Ensure that we are syncing the next block and haven't skipped any blocks (or
         // went backwards).
-        let last_synced_block_index = self.last_synced_block_index_impl(&db_txn)?;
-        let next_block_index = last_synced_block_index
-            .map(|block_index| block_index + 1)
-            .unwrap_or(0);
+        let next_block_index = counters.num_blocks_synced;
         if block_index != next_block_index {
             return Err(Error::UnexpectedBlockIndex(block_index, next_block_index));
         }
@@ -221,6 +241,7 @@ impl MintAuditorDb {
                         balance
                     );
                     *balance = 0;
+                    counters.num_burns_exceeding_balance += 1;
                 } else {
                     *balance -= amount.value;
                     log::info!(
@@ -243,12 +264,8 @@ impl MintAuditorDb {
             WriteFlags::NO_OVERWRITE,
         )?;
 
-        db_txn.put(
-            self.counts,
-            &LAST_SYNCED_BLOCK_INDEX,
-            &u64_to_key_bytes(block_index),
-            WriteFlags::empty(),
-        )?;
+        counters.num_blocks_synced += 1;
+        self.set_counters_impl(&counters, &mut db_txn)?;
 
         db_txn.commit()?;
 
@@ -268,15 +285,26 @@ impl MintAuditorDb {
         Ok(decode(bytes)?)
     }
 
-    fn last_synced_block_index_impl(
-        &self,
-        db_txn: &impl Transaction,
-    ) -> Result<Option<u64>, Error> {
-        match db_txn.get(self.counts, &LAST_SYNCED_BLOCK_INDEX) {
-            Ok(bytes) => Ok(Some(key_bytes_to_u64(bytes))),
-            Err(lmdb::Error::NotFound) => Ok(None),
+    fn get_counters_impl(&self, db_txn: &impl Transaction) -> Result<Counters, Error> {
+        match db_txn.get(self.key_val, &COUNTERS_KEY) {
+            Ok(bytes) => Ok(decode(bytes)?),
+            Err(lmdb::Error::NotFound) => Ok(Counters::default()),
             Err(err) => Err(err.into()),
         }
+    }
+
+    fn set_counters_impl<'env>(
+        &self,
+        counters: &Counters,
+        db_txn: &mut RwTransaction<'env>,
+    ) -> Result<(), Error> {
+        db_txn.put(
+            self.key_val,
+            &COUNTERS_KEY,
+            &encode(counters),
+            WriteFlags::empty(),
+        )?;
+        Ok(())
     }
 }
 
@@ -462,6 +490,15 @@ mod tests {
                 ]),
             }
         );
+
+        // Sanity check counters.
+        assert_eq!(
+            mint_audit_db.get_counters().unwrap(),
+            Counters {
+                num_blocks_synced: block.index + 1,
+                num_burns_exceeding_balance: 0,
+            }
+        );
     }
 
     // Attempting to skip a block when syncing should fail.
@@ -575,5 +612,155 @@ mod tests {
                 panic!("Unexpected result: {:?}", err);
             }
         }
+    }
+
+    // Attempting to burn more than the calculated balance result in the counter
+    // being increased.
+    #[test_with_logger]
+    fn test_sync_block_increases_counter_on_over_burn(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(22);
+
+        let mint_audit_db_path = tempdir().unwrap();
+        let mint_audit_db = MintAuditorDb::create_or_open(&mint_audit_db_path, logger).unwrap();
+
+        let mut ledger_db = create_ledger();
+        let account_key = AccountKey::random(&mut rng);
+        let initial_num_blocks = 3;
+        initialize_ledger(
+            BlockVersion::MAX,
+            &mut ledger_db,
+            initial_num_blocks,
+            &account_key,
+            &mut rng,
+        );
+
+        // The blocks we currently have in the ledger contain no burning or minting.
+        for block_index in 0..initial_num_blocks {
+            let block_data = ledger_db.get_block_data(block_index).unwrap();
+
+            let mint_audit_data = mint_audit_db
+                .sync_block(block_data.block(), block_data.contents())
+                .unwrap();
+
+            assert_eq!(mint_audit_data, BlockAuditData::default());
+        }
+
+        // Sync a block that contains a few mint transactions.
+        let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (_mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+
+        let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
+        let mint_tx2 = create_mint_tx(token_id2, &signers2, 2, &mut rng);
+        let mint_tx3 = create_mint_tx(token_id1, &signers1, 100, &mut rng);
+
+        let block_contents = BlockContents {
+            mint_txs: vec![mint_tx1, mint_tx2, mint_tx3],
+            outputs: (0..3).map(|_i| create_test_tx_out(&mut rng)).collect(),
+            ..Default::default()
+        };
+
+        let parent_block = ledger_db
+            .get_block(ledger_db.num_blocks().unwrap() - 1)
+            .unwrap();
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        let mint_audit_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        assert_eq!(
+            mint_audit_data,
+            BlockAuditData {
+                balance_map: BTreeMap::from_iter([(*token_id1, 101), (*token_id2, 2)]),
+            }
+        );
+
+        // At this point nothing has been over-burned.
+        assert_eq!(
+            mint_audit_db
+                .get_counters()
+                .unwrap()
+                .num_burns_exceeding_balance,
+            0
+        );
+
+        // Sync a block with two burn transactions that results in one of them
+        // over-burning.
+        let burn_recipient = burn_address();
+
+        let tx_out1 = TxOut::new(
+            Amount {
+                value: 50000,
+                token_id: token_id1,
+            },
+            &burn_recipient,
+            &RistrettoPrivate::from_random(&mut rng),
+            Default::default(),
+        )
+        .unwrap();
+
+        let tx_out2 = TxOut::new(
+            Amount {
+                value: 2,
+                token_id: token_id2,
+            },
+            &burn_recipient,
+            &RistrettoPrivate::from_random(&mut rng),
+            Default::default(),
+        )
+        .unwrap();
+
+        let tx_out3 = create_test_tx_out(&mut rng);
+
+        let block_contents = BlockContents {
+            outputs: vec![tx_out1, tx_out2, tx_out3],
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        let mint_audit_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        assert_eq!(
+            mint_audit_data,
+            BlockAuditData {
+                balance_map: BTreeMap::from_iter([(*token_id1, 0), (*token_id2, 0)]),
+            }
+        );
+
+        // Over-burn has been recorded.
+        assert_eq!(
+            mint_audit_db
+                .get_counters()
+                .unwrap()
+                .num_burns_exceeding_balance,
+            1
+        );
+
+        // Over burn once again, see that counter increases.
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        mint_audit_db.sync_block(&block, &block_contents).unwrap();
+
+        assert_eq!(
+            mint_audit_db
+                .get_counters()
+                .unwrap()
+                .num_burns_exceeding_balance,
+            3
+        );
     }
 }

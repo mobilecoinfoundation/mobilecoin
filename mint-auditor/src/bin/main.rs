@@ -6,7 +6,7 @@ use clap::{Parser, Subcommand};
 use grpcio::{EnvBuilder, ServerBuilder};
 use mc_common::logger::{log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_mint_auditor::{Error, MintAuditorDb, MintAuditorService};
+use mc_mint_auditor::{counters, Error, MintAuditorDb, MintAuditorService};
 use mc_mint_auditor_api::MintAuditorUri;
 use mc_util_grpc::{BuildInfoService, ConnectionUriGrpcioServer, HealthService};
 use mc_util_parse::parse_duration_in_seconds;
@@ -252,9 +252,20 @@ fn sync_loop(
                 // Sync the next block.
                 let block_data = ledger_db.get_block_data(num_blocks_synced)?;
                 mint_auditor_db.sync_block(block_data.block(), block_data.contents())?;
+                update_counters(mint_auditor_db)?;
             }
         };
     }
+
+    Ok(())
+}
+
+// Update prometheus counters.
+fn update_counters(mint_auditor_db: &MintAuditorDb) -> Result<(), Error> {
+    let counters = mint_auditor_db.get_counters()?;
+
+    counters::NUM_BLOCKS_SYNCED.set(counters.num_blocks_synced as i64);
+    counters::NUM_BURNS_EXCEEDING_BALANCE.set(counters.num_burns_exceeding_balance as i64);
 
     Ok(())
 }
