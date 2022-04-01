@@ -68,7 +68,7 @@ pub struct BlockInfo {
 
     /// Block version reported by the network.
     /// This is the configured block version on the node.
-    pub block_version: u32,
+    pub network_block_version: u32,
 }
 
 impl BlockInfo {
@@ -108,7 +108,7 @@ impl From<LastBlockInfoResponse> for BlockInfo {
         BlockInfo {
             block_index: src.index,
             minimum_fees,
-            block_version: src.block_version,
+            network_block_version: src.network_block_version,
         }
     }
 }

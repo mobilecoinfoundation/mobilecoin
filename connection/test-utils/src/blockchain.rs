@@ -118,7 +118,7 @@ impl<L: Ledger + Sync> BlockchainConnection for MockBlockchainConnection<L> {
         Ok(BlockInfo {
             block_index: self.ledger.num_blocks().unwrap() - 1,
             minimum_fees: FeeMap::default_map(),
-            block_version: *BlockVersion::MAX,
+            network_block_version: *BlockVersion::MAX,
         })
     }
 }
