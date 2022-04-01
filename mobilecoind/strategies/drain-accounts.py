@@ -123,7 +123,7 @@ if __name__ == '__main__':
 
     dest_b58addresses = [
         read_file(b58_pubfile)
-        for b58pubfile in sorted(glob.glob(os.path.join(args.dest_key_dir, '*.b58pub')), key=filename_key)
+        for b58_pubfile in sorted(glob.glob(os.path.join(args.dest_key_dir, '*.b58pub')), key=filename_key)
     ]
 
     # convert from b58 to external.PublicAddress using mobilecoind helpers
