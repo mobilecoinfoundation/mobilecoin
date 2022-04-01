@@ -50,8 +50,6 @@ fn test_find_spendable_tx_outs() {
             "mc://test.com",
             "--num-tx-to-send",
             "5",
-            "--block-version",
-            "3",
             "--num-seed-transactions-per-destination-account",
             "2",
             "--dry-run"
