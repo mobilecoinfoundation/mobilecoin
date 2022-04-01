@@ -21,7 +21,7 @@ use alloc::{
     boxed::Box,
     collections::{BTreeMap, BTreeSet},
     format,
-    string::String,
+    string::{String, ToString},
     vec::Vec,
 };
 use core::convert::TryFrom;
@@ -58,7 +58,7 @@ use mc_transaction_core::{
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Amount, Block, BlockContents, BlockSignature, Token, TokenId,
+    Amount, Block, BlockContents, BlockSignature, BlockVersion, Token, TokenId,
 };
 // Race here refers to, this is thread-safe, first-one-wins behavior, without
 // blocking
@@ -692,6 +692,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             .iter()
             .map(|(token_id, total_fee)| {
                 mint_output(
+                    config.block_version,
                     &fee_recipient,
                     FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.as_bytes(),
                     parent_block,
@@ -729,6 +730,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 &mint_tx.prefix.view_public_key,
             );
             let output = mint_output(
+                config.block_version,
                 &recipient,
                 MINTED_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.as_bytes(),
                 parent_block,
@@ -782,12 +784,14 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 /// the input parameters.
 ///
 /// # Arguments:
+/// * `block_version` - The current block version rules for outputs
 /// * `recipient` - The recipient of the output.
 /// * `domain_tag` - Domain separator for hashing the input parameters.
 /// * `parent_block` - The parent block.
 /// * `transactions` - The transactions that are included in the current block.
 /// * `amount` - Output amount.
 fn mint_output<T: Digestible>(
+    block_version: BlockVersion,
     recipient: &PublicAddress,
     domain_tag: &'static [u8],
     parent_block: &Block,
@@ -813,8 +817,22 @@ fn mint_output<T: Digestible>(
     };
 
     // Create a single TxOut
-    let output = TxOut::new(amount, recipient, &tx_private_key, Default::default())
+    let mut output = TxOut::new(amount, recipient, &tx_private_key, Default::default())
         .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?;
+
+    // The output must conform to block version rules
+    if !block_version.e_memo_feature_is_supported() {
+        output.e_memo = None;
+    }
+
+    if !block_version.masked_token_id_feature_is_supported() {
+        output.masked_amount.masked_token_id.clear();
+        if amount.token_id != 0 {
+            return Err(Error::FormBlock(
+                "Cannot mint outputs for non-MOB tokens until they are supported".to_string(),
+            ));
+        }
+    }
 
     Ok(output)
 }
@@ -828,8 +846,10 @@ mod tests {
     use mc_crypto_multisig::SignerSet;
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{
-        tokens::Mob, tx::TxOutMembershipHash, validation::TransactionValidationError, BlockVersion,
-        Token,
+        tokens::Mob,
+        tx::TxOutMembershipHash,
+        validation::{validate_tx_out, TransactionValidationError},
+        BlockVersion, Token,
     };
     use mc_transaction_core_test_utils::{
         create_ledger, create_mint_config_tx_and_signers, create_mint_tx_to_recipient,
@@ -1186,6 +1206,11 @@ mod tests {
             let (amount, _) = fee_output.view_key_match(&fee_view_key).unwrap();
             assert_eq!(amount.value, total_fee);
             assert_eq!(amount.token_id, Mob::ID);
+
+            // The outputs should all conform to block version rules
+            for output in block_contents.outputs.iter() {
+                validate_tx_out(block_version, output).unwrap();
+            }
         }
     }
 

@@ -553,7 +553,7 @@ pub mod transaction_builder_tests {
         ring_signature::KeyImage,
         subaddress_matches_tx_out,
         tx::TxOutMembershipProof,
-        validation::validate_signature,
+        validation::{validate_signature, validate_tx_out},
         TokenId,
     };
     use rand::{rngs::StdRng, SeedableRng};
@@ -803,6 +803,8 @@ pub mod transaction_builder_tests {
 
             let output: &TxOut = tx.prefix.outputs.get(0).unwrap();
 
+            validate_tx_out(block_version, output).unwrap();
+
             // The output should belong to the correct recipient.
             assert!(
                 subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &output).unwrap()
@@ -881,6 +883,8 @@ pub mod transaction_builder_tests {
             assert_eq!(tx.prefix.outputs.len(), 1);
 
             let output: &TxOut = tx.prefix.outputs.get(0).unwrap();
+
+            validate_tx_out(block_version, output).unwrap();
 
             // The output should belong to the correct recipient.
             assert!(
@@ -1036,6 +1040,8 @@ pub mod transaction_builder_tests {
                 // The transaction should have one output.
                 assert_eq!(tx.prefix.outputs.len(), 1);
 
+                validate_tx_out(block_version, tx.prefix.outputs.first().unwrap()).unwrap();
+
                 // The tombstone block should be the min of what the user requested, and what
                 // fog limits it to
                 assert_eq!(tx.prefix.tombstone_block, 1000);
@@ -1063,6 +1069,8 @@ pub mod transaction_builder_tests {
 
                 // The transaction should have one output.
                 assert_eq!(tx.prefix.outputs.len(), 1);
+
+                validate_tx_out(block_version, tx.prefix.outputs.first().unwrap()).unwrap();
 
                 // The tombstone block should be the min of what the user requested, and what
                 // fog limits it to
@@ -1155,6 +1163,9 @@ pub mod transaction_builder_tests {
                         subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
                     })
                     .expect("Didn't find sender's output");
+
+                validate_tx_out(block_version, output).unwrap();
+                validate_tx_out(block_version, change).unwrap();
 
                 assert!(
                     !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
@@ -1329,6 +1340,9 @@ pub mod transaction_builder_tests {
                     })
                     .expect("Didn't find sender's output");
 
+                validate_tx_out(block_version, output).unwrap();
+                validate_tx_out(block_version, change).unwrap();
+
                 assert!(
                     !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
                         .unwrap()
@@ -1482,6 +1496,9 @@ pub mod transaction_builder_tests {
                         subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
                     })
                     .expect("Didn't find sender's output");
+
+                validate_tx_out(block_version, output).unwrap();
+                validate_tx_out(block_version, change).unwrap();
 
                 assert!(
                     !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
@@ -1637,6 +1654,9 @@ pub mod transaction_builder_tests {
                     })
                     .expect("Didn't find sender's output");
 
+                validate_tx_out(block_version, output).unwrap();
+                validate_tx_out(block_version, change).unwrap();
+
                 assert!(
                     !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
                         .unwrap()
@@ -1791,6 +1811,9 @@ pub mod transaction_builder_tests {
                     })
                     .expect("Didn't find sender's output");
 
+                validate_tx_out(block_version, output).unwrap();
+                validate_tx_out(block_version, change).unwrap();
+
                 assert!(
                     !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
                         .unwrap()
@@ -1932,6 +1955,9 @@ pub mod transaction_builder_tests {
                         subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
                     })
                     .expect("Didn't find sender's output");
+
+                validate_tx_out(block_version, output).unwrap();
+                validate_tx_out(block_version, change).unwrap();
 
                 assert!(
                     !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
@@ -2098,6 +2124,9 @@ pub mod transaction_builder_tests {
                         subaddress_matches_tx_out(&alice, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
                     })
                     .expect("Didn't find sender's output");
+
+                validate_tx_out(block_version, output).unwrap();
+                validate_tx_out(block_version, change).unwrap();
 
                 assert!(
                     !subaddress_matches_tx_out(&bob, DEFAULT_SUBADDRESS_INDEX, &change).unwrap()

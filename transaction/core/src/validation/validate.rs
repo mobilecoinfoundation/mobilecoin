@@ -72,16 +72,34 @@ pub fn validate<R: RngCore + CryptoRng>(
     // Note: The transaction must not contain a Key Image that has previously been
     // spent. This must be checked outside the enclave.
 
+    // Each tx_out must conform to the structural rules for TxOut's at this block
+    // version
+    for tx_out in tx.prefix.outputs.iter() {
+        validate_tx_out(block_version, tx_out)?;
+    }
+
     ////
     // Validate rules which depend on block version (see MCIP #26)
     ////
 
+    if block_version.validate_transaction_outputs_are_sorted() {
+        validate_outputs_are_sorted(&tx.prefix)?;
+    }
+
+    Ok(())
+}
+
+/// Determines if a tx out conforms to the current block version rules
+pub fn validate_tx_out(
+    block_version: BlockVersion,
+    tx_out: &TxOut,
+) -> TransactionValidationResult<()> {
     // If memos are supported, then all outputs must have memo fields.
     // If memos are not yet supported, then no outputs may have memo fields.
     if block_version.e_memo_feature_is_supported() {
-        validate_memos_exist(tx)?;
+        validate_memo_exists(tx_out)?;
     } else {
-        validate_no_memos_exist(tx)?;
+        validate_no_memo_exists(tx_out)?;
     }
 
     // If masked token id is supported, then all outputs must have masked_token_id
@@ -91,13 +109,9 @@ pub fn validate<R: RngCore + CryptoRng>(
     // Note: This rct_bulletproofs code enforces that token_id = 0 if this feature
     // is not enabled
     if block_version.masked_token_id_feature_is_supported() {
-        validate_masked_token_ids_exist(tx)?;
+        validate_masked_token_id_exists(tx_out)?;
     } else {
-        validate_no_masked_token_ids_exist(tx)?;
-    }
-
-    if block_version.validate_transaction_outputs_are_sorted() {
-        validate_outputs_are_sorted(&tx.prefix)?;
+        validate_no_masked_token_id_exists(tx_out)?;
     }
 
     Ok(())
@@ -224,26 +238,16 @@ fn validate_outputs_public_keys_are_unique(tx: &Tx) -> TransactionValidationResu
 }
 
 /// All outputs have no memo (new-style TxOuts (Post MCIP #3) are rejected)
-fn validate_no_memos_exist(tx: &Tx) -> TransactionValidationResult<()> {
-    if tx
-        .prefix
-        .outputs
-        .iter()
-        .any(|output| output.e_memo.is_some())
-    {
+fn validate_no_memo_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
+    if tx_out.e_memo.is_some() {
         return Err(TransactionValidationError::MemosNotAllowed);
     }
     Ok(())
 }
 
 /// All outputs have a memo (old-style TxOuts (Pre MCIP #3) are rejected)
-fn validate_memos_exist(tx: &Tx) -> TransactionValidationResult<()> {
-    if tx
-        .prefix
-        .outputs
-        .iter()
-        .any(|output| output.e_memo.is_none())
-    {
+fn validate_memo_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
+    if tx_out.e_memo.is_none() {
         return Err(TransactionValidationError::MissingMemo);
     }
     Ok(())
@@ -251,13 +255,8 @@ fn validate_memos_exist(tx: &Tx) -> TransactionValidationResult<()> {
 
 /// All outputs have no masked token id (new-style TxOuts (Post MCIP #25) are
 /// rejected)
-fn validate_no_masked_token_ids_exist(tx: &Tx) -> TransactionValidationResult<()> {
-    if tx
-        .prefix
-        .outputs
-        .iter()
-        .any(|output| !output.masked_amount.masked_token_id.is_empty())
-    {
+fn validate_no_masked_token_id_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
+    if !tx_out.masked_amount.masked_token_id.is_empty() {
         return Err(TransactionValidationError::MaskedTokenIdNotAllowed);
     }
     Ok(())
@@ -265,13 +264,8 @@ fn validate_no_masked_token_ids_exist(tx: &Tx) -> TransactionValidationResult<()
 
 /// All outputs have a masked token id (old-style TxOuts (Pre MCIP #25) are
 /// rejected)
-fn validate_masked_token_ids_exist(tx: &Tx) -> TransactionValidationResult<()> {
-    if tx
-        .prefix
-        .outputs
-        .iter()
-        .any(|output| output.masked_amount.masked_token_id.len() != 4)
-    {
+fn validate_masked_token_id_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
+    if tx_out.masked_amount.masked_token_id.len() != 4 {
         return Err(TransactionValidationError::MissingMaskedTokenId);
     }
     Ok(())
@@ -613,36 +607,79 @@ mod tests {
     }
 
     #[test]
-    // Should return MissingMemo when memos are missing in any the outputs
-    fn test_validate_memos_exist() {
+    // Should return MissingMemo when memos are missing in an output
+    fn test_validate_memo_exists() {
         let (tx, _) = create_test_tx(BlockVersion::ZERO);
+        let tx_out = tx.prefix.outputs.first().unwrap();
 
-        assert!(tx.prefix.outputs.first().unwrap().e_memo.is_none());
+        assert!(tx_out.e_memo.is_none());
         assert_eq!(
-            validate_memos_exist(&tx),
+            validate_memo_exists(&tx_out),
             Err(TransactionValidationError::MissingMemo)
         );
 
         let (tx, _) = create_test_tx(BlockVersion::ONE);
+        let tx_out = tx.prefix.outputs.first().unwrap();
 
-        assert!(tx.prefix.outputs.first().unwrap().e_memo.is_some());
-        assert_eq!(validate_memos_exist(&tx), Ok(()));
+        assert!(tx_out.e_memo.is_some());
+        assert_eq!(validate_memo_exists(&tx_out), Ok(()));
     }
 
     #[test]
-    // Should return MemosNotAllowed when memos are present in any of the outputs
-    fn test_validate_no_memos_exist() {
+    // Should return MemosNotAllowed when memos are present in an output
+    fn test_validate_no_memo_exists() {
         let (tx, _) = create_test_tx(BlockVersion::ZERO);
+        let tx_out = tx.prefix.outputs.first().unwrap();
 
-        assert!(tx.prefix.outputs.first().unwrap().e_memo.is_none());
-        assert_eq!(validate_no_memos_exist(&tx), Ok(()));
+        assert!(tx_out.e_memo.is_none());
+        assert_eq!(validate_no_memo_exists(&tx_out), Ok(()));
 
         let (tx, _) = create_test_tx(BlockVersion::ONE);
+        let tx_out = tx.prefix.outputs.first().unwrap();
 
-        assert!(tx.prefix.outputs.first().unwrap().e_memo.is_some());
+        assert!(tx_out.e_memo.is_some());
         assert_eq!(
-            validate_no_memos_exist(&tx),
+            validate_no_memo_exists(&tx_out),
             Err(TransactionValidationError::MemosNotAllowed)
+        );
+    }
+
+    #[test]
+    // Should return MissingMaskedTokenId when masked_token_id are missing in an
+    // output
+    fn test_validate_masked_token_id_exists() {
+        let (tx, _) = create_test_tx(BlockVersion::ONE);
+        let tx_out = tx.prefix.outputs.first().unwrap();
+
+        assert!(tx_out.masked_amount.masked_token_id.is_empty());
+        assert_eq!(
+            validate_masked_token_id_exists(&tx_out),
+            Err(TransactionValidationError::MissingMaskedTokenId)
+        );
+
+        let (tx, _) = create_test_tx(BlockVersion::TWO);
+        let tx_out = tx.prefix.outputs.first().unwrap();
+
+        assert!(!tx_out.masked_amount.masked_token_id.is_empty());
+        assert_eq!(validate_memo_exists(&tx_out), Ok(()));
+    }
+
+    #[test]
+    // Should return MemosNotAllowed when memos are present in an output
+    fn test_validate_no_masked_token_id_exists() {
+        let (tx, _) = create_test_tx(BlockVersion::ONE);
+        let tx_out = tx.prefix.outputs.first().unwrap();
+
+        assert!(tx_out.masked_amount.masked_token_id.is_empty());
+        assert_eq!(validate_no_masked_token_id_exists(&tx_out), Ok(()));
+
+        let (tx, _) = create_test_tx(BlockVersion::TWO);
+        let tx_out = tx.prefix.outputs.first().unwrap();
+
+        assert!(!tx_out.masked_amount.masked_token_id.is_empty());
+        assert_eq!(
+            validate_no_masked_token_id_exists(&tx_out),
+            Err(TransactionValidationError::MaskedTokenIdNotAllowed)
         );
     }
 
