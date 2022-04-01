@@ -1815,7 +1815,7 @@ mod tests {
 
             // There should be no key images or mint config txs
             assert!(block_contents.key_images.is_empty());
-            assert!(block_contents.mint_config_txs.is_empty());
+            assert!(block_contents.validated_mint_config_txs.is_empty());
 
             // The block contents should contain the minted tx outs.
             assert_eq!(block_contents.outputs.len(), 2);
@@ -1936,9 +1936,11 @@ mod tests {
         let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
         let signer_set2 = SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
 
-        let master_minters_map =
-            MasterMintersMap::try_from_iter([(token_id1, signer_set1), (token_id2, signer_set2)])
-                .unwrap();
+        let master_minters_map = MasterMintersMap::try_from_iter([
+            (token_id1, signer_set1.clone()),
+            (token_id2, signer_set2.clone()),
+        ])
+        .unwrap();
 
         for block_version in BlockVersion::iterator() {
             if !block_version.mint_transactions_are_supported() {
@@ -1998,8 +2000,17 @@ mod tests {
 
             // The block contents should contain the two mint config txs.
             assert_eq!(
-                block_contents.mint_config_txs,
-                vec![mint_config_tx1.clone(), mint_config_tx2.clone()]
+                block_contents.validated_mint_config_txs,
+                vec![
+                    ValidatedMintConfigTx {
+                        mint_config_tx: mint_config_tx1.clone(),
+                        signer_set: signer_set1.clone(),
+                    },
+                    ValidatedMintConfigTx {
+                        mint_config_tx: mint_config_tx2.clone(),
+                        signer_set: signer_set2.clone(),
+                    }
+                ]
             );
 
             // There should be no outputs, key images or mint txs
@@ -2361,7 +2372,7 @@ mod tests {
             );
 
             // There should be no mint config txs
-            assert!(block_contents.mint_config_txs.is_empty());
+            assert!(block_contents.validated_mint_config_txs.is_empty());
 
             // The block contents should contain the minted tx outs.
             let output1 = block_contents

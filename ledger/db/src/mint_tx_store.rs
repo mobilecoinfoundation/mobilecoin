@@ -137,7 +137,10 @@ mod tests {
     use crate::{mint_config_store::ActiveMintConfig, tx_out_store::tx_out_store_tests::get_env};
     use mc_crypto_keys::Ed25519Pair;
     use mc_transaction_core::TokenId;
-    use mc_transaction_core_test_utils::{create_mint_config_tx_and_signers, create_mint_tx};
+    use mc_transaction_core_test_utils::{
+        create_mint_config_tx_and_signers, create_mint_tx,
+        mint_config_tx_to_validated as to_validated,
+    };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use std::cmp::max;
@@ -164,9 +167,12 @@ mod tests {
         let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
-            .write_mint_config_txs(
+            .write_validated_mint_config_txs(
                 0,
-                &[mint_config_tx1.clone(), mint_config_tx2.clone()],
+                &[
+                    to_validated(&mint_config_tx1),
+                    to_validated(&mint_config_tx2),
+                ],
                 &mut db_txn,
             )
             .unwrap();
@@ -364,7 +370,7 @@ mod tests {
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
-            .write_mint_config_txs(0, &[mint_config_tx1.clone()], &mut db_txn)
+            .write_validated_mint_config_txs(0, &[to_validated(&mint_config_tx1)], &mut db_txn)
             .unwrap();
         db_txn.commit().unwrap();
 
@@ -404,7 +410,7 @@ mod tests {
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
-            .write_mint_config_txs(0, &[mint_config_tx1.clone()], &mut db_txn)
+            .write_validated_mint_config_txs(0, &[to_validated(&mint_config_tx1)], &mut db_txn)
             .unwrap();
         db_txn.commit().unwrap();
 
@@ -460,7 +466,7 @@ mod tests {
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
-            .write_mint_config_txs(0, &[mint_config_tx1.clone()], &mut db_txn)
+            .write_validated_mint_config_txs(0, &[to_validated(&mint_config_tx1)], &mut db_txn)
             .unwrap();
         db_txn.commit().unwrap();
 
@@ -492,7 +498,7 @@ mod tests {
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
-            .write_mint_config_txs(0, &[mint_config_tx1.clone()], &mut db_txn)
+            .write_validated_mint_config_txs(0, &[to_validated(&mint_config_tx1)], &mut db_txn)
             .unwrap();
         db_txn.commit().unwrap();
 
@@ -517,7 +523,7 @@ mod tests {
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
-            .write_mint_config_txs(0, &[mint_config_tx1.clone()], &mut db_txn)
+            .write_validated_mint_config_txs(0, &[to_validated(&mint_config_tx1)], &mut db_txn)
             .unwrap();
         db_txn.commit().unwrap();
 
@@ -562,7 +568,7 @@ mod tests {
 
         let mut db_txn = env.begin_rw_txn().unwrap();
         mint_config_store
-            .write_mint_config_txs(0, &[mint_config_tx1], &mut db_txn)
+            .write_validated_mint_config_txs(0, &[to_validated(&mint_config_tx1)], &mut db_txn)
             .unwrap();
         db_txn.commit().unwrap();
 

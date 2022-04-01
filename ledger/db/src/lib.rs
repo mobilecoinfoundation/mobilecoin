@@ -888,6 +888,7 @@ pub fn u32_to_key_bytes(value: u32) -> [u8; 4] {
 #[cfg(test)]
 mod ledger_db_test {
     use super::*;
+
     use core::convert::TryFrom;
     use mc_account_keys::AccountKey;
     use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate};
@@ -897,7 +898,7 @@ mod ledger_db_test {
     };
     use mc_transaction_core_test_utils::{
         create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx,
-        create_test_tx_out,
+        create_test_tx_out, mint_config_tx_to_validated as to_validated,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -1156,7 +1157,7 @@ mod ledger_db_test {
         let mint_config_tx1 = create_mint_config_tx(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
-            mint_config_txs: vec![mint_config_tx1.clone()],
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx1)],
             ..Default::default()
         };
 
@@ -1209,7 +1210,10 @@ mod ledger_db_test {
         let mint_config_tx3 = create_mint_config_tx(token_id2, &mut rng);
 
         let block_contents2 = BlockContents {
-            mint_config_txs: vec![mint_config_tx2.clone(), mint_config_tx3.clone()],
+            validated_mint_config_txs: vec![
+                to_validated(&mint_config_tx2),
+                to_validated(&mint_config_tx3),
+            ],
             ..Default::default()
         };
 
@@ -1298,7 +1302,7 @@ mod ledger_db_test {
         let mint_config_tx1 = create_mint_config_tx(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
-            mint_config_txs: vec![mint_config_tx1.clone()],
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx1)],
             ..Default::default()
         };
 
@@ -1317,7 +1321,10 @@ mod ledger_db_test {
         let mint_config_tx2 = create_mint_config_tx(token_id1, &mut rng);
 
         let block_contents2 = BlockContents {
-            mint_config_txs: vec![mint_config_tx2.clone(), mint_config_tx1.clone()],
+            validated_mint_config_txs: vec![
+                to_validated(&mint_config_tx2),
+                to_validated(&mint_config_tx1),
+            ],
             ..Default::default()
         };
 
@@ -1367,7 +1374,7 @@ mod ledger_db_test {
         let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
-            mint_config_txs: vec![mint_config_tx1.clone()],
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx1)],
             ..Default::default()
         };
 
@@ -1740,7 +1747,10 @@ mod ledger_db_test {
         let block_contents1 = BlockContents {
             key_images: key_images1,
             outputs: outputs1,
-            mint_config_txs: vec![mint_config_tx1.clone(), mint_config_tx2.clone()],
+            validated_mint_config_txs: vec![
+                to_validated(&mint_config_tx1),
+                to_validated(&mint_config_tx2),
+            ],
             mint_txs: vec![], /* For this block we cant include any mint txs since we need an
                                * active configuration first. */
         };
@@ -1838,7 +1848,7 @@ mod ledger_db_test {
         let block_contents2 = BlockContents {
             key_images: key_images2,
             outputs: outputs2,
-            mint_config_txs: vec![mint_config_tx3.clone()],
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx3)],
             mint_txs: vec![mint_tx1.clone(), mint_tx2.clone()],
         };
         let block2 = Block::new_with_parent(
@@ -1953,7 +1963,7 @@ mod ledger_db_test {
         let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
-            mint_config_txs: vec![mint_config_tx1.clone()],
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx1)],
             ..Default::default()
         };
 
@@ -2017,7 +2027,7 @@ mod ledger_db_test {
         let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
-            mint_config_txs: vec![mint_config_tx1.clone()],
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx1)],
             ..Default::default()
         };
 
@@ -2108,7 +2118,7 @@ mod ledger_db_test {
         let (mint_config_tx1, _signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
-            mint_config_txs: vec![mint_config_tx1.clone()],
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx1)],
             ..Default::default()
         };
 
@@ -2182,7 +2192,7 @@ mod ledger_db_test {
         let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let block_contents1 = BlockContents {
-            mint_config_txs: vec![mint_config_tx1.clone()],
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx1)],
             ..Default::default()
         };
 
