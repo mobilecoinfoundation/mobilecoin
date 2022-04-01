@@ -13,6 +13,7 @@ test_utils = []
 [dependencies]
 mc-api = { path = "../../../api" }
 mc-common = { path = "../../../common" }
+mc-consensus-scp = { path = "../../../consensus/scp"}
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-ledger-db = { path = "../../../ledger/db" }
 mc-ledger-streaming-api = { path = "../api" }
@@ -25,6 +26,7 @@ futures = "0.3"
 grpcio = "0.10"
 protobuf = "2.22"
 reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "gzip"] }
+pin-project = "1.0.10"
 url = "2.2"
 
 [build-dependencies]

@@ -33,6 +33,9 @@ pub enum Error {
 
     /// Block validation failed: {0}
     BlockValidation(String),
+
+    /// SCP Consensus Error
+    ConsensusError,
 }
 
 impl std::error::Error for Error {}
