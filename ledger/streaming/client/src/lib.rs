@@ -7,6 +7,10 @@
 
 mod grpc;
 
+pub mod error;
+pub mod ledger_sink;
+pub mod streaming_futures;
+
 #[cfg(any(test, feature = "test_utils"))]
 pub mod test_utils;
 

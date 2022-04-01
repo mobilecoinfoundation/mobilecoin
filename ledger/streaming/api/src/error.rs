@@ -20,6 +20,9 @@ pub enum Error {
 
     /// Invalid signature: {0}
     Signature(String),
+
+    /// Ledger DB Access Error
+    DBError,
 }
 
 impl std::error::Error for Error {}
