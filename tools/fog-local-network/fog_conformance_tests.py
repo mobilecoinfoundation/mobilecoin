@@ -23,11 +23,6 @@ DEADLINE_SECONDS = 60
 FOG_REPORT_RETRY_SECONDS = 30
 
 
-# Log a command and then call subprocess.run
-def log_and_run_shell(cmd):
-    print(cmd)
-    subprocess.run(cmd, shell=True, check=True)
-
 # A class that represents a handle to a new ledger_db and watcher_db which can be populated by the test
 #
 # This mocks out the inputs to fog that normally come from consensus
@@ -81,14 +76,13 @@ class TestLedger:
         ])
 
         # add_test_block expects a JSON blob on STDIN containing credits and key images
-        arg_bytes = json.dumps({
+        arg_json = json.dumps({
             'credits': credits,
             'key_images': key_images,
         }).encode("ascii")
 
         # Run the add_test_block program
-        print(cmd)
-        process_result = subprocess.run(cmd, input=arg_bytes, shell=True, check=True, stdout=subprocess.PIPE)
+        process_result = log_and_run_shell(cmd, input=arg_json, stdout=subprocess.PIPE)
 
         # Interpret its response as json { "key_images": [...] }
         result_json = json.loads(process_result.stdout)
@@ -361,15 +355,8 @@ class RustSamplePaykitRemoteWallet:
     def start(self):
         assert self.wallet_process is None
 
-        cmd = ' '.join([
-            f'MC_LOG=info exec {self.target_dir}/sample_paykit_remote_wallet',
-        ])
-
         print(f'Starting rust sample paykit remote wallet')
-        print(cmd)
-        print()
-
-        self.wallet_process = subprocess.Popen(cmd, shell=True)
+        self.wallet_process = log_and_popen_shell(f'MC_LOG=info exec {self.target_dir}/sample_paykit_remote_wallet')
 
     def stop(self):
         if self.wallet_process:
@@ -381,13 +368,13 @@ class FogConformanceTest:
     # Build the fog and mobilecoin repos for needed code, in release mode if selected
     def build(args):
         print("Building for fog_conformance_test")
-        FLAGS = "--release" if args.release else ""
+        flags = "--release" if args.release else ""
 
         enclave_pem = os.path.join(PROJECT_DIR, 'Enclave_private.pem')
         if not os.path.exists(enclave_pem):
             log_and_run_shell(f'openssl genrsa -out {enclave_pem} -3 3072')
 
-        log_and_run_shell(f"cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY={enclave_pem} INGEST_ENCLAVE_PRIVKEY={enclave_pem} LEDGER_ENCLAVE_PRIVKEY={enclave_pem} VIEW_ENCLAVE_PRIVKEY={enclave_pem} exec cargo build -p mc-util-keyfile -p mc-admin-http-gateway -p mc-crypto-x509-test-vectors -p mc-fog-view-server -p mc-fog-ledger-server -p mc-fog-ingest-server -p mc-fog-report-server -p mc-fog-report-cli -p mc-fog-ingest-client -p mc-fog-sql-recovery-db -p mc-fog-sample-paykit -p mc-fog-test-infra {FLAGS}")
+        log_and_run_shell(f"cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY={enclave_pem} INGEST_ENCLAVE_PRIVKEY={enclave_pem} LEDGER_ENCLAVE_PRIVKEY={enclave_pem} VIEW_ENCLAVE_PRIVKEY={enclave_pem} exec cargo build -p mc-util-keyfile -p mc-admin-http-gateway -p mc-crypto-x509-test-vectors -p mc-fog-view-server -p mc-fog-ledger-server -p mc-fog-ingest-server -p mc-fog-report-server -p mc-fog-report-cli -p mc-fog-ingest-client -p mc-fog-sql-recovery-db -p mc-fog-sample-paykit -p mc-fog-test-infra {flags}")
 
     def __init__(self, work_dir, args):
         self.release = args.release

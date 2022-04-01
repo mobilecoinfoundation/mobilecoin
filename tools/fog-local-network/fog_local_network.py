@@ -14,18 +14,23 @@ class FogNetwork(Network):
         enclave_pem = os.path.join(PROJECT_DIR, 'Enclave_private.pem')
         assert os.path.exists(enclave_pem), enclave_pem
 
-        subprocess.run(
-            ' '.join([
-                f'cd {PROJECT_DIR} &&',
-                f'CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}"',
-                f'INGEST_ENCLAVE_PRIVKEY="{enclave_pem}"',
-                f'LEDGER_ENCLAVE_PRIVKEY="{enclave_pem}"',
-                f'VIEW_ENCLAVE_PRIVKEY="{enclave_pem}"',
-                f'cargo build -p mc-fog-ingest-server -p mc-fog-ingest-client -p mc-fog-view-server -p mc-fog-report-server -p mc-fog-ledger-server -p mc-fog-distribution -p mc-fog-test-client -p mc-fog-ingest-client -p mc-fog-sql-recovery-db -p mc-fog-test-client {CARGO_FLAGS}',
-            ]),
-            shell=True,
-            check=True,
-        )
+        log_and_run_shell(' '.join([
+            f'cd {PROJECT_DIR} &&',
+            f'CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}"',
+            f'INGEST_ENCLAVE_PRIVKEY="{enclave_pem}"',
+            f'LEDGER_ENCLAVE_PRIVKEY="{enclave_pem}"',
+            f'VIEW_ENCLAVE_PRIVKEY="{enclave_pem}"',
+            f'cargo build',
+            '-p mc-fog-distribution',
+            '-p mc-fog-ingest-client',
+            '-p mc-fog-ingest-server',
+            '-p mc-fog-ledger-server',
+            '-p mc-fog-report-server',
+            '-p mc-fog-sql-recovery-db',
+            '-p mc-fog-test-client'
+            '-p mc-fog-view-server',
+            f'{CARGO_FLAGS}',
+        ]))
 
     def start(self):
         cmd = ' && '.join([

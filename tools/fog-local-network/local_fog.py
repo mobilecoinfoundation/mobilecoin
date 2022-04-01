@@ -35,6 +35,26 @@ FOG_SQL_DATABASE_NAME = 'fog_local'
 def target_dir(release):
     return os.path.join(PROJECT_DIR, 'target', 'release' if release else 'debug')
 
+# Log a command and then call subprocess.run
+def log_and_run_shell(cmd, **kwargs):
+    print(cmd)
+    return subprocess.run(cmd, shell=True, check=True, **kwargs)
+
+# Log a command and then call subprocess.Popen
+def log_and_popen_shell(cmd, **kwargs):
+    print(cmd)
+    return subprocess.Popen(cmd, shell=True, **kwargs)
+
+def start_admin_http_gateway(gateway_port, admin_port, target_dir):
+    cmd = ' '.join([
+        'ROCKET_CLI_COLORS=0',
+        f'exec {target_dir}/mc-admin-http-gateway',
+        f'--listen-host {LISTEN_HOST}',
+        f'--listen-port {gateway_port}',
+        f'--admin-uri insecure-mca://{LISTEN_HOST}:{admin_port}/',
+    ])
+    return log_and_popen_shell(cmd)
+
 
 class FogIngest:
     # Arguments:
@@ -76,6 +96,7 @@ class FogIngest:
     def start(self):
         self.stop()
 
+        print(f'Starting fog ingest {self.name}')
         cmd = ' '.join([
             'MC_LOG=trace',
             f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME}',
@@ -91,21 +112,10 @@ class FogIngest:
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
             f'--watcher-db {self.watcher_db_path}',
         ])
+        self.ingest_server_process = log_and_popen_shell(cmd)
 
-        print(f'Starting fog ingest {self.name}')
-        print(cmd)
-        print()
-
-        self.ingest_server_process = subprocess.Popen(cmd, shell=True)
-
-        cmd = ' '.join([
-            f'cd {PROJECT_DIR} && export ROCKET_CLI_COLORS=0 && exec {target_dir(self.release)}/mc-admin-http-gateway',
-            f'--listen-host {LISTEN_HOST}',
-            f'--listen-port {self.admin_http_gateway_port}',
-            f'--admin-uri insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
-        ])
-        print(f'Starting admin http gateway for fog ingest: {cmd}')
-        self.admin_http_gateway_process = subprocess.Popen(cmd, shell=True)
+        print(f'Starting admin http gateway for fog ingest')
+        self.admin_http_gateway_process = start_admin_http_gateway(self.admin_http_gateway_port, self.admin_port, self.target_dir)
 
     def remove_state_file(self):
         os.remove(self.state_file_path)
@@ -119,67 +129,36 @@ class FogIngest:
             self.admin_http_gateway_process.terminate()
             self.admin_http_gateway_process = None
 
-    def get_status(self):
+    def run_client_command(self, *args):
         cmd = ' '.join([
             f'exec {self.target_dir}/fog_ingest_client',
             f'--uri insecure-fog-ingest://localhost:{self.client_port}',
-            'get-status',
+            *args,
         ])
-        print(cmd)
-        result = subprocess.check_output(cmd, shell=True)
+        return log_and_run_shell(cmd, stdout=subprocess.PIPE).stdout
+
+    def get_status(self):
+        result = self.run_client_command('get-status')
         return json.loads(result)
 
     def activate(self):
-        cmd = ' '.join([
-            f'exec {self.target_dir}/fog_ingest_client',
-            f'--uri insecure-fog-ingest://localhost:{self.client_port}',
-            'activate',
-        ])
-        print(cmd)
-        result = subprocess.check_output(cmd, shell=True)
+        result = self.run_client_command('activate')
         return json.loads(result)
 
     def set_pubkey_expiry_window(self, value):
-        cmd = ' '.join([
-            f'exec {self.target_dir}/fog_ingest_client',
-            f'--uri insecure-fog-ingest://localhost:{self.client_port}',
-            'set-pubkey-expiry-window',
-            str(value),
-        ])
-        print(cmd)
-        result = subprocess.check_output(cmd, shell=True)
+        result = self.run_client_command('set-pubkey-expiry-window', str(value))
         return json.loads(result)
 
     def set_peers(self, peers):
-        cmd = ' '.join([
-            f'exec {self.target_dir}/fog_ingest_client',
-            f'--uri insecure-fog-ingest://localhost:{self.client_port}',
-            'set-peers',
-        ] + peers)
-        print(cmd)
-        result = subprocess.check_output(cmd, shell=True)
+        result = self.run_client_command('set-peers', *peers)
         return json.loads(result)
 
     def retire(self):
-        cmd = ' '.join([
-            f'exec {self.target_dir}/fog_ingest_client',
-            f'--uri insecure-fog-ingest://localhost:{self.client_port}',
-            'retire',
-        ])
-        print(cmd)
-        result = subprocess.check_output(cmd, shell=True)
+        result = self.run_client_command('retire')
         return json.loads(result)
 
     def report_lost_ingress_key(self, lost_key):
-        cmd = ' '.join([
-            f'exec {self.target_dir}/fog_ingest_client',
-            f'--uri insecure-fog-ingest://localhost:{self.client_port}',
-            'report-lost-ingress-key',
-            f"-k '{lost_key}'",
-        ])
-        print(cmd)
-        result = subprocess.run(cmd, stderr=subprocess.STDOUT, shell=True)
-
+        return self.run_client_command(f'report-lost-ingress-key -k "{lost_key}"')
 
 class FogView:
     def __init__(self, name, client_responder_id, client_port, admin_port, admin_http_gateway_port, release):
@@ -204,6 +183,7 @@ class FogView:
     def start(self):
         self.stop()
 
+        print(f'Starting fog view {self.name}')
         cmd = ' '.join([
             f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME}',
             f'exec {self.target_dir}/fog_view_server',
@@ -213,21 +193,10 @@ class FogView:
             f'--ias-spid={IAS_SPID}',
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
         ])
+        self.view_server_process = log_and_popen_shell(cmd)
 
-        print(f'Starting fog view {self.name}')
-        print(cmd)
-        print()
-
-        self.view_server_process = subprocess.Popen(cmd, shell=True)
-
-        cmd = ' '.join([
-            f'cd {PROJECT_DIR} && export ROCKET_CLI_COLORS=0 && exec {target_dir(self.release)}/mc-admin-http-gateway',
-            f'--listen-host {LISTEN_HOST}',
-            f'--listen-port {self.admin_http_gateway_port}',
-            f'--admin-uri insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
-        ])
-        print(f'Starting admin http gateway for fog view: {cmd}')
-        self.admin_http_gateway_process = subprocess.Popen(cmd, shell=True)
+        print(f'Starting admin http gateway for fog view')
+        self.admin_http_gateway_process = start_admin_http_gateway(self.admin_http_gateway_port, self.admin_port, self.target_dir)
 
     def stop(self):
         if self.view_server_process and self.view_server_process.poll() is None:
@@ -263,6 +232,7 @@ class FogReport:
     def start(self):
         self.stop()
 
+        print(f'Starting fog report {self.name}')
         cmd = ' '.join([
             f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME}',
             f'exec {self.target_dir}/report_server',
@@ -271,21 +241,10 @@ class FogReport:
             f'--signing-chain={self.chain}',
             f'--signing-key={self.key}'
         ])
+        self.report_server_process = log_and_popen_shell(cmd)
 
-        print(f'Starting fog report {self.name}')
-        print(cmd)
-        print()
-
-        self.report_server_process = subprocess.Popen(cmd, shell=True)
-
-        cmd = ' '.join([
-            f'cd {PROJECT_DIR} && export ROCKET_CLI_COLORS=0 && exec {target_dir(self.release)}/mc-admin-http-gateway',
-            f'--listen-host {LISTEN_HOST}',
-            f'--listen-port {self.admin_http_gateway_port}',
-            f'--admin-uri insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
-        ])
-        print(f'Starting admin http gateway for fog report : {cmd}')
-        self.admin_http_gateway_process = subprocess.Popen(cmd, shell=True)
+        print(f'Starting admin http gateway for fog report')
+        self.admin_http_gateway_process = start_admin_http_gateway(self.admin_http_gateway_port, self.admin_port, self.target_dir)
 
     def stop(self):
         if self.report_server_process and self.report_server_process.poll() is None:
@@ -324,6 +283,7 @@ class FogLedger:
         assert os.path.exists(os.path.join(self.watcher_db_path, 'data.mdb')), self.watcher_db_path
         self.stop()
 
+        print(f'Starting fog ledger {self.name}')
         cmd = ' '.join([
             f'exec {self.target_dir}/ledger_server',
             f'--ledger-db={self.ledger_db_path}',
@@ -334,21 +294,10 @@ class FogLedger:
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
             f'--watcher-db {self.watcher_db_path}',
         ])
+        self.ledger_server_process = log_and_popen_shell(cmd)
 
-        print(f'Starting fog ledger {self.name}')
-        print(cmd)
-        print()
-
-        self.ledger_server_process = subprocess.Popen(cmd, shell=True)
-
-        cmd = ' '.join([
-            f'cd {PROJECT_DIR} && export ROCKET_CLI_COLORS=0 && exec {target_dir(self.release)}/mc-admin-http-gateway',
-            f'--listen-host {LISTEN_HOST}',
-            f'--listen-port {self.admin_http_gateway_port}',
-            f'--admin-uri insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
-        ])
-        print(f'Starting admin http gateway for fog ledger: {cmd}')
-        self.admin_http_gateway_process = subprocess.Popen(cmd, shell=True)
+        print(f'Starting admin http gateway for fog ledger')
+        self.admin_http_gateway_process = start_admin_http_gateway(self.admin_http_gateway_port, self.admin_port, self.target_dir)
 
     def stop(self):
         if self.ledger_server_process and self.ledger_server_process.poll() is None:
@@ -368,7 +317,8 @@ class FogNginx:
         self.nginx_process = None
 
         # Load the template nginx configuration and search/replace the port numbers
-        template = open(os.path.join(os.path.dirname(__file__), 'fog-nginx.conf'), 'r').read()
+        template = os.path.join(os.path.dirname(__file__), 'fog-nginx.conf')
+        template = open(template, 'r').read()
         conf = template.replace(
             'FOG_NGINX_PORT', str(client_port),
         ).replace(
@@ -383,14 +333,8 @@ class FogNginx:
 
     def start(self):
         assert self.nginx_process is None
-        cmd = ' '.join([
-            'nginx',
-            f'-c {self.conf_file}',
-        ])
-
-        print(f'Starting fog nginx: {cmd}')
-
-        self.nginx_process = subprocess.Popen(cmd, shell=True)
+        print(f'Starting fog nginx')
+        self.nginx_process = log_and_popen_shell(f'nginx -c {self.conf_file}')
 
     def stop(self):
         if self.nginx_process:
