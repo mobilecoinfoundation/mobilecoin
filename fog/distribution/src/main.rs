@@ -173,7 +173,7 @@ fn main() {
             ledger_db.get_latest_block().unwrap().version,
             block_infos
                 .iter()
-                .map(|block_info| block_info.block_version)
+                .map(|block_info| block_info.network_block_version)
                 .max()
                 .unwrap_or(0),
         ),
