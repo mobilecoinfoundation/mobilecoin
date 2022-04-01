@@ -37,6 +37,9 @@ pub enum Error {
 
     /// SCP Consensus Behind: last externalized block {0} - highest block {1}
     ConsensusBlocked(SlotIndex, SlotIndex),
+
+    /// Ledger DB Access Error
+    DBError,
 }
 
 impl std::error::Error for Error {}

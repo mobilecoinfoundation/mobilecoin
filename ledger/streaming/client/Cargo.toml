@@ -29,6 +29,7 @@ pin-project = "1.0.10"
 protobuf = "2.22"
 reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "gzip"] }
 url = "2.2"
+pin-project = "1.0.10"
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../../util/build/grpc" }
