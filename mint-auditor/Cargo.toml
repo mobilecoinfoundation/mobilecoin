@@ -34,7 +34,7 @@ mc-crypto-keys = { path = "../crypto/keys" }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-util-from-random = { path = "../util/from-random" }
 
-protobuf = "2.22.1"
+protobuf = "2.27.1"
 rand_core = "0.6"
 rand_hc = "0.3"
 tempfile = "3.3"
