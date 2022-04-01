@@ -1,8 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Convert to/from
-//! external:ValidatedMintConfigTx/ValidatedMintConfigTxTxPrefix/
-//! ValidatedMintConfigTxTx.
+//! Convert between the Rust and Protobuf versions of [ValidatedMintConfigTx]
 
 use crate::{convert::ConversionError, external};
 use mc_crypto_multisig::SignerSet;
