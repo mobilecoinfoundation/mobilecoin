@@ -34,7 +34,7 @@ lazy_static = "1.4"
 rand = "0.8"
 rayon = "1.5"
 retry = "1.3"
-tempfile = "3.2"
+tempfile = "3.3"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
