@@ -828,9 +828,9 @@ fn mint_output<T: Digestible>(
     if !block_version.masked_token_id_feature_is_supported() {
         output.masked_amount.masked_token_id.clear();
         if amount.token_id != 0 {
-            return Err(Error::FormBlock(format!(
-                "Cannot mint outputs for non-MOB tokens until they are supported"
-            )));
+            return Err(Error::FormBlock(
+                "Cannot mint outputs for non-MOB tokens until they are supported".to_string(),
+            ));
         }
     }
 

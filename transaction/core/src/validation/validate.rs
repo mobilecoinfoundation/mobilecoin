@@ -608,7 +608,7 @@ mod tests {
 
     #[test]
     // Should return MissingMemo when memos are missing in an output
-    fn test_validate_memos_exist() {
+    fn test_validate_memo_exists() {
         let (tx, _) = create_test_tx(BlockVersion::ZERO);
         let tx_out = tx.prefix.outputs.first().unwrap();
 
@@ -627,7 +627,7 @@ mod tests {
 
     #[test]
     // Should return MemosNotAllowed when memos are present in an output
-    fn test_validate_no_memos_exist() {
+    fn test_validate_no_memo_exists() {
         let (tx, _) = create_test_tx(BlockVersion::ZERO);
         let tx_out = tx.prefix.outputs.first().unwrap();
 
