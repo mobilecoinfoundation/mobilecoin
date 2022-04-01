@@ -536,7 +536,7 @@ impl Client {
     pub fn get_fee(&mut self) -> Result<u64> {
         Ok(self
             .get_last_block_info()?
-            .minimum_fee_or_none(&token_id)
+            .minimum_fee_or_none(&Mob::ID)
             .unwrap_or(0))
     }
 
