@@ -826,4 +826,165 @@ mod tests {
             3
         );
     }
+
+    // MintTxs that do not match an active MintConfig get counted.
+    #[test_with_logger]
+    fn test_sync_block_counts_mint_txs_without_active_config(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(22);
+        let token_id3 = TokenId::from(3);
+
+        let mint_audit_db_path = tempdir().unwrap();
+        let mint_audit_db = MintAuditorDb::create_or_open(&mint_audit_db_path, logger).unwrap();
+
+        let mut ledger_db = create_ledger();
+        let account_key = AccountKey::random(&mut rng);
+        let initial_num_blocks = 3;
+        initialize_ledger(
+            BlockVersion::MAX,
+            &mut ledger_db,
+            initial_num_blocks,
+            &account_key,
+            &mut rng,
+        );
+
+        // The blocks we currently have in the ledger contain no burning or minting.
+        for block_index in 0..initial_num_blocks {
+            let block_data = ledger_db.get_block_data(block_index).unwrap();
+
+            let mint_audit_data = mint_audit_db
+                .sync_block(block_data.block(), block_data.contents())
+                .unwrap();
+
+            assert_eq!(mint_audit_data, BlockAuditData::default());
+        }
+
+        // Sync a block that contains MintConfigTxs so that we have valid active
+        // configs.
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+
+        let block_contents = BlockContents {
+            mint_config_txs: vec![mint_config_tx1, mint_config_tx2],
+            ..Default::default()
+        };
+
+        let parent_block = ledger_db
+            .get_block(ledger_db.num_blocks().unwrap() - 1)
+            .unwrap();
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        let mint_audit_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        assert_eq!(
+            mint_audit_data,
+            BlockAuditData {
+                balance_map: BTreeMap::default(),
+            }
+        );
+
+        // Sync a block that contains a mint transaction with incorrect signers.
+        let mint_tx1 = create_mint_tx(token_id1, &signers2, 1, &mut rng);
+
+        let block_contents = BlockContents {
+            mint_txs: vec![mint_tx1],
+            outputs: (0..3).map(|_i| create_test_tx_out(&mut rng)).collect(),
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        mint_audit_db.sync_block(&block, &block_contents).unwrap();
+
+        assert_eq!(
+            mint_audit_db.get_counters().unwrap(),
+            Counters {
+                num_blocks_synced: block.index + 1,
+                num_burns_exceeding_balance: 0,
+                num_mint_txs_without_matching_mint_config: 1,
+            }
+        );
+
+        // Sync a block that invalidates the previous configs.
+        let (mint_config_tx3, signers3) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        let block_contents = BlockContents {
+            mint_config_txs: vec![mint_config_tx3],
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        mint_audit_db.sync_block(&block, &block_contents).unwrap();
+
+        // Sync a block that contains a mint transaction with signers that refer to a no
+        // longer valid mint config.
+        let mint_tx2 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
+
+        let block_contents = BlockContents {
+            mint_txs: vec![mint_tx2],
+            outputs: (0..3).map(|_i| create_test_tx_out(&mut rng)).collect(),
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        mint_audit_db.sync_block(&block, &block_contents).unwrap();
+
+        assert_eq!(
+            mint_audit_db.get_counters().unwrap(),
+            Counters {
+                num_blocks_synced: block.index + 1,
+                num_burns_exceeding_balance: 0,
+                num_mint_txs_without_matching_mint_config: 2,
+            }
+        );
+
+        // Sanity - sync a block with a MintTx that matches a valid config.
+        let mint_tx3 = create_mint_tx(token_id1, &signers3, 1, &mut rng);
+
+        let block_contents = BlockContents {
+            mint_txs: vec![mint_tx3],
+            outputs: (0..3).map(|_i| create_test_tx_out(&mut rng)).collect(),
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        mint_audit_db.sync_block(&block, &block_contents).unwrap();
+
+        assert_eq!(
+            mint_audit_db.get_counters().unwrap(),
+            Counters {
+                num_blocks_synced: block.index + 1,
+                num_burns_exceeding_balance: 0,
+                num_mint_txs_without_matching_mint_config: 2,
+            }
+        );
+    }
 }
