@@ -26,7 +26,6 @@ BASE_LEDGER_ADMIN_HTTP_GATEWAY_PORT = 7500
 BASE_NGINX_CLIENT_PORT = 8200
 
 PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-FOG_PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 IAS_API_KEY = os.getenv('IAS_API_KEY', default='0'*64) # 32 bytes
 IAS_SPID = os.getenv('IAS_SPID', default='0'*32) # 16 bytes
@@ -79,7 +78,7 @@ class FogIngest:
         self.stop()
 
         cmd = ' '.join([
-            f'cd {FOG_PROJECT_DIR} && MC_LOG=trace DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME} exec {target_dir(self.release)}/fog_ingest_server',
+            f'cd {PROJECT_DIR} && MC_LOG=trace DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME} exec {target_dir(self.release)}/fog_ingest_server',
             f'--ledger-db={self.ledger_db_path}',
             f'--client-listen-uri={self.client_listen_url}',
             f'--peer-listen-uri=insecure-igp://{LISTEN_HOST}:{self.peer_port}/',
@@ -121,7 +120,7 @@ class FogIngest:
 
     def get_status(self):
         cmd = ' '.join([
-            f'exec {FOG_PROJECT_DIR}/{target_dir(self.release)}/fog_ingest_client',
+            f'exec {PROJECT_DIR}/{target_dir(self.release)}/fog_ingest_client',
             f'--uri insecure-fog-ingest://localhost:{self.client_port}',
             'get-status',
         ])
@@ -131,7 +130,7 @@ class FogIngest:
 
     def activate(self):
         cmd = ' '.join([
-            f'exec {FOG_PROJECT_DIR}/{target_dir(self.release)}/fog_ingest_client',
+            f'exec {PROJECT_DIR}/{target_dir(self.release)}/fog_ingest_client',
             f'--uri insecure-fog-ingest://localhost:{self.client_port}',
             'activate',
         ])
@@ -141,7 +140,7 @@ class FogIngest:
 
     def set_pubkey_expiry_window(self, value):
         cmd = ' '.join([
-            f'exec {FOG_PROJECT_DIR}/{target_dir(self.release)}/fog_ingest_client',
+            f'exec {PROJECT_DIR}/{target_dir(self.release)}/fog_ingest_client',
             f'--uri insecure-fog-ingest://localhost:{self.client_port}',
             'set-pubkey-expiry-window',
             str(value),
@@ -152,7 +151,7 @@ class FogIngest:
 
     def set_peers(self, peers):
         cmd = ' '.join([
-            f'exec {FOG_PROJECT_DIR}/{target_dir(self.release)}/fog_ingest_client',
+            f'exec {PROJECT_DIR}/{target_dir(self.release)}/fog_ingest_client',
             f'--uri insecure-fog-ingest://localhost:{self.client_port}',
             'set-peers',
         ] + peers)
@@ -162,7 +161,7 @@ class FogIngest:
 
     def retire(self):
         cmd = ' '.join([
-            f'exec {FOG_PROJECT_DIR}/{target_dir(self.release)}/fog_ingest_client',
+            f'exec {PROJECT_DIR}/{target_dir(self.release)}/fog_ingest_client',
             f'--uri insecure-fog-ingest://localhost:{self.client_port}',
             'retire',
         ])
@@ -172,7 +171,7 @@ class FogIngest:
 
     def report_lost_ingress_key(self, lost_key):
         cmd = ' '.join([
-            f'exec {FOG_PROJECT_DIR}/{target_dir(self.release)}/fog_ingest_client',
+            f'exec {PROJECT_DIR}/{target_dir(self.release)}/fog_ingest_client',
             f'--uri insecure-fog-ingest://localhost:{self.client_port}',
             'report-lost-ingress-key',
             f"-k '{lost_key}'",
@@ -204,7 +203,7 @@ class FogView:
         self.stop()
 
         cmd = ' '.join([
-            f'cd {FOG_PROJECT_DIR} && DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME} exec {target_dir(self.release)}/fog_view_server',
+            f'cd {PROJECT_DIR} && DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME} exec {target_dir(self.release)}/fog_view_server',
             f'--client-listen-uri={self.client_listen_url}',
             f'--client-responder-id={self.client_responder_id}',
             f'--ias-api-key={IAS_API_KEY}',
@@ -261,7 +260,7 @@ class FogReport:
         self.stop()
 
         cmd = ' '.join([
-            f'cd {FOG_PROJECT_DIR} && DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME} exec {target_dir(self.release)}/report_server',
+            f'cd {PROJECT_DIR} && DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME} exec {target_dir(self.release)}/report_server',
             f'--client-listen-uri={self.client_listen_url}',
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
             f'--signing-chain={self.chain}',
@@ -319,7 +318,7 @@ class FogLedger:
         self.stop()
 
         cmd = ' '.join([
-            f'cd {FOG_PROJECT_DIR} && exec {target_dir(self.release)}/ledger_server',
+            f'cd {PROJECT_DIR} && exec {target_dir(self.release)}/ledger_server',
             f'--ledger-db={self.ledger_db_path}',
             f'--client-listen-uri={self.client_listen_url}',
             f'--client-responder-id={self.client_responder_id}',

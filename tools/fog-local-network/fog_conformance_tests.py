@@ -44,7 +44,7 @@ class TestLedger:
             os.makedirs(ledger_db_path)
 
             cmd = ' '.join([
-                f'cd {self.ledger_db_path} && exec {FOG_PROJECT_DIR}/{target_dir(self.release)}/init_test_ledger',
+                f'cd {self.ledger_db_path} && exec {PROJECT_DIR}/{target_dir(self.release)}/init_test_ledger',
                 f'--keys {keys_dir}',
                 f'--ledger-db {self.ledger_db_path}',
                 f'--watcher-db {self.watcher_db_path}',
@@ -72,7 +72,7 @@ class TestLedger:
     def add_block(self, credits, key_images, fog_pubkey):
 
         cmd = ' '.join([
-            f'cd {FOG_PROJECT_DIR} && exec {target_dir(self.release)}/add_test_block',
+            f'cd {PROJECT_DIR} && exec {target_dir(self.release)}/add_test_block',
             f'--ledger-db {self.ledger_db_path}',
             f'--watcher-db {self.watcher_db_path}',
             f'--keys {self.keys_dir}',
@@ -361,7 +361,7 @@ class RustSamplePaykitRemoteWallet:
         assert self.wallet_process is None
 
         cmd = ' '.join([
-            f'cd {FOG_PROJECT_DIR} && MC_LOG=info exec {target_dir(self.release)}/sample_paykit_remote_wallet',
+            f'cd {PROJECT_DIR} && MC_LOG=info exec {target_dir(self.release)}/sample_paykit_remote_wallet',
         ])
 
         print(f'Starting rust sample paykit remote wallet')
@@ -386,7 +386,7 @@ class FogConformanceTest:
         if not os.path.exists(enclave_pem):
             log_and_run_shell(f'openssl genrsa -out {enclave_pem} -3 3072')
 
-        log_and_run_shell(f"cd {FOG_PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY={enclave_pem} INGEST_ENCLAVE_PRIVKEY={enclave_pem} LEDGER_ENCLAVE_PRIVKEY={enclave_pem} VIEW_ENCLAVE_PRIVKEY={enclave_pem} exec cargo build -p mc-util-keyfile -p mc-admin-http-gateway -p mc-crypto-x509-test-vectors -p mc-fog-view-server -p mc-fog-ledger-server -p mc-fog-ingest-server -p mc-fog-report-server -p mc-fog-report-cli -p mc-fog-ingest-client -p mc-fog-sql-recovery-db -p mc-fog-sample-paykit -p mc-fog-test-infra {FLAGS}")
+        log_and_run_shell(f"cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY={enclave_pem} INGEST_ENCLAVE_PRIVKEY={enclave_pem} LEDGER_ENCLAVE_PRIVKEY={enclave_pem} VIEW_ENCLAVE_PRIVKEY={enclave_pem} exec cargo build -p mc-util-keyfile -p mc-admin-http-gateway -p mc-crypto-x509-test-vectors -p mc-fog-view-server -p mc-fog-ledger-server -p mc-fog-ingest-server -p mc-fog-report-server -p mc-fog-report-cli -p mc-fog-ingest-client -p mc-fog-sql-recovery-db -p mc-fog-sample-paykit -p mc-fog-test-infra {FLAGS}")
 
     def __init__(self, work_dir, args):
         self.release = args.release
@@ -539,7 +539,7 @@ class FogConformanceTest:
         # Get fog pubkey
         print("Getting fog pubkey...")
         keyfile = os.path.join(self.keys_dir, "account_keys_0.pub")
-        fog_pubkey = subprocess.check_output(f"cd {FOG_PROJECT_DIR} && exec {target_dir(self.release)}/fog-report-cli --public-address {keyfile} --retry-seconds={FOG_REPORT_RETRY_SECONDS}", shell = True).decode("utf-8")
+        fog_pubkey = subprocess.check_output(f"cd {PROJECT_DIR} && exec {target_dir(self.release)}/fog-report-cli --public-address {keyfile} --retry-seconds={FOG_REPORT_RETRY_SECONDS}", shell = True).decode("utf-8")
         assert len(fog_pubkey) == 64
         print("Fog pubkey = ", fog_pubkey)
 
@@ -1000,7 +1000,7 @@ class FogConformanceTest:
         assert status["mode"] == "Active"
 
         self.fog_ingest2.report_lost_ingress_key(fog_pubkey)
-        new_fog_pubkey = subprocess.check_output(f"cd {FOG_PROJECT_DIR} && exec {target_dir(self.release)}/fog-report-cli --public-address {keyfile} --retry-seconds={FOG_REPORT_RETRY_SECONDS}", shell = True).decode("utf-8")
+        new_fog_pubkey = subprocess.check_output(f"cd {PROJECT_DIR} && exec {target_dir(self.release)}/fog-report-cli --public-address {keyfile} --retry-seconds={FOG_REPORT_RETRY_SECONDS}", shell = True).decode("utf-8")
         assert new_fog_pubkey != fog_pubkey
         # Add the block to the restarted ingest. While ingest won't successfully decode the hints in
         # TxOuts in the block because it is using a new fog pubkey, it's required
