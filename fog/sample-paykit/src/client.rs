@@ -527,7 +527,8 @@ impl Client {
     pub fn get_last_block_info(&mut self) -> Result<BlockInfo> {
         let block_info = self.consensus_service_conn.fetch_block_info()?;
         // Opportunistically update our cached block version value
-        self.tx_data.notify_block_version(block_info.block_version);
+        self.tx_data
+            .notify_block_version(block_info.network_block_version);
         Ok(block_info)
     }
 

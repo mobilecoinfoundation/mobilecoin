@@ -144,7 +144,7 @@ fn get_block_infos<T: BlockchainConnection + UserTxConnection + 'static>(
 fn get_network_block_version(block_infos: &[BlockInfo]) -> u32 {
     block_infos
         .iter()
-        .map(|block_info| block_info.block_version)
+        .map(|block_info| block_info.network_block_version)
         .max()
         .unwrap_or(0)
 }

@@ -34,7 +34,7 @@ pub struct BlockchainApiService<L: Ledger + Clone> {
     fee_map: FeeMap,
 
     /// Configured block version
-    block_version: BlockVersion,
+    network_block_version: BlockVersion,
 
     /// Logger.
     logger: Logger,
@@ -45,7 +45,7 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
         ledger: L,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         fee_map: FeeMap,
-        block_version: BlockVersion,
+        network_block_version: BlockVersion,
         logger: Logger,
     ) -> Self {
         BlockchainApiService {
@@ -53,7 +53,7 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
             authenticator,
             max_page_size: 2000,
             fee_map,
-            block_version,
+            network_block_version,
             logger,
         }
     }
@@ -79,7 +79,7 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
                 .iter()
                 .map(|(token_id, fee)| (**token_id, *fee)),
         ));
-        resp.set_block_version(*self.block_version);
+        resp.set_network_block_version(*self.network_block_version);
 
         Ok(resp)
     }
@@ -241,7 +241,7 @@ mod tests {
         expected_response.set_index(block_entities.last().unwrap().index);
         expected_response.set_mob_minimum_fee(12345);
         expected_response.set_minimum_fees(HashMap::from_iter(vec![(0, 12345), (60, 10203040)]));
-        expected_response.set_block_version(*BlockVersion::MAX);
+        expected_response.set_network_block_version(*BlockVersion::MAX);
         assert_eq!(
             block_entities.last().unwrap().index,
             ledger_db.num_blocks().unwrap() - 1
