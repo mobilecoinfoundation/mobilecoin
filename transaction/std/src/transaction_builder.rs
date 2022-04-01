@@ -553,7 +553,7 @@ pub mod transaction_builder_tests {
         ring_signature::KeyImage,
         subaddress_matches_tx_out,
         tx::TxOutMembershipProof,
-        validation::validate_signature,
+        validation::{validate_signature, validate_tx_out},
         TokenId,
     };
     use rand::{rngs::StdRng, SeedableRng};
