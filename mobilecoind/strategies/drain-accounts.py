@@ -116,13 +116,13 @@ if __name__ == '__main__':
 
     stub = connect(args.mobilecoind_host, args.mobilecoind_port)
     source_accounts = [
-        load_key_and_register("{}/{}".format(args.key_dir, k), stub)
+        load_key_and_register(os.path.join(args.key_dir, k), stub)
         for k in sorted(
             filter(lambda x: x.endswith(".json"), os.listdir(args.key_dir)), key=filename_key)
     ]
 
     dest_b58addresses = [
-        read_file("{}/{}".format(args.dest_key_dir, b58pubfile))
+        read_file(os.path.join(args.dest_key_dir, b58pubfile))
         for b58pubfile in sorted(
             filter(lambda x: x.endswith(".b58pub"), os.listdir(args.dest_key_dir)), key=filename_key)
     ]

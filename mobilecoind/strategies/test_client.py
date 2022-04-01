@@ -86,7 +86,7 @@ if __name__ == '__main__':
 
     stub = connect(args.mobilecoind_host, args.mobilecoind_port)
     accounts = [
-        load_key_and_register("{}/{}".format(args.key_dir, k), stub)
+        load_key_and_register(os.path.join(args.key_dir, k), stub)
         for k in sorted(
             filter(lambda x: x.endswith(".json"), os.listdir(args.key_dir)))
     ]
