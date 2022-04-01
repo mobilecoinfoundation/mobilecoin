@@ -971,8 +971,6 @@ pub mod transaction_builder_tests {
 
             let output: &TxOut = tx.prefix.outputs.get(0).unwrap();
 
-            validate_tx_out(block_version, output).unwrap();
-
             // The output should belong to the correct recipient.
             assert!(
                 subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &output).unwrap()
