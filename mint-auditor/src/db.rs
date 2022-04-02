@@ -837,7 +837,6 @@ mod tests {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(22);
-        let token_id3 = TokenId::from(3);
 
         let mint_audit_db_path = tempdir().unwrap();
         let mint_audit_db = MintAuditorDb::create_or_open(&mint_audit_db_path, logger).unwrap();
