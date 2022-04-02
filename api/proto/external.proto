@@ -377,3 +377,9 @@ message MintConfigTx {
     MintConfigTxPrefix prefix = 1;
     Ed25519MultiSig signature = 2;
 }
+
+/// A mint-config transaction coupled with the data used to validate it.
+message ValidatedMintConfigTx {
+    MintConfigTx mint_config_tx = 1;
+    Ed25519SignerSet signer_set = 2;
+}

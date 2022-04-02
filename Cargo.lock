@@ -2950,6 +2950,7 @@ dependencies = [
  "mc-common",
  "mc-consensus-enclave-api",
  "mc-crypto-keys",
+ "mc-crypto-multisig",
  "mc-crypto-rand",
  "mc-sgx-report-cache-api",
  "mc-transaction-core",

@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use crate::{
-    mint::{MintConfigTx, MintTx},
+    mint::{MintTx, ValidatedMintConfigTx},
     ring_signature::KeyImage,
     tx::TxOut,
     ConvertError,
@@ -29,7 +29,7 @@ pub struct BlockContents {
 
     /// mint-config transactions in this block.
     #[prost(message, repeated, tag = "3")]
-    pub mint_config_txs: Vec<MintConfigTx>,
+    pub validated_mint_config_txs: Vec<ValidatedMintConfigTx>,
 
     /// Mint transactions in this block.
     #[prost(message, repeated, tag = "4")]

@@ -53,7 +53,9 @@ use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
-    mint::{validate_mint_config_tx, MintConfigTx, MintTx, MintValidationError},
+    mint::{
+        validate_mint_config_tx, MintConfigTx, MintTx, MintValidationError, ValidatedMintConfigTx,
+    },
     ring_signature::{KeyImage, Scalar},
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
@@ -294,11 +296,13 @@ impl SgxConsensusEnclave {
     /// Validate a list of MintConfigTxs.
     fn validate_mint_config_txs(
         &self,
-        mint_config_txs: &[MintConfigTx],
+        mint_config_txs: Vec<MintConfigTx>,
         current_block_index: u64,
         config: &BlockchainConfig,
-    ) -> Result<()> {
+    ) -> Result<Vec<ValidatedMintConfigTx>> {
         let mut seen_nonces = BTreeSet::default();
+        let mut validated_txs = Vec::with_capacity(mint_config_txs.len());
+
         for tx in mint_config_txs {
             // Ensure all nonces are unique.
             if !seen_nonces.insert(tx.prefix.nonce.clone()) {
@@ -319,14 +323,19 @@ impl SgxConsensusEnclave {
 
             // Ensure transaction is valid.
             validate_mint_config_tx(
-                tx,
+                &tx,
                 current_block_index,
                 config.block_version,
                 &master_minters,
             )?;
+
+            validated_txs.push(ValidatedMintConfigTx {
+                mint_config_tx: tx,
+                signer_set: master_minters,
+            });
         }
 
-        Ok(())
+        Ok(validated_txs)
     }
 
     /// Validate a list of MintTxs.
@@ -751,15 +760,15 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         key_images.sort();
 
         // Get the list of MintConfigTxs included in the block.
-        self.validate_mint_config_txs(&inputs.mint_config_txs, parent_block.index + 1, config)?;
-        let mint_config_txs = inputs.mint_config_txs;
+        let validated_mint_config_txs =
+            self.validate_mint_config_txs(inputs.mint_config_txs, parent_block.index + 1, config)?;
 
         // We purposefully do not ..Default::default() here so that new block fields
         // show up as a compilation error until addressed.
         let block_contents = BlockContents {
             key_images,
             outputs,
-            mint_config_txs,
+            validated_mint_config_txs,
             mint_txs,
         };
         //
@@ -1831,7 +1840,7 @@ mod tests {
 
             // There should be no key images or mint config txs
             assert!(block_contents.key_images.is_empty());
-            assert!(block_contents.mint_config_txs.is_empty());
+            assert!(block_contents.validated_mint_config_txs.is_empty());
 
             // The block contents should contain the minted tx outs.
             assert_eq!(block_contents.outputs.len(), 2);
@@ -1952,9 +1961,11 @@ mod tests {
         let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
         let signer_set2 = SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
 
-        let master_minters_map =
-            MasterMintersMap::try_from_iter([(token_id1, signer_set1), (token_id2, signer_set2)])
-                .unwrap();
+        let master_minters_map = MasterMintersMap::try_from_iter([
+            (token_id1, signer_set1.clone()),
+            (token_id2, signer_set2.clone()),
+        ])
+        .unwrap();
 
         for block_version in BlockVersion::iterator() {
             if !block_version.mint_transactions_are_supported() {
@@ -2014,8 +2025,17 @@ mod tests {
 
             // The block contents should contain the two mint config txs.
             assert_eq!(
-                block_contents.mint_config_txs,
-                vec![mint_config_tx1.clone(), mint_config_tx2.clone()]
+                block_contents.validated_mint_config_txs,
+                vec![
+                    ValidatedMintConfigTx {
+                        mint_config_tx: mint_config_tx1.clone(),
+                        signer_set: signer_set1.clone(),
+                    },
+                    ValidatedMintConfigTx {
+                        mint_config_tx: mint_config_tx2.clone(),
+                        signer_set: signer_set2.clone(),
+                    }
+                ]
             );
 
             // There should be no outputs, key images or mint txs
@@ -2377,7 +2397,7 @@ mod tests {
             );
 
             // There should be no mint config txs
-            assert!(block_contents.mint_config_txs.is_empty());
+            assert!(block_contents.validated_mint_config_txs.is_empty());
 
             // The block contents should contain the minted tx outs.
             let output1 = block_contents
