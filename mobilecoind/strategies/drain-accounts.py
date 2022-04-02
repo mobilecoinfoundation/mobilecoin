@@ -117,13 +117,13 @@ if __name__ == '__main__':
 
     stub = connect(args.mobilecoind_host, args.mobilecoind_port)
     source_accounts = [
-        load_key_and_register(os.path.join(args.key_dir, k), stub)
-        for k in sorted(glob.glob(os.path.join(args.key_dir, '*.json')), key=filename_key)
+        load_key_and_register(account_key, stub)
+        for account_key in sorted(glob.glob(os.path.join(args.key_dir, '*.json')), key=filename_key)
     ]
 
     dest_b58addresses = [
-        read_file(os.path.join(args.dest_key_dir, b58pubfile))
-        for b58pubfile in sorted(glob.glob(os.path.join(args.key_dir, '*.b58pub')), key=filename_key)
+        read_file(b58_pubfile)
+        for b58_pubfile in sorted(glob.glob(os.path.join(args.dest_key_dir, '*.b58pub')), key=filename_key)
     ]
 
     # convert from b58 to external.PublicAddress using mobilecoind helpers
