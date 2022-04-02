@@ -66,7 +66,6 @@ impl RwLockInfo {
         }
     }
 
-    #[allow(dead_code)]
     unsafe fn ref_busy(&mut self) -> SysError {
         let ret: SysError;
         self.spinlock.lock();

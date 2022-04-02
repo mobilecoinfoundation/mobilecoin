@@ -122,7 +122,11 @@ pub fn add_test_block<T: RngCore + CryptoRng>(
 
     let key_images = vec![KeyImage::from(rng.next_u64())];
 
-    let block_contents = BlockContents::new(key_images, random_output(rng));
+    let block_contents = BlockContents {
+        key_images,
+        outputs: random_output(rng),
+        ..Default::default()
+    };
 
     // Fake proofs
     let root_element = TxOutMembershipElement {
@@ -131,7 +135,7 @@ pub fn add_test_block<T: RngCore + CryptoRng>(
     };
 
     let block = Block::new_with_parent(
-        BlockVersion::ONE,
+        BlockVersion::ZERO,
         &last_block,
         &root_element,
         &block_contents,

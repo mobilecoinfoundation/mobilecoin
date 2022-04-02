@@ -154,9 +154,6 @@ pub struct WatcherDB {
     /// Were we opened in write mode?
     write_allowed: bool,
 
-    /// Metadata store.
-    metadata_store: MetadataStore<WatcherDbMetadataStoreSettings>,
-
     /// Logger.
     logger: Logger,
 }
@@ -204,7 +201,6 @@ impl WatcherDB {
             last_synced,
             config,
             write_allowed: false,
-            metadata_store,
             logger,
         })
     }
@@ -1132,7 +1128,7 @@ pub mod tests {
             .map(|account| account.default_subaddress())
             .collect::<Vec<_>>();
         get_blocks(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &recipient_pub_keys,
             10,
             1,

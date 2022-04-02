@@ -43,7 +43,7 @@ generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
 hex = "0.4.3"
 log = "0.4.14"
 jni = { version = "0.19.0", default-features = false }
-protobuf = "2.22.1"
+protobuf = "2.27.1"
 rand = { version = "0.8", default-features = false }
 sha2 = { version = "0.10", default-features = false }
 slip10_ed25519 = "0.1.3"

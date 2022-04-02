@@ -10,7 +10,7 @@
 version: 2.1
 
 defaults:
-  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_25
+  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_26
   android-bindings-builder: &android-bindings-builder gcr.io/mobilenode-211420/android-bindings-builder:1_4
   default-xcode-version: &default-xcode-version "12.0.0"
 
@@ -478,7 +478,7 @@ commands:
 
             MC_LOG="info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
             LEDGER_BASE=$(pwd)/ledger \
-            python3 tools/fog-local-network/fog_local_network.py --network-type dense5 --skip-build &
+            python3 tools/fog-local-network/fog_local_network.py --network-type dense5 --skip-build --block-version 2 &
 
             sleep 20
 

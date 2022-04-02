@@ -21,7 +21,7 @@ use rand_hc::Hc128Rng as FixedRng;
 use std::{path::Path, vec::Vec};
 
 // This is historically the version created by bootstrap
-const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
+const BLOCK_VERSION: BlockVersion = BlockVersion::ZERO;
 
 /// Deterministically populates a testnet ledger.
 ///
@@ -80,7 +80,7 @@ pub fn bootstrap_ledger(
     let mut rng: FixedRng = SeedableRng::from_seed(seed.unwrap_or([33u8; 32]));
 
     let block_version = if max_token_id > 0 {
-        BlockVersion::THREE
+        BlockVersion::TWO
     } else {
         BLOCK_VERSION
     };
@@ -113,7 +113,11 @@ pub fn bootstrap_ledger(
             Default::default()
         };
 
-        let block_contents = BlockContents::new(key_images, outputs.clone());
+        let block_contents = BlockContents {
+            key_images,
+            outputs: outputs.clone(),
+            ..Default::default()
+        };
 
         let block = match previous_block {
             Some(parent) => {

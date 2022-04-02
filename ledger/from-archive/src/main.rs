@@ -1,22 +1,22 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
-
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
 mod config;
 
+use clap::Parser;
 use config::LedgerFromArchiveConfig;
 use mc_common::logger::{create_app_logger, log, o};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::ReqwestTransactionsFetcher;
 use std::fs;
-use structopt::StructOpt;
 
 fn main() {
     mc_common::setup_panic_handler();
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
-    let config = LedgerFromArchiveConfig::from_args();
+    let config = LedgerFromArchiveConfig::parse();
 
     let transactions_fetcher =
         ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())

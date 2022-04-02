@@ -1,6 +1,9 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+//! Fog test helpers
+
 #![allow(non_snake_case)]
+#![deny(missing_docs)]
 
 pub mod db_tests;
 pub mod mock_client;
@@ -140,16 +143,23 @@ pub fn test_block<T: RngCore + CryptoRng, C: FogViewConnection>(
     // Make them into a block, and ingest it. This is done by appending a block to
     // the ledger and having it be polled by ingest.
     let (block, block_contents) = if block_index == 0 {
-        let block_contents = BlockContents::new(vec![], txos.clone());
+        let block_contents = BlockContents {
+            outputs: txos.clone(),
+            ..Default::default()
+        };
         let block = Block::new_origin_block(&txos);
         (block, block_contents)
     } else {
-        let block_contents = BlockContents::new(vec![KeyImage::from(block_index)], txos);
+        let block_contents = BlockContents {
+            key_images: vec![KeyImage::from(block_index)],
+            outputs: txos,
+            ..Default::default()
+        };
         let parent_block = ledger_db
             .get_block(block_index - 1)
             .unwrap_or_else(|err| panic!("Failed getting block {}: {:?}", block_index - 1, err));
         let block = Block::new_with_parent(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &parent_block,
             &Default::default(),
             &block_contents,

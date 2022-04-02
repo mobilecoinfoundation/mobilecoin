@@ -25,7 +25,7 @@ use mc_attest_core::{
 use mc_attest_enclave_api::{
     EnclaveMessage, Error as AttestEnclaveError, PeerAuthRequest, PeerAuthResponse, PeerSession,
 };
-use mc_attest_trusted::{IntelSealingError, SealAlgo};
+use mc_attest_trusted::SealAlgo;
 use mc_common::{logger::Logger, ResponderId};
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
@@ -382,18 +382,5 @@ impl<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> IngestEnclave
 
 // Helper for sealing a key, which maps the error to IngestEnclaveError
 fn seal_private_key(src: &RistrettoPrivate) -> Result<SealedIngestKey> {
-    Ok(IntelSealed::seal_raw(src.as_ref(), &[])
-        .map_err(map_sealing_error)?
-        .as_ref()
-        .to_vec())
-}
-
-// Helper for converting error type living only in mc_attest_trusted to the
-// error type in enclave_api (The attest_trusted crate will not compile in
-// non-sgx environment.)
-fn map_sealing_error(src: mc_attest_trusted::IntelSealingError) -> Error {
-    match src {
-        IntelSealingError::Sgx(err) => err.into(),
-        IntelSealingError::SealFormat(err) => err.into(),
-    }
+    Ok(IntelSealed::seal_raw(src.as_ref(), &[])?.as_ref().to_vec())
 }

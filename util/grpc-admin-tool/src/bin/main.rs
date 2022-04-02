@@ -1,26 +1,30 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! A utility for issueing admin GRPC requests.
 
+use clap::{Parser, Subcommand};
 use grpcio::ChannelBuilder;
 use mc_util_grpc::{
     admin::SetRustLogRequest, admin_grpc::AdminApiClient, empty::Empty, ConnectionUriGrpcioChannel,
 };
 use mc_util_uri::AdminUri;
 use std::{str::FromStr, sync::Arc};
-use structopt::StructOpt;
 
-#[derive(Clone, StructOpt)]
+/// Configurable options.
+#[derive(Clone, Parser)]
 pub struct Config {
     /// URI to connect to
-    #[structopt(long)]
+    #[clap(long, env = "MC_URI")]
     pub uri: String,
 
-    #[structopt(subcommand)]
+    /// The command to run.
+    #[clap(subcommand)]
     pub cmd: Command,
 }
 
-#[derive(Clone, StructOpt)]
+/// The command to run.
+#[derive(Clone, Subcommand)]
 pub enum Command {
     /// Get Prometheus metrics.
     Metrics,
@@ -42,7 +46,7 @@ fn main() {
     mc_common::setup_panic_handler();
     let (logger, _global_logger_guard) =
         mc_common::logger::create_app_logger(mc_common::logger::o!());
-    let config = Config::from_args();
+    let config = Config::parse();
 
     let env = Arc::new(grpcio::EnvBuilder::new().build());
     let uri = AdminUri::from_str(&config.uri).expect("failed to parse uri");

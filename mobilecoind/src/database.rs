@@ -63,9 +63,6 @@ pub struct Database {
     /// Processed block store.
     processed_block_store: ProcessedBlockStore,
 
-    /// Metadata store.
-    metadata_store: MetadataStore<MobilecoindDbMetadataStoreSettings>,
-
     /// Logger.
     logger: Logger,
 }
@@ -108,7 +105,6 @@ impl Database {
             subaddress_store,
             utxo_store,
             processed_block_store,
-            metadata_store,
             logger,
         })
     }
@@ -531,7 +527,7 @@ mod test {
 
         // Set up a db with 3 random recipients and 10 blocks.
         let (_ledger_db, mobilecoind_db) =
-            get_test_databases(BlockVersion::ONE, 3, &vec![], 10, logger.clone(), &mut rng);
+            get_test_databases(BlockVersion::ZERO, 3, &vec![], 10, logger.clone(), &mut rng);
 
         // A test accouunt.
         let account_key = AccountKey::random(&mut rng);

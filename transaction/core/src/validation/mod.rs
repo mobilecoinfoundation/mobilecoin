@@ -7,5 +7,5 @@ mod validate;
 
 pub use self::{
     error::{TransactionValidationError, TransactionValidationResult},
-    validate::{validate, validate_signature, validate_tombstone},
+    validate::{validate, validate_signature, validate_tombstone, validate_tx_out},
 };

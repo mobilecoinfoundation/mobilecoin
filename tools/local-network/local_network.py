@@ -32,6 +32,7 @@ MOB_RELEASE = os.getenv('MOB_RELEASE', '1')
 CARGO_FLAGS = '--release'
 TARGET_DIR = 'target/release'
 WORK_DIR = '/tmp/mc-local-network'
+MINTING_KEYS_DIR = os.path.join(WORK_DIR, 'minting-keys')
 CLI_PORT = 31337
 
 if MOB_RELEASE == '0':
@@ -140,7 +141,7 @@ class Peer:
 
 
 class Node:
-    def __init__(self, name, node_num, client_port, peer_port, admin_port, admin_http_gateway_port, peers, quorum_set):
+    def __init__(self, name, node_num, client_port, peer_port, admin_port, admin_http_gateway_port, peers, quorum_set, block_version):
         assert all(isinstance(peer, Peer) for peer in peers)
         assert isinstance(quorum_set, QuorumSet)
 
@@ -153,6 +154,7 @@ class Node:
         self.peers = peers
         self.quorum_set = quorum_set
         self.minimum_fee = 400_000_000
+        self.block_version = block_version or 2
 
         self.consensus_process = None
         self.ledger_distribution_process = None
@@ -218,7 +220,23 @@ class Node:
         tokens_config = {
             "tokens": [
                 { "token_id": 0, "minimum_fee": self.minimum_fee },
-            ],
+                {
+                    "token_id": 1,
+                    "minimum_fee": 1,
+                    "master_minters": {
+                        "signers": open(os.path.join(MINTING_KEYS_DIR, 'master-minter1.pub')).read(),
+                        "threshold": 1
+                    }
+                },
+                {
+                    "token_id": 2,
+                    "minimum_fee": 1,
+                    "master_minters": {
+                        "signers": open(os.path.join(MINTING_KEYS_DIR, 'master-minter2.pub')).read(),
+                        "threshold": 1
+                    }
+                },
+             ],
         }
         with open(self.tokens_config_file, 'w') as f:
             json.dump(tokens_config, f)
@@ -232,6 +250,7 @@ class Node:
             f'--ias-api-key={IAS_API_KEY}',
             f'--ias-spid={IAS_SPID}',
             f'--origin-block-path {LEDGER_BASE}',
+            f'--block-version {self.block_version}',
             f'--ledger-path {self.ledger_dir}',
             f'--admin-listen-uri="insecure-mca://0.0.0.0:{self.admin_port}/"',
             f'--client-listen-uri="insecure-mc://0.0.0.0:{self.client_port}/"',
@@ -433,16 +452,10 @@ class Network:
             )
 
         subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mobilecoind -p mc-crypto-x509-test-vectors {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mobilecoind -p mc-crypto-x509-test-vectors -p mc-consensus-mint-client {CARGO_FLAGS}',
             shell=True,
             check=True,
         )
-        subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build --no-default-features -p mc-mobilecoind {CARGO_FLAGS}',
-            shell=True,
-            check=True,
-        )
-
 
     def add_node(self, name, peers, quorum_set):
         node_num = len(self.nodes)
@@ -455,6 +468,7 @@ class Network:
             BASE_ADMIN_HTTP_GATEWAY_PORT + node_num,
             peers,
             quorum_set,
+            self.block_version,
         ))
 
     def get_node(self, name):
@@ -462,11 +476,23 @@ class Network:
             if node.name == name:
                 return node
 
+    def generate_minting_keys(self):
+       os.mkdir(MINTING_KEYS_DIR)
+
+       subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {MINTING_KEYS_DIR}/master-minter1', shell=True)
+       subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/master-minter1 -out {MINTING_KEYS_DIR}/master-minter1.pub', shell=True)
+
+       subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {MINTING_KEYS_DIR}/master-minter2', shell=True)
+       subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/master-minter2 -out {MINTING_KEYS_DIR}/master-minter2.pub', shell=True)
+
     def start(self):
         self.stop()
 
         self.cloud_logging = CloudLogging()
         self.cloud_logging.start(self)
+
+        print("Generating minting keys")
+        self.generate_minting_keys()
 
         print("Starting nodes")
         for node in self.nodes:
@@ -515,7 +541,9 @@ class Network:
                 raise
 
 
-    def default_entry_point(self, network_type, skip_build=False):
+    def default_entry_point(self, network_type, skip_build=False, block_version=None):
+        self.block_version = block_version
+
         if network_type == 'dense5':
             #  5 node interconnected network requiring 4 out of 5  nodes.
             num_nodes = 5
@@ -565,6 +593,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Local network tester')
     parser.add_argument('--network-type', help='Type of network to create', required=True)
     parser.add_argument('--skip-build', help='Skip building binaries', action='store_true')
+    parser.add_argument('--block-version', help='Set the block version argument', type=int)
     args = parser.parse_args()
 
-    Network().default_entry_point(args.network_type, args.skip_build)
+    Network().default_entry_point(args.network_type, args.skip_build, args.block_version)

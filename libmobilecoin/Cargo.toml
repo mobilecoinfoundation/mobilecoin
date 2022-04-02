@@ -14,7 +14,7 @@ aes-gcm = "0.9.4"
 crc = "2.1.0"
 displaydoc = "0.2"
 libc = "0.2"
-protobuf = "2.22.1"
+protobuf = "2.27.1"
 rand_core = { version = "0.6", features = ["std"] }
 sha2 = { version = "0.10", default-features = false }
 slip10_ed25519 = "0.1.3"
@@ -49,4 +49,4 @@ mc-util-serial = { path = "../util/serial", features = ["std"] }
 mc-util-uri = { path = "../util/uri" }
 
 [dev-dependencies]
-cbindgen = { version = "0.20" }
+cbindgen = { version = "0.21" }

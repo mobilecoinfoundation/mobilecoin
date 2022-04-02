@@ -1,14 +1,16 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use crate::{Error, Ledger};
+use crate::{ActiveMintConfig, Error, Ledger};
 use mc_account_keys::AccountKey;
 use mc_common::{HashMap, HashSet};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_transaction_core::{
+    mint::MintTx,
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Amount, Block, BlockContents, BlockData, BlockID, BlockSignature, BlockVersion, Token,
+    Amount, Block, BlockContents, BlockData, BlockID, BlockIndex, BlockSignature, BlockVersion,
+    Token, TokenId,
 };
 use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, SeedableRng};
@@ -191,9 +193,27 @@ impl Ledger for MockLedger {
     fn get_root_tx_out_membership_element(&self) -> Result<TxOutMembershipElement, Error> {
         unimplemented!();
     }
+
+    fn get_active_mint_configs(&self, _token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error> {
+        unimplemented!()
+    }
+
+    fn check_mint_config_tx_nonce(&self, _nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
+        unimplemented!()
+    }
+
+    fn check_mint_tx_nonce(&self, _nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
+        unimplemented!()
+    }
+
+    fn get_active_mint_config_for_mint_tx(
+        &self,
+        _mint_tx: &MintTx,
+    ) -> Result<ActiveMintConfig, Error> {
+        unimplemented!()
+    }
 }
 
-#[allow(dead_code)]
 /// Creates a MockLedger and populates it with blocks and transactions.
 pub fn get_mock_ledger(n_blocks: usize) -> MockLedger {
     let mut mock_ledger = MockLedger::default();
@@ -204,7 +224,6 @@ pub fn get_mock_ledger(n_blocks: usize) -> MockLedger {
     mock_ledger
 }
 
-#[allow(dead_code)]
 /// Creates a sequence of `Block`s and the transactions corresponding to each
 /// block.
 pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
@@ -233,7 +252,10 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
 
             let outputs = vec![tx_out];
             let origin_block = Block::new_origin_block(&outputs);
-            let block_contents = BlockContents::new(vec![], outputs);
+            let block_contents = BlockContents {
+                outputs,
+                ..Default::default()
+            };
             block_ids.push(origin_block.id.clone());
             blocks_and_contents.push((origin_block, block_contents));
         } else {
@@ -251,10 +273,14 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
 
             let outputs = vec![tx_out];
             let key_images = vec![KeyImage::from(rng.next_u64())];
-            let block_contents = BlockContents::new(key_images, outputs);
+            let block_contents = BlockContents {
+                key_images,
+                outputs,
+                ..Default::default()
+            };
 
             let block = Block::new_with_parent(
-                BlockVersion::ONE,
+                BlockVersion::ZERO,
                 &blocks_and_contents[block_index - 1].0,
                 &TxOutMembershipElement::default(),
                 &block_contents,

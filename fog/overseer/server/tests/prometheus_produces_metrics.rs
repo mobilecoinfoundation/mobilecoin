@@ -47,6 +47,7 @@ fn one_active_node_idle_nodes_different_keys_produces_prometheus_metrics(logger:
     let origin_contents = BlockContents {
         key_images: Default::default(),
         outputs: origin_txo.clone(),
+        ..Default::default()
     };
     let origin_block = Block::new_origin_block(&origin_txo);
     ledger
@@ -131,4 +132,7 @@ fn one_active_node_idle_nodes_different_keys_produces_prometheus_metrics(logger:
 
     let correct_ingress_key_count = Regex::new(r#"ingress_key_count"} 1"#).unwrap();
     assert!(correct_ingress_key_count.is_match(&body));
+
+    let correct_unresponsive_node_count_name = Regex::new(r#"unresponsive_node_count"#).unwrap();
+    assert!(!correct_unresponsive_node_count_name.is_match(&body));
 }

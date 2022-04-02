@@ -60,7 +60,7 @@ pub struct IngestSgxEnclave {
     // Hold a reference counter to the enclave to prevent destruction.
     // This is a proxy object, its lifetime is not in lock-step with the
     // actual enclave.
-    enclave: Arc<SgxEnclave>,
+    _enclave: Arc<SgxEnclave>,
 }
 
 impl IngestSgxEnclave {
@@ -114,7 +114,7 @@ impl IngestSgxEnclave {
         })?;
         let sgx_enclave = IngestSgxEnclave {
             eid: enclave.geteid(),
-            enclave: Arc::new(enclave),
+            _enclave: Arc::new(enclave),
         };
 
         let params = IngestEnclaveInitParams {

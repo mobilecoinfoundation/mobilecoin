@@ -833,6 +833,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                     rpc_internal_error("unspent_tx_out.try_from", err, &self.logger)
                 })?;
 
+                // Verify token id matches.
+                if utxo.token_id != self.token_id {
+                    return Err(RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        format!("input_list[{}].token_id", i),
+                    ));
+                }
+
                 // Verify this output belongs to the monitor.
                 let subaddress_id = self
                     .mobilecoind_db
@@ -928,10 +936,22 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let input_list: Vec<UnspentTxOut> = request
             .get_input_list()
             .iter()
-            .map(|proto_utxo| {
+            .enumerate()
+            .map(|(i, proto_utxo)| {
                 // Proto -> Rust struct conversion.
-                UnspentTxOut::try_from(proto_utxo)
-                    .map_err(|err| rpc_internal_error("unspent_tx_out.try_from", err, &self.logger))
+                let utxo = UnspentTxOut::try_from(proto_utxo).map_err(|err| {
+                    rpc_internal_error("unspent_tx_out.try_from", err, &self.logger)
+                })?;
+
+                // Ensure token id matches.
+                if utxo.token_id != self.token_id {
+                    return Err(RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        format!("input_list[{}].token_id", i),
+                    ));
+                }
+
+                Ok(utxo)
             })
             .collect::<Result<Vec<UnspentTxOut>, RpcStatus>>()?;
 
@@ -1635,7 +1655,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             })?;
 
         // Sum them up.
-        let balance = utxos.iter().map(|utxo| utxo.value as u128).sum::<u128>();
+        let balance = utxos
+            .iter()
+            // Filter only to the currently active token id.
+            .filter(|utxo| utxo.token_id == self.token_id)
+            .map(|utxo| utxo.value as u128)
+            .sum::<u128>();
 
         // It's possible the balance does not fit into a u64.
         if balance > u64::max_value().into() {
@@ -1674,6 +1699,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if request.max_input_utxo_value > 0 {
             utxos.retain(|utxo| utxo.value <= request.max_input_utxo_value);
         }
+
+        // Filter for the currently active token id.
+        utxos.retain(|utxo| utxo.token_id == self.token_id);
 
         // Get the list of outlays.
         let outlays: Vec<Outlay> = request
@@ -1957,7 +1985,7 @@ mod test {
     };
 
     // None of these tests really depend on any of the new features
-    const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
+    const BLOCK_VERSION: BlockVersion = BlockVersion::ZERO;
 
     #[test_with_logger]
     fn test_add_monitor_impl(logger: Logger) {
@@ -3649,7 +3677,11 @@ mod test {
             let tx_proposal = TxProposal::try_from(response.get_tx_proposal()).unwrap();
             let key_images = tx_proposal.tx.key_images();
             let outputs = tx_proposal.tx.prefix.outputs.clone();
-            let block_contents = BlockContents::new(key_images, outputs);
+            let block_contents = BlockContents {
+                key_images,
+                outputs,
+                ..Default::default()
+            };
 
             // Append to ledger.
             let num_blocks = ledger_db.num_blocks().unwrap();

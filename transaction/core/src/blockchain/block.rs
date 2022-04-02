@@ -4,7 +4,6 @@ use crate::{
     tx::{TxOut, TxOutMembershipElement},
     BlockContents, BlockContentsHash, BlockID, BlockVersion,
 };
-use alloc::vec::Vec;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use prost::Message;
 use serde::{Deserialize, Serialize};
@@ -61,9 +60,13 @@ impl Block {
         let index: BlockIndex = 0;
         let cumulative_txo_count = outputs.len() as u64;
         let root_element = TxOutMembershipElement::default();
-        // The origin block does not contain any key images.
-        let key_images = Vec::new();
-        let block_contents = BlockContents::new(key_images, outputs.to_vec());
+
+        // The origin block does not contain anything but TxOuts.
+        let block_contents = BlockContents {
+            outputs: outputs.to_vec(),
+            ..Default::default()
+        };
+
         let contents_hash = block_contents.hash();
         let id = compute_block_id(
             version,
@@ -214,11 +217,16 @@ mod block_tests {
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, CryptoRng, RngCore, SeedableRng};
 
+    // This is block version 1 to avoid messing with test vectors
     const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
 
     fn get_block_contents<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> BlockContents {
         let (key_images, outputs) = get_key_images_and_outputs(rng);
-        BlockContents::new(key_images, outputs)
+        BlockContents {
+            key_images,
+            outputs,
+            ..Default::default()
+        }
     }
 
     fn get_key_images_and_outputs<RNG: CryptoRng + RngCore>(
@@ -285,7 +293,11 @@ mod block_tests {
             output.e_memo = None;
         }
 
-        let block_contents = BlockContents::new(key_images, outputs);
+        let block_contents = BlockContents {
+            key_images,
+            outputs,
+            ..Default::default()
+        };
         Block::new(
             BLOCK_VERSION,
             &parent_id,
@@ -377,7 +389,7 @@ mod block_tests {
     /// actual block id into the test. This should hopefully catches cases where
     /// we add/change Block/BlockContents and accidentally break id
     /// calculation of old blocks.
-    fn test_hashing_is_consistent() {
+    fn test_hashing_is_consistent_block_version_one() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         //Check hash with memo

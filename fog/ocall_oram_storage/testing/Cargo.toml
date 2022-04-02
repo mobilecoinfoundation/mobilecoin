@@ -7,8 +7,8 @@ license = "GPL-3.0"
 
 [dependencies]
 # mc-oblivious
-aligned-cmov = "2.0"
-mc-oblivious-traits = "2.0"
+aligned-cmov = "2.2"
+mc-oblivious-traits = "2.2"
 
 # fog
 mc-fog-ocall-oram-storage-trusted = { path = "../trusted" }

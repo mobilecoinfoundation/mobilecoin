@@ -14,8 +14,10 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::ingest_common::{IngestControllerMode, IngestSummary};
 use mc_fog_ingest_client::FogIngestGrpcClient;
 use mc_fog_recovery_db_iface::{IngressPublicKeyRecord, IngressPublicKeyRecordFilters, RecoveryDb};
+use mc_fog_uri::FogIngestUri;
 use retry::{delay::Fixed, retry_with_index, OperationResult};
 use std::{
+    collections::HashSet,
     convert::TryFrom,
     iter::Iterator,
     sync::{
@@ -63,6 +65,7 @@ impl OverseerWorker {
                         recovery_db,
                         thread_is_enabled,
                         thread_stop_requested,
+                        HashSet::new(),
                         logger,
                     )
                 })
@@ -108,6 +111,11 @@ struct OverseerWorkerThread<DB: RecoveryDb> {
     /// If this is true, the thread will stop.
     stop_requested: Arc<AtomicBool>,
 
+    /// If a node doesn't respond to a status request, it goes here.
+    ///
+    /// This helps us debug when a node starts responding again.
+    unresponsive_node_urls: HashSet<FogIngestUri>,
+
     logger: Logger,
 }
 
@@ -135,6 +143,7 @@ where
         recovery_db: DB,
         is_enabled: Arc<AtomicBool>,
         stop_requested: Arc<AtomicBool>,
+        unresponsive_node_urls: HashSet<FogIngestUri>,
         logger: Logger,
     ) {
         let thread = Self {
@@ -142,12 +151,13 @@ where
             recovery_db,
             is_enabled,
             stop_requested,
+            unresponsive_node_urls,
             logger,
         };
         thread.run();
     }
 
-    fn run(self) {
+    fn run(mut self) {
         loop {
             log::trace!(self.logger, "Overseer worker start of thread.");
             std::thread::sleep(Self::POLLING_FREQUENCY);
@@ -168,6 +178,7 @@ where
                 Ok(ingest_summary_node_mappings) => ingest_summary_node_mappings,
                 Err(err) => {
                     log::error!(self.logger, "Encountered an error while retrieving ingest summaries: {}. Returning to beginning of overseer logic.", err);
+                    metrics::utils::increment_unresponsive_node_count(&self.logger);
                     continue;
                 }
             };
@@ -235,12 +246,19 @@ where
     /// Returns the latest round of ingest summaries for each
     /// FogIngestGrpcClient that communicates with a node that is online.
     fn retrieve_ingest_summary_node_mappings(
-        &self,
+        &mut self,
     ) -> Result<Vec<IngestSummaryNodeMapping>, OverseerError> {
         let mut ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping> = Vec::new();
         for (ingest_client_index, ingest_client) in self.ingest_clients.iter().enumerate() {
             match ingest_client.get_status() {
                 Ok(ingest_summary) => {
+                    if self.unresponsive_node_urls.remove(ingest_client.get_uri()) {
+                        log::info!(
+                            self.logger,
+                            "Node {} was previously unresponsive, but just successfully responded!",
+                            ingest_client.get_uri(),
+                        );
+                    }
                     log::trace!(
                         self.logger,
                         "Ingest summary retrieved: {:?}",
@@ -257,6 +275,8 @@ where
                         ingest_client.get_uri(),
                         err
                     );
+                    self.unresponsive_node_urls
+                        .insert(ingest_client.get_uri().clone());
                     return Err(OverseerError::UnresponsiveNodeError(error_message));
                 }
             }
@@ -411,6 +431,11 @@ where
         // and none of them matches the inactive outstanding key. We must
         // report the inactive outstanding key as lost, set new keys
         // on an idle node, and activate that node.
+        log::warn!(
+            self.logger,
+            "Could not find a node that has the inactive outstanding key: {:?}",
+            &inactive_outstanding_key
+        );
         self.report_lost_ingress_key(inactive_outstanding_key)?;
         let activated_node_index = self.set_new_key_on_a_node()?;
         self.activate_a_node(activated_node_index)?;
@@ -439,10 +464,7 @@ where
                 }
                 Err(err) => {
                     let number_of_remaining_tries = Self::NUMBER_OF_TRIES - current_try as usize;
-                    let error_message = match number_of_remaining_tries {
-                        0 => format!("Did not succeed in reporting lost ingress key {} within {} tries. Underlying error: {}", inactive_outstanding_key, Self::NUMBER_OF_TRIES, err),
-                        _ => format!("The following key was not successfully reported as lost: {}. Will try {} more times. Underlying error: {}", inactive_outstanding_key, number_of_remaining_tries, err),
-                    };
+                    let error_message = format!("The following key was not successfully reported as lost: {}. Will try {} more times. Underlying error: {}", inactive_outstanding_key, number_of_remaining_tries, err);
                     OperationResult::Retry(OverseerError::ReportLostKey(error_message))
                 }
             },
@@ -462,8 +484,8 @@ where
                         Ok(_) => {
                             log::info!(
                                 self.logger,
-                                "New keys successfully set on the ingest node at index {}.",
-                                i
+                                "New keys successfully set on the ingest node {}.",
+                                ingest_client.get_uri()
                             );
                             OperationResult::Ok(())
                         }
@@ -471,10 +493,7 @@ where
                         Err(err) => {
                             let number_of_remaining_tries =
                                 Self::NUMBER_OF_TRIES - current_try as usize;
-                            let error_message = match number_of_remaining_tries {
-                                0 => format!("Did not succeed in setting a new key on node at index {}. Underlying error: {}", i, err),
-                                _ => format!("New keys were not successfully set on the ingest node at index {}. Will try {} more times. Underlying error: {}", i, number_of_remaining_tries, err),
-                            };
+                            let error_message = format!("Did not succeed in setting a new key on ingest node {}. Will try {} more times. Underlying error: {}", ingest_client.get_uri(), number_of_remaining_tries, err);
                             OperationResult::Retry(OverseerError::SetNewKey(error_message))
                         }
                     }
@@ -496,12 +515,13 @@ where
         let result = retry_with_index(
             Fixed::from_millis(200).take(Self::NUMBER_OF_TRIES),
             |current_try| {
-                match self.ingest_clients[activated_node_index].activate() {
+                let ingest_client = &self.ingest_clients[activated_node_index];
+                match ingest_client.activate() {
                     Ok(_) => {
                         log::info!(
                             self.logger,
-                            "Node at index {} successfully activated.",
-                            activated_node_index
+                            "Node {} successfully activated.",
+                            ingest_client.get_uri(),
                         );
                         OperationResult::Ok(())
                     }
@@ -509,17 +529,12 @@ where
                     Err(err) => {
                         let number_of_remaining_tries =
                             Self::NUMBER_OF_TRIES - current_try as usize;
-                        let error_message = match number_of_remaining_tries {
-                            0 => format!(
-                                "Did not succeed in setting a new key on node at index {}. Underlying error: {}",
-                                activated_node_index,
-                                err
-                            ),
-                            _ => format!(
-                                "Node at index {} not activated. Will try {} more times. Underlying error: {}",
-                                activated_node_index, number_of_remaining_tries, err
-                            ),
-                        };
+                        let error_message = format!(
+                            "Node {} not activated. Will try {} more times. Underlying error: {}",
+                            ingest_client.get_uri(),
+                            number_of_remaining_tries,
+                            err
+                        );
                         OperationResult::Retry(OverseerError::ActivateNode(error_message))
                     }
                 }

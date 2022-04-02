@@ -8,7 +8,11 @@ use mc_consensus_scp::Msg;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_keys::{Ed25519Pair, Ed25519Signature, KeyError, SignatureError, Signer, Verifier};
 use mc_ledger_db::Ledger;
-use mc_transaction_core::{tx::TxHash, BlockID};
+use mc_transaction_core::{
+    mint::{MintConfigTx, MintTx},
+    tx::TxHash,
+    BlockID,
+};
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, hash::Hash, result::Result as StdResult};
 
@@ -19,6 +23,12 @@ use std::{convert::TryFrom, hash::Hash, result::Result as StdResult};
 pub enum ConsensusValue {
     /// TxHash({0})
     TxHash(TxHash),
+
+    /// MintConfigTx({0})
+    MintConfigTx(MintConfigTx),
+
+    /// MintTx({0})
+    MintTx(MintTx),
 }
 
 impl From<TxHash> for ConsensusValue {

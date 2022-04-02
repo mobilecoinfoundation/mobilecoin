@@ -62,6 +62,11 @@ impl<
     pub fn new(signatures: Vec<S>) -> Self {
         Self { signatures }
     }
+
+    /// Get signatures
+    pub fn signatures(&self) -> &[S] {
+        &self.signatures
+    }
 }
 
 /// A set of M-out-of-N public keys.
@@ -83,6 +88,16 @@ impl<P: Default + PublicKey + Message> SignerSet<P> {
     /// Construct a new `SignerSet` from a list of public keys and threshold.
     pub fn new(signers: Vec<P>, threshold: u32) -> Self {
         Self { signers, threshold }
+    }
+
+    /// Get the list of potential signers.
+    pub fn signers(&self) -> &[P] {
+        &self.signers
+    }
+
+    /// Get the threshold.
+    pub fn threshold(&self) -> u32 {
+        self.threshold
     }
 
     /// Verify a message against a multi-signature, returning the list of

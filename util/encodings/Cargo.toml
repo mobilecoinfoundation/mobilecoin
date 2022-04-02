@@ -13,3 +13,7 @@ binascii = "0.1.4"
 displaydoc = { version = "0.2", default-features = false }
 hex = { version = "0.4", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+
+[features]
+default = []
+std = []

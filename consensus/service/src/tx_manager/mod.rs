@@ -264,14 +264,22 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
     /// * `parent_block` - The last block written to the ledger.
     fn tx_hashes_to_block(
         &self,
-        values: &[ConsensusValue],
+        values: Vec<ConsensusValue>,
         parent_block: &Block,
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)> {
         let mut tx_hashes = Vec::new();
+        let mut mint_config_txs = Vec::new();
+        let mut mint_txs = Vec::new();
 
         for value in values {
             match value {
-                ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
+                ConsensusValue::TxHash(tx_hash) => tx_hashes.push(tx_hash),
+                ConsensusValue::MintConfigTx(mint_config_tx) => {
+                    mint_config_txs.push(mint_config_tx);
+                }
+                ConsensusValue::MintTx(mint_tx) => {
+                    mint_txs.push(mint_tx);
+                }
             }
         }
 
@@ -298,6 +306,8 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             parent_block,
             FormBlockInputs {
                 well_formed_encrypted_txs_with_proofs,
+                mint_config_txs,
+                mint_txs,
             },
             &root_element,
         )?;
@@ -788,7 +798,7 @@ mod tests {
 
         let mut mock_enclave = MockConsensusEnclave::new();
         let expected_block = Block::new_origin_block(&vec![]);
-        let expected_block_contents = BlockContents::new(vec![], vec![]);
+        let expected_block_contents = BlockContents::default();
         // The enclave does not set the signed_at field.
         let expected_block_signature =
             BlockSignature::new(Ed25519Signature::default(), Ed25519Public::default(), 0);
@@ -811,10 +821,12 @@ mod tests {
                     };
                     tx_manager.lock_cache().insert(*tx_hash, cache_entry);
                 }
+                ConsensusValue::MintConfigTx(_) => panic!("Unexpected MintConfigTx"),
+                ConsensusValue::MintTx(_) => panic!("Unexpected MintTx"),
             };
         }
 
-        match tx_manager.tx_hashes_to_block(&tx_hashes, &parent_block) {
+        match tx_manager.tx_hashes_to_block(tx_hashes, &parent_block) {
             Ok((block, block_contents, block_signature)) => {
                 assert_eq!(block, expected_block);
                 assert_eq!(block_contents, expected_block_contents);
@@ -852,6 +864,7 @@ mod tests {
                     };
                     tx_manager.lock_cache().insert(*tx_hash, cache_entry);
                 }
+                _ => panic!("unexpected value"),
             }
         }
 
@@ -859,7 +872,7 @@ mod tests {
         let not_in_cache = TxHash([66u8; 32]);
         tx_hashes.insert(2, ConsensusValue::TxHash(not_in_cache.clone()));
 
-        match tx_manager.tx_hashes_to_block(&tx_hashes, &parent_block) {
+        match tx_manager.tx_hashes_to_block(tx_hashes, &parent_block) {
             Ok((_block, _block_contents, _block_signature)) => {
                 panic!();
             }
@@ -874,7 +887,7 @@ mod tests {
     #[test_with_logger]
     fn test_hashes_to_block(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
-        let block_version = BlockVersion::ONE;
+        let block_version = BlockVersion::ZERO;
         let sender = AccountKey::random(&mut rng);
         let mut ledger = create_ledger();
         let n_blocks = 3;
@@ -977,7 +990,10 @@ mod tests {
 
         // Attempting to assemble a block with a non-existent hash should fail
         assert!(tx_manager
-            .tx_hashes_to_block(&[hash_tx_two.into(), hash_tx_three.into()], &parent_block)
+            .tx_hashes_to_block(
+                vec![hash_tx_two.into(), hash_tx_three.into()],
+                &parent_block
+            )
             .is_err());
 
         // Attempting to assemble a block with a duplicate transaction should fail.
@@ -998,7 +1014,7 @@ mod tests {
         // should succeed.
         // TODO: Right now this relies on ConsensusServiceMockEnclave::form_block
         let (block, block_contents, _signature) = tx_manager
-            .tx_hashes_to_block(&[hash_tx_zero.into(), hash_tx_one.into()], &parent_block)
+            .tx_hashes_to_block(vec![hash_tx_zero.into(), hash_tx_one.into()], &parent_block)
             .expect("failed assembling block");
         assert_eq!(
             client_tx_zero.prefix.outputs[0].public_key,
