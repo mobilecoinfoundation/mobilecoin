@@ -12,13 +12,13 @@
 //! 2) A mapping of nonce -> block index of the block containing the
 //! MintConfigTx with that nonce. This is mainly used to prevent replay
 //! attacks.
-//! 3) A mapping of block index -> list of MintConfigTx objects
+//! 3) A mapping of block index -> list of ValidatedMintConfigTx objects
 //! included in the block.
 
 use crate::{key_bytes_to_u64, u32_to_key_bytes, u64_to_key_bytes, Error};
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_transaction_core::{
-    mint::{MintConfig, MintConfigTx, MintTx},
+    mint::{MintConfig, MintConfigTx, MintTx, ValidatedMintConfigTx},
     BlockIndex, TokenId,
 };
 use mc_util_serial::{decode, encode, Message};
@@ -28,7 +28,8 @@ pub const ACTIVE_MINT_CONFIGS_BY_TOKEN_ID_DB_NAME: &str =
     "mint_config_store:active_mint_configs_by_token_id";
 pub const BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_DB_NAME: &str =
     "mint_config_store:block_index_by_mint_config_tx_nonce";
-pub const MINT_CONFIG_TXS_BY_BLOCK_DB_NAME: &str = "mint_config_store:mint_config_txs_by_block";
+pub const VALIDATED_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME: &str =
+    "mint_config_store:validated_mint_config_txs_by_block";
 
 /// An active mint configuration for a single token.
 #[derive(Clone, Eq, Message, PartialEq)]
@@ -66,12 +67,12 @@ impl From<&MintConfigTx> for ActiveMintConfigs {
     }
 }
 
-/// A list of mint-config-txs that can be prost-encoded. This is needed
-/// since that's the only way to encode a Vec<MintConfigTx>.
+/// A list of validated mint-config-txs that can be prost-encoded. This is
+/// needed since that's the only way to encode a Vec<ValidatedMintConfigTx>.
 #[derive(Clone, Message)]
-pub struct MintConfigTxList {
+pub struct ValidatedMintConfigTxList {
     #[prost(message, repeated, tag = "1")]
-    pub mint_config_txs: Vec<MintConfigTx>,
+    pub validated_mint_config_txs: Vec<ValidatedMintConfigTx>,
 }
 
 #[derive(Clone)]
@@ -82,8 +83,8 @@ pub struct MintConfigStore {
     /// nonce -> block index
     block_index_by_mint_config_tx_nonce: Database,
 
-    /// block_index -> MintConfigTxList
-    mint_config_txs_by_block: Database,
+    /// block_index -> ValidatedMintConfigTxList
+    validated_mint_config_txs_by_block: Database,
 }
 
 impl MintConfigStore {
@@ -94,7 +95,8 @@ impl MintConfigStore {
                 .open_db(Some(ACTIVE_MINT_CONFIGS_BY_TOKEN_ID_DB_NAME))?,
             block_index_by_mint_config_tx_nonce: env
                 .open_db(Some(BLOCK_INDEX_BY_MINT_CONFIG_TX_NONCE_DB_NAME))?,
-            mint_config_txs_by_block: env.open_db(Some(MINT_CONFIG_TXS_BY_BLOCK_DB_NAME))?,
+            validated_mint_config_txs_by_block: env
+                .open_db(Some(VALIDATED_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME))?,
         })
     }
 
@@ -109,36 +111,38 @@ impl MintConfigStore {
             DatabaseFlags::empty(),
         )?;
         env.create_db(
-            Some(MINT_CONFIG_TXS_BY_BLOCK_DB_NAME),
+            Some(VALIDATED_MINT_CONFIG_TXS_BY_BLOCK_DB_NAME),
             DatabaseFlags::empty(),
         )?;
 
         Ok(())
     }
 
-    /// Write mint-config-txs in a given block.
-    pub fn write_mint_config_txs(
+    /// Write validated mint-config-txs in a given block.
+    pub fn write_validated_mint_config_txs(
         &self,
         block_index: u64,
-        mint_config_txs: &[MintConfigTx],
+        validated_mint_config_txs: &[ValidatedMintConfigTx],
         db_transaction: &mut RwTransaction,
     ) -> Result<(), Error> {
         let block_index_bytes = u64_to_key_bytes(block_index);
 
-        // Store the list of MintConfigTxs.
-        let mint_config_tx_list = MintConfigTxList {
-            mint_config_txs: mint_config_txs.to_vec(),
+        // Store the list of ValidatedMintConfigTxs.
+        let validated_mint_config_tx_list = ValidatedMintConfigTxList {
+            validated_mint_config_txs: validated_mint_config_txs.to_vec(),
         };
 
         db_transaction.put(
-            self.mint_config_txs_by_block,
+            self.validated_mint_config_txs_by_block,
             &block_index_bytes,
-            &encode(&mint_config_tx_list),
+            &encode(&validated_mint_config_tx_list),
             WriteFlags::NO_OVERWRITE, // We should not be updating existing blocks
         )?;
 
         // Update active mint configurations.
-        for mint_config_tx in mint_config_txs {
+        for validated_mint_config_tx in validated_mint_config_txs {
+            let mint_config_tx = &validated_mint_config_tx.mint_config_tx;
+
             // All mint configurations must have the same token id.
             if mint_config_tx
                 .prefix
@@ -174,17 +178,18 @@ impl MintConfigStore {
         Ok(())
     }
 
-    /// Get MintConfigTxs in a given block.
-    pub fn get_mint_config_txs_by_block_index(
+    /// Get ValidatedMintConfigTxs in a given block.
+    pub fn get_validated_mint_config_txs_by_block_index(
         &self,
         block_index: u64,
         db_transaction: &impl Transaction,
-    ) -> Result<Vec<MintConfigTx>, Error> {
-        let mint_config_tx_list: MintConfigTxList = decode(db_transaction.get(
-            self.mint_config_txs_by_block,
-            &u64_to_key_bytes(block_index),
-        )?)?;
-        Ok(mint_config_tx_list.mint_config_txs)
+    ) -> Result<Vec<ValidatedMintConfigTx>, Error> {
+        let validated_mint_config_tx_list: ValidatedMintConfigTxList =
+            decode(db_transaction.get(
+                self.validated_mint_config_txs_by_block,
+                &u64_to_key_bytes(block_index),
+            )?)?;
+        Ok(validated_mint_config_tx_list.validated_mint_config_txs)
     }
 
     /// Get mint configurations for a given token.
@@ -320,6 +325,7 @@ pub mod tests {
     use mc_transaction_core::mint::{MintConfigTx, MintConfigTxPrefix};
     use mc_transaction_core_test_utils::{
         create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx,
+        mint_config_tx_to_validated as to_validated,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -344,7 +350,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    0,
+                    &[to_validated(&test_tx_1)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -370,7 +380,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(1, &[test_tx_2.clone()], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    1,
+                    &[to_validated(&test_tx_2)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -407,7 +421,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    0,
+                    &[to_validated(&test_tx_1)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -415,9 +433,9 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             assert_eq!(
-                mint_config_store.write_mint_config_txs(
+                mint_config_store.write_validated_mint_config_txs(
                     1,
-                    &[test_tx_1.clone()],
+                    &[to_validated(&test_tx_1)],
                     &mut db_transaction
                 ),
                 Err(Error::Lmdb(lmdb::Error::KeyExist))
@@ -429,9 +447,9 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             assert_eq!(
-                mint_config_store.write_mint_config_txs(
+                mint_config_store.write_validated_mint_config_txs(
                     2,
-                    &[test_tx_1.clone()],
+                    &[to_validated(&test_tx_1)],
                     &mut db_transaction
                 ),
                 Err(Error::Lmdb(lmdb::Error::KeyExist))
@@ -444,7 +462,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(3, &[test_tx_2], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    3,
+                    &[to_validated(&test_tx_2)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -463,7 +485,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    0,
+                    &[to_validated(&test_tx_1)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -483,7 +509,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(1, &[test_tx_2.clone()], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    1,
+                    &[to_validated(&test_tx_2)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -521,7 +551,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    0,
+                    &[to_validated(&test_tx_1)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -541,7 +575,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(1, &[test_tx_2.clone()], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    1,
+                    &[to_validated(&test_tx_2)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -568,7 +606,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    0,
+                    &[to_validated(&test_tx_1)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -643,7 +685,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    0,
+                    &[to_validated(&test_tx_1)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -674,7 +720,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    0,
+                    &[to_validated(&test_tx_1)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -727,7 +777,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    0,
+                    &[to_validated(&test_tx_1)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -777,7 +831,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    0,
+                    &[to_validated(&test_tx_1)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -849,7 +907,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    0,
+                    &[to_validated(&test_tx_1)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -933,7 +995,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(0, &[test_tx_1.clone()], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    0,
+                    &[to_validated(&test_tx_1)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -981,9 +1047,9 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(
+                .write_validated_mint_config_txs(
                     0,
-                    &[test_tx_1.clone(), test_tx_2.clone()],
+                    &[to_validated(&test_tx_1), to_validated(&test_tx_2)],
                     &mut db_transaction,
                 )
                 .unwrap();
@@ -1033,7 +1099,11 @@ pub mod tests {
             };
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(1, &[test_tx_3.clone()], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    1,
+                    &[to_validated(&test_tx_3)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -1069,9 +1139,9 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(
+                .write_validated_mint_config_txs(
                     0,
-                    &[test_tx_1.clone(), test_tx_2.clone()],
+                    &[to_validated(&test_tx_1), to_validated(&test_tx_2)],
                     &mut db_transaction,
                 )
                 .unwrap();
@@ -1116,7 +1186,11 @@ pub mod tests {
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .write_mint_config_txs(1, &[test_tx_3.clone()], &mut db_transaction)
+                .write_validated_mint_config_txs(
+                    1,
+                    &[to_validated(&test_tx_3)],
+                    &mut db_transaction,
+                )
                 .unwrap();
             db_transaction.commit().unwrap();
         }

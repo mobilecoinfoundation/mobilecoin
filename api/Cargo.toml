@@ -19,7 +19,7 @@ mc-watcher-api = { path = "../watcher/api" }
 bs58 = "0.4.0"
 crc = "2.1.0"
 displaydoc = { version = "0.2", default-features = false }
-protobuf = "2.22.1"
+protobuf = "2.27.1"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
@@ -45,7 +45,7 @@ mc-util-test-with-data = { path = "../util/test-with-data" }
 
 generic-array = "0.14"
 pem = "1.0"
-prost = { version = "0.9", default-features = false }
+prost = { version = "0.10", default-features = false }
 rand = "0.8"
 rand_core = "0.6"
 rand_hc = "0.3"

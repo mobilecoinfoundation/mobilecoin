@@ -4,6 +4,7 @@
 
 use crate::{
     api::grpc_error::ConsensusGrpcError,
+    config::Config,
     consensus_service::ProposeTxCallback,
     counters,
     mint_tx_manager::MintTxManager,
@@ -31,6 +32,7 @@ const PENDING_LIMIT: i64 = 500;
 
 #[derive(Clone)]
 pub struct ClientApiService {
+    config: Config,
     enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
     tx_manager: Arc<dyn TxManager + Send + Sync>,
     mint_tx_manager: Arc<dyn MintTxManager + Send + Sync>,
@@ -45,6 +47,7 @@ pub struct ClientApiService {
 
 impl ClientApiService {
     pub fn new(
+        config: Config,
         enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
         scp_client_value_sender: ProposeTxCallback,
         ledger: Arc<dyn Ledger + Send + Sync>,
@@ -55,6 +58,7 @@ impl ClientApiService {
         logger: Logger,
     ) -> Self {
         Self {
+            config,
             enclave,
             tx_manager,
             mint_tx_manager,
@@ -188,6 +192,7 @@ impl ConsensusClientApi for ClientApiService {
         result = result.and_then(|mut response| {
             let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
             response.set_block_count(num_blocks);
+            response.set_block_version(*self.config.block_version);
             Ok(response)
         });
 
@@ -221,6 +226,7 @@ impl ConsensusClientApi for ClientApiService {
         result = result.and_then(|mut response| {
             let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
             response.set_block_count(num_blocks);
+            response.set_block_version(*self.config.block_version);
             Ok(response)
         });
 
@@ -254,6 +260,7 @@ impl ConsensusClientApi for ClientApiService {
         result = result.and_then(|mut response| {
             let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
             response.set_block_count(num_blocks);
+            response.set_block_version(*self.config.block_version);
             Ok(response)
         });
 
@@ -267,10 +274,12 @@ impl ConsensusClientApi for ClientApiService {
 mod client_api_tests {
     use crate::{
         api::client_api_service::{ClientApiService, PENDING_LIMIT},
+        config::Config,
         counters,
-        mint_tx_manager::MockMintTxManager,
+        mint_tx_manager::{MintTxManagerError, MockMintTxManager},
         tx_manager::{MockTxManager, TxManagerError},
     };
+    use clap::Parser;
     use grpcio::{
         ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
     };
@@ -281,19 +290,28 @@ mod client_api_tests {
         NodeID, ResponderId,
     };
     use mc_consensus_api::{
-        consensus_client_grpc, consensus_client_grpc::ConsensusClientApiClient,
-        consensus_common::ProposeTxResult,
+        consensus_client::MintValidationResultCode, consensus_client_grpc,
+        consensus_client_grpc::ConsensusClientApiClient, consensus_common::ProposeTxResult,
     };
     use mc_consensus_enclave::TxContext;
     use mc_consensus_enclave_mock::MockConsensusEnclave;
+    use mc_crypto_keys::Ed25519Pair;
     use mc_ledger_db::MockLedger;
     use mc_peers::ConsensusValue;
     use mc_transaction_core::{
-        ring_signature::KeyImage, tx::TxHash, validation::TransactionValidationError,
+        mint::MintValidationError, ring_signature::KeyImage, tx::TxHash,
+        validation::TransactionValidationError, TokenId,
     };
+    use mc_transaction_core_test_utils::{create_mint_config_tx, create_mint_tx};
+    use mc_util_from_random::FromRandom;
     use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator};
+    use rand_core::SeedableRng;
+    use rand_hc::Hc128Rng;
     use serial_test::serial;
-    use std::{sync::Arc, time::Duration};
+    use std::{
+        sync::{Arc, Mutex},
+        time::Duration,
+    };
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server(instance: ClientApiService) -> (ConsensusClientApiClient, Server) {
@@ -310,6 +328,30 @@ mod client_api_tests {
         let client = ConsensusClientApiClient::new(ch);
         (client, server)
     }
+
+    /// Get a dummy config object
+    fn get_config() -> Config {
+        Config::try_parse_from(&[
+            "foo",
+            "--peer-responder-id=localhost:8081",
+            "--client-responder-id=localhost:3223",
+            "--msg-signer-key=MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo",
+            "--network=network.toml",
+            "--peer-listen-uri=insecure-mcp://0.0.0.0:8081/",
+            "--client-listen-uri=insecure-mc://0.0.0.0:3223/",
+            "--admin-listen-uri=insecure-mca://0.0.0.0:9090/",
+            "--sealed-block-signing-key=/tmp/key",
+            "--ledger-path=/tmp/ledger",
+            "--ias-spid=22222222222222222222222222222222",
+            "--ias-api-key=asdf",
+        ])
+        .unwrap()
+    }
+
+    // A note about `#[serial(counters)]`: some of the tests here rely on
+    // manipulating and observing the value of the global prometheus counters.
+    // Since the client API calls that are being tested also manipulate them, the
+    // tests have to be serialized so that they do not interfere with eachother.
 
     #[test_with_logger]
     #[serial(counters)]
@@ -355,6 +397,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
@@ -426,6 +469,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
@@ -491,6 +535,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
@@ -538,6 +583,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(enclave),
             scp_client_value_sender,
             Arc::new(MockLedger::new()),
@@ -556,10 +602,10 @@ mod client_api_tests {
             Ok(propose_tx_response) => {
                 panic!("Unexpected response {:?}", propose_tx_response);
             }
-            Err(_) => {
-                // Should be RpcFailure(RpcStatus { status: 14-UNAVAILABLE,
-                // details: Some("Temporarily not serving requests")
+            Err(GrpcError::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.code(), RpcStatusCode::UNAVAILABLE);
             }
+            Err(e) => panic!("Unexpected error: {:?}", e),
         }
     }
 
@@ -587,6 +633,7 @@ mod client_api_tests {
         let authenticator = AnonymousAuthenticator::default();
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(enclave),
             scp_client_value_sender,
             Arc::new(MockLedger::new()),
@@ -610,10 +657,10 @@ mod client_api_tests {
             Ok(propose_tx_response) => {
                 panic!("Unexpected response {:?}", propose_tx_response);
             }
-            Err(_) => {
-                // Should be RpcFailure(RpcStatus { status: 14-UNAVAILABLE,
-                // details: Some("Temporarily not serving requests")
+            Err(GrpcError::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.code(), RpcStatusCode::UNAVAILABLE);
             }
+            Err(e) => panic!("Unexpected error: {:?}", e),
         }
 
         // This is a global variable. It affects other unit tests, so must be reset :(
@@ -625,7 +672,7 @@ mod client_api_tests {
     fn test_client_tx_propose_rejects_unauthenticated(logger: Logger) {
         let enclave = MockConsensusEnclave::new();
 
-        let is_serving_fn = Arc::new(|| -> bool { true }); // Not serving
+        let is_serving_fn = Arc::new(|| -> bool { true });
 
         let scp_client_value_sender = Arc::new(
             |_value: ConsensusValue,
@@ -640,6 +687,7 @@ mod client_api_tests {
         );
 
         let instance = ClientApiService::new(
+            get_config(),
             Arc::new(enclave),
             scp_client_value_sender,
             Arc::new(MockLedger::new()),
@@ -665,5 +713,622 @@ mod client_api_tests {
                 panic!("Unexpected error {:?}", err);
             }
         };
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    fn test_propose_mint_config_tx_ok(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let consensus_enclave = MockConsensusEnclave::new();
+        let submitted_values = Arc::new(Mutex::new(Vec::new()));
+
+        let submitted_values2 = submitted_values.clone();
+        let scp_client_value_sender = Arc::new(
+            move |value: ConsensusValue,
+                  _node_id: Option<&NodeID>,
+                  _responder_id: Option<&ResponderId>| {
+                submitted_values2.lock().unwrap().push(value);
+            },
+        );
+
+        let num_blocks = 5;
+        let mut ledger = MockLedger::new();
+        // The service should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
+
+        let mut mint_tx_manager = MockMintTxManager::new();
+        mint_tx_manager
+            .expect_validate_mint_config_tx()
+            .times(1)
+            .return_const(Ok(()));
+
+        let is_serving_fn = Arc::new(|| -> bool { true });
+        let authenticator = AnonymousAuthenticator::default();
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(MockTxManager::new()),
+            Arc::new(mint_tx_manager),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        let tx = create_mint_config_tx(TokenId::from(5), &mut rng);
+        match client.propose_mint_config_tx(&(&tx).into()) {
+            Ok(propose_tx_response) => {
+                assert_eq!(
+                    propose_tx_response.get_result().get_code(),
+                    MintValidationResultCode::Ok
+                );
+                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+
+        assert_eq!(
+            *submitted_values.lock().unwrap(),
+            vec![ConsensusValue::MintConfigTx(tx)]
+        );
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    // Should return NonceAlreadyUsed if the tx contains a nonce that is already
+    // used.
+    fn test_propose_mint_config_tx_duplicate_nonce(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let tx = create_mint_config_tx(TokenId::from(5), &mut rng);
+        let consensus_enclave = MockConsensusEnclave::new();
+        let submitted_values = Arc::new(Mutex::new(Vec::new()));
+
+        let submitted_values2 = submitted_values.clone();
+        let scp_client_value_sender = Arc::new(
+            move |value: ConsensusValue,
+                  _node_id: Option<&NodeID>,
+                  _responder_id: Option<&ResponderId>| {
+                submitted_values2.lock().unwrap().push(value);
+            },
+        );
+
+        let num_blocks = 5;
+        let mut ledger = MockLedger::new();
+        // The service should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
+
+        let mut mint_tx_manager = MockMintTxManager::new();
+        mint_tx_manager
+            .expect_validate_mint_config_tx()
+            .times(1)
+            .return_const(Err(MintTxManagerError::MintValidation(
+                MintValidationError::NonceAlreadyUsed,
+            )));
+
+        let is_serving_fn = Arc::new(|| -> bool { true });
+        let authenticator = AnonymousAuthenticator::default();
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(MockTxManager::new()),
+            Arc::new(mint_tx_manager),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        match client.propose_mint_config_tx(&(&tx).into()) {
+            Ok(propose_tx_response) => {
+                assert_eq!(
+                    propose_tx_response.get_result().get_code(),
+                    MintValidationResultCode::NonceAlreadyUsed
+                );
+                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+
+        assert!(submitted_values.lock().unwrap().is_empty());
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    // Should return RpcStatus Unavailable if the node is not serving.
+    fn test_propose_mint_config_tx_not_serving(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let tx = create_mint_config_tx(TokenId::from(5), &mut rng);
+        let consensus_enclave = MockConsensusEnclave::new();
+        let submitted_values = Arc::new(Mutex::new(Vec::new()));
+
+        let submitted_values2 = submitted_values.clone();
+        let scp_client_value_sender = Arc::new(
+            move |value: ConsensusValue,
+                  _node_id: Option<&NodeID>,
+                  _responder_id: Option<&ResponderId>| {
+                submitted_values2.lock().unwrap().push(value);
+            },
+        );
+
+        let ledger = MockLedger::new();
+        let mint_tx_manager = MockMintTxManager::new();
+        let is_serving_fn = Arc::new(|| -> bool { false });
+        let authenticator = AnonymousAuthenticator::default();
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(MockTxManager::new()),
+            Arc::new(mint_tx_manager),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        match client.propose_mint_config_tx(&(&tx).into()) {
+            Ok(propose_tx_response) => {
+                panic!("Unexpected response {:?}", propose_tx_response);
+            }
+            Err(GrpcError::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.code(), RpcStatusCode::UNAVAILABLE);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+
+        assert!(submitted_values.lock().unwrap().is_empty());
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    // Should return RpcStatus Unavailable if the node is over capacity.
+    // This test modifies a the global variable `counters::CUR_NUM_PENDING_VALUES`,
+    // which means it cannot run in parallel with other tests that depend on
+    // that value (e.g. all tests in this module).
+    fn test_propose_mint_config_tx_over_capacity(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let tx = create_mint_config_tx(TokenId::from(5), &mut rng);
+        let consensus_enclave = MockConsensusEnclave::new();
+        let submitted_values = Arc::new(Mutex::new(Vec::new()));
+
+        let submitted_values2 = submitted_values.clone();
+        let scp_client_value_sender = Arc::new(
+            move |value: ConsensusValue,
+                  _node_id: Option<&NodeID>,
+                  _responder_id: Option<&ResponderId>| {
+                submitted_values2.lock().unwrap().push(value);
+            },
+        );
+
+        let ledger = MockLedger::new();
+        let mint_tx_manager = MockMintTxManager::new();
+        let is_serving_fn = Arc::new(|| -> bool { true });
+        let authenticator = AnonymousAuthenticator::default();
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(MockTxManager::new()),
+            Arc::new(mint_tx_manager),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // Set the number of pending values to be above the PENDING_LIMIT
+        // This is a global variable, and so affects other unit tests. It must be reset
+        // afterwards :(
+        counters::CUR_NUM_PENDING_VALUES.set(PENDING_LIMIT);
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        match client.propose_mint_config_tx(&(&tx).into()) {
+            Ok(propose_tx_response) => {
+                panic!("Unexpected response {:?}", propose_tx_response);
+            }
+            Err(GrpcError::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.code(), RpcStatusCode::UNAVAILABLE);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+
+        assert!(submitted_values.lock().unwrap().is_empty());
+
+        // This is a global variable. It affects other unit tests, so must be reset :(
+        counters::CUR_NUM_PENDING_VALUES.set(0);
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    fn test_propose_mint_config_tx_unauthenticated(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let tx = create_mint_config_tx(TokenId::from(5), &mut rng);
+        let consensus_enclave = MockConsensusEnclave::new();
+        let submitted_values = Arc::new(Mutex::new(Vec::new()));
+
+        let submitted_values2 = submitted_values.clone();
+        let scp_client_value_sender = Arc::new(
+            move |value: ConsensusValue,
+                  _node_id: Option<&NodeID>,
+                  _responder_id: Option<&ResponderId>| {
+                submitted_values2.lock().unwrap().push(value);
+            },
+        );
+
+        let ledger = MockLedger::new();
+        let mint_tx_manager = MockMintTxManager::new();
+        let is_serving_fn = Arc::new(|| -> bool { true });
+
+        let authenticator = TokenAuthenticator::new(
+            [1; 32],
+            Duration::from_secs(60),
+            SystemTimeProvider::default(),
+        );
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(MockTxManager::new()),
+            Arc::new(mint_tx_manager),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        match client.propose_mint_config_tx(&(&tx).into()) {
+            Ok(propose_tx_response) => {
+                panic!("Unexpected response {:?}", propose_tx_response);
+            }
+            Err(GrpcError::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+
+        assert!(submitted_values.lock().unwrap().is_empty());
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    fn test_propose_mint_tx_ok(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let consensus_enclave = MockConsensusEnclave::new();
+        let submitted_values = Arc::new(Mutex::new(Vec::new()));
+
+        let submitted_values2 = submitted_values.clone();
+        let scp_client_value_sender = Arc::new(
+            move |value: ConsensusValue,
+                  _node_id: Option<&NodeID>,
+                  _responder_id: Option<&ResponderId>| {
+                submitted_values2.lock().unwrap().push(value);
+            },
+        );
+
+        let num_blocks = 5;
+        let mut ledger = MockLedger::new();
+        // The service should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
+
+        let mut mint_tx_manager = MockMintTxManager::new();
+        mint_tx_manager
+            .expect_validate_mint_tx()
+            .times(1)
+            .return_const(Ok(()));
+
+        let is_serving_fn = Arc::new(|| -> bool { true });
+        let authenticator = AnonymousAuthenticator::default();
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(MockTxManager::new()),
+            Arc::new(mint_tx_manager),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        let tx = create_mint_tx(
+            TokenId::from(5),
+            &[Ed25519Pair::from_random(&mut rng)],
+            100,
+            &mut rng,
+        );
+        match client.propose_mint_tx(&(&tx).into()) {
+            Ok(propose_tx_response) => {
+                assert_eq!(
+                    propose_tx_response.get_result().get_code(),
+                    MintValidationResultCode::Ok
+                );
+                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+
+        assert_eq!(
+            *submitted_values.lock().unwrap(),
+            vec![ConsensusValue::MintTx(tx)]
+        );
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    // Should return NonceAlreadyUsed if the tx contains a nonce that is already
+    // used.
+    fn test_propose_mint_tx_duplicate_nonce(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let tx = create_mint_tx(
+            TokenId::from(5),
+            &[Ed25519Pair::from_random(&mut rng)],
+            100,
+            &mut rng,
+        );
+        let consensus_enclave = MockConsensusEnclave::new();
+        let submitted_values = Arc::new(Mutex::new(Vec::new()));
+
+        let submitted_values2 = submitted_values.clone();
+        let scp_client_value_sender = Arc::new(
+            move |value: ConsensusValue,
+                  _node_id: Option<&NodeID>,
+                  _responder_id: Option<&ResponderId>| {
+                submitted_values2.lock().unwrap().push(value);
+            },
+        );
+
+        let num_blocks = 5;
+        let mut ledger = MockLedger::new();
+        // The service should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
+
+        let mut mint_tx_manager = MockMintTxManager::new();
+        mint_tx_manager
+            .expect_validate_mint_tx()
+            .times(1)
+            .return_const(Err(MintTxManagerError::MintValidation(
+                MintValidationError::NonceAlreadyUsed,
+            )));
+
+        let is_serving_fn = Arc::new(|| -> bool { true });
+        let authenticator = AnonymousAuthenticator::default();
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(MockTxManager::new()),
+            Arc::new(mint_tx_manager),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        match client.propose_mint_tx(&(&tx).into()) {
+            Ok(propose_tx_response) => {
+                assert_eq!(
+                    propose_tx_response.get_result().get_code(),
+                    MintValidationResultCode::NonceAlreadyUsed
+                );
+                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+
+        assert!(submitted_values.lock().unwrap().is_empty());
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    // Should return RpcStatus Unavailable if the node is not serving.
+    fn test_propose_mint_tx_not_serving(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let tx = create_mint_tx(
+            TokenId::from(5),
+            &[Ed25519Pair::from_random(&mut rng)],
+            100,
+            &mut rng,
+        );
+        let consensus_enclave = MockConsensusEnclave::new();
+        let submitted_values = Arc::new(Mutex::new(Vec::new()));
+
+        let submitted_values2 = submitted_values.clone();
+        let scp_client_value_sender = Arc::new(
+            move |value: ConsensusValue,
+                  _node_id: Option<&NodeID>,
+                  _responder_id: Option<&ResponderId>| {
+                submitted_values2.lock().unwrap().push(value);
+            },
+        );
+
+        let ledger = MockLedger::new();
+        let mint_tx_manager = MockMintTxManager::new();
+        let is_serving_fn = Arc::new(|| -> bool { false });
+        let authenticator = AnonymousAuthenticator::default();
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(MockTxManager::new()),
+            Arc::new(mint_tx_manager),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        match client.propose_mint_tx(&(&tx).into()) {
+            Ok(propose_tx_response) => {
+                panic!("Unexpected response {:?}", propose_tx_response);
+            }
+            Err(GrpcError::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.code(), RpcStatusCode::UNAVAILABLE);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+
+        assert!(submitted_values.lock().unwrap().is_empty());
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    // Should return RpcStatus Unavailable if the node is over capacity.
+    // This test modifies a the global variable `counters::CUR_NUM_PENDING_VALUES`,
+    // which means it cannot run in parallel with other tests that depend on
+    // that value (e.g. all tests in this module).
+    fn test_propose_mint_tx_over_capacity(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let tx = create_mint_tx(
+            TokenId::from(5),
+            &[Ed25519Pair::from_random(&mut rng)],
+            100,
+            &mut rng,
+        );
+        let consensus_enclave = MockConsensusEnclave::new();
+        let submitted_values = Arc::new(Mutex::new(Vec::new()));
+
+        let submitted_values2 = submitted_values.clone();
+        let scp_client_value_sender = Arc::new(
+            move |value: ConsensusValue,
+                  _node_id: Option<&NodeID>,
+                  _responder_id: Option<&ResponderId>| {
+                submitted_values2.lock().unwrap().push(value);
+            },
+        );
+
+        let ledger = MockLedger::new();
+        let mint_tx_manager = MockMintTxManager::new();
+        let is_serving_fn = Arc::new(|| -> bool { true });
+        let authenticator = AnonymousAuthenticator::default();
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(MockTxManager::new()),
+            Arc::new(mint_tx_manager),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // Set the number of pending values to be above the PENDING_LIMIT
+        // This is a global variable, and so affects other unit tests. It must be reset
+        // afterwards :(
+        counters::CUR_NUM_PENDING_VALUES.set(PENDING_LIMIT);
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        match client.propose_mint_tx(&(&tx).into()) {
+            Ok(propose_tx_response) => {
+                panic!("Unexpected response {:?}", propose_tx_response);
+            }
+            Err(GrpcError::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.code(), RpcStatusCode::UNAVAILABLE);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+
+        assert!(submitted_values.lock().unwrap().is_empty());
+
+        // This is a global variable. It affects other unit tests, so must be reset :(
+        counters::CUR_NUM_PENDING_VALUES.set(0);
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    fn test_propose_mint_tx_unauthenticated(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let tx = create_mint_tx(
+            TokenId::from(5),
+            &[Ed25519Pair::from_random(&mut rng)],
+            100,
+            &mut rng,
+        );
+        let consensus_enclave = MockConsensusEnclave::new();
+        let submitted_values = Arc::new(Mutex::new(Vec::new()));
+
+        let submitted_values2 = submitted_values.clone();
+        let scp_client_value_sender = Arc::new(
+            move |value: ConsensusValue,
+                  _node_id: Option<&NodeID>,
+                  _responder_id: Option<&ResponderId>| {
+                submitted_values2.lock().unwrap().push(value);
+            },
+        );
+
+        let ledger = MockLedger::new();
+        let mint_tx_manager = MockMintTxManager::new();
+        let is_serving_fn = Arc::new(|| -> bool { true });
+
+        let authenticator = TokenAuthenticator::new(
+            [1; 32],
+            Duration::from_secs(60),
+            SystemTimeProvider::default(),
+        );
+
+        let instance = ClientApiService::new(
+            get_config(),
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(MockTxManager::new()),
+            Arc::new(mint_tx_manager),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+        match client.propose_mint_tx(&(&tx).into()) {
+            Ok(propose_tx_response) => {
+                panic!("Unexpected response {:?}", propose_tx_response);
+            }
+            Err(GrpcError::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+
+        assert!(submitted_values.lock().unwrap().is_empty());
     }
 }

@@ -5,6 +5,8 @@
 
 #![deny(missing_docs)]
 
+extern crate core;
+
 mod change_destination;
 mod error;
 mod input_credentials;
@@ -21,7 +23,7 @@ pub use memo::{
     UnusedMemo,
 };
 pub use memo_builder::{EmptyMemoBuilder, MemoBuilder, RTHMemoBuilder};
-pub use transaction_builder::TransactionBuilder;
+pub use transaction_builder::{DefaultTxOutputsOrdering, TransactionBuilder, TxOutputsOrdering};
 
 // Re-export this to help the exported macros work
 pub use mc_transaction_core::MemoPayload;

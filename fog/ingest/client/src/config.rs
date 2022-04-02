@@ -10,6 +10,7 @@ use std::time::Duration;
 
 /// Configuration parameters for the Fog ingest client
 #[derive(Clone, Debug, Parser)]
+#[clap(version)]
 pub struct IngestConfig {
     /// URI for ingest server
     #[clap(long, env = "MC_URI")]

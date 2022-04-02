@@ -1,7 +1,5 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//use hex;
-//use mc_util_serial;
 use mc_account_keys::AccountKey;
 use mc_common::{
     logger::{log, Logger},

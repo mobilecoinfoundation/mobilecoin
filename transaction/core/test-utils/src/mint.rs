@@ -7,7 +7,8 @@ use mc_crypto_multisig::{MultiSig, SignerSet};
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_transaction_core::{
     mint::{
-        constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx, MintTxPrefix,
+        constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx,
+        MintTxPrefix, ValidatedMintConfigTx,
     },
     TokenId,
 };
@@ -82,6 +83,14 @@ pub fn create_mint_config_tx(
 ) -> MintConfigTx {
     let (mint_config_tx, _signers) = create_mint_config_tx_and_signers(token_id, rng);
     mint_config_tx
+}
+
+/// A helper for mocking a `ValidatedMintConfigTx` from a `MintConfigTx`.
+pub fn mint_config_tx_to_validated(mint_config_tx: &MintConfigTx) -> ValidatedMintConfigTx {
+    ValidatedMintConfigTx {
+        mint_config_tx: mint_config_tx.clone(),
+        signer_set: SignerSet::default(),
+    }
 }
 
 /// Generate a random, valid mint tx

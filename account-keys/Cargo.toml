@@ -9,7 +9,7 @@ readme = "README.md"
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
 hkdf = "0.12.3"
-prost = { version = "0.9", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.6", default-features = false }
 subtle = { version = "2", default-features = false }
 zeroize = { version = "1", default-features = false }

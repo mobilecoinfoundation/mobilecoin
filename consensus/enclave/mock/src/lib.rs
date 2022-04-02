@@ -12,6 +12,7 @@ pub use mc_consensus_enclave_api::{
     WellFormedEncryptedTx, WellFormedTxContext,
 };
 
+use mc_account_keys::PublicAddress;
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
@@ -21,16 +22,19 @@ use mc_common::ResponderId;
 use mc_crypto_keys::{
     Ed25519Pair, Ed25519Public, RistrettoPublic, X25519EphemeralPrivate, X25519Public,
 };
+use mc_crypto_multisig::SignerSet;
 use mc_crypto_rand::McRng;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
+    mint::ValidatedMintConfigTx,
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
     Block, BlockContents, BlockSignature, Token, TokenId,
 };
+use mc_transaction_core_test_utils::get_outputs;
 use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng;
@@ -216,7 +220,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         &self,
         parent_block: &Block,
         inputs: FormBlockInputs,
-        _root_element: &TxOutMembershipElement,
+        root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)> {
         let block_version = self.blockchain_config.lock().unwrap().block_version;
         let transactions_with_proofs: Vec<(Tx, Vec<TxOutMembershipProof>)> = inputs
@@ -247,16 +251,18 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
             )?;
 
             for proof in proofs {
-                let root_element = compute_implied_merkle_root(proof)
+                let implied_root = compute_implied_merkle_root(proof)
                     .map_err(|_e| TransactionValidationError::InvalidLedgerContext)?;
-                root_elements.push(root_element.clone());
+                root_elements.push(implied_root);
             }
         }
 
         root_elements.sort();
         root_elements.dedup();
 
-        if root_elements.len() != 1 {
+        if !transactions_with_proofs.is_empty()
+            && (root_elements.len() != 1 || root_elements[0] != *root_element)
+        {
             return Err(Error::InvalidLocalMembershipProof);
         }
 
@@ -267,18 +273,41 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
             outputs.extend(tx.prefix.outputs.into_iter());
         }
 
+        let minted_tx_outs = get_outputs(
+            block_version,
+            &inputs
+                .mint_txs
+                .iter()
+                .map(|mint_tx| {
+                    let recipient = PublicAddress::new(
+                        &mint_tx.prefix.spend_public_key,
+                        &mint_tx.prefix.view_public_key,
+                    );
+                    (recipient, mint_tx.prefix.amount)
+                })
+                .collect::<Vec<_>>(),
+            &mut rng,
+        );
+        outputs.extend(minted_tx_outs);
+
+        let validated_mint_config_txs = inputs
+            .mint_config_txs
+            .into_iter()
+            .map(|mint_config_tx| ValidatedMintConfigTx {
+                mint_config_tx,
+                signer_set: SignerSet::default(),
+            })
+            .collect();
+
         let block_contents = BlockContents {
             key_images,
             outputs,
-            ..Default::default()
+            mint_txs: inputs.mint_txs,
+            validated_mint_config_txs,
         };
 
-        let block = Block::new_with_parent(
-            block_version,
-            parent_block,
-            &root_elements[0],
-            &block_contents,
-        );
+        let block =
+            Block::new_with_parent(block_version, parent_block, root_element, &block_contents);
 
         let signature = BlockSignature::from_block_and_keypair(&block, &self.signing_keypair)?;
 

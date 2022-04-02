@@ -39,6 +39,7 @@ mod tx_out_confirmation_number;
 mod tx_out_membership_element;
 mod tx_out_membership_proof;
 mod tx_prefix;
+mod validated_mint_config;
 mod verification_report;
 mod verification_signature;
 mod watcher;
