@@ -81,10 +81,7 @@ pub fn create_transaction<L: Ledger, R: RngCore + CryptoRng>(
         tx_out,
         sender,
         recipient,
-        Amount {
-            value: amount.value - Mob::MINIMUM_FEE,
-            token_id: amount.token_id,
-        },
+        amount.value - Mob::MINIMUM_FEE,
         Mob::MINIMUM_FEE,
         tombstone_block,
         rng,
@@ -107,7 +104,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
     tx_out: &TxOut,
     sender: &AccountKey,
     recipient: &PublicAddress,
-    amount: Amount,
+    amount: u64,
     fee: u64,
     tombstone_block: BlockIndex,
     rng: &mut R,
@@ -145,14 +142,16 @@ pub fn create_transaction_with_amount_and_comparer<
     tx_out: &TxOut,
     sender: &AccountKey,
     recipient: &PublicAddress,
-    amount: Amount,
+    amount: u64,
     fee: u64,
     tombstone_block: BlockIndex,
     rng: &mut R,
 ) -> Tx {
+    let (sender_amount, _) = tx_out.view_key_match(&sender.view_private_key()).unwrap();
+
     let mut transaction_builder = TransactionBuilder::new(
         block_version,
-        amount.token_id,
+        sender_amount.token_id,
         MockFogResolver::default(),
         EmptyMemoBuilder::default(),
     );
@@ -196,7 +195,7 @@ pub fn create_transaction_with_amount_and_comparer<
 
     // Output
     transaction_builder
-        .add_output(amount.value, recipient, rng)
+        .add_output(amount, recipient, rng)
         .unwrap();
 
     // Tombstone block
