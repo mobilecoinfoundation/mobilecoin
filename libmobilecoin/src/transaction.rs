@@ -17,16 +17,16 @@ use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
     ring_signature::KeyImage,
+    Token,
     tokens::Mob,
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    Amount, BlockVersion, CompressedCommitment, EncryptedMemo,
+    BlockVersion, CompressedCommitment, EncryptedMemo, MaskedAmount,
 };
 
 use mc_transaction_std::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, ChangeDestination,
     DestinationMemo, InputCredentials, MemoBuilder, MemoPayload, RTHMemoBuilder,
     SenderMemoCredential, TransactionBuilder,
-    BlockVersion, CompressedCommitment, MaskedAmount, Token,
 };
 
 use mc_util_ffi::*;
@@ -372,7 +372,7 @@ pub extern "C" fn mc_transaction_builder_create(
             .expect("McTxOutMemoBuilder has already been used to build a Tx");
         // FIXME: block version should be a parameter, it should be the latest
         // version that fog ledger told us about, or that we got from ledger-db
-        let block_version = BlockVersion::ZERO;
+        //let block_version = BlockVersion::ZERO;
 
         // TODO #1596: Support token id other than Mob
         let token_id = Mob::ID;
