@@ -32,6 +32,8 @@ typedef struct McFogResolver McFogResolver;
 
 typedef struct McTransactionBuilderRing McTransactionBuilderRing;
 
+typedef struct McTxOutMemoBuilder McTxOutMemoBuilder;
+
 typedef struct Option_TransactionBuilder_FogResolver Option_TransactionBuilder_FogResolver;
 
 typedef struct Vec_u8 Vec_u8;
@@ -582,6 +584,20 @@ bool mc_account_key_get_public_address_fog_authority_sig(FfiRefPtr<McAccountKey>
 /**
  * # Preconditions
  *
+ * * `public_address` - must be a valid `PublicAddress`.
+ * * `out_short_address_hash` - length must be >= 16 bytes
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_account_key_get_short_address_hash(FfiRefPtr<McPublicAddress> public_address,
+                                           FfiMutPtr<McMutableBuffer> out_short_address_hash,
+                                           FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
  * * `mnemonic` - must be a nul-terminated C string containing valid UTF-8.
  * * `out_view_private_key` - length must be >= 32.
  * * `out_spend_private_key` - length must be >= 32.
@@ -723,7 +739,9 @@ bool mc_transaction_builder_ring_add_element(FfiMutPtr<McTransactionBuilderRing>
 
 FfiOptOwnedPtr<McTransactionBuilder> mc_transaction_builder_create(uint64_t fee,
                                                                    uint64_t tombstone_block,
-                                                                   FfiOptRefPtr<McFogResolver> fog_resolver);
+                                                                   FfiOptRefPtr<McFogResolver> fog_resolver,
+                                                                   FfiMutPtr<McTxOutMemoBuilder> memo_builder,
+                                                                   uint32_t block_version);
 
 void mc_transaction_builder_free(FfiOptOwnedPtr<McTransactionBuilder> transaction_builder);
 
@@ -772,6 +790,27 @@ FfiOptOwnedPtr<McData> mc_transaction_builder_add_output(FfiMutPtr<McTransaction
 /**
  * # Preconditions
  *
+ * * `account_key` - must be a valid account key, default change address
+ *   computed from account key
+ * * `transaction_builder` - must not have been previously consumed by a call
+ *   to `build`.
+ * * `out_tx_out_confirmation_number` - length must be >= 32.
+ *
+ * # Errors
+ *
+ * * `LibMcError::AttestationVerification`
+ * * `LibMcError::InvalidInput`
+ */
+FfiOptOwnedPtr<McData> mc_transaction_builder_add_change_output(FfiRefPtr<McAccountKey> account_key,
+                                                                FfiMutPtr<McTransactionBuilder> transaction_builder,
+                                                                uint64_t amount,
+                                                                FfiOptMutPtr<McRngCallback> rng_callback,
+                                                                FfiMutPtr<McMutableBuffer> out_tx_out_confirmation_number,
+                                                                FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
  * * `transaction_builder` - must not have been previously consumed by a call
  *   to `build`.
  * * `recipient_address` - must be a valid `PublicAddress`.
@@ -804,3 +843,232 @@ FfiOptOwnedPtr<McData> mc_transaction_builder_add_output_with_fog_hint_address(F
 FfiOptOwnedPtr<McData> mc_transaction_builder_build(FfiMutPtr<McTransactionBuilder> transaction_builder,
                                                     FfiOptMutPtr<McRngCallback> rng_callback,
                                                     FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `account_key` - must be a valid `AccountKey` with `fog_info`.
+ */
+FfiOptOwnedPtr<McTxOutMemoBuilder> mc_memo_builder_sender_and_destination_create(FfiRefPtr<McAccountKey> account_key);
+
+/**
+ * # Preconditions
+ *
+ * * `account_key` - must be a valid `AccountKey` with `fog_info`.
+ */
+FfiOptOwnedPtr<McTxOutMemoBuilder> mc_memo_builder_sender_payment_request_and_destination_create(uint64_t payment_request_id,
+                                                                                                 FfiRefPtr<McAccountKey> account_key);
+
+FfiOptOwnedPtr<McTxOutMemoBuilder> mc_memo_builder_default_create(void);
+
+void mc_memo_builder_free(FfiOptOwnedPtr<McTxOutMemoBuilder> memo_builder);
+
+/**
+ * # Preconditions
+ *
+ * * `sender_memo_data` - must be 64 bytes
+ * * `sender_public_address` - must be a valid `PublicAddress`.
+ * * `receiving_subaddress_view_private_key` - must be a valid
+ *     32-byte Ristretto-format scalar.
+ * * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_sender_memo_is_valid(FfiRefPtr<McBuffer> sender_memo_data,
+                                  FfiRefPtr<McPublicAddress> sender_public_address,
+                                  FfiRefPtr<McBuffer> receiving_subaddress_view_private_key,
+                                  FfiRefPtr<McBuffer> tx_out_public_key,
+                                  FfiMutPtr<bool> out_valid,
+                                  FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `sender_account_key` - must be a valid account key
+ * * `recipient_subaddress_view_public_key` - must be a valid
+ *     32-byte Ristretto-format scalar.
+ * * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+ * * `out_memo_data` - length must be >= 64.
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_sender_memo_create(FfiRefPtr<McAccountKey> sender_account_key,
+                                FfiRefPtr<McBuffer> recipient_subaddress_view_public_key,
+                                FfiRefPtr<McBuffer> tx_out_public_key,
+                                FfiMutPtr<McMutableBuffer> out_memo_data,
+                                FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `sender_memo_data` - must be 64 bytes
+ * * `out_short_address_hash` - length must be >= 16 bytes
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_sender_memo_get_address_hash(FfiRefPtr<McBuffer> sender_memo_data,
+                                          FfiMutPtr<McMutableBuffer> out_short_address_hash,
+                                          FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `destination_public_address` - must be a valid 32-byte
+ *     Ristretto-format scalar.
+ * * `number_of_recipients` - must be > 0
+ * * `out_memo_data` - length must be >= 64.
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_destination_memo_create(FfiRefPtr<McPublicAddress> destination_public_address,
+                                     uint8_t number_of_recipients,
+                                     uint64_t fee,
+                                     uint64_t total_outlay,
+                                     FfiMutPtr<McMutableBuffer> out_memo_data,
+                                     FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `destination_memo_data` - must be 64 bytes
+ * * `out_short_address_hash` - length must be >= 16 bytes
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_destination_memo_get_address_hash(FfiRefPtr<McBuffer> destination_memo_data,
+                                               FfiMutPtr<McMutableBuffer> out_short_address_hash,
+                                               FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `destination_memo_data` - must be 64 bytes
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_destination_memo_get_number_of_recipients(FfiRefPtr<McBuffer> destination_memo_data,
+                                                       FfiMutPtr<uint8_t> out_number_of_recipients,
+                                                       FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `destination_memo_data` - must be 64 bytes
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_destination_memo_get_fee(FfiRefPtr<McBuffer> destination_memo_data,
+                                      FfiMutPtr<uint64_t> out_fee,
+                                      FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `destination_memo_data` - must be 64 bytes
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_destination_memo_get_total_outlay(FfiRefPtr<McBuffer> destination_memo_data,
+                                               FfiMutPtr<uint64_t> out_total_outlay,
+                                               FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `sender_with_payment_request_memo_data` - must be 64 bytes
+ * * `sender_public_address` - must be a valid `PublicAddress`.
+ * * `receiving_subaddress_view_private_key` - must be a valid
+ *     32-byte Ristretto-format scalar.
+ * * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_sender_with_payment_request_memo_is_valid(FfiRefPtr<McBuffer> sender_with_payment_request_memo_data,
+                                                       FfiRefPtr<McPublicAddress> sender_public_address,
+                                                       FfiRefPtr<McBuffer> receiving_subaddress_view_private_key,
+                                                       FfiRefPtr<McBuffer> tx_out_public_key,
+                                                       FfiMutPtr<bool> out_valid,
+                                                       FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `sender_account_key` - must be a valid account key
+ * * `recipient_subaddress_view_public_key` - must be a valid
+ *     32-byte Ristretto-format scalar.
+ * * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+ * * `out_memo_data` - length must be >= 64.
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_sender_with_payment_request_memo_create(FfiRefPtr<McAccountKey> sender_account_key,
+                                                     FfiRefPtr<McBuffer> recipient_subaddress_view_public_key,
+                                                     FfiRefPtr<McBuffer> tx_out_public_key,
+                                                     uint64_t payment_request_id,
+                                                     FfiMutPtr<McMutableBuffer> out_memo_data,
+                                                     FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `sender_with_payment_request_memo_data` - must be 64 bytes
+ * * `out_short_address_hash` - length must be >= 16 bytes
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_sender_with_payment_request_memo_get_address_hash(FfiRefPtr<McBuffer> sender_with_payment_request_memo_data,
+                                                               FfiMutPtr<McMutableBuffer> out_short_address_hash,
+                                                               FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `sender_with_payment_request_memo_data` - must be 64 bytes
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_sender_with_payment_request_memo_get_payment_request_id(FfiRefPtr<McBuffer> sender_with_payment_request_memo_data,
+                                                                     FfiMutPtr<uint64_t> out_payment_request_id,
+                                                                     FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `encrypted_memo` - must be 66 bytes
+ * * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+ * * `account_key` - must be a valid account key
+ * * `out_memo_payload` - length must be >= 16 bytes
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_decrypt_e_memo_payload(FfiRefPtr<McBuffer> encrypted_memo,
+                                    FfiRefPtr<McBuffer> tx_out_public_key,
+                                    FfiRefPtr<McAccountKey> account_key,
+                                    FfiMutPtr<McMutableBuffer> out_memo_payload,
+                                    FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
