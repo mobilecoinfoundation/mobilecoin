@@ -816,6 +816,7 @@ fn mint_output<T: Digestible>(
                 .id
                 .append_to_transcript(b"parent_block_id", &mut transcript);
             transactions.append_to_transcript(b"transactions", &mut transcript);
+            amount.append_to_transcript(b"amount", &mut transcript);
             transcript.extract_digest(&mut hash_value);
         };
 
@@ -850,8 +851,9 @@ fn mint_output<T: Digestible>(
 mod tests {
     use super::*;
     use alloc::vec;
-    use mc_common::logger::test_with_logger;
-    use mc_consensus_enclave_api::MasterMintersMap;
+    use core::iter::FromIterator;
+    use mc_common::{logger::test_with_logger, HashMap, HashSet};
+    use mc_consensus_enclave_api::{FeeMap, MasterMintersMap};
     use mc_crypto_multisig::SignerSet;
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{
@@ -864,6 +866,7 @@ mod tests {
         create_ledger, create_mint_config_tx_and_signers, create_mint_tx_to_recipient,
         create_transaction, initialize_ledger, AccountKey,
     };
+    use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 
@@ -1098,7 +1101,7 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn test_form_block_works(logger: Logger) {
+    fn test_form_block_works_single_token(logger: Logger) {
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
         for block_version in BlockVersion::iterator() {
@@ -1220,6 +1223,219 @@ mod tests {
             for output in block_contents.outputs.iter() {
                 validate_tx_out(block_version, output).unwrap();
             }
+        }
+    }
+
+    #[test_with_logger]
+    fn test_form_block_works_multiple_tokens(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+
+        for block_version in BlockVersion::iterator() {
+            if !block_version.masked_token_id_feature_is_supported() {
+                continue;
+            }
+
+            let enclave = SgxConsensusEnclave::new(logger.clone());
+            let blockchain_config = BlockchainConfig {
+                block_version,
+                fee_map: FeeMap::try_from_iter([(Mob::ID, 1), (token_id1, 1), (token_id2, 1)])
+                    .unwrap(),
+                ..Default::default()
+            };
+            enclave
+                .enclave_init(
+                    &Default::default(),
+                    &Default::default(),
+                    &None,
+                    blockchain_config,
+                )
+                .unwrap();
+
+            // Create a valid test transaction.
+            let sender = AccountKey::random(&mut rng);
+            let recipient = AccountKey::random(&mut rng);
+
+            let mut ledger = create_ledger();
+            let n_blocks = 1;
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+            // Spend outputs from the origin block. These are token_id=0.
+            let origin_block_contents = ledger.get_block_contents(0).unwrap();
+
+            let mut input_transactions: Vec<Tx> = (0..3)
+                .map(|i| {
+                    let tx_out = origin_block_contents.outputs[i].clone();
+
+                    create_transaction(
+                        block_version,
+                        &mut ledger,
+                        &tx_out,
+                        &sender,
+                        &recipient.default_subaddress(),
+                        n_blocks + 20,
+                        &mut rng,
+                    )
+                })
+                .collect();
+
+            // Generate transactions for the non-MOB token ids.
+            for token_id in [token_id1, token_id2] {
+                for _ in 0..5 {
+                    let spendable_output = TxOut::new(
+                        Amount {
+                            value: 10_000_000_000,
+                            token_id,
+                        },
+                        &sender.default_subaddress(),
+                        &RistrettoPrivate::from_random(&mut rng),
+                        Default::default(),
+                    )
+                    .unwrap();
+
+                    // Append this output to the ledger.
+                    let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+                    let block_contents = BlockContents {
+                        outputs: vec![spendable_output.clone()],
+                        key_images: vec![KeyImage::from(rng.next_u64())],
+                        ..Default::default()
+                    };
+                    let block = Block::new_with_parent(
+                        block_version,
+                        &parent_block,
+                        &Default::default(),
+                        &block_contents,
+                    );
+                    ledger.append_block(&block, &block_contents, None).unwrap();
+
+                    let tx = create_transaction(
+                        block_version,
+                        &mut ledger,
+                        &spendable_output,
+                        &sender,
+                        &recipient.default_subaddress(),
+                        n_blocks + 20,
+                        &mut rng,
+                    );
+
+                    input_transactions.push(tx);
+                }
+            }
+
+            // Remove the last token_id2 transaction - this is so that we have a different
+            // number of transactions for each token id. This makes the
+            // aggregated fee unique per token id - see comment down below on fee
+            // verification.
+            input_transactions.pop();
+
+            // Create WellFormedEncryptedTxs + proofs
+            let well_formed_encrypted_txs_with_proofs: Vec<_> = input_transactions
+                .iter()
+                .map(|tx| {
+                    let well_formed_tx = WellFormedTx::from(tx.clone());
+                    let encrypted_tx = enclave
+                        .encrypt_well_formed_tx(&well_formed_tx, &mut rng)
+                        .unwrap();
+
+                    let highest_indices = well_formed_tx.tx.get_membership_proof_highest_indices();
+                    let membership_proofs = ledger
+                        .get_tx_out_proof_of_memberships(&highest_indices)
+                        .expect("failed getting proof");
+                    (encrypted_tx, membership_proofs)
+                })
+                .collect();
+
+            // Form block
+            let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+            let root_element = ledger.get_root_tx_out_membership_element().unwrap();
+
+            let (block, block_contents, signature) = enclave
+                .form_block(
+                    &parent_block,
+                    FormBlockInputs {
+                        well_formed_encrypted_txs_with_proofs,
+                        ..Default::default()
+                    },
+                    &root_element,
+                )
+                .unwrap();
+
+            // Verify signature.
+            {
+                assert_eq!(
+                    signature.signer(),
+                    &enclave
+                        .ake
+                        .get_identity()
+                        .signing_keypair
+                        .lock()
+                        .unwrap()
+                        .public_key()
+                );
+
+                assert!(signature.verify(&block).is_ok());
+            }
+
+            // `block_contents` should include three aggregate fee outputs.
+            let num_outputs: usize = input_transactions
+                .iter()
+                .map(|tx| tx.prefix.outputs.len())
+                .sum();
+            assert_eq!(num_outputs + 3, block_contents.outputs.len());
+
+            let fee_view_key = RistrettoPrivate::try_from(&FEE_VIEW_PRIVATE_KEY).unwrap();
+
+            let fee_amounts = block_contents
+                .outputs
+                .iter()
+                .filter_map(|output| match output.view_key_match(&fee_view_key) {
+                    Ok((amount, _)) => Some(amount),
+                    Err(_) => None,
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(fee_amounts.len(), 3);
+
+            // See that we got the expected amounts.
+            // The fee amount created by the test code is Mob::MINIMUM_FEE, however the
+            // number of transactions we create varries based on the token id.
+            // We create 3 mob txs, 5 token_id1 txs and 4 token_id2 txs.
+            let expected_fee_amounts = HashMap::from_iter([
+                (Mob::ID, Mob::MINIMUM_FEE * 3),
+                (token_id1, Mob::MINIMUM_FEE * 5),
+                (token_id2, Mob::MINIMUM_FEE * 4),
+            ]);
+
+            let resulted_fee_amounts = HashMap::from_iter(
+                fee_amounts
+                    .iter()
+                    .map(|amount| (amount.token_id, amount.value)),
+            );
+
+            assert_eq!(expected_fee_amounts, resulted_fee_amounts);
+
+            // The outputs should all conform to block version rules
+            for output in block_contents.outputs.iter() {
+                validate_tx_out(block_version, output).unwrap();
+            }
+
+            // All output keys should be unique.
+            let target_keys = HashSet::from_iter(
+                block_contents
+                    .outputs
+                    .iter()
+                    .map(|output| output.target_key),
+            );
+            assert_eq!(target_keys.len(), block_contents.outputs.len());
+
+            let public_keys = HashSet::from_iter(
+                block_contents
+                    .outputs
+                    .iter()
+                    .map(|output| output.public_key),
+            );
+            assert_eq!(public_keys.len(), block_contents.outputs.len());
         }
     }
 
