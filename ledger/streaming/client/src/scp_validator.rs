@@ -3,9 +3,8 @@
 //! Performs SCP validation on streams from multiple peers and merges them into
 //! a single stream
 
-use crate::streaming_futures::{Ready, Ready::NotReady};
-use hashbrown::HashMap;
 use futures::{stream, Stream, StreamExt};
+use hashbrown::HashMap;
 use mc_common::{
     logger::{log, Logger},
     NodeID,
@@ -17,7 +16,18 @@ use mc_ledger_streaming_api::{
 use mc_transaction_core::BlockID;
 use std::future;
 
-/// SCP Validation streaming factor, this stream will take in a group of block
+/// Enum to allow monadic results other than Some & None for
+/// stream types were None would terminate the stream. Useful for
+/// stream combinations like Scan --> Filter_Map
+pub enum Ready<T> {
+    /// Value with data container to indicate a value is ready
+    Ready(T),
+
+    /// Indicates to subsequent future/stream upstream is not ready
+    NotReady,
+}
+
+/// SCP Validation stream factory, this factory takes in a group of
 /// streams from individual peers and validate that they pass SCP consensus.
 /// Note this will consume all other streams and return a single result
 pub struct SCPValidator<US: BlockStream + 'static, ID: GenericNodeId + Send = NodeID> {
@@ -132,30 +142,31 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
 
         // Else check for a quorum and see if the blocks externalized constitute a
         // quorum slice for this node
-        let ballot_map = self.find_quorum(self.local_quorum_set.clone(), index);
-        let block_id = self.get_quorum_slice_vote(self.local_quorum_set.threshold, &ballot_map);
-
-        // If there's consensus among a quorum slice, return the block contents
-        if let Some(block_id) = block_id {
-            let winning_ballots = ballot_map.get(&block_id).unwrap();
-            for ballot in winning_ballots {
-                if let QuorumSetMember::Node(id) = ballot {
-                    let mut blocks = self.slots_to_externalized_blocks.remove(&index).unwrap();
-                    log::trace!(
-                        self.logger,
-                        "Node: {} found a quorum slice for block {}",
-                        self.local_node_id,
-                        self.highest_slot_index,
-                    );
-
-                    // Increment the highest block seen + the total number of
-                    // blocks we've counted
-                    let result = Some(blocks.remove(id).unwrap());
-                    self.highest_slot_index += 1;
-                    self.num_blocks_externalized += 1;
-                    return result;
+        let mut selected_node = None;
+        if let Some(block_id) = self.find_quorum(&self.local_quorum_set, index) {
+            let components = self.slots_to_externalized_blocks.get(&index).unwrap();
+            for (node_id, component) in components {
+                if &component.block_data.block().id == block_id {
+                    selected_node = Some(node_id.clone());
+                    break;
                 }
             }
+        }
+
+        // If we found quorum and a matching block, return it
+        if let Some(selected_node) = selected_node {
+            let mut components = self.slots_to_externalized_blocks.remove(&index).unwrap();
+            log::trace!(
+                self.logger,
+                "Node: {} found a quorum slice for block {}",
+                self.local_node_id,
+                self.highest_slot_index,
+            );
+
+            // Increment our targets
+            self.highest_slot_index += 1;
+            self.num_blocks_externalized += 1;
+            return components.remove(&selected_node);
         }
 
         // If not let consumers know
@@ -163,77 +174,62 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
     }
 
     /// Check to find there's a quorum on the value of the blocks
-    fn find_quorum(
-        &self,
-        quorum_set: QuorumSet<ID>,
+    fn find_quorum<'a>(
+        &'a self,
+        quorum_set: &'a QuorumSet<ID>,
         index: SlotIndex,
-    ) -> HashMap<BlockID, Vec<QuorumSetMember<ID>>> {
-        let mut ballot_map: HashMap<BlockID, Vec<QuorumSetMember<ID>>> = HashMap::new();
+    ) -> Option<&'a BlockID> {
+        let mut ballot_map: HashMap<&'a BlockID, Vec<&'a QuorumSetMember<ID>>> = HashMap::new();
         let threshold = quorum_set.threshold;
         let mut nodes_counted = 0;
 
         // Determine if the blocks we've collected so far are a quorum slice
         if let Some(tracked_blocks) = self.slots_to_externalized_blocks.get(&index) {
-            for member in quorum_set.members {
+            for member in quorum_set.members.iter() {
                 // Go through our slice and determine what nodes sent blocks AND
                 // what block they externalized
-                match member.clone() {
+                match member {
                     QuorumSetMember::Node(node_id) => {
-                        if let Some(component) = tracked_blocks.get(&node_id) {
-                            let block_id = &component.block_data.block().id;
+                        if let Some(component) = tracked_blocks.get(node_id) {
                             // Record a vote for the block externalized
                             ballot_map
-                                .entry(block_id.clone())
-                                .and_modify(|vec| vec.push(member.clone()))
-                                .or_insert_with(|| vec![member.clone()]);
+                                .entry(&component.block_data.block().id)
+                                .and_modify(|vec| vec.push(member))
+                                .or_insert_with(|| vec![member]);
                             nodes_counted += 1;
 
                             // If we've counted a # of nodes above the threshold
                             // check for quorum
-                            if nodes_counted >= threshold
-                                // If quorum, stop early
-                                && self.get_quorum_slice_vote(threshold, &ballot_map).is_some()
-                            {
-                                return ballot_map;
+                            if nodes_counted >= threshold {
+                                for key in ballot_map.keys() {
+                                    if let Some(votes_for_key) = ballot_map.get(key) {
+                                        if votes_for_key.len() >= threshold as usize {
+                                            return Some(*key);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                     QuorumSetMember::InnerSet(qs) => {
-                        // Recursively call ourselves to check nested sets
-                        let sub_quorum = self.find_quorum(qs.clone(), index);
-
                         // If internal slice reached quorum, record the block voted for
-                        if let Some(block_id) =
-                            self.get_quorum_slice_vote(qs.threshold, &sub_quorum)
-                        {
+                        if let Some(block_id) = self.find_quorum(qs, index) {
                             ballot_map
                                 .entry(block_id)
-                                .and_modify(|vec| vec.push(member.clone()))
-                                .or_insert_with(|| vec![member.clone()]);
+                                .and_modify(|vec| vec.push(member))
+                                .or_insert_with(|| vec![member]);
                             nodes_counted += 1;
-                            if nodes_counted >= threshold
-                                && self.get_quorum_slice_vote(threshold, &ballot_map).is_some()
-                            {
-                                return ballot_map;
+                            if nodes_counted >= threshold {
+                                for key in ballot_map.keys() {
+                                    if let Some(votes_for_key) = ballot_map.get(key) {
+                                        if votes_for_key.len() >= threshold as usize {
+                                            return Some(*key);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
-                }
-            }
-        }
-        ballot_map
-    }
-
-    /// Check the blocks the peers externalized for quorum
-    pub fn get_quorum_slice_vote(
-        &self,
-        threshold: u32,
-        ballot_map: &HashMap<BlockID, Vec<QuorumSetMember<ID>>>,
-    ) -> Option<BlockID> {
-        for key in ballot_map.keys() {
-            if let Some(votes_for_key) = ballot_map.get(key) {
-                if votes_for_key.len() >= threshold as usize {
-                    return Some(key.clone());
                 }
             }
         }
@@ -267,7 +263,9 @@ impl<US: BlockStream + 'static, ID: GenericNodeId + Send> BlockStream for SCPVal
             log::info!(self.logger, "Generating new stream from {:?}", node_id);
             let us = upstream.get_block_stream(starting_height).unwrap();
             let peer_id = node_id.clone();
-            merged_streams.push(Box::pin(us.map(move |component| (peer_id.clone(), component))));
+            merged_streams.push(Box::pin(
+                us.map(move |component| (peer_id.clone(), component)),
+            ));
         }
 
         // Create SCP validation state object and insert it into stateful stream
@@ -295,7 +293,7 @@ impl<US: BlockStream + 'static, ID: GenericNodeId + Send> BlockStream for SCPVal
                     )))));
                 }
                 // If there's not quorum yet, forward NotReady to filter stream
-                future::ready(Some(NotReady))
+                future::ready(Some(Ready::NotReady))
             })
             .filter_map(|result| {
                 // If the component is in ready state forward it to next stream
