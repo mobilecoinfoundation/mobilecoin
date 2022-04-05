@@ -292,6 +292,9 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         pseudo_output_blindings.push(Scalar::random(rng));
     }
     // The implicit fee output is ommitted because its blinding is zero.
+    //
+    // Note: This implicit fee output is not the same as the accumulated fee output
+    // produced by the enclave -- the blinding of that output is not zero.
     let sum_of_output_blindings: Scalar = output_values_and_blindings
         .iter()
         .map(|(_, blinding)| blinding)

@@ -130,7 +130,7 @@ impl CachedTxData {
             owned_tx_outs: Default::default(),
             key_image_data_completeness: BlockCount::MAX,
             latest_global_txo_count: 0,
-            latest_block_version: 1,
+            latest_block_version: 0,
             memo_handler: MemoHandler::new(address_book, logger.clone()),
             spsk_to_index,
             missed_block_ranges: Vec::new(),
@@ -185,6 +185,12 @@ impl CachedTxData {
     /// of mc-transaction-core.
     pub fn get_latest_block_version(&self) -> u32 {
         self.latest_block_version
+    }
+
+    /// Update the latest block version. This may include e.g. knowledge of how
+    /// consensus nodes are actually configured
+    pub fn notify_block_version(&mut self, network_block_version: u32) {
+        self.latest_block_version = max(self.latest_block_version, network_block_version);
     }
 
     /// Helper function: Compute the set of Txos contributing to the balance,

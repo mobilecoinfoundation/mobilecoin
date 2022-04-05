@@ -22,6 +22,22 @@ use mc_transaction_core::{
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
+use std::cmp::Ordering;
+
+/// A trait used to compare the transaction outputs
+pub trait TxOutputsOrdering {
+    /// comparer method
+    fn cmp(a: &CompressedRistrettoPublic, b: &CompressedRistrettoPublic) -> Ordering;
+}
+
+/// Default implementation for transaction outputs
+pub struct DefaultTxOutputsOrdering;
+
+impl TxOutputsOrdering for DefaultTxOutputsOrdering {
+    fn cmp(a: &CompressedRistrettoPublic, b: &CompressedRistrettoPublic) -> Ordering {
+        a.cmp(b)
+    }
+}
 
 /// Helper utility for building and signing a CryptoNote-style transaction,
 /// and attaching fog hint and memos as appropriate.
@@ -33,7 +49,7 @@ use rand_core::{CryptoRng, RngCore};
 /// use the memos in the TxOuts.
 #[derive(Debug)]
 pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
-    /// The block version that we are targetting for this transaction
+    /// The block version that we are targeting for this transaction
     block_version: BlockVersion,
     /// The input credentials used to form the transaction
     input_credentials: Vec<InputCredentials>,
@@ -304,11 +320,30 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     }
 
     /// Consume the builder and return the transaction.
-    pub fn build<RNG: CryptoRng + RngCore>(mut self, rng: &mut RNG) -> Result<Tx, TxBuilderError> {
+    pub fn build<RNG: CryptoRng + RngCore>(self, rng: &mut RNG) -> Result<Tx, TxBuilderError> {
+        self.build_with_comparer_internal::<RNG, DefaultTxOutputsOrdering>(rng)
+    }
+
+    /// Consume the builder and return the transaction with a comparer.
+    /// Used only in testing library.
+    #[cfg(feature = "test-only")]
+    pub fn build_with_sorter<RNG: CryptoRng + RngCore, O: TxOutputsOrdering>(
+        self,
+        rng: &mut RNG,
+    ) -> Result<Tx, TxBuilderError> {
+        self.build_with_comparer_internal::<RNG, O>(rng)
+    }
+
+    /// Consume the builder and return the transaction with a comparer
+    /// (internal usage only).
+    fn build_with_comparer_internal<RNG: CryptoRng + RngCore, O: TxOutputsOrdering>(
+        mut self,
+        rng: &mut RNG,
+    ) -> Result<Tx, TxBuilderError> {
         // Note: Origin block has block version zero, so some clients like slam that
         // start with a bootstrapped ledger will target block version 0. However,
-        // block version zero has no special rules and so targetting block version 0
-        // should be the same as targetting block version 1, for the transaction
+        // block version zero has no special rules and so targeting block version 0
+        // should be the same as targeting block version 1, for the transaction
         // builder. This test is mainly here in case we decide that the
         // transaction builder should stop supporting sufficiently old block
         // versions in the future, then we can replace the zero here with
@@ -359,9 +394,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             })
             .collect();
 
-        // Sort outputs by public key.
         self.outputs_and_shared_secrets
-            .sort_by(|(a, _), (b, _)| a.public_key.cmp(&b.public_key));
+            .sort_by(|(a, _), (b, _)| O::cmp(&a.public_key, &b.public_key));
 
         let output_values_and_blindings: Vec<(u64, Scalar)> = self
             .outputs_and_shared_secrets
@@ -519,7 +553,7 @@ pub mod transaction_builder_tests {
         ring_signature::KeyImage,
         subaddress_matches_tx_out,
         tx::TxOutMembershipProof,
-        validation::validate_signature,
+        validation::{validate_signature, validate_tx_out},
         TokenId,
     };
     use rand::{rngs::StdRng, SeedableRng};
@@ -769,6 +803,8 @@ pub mod transaction_builder_tests {
 
             let output: &TxOut = tx.prefix.outputs.get(0).unwrap();
 
+            validate_tx_out(block_version, output).unwrap();
+
             // The output should belong to the correct recipient.
             assert!(
                 subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &output).unwrap()
@@ -848,6 +884,8 @@ pub mod transaction_builder_tests {
 
             let output: &TxOut = tx.prefix.outputs.get(0).unwrap();
 
+            validate_tx_out(block_version, output).unwrap();
+
             // The output should belong to the correct recipient.
             assert!(
                 subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &output).unwrap()
@@ -865,7 +903,7 @@ pub mod transaction_builder_tests {
                 assert!(bool::from(FogHint::ct_decrypt(
                     &ingest_private_key,
                     &output.e_fog_hint,
-                    &mut output_fog_hint
+                    &mut output_fog_hint,
                 )));
                 assert_eq!(
                     output_fog_hint.get_view_pubkey(),
@@ -944,7 +982,7 @@ pub mod transaction_builder_tests {
                 assert!(bool::from(FogHint::ct_decrypt(
                     &ingest_private_key,
                     &output.e_fog_hint,
-                    &mut output_fog_hint
+                    &mut output_fog_hint,
                 )));
                 assert_eq!(
                     output_fog_hint.get_view_pubkey(),
@@ -1002,6 +1040,8 @@ pub mod transaction_builder_tests {
                 // The transaction should have one output.
                 assert_eq!(tx.prefix.outputs.len(), 1);
 
+                validate_tx_out(block_version, tx.prefix.outputs.first().unwrap()).unwrap();
+
                 // The tombstone block should be the min of what the user requested, and what
                 // fog limits it to
                 assert_eq!(tx.prefix.tombstone_block, 1000);
@@ -1029,6 +1069,8 @@ pub mod transaction_builder_tests {
 
                 // The transaction should have one output.
                 assert_eq!(tx.prefix.outputs.len(), 1);
+
+                validate_tx_out(block_version, tx.prefix.outputs.first().unwrap()).unwrap();
 
                 // The tombstone block should be the min of what the user requested, and what
                 // fog limits it to
@@ -1122,6 +1164,9 @@ pub mod transaction_builder_tests {
                     })
                     .expect("Didn't find sender's output");
 
+                validate_tx_out(block_version, output).unwrap();
+                validate_tx_out(block_version, change).unwrap();
+
                 assert!(
                     !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
                         .unwrap()
@@ -1160,7 +1205,7 @@ pub mod transaction_builder_tests {
                     assert!(bool::from(FogHint::ct_decrypt(
                         &ingest_private_key,
                         &output.e_fog_hint,
-                        &mut output_fog_hint
+                        &mut output_fog_hint,
                     )));
                     assert_eq!(
                         output_fog_hint.get_view_pubkey(),
@@ -1191,7 +1236,7 @@ pub mod transaction_builder_tests {
                     assert!(bool::from(FogHint::ct_decrypt(
                         &ingest_private_key,
                         &change.e_fog_hint,
-                        &mut output_fog_hint
+                        &mut output_fog_hint,
                     )));
                     assert_eq!(
                         output_fog_hint.get_view_pubkey(),
@@ -1295,6 +1340,9 @@ pub mod transaction_builder_tests {
                     })
                     .expect("Didn't find sender's output");
 
+                validate_tx_out(block_version, output).unwrap();
+                validate_tx_out(block_version, change).unwrap();
+
                 assert!(
                     !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
                         .unwrap()
@@ -1336,7 +1384,7 @@ pub mod transaction_builder_tests {
                                             &sender_addr,
                                             &recipient
                                                 .subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
-                                            &output.public_key
+                                            &output.public_key,
                                         )
                                     ),
                                     "hmac validation failed"
@@ -1449,6 +1497,9 @@ pub mod transaction_builder_tests {
                     })
                     .expect("Didn't find sender's output");
 
+                validate_tx_out(block_version, output).unwrap();
+                validate_tx_out(block_version, change).unwrap();
+
                 assert!(
                     !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
                         .unwrap()
@@ -1490,7 +1541,7 @@ pub mod transaction_builder_tests {
                                             &sender_addr,
                                             &recipient
                                                 .subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
-                                            &output.public_key
+                                            &output.public_key,
                                         )
                                     ),
                                     "hmac validation failed"
@@ -1603,6 +1654,9 @@ pub mod transaction_builder_tests {
                     })
                     .expect("Didn't find sender's output");
 
+                validate_tx_out(block_version, output).unwrap();
+                validate_tx_out(block_version, change).unwrap();
+
                 assert!(
                     !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
                         .unwrap()
@@ -1644,7 +1698,7 @@ pub mod transaction_builder_tests {
                                             &sender_addr,
                                             &recipient
                                                 .subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
-                                            &output.public_key
+                                            &output.public_key,
                                         )
                                     ),
                                     "hmac validation failed"
@@ -1757,6 +1811,9 @@ pub mod transaction_builder_tests {
                     })
                     .expect("Didn't find sender's output");
 
+                validate_tx_out(block_version, output).unwrap();
+                validate_tx_out(block_version, change).unwrap();
+
                 assert!(
                     !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
                         .unwrap()
@@ -1798,7 +1855,7 @@ pub mod transaction_builder_tests {
                                             &sender_addr,
                                             &recipient
                                                 .subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
-                                            &output.public_key
+                                            &output.public_key,
                                         )
                                     ),
                                     "hmac validation failed"
@@ -1898,6 +1955,9 @@ pub mod transaction_builder_tests {
                         subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
                     })
                     .expect("Didn't find sender's output");
+
+                validate_tx_out(block_version, output).unwrap();
+                validate_tx_out(block_version, change).unwrap();
 
                 assert!(
                     !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
@@ -2065,6 +2125,9 @@ pub mod transaction_builder_tests {
                     })
                     .expect("Didn't find sender's output");
 
+                validate_tx_out(block_version, output).unwrap();
+                validate_tx_out(block_version, change).unwrap();
+
                 assert!(
                     !subaddress_matches_tx_out(&bob, DEFAULT_SUBADDRESS_INDEX, &change).unwrap()
                 );
@@ -2110,7 +2173,7 @@ pub mod transaction_builder_tests {
                                     bool::from(memo.validate(
                                         &charlie_addr,
                                         &bob.subaddress_view_private(DEFAULT_SUBADDRESS_INDEX),
-                                        &output.public_key
+                                        &output.public_key,
                                     )),
                                     "hmac validation failed"
                                 );
@@ -2234,7 +2297,7 @@ pub mod transaction_builder_tests {
 
                 assert!(
                     transaction_builder
-                        .add_output(Mob::MINIMUM_FEE, &recipient_address, &mut rng,)
+                        .add_output(Mob::MINIMUM_FEE, &recipient_address, &mut rng)
                         .is_err(),
                     "Adding another output after chnage output should be rejected"
                 );

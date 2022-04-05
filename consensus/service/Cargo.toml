@@ -31,6 +31,7 @@ mc-peers = { path = "../../peers" }
 mc-sgx-report-cache-untrusted = { path = "../../sgx/report-cache/untrusted" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-std = { path = "../../transaction/std" }
+mc-util-cli = { path = "../../util/cli" }
 mc-util-grpc = { path = "../../util/grpc" }
 mc-util-metered-channel = { path = "../../util/metered-channel" }
 mc-util-metrics = { path = "../../util/metrics" }
@@ -45,12 +46,12 @@ clap = { version = "3.1", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 fs_extra = "1.1"
 futures = "0.3"
-grpcio = "0.10.0"
+grpcio = "0.10.1"
 hex = "0.4"
 lazy_static = "1.4"
 once_cell = "1.10"
 pem = "1.0"
-protobuf = "2.22.1"
+protobuf = "2.27.1"
 rand = "0.8"
 rayon = "1.5"
 retry = "1.3"

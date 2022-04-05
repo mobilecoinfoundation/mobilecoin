@@ -3,7 +3,6 @@
 
 //! Entrypoint for the MobileCoin server.
 
-use clap::Parser;
 use mc_attest_net::{Client, RaClient};
 use mc_attest_verifier::DEBUG_ENCLAVE;
 use mc_common::{
@@ -19,6 +18,7 @@ use mc_consensus_service::{
     validators::DefaultTxManagerUntrustedInterfaces,
 };
 use mc_ledger_db::LedgerDB;
+use mc_util_cli::ParserWithBuildInfo;
 use std::{
     env,
     fs::File,

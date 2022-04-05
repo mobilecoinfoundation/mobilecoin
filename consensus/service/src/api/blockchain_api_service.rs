@@ -12,7 +12,7 @@ use mc_consensus_api::{
 };
 use mc_consensus_enclave::FeeMap;
 use mc_ledger_db::Ledger;
-use mc_transaction_core::{tokens::Mob, Token};
+use mc_transaction_core::{tokens::Mob, BlockVersion, Token};
 use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use protobuf::RepeatedField;
@@ -33,6 +33,9 @@ pub struct BlockchainApiService<L: Ledger + Clone> {
     /// Minimum fee per token.
     fee_map: FeeMap,
 
+    /// Configured block version
+    network_block_version: BlockVersion,
+
     /// Logger.
     logger: Logger,
 }
@@ -42,6 +45,7 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
         ledger: L,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         fee_map: FeeMap,
+        network_block_version: BlockVersion,
         logger: Logger,
     ) -> Self {
         BlockchainApiService {
@@ -49,6 +53,7 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
             authenticator,
             max_page_size: 2000,
             fee_map,
+            network_block_version,
             logger,
         }
     }
@@ -74,6 +79,7 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
                 .iter()
                 .map(|(token_id, fee)| (**token_id, *fee)),
         ));
+        resp.set_network_block_version(*self.network_block_version);
 
         Ok(resp)
     }
@@ -235,13 +241,14 @@ mod tests {
         expected_response.set_index(block_entities.last().unwrap().index);
         expected_response.set_mob_minimum_fee(12345);
         expected_response.set_minimum_fees(HashMap::from_iter(vec![(0, 12345), (60, 10203040)]));
+        expected_response.set_network_block_version(*BlockVersion::MAX);
         assert_eq!(
             block_entities.last().unwrap().index,
             ledger_db.num_blocks().unwrap() - 1
         );
 
         let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, fee_map, logger);
+            BlockchainApiService::new(ledger_db, authenticator, fee_map, BlockVersion::MAX, logger);
 
         let block_response = blockchain_api_service.get_last_block_info_helper().unwrap();
         assert_eq!(block_response, expected_response);
@@ -258,8 +265,13 @@ mod tests {
             SystemTimeProvider::default(),
         ));
 
-        let blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, FeeMap::default(), logger);
+        let blockchain_api_service = BlockchainApiService::new(
+            ledger_db,
+            authenticator,
+            FeeMap::default(),
+            BlockVersion::MAX,
+            logger,
+        );
 
         let (client, _server) = get_client_server(blockchain_api_service);
 
@@ -296,8 +308,13 @@ mod tests {
             .map(|block_entity| blockchain::Block::from(&block_entity))
             .collect();
 
-        let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, FeeMap::default(), logger);
+        let mut blockchain_api_service = BlockchainApiService::new(
+            ledger_db,
+            authenticator,
+            FeeMap::default(),
+            BlockVersion::MAX,
+            logger,
+        );
 
         {
             // The empty range [0,0) should return an empty collection of Blocks.
@@ -340,8 +357,13 @@ mod tests {
             &mut rng,
         );
 
-        let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, FeeMap::default(), logger);
+        let mut blockchain_api_service = BlockchainApiService::new(
+            ledger_db,
+            authenticator,
+            FeeMap::default(),
+            BlockVersion::MAX,
+            logger,
+        );
 
         {
             // The range [0, 1000) requests values that don't exist. The response should
@@ -372,8 +394,13 @@ mod tests {
             .map(|block_entity| blockchain::Block::from(&block_entity))
             .collect();
 
-        let mut blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, FeeMap::default(), logger);
+        let mut blockchain_api_service = BlockchainApiService::new(
+            ledger_db,
+            authenticator,
+            FeeMap::default(),
+            BlockVersion::MAX,
+            logger,
+        );
         blockchain_api_service.set_max_page_size(5);
 
         // The request exceeds the max_page_size, so only max_page_size items should be
@@ -396,8 +423,13 @@ mod tests {
             SystemTimeProvider::default(),
         ));
 
-        let blockchain_api_service =
-            BlockchainApiService::new(ledger_db, authenticator, FeeMap::default(), logger);
+        let blockchain_api_service = BlockchainApiService::new(
+            ledger_db,
+            authenticator,
+            FeeMap::default(),
+            BlockVersion::MAX,
+            logger,
+        );
 
         let (client, _server) = get_client_server(blockchain_api_service);
 

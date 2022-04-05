@@ -11,8 +11,8 @@ mc-api = { path = "../../api" }
 mc-util-uri = { path = "../../util/uri" }
 
 futures = "0.3"
-grpcio = "0.10.0"
-protobuf = "2.22.1"
+grpcio = "0.10.1"
+protobuf = "2.27.1"
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }

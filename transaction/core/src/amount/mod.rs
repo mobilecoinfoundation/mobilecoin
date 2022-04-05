@@ -33,7 +33,7 @@ pub use compressed_commitment::CompressedCommitment;
 pub use error::AmountError;
 
 /// An amount of some token, in the "base" (u64) denomination.
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Digestible, Eq, PartialEq)]
 pub struct Amount {
     /// The "raw" value of this amount as a u64
     pub value: u64,

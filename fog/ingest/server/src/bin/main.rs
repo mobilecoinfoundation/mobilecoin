@@ -3,7 +3,6 @@
 
 //! Fog Ingest target
 
-use clap::Parser;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_attest_net::{Client, RaClient};
 use mc_common::logger::{log, o};
@@ -15,6 +14,7 @@ use mc_fog_ingest_server::{
 };
 use mc_fog_sql_recovery_db::SqlRecoveryDb;
 use mc_ledger_db::LedgerDB;
+use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
 use mc_watcher::watcher_db::WatcherDB;
 use std::{env, sync::Arc};

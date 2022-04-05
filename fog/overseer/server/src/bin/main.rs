@@ -4,13 +4,13 @@
 //! Starts a Rocket server that allows clients to access Fog Overseer APIs
 //! over HTTP.
 
-use clap::Parser;
 use mc_common::{
     logger::{log, o},
     sentry,
 };
 use mc_fog_overseer_server::{config::OverseerConfig, server, service::OverseerService};
 use mc_fog_sql_recovery_db::SqlRecoveryDb;
+use mc_util_cli::ParserWithBuildInfo;
 
 fn main() {
     mc_common::setup_panic_handler();

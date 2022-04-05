@@ -1,0 +1,13 @@
+[package]
+name = "mc-util-cli"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+mc-util-build-info = { path = "../build/info" }
+
+clap = { version = "3.1" }
+
+[dev-dependencies]
+clap = { version = "3.1", features = ['derive'] }

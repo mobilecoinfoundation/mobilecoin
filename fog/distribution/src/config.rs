@@ -16,7 +16,8 @@ use std::{path::PathBuf, sync::Arc};
 #[derive(Clone, Debug, Parser)]
 #[structopt(
     name = "fog-distribution",
-    about = "Transfer funds from source accounts (bootstrapped) to destination accounts (which may have fog). This slams the network with many Txs in parallel as a stress test."
+    about = "Transfer funds from source accounts (bootstrapped) to destination accounts (which may have fog). This slams the network with many Txs in parallel as a stress test.",
+    version
 )]
 pub struct Config {
     /// Path to sample data for keys/ and ledger/
@@ -71,10 +72,6 @@ pub struct Config {
     /// Delay (in milliseconds) before each add_transaction call
     #[clap(long, default_value = "0", env = "MC_ADD_TX_DELAY_MS")]
     pub add_tx_delay_ms: u64,
-
-    /// Block version to use (otherwise fall back to ledger)
-    #[clap(long, env = "MC_BLOCK_VERSION")]
-    pub block_version: Option<u32>,
 
     /// Destination keys subdirectory. Defaults to `fog_keys`
     #[clap(long, default_value = "fog_keys", env = "MC_FOG_KEYS_SUBDIR")]

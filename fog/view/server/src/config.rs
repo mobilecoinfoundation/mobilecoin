@@ -15,6 +15,7 @@ use std::time::Duration;
 
 /// Configuration parameters for the MobileCoin Fog View Node
 #[derive(Clone, Parser, Serialize)]
+#[clap(version)]
 pub struct MobileAcctViewConfig {
     /// The ID with which to respond to client attestation requests.
     ///
