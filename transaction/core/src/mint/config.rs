@@ -55,10 +55,10 @@ pub struct MintConfigTxPrefix {
     #[prost(uint64, tag = "4")]
     pub tombstone_block: u64,
 
-    /// The maximal amount that can be minted from the moment this configuration
-    /// is applied. This amount is shared amongst all configs.
+    /// The maximal amount that can be minted by configurations specified in
+    /// this tx. This amount is shared amongst all configs.
     #[prost(uint64, tag = "5")]
-    pub mint_limit: u64,
+    pub total_mint_limit: u64,
 }
 
 impl MintConfigTxPrefix {

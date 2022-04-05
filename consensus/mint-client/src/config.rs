@@ -68,7 +68,7 @@ impl MintConfigTxParams {
                 .collect(),
             nonce,
             tombstone_block,
-            mint_limit: self.total_mint_limit,
+            total_mint_limit: self.total_mint_limit,
         };
 
         let message = prefix.hash();

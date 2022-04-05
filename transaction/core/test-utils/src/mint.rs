@@ -65,7 +65,7 @@ pub fn create_mint_config_tx_and_signers(
         configs: configs.clone(),
         nonce,
         tombstone_block: 10,
-        mint_limit: configs[0].mint_limit + configs[1].mint_limit + configs[2].mint_limit,
+        total_mint_limit: configs[0].mint_limit + configs[1].mint_limit + configs[2].mint_limit,
     };
 
     let message = prefix.hash();

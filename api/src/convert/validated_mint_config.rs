@@ -62,7 +62,7 @@ mod tests {
                     ],
                     nonce: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
                     tombstone_block: 100,
-                    mint_limit: 20000,
+                    total_mint_limit: 20000,
                 },
                 signature: test_multi_sig(),
             },

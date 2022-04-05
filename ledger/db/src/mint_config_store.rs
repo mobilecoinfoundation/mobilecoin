@@ -51,9 +51,10 @@ pub struct ActiveMintConfigs {
     #[prost(message, repeated, tag = "1")]
     pub configs: Vec<ActiveMintConfig>,
 
-    // TODO rename to total_mint_limit and document
+    /// The total amount that can be minted by the configurations above, once
+    /// this set of configurations has been made active.
     #[prost(uint64, tag = "2")]
-    pub mint_limit: u64,
+    pub total_mint_limit: u64,
 }
 
 impl ActiveMintConfigs {
@@ -65,7 +66,7 @@ impl ActiveMintConfigs {
     // Check if we can mint a certain amount without exceeding the global limit.
     pub fn can_mint(&self, amount: u64) -> bool {
         if let Some(new_total_minted) = self.total_minted().checked_add(amount) {
-            new_total_minted <= self.mint_limit
+            new_total_minted <= self.total_mint_limit
         } else {
             false
         }
@@ -84,7 +85,7 @@ impl From<&MintConfigTx> for ActiveMintConfigs {
                     total_minted: 0,
                 })
                 .collect(),
-            mint_limit: mint_config_tx.prefix.mint_limit,
+            total_mint_limit: mint_config_tx.prefix.total_mint_limit,
         }
     }
 }
@@ -321,10 +322,10 @@ impl MintConfigStore {
         active_mint_config.total_minted = amount;
 
         // Sanity check.
-        if active_mint_configs.total_minted() > active_mint_configs.mint_limit {
+        if active_mint_configs.total_minted() > active_mint_configs.total_mint_limit {
             return Err(Error::MintLimitExceeded(
                 active_mint_configs.total_minted(),
-                active_mint_configs.mint_limit,
+                active_mint_configs.total_mint_limit,
             ));
         }
 
@@ -578,7 +579,7 @@ pub mod tests {
                 configs: vec![],
                 nonce: vec![5u8; 32],
                 tombstone_block: 1234,
-                mint_limit: 0,
+                total_mint_limit: 0,
             },
             signature: Default::default(),
         };
@@ -1116,7 +1117,7 @@ pub mod tests {
                     configs: vec![],
                     nonce,
                     tombstone_block: rng.next_u64(),
-                    mint_limit: 0,
+                    total_mint_limit: 0,
                 };
 
                 let message = prefix.hash();
