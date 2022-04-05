@@ -13,5 +13,5 @@ pub use self::{
     fetcher::MockFetcher,
     quorum_set::make_quorum_set,
     response::{make_responses, Response, Responses},
-    stream::{mock_stream_from_components, mock_stream_from_items, MockStream},
+    stream::MockStream,
 };
