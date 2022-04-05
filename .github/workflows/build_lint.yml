@@ -18,7 +18,8 @@ permissions:
 
 jobs:
   build-dev:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/rust-sgx-base:latest
 
     steps:
       - name: Check out code
@@ -34,7 +35,8 @@ jobs:
         uses: ./.github/actions/check-dirty-git
 
   build-prod:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/rust-sgx-base:latest
 
     steps:
       - name: Check out code
@@ -88,7 +90,8 @@ jobs:
         uses: ./.github/actions/check-dirty-git
 
   lint-rust:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/rust-sgx-base:latest
 
     steps:
       - name: Check out code
@@ -104,7 +107,8 @@ jobs:
 
 
   lint-go:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, small]
+    container: golang:latest
 
     steps:
       - name: Check out code
@@ -127,7 +131,8 @@ jobs:
         uses: ./.github/actions/check-dirty-git
 
   cbindgen:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, small]
+    container: mobilecoin/rust-sgx-base:latest
 
     steps:
       - name: Check out code
@@ -150,7 +155,8 @@ jobs:
         uses: ./.github/actions/check-dirty-git
 
   docs:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, large]
+    container: mobilecoin/rust-sgx-base:latest
 
     steps:
       - name: Check out code
