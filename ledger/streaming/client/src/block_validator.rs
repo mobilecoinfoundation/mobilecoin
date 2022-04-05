@@ -22,7 +22,7 @@ pub struct BlockValidator<US: BlockStream + 'static, L: Ledger + 'static> {
     logger: Logger,
 }
 
-impl<US: BlockStream + 'static, L: Ledger> BlockValidator<US, L> {
+impl<US: BlockStream + 'static, L: Ledger + 'static> BlockValidator<US, L> {
     /// Create new block validation stream
     pub fn new(upstream: US, start_block: Block, ledger: Option<L>, logger: Logger) -> Self {
         Self {
@@ -52,23 +52,26 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for Blo
             |state, component| {
                 match component {
                     Ok(component) => {
+                        let (ledger, prev_block_id, additional_key_images) = state;
                         let block = component.block_data.block();
                         let block_contents = component.block_data.contents();
 
                         // Check if parent block matches last block seen
-                        if block.parent_id != state.1 {
+                        if &block.parent_id != prev_block_id {
                             return future::ready(Some(Err(StreamError::BlockValidation(
                                 "Block parent ID doesn't match".to_string(),
                             ))));
                         }
 
                         // Check if key images already in ledger
-                        if let Some(ledger) = &state.0 {
+                        if let Some(ledger) = ledger {
                             for key_image in &block_contents.key_images {
                                 // Check if the key image is already in the local ledger.
                                 match ledger.contains_key_image(key_image) {
                                     Ok(contains_key_image) => {
-                                        if contains_key_image || state.2.contains(key_image) {
+                                        if contains_key_image
+                                            || additional_key_images.contains(key_image)
+                                        {
                                             return future::ready(Some(Err(
                                                 StreamError::BlockValidation(
                                                     "Contains spent key image".to_string(),
@@ -80,7 +83,7 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for Blo
                                         return future::ready(Some(Err(StreamError::DBError)));
                                     }
                                 }
-                                state.2.insert(*key_image);
+                                additional_key_images.insert(*key_image);
                             }
                         }
 
