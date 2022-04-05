@@ -24,13 +24,15 @@ Example setup and usage:
 """
 import argparse
 import glob
-import grpc
+import logging
 import mobilecoind_api_pb2
-import mobilecoind_api_pb2_grpc
 import os
+import sys
 import time
 from accounts import connect, load_key_and_register, poll, wait_for_accounts_sync, TransferStatus
 from google.protobuf.empty_pb2 import Empty
+
+logging.basicConfig(stream = sys.stdout, level = logging.INFO, format="%(levelname)s:%(module)s:%(lineno)s: %(message)s")
 
 
 def parse_args() -> argparse.ArgumentParser:
@@ -71,12 +73,12 @@ def run_test(stub, amount, monitor_id, dest, max_seconds):
     tx_stats = {}
     sync_start = time.time()
     wait_for_accounts_sync(stub, [monitor_id], 3)
-    print("Time to sync:", time.time() - sync_start)
+    logging.info("Time to sync: %s", time.time() - sync_start)
 
     resp = stub.GetBalance(
         mobilecoind_api_pb2.GetBalanceRequest(monitor_id=monitor_id))
     starting_balance = resp.balance
-    print("Starting balance prior to transfer:", starting_balance)
+    logging.info("Starting balance prior to transfer: %s", starting_balance)
     tx_resp = stub.SendPayment(
         mobilecoind_api_pb2.SendPaymentRequest(
             sender_monitor_id=monitor_id,
@@ -113,7 +115,7 @@ def filename_key(filename):
 
 if __name__ == '__main__':
     args = parse_args()
-    print(args)
+    logging.debug(args)
 
     stub = connect(args.mobilecoind_host, args.mobilecoind_port)
     source_accounts = [
@@ -143,13 +145,13 @@ if __name__ == '__main__':
         resp = stub.GetBalance(
             mobilecoind_api_pb2.GetBalanceRequest(monitor_id=src_account.monitor_id))
         balance = resp.balance
-        print("Starting balance for account", i, ":", resp)
+        logging.info("Starting balance for account %s : %s", i, resp)
 
         amount = balance - args.fee
 
         # Create a pool of transfers to all other accounts
-        print("Transferring", amount, "to", dest)
+        logging.info("Transferring %s to %s", amount, dest)
 
         run_test(stub, amount, src_account.monitor_id, dest, args.max_seconds)
 
-    print("All transfers successful")
+    logging.info("All transfers successful")
