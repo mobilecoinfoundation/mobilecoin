@@ -1062,6 +1062,90 @@ pub mod tests {
     }
 
     #[test]
+    fn get_active_mint_config_for_mint_tx_refuses_exceeding_total_mint_limit() {
+        let (mint_config_store, env) = init_mint_config_store();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+
+        let (mut test_tx_1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        test_tx_1.prefix.total_mint_limit = test_tx_1.prefix.configs[0].mint_limit - 1;
+
+        // Store mint config
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .write_validated_mint_config_txs(
+                    0,
+                    &[to_validated(&test_tx_1)],
+                    &mut db_transaction,
+                )
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        // Generate a test mint tx that will immediately exceed the total mint limit.
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let mint_tx = create_mint_tx(
+                token_id1,
+                &[Ed25519Pair::from(signers1[0].private_key())],
+                test_tx_1.prefix.configs[0].mint_limit,
+                &mut rng,
+            );
+            assert_eq!(
+                mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx, &db_transaction),
+                Err(Error::NotFound)
+            );
+        }
+
+        // Total mint limit should be enforced correctly if some amount was already
+        // minted.
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .update_total_minted(&test_tx_1.prefix.configs[0], 10, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let mint_tx = create_mint_tx(
+                token_id1,
+                &[Ed25519Pair::from(signers1[0].private_key())],
+                // We minted 10 tokens above, so the configuration will allow us to mint 10 so the
+                // configuration does allow for 10 more but the global limit only allows 9 more so
+                // this is expected to fail.
+                test_tx_1.prefix.configs[0].mint_limit - 10,
+                &mut rng,
+            );
+            assert_eq!(
+                mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx, &db_transaction),
+                Err(Error::NotFound)
+            );
+        }
+
+        // Sanity check
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let mint_tx = create_mint_tx(
+                token_id1,
+                &[Ed25519Pair::from(signers1[0].private_key())],
+                test_tx_1.prefix.configs[0].mint_limit - 11,
+                &mut rng,
+            );
+            assert_eq!(
+                mint_config_store
+                    .get_active_mint_config_for_mint_tx(&mint_tx, &db_transaction)
+                    .unwrap()
+                    .mint_config,
+                test_tx_1.prefix.configs[0],
+            );
+        }
+    }
+
+    #[test]
     fn can_set_empty_configs_array() {
         let (mint_config_store, env) = init_mint_config_store();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
