@@ -92,6 +92,7 @@ mod tests {
         futures::executor::block_on(async move {
             let mut index: u64 = 0;
             let mut threshold = 0;
+
             while let Some(component_result) = sink.next().await {
                 let component = component_result.unwrap();
                 index = component.block_data.block().index;

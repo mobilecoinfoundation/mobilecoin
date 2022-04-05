@@ -22,7 +22,7 @@ pub enum Error {
     Signature(String),
 
     /// Ledger DB Access Error
-    DBError,
+    DBAccess,
 }
 
 impl std::error::Error for Error {}
