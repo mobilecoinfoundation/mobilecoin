@@ -2282,6 +2282,8 @@ dependencies = [
  "cmake",
  "crc",
  "displaydoc",
+ "generic-array 0.14.5",
+ "hex",
  "libc",
  "mc-account-keys",
  "mc-account-keys-slip10",
