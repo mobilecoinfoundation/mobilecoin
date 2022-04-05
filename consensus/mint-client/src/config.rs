@@ -42,6 +42,9 @@ pub struct MintConfigTxParams {
     #[clap(long = "config", parse(try_from_str = parse_mint_config), required = true, use_value_delimiter = true, env = "MC_MINTING_CONFIGS")]
     // Tuple of (mint limit, SignerSet)
     configs: Vec<(u64, SignerSet<Ed25519Public>)>,
+
+    /// Total mint limit, shared amongst all configs.
+    total_mint_limit: u64,
 }
 
 impl MintConfigTxParams {
@@ -65,6 +68,7 @@ impl MintConfigTxParams {
                 .collect(),
             nonce,
             tombstone_block,
+            mint_limit: self.total_mint_limit,
         };
 
         let message = prefix.hash();

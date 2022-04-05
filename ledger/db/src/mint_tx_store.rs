@@ -190,9 +190,10 @@ mod tests {
         let db_txn = env.begin_ro_txn().unwrap();
         let active_mint_configs = mint_config_store
             .get_active_mint_configs(token_id1, &db_txn)
+            .unwrap()
             .unwrap();
         assert_eq!(
-            active_mint_configs,
+            active_mint_configs.configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[0].clone(),
@@ -222,9 +223,10 @@ mod tests {
         let db_txn = env.begin_ro_txn().unwrap();
         let active_mint_configs = mint_config_store
             .get_active_mint_configs(token_id1, &db_txn)
+            .unwrap()
             .unwrap();
         assert_eq!(
-            active_mint_configs,
+            active_mint_configs.configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[0].clone(),
@@ -259,9 +261,10 @@ mod tests {
         let db_txn = env.begin_ro_txn().unwrap();
         let active_mint_configs = mint_config_store
             .get_active_mint_configs(token_id1, &db_txn)
+            .unwrap()
             .unwrap();
         assert_eq!(
-            active_mint_configs,
+            active_mint_configs.configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[0].clone(),
@@ -281,9 +284,10 @@ mod tests {
         // Try with the 2nd token - initially nothing has been minted.
         let active_mint_configs = mint_config_store
             .get_active_mint_configs(token_id2, &db_txn)
+            .unwrap()
             .unwrap();
         assert_eq!(
-            active_mint_configs,
+            active_mint_configs.configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx2.prefix.configs[0].clone(),
@@ -318,9 +322,10 @@ mod tests {
         let db_txn = env.begin_ro_txn().unwrap();
         let active_mint_configs = mint_config_store
             .get_active_mint_configs(token_id1, &db_txn)
+            .unwrap()
             .unwrap();
         assert_eq!(
-            active_mint_configs,
+            active_mint_configs.configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[0].clone(),
@@ -339,9 +344,10 @@ mod tests {
 
         let active_mint_configs = mint_config_store
             .get_active_mint_configs(token_id2, &db_txn)
+            .unwrap()
             .unwrap();
         assert_eq!(
-            active_mint_configs,
+            active_mint_configs.configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx2.prefix.configs[0].clone(),
@@ -434,9 +440,10 @@ mod tests {
         let db_txn = env.begin_ro_txn().unwrap();
         let active_mint_configs = mint_config_store
             .get_active_mint_configs(token_id1, &db_txn)
+            .unwrap()
             .unwrap();
         assert_eq!(
-            active_mint_configs,
+            active_mint_configs.configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[0].clone(),

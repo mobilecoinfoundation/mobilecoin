@@ -370,6 +370,10 @@ message MintConfigTxPrefix {
 
     /// The block index at which this transaction is no longer valid.
     uint64 tombstone_block = 4;
+
+    /// The maximal amount that can be minted from the moment this configuration
+    /// is applied. This amount is shared amongst all configs.
+    uint64 mint_limit = 5;
 }
 
 /// A mint-config transaction coupled with a signature over it.

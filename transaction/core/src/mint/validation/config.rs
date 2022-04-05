@@ -224,6 +224,7 @@ mod tests {
             configs: vec![mint_config1.clone(), mint_config2.clone()],
             nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
+            mint_limit: 100,
         };
         let message = prefix.hash();
 
@@ -340,6 +341,7 @@ mod tests {
             configs: vec![mint_config1.clone(), mint_config2.clone()],
             nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
+            mint_limit: 100,
         };
         let message = prefix.hash();
 
@@ -417,6 +419,7 @@ mod tests {
             configs: vec![mint_config1.clone(), mint_config2.clone()],
             nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
+            mint_limit: 100,
         };
         let message = prefix.hash();
 
@@ -508,6 +511,7 @@ mod tests {
             configs: vec![mint_config1.clone(), mint_config2.clone()],
             nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
+            mint_limit: 100,
         };
         let message = prefix.hash();
 

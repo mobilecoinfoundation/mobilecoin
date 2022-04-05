@@ -1,6 +1,9 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use crate::{mint_config_store::ActiveMintConfig, Error};
+use crate::{
+    mint_config_store::{ActiveMintConfig, ActiveMintConfigs},
+    Error,
+};
 use mc_common::Hash;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
@@ -95,7 +98,10 @@ pub trait Ledger: Send {
     /// Get active mint configurations for a given token id.
     /// Returns an empty array if no mint configurations are active for the
     /// given token id.
-    fn get_active_mint_configs(&self, token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error>;
+    fn get_active_mint_configs(
+        &self,
+        token_id: TokenId,
+    ) -> Result<Option<ActiveMintConfigs>, Error>;
 
     /// Checks if the ledger contains a given MintConfigTx nonce.
     /// If so, returns the index of the block in which it entered the ledger.
