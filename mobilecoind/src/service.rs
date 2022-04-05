@@ -2240,7 +2240,7 @@ mod test {
             request.set_monitor_id(id.to_vec());
             client
                 .remove_monitor(&request)
-                .expect("failed to remove monitor");
+                .unwrap_or_else(|_| panic!("failed to remove monitor {}", id));
         }
 
         // Check that no monitors remain.

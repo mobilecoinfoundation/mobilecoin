@@ -19,6 +19,17 @@ permissions:
 jobs:
   mc-tests:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        num_runners: [2]
+        runner_index: [0, 1]
+      # Run each shard to completion.
+      fail-fast: false
+    env:
+      NUM_RUNNERS: ${{ matrix.num_runners }}
+      RUNNER_INDEX: ${{ matrix.runner_index }}
+
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -27,18 +38,35 @@ jobs:
       - name: List packages to test
         run: |
           cargo test -p 2>&1 | \
-            awk '/mc-/ { print "-p " $1 }' | \
+            grep mc- | \
             grep -v -e mc-fog -e mc-consensus | \
+            awk "NR % $NUM_RUNNERS == $RUNNER_INDEX { print \"-p \" \$1 }" | \
             tee /tmp/mc-test-packages
+          # Hack: mc-util-sample-ledger needs mc-util-keyfile bins.
+          # TODO: Replace with artifact deps when that does not require
+          # additional cargo flags.
+          grep -q generate-sample-ledger /tmp/mc-test-packages && \
+            echo '-p mc-util-keyfile' >> /tmp/mc-test-packages || true
       - name: Run tests
         uses: ./.github/actions/run-mc-tests
         with:
           args: $(cat /tmp/mc-test-packages)
-          junit_xml_filename: junit-mc-tests.xml
+          junit_xml_filename: junit-mc-tests-${{matrix.runner_index}}.xml
 
 
   consensus-tests:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        num_runners: [2]
+        runner_index: [0, 1]
+      # Run each shard to completion.
+      fail-fast: false
+    env:
+      NUM_RUNNERS: ${{ matrix.num_runners }}
+      RUNNER_INDEX: ${{ matrix.runner_index }}
+
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -47,18 +75,28 @@ jobs:
       - name: List packages to test
         run: |
           cargo test -p 2>&1 | \
-            awk '/mc-consensus/ { print "-p " $1 }' | \
-            tee /tmp/mc-test-packages
+            grep mc-consensus | \
+            awk "NR % $NUM_RUNNERS == $RUNNER_INDEX { print \"-p \" \$1 }" | \
+            tee /tmp/consensus-test-packages
       - name: Run tests
         uses: ./.github/actions/run-mc-tests
         with:
-          args: $(cat /tmp/mc-test-packages)
-          junit_xml_filename: junit-consensus-tests.xml
+          args: $(cat /tmp/consensus-test-packages)
+          junit_xml_filename: junit-consensus-tests-${{matrix.runner_index}}.xml
 
 
   fog-tests:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        num_runners: [2]
+        runner_index: [0, 1]
+      # Run each shard to completion.
+      fail-fast: false
     env:
+      NUM_RUNNERS: ${{ matrix.num_runners }}
+      RUNNER_INDEX: ${{ matrix.runner_index }}
       # TEST_DATABASE_URL points at the server, as Fog recovery DB tests create
       # and drop PG databases as needed.
       TEST_DATABASE_URL: postgres://postgres:postgres@postgres
@@ -71,14 +109,23 @@ jobs:
       - name: List packages to test
         run: |
           cargo test -p 2>&1 | \
-            awk '/mc-fog/ { print "-p " $1 }' | \
+            grep mc-fog | \
             grep -v mc-fog-ingest | \
-            tee /tmp/mc-test-packages
+            awk "NR % $NUM_RUNNERS == $RUNNER_INDEX { print \"-p \" \$1 }" | \
+            tee /tmp/fog-test-packages
+          # Hack: mc-fog-distribution needs bins from
+          # mc-util-{keyfile,generate-sample-ledger}.
+          # TODO: Replace with artifact deps when that does not require
+          # additional cargo flags.
+          grep -q fog-distribution /tmp/fog-test-packages && \
+            echo '-p mc-util-keyfile -p mc-util-generate-sample-ledger' >> /tmp/fog-test-packages || true
       - name: Run tests
         uses: ./.github/actions/run-mc-tests
         with:
-          args: $(cat /tmp/mc-test-packages) --build-jobs 4
-          junit_xml_filename: junit-fog-tests.xml
+          # The fog-overseer tests are large and sometimes fail to build;
+          # limiting the number of build-jobs helps with that.
+          args: $(cat /tmp/fog-test-packages) --build-jobs 4
+          junit_xml_filename: junit-fog-tests-${{matrix.runner_index}}.xml
 
     services:
       # Spin up a PostgreSQL server
