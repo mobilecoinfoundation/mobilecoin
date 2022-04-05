@@ -39,7 +39,7 @@ pub enum Error {
     ConsensusBlocked(SlotIndex, SlotIndex),
 
     /// Ledger DB Access Error
-    DBError,
+    DBAccess,
 }
 
 impl std::error::Error for Error {}

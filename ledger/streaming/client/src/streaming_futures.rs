@@ -84,10 +84,10 @@ impl<L: Ledger> Future for WriteBlock<L> {
                     if reason == LockReason::WouldBlock {
                         Poll::Pending
                     } else {
-                        Poll::Ready(Err(StreamError::DBError))
+                        Poll::Ready(Err(StreamError::DBAccess))
                     }
                 }
-                _ => Poll::Ready(Err(StreamError::DBError)),
+                _ => Poll::Ready(Err(StreamError::DBAccess)),
             },
         }
     }
@@ -145,10 +145,10 @@ impl<'a, L: Ledger> Future for ReadLedger<'a, L> {
                     if reason == LockReason::WouldBlock {
                         Poll::Pending
                     } else {
-                        Poll::Ready(Err(StreamError::DBError))
+                        Poll::Ready(Err(StreamError::DBAccess))
                     }
                 }
-                _ => Poll::Ready(Err(StreamError::DBError)),
+                _ => Poll::Ready(Err(StreamError::DBAccess)),
             },
         }
     }
