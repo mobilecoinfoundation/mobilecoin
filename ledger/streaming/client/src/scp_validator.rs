@@ -10,7 +10,9 @@ use mc_common::{
     NodeID,
 };
 use mc_consensus_scp::{GenericNodeId, QuorumSet, QuorumSetMember, SlotIndex};
-use mc_ledger_streaming_api::{BlockStream, BlockStreamComponents, Result as StreamResult};
+use mc_ledger_streaming_api::{
+    BlockStream, BlockStreamComponents, Error as StreamError, Result as StreamResult,
+};
 use mc_transaction_core::BlockID;
 use std::{collections::HashMap, future};
 
@@ -38,9 +40,14 @@ pub struct SCPValidationState<ID: GenericNodeId + Send = NodeID> {
     /// Highest block externalized
     highest_slot_index: SlotIndex,
 
+    /// Num blocks externalized
+    num_blocks_externalized: u64,
+
     /// Logger
     logger: Logger,
 }
+
+const MAX_BLOCK_DEFICIT: u64 = 50;
 
 /// Helper trait to easily transform streams between two generic types
 pub trait TransformStream<T> {
@@ -94,13 +101,22 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
             local_quorum_set,
             slots_to_externalized_blocks: HashMap::new(),
             highest_slot_index: 0,
+            num_blocks_externalized: 0,
             logger,
         }
     }
 
-    ///Fill slot with received component for certain block_height
+    /// Fill slot with received component for certain block_height. If we've
+    /// already recorded a block for that slot, discard it.
     pub fn update_slot(&mut self, node_id: ID, component: BlockStreamComponents) {
         let index = component.block_data.block().index;
+
+        // If we've already externalized a block at this index, ignore it
+        if index <= self.highest_slot_index && self.highest_slot_index > 0 {
+            return;
+        }
+
+        // Otherwise associate it with the node it was received from
         if let std::collections::hash_map::Entry::Vacant(e) =
             self.slots_to_externalized_blocks.entry(index)
         {
@@ -118,37 +134,51 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
         self.highest_slot_index = index;
     }
 
+    /// Highest slot currently externalized by the stream
+    pub fn highest_externalized_slot(&self) -> SlotIndex {
+        self.highest_slot_index
+    }
+
     /// Determine if we can externalize a block, if so return the block
     pub fn attempt_externalize_block(&mut self) -> Option<BlockStreamComponents> {
-        let index = self.highest_slot_index + 1;
+        // Set our target index one block above the highest block externalized
+        // unless we're recording the genesis block
+        let mut index = self.highest_slot_index + 1;
+        if self.num_blocks_externalized == 0 && self.highest_slot_index == 0 {
+            index = 0;
+        }
 
-        // If blocks received so far are less than quorum, don't proceed
+        // If blocks received so far are less than a possible quorum, don't proceed
         if let Some(ballots) = self.slots_to_externalized_blocks.get(&index) {
             if self.local_quorum_set.threshold > ballots.len() as u32 {
                 return None;
             }
         }
 
-        // Else check for a quorum and see if the blocks externalized consitute a
-        // quorum slice
-        let ballot_map = self.find_quorum(self.local_quorum_set.clone());
+        // Else check for a quorum and see if the blocks externalized constitute a
+        // quorum slice for this node
+        let ballot_map = self.find_quorum(self.local_quorum_set.clone(), index);
         let block_id = self.get_quorum_slice_vote(self.local_quorum_set.threshold, &ballot_map);
 
-        // If there's consensus, return the block contents
+        // If there's consensus among a quorum slice, return the block contents
         if let Some(block_id) = block_id {
             let winning_ballots = ballot_map.get(&block_id).unwrap();
             for ballot in winning_ballots {
                 if let QuorumSetMember::Node(id) = ballot {
-                    let component = self.slots_to_externalized_blocks.get(&index).unwrap();
-                    self.highest_slot_index += 1;
+                    let mut blocks = self.slots_to_externalized_blocks.remove(&index).unwrap();
                     log::trace!(
                         self.logger,
-                        "Node: {} externalizing block: {}",
+                        "Node: {} found a quorum slice for block {}",
                         self.local_node_id,
                         self.highest_slot_index,
                     );
 
-                    return Some(component.get(id).unwrap().clone());
+                    // Increment the highest block seen + the total number of
+                    // blocks we've counted
+                    let result = Some(blocks.remove(id).unwrap());
+                    self.highest_slot_index += 1;
+                    self.num_blocks_externalized += 1;
+                    return result;
                 }
             }
         }
@@ -158,22 +188,25 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
     }
 
     /// Check to find there's a quorum on the value of the blocks
-    fn find_quorum(&self, quorum_set: QuorumSet<ID>) -> HashMap<BlockID, Vec<QuorumSetMember<ID>>> {
+    fn find_quorum(
+        &self,
+        quorum_set: QuorumSet<ID>,
+        index: SlotIndex,
+    ) -> HashMap<BlockID, Vec<QuorumSetMember<ID>>> {
         let mut ballot_map: HashMap<BlockID, Vec<QuorumSetMember<ID>>> = HashMap::new();
         let threshold = quorum_set.threshold;
         let mut nodes_counted = 0;
-        let index = self.highest_slot_index + 1;
 
-        // For the blocks we've collected so far, try to find if they equal a quorum
-        // slice
+        // Determine if the blocks we've collected so far are a quorum slice
         if let Some(tracked_blocks) = self.slots_to_externalized_blocks.get(&index) {
             for member in quorum_set.members {
-                // Go through our quorum set and check if our receivers have
-                // sent blocks and store their votes
+                // Go through our slice and determine what nodes sent blocks AND
+                // what block they externalized
                 match member.clone() {
                     QuorumSetMember::Node(node_id) => {
                         if let Some(component) = tracked_blocks.get(&node_id) {
                             let block_id = &component.block_data.block().id;
+                            // Record a vote for the block externalized
                             ballot_map
                                 .entry(block_id.clone())
                                 .and_modify(|vec| vec.push(member.clone()))
@@ -191,10 +224,10 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
                         }
                     }
                     QuorumSetMember::InnerSet(qs) => {
-                        // Recursively call ourselves to check the set
-                        let sub_quorum = self.find_quorum(qs.clone());
+                        // Recursively call ourselves to check nested sets
+                        let sub_quorum = self.find_quorum(qs.clone(), index);
 
-                        // If internal set reached a quorum, record what it received
+                        // If internal slice reached quorum, record the block voted for
                         if let Some(block_id) =
                             self.get_quorum_slice_vote(qs.threshold, &sub_quorum)
                         {
@@ -231,6 +264,20 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
         }
         None
     }
+
+    /// Get highest block received
+    pub fn highest_block_received(&self) -> u64 {
+        *self
+            .slots_to_externalized_blocks
+            .keys()
+            .max()
+            .unwrap_or(&self.highest_slot_index)
+    }
+
+    /// Check if our recorded quorum is lagging behind what we've received
+    pub fn is_behind(&self) -> bool {
+        self.highest_block_received() - self.highest_slot_index > MAX_BLOCK_DEFICIT
+    }
 }
 
 impl<US: BlockStream + 'static, ID: GenericNodeId + Send> BlockStream for SCPValidator<US, ID> {
@@ -265,6 +312,12 @@ impl<US: BlockStream + 'static, ID: GenericNodeId + Send> BlockStream for SCPVal
                     }
                 }
 
+                if scp_state.is_behind() {
+                    return future::ready(Some(Ready::Ready(Err(StreamError::ConsensusBlocked(
+                        scp_state.highest_externalized_slot(),
+                        scp_state.highest_block_received(),
+                    )))));
+                }
                 // If there's not quorum yet, forward NotReady to filter stream
                 future::ready(Some(NotReady))
             })

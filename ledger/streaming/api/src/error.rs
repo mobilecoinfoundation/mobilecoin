@@ -3,6 +3,7 @@
 use displaydoc::Display;
 use grpcio::Error as GrpcError;
 use mc_api::ConversionError;
+use mc_consensus_scp::SlotIndex;
 use mc_crypto_keys::SignatureError;
 use mc_ledger_db::Error as LedgerDBError;
 use protobuf::ProtobufError;
@@ -22,6 +23,7 @@ pub enum Error {
     /// Invalid signature: {0}
     Signature(String),
 
+<<<<<<< HEAD
     /// IO Error: {0}
     IO(String, std::io::ErrorKind),
 
@@ -34,8 +36,11 @@ pub enum Error {
     /// Block validation failed: {0}
     BlockValidation(String),
 
-    /// SCP Consensus Error
-    ConsensusError,
+    /// Ledger DB Access Error
+    DBAccess,
+
+    /// SCP Consensus Behind: last externalized block {0} - highest block {1}
+    ConsensusBlocked(SlotIndex, SlotIndex),
 }
 
 impl std::error::Error for Error {}
