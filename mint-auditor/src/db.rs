@@ -240,8 +240,8 @@ impl MintAuditorDb {
                 Ok(_) => {
                     // Got a match, which is what we were hoping would happen.
                 }
-                Err(err @ LedgerDbError::NotFound)
-                | Err(err @ LedgerDbError::MintLimitExceeded(_, _, _)) => {
+                Err(err @ LedgerDbError::NotFound) |
+                Err(err @ LedgerDbError::MintLimitExceeded(_, _, _)) => {
                     log::crit!(
                         self.logger,
                         "Block {}: Found mint tx {} that did not match any active mint config: {}",
