@@ -2297,7 +2297,8 @@ mod ledger_db_test {
         assert_eq!(
             ledger_db.append_block(&block3, &block_contents3, None),
             Err(Error::MintLimitExceeded(
-                mint_config_tx1.prefix.configs[0].mint_limit + 1,
+                11,
+                mint_config_tx1.prefix.configs[0].mint_limit - 10,
                 mint_config_tx1.prefix.configs[0].mint_limit
             ))
         );

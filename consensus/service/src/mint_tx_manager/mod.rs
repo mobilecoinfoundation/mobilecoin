@@ -138,7 +138,7 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
                 LedgerError::NotFound => {
                     MintTxManagerError::MintValidation(MintValidationError::NoMatchingMintConfig)
                 }
-                LedgerError::MintLimitExceeded(_, _) => {
+                LedgerError::MintLimitExceeded(_, _, _) => {
                     MintTxManagerError::MintValidation(MintValidationError::AmountExceedsMintLimit)
                 }
                 err => err.into(),
@@ -975,7 +975,7 @@ mod mint_tx_tests {
         assert_eq!(
             mint_tx_manager.validate_mint_tx(&mint_tx),
             Err(MintTxManagerError::MintValidation(
-                MintValidationError::NoMatchingMintConfig
+                MintValidationError::AmountExceedsMintLimit
             ))
         );
 
@@ -1018,7 +1018,7 @@ mod mint_tx_tests {
         assert_eq!(
             mint_tx_manager.validate_mint_tx(&mint_tx),
             Err(MintTxManagerError::MintValidation(
-                MintValidationError::NoMatchingMintConfig
+                MintValidationError::AmountExceedsMintLimit
             ))
         );
 

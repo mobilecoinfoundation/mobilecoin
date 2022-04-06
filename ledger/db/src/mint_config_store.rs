@@ -243,10 +243,12 @@ impl MintConfigStore {
 
         // Check if the amount minted is going to tip us over the limit.
         if !active_mint_configs.can_mint(mint_tx.prefix.amount) {
-            // TODO Ideally this would've been MintLimitExceeded, but there is a potential
-            // overflow issue if the new amount overflows. MintLimitExceeded
             // should be changed to address that.
-            return Err(Error::NotFound);
+            return Err(Error::MintLimitExceeded(
+                mint_tx.prefix.amount,
+                active_mint_configs.total_minted(),
+                active_mint_configs.total_mint_limit,
+            ));
         }
 
         // Our default error is NotFound, in case we are unable to find a mint config
@@ -275,13 +277,16 @@ impl MintConfigStore {
             {
                 if new_total_minted <= active_mint_config.mint_config.mint_limit {
                     return Ok(active_mint_config);
-                } else {
-                    error = Error::MintLimitExceeded(
-                        new_total_minted,
-                        active_mint_config.mint_config.mint_limit,
-                    );
                 }
             }
+
+            // We found a mint config with a matching signature, but it cannot accommodate
+            // the amount this transaction is trying to mint.
+            error = Error::MintLimitExceeded(
+                mint_tx.prefix.amount,
+                active_mint_config.total_minted,
+                active_mint_config.mint_config.mint_limit,
+            );
         }
 
         Err(error)
@@ -294,10 +299,6 @@ impl MintConfigStore {
         amount: u64,
         db_transaction: &mut RwTransaction,
     ) -> Result<(), Error> {
-        if amount > mint_config.mint_limit {
-            return Err(Error::MintLimitExceeded(amount, mint_config.mint_limit));
-        }
-
         // Get the active mint configs for the given token.
         let mut active_mint_configs = self
             .get_active_mint_configs(TokenId::from(mint_config.token_id), db_transaction)?
@@ -318,12 +319,23 @@ impl MintConfigStore {
             ));
         }
 
+        // Amount should never go above the mint limit of the specific configuration.
+        let mint_increase_amount = amount - active_mint_config.total_minted;
+        if amount > active_mint_config.mint_config.mint_limit {
+            return Err(Error::MintLimitExceeded(
+                mint_increase_amount,
+                active_mint_config.total_minted,
+                active_mint_config.mint_config.mint_limit,
+            ));
+        }
+
         // Update the total minted amount.
         active_mint_config.total_minted = amount;
 
-        // Sanity check.
+        // Sanity check that we didn't go over the total mint limit.
         if active_mint_configs.total_minted() > active_mint_configs.total_mint_limit {
             return Err(Error::MintLimitExceeded(
+                mint_increase_amount,
                 active_mint_configs.total_minted(),
                 active_mint_configs.total_mint_limit,
             ));
@@ -737,6 +749,7 @@ pub mod tests {
                 ),
                 Err(Error::MintLimitExceeded(
                     test_tx_1.prefix.configs[1].mint_limit + 1,
+                    0,
                     test_tx_1.prefix.configs[1].mint_limit
                 ))
             );
@@ -956,6 +969,7 @@ pub mod tests {
                 mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx, &db_transaction),
                 Err(Error::MintLimitExceeded(
                     mint_tx.prefix.amount,
+                    0,
                     test_tx_1.prefix.configs[0].mint_limit
                 ))
             );
@@ -981,7 +995,8 @@ pub mod tests {
             assert_eq!(
                 mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx, &db_transaction),
                 Err(Error::MintLimitExceeded(
-                    mint_tx.prefix.amount + 10, // 10 is the amount that was previously minted
+                    mint_tx.prefix.amount,
+                    10, // 10 is the amount that was previously minted
                     test_tx_1.prefix.configs[0].mint_limit
                 ))
             );
@@ -1095,7 +1110,11 @@ pub mod tests {
             );
             assert_eq!(
                 mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx, &db_transaction),
-                Err(Error::NotFound)
+                Err(Error::MintLimitExceeded(
+                    mint_tx.prefix.amount,
+                    0,
+                    test_tx_1.prefix.total_mint_limit,
+                ))
             );
         }
 
@@ -1122,7 +1141,11 @@ pub mod tests {
             );
             assert_eq!(
                 mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx, &db_transaction),
-                Err(Error::NotFound)
+                Err(Error::MintLimitExceeded(
+                    mint_tx.prefix.amount,
+                    10,
+                    test_tx_1.prefix.total_mint_limit,
+                ))
             );
         }
 

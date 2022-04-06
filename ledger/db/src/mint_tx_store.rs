@@ -552,8 +552,9 @@ mod tests {
         match mint_tx_store.write_mint_txs(0, &[mint_tx1.clone()], &mint_config_store, &mut db_txn)
         {
             Ok(()) => panic!("Unexpected success"),
-            Err(Error::MintLimitExceeded(tx_amount, mint_limit)) => {
-                assert_eq!(tx_amount, mint_tx1.prefix.amount);
+            Err(Error::MintLimitExceeded(mint_amount, minted_so_far, mint_limit)) => {
+                assert_eq!(mint_amount, mint_tx1.prefix.amount);
+                assert_eq!(minted_so_far, 0);
                 assert!(&[
                     mint_config_tx1.prefix.configs[0].mint_limit,
                     mint_config_tx1.prefix.configs[1].mint_limit,
