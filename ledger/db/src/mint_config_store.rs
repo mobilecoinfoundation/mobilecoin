@@ -309,7 +309,7 @@ impl MintConfigStore {
             .configs
             .iter_mut()
             .find(|active_mint_config| active_mint_config.mint_config == *mint_config)
-            .ok_or_else(|| Error::NotFound)?;
+            .ok_or(Error::NotFound)?;
 
         // Total minted amount should never decrease.
         if amount < active_mint_config.total_minted {
