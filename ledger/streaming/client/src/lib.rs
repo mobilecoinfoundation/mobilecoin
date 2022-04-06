@@ -5,9 +5,10 @@
 #![deny(missing_docs)]
 #![feature(type_alias_impl_trait)]
 
+mod backfill;
 mod grpc;
 
 #[cfg(any(test, feature = "test_utils"))]
 pub mod test_utils;
 
-pub use self::grpc::GrpcBlockSource;
+pub use self::{backfill::BackfillingStream, grpc::GrpcBlockSource};
