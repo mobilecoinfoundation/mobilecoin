@@ -65,6 +65,7 @@ message BlockSignature {
 }
 
 // Version 1 of an archived block.
+// Note: The block.version field within the block may or may not be equal to 1.
 message ArchiveBlockV1 {
     // Block
     Block block = 1;

@@ -326,6 +326,7 @@ impl<
 
         let client_service =
             consensus_client_grpc::create_consensus_client_api(ClientApiService::new(
+                self.config.clone(),
                 enclave.clone(),
                 self.create_scp_client_value_sender_fn(),
                 Arc::new(self.ledger_db.clone()),
@@ -346,6 +347,7 @@ impl<
                 self.ledger_db.clone(),
                 self.client_authenticator.clone(),
                 self.config.tokens().fee_map()?,
+                self.config.block_version,
                 self.logger.clone(),
             ));
 
@@ -439,6 +441,7 @@ impl<
                 self.ledger_db.clone(),
                 peer_authenticator.clone(),
                 self.config.tokens().fee_map()?,
+                self.config.block_version,
                 self.logger.clone(),
             ));
 

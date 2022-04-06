@@ -148,7 +148,7 @@ mod tests {
 
             let block_contents = BlockContents::new(vec![key_image.clone()], vec![tx_out.clone()]);
             let block = Block::new(
-                BlockVersion::ONE,
+                BlockVersion::ZERO,
                 &parent_block_id,
                 99 + block_idx,
                 400 + block_idx,

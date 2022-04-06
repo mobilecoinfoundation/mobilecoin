@@ -99,7 +99,7 @@ pub struct Config {
     pub tokens_path: Option<PathBuf>,
 
     /// The configured block version
-    #[structopt(long, env = "MC_BLOCK_VERSION", default_value = "1")]
+    #[structopt(long, env = "MC_BLOCK_VERSION", default_value = "0")]
     pub block_version: BlockVersion,
 }
 
@@ -180,7 +180,7 @@ mod tests {
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Duration::from_secs(60),
             tokens_path: None,
-            block_version: BlockVersion::ONE,
+            block_version: BlockVersion::ZERO,
         };
 
         assert_eq!(
@@ -247,7 +247,7 @@ mod tests {
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Duration::from_secs(60),
             tokens_path: None,
-            block_version: BlockVersion::ONE,
+            block_version: BlockVersion::ZERO,
         };
 
         assert_eq!(

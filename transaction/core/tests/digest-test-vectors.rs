@@ -214,7 +214,7 @@ fn origin_block_digestible_ast() {
 
 #[test]
 fn block_contents_digestible_test_vectors() {
-    let results = test_blockchain(BlockVersion::TWO);
+    let results = test_blockchain(BlockVersion::ONE);
 
     // Test digest of block contents
     assert_eq!(
@@ -239,8 +239,7 @@ fn block_contents_digestible_test_vectors() {
         ]
     );
 
-    // Now set block version 1 and run the old test vectors
-    let results = test_blockchain(BlockVersion::ONE);
+    let results = test_blockchain(BlockVersion::ZERO);
 
     // Test digest of block contents
     assert_eq!(
