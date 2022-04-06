@@ -4,7 +4,6 @@
 
 use crate::{
     api::grpc_error::ConsensusGrpcError,
-    config::Config,
     consensus_service::ProposeTxCallback,
     counters,
     mint_tx_manager::MintTxManager,
@@ -19,6 +18,7 @@ use mc_consensus_api::{
     consensus_common::{ProposeTxResponse, ProposeTxResult},
 };
 use mc_consensus_enclave::ConsensusEnclave;
+use mc_consensus_service_config::Config;
 use mc_ledger_db::Ledger;
 use mc_peers::ConsensusValue;
 use mc_transaction_core::mint::{MintConfigTx, MintTx};
@@ -274,11 +274,11 @@ impl ConsensusClientApi for ClientApiService {
 mod client_api_tests {
     use crate::{
         api::client_api_service::{ClientApiService, PENDING_LIMIT},
-        config::Config,
         counters,
         mint_tx_manager::{MintTxManagerError, MockMintTxManager},
         tx_manager::{MockTxManager, TxManagerError},
     };
+    use mc_consensus_service_config::Config;
     use clap::Parser;
     use grpcio::{
         ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,

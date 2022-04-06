@@ -7,7 +7,6 @@
 #[cfg(test)]
 extern crate test;
 
-pub mod config;
 pub mod consensus_service;
 pub mod mint_tx_manager;
 pub mod tx_manager;

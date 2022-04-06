@@ -86,6 +86,7 @@ impl NetworkConfig {
         Ok(network)
     }
 
+    /// Construct a quorum set from the configuration.
     pub fn quorum_set(&self) -> QuorumSet {
         if !self.quorum_set.is_valid() {
             panic!("invalid quorum set: {:?}", self.quorum_set);
@@ -125,6 +126,7 @@ impl NetworkConfig {
         Self::resolve_quorum_set(&self.quorum_set, &peer_map)
     }
 
+    /// Get the list of peers we connect and broadcast messages to.
     pub fn broadcast_peers(&self) -> Vec<PeerUri> {
         self.broadcast_peers.clone()
     }
