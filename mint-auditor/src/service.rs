@@ -8,7 +8,8 @@ use mc_common::logger::Logger;
 use mc_mint_auditor_api::{
     empty::Empty,
     mint_auditor::{
-        GetBlockAuditDataRequest, GetBlockAuditDataResponse, GetLastBlockAuditDataResponse,
+        Counters, GetBlockAuditDataRequest, GetBlockAuditDataResponse,
+        GetLastBlockAuditDataResponse,
     },
     mint_auditor_grpc::{create_mint_auditor_api, MintAuditorApi},
 };
@@ -122,6 +123,18 @@ impl MintAuditorApi for MintAuditorService {
                 resp.set_block_index(last_synced_block_index);
                 resp
             });
+
+        send_result(ctx, sink, result, &logger);
+    }
+
+    fn get_counters(&mut self, ctx: RpcContext, _req: Empty, sink: UnarySink<Counters>) {
+        let logger = rpc_logger(&ctx, &self.logger);
+
+        let result = self
+            .mint_auditor_db
+            .get_counters()
+            .map(|counters| Counters::from(&counters))
+            .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()));
 
         send_result(ctx, sink, result, &logger);
     }
@@ -263,6 +276,24 @@ mod tests {
                 })
                 .into(),
                 block_index: 1,
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test_with_logger]
+    fn test_get_counters(logger: Logger) {
+        let mint_audit_db = get_test_db(&logger);
+        let (client, _server) = get_client_server(&mint_audit_db, &logger);
+
+        let response = client.get_counters(&Empty::default()).unwrap();
+
+        assert_eq!(
+            response,
+            // This depends on what database [get_test_db] generates.
+            Counters {
+                num_blocks_synced: 2,
+                num_mint_txs_without_matching_mint_config: 3,
                 ..Default::default()
             }
         );

@@ -55,17 +55,19 @@ pub struct BlockAuditData {
     pub balance_map: BTreeMap<u32, u64>,
 }
 
+/// Statistics we keep track of.
 #[derive(Deserialize, Eq, Message, PartialEq, Serialize)]
 pub struct Counters {
     /// Number of blocks we've synced so far.
     #[prost(uint64, tag = 1)]
     pub num_blocks_synced: u64,
 
-    // Number of times we've encountered a burn that exceeds the calculated balance.
+    /// Number of times we've encountered a burn that exceeds the calculated
+    /// balance.
     #[prost(uint64, tag = 2)]
     pub num_burns_exceeding_balance: u64,
 
-    // Number of `MintTx`s that did not match an active mint config.
+    /// Number of `MintTx`s that did not match an active mint config.
     #[prost(uint64, tag = 3)]
     pub num_mint_txs_without_matching_mint_config: u64,
 }
