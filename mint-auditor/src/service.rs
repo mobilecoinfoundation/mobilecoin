@@ -8,7 +8,8 @@ use mc_common::logger::Logger;
 use mc_mint_auditor_api::{
     empty::Empty,
     mint_auditor::{
-        GetBlockAuditDataRequest, GetBlockAuditDataResponse, GetLastBlockAuditDataResponse,
+        Counters, GetBlockAuditDataRequest, GetBlockAuditDataResponse,
+        GetLastBlockAuditDataResponse,
     },
     mint_auditor_grpc::{create_mint_auditor_api, MintAuditorApi},
 };
@@ -122,6 +123,18 @@ impl MintAuditorApi for MintAuditorService {
                 resp.set_block_index(last_synced_block_index);
                 resp
             });
+
+        send_result(ctx, sink, result, &logger);
+    }
+
+    fn get_counters(&mut self, ctx: RpcContext, _req: Empty, sink: UnarySink<Counters>) {
+        let logger = rpc_logger(&ctx, &self.logger);
+
+        let result = self
+            .mint_auditor_db
+            .get_counters()
+            .map(|counters| Counters::from(&counters))
+            .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()));
 
         send_result(ctx, sink, result, &logger);
     }

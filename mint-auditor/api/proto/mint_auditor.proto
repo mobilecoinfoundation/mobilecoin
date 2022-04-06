@@ -16,11 +16,24 @@ option java_outer_classname = "MintAuditor";
 service MintAuditorApi {
     rpc GetBlockAuditData(GetBlockAuditDataRequest) returns (GetBlockAuditDataResponse) {}
     rpc GetLastBlockAuditData(google.protobuf.Empty) returns (GetLastBlockAuditDataResponse) {}
+    rpc GetCounters(google.protobuf.Empty) returns (Counters) {}
 }
 
 message BlockAuditData {
     // Current balance in circulation (excluding MOB).
     map<uint32, uint64> balance_map = 1;
+}
+
+/// Statistics we keep track of.
+message Counters {
+    /// Number of blocks we've synced so far.
+    uint64 num_blocks_synced = 1;
+
+    // Number of times we've encountered a burn that exceeds the calculated balance.
+    uint64 num_burns_exceeding_balance = 2;
+
+    // Number of `MintTx`s that did not match an active mint config.
+    uint64 num_mint_txs_without_matching_mint_config = 3;
 }
 
 message GetBlockAuditDataRequest {
