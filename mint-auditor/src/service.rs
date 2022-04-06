@@ -280,4 +280,22 @@ mod tests {
             }
         );
     }
+
+    #[test_with_logger]
+    fn test_get_counters(logger: Logger) {
+        let mint_audit_db = get_test_db(&logger);
+        let (client, _server) = get_client_server(&mint_audit_db, &logger);
+
+        let response = client.get_counters(&Empty::default()).unwrap();
+
+        assert_eq!(
+            response,
+            // This depends on what database [get_test_db] generates.
+            Counters {
+                num_blocks_synced: 2,
+                num_mint_txs_without_matching_mint_config: 3,
+                ..Default::default()
+            }
+        );
+    }
 }
