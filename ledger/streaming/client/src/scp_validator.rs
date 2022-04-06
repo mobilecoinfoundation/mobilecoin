@@ -31,7 +31,7 @@ pub enum Ready<T> {
 /// streams from individual peers and validate that they pass SCP consensus.
 /// Note this will consume all other streams and return a single result
 pub struct SCPValidator<US: BlockStream + 'static, ID: GenericNodeId + Send = NodeID> {
-    upstreams: Vec<(ID, US)>,
+    upstreams: HashMap<ID, US>,
     logger: Logger,
     scp_validation_state: SCPValidationState<ID>,
 }
@@ -63,7 +63,7 @@ const MAX_BLOCK_DEFICIT: u64 = 50;
 impl<US: BlockStream + 'static, ID: GenericNodeId + Send> SCPValidator<US, ID> {
     /// Create new SCP validator stream factory
     pub fn new(
-        upstreams: Vec<(ID, US)>,
+        upstreams: HashMap<ID, US>,
         logger: Logger,
         local_node_id: ID,
         quorum_set: QuorumSet<ID>,
@@ -102,16 +102,8 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
         }
 
         // Otherwise associate it with the node it was received from
-        if let hashbrown::hash_map::Entry::Vacant(e) =
-            self.slots_to_externalized_blocks.entry(index)
-        {
-            let mut node_map = HashMap::new();
-            node_map.insert(node_id, component);
-            e.insert(node_map);
-        } else {
-            let node_map = self.slots_to_externalized_blocks.get_mut(&index).unwrap();
-            node_map.insert(node_id, component);
-        }
+        let node_map = self.slots_to_externalized_blocks.entry(index).or_default();
+        node_map.insert(node_id, component);
     }
 
     /// After block is externalized, remove records at previous slot
@@ -350,9 +342,9 @@ mod tests {
         );
         assert!(quorum_set.is_valid());
         let s = SimpleMockStream::new(100);
-        let mut upstreams = Vec::new();
+        let mut upstreams = HashMap::new();
         for i in 0..9 {
-            upstreams.push((nodes.get(i).unwrap().clone(), s.clone()));
+            upstreams.insert(nodes.get(i).unwrap().clone(), s.clone());
         }
         let local_node_id = test_node_id(10);
 
