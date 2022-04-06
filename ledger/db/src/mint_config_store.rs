@@ -63,7 +63,8 @@ impl ActiveMintConfigs {
         self.configs.iter().map(|c| c.total_minted).sum()
     }
 
-    // Check if we can mint a certain amount without exceeding the global limit.
+    /// Check if we can mint a certain amount without exceeding the global
+    /// limit.
     pub fn can_mint(&self, amount: u64) -> bool {
         if let Some(new_total_minted) = self.total_minted().checked_add(amount) {
             new_total_minted <= self.total_mint_limit
