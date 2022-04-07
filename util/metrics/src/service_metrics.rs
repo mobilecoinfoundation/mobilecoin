@@ -38,7 +38,6 @@ use prometheus::{
 use protobuf::Message;
 use std::str;
 
-
 /// Helper that encapsulates boilerplate for tracking
 /// prometheus metrics about GRPC services. This struct
 /// defines several common metrics (with a distinct
@@ -49,7 +48,6 @@ use std::str;
 /// e.g., calc_service.duration_sum{method="add"} = 6
 #[derive(Clone)]
 pub struct ServiceMetrics {
-
     /// Number of requests made by methods
     num_req: IntCounterVec,
 
@@ -73,13 +71,15 @@ impl ServiceMetrics {
             .expect("Could not create buckets for message-size histogram");
 
         ServiceMetrics {
-
             num_req: IntCounterVec::new(Opts::new("num_req", "Number of requests"), &["method"])
                 .unwrap(),
             num_error: IntCounterVec::new(Opts::new("num_error", "Number of errors"), &["method"])
                 .unwrap(),
-            num_status_code: IntCounterVec::new(Opts::new("num_status_code", "Number of grpc status codes"), &["method", "status_code"])
-                .unwrap(),
+            num_status_code: IntCounterVec::new(
+                Opts::new("num_status_code", "Number of grpc status codes"),
+                &["method", "status_code"],
+            )
+            .unwrap(),
             duration: HistogramVec::new(
                 //TODO: frumious: how to ensure units?
                 HistogramOpts::new("duration", "Duration for a request, in units of time"),
