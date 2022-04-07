@@ -11,10 +11,12 @@ crate-type = ["lib", "staticlib", "cdylib"]
 [dependencies]
 # External dependencies
 aes-gcm = "0.9.4"
+crc = "2.1.0"
 displaydoc = "0.2"
+generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
+hex = "0.4.3"
 libc = "0.2"
 protobuf = "2.22.1"
-crc = "2.1.0"
 rand_core = { version = "0.6", features = ["std"] }
 sha2 = "0.9.8"
 slip10_ed25519 = "0.1.3"
