@@ -46,6 +46,7 @@ mbedtls = { version = "0.8.1", default-features = false, features = ["no_std_dep
 once_cell = { version = "1.10", default-features = false, features = ["alloc", "race"] }
 prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.6", default-features = false }
+subtle = { version = "2.4", default-features = false, features = ["i128"] }
 
 [dev-dependencies]
 mc-common = { path = "../../../common", features = ["loggers"] }

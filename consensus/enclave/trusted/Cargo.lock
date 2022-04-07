@@ -836,6 +836,7 @@ dependencies = [
  "once_cell",
  "prost",
  "rand_core",
+ "subtle",
 ]
 
 [[package]]
