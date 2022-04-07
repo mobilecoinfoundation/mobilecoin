@@ -737,7 +737,7 @@ pub extern "C" fn mc_memo_sender_memo_create(
             &tx_out_public_key,
         );
 
-        let memo_bytes: [u8; 64] = memo.clone().into();
+        let memo_bytes: [u8; 64] = memo.into();
 
         let out_memo_data = out_memo_data
             .into_mut()
@@ -886,7 +886,7 @@ pub extern "C" fn mc_memo_destination_memo_get_number_of_recipients(
 
         let destination_memo: DestinationMemo = DestinationMemo::from(&memo_data);
 
-        let number_of_recipients: u8 = destination_memo.get_num_recipients().clone();
+        let number_of_recipients: u8 = destination_memo.get_num_recipients();
 
         *out_number_of_recipients.into_mut() = number_of_recipients;
 
@@ -913,7 +913,7 @@ pub extern "C" fn mc_memo_destination_memo_get_fee(
 
         let destination_memo: DestinationMemo = DestinationMemo::from(&memo_data);
 
-        let fee: u64 = destination_memo.get_fee().clone();
+        let fee: u64 = destination_memo.get_fee();
 
         *out_fee.into_mut() = fee;
 
@@ -1037,7 +1037,7 @@ pub extern "C" fn mc_memo_sender_with_payment_request_memo_create(
             payment_request_id,
         );
 
-        let memo_bytes: [u8; 64] = memo.clone().into();
+        let memo_bytes: [u8; 64] = memo.into();
 
         let out_memo_data = out_memo_data
             .into_mut()
@@ -1108,8 +1108,7 @@ pub extern "C" fn mc_memo_sender_with_payment_request_memo_get_payment_request_i
             AuthenticatedSenderWithPaymentRequestIdMemo::from(&memo_data);
 
         let payment_request_id: u64 = sender_with_payment_request_memo
-            .payment_request_id()
-            .clone();
+            .payment_request_id();
 
         *out_payment_request_id.into_mut() = payment_request_id;
 
