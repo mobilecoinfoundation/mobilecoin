@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! A BlockStream that backfills missing indices from a given BlockFetcher.
+//! A [BlockStream] that backfills another [BlockStream] using a [BlockFetcher].
 
 use displaydoc::Display;
 use futures::{FutureExt, Stream, StreamExt};

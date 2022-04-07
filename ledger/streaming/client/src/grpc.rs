@@ -1,14 +1,14 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+//! A [BlockStream] that streams blocks using the `LedgerUpdates` gRPC API.
+
 use displaydoc::Display;
 use futures::{Stream, StreamExt};
 use mc_common::logger::{log, o, Logger};
 use mc_crypto_keys::Ed25519Public;
 use mc_ledger_streaming_api::{
-    parse_subscribe_response,
-    streaming_blocks::{SubscribeRequest, SubscribeResponse},
-    streaming_blocks_grpc::LedgerUpdatesClient,
-    BlockStream, BlockStreamComponents, Result,
+    parse_subscribe_response, streaming_blocks::SubscribeRequest,
+    streaming_blocks_grpc::LedgerUpdatesClient, BlockStream, BlockStreamComponents, Result,
 };
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConnectionUri;
@@ -58,18 +58,13 @@ impl BlockStream for GrpcBlockSource {
         let opt = grpcio::CallOption::default().timeout(Duration::from_secs(10));
 
         let stream = self.client.subscribe_opt(&req, opt)?;
-        Ok(stream.map(move |res| map_subscribe_response(res, &self.public_key, &self.logger)))
+        let result = stream.map(move |result| {
+            log::trace!(&self.logger, "map_subscribe_response");
+            let response = result?;
+            parse_subscribe_response(&response, &self.public_key)
+        });
+        Ok(result)
     }
-}
-
-fn map_subscribe_response(
-    result: grpcio::Result<SubscribeResponse>,
-    public_key: &Ed25519Public,
-    logger: &Logger,
-) -> Result<BlockStreamComponents> {
-    log::trace!(logger, "map_subscribe_response");
-    let response = result?;
-    parse_subscribe_response(&response, public_key)
 }
 
 #[cfg(test)]
