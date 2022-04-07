@@ -1107,8 +1107,7 @@ pub extern "C" fn mc_memo_sender_with_payment_request_memo_get_payment_request_i
         let sender_with_payment_request_memo: AuthenticatedSenderWithPaymentRequestIdMemo =
             AuthenticatedSenderWithPaymentRequestIdMemo::from(&memo_data);
 
-        let payment_request_id: u64 = sender_with_payment_request_memo
-            .payment_request_id();
+        let payment_request_id: u64 = sender_with_payment_request_memo.payment_request_id();
 
         *out_payment_request_id.into_mut() = payment_request_id;
 
