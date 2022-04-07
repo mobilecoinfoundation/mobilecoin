@@ -21,7 +21,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-// Write a single pair of keyfiles using a given name and data
+/// Write a single pair of keyfiles using a given name and data
 pub fn write_keyfiles<P: AsRef<Path>>(
     path: P,
     name: &str,
@@ -95,7 +95,7 @@ pub fn write_default_keyfiles<P: AsRef<Path>>(
     Ok(())
 }
 
-// Read default pubkeys used in tests and demos
+/// Read default pubkeys used in tests and demos
 pub fn read_default_pubfiles<P: AsRef<Path>>(path: P) -> Result<Vec<PublicAddress>, Error> {
     let mut entries = Vec::new();
     for entry in fs::read_dir(path)? {
@@ -112,7 +112,7 @@ pub fn read_default_pubfiles<P: AsRef<Path>>(path: P) -> Result<Vec<PublicAddres
     Ok(result)
 }
 
-// Read default keyfiles
+/// Read default keyfiles
 pub fn read_default_keyfiles<P: AsRef<Path>>(path: P) -> Result<Vec<PathBuf>, Error> {
     let mut entries = Vec::new();
     for entry in fs::read_dir(path)? {
@@ -160,6 +160,7 @@ mod test {
     use crate::mnemonic_acct::UncheckedMnemonicAccount;
     use std::convert::TryFrom;
 
+    /// A default seed for [write_default_keyfiles()] calls.
     const DEFAULT_SEED: [u8; 32] = [1u8; 32];
 
     /// Reads the default pubfiles written to two directories and compares them.

@@ -1,21 +1,21 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
-
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
+//! Create some default keys for use in demos and testing
+use clap::Parser;
 use mc_util_keyfile::config::Config as GeneralConfig;
-use std::string::ToString;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Config {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub general: GeneralConfig,
 
     /// Number of user keys to generate.
-    #[structopt(short, long, default_value = "10")]
+    #[clap(short, long, default_value = "10", env = "MC_NUM")]
     pub num: usize,
 }
 
 fn main() {
-    let config = Config::from_args();
+    let config = Config::parse();
 
     let path = config
         .general

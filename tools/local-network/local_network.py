@@ -141,7 +141,7 @@ class Peer:
 
 
 class Node:
-    def __init__(self, name, node_num, client_port, peer_port, admin_port, admin_http_gateway_port, peers, quorum_set):
+    def __init__(self, name, node_num, client_port, peer_port, admin_port, admin_http_gateway_port, peers, quorum_set, block_version):
         assert all(isinstance(peer, Peer) for peer in peers)
         assert isinstance(quorum_set, QuorumSet)
 
@@ -154,6 +154,7 @@ class Node:
         self.peers = peers
         self.quorum_set = quorum_set
         self.minimum_fee = 400_000_000
+        self.block_version = block_version or 2
 
         self.consensus_process = None
         self.ledger_distribution_process = None
@@ -249,7 +250,7 @@ class Node:
             f'--ias-api-key={IAS_API_KEY}',
             f'--ias-spid={IAS_SPID}',
             f'--origin-block-path {LEDGER_BASE}',
-            f'--block-version 3',
+            f'--block-version {self.block_version}',
             f'--ledger-path {self.ledger_dir}',
             f'--admin-listen-uri="insecure-mca://0.0.0.0:{self.admin_port}/"',
             f'--client-listen-uri="insecure-mc://0.0.0.0:{self.client_port}/"',
@@ -467,6 +468,7 @@ class Network:
             BASE_ADMIN_HTTP_GATEWAY_PORT + node_num,
             peers,
             quorum_set,
+            self.block_version,
         ))
 
     def get_node(self, name):
@@ -539,7 +541,9 @@ class Network:
                 raise
 
 
-    def default_entry_point(self, network_type, skip_build=False):
+    def default_entry_point(self, network_type, skip_build=False, block_version=None):
+        self.block_version = block_version
+
         if network_type == 'dense5':
             #  5 node interconnected network requiring 4 out of 5  nodes.
             num_nodes = 5
@@ -589,6 +593,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Local network tester')
     parser.add_argument('--network-type', help='Type of network to create', required=True)
     parser.add_argument('--skip-build', help='Skip building binaries', action='store_true')
+    parser.add_argument('--block-version', help='Set the block version argument', type=int)
     args = parser.parse_args()
 
-    Network().default_entry_point(args.network_type, args.skip_build)
+    Network().default_entry_point(args.network_type, args.skip_build, args.block_version)

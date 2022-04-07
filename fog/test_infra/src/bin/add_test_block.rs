@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! Add a block to the test ledger.
 //! This is intended for fog conformance testing
@@ -24,6 +25,7 @@
 //! { key_images: [...] }
 //! is returned.
 
+use clap::Parser;
 use core::convert::TryFrom;
 use mc_account_keys::DEFAULT_SUBADDRESS_INDEX;
 use mc_common::logger::create_root_logger;
@@ -44,30 +46,29 @@ use rand_core::SeedableRng;
 use rand_hc::Hc128Rng;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, str::FromStr, time::SystemTime};
-use structopt::StructOpt;
 use url::Url;
 
 /// The command-line arguments
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Config {
     /// Path to keys
-    #[structopt(long = "keys", short = "k")]
+    #[clap(long, short, env = "MC_KEYS")]
     pub keys: PathBuf,
 
     /// Path to output ledger
-    #[structopt(long = "ledger-db", short = "l")]
+    #[clap(long = "ledger-db", short, env = "MC_LEDGER_DB")]
     pub ledger: PathBuf,
 
     /// Path to output watcher db
-    #[structopt(long = "watcher-db", short = "w")]
+    #[clap(long = "watcher-db", short, env = "MC_WATCHER_DB")]
     pub watcher: PathBuf,
 
     // Seed to use when generating randomness
-    #[structopt(long = "seed", short = "s", default_value = "99")]
+    #[clap(long, short, default_value = "99", env = "MC_SEED")]
     pub seed: u64,
 
     // Fog public key
-    #[structopt(long = "fog-pubkey", short = "f", parse(try_from_str=hex::FromHex::from_hex))]
+    #[clap(long, short, parse(try_from_str = hex::FromHex::from_hex), env = "MC_FOG_PUBKEY")]
     pub fog_pubkey: [u8; 32],
 }
 
@@ -92,7 +93,7 @@ struct ParsedBlockContents {
 fn main() {
     // Logging must go to stderr to not interfere with STDOUT
     std::env::set_var("MC_LOG_STDERR", "1");
-    let config = Config::from_args();
+    let config = Config::parse();
 
     let logger = create_root_logger();
 

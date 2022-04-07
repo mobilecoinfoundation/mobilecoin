@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The Responder ID type
 
@@ -22,6 +22,9 @@ pub enum ResponderIdParseError {
     /// Invalid Format for {0}
     InvalidFormat(String),
 }
+
+#[cfg(feature = "std")]
+impl std::error::Error for ResponderIdParseError {}
 
 /// Node unique identifier.
 #[derive(

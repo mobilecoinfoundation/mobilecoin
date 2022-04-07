@@ -10,65 +10,35 @@ use mc_consensus_api::{
     empty::Empty,
 };
 use mc_consensus_mint_client::{Commands, Config};
-use mc_crypto_keys::{Ed25519Pair, Signer};
-use mc_crypto_multisig::{MultiSig, SignerSet};
+use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::{
     constants::MAX_TOMBSTONE_BLOCKS,
-    mint::{
-        constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx, MintTxPrefix,
-    },
+    mint::{MintConfigTx, MintTx},
 };
 use mc_util_grpc::ConnectionUriGrpcioChannel;
-use rand::{thread_rng, RngCore};
-use std::sync::Arc;
+use serde::de::DeserializeOwned;
+use serde_json::to_string_pretty;
+use std::{fs, path::PathBuf, sync::Arc};
 
 fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
     let config = Config::parse();
 
     match config.command {
-        Commands::GenerateAndSubmitMintConfigTx {
-            node,
-            signing_key,
-            token_id,
-            tombstone,
-            nonce,
-        } => {
+        Commands::GenerateAndSubmitMintConfigTx { node, params } => {
             let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
             let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
             let client_api = ConsensusClientApiClient::new(ch.clone());
             let blockchain_api = BlockchainApiClient::new(ch);
 
-            let signer = Ed25519Pair::from(signing_key);
-
-            let tombstone_block = tombstone.unwrap_or_else(|| {
-                let last_block_info = blockchain_api
-                    .get_last_block_info(&Empty::new())
-                    .expect("get last block info");
-                last_block_info.index + MAX_TOMBSTONE_BLOCKS - 1
-            });
-
-            let nonce = nonce.map(|n| n.to_vec()).unwrap_or_else(|| {
-                let mut rng = thread_rng();
-                let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
-                rng.fill_bytes(&mut nonce);
-                nonce
-            });
-
-            let prefix = MintConfigTxPrefix {
-                token_id,
-                configs: vec![MintConfig {
-                    token_id,
-                    signer_set: SignerSet::new(vec![signer.public_key()], 1),
-                    mint_limit: 1000,
-                }],
-                nonce,
-                tombstone_block,
-            };
-
-            let message = prefix.hash();
-            let signature = MultiSig::new(vec![signer.try_sign(message.as_ref()).unwrap()]);
-            let tx = MintConfigTx { prefix, signature };
+            let tx = params
+                .try_into_mint_config_tx(|| {
+                    let last_block_info = blockchain_api
+                        .get_last_block_info(&Empty::new())
+                        .expect("get last block info");
+                    last_block_info.index + MAX_TOMBSTONE_BLOCKS - 1
+                })
+                .expect("failed creating tx");
 
             let resp = client_api
                 .propose_mint_config_tx(&(&tx).into())
@@ -76,53 +46,122 @@ fn main() {
             println!("response: {:?}", resp);
         }
 
-        Commands::GenerateAndSubmitMintTx {
-            node,
-            signing_key,
-            recipient,
-            token_id,
-            amount,
-            tombstone,
-            nonce,
-        } => {
+        Commands::GenerateMintConfigTx { out, params } => {
+            let tx = params
+                .try_into_mint_config_tx(|| panic!("missing tombstone block"))
+                .expect("failed creating tx");
+
+            let json = to_string_pretty(&tx).expect("failed serializing tx");
+
+            fs::write(out, json).expect("failed writing output file");
+        }
+
+        Commands::SubmitMintConfigTx { node, tx_filenames } => {
+            // Load all txs.
+            let txs: Vec<MintConfigTx> = load_json_files(&tx_filenames);
+
+            // All tx prefixes should be the same.
+            if !txs.windows(2).all(|pair| pair[0].prefix == pair[1].prefix) {
+                panic!("All txs must have the same prefix");
+            }
+
+            // Collect all signatures.
+            let mut signatures = txs
+                .iter()
+                .flat_map(|tx| tx.signature.signatures())
+                .cloned()
+                .collect::<Vec<_>>();
+            signatures.sort();
+            signatures.dedup();
+
+            let merged_tx = MintConfigTx {
+                prefix: txs[0].prefix.clone(),
+                signature: MultiSig::new(signatures),
+            };
+
+            let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
+            let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
+            let client_api = ConsensusClientApiClient::new(ch);
+
+            let resp = client_api
+                .propose_mint_config_tx(&(&merged_tx).into())
+                .expect("propose tx");
+            println!("response: {:?}", resp);
+        }
+
+        Commands::GenerateAndSubmitMintTx { node, params } => {
             let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
             let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
             let client_api = ConsensusClientApiClient::new(ch.clone());
             let blockchain_api = BlockchainApiClient::new(ch);
 
-            let signer = Ed25519Pair::from(signing_key);
-
-            let tombstone_block = tombstone.unwrap_or_else(|| {
-                let last_block_info = blockchain_api
-                    .get_last_block_info(&Empty::new())
-                    .expect("get last block info");
-                last_block_info.index + MAX_TOMBSTONE_BLOCKS - 1
-            });
-
-            let nonce = nonce.map(|n| n.to_vec()).unwrap_or_else(|| {
-                let mut rng = thread_rng();
-                let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
-                rng.fill_bytes(&mut nonce);
-                nonce
-            });
-
-            let prefix = MintTxPrefix {
-                token_id,
-                amount,
-                view_public_key: *recipient.view_public_key(),
-                spend_public_key: *recipient.spend_public_key(),
-                nonce,
-                tombstone_block,
-            };
-
-            let message = prefix.hash();
-            let signature = MultiSig::new(vec![signer.try_sign(message.as_ref()).unwrap()]);
-            let tx = MintTx { prefix, signature };
-
+            let tx = params
+                .try_into_mint_tx(|| {
+                    let last_block_info = blockchain_api
+                        .get_last_block_info(&Empty::new())
+                        .expect("get last block info");
+                    last_block_info.index + MAX_TOMBSTONE_BLOCKS - 1
+                })
+                .expect("failed creating tx");
             let resp = client_api
                 .propose_mint_tx(&(&tx).into())
                 .expect("propose tx");
             println!("response: {:?}", resp);
         }
+
+        Commands::GenerateMintTx { out, params } => {
+            let tx = params
+                .try_into_mint_tx(|| panic!("missing tombstone block"))
+                .expect("failed creating tx");
+
+            let json = to_string_pretty(&tx).expect("failed serializing tx");
+
+            fs::write(out, json).expect("failed writing output file");
+        }
+
+        Commands::SubmitMintTx { node, tx_filenames } => {
+            // Load all txs.
+            let txs: Vec<MintTx> = load_json_files(&tx_filenames);
+
+            // All tx prefixes should be the same.
+            if !txs.windows(2).all(|pair| pair[0].prefix == pair[1].prefix) {
+                panic!("All txs must have the same prefix");
+            }
+
+            // Collect all signatures.
+            let mut signatures = txs
+                .iter()
+                .flat_map(|tx| tx.signature.signatures())
+                .cloned()
+                .collect::<Vec<_>>();
+            signatures.sort();
+            signatures.dedup();
+
+            let merged_tx = MintTx {
+                prefix: txs[0].prefix.clone(),
+                signature: MultiSig::new(signatures),
+            };
+
+            let env = Arc::new(EnvBuilder::new().name_prefix("mint-client-grpc").build());
+            let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&node, &logger);
+            let client_api = ConsensusClientApiClient::new(ch);
+
+            let resp = client_api
+                .propose_mint_tx(&(&merged_tx).into())
+                .expect("propose tx");
+            println!("response: {:?}", resp);
+        }
     }
+}
+
+fn load_json_files<T: DeserializeOwned>(filenames: &[PathBuf]) -> Vec<T> {
+    filenames
+        .iter()
+        .map(|filename| {
+            let json = fs::read_to_string(filename)
+                .unwrap_or_else(|err| panic!("Failed reading file {:?}: {}", filename, err));
+            serde_json::from_str(&json)
+                .unwrap_or_else(|err| panic!("Failed parsing tx from file {:?}: {}", filename, err))
+        })
+        .collect()
 }

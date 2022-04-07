@@ -7,7 +7,7 @@ links = "mc-fog-report-api"
 
 [dependencies]
 futures = "0.3"
-grpcio = "0.10.0"
+grpcio = "0.10.1"
 protobuf = "2.22.1"
 
 mc-api = { path = "../../../api" }
@@ -18,7 +18,7 @@ mc-fog-report-types = { path = "../types" }
 [dev-dependencies]
 mc-attest-core = { path = "../../../attest/core", default-features = false }
 mc-fog-report-api-test-utils = { path = "test-utils" }
-prost = { version = "0.9", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../../util/build/grpc" }

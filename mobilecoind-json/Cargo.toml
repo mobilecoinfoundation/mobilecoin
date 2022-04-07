@@ -14,14 +14,14 @@ mc-common = { path = "../common", features = ["loggers"] }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
 mc-util-grpc = { path = "../util/grpc" }
 
-grpcio = "0.10.0"
+clap = { version = "3.1", features = ["derive", "env"] }
+grpcio = "0.10.1"
 hex = "0.4"
 protobuf = "2.22.1"
 rocket = { version = "0.4.10", default-features = false }
 rocket_contrib = { version = "0.4.10", default-features = false, features = ["json"] }
 serde = "1.0"
 serde_derive = "1.0"
-structopt = "0.3"
 
 [dev-dependencies]
 mc-crypto-keys = { path = "../crypto/keys" }

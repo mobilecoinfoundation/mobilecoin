@@ -7,6 +7,7 @@ use crate::mnemonic_acct::Error as MnemonicAccountError;
 use displaydoc::Display;
 use mc_account_keys::Error as AccountKeyError;
 use mc_account_keys_slip10::Error as Slip10Error;
+use mc_util_serial::DecodeError as MCUtilSerialDecodeError;
 use prost::{DecodeError, EncodeError};
 use serde_json::Error as JsonError;
 use std::io::Error as IoError;
@@ -73,5 +74,10 @@ impl From<MnemonicAccountError> for Error {
 impl From<Slip10Error> for Error {
     fn from(src: Slip10Error) -> Error {
         Error::KeyDerivation(src)
+    }
+}
+impl From<MCUtilSerialDecodeError> for Error {
+    fn from(src: MCUtilSerialDecodeError) -> Error {
+        Error::Decode(format!("prost deserialization failed: {}", src))
     }
 }

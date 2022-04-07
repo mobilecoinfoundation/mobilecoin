@@ -1,21 +1,23 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! A CLI tool for generating individual MobileCoin identities
 
 use bip39::{Language, Mnemonic};
+use clap::Parser;
 use mc_util_keyfile::{config::Config as GeneralConfig, keygen};
 use rand::{RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
-use structopt::StructOpt;
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Config {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub general: GeneralConfig,
 
+    /// The key name.
     pub name: String,
 }
 fn main() {
-    let config = Config::from_args();
+    let config = Config::parse();
     let path = config
         .general
         .output_dir

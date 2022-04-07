@@ -1,0 +1,27 @@
+[package]
+name = "mc-test-vectors-memos"
+version = "1.3.0-pre0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+# MC Dependencies
+mc-test-vectors-definitions = { path = "../definitions" }
+
+# External Dependencies
+hex = "0.4"
+rand = { version = "0.8", default_features = false }
+
+[build-dependencies]
+# MC Dependencies
+mc-account-keys = { path = "../../account-keys" }
+mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-test-vectors-definitions = { path = "../definitions" }
+mc-transaction-std = { path = "../../transaction/std"}
+mc-util-from-random = { path = "../../util/from-random" }
+mc-util-serial = { path = "../../util/serial", default-features = false }
+mc-util-test-vector = { path = "../../util/test-vector" }
+
+# External Dependencies
+hex = "0.4"
+rand = { version = "0.8", default_features = false }

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This unix command-line tool exposes the balance check functionality of
 //! fog-sample-paykit in a way compatible with the fog-conformance-test. (It
@@ -14,6 +14,7 @@
 //! didn't have the expected value). See fog-conformance-test documentation for
 //! more details.
 
+use clap::Parser;
 use mc_common::logger::{create_root_logger, log};
 use mc_fog_sample_paykit::ClientBuilder;
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
@@ -24,29 +25,28 @@ use std::{
     path::PathBuf,
     str::FromStr,
 };
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Config {
     /// Path to root identity file to use
     /// Note: This contains the fog-url which is the same as the report-server
     /// uri
-    #[structopt(long)]
+    #[clap(long, env = "MC_KEYFILE")]
     pub keyfile: PathBuf,
 
     /// Ledger server URI
-    #[structopt(long)]
+    #[clap(long, env = "MC_LEDGER_URI")]
     pub ledger_uri: FogLedgerUri,
 
     /// View server URI
-    #[structopt(long)]
+    #[clap(long, env = "MC_VIEW_URI")]
     pub view_uri: FogViewUri,
 }
 
 fn main() {
     // Logging must go to stderr to not interfere with STDOUT
     std::env::set_var("MC_LOG_STDERR", "1");
-    let config = Config::from_args();
+    let config = Config::parse();
     let logger = create_root_logger();
 
     let account_key =

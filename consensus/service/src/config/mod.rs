@@ -1,24 +1,27 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Configuration parameters for the Consensus Service application.
+#![deny(missing_docs)]
 
 mod network;
 mod tokens;
 
 use crate::config::{network::NetworkConfig, tokens::TokensConfig};
+use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::{NodeID, ResponderId};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private};
 use mc_transaction_core::BlockVersion;
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::{AdminUri, ConsensusClientUri as ClientUri, ConsensusPeerUri as PeerUri};
-use std::{fmt::Debug, path::PathBuf, string::String, sync::Arc, time::Duration};
-use structopt::StructOpt;
+use std::{fmt::Debug, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 
-#[derive(Clone, Debug, StructOpt)]
-#[structopt(
+/// Configuration parameters for the Consensus Service application.
+#[derive(Clone, Debug, Parser)]
+#[clap(
     name = "consensus_service",
-    about = "The MobileCoin Consensus Service."
+    about = "The MobileCoin Consensus Service.",
+    version
 )]
 pub struct Config {
     /// Peer Responder ID
@@ -26,11 +29,11 @@ pub struct Config {
     /// This ID needs to match the host:port remote peers use when connecting to
     /// this node. This node is uniquely identified in the network by this
     /// ID as well as the public key derived from the msg-signer-key.
-    #[structopt(long)]
+    #[clap(long, env = "MC_PEER_RESPONDER_ID")]
     pub peer_responder_id: ResponderId,
 
     /// The ID with which to respond to client attestation requests.
-    #[structopt(long)]
+    #[clap(long, env = "MC_CLIENT_RESPONDER_ID")]
     pub client_responder_id: ResponderId,
 
     /// The keypair with which to sign consensus messages.
@@ -38,82 +41,77 @@ pub struct Config {
     /// The value provided via config is the keypair derived from the input
     /// base64 DER-encoded private key.
     // FIXME: MC-973, get Ed25519 Pair from PEM
-    #[structopt(long, parse(try_from_str=keypair_from_base64))]
+    #[clap(long, parse(try_from_str = keypair_from_base64), env = "MC_MSG_SIGNER_KEY")]
     pub msg_signer_key: Arc<Ed25519Pair>,
 
     /// The location for the network.toml/json configuration file.
-    #[structopt(long = "network", parse(from_os_str))]
+    #[clap(long = "network", parse(from_os_str), env = "MC_NETWORK")]
     pub network_path: PathBuf,
 
     /// Your Intel IAS API key.
-    #[structopt(long)]
+    #[clap(long, env = "MC_IAS_API_KEY")]
     pub ias_api_key: String,
 
     /// The Service Provider ID (SPID) associated with your Intel IAS API Key.
-    #[structopt(long)]
+    #[clap(long, env = "MC_IAS_SPID")]
     pub ias_spid: ProviderId,
 
     /// The location on which to listen for peer traffic.
     ///
     /// The local node id is derived from the peer_listen_uri.
-    #[structopt(long, default_value = "insecure-mcp://0.0.0.0:8080/")]
+    #[clap(
+        long,
+        default_value = "insecure-mcp://0.0.0.0:8080/",
+        env = "MC_PEER_LISTEN_URI"
+    )]
     pub peer_listen_uri: PeerUri,
 
     /// Client listening URI.
-    #[structopt(long, default_value = "insecure-mc://0.0.0.0:3223/")]
+    #[clap(
+        long,
+        default_value = "insecure-mc://0.0.0.0:3223/",
+        env = "MC_CLIENT_LISTEN_URI"
+    )]
     pub client_listen_uri: ClientUri,
 
     /// Optional admin listening URI.
-    #[structopt(long)]
+    #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
     pub admin_listen_uri: Option<AdminUri>,
 
     /// The location to write the externalized blocks for the ledger.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str), env = "MC_LEDGER_PATH")]
     pub ledger_path: PathBuf,
 
     /// The location from which to load the origin block.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str), env = "MC_ORIGIN_BLOCK_PATH")]
     pub origin_block_path: Option<PathBuf>,
 
     /// SCP debug output.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str), env = "MC_SCP_DEBUG_DUMP")]
     pub scp_debug_dump: Option<PathBuf>,
 
     /// Path to the sealed block signing key
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, parse(from_os_str), env = "MC_SEALED_BLOCK_SIGNING_KEY")]
     pub sealed_block_signing_key: PathBuf,
 
     /// Enables authenticating client requests using Authorization tokens using
     /// the provided hex-encoded 32 bytes shared secret.
-    #[structopt(long, parse(try_from_str=hex::FromHex::from_hex))]
+    #[clap(long, parse(try_from_str = hex::FromHex::from_hex), env = "MC_CLIENT_AUTH_TOKEN_SECRET")]
     pub client_auth_token_secret: Option<[u8; 32]>,
 
     /// Maximal client authentication token lifetime, in seconds (only relevant
     /// when --client-auth-token-secret is used. Defaults to 86400 - 24
     /// hours).
-    #[structopt(long, default_value = "86400", parse(try_from_str=parse_duration_in_seconds))]
+    #[clap(long, default_value = "86400", parse(try_from_str = parse_duration_in_seconds), env = "MC_CLIENT_AUTH_TOKEN_MAX_LIFETIME")]
     pub client_auth_token_max_lifetime: Duration,
 
     /// The location for the network.toml/json configuration file.
-    #[structopt(long = "tokens", parse(from_os_str))]
+    #[clap(long = "tokens", parse(from_os_str), env = "MC_TOKENS")]
     pub tokens_path: Option<PathBuf>,
 
     /// The configured block version
-    #[structopt(long, env = "MC_BLOCK_VERSION", default_value = "1")]
+    #[clap(long, default_value = "0", parse(try_from_str = parse_block_version), env = "MC_BLOCK_VERSION")]
     pub block_version: BlockVersion,
-}
-
-/// Decodes an Ed25519 private key.
-///
-/// # Arguments
-/// * `private_key` - A DER formatted, Base64 encoded Ed25519 private key.
-fn keypair_from_base64(private_key: &str) -> Result<Arc<Ed25519Pair>, String> {
-    let privkey_bytes = base64::decode_config(private_key, base64::STANDARD)
-        .map_err(|err| format!("Could not decode private key from base64 {:?}", err))?;
-
-    let secret_key = Ed25519Private::try_from_der(privkey_bytes.as_slice())
-        .map_err(|err| format!("Could not get Ed25519Private from der {:?}", err))?;
-    Ok(Arc::new(Ed25519Pair::from(secret_key)))
 }
 
 impl Config {
@@ -151,12 +149,31 @@ impl Config {
     }
 }
 
+/// Decodes an Ed25519 private key.
+///
+/// # Arguments
+/// * `private_key` - A DER formatted, Base64 encoded Ed25519 private key.
+fn keypair_from_base64(private_key: &str) -> Result<Arc<Ed25519Pair>, String> {
+    let privkey_bytes = base64::decode_config(private_key, base64::STANDARD)
+        .map_err(|err| format!("Could not decode private key from base64 {:?}", err))?;
+
+    let secret_key = Ed25519Private::try_from_der(privkey_bytes.as_slice())
+        .map_err(|err| format!("Could not get Ed25519Private from der {:?}", err))?;
+    Ok(Arc::new(Ed25519Pair::from(secret_key)))
+}
+
+/// Helper for parsing a BlockVersion
+fn parse_block_version(s: &str) -> Result<BlockVersion, String> {
+    // FromStr for BlockVersion uses BlockVersionError, which is not easily
+    // convertible to dyn StdError, so use String (which is convertible).
+    BlockVersion::from_str(s).map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use mc_consensus_enclave::FeeMap;
     use mc_transaction_core::{tokens::Mob, Token};
-    use std::str::FromStr;
 
     #[test]
     fn test_local_uris_with_pubkey() {
@@ -180,7 +197,7 @@ mod tests {
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Duration::from_secs(60),
             tokens_path: None,
-            block_version: BlockVersion::ONE,
+            block_version: BlockVersion::ZERO,
         };
 
         assert_eq!(
@@ -247,7 +264,7 @@ mod tests {
             client_auth_token_secret: None,
             client_auth_token_max_lifetime: Duration::from_secs(60),
             tokens_path: None,
-            block_version: BlockVersion::ONE,
+            block_version: BlockVersion::ZERO,
         };
 
         assert_eq!(

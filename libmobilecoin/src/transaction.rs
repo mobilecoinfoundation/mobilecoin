@@ -347,7 +347,7 @@ pub extern "C" fn mc_transaction_builder_create(
                 });
         // FIXME: block version should be a parameter, it should be the latest
         // version that fog ledger told us about, or that we got from ledger-db
-        let block_version = BlockVersion::ONE;
+        let block_version = BlockVersion::ZERO;
 
         // TODO #1596: Support token id other than Mob
         let token_id = Mob::ID;

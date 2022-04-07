@@ -1,4 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
+#![doc = include_str!("../README.md")]
+#![deny(missing_docs)]
 
 mod error;
 mod json_format;
@@ -12,8 +14,7 @@ use crate::error::Error;
 use bip39::Mnemonic;
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use mc_api::printable::PrintableWrapper;
-use prost::Message;
-use std::{convert::TryInto, fs, fs::File, io, io::prelude::*, path::Path};
+use std::{convert::TryInto, fs::File, io, io::prelude::*, path::Path};
 
 /// Write a user's account details to disk
 pub fn write_keyfile<P: AsRef<Path>>(
@@ -58,15 +59,23 @@ pub fn read_keyfile_data<R: io::Read>(buffer: R) -> Result<AccountKey, Error> {
 
 /// Write user public address to disk
 pub fn write_pubfile<P: AsRef<Path>>(path: P, addr: &PublicAddress) -> Result<(), Error> {
-    let mut buf = Vec::with_capacity(addr.encoded_len());
-    addr.encode(&mut buf)?;
-    fs::write(path, buf)?;
+    File::create(path)?.write_all(&mc_util_serial::encode(addr))?;
     Ok(())
 }
-
 /// Read user public address from disk
 pub fn read_pubfile<P: AsRef<Path>>(path: P) -> Result<PublicAddress, Error> {
-    Ok(PublicAddress::decode(fs::read(path)?.as_slice())?)
+    read_pubfile_data(&mut File::open(path)?)
+}
+
+/// Read user pubfile from any implementor of `Read`
+pub fn read_pubfile_data<R: std::io::Read>(buffer: &mut R) -> Result<PublicAddress, Error> {
+    let data = {
+        let mut data = Vec::new();
+        buffer.read_to_end(&mut data)?;
+        data
+    };
+    let result: PublicAddress = mc_util_serial::decode(&data)?;
+    Ok(result)
 }
 
 /// Write user b58 public address to disk

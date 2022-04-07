@@ -1,7 +1,9 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! Configuration parameters for the Fog Ingest Node
 
+use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::ResponderId;
 use mc_fog_sql_recovery_db::SqlRecoveryDbConnectionConfig;
@@ -10,47 +12,52 @@ use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
 use serde::Serialize;
 use std::{path::PathBuf, time::Duration};
-use structopt::StructOpt;
 
-/// StructOpt configuration options for an Ingest Server
-#[derive(Clone, Serialize, StructOpt)]
+/// Command-line configuration options for an Ingest Server
+#[derive(Clone, Serialize, Parser)]
+#[clap(version)]
 pub struct IngestConfig {
     /// The IAS SPID to use when getting a quote
-    #[structopt(long)]
+    #[clap(long, env = "MC_IAS_SPID")]
     pub ias_spid: ProviderId,
 
     /// PEM-formatted keypair to send with an Attestation Request.
-    #[structopt(long)]
+    #[clap(long, env = "MC_IAS_API_KEY")]
     pub ias_api_key: String,
 
     /// Path to watcher db (lmdb) - includes block timestamps
-    #[structopt(long)]
+    #[clap(long, env = "MC_WATCHER_DB")]
     pub watcher_db: PathBuf,
 
     /// Local Ingest Node ID
-    #[structopt(long)]
+    #[clap(long, env = "MC_LOCAL_NODE_ID")]
     pub local_node_id: ResponderId,
 
     /// gRPC listening URI for client requests.
-    #[structopt(long)]
+    #[clap(long, env = "MC_CLIENT_LISTEN_URI")]
     pub client_listen_uri: FogIngestUri,
 
     /// gRPC listening URI for peer requests.
-    #[structopt(long)]
+    #[clap(long, env = "MC_PEER_LISTEN_URI")]
     pub peer_listen_uri: IngestPeerUri,
 
     /// List of all peers in this cluster
-    #[structopt(long, use_delimiter = true)]
+    /// Sample usages:
+    ///     --peers mc://foo:123 --peers mc://bar:456
+    ///     --peers mc://foo:123,mc://bar:456
+    ///     env MC_PEERS=mc://foo:123,mc://bar:456
+
+    #[clap(long, use_value_delimiter = true, env = "MC_PEERS")]
     pub peers: Vec<IngestPeerUri>,
 
     /// Path to ledger db (lmdb), used for ingest in a polling fashion
-    #[structopt(long)]
+    #[clap(long, env = "MC_LEDGER_DB")]
     pub ledger_db: PathBuf,
 
     /// report_id associated the reports produced by this ingest service.
     /// This should match what appears in users' public addresses.
     /// Defaults to empty string.
-    #[structopt(long, default_value = "")]
+    #[clap(long, default_value = "", env = "MC_FOG_REPORT_ID")]
     pub fog_report_id: String,
 
     /// Capacity of table for user rng's.
@@ -63,40 +70,40 @@ pub struct IngestConfig {
     ///
     /// This determines the memory utilization / storage requirement of the
     /// server.
-    #[structopt(long, default_value = "262144")]
+    #[clap(long, default_value = "262144", env = "MC_USER_CAPACITY")]
     pub user_capacity: u64,
 
     /// Max number of transactions ingest can eat at one time.  This is mostly
     /// determined by SGX memory allocation limits, so it must be configurable
-    #[structopt(long, default_value = "100000")]
+    #[clap(long, default_value = "100000", env = "MC_MAX_TRANSACTIONS")]
     pub max_transactions: usize,
 
     /// The amount we add to current block height to compute pubkey_expiry in
     /// reports
-    #[structopt(long, default_value = "100")]
+    #[clap(long, default_value = "100", env = "MC_PUBKEY_EXPIRY_WINDOW")]
     pub pubkey_expiry_window: u64,
 
     /// How often the active server checks up on each of the peer backups
     /// Defaults to once a minute
-    #[structopt(long, default_value = "60", parse(try_from_str=parse_duration_in_seconds))]
+    #[clap(long, default_value = "60", parse(try_from_str = parse_duration_in_seconds), env = "MC_PEER_CHECKUP_PERIOD")]
     pub peer_checkup_period: Duration,
 
     /// The amount of time we wait for the watcher db to catchup if it falls
     /// behind If this timeout is exceeded then the ETxOut's will have no
     /// timestamp
-    #[structopt(long, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
+    #[clap(long, default_value = "5", parse(try_from_str = parse_duration_in_seconds), env = "MC_WATCHER_TIMEOUT")]
     pub watcher_timeout: Duration,
 
     /// Optional admin listening URI.
-    #[structopt(long)]
+    #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
     pub admin_listen_uri: Option<AdminUri>,
 
     /// State file, defaults to ~/.mc-fog-ingest-state
-    #[structopt(long)]
+    #[clap(long, env = "MC_STATE_FILE")]
     pub state_file: Option<PathBuf>,
 
     /// Postgres config
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub postgres_config: SqlRecoveryDbConnectionConfig,
 }
 
@@ -105,7 +112,7 @@ mod tests {
     use super::*;
     #[test]
     fn ingest_server_config_example() {
-        let config = IngestConfig::from_iter_safe(
+        let config = IngestConfig::try_parse_from(
          &["/usr/bin/fog_ingest_server",
       "--ledger-db", "/fog-data/ledger",
       "--watcher-db", "/fog-data/watcher",

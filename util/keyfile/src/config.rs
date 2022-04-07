@@ -1,42 +1,37 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+//! Configuration parameters for generating key files for a new user identity
+use clap::Parser;
+use hex::FromHex;
+use std::{fs, path::PathBuf};
 
-use std::{cmp, fs, path::PathBuf};
-
-use structopt::StructOpt;
-
-// Hack to work around Vec special handling in structopt
+// Hack to work around Vec special handling in clap
 type VecBytes = Vec<u8>;
 /// Configuration for generating key files for a new user identity
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 pub struct Config {
     /// Fog Report URL
-    #[structopt(long)]
+    #[clap(short, long, env = "MC_FOG_REPORT_URL")]
     pub fog_report_url: Option<String>,
 
     /// Fog Report ID
-    #[structopt(long)]
+    #[clap(short, long, env = "MC_FOG_REPORT_ID")]
     pub fog_report_id: Option<String>,
 
     /// Fog Authority subjectPublicKeyInfo, loaded from a PEM root certificate
-    #[structopt(long = "fog-authority-root", parse(try_from_str=load_spki_from_pemfile))]
+    #[clap(short, long, parse(try_from_str = load_spki_from_pemfile), env = "MC_FOG_AUTHORITY_ROOT")]
     pub fog_authority_root: Option<VecBytes>,
 
     /// Fog Authority subjectPublicKeyInfo, encoded in base 64
-    #[structopt(long = "fog-authority-spki", parse(try_from_str=decode_base64))]
+    #[clap(short, long, parse(try_from_str = decode_base64), env = "MC_FOG_AUTHORITY_SPKI")]
     pub fog_authority_spki: Option<VecBytes>,
 
     /// Output directory, defaults to current directory.
-    #[structopt(long)]
+    #[clap(long, env = "MC_OUTPUT_DIR")]
     pub output_dir: Option<PathBuf>,
 
-    /// Seed to use to generate entropy
-    #[structopt(
-        short,
-        long,
-        parse(try_from_str=parse_seed),
-        env = "MC_SEED",
-        default_value = "0101010101010101010101010101010101010101010101010101010101010101"
-    )]
+    /// Seed to use when generating keys (e.g.
+    /// 1234567812345678123456781234567812345678123456781234567812345678).
+    #[clap(short, long, parse(try_from_str = FromHex::from_hex), env = "MC_SEED")]
     pub seed: [u8; 32],
 }
 
@@ -55,15 +50,4 @@ fn load_spki_from_pemfile(src: &str) -> Result<Vec<u8>, String> {
 /// Given the spki bytes as base64, decode them
 fn decode_base64(src: &str) -> Result<VecBytes, String> {
     base64::decode(src).map_err(|e| e.to_string())
-}
-
-/// Parse a hex seed value into 32 bytes
-fn parse_seed(s: &str) -> Result<[u8; 32], String> {
-    hex::decode(s)
-        .map(|mc_seed_bytes| {
-            let mut retval = [0u8; 32];
-            retval.copy_from_slice(&mc_seed_bytes[..cmp::min(32, mc_seed_bytes.len())]);
-            retval
-        })
-        .map_err(|e| format!("{}", e))
 }

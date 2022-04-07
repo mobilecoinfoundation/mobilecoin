@@ -1128,7 +1128,7 @@ pub mod tests {
             .map(|account| account.default_subaddress())
             .collect::<Vec<_>>();
         get_blocks(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &recipient_pub_keys,
             10,
             1,

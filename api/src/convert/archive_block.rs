@@ -159,7 +159,7 @@ mod tests {
                 ..Default::default()
             };
             let block = Block::new(
-                BlockVersion::ONE,
+                BlockVersion::ZERO,
                 &parent_block_id,
                 99 + block_idx,
                 400 + block_idx,

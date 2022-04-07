@@ -7,6 +7,7 @@ use core::{fmt::Debug, time::Duration};
 
 /// Abstraction for getting the current time.
 pub trait TimeProvider: Sync + Send {
+    /// Error type
     type Error: Clone + Debug;
 
     /// Get the duration of time passed since the unix epoch.
@@ -59,6 +60,7 @@ cfg_if::cfg_if! {
         }
 
         impl MockTimeProvider {
+            /// Set a value for the next from_epoch call
             pub fn set_cur_since_epoch(&self, new_cur_since_epoch: Duration) {
                 let mut inner = self.cur_since_epoch.lock().expect("mutex poisoned");
                 *inner = new_cur_since_epoch;

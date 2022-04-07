@@ -1,6 +1,9 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+//! Fog test helpers
+
 #![allow(non_snake_case)]
+#![deny(missing_docs)]
 
 pub mod db_tests;
 pub mod mock_client;
@@ -156,7 +159,7 @@ pub fn test_block<T: RngCore + CryptoRng, C: FogViewConnection>(
             .get_block(block_index - 1)
             .unwrap_or_else(|err| panic!("Failed getting block {}: {:?}", block_index - 1, err));
         let block = Block::new_with_parent(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &parent_block,
             &Default::default(),
             &block_contents,

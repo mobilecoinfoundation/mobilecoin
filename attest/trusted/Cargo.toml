@@ -10,4 +10,4 @@ mc-sgx-compat = { path = "../../sgx/compat" }
 mc-sgx-types = { path = "../../sgx/types" }
 
 displaydoc = { version = "0.2", default-features = false }
-prost = { version = "0.9", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.10", default-features = false, features = ["prost-derive"] }

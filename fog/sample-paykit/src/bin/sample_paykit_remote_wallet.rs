@@ -1,9 +1,10 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A GRPC server that implements the `RemoteWallet` service using the sample
 //! paykit. This can be used by the fog conformance tests to run tests against
 //! the sample paykit.
 
+use clap::Parser;
 use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_account_keys::AccountKey;
 use mc_common::logger::{create_root_logger, log, Logger};
@@ -30,7 +31,6 @@ use std::{
     thread::sleep,
     time::Duration,
 };
-use structopt::StructOpt;
 
 /// Remote Wallet Uri Scheme
 #[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
@@ -56,10 +56,14 @@ struct State {
     clients: Vec<Option<Client>>,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Config {
     /// gRPC listening URI for client requests.
-    #[structopt(long, default_value = "insecure-remote-wallet://127.0.0.1:9090")]
+    #[clap(
+        long,
+        default_value = "insecure-remote-wallet://127.0.0.1:9090",
+        env = "MC_LISTEN_URI"
+    )]
     pub listen_uri: RemoteWalletUri,
 }
 
@@ -268,7 +272,7 @@ impl RemoteWalletApi for RemoteWalletService {
 }
 
 fn main() {
-    let config = Config::from_args();
+    let config = Config::parse();
     let logger = create_root_logger();
 
     log::info!(logger, "Starting RPC server.");

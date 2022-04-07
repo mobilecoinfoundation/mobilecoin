@@ -322,13 +322,15 @@ mod tests {
     use mc_ledger_db::Ledger;
     use mc_peers::{MockBroadcast, ThreadedBroadcaster};
     use mc_peers_test_utils::MockPeerConnection;
-    use mc_transaction_core::BlockVersion;
+    use mc_transaction_core::{Block, BlockContents, BlockVersion, TokenId};
     use mc_transaction_core_test_utils::{
-        create_ledger, create_transaction, initialize_ledger, AccountKey,
+        create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_transaction,
+        initialize_ledger, AccountKey,
     };
     use mc_util_from_random::FromRandom;
     use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri, ConsensusPeerUri};
     use rand::{rngs::StdRng, SeedableRng};
+    use serial_test::serial;
     use std::{
         collections::BTreeSet,
         convert::TryInto,
@@ -339,7 +341,7 @@ mod tests {
     };
 
     // Run these tests with a particular block version
-    const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
+    const BLOCK_VERSION: BlockVersion = BlockVersion::ZERO;
 
     fn test_peer_uri(node_id: u32, pubkey: String) -> PeerUri {
         PeerUri::from_str(&format!(
@@ -410,6 +412,7 @@ mod tests {
     }
 
     #[test_with_logger]
+    #[serial(counters)]
     fn test_is_behind(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([216u8; 32]);
 
@@ -478,6 +481,7 @@ mod tests {
     // Initially, ByzantineLedger should emit the normal SCPStatements from
     // single-slot consensus.
     #[test_with_logger]
+    #[serial(counters)]
     fn test_single_slot_consensus(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([209u8; 32]);
 
@@ -831,5 +835,317 @@ mod tests {
     // normal SCPStatements from single-slot consensus.
     fn test_ledger_sync() {
         unimplemented!()
+    }
+
+    // ByzantineLedger should emit the normal SCPStatements from
+    // single-slot consensus that contains mint txs.
+    #[test_with_logger]
+    #[serial(counters)]
+    fn test_single_slot_consensus_on_mint_txs(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([209u8; 32]);
+
+        // Other nodes.
+        let peers = get_peers(&[22, 33, 44], &mut rng);
+
+        let node_a = peers[0].clone();
+        let node_b = peers[1].clone();
+
+        // Local node.
+        let (local_node_id, _, local_signer_key) = get_local_node_config(11);
+
+        // Local node's quorum set.
+        let local_quorum_set =
+            QuorumSet::new_with_node_ids(2, vec![node_a.id.clone(), node_b.id.clone()]);
+
+        // Local node's Ledger.
+        let mut ledger = create_ledger();
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(BLOCK_VERSION, &mut ledger, 1, &sender, &mut rng);
+
+        // Generate a mint config and put it in the ledger so that validation of MintTxs
+        // can take place.
+        let token_id1 = TokenId::from(1);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+        let block_contents = BlockContents {
+            mint_config_txs: vec![mint_config_tx1],
+            ..Default::default()
+        };
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        // Mock peer_manager
+        let mock_peer = MockPeerConnection::new(
+            node_a.uri.clone(),
+            local_node_id.clone(),
+            ledger.clone(),
+            10,
+        );
+
+        // We use this later to examine the messages received by this peer.
+        let mock_peer_state = mock_peer.state.clone();
+
+        // Set up peer_manager.
+        let peer_manager = ConnectionManager::new(
+            vec![
+                mock_peer,
+                MockPeerConnection::new(
+                    node_b.uri.clone(),
+                    local_node_id.clone(),
+                    ledger.clone(),
+                    10,
+                ),
+            ],
+            logger.clone(),
+        );
+
+        let broadcaster = Arc::new(Mutex::new(ThreadedBroadcaster::new(
+            &peer_manager,
+            &mc_peers::ThreadedBroadcasterFibonacciRetryPolicy::default(),
+            logger.clone(),
+        )));
+
+        let enclave = ConsensusServiceMockEnclave::default();
+        enclave.blockchain_config.lock().unwrap().block_version = BlockVersion::MAX;
+
+        let tx_manager = Arc::new(TxManagerImpl::new(
+            enclave.clone(),
+            DefaultTxManagerUntrustedInterfaces::new(ledger.clone()),
+            logger.clone(),
+        ));
+
+        let mint_tx_manager = Arc::new(MintTxManagerImpl::new(
+            ledger.clone(),
+            BlockVersion::MAX,
+            Default::default(),
+            logger.clone(),
+        ));
+
+        let byzantine_ledger = ByzantineLedger::new(
+            local_node_id.clone(),
+            local_quorum_set.clone(),
+            peer_manager,
+            ledger.clone(),
+            tx_manager,
+            mint_tx_manager,
+            broadcaster,
+            local_signer_key.clone(),
+            Vec::new(),
+            None,
+            logger.clone(),
+        );
+
+        // Initially, there should be no messages to the network.
+        {
+            assert_eq!(
+                mock_peer_state
+                    .lock()
+                    .expect("Could not lock mock peer state")
+                    .msgs
+                    .len(),
+                0
+            );
+        }
+
+        // Generate and submit transactions.
+        let tx1 = create_mint_tx(
+            token_id1,
+            &[Ed25519Pair::from(signers1[0].private_key())],
+            10,
+            &mut rng,
+        );
+        let tx2 = create_mint_tx(
+            token_id1,
+            &[Ed25519Pair::from(signers1[0].private_key())],
+            20,
+            &mut rng,
+        );
+        let tx3 = create_mint_tx(
+            token_id1,
+            &[Ed25519Pair::from(signers1[0].private_key())],
+            30,
+            &mut rng,
+        );
+
+        byzantine_ledger.push_values(
+            vec![
+                ConsensusValue::MintTx(tx1.clone()),
+                ConsensusValue::MintTx(tx2.clone()),
+                ConsensusValue::MintTx(tx3.clone()),
+            ],
+            Some(Instant::now()),
+        );
+
+        let num_blocks = ledger.num_blocks().unwrap();
+        let slot_index = num_blocks as SlotIndex;
+
+        // After some time, this node should nominate its client values.
+        let expected_msg = ConsensusMsg::from_scp_msg(
+            &ledger,
+            Msg::new(
+                local_node_id.clone(),
+                local_quorum_set.clone(),
+                slot_index,
+                Topic::Nominate(NominatePayload {
+                    X: BTreeSet::from_iter(vec![
+                        ConsensusValue::MintTx(tx1.clone()),
+                        ConsensusValue::MintTx(tx2.clone()),
+                        ConsensusValue::MintTx(tx3.clone()),
+                    ]),
+                    Y: BTreeSet::default(),
+                }),
+            ),
+            &local_signer_key,
+        )
+        .unwrap();
+
+        let deadline = Instant::now() + Duration::from_secs(60);
+        while Instant::now() < deadline {
+            {
+                if mock_peer_state
+                    .lock()
+                    .expect("Could not lock mock peer state")
+                    .msgs
+                    .contains(&expected_msg)
+                {
+                    break;
+                }
+            }
+
+            thread::sleep(Duration::from_millis(100 as u64));
+        }
+
+        {
+            let msgs = &mock_peer_state
+                .lock()
+                .expect("Could not lock mock peer state")
+                .msgs;
+            assert!(
+                msgs.contains(&expected_msg),
+                "Nominate msg not found. msgs={:#?}",
+                msgs,
+            );
+        }
+
+        // Push ballot statements from node_a and node_b so that consensus is reached.
+        byzantine_ledger.handle_consensus_msg(
+            ConsensusMsg::from_scp_msg(
+                &ledger,
+                Msg::new(
+                    node_a.id.clone(),
+                    node_a.quorum_set.clone(),
+                    slot_index,
+                    Topic::Commit(CommitPayload {
+                        B: Ballot::new(
+                            100,
+                            &[
+                                ConsensusValue::MintTx(tx1.clone()),
+                                ConsensusValue::MintTx(tx2.clone()),
+                                ConsensusValue::MintTx(tx3.clone()),
+                            ],
+                        ),
+                        PN: 77,
+                        CN: 55,
+                        HN: 66,
+                    }),
+                ),
+                &node_a.signer_key,
+            )
+            .unwrap()
+            .try_into()
+            .unwrap(),
+            node_a.id.responder_id.clone(),
+        );
+
+        byzantine_ledger.handle_consensus_msg(
+            ConsensusMsg::from_scp_msg(
+                &ledger,
+                Msg::new(
+                    node_b.id.clone(),
+                    node_b.quorum_set.clone(),
+                    slot_index,
+                    Topic::Commit(CommitPayload {
+                        B: Ballot::new(
+                            100,
+                            &[
+                                ConsensusValue::MintTx(tx1.clone()),
+                                ConsensusValue::MintTx(tx2.clone()),
+                                ConsensusValue::MintTx(tx3.clone()),
+                            ],
+                        ),
+                        PN: 77,
+                        CN: 55,
+                        HN: 66,
+                    }),
+                ),
+                &node_b.signer_key,
+            )
+            .unwrap()
+            .try_into()
+            .unwrap(),
+            node_a.id.responder_id,
+        );
+
+        // After some time, this node should emit some statements and write a new block
+        // to its ledger.
+        let deadline = Instant::now() + Duration::from_secs(60);
+        while Instant::now() < deadline {
+            let num_blocks_after = ledger.num_blocks().unwrap();
+            if num_blocks_after > num_blocks {
+                break;
+            }
+
+            thread::sleep(Duration::from_millis(100 as u64));
+        }
+
+        let mut emitted_msgs = mock_peer_state
+            .lock()
+            .expect("Could not lock peer state")
+            .msgs
+            .clone();
+        assert!(!emitted_msgs.is_empty());
+        assert_eq!(
+            emitted_msgs.pop_back().unwrap(),
+            ConsensusMsg::from_scp_msg(
+                &ledger,
+                Msg::new(
+                    local_node_id,
+                    local_quorum_set,
+                    slot_index,
+                    Topic::Externalize(ExternalizePayload {
+                        C: Ballot::new(
+                            55,
+                            &[
+                                ConsensusValue::MintTx(tx1.clone()),
+                                ConsensusValue::MintTx(tx2.clone()),
+                                ConsensusValue::MintTx(tx3.clone()),
+                            ]
+                        ),
+                        HN: 66,
+                    }),
+                ),
+                &local_signer_key
+            )
+            .unwrap(),
+        );
+
+        // The local ledger should now contain a new block.
+        let num_blocks_after = ledger.num_blocks().unwrap();
+        assert_eq!(num_blocks + 1, num_blocks_after);
+
+        // The block should have a valid signature.
+        let block = ledger.get_block(num_blocks).unwrap();
+        let signature = ledger.get_block_signature(num_blocks).unwrap();
+
+        let signature_verification_result = signature.verify(&block);
+        assert!(signature_verification_result.is_ok());
     }
 }
