@@ -868,8 +868,8 @@ void mc_memo_builder_free(FfiOptOwnedPtr<McTxOutMemoBuilder> memo_builder);
  *
  * * `sender_memo_data` - must be 64 bytes
  * * `sender_public_address` - must be a valid `PublicAddress`.
- * * `receiving_subaddress_view_private_key` - must be a valid
- *     32-byte Ristretto-format scalar.
+ * * `receiving_subaddress_view_private_key` - must be a valid 32-byte
+ *   Ristretto-format scalar.
  * * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
  *
  * # Errors
@@ -887,8 +887,8 @@ bool mc_memo_sender_memo_is_valid(FfiRefPtr<McBuffer> sender_memo_data,
  * # Preconditions
  *
  * * `sender_account_key` - must be a valid account key
- * * `recipient_subaddress_view_public_key` - must be a valid
- *     32-byte Ristretto-format scalar.
+ * * `recipient_subaddress_view_public_key` - must be a valid 32-byte
+ *   Ristretto-format scalar.
  * * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
  * * `out_memo_data` - length must be >= 64.
  *
@@ -919,8 +919,8 @@ bool mc_memo_sender_memo_get_address_hash(FfiRefPtr<McBuffer> sender_memo_data,
 /**
  * # Preconditions
  *
- * * `destination_public_address` - must be a valid 32-byte
- *     Ristretto-format scalar.
+ * * `destination_public_address` - must be a valid 32-byte Ristretto-format
+ *   scalar.
  * * `number_of_recipients` - must be > 0
  * * `out_memo_data` - length must be >= 64.
  *
@@ -993,8 +993,8 @@ bool mc_memo_destination_memo_get_total_outlay(FfiRefPtr<McBuffer> destination_m
  *
  * * `sender_with_payment_request_memo_data` - must be 64 bytes
  * * `sender_public_address` - must be a valid `PublicAddress`.
- * * `receiving_subaddress_view_private_key` - must be a valid
- *     32-byte Ristretto-format scalar.
+ * * `receiving_subaddress_view_private_key` - must be a valid 32-byte
+ *   Ristretto-format scalar.
  * * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
  *
  * # Errors
@@ -1012,8 +1012,8 @@ bool mc_memo_sender_with_payment_request_memo_is_valid(FfiRefPtr<McBuffer> sende
  * # Preconditions
  *
  * * `sender_account_key` - must be a valid account key
- * * `recipient_subaddress_view_public_key` - must be a valid
- *     32-byte Ristretto-format scalar.
+ * * `recipient_subaddress_view_public_key` - must be a valid 32-byte
+ *   Ristretto-format scalar.
  * * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
  * * `out_memo_data` - length must be >= 64.
  *
