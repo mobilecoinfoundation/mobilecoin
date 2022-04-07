@@ -17,10 +17,9 @@ use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
     ring_signature::KeyImage,
-    Token,
     tokens::Mob,
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    BlockVersion, CompressedCommitment, EncryptedMemo, MaskedAmount,
+    BlockVersion, CompressedCommitment, EncryptedMemo, MaskedAmount, Token,
 };
 
 use mc_transaction_std::{
@@ -377,8 +376,12 @@ pub extern "C" fn mc_transaction_builder_create(
         // TODO #1596: Support token id other than Mob
         let token_id = Mob::ID;
 
-        let mut transaction_builder =
-            TransactionBuilder::new_with_box(block_version, token_id, fog_resolver, memo_builder_box);
+        let mut transaction_builder = TransactionBuilder::new_with_box(
+            block_version,
+            token_id,
+            fog_resolver,
+            memo_builder_box,
+        );
 
         transaction_builder
             .set_fee(fee)
@@ -663,13 +666,12 @@ pub extern "C" fn mc_memo_builder_free(memo_builder: FfiOptOwnedPtr<McTxOutMemoB
 
 /* ==== SenderMemo ==== */
 
-
 /// # Preconditions
 ///
-/// * `sender_memo_data` - must be 64 bytes 
+/// * `sender_memo_data` - must be 64 bytes
 /// * `sender_public_address` - must be a valid `PublicAddress`.
-/// * `receiving_subaddress_view_private_key` - must be a valid 
-///     32-byte Ristretto-format scalar.
+/// * `receiving_subaddress_view_private_key` - must be a valid 32-byte
+///   Ristretto-format scalar.
 /// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
 ///
 /// # Errors
@@ -717,8 +719,8 @@ pub extern "C" fn mc_memo_sender_memo_is_valid(
 /// # Preconditions
 ///
 /// * `sender_account_key` - must be a valid account key
-/// * `recipient_subaddress_view_public_key` - must be a valid 
-///     32-byte Ristretto-format scalar.
+/// * `recipient_subaddress_view_public_key` - must be a valid 32-byte
+///   Ristretto-format scalar.
 /// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
 /// * `out_memo_data` - length must be >= 64.
 ///
@@ -798,11 +800,10 @@ pub extern "C" fn mc_memo_sender_memo_get_address_hash(
  * DestinationMemo
  */
 
-
 /// # Preconditions
 ///
-/// * `destination_public_address` - must be a valid 32-byte
-///     Ristretto-format scalar.
+/// * `destination_public_address` - must be a valid 32-byte Ristretto-format
+///   scalar.
 /// * `number_of_recipients` - must be > 0
 /// * `out_memo_data` - length must be >= 64.
 ///
@@ -963,13 +964,12 @@ pub extern "C" fn mc_memo_destination_memo_get_total_outlay(
  * SenderWithPaymentRequestMemo
  */
 
-
 /// # Preconditions
 ///
-/// * `sender_with_payment_request_memo_data` - must be 64 bytes 
+/// * `sender_with_payment_request_memo_data` - must be 64 bytes
 /// * `sender_public_address` - must be a valid `PublicAddress`.
-/// * `receiving_subaddress_view_private_key` - must be a valid 
-///     32-byte Ristretto-format scalar.
+/// * `receiving_subaddress_view_private_key` - must be a valid 32-byte
+///   Ristretto-format scalar.
 /// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
 ///
 /// # Errors
@@ -1017,8 +1017,8 @@ pub extern "C" fn mc_memo_sender_with_payment_request_memo_is_valid(
 /// # Preconditions
 ///
 /// * `sender_account_key` - must be a valid account key
-/// * `recipient_subaddress_view_public_key` - must be a valid 
-///     32-byte Ristretto-format scalar.
+/// * `recipient_subaddress_view_public_key` - must be a valid 32-byte
+///   Ristretto-format scalar.
 /// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
 /// * `out_memo_data` - length must be >= 64.
 ///
@@ -1119,8 +1119,7 @@ pub extern "C" fn mc_memo_sender_with_payment_request_memo_get_payment_request_i
         let sender_with_payment_request_memo: AuthenticatedSenderWithPaymentRequestIdMemo =
             AuthenticatedSenderWithPaymentRequestIdMemo::from(&memo_data);
 
-        let payment_request_id: u64 = sender_with_payment_request_memo
-            .payment_request_id();
+        let payment_request_id: u64 = sender_with_payment_request_memo.payment_request_id();
 
         *out_payment_request_id.into_mut() = payment_request_id;
 
@@ -1131,7 +1130,6 @@ pub extern "C" fn mc_memo_sender_with_payment_request_memo_get_payment_request_i
 /********************************************************************
  * Decrypt Memo Payload
  */
-
 
 /// # Preconditions
 ///
