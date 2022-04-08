@@ -429,7 +429,7 @@ class FogConformanceTest:
 
         # Report server url
         report_server_url = f'insecure-fog://localhost:{BASE_REPORT_CLIENT_PORT}'
-
+        report_id = '0'
         # Get chain and key
         root = subprocess.check_output(f"{target_dir(self.release)}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head",
                                    encoding='utf8', shell=True).strip()
@@ -441,7 +441,7 @@ class FogConformanceTest:
 
         # Create account keys
         print("Creating account keys...")
-        log_and_run_shell(f"cd {self.work_dir} && {PROJECT_DIR}/{target_dir(self.release)}/sample-keys --num 5 --fog-report-url {report_server_url} --fog-authority-root {root}")
+        log_and_run_shell(f"cd {self.work_dir} && {PROJECT_DIR}/{target_dir(self.release)}/sample-keys --num 5 --fog-report-url {report_server_url} --fog-authority-root {root} --fog-report-id {report_id}")
         self.keys_dir = os.path.join(self.work_dir, 'keys')
 
         # Creating ledgers
