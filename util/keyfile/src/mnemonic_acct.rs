@@ -8,6 +8,7 @@ use bip39::{Language, Mnemonic};
 use displaydoc::Display;
 use mc_account_keys::AccountKey;
 use mc_account_keys_slip10::{Error as Slip10Error, Slip10KeyGenerator};
+use mc_crypto_rand::{CryptoRng, RngCore};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -68,5 +69,42 @@ impl TryFrom<UncheckedMnemonicAccount> for AccountKey {
             src.fog_report_id.unwrap_or_default().as_str(),
             src.fog_authority_spki.unwrap_or_default().as_slice(),
         )?)
+    }
+}
+
+impl UncheckedMnemonicAccount {
+    /// Construct an identity without fog and with a random mnemonic key
+    pub fn random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+        let mut entropy = [0u8; 32];
+        rng.fill_bytes(&mut entropy[..]);
+        let mnemonic = Mnemonic::from_entropy(&entropy, Language::English);
+        match mnemonic {
+            Ok(v) => Self {
+                mnemonic: Some(v.phrase().to_string()),
+                ..Default::default()
+            },
+            Err(_) => Self {
+                mnemonic: None,
+                ..Default::default()
+            },
+        }
+    }
+
+    /// Construct an identity with fog and with a random slip10 key
+    pub fn random_with_fog<T: RngCore + CryptoRng>(
+        rng: &mut T,
+        fog_report_url: &str,
+        fog_report_id: &str,
+        fog_authority_spki: &[u8],
+    ) -> Self {
+        let mut result = Self::random(rng);
+
+        if !fog_report_url.is_empty() {
+            result.fog_report_url = Some(fog_report_url.to_owned());
+            result.fog_report_id = Some(fog_report_id.to_owned());
+            result.fog_authority_spki = Some(fog_authority_spki.to_owned());
+        }
+
+        result
     }
 }

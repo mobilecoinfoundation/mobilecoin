@@ -26,7 +26,7 @@ use mc_util_keyfile::UncheckedMnemonicAccount;
 use mc_util_uri::{ConsensusClientUri, Uri, UriScheme};
 use std::{
     convert::TryFrom,
-    str::{from_utf8, FromStr},
+    str::FromStr,
     sync::{Arc, Mutex},
     thread::sleep,
     time::Duration,
@@ -83,11 +83,7 @@ impl RemoteWalletService {
         request: FreshBalanceCheckRequest,
     ) -> Result<BalanceCheckResponse, RpcStatus> {
         let id = UncheckedMnemonicAccount {
-            mnemonic: Some(
-                from_utf8(&request.mnemonic[..])
-                    .map_err(|err| rpc_invalid_arg_error("mnemonic key", err, &self.logger))?
-                    .to_string(),
-            ),
+            mnemonic: Some(request.mnemonic.clone()),
             ..Default::default()
         };
         let account_key = AccountKey::try_from(id).map_err(|err| {

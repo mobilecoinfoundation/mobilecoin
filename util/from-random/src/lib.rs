@@ -14,9 +14,9 @@ pub trait FromRandom: Sized {
     fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self;
 }
 
-impl FromRandom for [u8; 32] {
-    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> [u8; 32] {
-        let mut result = [0u8; 32];
+impl<const N: usize> FromRandom for [u8; N] {
+    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> [u8; N] {
+        let mut result = [0u8; N];
         csprng.fill_bytes(&mut result);
         result
     }

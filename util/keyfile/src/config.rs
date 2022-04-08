@@ -10,19 +10,19 @@ type VecBytes = Vec<u8>;
 #[derive(Debug, Parser)]
 pub struct Config {
     /// Fog Report URL
-    #[clap(short, long, env = "MC_FOG_REPORT_URL")]
+    #[clap(long, env = "MC_FOG_REPORT_URL")]
     pub fog_report_url: Option<String>,
 
     /// Fog Report ID
-    #[clap(short, long, env = "MC_FOG_REPORT_ID")]
+    #[clap(long, env = "MC_FOG_REPORT_ID")]
     pub fog_report_id: Option<String>,
 
     /// Fog Authority subjectPublicKeyInfo, loaded from a PEM root certificate
-    #[clap(short, long, parse(try_from_str = load_spki_from_pemfile), env = "MC_FOG_AUTHORITY_ROOT")]
+    #[clap(long, parse(try_from_str = load_spki_from_pemfile), env = "MC_FOG_AUTHORITY_ROOT")]
     pub fog_authority_root: Option<VecBytes>,
 
     /// Fog Authority subjectPublicKeyInfo, encoded in base 64
-    #[clap(short, long, parse(try_from_str = decode_base64), env = "MC_FOG_AUTHORITY_SPKI")]
+    #[clap(long, parse(try_from_str = decode_base64), env = "MC_FOG_AUTHORITY_SPKI")]
     pub fog_authority_spki: Option<VecBytes>,
 
     /// Output directory, defaults to current directory.
@@ -31,7 +31,7 @@ pub struct Config {
 
     /// Seed to use when generating keys (e.g.
     /// 1234567812345678123456781234567812345678123456781234567812345678).
-    #[clap(short, long, parse(try_from_str = FromHex::from_hex), env = "MC_SEED")]
+    #[clap(short, long, parse(try_from_str = FromHex::from_hex), env = "MC_SEED", default_value = "0101010101010101010101010101010101010101010101010101010101010101")]
     pub seed: [u8; 32],
 }
 

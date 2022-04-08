@@ -5,7 +5,7 @@
 mod error;
 mod json_format;
 mod mnemonic_acct;
-pub use json_format::{RootIdentityJson, Slip10IdentityJson};
+pub use json_format::RootIdentityJson;
 pub use mnemonic_acct::UncheckedMnemonicAccount;
 pub mod config;
 pub mod keygen;
