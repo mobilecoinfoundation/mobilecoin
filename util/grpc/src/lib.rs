@@ -67,6 +67,7 @@ pub fn send_result<T>(
 ) {
     let logger = logger.clone();
     let success = resp.is_ok();
+    let mut code = RpcStatusCode::from(0);
 
     match resp {
         Ok(ok) => ctx.spawn(
@@ -74,14 +75,18 @@ pub fn send_result<T>(
                 .map_err(move |err| log::error!(logger, "failed to reply: {}", err))
                 .map(|_| ()),
         ),
-        Err(e) => ctx.spawn(
-            sink.fail(e)
-                .map_err(move |err| log::error!(logger, "failed to reply: {}", err))
-                .map(|_| ()),
-        ),
+        Err(e) => {
+            code = e.code();
+            ctx.spawn(
+                sink.fail(e)
+                    .map_err(move |err| log::error!(logger, "failed to reply: {}", err))
+                    .map(|_| ()),
+            )
+        }
     }
 
     SVC_COUNTERS.resp(&ctx, success);
+    SVC_COUNTERS.status_code(&ctx, code);
 }
 
 macro_rules! report_err_with_code(
