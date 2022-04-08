@@ -148,6 +148,7 @@ class RemoteWallet:
             stub = remote_wallet_pb2_grpc.RemoteWalletApiStub(channel)
             response = self._retrying_grpc_request(stub.FreshBalanceCheck, remote_wallet_pb2.FreshBalanceCheckRequest(
                 mnemonic=key['mnemonic'],
+                account_index = key['account_index'],
                 fog_uri=self.fog_url,
             ))
 
