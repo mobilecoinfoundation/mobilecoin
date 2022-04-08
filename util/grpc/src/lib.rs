@@ -67,7 +67,7 @@ pub fn send_result<T>(
 ) {
     let logger = logger.clone();
     let success = resp.is_ok();
-    let mut code = RpcStatusCode::from(0);
+    let mut code = RpcStatusCode::OK;
 
     match resp {
         Ok(ok) => ctx.spawn(

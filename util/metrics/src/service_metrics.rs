@@ -105,7 +105,7 @@ impl ServiceMetrics {
 
     /// Takes the RpcContext used during a gRPC method call to get the method
     /// name and increments counters tracking the number of calls to and
-    /// durations of that method
+    /// returns a counter to track the duration of the method
     pub fn req(&self, ctx: &RpcContext) -> Option<HistogramTimer> {
         let mut method_name = "unknown_method".to_string();
         if let Some(name) = path_from_ctx(ctx) {
@@ -144,7 +144,8 @@ impl ServiceMetrics {
         }
     }
 
-    /// Tracks gRPC message name and corresponding message size into a histogram
+    /// Tracks gRPC message name and size for aggregation into a Prometheus
+    /// histogram
     pub fn message<M: Message>(&self, message: &M) {
         let computed_size = message.compute_size();
         let message_fullname = message.descriptor().full_name();
