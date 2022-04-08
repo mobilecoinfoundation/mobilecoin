@@ -84,7 +84,7 @@ impl RemoteWalletService {
     ) -> Result<BalanceCheckResponse, RpcStatus> {
         let id = UncheckedMnemonicAccount {
             mnemonic: Some(request.mnemonic.clone()),
-            account_index: Some(request.account_index.clone()),
+            account_index: Some(request.account_index),
             ..Default::default()
         };
         let account_key = AccountKey::try_from(id).map_err(|err| {
