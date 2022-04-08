@@ -60,6 +60,6 @@ mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" 
 mc-crypto-rand = { path = "../../crypto/rand" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
-mc-transaction-std = { path = "../../transaction/std", features= ["test-only"] }
+mc-transaction-std = { path = "../../transaction/std", features = ["test-only"] }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 mc-util-test-helper = { path = "../../util/test-helper" }

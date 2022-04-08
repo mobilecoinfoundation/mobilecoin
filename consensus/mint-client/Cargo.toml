@@ -18,7 +18,7 @@ mc-common = { path = "../../common", features = ["log"] }
 mc-consensus-api = { path = "../../consensus/api" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-multisig = { path = "../../crypto/multisig" }
-mc-transaction-core = { path = "../../transaction/core"}
+mc-transaction-core = { path = "../../transaction/core" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-grpc = { path = "../../util/grpc" }
 mc-util-parse = { path = "../../util/parse" }
