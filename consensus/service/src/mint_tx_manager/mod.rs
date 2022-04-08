@@ -210,7 +210,8 @@ mod mint_config_tx_tests {
     use mc_crypto_multisig::SignerSet;
     use mc_transaction_core::{Block, BlockContents};
     use mc_transaction_core_test_utils::{
-        create_ledger, create_mint_config_tx_and_signers, initialize_ledger, AccountKey,
+        create_ledger, create_mint_config_tx_and_signers, initialize_ledger,
+        mint_config_tx_to_validated as to_validated, AccountKey,
     };
     use rand::{rngs::StdRng, SeedableRng};
 
@@ -338,7 +339,7 @@ mod mint_config_tx_tests {
         let parent_block = ledger.get_block(n_blocks - 1).unwrap();
 
         let block_contents = BlockContents {
-            mint_config_txs: vec![mint_config_tx.clone()],
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx)],
             ..Default::default()
         };
 
@@ -560,7 +561,7 @@ mod mint_tx_tests {
     use mc_transaction_core::{Block, BlockContents};
     use mc_transaction_core_test_utils::{
         create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_test_tx_out,
-        initialize_ledger, AccountKey,
+        initialize_ledger, mint_config_tx_to_validated as to_validated, AccountKey,
     };
     use rand::{rngs::StdRng, SeedableRng};
     use std::iter::FromIterator;
@@ -584,7 +585,7 @@ mod mint_tx_tests {
         let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
 
         let block_contents = BlockContents {
-            mint_config_txs: vec![mint_config_tx.clone()],
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx)],
             ..Default::default()
         };
 
@@ -641,7 +642,10 @@ mod mint_tx_tests {
         let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
 
         let block_contents = BlockContents {
-            mint_config_txs: vec![mint_config_tx1.clone(), mint_config_tx2.clone()],
+            validated_mint_config_txs: vec![
+                to_validated(&mint_config_tx1),
+                to_validated(&mint_config_tx2),
+            ],
             ..Default::default()
         };
 
@@ -718,7 +722,10 @@ mod mint_tx_tests {
         let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
 
         let block_contents = BlockContents {
-            mint_config_txs: vec![mint_config_tx1.clone(), mint_config_tx2.clone()],
+            validated_mint_config_txs: vec![
+                to_validated(&mint_config_tx1),
+                to_validated(&mint_config_tx2),
+            ],
             ..Default::default()
         };
 
@@ -815,7 +822,7 @@ mod mint_tx_tests {
         let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
 
         let block_contents = BlockContents {
-            mint_config_txs: vec![mint_config_tx.clone()],
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx)],
             ..Default::default()
         };
 
@@ -928,7 +935,7 @@ mod mint_tx_tests {
         let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
 
         let block_contents = BlockContents {
-            mint_config_txs: vec![mint_config_tx.clone()],
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx)],
             ..Default::default()
         };
 
@@ -993,7 +1000,7 @@ mod mint_tx_tests {
         let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
 
         let block_contents = BlockContents {
-            mint_config_txs: vec![mint_config_tx.clone()],
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx)],
             ..Default::default()
         };
 
@@ -1089,7 +1096,7 @@ mod mint_tx_tests {
         let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
 
         let block_contents = BlockContents {
-            mint_config_txs: vec![mint_config_tx.clone()],
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx)],
             ..Default::default()
         };
 

@@ -8,7 +8,7 @@ mod validation;
 
 pub mod constants;
 
-pub use config::{MintConfig, MintConfigTx, MintConfigTxPrefix};
+pub use config::{MintConfig, MintConfigTx, MintConfigTxPrefix, ValidatedMintConfigTx};
 pub use tx::{MintTx, MintTxPrefix};
 pub use validation::{
     config::validate_mint_config_tx, error::Error as MintValidationError, tx::validate_mint_tx,

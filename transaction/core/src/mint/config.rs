@@ -82,3 +82,17 @@ impl fmt::Display for MintConfigTx {
         write!(f, "{}", hex_fmt::HexFmt(&self.prefix.nonce))
     }
 }
+
+/// A mint-config transaction coupled with the data used to validate it.
+#[derive(
+    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
+)]
+pub struct ValidatedMintConfigTx {
+    /// The transaction that was validated.
+    #[prost(message, required, tag = "1")]
+    pub mint_config_tx: MintConfigTx,
+
+    /// The signer set used to validate the transaction's signature.
+    #[prost(message, required, tag = "2")]
+    pub signer_set: SignerSet<Ed25519Public>,
+}

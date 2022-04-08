@@ -14,7 +14,7 @@ pub use mc_transaction_core::{
 };
 pub use mint::{
     create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx,
-    create_mint_tx_to_recipient,
+    create_mint_tx_to_recipient, mint_config_tx_to_validated,
 };
 
 use core::convert::TryFrom;
@@ -147,9 +147,11 @@ pub fn create_transaction_with_amount_and_comparer<
     tombstone_block: BlockIndex,
     rng: &mut R,
 ) -> Tx {
+    let (sender_amount, _) = tx_out.view_key_match(sender.view_private_key()).unwrap();
+
     let mut transaction_builder = TransactionBuilder::new(
         block_version,
-        Mob::ID,
+        sender_amount.token_id,
         MockFogResolver::default(),
         EmptyMemoBuilder::default(),
     );

@@ -325,7 +325,7 @@ mod tests {
     use mc_transaction_core::{Block, BlockContents, BlockVersion, TokenId};
     use mc_transaction_core_test_utils::{
         create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_transaction,
-        initialize_ledger, AccountKey,
+        initialize_ledger, mint_config_tx_to_validated, AccountKey,
     };
     use mc_util_from_random::FromRandom;
     use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri, ConsensusPeerUri};
@@ -870,7 +870,7 @@ mod tests {
         let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
 
         let block_contents = BlockContents {
-            mint_config_txs: vec![mint_config_tx1],
+            validated_mint_config_txs: vec![mint_config_tx_to_validated(&mint_config_tx1)],
             ..Default::default()
         };
         let block = Block::new_with_parent(

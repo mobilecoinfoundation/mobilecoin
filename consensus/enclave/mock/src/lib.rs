@@ -22,10 +22,12 @@ use mc_common::ResponderId;
 use mc_crypto_keys::{
     Ed25519Pair, Ed25519Public, RistrettoPublic, X25519EphemeralPrivate, X25519Public,
 };
+use mc_crypto_multisig::SignerSet;
 use mc_crypto_rand::McRng;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
+    mint::ValidatedMintConfigTx,
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
@@ -288,11 +290,20 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         );
         outputs.extend(minted_tx_outs);
 
+        let validated_mint_config_txs = inputs
+            .mint_config_txs
+            .into_iter()
+            .map(|mint_config_tx| ValidatedMintConfigTx {
+                mint_config_tx,
+                signer_set: SignerSet::default(),
+            })
+            .collect();
+
         let block_contents = BlockContents {
             key_images,
             outputs,
             mint_txs: inputs.mint_txs,
-            mint_config_txs: inputs.mint_config_txs,
+            validated_mint_config_txs,
         };
 
         let block =

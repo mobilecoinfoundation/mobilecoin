@@ -234,7 +234,7 @@ fn backfill_empty_mint_stores(env: &Environment, logger: &Logger) -> Result<(), 
 
     let mut percents: u64 = 0;
     for block_index in 0..num_blocks {
-        mint_config_store.write_mint_config_txs(block_index, &[], &mut db_txn)?;
+        mint_config_store.write_validated_mint_config_txs(block_index, &[], &mut db_txn)?;
         mint_tx_store.write_mint_txs(block_index, &[], &mint_config_store, &mut db_txn)?;
 
         // Throttled logging.

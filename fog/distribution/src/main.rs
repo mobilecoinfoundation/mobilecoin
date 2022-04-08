@@ -19,7 +19,7 @@
 
 #![deny(missing_docs)]
 
-use core::{cell::RefCell, convert::TryFrom};
+use core::{cell::RefCell, cmp::max, convert::TryFrom};
 use lazy_static::lazy_static;
 use mc_account_keys::AccountKey;
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
@@ -97,8 +97,8 @@ lazy_static! {
     /// Keeps track of block version we are targetting
     pub static ref BLOCK_VERSION: AtomicU32 = AtomicU32::new(1);
 
-    /// Keeps track of the current fee value
-    pub static ref FEE: AtomicU64 = AtomicU64::default();
+    /// Keeps track of the current MOB fee value
+    pub static ref MOB_FEE: AtomicU64 = AtomicU64::default();
 
     /// A map of tx pub keys to account index. This is used in conjunction with ledger syncing to
     /// identify which new txs belong to which accounts without having to do any slow crypto.
@@ -146,21 +146,31 @@ fn main() {
 
     let ledger_db = LedgerDB::open(ledger_dir.path()).expect("Could not open ledger_db");
 
-    let block_version = config
-        .block_version
-        .unwrap_or_else(|| ledger_db.get_latest_block().unwrap().version);
-
     BLOCK_HEIGHT.store(ledger_db.num_blocks().unwrap(), Ordering::SeqCst);
-    BLOCK_VERSION.store(block_version, Ordering::SeqCst);
 
-    // Use the maximum fee of all configured consensus nodes
-    FEE.store(
-        get_conns(&config, &logger)
-            .par_iter()
-            .filter_map(|conn| conn.fetch_block_info(empty()).ok())
+    // Get the block info of all configured consensus nodes
+    let block_infos: Vec<_> = get_conns(&config, &logger)
+        .par_iter()
+        .filter_map(|conn| conn.fetch_block_info(empty()).ok())
+        .collect();
+
+    MOB_FEE.store(
+        block_infos
+            .iter()
             .filter_map(|block_info| block_info.minimum_fee_or_none(&Mob::ID))
             .max()
             .unwrap_or(Mob::MINIMUM_FEE),
+        Ordering::SeqCst,
+    );
+    BLOCK_VERSION.store(
+        max(
+            ledger_db.get_latest_block().unwrap().version,
+            block_infos
+                .iter()
+                .map(|block_info| block_info.network_block_version)
+                .max()
+                .unwrap_or(0),
+        ),
         Ordering::SeqCst,
     );
 
@@ -713,7 +723,9 @@ fn build_tx(
         EmptyMemoBuilder::default(),
     );
 
-    tx_builder.set_fee(FEE.load(Ordering::SeqCst)).unwrap();
+    // FIXME: This needs to be the fee for the current token, not MOB.
+    // However, bootstrapping non MOB tokens is not supported right now.
+    tx_builder.set_fee(MOB_FEE.load(Ordering::SeqCst)).unwrap();
 
     // Unzip each vec of tuples into a tuple of vecs.
     let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
@@ -796,7 +808,7 @@ fn build_tx(
             let mut value = utxo.amount.value;
             // Use the first input to pay for the fee.
             if i == 0 {
-                value -= FEE.load(Ordering::SeqCst);
+                value -= MOB_FEE.load(Ordering::SeqCst);
             }
 
             let target_address = to_account.default_subaddress();

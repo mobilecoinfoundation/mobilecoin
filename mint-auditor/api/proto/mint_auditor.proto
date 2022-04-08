@@ -1,0 +1,55 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+// MUST BE KEPT IN SYNC WITH RUST CODE!
+
+// Mint auditor client data types and service descriptors.
+
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+
+package mint_auditor;
+
+
+option java_package = "com.mobilecoin.mint_auditor";
+option java_outer_classname = "MintAuditor";
+
+service MintAuditorApi {
+    rpc GetBlockAuditData(GetBlockAuditDataRequest) returns (GetBlockAuditDataResponse) {}
+    rpc GetLastBlockAuditData(google.protobuf.Empty) returns (GetLastBlockAuditDataResponse) {}
+    rpc GetCounters(google.protobuf.Empty) returns (Counters) {}
+}
+
+message BlockAuditData {
+    // Current balance in circulation (excluding MOB).
+    map<uint32, uint64> balance_map = 1;
+}
+
+/// Statistics we keep track of.
+message Counters {
+    /// Number of blocks we've synced so far.
+    uint64 num_blocks_synced = 1;
+
+    // Number of times we've encountered a burn that exceeds the calculated balance.
+    uint64 num_burns_exceeding_balance = 2;
+
+    // Number of `MintTx`s that did not match an active mint config.
+    uint64 num_mint_txs_without_matching_mint_config = 3;
+}
+
+message GetBlockAuditDataRequest {
+    // The block index we are getting data for.
+    uint64 block_index = 1;
+}
+
+message GetBlockAuditDataResponse {
+    // Audit data for the requested block
+    BlockAuditData block_audit_data = 1;
+}
+
+message GetLastBlockAuditDataResponse {
+    // Audit data for the last block
+    BlockAuditData block_audit_data = 1;
+
+    // The last block index in the audit db
+    uint64 block_index = 2;
+}

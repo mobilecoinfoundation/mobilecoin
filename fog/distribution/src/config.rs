@@ -73,10 +73,6 @@ pub struct Config {
     #[clap(long, default_value = "0", env = "MC_ADD_TX_DELAY_MS")]
     pub add_tx_delay_ms: u64,
 
-    /// Block version to use (otherwise fall back to ledger)
-    #[clap(long, env = "MC_BLOCK_VERSION")]
-    pub block_version: Option<u32>,
-
     /// Destination keys subdirectory. Defaults to `fog_keys`
     #[clap(long, default_value = "fog_keys", env = "MC_FOG_KEYS_SUBDIR")]
     pub fog_keys_subdir: String,
