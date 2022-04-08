@@ -764,6 +764,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                             value: u64::MAX,
                             token_id,
                         },
+                        outputs.len(),
                     ));
                     total_fee -= u64::MAX as u128;
                 }
@@ -778,6 +779,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                         value: total_fee as u64,
                         token_id,
                     },
+                    outputs.len(),
                 ));
 
                 outputs
@@ -798,7 +800,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         outputs.extend(fee_outputs);
 
         // Perform minting.
-        for mint_tx in &mint_txs {
+        for (counter, mint_tx) in mint_txs.iter().enumerate() {
             // One last chance to prevent minting MOB.
             if mint_tx.prefix.token_id == Mob::ID {
                 return Err(Error::FormBlock("Attempted to mint MOB".into()));
@@ -818,6 +820,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                     value: mint_tx.prefix.amount,
                     token_id: TokenId::from(mint_tx.prefix.token_id),
                 },
+                counter,
             )?;
 
             outputs.push(output);
@@ -869,6 +872,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 /// * `parent_block` - The parent block.
 /// * `transactions` - The transactions that are included in the current block.
 /// * `amount` - Output amount.
+/// * `counter` - An additional counter used to disambiguate hashes, when the
+///   same amount is minted repeatedly
 fn mint_output<T: Digestible>(
     block_version: BlockVersion,
     recipient: &PublicAddress,
@@ -876,6 +881,7 @@ fn mint_output<T: Digestible>(
     parent_block: &Block,
     transactions: &[T],
     amount: Amount,
+    counter: usize,
 ) -> Result<TxOut> {
     // Create a determinstic private key based on the block contents.
     let tx_private_key = {
@@ -887,6 +893,7 @@ fn mint_output<T: Digestible>(
                 .append_to_transcript(b"parent_block_id", &mut transcript);
             transactions.append_to_transcript(b"transactions", &mut transcript);
             amount.append_to_transcript(b"amount", &mut transcript);
+            counter.append_to_transcript(b"counter", &mut transcript);
             transcript.extract_digest(&mut hash_value);
         };
 
