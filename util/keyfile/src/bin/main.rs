@@ -24,6 +24,7 @@ fn print_keyfile_bytes(bytes: Vec<u8>) {
 
     println!("{:?}", acct_key);
 }
+
 fn main() {
     let mut n_files = 0usize;
     for path in env::args().skip(1) {
