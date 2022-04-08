@@ -417,7 +417,7 @@ class FogConformanceTest:
 
         # Report server url
         report_server_url = f'insecure-fog://localhost:{BASE_REPORT_CLIENT_PORT}'
-        report_id = '0'
+        report_id = ''
         # Get chain and key
 
         root = subprocess.check_output(f"{self.target_dir}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head",

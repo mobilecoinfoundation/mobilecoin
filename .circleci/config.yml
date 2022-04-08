@@ -482,7 +482,7 @@ commands:
 
             sleep 20
 
-            ./target/release/sample-keys --num 4 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $FOG_AUTHORITY_ROOT --fog-report-id 0
+            ./target/release/sample-keys --num 4 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $FOG_AUTHORITY_ROOT --fog-report-id ''
 
             ./target/release/fog-distribution \
                 --sample-data-dir . \
