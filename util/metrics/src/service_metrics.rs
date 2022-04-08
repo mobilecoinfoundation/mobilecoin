@@ -10,7 +10,8 @@ metrics about a gRPC server.
 For each method, the counters that are captured are:
 - num_req: number of requests
 - num_error: number of errors (can be used to calculate error rate)
-- num_status_code: number of GRPC status code (for more fine grained error rates/diagnostics)
+- num_status_code: number of gRPC status codes (to establish statistics on
+gRPC status codes, similar to how HTTP 2XX/4XX/5XX codes are profiled)
 - duration: duration (in units determined by the exporter) the request took, bucketed
 
 Example use:
@@ -39,7 +40,7 @@ use protobuf::Message;
 use std::str;
 
 /// Helper that encapsulates boilerplate for tracking
-/// prometheus metrics about GRPC services. This struct
+/// prometheus metrics about gRPC services. This struct
 /// defines several common metrics (with a distinct
 /// MetricFamily per method) with the method path as a
 /// primary dimension/label. Method paths are derived
@@ -48,19 +49,19 @@ use std::str;
 /// e.g., calc_service.duration_sum{method="add"} = 6
 #[derive(Clone)]
 pub struct ServiceMetrics {
-    /// Number of requests made by methods
+    /// Number of requests made by each gRPC method tracked
     num_req: IntCounterVec,
 
-    /// Number of error responses for methods
+    /// Number of error responses for each gRPC method tracked
     num_error: IntCounterVec,
 
-    /// Number of GRPC status codes for methods
+    /// Count of gRPC status codes for each gRPC method tracked
     num_status_code: IntCounterVec,
 
-    /// Duration of method call
+    /// Duration of gRPC method calls tracked
     duration: HistogramVec,
 
-    /// Histogram of message sizes
+    /// Histogram of message sizes for each gRPC message type tracked
     message_size: HistogramVec,
 }
 
@@ -95,14 +96,16 @@ impl ServiceMetrics {
         }
     }
 
-    /// Register service
+    /// Register Prometheus metrics family
     pub fn new_and_registered() -> ServiceMetrics {
         let svc = ServiceMetrics::default();
         let _res = prometheus::register(Box::new(svc.clone()));
         svc
     }
 
-    /// Track number of requests and durations
+    /// Takes the RpcContext used during a gRPC method call to get the method
+    /// name and increments counters tracking the number of calls to and
+    /// durations of that method
     pub fn req(&self, ctx: &RpcContext) -> Option<HistogramTimer> {
         let mut method_name = "unknown_method".to_string();
         if let Some(name) = path_from_ctx(ctx) {
@@ -119,7 +122,9 @@ impl ServiceMetrics {
         )
     }
 
-    /// Count number of errors by method
+    /// Takes the RpcContext used during a gRPC method call to get the method
+    /// name and increments an error counter if the method resulted in an
+    /// error
     pub fn resp(&self, ctx: &RpcContext, success: bool) {
         if let Some(name) = path_from_ctx(ctx) {
             self.num_error
@@ -128,7 +133,9 @@ impl ServiceMetrics {
         }
     }
 
-    /// Count number of response codes by method
+    /// Takes the RpcContext used during a gRPC method call to get the method
+    /// name as well as the gRPC status code that method returned and
+    /// increments a counter for the status code reported
     pub fn status_code(&self, ctx: &RpcContext, response_code: RpcStatusCode) {
         if let Some(name) = path_from_ctx(ctx) {
             self.num_status_code
@@ -137,7 +144,7 @@ impl ServiceMetrics {
         }
     }
 
-    /// Track GRPC message size
+    /// Tracks gRPC message name and corresponding message size into a histogram
     pub fn message<M: Message>(&self, message: &M) {
         let computed_size = message.compute_size();
         let message_fullname = message.descriptor().full_name();
@@ -187,6 +194,7 @@ impl Collector for ServiceMetrics {
 
 /// This method reads the full URI from gRpcContext (looks like:
 /// `/{package}.{service_name}/{method}`
+/// ('/' equates to ascii code 47)
 /// and converts it into a dot-delimited string, dropping the 1st `/`
 fn path_from_ctx(ctx: &RpcContext) -> Option<String> {
     let method = ctx.method();
@@ -195,6 +203,7 @@ fn path_from_ctx(ctx: &RpcContext) -> Option<String> {
 
 /// This method reads the full URI from gRpcContext (looks like:
 /// `/{package}.{service_name}/{method}`
+/// ('/' equates to ascii code 47)
 /// and converts it into a dot-delimited string, dropping the 1st `/`
 fn path_from_byte_slice(bytes: &[u8]) -> Option<String> {
     if bytes.len() < 5 || bytes[0] != 47u8 {
