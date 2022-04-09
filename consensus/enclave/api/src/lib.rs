@@ -178,7 +178,7 @@ mod well_formed_tx_context_tests {
     use alloc::{vec, vec::Vec};
 
     #[test]
-    /// WellFormedTxContext should be sorted by fee, descending.
+    /// WellFormedTxContext should be sorted by priority, descending.
     fn test_ordering() {
         let a = WellFormedTxContext::new(100, Default::default(), 0, vec![], vec![], vec![]);
         let b = WellFormedTxContext::new(557, Default::default(), 0, vec![], vec![], vec![]);
@@ -187,9 +187,9 @@ mod well_formed_tx_context_tests {
         let mut contexts = vec![a, b, c];
         contexts.sort();
 
-        let fees: Vec<_> = contexts.iter().map(|context| context.fee).collect();
+        let priorities: Vec<_> = contexts.iter().map(|context| context.priority).collect();
         let expected = vec![557, 100, 88];
-        assert_eq!(fees, expected);
+        assert_eq!(priorities, expected);
     }
 }
 
