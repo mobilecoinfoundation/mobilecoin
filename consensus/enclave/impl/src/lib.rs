@@ -181,7 +181,7 @@ impl SgxConsensusEnclave {
         // the minimum fees are >= 128, and so we are not dividing by zero.
         let (priority, _) = ct_u64_divide(tx.prefix.fee, min_fee >> 7);
 
-        WellFormedTxContext::new_from_tx(priority, &tx)
+        WellFormedTxContext::new_from_tx(priority, tx)
     }
 
     fn decrypt_well_formed_tx(&self, encrypted: &WellFormedEncryptedTx) -> Result<WellFormedTx> {

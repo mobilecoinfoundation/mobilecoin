@@ -79,17 +79,13 @@ use subtle::{ConditionallySelectable, ConstantTimeLess};
 ///
 /// Note: This function always takes the same number of operations on x86-64.
 ///
-/// We estimate that it probably takes on the order of tens of thousands of
-/// cycles. The most expensive operation in the loop is ct_lt, which also crawls
-/// 64 bits, and we do the loop 64 times.
+/// We estimate that it probably takes on the order of a thousand cycles.
+/// We have to crawl 64 bits. The most expensive operation in the loop is ct_lt,
+/// which fortunately doesn't crawl 64 bits, and looks like it takes on the
+/// order of 10-20 operations.
 ///
-/// If this needs to be faster, some approaches are detailed here:
-/// https://stackoverflow.com/a/31718095/3598119
-/// * Use x86-64 specific stuff calling to clz or similar.
-/// * Use the de Brujin multiplication trick.
-///
-/// However it may take some work to implement those in a way that is actually
-/// constant time and is faster.
+/// If it needs to be faster, we could try using `clz` intrinsics instead
+/// of the subtle crate ct_lt. clz is a single instruction in x86-64.
 pub fn ct_u64_divide(n: u64, d: u64) -> (u64, u64) {
     assert!(d != 0, "division by zero");
 
@@ -98,9 +94,8 @@ pub fn ct_u64_divide(n: u64, d: u64) -> (u64, u64) {
 
     for i in (0u64..64u64).rev() {
         // This is a logical left shift and rust does not check for overflow.
-        // This is similar to an unchecked mul by 2 on x86.
-        q = q << 1;
-        r = r << 1;
+        q <<= 1;
+        r <<= 1;
 
         // Select i'th bit of n using bitmasking, and add it to r
         // Wrapping add is used to avoid any overflow checks.
