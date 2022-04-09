@@ -200,9 +200,12 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         _block_index: u64,
         _proofs: Vec<TxOutMembershipProof>,
     ) -> Result<(WellFormedEncryptedTx, WellFormedTxContext)> {
-        let tx = mc_util_serial::decode(&locally_encrypted_tx.0)?;
+        let tx: Tx = mc_util_serial::decode(&locally_encrypted_tx.0)?;
         let well_formed_encrypted_tx = WellFormedEncryptedTx(locally_encrypted_tx.0);
-        let well_formed_tx_context = WellFormedTxContext::from(&tx);
+
+        // hack
+        let priority = tx.prefix.fee;
+        let well_formed_tx_context = WellFormedTxContext::new_from_tx(priority, &tx);
 
         Ok((well_formed_encrypted_tx, well_formed_tx_context))
     }

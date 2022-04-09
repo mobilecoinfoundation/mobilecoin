@@ -54,8 +54,8 @@ pub struct WellFormedEncryptedTx(pub Vec<u8>);
 /// Tx data we wish to expose to untrusted from well-formed Txs.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct WellFormedTxContext {
-    /// Fee included in the tx.
-    fee: u64,
+    /// Priority assigned to this tx, based on the fee.
+    priority: u64,
 
     /// Tx hash.
     tx_hash: TxHash,
@@ -76,7 +76,7 @@ pub struct WellFormedTxContext {
 impl WellFormedTxContext {
     /// Create a new WellFormedTxContext.
     pub fn new(
-        fee: u64,
+        priority: u64,
         tx_hash: TxHash,
         tombstone_block: u64,
         key_images: Vec<KeyImage>,
@@ -84,7 +84,7 @@ impl WellFormedTxContext {
         output_public_keys: Vec<CompressedRistrettoPublic>,
     ) -> Self {
         Self {
-            fee,
+            priority,
             tx_hash,
             tombstone_block,
             key_images,
@@ -93,14 +93,26 @@ impl WellFormedTxContext {
         }
     }
 
+    /// Create a new WellFormedTxContext, from a Tx and its priority.
+    pub fn new_from_tx(priority: u64, tx: &Tx) -> Self {
+        Self {
+            priority,
+            tx_hash: tx.tx_hash(),
+            tombstone_block: tx.prefix.tombstone_block,
+            key_images: tx.key_images(),
+            highest_indices: tx.get_membership_proof_highest_indices(),
+            output_public_keys: tx.output_public_keys(),
+        }
+    }
+
     /// Get the tx_hash
     pub fn tx_hash(&self) -> &TxHash {
         &self.tx_hash
     }
 
-    /// Get the fee
-    pub fn fee(&self) -> u64 {
-        self.fee
+    /// Get the priority
+    pub fn priority(&self) -> u64 {
+        self.priority
     }
 
     /// Get the tombstone block
@@ -124,27 +136,16 @@ impl WellFormedTxContext {
     }
 }
 
-impl From<&Tx> for WellFormedTxContext {
-    fn from(tx: &Tx) -> Self {
-        Self {
-            fee: tx.prefix.fee,
-            tx_hash: tx.tx_hash(),
-            tombstone_block: tx.prefix.tombstone_block,
-            key_images: tx.key_images(),
-            highest_indices: tx.get_membership_proof_highest_indices(),
-            output_public_keys: tx.output_public_keys(),
-        }
-    }
-}
-
 /// Defines a sort order for transactions in a block.
-/// Transactions are sorted by fee (high to low), then by transaction hash and
-/// any other fields.
+/// Transactions are sorted by priority(high to low), then by transaction hash
+/// and any other fields.
+///
+/// Priority is a proxy for fee which is normalized across token ids.
 impl Ord for WellFormedTxContext {
     fn cmp(&self, other: &Self) -> Ordering {
-        if self.fee != other.fee {
-            // Sort by fee, descending.
-            other.fee.cmp(&self.fee)
+        if self.priority != other.priority {
+            // Sort by priority, descending.
+            other.priority.cmp(&self.priority)
         } else {
             // Sort by remaining fields in lexicographic order.
             (

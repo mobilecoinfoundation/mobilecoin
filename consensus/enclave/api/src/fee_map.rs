@@ -75,8 +75,11 @@ impl FeeMap {
 
     /// Check if a given fee map is valid.
     pub fn is_valid_map(minimum_fees: &BTreeMap<TokenId, u64>) -> Result<(), Error> {
-        // All fees must be greater than 0.
-        if let Some((token_id, fee)) = minimum_fees.iter().find(|(_token_id, fee)| **fee == 0) {
+        // All minimum fees must be greater than 128 in the smallest representable unit.
+        // This is because we divide the minimum fee by 128 when computing priority
+        // numbers, to allow that increments of 1% of the minimum fee affect the
+        // priority of a payment.
+        if let Some((token_id, fee)) = minimum_fees.iter().find(|(_token_id, fee)| **fee < 128) {
             return Err(Error::InvalidFee(*token_id, *fee));
         }
 

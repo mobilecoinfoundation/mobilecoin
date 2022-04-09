@@ -12,6 +12,7 @@
 
 extern crate alloc;
 
+mod constant_time_division;
 mod constant_time_token_map;
 mod identity;
 
@@ -25,6 +26,7 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
+use constant_time_division::ct_u64_divide;
 use constant_time_token_map::CtTokenMap;
 use core::{cmp::min, convert::TryFrom};
 use identity::Ed25519Identity;
@@ -164,6 +166,22 @@ impl SgxConsensusEnclave {
                 .lock()?
                 .encrypt_bytes(rng, well_formed_tx_bytes),
         ))
+    }
+
+    fn get_well_formed_tx_context(&self, tx: &Tx, min_fee: u64) -> WellFormedTxContext {
+        // Compute the priority number to assign to this tx.
+        //
+        // Because different tokens have different minimum fees, and users usually
+        // use the minimum fee, we want to normalize so that the priority of any
+        // two payments using the minimum fee is exactly the same number.
+        //
+        // We also want to allow that increments of ~1% of the minimum fee actually
+        // affect the priority of your payment. So, we divide the min fee by 128,
+        // before dividing the fee by this. Separately, the fee map enforces that
+        // the minimum fees are >= 128, and so we are not dividing by zero.
+        let (priority, _) = ct_u64_divide(tx.prefix.fee, min_fee >> 7);
+
+        WellFormedTxContext::new_from_tx(priority, &tx)
     }
 
     fn decrypt_well_formed_tx(&self, encrypted: &WellFormedEncryptedTx) -> Result<WellFormedTx> {
@@ -631,7 +649,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         )?;
 
         // Convert into a well formed encrypted transaction + context.
-        let well_formed_tx_context = WellFormedTxContext::from(&tx);
+        let well_formed_tx_context = self.get_well_formed_tx_context(&tx, minimum_fee);
         let well_formed_tx = WellFormedTx::from(tx);
         let well_formed_encrypted_tx = self.encrypt_well_formed_tx(&well_formed_tx, &mut csprng)?;
 
@@ -1025,8 +1043,10 @@ mod tests {
                 .unwrap();
 
             // Check that the context we got back is correct.
+            let (expected_priority, _) = ct_u64_divide(tx.prefix.fee, Mob::MINIMUM_FEE / 128);
+
             assert_eq!(well_formed_tx_context.tx_hash(), &tx.tx_hash());
-            assert_eq!(well_formed_tx_context.fee(), tx.prefix.fee);
+            assert_eq!(well_formed_tx_context.priority(), expected_priority);
             assert_eq!(
                 well_formed_tx_context.tombstone_block(),
                 tx.prefix.tombstone_block
@@ -1326,8 +1346,12 @@ mod tests {
             let enclave = SgxConsensusEnclave::new(logger.clone());
             let blockchain_config = BlockchainConfig {
                 block_version,
-                fee_map: FeeMap::try_from_iter([(Mob::ID, 1), (token_id1, 1), (token_id2, 1)])
-                    .unwrap(),
+                fee_map: FeeMap::try_from_iter([
+                    (Mob::ID, 1000),
+                    (token_id1, 1000),
+                    (token_id2, 1000),
+                ])
+                .unwrap(),
                 ..Default::default()
             };
             enclave
