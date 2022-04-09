@@ -16,7 +16,7 @@ mod messages;
 pub use crate::{
     config::{BlockchainConfig, BlockchainConfigWithDigest},
     error::Error,
-    fee_map::{Error as FeeMapError, FeeMap},
+    fee_map::{Error as FeeMapError, FeeMap, SMALLEST_MINIMUM_FEE_LOG2},
     master_minters_map::{Error as MasterMintersMapError, MasterMintersMap},
     messages::EnclaveCall,
 };

@@ -46,7 +46,7 @@ use mc_common::{
 use mc_consensus_enclave_api::{
     BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeePublicKey,
     FormBlockInputs, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
-    WellFormedEncryptedTx, WellFormedTxContext,
+    WellFormedEncryptedTx, WellFormedTxContext, SMALLEST_MINIMUM_FEE_LOG2,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -168,6 +168,8 @@ impl SgxConsensusEnclave {
         ))
     }
 
+    // Get a WellFormedTxContext for a Tx, given the minimum fee for its specified
+    // fee token.
     fn get_well_formed_tx_context(&self, tx: &Tx, min_fee: u64) -> WellFormedTxContext {
         // Compute the priority number to assign to this tx.
         //
@@ -179,7 +181,7 @@ impl SgxConsensusEnclave {
         // affect the priority of your payment. So, we divide the min fee by 128,
         // before dividing the fee by this. Separately, the fee map enforces that
         // the minimum fees are >= 128, and so we are not dividing by zero.
-        let (priority, _) = ct_u64_divide(tx.prefix.fee, min_fee >> 7);
+        let (priority, _) = ct_u64_divide(tx.prefix.fee, min_fee >> SMALLEST_MINIMUM_FEE_LOG2);
 
         WellFormedTxContext::new_from_tx(priority, tx)
     }
