@@ -35,8 +35,9 @@ use zeroize::Zeroize;
 /// An account's "default address" is its zero^th subaddress.
 pub const DEFAULT_SUBADDRESS_INDEX: u64 = 0;
 
-/// An account's "change address" is its 1st subaddress.
-pub const CHANGE_SUBADDRESS_INDEX: u64 = 1;
+/// An account's "change address" is the 1st reserved subaddress,
+/// counting down from `u64::MAX`. (See MCIP #4, MCIP #36)
+pub const CHANGE_SUBADDRESS_INDEX: u64 = u64::MAX;
 
 /// A MobileCoin user's public subaddress.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Message, Clone, Digestible)]
