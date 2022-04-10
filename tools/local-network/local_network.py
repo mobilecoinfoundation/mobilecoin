@@ -222,7 +222,7 @@ class Node:
                 { "token_id": 0, "minimum_fee": self.minimum_fee },
                 {
                     "token_id": 1,
-                    "minimum_fee": 1,
+                    "minimum_fee": 1000,
                     "master_minters": {
                         "signers": open(os.path.join(MINTING_KEYS_DIR, 'master-minter1.pub')).read(),
                         "threshold": 1
@@ -230,7 +230,7 @@ class Node:
                 },
                 {
                     "token_id": 2,
-                    "minimum_fee": 1,
+                    "minimum_fee": 1000,
                     "master_minters": {
                         "signers": open(os.path.join(MINTING_KEYS_DIR, 'master-minter2.pub')).read(),
                         "threshold": 1
