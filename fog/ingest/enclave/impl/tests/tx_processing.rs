@@ -1,7 +1,5 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//use hex;
-//use mc_util_serial;
 use mc_account_keys::AccountKey;
 use mc_common::{
     logger::{log, Logger},
@@ -121,7 +119,6 @@ fn test_ingest_enclave(logger: Logger) {
             }
         }
 
-        log::info!(logger, "Line 125");
         // Check that Bob can decrypt the payloads for each tx row
         for idx in 0..10 {
             let tx_out_record = bob_fog_credential
