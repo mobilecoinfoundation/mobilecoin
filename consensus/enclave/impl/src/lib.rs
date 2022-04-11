@@ -726,7 +726,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         //
         // That is, if there is only transaction output in the block, then we only make
         // one fee output. If there are two transactions in the block, we have
-        // to make two fee ouptuts, even if they used the same token, to avoid
+        // to make two fee outputs, even if they used the same token, to avoid
         // revealing to these parties that the other person used the same token
         // id as them (active attack). So in that case we will mint a zero value
         // fee.
