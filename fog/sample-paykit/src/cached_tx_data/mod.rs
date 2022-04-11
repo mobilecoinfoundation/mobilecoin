@@ -4,12 +4,13 @@ use crate::error::{Error, Result, TxOutMatchingError};
 use core::{
     cmp::{max, min},
     convert::TryFrom,
-    ops::RangeInclusive,
+    ops::{Range, RangeInclusive},
     result::Result as StdResult,
 };
 use displaydoc::Display;
 use mc_account_keys::{
     AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
+    INVALID_SUBADDRESS_INDEX,
 };
 use mc_common::{
     logger::{log, Logger},
@@ -69,7 +70,7 @@ const TELEMETRY_NUM_TXOS_KEY: Key = telemetry_static_key!("num-txos");
 /// account will not reflect such TxOut's. This has to cover at least the
 /// default and change subaddress indexes.
 const SUBADDRESS_LOW_RANGE: RangeInclusive<u64> = 0..=DEFAULT_SUBADDRESS_INDEX;
-const SUBADDRESS_HIGH_RANGE: RangeInclusive<u64> = CHANGE_SUBADDRESS_INDEX..=u64::MAX;
+const SUBADDRESS_HIGH_RANGE: Range<u64> = CHANGE_SUBADDRESS_INDEX..INVALID_SUBADDRESS_INDEX;
 
 /// This object keeps track of all TxOut's that are known to be ours, and which
 /// have been spent. It allows to check the current balance of the account, and
