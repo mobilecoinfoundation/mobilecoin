@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! MobileNode Internal Enclave Implementation
 //!
@@ -753,7 +753,12 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 let token_id = *token_id;
                 let mut total_fee = *total_fee;
 
-                while total_fee > u64::MAX as u128 {
+                // Note: This should not be while total_fee > 0, because
+                // we want to mint at least one output even when the fee is zero,
+                // to avoid revealing that fewer than the number of taken items
+                // were nonzero. We are using a "do-while" pattern instead.
+                loop {
+                    let output_fee = min(total_fee, u64::MAX as u128) as u64;
                     outputs.push(mint_output(
                         config.block_version,
                         &fee_recipient,
@@ -761,26 +766,16 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                         parent_block,
                         &transactions,
                         Amount {
-                            value: u64::MAX,
+                            value: output_fee,
                             token_id,
                         },
                         outputs.len(),
                     ));
-                    total_fee -= u64::MAX as u128;
+                    total_fee -= output_fee as u128;
+                    if total_fee == 0 {
+                        break;
+                    }
                 }
-
-                outputs.push(mint_output(
-                    config.block_version,
-                    &fee_recipient,
-                    FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.as_bytes(),
-                    parent_block,
-                    &transactions,
-                    Amount {
-                        value: total_fee as u64,
-                        token_id,
-                    },
-                    outputs.len(),
-                ));
 
                 outputs
             })
@@ -874,6 +869,19 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 /// * `amount` - Output amount.
 /// * `counter` - An additional counter used to disambiguate hashes, when the
 ///   same amount is minted repeatedly
+///
+/// Note: The counter value exists to resolve certain corner cases:
+/// * If a very large amount > 2 * u64::MAX of some fee is collected, then we
+///   would mint at least two fee outputs of value u64::MAX both to the
+///   foundation. This hash would be the same for both of these outputs, and so
+///   they would have the same private key, and the same public key, and the
+///   network would get stuck.
+/// * If a minter requests to mint twice in one block, for the same amount and
+///   to the same recipient, then this hash would be the same and the network
+///   would get stuck, for the same reason.
+///
+/// The counter value should be used for each "context" where we mint multiple
+/// outputs to prevent this issue.
 fn mint_output<T: Digestible>(
     block_version: BlockVersion,
     recipient: &PublicAddress,

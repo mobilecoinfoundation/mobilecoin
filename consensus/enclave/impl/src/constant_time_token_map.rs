@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! This module defines a helper object for tracking and accumulating fees
 //! in the enclave, while remaining constant time with respect to token ids.
 //! This is used both when looking up the fee for a transaction, and when
@@ -186,7 +188,8 @@ impl<'a, T: ConditionallySelectable + Default> FromIterator<(&'a TokenId, &'a T)
 // Create a Ct token map from a sequence of keys. The values are all defaulted.
 //
 // Note: If keys repeat in this sequence, it is not an error, and the API will
-// behave as expected.
+// behave as expected. That is, the set of keys will be similar to if we did
+// `BTreeSet::from(iter)` where `iter` contains repeats.
 impl<T: ConditionallySelectable + Default> FromIterator<TokenId> for CtTokenMap<T> {
     fn from_iter<I>(iter: I) -> Self
     where
@@ -201,7 +204,7 @@ impl<T: ConditionallySelectable + Default> FromIterator<TokenId> for CtTokenMap<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::collections::BTreeSet;
+    use alloc::collections::{BTreeMap, BTreeSet};
 
     #[test]
     fn ct_token_map_get_and_set() {
@@ -216,21 +219,126 @@ mod tests {
         assert_eq!(map.get(&TokenId::from(2)), Some(2u64));
         assert_eq!(map.get(&TokenId::from(3)), None);
 
-        map.set(&TokenId::from(0), 3u64);
+        let result = map.set(&TokenId::from(0), 3u64);
+        assert_eq!(result.unwrap_u8(), 1);
 
         assert_eq!(map.get(&TokenId::from(0)), Some(3u64));
         assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
         assert_eq!(map.get(&TokenId::from(2)), Some(2u64));
         assert_eq!(map.get(&TokenId::from(3)), None);
 
-        map.set(&TokenId::from(0), 4u64);
+        let result = map.set(&TokenId::from(0), 4u64);
+        assert_eq!(result.unwrap_u8(), 1);
 
         assert_eq!(map.get(&TokenId::from(0)), Some(4u64));
         assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
         assert_eq!(map.get(&TokenId::from(2)), Some(2u64));
         assert_eq!(map.get(&TokenId::from(3)), None);
 
-        map.set(&TokenId::from(2), 9u64);
+        let result = map.set(&TokenId::from(2), 9u64);
+        assert_eq!(result.unwrap_u8(), 1);
+
+        assert_eq!(map.get(&TokenId::from(0)), Some(4u64));
+        assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
+        assert_eq!(map.get(&TokenId::from(2)), Some(9u64));
+        assert_eq!(map.get(&TokenId::from(3)), None);
+
+        let result = map.set(&TokenId::from(3), 17u64);
+        assert_eq!(result.unwrap_u8(), 0);
+
+        assert_eq!(map.get(&TokenId::from(0)), Some(4u64));
+        assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
+        assert_eq!(map.get(&TokenId::from(2)), Some(9u64));
+        assert_eq!(map.get(&TokenId::from(3)), None);
+    }
+
+    #[test]
+    fn ct_token_map_get_and_set_repeat_elements_one() {
+        let mut map = CtTokenMap::from_iter([
+            (TokenId::from(0), 0u64),
+            (TokenId::from(1), 1u64),
+            (TokenId::from(2), 2u64),
+            (TokenId::from(0), 0u64),
+        ]);
+
+        assert_eq!(map.get(&TokenId::from(0)), Some(0u64));
+        assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
+        assert_eq!(map.get(&TokenId::from(2)), Some(2u64));
+        assert_eq!(map.get(&TokenId::from(3)), None);
+
+        let result = map.set(&TokenId::from(0), 3u64);
+        assert_eq!(result.unwrap_u8(), 1);
+
+        assert_eq!(map.get(&TokenId::from(0)), Some(3u64));
+        assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
+        assert_eq!(map.get(&TokenId::from(2)), Some(2u64));
+        assert_eq!(map.get(&TokenId::from(3)), None);
+
+        let result = map.set(&TokenId::from(0), 4u64);
+        assert_eq!(result.unwrap_u8(), 1);
+
+        assert_eq!(map.get(&TokenId::from(0)), Some(4u64));
+        assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
+        assert_eq!(map.get(&TokenId::from(2)), Some(2u64));
+        assert_eq!(map.get(&TokenId::from(3)), None);
+
+        let result = map.set(&TokenId::from(2), 9u64);
+        assert_eq!(result.unwrap_u8(), 1);
+
+        assert_eq!(map.get(&TokenId::from(0)), Some(4u64));
+        assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
+        assert_eq!(map.get(&TokenId::from(2)), Some(9u64));
+        assert_eq!(map.get(&TokenId::from(3)), None);
+
+        let result = map.set(&TokenId::from(3), 17u64);
+        assert_eq!(result.unwrap_u8(), 0);
+
+        assert_eq!(map.get(&TokenId::from(0)), Some(4u64));
+        assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
+        assert_eq!(map.get(&TokenId::from(2)), Some(9u64));
+        assert_eq!(map.get(&TokenId::from(3)), None);
+    }
+
+    #[test]
+    fn ct_token_map_get_and_set_repeat_elements_two() {
+        let mut map = CtTokenMap::from_iter([
+            (TokenId::from(0), 7u64),
+            (TokenId::from(1), 1u64),
+            (TokenId::from(2), 2u64),
+            (TokenId::from(0), 0u64),
+        ]);
+
+        assert_eq!(map.get(&TokenId::from(0)), Some(0u64));
+        assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
+        assert_eq!(map.get(&TokenId::from(2)), Some(2u64));
+        assert_eq!(map.get(&TokenId::from(3)), None);
+
+        let result = map.set(&TokenId::from(0), 3u64);
+        assert_eq!(result.unwrap_u8(), 1);
+
+        assert_eq!(map.get(&TokenId::from(0)), Some(3u64));
+        assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
+        assert_eq!(map.get(&TokenId::from(2)), Some(2u64));
+        assert_eq!(map.get(&TokenId::from(3)), None);
+
+        let result = map.set(&TokenId::from(0), 4u64);
+        assert_eq!(result.unwrap_u8(), 1);
+
+        assert_eq!(map.get(&TokenId::from(0)), Some(4u64));
+        assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
+        assert_eq!(map.get(&TokenId::from(2)), Some(2u64));
+        assert_eq!(map.get(&TokenId::from(3)), None);
+
+        let result = map.set(&TokenId::from(2), 9u64);
+        assert_eq!(result.unwrap_u8(), 1);
+
+        assert_eq!(map.get(&TokenId::from(0)), Some(4u64));
+        assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
+        assert_eq!(map.get(&TokenId::from(2)), Some(9u64));
+        assert_eq!(map.get(&TokenId::from(3)), None);
+
+        let result = map.set(&TokenId::from(3), 17u64);
+        assert_eq!(result.unwrap_u8(), 0);
 
         assert_eq!(map.get(&TokenId::from(0)), Some(4u64));
         assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
@@ -251,21 +359,32 @@ mod tests {
         assert_eq!(map.get(&TokenId::from(2)), Some(2u64));
         assert_eq!(map.get(&TokenId::from(3)), None);
 
-        map.add(&TokenId::from(0), 3u64);
+        let result = map.add(&TokenId::from(0), 3u64);
+        assert_eq!(result.unwrap_u8(), 1);
 
         assert_eq!(map.get(&TokenId::from(0)), Some(3u64));
         assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
         assert_eq!(map.get(&TokenId::from(2)), Some(2u64));
         assert_eq!(map.get(&TokenId::from(3)), None);
 
-        map.add(&TokenId::from(0), 4u64);
+        let result = map.add(&TokenId::from(0), 4u64);
+        assert_eq!(result.unwrap_u8(), 1);
 
         assert_eq!(map.get(&TokenId::from(0)), Some(7u64));
         assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
         assert_eq!(map.get(&TokenId::from(2)), Some(2u64));
         assert_eq!(map.get(&TokenId::from(3)), None);
 
-        map.add(&TokenId::from(2), 9u64);
+        let result = map.add(&TokenId::from(2), 9u64);
+        assert_eq!(result.unwrap_u8(), 1);
+
+        assert_eq!(map.get(&TokenId::from(0)), Some(7u64));
+        assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
+        assert_eq!(map.get(&TokenId::from(2)), Some(11u64));
+        assert_eq!(map.get(&TokenId::from(3)), None);
+
+        let result = map.add(&TokenId::from(3), 17u64);
+        assert_eq!(result.unwrap_u8(), 0);
 
         assert_eq!(map.get(&TokenId::from(0)), Some(7u64));
         assert_eq!(map.get(&TokenId::from(1)), Some(1u64));
@@ -285,79 +404,101 @@ mod tests {
         ids.iter().map(|id| TokenId::from(*id)).collect()
     }
 
+    fn to_btree_map(map: &CtTokenMap<u64>) -> BTreeMap<TokenId, u64> {
+        map.as_ref().iter().cloned().collect()
+    }
+
     #[test]
     fn ct_token_map_sort_zeroes_to_end() {
-        let mut map = CtTokenMap::from_iter([
+        let orig_map = CtTokenMap::from_iter([
             (TokenId::from(0), 0u64),
             (TokenId::from(1), 1u64),
             (TokenId::from(2), 2u64),
         ]);
+        let mut map = orig_map.clone();
         map.sort_zeroes_to_end();
 
+        assert_eq!(to_btree_map(&orig_map), to_btree_map(&map));
         assert_eq!(take_ending_zeroes(&map), token_id_set(&[0]));
 
-        let mut map = CtTokenMap::from_iter([
+        let orig_map = CtTokenMap::from_iter([
             (TokenId::from(2), 2u64),
             (TokenId::from(1), 1u64),
             (TokenId::from(0), 0u64),
         ]);
+        let mut map = orig_map.clone();
         map.sort_zeroes_to_end();
+        assert_eq!(to_btree_map(&orig_map), to_btree_map(&map));
         assert_eq!(take_ending_zeroes(&map), token_id_set(&[0]));
 
-        let mut map = CtTokenMap::from_iter([
+        let orig_map = CtTokenMap::from_iter([
             (TokenId::from(1), 1u64),
             (TokenId::from(0), 0u64),
             (TokenId::from(2), 2u64),
         ]);
+        let mut map = orig_map.clone();
         map.sort_zeroes_to_end();
+        assert_eq!(to_btree_map(&orig_map), to_btree_map(&map));
         assert_eq!(take_ending_zeroes(&map), token_id_set(&[0]));
 
-        let mut map = CtTokenMap::from_iter([
+        let orig_map = CtTokenMap::from_iter([
             (TokenId::from(0), 0u64),
             (TokenId::from(1), 0u64),
             (TokenId::from(2), 2u64),
         ]);
+        let mut map = orig_map.clone();
         map.sort_zeroes_to_end();
+        assert_eq!(to_btree_map(&orig_map), to_btree_map(&map));
         assert_eq!(take_ending_zeroes(&map), token_id_set(&[0, 1]));
 
-        let mut map = CtTokenMap::from_iter([
+        let orig_map = CtTokenMap::from_iter([
             (TokenId::from(0), 0u64),
             (TokenId::from(2), 2u64),
             (TokenId::from(1), 0u64),
         ]);
+        let mut map = orig_map.clone();
         map.sort_zeroes_to_end();
+        assert_eq!(to_btree_map(&orig_map), to_btree_map(&map));
         assert_eq!(take_ending_zeroes(&map), token_id_set(&[0, 1]));
 
-        let mut map = CtTokenMap::from_iter([
+        let orig_map = CtTokenMap::from_iter([
             (TokenId::from(0), 3u64),
             (TokenId::from(1), 0u64),
             (TokenId::from(2), 2u64),
         ]);
+        let mut map = orig_map.clone();
         map.sort_zeroes_to_end();
+        assert_eq!(to_btree_map(&orig_map), to_btree_map(&map));
         assert_eq!(take_ending_zeroes(&map), token_id_set(&[1]));
 
-        let mut map = CtTokenMap::from_iter([
+        let orig_map = CtTokenMap::from_iter([
             (TokenId::from(1), 0u64),
             (TokenId::from(0), 3u64),
             (TokenId::from(2), 2u64),
         ]);
+        let mut map = orig_map.clone();
         map.sort_zeroes_to_end();
+        assert_eq!(to_btree_map(&orig_map), to_btree_map(&map));
         assert_eq!(take_ending_zeroes(&map), token_id_set(&[1]));
 
-        let mut map = CtTokenMap::from_iter([
+        let orig_map = CtTokenMap::from_iter([
             (TokenId::from(1), 0u64),
             (TokenId::from(2), 0u64),
             (TokenId::from(0), 3u64),
         ]);
+        let mut map = orig_map.clone();
         map.sort_zeroes_to_end();
+        assert_eq!(to_btree_map(&orig_map), to_btree_map(&map));
         assert_eq!(take_ending_zeroes(&map), token_id_set(&[1, 2]));
 
-        let mut map = CtTokenMap::from_iter([
+        let orig_map = CtTokenMap::from_iter([
             (TokenId::from(0), 3u64),
             (TokenId::from(1), 9u64),
             (TokenId::from(2), 7u64),
         ]);
+        let mut map = orig_map.clone();
         map.sort_zeroes_to_end();
+        assert_eq!(to_btree_map(&orig_map), to_btree_map(&map));
         assert_eq!(take_ending_zeroes(&map), token_id_set(&[]));
     }
 }
