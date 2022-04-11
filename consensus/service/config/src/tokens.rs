@@ -274,17 +274,6 @@ mod tests {
     use super::*;
     use std::convert::TryFrom;
 
-    // #[macro_export]
-    // macro_rules! assert_validation_error {
-    //     ($err:expr, $expected_err:pat) => {
-    //         match $err {
-    //             Err($expected_err) => (),
-    //             Err(err) => panic!("Unexpected error: {:?}, expected {:?}", err),
-    //             Ok(_) => panic!("Expected success, expected {:?}",
-    // $expected_err),         }
-    //     };
-    // }
-
     #[test]
     fn empty_config() {
         let input_toml: &str = r#"
