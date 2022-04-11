@@ -1480,23 +1480,6 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOutMembershipProof_init_1from
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOutMembershipProof_encode(
-    env: JNIEnv,
-    obj: JObject,
-) -> jbyteArray {
-    jni_ffi_call_or(
-        || Ok(JObject::null().into_inner()),
-        &env,
-        |env| {
-            let tx_out_membership_proof: MutexGuard<TxOutMembershipProof> =
-                env.get_rust_field(obj, RUST_OBJ_FIELD)?;
-            let bytes = mc_util_serial::encode(&*tx_out_membership_proof);
-            Ok(env.byte_array_from_slice(&bytes)?)
-        },
-    )
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOutMembershipProof_finalize_1jni(
     env: JNIEnv,
     obj: JObject,
