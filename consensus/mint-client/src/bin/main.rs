@@ -10,6 +10,7 @@ use mc_consensus_api::{
     empty::Empty,
 };
 use mc_consensus_mint_client::{Commands, Config};
+use mc_crypto_keys::{Ed25519Pair, Signer};
 use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::{
     constants::MAX_TOMBSTONE_BLOCKS,
@@ -150,6 +151,20 @@ fn main() {
                 .propose_mint_tx(&(&merged_tx).into())
                 .expect("propose tx");
             println!("response: {:?}", resp);
+        }
+
+        Commands::SignMasterMinters {
+            signing_key,
+            tokens,
+        } => {
+            let master_minters_map = tokens
+                .token_id_to_master_minters()
+                .expect("master minters configuration error");
+            let message = master_minters_map.hash();
+            let signature = Ed25519Pair::from(signing_key)
+                .try_sign(message.as_ref())
+                .expect("failed signing message");
+            println!("{}", hex::encode(signature.as_ref()));
         }
     }
 }

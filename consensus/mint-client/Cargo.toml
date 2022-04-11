@@ -16,6 +16,7 @@ mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-consensus-api = { path = "../../consensus/api" }
+mc-consensus-service-config = { path = "../../consensus/service/config" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-multisig = { path = "../../crypto/multisig" }
 mc-transaction-core = { path = "../../transaction/core"}

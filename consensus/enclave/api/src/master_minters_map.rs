@@ -6,11 +6,14 @@
 use alloc::collections::BTreeMap;
 use core::{convert::TryFrom, iter::FromIterator};
 use displaydoc::Display;
-use mc_crypto_digestible::Digestible;
+use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::Ed25519Public;
 use mc_crypto_multisig::SignerSet;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Serialize};
+
+// Domain separator for hashing MasterMintersMap
+pub const MASTER_MINTERS_MAP_DOMAIN_TAG: &str = "mc_master_minters_map";
 
 /// A map of master minters by token id.
 #[derive(Clone, Debug, Default, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize)]
@@ -100,6 +103,11 @@ impl MasterMintersMap {
     /// Iterate over all entries in the map.
     pub fn iter(&self) -> impl Iterator<Item = (&TokenId, &SignerSet<Ed25519Public>)> {
         self.map.iter()
+    }
+
+    /// Digestible-crate hash of `self` using Merlin
+    pub fn hash(&self) -> [u8; 32] {
+        self.digest32::<MerlinTranscript>(MASTER_MINTERS_MAP_DOMAIN_TAG.as_bytes())
     }
 }
 

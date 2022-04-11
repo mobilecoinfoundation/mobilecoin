@@ -109,3 +109,5 @@ impl From<TomlError> for Error {
         Self::Toml(src)
     }
 }
+
+impl std::error::Error for Error {}
