@@ -2290,6 +2290,7 @@ dependencies = [
  "cmake",
  "crc",
  "displaydoc",
+ "generic-array 0.14.5",
  "libc",
  "mc-account-keys",
  "mc-account-keys-slip10",
