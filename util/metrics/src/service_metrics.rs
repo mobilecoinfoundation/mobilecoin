@@ -49,10 +49,10 @@ use std::str;
 /// e.g., calc_service.duration_sum{method="add"} = 6
 #[derive(Clone)]
 pub struct ServiceMetrics {
-    /// Number of requests made by each gRPC method tracked
+    /// Count of requests made by each gRPC method tracked
     num_req: IntCounterVec,
 
-    /// Number of error responses for each gRPC method tracked
+    /// Count of error responses for each gRPC method tracked
     num_error: IntCounterVec,
 
     /// Count of gRPC status codes for each gRPC method tracked
@@ -193,8 +193,8 @@ impl Collector for ServiceMetrics {
     }
 }
 
-/// This method reads the full URI from gRpcContext (looks like:
-/// `/{package}.{service_name}/{method}`
+/// This method reads the full URI from gRpcContext
+/// which looks like `/{package}.{service_name}/{method}`
 /// ('/' equates to ascii code 47)
 /// and converts it into a dot-delimited string, dropping the 1st `/`
 fn path_from_ctx(ctx: &RpcContext) -> Option<String> {
@@ -202,8 +202,8 @@ fn path_from_ctx(ctx: &RpcContext) -> Option<String> {
     path_from_byte_slice(method)
 }
 
-/// This method reads the full URI from gRpcContext (looks like:
-/// `/{package}.{service_name}/{method}`
+/// This method reads the full URI from gRpcContext
+/// which looks like `/{package}.{service_name}/{method}`
 /// ('/' equates to ascii code 47)
 /// and converts it into a dot-delimited string, dropping the 1st `/`
 fn path_from_byte_slice(bytes: &[u8]) -> Option<String> {
