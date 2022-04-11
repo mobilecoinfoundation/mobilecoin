@@ -98,6 +98,7 @@ members = [
     "ledger/migration",
     "ledger/streaming/api",
     "ledger/streaming/client",
+    "ledger/streaming/publisher",
     "ledger/sync",
     "libmobilecoin",
     "mobilecoind",
