@@ -44,6 +44,7 @@ pub struct MintConfigTxParams {
     configs: Vec<(u64, SignerSet<Ed25519Public>)>,
 
     /// Total mint limit, shared amongst all configs.
+    #[clap(long, env = "MC_MINTING_TOTAL_LIMIT")]
     total_mint_limit: u64,
 }
 
