@@ -49,7 +49,7 @@ use std::{
 pub use error::Error;
 pub use ledger_trait::{Ledger, MockLedger};
 pub use mc_util_lmdb::{MetadataStore, MetadataStoreError};
-pub use mint_config_store::{ActiveMintConfig, MintConfigStore};
+pub use mint_config_store::{ActiveMintConfig, ActiveMintConfigs, MintConfigStore};
 pub use mint_tx_store::MintTxStore;
 pub use tx_out_store::TxOutStore;
 
@@ -377,9 +377,10 @@ impl Ledger for LedgerDB {
     }
 
     /// Get active mint configurations for a given token id.
-    /// Returns an empty array of no mint configurations are active for the
-    /// given token id.
-    fn get_active_mint_configs(&self, token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error> {
+    fn get_active_mint_configs(
+        &self,
+        token_id: TokenId,
+    ) -> Result<Option<ActiveMintConfigs>, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
         self.mint_config_store
             .get_active_mint_configs(token_id, &db_transaction)
@@ -1148,10 +1149,7 @@ mod ledger_db_test {
         let origin_tx_out = origin_block_contents.outputs.get(0).unwrap().clone();
         assert_eq!(origin_tx_out, ledger_db.get_tx_out_by_index(0).unwrap());
 
-        assert_eq!(
-            ledger_db.get_active_mint_configs(token_id1).unwrap(),
-            vec![]
-        );
+        assert_eq!(ledger_db.get_active_mint_configs(token_id1).unwrap(), None,);
 
         // === Append a block with only a single MintConfigTx. ===
         let mint_config_tx1 = create_mint_config_tx(token_id1, &mut rng);
@@ -1187,7 +1185,11 @@ mod ledger_db_test {
 
         // The active mint configs should be updated.
         assert_eq!(
-            ledger_db.get_active_mint_configs(token_id1).unwrap(),
+            ledger_db
+                .get_active_mint_configs(token_id1)
+                .unwrap()
+                .unwrap()
+                .configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[0].clone(),
@@ -1241,7 +1243,11 @@ mod ledger_db_test {
 
         // The active mint configs should be updated.
         assert_eq!(
-            ledger_db.get_active_mint_configs(token_id1).unwrap(),
+            ledger_db
+                .get_active_mint_configs(token_id1)
+                .unwrap()
+                .unwrap()
+                .configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx2.prefix.configs[0].clone(),
@@ -1259,7 +1265,11 @@ mod ledger_db_test {
         );
 
         assert_eq!(
-            ledger_db.get_active_mint_configs(token_id2).unwrap(),
+            ledger_db
+                .get_active_mint_configs(token_id2)
+                .unwrap()
+                .unwrap()
+                .configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx3.prefix.configs[0].clone(),
@@ -1364,10 +1374,7 @@ mod ledger_db_test {
         let origin_tx_out = origin_block_contents.outputs.get(0).unwrap().clone();
         assert_eq!(origin_tx_out, ledger_db.get_tx_out_by_index(0).unwrap());
 
-        assert_eq!(
-            ledger_db.get_active_mint_configs(token_id1).unwrap(),
-            vec![]
-        );
+        assert_eq!(ledger_db.get_active_mint_configs(token_id1).unwrap(), None);
 
         // === Append a block wth a MintConfigTx transaction. This is needed since
         // the MintTx must be matched with an active mint config.
@@ -1424,7 +1431,11 @@ mod ledger_db_test {
 
         // The active mint configs should be updated.
         assert_eq!(
-            ledger_db.get_active_mint_configs(token_id1).unwrap(),
+            ledger_db
+                .get_active_mint_configs(token_id1)
+                .unwrap()
+                .unwrap()
+                .configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[0].clone(),
@@ -1486,7 +1497,11 @@ mod ledger_db_test {
 
         // The active mint configs should be updated.
         assert_eq!(
-            ledger_db.get_active_mint_configs(token_id1).unwrap(),
+            ledger_db
+                .get_active_mint_configs(token_id1)
+                .unwrap()
+                .unwrap()
+                .configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[0].clone(),
@@ -1548,7 +1563,11 @@ mod ledger_db_test {
 
         // The active mint configs should be updated.
         assert_eq!(
-            ledger_db.get_active_mint_configs(token_id1).unwrap(),
+            ledger_db
+                .get_active_mint_configs(token_id1)
+                .unwrap()
+                .unwrap()
+                .configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[0].clone(),
@@ -1619,7 +1638,11 @@ mod ledger_db_test {
 
         // The active mint configs should be updated.
         assert_eq!(
-            ledger_db.get_active_mint_configs(token_id1).unwrap(),
+            ledger_db
+                .get_active_mint_configs(token_id1)
+                .unwrap()
+                .unwrap()
+                .configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[0].clone(),
@@ -1694,7 +1717,11 @@ mod ledger_db_test {
 
         // The active mint configs should be updated.
         assert_eq!(
-            ledger_db.get_active_mint_configs(token_id1).unwrap(),
+            ledger_db
+                .get_active_mint_configs(token_id1)
+                .unwrap()
+                .unwrap()
+                .configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[0].clone(),
@@ -1775,7 +1802,11 @@ mod ledger_db_test {
 
         // The active mint configs should be updated.
         assert_eq!(
-            ledger_db.get_active_mint_configs(token_id1).unwrap(),
+            ledger_db
+                .get_active_mint_configs(token_id1)
+                .unwrap()
+                .unwrap()
+                .configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[0].clone(),
@@ -1793,7 +1824,11 @@ mod ledger_db_test {
         );
 
         assert_eq!(
-            ledger_db.get_active_mint_configs(token_id2).unwrap(),
+            ledger_db
+                .get_active_mint_configs(token_id2)
+                .unwrap()
+                .unwrap()
+                .configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx2.prefix.configs[0].clone(),
@@ -1877,7 +1912,11 @@ mod ledger_db_test {
 
         // The active mint configs should be updated.
         assert_eq!(
-            ledger_db.get_active_mint_configs(token_id1).unwrap(),
+            ledger_db
+                .get_active_mint_configs(token_id1)
+                .unwrap()
+                .unwrap()
+                .configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx3.prefix.configs[0].clone(),
@@ -1895,7 +1934,11 @@ mod ledger_db_test {
         );
 
         assert_eq!(
-            ledger_db.get_active_mint_configs(token_id2).unwrap(),
+            ledger_db
+                .get_active_mint_configs(token_id2)
+                .unwrap()
+                .unwrap()
+                .configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx2.prefix.configs[0].clone(),
@@ -2182,10 +2225,7 @@ mod ledger_db_test {
         let origin_tx_out = origin_block_contents.outputs.get(0).unwrap().clone();
         assert_eq!(origin_tx_out, ledger_db.get_tx_out_by_index(0).unwrap());
 
-        assert_eq!(
-            ledger_db.get_active_mint_configs(token_id1).unwrap(),
-            vec![]
-        );
+        assert_eq!(ledger_db.get_active_mint_configs(token_id1).unwrap(), None,);
 
         // === Append a block wth a MintConfigTx transaction. This is needed since
         // the MintTx must be matched with an active mint config.
@@ -2257,14 +2297,19 @@ mod ledger_db_test {
         assert_eq!(
             ledger_db.append_block(&block3, &block_contents3, None),
             Err(Error::MintLimitExceeded(
-                mint_config_tx1.prefix.configs[0].mint_limit + 1,
+                11,
+                mint_config_tx1.prefix.configs[0].mint_limit - 10,
                 mint_config_tx1.prefix.configs[0].mint_limit
             ))
         );
 
         // Amount minted should not update.
         assert_eq!(
-            ledger_db.get_active_mint_configs(token_id1).unwrap(),
+            ledger_db
+                .get_active_mint_configs(token_id1)
+                .unwrap()
+                .unwrap()
+                .configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[0].clone(),
@@ -2304,7 +2349,11 @@ mod ledger_db_test {
 
         // Amount minted should not update.
         assert_eq!(
-            ledger_db.get_active_mint_configs(token_id1).unwrap(),
+            ledger_db
+                .get_active_mint_configs(token_id1)
+                .unwrap()
+                .unwrap()
+                .configs,
             vec![
                 ActiveMintConfig {
                     mint_config: mint_config_tx1.prefix.configs[0].clone(),

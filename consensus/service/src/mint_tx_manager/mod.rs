@@ -138,7 +138,7 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
                 LedgerError::NotFound => {
                     MintTxManagerError::MintValidation(MintValidationError::NoMatchingMintConfig)
                 }
-                LedgerError::MintLimitExceeded(_, _) => {
+                LedgerError::MintLimitExceeded(_, _, _) => {
                     MintTxManagerError::MintValidation(MintValidationError::AmountExceedsMintLimit)
                 }
                 err => err.into(),
@@ -804,9 +804,10 @@ mod mint_tx_tests {
         );
     }
 
-    /// validate_mint_tx rejects a mint tx that exceeds the mint limit.
+    /// validate_mint_tx rejects a mint tx that exceeds a specific config mint
+    /// limit.
     #[test_with_logger]
-    fn validate_mint_tx_refused_over_minting(logger: Logger) {
+    fn validate_mint_tx_refused_over_minting_specific_config(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
         let token_id_1 = TokenId::from(1);
 
@@ -869,6 +870,121 @@ mod mint_tx_tests {
             token_id_1,
             &[Ed25519Pair::from(signers[0].private_key())],
             mint_config_tx.prefix.configs[0].mint_limit - 1,
+            &mut rng,
+        );
+
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
+
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+        let block_contents = BlockContents {
+            mint_txs: vec![mint_tx],
+            outputs: vec![create_test_tx_out(&mut rng)],
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        // Create a MintTx that exceeds the mint limit
+        let mint_tx = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            2,
+            &mut rng,
+        );
+
+        assert_eq!(
+            mint_tx_manager.validate_mint_tx(&mint_tx),
+            Err(MintTxManagerError::MintValidation(
+                MintValidationError::AmountExceedsMintLimit
+            ))
+        );
+
+        // Sanity that a MintTx that does not exceed the limit passes validation.
+        let mint_tx = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            1,
+            &mut rng,
+        );
+
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
+    }
+
+    /// validate_mint_tx rejects a mint tx that exceeds the overall mint limit.
+    #[test_with_logger]
+    fn validate_mint_tx_refused_over_minting_total_limit(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let token_id_1 = TokenId::from(1);
+
+        let mut ledger = create_ledger();
+        let n_blocks = 3;
+        let block_version = BlockVersion::MAX;
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+        // Create a mint configuration and append it to the ledger.
+        let (mut mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
+
+        mint_config_tx.prefix.total_mint_limit = mint_config_tx.prefix.configs[0].mint_limit - 1;
+
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+        let block_contents = BlockContents {
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx)],
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        // Create MintTxManagerImpl
+        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
+            token_id_1,
+            SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+        )])
+        .unwrap();
+        let mint_tx_manager = MintTxManagerImpl::new(
+            ledger.clone(),
+            BlockVersion::MAX,
+            token_id_to_master_minters,
+            logger,
+        );
+
+        // Create a MintTx that exceeds the total mint limit
+        let mint_tx = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            mint_config_tx.prefix.configs[0].mint_limit,
+            &mut rng,
+        );
+
+        assert_eq!(
+            mint_tx_manager.validate_mint_tx(&mint_tx),
+            Err(MintTxManagerError::MintValidation(
+                MintValidationError::AmountExceedsMintLimit
+            ))
+        );
+
+        // Append a block that contains a valid MintTx, to test that the allowed
+        // minting limit decreases.
+        let mint_tx = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            mint_config_tx.prefix.configs[0].mint_limit - 2,
             &mut rng,
         );
 
