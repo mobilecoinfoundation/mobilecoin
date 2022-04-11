@@ -164,7 +164,8 @@ fn main() {
             let signature = Ed25519Pair::from(signing_key)
                 .try_sign(message.as_ref())
                 .expect("failed signing message");
-            println!("{}", hex::encode(signature.as_ref()));
+            println!("Signature: {}", hex::encode(signature.as_ref()));
+            println!("Put this signature in the master minters configuration file in the key \"master_minters_signature\".");
         }
     }
 }

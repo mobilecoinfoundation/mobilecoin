@@ -5,7 +5,7 @@
 use crate::error::Error;
 use mc_common::HashSet;
 use mc_consensus_enclave_api::{FeeMap, MasterMintersMap};
-use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
+use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, Ed25519Signature};
 use mc_crypto_multisig::SignerSet;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -18,7 +18,7 @@ mod pem_signer_set {
     use super::*;
     use pem::Pem;
 
-    /// A helper struct for ser/derserializing an Ed25519 SignerSet that is PEM
+    /// A helper struct for ser/deserializing an Ed25519 SignerSet that is PEM
     /// encoded.
     #[derive(Serialize, Deserialize)]
     struct PemSignerSet {
@@ -71,6 +71,33 @@ mod pem_signer_set {
                     .collect::<Result<_, D::Error>>()?;
 
                 Ok(Some(SignerSet::new(signers, pem_signer_set.threshold)))
+            }
+        }
+    }
+}
+
+mod hex_signature {
+    use super::*;
+    use std::convert::TryFrom;
+
+    /// Helper method for serializing an Ed25519Signature into a hex string.
+    pub fn serialize<S: Serializer>(
+        signature: &Option<Ed25519Signature>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        signature.as_ref().map(hex::encode).serialize(serializer)
+    }
+
+    /// A helper method for deserializing an Ed25519Signature from a hex string.
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<Ed25519Signature>, D::Error> {
+        let hex_string: Option<String> = Deserialize::deserialize(deserializer)?;
+        match hex_string.as_deref() {
+            None | Some("") => Ok(None),
+            Some(hex_string) => {
+                let bytes = hex::decode(hex_string).map_err(serde::de::Error::custom)?;
+                Ok(Some(Ed25519Signature::try_from(&bytes[..]).map_err(serde::de::Error::custom)?))
             }
         }
     }
@@ -167,6 +194,11 @@ impl TokenConfig {
 /// Tokens configuration.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TokensConfig {
+    /// Master minters signature generated using the `mc-consensus-mint-client
+    /// sign-master-minters` command.
+    #[serde(default, with = "hex_signature")]
+    master_minters_signature: Option<Ed25519Signature>,
+
     /// Token configurations (one for each supported token).
     tokens: Vec<TokenConfig>,
 }
@@ -174,6 +206,7 @@ pub struct TokensConfig {
 impl Default for TokensConfig {
     fn default() -> Self {
         Self {
+            master_minters_signature: None,
             tokens: vec![TokenConfig {
                 token_id: Mob::ID,
                 minimum_fee: Some(Mob::MINIMUM_FEE),
