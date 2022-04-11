@@ -243,7 +243,7 @@ impl TokensConfig {
                         token_config.token_id,
                         token_config
                             .minimum_fee_or_default()
-                            .ok_or_else(|| Error::MissingMinimumFee(token_config.token_id))?,
+                            .ok_or(Error::MissingMinimumFee(token_config.token_id))?,
                     ))
                 })
                 .collect::<Result<Vec<_>, Error>>()?,
