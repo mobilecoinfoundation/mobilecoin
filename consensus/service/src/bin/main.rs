@@ -10,13 +10,13 @@ use mc_common::{
     time::SystemTimeProvider,
 };
 use mc_consensus_enclave::{BlockchainConfig, ConsensusServiceSgxEnclave, ENCLAVE_FILE};
-use mc_consensus_service_config::Config;
 use mc_consensus_service::{
     consensus_service::{ConsensusService, ConsensusServiceError},
     mint_tx_manager::MintTxManagerImpl,
     tx_manager::TxManagerImpl,
     validators::DefaultTxManagerUntrustedInterfaces,
 };
+use mc_consensus_service_config::Config;
 use mc_ledger_db::LedgerDB;
 use mc_util_cli::ParserWithBuildInfo;
 use std::{

@@ -3,8 +3,10 @@
 //! Configuration error data type
 
 use displaydoc::Display;
+use mc_common::ResponderId;
 use mc_consensus_enclave_api::{FeeMapError, MasterMintersMapError};
 use mc_transaction_core::TokenId;
+use mc_util_uri::UriConversionError;
 use serde_json::Error as JsonError;
 use std::io::Error as IoError;
 use toml::de::Error as TomlError;
@@ -64,6 +66,18 @@ pub enum Error {
 
     /// IO: {0}
     Io(IoError),
+
+    /// URI conversion of {0}: {1}
+    UriConversion(String, UriConversionError),
+
+    /// Duplicate responder id in network configuration
+    DuplicateResponderId(ResponderId),
+
+    /// Known peers should not contain our peer responder id ({0})
+    KnownPeersContainsSelf(ResponderId),
+
+    /// Missing tx_source_urls
+    MissingTxSourceUrls,
 }
 
 impl From<IoError> for Error {

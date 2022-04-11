@@ -278,7 +278,6 @@ mod client_api_tests {
         mint_tx_manager::{MintTxManagerError, MockMintTxManager},
         tx_manager::{MockTxManager, TxManagerError},
     };
-    use mc_consensus_service_config::Config;
     use clap::Parser;
     use grpcio::{
         ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
@@ -295,6 +294,7 @@ mod client_api_tests {
     };
     use mc_consensus_enclave::TxContext;
     use mc_consensus_enclave_mock::MockConsensusEnclave;
+    use mc_consensus_service_config::Config;
     use mc_crypto_keys::Ed25519Pair;
     use mc_ledger_db::MockLedger;
     use mc_peers::ConsensusValue;
