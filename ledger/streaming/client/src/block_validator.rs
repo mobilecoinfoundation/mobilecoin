@@ -15,6 +15,7 @@ use mc_transaction_core::{compute_block_id, ring_signature::KeyImage, BlockID};
 
 /// Create stream factory for validating individual blocks within a stream.
 /// Valid blocks will passed on, blocks that don't pass will pass an error.
+#[derive(Debug, Clone)]
 pub struct BlockValidator<US: BlockStream + 'static, L: Ledger + 'static> {
     upstream: US,
     ledger: Option<L>,
@@ -40,12 +41,7 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for Blo
         //get block id from ledger if it exists, else initialize to an empty value
         let ledger = self.ledger.clone();
         let prev_block_id = if self.ledger.is_some() && starting_height > 0 {
-            ledger
-                .as_ref()
-                .unwrap()
-                .get_block(starting_height - 1)?
-                .id
-                .clone()
+            ledger.as_ref().unwrap().get_block(starting_height - 1)?.id
         } else {
             BlockID::default()
         };
@@ -59,7 +55,7 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for Blo
                 ledger,
                 prev_block_id,
                 additional_key_images,
-                starting_height.clone(),
+                starting_height,
             ),
             |state, component| {
                 match component {
