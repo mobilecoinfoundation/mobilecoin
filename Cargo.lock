@@ -3048,6 +3048,7 @@ dependencies = [
  "mc-consensus-enclave",
  "mc-consensus-enclave-mock",
  "mc-consensus-scp",
+ "mc-consensus-service-config",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-multisig",
@@ -3066,13 +3067,11 @@ dependencies = [
  "mc-util-logger-macros",
  "mc-util-metered-channel",
  "mc-util-metrics",
- "mc-util-parse",
  "mc-util-serial",
  "mc-util-telemetry",
  "mc-util-uri",
  "mockall",
  "once_cell",
- "pem",
  "protobuf",
  "rand 0.8.5",
  "rand_core 0.6.3",
@@ -3083,6 +3082,30 @@ dependencies = [
  "serde_json",
  "serial_test",
  "tempdir",
+]
+
+[[package]]
+name = "mc-consensus-service-config"
+version = "1.3.0-pre0"
+dependencies = [
+ "base64 0.13.0",
+ "clap 3.1.8",
+ "displaydoc",
+ "hex",
+ "mc-attest-core",
+ "mc-common",
+ "mc-consensus-enclave-api",
+ "mc-consensus-scp",
+ "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-crypto-multisig",
+ "mc-transaction-core",
+ "mc-util-parse",
+ "mc-util-serial",
+ "mc-util-uri",
+ "pem",
+ "serde",
+ "serde_json",
  "toml 0.5.8",
 ]
 

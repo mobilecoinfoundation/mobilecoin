@@ -2,9 +2,9 @@
 
 //! Tokens configuration.
 
-use crate::consensus_service::ConsensusServiceError;
+use crate::error::Error;
 use mc_common::HashSet;
-use mc_consensus_enclave::{FeeMap, MasterMintersMap};
+use mc_consensus_enclave_api::{FeeMap, MasterMintersMap};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
 use mc_crypto_multisig::SignerSet;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
@@ -123,29 +123,22 @@ impl TokenConfig {
     }
 
     /// Check if the token configuration is valid.
-    pub fn validate(&self) -> Result<(), ConsensusServiceError> {
+    pub fn validate(&self) -> Result<(), Error> {
         // We must have a fee for every configured token.
         if self.minimum_fee_or_default().is_none() {
-            return Err(ConsensusServiceError::Configuration(
-                "missing minimum fee".to_string(),
-            ));
+            return Err(Error::MissingMinimumFee(self.token_id));
         }
 
         // By default, we restrict MOB minimum fee to a sane value.
         if self.token_id == Mob::ID {
             let mob_fee = self.minimum_fee_or_default().unwrap(); // We are guaranteed to have a minimum fee for MOB.
             if !self.allow_any_fee && !ACCEPTABLE_MOB_FEE_VALUES.contains(&mob_fee) {
-                return Err(ConsensusServiceError::Configuration(format!(
-                    "Fee {} picoMOB is out of bounds",
-                    mob_fee
-                )));
+                return Err(Error::FeeOutOfBounds(mob_fee, self.token_id));
             }
         } else {
             // allow_any_fee can only be used for MOB
             if self.allow_any_fee {
-                return Err(ConsensusServiceError::Configuration(
-                    "allow_any_fee can only be used for MOB".to_string(),
-                ));
+                return Err(Error::AllowAnyFeeNotAllowed(self.token_id));
             }
         }
 
@@ -153,22 +146,16 @@ impl TokenConfig {
         if let Some(master_minters) = &self.master_minters {
             // MOB cannot be minted.
             if self.token_id == TokenId::MOB {
-                return Err(ConsensusServiceError::Configuration(
-                    "MOB cannot have minting configuration".to_string(),
-                ));
+                return Err(Error::MintConfigNotAllowed(self.token_id));
             }
 
             // We must have at least one master minter.
             if master_minters.signers().is_empty() || master_minters.threshold() == 0 {
-                return Err(ConsensusServiceError::Configuration(
-                    "must have at least one signer".to_string(),
-                ));
+                return Err(Error::NoSigners(self.token_id));
             }
 
             if master_minters.threshold() as usize > master_minters.signers().len() {
-                return Err(ConsensusServiceError::Configuration(
-                    "signer set threshold is greater than the number of signers".to_string(),
-                ));
+                return Err(Error::SignerSetThresholdExceedsSigners(self.token_id));
             }
         }
 
@@ -199,29 +186,18 @@ impl Default for TokensConfig {
 
 impl TokensConfig {
     /// Get the tokens configuration by loading the tokens.toml/json file.
-    pub fn load_from_path(path: impl AsRef<Path>) -> Result<Self, ConsensusServiceError> {
+    pub fn load_from_path(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path.as_ref();
 
         // Read configuration file.
-        let data = fs::read_to_string(path).map_err(|err| {
-            ConsensusServiceError::Configuration(format!("error reading file: {}", err))
-        })?;
+        let data = fs::read_to_string(path)?;
 
         // Parse configuration file.
         let tokens_config: Self = match path.extension().and_then(|ext| ext.to_str()) {
-            None => Err(ConsensusServiceError::Configuration(
-                "failed figuring out file extension".to_owned(),
-            )),
-            Some("toml") => toml::from_str(&data).map_err(|err| {
-                ConsensusServiceError::Configuration(format!("TOML parsing: {:?}", err))
-            }),
-            Some("json") => serde_json::from_str(&data).map_err(|err| {
-                ConsensusServiceError::Configuration(format!("JSON parsing: {:?}", err))
-            }),
-            Some(ext) => Err(ConsensusServiceError::Configuration(format!(
-                "Unrecognized extension '{}'",
-                ext
-            ))),
+            None => Err(Error::PathExtension),
+            Some("toml") => toml::from_str(&data).map_err(Error::from),
+            Some("json") => serde_json::from_str(&data).map_err(Error::from),
+            Some(ext) => Err(Error::UnrecognizedExtension(ext.to_string())),
         }?;
 
         tokens_config.validate()?;
@@ -229,34 +205,21 @@ impl TokensConfig {
     }
 
     /// Validate the tokens configuration.
-    pub fn validate(&self) -> Result<(), ConsensusServiceError> {
+    pub fn validate(&self) -> Result<(), Error> {
         // Cannot have duplicate configuration for a single token.
         let unique_token_ids = HashSet::from_iter(self.tokens.iter().map(|token| token.token_id));
         if unique_token_ids.len() != self.tokens.len() {
-            return Err(ConsensusServiceError::Configuration(
-                "duplicate token configuration found".to_owned(),
-            ));
+            return Err(Error::DuplicateTokenConfig);
         }
 
         // Must have MOB.
         if self.get_token_config(&Mob::ID).is_none() {
-            return Err(ConsensusServiceError::Configuration(
-                "MOB token configuration not found".to_owned(),
-            ));
+            return Err(Error::MissingMobConfig);
         }
 
         // Validate the configuration of each token
         for token in self.tokens.iter() {
-            token.validate().map_err(|err| {
-                if let ConsensusServiceError::Configuration(msg) = err {
-                    ConsensusServiceError::Configuration(format!(
-                        "token id {}: {}",
-                        token.token_id, msg
-                    ))
-                } else {
-                    err
-                }
-            })?;
+            token.validate()?;
         }
 
         // Tokens configuration is valid.
@@ -269,26 +232,22 @@ impl TokensConfig {
     }
 
     /// Construct a FeeMap based on the configuration.
-    pub fn fee_map(&self) -> Result<FeeMap, ConsensusServiceError> {
+    pub fn fee_map(&self) -> Result<FeeMap, Error> {
         self.validate()?;
 
-        FeeMap::try_from_iter(
+        Ok(FeeMap::try_from_iter(
             self.tokens
                 .iter()
                 .map(|token_config| {
                     Ok((
                         token_config.token_id,
-                        token_config.minimum_fee_or_default().ok_or_else(|| {
-                            ConsensusServiceError::Configuration(format!(
-                                "missing minimum fee for token id {:?}",
-                                token_config.token_id
-                            ))
-                        })?,
+                        token_config
+                            .minimum_fee_or_default()
+                            .ok_or(Error::MissingMinimumFee(token_config.token_id))?,
                     ))
                 })
-                .collect::<Result<Vec<_>, ConsensusServiceError>>()?,
-        )
-        .map_err(|err| ConsensusServiceError::Configuration(format!("FeeMap: {}", err)))
+                .collect::<Result<Vec<_>, Error>>()?,
+        )?)
     }
     /// Get the entire set of configured tokens.
     pub fn tokens(&self) -> &[TokenConfig] {
@@ -296,16 +255,17 @@ impl TokensConfig {
     }
 
     /// Get a map of token id -> master minters.
-    pub fn token_id_to_master_minters(&self) -> Result<MasterMintersMap, ConsensusServiceError> {
+    pub fn token_id_to_master_minters(&self) -> Result<MasterMintersMap, Error> {
         self.validate()?;
 
-        MasterMintersMap::try_from_iter(self.tokens.iter().filter_map(|token_config| {
-            token_config
-                .master_minters
-                .as_ref()
-                .map(|master_minters| (token_config.token_id, master_minters.clone()))
-        }))
-        .map_err(|err| ConsensusServiceError::Configuration(format!("MasterMintersMap: {}", err)))
+        Ok(MasterMintersMap::try_from_iter(
+            self.tokens.iter().filter_map(|token_config| {
+                token_config
+                    .master_minters
+                    .as_ref()
+                    .map(|master_minters| (token_config.token_id, master_minters.clone()))
+            }),
+        )?)
     }
 }
 
@@ -313,14 +273,6 @@ impl TokensConfig {
 mod tests {
     use super::*;
     use std::convert::TryFrom;
-
-    fn assert_validation_error(tokens: &TokensConfig, err: &str) {
-        match tokens.validate() {
-            Ok(_) => panic!("expected an error"),
-            Err(ConsensusServiceError::Configuration(msg)) => assert_eq!(msg, err),
-            Err(e) => panic!("Unexpected error: {}", e),
-        }
-    }
 
     #[test]
     fn empty_config() {
@@ -336,7 +288,7 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since MOB is not specified.
-        assert_validation_error(&tokens, "MOB token configuration not found");
+        assert!(matches!(tokens.validate(), Err(Error::MissingMobConfig)));
     }
 
     #[test]
@@ -357,7 +309,7 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since we must have the MOB token configured.
-        assert_validation_error(&tokens, "MOB token configuration not found");
+        assert!(matches!(tokens.validate(), Err(Error::MissingMobConfig)));
         assert!(tokens.fee_map().is_err());
     }
 
@@ -378,7 +330,7 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since we must have the MOB token configured.
-        assert_validation_error(&tokens, "MOB token configuration not found");
+        assert!(matches!(tokens.validate(), Err(Error::MissingMobConfig)));
         assert!(tokens.fee_map().is_err());
     }
 
@@ -567,7 +519,9 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since the minimum fee for the second token is unknown.
-        assert_validation_error(&tokens, "token id 6: missing minimum fee");
+        assert!(
+            matches!(tokens.validate(), Err(Error::MissingMinimumFee(token_id)) if token_id == TokenId::from(6))
+        );
 
         // Getting the fee map should also fail.
         assert!(tokens.fee_map().is_err());
@@ -596,9 +550,8 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since allow_any_fee cannot be used on non-MOB tokens.
-        assert_validation_error(
-            &tokens,
-            "token id 1: allow_any_fee can only be used for MOB",
+        assert!(
+            matches!(tokens.validate(), Err(Error::AllowAnyFeeNotAllowed(token_id)) if token_id == TokenId::from(1))
         );
     }
 
@@ -620,7 +573,9 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since the fee is outside the allowed eange.
-        assert_validation_error(&tokens, "token id 0: Fee 1 picoMOB is out of bounds");
+        assert!(
+            matches!(tokens.validate(), Err(Error::FeeOutOfBounds(fee, token_id)) if fee == 1 && token_id == Mob::ID)
+        );
     }
 
     #[test]
@@ -641,8 +596,10 @@ mod tests {
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
         assert_eq!(tokens, tokens2);
 
-        // Validation should fail since the fee is outside the allowed eange.
-        assert_validation_error(&tokens, "token id 0: Fee 1 picoMOB is out of bounds");
+        // Validation should fail since the fee is outside the allowed range.
+        assert!(
+            matches!(tokens.validate(), Err(Error::FeeOutOfBounds(fee, token_id)) if fee == 1 && token_id == Mob::ID)
+        );
     }
 
     #[test]
@@ -797,7 +754,9 @@ mod tests {
 
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-        assert_validation_error(&tokens, "token id 0: MOB cannot have minting configuration");
+        assert!(
+            matches!(tokens.validate(), Err(Error::MintConfigNotAllowed(token_id)) if token_id == Mob::ID)
+        );
     }
 
     #[test]
@@ -816,7 +775,9 @@ mod tests {
 
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-        assert_validation_error(&tokens, "token id 2: must have at least one signer");
+        assert!(
+            matches!(tokens.validate(), Err(Error::NoSigners(token_id)) if token_id == TokenId::from(2))
+        );
     }
 
     #[test]
@@ -838,7 +799,9 @@ mod tests {
 
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-        assert_validation_error(&tokens, "token id 2: must have at least one signer");
+        assert!(
+            matches!(tokens.validate(), Err(Error::NoSigners(token_id)) if token_id == TokenId::from(2))
+        );
     }
 
     #[test]
@@ -858,7 +821,10 @@ mod tests {
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         // Validation should fail since we must have the MOB token configured.
-        assert_validation_error(&tokens, "duplicate token configuration found");
+        assert!(matches!(
+            tokens.validate(),
+            Err(Error::DuplicateTokenConfig)
+        ));
         assert!(tokens.fee_map().is_err());
     }
 }

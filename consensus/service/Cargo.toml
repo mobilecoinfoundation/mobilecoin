@@ -22,6 +22,7 @@ mc-connection = { path = "../../connection" }
 mc-consensus-api = { path = "../../consensus/api" }
 mc-consensus-enclave = { path = "../../consensus/enclave" }
 mc-consensus-scp = { path = "../../consensus/scp" }
+mc-consensus-service-config = { path = "config" }
 mc-crypto-digestible = { path = "../../crypto/digestible" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-multisig = { path = "../../crypto/multisig" }
@@ -35,7 +36,6 @@ mc-util-cli = { path = "../../util/cli" }
 mc-util-grpc = { path = "../../util/grpc" }
 mc-util-metered-channel = { path = "../../util/metered-channel" }
 mc-util-metrics = { path = "../../util/metrics" }
-mc-util-parse = { path = "../../util/parse" }
 mc-util-serial = { path = "../../util/serial" }
 mc-util-telemetry = { path = "../../util/telemetry", features = ["jaeger"] }
 mc-util-uri = { path = "../../util/uri" }
@@ -50,14 +50,12 @@ grpcio = "0.10.1"
 hex = "0.4"
 lazy_static = "1.4"
 once_cell = "1.10"
-pem = "1.0"
 protobuf = "2.27.1"
 rand = "0.8"
 rayon = "1.5"
 retry = "1.3"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_json = "1.0"
-toml = "0.5"
 
 [build-dependencies]
 mc-sgx-build = { path = "../../sgx/build" }
