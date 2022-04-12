@@ -15,7 +15,7 @@
 //!
 //! N = Q * D + R
 //!
-//! where 0 <= R < Q ("R is fully reduced").
+//! where 0 <= R < D ("R is fully reduced").
 //!
 //! This solution is unique for any N and D != 0.
 //!
@@ -54,16 +54,16 @@
 //! So to fully reduce the remainder, we have to subtract D at most once.
 //!
 //! We can compute 2 * R_i + b_i in constant time, and then in constant time
-//! test if it is less than D. Then we can subtract D, and conditionally assign
-//! it with the result. We can also conditionally add one to 2 * Q_i in that
-//! case. Once we have done this, we will have successfully divided N_{i+1} by
+//! test if it is less than D. Then we can conditionally subtract D in that
+//! case. We can also conditionally add one to 2 * Q_i in that case.
+//! Once we have done this, we will have successfully divided N_{i+1} by
 //! D, and we can proceed to the next digit.
 //!
 //! On x86-64 we can assume that wrapping_sub and wrapping_add integer
 //! operations are constant time. We use the subtle crate for constant time
 //! comparisons and conditional assignment.
 
-use subtle::{ConditionallySelectable, ConstantTimeLess};
+use subtle::ConstantTimeLess;
 
 /// Divide one u64 integer by another in constant time.
 ///
@@ -106,11 +106,8 @@ pub fn ct_u64_divide(n: u64, d: u64) -> (u64, u64) {
         // Test if r >= d in constant time.
         let must_reduce = !r.ct_lt(&d);
 
-        // Compute the difference in case it is necessary. No overflow checks.
-        let r_sub_d = r.wrapping_sub(d);
-
-        // If r needs to be reduced, then it becomes r_sub_d.
-        r.conditional_assign(&r_sub_d, must_reduce);
+        // If r needs to be reduced, subtract d in constant time.
+        r = r.wrapping_sub(d.wrapping_mul(must_reduce.unwrap_u8() as u64));
 
         // If reduction happened, then we must add one to q.
         q = q.wrapping_add(must_reduce.unwrap_u8() as u64);
@@ -128,6 +125,8 @@ mod tests {
         assert_eq!(ct_u64_divide(3, 1), (3, 0));
         assert_eq!(ct_u64_divide(3, 2), (1, 1));
         assert_eq!(ct_u64_divide(3, 4), (0, 3));
+        assert_eq!(ct_u64_divide(33, 2), (16, 1));
+        assert_eq!(ct_u64_divide(33, 3), (11, 0));
         assert_eq!(ct_u64_divide(33, 4), (8, 1));
         assert_eq!(ct_u64_divide(33, 5), (6, 3));
         assert_eq!(ct_u64_divide(33, 6), (5, 3));
@@ -136,6 +135,8 @@ mod tests {
         assert_eq!(ct_u64_divide(33, 9), (3, 6));
         assert_eq!(ct_u64_divide(33, 10), (3, 3));
         assert_eq!(ct_u64_divide(33, 11), (3, 0));
+        assert_eq!(ct_u64_divide(33, 12), (2, 9));
+        assert_eq!(ct_u64_divide(33, 13), (2, 7));
         assert_eq!(ct_u64_divide(77, 100), (0, 77));
         assert_eq!(ct_u64_divide(777, 100), (7, 77));
     }
