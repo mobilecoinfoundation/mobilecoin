@@ -18,7 +18,7 @@ pub trait ConnectionUriGrpcioChannel {
     fn default_channel_builder(env: Arc<Environment>) -> ChannelBuilder {
         ChannelBuilder::new(env)
             .keepalive_permit_without_calls(true)
-            .keepalive_time(Duration::from_secs(1))
+            .keepalive_time(Duration::from_secs(10))
             .keepalive_timeout(Duration::from_secs(20))
             .max_reconnect_backoff(Duration::from_millis(2000))
             .initial_reconnect_backoff(Duration::from_millis(1000))
@@ -61,6 +61,14 @@ pub trait ConnectionUriGrpcioServer {
     /// hot-reloading certificates when TLS is used.
     #[must_use]
     fn bind_using_uri(self, uri: &impl ConnectionUri, logger: Logger) -> Self;
+
+    fn default_channel_builder(env: Arc<Environment>) -> ChannelBuilder {
+        ChannelBuilder::new(env)
+            .keepalive_permit_without_calls(true)
+            .keepalive_time(Duration::from_secs(10))
+            .keepalive_timeout(Duration::from_secs(20))
+            .http2_min_recv_ping_interval_without_data(Duration::from_secs(5))
+    }
 }
 
 impl ConnectionUriGrpcioServer for ServerBuilder {

@@ -14,7 +14,7 @@ use crate::{
 use base64::{encode_config, URL_SAFE};
 use displaydoc::Display;
 use futures::executor::block_on;
-use grpcio::{EnvBuilder, Environment, Server, ServerBuilder};
+use grpcio::{ChannelBuilder, EnvBuilder, Environment, Server, ServerBuilder};
 use mc_attest_api::attest_grpc::create_attested_api;
 use mc_attest_enclave_api::{ClientSession, PeerSession};
 use mc_attest_net::RaClient;
@@ -382,12 +382,13 @@ impl<
                 .build(),
         );
 
-        let server_builder = ServerBuilder::new(env)
+        let server_builder = ServerBuilder::new(env.clone())
             .register_service(client_service)
             .register_service(blockchain_service)
             .register_service(health_service)
             .register_service(attested_service)
             .register_service(build_info_service)
+            .channel_args(ConnectionUriGrpcioServer::default_channel_builder(env).build_args())
             .bind_using_uri(&self.config.client_listen_uri, self.logger.clone());
 
         let mut server = server_builder.build().unwrap();
