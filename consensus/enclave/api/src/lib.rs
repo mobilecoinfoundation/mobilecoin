@@ -94,7 +94,7 @@ impl WellFormedTxContext {
     }
 
     /// Create a new WellFormedTxContext, from a Tx and its priority.
-    pub fn new_from_tx(priority: u64, tx: &Tx) -> Self {
+    pub fn from_tx(tx: &Tx, priority: u64) -> Self {
         Self {
             priority,
             tx_hash: tx.tx_hash(),

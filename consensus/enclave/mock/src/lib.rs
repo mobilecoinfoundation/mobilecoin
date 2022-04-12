@@ -205,7 +205,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
 
         // hack
         let priority = tx.prefix.fee;
-        let well_formed_tx_context = WellFormedTxContext::new_from_tx(priority, &tx);
+        let well_formed_tx_context = WellFormedTxContext::from_tx(&tx, priority);
 
         Ok((well_formed_encrypted_tx, well_formed_tx_context))
     }

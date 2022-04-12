@@ -180,10 +180,11 @@ impl SgxConsensusEnclave {
         // We also want to allow that increments of ~1% of the minimum fee actually
         // affect the priority of your payment. So, we divide the min fee by 128,
         // before dividing the fee by this. Separately, the fee map enforces that
-        // the minimum fees are >= 128, and so we are not dividing by zero.
+        // the minimum fees are >= SMALLEST_MINIMUM_FEE, and so we are not dividing by
+        // zero.
         let (priority, _) = ct_u64_divide(tx.prefix.fee, min_fee >> SMALLEST_MINIMUM_FEE_LOG2);
 
-        WellFormedTxContext::new_from_tx(priority, tx)
+        WellFormedTxContext::from_tx(tx, priority)
     }
 
     fn decrypt_well_formed_tx(&self, encrypted: &WellFormedEncryptedTx) -> Result<WellFormedTx> {
@@ -1351,7 +1352,7 @@ mod tests {
             let blockchain_config = BlockchainConfig {
                 block_version,
                 fee_map: FeeMap::try_from_iter([
-                    (Mob::ID, 1000),
+                    (Mob::ID, 1000000),
                     (token_id1, 1000),
                     (token_id2, 1000),
                 ])
