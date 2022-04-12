@@ -17,6 +17,7 @@ mc-common = { path = "../../../common" }
 mc-consensus-scp = { path = "../../../consensus/scp" }
 mc-crypto-digestible = { path = "../../../crypto/digestible", features = ["dalek", "derive"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-ledger-db = { path = "../../../ledger/db" }
 mc-transaction-core = { path = "../../../transaction/core" }
 
 displaydoc = "0.2"

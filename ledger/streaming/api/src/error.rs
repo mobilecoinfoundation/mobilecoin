@@ -4,6 +4,7 @@ use displaydoc::Display;
 use grpcio::Error as GrpcError;
 use mc_api::ConversionError;
 use mc_crypto_keys::SignatureError;
+use mc_ledger_db::Error as LedgerDBError;
 use protobuf::ProtobufError;
 
 /// Wrapper enum for errors.
@@ -27,7 +28,7 @@ pub enum Error {
     /// {0}
     Other(String),
 
-    /// DB Access Error: {0}
+    /// DB Access Error" {0}
     DBAccess(String),
 
     /// Block validation failed: {0}
@@ -57,6 +58,12 @@ impl From<SignatureError> for Error {
 impl From<ProtobufError> for Error {
     fn from(src: ProtobufError) -> Self {
         Self::Protobuf(src.to_string())
+    }
+}
+
+impl From<mc_ledger_db::Error> for Error {
+    fn from(src: LedgerDBError) -> Self {
+        Self::DBAccess(src.to_string())
     }
 }
 

@@ -5005,6 +5005,7 @@ dependencies = [
  "mc-consensus-scp",
  "mc-crypto-digestible",
  "mc-crypto-keys",
+ "mc-ledger-db",
  "mc-ledger-streaming-api",
  "mc-transaction-core",
  "mc-util-build-grpc",
