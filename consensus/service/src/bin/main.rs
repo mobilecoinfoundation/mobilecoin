@@ -68,7 +68,7 @@ fn main() -> Result<(), ConsensusServiceError> {
     let blockchain_config = BlockchainConfig {
         fee_map: fee_map.clone(),
         master_minters_map: master_minters_map.clone(),
-        master_minters_signature: config.tokens().master_minters_signature.clone(),
+        master_minters_signature: config.tokens().master_minters_signature,
         block_version: config.block_version,
     };
 
