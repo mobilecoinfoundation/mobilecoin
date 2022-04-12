@@ -1045,7 +1045,9 @@ mod tests {
                 .unwrap();
 
             // Check that the context we got back is correct.
-            let (expected_priority, _) = ct_u64_divide(tx.prefix.fee, Mob::MINIMUM_FEE / 128);
+            const SMALLEST_MINIMUM_FEE: u64 = 1 << SMALLEST_MINIMUM_FEE_LOG2;
+            let (expected_priority, _) =
+                ct_u64_divide(tx.prefix.fee, Mob::MINIMUM_FEE / SMALLEST_MINIMUM_FEE);
 
             assert_eq!(well_formed_tx_context.tx_hash(), &tx.tx_hash());
             assert_eq!(well_formed_tx_context.priority(), expected_priority);

@@ -16,11 +16,18 @@ use serde::{Deserialize, Serialize};
 ///
 /// Priority is computed by "normalizing" the fee for each token, using the
 /// minimum fee. However, before dividing fee by minimum fee, we divide minimum
-/// fee by (1 << 7) = 128. This allows that if you increase the fee by e.g. 1%
-/// this always leads to an integer difference in the priority and leads to your
-/// transaction being ranked higher. If we don't do this, then you can only
-/// increase the fee paid in increments of the minimum fee to see an actual
-/// increase in priority.
+/// fee by (1 << 7) = 128.
+///
+/// This allows that if you increase the fee by e.g. 1%, then it always leads to
+/// an integer difference in the priority and leads to your
+/// transaction actually being ranked higher when the network sorts the tx's.
+///
+/// If we don't do this, then you can only increase the fee paid in increments
+/// of the minimum fee to see an actual increase in priority. So effectively,
+/// once the network is under load, the fees immediately double, then triple.
+/// This seems undesirable.
+///
+/// (The choice of 128 is arbitrary, it's the first power of two >= 100.)
 ///
 /// Because we divide minimum fee by by 128, and the result must be nonzero, we
 /// must have that the minimum fee itself is at least as large as what we are
@@ -103,7 +110,7 @@ impl FeeMap {
         // priority of a payment.
         if let Some((token_id, fee)) = minimum_fees
             .iter()
-            .find(|(_token_id, fee)| **fee < (1 << SMALLEST_MINIMUM_FEE_LOG2))
+            .find(|(_token_id, fee)| (**fee >> SMALLEST_MINIMUM_FEE_LOG2) > 0)
         {
             return Err(Error::InvalidFee(*token_id, *fee));
         }
