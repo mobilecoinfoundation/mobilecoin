@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! This module contains an implementation of constant-time integer division.
 //! Only u64's are supported.
 //!

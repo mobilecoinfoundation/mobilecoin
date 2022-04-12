@@ -110,7 +110,7 @@ impl FeeMap {
         // priority of a payment.
         if let Some((token_id, fee)) = minimum_fees
             .iter()
-            .find(|(_token_id, fee)| (**fee >> SMALLEST_MINIMUM_FEE_LOG2) > 0)
+            .find(|(_token_id, fee)| (**fee >> SMALLEST_MINIMUM_FEE_LOG2) == 0)
         {
             return Err(Error::InvalidFee(*token_id, *fee));
         }
