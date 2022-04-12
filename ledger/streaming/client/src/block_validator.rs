@@ -60,7 +60,6 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for Blo
                 prev_block_id,
                 additional_key_images,
                 starting_height.clone(),
-                self.logger.clone(),
             ),
             |state, component| {
                 match component {
