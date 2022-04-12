@@ -63,7 +63,7 @@
 //! operations are constant time. We use the subtle crate for constant time
 //! comparisons and conditional assignment.
 
-use subtle::ConstantTimeLess;
+use subtle::ConstantTimeGreater;
 
 /// Divide one u64 integer by another in constant time.
 ///
@@ -103,8 +103,8 @@ pub fn ct_u64_divide(n: u64, d: u64) -> (u64, u64) {
         // Wrapping add is used to avoid any overflow checks.
         r = r.wrapping_add((n >> i) & 1);
 
-        // Test if r >= d in constant time.
-        let must_reduce = !r.ct_lt(&d);
+        // Test if d <= r in constant time. If so we must reduce.
+        let must_reduce = !d.ct_gt(&r);
 
         // If r needs to be reduced, subtract d in constant time.
         r = r.wrapping_sub(d.wrapping_mul(must_reduce.unwrap_u8() as u64));
