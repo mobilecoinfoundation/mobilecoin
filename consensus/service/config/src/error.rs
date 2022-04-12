@@ -70,7 +70,7 @@ pub enum Error {
     /// URI conversion of {0}: {1}
     UriConversion(String, UriConversionError),
 
-    /// Duplicate responder id in network configuration
+    /// Duplicate responder id in network configuration: {0}
     DuplicateResponderId(ResponderId),
 
     /// Known peers should not contain our peer responder id ({0})
