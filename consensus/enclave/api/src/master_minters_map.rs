@@ -109,6 +109,11 @@ impl MasterMintersMap {
     pub fn hash(&self) -> [u8; 32] {
         self.digest32::<MerlinTranscript>(MASTER_MINTERS_MAP_DOMAIN_TAG.as_bytes())
     }
+
+    /// Check if the map contains any elements.
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
 }
 
 /// MasterMinters Map error type.

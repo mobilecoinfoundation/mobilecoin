@@ -7,7 +7,7 @@ use alloc::string::String;
 use displaydoc::Display;
 use mc_attest_core::{IntelSealingError, ParseSealedError, SgxError};
 use mc_attest_enclave_api::Error as AttestEnclaveError;
-use mc_crypto_keys::SignatureError;
+use mc_crypto_keys::{KeyError, SignatureError};
 use mc_crypto_message_cipher::CipherError as MessageCipherError;
 use mc_sgx_compat::sync::PoisonError;
 use mc_transaction_core::{mint::MintValidationError, validation::TransactionValidationError};
@@ -67,6 +67,15 @@ pub enum Error {
 
     /// Sealing Error: {0}
     IntelSealing(IntelSealingError),
+
+    /// Missing master minters signature
+    MissingMasterMintersSignature,
+
+    /// Invalid master minters signature
+    InvalidMasterMintersSignature,
+
+    /// Failed parsing governor admin public key
+    ParseGovernorAdminPublicKey(KeyError),
 }
 
 impl From<ParseSealedError> for Error {

@@ -2,6 +2,7 @@ use crate::{FeeMap, MasterMintersMap};
 use alloc::{format, string::String};
 use mc_common::ResponderId;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
+use mc_crypto_keys::Ed25519Signature;
 use mc_transaction_core::BlockVersion;
 use serde::{Deserialize, Serialize};
 
@@ -18,6 +19,10 @@ pub struct BlockchainConfig {
     /// The map from tokens to master minters.
     pub master_minters_map: MasterMintersMap,
 
+    /// The master minters signature, which is needed if MasterMintersMap is
+    /// not empty.
+    pub master_minters_signature: Option<Ed25519Signature>,
+
     /// The block version that this enclave will be applying rules for and
     /// publishing.
     pub block_version: BlockVersion,
@@ -28,6 +33,7 @@ impl Default for BlockchainConfig {
         Self {
             fee_map: FeeMap::default(),
             master_minters_map: MasterMintersMap::default(),
+            master_minters_signature: None,
             block_version: BlockVersion::MAX,
         }
     }
