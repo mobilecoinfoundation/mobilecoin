@@ -234,6 +234,14 @@ pub enum Commands {
         /// The tokens configuration file to sign (in JSON or TOML format).
         #[clap(long, parse(try_from_str = TokensConfig::load_from_path), env = "MC_MINTING_TOKENS_CONFIG")]
         tokens: TokensConfig,
+
+        /// Optionally write a new tokens.toml file containing the signature.
+        #[clap(long, env = "MC_MINTING_OUTPUT_TOML")]
+        output_toml: Option<PathBuf>,
+
+        /// Optionally write a new tokens.json file containing the signature.
+        #[clap(long, env = "MC_MINTING_OUTPUT_JSON")]
+        output_json: Option<PathBuf>,
     },
 }
 

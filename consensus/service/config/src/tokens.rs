@@ -199,7 +199,7 @@ pub struct TokensConfig {
     /// Master minters signature generated using the `mc-consensus-mint-client
     /// sign-master-minters` command.
     #[serde(default, with = "hex_signature")]
-    master_minters_signature: Option<Ed25519Signature>,
+    pub master_minters_signature: Option<Ed25519Signature>,
 
     /// Token configurations (one for each supported token).
     tokens: Vec<TokenConfig>,

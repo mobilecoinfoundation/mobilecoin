@@ -18,7 +18,6 @@ use mc_transaction_core::{
 };
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use serde::de::DeserializeOwned;
-use serde_json::to_string_pretty;
 use std::{fs, path::PathBuf, sync::Arc};
 
 fn main() {
@@ -52,7 +51,7 @@ fn main() {
                 .try_into_mint_config_tx(|| panic!("missing tombstone block"))
                 .expect("failed creating tx");
 
-            let json = to_string_pretty(&tx).expect("failed serializing tx");
+            let json = serde_json::to_string_pretty(&tx).expect("failed serializing tx");
 
             fs::write(out, json).expect("failed writing output file");
         }
@@ -115,7 +114,7 @@ fn main() {
                 .try_into_mint_tx(|| panic!("missing tombstone block"))
                 .expect("failed creating tx");
 
-            let json = to_string_pretty(&tx).expect("failed serializing tx");
+            let json = serde_json::to_string_pretty(&tx).expect("failed serializing tx");
 
             fs::write(out, json).expect("failed writing output file");
         }
@@ -155,7 +154,9 @@ fn main() {
 
         Commands::SignMasterMinters {
             signing_key,
-            tokens,
+            mut tokens,
+            output_toml,
+            output_json,
         } => {
             let master_minters_map = tokens
                 .token_id_to_master_minters()
@@ -166,6 +167,19 @@ fn main() {
                 .expect("failed signing message");
             println!("Signature: {}", hex::encode(signature.as_ref()));
             println!("Put this signature in the master minters configuration file in the key \"master_minters_signature\".");
+
+            tokens.master_minters_signature = Some(signature);
+
+            if let Some(path) = output_toml {
+                let toml_str = toml::to_string_pretty(&tokens).expect("failed serializing toml");
+                fs::write(path, toml_str).expect("failed writing output file");
+            }
+
+            if let Some(path) = output_json {
+                let json_str =
+                    serde_json::to_string_pretty(&tokens).expect("failed serializing json");
+                fs::write(path, json_str).expect("failed writing output file");
+            }
         }
     }
 }
