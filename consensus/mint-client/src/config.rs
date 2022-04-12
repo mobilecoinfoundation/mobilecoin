@@ -168,8 +168,8 @@ pub enum Commands {
         params: MintConfigTxParams,
     },
 
-    /// Submit json-encoded MintConfigTx(s). If multiple transactions are provided, signatures will
-    /// be merged.
+    /// Submit json-encoded MintConfigTx(s). If multiple transactions are
+    /// provided, signatures will be merged.
     SubmitMintConfigTx {
         /// URI of consensus node to connect to.
         #[clap(long, env = "MC_CONSENSUS_URI")]
@@ -207,8 +207,8 @@ pub enum Commands {
         params: MintTxParams,
     },
 
-    /// Submit json-encoded MintTx(s). If multiple transactions are provided, signatures will
-    /// be merged.
+    /// Submit json-encoded MintTx(s). If multiple transactions are provided,
+    /// signatures will be merged.
     SubmitMintTx {
         /// URI of consensus node to connect to.
         #[clap(long, env = "MC_CONSENSUS_URI")]
