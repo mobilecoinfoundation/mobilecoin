@@ -77,7 +77,7 @@ impl TestOptions {
             values_to_submit: 5000,
             submissions_per_sec: 20000,
             max_slot_proposed_values: 100,
-            allowed_test_time: Duration::from_secs(300),
+            allowed_test_time: Duration::from_secs(500),
             log_flush_delay: Duration::from_millis(50),
             scp_timebase: Duration::from_millis(1000),
             validity_fn: Arc::new(test_utils::trivial_validity_fn::<String>),
