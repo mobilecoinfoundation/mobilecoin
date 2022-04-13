@@ -11,11 +11,9 @@ use mc_common::{
     NodeID,
 };
 use mc_consensus_scp::{
-    core_types::{CombineFn, SlotIndex, ValidityFn},
     msg::Msg,
-    node::{Node, ScpNode},
-    quorum_set::QuorumSet,
-    test_utils,
+    slot::{CombineFn, ValidityFn},
+    test_utils, Node, QuorumSet, ScpNode, SlotIndex,
 };
 use std::{
     collections::{BTreeSet, HashMap, HashSet},

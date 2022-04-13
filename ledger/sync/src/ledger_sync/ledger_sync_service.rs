@@ -866,7 +866,7 @@ mod tests {
     use super::*;
     use crate::{test_utils::MockTransactionsFetcher, SCPNetworkState};
     use mc_common::{logger::test_with_logger, NodeID};
-    use mc_consensus_scp::{core_types::Ballot, msg::*, *};
+    use mc_consensus_scp::{ballot::Ballot, msg::*, *};
     use mc_ledger_db::test_utils::{get_mock_ledger, get_test_ledger_blocks};
     use mc_peers_test_utils::{test_node_id, test_peer_uri, MockPeerConnection};
 

@@ -29,6 +29,7 @@ members = [
     "consensus/mint-client",
     "consensus/scp",
     "consensus/scp/play",
+    "consensus/scp/types",
     "consensus/service",
     "consensus/service/config",
     "crypto/box",

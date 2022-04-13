@@ -322,7 +322,7 @@ mod tests {
     use mc_blockchain_types::{Block, BlockContents, BlockVersion};
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
-    use mc_consensus_scp::{core_types::Ballot, msg::*, SlotIndex};
+    use mc_consensus_scp::{ballot::Ballot, msg::*, SlotIndex};
     use mc_crypto_keys::{DistinguishedEncoding, Ed25519Private};
     use mc_ledger_db::Ledger;
     use mc_peers::{MockBroadcast, ThreadedBroadcaster};

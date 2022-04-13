@@ -13,9 +13,7 @@ use mc_common::{
 use mc_connection::{
     BlockInfo, BlockchainConnection, Connection, ConnectionManager, RetryableBlockchainConnection,
 };
-use mc_consensus_scp::{
-    core_types::Ballot, msg::ExternalizePayload, Msg, QuorumSet, SlotIndex, Topic,
-};
+use mc_consensus_scp::{ballot::Ballot, msg::ExternalizePayload, Msg, QuorumSet, SlotIndex, Topic};
 use mc_util_uri::ConnectionUri;
 use retry::delay::{jitter, Fibonacci};
 use std::{

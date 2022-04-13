@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::core_types::SlotIndex;
+use crate::SlotIndex;
 use mc_common::fast_hash;
 use primitive_types::U256;
 

@@ -3,22 +3,15 @@
 //! A node determines whether transactions are valid, and participates in voting
 //! with the members of its quorum set.
 use crate::{
-    core_types::{CombineFn, SlotIndex, ValidityFn, Value},
     msg::{ExternalizePayload, Msg, Topic},
-    quorum_set::QuorumSet,
-    slot::{ScpSlot, Slot, SlotMetrics},
-    ScpNode,
+    slot::{CombineFn, ScpSlot, Slot, SlotMetrics, ValidityFn},
+    QuorumSet, ScpNode, SlotIndex, Value,
 };
 use mc_common::{
     logger::{log, Logger},
-    NodeID,
+    HashMap, NodeID,
 };
-use std::{
-    collections::{BTreeSet, HashMap},
-    fmt::Display,
-    mem,
-    time::Duration,
-};
+use std::{collections::BTreeSet, fmt::Display, mem, time::Duration};
 
 /// Default limit on number of externalized slots to store.
 const MAX_EXTERNALIZED_SLOTS: usize = 1;
@@ -320,7 +313,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{core_types::Ballot, msg::*, slot::MockScpSlot, test_utils::*};
+    use crate::{ballot::Ballot, msg::*, slot::MockScpSlot, test_utils::*};
     use maplit::btreeset;
     use mc_common::logger::test_with_logger;
     use std::sync::Arc;

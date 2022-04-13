@@ -19,18 +19,19 @@ pub use lru::LruCache;
 
 pub mod time;
 
+pub use hasher_builder::HasherBuilder;
 pub use node_id::NodeID;
 pub use responder_id::{ResponderId, ResponderIdParseError};
 
 /// A HashMap that replaces the default hasher with an implementation that
 /// relies on mcrand for randomess.
-/// See [hashbrown::HashMap] and [hasher_builder::HasherBuilder]
-pub type HashMap<K, V> = hashbrown::HashMap<K, V, hasher_builder::HasherBuilder>;
+/// See [hashbrown::HashMap] and [HasherBuilder]
+pub type HashMap<K, V> = hashbrown::HashMap<K, V, HasherBuilder>;
 
 /// A HashSet that replaces the default hasher with an implementation that
 /// relies on mcrand for randomess.
-/// See [hashbrown::HashSet] and [hasher_builder::HasherBuilder]
-pub type HashSet<K> = hashbrown::HashSet<K, hasher_builder::HasherBuilder>;
+/// See [hashbrown::HashSet] and [HasherBuilder]
+pub type HashSet<K> = hashbrown::HashSet<K, HasherBuilder>;
 
 /// Hash type
 pub type Hash = [u8; 32];

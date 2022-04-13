@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::{slot::SlotMetrics, Msg, QuorumSet, SlotIndex, Value};
+use crate::{msg::Msg, slot::SlotMetrics, QuorumSet, SlotIndex, Value};
 use mc_common::NodeID;
 use mockall::*;
 use std::collections::BTreeSet;

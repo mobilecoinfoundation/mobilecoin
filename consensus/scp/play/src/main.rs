@@ -6,9 +6,10 @@
 use clap::Parser;
 use mc_common::{logger::log, NodeID};
 use mc_consensus_scp::{
+    msg::Msg,
     scp_log::{LoggedMsg, ScpLogReader, StoredMsg},
     test_utils::{get_bounded_combine_fn, trivial_validity_fn},
-    Msg, Node, QuorumSet, ScpNode, SlotIndex,
+    Node, QuorumSet, ScpNode, SlotIndex,
 };
 use mc_transaction_core::{constants::MAX_TRANSACTIONS_PER_BLOCK, tx::TxHash};
 use mc_util_uri::ConsensusPeerUri as PeerUri;

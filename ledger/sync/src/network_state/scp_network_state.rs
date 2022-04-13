@@ -6,8 +6,8 @@ use crate::NetworkState;
 use mc_blockchain_types::BlockIndex;
 use mc_common::{NodeID, ResponderId};
 use mc_consensus_scp::{
-    core_types::Ballot, msg::ExternalizePayload, predicates::FuncPredicate, GenericNodeId, Msg,
-    QuorumSet, SlotIndex, Topic, Value,
+    ballot::Ballot, msg::ExternalizePayload, predicates::FuncPredicate,
+    quorum_set_ext::QuorumSetExt, GenericNodeId, Msg, QuorumSet, SlotIndex, Topic, Value,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -172,7 +172,7 @@ impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serializ
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_consensus_scp::{core_types::Ballot, msg::*};
+    use mc_consensus_scp::{ballot::Ballot, msg::*};
     use mc_peers_test_utils::test_node_id;
     use std::collections::BTreeSet;
 

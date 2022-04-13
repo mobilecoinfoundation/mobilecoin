@@ -8,10 +8,11 @@ keywords = ["SCP", "Stellar Consensus Protocol", "Consensus", "Stellar", "Byzant
 readme = "README.md"
 
 [features]
-test_utils = []
+test_utils = ["mc-consensus-scp-types/test_utils"]
 
 [dependencies]
 mc-common = { path = "../../common", features = ["log"] }
+mc-consensus-scp-types = { path = "types" }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["derive"] }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-util-from-random = { path = "../../util/from-random" }
@@ -27,9 +28,22 @@ serde_json = "1.0"
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
+mc-consensus-scp-types = { path = "types", features = ["test_utils"] }
 mc-util-logger-macros = { path = "../../util/logger-macros" }
 mc-util-test-helper = { path = "../../util/test-helper" }
 
 crossbeam-channel = "0.5"
 serial_test = "0.7"
 tempdir = "0.3"
+
+[[test]]
+name = "test_cyclic_networks"
+required-features = ["test_utils"]
+
+[[test]]
+name = "test_mesh_networks"
+required-features = ["test_utils"]
+
+[[test]]
+name = "test_metamesh_networks"
+required-features = ["test_utils"]
