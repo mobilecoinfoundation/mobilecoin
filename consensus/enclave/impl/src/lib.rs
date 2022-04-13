@@ -981,7 +981,8 @@ mod tests {
         202, 52, 250, 242, 215, 247, 175, 59, 121, 185, 111, 8,
     ];
 
-    // This private key was generated using the mc-util-seeded-ed25519-key-gen utility with the seed
+    // This private key was generated using the mc-util-seeded-ed25519-key-gen
+    // utility with the seed
     // abababababababababababababababababababababababababababababababab
     const MASTER_MINTERS_ADMIN_PRIVATE_KEY: [u8; 32] = [
         168, 15, 220, 134, 238, 251, 210, 7, 24, 78, 21, 168, 197, 250, 1, 139, 23, 64, 154, 172,
