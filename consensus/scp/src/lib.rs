@@ -4,16 +4,16 @@
 #![allow(non_snake_case)]
 #![deny(missing_docs)]
 
-pub mod core_types;
-pub mod msg;
 pub mod node;
-pub mod predicates;
-pub mod quorum_set;
 pub mod scp_log;
 pub mod slot;
 pub mod slot_state;
+#[cfg(any(test, feature = "test_utils"))]
 pub mod test_utils;
 mod utils;
+
+#[doc(inline)]
+pub use mc_consensus_scp_core::{core_types, msg, predicates, quorum_set};
 
 #[doc(inline)]
 pub use crate::{

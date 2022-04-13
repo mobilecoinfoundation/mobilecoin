@@ -15,17 +15,17 @@ use crate::{
     utils,
 };
 use core::cmp;
-use maplit::{btreeset, hashset};
 use mc_common::{
     logger::{log, o, Logger},
-    NodeID,
+    HashMap, HashSet, NodeID,
 };
 #[cfg(test)]
 use mockall::*;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::BTreeSet,
     fmt::Display,
+    iter::FromIterator,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -1455,8 +1455,9 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             // Test if a blocking set has issued "accept nominate" for each value.
             for value in candidates {
                 // Test if a blocking set has issued "accept nominate(v)".
+                let values = BTreeSet::from_iter([value.clone()]);
                 let predicate = ValueSetPredicate::<V> {
-                    values: btreeset! {value.clone()},
+                    values,
                     test_fn: Arc::new(|msg, values| match msg.accepts_nominated() {
                         None => BTreeSet::default(),
                         Some(values_accepted_nominated) => values
@@ -1542,8 +1543,9 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             let mut results: HashSet<Ballot<V>> = Default::default();
 
             for ballot in candidates.into_iter() {
+                let ballots = HashSet::from_iter([ballot.clone()]);
                 let predicate = BallotSetPredicate::<V> {
-                    ballots: hashset! { ballot.clone()},
+                    ballots,
                     test_fn: Arc::new(|msg, candidates| {
                         let mut intersections: HashSet<Ballot<V>> = HashSet::default();
 
@@ -1810,8 +1812,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 #[cfg(test)]
 mod nominate_protocol_tests {
     use super::*;
-    use crate::{core_types::*, quorum_set::*, test_utils::*};
-    use maplit::{btreeset, hashset};
+    use crate::test_utils::*;
+    use maplit::btreeset;
     use mc_common::logger::test_with_logger;
 
     #[test_with_logger]
@@ -1941,7 +1943,7 @@ mod nominate_protocol_tests {
                 Y: BTreeSet::default(),
             }),
         );
-        slot.X = hashset! { 1234};
+        slot.X = HashSet::from_iter([1234]);
         slot.M.insert(msg_1.sender_id.clone(), msg_1);
         let expected = BTreeSet::default();
         assert_eq!(slot.additional_values_accepted_nominated(), expected);
@@ -2131,8 +2133,8 @@ mod nominate_protocol_tests {
             Arc::new(trivial_combine_fn),
             logger,
         );
-        slot.Y = hashset! { "B"};
-        slot.Z = hashset! { "B"};
+        slot.Y = HashSet::from_iter(["B"]);
+        slot.Z = HashSet::from_iter(["B"]);
         slot.M.insert(msg_2.sender_id.clone(), msg_2);
         slot.M.insert(msg_3.sender_id.clone(), msg_3);
         slot.M.insert(msg_4.sender_id.clone(), msg_4);
@@ -2142,7 +2144,7 @@ mod nominate_protocol_tests {
         // the local node to update it's accepted nominated (Y) list from what
         // the blocking set has agreed on.
         slot.update_YZ();
-        assert_eq!(slot.Y, hashset! { "A", "B", "C", "D"});
+        assert_eq!(slot.Y, HashSet::from_iter(["A", "B", "C", "D"]));
     }
 
     #[test_with_logger]
@@ -2299,8 +2301,8 @@ mod nominate_protocol_tests {
             Arc::new(trivial_combine_fn),
             logger,
         );
-        slot.Y = hashset! { "A", "B", "C", "D"};
-        slot.Z = hashset! { "A", "B", "C"};
+        slot.Y = HashSet::from_iter(["A", "B", "C", "D"]);
+        slot.Z = HashSet::from_iter(["A", "B", "C"]);
         slot.M.insert(msg_1.sender_id.clone(), msg_1);
         slot.M.insert(msg_3.sender_id.clone(), msg_3);
         slot.M.insert(msg_4.sender_id.clone(), msg_4);
@@ -2309,7 +2311,7 @@ mod nominate_protocol_tests {
         // Calling updateYZ should add "D" to confirmed nominated (Z) since a quorum
         // (2,3,4,5) have accepted nominated (Y) it.
         slot.update_YZ();
-        assert_eq!(slot.Z, hashset! { "A", "B", "C", "D"});
+        assert_eq!(slot.Z, HashSet::from_iter(["A", "B", "C", "D"]));
     }
 
     #[test_with_logger]
@@ -2405,8 +2407,8 @@ mod nominate_protocol_tests {
 #[cfg(test)]
 mod ballot_protocol_tests {
     use super::*;
-    use crate::{core_types::*, quorum_set::*, test_utils::*};
-    use maplit::{btreeset, hashset};
+    use crate::test_utils::*;
+    use maplit::btreeset;
     use mc_common::logger::test_with_logger;
     use std::iter::FromIterator;
 
@@ -2689,8 +2691,8 @@ mod ballot_protocol_tests {
         // adding a Prepare message from node 2 as well.
         {
             slot.phase = Phase::NominatePrepare;
-            slot.X = hashset! { 1337, 1338};
-            slot.Y = hashset! { 1234, 5678};
+            slot.X = HashSet::from_iter([1337, 1338]);
+            slot.Y = HashSet::from_iter([1234, 5678]);
             slot.B = Ballot::new(2, &[1234, 5678]);
             slot.P = Some(slot.B.clone());
             slot.last_sent_msg = slot.out_msg();
@@ -2820,8 +2822,8 @@ mod ballot_protocol_tests {
         // Initialize slot so that it has issued "confirm prepare(b)".
         {
             slot.phase = Phase::Prepare;
-            slot.X = hashset! { 1337, 1338};
-            slot.Y = hashset! { 1234, 5678};
+            slot.X = HashSet::from_iter([1337, 1338]);
+            slot.Y = HashSet::from_iter([1234, 5678]);
             slot.B = Ballot::new(3, &[1234, 5678]);
             slot.P = Some(Ballot::new(2, &[1234, 5678]));
             slot.H = slot.P.clone();
@@ -3576,7 +3578,7 @@ mod ballot_protocol_tests {
 
         // Node 1 has issued "vote prepare(b)".
         {
-            slot.Y = hashset! { 1234, 5678};
+            slot.Y = HashSet::from_iter([1234, 5678]);
             slot.B = ballot.clone();
             slot.last_sent_msg = slot.out_msg();
 
@@ -4460,7 +4462,7 @@ mod ballot_protocol_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{core_types::*, test_utils::*};
+    use crate::test_utils::*;
     use mc_common::logger::test_with_logger;
 
     #[test_with_logger]

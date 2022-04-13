@@ -4,21 +4,20 @@
 //!
 //! A quorum set includes the members of the network, which a given node trusts
 //! and depends on.
-use mc_common::{NodeID, ResponderId};
-use mc_crypto_digestible::Digestible;
-use serde::{Deserialize, Serialize};
-use std::{
-    collections::{HashMap, HashSet},
-    fmt::Debug,
-    hash::{Hash, Hasher},
-    iter::FromIterator,
-};
-
 use crate::{
     core_types::{GenericNodeId, Value},
     msg::Msg,
     predicates::Predicate,
 };
+use alloc::{vec, vec::Vec};
+use core::{
+    fmt::Debug,
+    hash::{Hash, Hasher},
+    iter::FromIterator,
+};
+use mc_common::{HashMap, HashSet, NodeID, ResponderId};
+use mc_crypto_digestible::Digestible;
+use serde::{Deserialize, Serialize};
 
 /// A member in a QuorumSet. Can be either a Node or another QuorumSet.
 #[derive(
@@ -118,7 +117,7 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
         true
     }
 
-    /// Recursively sort the qs and all inner sets
+    /// Recursively sort the QS and all inner sets
     pub fn sort(&mut self) {
         for member in self.members.iter_mut() {
             if let QuorumSetMember::InnerSet(qs) = member {
@@ -301,7 +300,7 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
             &self.members,
             msgs,
             pred,
-            HashSet::from_iter(vec![node_id.clone()]),
+            HashSet::from_iter([node_id.clone()]),
         )
     }
 
@@ -430,9 +429,26 @@ impl<ID: GenericNodeId + AsRef<ResponderId>> From<&QuorumSet<ID>> for QuorumSet<
 mod quorum_set_tests {
     use super::*;
     use crate::{core_types::*, msg::*, predicates::*, test_utils::test_node_id};
-    use mc_common::ResponderId;
-    use std::collections::hash_map::DefaultHasher;
+    use core::hash::{BuildHasher, Hash, Hasher};
+    use mc_common::HasherBuilder;
 
+    fn assert_quorum_sets_equal(quorum_set_1: &QuorumSet, quorum_set_2: &QuorumSet) {
+        assert_eq!(quorum_set_1, quorum_set_2);
+
+        // qs1 == qs2 must imply hash(qs1) == hash(qs2)
+        let hasher_builder = HasherBuilder::default();
+        let quorum_set_1_hash = {
+            let mut hasher = hasher_builder.build_hasher();
+            quorum_set_1.hash(&mut hasher);
+            hasher.finish()
+        };
+        let quorum_set_2_hash = {
+            let mut hasher = hasher_builder.build_hasher();
+            quorum_set_2.hash(&mut hasher);
+            hasher.finish()
+        };
+        assert_eq!(quorum_set_1_hash, quorum_set_2_hash);
+    }
     #[test]
     // quorum sets should sort recursively
     fn test_quorum_set_sorting() {
@@ -457,7 +473,7 @@ mod quorum_set_tests {
         let mut qs_sorted = qs.clone();
         qs_sorted.sort();
 
-        assert_eq!(qs, qs_sorted);
+        assert_quorum_sets_equal(&qs, &qs_sorted);
     }
 
     #[test]
@@ -482,20 +498,7 @@ mod quorum_set_tests {
             ],
         );
 
-        assert_eq!(quorum_set_1, quorum_set_2);
-
-        // qs1 == qs2 must imply hash(qs1)==hash(qs2)
-        let quorum_set_1_hash = {
-            let mut hasher = DefaultHasher::new();
-            quorum_set_1.hash(&mut hasher);
-            hasher.finish()
-        };
-        let quorum_set_2_hash = {
-            let mut hasher = DefaultHasher::new();
-            quorum_set_2.hash(&mut hasher);
-            hasher.finish()
-        };
-        assert_eq!(quorum_set_1_hash, quorum_set_2_hash);
+        assert_quorum_sets_equal(&quorum_set_1, &quorum_set_2);
     }
 
     #[test]
@@ -545,20 +548,7 @@ mod quorum_set_tests {
                 )),
             ],
         );
-        assert_eq!(quorum_set_1, quorum_set_2);
-
-        // qs1 == qs2 must imply hash(qs1)==hash(qs2)
-        let quorum_set_1_hash = {
-            let mut hasher = DefaultHasher::new();
-            quorum_set_1.hash(&mut hasher);
-            hasher.finish()
-        };
-        let quorum_set_2_hash = {
-            let mut hasher = DefaultHasher::new();
-            quorum_set_2.hash(&mut hasher);
-            hasher.finish()
-        };
-        assert_eq!(quorum_set_1_hash, quorum_set_2_hash);
+        assert_quorum_sets_equal(&quorum_set_1, &quorum_set_2);
     }
 
     #[test]
@@ -608,20 +598,7 @@ mod quorum_set_tests {
                 )),
             ],
         );
-        assert_eq!(quorum_set_1, quorum_set_2);
-
-        // qs1 == qs2 must imply hash(qs1)==hash(qs2)
-        let quorum_set_1_hash = {
-            let mut hasher = DefaultHasher::new();
-            quorum_set_1.hash(&mut hasher);
-            hasher.finish()
-        };
-        let quorum_set_2_hash = {
-            let mut hasher = DefaultHasher::new();
-            quorum_set_2.hash(&mut hasher);
-            hasher.finish()
-        };
-        assert_eq!(quorum_set_1_hash, quorum_set_2_hash);
+        assert_quorum_sets_equal(&quorum_set_1, &quorum_set_2);
     }
 
     #[test]
@@ -718,7 +695,7 @@ mod quorum_set_tests {
         );
         assert_eq!(
             node_ids,
-            HashSet::from_iter(vec![test_node_id(2), test_node_id(3)])
+            HashSet::from_iter([test_node_id(2), test_node_id(3)])
         );
     }
 
@@ -818,7 +795,7 @@ mod quorum_set_tests {
                 test_fn: &|_msg| true,
             },
         );
-        assert_eq!(node_ids, HashSet::from_iter(vec![]));
+        assert_eq!(node_ids, HashSet::from_iter([]));
     }
 
     #[test]
@@ -882,7 +859,7 @@ mod quorum_set_tests {
         );
         assert_eq!(
             node_ids,
-            HashSet::from_iter(vec![
+            HashSet::from_iter([
                 test_node_id(2),
                 test_node_id(3),
                 test_node_id(5),
@@ -952,7 +929,7 @@ mod quorum_set_tests {
                 test_fn: &|msg| msg.sender_id != test_node_id(2),
             },
         );
-        assert_eq!(node_ids, HashSet::from_iter(vec![]));
+        assert_eq!(node_ids, HashSet::from_iter([]));
     }
 
     #[test]
@@ -1003,7 +980,7 @@ mod quorum_set_tests {
             Msg::new(test_node_id(3).responder_id, QuorumSet::empty(), 1, topic),
         );
 
-        let responder_ids: HashSet<ResponderId> = HashSet::from_iter(vec![
+        let responder_ids: HashSet<ResponderId> = HashSet::from_iter([
             test_node_id(2).responder_id,
             test_node_id(3).responder_id,
             test_node_id(4).responder_id,
@@ -1019,10 +996,7 @@ mod quorum_set_tests {
         let (node_ids, _) = mobilecoind_quorum_set.findBlockingSet(&msgs, fp);
         assert_eq!(
             node_ids,
-            HashSet::from_iter(vec![
-                test_node_id(2).responder_id,
-                test_node_id(3).responder_id
-            ])
+            HashSet::from_iter([test_node_id(2).responder_id, test_node_id(3).responder_id])
         );
     }
 

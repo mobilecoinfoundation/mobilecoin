@@ -3521,6 +3521,7 @@ dependencies = [
  "crossbeam-channel",
  "maplit",
  "mc-common",
+ "mc-consensus-scp-core",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-util-from-random",
@@ -3534,6 +3535,21 @@ dependencies = [
  "serde_json",
  "serial_test",
  "tempdir",
+]
+
+[[package]]
+name = "mc-consensus-scp-core"
+version = "1.3.0-pre0"
+dependencies = [
+ "mc-common",
+ "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "rand 0.8.5",
+ "rand_hc 0.3.1",
+ "serde",
 ]
 
 [[package]]
