@@ -57,20 +57,16 @@ fn main() {
         }
 
         Commands::HashMintConfigTx { params } => {
-            let generated_nonce = params.nonce.is_none();
-
             let tx_prefix = params
                 .try_into_mint_config_tx_prefix(|| panic!("missing tombstone block"))
                 .expect("failed creating tx prefix");
 
-            // If we generated a nonce then we should output it, otherwise there is no way
-            // to reconstruct the tx prefix that is being hashed.
-            if generated_nonce {
-                println!("Nonce: {}", hex::encode(&tx_prefix.nonce));
-            }
+            // Print the nonce, since if we generated it randomlly then there is no way to
+            // reconstruct the tx prefix that is being hashed without it.
+            println!("Nonce: {}", hex::encode(&tx_prefix.nonce));
 
             let hash = tx_prefix.hash();
-            println!("{}", hex::encode(hash));
+            println!("Hash: {}", hex::encode(hash));
         }
 
         Commands::SubmitMintConfigTx { node, tx_filenames } => {
@@ -137,20 +133,16 @@ fn main() {
         }
 
         Commands::HashMintTx { params } => {
-            let generated_nonce = params.nonce.is_none();
-
             let tx_prefix = params
                 .try_into_mint_tx_prefix(|| panic!("missing tombstone block"))
                 .expect("failed creating tx prefix");
 
-            // If we generated a nonce then we should output it, otherwise there is no way
-            // to reconstruct the tx prefix that is being hashed.
-            if generated_nonce {
-                println!("Nonce: {}", hex::encode(&tx_prefix.nonce));
-            }
+            // Print the nonce, since if we generated it randomlly then there is no way to
+            // reconstruct the tx prefix that is being hashed without it.
+            println!("Nonce: {}", hex::encode(&tx_prefix.nonce));
 
             let hash = tx_prefix.hash();
-            println!("{}", hex::encode(hash));
+            println!("Hash: {}", hex::encode(hash));
         }
 
         Commands::SubmitMintTx { node, tx_filenames } => {
