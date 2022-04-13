@@ -45,7 +45,7 @@ fn main() {
     let default_fee_spend_pub = "26b507c63124a2f5e940b4fb89e4b2bb0a2078ed0c8e551ad59268b9646ec241";
     let default_fee_view_pub = "5222a1e9ae32d21c23114a5ce6bb39e0cb56aea350d4619d43b1207061b10346";
     let default_governor_admin_pub =
-        "607bbb3cfbebabc9d0d2f81ee8dfed4b22a62cdf672e9e7e36d69d856a986544";
+        "1f4fe69277ae2385e9ecd9dde5e42e9ea7907ef3982a63d9ce4118950b696e35";
 
     // Check for env var and override
     fee_spend_public_key[..].copy_from_slice(

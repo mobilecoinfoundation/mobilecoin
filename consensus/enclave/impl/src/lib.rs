@@ -981,9 +981,11 @@ mod tests {
         202, 52, 250, 242, 215, 247, 175, 59, 121, 185, 111, 8,
     ];
 
+    // This private key was generated using the mc-util-seeded-ed25519-key-gen utility with the seed
+    // abababababababababababababababababababababababababababababababab
     const MASTER_MINTERS_ADMIN_PRIVATE_KEY: [u8; 32] = [
-        187, 210, 164, 86, 70, 218, 68, 253, 40, 230, 46, 104, 233, 212, 45, 220, 215, 127, 133,
-        138, 20, 154, 36, 117, 96, 117, 207, 156, 63, 249, 27, 253,
+        168, 15, 220, 134, 238, 251, 210, 7, 24, 78, 21, 168, 197, 250, 1, 139, 23, 64, 154, 172,
+        192, 125, 32, 148, 183, 78, 167, 52, 170, 254, 120, 64,
     ];
 
     fn sign_master_minters_map(map: &MasterMintersMap) -> Option<Ed25519Signature> {

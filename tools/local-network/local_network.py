@@ -241,6 +241,15 @@ class Node:
         with open(self.tokens_config_file, 'w') as f:
             json.dump(tokens_config, f)
 
+        #  Sign the master minters with the admin key.
+        subprocess.check_output(' '.join([
+            f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mc-consensus-mint-client',
+            'sign-master-minters',
+            f'--tokens {self.tokens_config_file}',
+            f'--signing-key {MINTING_KEYS_DIR}/admin',
+            f'--output-json {self.tokens_config_file}',
+        ]), shell=True)
+
         cmd = ' '.join([
             f'cd {PROJECT_DIR} && exec {TARGET_DIR}/consensus-service',
             f'--client-responder-id localhost:{self.client_port}',
@@ -452,7 +461,7 @@ class Network:
             )
 
         subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mobilecoind -p mc-crypto-x509-test-vectors -p mc-consensus-mint-client {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mobilecoind -p mc-crypto-x509-test-vectors -p mc-consensus-mint-client -p mc-util-seeded-ed25519-key-gen {CARGO_FLAGS}',
             shell=True,
             check=True,
         )
@@ -484,6 +493,9 @@ class Network:
 
        subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {MINTING_KEYS_DIR}/master-minter2', shell=True)
        subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/master-minter2 -out {MINTING_KEYS_DIR}/master-minter2.pub', shell=True)
+
+       # This matches the hardcoded key in consensus/enclave/impl/build.rs
+       subprocess.check_output(f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mc-util-seeded-ed25519-key-gen --seed abababababababababababababababababababababababababababababababab > {MINTING_KEYS_DIR}/admin', shell=True)
 
     def start(self):
         self.stop()
