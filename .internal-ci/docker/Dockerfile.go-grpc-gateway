@@ -1,0 +1,16 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# Dockerfile.go-grpc-gateway
+#
+# Runtime Image for the json -> grpc gateway service.
+
+ARG REPO_ORG=mobilecoin
+FROM ${REPO_ORG}/runtime-base:latest
+
+ARG GO_BIN_PATH=go-grpc-gateway
+COPY ${GO_BIN_PATH}/grpc-proxy /usr/bin/go-grpc-gateway
+
+COPY .internal-ci/docker/entrypoints/go-grpc-gateway.sh /usr/bin/entrypoint.sh
+ENTRYPOINT ["/usr/bin/entrypoint.sh"]
+
+EXPOSE 8000

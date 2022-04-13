@@ -1,0 +1,33 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# Dockerfile.fogview
+#
+# Runtime image for MobileCoin fogview nodes.
+
+ARG REPO_ORG=mobilecoin
+FROM ${REPO_ORG}/runtime-base:latest
+
+# Copy binaries
+ARG RUST_BIN_PATH=target/release
+COPY ${RUST_BIN_PATH}/libview-enclave.signed.so /usr/bin/
+COPY ${RUST_BIN_PATH}/fog_view_server /usr/bin/
+COPY ${RUST_BIN_PATH}/mc-admin-http-gateway /usr/bin/
+COPY ${RUST_BIN_PATH}/mc-util-grpc-admin-tool /usr/bin/
+
+# Entrypoint
+# COPY docker/entrypoints/fogview.sh /usr/bin/entrypoint.sh
+# ENTRYPOINT ["/usr/bin/entrypoint.sh"]
+
+# Rust defaults
+ENV RUST_BACKTRACE="1"
+ENV RUST_LOG="info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn"
+ENV RUST_LOG_STYLE="never"
+
+# Default Ports
+# HTTP Management
+EXPOSE 8000
+# GRPC View
+EXPOSE 3225
+
+# App Defaults
+ENV OMAP_CAPACITY=2097152

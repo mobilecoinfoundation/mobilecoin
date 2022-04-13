@@ -1,0 +1,44 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# Dockerfile.node_hw
+#
+# Runtime image for MobileCoin consensus nodes built in SGX hw mode.
+
+ARG REPO_ORG=mobilecoin
+FROM ${REPO_ORG}/runtime-base:latest
+
+# Copy binaries
+ARG RUST_BIN_PATH=target/release
+COPY ${RUST_BIN_PATH}/consensus-service /usr/bin/
+COPY ${RUST_BIN_PATH}/ledger-distribution /usr/bin/
+COPY ${RUST_BIN_PATH}/ledger-from-archive /usr/bin/
+COPY ${RUST_BIN_PATH}/libconsensus-enclave.signed.so /usr/bin/
+COPY ${RUST_BIN_PATH}/mc-admin-http-gateway /usr/bin/
+COPY ${RUST_BIN_PATH}/mc-ledger-migration /usr/bin/
+COPY ${RUST_BIN_PATH}/mc-util-grpc-admin-tool /usr/bin/
+
+COPY ${RUST_BIN_PATH}/sample-keys /usr/local/bin/
+COPY ${RUST_BIN_PATH}/generate-sample-ledger /usr/local/bin/
+COPY .internal-ci/util/generate_origin_data.sh /usr/local/bin/
+
+# Populate origin data
+# We should pull origin data at runtime from an external source, like a public s3 url, but keep this for legacy.
+ARG ORIGIN_DATA_DIR=.internal-ci/sample_data
+COPY ${ORIGIN_DATA_DIR}/ledger /var/lib/mobilecoin/origin_data
+
+# Entrypoint
+# COPY docker/entrypoints/consensus_validator.sh /usr/bin/entrypoint.sh
+# ENTRYPOINT ["/usr/bin/entrypoint.sh"]
+
+# Rust defaults
+ENV RUST_BACKTRACE="1"
+ENV RUST_LOG="info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn"
+ENV RUST_LOG_STYLE="never"
+
+# Default Ports
+# HTTP Management
+EXPOSE 8000
+# GRPC Client
+EXPOSE 3223
+# GRPC Peer
+EXPOSE 8443

@@ -1,0 +1,37 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# Dockerfile.mobilecoind
+#
+# Runtime image for mobilecoind service.
+
+ARG REPO_ORG=mobilecoin
+FROM ${REPO_ORG}/runtime-base:latest
+
+# Copy binaries
+ARG RUST_BIN_PATH=target/release
+COPY ${RUST_BIN_PATH}/mobilecoind /usr/bin/
+COPY ${RUST_BIN_PATH}/mc-ledger-migration /usr/bin/
+COPY ${RUST_BIN_PATH}/mc-util-grpc-admin-tool /usr/bin/
+
+# Add attest test_certs
+COPY attest/test_certs/ /var/lib/mobilecoin/attest/test_certs
+
+# Entrypoint
+# COPY docker/entrypoints/mobilecoind.sh /usr/bin/entrypoint.sh
+# ENTRYPOINT ["/usr/bin/entrypoint.sh"]
+
+# Rust defaults
+ENV RUST_BACKTRACE="1"
+ENV RUST_LOG="info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn"
+ENV RUST_LOG_STYLE="never"
+
+# App paths (TODO make volumes and clean up)
+ARG NODE_LEDGER_DIR="/var/lib/mobilecoin/ledger"
+ARG MOBILECOIND_DB_DIR="/var/lib/mobilecoin/mobilecoind_db"
+ENV NODE_LEDGER_DIR=${NODE_LEDGER_DIR}
+ENV MOBILECOIND_DB_DIR=${MOBILECOIND_DB_DIR}
+ENV ORIGIN_DATA_DIR=${ORIGIN_DATA_DIR}
+
+# Default Ports
+# GRPC Client
+EXPOSE 3229

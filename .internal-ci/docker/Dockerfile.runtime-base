@@ -1,0 +1,42 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# Dockerfile.runtime-base
+#  A minimal base runtime image for mobilecoin applications.
+#
+FROM ubuntu:focal-20220404
+
+SHELL ["/bin/bash", "-c"]
+
+RUN  apt-get update \
+  && apt-get upgrade -y \
+  && apt-get install -y \
+      apt-transport-https \
+      ca-certificates \
+      curl \
+      gnupg \
+      supervisor \
+      libpq5
+
+# Install Filebeat repo
+RUN  curl --retry 5 -fL https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add - \
+  && echo "deb https://artifacts.elastic.co/packages/oss-8.x/apt stable main" > /etc/apt/sources.list.d/elastic-8.x.list
+
+# Install SGX ASEM repo
+COPY .internal-ci/docker/support/intel-sgx-archive-keyring.gpg /etc/apt/trusted.gpg.d/
+RUN  echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/intel-sgx-archive-keyring.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu/ focal main" > /etc/apt/sources.list.d/intel-sgx.list
+
+# Install packages
+RUN  apt-get update \
+  && apt-get install -y \
+      filebeat \
+      sgx-aesm-service \
+      libsgx-epid \
+  && apt-get clean \
+  && rm -r /var/lib/apt/lists
+
+# Install GRPC health probe
+ARG GRPC_HEALTH_UTILITY_URL=https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.7/grpc_health_probe-linux-amd64
+
+RUN  curl --retry 5 -fL ${GRPC_HEALTH_UTILITY_URL} -o /usr/local/bin/grpc_health_probe \
+  && chmod +x /usr/local/bin/grpc_health_probe
+
