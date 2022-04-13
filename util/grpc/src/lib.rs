@@ -67,6 +67,10 @@ pub fn send_result<T>(
 ) {
     let logger = logger.clone();
     let success = resp.is_ok();
+    let code = match &resp {
+        Ok(_) => RpcStatusCode::OK,
+        Err(e) => e.code(),
+    };
 
     match resp {
         Ok(ok) => ctx.spawn(
@@ -82,6 +86,7 @@ pub fn send_result<T>(
     }
 
     SVC_COUNTERS.resp(&ctx, success);
+    SVC_COUNTERS.status_code(&ctx, code);
 }
 
 macro_rules! report_err_with_code(
