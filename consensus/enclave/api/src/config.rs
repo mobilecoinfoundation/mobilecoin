@@ -99,18 +99,21 @@ mod test {
         let config1: BlockchainConfigWithDigest = BlockchainConfig {
             fee_map: FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(2), 2000)]).unwrap(),
             master_minters_map: MasterMintersMap::default(),
+            master_minters_signature: None,
             block_version: BlockVersion::ZERO,
         }
         .into();
         let config2: BlockchainConfigWithDigest = BlockchainConfig {
             fee_map: FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(2), 300)]).unwrap(),
             master_minters_map: MasterMintersMap::default(),
+            master_minters_signature: None,
             block_version: BlockVersion::ZERO,
         }
         .into();
         let config3: BlockchainConfigWithDigest = BlockchainConfig {
             fee_map: FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(30), 300)]).unwrap(),
             master_minters_map: MasterMintersMap::default(),
+            master_minters_signature: None,
             block_version: BlockVersion::ZERO,
         }
         .into();
@@ -146,6 +149,7 @@ mod test {
         let config4: BlockchainConfigWithDigest = BlockchainConfig {
             fee_map: FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(30), 300)]).unwrap(),
             master_minters_map: MasterMintersMap::default(),
+            master_minters_signature: None,
             block_version: BlockVersion::ONE,
         }
         .into();
@@ -171,6 +175,7 @@ mod test {
                 SignerSet::new(vec![Ed25519Public::default()], 1),
             )])
             .unwrap(),
+            master_minters_signature: None,
             block_version: BlockVersion::ONE,
         }
         .into();
@@ -181,6 +186,7 @@ mod test {
                 SignerSet::new(vec![Ed25519Public::default()], 1),
             )])
             .unwrap(),
+            master_minters_signature: None,
             block_version: BlockVersion::ONE,
         }
         .into();
@@ -191,6 +197,7 @@ mod test {
                 SignerSet::new(vec![Ed25519Public::default(), Ed25519Public::default()], 1),
             )])
             .unwrap(),
+            master_minters_signature: None,
             block_version: BlockVersion::ONE,
         }
         .into();
