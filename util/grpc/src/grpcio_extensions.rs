@@ -62,6 +62,7 @@ pub trait ConnectionUriGrpcioServer {
     #[must_use]
     fn bind_using_uri(self, uri: &impl ConnectionUri, logger: Logger) -> Self;
 
+    /// Create the default channel settings for server
     fn default_channel_builder(env: Arc<Environment>) -> ChannelBuilder {
         ChannelBuilder::new(env)
             .keepalive_permit_without_calls(true)
