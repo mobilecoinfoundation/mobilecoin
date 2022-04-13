@@ -2,33 +2,69 @@
 
 //! Definition of a MobileCoin transaction and a MobileCoin TxOut
 
+use crate::{
+    amount::{Amount, AmountError, MaskedAmount},
+    domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
+    encrypted_fog_hint::EncryptedFogHint,
+    membership_proofs::Range,
+    memo::{EncryptedMemo, MemoPayload},
+    onetime_keys::{
+        create_shared_secret, create_tx_out_public_key, create_tx_out_target_key,
+        recover_public_subaddress_spend_key,
+    },
+    ring_signature::{KeyImage, SignatureRctBulletproofs},
+    CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
+};
 use alloc::vec::Vec;
 use core::{convert::TryFrom, fmt};
-use mc_account_keys::PublicAddress;
+use mc_account_keys::{AccountKey, PublicAddress};
 use mc_common::Hash;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_hashes::{Blake2b256, Digest};
-use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+use mc_crypto_keys::{CompressedRistrettoPublic, KeyError, RistrettoPrivate, RistrettoPublic};
 use mc_util_repr_bytes::{
     derive_prost_message_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
 };
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    amount::{Amount, AmountError, MaskedAmount},
-    domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
-    encrypted_fog_hint::EncryptedFogHint,
-    get_tx_out_shared_secret,
-    membership_proofs::Range,
-    memo::{EncryptedMemo, MemoPayload},
-    onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
-    ring_signature::{KeyImage, SignatureRctBulletproofs},
-    CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
-};
-
 /// Transaction hash length, in bytes.
 pub const TX_HASH_LEN: usize = 32;
+
+/// Get the shared secret for a transaction output.
+///
+/// # Arguments
+/// * `view_key` - The recipient's private View key.
+/// * `tx_public_key` - The public key of the transaction.
+pub fn get_tx_out_shared_secret(
+    view_key: &RistrettoPrivate,
+    tx_public_key: &RistrettoPublic,
+) -> RistrettoPublic {
+    create_shared_secret(tx_public_key, view_key)
+}
+
+/// Helper which checks if a particular subaddress of an account key matches a
+/// TxOut
+///
+/// This is not the most efficient way to check when you have many subaddresses,
+/// for that you should create a table and use
+/// recover_public_subaddress_spend_key directly.
+///
+/// However some clients are only using one or two subaddresses.
+/// Validating that a TxOut is owned by the change subaddress is a frequently
+/// needed operation.
+pub fn subaddress_matches_tx_out(
+    acct: &AccountKey,
+    subaddress_index: u64,
+    output: &TxOut,
+) -> Result<bool, KeyError> {
+    let sub_addr_spend = recover_public_subaddress_spend_key(
+        acct.view_private_key(),
+        &RistrettoPublic::try_from(&output.target_key)?,
+        &RistrettoPublic::try_from(&output.public_key)?,
+    );
+    Ok(sub_addr_spend == RistrettoPublic::from(&acct.subaddress_spend_private(subaddress_index)))
+}
 
 #[derive(
     Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Digestible,
