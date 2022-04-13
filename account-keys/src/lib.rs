@@ -18,7 +18,10 @@ mod identity;
 mod view_key;
 
 pub use crate::{
-    account_keys::{AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX},
+    account_keys::{
+        AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
+        INVALID_SUBADDRESS_INDEX,
+    },
     address_hash::ShortAddressHash,
     error::{Error, Result},
     identity::{RootEntropy, RootIdentity},
