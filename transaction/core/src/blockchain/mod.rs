@@ -6,15 +6,19 @@ mod block;
 mod block_contents;
 mod block_data;
 mod block_id;
+mod block_metadata;
 mod block_signature;
 mod block_version;
 
-pub use block::*;
-pub use block_contents::*;
-pub use block_data::*;
-pub use block_id::*;
-pub use block_signature::*;
-pub use block_version::{BlockVersion, BlockVersionError};
+pub use self::{
+    block::*,
+    block_contents::*,
+    block_data::*,
+    block_id::*,
+    block_metadata::*,
+    block_signature::*,
+    block_version::{BlockVersion, BlockVersionError},
+};
 
 use displaydoc::Display;
 

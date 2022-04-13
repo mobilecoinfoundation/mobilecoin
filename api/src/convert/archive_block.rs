@@ -1,7 +1,9 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from blockchain::ArchiveBlock
 
-use crate::{blockchain, convert::ConversionError};
-use mc_transaction_core::{Block, BlockContents, BlockData, BlockSignature};
+use crate::{blockchain, ConversionError};
+use mc_transaction_core::{Block, BlockContents, BlockData, BlockSignature, SignedBlockMetadata};
 use std::convert::TryFrom;
 
 /// Convert mc_transaction_core::BlockData --> blockchain::ArchiveBlock.
@@ -13,6 +15,9 @@ impl From<&BlockData> for blockchain::ArchiveBlock {
         archive_block_v1.set_block_contents(src.contents().into());
         if let Some(signature) = src.signature() {
             archive_block_v1.set_signature(signature.into());
+        }
+        if let Some(metadata) = src.metadata() {
+            archive_block_v1.set_metadata(metadata.into());
         }
 
         archive_block
@@ -43,8 +48,19 @@ impl TryFrom<&blockchain::ArchiveBlock> for BlockData {
                 .map_err(|_| ConversionError::InvalidSignature)?;
         }
 
+        let metadata = archive_block_v1
+            .metadata
+            .as_ref()
+            .map(SignedBlockMetadata::try_from)
+            .transpose()?;
+
         if block.contents_hash == block_contents.hash() {
-            Ok(BlockData::new(block, block_contents, signature))
+            Ok(BlockData::new_with_metadata(
+                block,
+                block_contents,
+                signature,
+                metadata,
+            ))
         } else {
             Err(ConversionError::InvalidContents)
         }
@@ -74,9 +90,11 @@ impl TryFrom<&blockchain::ArchiveBlocks> for Vec<BlockData> {
         // Ensure blocks_data form a legitimate chain of blocks.
         if blocks_data
             .iter()
+            // Verify that the block ID is consistent with the cached parent ID.
             .all(|data| data.block().is_block_id_valid())
             && blocks_data
                 .windows(2)
+                // Verify that the cached parent ID match the previous block's ID.
                 .all(|window| window[1].block().parent_id == window[0].block().id)
         {
             Ok(blocks_data)
