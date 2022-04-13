@@ -81,11 +81,15 @@ pub struct MintConfigTxParams {
         parse(try_from_str = load_key_from_pem),
         required_unless_present = "signatures",
         env = "MC_MINTING_SIGNING_KEYS"
-)]
+    )]
     signing_keys: Vec<Ed25519Private>,
 
     /// Pre-generated signatures to use.
-    #[clap(long = "signature", use_value_delimiter = true, parse(try_from_str = parse_ed25519_signature), env = "MC_MINTING_SIGNATURES")]
+    #[clap(
+        long = "signature",
+        use_value_delimiter = true,
+        parse(try_from_str = parse_ed25519_signature), env = "MC_MINTING_SIGNATURES"
+    )]
     signatures: Vec<Ed25519Signature>,
 
     #[clap(flatten)]
@@ -122,30 +126,68 @@ impl MintConfigTxParams {
 }
 
 #[derive(Args)]
-pub struct MintTxParams {
-    /// The key(s) to sign the transaction with.
-    #[clap(long = "signing-key", use_value_delimiter = true, parse(try_from_str = load_key_from_pem), env = "MC_MINTING_SIGNING_KEYS")]
-    signing_keys: Vec<Ed25519Private>,
-
+pub struct MintTxPrefixParams {
     /// The b58 address we are minting to.
     #[clap(long, parse(try_from_str = parse_public_address), env = "MC_MINTING_RECIPIENT")]
-    recipient: PublicAddress,
+    pub recipient: PublicAddress,
 
     /// The token id we are minting.
     #[clap(long, env = "MC_MINTING_TOKEN_ID")]
-    token_id: u32,
+    pub token_id: u32,
 
     /// The amount we are minting.
     #[clap(long, env = "MC_MINTING_AMOUNT")]
-    amount: u64,
+    pub amount: u64,
 
     /// Tombstone block.
     #[clap(long, env = "MC_MINTING_TOMBSTONE")]
-    tombstone: Option<u64>,
+    pub tombstone: Option<u64>,
 
     /// Nonce.
     #[clap(long, parse(try_from_str = FromHex::from_hex), env = "MC_MINTING_NONCE")]
-    nonce: Option<[u8; NONCE_LENGTH]>,
+    pub nonce: Option<[u8; NONCE_LENGTH]>,
+}
+
+impl MintTxPrefixParams {
+    pub fn try_into_mint_tx_prefix(
+        self,
+        fallback_tombstone_block: impl Fn() -> u64,
+    ) -> Result<MintTxPrefix, String> {
+        let tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
+        let nonce = get_or_generate_nonce(self.nonce);
+        Ok(MintTxPrefix {
+            token_id: self.token_id,
+            amount: self.amount,
+            view_public_key: *self.recipient.view_public_key(),
+            spend_public_key: *self.recipient.spend_public_key(),
+            nonce,
+            tombstone_block,
+        })
+    }
+}
+
+#[derive(Args)]
+pub struct MintTxParams {
+    /// The key(s) to sign the transaction with.
+    #[clap(
+        long = "signing-key",
+        use_value_delimiter = true,
+        parse(try_from_str = load_key_from_pem),
+        required_unless_present = "signatures",
+        env = "MC_MINTING_SIGNING_KEYS"
+    )]
+    signing_keys: Vec<Ed25519Private>,
+
+    /// Pre-generated signatures to use.
+    #[clap(
+        long = "signature",
+        use_value_delimiter = true,
+        parse(try_from_str = parse_ed25519_signature), env = "MC_MINTING_SIGNATURES"
+    )]
+    signatures: Vec<Ed25519Signature>,
+
+    #[clap(flatten)]
+    prefix_params: MintTxPrefixParams,
 }
 
 impl MintTxParams {
@@ -153,28 +195,26 @@ impl MintTxParams {
         self,
         fallback_tombstone_block: impl Fn() -> u64,
     ) -> Result<MintTx, String> {
-        let tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
-        let nonce = get_or_generate_nonce(self.nonce);
-        let prefix = MintTxPrefix {
-            token_id: self.token_id,
-            amount: self.amount,
-            view_public_key: *self.recipient.view_public_key(),
-            spend_public_key: *self.recipient.spend_public_key(),
-            nonce,
-            tombstone_block,
-        };
-
+        let prefix = self
+            .prefix_params
+            .try_into_mint_tx_prefix(fallback_tombstone_block)?;
         let message = prefix.hash();
-        let signature = MultiSig::new(
-            self.signing_keys
-                .into_iter()
-                .map(|signer| {
-                    Ed25519Pair::from(signer)
-                        .try_sign(message.as_ref())
-                        .map_err(|e| format!("Failed to sign MintTxPrefix: {}", e))
-                })
-                .collect::<Result<Vec<_>, _>>()?,
-        );
+
+        let mut signatures = self
+            .signing_keys
+            .into_iter()
+            .map(|signer| {
+                Ed25519Pair::from(signer)
+                    .try_sign(message.as_ref())
+                    .map_err(|e| format!("Failed to sign MintTxPrefix: {}", e))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        signatures.extend(self.signatures);
+
+        signatures.sort();
+        signatures.dedup();
+
+        let signature = MultiSig::new(signatures);
         Ok(MintTx { prefix, signature })
     }
 }
@@ -245,6 +285,12 @@ pub enum Commands {
 
         #[clap(flatten)]
         params: MintTxParams,
+    },
+
+    // Produce a hash of a MintTx transaction. This is useful for offline/HSM signing.
+    HashMintTx {
+        #[clap(flatten)]
+        params: MintTxPrefixParams,
     },
 
     // Submit json-encoded MintTx(s). If multiple transactions are provided, signatures will
