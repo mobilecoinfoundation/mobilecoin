@@ -19,10 +19,12 @@ mc-util-lmdb = { path = "../util/lmdb" }
 mc-util-metrics = { path = "../util/metrics" }
 mc-util-parse = { path = "../util/parse" }
 mc-util-serial = { path = "../util/serial" }
+mc-util-uri = { path = "../util/uri" }
 
 clap = { version = "3.1", features = ["derive", "env"] }
 displaydoc = "0.2"
 grpcio = "0.10.0"
+hostname = "0.3.1"
 lazy_static = "1.4"
 lmdb-rkv = "0.14.0"
 prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
