@@ -70,6 +70,11 @@ pub trait ConnectionUriGrpcioServer {
             .keepalive_timeout(Duration::from_secs(20))
             .http2_min_recv_ping_interval_without_data(Duration::from_secs(5))
     }
+
+    /// Set the channel args to our defaults.
+    fn set_default_channel_args(self, env: Arc<Environment>) -> &Self {
+        self.channel_args(Self::default_channel_builder(env).build_args())
+    }
 }
 
 impl ConnectionUriGrpcioServer for ServerBuilder {
