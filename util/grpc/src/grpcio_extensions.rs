@@ -72,9 +72,7 @@ pub trait ConnectionUriGrpcioServer {
     }
 
     /// Set the channel args to our defaults.
-    fn set_default_channel_args(self, env: Arc<Environment>) -> &Self {
-        self.channel_args(Self::default_channel_builder(env).build_args())
-    }
+    fn set_default_channel_args(self, env: Arc<Environment>) -> Self;
 }
 
 impl ConnectionUriGrpcioServer for ServerBuilder {
@@ -99,5 +97,10 @@ impl ConnectionUriGrpcioServer for ServerBuilder {
         } else {
             self.bind(uri.host(), uri.port())
         }
+    }
+
+    /// Set the channel args to our defaults.
+    fn set_default_channel_args(self, env: Arc<Environment>) -> Self {
+        self.channel_args(Self::default_channel_builder(env).build_args())
     }
 }
