@@ -72,6 +72,7 @@ pub trait ConnectionUriGrpcioServer {
     }
 
     /// Set the channel args to our defaults.
+    #[must_use]
     fn set_default_channel_args(self, env: Arc<Environment>) -> Self;
 }
 
