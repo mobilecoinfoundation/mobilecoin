@@ -15,7 +15,11 @@ use mc_transaction_core::mint::{
 };
 use mc_util_uri::ConsensusClientUri;
 use rand::{thread_rng, RngCore};
-use std::{convert::TryFrom, fs, path::PathBuf};
+use std::{
+    convert::TryFrom,
+    fs,
+    path::{Path, PathBuf},
+};
 
 #[derive(Args)]
 pub struct MintConfigTxPrefixParams {
@@ -84,11 +88,11 @@ pub struct MintConfigTxParams {
     )]
     signing_keys: Vec<Ed25519Private>,
 
-    /// Pre-generated signatures to use.
+    /// Pre-generated signature(s) to use, either in hex format or a PEM file.
     #[clap(
         long = "signature",
         use_value_delimiter = true,
-        parse(try_from_str = parse_ed25519_signature), env = "MC_MINTING_SIGNATURES"
+        parse(try_from_str = load_or_parse_ed25519_signature), env = "MC_MINTING_SIGNATURES"
     )]
     signatures: Vec<Ed25519Signature>,
 
@@ -178,11 +182,11 @@ pub struct MintTxParams {
     )]
     signing_keys: Vec<Ed25519Private>,
 
-    /// Pre-generated signatures to use.
+    /// Pre-generated signature(s) to use, either in hex format or a PEM file.
     #[clap(
         long = "signature",
         use_value_delimiter = true,
-        parse(try_from_str = parse_ed25519_signature), env = "MC_MINTING_SIGNATURES"
+        parse(try_from_str = load_or_parse_ed25519_signature), env = "MC_MINTING_SIGNATURES"
     )]
     signatures: Vec<Ed25519Signature>,
 
@@ -333,9 +337,33 @@ pub fn load_key_from_pem(filename: &str) -> Result<Ed25519Private, String> {
         .map_err(|err| format!("Failed parsing DER from PEM file '{}': {}", filename, err))
 }
 
-pub fn parse_ed25519_signature(hex_signature: &str) -> Result<Ed25519Signature, String> {
-    let bytes = hex::decode(hex_signature)
-        .map_err(|err| format!("Failed decoding hex signature: {}", err))?;
+pub fn load_or_parse_ed25519_signature(
+    filename_or_hex_signature: &str,
+) -> Result<Ed25519Signature, String> {
+    // Check if the signature provided is a filename.
+    let bytes = if Path::new(filename_or_hex_signature).exists() {
+        let bytes = fs::read(filename_or_hex_signature).map_err(|err| {
+            format!(
+                "Failed reading file '{}': {}",
+                filename_or_hex_signature, err
+            )
+        })?;
+
+        let parsed_pem = pem::parse(&bytes).map_err(|err| {
+            format!(
+                "Failed parsing PEM file '{}': {}",
+                filename_or_hex_signature, err
+            )
+        })?;
+
+        parsed_pem.contents
+    } else if filename_or_hex_signature.len() == Ed25519Signature::BYTE_SIZE * 2 {
+        // *2 due to hex encoding
+        hex::decode(filename_or_hex_signature)
+            .map_err(|err| format!("Failed decoding hex signature: {}", err))?
+    } else {
+        return Err("Signature must either be a PEM file or a hex-encoded string".to_string());
+    };
 
     Ed25519Signature::try_from(&bytes[..])
         .map_err(|err| format!("Failed parsing Ed25519 signature: {}", err))
