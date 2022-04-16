@@ -4,8 +4,8 @@
 
 use crate::error::Error;
 use mc_common::HashSet;
-use mc_consensus_enclave_api::{FeeMap, MasterMintersMap};
-use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, Ed25519Signature, Verifier};
+use mc_consensus_enclave_api::{FeeMap, MasterMintersMap, MasterMintersVerifier};
+use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, Ed25519Signature};
 use mc_crypto_multisig::SignerSet;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -305,12 +305,12 @@ impl TokensConfig {
 
     /// Verify the master minters signature against a given public key
     pub fn verify_master_minters_signature(&self, key: &Ed25519Public) -> Result<(), Error> {
-        let message = self.token_id_to_master_minters()?.hash();
+        let master_minters_map = self.token_id_to_master_minters()?;
         let signature = self
             .master_minters_signature
             .as_ref()
             .ok_or(Error::MissingMasterMintersSignature)?;
-        Ok(key.verify(message.as_ref(), signature)?)
+        Ok(key.verify_master_minters_map(&master_minters_map, signature)?)
     }
 }
 

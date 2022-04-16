@@ -43,14 +43,12 @@ use mc_common::{
 };
 use mc_consensus_enclave_api::{
     BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeePublicKey,
-    FormBlockInputs, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
-    WellFormedEncryptedTx, WellFormedTxContext,
+    FormBlockInputs, LocallyEncryptedTx, MasterMintersVerifier, Result, SealedBlockSigningKey,
+    TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
-use mc_crypto_keys::{
-    Ed25519Pair, Ed25519Public, RistrettoPrivate, RistrettoPublic, Verifier, X25519Public,
-};
+use mc_crypto_keys::{Ed25519Pair, Ed25519Public, RistrettoPrivate, RistrettoPublic, X25519Public};
 use mc_crypto_message_cipher::{AesMessageCipher, MessageCipher};
 use mc_crypto_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
@@ -399,7 +397,6 @@ impl ConsensusEnclave for SgxConsensusEnclave {
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
         // Validate master minters signature.
         if !blockchain_config.master_minters_map.is_empty() {
-            let message = blockchain_config.master_minters_map.hash();
             let signature = blockchain_config
                 .master_minters_signature
                 .ok_or(Error::MissingMasterMintersSignature)?;
@@ -409,7 +406,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                     .map_err(Error::ParseMintingTrustRootPublicKey)?;
 
             minting_trust_root_public_key
-                .verify(message.as_ref(), &signature)
+                .verify_master_minters_map(&blockchain_config.master_minters_map, &signature)
                 .map_err(|_| Error::InvalidMasterMintersSignature)?;
         }
 
@@ -956,8 +953,8 @@ mod tests {
     use alloc::vec;
     use core::iter::FromIterator;
     use mc_common::{logger::test_with_logger, HashMap, HashSet};
-    use mc_consensus_enclave_api::{FeeMap, MasterMintersMap};
-    use mc_crypto_keys::{Ed25519Private, Ed25519Signature, Signer};
+    use mc_consensus_enclave_api::{FeeMap, MasterMintersMap, MasterMintersSigner};
+    use mc_crypto_keys::{Ed25519Private, Ed25519Signature};
     use mc_crypto_multisig::SignerSet;
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{
@@ -992,8 +989,11 @@ mod tests {
 
     fn sign_master_minters_map(map: &MasterMintersMap) -> Option<Ed25519Signature> {
         let private_key = Ed25519Private::try_from(&MASTER_MINTERS_ADMIN_PRIVATE_KEY[..]).unwrap();
-        let message = map.hash();
-        Some(Ed25519Pair::from(private_key).try_sign(&message).unwrap())
+        Some(
+            Ed25519Pair::from(private_key)
+                .sign_master_minters_map(map)
+                .unwrap(),
+        )
     }
 
     #[test_with_logger]
