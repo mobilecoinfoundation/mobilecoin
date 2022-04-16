@@ -370,13 +370,16 @@ impl Verifier<Ed25519Signature> for Ed25519Pair {
 pub struct Ed25519Signature(Signature);
 
 impl Ed25519Signature {
+    /// Signature length in bytes.
+    pub const BYTE_SIZE: usize = Signature::BYTE_SIZE;
+
     /// Create a new signature from a byte array
-    pub fn new(bytes: [u8; Signature::BYTE_SIZE]) -> Self {
+    pub fn new(bytes: [u8; Self::BYTE_SIZE]) -> Self {
         Self(Signature::from(bytes))
     }
 
     /// Return the inner byte array
-    pub fn to_bytes(&self) -> [u8; Signature::BYTE_SIZE] {
+    pub fn to_bytes(&self) -> [u8; Self::BYTE_SIZE] {
         self.0.to_bytes()
     }
 }
@@ -422,7 +425,7 @@ impl Hash for Ed25519Signature {
 // This is needed to implement prost::Message
 impl Default for Ed25519Signature {
     fn default() -> Self {
-        Self::new([0; Signature::BYTE_SIZE])
+        Self::new([0; Self::BYTE_SIZE])
     }
 }
 

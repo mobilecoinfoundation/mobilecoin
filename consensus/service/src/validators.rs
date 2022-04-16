@@ -595,7 +595,7 @@ mod combine_tests {
                 .unwrap();
 
             let tx = transaction_builder.build(&mut rng).unwrap();
-            let client_tx = WellFormedTxContext::from(&tx);
+            let client_tx = WellFormedTxContext::from_tx(&tx, 0);
 
             // "Combining" a singleton set should return a vec containing the single
             // element.
@@ -679,7 +679,7 @@ mod combine_tests {
                         .unwrap();
 
                     let tx = transaction_builder.build(&mut rng).unwrap();
-                    WellFormedTxContext::from(&tx)
+                    WellFormedTxContext::from_tx(&tx, 0)
                 };
                 transaction_set.push(client_tx);
             }
@@ -754,7 +754,7 @@ mod combine_tests {
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
-                WellFormedTxContext::from(&tx)
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // Create another transaction that attempts to spend `tx_out`.
@@ -791,7 +791,7 @@ mod combine_tests {
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
-                WellFormedTxContext::from(&tx)
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // This transaction spends a different TxOut, unrelated to `first_client_tx` and
@@ -854,7 +854,7 @@ mod combine_tests {
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
-                WellFormedTxContext::from(&tx)
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // `combine` the set of transactions.
@@ -947,7 +947,7 @@ mod combine_tests {
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
-                WellFormedTxContext::from(&tx)
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // Create another transaction that attempts to spend `tx_out2` but has the same
@@ -986,7 +986,7 @@ mod combine_tests {
 
                 let mut tx = transaction_builder.build(&mut rng).unwrap();
                 tx.prefix.outputs[0].public_key = first_client_tx.output_public_keys()[0].clone();
-                WellFormedTxContext::from(&tx)
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // This transaction spends a different TxOut, unrelated to `first_client_tx` and
@@ -1049,7 +1049,7 @@ mod combine_tests {
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
-                WellFormedTxContext::from(&tx)
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // `combine` the set of transactions.
