@@ -74,8 +74,8 @@ pub enum Error {
     /// Invalid master minters signature
     InvalidMasterMintersSignature,
 
-    /// Failed parsing governor admin public key
-    ParseGovernorAdminPublicKey(KeyError),
+    /// Failed parsing minting trust root public key
+    ParseMintingTrustRootPublicKey(KeyError),
 }
 
 impl From<ParseSealedError> for Error {

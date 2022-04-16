@@ -404,10 +404,11 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 .master_minters_signature
                 .ok_or(Error::MissingMasterMintersSignature)?;
 
-            let governor_admin_public_key = Ed25519Public::try_from(&GOVERNOR_ADMIN_PUBLIC_KEY[..])
-                .map_err(Error::ParseGovernorAdminPublicKey)?;
+            let minting_trust_root_public_key =
+                Ed25519Public::try_from(&MINTING_TRUST_ROOT_PUBLIC_KEY[..])
+                    .map_err(Error::ParseMintingTrustRootPublicKey)?;
 
-            governor_admin_public_key
+            minting_trust_root_public_key
                 .verify(message.as_ref(), &signature)
                 .map_err(|_| Error::InvalidMasterMintersSignature)?;
         }

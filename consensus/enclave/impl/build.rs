@@ -33,18 +33,18 @@ fn main() {
 
     rerun_if_env_changed!("FEE_SPEND_PUBLIC_KEY");
     rerun_if_env_changed!("FEE_VIEW_PUBLIC_KEY");
-    rerun_if_env_changed!("GOVERNOR_ADMIN_PUBLIC_KEY");
+    rerun_if_env_changed!("MINTING_TRUST_ROOT_PUBLIC_KEY");
 
     let mut fee_spend_public_key = [0u8; 32];
     let mut fee_view_public_key = [0u8; 32];
-    let mut governor_admin_public_key = [0u8; 32];
+    let mut minting_trust_root_public_key = [0u8; 32];
 
     // These public keys are associated with the private keys used in the tests for
     // consensus/enclave/impl. These are the hex-encoded public spend and view key
     // bytes as well as a master minters admin public key.
     let default_fee_spend_pub = "26b507c63124a2f5e940b4fb89e4b2bb0a2078ed0c8e551ad59268b9646ec241";
     let default_fee_view_pub = "5222a1e9ae32d21c23114a5ce6bb39e0cb56aea350d4619d43b1207061b10346";
-    let default_governor_admin_pub =
+    let default_minting_trust_root_pub =
         "1f4fe69277ae2385e9ecd9dde5e42e9ea7907ef3982a63d9ce4118950b696e35";
 
     // Check for env var and override
@@ -61,12 +61,12 @@ fn main() {
         .expect("Failed parsing public view key."),
     );
 
-    governor_admin_public_key[..].copy_from_slice(
+    minting_trust_root_public_key[..].copy_from_slice(
         &hex::decode(
-            &var("GOVERNOR_ADMIN_PUBLIC_KEY")
-                .unwrap_or_else(|_| default_governor_admin_pub.to_string()),
+            &var("MINTING_TRUST_ROOT_PUBLIC_KEY")
+                .unwrap_or_else(|_| default_minting_trust_root_pub.to_string()),
         )
-        .expect("Failed parsing public governor admin key."),
+        .expect("Failed parsing public minting trust root key."),
     );
 
     let mut constants =
@@ -81,8 +81,8 @@ fn main() {
         fee_view_public_key
     ));
     constants.push_str(&format!(
-        "pub const GOVERNOR_ADMIN_PUBLIC_KEY: [u8; 32] = {:?};\n",
-        governor_admin_public_key
+        "pub const MINTING_TRUST_ROOT_PUBLIC_KEY: [u8; 32] = {:?};\n",
+        minting_trust_root_public_key
     ));
 
     // Output directory for generated constants.
