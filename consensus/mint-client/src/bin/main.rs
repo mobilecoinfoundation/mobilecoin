@@ -56,6 +56,19 @@ fn main() {
             fs::write(out, json).expect("failed writing output file");
         }
 
+        Commands::HashMintConfigTx { params } => {
+            let tx_prefix = params
+                .try_into_mint_config_tx_prefix(|| panic!("missing tombstone block"))
+                .expect("failed creating tx prefix");
+
+            // Print the nonce, since if we generated it randomlly then there is no way to
+            // reconstruct the tx prefix that is being hashed without it.
+            println!("Nonce: {}", hex::encode(&tx_prefix.nonce));
+
+            let hash = tx_prefix.hash();
+            println!("Hash: {}", hex::encode(hash));
+        }
+
         Commands::SubmitMintConfigTx { node, tx_filenames } => {
             // Load all txs.
             let txs: Vec<MintConfigTx> = load_json_files(&tx_filenames);
@@ -117,6 +130,19 @@ fn main() {
             let json = to_string_pretty(&tx).expect("failed serializing tx");
 
             fs::write(out, json).expect("failed writing output file");
+        }
+
+        Commands::HashMintTx { params } => {
+            let tx_prefix = params
+                .try_into_mint_tx_prefix(|| panic!("missing tombstone block"))
+                .expect("failed creating tx prefix");
+
+            // Print the nonce, since if we generated it randomlly then there is no way to
+            // reconstruct the tx prefix that is being hashed without it.
+            println!("Nonce: {}", hex::encode(&tx_prefix.nonce));
+
+            let hash = tx_prefix.hash();
+            println!("Hash: {}", hex::encode(hash));
         }
 
         Commands::SubmitMintTx { node, tx_filenames } => {
