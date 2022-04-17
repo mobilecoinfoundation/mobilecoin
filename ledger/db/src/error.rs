@@ -70,8 +70,10 @@ pub enum Error {
     /// Invalid mint configuration: {0}
     InvalidMintConfig(String),
 
-    /// Mint limit exceeded: {0} > {1}
-    MintLimitExceeded(u64, u64),
+    /** Mint limit exceeded: Attempted to mint {0}, currently minted {1} out
+     * of {2}
+     */
+    MintLimitExceeded(u64, u64, u64),
 
     /// Total minted amount cannot decrease: {0} < {1}
     TotalMintedAmountCannotDecrease(u64, u64),

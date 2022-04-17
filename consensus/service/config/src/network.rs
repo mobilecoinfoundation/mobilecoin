@@ -2,6 +2,7 @@
 
 //! Consensus network configuration.
 
+use crate::error::Error;
 use mc_common::{HashMap, HashSet, NodeID, ResponderId};
 use mc_consensus_scp::{QuorumSet, QuorumSetMember};
 use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
@@ -29,22 +30,18 @@ impl NetworkConfig {
     pub fn load_from_path(
         path: impl AsRef<Path>,
         peer_responder_id: &ResponderId,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, Error> {
         let path = path.as_ref();
 
         // Read configuration file.
-        let data = fs::read_to_string(path).unwrap_or_else(|err| err.to_string());
+        let data = fs::read_to_string(path)?;
 
         // Parse configuration file.
         let network: Self = match path.extension().and_then(|ext| ext.to_str()) {
-            None => Err("failed figuring out file extension".to_owned()),
-            Some("toml") => {
-                toml::from_str(&data).map_err(|err| format!("TOML parsing failed: {:?}", err))
-            }
-            Some("json") => {
-                serde_json::from_str(&data).map_err(|err| format!("JSON parsing failed: {:?}", err))
-            }
-            Some(ext) => Err(format!("Unrecognized extension '{}'", ext)),
+            None => Err(Error::PathExtension),
+            Some("toml") => toml::from_str(&data).map_err(Error::from),
+            Some("json") => serde_json::from_str(&data).map_err(Error::from),
+            Some(ext) => Err(Error::UnrecognizedExtension(ext.to_string())),
         }?;
 
         // Sanity tests:
@@ -59,33 +56,28 @@ impl NetworkConfig {
         for peer_uri in peer_uris {
             let responder_id = peer_uri
                 .responder_id()
-                .map_err(|e| format!("failed getting responder id for {:?}: {:?}", peer_uri, e))?;
+                .map_err(|err| Error::UriConversion(peer_uri.to_string(), err))?;
 
             if peer_responder_id == &responder_id {
-                return Err(format!(
-                    "Our peer responder id ({}) should not appear in broadcast_peers or known_peers!",
-                    responder_id
-                ));
+                return Err(Error::KnownPeersContainsSelf(responder_id));
             }
 
             if !spotted_responder_ids.insert(responder_id.clone()) {
-                return Err(format!(
-                    "Duplicate responder_id {} found in network configuration",
-                    responder_id
-                ));
+                return Err(Error::DuplicateResponderId(responder_id));
             }
         }
 
         // Sanity test: We should have at least one source of transactions, if we have
         // any peers configured.
         if !network.broadcast_peers.is_empty() && network.tx_source_urls.is_empty() {
-            return Err("Network configuration is missing tx_source_urls".to_owned());
+            return Err(Error::MissingTxSourceUrls);
         }
 
         // Success.
         Ok(network)
     }
 
+    /// Construct a quorum set from the configuration.
     pub fn quorum_set(&self) -> QuorumSet {
         if !self.quorum_set.is_valid() {
             panic!("invalid quorum set: {:?}", self.quorum_set);
@@ -125,6 +117,7 @@ impl NetworkConfig {
         Self::resolve_quorum_set(&self.quorum_set, &peer_map)
     }
 
+    /// Get the list of peers we connect and broadcast messages to.
     pub fn broadcast_peers(&self) -> Vec<PeerUri> {
         self.broadcast_peers.clone()
     }

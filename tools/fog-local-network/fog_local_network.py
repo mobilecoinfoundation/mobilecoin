@@ -3,11 +3,7 @@
 import argparse
 import os
 import subprocess
-import sys
 
-MOBILECOIN_PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
-# FIXME: Avoid modifying sys.path
-sys.path.append(os.path.join(MOBILECOIN_PROJECT_DIR, 'tools', 'local-network'))
 from local_network import *
 from local_fog import *
 
@@ -18,24 +14,29 @@ class FogNetwork(Network):
         enclave_pem = os.path.join(PROJECT_DIR, 'Enclave_private.pem')
         assert os.path.exists(enclave_pem), enclave_pem
 
-        subprocess.run(
-            ' '.join([
-                f'cd {MOBILECOIN_PROJECT_DIR} &&',
-                f'CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}"',
-                f'INGEST_ENCLAVE_PRIVKEY="{enclave_pem}"',
-                f'LEDGER_ENCLAVE_PRIVKEY="{enclave_pem}"',
-                f'VIEW_ENCLAVE_PRIVKEY="{enclave_pem}"',
-                f'cargo build -p mc-fog-ingest-server -p mc-fog-ingest-client -p mc-fog-view-server -p mc-fog-report-server -p mc-fog-ledger-server -p mc-fog-distribution -p mc-fog-test-client -p mc-fog-ingest-client -p mc-fog-sql-recovery-db -p mc-fog-test-client {CARGO_FLAGS}',
-            ]),
-            shell=True,
-            check=True,
-        )
+        log_and_run_shell(' '.join([
+            f'cd {PROJECT_DIR} &&',
+            f'CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}"',
+            f'INGEST_ENCLAVE_PRIVKEY="{enclave_pem}"',
+            f'LEDGER_ENCLAVE_PRIVKEY="{enclave_pem}"',
+            f'VIEW_ENCLAVE_PRIVKEY="{enclave_pem}"',
+            f'cargo build',
+            '-p mc-fog-distribution',
+            '-p mc-fog-ingest-client',
+            '-p mc-fog-ingest-server',
+            '-p mc-fog-ledger-server',
+            '-p mc-fog-report-server',
+            '-p mc-fog-sql-recovery-db',
+            '-p mc-fog-test-client',
+            '-p mc-fog-view-server',
+            f'{CARGO_FLAGS}',
+        ]))
 
     def start(self):
         cmd = ' && '.join([
             f'dropdb --if-exists {FOG_SQL_DATABASE_NAME}',
             f'createdb {FOG_SQL_DATABASE_NAME}',
-            f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME} {MOBILECOIN_PROJECT_DIR}/{TARGET_DIR}/fog-sql-recovery-db-migrations',
+            f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME} {PROJECT_DIR}/{TARGET_DIR}/fog-sql-recovery-db-migrations',
         ])
         print(f'Creating postgres database: {cmd}')
         subprocess.check_output(cmd, shell=True)
@@ -59,11 +60,11 @@ class FogNetwork(Network):
             pass
 
         # Get chain and key
-        root = subprocess.check_output(f"{MOBILECOIN_PROJECT_DIR}/{TARGET_DIR}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head",
+        root = subprocess.check_output(f"{PROJECT_DIR}/{TARGET_DIR}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head",
                                    encoding='utf8', shell=True).strip()
-        chain = subprocess.check_output(f"{MOBILECOIN_PROJECT_DIR}/{TARGET_DIR}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_chain_25519_leaf",
+        chain = subprocess.check_output(f"{PROJECT_DIR}/{TARGET_DIR}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_chain_25519_leaf",
                                    encoding='utf8', shell=True).strip()
-        key = subprocess.check_output(f"{MOBILECOIN_PROJECT_DIR}/{TARGET_DIR}/mc-crypto-x509-test-vectors --type=key --test-name=ok_rsa_chain_25519_leaf",
+        key = subprocess.check_output(f"{PROJECT_DIR}/{TARGET_DIR}/mc-crypto-x509-test-vectors --type=key --test-name=ok_rsa_chain_25519_leaf",
                                  encoding='utf8', shell=True).strip()
         print(f"chain path = {chain}, key path = {key}")
 
@@ -126,7 +127,7 @@ class FogNetwork(Network):
         # Tell the ingest server to activate, giving it a little time for RPC to wakeup
         time.sleep(15)
         cmd = ' '.join([
-            f'exec {MOBILECOIN_PROJECT_DIR}/{TARGET_DIR}/fog_ingest_client',
+            f'exec {PROJECT_DIR}/{TARGET_DIR}/fog_ingest_client',
             f'--uri insecure-fog-ingest://localhost:{BASE_INGEST_CLIENT_PORT}',
             f'activate',
         ])

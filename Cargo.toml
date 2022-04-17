@@ -29,6 +29,7 @@ members = [
     "consensus/scp",
     "consensus/scp/play",
     "consensus/service",
+    "consensus/service/config",
     "crypto/box",
     "crypto/digestible",
     "crypto/digestible/derive/test",

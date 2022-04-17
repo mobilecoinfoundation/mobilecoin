@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A canonical burn address for the auditable burning of funds
+//! This is described in MCIP #35, see that MCIP for security proof.
 //!
 //! The requirements here are:
 //! * The canonical burn address is a public address that anyone can send funds

@@ -43,12 +43,35 @@ pub struct ActiveMintConfig {
     pub total_minted: u64,
 }
 
-/// A collection of active mint configurations.
-/// This is needed for serializing/deserializing a Vec<ActiveMintConfig>.
+/// A collection of active mint configurations for a specific token id.
+/// This also contains the global mint limit that is shared amongst all the
+/// configurations.
 #[derive(Clone, Eq, Message, PartialEq)]
-struct ActiveMintConfigs {
+pub struct ActiveMintConfigs {
     #[prost(message, repeated, tag = "1")]
     pub configs: Vec<ActiveMintConfig>,
+
+    /// The total amount that can be minted by the configurations above, once
+    /// this set of configurations has been made active.
+    #[prost(uint64, tag = "2")]
+    pub total_mint_limit: u64,
+}
+
+impl ActiveMintConfigs {
+    /// Get the total amount that was minted across all configurations.
+    pub fn total_minted(&self) -> u64 {
+        self.configs.iter().map(|c| c.total_minted).sum()
+    }
+
+    /// Check if we can mint a certain amount without exceeding the global
+    /// limit.
+    pub fn can_mint(&self, amount: u64) -> bool {
+        if let Some(new_total_minted) = self.total_minted().checked_add(amount) {
+            new_total_minted <= self.total_mint_limit
+        } else {
+            false
+        }
+    }
 }
 
 impl From<&MintConfigTx> for ActiveMintConfigs {
@@ -63,6 +86,7 @@ impl From<&MintConfigTx> for ActiveMintConfigs {
                     total_minted: 0,
                 })
                 .collect(),
+            total_mint_limit: mint_config_tx.prefix.total_mint_limit,
         }
     }
 }
@@ -197,14 +221,11 @@ impl MintConfigStore {
         &self,
         token_id: TokenId,
         db_transaction: &impl Transaction,
-    ) -> Result<Vec<ActiveMintConfig>, Error> {
+    ) -> Result<Option<ActiveMintConfigs>, Error> {
         let token_id_bytes = u32_to_key_bytes(*token_id);
         match db_transaction.get(self.active_mint_configs_by_token_id, &token_id_bytes) {
-            Ok(bytes) => {
-                let active_mint_configs: ActiveMintConfigs = decode(bytes)?;
-                Ok(active_mint_configs.configs)
-            }
-            Err(lmdb::Error::NotFound) => Ok(Vec::new()),
+            Ok(bytes) => Ok(Some(decode(bytes)?)),
+            Err(lmdb::Error::NotFound) => Ok(None),
             Err(err) => Err(err.into()),
         }
     }
@@ -216,16 +237,27 @@ impl MintConfigStore {
         mint_tx: &MintTx,
         db_transaction: &impl Transaction,
     ) -> Result<ActiveMintConfig, Error> {
-        let active_mint_configs =
-            self.get_active_mint_configs(TokenId::from(mint_tx.prefix.token_id), db_transaction)?;
+        let active_mint_configs = self
+            .get_active_mint_configs(TokenId::from(mint_tx.prefix.token_id), db_transaction)?
+            .ok_or(Error::NotFound)?;
         let message = mint_tx.prefix.hash();
+
+        // Check if the amount minted is going to tip us over the limit.
+        if !active_mint_configs.can_mint(mint_tx.prefix.amount) {
+            // should be changed to address that.
+            return Err(Error::MintLimitExceeded(
+                mint_tx.prefix.amount,
+                active_mint_configs.total_minted(),
+                active_mint_configs.total_mint_limit,
+            ));
+        }
 
         // Our default error is NotFound, in case we are unable to find a mint config
         // that matches the mint tx. We might override it if we find one but the
         // amount will exceed the mint limit.
         let mut error = Error::NotFound;
 
-        for active_mint_config in active_mint_configs {
+        for active_mint_config in active_mint_configs.configs {
             // See if this mint config has signed the mint tx.
             if active_mint_config
                 .mint_config
@@ -246,13 +278,16 @@ impl MintConfigStore {
             {
                 if new_total_minted <= active_mint_config.mint_config.mint_limit {
                     return Ok(active_mint_config);
-                } else {
-                    error = Error::MintLimitExceeded(
-                        new_total_minted,
-                        active_mint_config.mint_config.mint_limit,
-                    );
                 }
             }
+
+            // We found a mint config with a matching signature, but it cannot accommodate
+            // the amount this transaction is trying to mint.
+            error = Error::MintLimitExceeded(
+                mint_tx.prefix.amount,
+                active_mint_config.total_minted,
+                active_mint_config.mint_config.mint_limit,
+            );
         }
 
         Err(error)
@@ -265,19 +300,17 @@ impl MintConfigStore {
         amount: u64,
         db_transaction: &mut RwTransaction,
     ) -> Result<(), Error> {
-        if amount > mint_config.mint_limit {
-            return Err(Error::MintLimitExceeded(amount, mint_config.mint_limit));
-        }
-
         // Get the active mint configs for the given token.
-        let mut active_mint_configs =
-            self.get_active_mint_configs(TokenId::from(mint_config.token_id), db_transaction)?;
+        let mut active_mint_configs = self
+            .get_active_mint_configs(TokenId::from(mint_config.token_id), db_transaction)?
+            .ok_or(Error::NotFound)?;
 
         // Find the active mint config that matches the mint config we were given.
         let active_mint_config = active_mint_configs
+            .configs
             .iter_mut()
             .find(|active_mint_config| active_mint_config.mint_config == *mint_config)
-            .ok_or_else(|| Error::InvalidMintConfig("Mint config not found".to_string()))?;
+            .ok_or(Error::NotFound)?;
 
         // Total minted amount should never decrease.
         if amount < active_mint_config.total_minted {
@@ -287,16 +320,33 @@ impl MintConfigStore {
             ));
         }
 
+        // Amount should never go above the mint limit of the specific configuration.
+        let mint_increase_amount = amount - active_mint_config.total_minted;
+        if amount > active_mint_config.mint_config.mint_limit {
+            return Err(Error::MintLimitExceeded(
+                mint_increase_amount,
+                active_mint_config.total_minted,
+                active_mint_config.mint_config.mint_limit,
+            ));
+        }
+
         // Update the total minted amount.
         active_mint_config.total_minted = amount;
+
+        // Sanity check that we didn't go over the total mint limit.
+        if active_mint_configs.total_minted() > active_mint_configs.total_mint_limit {
+            return Err(Error::MintLimitExceeded(
+                mint_increase_amount,
+                active_mint_configs.total_minted(),
+                active_mint_configs.total_mint_limit,
+            ));
+        }
 
         // Write to db.
         db_transaction.put(
             self.active_mint_configs_by_token_id,
             &u32_to_key_bytes(mint_config.token_id),
-            &encode(&ActiveMintConfigs {
-                configs: active_mint_configs,
-            }),
+            &encode(&active_mint_configs),
             WriteFlags::empty(),
         )?;
 
@@ -366,14 +416,14 @@ pub mod tests {
                 .unwrap();
             assert_eq!(
                 active_mint_configs,
-                ActiveMintConfigs::from(&test_tx_1).configs
+                Some(ActiveMintConfigs::from(&test_tx_1))
             );
 
-            // Getting configuration for a different token id should return an empty vec.
+            // Getting configuration for a different token id should reutrn None.
             let active_mint_configs = mint_config_store
                 .get_active_mint_configs(TokenId::from(2), &db_transaction)
                 .unwrap();
-            assert_eq!(active_mint_configs, vec![]);
+            assert_eq!(active_mint_configs, None);
         }
 
         // Set a minting configuration for the 2nd token and try again.
@@ -397,7 +447,7 @@ pub mod tests {
                 .unwrap();
             assert_eq!(
                 active_mint_configs,
-                ActiveMintConfigs::from(&test_tx_1).configs
+                Some(ActiveMintConfigs::from(&test_tx_1))
             );
 
             let active_mint_configs = mint_config_store
@@ -405,7 +455,7 @@ pub mod tests {
                 .unwrap();
             assert_eq!(
                 active_mint_configs,
-                ActiveMintConfigs::from(&test_tx_2).configs
+                Some(ActiveMintConfigs::from(&test_tx_2))
             );
         }
     }
@@ -501,7 +551,7 @@ pub mod tests {
                 .unwrap();
             assert_eq!(
                 active_mint_configs,
-                ActiveMintConfigs::from(&test_tx_1).configs
+                Some(ActiveMintConfigs::from(&test_tx_1))
             );
         }
 
@@ -525,7 +575,7 @@ pub mod tests {
                 .unwrap();
             assert_eq!(
                 active_mint_configs,
-                ActiveMintConfigs::from(&test_tx_2).configs
+                Some(ActiveMintConfigs::from(&test_tx_2))
             );
         }
     }
@@ -542,6 +592,7 @@ pub mod tests {
                 configs: vec![],
                 nonce: vec![5u8; 32],
                 tombstone_block: 1234,
+                total_mint_limit: 0,
             },
             signature: Default::default(),
         };
@@ -567,7 +618,7 @@ pub mod tests {
                 .unwrap();
             assert_eq!(
                 active_mint_configs,
-                ActiveMintConfigs::from(&test_tx_1).configs
+                Some(ActiveMintConfigs::from(&test_tx_1))
             );
         }
 
@@ -591,7 +642,7 @@ pub mod tests {
                 .unwrap();
             assert_eq!(
                 active_mint_configs,
-                ActiveMintConfigs::from(&test_tx_2).configs
+                Some(ActiveMintConfigs::from(&test_tx_2))
             );
         }
     }
@@ -620,9 +671,10 @@ pub mod tests {
             let db_transaction = env.begin_ro_txn().unwrap();
             let active_mint_configs = mint_config_store
                 .get_active_mint_configs(TokenId::from(1), &db_transaction)
+                .unwrap()
                 .unwrap();
-            assert_eq!(active_mint_configs[0].total_minted, 0);
-            assert_eq!(active_mint_configs[1].total_minted, 0);
+            assert_eq!(active_mint_configs.configs[0].total_minted, 0);
+            assert_eq!(active_mint_configs.configs[1].total_minted, 0);
         }
 
         // Update the total minted amount of the second configuration
@@ -639,27 +691,20 @@ pub mod tests {
             let db_transaction = env.begin_ro_txn().unwrap();
             let active_mint_configs = mint_config_store
                 .get_active_mint_configs(TokenId::from(1), &db_transaction)
+                .unwrap()
                 .unwrap();
-            assert_eq!(active_mint_configs[0].total_minted, 0);
-            assert_eq!(active_mint_configs[1].total_minted, 123456);
+            assert_eq!(active_mint_configs.configs[0].total_minted, 0);
+            assert_eq!(active_mint_configs.configs[1].total_minted, 123456);
         }
 
         // Update both configurations in one transaction
         {
             let mut db_transaction = env.begin_rw_txn().unwrap();
             mint_config_store
-                .update_total_minted(
-                    &test_tx_1.prefix.configs[0],
-                    1020304050,
-                    &mut db_transaction,
-                )
+                .update_total_minted(&test_tx_1.prefix.configs[0], 102030, &mut db_transaction)
                 .unwrap();
             mint_config_store
-                .update_total_minted(
-                    &test_tx_1.prefix.configs[1],
-                    2020202020,
-                    &mut db_transaction,
-                )
+                .update_total_minted(&test_tx_1.prefix.configs[1], 123500, &mut db_transaction)
                 .unwrap();
             db_transaction.commit().unwrap();
         }
@@ -669,9 +714,10 @@ pub mod tests {
             let db_transaction = env.begin_ro_txn().unwrap();
             let active_mint_configs = mint_config_store
                 .get_active_mint_configs(TokenId::from(1), &db_transaction)
+                .unwrap()
                 .unwrap();
-            assert_eq!(active_mint_configs[0].total_minted, 1020304050);
-            assert_eq!(active_mint_configs[1].total_minted, 2020202020);
+            assert_eq!(active_mint_configs.configs[0].total_minted, 102030);
+            assert_eq!(active_mint_configs.configs[1].total_minted, 123500);
         }
     }
 
@@ -704,6 +750,7 @@ pub mod tests {
                 ),
                 Err(Error::MintLimitExceeded(
                     test_tx_1.prefix.configs[1].mint_limit + 1,
+                    0,
                     test_tx_1.prefix.configs[1].mint_limit
                 ))
             );
@@ -767,9 +814,7 @@ pub mod tests {
                     123456,
                     &mut db_transaction
                 ),
-                Err(Error::InvalidMintConfig(
-                    "Mint config not found".to_string(),
-                ))
+                Err(Error::NotFound)
             );
         }
 
@@ -795,9 +840,7 @@ pub mod tests {
                     123456,
                     &mut db_transaction
                 ),
-                Err(Error::InvalidMintConfig(
-                    "Mint config not found".to_string(),
-                ))
+                Err(Error::NotFound)
             );
         }
 
@@ -812,9 +855,7 @@ pub mod tests {
                     123456,
                     &mut db_transaction
                 ),
-                Err(Error::InvalidMintConfig(
-                    "Mint config not found".to_string(),
-                ))
+                Err(Error::NotFound)
             );
         }
     }
@@ -929,6 +970,7 @@ pub mod tests {
                 mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx, &db_transaction),
                 Err(Error::MintLimitExceeded(
                     mint_tx.prefix.amount,
+                    0,
                     test_tx_1.prefix.configs[0].mint_limit
                 ))
             );
@@ -954,7 +996,8 @@ pub mod tests {
             assert_eq!(
                 mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx, &db_transaction),
                 Err(Error::MintLimitExceeded(
-                    mint_tx.prefix.amount + 10, // 10 is the amount that was previously minted
+                    mint_tx.prefix.amount,
+                    10, // 10 is the amount that was previously minted
                     test_tx_1.prefix.configs[0].mint_limit
                 ))
             );
@@ -1035,6 +1078,98 @@ pub mod tests {
     }
 
     #[test]
+    fn get_active_mint_config_for_mint_tx_refuses_exceeding_total_mint_limit() {
+        let (mint_config_store, env) = init_mint_config_store();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+
+        let (mut test_tx_1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        test_tx_1.prefix.total_mint_limit = test_tx_1.prefix.configs[0].mint_limit - 1;
+
+        // Store mint config
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .write_validated_mint_config_txs(
+                    0,
+                    &[to_validated(&test_tx_1)],
+                    &mut db_transaction,
+                )
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        // Generate a test mint tx that will immediately exceed the total mint limit.
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let mint_tx = create_mint_tx(
+                token_id1,
+                &[Ed25519Pair::from(signers1[0].private_key())],
+                test_tx_1.prefix.configs[0].mint_limit,
+                &mut rng,
+            );
+            assert_eq!(
+                mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx, &db_transaction),
+                Err(Error::MintLimitExceeded(
+                    mint_tx.prefix.amount,
+                    0,
+                    test_tx_1.prefix.total_mint_limit,
+                ))
+            );
+        }
+
+        // Total mint limit should be enforced correctly if some amount was already
+        // minted.
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .update_total_minted(&test_tx_1.prefix.configs[0], 10, &mut db_transaction)
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let mint_tx = create_mint_tx(
+                token_id1,
+                &[Ed25519Pair::from(signers1[0].private_key())],
+                // We minted 10 tokens above, so the configuration will allow us to mint 10 so the
+                // configuration does allow for 10 more but the global limit only allows 9 more so
+                // this is expected to fail.
+                test_tx_1.prefix.configs[0].mint_limit - 10,
+                &mut rng,
+            );
+            assert_eq!(
+                mint_config_store.get_active_mint_config_for_mint_tx(&mint_tx, &db_transaction),
+                Err(Error::MintLimitExceeded(
+                    mint_tx.prefix.amount,
+                    10,
+                    test_tx_1.prefix.total_mint_limit,
+                ))
+            );
+        }
+
+        // Sanity check
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let mint_tx = create_mint_tx(
+                token_id1,
+                &[Ed25519Pair::from(signers1[0].private_key())],
+                test_tx_1.prefix.configs[0].mint_limit - 11,
+                &mut rng,
+            );
+            assert_eq!(
+                mint_config_store
+                    .get_active_mint_config_for_mint_tx(&mint_tx, &db_transaction)
+                    .unwrap()
+                    .mint_config,
+                test_tx_1.prefix.configs[0],
+            );
+        }
+    }
+
+    #[test]
     fn can_set_empty_configs_array() {
         let (mint_config_store, env) = init_mint_config_store();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
@@ -1064,7 +1199,7 @@ pub mod tests {
                 .unwrap();
             assert_eq!(
                 active_mint_configs,
-                ActiveMintConfigs::from(&test_tx_1).configs
+                Some(ActiveMintConfigs::from(&test_tx_1))
             );
 
             let active_mint_configs = mint_config_store
@@ -1072,7 +1207,7 @@ pub mod tests {
                 .unwrap();
             assert_eq!(
                 active_mint_configs,
-                ActiveMintConfigs::from(&test_tx_2).configs
+                Some(ActiveMintConfigs::from(&test_tx_2))
             );
         }
 
@@ -1090,6 +1225,7 @@ pub mod tests {
                     configs: vec![],
                     nonce,
                     tombstone_block: rng.next_u64(),
+                    total_mint_limit: 0,
                 };
 
                 let message = prefix.hash();
@@ -1112,15 +1248,16 @@ pub mod tests {
             let db_transaction = env.begin_ro_txn().unwrap();
             let active_mint_configs = mint_config_store
                 .get_active_mint_configs(token_id1, &db_transaction)
+                .unwrap()
                 .unwrap();
-            assert_eq!(active_mint_configs, vec![]);
+            assert_eq!(active_mint_configs.configs, vec![]);
 
             let active_mint_configs = mint_config_store
                 .get_active_mint_configs(token_id2, &db_transaction)
                 .unwrap();
             assert_eq!(
                 active_mint_configs,
-                ActiveMintConfigs::from(&test_tx_2).configs
+                Some(ActiveMintConfigs::from(&test_tx_2))
             );
         }
     }

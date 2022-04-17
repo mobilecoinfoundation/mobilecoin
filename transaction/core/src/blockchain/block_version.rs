@@ -86,7 +86,8 @@ impl BlockVersion {
         self.0 >= 2
     }
 
-    /// transactions shall be sorted after version 2
+    /// The transaction's outputs shall be sorted (per [MCIP #34](https://github.com/mobilecoinfoundation/mcips/pull/34))
+    /// feature is introduced in block version 3 and higher
     pub fn validate_transaction_outputs_are_sorted(&self) -> bool {
         self.0 > 2
     }

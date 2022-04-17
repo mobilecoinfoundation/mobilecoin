@@ -91,19 +91,19 @@ mod test {
     #[test]
     fn different_fee_maps_result_in_different_responder_ids() {
         let config1: BlockchainConfigWithDigest = BlockchainConfig {
-            fee_map: FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(2), 2000)]).unwrap(),
+            fee_map: FeeMap::try_from_iter([(Mob::ID, 1000), (TokenId::from(2), 2000)]).unwrap(),
             master_minters_map: MasterMintersMap::default(),
             block_version: BlockVersion::ZERO,
         }
         .into();
         let config2: BlockchainConfigWithDigest = BlockchainConfig {
-            fee_map: FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(2), 300)]).unwrap(),
+            fee_map: FeeMap::try_from_iter([(Mob::ID, 1000), (TokenId::from(2), 300)]).unwrap(),
             master_minters_map: MasterMintersMap::default(),
             block_version: BlockVersion::ZERO,
         }
         .into();
         let config3: BlockchainConfigWithDigest = BlockchainConfig {
-            fee_map: FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(30), 300)]).unwrap(),
+            fee_map: FeeMap::try_from_iter([(Mob::ID, 1000), (TokenId::from(30), 300)]).unwrap(),
             master_minters_map: MasterMintersMap::default(),
             block_version: BlockVersion::ZERO,
         }
@@ -138,7 +138,7 @@ mod test {
         );
 
         let config4: BlockchainConfigWithDigest = BlockchainConfig {
-            fee_map: FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(30), 300)]).unwrap(),
+            fee_map: FeeMap::try_from_iter([(Mob::ID, 200), (TokenId::from(30), 300)]).unwrap(),
             master_minters_map: MasterMintersMap::default(),
             block_version: BlockVersion::ONE,
         }

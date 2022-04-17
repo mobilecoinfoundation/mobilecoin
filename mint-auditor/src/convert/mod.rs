@@ -3,3 +3,4 @@
 //! Convertion trait implementations betweens Prost and Protobuf.
 
 mod block_audit_data;
+mod counters;

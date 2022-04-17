@@ -266,6 +266,8 @@ fn update_counters(mint_auditor_db: &MintAuditorDb) -> Result<(), Error> {
 
     counters::NUM_BLOCKS_SYNCED.set(counters.num_blocks_synced as i64);
     counters::NUM_BURNS_EXCEEDING_BALANCE.set(counters.num_burns_exceeding_balance as i64);
+    counters::NUM_MINT_TXS_WITHOUT_MATCHING_MINT_CONFIG
+        .set(counters.num_mint_txs_without_matching_mint_config as i64);
 
     Ok(())
 }

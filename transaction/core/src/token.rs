@@ -5,6 +5,7 @@
 use core::{fmt, hash::Hash, num::ParseIntError, ops::Deref, str::FromStr};
 use mc_crypto_digestible::Digestible;
 use serde::{Deserialize, Serialize};
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 /// Token Id, used to identify different assets on on the blockchain.
 #[derive(
@@ -54,6 +55,20 @@ impl PartialEq<u32> for TokenId {
 impl PartialEq<TokenId> for u32 {
     fn eq(&self, other: &TokenId) -> bool {
         *self == other.0
+    }
+}
+
+impl ConstantTimeEq for TokenId {
+    fn ct_eq(&self, other: &TokenId) -> Choice {
+        self.0.ct_eq(&other.0)
+    }
+}
+
+impl ConditionallySelectable for TokenId {
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        Self(ConditionallySelectable::conditional_select(
+            &a.0, &b.0, choice,
+        ))
     }
 }
 

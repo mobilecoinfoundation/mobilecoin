@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use crate::{ActiveMintConfig, Error, Ledger};
+use crate::{ActiveMintConfig, ActiveMintConfigs, Error, Ledger};
 use mc_account_keys::AccountKey;
 use mc_common::{HashMap, HashSet};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
@@ -194,7 +194,10 @@ impl Ledger for MockLedger {
         unimplemented!();
     }
 
-    fn get_active_mint_configs(&self, _token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error> {
+    fn get_active_mint_configs(
+        &self,
+        _token_id: TokenId,
+    ) -> Result<Option<ActiveMintConfigs>, Error> {
         unimplemented!()
     }
 

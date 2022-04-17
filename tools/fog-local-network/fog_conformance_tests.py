@@ -6,7 +6,6 @@ import json
 import os
 import shutil
 import subprocess
-import sys
 import time
 import grpc
 
@@ -24,11 +23,6 @@ DEADLINE_SECONDS = 60
 FOG_REPORT_RETRY_SECONDS = 30
 
 
-# Log a command and then call subprocess.run
-def log_and_run_shell(cmd):
-    print(cmd)
-    subprocess.run(cmd, shell=True, check=True)
-
 # A class that represents a handle to a new ledger_db and watcher_db which can be populated by the test
 #
 # This mocks out the inputs to fog that normally come from consensus
@@ -39,13 +33,14 @@ class TestLedger:
         self.watcher_db_path = watcher_db_path
         self.keys_dir = keys_dir
         self.release = release
+        self.target_dir = target_dir(self.release)
         self.seed = initial_seed
 
         if initial_seed == 0:
             os.makedirs(ledger_db_path)
 
             cmd = ' '.join([
-                f'cd {self.ledger_db_path} && exec {FOG_PROJECT_DIR}/{target_dir(self.release)}/init_test_ledger',
+                f'cd {self.ledger_db_path} && exec {self.target_dir}/init_test_ledger',
                 f'--keys {keys_dir}',
                 f'--ledger-db {self.ledger_db_path}',
                 f'--watcher-db {self.watcher_db_path}',
@@ -71,9 +66,8 @@ class TestLedger:
     # * A list of key images corresponding to the created credits,
     #   corresponding to the order that those credits are presented
     def add_block(self, credits, key_images, fog_pubkey):
-
         cmd = ' '.join([
-            f'cd {FOG_PROJECT_DIR} && exec {target_dir(self.release)}/add_test_block',
+            f'exec {self.target_dir}/add_test_block',
             f'--ledger-db {self.ledger_db_path}',
             f'--watcher-db {self.watcher_db_path}',
             f'--keys {self.keys_dir}',
@@ -82,14 +76,13 @@ class TestLedger:
         ])
 
         # add_test_block expects a JSON blob on STDIN containing credits and key images
-        arg_bytes = json.dumps({
+        arg_json = json.dumps({
             'credits': credits,
             'key_images': key_images,
         }).encode("ascii")
 
         # Run the add_test_block program
-        print(cmd)
-        process_result = subprocess.run(cmd, input=arg_bytes, shell=True, check=True, stdout=subprocess.PIPE)
+        process_result = log_and_run_shell(cmd, input=arg_json, stdout=subprocess.PIPE)
 
         # Interpret its response as json { "key_images": [...] }
         result_json = json.loads(process_result.stdout)
@@ -356,20 +349,14 @@ class RustSamplePaykitRemoteWallet:
     """An object that takes care of starting/stopping the Rust sample paykit remote wallet."""
     def __init__(self, release):
         self.release = release
+        self.target_dir = target_dir(self.release)
         self.wallet_process = None
 
     def start(self):
         assert self.wallet_process is None
 
-        cmd = ' '.join([
-            f'cd {FOG_PROJECT_DIR} && MC_LOG=info exec {target_dir(self.release)}/sample_paykit_remote_wallet',
-        ])
-
         print(f'Starting rust sample paykit remote wallet')
-        print(cmd)
-        print()
-
-        self.wallet_process = subprocess.Popen(cmd, shell=True)
+        self.wallet_process = log_and_popen_shell(f'MC_LOG=info exec {self.target_dir}/sample_paykit_remote_wallet')
 
     def stop(self):
         if self.wallet_process:
@@ -381,16 +368,17 @@ class FogConformanceTest:
     # Build the fog and mobilecoin repos for needed code, in release mode if selected
     def build(args):
         print("Building for fog_conformance_test")
-        FLAGS = "--release" if args.release else ""
+        flags = "--release" if args.release else ""
 
         enclave_pem = os.path.join(PROJECT_DIR, 'Enclave_private.pem')
         if not os.path.exists(enclave_pem):
             log_and_run_shell(f'openssl genrsa -out {enclave_pem} -3 3072')
 
-        log_and_run_shell(f"cd {FOG_PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY={enclave_pem} INGEST_ENCLAVE_PRIVKEY={enclave_pem} LEDGER_ENCLAVE_PRIVKEY={enclave_pem} VIEW_ENCLAVE_PRIVKEY={enclave_pem} exec cargo build -p mc-util-keyfile -p mc-admin-http-gateway -p mc-crypto-x509-test-vectors -p mc-fog-view-server -p mc-fog-ledger-server -p mc-fog-ingest-server -p mc-fog-report-server -p mc-fog-report-cli -p mc-fog-ingest-client -p mc-fog-sql-recovery-db -p mc-fog-sample-paykit -p mc-fog-test-infra {FLAGS}")
+        log_and_run_shell(f"cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY={enclave_pem} INGEST_ENCLAVE_PRIVKEY={enclave_pem} LEDGER_ENCLAVE_PRIVKEY={enclave_pem} VIEW_ENCLAVE_PRIVKEY={enclave_pem} exec cargo build -p mc-util-keyfile -p mc-admin-http-gateway -p mc-crypto-x509-test-vectors -p mc-fog-view-server -p mc-fog-ledger-server -p mc-fog-ingest-server -p mc-fog-report-server -p mc-fog-report-cli -p mc-fog-ingest-client -p mc-fog-sql-recovery-db -p mc-fog-sample-paykit -p mc-fog-test-infra {flags}")
 
     def __init__(self, work_dir, args):
         self.release = args.release
+        self.target_dir = target_dir(self.release)
         # Directory for fog to store its databases
         self.work_dir = work_dir
         # Remote wallet
@@ -431,17 +419,18 @@ class FogConformanceTest:
         report_server_url = f'insecure-fog://localhost:{BASE_REPORT_CLIENT_PORT}'
 
         # Get chain and key
-        root = subprocess.check_output(f"{target_dir(self.release)}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head",
+
+        root = subprocess.check_output(f"{self.target_dir}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head",
                                    encoding='utf8', shell=True).strip()
-        chain = subprocess.check_output(f"{target_dir(self.release)}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_chain_25519_leaf",
+        chain = subprocess.check_output(f"{self.target_dir}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_chain_25519_leaf",
                                    encoding='utf8', shell=True).strip()
-        key = subprocess.check_output(f"{target_dir(self.release)}/mc-crypto-x509-test-vectors --type=key --test-name=ok_rsa_chain_25519_leaf",
+        key = subprocess.check_output(f"{self.target_dir}/mc-crypto-x509-test-vectors --type=key --test-name=ok_rsa_chain_25519_leaf",
                                  encoding='utf8', shell=True).strip()
         print(f"chain path = {chain}, key path = {key}")
 
         # Create account keys
         print("Creating account keys...")
-        log_and_run_shell(f"cd {self.work_dir} && {PROJECT_DIR}/{target_dir(self.release)}/sample-keys --num 5 --fog-report-url {report_server_url} --fog-authority-root {root}")
+        log_and_run_shell(f"cd {self.work_dir} && {self.target_dir}/sample-keys --num 5 --fog-report-url {report_server_url} --fog-authority-root {root}")
         self.keys_dir = os.path.join(self.work_dir, 'keys')
 
         # Creating ledgers
@@ -453,7 +442,7 @@ class FogConformanceTest:
         cmd = ' && '.join([
             f'dropdb --if-exists {FOG_SQL_DATABASE_NAME}',
             f'createdb {FOG_SQL_DATABASE_NAME}',
-            f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME} {target_dir(self.release)}/fog-sql-recovery-db-migrations',
+            f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME} {self.target_dir}/fog-sql-recovery-db-migrations',
         ])
         print(f'Creating postgres database: {cmd}')
         subprocess.check_output(cmd, shell=True)
@@ -540,7 +529,7 @@ class FogConformanceTest:
         # Get fog pubkey
         print("Getting fog pubkey...")
         keyfile = os.path.join(self.keys_dir, "account_keys_0.pub")
-        fog_pubkey = subprocess.check_output(f"cd {FOG_PROJECT_DIR} && exec {target_dir(self.release)}/fog-report-cli --public-address {keyfile} --retry-seconds={FOG_REPORT_RETRY_SECONDS}", shell = True).decode("utf-8")
+        fog_pubkey = subprocess.check_output(f"exec {self.target_dir}/fog-report-cli --public-address {keyfile} --retry-seconds={FOG_REPORT_RETRY_SECONDS}", shell = True).decode("utf-8")
         assert len(fog_pubkey) == 64
         print("Fog pubkey = ", fog_pubkey)
 
@@ -1001,7 +990,7 @@ class FogConformanceTest:
         assert status["mode"] == "Active"
 
         self.fog_ingest2.report_lost_ingress_key(fog_pubkey)
-        new_fog_pubkey = subprocess.check_output(f"cd {FOG_PROJECT_DIR} && exec {target_dir(self.release)}/fog-report-cli --public-address {keyfile} --retry-seconds={FOG_REPORT_RETRY_SECONDS}", shell = True).decode("utf-8")
+        new_fog_pubkey = subprocess.check_output(f"{self.target_dir}/fog-report-cli --public-address {keyfile} --retry-seconds={FOG_REPORT_RETRY_SECONDS}", shell = True).decode("utf-8")
         assert new_fog_pubkey != fog_pubkey
         # Add the block to the restarted ingest. While ingest won't successfully decode the hints in
         # TxOuts in the block because it is using a new fog pubkey, it's required
