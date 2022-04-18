@@ -16,7 +16,8 @@
 //! included in the block.
 
 use crate::{key_bytes_to_u64, u64_to_key_bytes, Error};
-use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
+use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
+use mc_common::HashMap;
 use mc_transaction_core::{
     mint::{MintConfig, MintConfigTx, MintTx, ValidatedMintConfigTx},
     BlockIndex, TokenId,
@@ -230,6 +231,27 @@ impl MintConfigStore {
         }
     }
 
+    /// Return the full map of TokenId -> ActiveMintConfigs.
+    pub fn get_active_mint_configs_map(
+        &self,
+        db_transaction: &impl Transaction,
+    ) -> Result<HashMap<TokenId, ActiveMintConfigs>, Error> {
+        let mut cursor = db_transaction.open_ro_cursor(self.active_mint_configs_by_token_id)?;
+        cursor
+            .iter()
+            .map(|result| {
+                result.map_err(Error::from).and_then(
+                    |(token_id_bytes, active_mint_configs_bytes)| {
+                        Ok((
+                            TokenId::from(key_bytes_to_u64(token_id_bytes)),
+                            decode(active_mint_configs_bytes)?,
+                        ))
+                    },
+                )
+            })
+            .collect::<Result<HashMap<TokenId, ActiveMintConfigs>, Error>>()
+    }
+
     // Attempt to get a MintConfig that is active and is capable of minting the
     // given amount of tokens.
     pub fn get_active_mint_config_for_mint_tx(
@@ -380,6 +402,7 @@ pub mod tests {
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use rand_core::RngCore;
+    use std::iter::FromIterator;
 
     pub fn init_mint_config_store() -> (MintConfigStore, Environment) {
         let env = get_env();
@@ -1351,6 +1374,73 @@ pub mod tests {
                 mint_config_store
                     .check_mint_config_tx_nonce(&test_tx_3.prefix.nonce, &db_transaction),
                 Ok(Some(1)),
+            );
+        }
+    }
+
+    #[test]
+    fn get_active_mint_configs_map_works() {
+        let (mint_config_store, env) = init_mint_config_store();
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+
+        let test_tx_1 = create_mint_config_tx(token_id1, &mut rng);
+        let test_tx_2 = create_mint_config_tx(token_id2, &mut rng);
+        let test_tx_3 = create_mint_config_tx(token_id2, &mut rng);
+
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .write_validated_mint_config_txs(
+                    0,
+                    &[to_validated(&test_tx_1), to_validated(&test_tx_2)],
+                    &mut db_transaction,
+                )
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs_map(&db_transaction)
+                .unwrap();
+
+            assert_eq!(
+                active_mint_configs,
+                HashMap::from_iter([
+                    (token_id1, ActiveMintConfigs::from(&test_tx_1)),
+                    (token_id2, ActiveMintConfigs::from(&test_tx_2)),
+                ])
+            );
+        }
+
+        // Update token id 2 and try again
+        {
+            let mut db_transaction = env.begin_rw_txn().unwrap();
+            mint_config_store
+                .write_validated_mint_config_txs(
+                    1,
+                    &[to_validated(&test_tx_3)],
+                    &mut db_transaction,
+                )
+                .unwrap();
+            db_transaction.commit().unwrap();
+        }
+
+        {
+            let db_transaction = env.begin_ro_txn().unwrap();
+            let active_mint_configs = mint_config_store
+                .get_active_mint_configs_map(&db_transaction)
+                .unwrap();
+
+            assert_eq!(
+                active_mint_configs,
+                HashMap::from_iter([
+                    (token_id1, ActiveMintConfigs::from(&test_tx_1)),
+                    (token_id2, ActiveMintConfigs::from(&test_tx_3)),
+                ])
             );
         }
     }
