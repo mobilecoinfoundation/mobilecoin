@@ -24,7 +24,7 @@ use crate::{
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
     ring_signature::{KeyImage, SignatureRctBulletproofs},
-    CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
+    CompressedCommitment, NewMemoError, NewTxError, TokenId, ViewKeyMatchError,
 };
 
 /// Transaction hash length, in bytes.
@@ -164,9 +164,9 @@ pub struct TxPrefix {
     #[prost(uint64, tag = "4")]
     pub tombstone_block: u64,
 
-    /// Token id for this transaction
+    /// Token id for the fee output of this transaction
     #[prost(fixed64, tag = "5")]
-    pub token_id: u64,
+    pub fee_token_id: u64,
 }
 
 impl TxPrefix {
@@ -176,20 +176,21 @@ impl TxPrefix {
     /// * `inputs` - Inputs spent by the transaction.
     /// * `outputs` - Outputs created by the transaction.
     /// * `fee` - Transaction fee.
+    /// * `fee_token_id` - Transaction fee token id.
     /// * `tombstone_block` - The block index at which this transaction is no
     ///   longer valid.
     pub fn new(
         inputs: Vec<TxIn>,
         outputs: Vec<TxOut>,
         fee: u64,
-        token_id: u64,
+        fee_token_id: TokenId,
         tombstone_block: u64,
     ) -> TxPrefix {
         TxPrefix {
             inputs,
             outputs,
             fee,
-            token_id,
+            fee_token_id: *fee_token_id,
             tombstone_block,
         }
     }
@@ -649,7 +650,7 @@ mod tests {
             inputs: vec![tx_in],
             outputs: vec![tx_out],
             fee: Mob::MINIMUM_FEE,
-            token_id: *Mob::ID,
+            fee_token_id: *Mob::ID,
             tombstone_block: 23,
         };
 
@@ -712,7 +713,7 @@ mod tests {
             inputs: vec![tx_in],
             outputs: vec![tx_out],
             fee: Mob::MINIMUM_FEE,
-            token_id: *Mob::ID,
+            fee_token_id: *Mob::ID,
             tombstone_block: 23,
         };
 

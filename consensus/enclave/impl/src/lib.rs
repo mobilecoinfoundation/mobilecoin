@@ -236,7 +236,7 @@ impl SgxConsensusEnclave {
         // We need to make sure all transactions are valid. We also ensure they all
         // point at the same root membership element.
         for (tx, proofs) in transactions_with_proofs.iter() {
-            let token_id = TokenId::from(tx.prefix.token_id);
+            let token_id = TokenId::from(tx.prefix.fee_token_id);
 
             let minimum_fee = ct_min_fees
                 .get(&token_id)
@@ -685,7 +685,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             .decrypt_bytes(locally_encrypted_tx.0)?;
         let tx: Tx = mc_util_serial::decode(&decrypted_bytes)?;
 
-        let token_id = TokenId::from(tx.prefix.token_id);
+        let token_id = TokenId::from(tx.prefix.fee_token_id);
 
         // Validate.
         let mut csprng = McRng::default();
@@ -782,7 +782,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // Compute the total fees for each known token id, for tx's in this block.
         let mut total_fees: CtTokenMap<u128> = ct_min_fee_map.keys().cloned().collect();
         for tx in transactions.iter() {
-            let token_id = TokenId::from(tx.prefix.token_id);
+            let token_id = TokenId::from(tx.prefix.fee_token_id);
             total_fees.add(&token_id, tx.prefix.fee as u128);
         }
 

@@ -52,8 +52,35 @@ pub enum Error {
     /// Invalid RangeProof
     RangeProofError,
 
+    /// RangeProof Deserialization failed
+    RangeProofDeserializationError,
+
     /// TokenId is not allowed at this block version
     TokenIdNotAllowed,
+
+    /// Missing pseudo-output token ids
+    MissingPseudoOutputTokenIds,
+
+    /// Missing output token ids
+    MissingOutputTokenIds,
+
+    /// Pseudo-output token ids not allowed at this block version
+    PseudoOutputTokenIdsNotAllowed,
+
+    /// Output token ids not allowed at this block version
+    OutputTokenIdsNotAllowed,
+
+    /// Mixed token ids in transactions not allowed at this block version
+    MixedTransactionsNotAllowed,
+
+    /// Too many range proofs for the block version
+    TooManyRangeProofs,
+
+    /// Unexpected range proof for the block version
+    UnexpectedRangeProof,
+
+    /// Missing expected range proofs (expected: {0}, found: {1})
+    MissingRangeProofs(usize, usize),
 }
 
 impl From<mc_util_repr_bytes::LengthMismatch> for Error {

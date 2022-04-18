@@ -242,8 +242,8 @@ message TxPrefix {
     // The block index at which this transaction is no longer valid.
     uint64 tombstone_block = 4;
 
-    // Token id for this transaction
-    fixed64 token_id = 5;
+    // Token id for the fee of this transaction
+    fixed64 fee_token_id = 5;
 }
 
 message RingMLSAG {
@@ -255,7 +255,10 @@ message RingMLSAG {
 message SignatureRctBulletproofs {
     repeated RingMLSAG ring_signatures = 1;
     repeated CompressedRistretto pseudo_output_commitments = 2;
-    bytes range_proofs = 3;
+    bytes range_proof_bytes = 3;
+    repeated bytes range_proofs = 4;
+    repeated fixed64 pseudo_output_token_ids = 5;
+    repeated fixed64 output_token_ids = 6;
 }
 
 message Tx {

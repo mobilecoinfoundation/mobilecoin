@@ -6,7 +6,6 @@
 
 use crate::{ChangeDestination, InputCredentials, MemoBuilder, TxBuilderError};
 use core::{cmp::min, fmt::Debug};
-use curve25519_dalek::scalar::Scalar;
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_fog_report_validation::FogPubkeyResolver;
@@ -14,7 +13,7 @@ use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::create_shared_secret,
-    ring_signature::SignatureRctBulletproofs,
+    ring_signature::{InputSecret, OutputSecret, SignatureRctBulletproofs},
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
     Amount, BlockVersion, CompressedCommitment, MemoContext, MemoPayload, NewMemoError, Token,
@@ -60,8 +59,10 @@ pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
     tombstone_block: u64,
     /// The fee paid in connection to this transaction
     fee: u64,
-    /// The token id for this transaction
-    token_id: TokenId,
+    /// The fee token id for this transaction.
+    /// If mixed transactions feature is off, then everything must be this token
+    /// id.
+    fee_token_id: TokenId,
     /// The source of validated fog pubkeys used for this transaction
     fog_resolver: FPR,
     /// The limit on the tombstone block value imposed pubkey_expiry values in
@@ -103,13 +104,15 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// instead of statically typed
     ///
     /// # Arguments
+    /// * `block_version` - The block version to use when building a transaction
+    /// * `fee_token_id` - The token id of the fee output
     /// * `fog_resolver` - Source of validated fog keys to use with this
     ///   transaction
     /// * `memo_builder` - An object which creates memos for the TxOuts in this
     ///   transaction
     pub fn new_with_box(
         block_version: BlockVersion,
-        token_id: TokenId,
+        fee_token_id: TokenId,
         fog_resolver: FPR,
         memo_builder: Box<dyn MemoBuilder + Send + Sync>,
     ) -> Self {
@@ -119,7 +122,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             outputs_and_shared_secrets: Vec::new(),
             tombstone_block: u64::max_value(),
             fee: Mob::MINIMUM_FEE,
-            token_id,
+            fee_token_id,
             fog_resolver,
             fog_tombstone_block_limit: u64::max_value(),
             memo_builder: Some(memo_builder),
@@ -266,7 +269,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         let (hint, pubkey_expiry) = create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
         let amount = Amount {
             value,
-            token_id: self.token_id,
+            token_id: self.fee_token_id,
         };
         let (tx_out, shared_secret) =
             create_output_with_fog_hint(self.block_version, amount, recipient, hint, memo_fn, rng)?;
@@ -319,6 +322,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         self.fee
     }
 
+    /// Gets the fee token id
+    pub fn get_fee_token_id(&self) -> TokenId {
+        self.fee_token_id
+    }
+
     /// Consume the builder and return the transaction.
     pub fn build<RNG: CryptoRng + RngCore>(self, rng: &mut RNG) -> Result<Tx, TxBuilderError> {
         self.build_with_comparer_internal::<RNG, DefaultTxOutputsOrdering>(rng)
@@ -359,7 +367,9 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             ));
         }
 
-        if !self.block_version.masked_token_id_feature_is_supported() && self.token_id != Mob::ID {
+        if !self.block_version.masked_token_id_feature_is_supported()
+            && self.fee_token_id != Mob::ID
+        {
             return Err(TxBuilderError::FeatureNotSupportedAtBlockVersion(
                 *self.block_version,
                 "nonzero token id",
@@ -397,7 +407,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         self.outputs_and_shared_secrets
             .sort_by(|(a, _), (b, _)| O::cmp(&a.public_key, &b.public_key));
 
-        let output_values_and_blindings: Vec<(u64, Scalar)> = self
+        let output_values_and_blindings: Vec<OutputSecret> = self
             .outputs_and_shared_secrets
             .iter()
             .map(|(tx_out, shared_secret)| {
@@ -405,7 +415,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                 let (amount, blinding) = masked_amount
                     .get_value(shared_secret)
                     .expect("TransactionBuilder created an invalid Amount");
-                (amount.value, blinding)
+                OutputSecret {
+                    value: amount.value,
+                    token_id: amount.token_id,
+                    blinding,
+                }
             })
             .collect();
 
@@ -416,7 +430,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             inputs,
             outputs,
             self.fee,
-            *self.token_id,
+            self.fee_token_id,
             self.tombstone_block,
         );
 
@@ -437,22 +451,28 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .collect();
 
         // One-time private key, amount value, and amount blinding for each real input.
-        let mut input_secrets: Vec<(RistrettoPrivate, u64, Scalar)> = Vec::new();
+        let mut input_secrets: Vec<InputSecret> = Default::default();
         for input_credential in &self.input_credentials {
-            let onetime_private_key = input_credential.onetime_private_key;
             let masked_amount = &input_credential.ring[input_credential.real_index].masked_amount;
             let shared_secret = create_shared_secret(
                 &input_credential.real_output_public_key,
                 &input_credential.view_private_key,
             );
             let (amount, blinding) = masked_amount.get_value(&shared_secret)?;
-            if amount.token_id != self.token_id {
+            if !self.block_version.mixed_transactions_are_supported()
+                && amount.token_id != self.fee_token_id
+            {
                 return Err(TxBuilderError::WrongTokenType(
-                    self.token_id,
+                    self.fee_token_id,
                     amount.token_id,
                 ));
             }
-            input_secrets.push((onetime_private_key, amount.value, blinding));
+            input_secrets.push(InputSecret {
+                onetime_private_key: input_credential.onetime_private_key,
+                value: amount.value,
+                token_id: amount.token_id,
+                blinding,
+            });
         }
 
         let message = tx_prefix.hash().0;
@@ -464,7 +484,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             &input_secrets,
             &output_values_and_blindings,
             self.fee,
-            *self.token_id,
+            self.fee_token_id,
             rng,
         )?;
 
@@ -2371,7 +2391,7 @@ pub mod transaction_builder_tests {
             let result = transaction_builder.build(&mut rng);
             // Signing should fail if value is not conserved.
             match result {
-                Err(TxBuilderError::RingSignatureFailed) => {} // Expected.
+                Err(TxBuilderError::RingSignatureFailed(_)) => {} // Expected.
                 _ => panic!("Unexpected result {:?}", result),
             }
         }
