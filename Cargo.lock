@@ -578,7 +578,7 @@ dependencies = [
  "serde_json",
  "syn 1.0.91",
  "tempfile",
- "toml 0.5.8",
+ "toml 0.5.9",
 ]
 
 [[package]]
@@ -2988,7 +2988,7 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
- "toml 0.5.8",
+ "toml 0.5.9",
 ]
 
 [[package]]
@@ -3109,7 +3109,7 @@ dependencies = [
  "pem",
  "serde",
  "serde_json",
- "toml 0.5.8",
+ "toml 0.5.9",
 ]
 
 [[package]]
@@ -5525,7 +5525,7 @@ dependencies = [
  "serde",
  "serial_test",
  "tempdir",
- "toml 0.5.8",
+ "toml 0.5.9",
  "url 2.2.2",
 ]
 
@@ -8163,9 +8163,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.5.8"
+version = "0.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a31142970826733df8241ef35dc040ef98c679ab14d7c3e54d827099b3acecaa"
+checksum = "8d82e1a7758622a465f8cee077614c73484dac5b836c02ff6a40d5d1010324d7"
 dependencies = [
  "serde",
 ]
