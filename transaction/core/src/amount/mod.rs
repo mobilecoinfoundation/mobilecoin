@@ -227,7 +227,7 @@ fn get_value_mask(shared_secret: &RistrettoPublic) -> u64 {
 }
 
 /// Computes `Blake2B(token_id_mask | shared_secret)`,
-/// then interprets the first 4 canonical bytes as a u32 number in
+/// then interprets the first 8 canonical bytes as a u64 number in
 /// little-endian representation.
 ///
 /// # Arguments

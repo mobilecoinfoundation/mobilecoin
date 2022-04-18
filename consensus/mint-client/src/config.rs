@@ -10,8 +10,11 @@ use mc_crypto_keys::{
     DistinguishedEncoding, Ed25519Pair, Ed25519Private, Ed25519Public, Ed25519Signature, Signer,
 };
 use mc_crypto_multisig::{MultiSig, SignerSet};
-use mc_transaction_core::mint::{
-    constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx, MintTxPrefix,
+use mc_transaction_core::{
+    mint::{
+        constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx, MintTxPrefix,
+    },
+    TokenId,
 };
 use mc_util_uri::ConsensusClientUri;
 use rand::{thread_rng, RngCore};
@@ -59,12 +62,12 @@ impl MintConfigTxPrefixParams {
         let nonce = get_or_generate_nonce(self.nonce);
         let token_id = self.token_id;
         Ok(MintConfigTxPrefix {
-            token_id,
+            token_id: *token_id,
             configs: self
                 .configs
                 .into_iter()
                 .map(|(mint_limit, signer_set)| MintConfig {
-                    token_id,
+                    token_id: *token_id,
                     mint_limit,
                     signer_set,
                 })
@@ -160,7 +163,7 @@ impl MintTxPrefixParams {
         let tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
         let nonce = get_or_generate_nonce(self.nonce);
         Ok(MintTxPrefix {
-            token_id: self.token_id,
+            token_id: *self.token_id,
             amount: self.amount,
             view_public_key: *self.recipient.view_public_key(),
             spend_public_key: *self.recipient.spend_public_key(),
