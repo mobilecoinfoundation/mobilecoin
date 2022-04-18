@@ -279,9 +279,9 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         let minted_tx_outs = get_outputs(
             block_version,
             &inputs
-                .mint_txs
+                .mint_txs_with_config
                 .iter()
-                .map(|mint_tx| {
+                .map(|(mint_tx, _mint_config_tx, _mint_config)| {
                     let recipient = PublicAddress::new(
                         &mint_tx.prefix.spend_public_key,
                         &mint_tx.prefix.view_public_key,
@@ -305,7 +305,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         let block_contents = BlockContents {
             key_images,
             outputs,
-            mint_txs: inputs.mint_txs,
+            mint_txs: inputs.mint_txs_with_config.into_iter().map(|(mint_tx, _mint_config_tx, _mint_config)| mint_tx).collect(),
             validated_mint_config_txs,
         };
 
