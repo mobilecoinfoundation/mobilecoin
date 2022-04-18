@@ -24,6 +24,7 @@ use alloc::{
     collections::BTreeSet,
     format,
     string::{String, ToString},
+    vec,
     vec::Vec,
 };
 use constant_time_division::ct_u64_divide;
@@ -58,7 +59,8 @@ use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResu
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
     mint::{
-        validate_mint_config_tx, MintConfigTx, MintTx, MintValidationError, ValidatedMintConfigTx,
+        validate_mint_config_tx, validate_mint_tx, MintConfig, MintConfigTx, MintTx,
+        MintValidationError, ValidatedMintConfigTx,
     },
     ring_signature::{KeyImage, Scalar},
     tokens::Mob,
@@ -363,24 +365,52 @@ impl SgxConsensusEnclave {
     }
 
     /// Validate a list of MintTxs.
-    fn validate_mint_txs(&self, mint_txs: &[MintTx]) -> Result<()> {
-        // TODO: iterate over each indivdual transaction and validate it. This requires
-        // the enclave has knowledge of active minting configurations.
-        // This validation already happens in untrusted, but it will be nice to do it
-        // here as well. This will get implemetend in a follow up PR.
-
-        // Ensure all nonces are unique.
+    fn validate_mint_txs(
+        &self,
+        mint_txs_with_config: Vec<(MintTx, MintConfigTx, MintConfig)>,
+        current_block_index: u64,
+        config: &BlockchainConfig,
+    ) -> Result<Vec<MintTx>> {
+        // Ensure all nonces are unique and all transactions matches the associated
+        // configuration.
+        let mut mint_txs = Vec::with_capacity(mint_txs_with_config.len());
         let mut seen_nonces = BTreeSet::default();
-        for tx in mint_txs {
-            if !seen_nonces.insert(tx.prefix.nonce.clone()) {
+        for (mint_tx, mint_config_tx, mint_config) in mint_txs_with_config {
+            // The nonce should be unique.
+            if !seen_nonces.insert(mint_tx.prefix.nonce.clone()) {
                 return Err(Error::FormBlock(format!(
                     "Duplicate MintTx nonce: {:?}",
-                    tx.prefix.nonce
+                    mint_tx.prefix.nonce
                 )));
             }
+
+            // The associated MintConfigTx should be for the same token being minted.
+            if mint_config_tx.prefix.token_id != mint_tx.prefix.token_id {
+                return Err(Error::FormBlock(format!(
+                    "MintTx token_id does not match MintConfigTx token_id: {:?} != {:?}",
+                    mint_tx.prefix.token_id, mint_config_tx.prefix.token_id
+                )));
+            }
+
+            // The specific MintConfig used should be part of the provided MintConfigTx.
+            if !mint_config_tx.prefix.configs.contains(&mint_config) {
+                return Err(Error::FormBlock(format!(
+                    "MintTx {} referenced a MintConfig that is not part of the MintConfigTx",
+                    mint_tx,
+                )));
+            }
+
+            // The associated MintConfigTx should be valid.
+            self.validate_mint_config_txs(vec![mint_config_tx], current_block_index, config)?;
+
+            // The MintTx should be valid.
+            validate_mint_tx(&mint_tx, current_block_index, config.block_version, &mint_config)?;
+
+            // MintTx is valid.
+            mint_txs.push(mint_tx);
         }
 
-        Ok(())
+        Ok(mint_txs)
     }
 }
 
@@ -813,8 +843,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             .collect::<Result<Vec<TxOut>>>()?;
 
         // Get the list of MintTxs included in the block.
-        self.validate_mint_txs(&inputs.mint_txs)?;
-        let mint_txs = inputs.mint_txs;
+        let mint_txs =
+            self.validate_mint_txs(inputs.mint_txs_with_config, parent_block.index + 1, config)?;
 
         // Collect outputs and key images.
         let mut outputs: Vec<TxOut> = Vec::new();
@@ -2155,8 +2185,8 @@ mod tests {
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(2);
 
-        let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
-        let (_mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
 
         let recipient1 = AccountKey::random(&mut rng);
         let recipient2 = AccountKey::random(&mut rng);
@@ -2219,7 +2249,18 @@ mod tests {
                 .form_block(
                     &parent_block,
                     FormBlockInputs {
-                        mint_txs: vec![mint_tx1.clone(), mint_tx2.clone()],
+                        mint_txs_with_config: vec![
+                            (
+                                mint_tx1.clone(),
+                                mint_config_tx1.clone(),
+                                mint_config_tx1.prefix.configs[0].clone(),
+                            ),
+                            (
+                                mint_tx2.clone(),
+                                mint_config_tx2.clone(),
+                                mint_config_tx2.prefix.configs[0].clone(),
+                            ),
+                        ],
                         ..Default::default()
                     },
                     &root_element,
@@ -2291,7 +2332,7 @@ mod tests {
 
         let token_id1 = TokenId::from(1);
 
-        let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let recipient1 = AccountKey::random(&mut rng);
 
@@ -2342,7 +2383,18 @@ mod tests {
             let form_block_result = enclave.form_block(
                 &parent_block,
                 FormBlockInputs {
-                    mint_txs: vec![mint_tx1.clone(), mint_tx1.clone()],
+                    mint_txs_with_config: vec![
+                        (
+                            mint_tx1.clone(),
+                            mint_config_tx1.clone(),
+                            mint_config_tx1.prefix.configs[0].clone(),
+                        ),
+                        (
+                            mint_tx1.clone(),
+                            mint_config_tx1.clone(),
+                            mint_config_tx1.prefix.configs[0].clone(),
+                        ),
+                    ],
                     ..Default::default()
                 },
                 &root_element,
@@ -2650,8 +2702,8 @@ mod tests {
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(2);
 
-        let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
-        let (_mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
 
         let recipient1 = AccountKey::random(&mut rng);
         let recipient2 = AccountKey::random(&mut rng);
@@ -2754,7 +2806,18 @@ mod tests {
                     &parent_block,
                     FormBlockInputs {
                         well_formed_encrypted_txs_with_proofs,
-                        mint_txs: vec![mint_tx1.clone(), mint_tx2.clone()],
+                        mint_txs_with_config: vec![
+                            (
+                                mint_tx1.clone(),
+                                mint_config_tx1.clone(),
+                                mint_config_tx1.prefix.configs[0].clone(),
+                            ),
+                            (
+                                mint_tx2.clone(),
+                                mint_config_tx2.clone(),
+                                mint_config_tx2.prefix.configs[0].clone(),
+                            ),
+                        ],
                         ..Default::default()
                     },
                     &root_element,
