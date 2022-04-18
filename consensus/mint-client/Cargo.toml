@@ -16,6 +16,8 @@ mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-consensus-api = { path = "../../consensus/api" }
+mc-consensus-enclave-api = { path = "../../consensus/enclave/api" }
+mc-consensus-service-config = { path = "../../consensus/service/config" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-multisig = { path = "../../crypto/multisig" }
 mc-transaction-core = { path = "../../transaction/core"}
@@ -31,3 +33,4 @@ pem = "1.0"
 rand = "0.8"
 serde = "1"
 serde_json = "1.0"
+toml = "0.5"

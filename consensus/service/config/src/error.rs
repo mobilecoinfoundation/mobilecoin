@@ -5,6 +5,7 @@
 use displaydoc::Display;
 use mc_common::ResponderId;
 use mc_consensus_enclave_api::{FeeMapError, MasterMintersMapError};
+use mc_crypto_keys::SignatureError;
 use mc_transaction_core::TokenId;
 use mc_util_uri::UriConversionError;
 use serde_json::Error as JsonError;
@@ -78,6 +79,12 @@ pub enum Error {
 
     /// Missing tx_source_urls
     MissingTxSourceUrls,
+
+    /// Missing master_minters_signature configuration key
+    MissingMasterMintersSignature,
+
+    /// Signature error: {0}
+    Signature(SignatureError),
 }
 
 impl From<IoError> for Error {
@@ -109,3 +116,11 @@ impl From<TomlError> for Error {
         Self::Toml(src)
     }
 }
+
+impl From<SignatureError> for Error {
+    fn from(src: SignatureError) -> Self {
+        Self::Signature(src)
+    }
+}
+
+impl std::error::Error for Error {}

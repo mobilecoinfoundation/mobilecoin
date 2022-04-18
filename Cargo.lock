@@ -2975,6 +2975,8 @@ dependencies = [
  "mc-api",
  "mc-common",
  "mc-consensus-api",
+ "mc-consensus-enclave-api",
+ "mc-consensus-service-config",
  "mc-crypto-keys",
  "mc-crypto-multisig",
  "mc-transaction-core",
@@ -2986,6 +2988,7 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "serde_json",
+ "toml 0.5.8",
 ]
 
 [[package]]

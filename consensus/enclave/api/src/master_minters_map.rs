@@ -101,6 +101,11 @@ impl MasterMintersMap {
     pub fn iter(&self) -> impl Iterator<Item = (&TokenId, &SignerSet<Ed25519Public>)> {
         self.map.iter()
     }
+
+    /// Check if the map contains any elements.
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
 }
 
 /// MasterMinters Map error type.

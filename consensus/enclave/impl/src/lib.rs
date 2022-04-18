@@ -45,8 +45,8 @@ use mc_common::{
 };
 use mc_consensus_enclave_api::{
     BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeePublicKey,
-    FormBlockInputs, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
-    WellFormedEncryptedTx, WellFormedTxContext, SMALLEST_MINIMUM_FEE_LOG2,
+    FormBlockInputs, LocallyEncryptedTx, MasterMintersVerifier, Result, SealedBlockSigningKey,
+    TxContext, WellFormedEncryptedTx, WellFormedTxContext, SMALLEST_MINIMUM_FEE_LOG2,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -416,6 +416,21 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         sealed_key: &Option<SealedBlockSigningKey>,
         blockchain_config: BlockchainConfig,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
+        // Validate master minters signature.
+        if !blockchain_config.master_minters_map.is_empty() {
+            let signature = blockchain_config
+                .master_minters_signature
+                .ok_or(Error::MissingMasterMintersSignature)?;
+
+            let minting_trust_root_public_key =
+                Ed25519Public::try_from(&MINTING_TRUST_ROOT_PUBLIC_KEY[..])
+                    .map_err(Error::ParseMintingTrustRootPublicKey)?;
+
+            minting_trust_root_public_key
+                .verify_master_minters_map(&blockchain_config.master_minters_map, &signature)
+                .map_err(|_| Error::InvalidMasterMintersSignature)?;
+        }
+
         self.ct_min_fee_map
             .set(Box::new(
                 blockchain_config.fee_map.as_ref().iter().collect(),
@@ -959,7 +974,8 @@ mod tests {
     use alloc::vec;
     use core::iter::FromIterator;
     use mc_common::{logger::test_with_logger, HashMap, HashSet};
-    use mc_consensus_enclave_api::{FeeMap, MasterMintersMap};
+    use mc_consensus_enclave_api::{FeeMap, MasterMintersMap, MasterMintersSigner};
+    use mc_crypto_keys::{Ed25519Private, Ed25519Signature};
     use mc_crypto_multisig::SignerSet;
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{
@@ -976,13 +992,80 @@ mod tests {
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 
-    // The private key is only used by tests. This does not need to be specified for
-    // main net. The public keys associated with this private key are the
-    // defaults in build.rs
+    // The private keys here are only used by tests. They do not need to be
+    // specified for main net. The public keys associated with this private keys
+    // are the defaults in build.rs
     const FEE_VIEW_PRIVATE_KEY: [u8; 32] = [
         21, 152, 99, 251, 140, 2, 50, 154, 2, 171, 188, 60, 163, 243, 204, 195, 241, 78, 204, 85,
         202, 52, 250, 242, 215, 247, 175, 59, 121, 185, 111, 8,
     ];
+
+    // This private key was generated using the mc-util-seeded-ed25519-key-gen
+    // utility with the seed
+    // abababababababababababababababababababababababababababababababab
+    const MASTER_MINTERS_ADMIN_PRIVATE_KEY: [u8; 32] = [
+        168, 15, 220, 134, 238, 251, 210, 7, 24, 78, 21, 168, 197, 250, 1, 139, 23, 64, 154, 172,
+        192, 125, 32, 148, 183, 78, 167, 52, 170, 254, 120, 64,
+    ];
+
+    fn sign_master_minters_map(map: &MasterMintersMap) -> Option<Ed25519Signature> {
+        let private_key = Ed25519Private::try_from(&MASTER_MINTERS_ADMIN_PRIVATE_KEY[..]).unwrap();
+        Some(
+            Ed25519Pair::from(private_key)
+                .sign_master_minters_map(map)
+                .unwrap(),
+        )
+    }
+
+    #[test_with_logger]
+    fn test_enclave_init_refuses_invalid_master_minters_signature(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+        let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
+        let master_minters_map1 =
+            MasterMintersMap::try_from_iter([(token_id1, signer_set1.clone())]).unwrap();
+        let master_minters_map2 =
+            MasterMintersMap::try_from_iter([(token_id2, signer_set1)]).unwrap();
+        let enclave = SgxConsensusEnclave::new(logger.clone());
+        let block_version = BlockVersion::MAX;
+
+        // Can't initialize without a valid master minters signature if we are passing a
+        // minters map.
+        let blockchain_config = BlockchainConfig {
+            block_version,
+            master_minters_map: master_minters_map1.clone(),
+            ..Default::default()
+        };
+        assert_eq!(
+            enclave.enclave_init(
+                &Default::default(),
+                &Default::default(),
+                &None,
+                blockchain_config,
+            ),
+            Err(Error::MissingMasterMintersSignature)
+        );
+
+        // Can't initialize when the signature does not match the map.
+        let blockchain_config = BlockchainConfig {
+            block_version,
+            master_minters_map: master_minters_map1,
+            master_minters_signature: sign_master_minters_map(&master_minters_map2),
+            ..Default::default()
+        };
+        assert_eq!(
+            enclave.enclave_init(
+                &Default::default(),
+                &Default::default(),
+                &None,
+                blockchain_config,
+            ),
+            Err(Error::InvalidMasterMintersSignature)
+        );
+    }
 
     #[test_with_logger]
     fn test_tx_is_well_formed_works(logger: Logger) {
@@ -2115,6 +2198,7 @@ mod tests {
             let blockchain_config = BlockchainConfig {
                 block_version,
                 master_minters_map: master_minters_map.clone(),
+                master_minters_signature: sign_master_minters_map(&master_minters_map),
                 ..Default::default()
             };
             enclave
@@ -2239,6 +2323,7 @@ mod tests {
             let blockchain_config = BlockchainConfig {
                 block_version,
                 master_minters_map: master_minters_map.clone(),
+                master_minters_signature: sign_master_minters_map(&master_minters_map),
                 ..Default::default()
             };
             enclave
@@ -2306,6 +2391,7 @@ mod tests {
             let blockchain_config = BlockchainConfig {
                 block_version,
                 master_minters_map: master_minters_map.clone(),
+                master_minters_signature: sign_master_minters_map(&master_minters_map),
                 ..Default::default()
             };
             enclave
@@ -2399,6 +2485,7 @@ mod tests {
             let blockchain_config = BlockchainConfig {
                 block_version,
                 master_minters_map: master_minters_map.clone(),
+                master_minters_signature: sign_master_minters_map(&master_minters_map),
                 ..Default::default()
             };
             enclave
@@ -2465,6 +2552,7 @@ mod tests {
             let blockchain_config = BlockchainConfig {
                 block_version,
                 master_minters_map: master_minters_map.clone(),
+                master_minters_signature: sign_master_minters_map(&master_minters_map),
                 ..Default::default()
             };
             enclave
@@ -2526,6 +2614,7 @@ mod tests {
             let blockchain_config = BlockchainConfig {
                 block_version,
                 master_minters_map: master_minters_map.clone(),
+                master_minters_signature: sign_master_minters_map(&master_minters_map),
                 ..Default::default()
             };
             enclave
@@ -2608,6 +2697,7 @@ mod tests {
             let blockchain_config = BlockchainConfig {
                 block_version,
                 master_minters_map: master_minters_map.clone(),
+                master_minters_signature: sign_master_minters_map(&master_minters_map),
                 ..Default::default()
             };
             enclave
@@ -2788,6 +2878,7 @@ mod tests {
             let blockchain_config = BlockchainConfig {
                 block_version,
                 master_minters_map: master_minters_map.clone(),
+                master_minters_signature: sign_master_minters_map(&master_minters_map),
                 ..Default::default()
             };
             enclave
