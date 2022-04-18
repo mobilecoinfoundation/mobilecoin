@@ -122,7 +122,7 @@ impl From<MintValidationError> for MintValidationResult {
             },
             MintValidationError::InvalidTokenId(token_id) => Self {
                 code: MintValidationResultCode::InvalidTokenId,
-                token_id,
+                token_id: *token_id,
                 ..Default::default()
             },
             MintValidationError::InvalidNonceLength(len) => Self {
@@ -186,7 +186,7 @@ impl TryInto<MintValidationError> for MintValidationResult {
                 ))
             }
             MintValidationResultCode::InvalidTokenId => {
-                Ok(MintValidationError::InvalidTokenId(self.token_id))
+                Ok(MintValidationError::InvalidTokenId(self.token_id.into()))
             }
             MintValidationResultCode::InvalidNonceLength => Ok(
                 MintValidationError::InvalidNonceLength(self.nonce_length as usize),

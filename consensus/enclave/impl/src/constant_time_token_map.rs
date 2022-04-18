@@ -400,7 +400,7 @@ mod tests {
             .collect()
     }
 
-    fn token_id_set(ids: &[u32]) -> BTreeSet<TokenId> {
+    fn token_id_set(ids: &[u64]) -> BTreeSet<TokenId> {
         ids.iter().map(|id| TokenId::from(*id)).collect()
     }
 

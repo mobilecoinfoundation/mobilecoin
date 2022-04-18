@@ -18,5 +18,5 @@ fn test_known_tokens_enum_vs_mc_transaction_core_tokens() {
     }
 
     assert_eq!(known_tokens.len(), 1);
-    assert_eq!(*known_tokens.get("MOB").unwrap() as u32, *tokens::Mob::ID);
+    assert_eq!(*known_tokens.get("MOB").unwrap() as u64, *tokens::Mob::ID);
 }

@@ -82,7 +82,7 @@ mod tests {
 
         let source = MintTx {
             prefix: MintTxPrefix {
-                token_id: rng.next_u32(),
+                token_id: rng.next_u64(),
                 amount: rng.next_u64(),
                 view_public_key: RistrettoPublic::from_random(&mut rng),
                 spend_public_key: RistrettoPublic::from_random(&mut rng),

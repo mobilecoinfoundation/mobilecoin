@@ -185,7 +185,7 @@ fn main() {
 
     // Count how many of each token type
     {
-        let mut token_count: BTreeMap<u32, usize> = Default::default();
+        let mut token_count: BTreeMap<u64, usize> = Default::default();
         for tx_out in &spendable_tx_outs {
             *token_count.entry(*tx_out.amount.token_id).or_default() += 1;
         }

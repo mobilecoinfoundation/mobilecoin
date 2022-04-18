@@ -441,7 +441,7 @@ impl Sample for MaskedAmount {
     fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
         let amount = Amount {
             value: rng.next_u32() as u64,
-            token_id: rng.next_u32().into(),
+            token_id: rng.next_u64().into(),
         };
         MaskedAmount::new(amount, &RistrettoPublic::from_random(rng)).unwrap()
     }

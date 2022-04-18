@@ -13,7 +13,7 @@ pub enum Error {
     InvalidBlockVersion(BlockVersion),
 
     /// Invalid token id: {0}
-    InvalidTokenId(u32),
+    InvalidTokenId(TokenId),
 
     /// Invalid nonce length: {0}
     InvalidNonceLength(usize),

@@ -12,7 +12,7 @@ use crate::{
             error::Error,
         },
     },
-    BlockVersion,
+    BlockVersion, TokenId,
 };
 use mc_crypto_keys::Ed25519Public;
 use mc_crypto_multisig::SignerSet;
@@ -35,9 +35,10 @@ pub fn validate_mint_config_tx(
 ) -> Result<(), Error> {
     validate_block_version(block_version)?;
 
-    validate_token_id(tx.prefix.token_id)?;
+    let token_id = TokenId::from(tx.prefix.token_id);
+    validate_token_id(token_id)?;
 
-    validate_configs(tx.prefix.token_id, &tx.prefix.configs)?;
+    validate_configs(token_id, &tx.prefix.configs)?;
 
     validate_nonce(&tx.prefix.nonce)?;
 
@@ -54,10 +55,10 @@ pub fn validate_mint_config_tx(
 /// # Arguments
 /// * `token_id` - The token id we are trying to mint.
 /// * `configs` - The minting configurations to validate.
-fn validate_configs(token_id: u32, configs: &[MintConfig]) -> Result<(), Error> {
+fn validate_configs(token_id: TokenId, configs: &[MintConfig]) -> Result<(), Error> {
     for config in configs {
         if config.token_id != token_id {
-            return Err(Error::InvalidTokenId(config.token_id));
+            return Err(Error::InvalidTokenId(config.token_id.into()));
         }
 
         let num_signers = config.signer_set.signers().len();
@@ -89,7 +90,10 @@ fn validate_signature(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mint::{config::MintConfigTxPrefix, constants::NONCE_LENGTH};
+    use crate::{
+        mint::{config::MintConfigTxPrefix, constants::NONCE_LENGTH},
+        TokenId,
+    };
     use mc_crypto_keys::{Ed25519Pair, Signer};
     use mc_crypto_multisig::MultiSig;
     use mc_util_from_random::FromRandom;
@@ -98,30 +102,30 @@ mod tests {
     #[test]
     fn validate_configs_accepts_valid_mint_configs() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let token_id = 123;
+        let token_id = TokenId::from(123);
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let signer_2 = Ed25519Pair::from_random(&mut rng);
         let signer_3 = Ed25519Pair::from_random(&mut rng);
 
         let mint_config1 = MintConfig {
-            token_id: token_id,
+            token_id: *token_id,
             signer_set: SignerSet::new(vec![signer_1.public_key()], 1),
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
-            token_id: token_id,
+            token_id: *token_id,
             signer_set: SignerSet::new(vec![signer_2.public_key()], 1),
             mint_limit: 15,
         };
 
         let mint_config3 = MintConfig {
-            token_id: token_id,
+            token_id: *token_id,
             signer_set: SignerSet::new(vec![signer_2.public_key(), signer_3.public_key()], 1),
             mint_limit: 15,
         };
         let mint_config4 = MintConfig {
-            token_id: token_id,
+            token_id: *token_id,
             signer_set: SignerSet::new(vec![signer_2.public_key(), signer_3.public_key()], 2),
             mint_limit: 15,
         };
@@ -135,7 +139,7 @@ mod tests {
 
     #[test]
     fn validate_configs_accepts_no_configs() {
-        assert!(validate_configs(123, &[]).is_ok());
+        assert!(validate_configs(123.into(), &[]).is_ok());
     }
 
     #[test]
@@ -157,13 +161,13 @@ mod tests {
         };
 
         assert_eq!(
-            validate_configs(123, &[mint_config1.clone(), mint_config2.clone()]),
-            Err(Error::InvalidTokenId(234))
+            validate_configs(123.into(), &[mint_config1.clone(), mint_config2.clone()]),
+            Err(Error::InvalidTokenId(234.into()))
         );
 
         assert_eq!(
-            validate_configs(1, &[mint_config1.clone(), mint_config2.clone()]),
-            Err(Error::InvalidTokenId(123))
+            validate_configs(1.into(), &[mint_config1.clone(), mint_config2.clone()]),
+            Err(Error::InvalidTokenId(123.into()))
         );
     }
 
@@ -171,17 +175,17 @@ mod tests {
     fn validate_configs_rejects_invalid_signer_sets() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let signer_1 = Ed25519Pair::from_random(&mut rng);
-        let token_id = 123;
+        let token_id = TokenId::from(123);
 
         let mint_config1 = MintConfig {
-            token_id: token_id,
+            token_id: *token_id,
             signer_set: SignerSet::new(vec![signer_1.public_key()], 2), /* threshold > number of
                                                                          * signers */
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
-            token_id: token_id,
+            token_id: *token_id,
             signer_set: SignerSet::new(vec![], 1), // no signers
             mint_limit: 15,
         };
@@ -201,7 +205,7 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let signer_2 = Ed25519Pair::from_random(&mut rng);
-        let token_id = 123;
+        let token_id = TokenId::from(123);
 
         let mint_config1 = MintConfig {
             token_id: 123,
@@ -220,7 +224,7 @@ mod tests {
         let master_minter_3 = Ed25519Pair::from_random(&mut rng);
 
         let prefix = MintConfigTxPrefix {
-            token_id: token_id,
+            token_id: *token_id,
             configs: vec![mint_config1.clone(), mint_config2.clone()],
             nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
@@ -318,7 +322,7 @@ mod tests {
 
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let signer_2 = Ed25519Pair::from_random(&mut rng);
-        let token_id = 123;
+        let token_id = TokenId::from(123);
 
         let mint_config1 = MintConfig {
             token_id: 123,
@@ -337,7 +341,7 @@ mod tests {
         let master_minter_3 = Ed25519Pair::from_random(&mut rng);
 
         let prefix = MintConfigTxPrefix {
-            token_id: token_id,
+            token_id: *token_id,
             configs: vec![mint_config1.clone(), mint_config2.clone()],
             nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
@@ -396,7 +400,7 @@ mod tests {
 
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let signer_2 = Ed25519Pair::from_random(&mut rng);
-        let token_id = 123;
+        let token_id = TokenId::from(123);
 
         let mint_config1 = MintConfig {
             token_id: 123,
@@ -415,7 +419,7 @@ mod tests {
         let master_minter_3 = Ed25519Pair::from_random(&mut rng);
 
         let prefix = MintConfigTxPrefix {
-            token_id: token_id,
+            token_id: *token_id,
             configs: vec![mint_config1.clone(), mint_config2.clone()],
             nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
@@ -488,7 +492,7 @@ mod tests {
 
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let signer_2 = Ed25519Pair::from_random(&mut rng);
-        let token_id = 123;
+        let token_id = TokenId::from(123);
 
         let mint_config1 = MintConfig {
             token_id: 123,
@@ -507,7 +511,7 @@ mod tests {
         let master_minter_3 = Ed25519Pair::from_random(&mut rng);
 
         let prefix = MintConfigTxPrefix {
-            token_id: token_id,
+            token_id: *token_id,
             configs: vec![mint_config1.clone(), mint_config2.clone()],
             nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,

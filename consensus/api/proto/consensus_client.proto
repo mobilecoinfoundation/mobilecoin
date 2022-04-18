@@ -35,7 +35,7 @@ message MintValidationResult {
     uint32 block_version = 2;
 
     /// Token ID, if result is InvalidTokenId or NoMasterMinters.
-    uint32 token_id = 3;
+    uint64 token_id = 3;
 
     /// Nonce length, if result is InvalidNonceLength
     uint64 nonce_length = 4;

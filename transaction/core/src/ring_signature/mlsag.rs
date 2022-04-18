@@ -384,7 +384,7 @@ mod mlsag_tests {
             let mut message = [0u8; 32];
             rng.fill_bytes(&mut message);
 
-            let generator = generators(rng.next_u32());
+            let generator = generators(rng.next_u64());
 
             let mut ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)> = Vec::new();
             for _i in 0..num_mixins {

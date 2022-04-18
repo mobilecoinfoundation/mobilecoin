@@ -36,7 +36,7 @@ struct Config {
     /// Historically this was not present, and is only added to support testing
     /// of confidential token ids.
     #[structopt(long, default_value = "0")]
-    pub max_token_id: u32,
+    pub max_token_id: u64,
 }
 
 fn main() {

@@ -19,8 +19,8 @@ use serde::{Deserialize, Serialize};
 )]
 pub struct MintConfig {
     /// Token ID this configuration applies to.
-    #[prost(uint32, tag = "1")]
-    pub token_id: u32,
+    #[prost(uint64, tag = "1")]
+    pub token_id: u64,
 
     /// The set of keys that can sign a minting transaction.
     #[prost(message, required, tag = "2")]
@@ -39,8 +39,8 @@ pub struct MintConfig {
 )]
 pub struct MintConfigTxPrefix {
     /// Token ID we are replacing the configuration set for.
-    #[prost(uint32, tag = "1")]
-    pub token_id: u32,
+    #[prost(uint64, tag = "1")]
+    pub token_id: u64,
 
     /// The new configuration.
     #[prost(message, repeated, tag = "2")]
