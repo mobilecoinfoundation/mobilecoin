@@ -11,6 +11,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
  - Encrypted Memos ([MCIP #3](https://github.com/mobilecoinfoundation/mcips/pull/3))
  - Recoverable Transaction History ([MCIP #4](https://github.com/mobilecoinfoundation/mcips/pull/4))
+ - Fog Ledger now performs key image checks obliviously in the enclave, using ORAM ([PR](https://github.com/mobilecoinfoundation/fog/pull/101)).
  - Consensus/Fog repository merge
 
 ### Changed
