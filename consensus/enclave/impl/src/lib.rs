@@ -231,7 +231,7 @@ impl SgxConsensusEnclave {
         // ledger that were used to validate the transactions.
         let mut root_elements = Vec::new();
 
-        // We need to make sure all transacctions are all valid. We also ensure they all
+        // We need to make sure all transactions are valid. We also ensure they all
         // point at the same root membership element.
         for (tx, proofs) in transactions_with_proofs.iter() {
             let token_id = TokenId::from(tx.prefix.token_id);
@@ -366,7 +366,7 @@ impl SgxConsensusEnclave {
     fn validate_mint_txs(&self, mint_txs: &[MintTx]) -> Result<()> {
         // TODO: iterate over each indivdual transaction and validate it. This requires
         // the enclave has knowledge of active minting configurations.
-        // This validation already happens in untruested, but it will be nice to do it
+        // This validation already happens in untrusted, but it will be nice to do it
         // here as well. This will get implemetend in a follow up PR.
 
         // Ensure all nonces are unique.
