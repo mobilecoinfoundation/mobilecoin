@@ -89,7 +89,7 @@ impl MaskedAmount {
         // `v XOR_8 Scalar::from_hash(Blake2B(value_mask | shared_secret))`
         let masked_value: u64 = amount.value ^ get_value_mask(shared_secret);
 
-        // The token_id is XORed with the first 4 bytes of the mask.
+        // The token_id is XORed with the first 8 bytes of the mask.
         // `v XOR_4 Blake2B(token_id_mask | shared_secret)`
         let masked_token_id_val: u64 = *amount.token_id ^ get_token_id_mask(shared_secret);
         let masked_token_id = masked_token_id_val.to_le_bytes().to_vec();
