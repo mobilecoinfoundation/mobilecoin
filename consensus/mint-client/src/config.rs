@@ -137,7 +137,7 @@ pub struct MintTxPrefixParams {
 
     /// The token id we are minting.
     #[clap(long, env = "MC_MINTING_TOKEN_ID")]
-    pub token_id: u64,
+    pub token_id: TokenId,
 
     /// The amount we are minting.
     #[clap(long, env = "MC_MINTING_AMOUNT")]
