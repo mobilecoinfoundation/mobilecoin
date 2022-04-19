@@ -1,8 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! The Node ID type
+//! The Node ID types.
 
-use crate::responder_id::ResponderId;
+use crate::ResponderId;
 use binascii::ConvertError as BinConvertError;
 use core::{
     cmp::Ordering,
@@ -15,6 +15,7 @@ use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{Ed25519Public, KeyError};
 use serde::{Deserialize, Serialize};
 
+/// [NodeID] errors.
 #[derive(
     Clone, Copy, Debug, Deserialize, Display, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize,
 )]
