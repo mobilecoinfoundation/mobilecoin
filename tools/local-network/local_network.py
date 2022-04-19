@@ -246,7 +246,7 @@ class Node:
             f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mc-consensus-mint-client',
             'sign-governors',
             f'--tokens {self.tokens_config_file}',
-            f'--signing-key {MINTING_KEYS_DIR}/admin',
+            f'--signing-key {MINTING_KEYS_DIR}/minting-trust-root.pem',
             f'--output-json {self.tokens_config_file}',
         ]), shell=True)
 
@@ -495,7 +495,7 @@ class Network:
        subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/governor2 -out {MINTING_KEYS_DIR}/governor2.pub', shell=True)
 
        # This matches the hardcoded key in consensus/enclave/impl/build.rs
-       subprocess.check_output(f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mc-util-seeded-ed25519-key-gen --seed abababababababababababababababababababababababababababababababab > {MINTING_KEYS_DIR}/admin', shell=True)
+       subprocess.check_output(f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mc-util-seeded-ed25519-key-gen --seed abababababababababababababababababababababababababababababababab > {MINTING_KEYS_DIR}/minting-trust-root.pem', shell=True)
 
     def start(self):
         self.stop()
