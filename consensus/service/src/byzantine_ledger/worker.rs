@@ -139,6 +139,7 @@ impl<
     /// * `highest_issued_msg` - Worker sets to highest consensus message issued
     ///   by this node.
     /// * `logger` - Logger instance.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         enclave: E,
         scp_node: Box<dyn ScpNode<ConsensusValue>>,
