@@ -1973,6 +1973,7 @@ mod test {
         tokens::Mob,
         tx::{Tx, TxOut},
         Block, BlockContents, BlockVersion, Token,
+        Amount,
     };
     use mc_transaction_std::{EmptyMemoBuilder, TransactionBuilder};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
@@ -2564,7 +2565,7 @@ mod test {
             BLOCK_VERSION,
             &mut ledger_db,
             &[recipient.clone()],
-            DEFAULT_PER_RECIPIENT_AMOUNT,
+            Amount { value: DEFAULT_PER_RECIPIENT_AMOUNT, token_id: Mob::ID },
             &[KeyImage::from(1), KeyImage::from(2), KeyImage::from(3)],
             &mut rng,
         );
@@ -2688,7 +2689,7 @@ mod test {
             BLOCK_VERSION,
             &mut ledger_db,
             &[recipient.clone()],
-            DEFAULT_PER_RECIPIENT_AMOUNT,
+            Amount { value: DEFAULT_PER_RECIPIENT_AMOUNT, token_id: Mob::ID },
             &[KeyImage::from(4), KeyImage::from(5), KeyImage::from(6)],
             &mut rng,
         );
@@ -3069,7 +3070,7 @@ mod test {
                 BLOCK_VERSION,
                 &mut ledger_db,
                 &[recipient],
-                DEFAULT_PER_RECIPIENT_AMOUNT,
+                Amount { value: DEFAULT_PER_RECIPIENT_AMOUNT, token_id: Mob::ID },
                 &[
                     expected_utxos[monitor_data.first_block as usize].key_image,
                     expected_utxos[monitor_data.first_block as usize + 1].key_image,
@@ -3770,7 +3771,7 @@ mod test {
                 BLOCK_VERSION,
                 &mut ledger_db,
                 &[sender_default_subaddress.clone()],
-                DEFAULT_PER_RECIPIENT_AMOUNT,
+                Amount { value: DEFAULT_PER_RECIPIENT_AMOUNT, token_id: Mob::ID },
                 &[KeyImage::from(rng.next_u64())],
                 &mut rng,
             );
@@ -4373,7 +4374,7 @@ mod test {
                 BLOCK_VERSION,
                 &mut ledger_db,
                 &[sender.default_subaddress()],
-                *amount,
+                Amount { value: *amount, token_id: Mob::ID },
                 &[KeyImage::from(rng.next_u64())],
                 &mut rng,
             );
@@ -5372,7 +5373,7 @@ mod test {
             BLOCK_VERSION,
             &mut ledger_db,
             &[recipient],
-            DEFAULT_PER_RECIPIENT_AMOUNT,
+            Amount { value: DEFAULT_PER_RECIPIENT_AMOUNT, token_id: Mob::ID },
             &[first_key_image],
             &mut rng,
         );
