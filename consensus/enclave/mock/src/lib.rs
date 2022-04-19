@@ -305,7 +305,11 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         let block_contents = BlockContents {
             key_images,
             outputs,
-            mint_txs: inputs.mint_txs_with_config.into_iter().map(|(mint_tx, _mint_config_tx, _mint_config)| mint_tx).collect(),
+            mint_txs: inputs
+                .mint_txs_with_config
+                .into_iter()
+                .map(|(mint_tx, _mint_config_tx, _mint_config)| mint_tx)
+                .collect(),
             validated_mint_config_txs,
         };
 

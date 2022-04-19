@@ -404,7 +404,12 @@ impl SgxConsensusEnclave {
             self.validate_mint_config_txs(vec![mint_config_tx], current_block_index, config)?;
 
             // The MintTx should be valid.
-            validate_mint_tx(&mint_tx, current_block_index, config.block_version, &mint_config)?;
+            validate_mint_tx(
+                &mint_tx,
+                current_block_index,
+                config.block_version,
+                &mint_config,
+            )?;
 
             // MintTx is valid.
             mint_txs.push(mint_tx);
