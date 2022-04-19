@@ -334,22 +334,10 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        tx_manager::untrusted_interfaces::MockUntrustedInterfaces,
-        validators::DefaultTxManagerUntrustedInterfaces,
-    };
+    use crate::tx_manager::untrusted_interfaces::MockUntrustedInterfaces;
     use mc_common::logger::test_with_logger;
-    use mc_consensus_enclave_mock::{
-        ConsensusServiceMockEnclave, Error as EnclaveError, MockConsensusEnclave,
-    };
-    use mc_transaction_core::{
-        membership_proofs::Range, tx::TxOutMembershipElement,
-        validation::TransactionValidationError,
-    };
-    use mc_transaction_core_test_utils::{
-        create_ledger, create_transaction, initialize_ledger, AccountKey,
-    };
-    use rand::{rngs::StdRng, SeedableRng};
+    use mc_consensus_enclave_mock::{Error as EnclaveError, MockConsensusEnclave};
+    use mc_transaction_core::validation::TransactionValidationError;
 
     #[test_with_logger]
     // Should return Ok when a well-formed Tx is inserted.
@@ -743,7 +731,7 @@ mod tests {
             .times(tx_hashes.len())
             .return_const(Ok(highest_index_proofs));
 
-        let mut mock_enclave = MockConsensusEnclave::new();
+        let mock_enclave = MockConsensusEnclave::new();
         let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger);
 
         // All transactions must be in the cache.
@@ -799,154 +787,6 @@ mod tests {
             Err(e) => panic!("Unexpected error {:?}", e),
         }
     }
-
-    // TODO move this to worker tests
-    /*
-    #[test_with_logger]
-    fn test_hashes_to_block(logger: Logger) {
-        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
-        let block_version = BlockVersion::ZERO;
-        let sender = AccountKey::random(&mut rng);
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
-
-        let num_blocks = ledger.num_blocks().expect("Ledger must contain a block.");
-        let parent_block = ledger.get_block(num_blocks - 1).unwrap();
-
-        let enclave = ConsensusServiceMockEnclave::default();
-        enclave.blockchain_config.lock().unwrap().block_version = block_version;
-
-        let tx_manager = TxManagerImpl::new(
-            enclave,
-            DefaultTxManagerUntrustedInterfaces::new(ledger.clone()),
-            logger.clone(),
-        );
-
-        // Generate three transactions and populate the cache with them.
-        // Generate a fourth transaction that does not go into the cache.
-        let mut transactions = {
-            let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
-            let sender = AccountKey::random(&mut rng);
-            let mut ledger = create_ledger();
-            let n_blocks = 3;
-            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
-            let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-            let tx_out = block_contents.outputs[0].clone();
-
-            let recipient = AccountKey::random(&mut rng);
-            let tx1 = create_transaction(
-                block_version,
-                &mut ledger,
-                &tx_out,
-                &sender,
-                &recipient.default_subaddress(),
-                n_blocks + 1,
-                &mut rng,
-            );
-
-            let recipient = AccountKey::random(&mut rng);
-            let tx2 = create_transaction(
-                block_version,
-                &mut ledger,
-                &tx_out,
-                &sender,
-                &recipient.default_subaddress(),
-                n_blocks + 1,
-                &mut rng,
-            );
-
-            let recipient = AccountKey::random(&mut rng);
-            let tx3 = create_transaction(
-                block_version,
-                &mut ledger,
-                &tx_out,
-                &sender,
-                &recipient.default_subaddress(),
-                n_blocks + 1,
-                &mut rng,
-            );
-
-            let recipient = AccountKey::random(&mut rng);
-            let tx4 = create_transaction(
-                block_version,
-                &mut ledger,
-                &tx_out,
-                &sender,
-                &recipient.default_subaddress(),
-                n_blocks + 1,
-                &mut rng,
-            );
-
-            vec![tx1, tx2, tx3, tx4]
-        };
-
-        let client_tx_zero = transactions.pop().unwrap();
-        let client_tx_one = transactions.pop().unwrap();
-        let client_tx_two = transactions.pop().unwrap();
-        let client_tx_three = transactions.pop().unwrap();
-
-        let hash_tx_zero = tx_manager
-            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
-                &client_tx_zero,
-            ))
-            .unwrap();
-
-        let hash_tx_one = tx_manager
-            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
-                &client_tx_one,
-            ))
-            .unwrap();
-
-        let hash_tx_two = tx_manager
-            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
-                &client_tx_two,
-            ))
-            .unwrap();
-
-        let hash_tx_three = client_tx_three.tx_hash();
-
-        // Attempting to assemble a block with a non-existent hash should fail
-        assert!(tx_manager
-            .tx_hashes_to_block(
-                vec![hash_tx_two.into(), hash_tx_three.into()],
-                &parent_block
-            )
-            .is_err());
-
-        // Attempting to assemble a block with a duplicate transaction should fail.
-        // TODO: The logic for actually making sure of this lives inside the Enclave, so
-        // it cannot currently be tested here.
-        // assert!(tx_manager
-        //     .tx_hashes_to_well_formed_encrypted_txs_and_proofs(&vec![hash_tx_zero, hash_tx_one, hash_tx_zero])
-        //     .is_err());
-
-        // Attempting to resolve hashes with a duplicate and a missing transaction
-        // should fail TODO: The logic for actually making sure of this lives
-        // inside the Enclave, so it cannot currently be tested here.
-        // assert!(tx_manager
-        //     .tx_hashes_to_well_formed_encrypted_txs_and_proofs(&vec![hash_tx_zero, hash_tx_zero, hash_tx_three])
-        //     .is_err());
-
-        // Attempting to call tx_hashes_to_well_formed_encrypted_txs_and_proofs without duplicates or missing transactions
-        // should succeed.
-        // TODO: Right now this relies on ConsensusServiceMockEnclave::form_block
-        let (block, block_contents, _signature) = tx_manager
-            .tx_hashes_to_well_formed_encrypted_txs_and_proofs(vec![hash_tx_zero.into(), hash_tx_one.into()], &parent_block)
-            .expect("failed assembling block");
-        assert_eq!(
-            client_tx_zero.prefix.outputs[0].public_key,
-            block_contents.outputs[0].public_key
-        );
-        assert_eq!(
-            client_tx_one.prefix.outputs[0].public_key,
-            block_contents.outputs[1].public_key
-        );
-
-        // The ledger was previously initialized with 3 blocks.
-        assert_eq!(block.index, 3);
-    }
-    */
 
     #[test_with_logger]
     // Should call enclave.txs_for_peer

@@ -889,6 +889,7 @@ mod tests {
     use mc_consensus_enclave_mock::{ConsensusServiceMockEnclave, MockConsensusEnclave};
     use mc_consensus_scp::{
         msg::{NominatePayload, Topic::Nominate},
+        slot::{Phase, SlotMetrics},
         MockScpNode, Msg, QuorumSet,
     };
     use mc_crypto_keys::Ed25519Pair;
@@ -1543,7 +1544,7 @@ mod tests {
     }
 
     #[test_with_logger]
-    fn test_complete_current_slot(logger: Logger) {
+    fn test_complete_current_slot_forms_block_successfully(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
         let block_version = BlockVersion::MAX;
         let sender = AccountKey::random(&mut rng);
@@ -1564,7 +1565,7 @@ mod tests {
                     &tx_out,
                     &sender,
                     &recipient.default_subaddress(),
-                    n_blocks + 1,
+                    n_blocks + 10,
                     &mut rng,
                 )
             })
@@ -1618,9 +1619,19 @@ mod tests {
         scp_node.expect_process_timeouts().return_const(Vec::new());
         scp_node.expect_get_externalized_values().return_const(vec![
             ConsensusValue::TxHash(hash_tx1),
-            /*ConsensusValue::TxHash(hash_tx2),
-             *ConsensusValue::TxHash(hash_tx3), */
+            ConsensusValue::TxHash(hash_tx2),
+            ConsensusValue::TxHash(hash_tx3),
         ]);
+        scp_node
+            .expect_get_current_slot_metrics()
+            .returning(|| SlotMetrics {
+                phase: Phase::Externalize,
+                num_voted_nominated: 0,
+                num_accepted_nominated: 0,
+                num_confirmed_nominated: 0,
+                cur_nomination_round: 0,
+                bN: 0,
+            });
 
         let mut worker = ByzantineLedgerWorker::new(
             enclave,
@@ -1642,8 +1653,20 @@ mod tests {
         worker.tick();
 
         // A new block should appear, with the outputs of our transactions.
+        let parent_block = ledger.get_block(n_blocks - 1).unwrap();
+        let block = ledger.get_block(n_blocks).unwrap();
         let block_contents = ledger.get_block_contents(n_blocks).unwrap();
-        panic!("{}", block_contents.outputs.len());
+
+        assert_eq!(block.index, parent_block.index + 1);
+        assert_eq!(block.parent_id, parent_block.id);
+
+        // The mock enclave does not mint a fee output, so the number of outputs matches
+        // the number of transactions that we fed into it.
+        assert_eq!(block_contents.outputs.len(), 3);
+
+        assert!(block_contents.outputs.contains(&txs[0].prefix.outputs[0]));
+        assert!(block_contents.outputs.contains(&txs[1].prefix.outputs[0]));
+        assert!(block_contents.outputs.contains(&txs[2].prefix.outputs[0]));
     }
 
     // TODO: test process_consensus_msgs
