@@ -108,7 +108,7 @@ impl GovernorsMap {
 /// Governors Map error type.
 #[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
 pub enum Error {
-    /// Mob token is not allowed to be a governor.
+    /// Mob token is not allowed to have governors.
     MobTokenNotAllowed,
 
     /// Token `{0}` has insufficient signers
