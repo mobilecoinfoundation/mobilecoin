@@ -839,7 +839,7 @@ impl<
         // TODO
         let well_formed_encrypted_txs_with_proofs = self
             .tx_manager
-            .tx_hashes_to_block(&tx_hashes)
+            .tx_hashes_to_well_formed_encrypted_txs_and_proofs(&tx_hashes)
             .unwrap_or_else(|e| panic!("Failed to build block from {:?}: {:?}", tx_hashes, e));
 
         let root_element = self

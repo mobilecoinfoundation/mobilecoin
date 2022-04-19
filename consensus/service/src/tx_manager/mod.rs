@@ -253,13 +253,13 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             .combine(&tx_contexts, MAX_TRANSACTIONS_PER_BLOCK))
     }
 
-    /// Forms a Block containing the transactions that correspond to the given
-    /// hashes.
+    /// Get an array of well-formed encrypted transactions and membership proofs
+    /// that correspond to the provided tx hashes.
     ///
     /// # Arguments
     /// * `tx_hashes` - Hashes of well-formed transactions that are valid w.r.t.
-    ///   te current ledger.
-    fn tx_hashes_to_block(
+    ///   the current ledger.
+    fn tx_hashes_to_well_formed_encrypted_txs_and_proofs(
         &self,
         tx_hashes: &[TxHash],
     ) -> TxManagerResult<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>> {
@@ -726,8 +726,9 @@ mod tests {
     // TODO: tx_hashed_to_block should provide correct proofs for highest indices
 
     #[test_with_logger]
-    // Should return correct block when all transactions are in the cache.
-    fn test_hashes_to_block_ok(logger: Logger) {
+    // Should return correct well formed encrypted txs and proofs when all
+    // transactions are in the cache.
+    fn test_tx_hashes_to_well_formed_encrypted_txs_and_proofs_ok(logger: Logger) {
         let tx_hashes = vec![TxHash([7u8; 32]), TxHash([44u8; 32]), TxHash([3u8; 32])];
 
         let mut mock_untrusted = MockUntrustedInterfaces::new();
@@ -754,15 +755,18 @@ mod tests {
             tx_manager.lock_cache().insert(*tx_hash, cache_entry);
         }
 
-        let well_formed_encrypted_txs_with_proofs =
-            tx_manager.tx_hashes_to_block(&tx_hashes[..]).unwrap();
+        let well_formed_encrypted_txs_with_proofs = tx_manager
+            .tx_hashes_to_well_formed_encrypted_txs_and_proofs(&tx_hashes[..])
+            .unwrap();
         assert_eq!(well_formed_encrypted_txs_with_proofs.len(), tx_hashes.len());
+
+        // TODO validate encrypted txs match the provided hashes.
     }
 
     #[test_with_logger]
     // Should return TxManagerError::NotInCache if any transactions are not in the
     // cache.
-    fn test_hashes_to_block_missing_hashes(logger: Logger) {
+    fn test_tx_hashes_to_well_formed_encrypted_txs_and_proofs_missing_hashes(logger: Logger) {
         let tx_manager = TxManagerImpl::new(
             MockConsensusEnclave::new(),
             MockUntrustedInterfaces::new(),
@@ -784,7 +788,7 @@ mod tests {
         let not_in_cache = TxHash([66u8; 32]);
         tx_hashes.insert(2, not_in_cache.clone());
 
-        match tx_manager.tx_hashes_to_block(&tx_hashes[..]) {
+        match tx_manager.tx_hashes_to_well_formed_encrypted_txs_and_proofs(&tx_hashes[..]) {
             Ok(_) => {
                 panic!();
             }
@@ -914,21 +918,21 @@ mod tests {
         // TODO: The logic for actually making sure of this lives inside the Enclave, so
         // it cannot currently be tested here.
         // assert!(tx_manager
-        //     .tx_hashes_to_block(&vec![hash_tx_zero, hash_tx_one, hash_tx_zero])
+        //     .tx_hashes_to_well_formed_encrypted_txs_and_proofs(&vec![hash_tx_zero, hash_tx_one, hash_tx_zero])
         //     .is_err());
 
-        // Attempting to assemble a block with a duplicate and a missing transaction
+        // Attempting to resolve hashes with a duplicate and a missing transaction
         // should fail TODO: The logic for actually making sure of this lives
         // inside the Enclave, so it cannot currently be tested here.
         // assert!(tx_manager
-        //     .tx_hashes_to_block(&vec![hash_tx_zero, hash_tx_zero, hash_tx_three])
+        //     .tx_hashes_to_well_formed_encrypted_txs_and_proofs(&vec![hash_tx_zero, hash_tx_zero, hash_tx_three])
         //     .is_err());
 
-        // Attempting to assemble a block without duplicates or missing transactions
+        // Attempting to call tx_hashes_to_well_formed_encrypted_txs_and_proofs without duplicates or missing transactions
         // should succeed.
         // TODO: Right now this relies on ConsensusServiceMockEnclave::form_block
         let (block, block_contents, _signature) = tx_manager
-            .tx_hashes_to_block(vec![hash_tx_zero.into(), hash_tx_one.into()], &parent_block)
+            .tx_hashes_to_well_formed_encrypted_txs_and_proofs(vec![hash_tx_zero.into(), hash_tx_one.into()], &parent_block)
             .expect("failed assembling block");
         assert_eq!(
             client_tx_zero.prefix.outputs[0].public_key,
