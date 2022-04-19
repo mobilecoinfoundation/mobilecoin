@@ -36,21 +36,18 @@ fn test_get_ingress_key_records(logger: Logger) {
             .arg("0")
             .assert()
             .success()
-            .stdout(predicate::str::contains(format!(
-                "{}",
-                hex::encode(&ingest_server_set_up_data.active_ingress_pubkey.get_data())
+            .stdout(predicate::str::contains(hex::encode(
+                &ingest_server_set_up_data.active_ingress_pubkey.get_data(),
             )))
             .stdout(
-                predicate::str::contains(format!(
-                    "{}",
-                    hex::encode(&ingest_server_set_up_data.retired_ingress_pubkey.get_data())
+                predicate::str::contains(hex::encode(
+                    &ingest_server_set_up_data.retired_ingress_pubkey.get_data(),
                 ))
                 .not(),
             )
             .stdout(
-                predicate::str::contains(format!(
-                    "{}",
-                    hex::encode(&ingest_server_set_up_data.lost_ingress_pubkey.get_data())
+                predicate::str::contains(hex::encode(
+                    &ingest_server_set_up_data.lost_ingress_pubkey.get_data(),
                 ))
                 .not(),
             );
@@ -66,20 +63,17 @@ fn test_get_ingress_key_records(logger: Logger) {
             .arg("--include-lost")
             .assert()
             .success()
-            .stdout(predicate::str::contains(format!(
-                "{}",
-                hex::encode(&ingest_server_set_up_data.active_ingress_pubkey.get_data())
+            .stdout(predicate::str::contains(hex::encode(
+                &ingest_server_set_up_data.active_ingress_pubkey.get_data(),
             )))
             .stdout(
-                predicate::str::contains(format!(
-                    "{}",
-                    hex::encode(&ingest_server_set_up_data.retired_ingress_pubkey.get_data())
+                predicate::str::contains(hex::encode(
+                    &ingest_server_set_up_data.retired_ingress_pubkey.get_data(),
                 ))
                 .not(),
             )
-            .stdout(predicate::str::contains(format!(
-                "{}",
-                hex::encode(&ingest_server_set_up_data.lost_ingress_pubkey.get_data())
+            .stdout(predicate::str::contains(hex::encode(
+                &ingest_server_set_up_data.lost_ingress_pubkey.get_data(),
             )));
     }
 
@@ -94,18 +88,15 @@ fn test_get_ingress_key_records(logger: Logger) {
             .arg("--include-retired")
             .assert()
             .success()
-            .stdout(predicate::str::contains(format!(
-                "{}",
-                hex::encode(&ingest_server_set_up_data.active_ingress_pubkey.get_data())
+            .stdout(predicate::str::contains(hex::encode(
+                &ingest_server_set_up_data.active_ingress_pubkey.get_data(),
             )))
-            .stdout(predicate::str::contains(format!(
-                "{}",
-                hex::encode(&ingest_server_set_up_data.retired_ingress_pubkey.get_data())
+            .stdout(predicate::str::contains(hex::encode(
+                &ingest_server_set_up_data.retired_ingress_pubkey.get_data(),
             )))
             .stdout(
-                predicate::str::contains(format!(
-                    "{}",
-                    hex::encode(&ingest_server_set_up_data.lost_ingress_pubkey.get_data())
+                predicate::str::contains(hex::encode(
+                    &ingest_server_set_up_data.lost_ingress_pubkey.get_data(),
                 ))
                 .not(),
             );
@@ -124,17 +115,14 @@ fn test_get_ingress_key_records(logger: Logger) {
             .arg("--include-retired")
             .assert()
             .success()
-            .stdout(predicate::str::contains(format!(
-                "{}",
-                hex::encode(&ingest_server_set_up_data.active_ingress_pubkey.get_data())
+            .stdout(predicate::str::contains(hex::encode(
+                &ingest_server_set_up_data.active_ingress_pubkey.get_data(),
             )))
-            .stdout(predicate::str::contains(format!(
-                "{}",
-                hex::encode(&ingest_server_set_up_data.retired_ingress_pubkey.get_data())
+            .stdout(predicate::str::contains(hex::encode(
+                &ingest_server_set_up_data.retired_ingress_pubkey.get_data(),
             )))
-            .stdout(predicate::str::contains(format!(
-                "{}",
-                hex::encode(&ingest_server_set_up_data.lost_ingress_pubkey.get_data())
+            .stdout(predicate::str::contains(hex::encode(
+                &ingest_server_set_up_data.lost_ingress_pubkey.get_data(),
             )));
     }
     // Test that the "--start-block-at-least" option works correctly.
@@ -151,20 +139,17 @@ fn test_get_ingress_key_records(logger: Logger) {
             .arg("--include-retired")
             .assert()
             .success()
-            .stdout(predicate::str::contains(format!(
-                "{}",
-                hex::encode(&ingest_server_set_up_data.active_ingress_pubkey.get_data())
+            .stdout(predicate::str::contains(hex::encode(
+                &ingest_server_set_up_data.active_ingress_pubkey.get_data(),
             )))
             .stdout(
-                predicate::str::contains(format!(
-                    "{}",
-                    hex::encode(&ingest_server_set_up_data.retired_ingress_pubkey.get_data())
+                predicate::str::contains(hex::encode(
+                    &ingest_server_set_up_data.retired_ingress_pubkey.get_data(),
                 ))
                 .not(),
             )
-            .stdout(predicate::str::contains(format!(
-                "{}",
-                hex::encode(&ingest_server_set_up_data.lost_ingress_pubkey.get_data())
+            .stdout(predicate::str::contains(hex::encode(
+                &ingest_server_set_up_data.lost_ingress_pubkey.get_data(),
             )));
     }
 }
@@ -202,7 +187,7 @@ fn set_up_ingest_servers(logger: Logger) -> IngestServerSetUpData {
     db.new_ingress_key(&ingress_key3, 789).unwrap();
 
     db.retire_ingress_key(&ingress_key1, true).unwrap();
-    db.report_lost_ingress_key(ingress_key2.clone()).unwrap();
+    db.report_lost_ingress_key(ingress_key2).unwrap();
 
     let ingest_server_client_uri = &format!("insecure-fog-ingest://0.0.0.0:{}/", BASE_PORT + 4);
     let ingest_server = {
@@ -213,10 +198,10 @@ fn set_up_ingest_servers(logger: Logger) -> IngestServerSetUpData {
 
         let config = IngestServerConfig {
             ias_spid: Default::default(),
-            local_node_id: local_node_id.clone(),
-            client_listen_uri: FogIngestUri::from_str(&ingest_server_client_uri).unwrap(),
+            local_node_id,
+            client_listen_uri: FogIngestUri::from_str(ingest_server_client_uri).unwrap(),
             peer_listen_uri: igp_uri.clone(),
-            peers: btreeset![igp_uri.clone()],
+            peers: btreeset![igp_uri],
             fog_report_id: Default::default(),
             max_transactions: 10_000,
             pubkey_expiry_window: 100,
@@ -239,14 +224,7 @@ fn set_up_ingest_servers(logger: Logger) -> IngestServerSetUpData {
         let ledger_db = LedgerDB::open(ledger_db_path.path()).unwrap();
 
         let ra_client = AttestClient::new("").expect("Could not create IAS client");
-        let mut node = IngestServer::new(
-            config,
-            ra_client,
-            db.clone(),
-            watcher,
-            ledger_db,
-            logger.clone(),
-        );
+        let mut node = IngestServer::new(config, ra_client, db, watcher, ledger_db, logger.clone());
         node.start().expect("Could not start Ingest Service");
 
         node
@@ -254,12 +232,12 @@ fn set_up_ingest_servers(logger: Logger) -> IngestServerSetUpData {
 
     std::thread::sleep(std::time::Duration::from_millis(1000));
 
-    return IngestServerSetUpData {
+    IngestServerSetUpData {
         _ingest_server: ingest_server,
         _db_test_context: db_test_context,
         ingest_server_client_uri: ingest_server_client_uri.to_owned(),
         retired_ingress_pubkey: external::CompressedRistretto::from(&ingress_key1),
         lost_ingress_pubkey: external::CompressedRistretto::from(&ingress_key2),
         active_ingress_pubkey: external::CompressedRistretto::from(&ingress_key3),
-    };
+    }
 }

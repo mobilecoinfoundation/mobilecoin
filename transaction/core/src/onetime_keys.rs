@@ -207,8 +207,8 @@ mod tests {
         tx_private_key: &RistrettoPrivate,
         recipient: &PublicAddress,
     ) -> (RistrettoPublic, RistrettoPublic) {
-        let tx_target_key = create_tx_out_target_key(&tx_private_key, recipient);
-        let tx_public_key = create_tx_out_public_key(&tx_private_key, recipient.spend_public_key());
+        let tx_target_key = create_tx_out_target_key(tx_private_key, recipient);
+        let tx_public_key = create_tx_out_public_key(tx_private_key, recipient.spend_public_key());
         (tx_target_key, tx_public_key)
     }
 
@@ -245,7 +245,7 @@ mod tests {
         assert_eq!(
             recipient.spend_public_key(),
             &recover_public_subaddress_spend_key(
-                &account.view_private_key(), // (a, D_0)
+                account.view_private_key(), // (a, D_0)
                 &tx_target_key,
                 &tx_public_key
             )
@@ -255,7 +255,7 @@ mod tests {
         assert_ne!(
             other_account.default_subaddress().spend_public_key(),
             &recover_public_subaddress_spend_key(
-                &other_account.view_private_key(),
+                other_account.view_private_key(),
                 &tx_target_key,
                 &tx_public_key
             ),

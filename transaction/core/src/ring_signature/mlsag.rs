@@ -611,7 +611,7 @@ mod mlsag_tests {
 
             // Sign with an input blinding that differs from the real input's amount commitment.
             {
-                let mut params = params.clone();
+                let mut params = params;
                 let wrong_blinding = Scalar::random(&mut rng);
 
                 params.blinding = wrong_blinding;
@@ -808,7 +808,7 @@ mod mlsag_tests {
 
             // Modify the signature to have too many responses.
             {
-                let mut invalid_signature = signature.clone();
+                let mut invalid_signature = signature;
                 invalid_signature.responses.push(CurveScalar::from_random(&mut rng));
 
                 let result =

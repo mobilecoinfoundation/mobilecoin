@@ -319,7 +319,7 @@ mod tests {
         tx_manager::{MockTxManager, TxManagerImpl},
         validators::DefaultTxManagerUntrustedInterfaces,
     };
-    use hex;
+
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
     use mc_consensus_scp::{core_types::Ballot, msg::*, SlotIndex};
@@ -366,7 +366,7 @@ mod tests {
     // Get the local node's NodeID and message signer key.
     pub fn get_local_node_config(node_id: u32) -> (NodeID, ConsensusPeerUri, Arc<Ed25519Pair>) {
         let secret_key = Ed25519Private::try_from_der(
-            &base64::decode("MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo")
+            base64::decode("MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo")
                 .unwrap()
                 .as_slice(),
         )
@@ -470,22 +470,22 @@ mod tests {
         let broadcaster = Arc::new(Mutex::new(MockBroadcast::new()));
 
         let byzantine_ledger = ByzantineLedger::new(
-            local_node_id.clone(),
-            local_quorum_set.clone(),
+            local_node_id,
+            local_quorum_set,
             enclave,
             peer_manager,
             ledger.clone(),
-            tx_manager.clone(),
+            tx_manager,
             mint_tx_manager,
             broadcaster,
-            msg_signer_key.clone(),
+            msg_signer_key,
             Vec::new(),
             None,
             logger.clone(),
         );
 
         // Initially, byzantine_ledger is not behind.
-        assert_eq!(byzantine_ledger.is_behind(), false);
+        assert!(!byzantine_ledger.is_behind());
     }
 
     // Initially, ByzantineLedger should emit the normal SCPStatements from
@@ -697,7 +697,7 @@ mod tests {
                 }
             }
 
-            thread::sleep(Duration::from_millis(100 as u64));
+            thread::sleep(Duration::from_millis(100_u64));
         }
 
         {
@@ -801,7 +801,7 @@ mod tests {
                 break;
             }
 
-            thread::sleep(Duration::from_millis(100 as u64));
+            thread::sleep(Duration::from_millis(100_u64));
         }
 
         let mut emitted_msgs = mock_peer_state
@@ -1032,7 +1032,7 @@ mod tests {
                 }
             }
 
-            thread::sleep(Duration::from_millis(100 as u64));
+            thread::sleep(Duration::from_millis(100_u64));
         }
 
         {
@@ -1115,7 +1115,7 @@ mod tests {
                 break;
             }
 
-            thread::sleep(Duration::from_millis(100 as u64));
+            thread::sleep(Duration::from_millis(100_u64));
         }
 
         let mut emitted_msgs = mock_peer_state
@@ -1136,9 +1136,9 @@ mod tests {
                         C: Ballot::new(
                             55,
                             &[
-                                ConsensusValue::MintTx(tx1.clone()),
-                                ConsensusValue::MintTx(tx2.clone()),
-                                ConsensusValue::MintTx(tx3.clone()),
+                                ConsensusValue::MintTx(tx1),
+                                ConsensusValue::MintTx(tx2),
+                                ConsensusValue::MintTx(tx3),
                             ]
                         ),
                         HN: 66,

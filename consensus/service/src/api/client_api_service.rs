@@ -359,8 +359,10 @@ mod client_api_tests {
         let mut consensus_enclave = MockConsensusEnclave::new();
         {
             // Return a TxContext that contains some KeyImages.
-            let mut tx_context = TxContext::default();
-            tx_context.key_images = vec![KeyImage::default(), KeyImage::default()];
+            let tx_context = TxContext {
+                key_images: vec![KeyImage::default(), KeyImage::default()],
+                ..Default::default()
+            };
 
             consensus_enclave
                 .expect_client_tx_propose()
@@ -428,8 +430,10 @@ mod client_api_tests {
         let mut consensus_enclave = MockConsensusEnclave::new();
         {
             // Return a TxContext that contains some KeyImages.
-            let mut tx_context = TxContext::default();
-            tx_context.key_images = vec![KeyImage::default(), KeyImage::default()];
+            let tx_context = TxContext {
+                key_images: vec![KeyImage::default(), KeyImage::default()],
+                ..Default::default()
+            };
 
             consensus_enclave
                 .expect_client_tx_propose()
@@ -503,8 +507,10 @@ mod client_api_tests {
         let mut consensus_enclave = MockConsensusEnclave::new();
 
         // Return a TxContext that contains some KeyImages.
-        let mut tx_context = TxContext::default();
-        tx_context.key_images = vec![KeyImage::default(), KeyImage::default()];
+        let tx_context = TxContext {
+            key_images: vec![KeyImage::default(), KeyImage::default()],
+            ..Default::default()
+        };
 
         consensus_enclave
             .expect_client_tx_propose()
@@ -709,7 +715,7 @@ mod client_api_tests {
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
-            Err(err @ _) => {
+            Err(err) => {
                 panic!("Unexpected error {:?}", err);
             }
         };

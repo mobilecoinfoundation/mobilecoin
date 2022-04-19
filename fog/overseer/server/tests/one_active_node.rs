@@ -34,12 +34,9 @@ fn one_active_node_cluster_state_does_not_change(logger: Logger) {
 
     // Open the watcher db
     let tx_source_url = Url::from_str("https://localhost").unwrap();
-    let _watcher = mc_watcher::watcher_db::WatcherDB::open_rw(
-        &watcher_path,
-        &[tx_source_url.clone()],
-        logger.clone(),
-    )
-    .expect("Could not create watcher_db");
+    let _watcher =
+        mc_watcher::watcher_db::WatcherDB::open_rw(&watcher_path, &[tx_source_url], logger.clone())
+            .expect("Could not create watcher_db");
 
     // Set up an empty ledger db.
     let ledger_db_path = blockchain_path.path().join("ledger_db");

@@ -160,7 +160,7 @@ pub mod tests {
             generate_range_proofs(&values, &blindings, &generators(0), &mut rng).unwrap();
 
         // Modify a commitment.
-        let mut wrong_commitments = commitments.clone();
+        let mut wrong_commitments = commitments;
         wrong_commitments[0] = RistrettoPoint::random(&mut rng).compress();
 
         match check_range_proofs(&proof, &wrong_commitments, &generators(0), &mut rng) {

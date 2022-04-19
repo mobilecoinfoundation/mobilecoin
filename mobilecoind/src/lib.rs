@@ -1,5 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+#![feature(assert_matches)]
+
 extern crate alloc;
 
 pub mod config;

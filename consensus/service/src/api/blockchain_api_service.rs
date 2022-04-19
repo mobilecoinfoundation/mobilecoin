@@ -282,7 +282,7 @@ mod tests {
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
-            Err(err @ _) => {
+            Err(err) => {
                 panic!("Unexpected error {:?}", err);
             }
         }
@@ -440,7 +440,7 @@ mod tests {
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
-            Err(err @ _) => {
+            Err(err) => {
                 panic!("Unexpected error {:?}", err);
             }
         }

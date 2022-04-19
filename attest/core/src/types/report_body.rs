@@ -455,7 +455,7 @@ mod test {
     #[test]
     #[allow(clippy::cognitive_complexity)]
     fn test_ord() {
-        let body1: ReportBody = REPORT_BODY_SRC.clone().into();
+        let body1: ReportBody = REPORT_BODY_SRC.into();
         let mut body2 = body1;
 
         let orig_value = body2.0.cpu_svn.svn[0];
@@ -541,7 +541,7 @@ mod test {
     fn test_serde() {
         assert_eq!(REPORT_BODY_SIZE, size_of::<sgx_report_body_t>());
 
-        let body: ReportBody = REPORT_BODY_SRC.clone().into();
+        let body: ReportBody = REPORT_BODY_SRC.into();
         let serialized = serialize(&body).expect("Error serializing report.");
         let body2: ReportBody = deserialize(&serialized).expect("Error deserializing report");
         assert_eq!(body, body2);

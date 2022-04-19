@@ -2388,8 +2388,8 @@ mod nominate_protocol_tests {
                 .expect("No message emitted");
 
             let expected = Msg::new(
-                local_node.0.clone(),
-                local_node.1.clone(),
+                local_node.0,
+                local_node.1,
                 slot_index,
                 Topic::Nominate(NominatePayload {
                     X: btreeset! { 777, 1000, 2000, 4242},
@@ -2437,11 +2437,11 @@ mod ballot_protocol_tests {
             .expect("No message emitted.");
 
         let expected = Msg::new(
-            local_node.0.clone(),
-            local_node.1.clone(),
+            local_node.0,
+            local_node.1,
             slot_index,
             Topic::Externalize(ExternalizePayload {
-                C: Ballot::new(1, &vec![1234, 1337, 1338, 5678]),
+                C: Ballot::new(1, &[1234, 1337, 1338, 5678]),
                 HN: 1,
             }),
         );
@@ -3433,7 +3433,7 @@ mod ballot_protocol_tests {
 
         // Not quorum; the local node emits its initial statement.
         for msg in msgs.iter().take(3) {
-            let emitted_msg = slot.handle_message(&msg);
+            let emitted_msg = slot.handle_message(msg);
             assert!(emitted_msg.unwrap().is_none());
         }
 

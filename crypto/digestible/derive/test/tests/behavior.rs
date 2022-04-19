@@ -408,8 +408,8 @@ fn bar2() {
 #[test]
 fn generic_example_struct1() {
     let arg = GenericExampleStruct {
-        a: 123 as u32,
-        b: 456 as u32,
+        a: 123u32,
+        b: 456u32,
     };
 
     let expected_ast = ASTNode::from(ASTAggregate {
@@ -439,8 +439,8 @@ fn generic_example_struct1() {
     );
 
     let arg2 = GenericExampleStruct {
-        a: Some(123 as u32),
-        b: Some(456 as u32),
+        a: Some(123u32),
+        b: Some(456u32),
     };
 
     digestible_test_case_ast("genfoo1", &arg2, expected_ast);
@@ -458,8 +458,8 @@ fn generic_example_struct1() {
 #[test]
 fn generic_example_struct2() {
     let arg = GenericExampleStruct {
-        a: 123 as i32,
-        b: 456 as i32,
+        a: 123i32,
+        b: 456i32,
     };
 
     let expected_ast = ASTNode::from(ASTAggregate {
@@ -489,8 +489,8 @@ fn generic_example_struct2() {
     );
 
     let arg2 = GenericExampleStruct {
-        a: Some(123 as i32),
-        b: Some(456 as i32),
+        a: Some(123i32),
+        b: Some(456i32),
     };
 
     digestible_test_case_ast("genfoo2", &arg2, expected_ast);

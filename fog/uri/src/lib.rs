@@ -86,7 +86,7 @@ mod tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("127.0.0.1:443").unwrap()
         );
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
 
         let uri = FogLedgerUri::from_str("fog-ledger://node1.test.mobilecoin.com/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:443");
@@ -94,7 +94,7 @@ mod tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:443").unwrap()
         );
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
 
         let uri = FogLedgerUri::from_str("fog-ledger://node1.test.mobilecoin.com:666/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:666");
@@ -102,7 +102,7 @@ mod tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
         );
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
 
         let uri = FogLedgerUri::from_str("insecure-fog-ledger://127.0.0.1/").unwrap();
         assert_eq!(uri.addr(), "127.0.0.1:3223");
@@ -110,7 +110,7 @@ mod tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("127.0.0.1:3223").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
 
         let uri =
             FogLedgerUri::from_str("insecure-fog-ledger://node1.test.mobilecoin.com/").unwrap();
@@ -119,7 +119,7 @@ mod tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:3223").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
 
         let uri =
             FogLedgerUri::from_str("insecure-fog-ledger://node1.test.mobilecoin.com:666/").unwrap();
@@ -128,7 +128,7 @@ mod tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
     }
 
     #[test]
@@ -177,7 +177,7 @@ mod tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("127.0.0.1:443").unwrap()
         );
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
 
         let uri = FogViewUri::from_str("fog-view://node1.test.mobilecoin.com/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:443");
@@ -185,7 +185,7 @@ mod tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:443").unwrap()
         );
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
 
         let uri = FogViewUri::from_str("fog-view://node1.test.mobilecoin.com:666/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:666");
@@ -193,7 +193,7 @@ mod tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
         );
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
 
         let uri = FogViewUri::from_str("insecure-fog-view://127.0.0.1/").unwrap();
         assert_eq!(uri.addr(), "127.0.0.1:3225");
@@ -201,7 +201,7 @@ mod tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("127.0.0.1:3225").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
 
         let uri = FogViewUri::from_str("insecure-fog-view://node1.test.mobilecoin.com/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:3225");
@@ -209,7 +209,7 @@ mod tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:3225").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
 
         let uri =
             FogViewUri::from_str("insecure-fog-view://node1.test.mobilecoin.com:666/").unwrap();
@@ -218,7 +218,7 @@ mod tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
     }
 
     #[test]

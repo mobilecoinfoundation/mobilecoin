@@ -215,7 +215,7 @@ mod tests {
             assert_eq!(network_state.peer_to_current_slot().len(), 1);
             assert_eq!(
                 *network_state.id_to_current_slot.get(&sender_id).unwrap(),
-                4 as SlotIndex
+                4_u64
             );
         }
 
@@ -236,7 +236,7 @@ mod tests {
             assert_eq!(network_state.peer_to_current_slot().len(), 1);
             assert_eq!(
                 *network_state.id_to_current_slot.get(&sender_id).unwrap(),
-                4 as SlotIndex
+                4_u64
             );
         }
 
@@ -256,7 +256,7 @@ mod tests {
             assert_eq!(network_state.peer_to_current_slot().len(), 1);
             assert_eq!(
                 *network_state.id_to_current_slot.get(&sender_id).unwrap(),
-                4 as SlotIndex
+                4_u64
             );
         }
     }
@@ -287,7 +287,7 @@ mod tests {
             assert_eq!(network_state.peer_to_current_slot().len(), 1);
             assert_eq!(
                 *network_state.id_to_current_slot.get(&sender_id).unwrap(),
-                5 as SlotIndex
+                5_u64
             );
         }
     }
@@ -326,7 +326,7 @@ mod tests {
         assert_eq!(network_state.peer_to_current_slot().len(), 1);
         assert_eq!(
             *network_state.id_to_current_slot.get(&sender_id).unwrap(),
-            8 as SlotIndex
+            8_u64
         );
     }
 
@@ -360,7 +360,7 @@ mod tests {
         assert_eq!(network_state.peer_to_current_slot().len(), 1);
         assert_eq!(
             *network_state.id_to_current_slot.get(&sender_a_id).unwrap(),
-            4 as SlotIndex
+            4_u64
         );
 
         // A Commit from sender B.
@@ -382,7 +382,7 @@ mod tests {
 
         assert_eq!(
             *network_state.id_to_current_slot.get(&sender_b_id).unwrap(),
-            5 as SlotIndex
+            5_u64
         );
     }
 
@@ -423,7 +423,7 @@ mod tests {
             QuorumSet::new_with_node_ids(1, vec![test_node_id(5), test_node_id(7)]);
 
         // Initially, we are not behind.
-        assert_eq!(network_state.is_behind(local_block), false);
+        assert!(!network_state.is_behind(local_block));
 
         // Send a message from node 2. Nothing should change.
         network_state.push(Msg::<&str>::new(
@@ -435,7 +435,7 @@ mod tests {
                 HN: 0,
             }),
         ));
-        assert_eq!(network_state.is_behind(local_block), false);
+        assert!(!network_state.is_behind(local_block));
 
         // Send a message from node 3, so we have a blocking set but no quorum.
         network_state.push(Msg::<&str>::new(
@@ -447,7 +447,7 @@ mod tests {
                 HN: 0,
             }),
         ));
-        assert_eq!(network_state.is_behind(local_block), false);
+        assert!(!network_state.is_behind(local_block));
 
         // Send a message from node 5, not forming quorum.
         network_state.push(Msg::<&str>::new(
@@ -459,7 +459,7 @@ mod tests {
                 HN: 0,
             }),
         ));
-        assert_eq!(network_state.is_behind(local_block), false);
+        assert!(!network_state.is_behind(local_block));
 
         // Send a message from node 6, we now have a blocking set and quorum.
         network_state.push(Msg::<&str>::new(
@@ -471,7 +471,7 @@ mod tests {
                 HN: 0,
             }),
         ));
-        assert_eq!(network_state.is_behind(local_block), true);
+        assert!(network_state.is_behind(local_block));
     }
 
     // A quorum set with a single node is blocking and quorum when that node has
@@ -483,30 +483,20 @@ mod tests {
             QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]);
         let network_state = SCPNetworkState::new(local_node_id, local_node_quorum_set);
 
-        assert_eq!(
-            network_state
-                .is_blocking_and_quorum(&HashSet::from_iter(vec![test_node_id(0).responder_id])),
-            false,
-        );
+        assert!(!network_state
+            .is_blocking_and_quorum(&HashSet::from_iter(vec![test_node_id(0).responder_id])));
 
-        assert_eq!(
-            network_state
-                .is_blocking_and_quorum(&HashSet::from_iter(vec![test_node_id(1).responder_id])),
-            false,
-        );
+        assert!(!network_state
+            .is_blocking_and_quorum(&HashSet::from_iter(vec![test_node_id(1).responder_id])));
 
-        assert_eq!(
-            network_state
-                .is_blocking_and_quorum(&HashSet::from_iter(vec![test_node_id(2).responder_id])),
-            true
-        );
+        assert!(network_state
+            .is_blocking_and_quorum(&HashSet::from_iter(vec![test_node_id(2).responder_id])));
 
-        assert_eq!(
+        assert!(
             network_state.is_blocking_and_quorum(&HashSet::from_iter(vec![
                 test_node_id(0).responder_id,
                 test_node_id(2).responder_id
-            ])),
-            true
+            ]))
         );
     }
 

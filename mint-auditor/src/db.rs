@@ -610,7 +610,7 @@ mod tests {
             Err(Error::UnexpectedBlockIndex(2, 1)) => {
                 // Expected
             }
-            err @ _ => {
+            err => {
                 panic!("Unexpected result: {:?}", err);
             }
         }
@@ -646,7 +646,7 @@ mod tests {
             Err(Error::UnexpectedBlockIndex(0, 1)) => {
                 // Expected
             }
-            err @ _ => {
+            err => {
                 panic!("Unexpected result: {:?}", err);
             }
         }
@@ -686,7 +686,7 @@ mod tests {
             Err(Error::UnexpectedBlockIndex(0, 3)) => {
                 // Expected
             }
-            err @ _ => {
+            err => {
                 panic!("Unexpected result: {:?}", err);
             }
         }
