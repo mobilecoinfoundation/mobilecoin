@@ -51,8 +51,8 @@ pub const COUNTERS_KEY: &str = "counters";
 #[derive(Deserialize, Eq, Message, PartialEq, Serialize)]
 pub struct BlockAuditData {
     /// A map of token id -> calculated balance.
-    #[prost(btree_map = "uint32, uint64", tag = 1)]
-    pub balance_map: BTreeMap<u32, u64>,
+    #[prost(btree_map = "uint64, uint64", tag = 1)]
+    pub balance_map: BTreeMap<u64, u64>,
 }
 
 /// Statistics we keep track of.

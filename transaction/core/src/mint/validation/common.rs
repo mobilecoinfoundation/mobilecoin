@@ -47,8 +47,8 @@ pub fn validate_block_version(block_version: BlockVersion) -> Result<(), Error> 
 ///
 /// Arguments:
 /// * `token_id` - The token id being minted.
-pub fn validate_token_id(token_id: u32) -> Result<(), Error> {
-    if token_id == *TokenId::MOB {
+pub fn validate_token_id(token_id: TokenId) -> Result<(), Error> {
+    if token_id == TokenId::MOB {
         return Err(Error::InvalidTokenId(token_id));
     }
 
@@ -91,13 +91,16 @@ mod tests {
 
     #[test]
     fn validate_token_id_accepts_valid_token_ids() {
-        assert!(validate_token_id(1).is_ok());
-        assert!(validate_token_id(10).is_ok());
+        assert!(validate_token_id(1.into()).is_ok());
+        assert!(validate_token_id(10.into()).is_ok());
     }
 
     #[test]
     fn validate_token_id_rejects_invalid_token_ids() {
-        assert_eq!(validate_token_id(0), Err(Error::InvalidTokenId(0)));
+        assert_eq!(
+            validate_token_id(0.into()),
+            Err(Error::InvalidTokenId(0.into()))
+        );
     }
 
     #[test]

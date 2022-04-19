@@ -50,7 +50,7 @@ pub fn bootstrap_ledger(
     key_images_per_block: usize,
     seed: Option<[u8; 32]>,
     hint_text: Option<&str>,
-    max_token_id: u32,
+    max_token_id: u64,
     logger: Logger,
 ) {
     // Create the DB

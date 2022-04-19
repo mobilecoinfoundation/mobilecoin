@@ -13,7 +13,7 @@ use crate::{
             error::Error,
         },
     },
-    BlockVersion,
+    BlockVersion, TokenId,
 };
 use mc_crypto_keys::Ed25519Public;
 use mc_crypto_multisig::SignerSet;
@@ -36,7 +36,7 @@ pub fn validate_mint_tx(
 ) -> Result<(), Error> {
     validate_block_version(block_version)?;
 
-    validate_token_id(tx.prefix.token_id)?;
+    validate_token_id(TokenId::from(tx.prefix.token_id))?;
 
     validate_nonce(&tx.prefix.nonce)?;
 
@@ -56,7 +56,7 @@ pub fn validate_mint_tx(
 pub fn validate_against_mint_config(tx: &MintTx, mint_config: &MintConfig) -> Result<(), Error> {
     // The token id must match.
     if tx.prefix.token_id != mint_config.token_id {
-        return Err(Error::InvalidTokenId(tx.prefix.token_id));
+        return Err(Error::InvalidTokenId(tx.prefix.token_id.into()));
     }
 
     // The amount must not exceed the mint limit.
@@ -171,7 +171,7 @@ mod tests {
 
         assert_eq!(
             validate_against_mint_config(&tx, &mint_config),
-            Err(Error::InvalidTokenId(token_id + 1))
+            Err(Error::InvalidTokenId((token_id + 1).into()))
         );
     }
 

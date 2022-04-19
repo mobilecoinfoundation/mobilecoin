@@ -88,7 +88,7 @@ mod commitment_tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let value = rng.next_u64();
         let blinding = Scalar::random(&mut rng);
-        let gens = generators(rng.next_u32());
+        let gens = generators(rng.next_u64());
 
         let commitment = Commitment::new(value, blinding, &gens);
 

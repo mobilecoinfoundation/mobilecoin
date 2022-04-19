@@ -57,7 +57,7 @@ pub struct MaskedAmount {
     pub masked_value: u64,
 
     /// `masked_token_id = token_id XOR_8 Blake2B(token_id_mask |
-    /// shared_secret)` 4 bytes long when used, 0 bytes for older amounts
+    /// shared_secret)` 8 bytes long when used, 0 bytes for older amounts
     /// that don't have this.
     #[prost(bytes, tag = "3")]
     pub masked_token_id: Vec<u8>,
@@ -89,9 +89,9 @@ impl MaskedAmount {
         // `v XOR_8 Scalar::from_hash(Blake2B(value_mask | shared_secret))`
         let masked_value: u64 = amount.value ^ get_value_mask(shared_secret);
 
-        // The token_id is XORed with the first 4 bytes of the mask.
+        // The token_id is XORed with the first 8 bytes of the mask.
         // `v XOR_4 Blake2B(token_id_mask | shared_secret)`
-        let masked_token_id_val: u32 = *amount.token_id ^ get_token_id_mask(shared_secret);
+        let masked_token_id_val: u64 = *amount.token_id ^ get_token_id_mask(shared_secret);
         let masked_token_id = masked_token_id_val.to_le_bytes().to_vec();
 
         Ok(MaskedAmount {
@@ -198,11 +198,11 @@ impl MaskedAmount {
     fn unmask_token_id(
         masked_token_id: &[u8],
         shared_secret: &RistrettoPublic,
-    ) -> Result<u32, AmountError> {
+    ) -> Result<u64, AmountError> {
         match masked_token_id.len() {
             0 => Ok(0),
-            4 => {
-                let masked_token_id_val = u32::from_le_bytes(masked_token_id.try_into().unwrap());
+            TokenId::NUM_BYTES => {
+                let masked_token_id_val = u64::from_le_bytes(masked_token_id.try_into().unwrap());
                 Ok(masked_token_id_val ^ get_token_id_mask(shared_secret))
             }
             _ => Err(AmountError::InvalidMaskedTokenId),
@@ -227,16 +227,16 @@ fn get_value_mask(shared_secret: &RistrettoPublic) -> u64 {
 }
 
 /// Computes `Blake2B(token_id_mask | shared_secret)`,
-/// then interprets the first 4 canonical bytes as a u32 number in
+/// then interprets the first 8 canonical bytes as a u64 number in
 /// little-endian representation.
 ///
 /// # Arguments
 /// * `shared_secret` - The shared secret, e.g. `rB`.
-fn get_token_id_mask(shared_secret: &RistrettoPublic) -> u32 {
+fn get_token_id_mask(shared_secret: &RistrettoPublic) -> u64 {
     let mut hasher = Blake2b512::new();
     hasher.update(&AMOUNT_TOKEN_ID_DOMAIN_TAG);
     hasher.update(&shared_secret.to_bytes());
-    u32::from_le_bytes(hasher.finalize()[0..4].try_into().unwrap())
+    u64::from_le_bytes(hasher.finalize()[0..8].try_into().unwrap())
 }
 
 /// Computes `Blake2B("blinding" | shared_secret)`.
@@ -266,7 +266,7 @@ mod amount_tests {
             /// MaskedAmount::new() should return Ok for valid values and blindings.
             fn test_new_ok(
                 value in any::<u64>(),
-                token_id in any::<u32>(),
+                token_id in any::<u64>(),
                 shared_secret in arbitrary_ristretto_public()) {
                     let amount = Amount { value, token_id: token_id.into() };
                 assert!(MaskedAmount::new(amount, &shared_secret).is_ok());
@@ -277,7 +277,7 @@ mod amount_tests {
             /// amount.commitment should agree with the value and blinding.
             fn test_commitment(
                 value in any::<u64>(),
-                token_id in any::<u32>(),
+                token_id in any::<u64>(),
                 shared_secret in arbitrary_ristretto_public()) {
                     let amount = Amount { value, token_id: token_id.into() };
                     let amount = MaskedAmount::new(amount, &shared_secret).unwrap();
@@ -290,7 +290,7 @@ mod amount_tests {
             /// amount.unmask_value should return the value used to construct the amount.
             fn test_unmask_value(
                 value in any::<u64>(),
-                token_id in any::<u32>(),
+                token_id in any::<u64>(),
                 shared_secret in arbitrary_ristretto_public())
             {
                 let amount = Amount { value, token_id: token_id.into() };
@@ -305,7 +305,7 @@ mod amount_tests {
             /// get_value should return the correct value and blinding.
             fn test_get_value_ok(
                 value in any::<u64>(),
-                token_id in any::<u32>(),
+                token_id in any::<u64>(),
                 shared_secret in arbitrary_ristretto_public()) {
                 let amount = Amount { value, token_id: token_id.into() };
                 let masked_amount = MaskedAmount::new(amount.clone(), &shared_secret).unwrap();
@@ -320,7 +320,7 @@ mod amount_tests {
             /// get_value should return InconsistentCommitment if the masked value is incorrect.
             fn test_get_value_incorrect_masked_value(
                 value in any::<u64>(),
-                token_id in any::<u32>(),
+                token_id in any::<u64>(),
                 other_masked_value in any::<u64>(),
                 shared_secret in arbitrary_ristretto_public())
             {
@@ -338,7 +338,7 @@ mod amount_tests {
             /// get_value should return an Error if shared_secret is incorrect.
             fn test_get_value_invalid_shared_secret(
                 value in any::<u64>(),
-                token_id in any::<u32>(),
+                token_id in any::<u64>(),
                 shared_secret in arbitrary_ristretto_public(),
                 other_shared_secret in arbitrary_ristretto_public(),
             ) {
