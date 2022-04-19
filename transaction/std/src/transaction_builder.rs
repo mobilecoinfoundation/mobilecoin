@@ -38,6 +38,15 @@ impl TxOutputsOrdering for DefaultTxOutputsOrdering {
     }
 }
 
+/// Transaction output context is produced by add_output method
+/// Used for receipt creation
+#[derive(Debug)]
+pub struct TxOutContext {
+    tx_out: TxOut,
+    confirmation: TxOutConfirmationNumber,
+    shared_secret: RistrettoPublic
+}
+
 /// Helper utility for building and signing a CryptoNote-style transaction,
 /// and attaching fog hint and memos as appropriate.
 ///
@@ -142,7 +151,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         value: u64,
         recipient: &PublicAddress,
         rng: &mut RNG,
-    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+    ) -> Result<TxOutContext, TxBuilderError> {
         // Taking self.memo_builder here means that we can call functions on &mut self,
         // and pass them something that has captured the memo builder.
         // Calling take() on Option<Box> is just moving a pointer.
@@ -207,7 +216,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         value: u64,
         change_destination: &ChangeDestination,
         rng: &mut RNG,
-    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+    ) -> Result<TxOutContext, TxBuilderError> {
         // Taking self.memo_builder here means that we can call functions on &mut self,
         // and pass them something that has captured the memo builder.
         // Calling take() on Option<Box> is just moving a pointer.
@@ -265,7 +274,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         fog_hint_address: &PublicAddress,
         memo_fn: impl FnOnce(MemoContext) -> Result<Option<MemoPayload>, NewMemoError>,
         rng: &mut RNG,
-    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+    ) -> Result<TxOutContext, TxBuilderError> {
         let (hint, pubkey_expiry) = create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
         let amount = Amount {
             value,
@@ -281,7 +290,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 
         let confirmation = TxOutConfirmationNumber::from(&shared_secret);
 
-        Ok((tx_out, confirmation))
+        Ok(TxOutContext{tx_out, confirmation, shared_secret})
     }
 
     /// Sets the tombstone block, clamping to smallest pubkey expiry value.
