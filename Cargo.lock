@@ -3040,6 +3040,7 @@ dependencies = [
  "grpcio",
  "hex",
  "lazy_static",
+ "mc-account-keys",
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-enclave-api",

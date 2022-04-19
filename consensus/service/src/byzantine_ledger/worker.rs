@@ -538,9 +538,8 @@ impl<
         let _active = mark_span_as_active(span);
 
         // Update pending value processing time metrics.
-        // TODO: need to rename tx_hash here
-        for tx_hash in externalized.iter() {
-            if let Some(timestamp) = self.pending_values.get_timestamp_for_value(tx_hash) {
+        for value in externalized.iter() {
+            if let Some(timestamp) = self.pending_values.get_timestamp_for_value(value) {
                 let duration = Instant::now().saturating_duration_since(timestamp);
                 counters::PENDING_VALUE_PROCESSING_TIME.observe(duration.as_secs_f64());
             }
@@ -878,14 +877,16 @@ mod tests {
             IS_BEHIND_GRACE_PERIOD, MAX_PENDING_VALUES_TO_NOMINATE,
         },
         mint_tx_manager::MockMintTxManager,
-        tx_manager::{MockTxManager, TxManagerError},
+        tx_manager::{MockTxManager, TxManager, TxManagerError, TxManagerImpl},
+        validators::DefaultTxManagerUntrustedInterfaces,
     };
+    use mc_account_keys::AccountKey;
     use mc_common::{
         logger::{test_with_logger, Logger},
         NodeID, ResponderId,
     };
     use mc_connection::ConnectionManager;
-    use mc_consensus_enclave_mock::MockConsensusEnclave;
+    use mc_consensus_enclave_mock::{ConsensusServiceMockEnclave, MockConsensusEnclave};
     use mc_consensus_scp::{
         msg::{NominatePayload, Topic::Nominate},
         MockScpNode, Msg, QuorumSet,
@@ -895,7 +896,12 @@ mod tests {
     use mc_ledger_sync::{LedgerSyncError, MockLedgerSync, SCPNetworkState};
     use mc_peers::{ConsensusMsg, ConsensusValue, MockBroadcast, VerifiedConsensusMsg};
     use mc_peers_test_utils::MockPeerConnection;
-    use mc_transaction_core::{tx::TxHash, validation::TransactionValidationError, Block};
+    use mc_transaction_core::{
+        tx::{Tx, TxHash},
+        validation::TransactionValidationError,
+        Block, BlockVersion,
+    };
+    use mc_transaction_core_test_utils::{create_ledger, create_transaction, initialize_ledger};
     use mc_util_metered_channel::{Receiver, Sender};
     use mc_util_metrics::OpMetrics;
     use mockall::predicate::eq;
@@ -1536,9 +1542,111 @@ mod tests {
         worker.propose_pending_values();
     }
 
-    // TODO: test process_consensus_msgs
+    #[test_with_logger]
+    fn test_complete_current_slot(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let block_version = BlockVersion::MAX;
+        let sender = AccountKey::random(&mut rng);
+        let recipient = AccountKey::random(&mut rng);
+        let mut ledger = create_ledger();
+        let n_blocks = 1;
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
-    // TODO: test complete_current_slot
+        let origin_block_contents = ledger.get_block_contents(0).unwrap();
+
+        let txs: Vec<Tx> = (0..3)
+            .map(|i| {
+                let tx_out = origin_block_contents.outputs[i].clone();
+
+                create_transaction(
+                    block_version,
+                    &mut ledger,
+                    &tx_out,
+                    &sender,
+                    &recipient.default_subaddress(),
+                    n_blocks + 1,
+                    &mut rng,
+                )
+            })
+            .collect();
+
+        let (local_node_id, _local_node_uri, msg_signer_key) = get_local_node_config(11);
+
+        // Local node's quorum set.
+        let peers = get_peers(&[22, 33], &mut rng);
+        let quorum_set =
+            QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
+
+        let (
+            _enclave,
+            mut scp_node,
+            _ledger,
+            mut ledger_sync,
+            _tx_manager,
+            mint_tx_manager,
+            broadcast,
+        ) = get_mocks(&local_node_id, &quorum_set, n_blocks);
+        let enclave = ConsensusServiceMockEnclave::default();
+
+        let tx_manager = TxManagerImpl::new(
+            enclave.clone(),
+            DefaultTxManagerUntrustedInterfaces::new(ledger.clone()),
+            logger.clone(),
+        );
+
+        let connection_manager = get_connection_manager(&local_node_id, &peers, &logger);
+
+        let (_task_sender, task_receiver) = get_channel();
+
+        let hash_tx1 = tx_manager
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(&txs[0]))
+            .unwrap();
+
+        let hash_tx2 = tx_manager
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(&txs[1]))
+            .unwrap();
+
+        let hash_tx3 = tx_manager
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(&txs[2]))
+            .unwrap();
+
+        // Configure our mocks to land us into complete_current_slot
+        ledger_sync.expect_is_behind().return_const(false);
+        scp_node
+            .expect_max_externalized_slots()
+            .return_const(5 as usize);
+        scp_node.expect_process_timeouts().return_const(Vec::new());
+        scp_node.expect_get_externalized_values().return_const(vec![
+            ConsensusValue::TxHash(hash_tx1),
+            /*ConsensusValue::TxHash(hash_tx2),
+             *ConsensusValue::TxHash(hash_tx3), */
+        ]);
+
+        let mut worker = ByzantineLedgerWorker::new(
+            enclave,
+            Box::new(scp_node),
+            msg_signer_key,
+            ledger.clone(),
+            ledger_sync,
+            connection_manager,
+            Arc::new(tx_manager),
+            Arc::new(mint_tx_manager),
+            Arc::new(Mutex::new(broadcast)),
+            task_receiver,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(AtomicU64::new(0)),
+            Arc::new(Mutex::new(Option::<ConsensusMsg>::None)),
+            logger,
+        );
+
+        worker.tick();
+
+        // A new block should appear, with the outputs of our transactions.
+        let block_contents = ledger.get_block_contents(n_blocks).unwrap();
+        panic!("{}", block_contents.outputs.len());
+    }
+
+    // TODO: test process_consensus_msgs
 
     // TODO: test fetch_missing_txs
 

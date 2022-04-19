@@ -61,6 +61,7 @@ serde_json = "1.0"
 mc-sgx-build = { path = "../../sgx/build" }
 
 [dev-dependencies]
+mc-account-keys = { path = "../../account-keys" }
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-consensus-enclave-mock = { path = "../../consensus/enclave/mock" }
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
