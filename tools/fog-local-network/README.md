@@ -33,7 +33,7 @@ In order to use it, the following steps are necessary.
 
 3) Bootstrap a ledger:
     ```
-    cargo run mc-util-generate-sample-ledger --release -- --txs 100
+    cargo run -p mc-util-generate-sample-ledger --release -- --txs 100
     ```
 
 4) Start a local network, for example:
