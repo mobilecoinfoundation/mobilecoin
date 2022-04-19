@@ -1003,13 +1003,14 @@ mod tests {
     // This private key was generated using the mc-util-seeded-ed25519-key-gen
     // utility with the seed
     // abababababababababababababababababababababababababababababababab
-    const MASTER_MINTERS_ADMIN_PRIVATE_KEY: [u8; 32] = [
+    const MINTING_TRUST_ROOT_PRIVATE_KEY: [u8; 32] = [
         168, 15, 220, 134, 238, 251, 210, 7, 24, 78, 21, 168, 197, 250, 1, 139, 23, 64, 154, 172,
         192, 125, 32, 148, 183, 78, 167, 52, 170, 254, 120, 64,
     ];
 
     fn sign_master_minters_map(map: &MasterMintersMap) -> Option<Ed25519Signature> {
-        let private_key = Ed25519Private::try_from(&MASTER_MINTERS_ADMIN_PRIVATE_KEY[..]).unwrap();
+        let private_key =
+            Ed25519Private::try_from(&MINTING_TRUST_ROOT_PRIVATE_KEY[..]).unwrap();
         Some(
             Ed25519Pair::from(private_key)
                 .sign_master_minters_map(map)
