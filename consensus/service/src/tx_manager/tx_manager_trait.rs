@@ -1,11 +1,12 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::tx_manager::TxManagerResult;
 use mc_attest_enclave_api::{EnclaveMessage, PeerSession};
 use mc_common::HashSet;
 use mc_consensus_enclave::{TxContext, WellFormedEncryptedTx};
-use mc_peers::ConsensusValue;
-use mc_transaction_core::{tx::TxHash, Block, BlockContents, BlockSignature};
+use mc_transaction_core::{
+    tx::{TxHash, TxOutMembershipProof},
+};
 
 #[cfg(test)]
 use mockall::*;
@@ -40,9 +41,8 @@ pub trait TxManager: Send {
     // TODO rename since this is no longer specific to just hashes
     fn tx_hashes_to_block(
         &self,
-        value: Vec<ConsensusValue>,
-        parent_block: &Block,
-    ) -> TxManagerResult<(Block, BlockContents, BlockSignature)>;
+        value: &[TxHash],
+    ) -> TxManagerResult<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>>;
 
     /// Creates a message containing a set of transactions that are encrypted
     /// for a peer.

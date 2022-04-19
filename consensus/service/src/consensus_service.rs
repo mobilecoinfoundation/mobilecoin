@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The MobileCoin consensus service.
 
@@ -508,6 +508,7 @@ impl<
             .set(ByzantineLedger::new(
                 self.local_node_id.clone(),
                 self.config.network().quorum_set(),
+                self.enclave.clone(),
                 self.peer_manager.clone(),
                 self.ledger_db.clone(),
                 self.tx_manager.clone(),

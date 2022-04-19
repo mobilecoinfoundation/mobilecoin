@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! TxManager maps operations on transaction hashes to in-enclave operations on
 //! the corresponding transactions.
@@ -14,13 +14,11 @@ use mc_common::{
     HashMap, HashSet,
 };
 use mc_consensus_enclave::{
-    ConsensusEnclave, FormBlockInputs, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    ConsensusEnclave, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
-use mc_peers::ConsensusValue;
 use mc_transaction_core::{
     constants::MAX_TRANSACTIONS_PER_BLOCK,
     tx::{TxHash, TxOutMembershipProof},
-    Block, BlockContents, BlockSignature,
 };
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -261,33 +259,14 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
     /// # Arguments
     /// * `tx_hashes` - Hashes of well-formed transactions that are valid w.r.t.
     ///   te current ledger.
-    /// * `parent_block` - The last block written to the ledger.
     fn tx_hashes_to_block(
         &self,
-        values: Vec<ConsensusValue>,
-        parent_block: &Block,
-    ) -> TxManagerResult<(Block, BlockContents, BlockSignature)> {
-        let mut tx_hashes = Vec::new();
-        let mut mint_config_txs = Vec::new();
-        let mut mint_txs = Vec::new();
-
-        for value in values {
-            match value {
-                ConsensusValue::TxHash(tx_hash) => tx_hashes.push(tx_hash),
-                ConsensusValue::MintConfigTx(mint_config_tx) => {
-                    mint_config_txs.push(mint_config_tx);
-                }
-                ConsensusValue::MintTx(mint_tx) => {
-                    mint_txs.push(mint_tx);
-                }
-            }
-        }
-
+        tx_hashes: &[TxHash],
+    ) -> TxManagerResult<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>> {
         let cache = self.lock_cache();
         let cache_entries = Self::get_cache_entries(&cache, tx_hashes.iter())?;
 
-        // Proceed with forming the block.
-        let well_formed_encrypted_txs_with_proofs = cache_entries
+        cache_entries
             .into_iter()
             .map(|entry| {
                 // Highest indices proofs must be w.r.t. the current ledger.
@@ -298,24 +277,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
 
                 Ok((entry.encrypted_tx().clone(), highest_index_proofs))
             })
-            .collect::<Result<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>, TxManagerError>>()?;
-
-        let root_element = self.untrusted.get_root_tx_out_membership_element()?;
-
-        let (block, block_contents, mut signature) = self.enclave.form_block(
-            parent_block,
-            FormBlockInputs {
-                well_formed_encrypted_txs_with_proofs,
-                mint_config_txs,
-                mint_txs,
-            },
-            &root_element,
-        )?;
-
-        // The enclave cannot provide a timestamp, so this happens in untrusted.
-        signature.set_signed_at(chrono::Utc::now().timestamp() as u64);
-
-        Ok((block, block_contents, signature))
+            .collect::<Result<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>, TxManagerError>>()
     }
 
     /// Creates a message containing a set of transactions that are encrypted
@@ -380,11 +342,9 @@ mod tests {
     use mc_consensus_enclave_mock::{
         ConsensusServiceMockEnclave, Error as EnclaveError, MockConsensusEnclave,
     };
-    use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
-    use mc_ledger_db::Ledger;
     use mc_transaction_core::{
         membership_proofs::Range, tx::TxOutMembershipElement,
-        validation::TransactionValidationError, BlockVersion,
+        validation::TransactionValidationError,
     };
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
@@ -768,12 +728,7 @@ mod tests {
     #[test_with_logger]
     // Should return correct block when all transactions are in the cache.
     fn test_hashes_to_block_ok(logger: Logger) {
-        let tx_hashes = vec![
-            TxHash([7u8; 32]).into(),
-            TxHash([44u8; 32]).into(),
-            TxHash([3u8; 32]).into(),
-        ];
-        let parent_block = Block::new_origin_block(&vec![]);
+        let tx_hashes = vec![TxHash([7u8; 32]), TxHash([44u8; 32]), TxHash([3u8; 32])];
 
         let mut mock_untrusted = MockUntrustedInterfaces::new();
 
@@ -787,54 +742,21 @@ mod tests {
             .times(tx_hashes.len())
             .return_const(Ok(highest_index_proofs));
 
-        // Should get root txout membership element once per block.
-        mock_untrusted
-            .expect_get_root_tx_out_membership_element()
-            .times(1)
-            .return_const(Ok(TxOutMembershipElement::new(
-                Range::new(0, 1).unwrap(),
-                [1; 32],
-            )));
-
         let mut mock_enclave = MockConsensusEnclave::new();
-        let expected_block = Block::new_origin_block(&vec![]);
-        let expected_block_contents = BlockContents::default();
-        // The enclave does not set the signed_at field.
-        let expected_block_signature =
-            BlockSignature::new(Ed25519Signature::default(), Ed25519Public::default(), 0);
-
-        mock_enclave.expect_form_block().times(1).return_const(Ok((
-            expected_block.clone(),
-            expected_block_contents.clone(),
-            expected_block_signature.clone(),
-        )));
-
         let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger);
 
         // All transactions must be in the cache.
         for tx_hash in &tx_hashes {
-            match tx_hash {
-                ConsensusValue::TxHash(tx_hash) => {
-                    let cache_entry = CacheEntry {
-                        encrypted_tx: Default::default(),
-                        context: Arc::new(Default::default()),
-                    };
-                    tx_manager.lock_cache().insert(*tx_hash, cache_entry);
-                }
-                ConsensusValue::MintConfigTx(_) => panic!("Unexpected MintConfigTx"),
-                ConsensusValue::MintTx(_) => panic!("Unexpected MintTx"),
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: Arc::new(Default::default()),
             };
+            tx_manager.lock_cache().insert(*tx_hash, cache_entry);
         }
 
-        match tx_manager.tx_hashes_to_block(tx_hashes, &parent_block) {
-            Ok((block, block_contents, block_signature)) => {
-                assert_eq!(block, expected_block);
-                assert_eq!(block_contents, expected_block_contents);
-                // The signed_at field of the signature should be non-zero.
-                assert!(block_signature.signed_at() > 0);
-            }
-            Err(e) => panic!("Unexpected error {:?}", e),
-        }
+        let well_formed_encrypted_txs_with_proofs =
+            tx_manager.tx_hashes_to_block(&tx_hashes[..]).unwrap();
+        assert_eq!(well_formed_encrypted_txs_with_proofs.len(), tx_hashes.len());
     }
 
     #[test_with_logger]
@@ -847,33 +769,23 @@ mod tests {
             logger,
         );
 
-        let mut tx_hashes = vec![
-            TxHash([7u8; 32]).into(),
-            TxHash([44u8; 32]).into(),
-            TxHash([3u8; 32]).into(),
-        ];
-        let parent_block = Block::new_origin_block(&vec![]);
+        let mut tx_hashes = vec![TxHash([7u8; 32]), TxHash([44u8; 32]), TxHash([3u8; 32])];
 
         // Add three transactions to the cache.
         for tx_hash in &tx_hashes {
-            match tx_hash {
-                ConsensusValue::TxHash(tx_hash) => {
-                    let cache_entry = CacheEntry {
-                        encrypted_tx: Default::default(),
-                        context: Arc::new(Default::default()),
-                    };
-                    tx_manager.lock_cache().insert(*tx_hash, cache_entry);
-                }
-                _ => panic!("unexpected value"),
-            }
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: Arc::new(Default::default()),
+            };
+            tx_manager.lock_cache().insert(*tx_hash, cache_entry);
         }
 
         // This transaction is not in the cache.
         let not_in_cache = TxHash([66u8; 32]);
-        tx_hashes.insert(2, ConsensusValue::TxHash(not_in_cache.clone()));
+        tx_hashes.insert(2, not_in_cache.clone());
 
-        match tx_manager.tx_hashes_to_block(tx_hashes, &parent_block) {
-            Ok((_block, _block_contents, _block_signature)) => {
+        match tx_manager.tx_hashes_to_block(&tx_hashes[..]) {
+            Ok(_) => {
                 panic!();
             }
             Err(TxManagerError::NotInCache(hashes)) => {
@@ -884,6 +796,8 @@ mod tests {
         }
     }
 
+    // TODO move this to worker tests
+    /*
     #[test_with_logger]
     fn test_hashes_to_block(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
@@ -1028,6 +942,7 @@ mod tests {
         // The ledger was previously initialized with 3 blocks.
         assert_eq!(block.index, 3);
     }
+    */
 
     #[test_with_logger]
     // Should call enclave.txs_for_peer

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A Federated, Byzantine Fault-Tolerant Ledger.
 //!
@@ -19,6 +19,7 @@ use crate::{
 use displaydoc::Display;
 use mc_common::{logger::Logger, NodeID, ResponderId};
 use mc_connection::{BlockchainConnection, ConnectionManager};
+use mc_consensus_enclave::ConsensusEnclave;
 use mc_consensus_scp::{scp_log::LoggingScpNode, Node, QuorumSet, ScpNode};
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
@@ -94,6 +95,7 @@ impl ByzantineLedger {
     /// # Arguments
     /// * `node_id` - The local node's ID.
     /// * `quorum_set` - The local node's quorum set.
+    /// * `enclave` - Consensus enclave.
     /// * `peer_manager` - PeerManager
     /// * `ledger` - The local node's ledger.
     /// * `tx_manager` - TxManager
@@ -103,15 +105,17 @@ impl ByzantineLedger {
     /// * `tx_source_urls` - Source URLs for fetching block contents.
     /// * `scp_debug_dir` - If Some, debugging info will be written in this
     ///   directory.
-    /// * `logger` -
+    /// * `logger` - Logger.
     pub fn new<
         PC: BlockchainConnection + ConsensusConnection + 'static,
         L: Ledger + Clone + Sync + 'static,
         TXM: TxManager + Send + Sync + 'static,
         MTXM: MintTxManager + Send + Sync + 'static,
+        E: ConsensusEnclave + Send + Sync + 'static,
     >(
         node_id: NodeID,
         quorum_set: QuorumSet,
+        enclave: E,
         peer_manager: ConnectionManager<PC>,
         ledger: L,
         tx_manager: Arc<TXM>,
@@ -215,6 +219,7 @@ impl ByzantineLedger {
             );
 
             let mut worker = ByzantineLedgerWorker::new(
+                enclave,
                 scp_node,
                 msg_signer_key,
                 ledger,
@@ -432,6 +437,10 @@ mod tests {
         let num_blocks = 1;
         initialize_ledger(BLOCK_VERSION, &mut ledger, num_blocks, &sender, &mut rng);
 
+        // Mock enclave.
+        let enclave = ConsensusServiceMockEnclave::default();
+        enclave.blockchain_config.lock().unwrap().block_version = BLOCK_VERSION;
+
         // Mock peer_manager
         let peer_manager = ConnectionManager::new(
             vec![
@@ -463,6 +472,7 @@ mod tests {
         let byzantine_ledger = ByzantineLedger::new(
             local_node_id.clone(),
             local_quorum_set.clone(),
+            enclave,
             peer_manager,
             ledger.clone(),
             tx_manager.clone(),
@@ -554,6 +564,7 @@ mod tests {
         let byzantine_ledger = ByzantineLedger::new(
             local_node_id.clone(),
             local_quorum_set.clone(),
+            enclave,
             peer_manager,
             ledger.clone(),
             tx_manager.clone(),
@@ -932,6 +943,7 @@ mod tests {
         let byzantine_ledger = ByzantineLedger::new(
             local_node_id.clone(),
             local_quorum_set.clone(),
+            enclave,
             peer_manager,
             ledger.clone(),
             tx_manager,
