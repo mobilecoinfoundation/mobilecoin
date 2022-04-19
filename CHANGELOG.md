@@ -11,6 +11,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
  - Encrypted Memos ([MCIP #3](https://github.com/mobilecoinfoundation/mcips/pull/3))
  - Recoverable Transaction History ([MCIP #4](https://github.com/mobilecoinfoundation/mcips/pull/4))
+ - Fog Ledger now performs key image checks obliviously in the enclave, using ORAM ([PR](https://github.com/mobilecoinfoundation/fog/pull/101)).
  - Consensus/Fog repository merge
 
 ### Changed
@@ -18,6 +19,12 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
  - Updated SGX to 2.15
  - Lock enclave no-debug mode when building for IAS production.
  - Update Rust toolchain to `nightly-2021-07-21`.
+
+### Bugs Fixed
+ - Fixed a problem with data authentication in the Fog OCALL Oram Storage interface
+   (Thanks to @AmbitionXiang for reporting!) ([Tracking issue](https://github.com/mobilecoinfoundation/mobilecoin/issues/1576))
+ - Fixed Fog services sometimes returning the wrong grpc error code for attestation failures
+ - Added missing retries for connectivity issues with PostGRES database in Fog services
 
 #### Rust Dependencies
 
