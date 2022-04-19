@@ -1,6 +1,8 @@
 #!/bin/bash
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 #
+# Wrapper around the mobilecoind test_client.py to set up environment for testing.
+#
 
 set -e
 

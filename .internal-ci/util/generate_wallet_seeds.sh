@@ -2,6 +2,7 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 #
 # Generate seeds for initial and fog wallets.
+# Checks for to see if seed values exist. If not generate a random seed values.
 
 set -e
 

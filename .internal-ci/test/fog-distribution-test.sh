@@ -1,6 +1,8 @@
 #!/bin/bash
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 #
+# Wrapper around fog-distribution binary to add some simple checks and clean defaults.
+#
 
 set -e
 

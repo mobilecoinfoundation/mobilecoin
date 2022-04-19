@@ -1,6 +1,8 @@
 #!/bin/bash
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 #
+# entrypoint script for the go-grpc-gateway (json -> grpc)
+#
 
 # exit if anything fails.
 if [[ ${ENTRYPOINT_DEBUG} == "true" ]]; then
