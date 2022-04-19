@@ -835,17 +835,21 @@ impl<
             }
         }
 
-        // TODO
+        // Resolve hashes into well formed encrypted txs and associated proofs.
         let well_formed_encrypted_txs_with_proofs = self
             .tx_manager
             .tx_hashes_to_well_formed_encrypted_txs_and_proofs(&tx_hashes)
             .unwrap_or_else(|e| panic!("Failed to build block from {:?}: {:?}", tx_hashes, e));
 
+        // Get the root membership element, which is needed for validating the
+        // membership proofs (and also storing in the block for bookkeeping
+        // purposes).
         let root_element = self
             .ledger
             .get_root_tx_out_membership_element()
-            .expect("TODO");
+            .expect("Failed getting root tx out membership element");
 
+        // Request the enclave to form the next block.
         let (block, block_contents, mut signature) = self
             .enclave
             .form_block(
@@ -857,7 +861,7 @@ impl<
                 },
                 &root_element,
             )
-            .expect("TODO");
+            .expect("form_block failed");
 
         // The enclave cannot provide a timestamp, so this happens in untrusted.
         signature.set_signed_at(chrono::Utc::now().timestamp() as u64);

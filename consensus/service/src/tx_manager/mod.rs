@@ -737,7 +737,7 @@ mod tests {
         // All transactions must be in the cache.
         for tx_hash in &tx_hashes {
             let cache_entry = CacheEntry {
-                encrypted_tx: Default::default(),
+                encrypted_tx: WellFormedEncryptedTx(tx_hash.to_vec()),
                 context: Arc::new(Default::default()),
             };
             tx_manager.lock_cache().insert(*tx_hash, cache_entry);
@@ -748,7 +748,19 @@ mod tests {
             .unwrap();
         assert_eq!(well_formed_encrypted_txs_with_proofs.len(), tx_hashes.len());
 
-        // TODO validate encrypted txs match the provided hashes.
+        assert_eq!(
+            well_formed_encrypted_txs_with_proofs[0].0 .0,
+            tx_hashes[0].to_vec()
+        );
+        assert_eq!(
+            well_formed_encrypted_txs_with_proofs[1].0 .0,
+            tx_hashes[1].to_vec()
+        );
+
+        assert_eq!(
+            well_formed_encrypted_txs_with_proofs[2].0 .0,
+            tx_hashes[2].to_vec()
+        );
     }
 
     #[test_with_logger]
