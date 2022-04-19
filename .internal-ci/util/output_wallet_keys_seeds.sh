@@ -1,6 +1,9 @@
 #!/bin/bash
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 #
+# Utility to mask and output seeds for GHA workflows.
+#
+
 set -e
 
 BASE_PATH="${BASE_PATH:-.tmp/wallet_seeds}"

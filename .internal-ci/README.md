@@ -27,17 +27,19 @@ Promote a release by submitting a PR to merge code into `main`.
 
 Tag and create a GitHub Release for the git commit on `main`.
 
-Merge `main` back into `develop` for a clean history.
-
 **Patch**
 
-A Patch release is for non-enclave changes to be applied between Major or Minor (enclave) releases. Create a `release/v*.*.*`  cut off the latest tag in `main`.
+A Patch release is for non-enclave changes to be applied between Major or Minor (enclave) releases. Create a `release/v*.*.*`  cut off the current `release/v*.*.*`.
 
 Follow the same testing/deployment process described in above in Releases.
+
 
 ### Branch Reference
 
 - `main` is consistent with the latest release.
+  - When merging to main make sure you Tag and create a GitHub Release
+  - Target with manual (workflow_dispatch) build for TestNet/MainNet and other stable environments.  Will expect an external signed enclave.
+  - Creates artifacts like `v0.0.0-test, v0.0.0-prod`.
 - `develop` (default) is the edge branch and would be the PR/merge target between releases.
   - automatically built and deployed to `develop` namespace.
   - GHA cache will share cache targets from the default branch with other branches, (`feature`, `release`...)
@@ -46,13 +48,18 @@ Follow the same testing/deployment process described in above in Releases.
   - dev deploy is automatically torn down when branch is removed.
   - branches are removed once pr is merged into `develop`
   - Outside forks would be reviewed and then merged into a feature branch for deployment and testing before merge into `develop`
-- `release/0.0.0` semver release branches
-  - cut from `develop` and/or cherry-picked features.
-    - for Hotfix, cut from `main` and add features.
-  - automatically builds `v0.0.0-dev` releases
-  - can target with manual (push button) build for TestNet/MainNet and other stable environments.  Will expect an external signed enclave `v0.0.0-test, v0.0.0-prod`.
-  - Merged into `main` and back into `develop` on successful release.
-  - `main` should be tagged and a release cut.
+- `release/v*.*.*` semver release branches
+  - New Release
+    - Cut from `develop`.
+    - Will automatically builds `v0.0.0-dev` releases
+    - Merge into `main` on successful testing.
+    - `main` should be tagged and a release cut.
+  - Non-enclave patch fixes to an existing release
+    - cut from latest `release/v*.*.*` and add fixes.
+    - merge fixes back up to any current in flight `release/v*.*.*` branches and `develop`.
+    - Will automatically builds `v0.0.0-dev` releases
+    - Merge into `main` on successful testing.
+    - `main` should be tagged and a release cut.
 
 ### Fork Workflow
 
@@ -74,8 +81,8 @@ It is important to review all external changes with an eye toward security. Spec
 
 This process will create a set of versioned docker containers and helm charts for deploying the release.
 
-- Containers - https://hub.docker.com/mobilecoin
-- Charts - https://s3.us-east-2.amazonaws.com/charts.mobilecoin.com/
+- Containers - https://hub.docker.com/u/mobilecoin
+- Helm Chart Repo URL - https://s3.us-east-2.amazonaws.com/charts.mobilecoin.com/
 
 ### Versioning
 
@@ -104,7 +111,7 @@ v0.0.0-my-awesome-feature.21.sha-abcd1234
 
 **Release branches**
 
-- `release/v1.2.0` valid characters `v[0-9].`
+- `release/v1.2.0` valid characters `v[0-9]+/.[0-9]+/.[0-9]+`
 - Release branches will be normalized for versioning, namespaces, dns...
   - namespaces will be prefixed with `release-`
   - semver will be set to match the branch name.

@@ -1,9 +1,8 @@
 #!/bin/bash
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 #
-# populate_origin_data.sh
+# Generate ledger/data.mdb, initial/fog keys for development builds
 #
-# Generate ledger/data.mdb for development builds
 # TODO: Restore ledger/data.mdb for persistent builds.
 
 set -e

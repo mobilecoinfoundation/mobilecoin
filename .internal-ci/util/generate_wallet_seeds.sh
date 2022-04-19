@@ -1,6 +1,7 @@
 #!/bin/bash
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 #
+# Generate seeds for initial and fog wallets.
 
 set -e
 

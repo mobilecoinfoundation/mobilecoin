@@ -1,13 +1,29 @@
 #!/bin/bash
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 #
-# Generate artifact metadata
+# Generate metadata for GitHub Actions workflows.
+#
 
 set -e
 
-location=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-# shellcheck disable=SC1091 # Shellcheck doesn't like variable source path.
-. "${location}/source.sh"
+export TMPDIR=".tmp"
+
+error_exit()
+{
+  msg="${1}"
+
+  echo "${msg}" 1>&2
+  exit 1
+}
+
+is_set()
+{
+  var_name="${1}"
+
+  if [ -z "${!var_name}" ]; then
+    error_exit "${var_name} is not set."
+  fi
+}
 
 # check for github reference variables.
 is_set GITHUB_REF_NAME
@@ -68,6 +84,7 @@ fi
 
 echo "::set-output name=version::${version}"
 echo "::set-output name=branch::${branch}"
+echo "::set-output name=namespace::mc-${branch}"
 echo "::set-output name=sha::${sha}"
 echo "::set-output name=tag::${tag}"
 echo "::set-output name=docker_tag::${docker_tag}"

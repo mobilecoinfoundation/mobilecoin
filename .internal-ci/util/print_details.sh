@@ -1,6 +1,8 @@
 #!/bin/bash
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 #
+# Print generated development environment details.
+#
 cat << EOF
 --- Namespace ---
 

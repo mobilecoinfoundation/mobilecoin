@@ -1,17 +1,17 @@
 #!/bin/bash
 # Copyright (c) 2018-2022 The MobileCoin Foundation
 #
-# This script will grab binaries from an existing build are rebuild
+# This script will grab binaries from an existing build and rebuild
 #   the containers/charts with the current configuration.
-
 #   Use with caution.
 
 set -e
 set -x
 
+source_org=mobilecoin
 source_tag=demo-v20220307170316
 
-push_org=jgreat
+push_org=mobilecoin
 push_tag=1.1.3-dev
 
 images=(bootstrap-tools fogingest fog-ledger fogreport fogview go-grpc-gateway mobilecoind node_hw fog-test-client)
@@ -21,7 +21,7 @@ charts=(consensus-node consensus-node-config fog-ingest fog-ingest-config fog-se
 for i in "${images[@]}"
 do
     docker rm "${i}" || true
-    docker create --name "${i}" "mobilecoin/${i}:${source_tag}"
+    docker create --name "${i}" "${source_org}/${i}:${source_tag}"
 done
 
 mkdir -p target/release
