@@ -36,8 +36,8 @@ pub enum Error {
     /// Amount exceeds mint limit
     AmountExceedsMintLimit,
 
-    /// No master minters configured for token id {0}
-    NoMasterMinters(TokenId),
+    /// No governors configured for token id {0}
+    NoGovernors(TokenId),
 
     /// Nonce already seen in ledger
     NonceAlreadyUsed,

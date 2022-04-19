@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! A helper object for maintaining a map of token id -> master minters
+//! A helper object for maintaining a map of token id -> governors
 //! signatures.
 
 use alloc::collections::BTreeMap;
@@ -12,17 +12,17 @@ use mc_crypto_multisig::SignerSet;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Serialize};
 
-/// A map of master minters by token id.
+/// A map of governors by token id.
 #[derive(Clone, Debug, Default, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize)]
-pub struct MasterMintersMap {
-    /// The actual map of token_id to master minters.
+pub struct GovernorsMap {
+    /// The actual map of token_id to governors.
     /// Since we hash this map, it is important to use a BTreeMap as it
     /// guarantees iterating over the map is in sorted and predictable
     /// order.
     map: BTreeMap<TokenId, SignerSet<Ed25519Public>>,
 }
 
-impl TryFrom<BTreeMap<TokenId, SignerSet<Ed25519Public>>> for MasterMintersMap {
+impl TryFrom<BTreeMap<TokenId, SignerSet<Ed25519Public>>> for GovernorsMap {
     type Error = Error;
 
     fn try_from(map: BTreeMap<TokenId, SignerSet<Ed25519Public>>) -> Result<Self, Self::Error> {
@@ -32,13 +32,13 @@ impl TryFrom<BTreeMap<TokenId, SignerSet<Ed25519Public>>> for MasterMintersMap {
     }
 }
 
-impl AsRef<BTreeMap<TokenId, SignerSet<Ed25519Public>>> for MasterMintersMap {
+impl AsRef<BTreeMap<TokenId, SignerSet<Ed25519Public>>> for GovernorsMap {
     fn as_ref(&self) -> &BTreeMap<TokenId, SignerSet<Ed25519Public>> {
         &self.map
     }
 }
 
-impl MasterMintersMap {
+impl GovernorsMap {
     /// Create a map from an unsorted iterator.
     pub fn try_from_iter(
         iter: impl IntoIterator<Item = (TokenId, SignerSet<Ed25519Public>)>,
@@ -47,12 +47,9 @@ impl MasterMintersMap {
         Self::try_from(map)
     }
 
-    /// Get the master mintersfor a given token id, or None if token has no
-    /// master minters.
-    pub fn get_master_minters_for_token(
-        &self,
-        token_id: &TokenId,
-    ) -> Option<SignerSet<Ed25519Public>> {
+    /// Get the governorsfor a given token id, or None if token has no
+    /// governors.
+    pub fn get_governors_for_token(&self, token_id: &TokenId) -> Option<SignerSet<Ed25519Public>> {
         self.map.get(token_id).cloned()
     }
 
@@ -108,10 +105,10 @@ impl MasterMintersMap {
     }
 }
 
-/// MasterMinters Map error type.
+/// Governors Map error type.
 #[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
 pub enum Error {
-    /// Mob token is not allowed to be a master minter.
+    /// Mob token is not allowed to be a governor.
     MobTokenNotAllowed,
 
     /// Token `{0}` has insufficient signers
@@ -126,7 +123,7 @@ mod test {
     /// Valid maps should be accepted
     #[test]
     fn valid_maps_accepted() {
-        let map1 = MasterMintersMap::try_from_iter([
+        let map1 = GovernorsMap::try_from_iter([
             (
                 TokenId::from(1),
                 SignerSet::new(vec![Ed25519Public::default()], 1),
@@ -138,17 +135,11 @@ mod test {
         ])
         .unwrap();
 
-        assert!(map1
-            .get_master_minters_for_token(&TokenId::from(1))
-            .is_some());
-        assert!(map1
-            .get_master_minters_for_token(&TokenId::from(2))
-            .is_some());
-        assert!(map1
-            .get_master_minters_for_token(&TokenId::from(3))
-            .is_none());
+        assert!(map1.get_governors_for_token(&TokenId::from(1)).is_some());
+        assert!(map1.get_governors_for_token(&TokenId::from(2)).is_some());
+        assert!(map1.get_governors_for_token(&TokenId::from(3)).is_none());
 
-        let map2 = MasterMintersMap::try_from_iter([
+        let map2 = GovernorsMap::try_from_iter([
             (
                 TokenId::from(1),
                 SignerSet::new(vec![Ed25519Public::default()], 1),
@@ -160,26 +151,14 @@ mod test {
         ])
         .unwrap();
 
-        assert!(map2
-            .get_master_minters_for_token(&TokenId::from(1))
-            .is_some());
-        assert!(map2
-            .get_master_minters_for_token(&TokenId::from(2))
-            .is_some());
-        assert!(map2
-            .get_master_minters_for_token(&TokenId::from(3))
-            .is_none());
+        assert!(map2.get_governors_for_token(&TokenId::from(1)).is_some());
+        assert!(map2.get_governors_for_token(&TokenId::from(2)).is_some());
+        assert!(map2.get_governors_for_token(&TokenId::from(3)).is_none());
 
-        let map3 = MasterMintersMap::try_from_iter([]).unwrap();
-        assert!(map3
-            .get_master_minters_for_token(&TokenId::from(1))
-            .is_none());
-        assert!(map3
-            .get_master_minters_for_token(&TokenId::from(2))
-            .is_none());
-        assert!(map3
-            .get_master_minters_for_token(&TokenId::from(3))
-            .is_none());
+        let map3 = GovernorsMap::try_from_iter([]).unwrap();
+        assert!(map3.get_governors_for_token(&TokenId::from(1)).is_none());
+        assert!(map3.get_governors_for_token(&TokenId::from(2)).is_none());
+        assert!(map3.get_governors_for_token(&TokenId::from(3)).is_none());
     }
 
     /// Invalid are rejected.
@@ -189,7 +168,7 @@ mod test {
 
         // MOB is not allowed
         assert_eq!(
-            MasterMintersMap::is_valid_map(&BTreeMap::from_iter(vec![(
+            GovernorsMap::is_valid_map(&BTreeMap::from_iter(vec![(
                 Mob::ID,
                 SignerSet::new(vec![Ed25519Public::default()], 1)
             )])),
@@ -198,14 +177,14 @@ mod test {
 
         // Empty signers not allowed.
         assert_eq!(
-            MasterMintersMap::is_valid_map(&BTreeMap::from_iter(vec![(
+            GovernorsMap::is_valid_map(&BTreeMap::from_iter(vec![(
                 test_token_id,
                 SignerSet::new(vec![], 0)
             )])),
             Err(Error::InsufficientSigners(test_token_id)),
         );
         assert_eq!(
-            MasterMintersMap::is_valid_map(&BTreeMap::from_iter(vec![(
+            GovernorsMap::is_valid_map(&BTreeMap::from_iter(vec![(
                 test_token_id,
                 SignerSet::new(vec![], 1)
             )])),
@@ -214,7 +193,7 @@ mod test {
 
         // Threshold > signers not allowed
         assert_eq!(
-            MasterMintersMap::is_valid_map(&BTreeMap::from_iter(vec![(
+            GovernorsMap::is_valid_map(&BTreeMap::from_iter(vec![(
                 test_token_id,
                 SignerSet::new(vec![Ed25519Public::default()], 2)
             )])),

@@ -1,10 +1,10 @@
 // Copyright 2018-2022 The MobileCoin Foundation
 
 //! This module contains the traits and implementations for creating and
-//! verifying signatures over master minter maps and the canonical signing
+//! verifying signatures over governor maps and the canonical signing
 //! context/domain separator byte string.
 
-use crate::master_minters_map::MasterMintersMap;
+use crate::governors_map::GovernorsMap;
 use core::fmt::{Debug, Display};
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{
@@ -17,10 +17,10 @@ use mc_crypto_keys::{
 /// This is intended to be used by crate-remote implementations of the
 /// signature who want a "standard"
 pub fn context() -> &'static [u8] {
-    b"Master minters map signature"
+    b"Governors map signature"
 }
 
-/// A trait used to monkey-patch master minter map signatures onto existing
+/// A trait used to monkey-patch governor map signatures onto existing
 /// private-key types.
 pub trait Signer {
     /// The signature output type
@@ -28,14 +28,11 @@ pub trait Signer {
     /// The error type
     type Error: Debug + Display;
 
-    /// Sign a master minters map
-    fn sign_master_minters_map(
-        &self,
-        master_minters_map: &MasterMintersMap,
-    ) -> Result<Self::Sig, Self::Error>;
+    /// Sign a governors map
+    fn sign_governors_map(&self, governors_map: &GovernorsMap) -> Result<Self::Sig, Self::Error>;
 }
 
-/// A trait used to monkey patch master minters map signature verification onto
+/// A trait used to monkey patch governors map signature verification onto
 /// existing public key types.
 pub trait Verifier {
     /// The signature type to be verified
@@ -43,10 +40,10 @@ pub trait Verifier {
     /// The error type if a signature could not be verified
     type Error: Debug + Display;
 
-    /// Verify a signature over a master minters map.
-    fn verify_master_minters_map(
+    /// Verify a signature over a governors map.
+    fn verify_governors_map(
         &self,
-        master_minters_map: &MasterMintersMap,
+        governors_map: &GovernorsMap,
         sig: &Self::Sig,
     ) -> Result<(), Self::Error>;
 }
@@ -56,11 +53,8 @@ impl Signer for Ed25519Pair {
     type Sig = Ed25519Signature;
     type Error = SignatureError;
 
-    fn sign_master_minters_map(
-        &self,
-        master_minters_map: &MasterMintersMap,
-    ) -> Result<Self::Sig, Self::Error> {
-        let message = master_minters_map.digest32::<MerlinTranscript>(context());
+    fn sign_governors_map(&self, governors_map: &GovernorsMap) -> Result<Self::Sig, Self::Error> {
+        let message = governors_map.digest32::<MerlinTranscript>(context());
 
         self.try_sign(message.as_ref())
     }
@@ -71,12 +65,12 @@ impl Verifier for Ed25519Public {
     type Sig = Ed25519Signature;
     type Error = SignatureError;
 
-    fn verify_master_minters_map(
+    fn verify_governors_map(
         &self,
-        master_minters_map: &MasterMintersMap,
+        governors_map: &GovernorsMap,
         sig: &Self::Sig,
     ) -> Result<(), Self::Error> {
-        let message = master_minters_map.digest32::<MerlinTranscript>(context());
+        let message = governors_map.digest32::<MerlinTranscript>(context());
 
         self.verify(message.as_ref(), sig)
     }

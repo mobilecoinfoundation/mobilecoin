@@ -9,7 +9,7 @@ use mc_consensus_api::{
     consensus_client_grpc::ConsensusClientApiClient, consensus_common_grpc::BlockchainApiClient,
     empty::Empty,
 };
-use mc_consensus_enclave_api::MasterMintersSigner;
+use mc_consensus_enclave_api::GovernorsSigner;
 use mc_consensus_mint_client::{Commands, Config};
 use mc_crypto_keys::Ed25519Pair;
 use mc_crypto_multisig::MultiSig;
@@ -179,22 +179,22 @@ fn main() {
             println!("response: {:?}", resp);
         }
 
-        Commands::SignMasterMinters {
+        Commands::SignGovernors {
             signing_key,
             mut tokens,
             output_toml,
             output_json,
         } => {
-            let master_minters_map = tokens
-                .token_id_to_master_minters()
-                .expect("master minters configuration error");
+            let governors_map = tokens
+                .token_id_to_governors()
+                .expect("governors configuration error");
             let signature = Ed25519Pair::from(signing_key)
-                .sign_master_minters_map(&master_minters_map)
-                .expect("failed signing master minters map");
+                .sign_governors_map(&governors_map)
+                .expect("failed signing governors map");
             println!("Signature: {}", hex::encode(signature.as_ref()));
-            println!("Put this signature in the master minters configuration file in the key \"master_minters_signature\".");
+            println!("Put this signature in the governors configuration file in the key \"governors_signature\".");
 
-            tokens.master_minters_signature = Some(signature);
+            tokens.governors_signature = Some(signature);
 
             if let Some(path) = output_toml {
                 let toml_str = toml::to_string_pretty(&tokens).expect("failed serializing toml");

@@ -10,18 +10,18 @@ extern crate alloc;
 mod config;
 mod error;
 mod fee_map;
-mod master_minters_map;
-mod master_minters_sig;
+mod governors_map;
+mod governors_sig;
 mod messages;
 
 pub use crate::{
     config::{BlockchainConfig, BlockchainConfigWithDigest},
     error::Error,
     fee_map::{Error as FeeMapError, FeeMap, SMALLEST_MINIMUM_FEE_LOG2},
-    master_minters_map::{Error as MasterMintersMapError, MasterMintersMap},
-    master_minters_sig::{
-        context as master_minters_signing_context, Signer as MasterMintersSigner,
-        Verifier as MasterMintersVerifier,
+    governors_map::{Error as GovernorsMapError, GovernorsMap},
+    governors_sig::{
+        context as governors_signing_context, Signer as GovernorsSigner,
+        Verifier as GovernorsVerifier,
     },
     messages::EnclaveCall,
 };

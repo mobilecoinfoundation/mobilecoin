@@ -223,16 +223,16 @@ class Node:
                 {
                     "token_id": 1,
                     "minimum_fee": 1000,
-                    "master_minters": {
-                        "signers": open(os.path.join(MINTING_KEYS_DIR, 'master-minter1.pub')).read(),
+                    "governors": {
+                        "signers": open(os.path.join(MINTING_KEYS_DIR, 'governor1.pub')).read(),
                         "threshold": 1
                     }
                 },
                 {
                     "token_id": 2,
                     "minimum_fee": 1000,
-                    "master_minters": {
-                        "signers": open(os.path.join(MINTING_KEYS_DIR, 'master-minter2.pub')).read(),
+                    "governors": {
+                        "signers": open(os.path.join(MINTING_KEYS_DIR, 'governor2.pub')).read(),
                         "threshold": 1
                     }
                 },
@@ -241,10 +241,10 @@ class Node:
         with open(self.tokens_config_file, 'w') as f:
             json.dump(tokens_config, f)
 
-        #  Sign the master minters with the admin key.
+        #  Sign the governors with the admin key.
         subprocess.check_output(' '.join([
             f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mc-consensus-mint-client',
-            'sign-master-minters',
+            'sign-governors',
             f'--tokens {self.tokens_config_file}',
             f'--signing-key {MINTING_KEYS_DIR}/admin',
             f'--output-json {self.tokens_config_file}',
@@ -488,11 +488,11 @@ class Network:
     def generate_minting_keys(self):
        os.mkdir(MINTING_KEYS_DIR)
 
-       subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {MINTING_KEYS_DIR}/master-minter1', shell=True)
-       subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/master-minter1 -out {MINTING_KEYS_DIR}/master-minter1.pub', shell=True)
+       subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {MINTING_KEYS_DIR}/governor1', shell=True)
+       subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/governor1 -out {MINTING_KEYS_DIR}/governor1.pub', shell=True)
 
-       subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {MINTING_KEYS_DIR}/master-minter2', shell=True)
-       subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/master-minter2 -out {MINTING_KEYS_DIR}/master-minter2.pub', shell=True)
+       subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {MINTING_KEYS_DIR}/governor2', shell=True)
+       subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/governor2 -out {MINTING_KEYS_DIR}/governor2.pub', shell=True)
 
        # This matches the hardcoded key in consensus/enclave/impl/build.rs
        subprocess.check_output(f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mc-util-seeded-ed25519-key-gen --seed abababababababababababababababababababababababababababababababab > {MINTING_KEYS_DIR}/admin', shell=True)

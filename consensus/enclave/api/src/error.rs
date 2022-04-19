@@ -68,11 +68,11 @@ pub enum Error {
     /// Sealing Error: {0}
     IntelSealing(IntelSealingError),
 
-    /// Missing master minters signature
-    MissingMasterMintersSignature,
+    /// Missing governors signature
+    MissingGovernorsSignature,
 
-    /// Invalid master minters signature
-    InvalidMasterMintersSignature,
+    /// Invalid governors signature
+    InvalidGovernorsSignature,
 
     /// Failed parsing minting trust root public key
     ParseMintingTrustRootPublicKey(KeyError),
