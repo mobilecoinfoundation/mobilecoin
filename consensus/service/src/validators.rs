@@ -28,7 +28,7 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{
     ring_signature::KeyImage,
-    tx::{TxHash, TxOutMembershipElement, TxOutMembershipProof},
+    tx::{TxHash, TxOutMembershipProof},
     validation::{validate_tombstone, TransactionValidationError, TransactionValidationResult},
 };
 use std::{collections::HashSet, iter::FromIterator, sync::Arc};
@@ -167,14 +167,6 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
     ) -> TransactionValidationResult<Vec<TxOutMembershipProof>> {
         self.ledger
             .get_tx_out_proof_of_memberships(indexes)
-            .map_err(|e| TransactionValidationError::Ledger(e.to_string()))
-    }
-
-    fn get_root_tx_out_membership_element(
-        &self,
-    ) -> TransactionValidationResult<TxOutMembershipElement> {
-        self.ledger
-            .get_root_tx_out_membership_element()
             .map_err(|e| TransactionValidationError::Ledger(e.to_string()))
     }
 }
