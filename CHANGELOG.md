@@ -20,6 +20,12 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
  - Lock enclave no-debug mode when building for IAS production.
  - Update Rust toolchain to `nightly-2021-07-21`.
 
+### Bugs Fixed
+ - Fixed an problem with data authentication in the Fog OCALL Oram Storage interface
+   (Thanks to @AmbitionXiang for reporting!) ([Tracking issue](https://github.com/mobilecoinfoundation/mobilecoin/issues/1576))
+ - Fixed Fog services sometimes returning the wrong grpc error code for attestation failures
+ - Added missing retries for connectivity issues with PostGRES database in Fog services
+
 #### Rust Dependencies
 
  - Update `aead` to 0.4.1.
