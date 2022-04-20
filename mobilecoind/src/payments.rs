@@ -106,9 +106,6 @@ pub struct TransactionsManager<
     /// selection.
     submit_node_offset: Arc<AtomicUsize>,
 
-    /// Token id which we will transact in
-    token_id: TokenId,
-
     /// Fog resolver maker, used when constructing outputs to fog recipients.
     /// This is abstracted because in tests, we don't want to form grpc
     /// connections to fog
@@ -127,7 +124,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             mobilecoind_db: self.mobilecoind_db.clone(),
             peer_manager: self.peer_manager.clone(),
             submit_node_offset: self.submit_node_offset.clone(),
-            token_id: self.token_id,
             fog_resolver_factory: self.fog_resolver_factory.clone(),
             logger: self.logger.clone(),
         }
@@ -176,7 +172,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
         peer_manager: ConnectionManager<T>,
-        token_id: TokenId,
         fog_resolver_factory: Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
         logger: Logger,
     ) -> Self {
@@ -186,7 +181,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             mobilecoind_db,
             peer_manager,
             submit_node_offset: Arc::new(AtomicUsize::new(rng.next_u64() as usize)),
-            token_id,
             fog_resolver_factory,
             logger,
         }
@@ -195,7 +189,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     // Gets the network fee and block_version, unless opt_fee is nonzero.
     // If opt fee is nonzero then we use local ledger block version and this fee,
     // and don't make a network call
-    fn get_network_fee_and_block_version(&self, opt_fee: u64) -> Result<(u64, u32), Error> {
+    fn get_network_fee_and_block_version(
+        &self,
+        token_id: TokenId,
+        opt_fee: u64,
+    ) -> Result<(u64, u32), Error> {
         // Figure out the block_version and fee (involves network round-trips to
         // consensus, unless opt_fee is non-zero
         let candidate_block_version = self.ledger_db.get_latest_block()?.version;
@@ -203,7 +201,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             (opt_fee, candidate_block_version)
         } else {
             let block_infos = get_block_infos(&self.peer_manager);
-            let fee = get_fee(&block_infos, self.token_id, opt_fee);
+            let fee = get_fee(&block_infos, token_id, opt_fee);
             let block_version = max(
                 candidate_block_version,
                 get_network_block_version(&block_infos),
@@ -216,7 +214,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ///
     /// # Arguments
     /// * `sender_monitor_id` - Indicates the the account key needed to spend
-    ///   the txo's
+    ///   the txo's.
+    /// * `token_id` - The token id to transact in.
     /// * `change_subaddress` - Recipient of any change.
     /// * `inputs` - UTXOs that will be spent by the transaction.
     /// * `outlays` - Output amounts and recipients.
@@ -225,6 +224,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     pub fn build_transaction(
         &self,
         sender_monitor_id: &MonitorId,
+        token_id: TokenId,
         change_subaddress: u64,
         inputs: &[UnspentTxOut],
         outlays: &[Outlay],
@@ -233,6 +233,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ) -> Result<TxProposal, Error> {
         let logger = self.logger.new(o!("sender_monitor_id" => sender_monitor_id.to_string(), "outlays" => format!("{:?}", outlays)));
         log::trace!(logger, "Building pending transaction...");
+
+        // All inputs must be of the correct token id.
+        if inputs.iter().any(|utxo| utxo.token_id != *token_id) {
+            return Err(Error::InvalidArgument(
+                "inputs".to_string(),
+                format!("All inputs must be of token_id {}", token_id),
+            ));
+        }
 
         // Must have at least one output
         if outlays.is_empty() {
@@ -252,19 +260,15 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Figure out the block_version and fee (involves network round-trips to
         // consensus, unless opt_fee is non-zero)
-        let (fee, block_version) = self.get_network_fee_and_block_version(opt_fee)?;
+        let (fee, block_version) = self.get_network_fee_and_block_version(token_id, opt_fee)?;
 
         // Confirm that we understand this block version
         let block_version =
             BlockVersion::try_from(block_version).map_err(|err| Error::TxBuild(err.to_string()))?;
 
         // Select the UTXOs to be used for this transaction.
-        let selected_utxos = Self::select_utxos_for_value(
-            self.token_id,
-            inputs,
-            total_value + fee,
-            MAX_INPUTS as usize,
-        )?;
+        let selected_utxos =
+            Self::select_utxos_for_value(token_id, inputs, total_value + fee, MAX_INPUTS as usize)?;
         log::trace!(
             logger,
             "Selected {} utxos ({:?})",
@@ -314,7 +318,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             &selected_utxos_with_proofs,
             rings,
             block_version,
-            self.token_id,
+            token_id,
             fee,
             &sender_monitor_data.account_key,
             change_subaddress,
@@ -335,11 +339,15 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// # Arguments
     /// * `monitor_id` - Monitor ID of the inputs to spend.
     /// * `subaddress_index` - Subaddress of the inputs to spend.
+    /// * `token_id` - Token id to transact in.
+    /// * `opt_fee` - Optional fee to use. If zero, we will attempt to query the
+    ///   network for fee information.
     pub fn generate_optimization_tx(
         &self,
         monitor_id: &MonitorId,
         subaddress_index: u64,
-        fee: u64,
+        token_id: TokenId,
+        opt_fee: u64,
     ) -> Result<TxProposal, Error> {
         let logger = self.logger.new(
             o!("monitor_id" => monitor_id.to_string(), "subaddress_index" => subaddress_index),
@@ -353,7 +361,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Figure out the block_version and fee (involves network round-trips to
         // consensus, unless fee arg is non-zero)
-        let (fee, block_version) = self.get_network_fee_and_block_version(fee)?;
+        let (fee, block_version) = self.get_network_fee_and_block_version(token_id, opt_fee)?;
 
         // Make sure we understand this block version
         let block_version =
@@ -368,7 +376,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 num_blocks_in_ledger,
                 &inputs,
                 MAX_INPUTS as usize,
-                self.token_id,
+                token_id,
                 fee,
             )?
         };
@@ -431,7 +439,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             &selected_utxos_with_proofs,
             rings,
             block_version,
-            self.token_id,
+            token_id,
             fee,
             &monitor_data.account_key,
             subaddress_index,
@@ -454,14 +462,16 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// fee to a single receiver. (ignoring inputs with wrong token id)
     ///
     /// # Arguments
-    /// * `account_key` -Account key that owns the inputs.
+    /// * `account_key` - Account key that owns the inputs.
+    /// * `token_id` - The token id to transact in.
     /// * `inputs` - UTXOs that will be spent by the transaction.
     /// * `receiver` - The single receiver of the transaction's outputs.
-    /// * `fee` - Transaction fee in picoMOB. If zero, defaults to the highest
-    ///   fee set by configured consensus nodes, or the hard-coded FALLBACK_FEE.
+    /// * `fee` - Transaction fee. If zero, defaults to the highest fee set by
+    ///   configured consensus nodes, or the hard-coded FALLBACK_FEE.
     pub fn generate_tx_from_tx_list(
         &self,
         account_key: &AccountKey,
+        token_id: TokenId,
         inputs: &[UnspentTxOut],
         receiver: &PublicAddress,
         fee: u64,
@@ -469,20 +479,24 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let logger = self.logger.new(o!("receiver" => receiver.to_string()));
         log::trace!(logger, "Generating txo list transaction...");
 
+        // All inputs must be of the correct token id.
+        if inputs.iter().any(|utxo| utxo.token_id != *token_id) {
+            return Err(Error::InvalidArgument(
+                "inputs".to_string(),
+                format!("All inputs must be of token_id {}", token_id),
+            ));
+        }
+
         // Figure out the block_version and fee (involves network round-trips to
         // consensus, unless fee arg is non-zero)
-        let (fee, block_version) = self.get_network_fee_and_block_version(fee)?;
+        let (fee, block_version) = self.get_network_fee_and_block_version(token_id, fee)?;
 
         // Make sure we understand this block version
         let block_version =
             BlockVersion::try_from(block_version).map_err(|err| Error::TxBuild(err.to_string()))?;
 
         // All inputs are to be spent, except those with wrong token id
-        let total_value: u64 = inputs
-            .iter()
-            .filter(|utxo| utxo.token_id == self.token_id)
-            .map(|utxo| utxo.value)
-            .sum();
+        let total_value: u64 = inputs.iter().map(|utxo| utxo.value).sum();
 
         if total_value < fee {
             return Err(Error::InsufficientFunds);
@@ -496,11 +510,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // The inputs with corresponding proofs of membership.
         let inputs_with_proofs: Vec<(UnspentTxOut, TxOutMembershipProof)> = {
-            let tx_outs: Vec<TxOut> = inputs
-                .iter()
-                .filter(|utxo| utxo.token_id == self.token_id)
-                .map(|utxo| utxo.tx_out.clone())
-                .collect();
+            let tx_outs: Vec<TxOut> = inputs.iter().map(|utxo| utxo.tx_out.clone()).collect();
             let proofs = self.get_membership_proofs(&tx_outs)?;
             inputs.iter().cloned().zip(proofs.into_iter()).collect()
         };
@@ -531,7 +541,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             &inputs_with_proofs,
             rings,
             block_version,
-            self.token_id,
+            token_id,
             fee,
             account_key,
             0,
@@ -666,10 +676,17 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             ));
         }
 
+        // All inputs must be of the correct token id.
+        if inputs.iter().any(|utxo| utxo.token_id != *token_id) {
+            return Err(Error::InvalidArgument(
+                "inputs".to_string(),
+                format!("All inputs must be of token_id {}", token_id),
+            ));
+        }
+
         let mut spendable_inputs: Vec<&UnspentTxOut> = inputs
             .iter()
             .filter(|utxo| num_blocks_in_ledger >= utxo.attempted_spend_tombstone)
-            .filter(|utxo| token_id == utxo.token_id)
             .collect();
 
         // No point in merging if we are able to spend all inputs at once.

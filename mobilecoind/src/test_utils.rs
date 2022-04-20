@@ -287,7 +287,6 @@ pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(
         ledger_db.clone(),
         mobilecoind_db.clone(),
         conn_manager.clone(),
-        Mob::ID,
         fog_resolver_factory.unwrap_or(Arc::new(|_| Ok(FPR::default()))),
         logger.clone(),
     );

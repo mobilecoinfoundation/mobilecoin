@@ -832,7 +832,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 })?;
 
                 // Verify token id matches.
-                if utxo.token_id != self.token_id {
+                if utxo.token_id != request.token_id {
                     return Err(RpcStatus::with_message(
                         RpcStatusCode::INVALID_ARGUMENT,
                         format!("input_list[{}].token_id", i),
@@ -878,6 +878,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .transactions_manager
             .build_transaction(
                 &sender_monitor_id,
+                TokenId::from(request.token_id),
                 request.change_subaddress,
                 &input_list,
                 &outlays,
@@ -905,7 +906,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         // Generate optimization tx.
         let tx_proposal = self
             .transactions_manager
-            .generate_optimization_tx(&monitor_id, request.subaddress, request.fee)
+            .generate_optimization_tx(
+                &monitor_id,
+                request.subaddress,
+                TokenId::from(request.token_id),
+                request.fee,
+            )
             .map_err(|err| {
                 rpc_internal_error(
                     "transactions_manager.generate_optimization_tx",
@@ -931,6 +937,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let account_key = AccountKey::try_from(proto_account_key)
             .map_err(|err| rpc_internal_error("account_key.try_from", err, &self.logger))?;
 
+        let token_id = TokenId::from(request.token_id);
+
         let input_list: Vec<UnspentTxOut> = request
             .get_input_list()
             .iter()
@@ -942,7 +950,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 })?;
 
                 // Ensure token id matches.
-                if utxo.token_id != self.token_id {
+                if utxo.token_id != *token_id {
                     return Err(RpcStatus::with_message(
                         RpcStatusCode::INVALID_ARGUMENT,
                         format!("input_list[{}].token_id", i),
@@ -958,7 +966,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let tx_proposal = self
             .transactions_manager
-            .generate_tx_from_tx_list(&account_key, &input_list, &receiver, request.fee)
+            .generate_tx_from_tx_list(&account_key, token_id, &input_list, &receiver, request.fee)
             .map_err(|err| {
                 rpc_internal_error(
                     "transactions_manager.generate_tx_from_tx_list",
@@ -1699,8 +1707,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             utxos.retain(|utxo| utxo.value <= request.max_input_utxo_value);
         }
 
-        // Filter for the currently active token id.
-        utxos.retain(|utxo| utxo.token_id == self.token_id);
+        // Filter for selected token id.
+        utxos.retain(|utxo| utxo.token_id == request.token_id);
 
         // Get the list of outlays.
         let outlays: Vec<Outlay> = request
@@ -1724,6 +1732,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .transactions_manager
             .build_transaction(
                 &sender_monitor_id,
+                TokenId::from(request.token_id),
                 change_subaddress,
                 &utxos,
                 &outlays,
@@ -3511,7 +3520,7 @@ mod test {
         .unwrap();
 
         // 1 known recipient, 3 random recipients and no monitors.
-        let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
@@ -3520,6 +3529,24 @@ mod test {
                 logger.clone(),
                 &mut rng,
             );
+
+        // Add a block with a non-MOB token ID.
+        add_block_to_ledger_db(
+            BlockVersion::MAX,
+            &mut ledger_db,
+            &vec![
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                sender.default_subaddress(),
+            ],
+            Amount {
+                value: 1_000_000_000_000,
+                token_id: TokenId::from(2),
+            },
+            &[KeyImage::from(101)],
+            &mut rng,
+        );
 
         // Insert into database.
         let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
@@ -3555,6 +3582,7 @@ mod test {
         request.set_input_list(RepeatedField::from_vec(
             utxos
                 .iter()
+                .filter(|utxo| utxo.token_id == *Mob::ID)
                 .map(mc_mobilecoind_api::UnspentTxOut::from)
                 .collect(),
         ));
@@ -3565,7 +3593,7 @@ mod test {
                 .collect(),
         ));
 
-        // Test the happy flow.
+        // Test the happy flow for MOB.
         {
             let response = client.generate_tx(&request).unwrap();
 
@@ -3642,6 +3670,94 @@ mod test {
             );
         }
 
+        // Test the happy flow for TokenId(2)
+        {
+            let mut request = mc_mobilecoind_api::GenerateTxRequest::new();
+            request.set_sender_monitor_id(monitor_id.to_vec());
+            request.set_change_subaddress(0);
+            request.set_input_list(RepeatedField::from_vec(
+                utxos
+                    .iter()
+                    .filter(|utxo| utxo.token_id == 2)
+                    .map(mc_mobilecoind_api::UnspentTxOut::from)
+                    .collect(),
+            ));
+            request.set_outlay_list(RepeatedField::from_vec(
+                outlays
+                    .iter()
+                    .map(mc_mobilecoind_api::Outlay::from)
+                    .collect(),
+            ));
+            request.set_token_id(2);
+
+            let fee = 10_000;
+            request.set_fee(fee);
+
+            let response = client.generate_tx(&request).unwrap();
+
+            // Sanity test the response.
+            let tx_proposal = response.get_tx_proposal();
+
+            assert_eq!(tx_proposal.get_input_list().len(), 1,);
+            assert_eq!(tx_proposal.get_tx().get_prefix().get_inputs().len(), 1,);
+            assert_eq!(tx_proposal.get_outlay_list(), request.get_outlay_list());
+            assert_eq!(
+                tx_proposal.get_tx().get_prefix().get_outputs().len(),
+                outlays.len() + 1
+            ); // Extra output for change.
+
+            let tx = Tx::try_from(tx_proposal.get_tx()).unwrap();
+
+            // The transaction should contain an output for each outlay, and one for change.
+            assert_eq!(tx.prefix.outputs.len(), outlays.len() + 1);
+
+            // The transaction should have a confirmation code for each outlay
+            assert_eq!(
+                outlays.len(),
+                tx_proposal.get_outlay_confirmation_numbers().len()
+            );
+
+            let change_value =
+                1_000_000_000_000 - outlays.iter().map(|outlay| outlay.value).sum::<u64>() - fee;
+
+            for (account_key, expected_value) in &[
+                (&receiver1, outlays[0].value),
+                (&receiver2, outlays[1].value),
+                (&sender, change_value),
+            ] {
+                // Find the first output belonging to the account, and get its value.
+                // This assumes that each output is sent to a different account key.
+                let (amount, _blinding) = tx
+                    .prefix
+                    .outputs
+                    .iter()
+                    .find_map(|tx_out| {
+                        let output_public_key =
+                            RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+                        let shared_secret = get_tx_out_shared_secret(
+                            account_key.view_private_key(),
+                            &output_public_key,
+                        );
+                        tx_out.masked_amount.get_value(&shared_secret).ok()
+                    })
+                    .expect("There should be an output belonging to the account key.");
+
+                assert_eq!(amount.token_id, TokenId::from(2));
+                assert_eq!(amount.value, *expected_value);
+            }
+
+            // Santity test fee
+            assert_eq!(tx_proposal.get_fee(), fee);
+            assert_eq!(tx_proposal.get_tx().get_prefix().fee, fee);
+
+            // Sanity test tombstone block
+            let num_blocks = ledger_db.num_blocks().unwrap();
+            assert_eq!(
+                tx_proposal.get_tx().get_prefix().tombstone_block,
+                num_blocks + DEFAULT_NEW_TX_BLOCK_ATTEMPTS
+            );
+        }
+
         // Invalid input scenarios should result in an error.
         {
             // No monitor id
@@ -3693,6 +3809,26 @@ mod test {
                     value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT * num_blocks,
                 }),
             ]));
+            assert!(client.generate_tx(&request).is_err());
+        }
+
+        {
+            // Mixing input tokens (utxos has both Mob and TokenId(2))
+            let mut request = mc_mobilecoind_api::GenerateTxRequest::new();
+            request.set_sender_monitor_id(monitor_id.to_vec());
+            request.set_change_subaddress(0);
+            request.set_input_list(RepeatedField::from_vec(
+                utxos
+                    .iter()
+                    .map(mc_mobilecoind_api::UnspentTxOut::from)
+                    .collect(),
+            ));
+            request.set_outlay_list(RepeatedField::from_vec(
+                outlays
+                    .iter()
+                    .map(mc_mobilecoind_api::Outlay::from)
+                    .collect(),
+            ));
             assert!(client.generate_tx(&request).is_err());
         }
     }
