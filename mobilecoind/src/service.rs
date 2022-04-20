@@ -70,7 +70,6 @@ impl Service {
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
         listen_uri: &MobilecoindUri,
         num_workers: Option<usize>,
-        token_id: TokenId,
         logger: Logger,
     ) -> Self {
         let sync_thread = if mobilecoind_db.is_db_encrypted() {
@@ -111,7 +110,6 @@ impl Service {
             watcher_db,
             network_state,
             start_sync_thread,
-            token_id,
             logger.clone(),
         );
 
@@ -169,7 +167,6 @@ pub struct ServiceApi<
     watcher_db: Option<WatcherDB>,
     network_state: Arc<RwLock<PollingNetworkState<T>>>,
     start_sync_thread: Arc<dyn Fn() + Send + Sync>,
-    token_id: TokenId,
     logger: Logger,
 }
 
@@ -184,7 +181,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             watcher_db: self.watcher_db.clone(),
             network_state: self.network_state.clone(),
             start_sync_thread: self.start_sync_thread.clone(),
-            token_id: self.token_id,
             logger: self.logger.clone(),
         }
     }
@@ -200,7 +196,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         watcher_db: Option<WatcherDB>,
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
         start_sync_thread: Arc<dyn Fn() + Send + Sync>,
-        token_id: TokenId,
         logger: Logger,
     ) -> Self {
         Self {
@@ -210,7 +205,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             watcher_db,
             network_state,
             start_sync_thread,
-            token_id,
             logger,
         }
     }
@@ -1664,8 +1658,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         // Sum them up.
         let balance = utxos
             .iter()
-            // Filter only to the currently active token id.
-            .filter(|utxo| utxo.token_id == self.token_id)
+            // Filter only to the requested token id.
+            .filter(|utxo| utxo.token_id == request.token_id)
             .map(|utxo| utxo.value as u128)
             .sum::<u128>();
 

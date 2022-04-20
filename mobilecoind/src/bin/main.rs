@@ -141,7 +141,6 @@ fn main() {
                 network_state,
                 listen_uri,
                 config.num_workers,
-                config.token_id,
                 logger,
             );
 

@@ -299,7 +299,6 @@ pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(
         network_state,
         uri,
         None,
-        Mob::ID,
         logger,
     );
 

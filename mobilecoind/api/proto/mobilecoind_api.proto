@@ -666,16 +666,19 @@ message GetBlockIndexByTxPubKeyResponse {
 // Convenience calls
 ///
 
-// Get the balance for a given monitor and subadddress index, in picoMOB.
+// Get the balance for a given monitor, subadddress index and a specific token id.
 message GetBalanceRequest {
     // Monitor id to query balance for.
     bytes monitor_id = 1;
 
     // Subaddress to query balance for.
     uint64 subaddress_index = 2;
+
+    // Token id to filter for.
+    uint64 token_id = 3;
 }
 message GetBalanceResponse {
-    // Sum of all utxos associated with the requested monitor_id/subaddress_index.
+    // Sum of all utxos associated with the requested monitor_id/subaddress_index/token_id.
     uint64 balance = 1;
 }
 
