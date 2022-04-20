@@ -63,20 +63,26 @@ def parse_args() -> argparse.ArgumentParser:
                         type=int,
                         default=-1,
                         help="Number of accounts to pull from the account keys / destination accounts keys folders")
+    parser.add_argument("--token-id",
+                        type=int,
+                        default=0,
+                        help="Token id to transact in")
+
+
     return parser.parse_args()
 
 def read_file(path):
     with open(path, "r") as file:
         return file.read()
 
-def run_test(stub, amount, monitor_id, dest, max_seconds):
+def run_test(stub, amount, monitor_id, dest, max_seconds, token_id):
     tx_stats = {}
     sync_start = time.time()
     wait_for_accounts_sync(stub, [monitor_id], 3)
     logging.info("Time to sync: %s", time.time() - sync_start)
 
     resp = stub.GetBalance(
-        mobilecoind_api_pb2.GetBalanceRequest(monitor_id=monitor_id))
+        mobilecoind_api_pb2.GetBalanceRequest(monitor_id=monitor_id, token_id=token_id))
     starting_balance = resp.balance
     logging.info("Starting balance prior to transfer: %s", starting_balance)
     tx_resp = stub.SendPayment(
@@ -91,6 +97,7 @@ def run_test(stub, amount, monitor_id, dest, max_seconds):
             ],
             fee=0,
             tombstone=0,
+            token_id=token_id,
         ))
 
     tx_stats[0] = {
@@ -152,6 +159,6 @@ if __name__ == '__main__':
         # Create a pool of transfers to all other accounts
         logging.info("Transferring %s to %s", amount, dest)
 
-        run_test(stub, amount, src_account.monitor_id, dest, args.max_seconds)
+        run_test(stub, amount, src_account.monitor_id, dest, args.max_seconds, args.token_id)
 
     logging.info("All transfers successful")
