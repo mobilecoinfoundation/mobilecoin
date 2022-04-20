@@ -248,6 +248,9 @@ message ProcessedTxOut {
 
     // The b58-encoded Address Code for the subaddress that owns the TxOut.
     string address_code = 7;
+
+    // The token id of the TxOut.
+    uint64 token_id = 8;
 }
 
 //*********************************

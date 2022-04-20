@@ -1592,6 +1592,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                     .b58_encode()
                     .map_err(|err| rpc_internal_error("wrapper.b58_encode", err, &self.logger))?;
                 dst.set_address_code(encoded);
+                dst.set_token_id(src.token_id);
                 Ok(dst)
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -1972,8 +1973,7 @@ mod test {
         onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
         tokens::Mob,
         tx::{Tx, TxOut},
-        Block, BlockContents, BlockVersion, Token,
-        Amount,
+        Amount, Block, BlockContents, BlockVersion, Token,
     };
     use mc_transaction_std::{EmptyMemoBuilder, TransactionBuilder};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
@@ -2565,7 +2565,10 @@ mod test {
             BLOCK_VERSION,
             &mut ledger_db,
             &[recipient.clone()],
-            Amount { value: DEFAULT_PER_RECIPIENT_AMOUNT, token_id: Mob::ID },
+            Amount {
+                value: DEFAULT_PER_RECIPIENT_AMOUNT,
+                token_id: Mob::ID,
+            },
             &[KeyImage::from(1), KeyImage::from(2), KeyImage::from(3)],
             &mut rng,
         );
@@ -2689,7 +2692,10 @@ mod test {
             BLOCK_VERSION,
             &mut ledger_db,
             &[recipient.clone()],
-            Amount { value: DEFAULT_PER_RECIPIENT_AMOUNT, token_id: Mob::ID },
+            Amount {
+                value: DEFAULT_PER_RECIPIENT_AMOUNT,
+                token_id: Mob::ID,
+            },
             &[KeyImage::from(4), KeyImage::from(5), KeyImage::from(6)],
             &mut rng,
         );
@@ -3060,6 +3066,8 @@ mod test {
             let b58_code = response.get_b58_code();
 
             assert_eq!(tx_out.get_address_code(), b58_code);
+
+            assert_eq!(tx_out.token_id, *Mob::ID);
         }
 
         // Add a block with a key images that spend the first two utxos and see that we
@@ -3070,7 +3078,10 @@ mod test {
                 BLOCK_VERSION,
                 &mut ledger_db,
                 &[recipient],
-                Amount { value: DEFAULT_PER_RECIPIENT_AMOUNT, token_id: Mob::ID },
+                Amount {
+                    value: DEFAULT_PER_RECIPIENT_AMOUNT,
+                    token_id: Mob::ID,
+                },
                 &[
                     expected_utxos[monitor_data.first_block as usize].key_image,
                     expected_utxos[monitor_data.first_block as usize + 1].key_image,
@@ -3125,6 +3136,41 @@ mod test {
             }
         }
 
+        // Add a block with a non-MOB token id and see that it gets picked up
+        // correctly.
+        {
+            add_block_to_ledger_db(
+                BLOCK_VERSION,
+                &mut ledger_db,
+                &vec![account_key.subaddress(5)],
+                Amount {
+                    value: 102030,
+                    token_id: TokenId::from(2),
+                },
+                &[KeyImage::from(101)],
+                &mut rng,
+            );
+
+            wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+            let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
+            request.set_monitor_id(monitor_id.to_vec());
+            request.set_block(num_blocks + 1);
+
+            let response = client
+                .get_processed_block(&request)
+                .expect("failed to get processed block");
+
+            let tx_outs = response.get_tx_outs();
+            assert_eq!(tx_outs.len(), 1);
+
+            let tx_out = &tx_outs[0];
+            assert_eq!(tx_out.get_monitor_id().to_vec(), monitor_id.to_vec());
+            assert_eq!(tx_out.get_value(), 102030);
+            assert_eq!(tx_out.get_direction(), mc_mobilecoind_api::ProcessedTxOutDirection::Received);
+            assert_eq!(tx_out.get_token_id(), 2);
+        }
+
         // Query a block that will never get processed since its before the monitor's
         // first block.
         let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
@@ -3136,7 +3182,7 @@ mod test {
         // Query a block that hasn't been processed yet.
         let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
         request.set_monitor_id(monitor_id.to_vec());
-        request.set_block(num_blocks + 1);
+        request.set_block(num_blocks + 2);
 
         assert!(client.get_processed_block(&request).is_err());
 
@@ -3771,7 +3817,10 @@ mod test {
                 BLOCK_VERSION,
                 &mut ledger_db,
                 &[sender_default_subaddress.clone()],
-                Amount { value: DEFAULT_PER_RECIPIENT_AMOUNT, token_id: Mob::ID },
+                Amount {
+                    value: DEFAULT_PER_RECIPIENT_AMOUNT,
+                    token_id: Mob::ID,
+                },
                 &[KeyImage::from(rng.next_u64())],
                 &mut rng,
             );
@@ -4374,7 +4423,10 @@ mod test {
                 BLOCK_VERSION,
                 &mut ledger_db,
                 &[sender.default_subaddress()],
-                Amount { value: *amount, token_id: Mob::ID },
+                Amount {
+                    value: *amount,
+                    token_id: Mob::ID,
+                },
                 &[KeyImage::from(rng.next_u64())],
                 &mut rng,
             );
@@ -5373,7 +5425,10 @@ mod test {
             BLOCK_VERSION,
             &mut ledger_db,
             &[recipient],
-            Amount { value: DEFAULT_PER_RECIPIENT_AMOUNT, token_id: Mob::ID },
+            Amount {
+                value: DEFAULT_PER_RECIPIENT_AMOUNT,
+                token_id: Mob::ID,
+            },
             &[first_key_image],
             &mut rng,
         );
