@@ -150,7 +150,7 @@ if __name__ == '__main__':
         wait_for_accounts_sync(stub, [src_account.monitor_id], 3)
         # Get starting balance
         resp = stub.GetBalance(
-            mobilecoind_api_pb2.GetBalanceRequest(monitor_id=src_account.monitor_id))
+            mobilecoind_api_pb2.GetBalanceRequest(monitor_id=src_account.monitor_id, token_id=args.token_id))
         balance = resp.balance
         logging.info("Starting balance for account %s : %s", i, resp)
 
