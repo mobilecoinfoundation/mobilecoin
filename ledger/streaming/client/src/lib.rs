@@ -11,6 +11,10 @@ pub mod grpc;
 pub mod http_fetcher;
 pub mod url;
 
+pub mod block_validator;
+pub mod error;
+pub mod streaming_futures;
+
 #[cfg(any(test, feature = "test_utils"))]
 pub mod test_utils;
 

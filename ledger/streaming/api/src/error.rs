@@ -26,6 +26,12 @@ pub enum Error {
 
     /// {0}
     Other(String),
+
+    /// DB Access Error: {0}
+    DBAccess(String),
+
+    /// Block validation failed: {0}
+    BlockValidation(String),
 }
 
 impl std::error::Error for Error {}
