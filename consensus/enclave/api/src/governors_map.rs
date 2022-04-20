@@ -47,7 +47,7 @@ impl GovernorsMap {
         Self::try_from(map)
     }
 
-    /// Get the governorsfor a given token id, or None if token has no
+    /// Get the governors for a given token id, or None if the token has no
     /// governors.
     pub fn get_governors_for_token(&self, token_id: &TokenId) -> Option<SignerSet<Ed25519Public>> {
         self.map.get(token_id).cloned()
