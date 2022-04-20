@@ -4,7 +4,8 @@
 
 use displaydoc::Display;
 use mc_common::ResponderId;
-use mc_consensus_enclave_api::{FeeMapError, MasterMintersMapError};
+use mc_consensus_enclave_api::{FeeMapError, GovernorsMapError};
+use mc_crypto_keys::SignatureError;
 use mc_transaction_core::TokenId;
 use mc_util_uri::UriConversionError;
 use serde_json::Error as JsonError;
@@ -55,8 +56,8 @@ pub enum Error {
     /// Fee map: {0}
     FeeMap(FeeMapError),
 
-    /// Master minters map: {0}
-    MasterMintersMap(MasterMintersMapError),
+    /// Governors map: {0}
+    GovernorsMap(GovernorsMapError),
 
     /// JSON: {0}
     Json(JsonError),
@@ -78,6 +79,12 @@ pub enum Error {
 
     /// Missing tx_source_urls
     MissingTxSourceUrls,
+
+    /// Missing governors_signature configuration key
+    MissingGovernorsSignature,
+
+    /// Signature error: {0}
+    Signature(SignatureError),
 }
 
 impl From<IoError> for Error {
@@ -92,9 +99,9 @@ impl From<FeeMapError> for Error {
     }
 }
 
-impl From<MasterMintersMapError> for Error {
-    fn from(src: MasterMintersMapError) -> Self {
-        Self::MasterMintersMap(src)
+impl From<GovernorsMapError> for Error {
+    fn from(src: GovernorsMapError) -> Self {
+        Self::GovernorsMap(src)
     }
 }
 
@@ -109,3 +116,11 @@ impl From<TomlError> for Error {
         Self::Toml(src)
     }
 }
+
+impl From<SignatureError> for Error {
+    fn from(src: SignatureError) -> Self {
+        Self::Signature(src)
+    }
+}
+
+impl std::error::Error for Error {}

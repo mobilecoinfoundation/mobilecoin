@@ -12,7 +12,7 @@ use crate::{
             error::Error,
         },
     },
-    BlockVersion,
+    BlockVersion, TokenId,
 };
 use mc_crypto_keys::Ed25519Public;
 use mc_crypto_multisig::SignerSet;
@@ -25,25 +25,26 @@ use mc_crypto_multisig::SignerSet;
 /// * `current_block_index` - The index of the current block that is being
 ///   built.
 /// * `block_version` - The version of the block that is being built.
-/// * `master_minters` - The set of signers that are allowed to sign
-///   MintConfigTx transactions.
+/// * `governors` - The set of signers that are allowed to sign MintConfigTx
+///   transactions.
 pub fn validate_mint_config_tx(
     tx: &MintConfigTx,
     current_block_index: u64,
     block_version: BlockVersion,
-    master_minters: &SignerSet<Ed25519Public>,
+    governors: &SignerSet<Ed25519Public>,
 ) -> Result<(), Error> {
     validate_block_version(block_version)?;
 
-    validate_token_id(tx.prefix.token_id)?;
+    let token_id = TokenId::from(tx.prefix.token_id);
+    validate_token_id(token_id)?;
 
-    validate_configs(tx.prefix.token_id, &tx.prefix.configs)?;
+    validate_configs(token_id, &tx.prefix.configs)?;
 
     validate_nonce(&tx.prefix.nonce)?;
 
     validate_tombstone(current_block_index, tx.prefix.tombstone_block)?;
 
-    validate_signature(tx, master_minters)?;
+    validate_signature(tx, governors)?;
 
     Ok(())
 }
@@ -54,10 +55,10 @@ pub fn validate_mint_config_tx(
 /// # Arguments
 /// * `token_id` - The token id we are trying to mint.
 /// * `configs` - The minting configurations to validate.
-fn validate_configs(token_id: u32, configs: &[MintConfig]) -> Result<(), Error> {
+fn validate_configs(token_id: TokenId, configs: &[MintConfig]) -> Result<(), Error> {
     for config in configs {
         if config.token_id != token_id {
-            return Err(Error::InvalidTokenId(config.token_id));
+            return Err(Error::InvalidTokenId(config.token_id.into()));
         }
 
         let num_signers = config.signer_set.signers().len();
@@ -69,18 +70,18 @@ fn validate_configs(token_id: u32, configs: &[MintConfig]) -> Result<(), Error> 
     Ok(())
 }
 
-/// The transaction must be properly signed by the master minters set.
+/// The transaction must be properly signed by the governors set.
 ///
 /// # Arguments
 /// * `tx` - A pending transaction that is being validated.
 /// * `signer_set` - The signer set that is permitted to sign the transaction.
 fn validate_signature(
     tx: &MintConfigTx,
-    master_minters: &SignerSet<Ed25519Public>,
+    governors: &SignerSet<Ed25519Public>,
 ) -> Result<(), Error> {
     let message = tx.prefix.hash();
 
-    master_minters
+    governors
         .verify(&message[..], &tx.signature)
         .map_err(|_| Error::InvalidSignature)
         .map(|_| ())
@@ -89,7 +90,10 @@ fn validate_signature(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mint::{config::MintConfigTxPrefix, constants::NONCE_LENGTH};
+    use crate::{
+        mint::{config::MintConfigTxPrefix, constants::NONCE_LENGTH},
+        TokenId,
+    };
     use mc_crypto_keys::{Ed25519Pair, Signer};
     use mc_crypto_multisig::MultiSig;
     use mc_util_from_random::FromRandom;
@@ -98,30 +102,30 @@ mod tests {
     #[test]
     fn validate_configs_accepts_valid_mint_configs() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let token_id = 123;
+        let token_id = TokenId::from(123);
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let signer_2 = Ed25519Pair::from_random(&mut rng);
         let signer_3 = Ed25519Pair::from_random(&mut rng);
 
         let mint_config1 = MintConfig {
-            token_id: token_id,
+            token_id: *token_id,
             signer_set: SignerSet::new(vec![signer_1.public_key()], 1),
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
-            token_id: token_id,
+            token_id: *token_id,
             signer_set: SignerSet::new(vec![signer_2.public_key()], 1),
             mint_limit: 15,
         };
 
         let mint_config3 = MintConfig {
-            token_id: token_id,
+            token_id: *token_id,
             signer_set: SignerSet::new(vec![signer_2.public_key(), signer_3.public_key()], 1),
             mint_limit: 15,
         };
         let mint_config4 = MintConfig {
-            token_id: token_id,
+            token_id: *token_id,
             signer_set: SignerSet::new(vec![signer_2.public_key(), signer_3.public_key()], 2),
             mint_limit: 15,
         };
@@ -135,7 +139,7 @@ mod tests {
 
     #[test]
     fn validate_configs_accepts_no_configs() {
-        assert!(validate_configs(123, &[]).is_ok());
+        assert!(validate_configs(123.into(), &[]).is_ok());
     }
 
     #[test]
@@ -157,13 +161,13 @@ mod tests {
         };
 
         assert_eq!(
-            validate_configs(123, &[mint_config1.clone(), mint_config2.clone()]),
-            Err(Error::InvalidTokenId(234))
+            validate_configs(123.into(), &[mint_config1.clone(), mint_config2.clone()]),
+            Err(Error::InvalidTokenId(234.into()))
         );
 
         assert_eq!(
-            validate_configs(1, &[mint_config1.clone(), mint_config2.clone()]),
-            Err(Error::InvalidTokenId(123))
+            validate_configs(1.into(), &[mint_config1.clone(), mint_config2.clone()]),
+            Err(Error::InvalidTokenId(123.into()))
         );
     }
 
@@ -171,17 +175,17 @@ mod tests {
     fn validate_configs_rejects_invalid_signer_sets() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let signer_1 = Ed25519Pair::from_random(&mut rng);
-        let token_id = 123;
+        let token_id = TokenId::from(123);
 
         let mint_config1 = MintConfig {
-            token_id: token_id,
+            token_id: *token_id,
             signer_set: SignerSet::new(vec![signer_1.public_key()], 2), /* threshold > number of
                                                                          * signers */
             mint_limit: 10,
         };
 
         let mint_config2 = MintConfig {
-            token_id: token_id,
+            token_id: *token_id,
             signer_set: SignerSet::new(vec![], 1), // no signers
             mint_limit: 15,
         };
@@ -201,7 +205,7 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let signer_2 = Ed25519Pair::from_random(&mut rng);
-        let token_id = 123;
+        let token_id = TokenId::from(123);
 
         let mint_config1 = MintConfig {
             token_id: 123,
@@ -215,12 +219,12 @@ mod tests {
             mint_limit: 15,
         };
 
-        let master_minter_1 = Ed25519Pair::from_random(&mut rng);
-        let master_minter_2 = Ed25519Pair::from_random(&mut rng);
-        let master_minter_3 = Ed25519Pair::from_random(&mut rng);
+        let governor_1 = Ed25519Pair::from_random(&mut rng);
+        let governor_2 = Ed25519Pair::from_random(&mut rng);
+        let governor_3 = Ed25519Pair::from_random(&mut rng);
 
         let prefix = MintConfigTxPrefix {
-            token_id: token_id,
+            token_id: *token_id,
             configs: vec![mint_config1.clone(), mint_config2.clone()],
             nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
@@ -229,7 +233,7 @@ mod tests {
         let message = prefix.hash();
 
         // Try with 1 out of 3 signers.
-        let signature = MultiSig::new(vec![master_minter_1.try_sign(message.as_ref()).unwrap()]);
+        let signature = MultiSig::new(vec![governor_1.try_sign(message.as_ref()).unwrap()]);
         let tx = MintConfigTx {
             prefix: prefix.clone(),
             signature,
@@ -238,9 +242,9 @@ mod tests {
             &tx,
             &SignerSet::new(
                 vec![
-                    master_minter_1.public_key(),
-                    master_minter_2.public_key(),
-                    master_minter_3.public_key()
+                    governor_1.public_key(),
+                    governor_2.public_key(),
+                    governor_3.public_key()
                 ],
                 1
             )
@@ -249,8 +253,8 @@ mod tests {
 
         // Try with 2 out of 3 signers.
         let signature = MultiSig::new(vec![
-            master_minter_1.try_sign(message.as_ref()).unwrap(),
-            master_minter_2.try_sign(message.as_ref()).unwrap(),
+            governor_1.try_sign(message.as_ref()).unwrap(),
+            governor_2.try_sign(message.as_ref()).unwrap(),
         ]);
         let tx = MintConfigTx {
             prefix: prefix.clone(),
@@ -260,9 +264,9 @@ mod tests {
             &tx,
             &SignerSet::new(
                 vec![
-                    master_minter_1.public_key(),
-                    master_minter_2.public_key(),
-                    master_minter_3.public_key()
+                    governor_1.public_key(),
+                    governor_2.public_key(),
+                    governor_3.public_key()
                 ],
                 2
             )
@@ -271,8 +275,8 @@ mod tests {
 
         // Try with different 2 out of 3 signers.
         let signature = MultiSig::new(vec![
-            master_minter_3.try_sign(message.as_ref()).unwrap(),
-            master_minter_1.try_sign(message.as_ref()).unwrap(),
+            governor_3.try_sign(message.as_ref()).unwrap(),
+            governor_1.try_sign(message.as_ref()).unwrap(),
         ]);
         let tx = MintConfigTx {
             prefix: prefix.clone(),
@@ -282,9 +286,9 @@ mod tests {
             &tx,
             &SignerSet::new(
                 vec![
-                    master_minter_1.public_key(),
-                    master_minter_2.public_key(),
-                    master_minter_3.public_key()
+                    governor_1.public_key(),
+                    governor_2.public_key(),
+                    governor_3.public_key()
                 ],
                 2
             )
@@ -293,18 +297,18 @@ mod tests {
 
         // Try with 3 out of 3 signers.
         let signature = MultiSig::new(vec![
-            master_minter_1.try_sign(message.as_ref()).unwrap(),
-            master_minter_2.try_sign(message.as_ref()).unwrap(),
-            master_minter_3.try_sign(message.as_ref()).unwrap(),
+            governor_1.try_sign(message.as_ref()).unwrap(),
+            governor_2.try_sign(message.as_ref()).unwrap(),
+            governor_3.try_sign(message.as_ref()).unwrap(),
         ]);
         let tx = MintConfigTx { prefix, signature };
         assert!(validate_signature(
             &tx,
             &SignerSet::new(
                 vec![
-                    master_minter_1.public_key(),
-                    master_minter_2.public_key(),
-                    master_minter_3.public_key()
+                    governor_1.public_key(),
+                    governor_2.public_key(),
+                    governor_3.public_key()
                 ],
                 3
             )
@@ -318,7 +322,7 @@ mod tests {
 
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let signer_2 = Ed25519Pair::from_random(&mut rng);
-        let token_id = 123;
+        let token_id = TokenId::from(123);
 
         let mint_config1 = MintConfig {
             token_id: 123,
@@ -332,12 +336,12 @@ mod tests {
             mint_limit: 15,
         };
 
-        let master_minter_1 = Ed25519Pair::from_random(&mut rng);
-        let master_minter_2 = Ed25519Pair::from_random(&mut rng);
-        let master_minter_3 = Ed25519Pair::from_random(&mut rng);
+        let governor_1 = Ed25519Pair::from_random(&mut rng);
+        let governor_2 = Ed25519Pair::from_random(&mut rng);
+        let governor_3 = Ed25519Pair::from_random(&mut rng);
 
         let prefix = MintConfigTxPrefix {
-            token_id: token_id,
+            token_id: *token_id,
             configs: vec![mint_config1.clone(), mint_config2.clone()],
             nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
@@ -346,7 +350,7 @@ mod tests {
         let message = prefix.hash();
 
         // Tamper with the mint limit.
-        let signature = MultiSig::new(vec![master_minter_1.try_sign(message.as_ref()).unwrap()]);
+        let signature = MultiSig::new(vec![governor_1.try_sign(message.as_ref()).unwrap()]);
         let mut tx = MintConfigTx {
             prefix: prefix.clone(),
             signature,
@@ -357,9 +361,9 @@ mod tests {
                 &tx,
                 &SignerSet::new(
                     vec![
-                        master_minter_1.public_key(),
-                        master_minter_2.public_key(),
-                        master_minter_3.public_key()
+                        governor_1.public_key(),
+                        governor_2.public_key(),
+                        governor_3.public_key()
                     ],
                     1
                 )
@@ -368,7 +372,7 @@ mod tests {
         );
 
         // Tamper with the tombstone block.
-        let signature = MultiSig::new(vec![master_minter_1.try_sign(message.as_ref()).unwrap()]);
+        let signature = MultiSig::new(vec![governor_1.try_sign(message.as_ref()).unwrap()]);
         let mut tx = MintConfigTx {
             prefix: prefix.clone(),
             signature,
@@ -379,9 +383,9 @@ mod tests {
                 &tx,
                 &SignerSet::new(
                     vec![
-                        master_minter_1.public_key(),
-                        master_minter_2.public_key(),
-                        master_minter_3.public_key()
+                        governor_1.public_key(),
+                        governor_2.public_key(),
+                        governor_3.public_key()
                     ],
                     1
                 )
@@ -396,7 +400,7 @@ mod tests {
 
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let signer_2 = Ed25519Pair::from_random(&mut rng);
-        let token_id = 123;
+        let token_id = TokenId::from(123);
 
         let mint_config1 = MintConfig {
             token_id: 123,
@@ -410,12 +414,12 @@ mod tests {
             mint_limit: 15,
         };
 
-        let master_minter_1 = Ed25519Pair::from_random(&mut rng);
-        let master_minter_2 = Ed25519Pair::from_random(&mut rng);
-        let master_minter_3 = Ed25519Pair::from_random(&mut rng);
+        let governor_1 = Ed25519Pair::from_random(&mut rng);
+        let governor_2 = Ed25519Pair::from_random(&mut rng);
+        let governor_3 = Ed25519Pair::from_random(&mut rng);
 
         let prefix = MintConfigTxPrefix {
-            token_id: token_id,
+            token_id: *token_id,
             configs: vec![mint_config1.clone(), mint_config2.clone()],
             nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
@@ -424,7 +428,7 @@ mod tests {
         let message = prefix.hash();
 
         // Signing below threshold
-        let signature = MultiSig::new(vec![master_minter_1.try_sign(message.as_ref()).unwrap()]);
+        let signature = MultiSig::new(vec![governor_1.try_sign(message.as_ref()).unwrap()]);
         let tx = MintConfigTx {
             prefix: prefix.clone(),
             signature,
@@ -434,9 +438,9 @@ mod tests {
                 &tx,
                 &SignerSet::new(
                     vec![
-                        master_minter_1.public_key(),
-                        master_minter_2.public_key(),
-                        master_minter_3.public_key()
+                        governor_1.public_key(),
+                        governor_2.public_key(),
+                        governor_3.public_key()
                     ],
                     2
                 )
@@ -445,7 +449,7 @@ mod tests {
         );
 
         // Signing with unknown signers.
-        let signature = MultiSig::new(vec![master_minter_1.try_sign(message.as_ref()).unwrap()]);
+        let signature = MultiSig::new(vec![governor_1.try_sign(message.as_ref()).unwrap()]);
         let tx = MintConfigTx {
             prefix: prefix.clone(),
             signature,
@@ -453,18 +457,15 @@ mod tests {
         assert_eq!(
             validate_signature(
                 &tx,
-                &SignerSet::new(
-                    vec![master_minter_2.public_key(), master_minter_3.public_key()],
-                    1
-                )
+                &SignerSet::new(vec![governor_2.public_key(), governor_3.public_key()], 1)
             ),
             Err(Error::InvalidSignature)
         );
 
         // Signing below threshold with one known signers and one unknown.
         let signature = MultiSig::new(vec![
-            master_minter_1.try_sign(message.as_ref()).unwrap(),
-            master_minter_2.try_sign(message.as_ref()).unwrap(),
+            governor_1.try_sign(message.as_ref()).unwrap(),
+            governor_2.try_sign(message.as_ref()).unwrap(),
         ]);
         let tx = MintConfigTx {
             prefix: prefix.clone(),
@@ -473,10 +474,7 @@ mod tests {
         assert_eq!(
             validate_signature(
                 &tx,
-                &SignerSet::new(
-                    vec![master_minter_2.public_key(), master_minter_3.public_key()],
-                    2
-                )
+                &SignerSet::new(vec![governor_2.public_key(), governor_3.public_key()], 2)
             ),
             Err(Error::InvalidSignature)
         );
@@ -488,7 +486,7 @@ mod tests {
 
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let signer_2 = Ed25519Pair::from_random(&mut rng);
-        let token_id = 123;
+        let token_id = TokenId::from(123);
 
         let mint_config1 = MintConfig {
             token_id: 123,
@@ -502,12 +500,12 @@ mod tests {
             mint_limit: 15,
         };
 
-        let master_minter_1 = Ed25519Pair::from_random(&mut rng);
-        let master_minter_2 = Ed25519Pair::from_random(&mut rng);
-        let master_minter_3 = Ed25519Pair::from_random(&mut rng);
+        let governor_1 = Ed25519Pair::from_random(&mut rng);
+        let governor_2 = Ed25519Pair::from_random(&mut rng);
+        let governor_3 = Ed25519Pair::from_random(&mut rng);
 
         let prefix = MintConfigTxPrefix {
-            token_id: token_id,
+            token_id: *token_id,
             configs: vec![mint_config1.clone(), mint_config2.clone()],
             nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
@@ -517,8 +515,8 @@ mod tests {
 
         // Signing below threshold (duplicate singer not counted twice)
         let signature = MultiSig::new(vec![
-            master_minter_1.try_sign(message.as_ref()).unwrap(),
-            master_minter_1.try_sign(message.as_ref()).unwrap(),
+            governor_1.try_sign(message.as_ref()).unwrap(),
+            governor_1.try_sign(message.as_ref()).unwrap(),
         ]);
         let tx = MintConfigTx {
             prefix: prefix.clone(),
@@ -529,9 +527,9 @@ mod tests {
                 &tx,
                 &SignerSet::new(
                     vec![
-                        master_minter_1.public_key(),
-                        master_minter_2.public_key(),
-                        master_minter_3.public_key()
+                        governor_1.public_key(),
+                        governor_2.public_key(),
+                        governor_3.public_key()
                     ],
                     2
                 )

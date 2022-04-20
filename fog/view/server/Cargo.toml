@@ -18,7 +18,7 @@ path = "src/bin/main.rs"
 clap = { version = "3.1", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
-grpcio = "0.10.1"
+grpcio = "0.10.2"
 hex = "0.4"
 lazy_static = "1.4"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

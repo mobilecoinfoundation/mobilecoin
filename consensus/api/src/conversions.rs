@@ -122,7 +122,7 @@ impl From<MintValidationError> for MintValidationResult {
             },
             MintValidationError::InvalidTokenId(token_id) => Self {
                 code: MintValidationResultCode::InvalidTokenId,
-                token_id,
+                token_id: *token_id,
                 ..Default::default()
             },
             MintValidationError::InvalidNonceLength(len) => Self {
@@ -154,8 +154,8 @@ impl From<MintValidationError> for MintValidationResult {
                 code: MintValidationResultCode::AmountExceedsMintLimit,
                 ..Default::default()
             },
-            MintValidationError::NoMasterMinters(token_id) => Self {
-                code: MintValidationResultCode::NoMasterMinters,
+            MintValidationError::NoGovernors(token_id) => Self {
+                code: MintValidationResultCode::NoGovernors,
                 token_id: *token_id,
                 ..Default::default()
             },
@@ -186,7 +186,7 @@ impl TryInto<MintValidationError> for MintValidationResult {
                 ))
             }
             MintValidationResultCode::InvalidTokenId => {
-                Ok(MintValidationError::InvalidTokenId(self.token_id))
+                Ok(MintValidationError::InvalidTokenId(self.token_id.into()))
             }
             MintValidationResultCode::InvalidNonceLength => Ok(
                 MintValidationError::InvalidNonceLength(self.nonce_length as usize),
@@ -203,7 +203,7 @@ impl TryInto<MintValidationError> for MintValidationResult {
             MintValidationResultCode::AmountExceedsMintLimit => {
                 Ok(MintValidationError::AmountExceedsMintLimit)
             }
-            MintValidationResultCode::NoMasterMinters => Ok(MintValidationError::NoMasterMinters(
+            MintValidationResultCode::NoGovernors => Ok(MintValidationError::NoGovernors(
                 TokenId::from(self.token_id),
             )),
             MintValidationResultCode::NonceAlreadyUsed => Ok(MintValidationError::NonceAlreadyUsed),

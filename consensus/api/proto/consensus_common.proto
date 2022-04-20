@@ -25,7 +25,7 @@ message LastBlockInfoResponse {
     uint64 mob_minimum_fee = 2 [deprecated = true];
 
     // A map of token id -> minimum fee
-    map<uint32, uint64> minimum_fees = 3;
+    map<uint64, uint64> minimum_fees = 3;
 
     // Current network_block version, appropriate for new transactions.
     //

@@ -165,8 +165,8 @@ pub struct TxPrefix {
     pub tombstone_block: u64,
 
     /// Token id for this transaction
-    #[prost(fixed32, tag = "5")]
-    pub token_id: u32,
+    #[prost(fixed64, tag = "5")]
+    pub token_id: u64,
 }
 
 impl TxPrefix {
@@ -182,7 +182,7 @@ impl TxPrefix {
         inputs: Vec<TxIn>,
         outputs: Vec<TxOut>,
         fee: u64,
-        token_id: u32,
+        token_id: u64,
         tombstone_block: u64,
     ) -> TxPrefix {
         TxPrefix {

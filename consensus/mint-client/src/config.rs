@@ -6,12 +6,16 @@ use clap::{Args, Parser, Subcommand};
 use hex::FromHex;
 use mc_account_keys::PublicAddress;
 use mc_api::printable::PrintableWrapper;
+use mc_consensus_service_config::TokensConfig;
 use mc_crypto_keys::{
     DistinguishedEncoding, Ed25519Pair, Ed25519Private, Ed25519Public, Ed25519Signature, Signer,
 };
 use mc_crypto_multisig::{MultiSig, SignerSet};
-use mc_transaction_core::mint::{
-    constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx, MintTxPrefix,
+use mc_transaction_core::{
+    mint::{
+        constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx, MintTxPrefix,
+    },
+    TokenId,
 };
 use mc_util_uri::ConsensusClientUri;
 use rand::{thread_rng, RngCore};
@@ -25,7 +29,7 @@ use std::{
 pub struct MintConfigTxPrefixParams {
     /// The token id we are minting.
     #[clap(long, env = "MC_MINTING_TOKEN_ID")]
-    pub token_id: u32,
+    pub token_id: TokenId,
 
     /// Tombstone block.
     #[clap(long, env = "MC_MINTING_TOMBSTONE")]
@@ -59,12 +63,12 @@ impl MintConfigTxPrefixParams {
         let nonce = get_or_generate_nonce(self.nonce);
         let token_id = self.token_id;
         Ok(MintConfigTxPrefix {
-            token_id,
+            token_id: *token_id,
             configs: self
                 .configs
                 .into_iter()
                 .map(|(mint_limit, signer_set)| MintConfig {
-                    token_id,
+                    token_id: *token_id,
                     mint_limit,
                     signer_set,
                 })
@@ -137,7 +141,7 @@ pub struct MintTxPrefixParams {
 
     /// The token id we are minting.
     #[clap(long, env = "MC_MINTING_TOKEN_ID")]
-    pub token_id: u32,
+    pub token_id: TokenId,
 
     /// The amount we are minting.
     #[clap(long, env = "MC_MINTING_AMOUNT")]
@@ -160,7 +164,7 @@ impl MintTxPrefixParams {
         let tombstone_block = self.tombstone.unwrap_or_else(fallback_tombstone_block);
         let nonce = get_or_generate_nonce(self.nonce);
         Ok(MintTxPrefix {
-            token_id: self.token_id,
+            token_id: *self.token_id,
             amount: self.amount,
             view_public_key: *self.recipient.view_public_key(),
             spend_public_key: *self.recipient.spend_public_key(),
@@ -222,7 +226,6 @@ impl MintTxParams {
         Ok(MintTx { prefix, signature })
     }
 }
-
 #[derive(Subcommand)]
 pub enum Commands {
     /// Generate and submit a MintConfigTx transaction.
@@ -236,7 +239,7 @@ pub enum Commands {
         params: MintConfigTxParams,
     },
 
-    // Generate a MintConfigTx and write it to a JSON file.
+    /// Generate a MintConfigTx and write it to a JSON file.
     GenerateMintConfigTx {
         /// Filename to write the mint configuration to.
         #[clap(long, env = "MC_MINTING_OUT_FILE")]
@@ -246,14 +249,15 @@ pub enum Commands {
         params: MintConfigTxParams,
     },
 
-    // Produce a hash of a MintConfigTx transaction. This is useful for offline/HSM signing.
+    /// Produce a hash of a MintConfigTx transaction. This is useful for
+    /// offline/HSM signing.
     HashMintConfigTx {
         #[clap(flatten)]
         params: MintConfigTxPrefixParams,
     },
 
-    // Submit json-encoded MintConfigTx(s). If multiple transactions are provided, signatures will
-    // be merged.
+    /// Submit json-encoded MintConfigTx(s). If multiple transactions are
+    /// provided, signatures will be merged.
     SubmitMintConfigTx {
         /// URI of consensus node to connect to.
         #[clap(long, env = "MC_CONSENSUS_URI")]
@@ -281,7 +285,7 @@ pub enum Commands {
         params: MintTxParams,
     },
 
-    // Generate a MintTx and write it to a JSON file.
+    /// Generate a MintTx and write it to a JSON file.
     GenerateMintTx {
         /// Filename to write the mint configuration to.
         #[clap(long, env = "MC_MINTING_OUT_FILE")]
@@ -291,14 +295,15 @@ pub enum Commands {
         params: MintTxParams,
     },
 
-    // Produce a hash of a MintTx transaction. This is useful for offline/HSM signing.
+    /// Produce a hash of a MintTx transaction. This is useful for offline/HSM
+    /// signing.
     HashMintTx {
         #[clap(flatten)]
         params: MintTxPrefixParams,
     },
 
-    // Submit json-encoded MintTx(s). If multiple transactions are provided, signatures will
-    // be merged.
+    /// Submit json-encoded MintTx(s). If multiple transactions are provided,
+    /// signatures will be merged.
     SubmitMintTx {
         /// URI of consensus node to connect to.
         #[clap(long, env = "MC_CONSENSUS_URI")]
@@ -313,6 +318,25 @@ pub enum Commands {
             env = "MC_MINTING_TXS"
         )]
         tx_filenames: Vec<PathBuf>,
+    },
+
+    /// Sign governors configuration from a tokens.toml/tokens.json file.
+    SignGovernors {
+        /// The key to sign with.
+        #[clap(long = "signing-key", parse(try_from_str = load_key_from_pem), env = "MC_MINTING_SIGNING_KEY")]
+        signing_key: Ed25519Private,
+
+        /// The tokens configuration file to sign (in JSON or TOML format).
+        #[clap(long, parse(try_from_str = TokensConfig::load_from_path), env = "MC_MINTING_TOKENS_CONFIG")]
+        tokens: TokensConfig,
+
+        /// Optionally write a new tokens.toml file containing the signature.
+        #[clap(long, env = "MC_MINTING_OUTPUT_TOML")]
+        output_toml: Option<PathBuf>,
+
+        /// Optionally write a new tokens.json file containing the signature.
+        #[clap(long, env = "MC_MINTING_OUTPUT_JSON")]
+        output_json: Option<PathBuf>,
     },
 }
 

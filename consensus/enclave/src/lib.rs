@@ -4,7 +4,7 @@
 
 pub use mc_consensus_enclave_api::{
     BlockchainConfig, ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeeMap,
-    FeeMapError, FeePublicKey, FormBlockInputs, LocallyEncryptedTx, MasterMintersMap, Result,
+    FeeMapError, FeePublicKey, FormBlockInputs, GovernorsMap, LocallyEncryptedTx, Result,
     TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 

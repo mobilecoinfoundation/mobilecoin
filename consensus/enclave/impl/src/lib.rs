@@ -45,8 +45,8 @@ use mc_common::{
 };
 use mc_consensus_enclave_api::{
     BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeePublicKey,
-    FormBlockInputs, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
-    WellFormedEncryptedTx, WellFormedTxContext, SMALLEST_MINIMUM_FEE_LOG2,
+    FormBlockInputs, GovernorsVerifier, LocallyEncryptedTx, Result, SealedBlockSigningKey,
+    TxContext, WellFormedEncryptedTx, WellFormedTxContext, SMALLEST_MINIMUM_FEE_LOG2,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -341,26 +341,21 @@ impl SgxConsensusEnclave {
                 )));
             }
 
-            // Get the master minters for the token being minted.
+            // Get the governors for the token being minted.
             let token_id = TokenId::from(tx.prefix.token_id);
-            let master_minters = config
-                .master_minters_map
-                .get_master_minters_for_token(&token_id)
-                .ok_or(Error::MalformedMintingTx(
-                    MintValidationError::NoMasterMinters(token_id),
-                ))?;
+            let governors = config
+                .governors_map
+                .get_governors_for_token(&token_id)
+                .ok_or(Error::MalformedMintingTx(MintValidationError::NoGovernors(
+                    token_id,
+                )))?;
 
             // Ensure transaction is valid.
-            validate_mint_config_tx(
-                &tx,
-                current_block_index,
-                config.block_version,
-                &master_minters,
-            )?;
+            validate_mint_config_tx(&tx, current_block_index, config.block_version, &governors)?;
 
             validated_txs.push(ValidatedMintConfigTx {
                 mint_config_tx: tx,
-                signer_set: master_minters,
+                signer_set: governors,
             });
         }
 
@@ -416,6 +411,21 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         sealed_key: &Option<SealedBlockSigningKey>,
         blockchain_config: BlockchainConfig,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
+        // Validate governors signature.
+        if !blockchain_config.governors_map.is_empty() {
+            let signature = blockchain_config
+                .governors_signature
+                .ok_or(Error::MissingGovernorsSignature)?;
+
+            let minting_trust_root_public_key =
+                Ed25519Public::try_from(&MINTING_TRUST_ROOT_PUBLIC_KEY[..])
+                    .map_err(Error::ParseMintingTrustRootPublicKey)?;
+
+            minting_trust_root_public_key
+                .verify_governors_map(&blockchain_config.governors_map, &signature)
+                .map_err(|_| Error::InvalidGovernorsSignature)?;
+        }
+
         self.ct_min_fee_map
             .set(Box::new(
                 blockchain_config.fee_map.as_ref().iter().collect(),
@@ -897,7 +907,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 ///   foundation. This hash would be the same for both of these outputs, and so
 ///   they would have the same private key, and the same public key, and the
 ///   network would get stuck.
-/// * If a minter requests to mint twice in one block, for the same amount and
+/// * If a governor requests to mint twice in one block, for the same amount and
 ///   to the same recipient, then this hash would be the same and the network
 ///   would get stuck, for the same reason.
 ///
@@ -959,7 +969,8 @@ mod tests {
     use alloc::vec;
     use core::iter::FromIterator;
     use mc_common::{logger::test_with_logger, HashMap, HashSet};
-    use mc_consensus_enclave_api::{FeeMap, MasterMintersMap};
+    use mc_consensus_enclave_api::{FeeMap, GovernorsMap, GovernorsSigner};
+    use mc_crypto_keys::{Ed25519Private, Ed25519Signature};
     use mc_crypto_multisig::SignerSet;
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{
@@ -976,13 +987,79 @@ mod tests {
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 
-    // The private key is only used by tests. This does not need to be specified for
-    // main net. The public keys associated with this private key are the
-    // defaults in build.rs
+    // The private keys here are only used by tests. They do not need to be
+    // specified for main net. The public keys associated with this private keys
+    // are the defaults in build.rs
     const FEE_VIEW_PRIVATE_KEY: [u8; 32] = [
         21, 152, 99, 251, 140, 2, 50, 154, 2, 171, 188, 60, 163, 243, 204, 195, 241, 78, 204, 85,
         202, 52, 250, 242, 215, 247, 175, 59, 121, 185, 111, 8,
     ];
+
+    // This private key was generated using the mc-util-seeded-ed25519-key-gen
+    // utility with the seed
+    // abababababababababababababababababababababababababababababababab
+    const MINTING_TRUST_ROOT_PRIVATE_KEY: [u8; 32] = [
+        168, 15, 220, 134, 238, 251, 210, 7, 24, 78, 21, 168, 197, 250, 1, 139, 23, 64, 154, 172,
+        192, 125, 32, 148, 183, 78, 167, 52, 170, 254, 120, 64,
+    ];
+
+    fn sign_governors_map(map: &GovernorsMap) -> Option<Ed25519Signature> {
+        let private_key = Ed25519Private::try_from(&MINTING_TRUST_ROOT_PRIVATE_KEY[..]).unwrap();
+        Some(
+            Ed25519Pair::from(private_key)
+                .sign_governors_map(map)
+                .unwrap(),
+        )
+    }
+
+    #[test_with_logger]
+    fn test_enclave_init_refuses_invalid_governors_signature(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+        let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
+        let governors_map1 =
+            GovernorsMap::try_from_iter([(token_id1, signer_set1.clone())]).unwrap();
+        let governors_map2 = GovernorsMap::try_from_iter([(token_id2, signer_set1)]).unwrap();
+        let enclave = SgxConsensusEnclave::new(logger.clone());
+        let block_version = BlockVersion::MAX;
+
+        // Can't initialize without a valid governors signature if we are passing a
+        // governors map.
+        let blockchain_config = BlockchainConfig {
+            block_version,
+            governors_map: governors_map1.clone(),
+            ..Default::default()
+        };
+        assert_eq!(
+            enclave.enclave_init(
+                &Default::default(),
+                &Default::default(),
+                &None,
+                blockchain_config,
+            ),
+            Err(Error::MissingGovernorsSignature)
+        );
+
+        // Can't initialize when the signature does not match the map.
+        let blockchain_config = BlockchainConfig {
+            block_version,
+            governors_map: governors_map1,
+            governors_signature: sign_governors_map(&governors_map2),
+            ..Default::default()
+        };
+        assert_eq!(
+            enclave.enclave_init(
+                &Default::default(),
+                &Default::default(),
+                &None,
+                blockchain_config,
+            ),
+            Err(Error::InvalidGovernorsSignature)
+        );
+    }
 
     #[test_with_logger]
     fn test_tx_is_well_formed_works(logger: Logger) {
@@ -2102,8 +2179,8 @@ mod tests {
         let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
         let signer_set2 = SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
 
-        let master_minters_map =
-            MasterMintersMap::try_from_iter([(token_id1, signer_set1), (token_id2, signer_set2)])
+        let governors_map =
+            GovernorsMap::try_from_iter([(token_id1, signer_set1), (token_id2, signer_set2)])
                 .unwrap();
 
         for block_version in BlockVersion::iterator() {
@@ -2114,7 +2191,8 @@ mod tests {
             let enclave = SgxConsensusEnclave::new(logger.clone());
             let blockchain_config = BlockchainConfig {
                 block_version,
-                master_minters_map: master_minters_map.clone(),
+                governors_map: governors_map.clone(),
+                governors_signature: sign_governors_map(&governors_map),
                 ..Default::default()
             };
             enclave
@@ -2227,8 +2305,7 @@ mod tests {
 
         let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
 
-        let master_minters_map =
-            MasterMintersMap::try_from_iter([(token_id1, signer_set1)]).unwrap();
+        let governors_map = GovernorsMap::try_from_iter([(token_id1, signer_set1)]).unwrap();
 
         for block_version in BlockVersion::iterator() {
             if !block_version.mint_transactions_are_supported() {
@@ -2238,7 +2315,8 @@ mod tests {
             let enclave = SgxConsensusEnclave::new(logger.clone());
             let blockchain_config = BlockchainConfig {
                 block_version,
-                master_minters_map: master_minters_map.clone(),
+                governors_map: governors_map.clone(),
+                governors_signature: sign_governors_map(&governors_map),
                 ..Default::default()
             };
             enclave
@@ -2291,7 +2369,7 @@ mod tests {
         let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
         let signer_set2 = SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
 
-        let master_minters_map = MasterMintersMap::try_from_iter([
+        let governors_map = GovernorsMap::try_from_iter([
             (token_id1, signer_set1.clone()),
             (token_id2, signer_set2.clone()),
         ])
@@ -2305,7 +2383,8 @@ mod tests {
             let enclave = SgxConsensusEnclave::new(logger.clone());
             let blockchain_config = BlockchainConfig {
                 block_version,
-                master_minters_map: master_minters_map.clone(),
+                governors_map: governors_map.clone(),
+                governors_signature: sign_governors_map(&governors_map),
                 ..Default::default()
             };
             enclave
@@ -2387,8 +2466,7 @@ mod tests {
 
         let signer_set2 = SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
 
-        let master_minters_map =
-            MasterMintersMap::try_from_iter([(token_id2, signer_set2)]).unwrap();
+        let governors_map = GovernorsMap::try_from_iter([(token_id2, signer_set2)]).unwrap();
 
         for block_version in BlockVersion::iterator() {
             if !block_version.mint_transactions_are_supported() {
@@ -2398,7 +2476,8 @@ mod tests {
             let enclave = SgxConsensusEnclave::new(logger.clone());
             let blockchain_config = BlockchainConfig {
                 block_version,
-                master_minters_map: master_minters_map.clone(),
+                governors_map: governors_map.clone(),
+                governors_signature: sign_governors_map(&governors_map),
                 ..Default::default()
             };
             enclave
@@ -2432,9 +2511,9 @@ mod tests {
 
             assert_eq!(
                 form_block_result,
-                Err(Error::MalformedMintingTx(
-                    MintValidationError::NoMasterMinters(TokenId::from(1))
-                ))
+                Err(Error::MalformedMintingTx(MintValidationError::NoGovernors(
+                    TokenId::from(1)
+                )))
             )
         }
     }
@@ -2453,8 +2532,7 @@ mod tests {
         // This will invalidate the signature.
         mint_config_tx1.prefix.tombstone_block += 1;
 
-        let master_minters_map =
-            MasterMintersMap::try_from_iter([(token_id1, signer_set1)]).unwrap();
+        let governors_map = GovernorsMap::try_from_iter([(token_id1, signer_set1)]).unwrap();
 
         for block_version in BlockVersion::iterator() {
             if !block_version.mint_transactions_are_supported() {
@@ -2464,7 +2542,8 @@ mod tests {
             let enclave = SgxConsensusEnclave::new(logger.clone());
             let blockchain_config = BlockchainConfig {
                 block_version,
-                master_minters_map: master_minters_map.clone(),
+                governors_map: governors_map.clone(),
+                governors_signature: sign_governors_map(&governors_map),
                 ..Default::default()
             };
             enclave
@@ -2514,8 +2593,7 @@ mod tests {
 
         let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
 
-        let master_minters_map =
-            MasterMintersMap::try_from_iter([(token_id1, signer_set1)]).unwrap();
+        let governors_map = GovernorsMap::try_from_iter([(token_id1, signer_set1)]).unwrap();
 
         for block_version in BlockVersion::iterator() {
             if !block_version.mint_transactions_are_supported() {
@@ -2525,7 +2603,8 @@ mod tests {
             let enclave = SgxConsensusEnclave::new(logger.clone());
             let blockchain_config = BlockchainConfig {
                 block_version,
-                master_minters_map: master_minters_map.clone(),
+                governors_map: governors_map.clone(),
+                governors_signature: sign_governors_map(&governors_map),
                 ..Default::default()
             };
             enclave
@@ -2595,8 +2674,8 @@ mod tests {
         let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
         let signer_set2 = SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
 
-        let master_minters_map =
-            MasterMintersMap::try_from_iter([(token_id1, signer_set1), (token_id2, signer_set2)])
+        let governors_map =
+            GovernorsMap::try_from_iter([(token_id1, signer_set1), (token_id2, signer_set2)])
                 .unwrap();
 
         for block_version in BlockVersion::iterator() {
@@ -2607,7 +2686,8 @@ mod tests {
             let enclave = SgxConsensusEnclave::new(logger.clone());
             let blockchain_config = BlockchainConfig {
                 block_version,
-                master_minters_map: master_minters_map.clone(),
+                governors_map: governors_map.clone(),
+                governors_signature: sign_governors_map(&governors_map),
                 ..Default::default()
             };
             enclave
@@ -2775,8 +2855,8 @@ mod tests {
         let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
         let signer_set2 = SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
 
-        let master_minters_map =
-            MasterMintersMap::try_from_iter([(token_id1, signer_set1), (token_id2, signer_set2)])
+        let governors_map =
+            GovernorsMap::try_from_iter([(token_id1, signer_set1), (token_id2, signer_set2)])
                 .unwrap();
 
         for block_version in BlockVersion::iterator() {
@@ -2787,7 +2867,8 @@ mod tests {
             let enclave = SgxConsensusEnclave::new(logger.clone());
             let blockchain_config = BlockchainConfig {
                 block_version,
-                master_minters_map: master_minters_map.clone(),
+                governors_map: governors_map.clone(),
+                governors_signature: sign_governors_map(&governors_map),
                 ..Default::default()
             };
             enclave

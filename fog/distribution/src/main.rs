@@ -43,7 +43,7 @@ use mc_transaction_core::{
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Amount, BlockVersion, Token,
+    Amount, BlockVersion, Token, TokenId,
 };
 use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
 use mc_util_cli::ParserWithBuildInfo;
@@ -185,9 +185,9 @@ fn main() {
 
     // Count how many of each token type
     {
-        let mut token_count: BTreeMap<u32, usize> = Default::default();
+        let mut token_count: BTreeMap<TokenId, usize> = Default::default();
         for tx_out in &spendable_tx_outs {
-            *token_count.entry(*tx_out.amount.token_id).or_default() += 1;
+            *token_count.entry(tx_out.amount.token_id).or_default() += 1;
         }
 
         log::info!(
@@ -196,7 +196,7 @@ fn main() {
             spendable_tx_outs.len()
         );
         for (token_id, count) in token_count {
-            log::info!(logger, "TokenId({}): {} tx outs", token_id, count);
+            log::info!(logger, "{}: {} tx outs", token_id, count);
         }
     }
 

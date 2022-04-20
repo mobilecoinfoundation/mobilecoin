@@ -17,8 +17,8 @@ use serde::{Deserialize, Serialize};
 )]
 pub struct MintTxPrefix {
     /// Token ID we are minting.
-    #[prost(uint32, tag = "1")]
-    pub token_id: u32,
+    #[prost(uint64, tag = "1")]
+    pub token_id: u64,
 
     /// Amount we are minting.
     #[prost(uint64, tag = "2")]

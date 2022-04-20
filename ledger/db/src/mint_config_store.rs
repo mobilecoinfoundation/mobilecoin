@@ -15,7 +15,7 @@
 //! 3) A mapping of block index -> list of ValidatedMintConfigTx objects
 //! included in the block.
 
-use crate::{key_bytes_to_u64, u32_to_key_bytes, u64_to_key_bytes, Error};
+use crate::{key_bytes_to_u64, u64_to_key_bytes, Error};
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_transaction_core::{
     mint::{MintConfig, MintConfigTx, MintTx, ValidatedMintConfigTx},
@@ -193,7 +193,7 @@ impl MintConfigStore {
 
             db_transaction.put(
                 self.active_mint_configs_by_token_id,
-                &u32_to_key_bytes(mint_config_tx.prefix.token_id),
+                &u64_to_key_bytes(mint_config_tx.prefix.token_id),
                 &encode(&active_mint_configs),
                 WriteFlags::empty(),
             )?;
@@ -222,7 +222,7 @@ impl MintConfigStore {
         token_id: TokenId,
         db_transaction: &impl Transaction,
     ) -> Result<Option<ActiveMintConfigs>, Error> {
-        let token_id_bytes = u32_to_key_bytes(*token_id);
+        let token_id_bytes = u64_to_key_bytes(*token_id);
         match db_transaction.get(self.active_mint_configs_by_token_id, &token_id_bytes) {
             Ok(bytes) => Ok(Some(decode(bytes)?)),
             Err(lmdb::Error::NotFound) => Ok(None),
@@ -345,7 +345,7 @@ impl MintConfigStore {
         // Write to db.
         db_transaction.put(
             self.active_mint_configs_by_token_id,
-            &u32_to_key_bytes(mint_config.token_id),
+            &u64_to_key_bytes(mint_config.token_id),
             &encode(&active_mint_configs),
             WriteFlags::empty(),
         )?;

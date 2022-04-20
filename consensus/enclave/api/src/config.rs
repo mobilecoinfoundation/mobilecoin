@@ -1,7 +1,8 @@
-use crate::{FeeMap, MasterMintersMap};
+use crate::{FeeMap, GovernorsMap};
 use alloc::{format, string::String};
 use mc_common::ResponderId;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
+use mc_crypto_keys::Ed25519Signature;
 use mc_transaction_core::BlockVersion;
 use serde::{Deserialize, Serialize};
 
@@ -15,8 +16,12 @@ pub struct BlockchainConfig {
     /// The map from tokens to their minimum fees.
     pub fee_map: FeeMap,
 
-    /// The map from tokens to master minters.
-    pub master_minters_map: MasterMintersMap,
+    /// The map from tokens to governors.
+    pub governors_map: GovernorsMap,
+
+    /// The governors signature, which is needed if GovernorsMap is
+    /// not empty.
+    pub governors_signature: Option<Ed25519Signature>,
 
     /// The block version that this enclave will be applying rules for and
     /// publishing.
@@ -27,7 +32,8 @@ impl Default for BlockchainConfig {
     fn default() -> Self {
         Self {
             fee_map: FeeMap::default(),
-            master_minters_map: MasterMintersMap::default(),
+            governors_map: GovernorsMap::default(),
+            governors_signature: None,
             block_version: BlockVersion::MAX,
         }
     }
@@ -92,19 +98,22 @@ mod test {
     fn different_fee_maps_result_in_different_responder_ids() {
         let config1: BlockchainConfigWithDigest = BlockchainConfig {
             fee_map: FeeMap::try_from_iter([(Mob::ID, 1000), (TokenId::from(2), 2000)]).unwrap(),
-            master_minters_map: MasterMintersMap::default(),
+            governors_map: GovernorsMap::default(),
+            governors_signature: None,
             block_version: BlockVersion::ZERO,
         }
         .into();
         let config2: BlockchainConfigWithDigest = BlockchainConfig {
             fee_map: FeeMap::try_from_iter([(Mob::ID, 1000), (TokenId::from(2), 300)]).unwrap(),
-            master_minters_map: MasterMintersMap::default(),
+            governors_map: GovernorsMap::default(),
+            governors_signature: None,
             block_version: BlockVersion::ZERO,
         }
         .into();
         let config3: BlockchainConfigWithDigest = BlockchainConfig {
             fee_map: FeeMap::try_from_iter([(Mob::ID, 1000), (TokenId::from(30), 300)]).unwrap(),
-            master_minters_map: MasterMintersMap::default(),
+            governors_map: GovernorsMap::default(),
+            governors_signature: None,
             block_version: BlockVersion::ZERO,
         }
         .into();
@@ -139,7 +148,8 @@ mod test {
 
         let config4: BlockchainConfigWithDigest = BlockchainConfig {
             fee_map: FeeMap::try_from_iter([(Mob::ID, 200), (TokenId::from(30), 300)]).unwrap(),
-            master_minters_map: MasterMintersMap::default(),
+            governors_map: GovernorsMap::default(),
+            governors_signature: None,
             block_version: BlockVersion::ONE,
         }
         .into();
@@ -155,36 +165,39 @@ mod test {
         );
     }
 
-    // Different master minter maps result in differnet responder ids.
+    // Different governor maps result in differnet responder ids.
     #[test]
-    fn different_master_minter_maps_result_in_different_responder_ids() {
+    fn different_governor_maps_result_in_different_responder_ids() {
         let config1: BlockchainConfigWithDigest = BlockchainConfig {
             fee_map: FeeMap::default(),
-            master_minters_map: MasterMintersMap::try_from_iter([(
+            governors_map: GovernorsMap::try_from_iter([(
                 TokenId::from(1),
                 SignerSet::new(vec![Ed25519Public::default()], 1),
             )])
             .unwrap(),
+            governors_signature: None,
             block_version: BlockVersion::ONE,
         }
         .into();
         let config2: BlockchainConfigWithDigest = BlockchainConfig {
             fee_map: FeeMap::default(),
-            master_minters_map: MasterMintersMap::try_from_iter([(
+            governors_map: GovernorsMap::try_from_iter([(
                 TokenId::from(2),
                 SignerSet::new(vec![Ed25519Public::default()], 1),
             )])
             .unwrap(),
+            governors_signature: None,
             block_version: BlockVersion::ONE,
         }
         .into();
         let config3: BlockchainConfigWithDigest = BlockchainConfig {
             fee_map: FeeMap::default(),
-            master_minters_map: MasterMintersMap::try_from_iter([(
+            governors_map: GovernorsMap::try_from_iter([(
                 TokenId::from(2),
                 SignerSet::new(vec![Ed25519Public::default(), Ed25519Public::default()], 1),
             )])
             .unwrap(),
+            governors_signature: None,
             block_version: BlockVersion::ONE,
         }
         .into();

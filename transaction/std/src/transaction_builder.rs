@@ -621,7 +621,7 @@ pub mod transaction_builder_tests {
         for idx in 0..ring_size - 1 {
             let address = AccountKey::random(rng).default_subaddress();
             let token_id = if block_version.masked_token_id_feature_is_supported() {
-                TokenId::from(idx as u32)
+                TokenId::from(idx as u64)
             } else {
                 Mob::ID
             };
