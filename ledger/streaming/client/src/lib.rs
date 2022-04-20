@@ -7,15 +7,13 @@
 #![deny(missing_docs)]
 
 pub mod backfill;
+pub mod error;
 pub mod grpc;
 pub mod http_fetcher;
 pub mod block_validator;
-pub mod error;
 pub mod ledger_sink;
 pub mod scp_validator;
-pub mod streaming_futures;
 pub mod url;
-
 
 #[cfg(any(test, feature = "test_utils"))]
 pub mod test_utils;
