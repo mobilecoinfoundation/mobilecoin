@@ -21,7 +21,6 @@ use std::{
 /// Enum to allow monadic results other than Some & None for
 /// stream types were None would terminate the stream. Useful for
 /// stream combinations like Scan --> Filter_Map
-#[allow(dead_code)]
 pub enum Ready<T> {
     /// Value with data container to indicate a value is ready
     Ready(T),
