@@ -46,7 +46,7 @@ clap = { version = "3.1", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 fs_extra = "1.1"
 futures = "0.3"
-grpcio = "0.10.1"
+grpcio = "0.10.2"
 hex = "0.4"
 lazy_static = "1.4"
 once_cell = "1.10"

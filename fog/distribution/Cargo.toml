@@ -29,7 +29,7 @@ mc-util-uri = { path = "../../util/uri" }
 
 clap = { version = "3.1", features = ["derive", "env"] }
 crossbeam-channel = "0.5"
-grpcio = "0.10.1"
+grpcio = "0.10.2"
 lazy_static = "1.4"
 rand = "0.8"
 rayon = "1.5"
