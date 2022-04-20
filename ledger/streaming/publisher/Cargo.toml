@@ -8,19 +8,26 @@ edition = "2018"
 [lib]
 
 [features]
+s3 = ["aws-sdk-s3"]
+local = ["tokio"]
 test_utils = []
 
 [dependencies]
+mc-api = { path = "../../../api" }
 mc-common = { path = "../../../common" }
 mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-ledger-db = { path = "../../db" }
 mc-ledger-streaming-api = { path = "../api" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-uri = { path = "../../../util/uri" }
 
+aws-sdk-s3 = { version = "0.9", optional = true }
 displaydoc = "0.2"
 flo_stream = "0.7"
 futures = "0.3"
 grpcio = "0.10"
+protobuf = "2.22"
+tokio = { version = "1.16", features = ["fs"], optional = true }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../../util/build/grpc" }

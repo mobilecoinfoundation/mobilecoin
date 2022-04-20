@@ -1,24 +1,20 @@
 //! Convert to/from external::AccountKey
 
-use crate::{convert::ConversionError, external};
+use crate::{external, ConversionError};
 use mc_account_keys::AccountKey;
 use std::convert::TryFrom;
 
 impl From<&AccountKey> for external::AccountKey {
     fn from(src: &AccountKey) -> Self {
         let mut dst = external::AccountKey::new();
-
-        dst.set_view_private_key(external::RistrettoPrivate::from(src.view_private_key()));
-        dst.set_spend_private_key(external::RistrettoPrivate::from(src.spend_private_key()));
-
+        dst.set_view_private_key(src.view_private_key().into());
+        dst.set_spend_private_key(src.spend_private_key().into());
         if let Some(url) = src.fog_report_url() {
             dst.set_fog_report_url(url.to_string());
         }
-
         if let Some(spki) = src.fog_authority_spki() {
             dst.set_fog_authority_spki(spki.to_vec());
         }
-
         if let Some(key) = src.fog_report_id() {
             dst.set_fog_report_id(key.to_string());
         }

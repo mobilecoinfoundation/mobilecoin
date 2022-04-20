@@ -125,9 +125,7 @@ mod tests {
     use futures::executor::block_on;
     use mc_common::logger::test_with_logger;
     use mc_ledger_streaming_api::{
-        test_utils::{
-            make_components, mock_stream_from_components, mock_stream_from_items, MockFetcher,
-        },
+        test_utils::{make_components, MockFetcher, MockStream},
         Error,
     };
 
@@ -137,7 +135,7 @@ mod tests {
         // Mini-shuffle.
         components.swap(0, 2);
         components.swap(1, 3);
-        let upstream = mock_stream_from_components(components);
+        let upstream = MockStream::from_components(components);
         let fetcher = MockFetcher::new(5);
         let source = BackfillingStream::new(upstream, fetcher, logger);
 
@@ -162,7 +160,7 @@ mod tests {
         // Error at the end.
         items[4] = Err(Error::Grpc("end".to_owned()));
 
-        let upstream = mock_stream_from_items(items);
+        let upstream = MockStream::from_items(items);
         let fetcher = MockFetcher::new(5);
         let source = BackfillingStream::new(upstream, fetcher, logger);
 
