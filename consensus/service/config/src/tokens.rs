@@ -738,7 +738,7 @@ mod tests {
 
             [[tokens]]
             token_id = 0 # Must have MOB
-            
+
             [[tokens]]
             token_id = 1
             minimum_fee = 1
