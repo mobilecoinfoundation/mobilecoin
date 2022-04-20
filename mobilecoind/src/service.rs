@@ -329,12 +329,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 rpc_internal_error("mobilecoind_db.get_utxos_for_subaddress", err, &self.logger)
             })?;
 
-        // Filter out those that don't have the right token id
-        // Note: This is meant to avoid breaking changes for users who are using
-        // mobilecoind with just one token id
+        // Filter out those that don't have the requested token id
         let utxos: Vec<_> = utxos
             .into_iter()
-            .filter(|utxo| utxo.token_id == self.token_id)
+            .filter(|utxo| utxo.token_id == request.token_id)
             .collect();
 
         // Convert to protos.
@@ -2231,7 +2229,7 @@ mod test {
         .unwrap();
 
         // 1 known recipient, 3 random recipients and no monitors.
-        let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
@@ -2240,6 +2238,24 @@ mod test {
                 logger.clone(),
                 &mut rng,
             );
+
+        // Add a block with a non-MOB token ID.
+        add_block_to_ledger_db(
+            BLOCK_VERSION,
+            &mut ledger_db,
+            &vec![
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                account_key.default_subaddress(),
+            ],
+            Amount {
+                value: 1000,
+                token_id: TokenId::from(2),
+            },
+            &[KeyImage::from(101)],
+            &mut rng,
+        );
 
         // Insert into database.
         let id = mobilecoind_db.add_monitor(&data).unwrap();
@@ -2291,6 +2307,10 @@ mod test {
         let expected_utxos: Vec<UnspentTxOut> = account_tx_outs
             .iter()
             .map(|tx_out| {
+                let (amount, _) = tx_out
+                    .view_key_match(account_key.view_private_key())
+                    .unwrap();
+
                 // Calculate the key image for this tx out.
                 let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
                 let onetime_private_key = recover_onetime_private_key(
@@ -2305,19 +2325,48 @@ mod test {
                     tx_out: tx_out.clone(),
                     subaddress_index: 0,
                     key_image,
-                    value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT,
-                    token_id: *Mob::ID,
+                    value: amount.value,
+                    token_id: *amount.token_id,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
                 }
             })
             .collect();
 
-        // Compare
-        assert_eq!(utxos.len(), num_blocks as usize);
+        // Compare - we should have one less utxo than number of blocks, since the last
+        // one we added is a different token id.
+        assert_eq!(utxos.len(), num_blocks as usize - 1);
         assert_eq!(
-            HashSet::from_iter(utxos),
-            HashSet::from_iter(expected_utxos)
+            HashSet::from_iter(utxos.iter()),
+            HashSet::from_iter(
+                expected_utxos
+                    .iter()
+                    .filter(|utxo| utxo.token_id == *Mob::ID)
+            )
+        );
+
+        // Try with the non-MOB token id.
+        request.set_token_id(2);
+        let response = client
+            .get_unspent_tx_out_list(&request)
+            .expect("failed to get unspent tx out list");
+
+        let utxos: Vec<UnspentTxOut> = response
+            .output_list
+            .iter()
+            .map(|proto_utxo| {
+                UnspentTxOut::try_from(proto_utxo).expect("failed converting proto utxo")
+            })
+            .collect();
+
+        assert_eq!(utxos.len(), 1);
+        assert_eq!(
+            HashSet::from_iter(utxos.iter()),
+            HashSet::from_iter(
+                expected_utxos
+                    .iter()
+                    .filter(|utxo| utxo.token_id == TokenId::from(2))
+            )
         );
     }
 
@@ -3167,7 +3216,10 @@ mod test {
             let tx_out = &tx_outs[0];
             assert_eq!(tx_out.get_monitor_id().to_vec(), monitor_id.to_vec());
             assert_eq!(tx_out.get_value(), 102030);
-            assert_eq!(tx_out.get_direction(), mc_mobilecoind_api::ProcessedTxOutDirection::Received);
+            assert_eq!(
+                tx_out.get_direction(),
+                mc_mobilecoind_api::ProcessedTxOutDirection::Received
+            );
             assert_eq!(tx_out.get_token_id(), 2);
         }
 

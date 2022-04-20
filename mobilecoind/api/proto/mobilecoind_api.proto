@@ -305,10 +305,12 @@ message GetMonitorStatusResponse {
     MonitorStatus status = 1;
 }
 
-// Get a list of UnspentTxOuts for a given monitor and subadddress index.
+// Get a list of UnspentTxOuts for a given monitor and subadddress index,
+// filtered to a specific token id.
 message GetUnspentTxOutListRequest {
     bytes monitor_id = 1;
     uint64 subaddress_index = 2;
+    uint64 token_id = 3;
 }
 message GetUnspentTxOutListResponse {
     repeated UnspentTxOut output_list = 1;
