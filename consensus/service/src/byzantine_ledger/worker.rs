@@ -810,14 +810,10 @@ impl<
         &self,
         externalized_values: Vec<ConsensusValue>,
     ) -> BlockData {
-        let num_blocks = self
-            .ledger
-            .num_blocks()
-            .expect("Ledger must contain a block.");
         let parent_block = self
             .ledger
-            .get_block(num_blocks - 1)
-            .expect("Failed to get last block.");
+            .get_latest_block()
+            .expect("Failed to get latest block.");
 
         // Split externalized values into the different transaction types
         let mut tx_hashes = Vec::new();
