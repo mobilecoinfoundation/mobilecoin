@@ -577,7 +577,7 @@ dependencies = [
  "clap 3.1.10",
  "heck",
  "indexmap",
- "log 0.4.11",
+ "log 0.4.14",
  "proc-macro2 1.0.37",
  "quote 1.0.18",
  "serde",
@@ -8486,7 +8486,7 @@ checksum = "a317bf8f9fba2476b4b2c85ef4c4af8ff39c3c7f0cdfeed4f82c34a880aa837b"
 dependencies = [
  "bumpalo",
  "lazy_static",
- "log 0.4.11",
+ "log 0.4.14",
  "proc-macro2 1.0.37",
  "quote 1.0.18",
  "syn 1.0.91",
