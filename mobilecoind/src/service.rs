@@ -463,6 +463,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             response.set_receiver(payment_request.get_public_address().clone());
             response.set_value(payment_request.get_value());
             response.set_memo(payment_request.get_memo().to_string());
+            response.set_token_id(payment_request.get_token_id());
             Ok(response)
         } else if wrapper.has_public_address() {
             let public_address = wrapper.get_public_address();
@@ -490,6 +491,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         payment_request.set_public_address((&receiver).into());
         payment_request.set_value(request.get_value());
         payment_request.set_memo(request.get_memo().to_string());
+        payment_request.set_token_id(request.get_token_id());
 
         let mut wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
         wrapper.set_payment_request(payment_request);
@@ -1005,6 +1007,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         generate_tx_request.set_outlay_list(RepeatedField::from_vec(vec![(&outlay).into()]));
         generate_tx_request.set_fee(request.fee);
         generate_tx_request.set_tombstone(request.tombstone);
+        generate_tx_request.set_token_id(request.token_id);
 
         let mut generate_tx_response = self.generate_tx_impl(generate_tx_request)?;
         let tx_proposal = generate_tx_response.take_tx_proposal();
@@ -1784,6 +1787,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         send_payment_request.set_max_input_utxo_value(request.get_max_input_utxo_value());
         send_payment_request.set_override_change_subaddress(request.override_change_subaddress);
         send_payment_request.set_change_subaddress(request.change_subaddress);
+        send_payment_request.set_token_id(request.token_id);
 
         self.send_payment_impl(send_payment_request)
     }
@@ -5209,6 +5213,32 @@ mod test {
             );
             assert_eq!(response.value, 1234567890);
             assert_eq!(response.get_memo(), "hello there");
+        }
+
+        // Try with receiver, value and token id.
+        {
+            // Generate a request code
+            let mut request = mc_mobilecoind_api::CreateRequestCodeRequest::new();
+            request.set_receiver(mc_api::external::PublicAddress::from(&receiver));
+            request.set_value(1234567890);
+            request.set_token_id(123);
+
+            let response = client.create_request_code(&request).unwrap();
+            let b58_code = response.get_b58_code();
+
+            // Attempt to decode it.
+            let mut request = mc_mobilecoind_api::ParseRequestCodeRequest::new();
+            request.set_b58_code(b58_code.to_string());
+
+            let response = client.parse_request_code(&request).unwrap();
+
+            // Check that input equals output.
+            assert_eq!(
+                PublicAddress::try_from(response.get_receiver()).unwrap(),
+                receiver
+            );
+            assert_eq!(response.value, 1234567890);
+            assert_eq!(response.get_token_id(), 123);
         }
 
         // Attempting to decode junk data should fail

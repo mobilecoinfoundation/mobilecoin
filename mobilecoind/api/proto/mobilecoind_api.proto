@@ -372,6 +372,7 @@ message ParseRequestCodeResponse {
     external.PublicAddress receiver = 1;
     uint64 value = 2;
     string memo = 3;
+    uint64 token_id = 4;
 }
 
 // Encode receiver's public address, value, and memo into a base-58 "MobileCoin Request Code".
@@ -379,6 +380,7 @@ message CreateRequestCodeRequest {
     external.PublicAddress receiver = 1;
     uint64 value = 2;
     string memo = 3;
+    uint64 token_id = 4;
 }
 message CreateRequestCodeResponse {
     string b58_code = 1;
@@ -514,6 +516,7 @@ message GenerateTransferCodeTxRequest {
     uint64 fee = 5;
     uint64 tombstone = 6;
     string memo = 7;
+    uint64 token_id = 8;
 }
 message GenerateTransferCodeTxResponse {
     // The tx proposal to submit to the network.
@@ -738,7 +741,7 @@ message PayAddressCodeRequest {
     // Amount to pay
     uint64 amount = 4;
 
-    // Fee in picoMOB (setting to 0 causes mobilecoind to choose a value).
+    // Fee (setting to 0 causes mobilecoind to choose a value).
     // The value used can be checked (but not changed) in tx_proposal.tx.prefix.fee
     uint64 fee = 5;
 
@@ -753,6 +756,9 @@ message PayAddressCodeRequest {
     // Optional: Return change to a different subaddress than the sender
     bool override_change_subaddress = 8;
     uint64 change_subaddress = 9;
+
+    // Token id to transact in.
+    uint64 token_id = 10;
 }
 
 //
