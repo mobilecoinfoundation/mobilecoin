@@ -1704,7 +1704,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             utxos.retain(|utxo| utxo.value <= request.max_input_utxo_value);
         }
 
-        // Filter for selected token id.
+        // Filter for requested token id.
         utxos.retain(|utxo| utxo.token_id == request.token_id);
 
         // Get the list of outlays.
