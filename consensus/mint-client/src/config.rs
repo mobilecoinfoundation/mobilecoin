@@ -320,8 +320,8 @@ pub enum Commands {
         tx_filenames: Vec<PathBuf>,
     },
 
-    /// Sign master minters configuration from a tokens.toml/tokens.json file.
-    SignMasterMinters {
+    /// Sign governors configuration from a tokens.toml/tokens.json file.
+    SignGovernors {
         /// The key to sign with.
         #[clap(long = "signing-key", parse(try_from_str = load_key_from_pem), env = "MC_MINTING_SIGNING_KEY")]
         signing_key: Ed25519Private,

@@ -4,7 +4,7 @@
 
 use crate::error::Error;
 use mc_common::HashSet;
-use mc_consensus_enclave_api::{FeeMap, MasterMintersMap, MasterMintersVerifier};
+use mc_consensus_enclave_api::{FeeMap, GovernorsMap, GovernorsVerifier};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, Ed25519Signature};
 use mc_crypto_multisig::SignerSet;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
@@ -122,11 +122,11 @@ pub struct TokenConfig {
     #[serde(default)]
     allow_any_fee: bool,
 
-    /// Master minters - if set, controls the set of keys that can sign
+    /// Governors - if set, controls the set of keys that can sign
     /// minting-configuration transactions.
     /// Not supported for MOB
     #[serde(default, with = "pem_signer_set")]
-    master_minters: Option<SignerSet<Ed25519Public>>,
+    governors: Option<SignerSet<Ed25519Public>>,
 }
 
 impl TokenConfig {
@@ -142,13 +142,13 @@ impl TokenConfig {
             .or_else(|| FeeMap::default().get_fee_for_token(&self.token_id()))
     }
 
-    /// Master minters config, when available.
-    pub fn master_minters(&self) -> Option<&SignerSet<Ed25519Public>> {
-        // Can never have master minters for MOB
+    /// Governors config, when available.
+    pub fn governors(&self) -> Option<&SignerSet<Ed25519Public>> {
+        // Can never have governors for MOB
         if self.token_id == TokenId::MOB {
             return None;
         }
-        self.master_minters.as_ref()
+        self.governors.as_ref()
     }
 
     /// Check if the token configuration is valid.
@@ -172,18 +172,18 @@ impl TokenConfig {
         }
 
         // Validate minting configuration if present.
-        if let Some(master_minters) = &self.master_minters {
+        if let Some(governors) = &self.governors {
             // MOB cannot be minted.
             if self.token_id == TokenId::MOB {
                 return Err(Error::MintConfigNotAllowed(self.token_id));
             }
 
-            // We must have at least one master minter.
-            if master_minters.signers().is_empty() || master_minters.threshold() == 0 {
+            // We must have at least one governor.
+            if governors.signers().is_empty() || governors.threshold() == 0 {
                 return Err(Error::NoSigners(self.token_id));
             }
 
-            if master_minters.threshold() as usize > master_minters.signers().len() {
+            if governors.threshold() as usize > governors.signers().len() {
                 return Err(Error::SignerSetThresholdExceedsSigners(self.token_id));
             }
         }
@@ -196,10 +196,10 @@ impl TokenConfig {
 /// Tokens configuration.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TokensConfig {
-    /// Master minters signature generated using the `mc-consensus-mint-client
-    /// sign-master-minters` command.
+    /// Governors signature generated using the `mc-consensus-mint-client
+    /// sign-governors` command.
     #[serde(default, with = "hex_signature")]
-    pub master_minters_signature: Option<Ed25519Signature>,
+    pub governors_signature: Option<Ed25519Signature>,
 
     /// Token configurations (one for each supported token).
     tokens: Vec<TokenConfig>,
@@ -208,12 +208,12 @@ pub struct TokensConfig {
 impl Default for TokensConfig {
     fn default() -> Self {
         Self {
-            master_minters_signature: None,
+            governors_signature: None,
             tokens: vec![TokenConfig {
                 token_id: Mob::ID,
                 minimum_fee: Some(Mob::MINIMUM_FEE),
                 allow_any_fee: false,
-                master_minters: None,
+                governors: None,
             }],
         }
     }
@@ -289,28 +289,28 @@ impl TokensConfig {
         &self.tokens
     }
 
-    /// Get a map of token id -> master minters.
-    pub fn token_id_to_master_minters(&self) -> Result<MasterMintersMap, Error> {
+    /// Get a map of token id -> governors.
+    pub fn token_id_to_governors(&self) -> Result<GovernorsMap, Error> {
         self.validate()?;
 
-        Ok(MasterMintersMap::try_from_iter(
-            self.tokens.iter().filter_map(|token_config| {
+        Ok(GovernorsMap::try_from_iter(self.tokens.iter().filter_map(
+            |token_config| {
                 token_config
-                    .master_minters
+                    .governors
                     .as_ref()
-                    .map(|master_minters| (token_config.token_id, master_minters.clone()))
-            }),
-        )?)
+                    .map(|governors| (token_config.token_id, governors.clone()))
+            },
+        ))?)
     }
 
-    /// Verify the master minters signature against a given public key
-    pub fn verify_master_minters_signature(&self, key: &Ed25519Public) -> Result<(), Error> {
-        let master_minters_map = self.token_id_to_master_minters()?;
+    /// Verify the governors signature against a given public key
+    pub fn verify_governors_signature(&self, key: &Ed25519Public) -> Result<(), Error> {
+        let governors_map = self.token_id_to_governors()?;
         let signature = self
-            .master_minters_signature
+            .governors_signature
             .as_ref()
-            .ok_or(Error::MissingMasterMintersSignature)?;
-        Ok(key.verify_master_minters_map(&master_minters_map, signature)?)
+            .ok_or(Error::MissingGovernorsSignature)?;
+        Ok(key.verify_governors_map(&governors_map, signature)?)
     }
 }
 
@@ -678,12 +678,12 @@ mod tests {
     }
 
     #[test]
-    fn master_minters_serialize_deserialize_works() {
+    fn governors_serialize_deserialize_works() {
         let token_config = TokenConfig {
             token_id: TokenId::from(123),
             minimum_fee: Some(456),
             allow_any_fee: false,
-            master_minters: Some(SignerSet::new(
+            governors: Some(SignerSet::new(
                 vec![
                     Ed25519Public::try_from(&[3u8; 32][..]).unwrap(),
                     Ed25519Public::try_from(&[123u8; 32][..]).unwrap(),
@@ -701,14 +701,14 @@ mod tests {
     #[test]
     fn valid_minting_config() {
         // Key generating using `openssl genpkey -algorithm ED25519`
-        let admin_private_key_pem = pem::parse(
+        let minting_trust_root_private_key_pem = pem::parse(
             r#"-----BEGIN PRIVATE KEY-----
             MC4CAQAwBQYDK2VwBCIEIC4Z5GeRSzvx61R4ydQK/1bOGLLDGptNwsEnzaMTV9KI
             -----END PRIVATE KEY-----"#,
         )
         .unwrap();
-        let admin_private_key =
-            Ed25519Private::try_from_der(&admin_private_key_pem.contents[..]).unwrap();
+        let minting_trust_root_private_key =
+            Ed25519Private::try_from_der(&minting_trust_root_private_key_pem.contents[..]).unwrap();
 
         // Keys were generated using:
         // ```sh
@@ -733,8 +733,8 @@ mod tests {
 
         let input_toml: &str = r#"
             # Signature generated by taking the above file and the admin private key above and running:
-            # cargo run --bin mc-consensus-mint-client -- sign-master-minters --tokens tokens.toml --signing-key private.pem
-            master_minters_signature = "7bd518ccf65bcb60cb15911fc25cbac520e0efbe0eee9ce386937c8c95730170e23c93e907365caf8962fe042095f19a92792b616b7815bb2a52820307243e06"
+            # cargo run --bin mc-consensus-mint-client -- sign-governors --tokens tokens.toml --signing-key private.pem
+            governors_signature = "d68fb53632835c23209528387cab9722bc5a2e6d092138468efa5babe11af7c2a20412cd90dcce2344febb23570e1961e6da37aa01e0bd9db4697a910f9fa408"
 
             [[tokens]]
             token_id = 0 # Must have MOB
@@ -742,7 +742,7 @@ mod tests {
             [[tokens]]
             token_id = 1
             minimum_fee = 1
-            [tokens.master_minters]
+            [tokens.governors]
             signers = """
             -----BEGIN PUBLIC KEY-----
             MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
@@ -756,13 +756,13 @@ mod tests {
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         let input_json: &str = r#"{
-            "master_minters_signature": "7bd518ccf65bcb60cb15911fc25cbac520e0efbe0eee9ce386937c8c95730170e23c93e907365caf8962fe042095f19a92792b616b7815bb2a52820307243e06",
+            "governors_signature": "d68fb53632835c23209528387cab9722bc5a2e6d092138468efa5babe11af7c2a20412cd90dcce2344febb23570e1961e6da37aa01e0bd9db4697a910f9fa408",
             "tokens": [
                 { "token_id": 0 },
                 {
                     "token_id": 1,
                     "minimum_fee": 1,
-                    "master_minters": {
+                    "governors": {
                         "signers": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----",
                         "threshold": 1
                     }
@@ -780,7 +780,7 @@ mod tests {
             tokens
                 .get_token_config(&TokenId::from(1))
                 .unwrap()
-                .master_minters()
+                .governors()
                 .unwrap()
                 .signers()[0],
             key1
@@ -790,14 +790,14 @@ mod tests {
             tokens
                 .get_token_config(&TokenId::from(1))
                 .unwrap()
-                .master_minters()
+                .governors()
                 .unwrap()
                 .signers()[1],
             key2
         );
-        // The master minters signature should've decoded successfully.
+        // The governors signature should've decoded successfully.
         tokens
-            .verify_master_minters_signature(&Ed25519Public::from(&admin_private_key))
+            .verify_governors_signature(&Ed25519Public::from(&minting_trust_root_private_key))
             .unwrap();
     }
 
@@ -807,7 +807,7 @@ mod tests {
             [[tokens]]
             token_id = 0
             
-            [tokens.master_minters]
+            [tokens.governors]
             signers = """
             -----BEGIN PUBLIC KEY-----
             MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
@@ -832,7 +832,7 @@ mod tests {
             [[tokens]]
             token_id = 2
             minimum_fee = 1
-            [tokens.master_minters]
+            [tokens.governors]
             signers = ""
             threshold = 1
        "#;
@@ -852,7 +852,7 @@ mod tests {
             [[tokens]]
             token_id = 2
             minimum_fee = 1
-            [tokens.master_minters]
+            [tokens.governors]
             signers = """
             -----BEGIN PUBLIC KEY-----
             MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
@@ -893,21 +893,21 @@ mod tests {
     }
 
     #[test]
-    fn verify_master_minters_signature_detects_incorrect_signature() {
+    fn verify_governors_signature_detects_incorrect_signature() {
         // Key generating using `openssl genpkey -algorithm ED25519`
-        let admin_private_key_pem = pem::parse(
+        let minting_trust_root_private_key_pem = pem::parse(
             r#"-----BEGIN PRIVATE KEY-----
             MC4CAQAwBQYDK2VwBCIEIC4Z5GeRSzvx61R4ydQK/1bOGLLDGptNwsEnzaMTV9KI
             -----END PRIVATE KEY-----"#,
         )
         .unwrap();
-        let admin_private_key =
-            Ed25519Private::try_from_der(&admin_private_key_pem.contents[..]).unwrap();
+        let minting_trust_root_private_key =
+            Ed25519Private::try_from_der(&minting_trust_root_private_key_pem.contents[..]).unwrap();
 
         let input_toml: &str = r#"
             # Signature generated by taking the above file and the admin private key above and running:
-            # cargo run --bin mc-consensus-mint-client -- sign-master-minters --tokens tokens.toml --signing-key private.pem
-            master_minters_signature = "a07b628ebb74acd222a8d267f01dedbf1389db7ec3f2bb51d2270f4b43b4f2ebcdd5b43ee7574783ba483b03d9e2fb92dd0ed9d993509dad935532aede18790c"
+            # cargo run --bin mc-consensus-mint-client -- sign-governors --tokens tokens.toml --signing-key private.pem
+            governors_signature = "a07b628ebb74acd222a8d267f01dedbf1389db7ec3f2bb51d2270f4b43b4f2ebcdd5b43ee7574783ba483b03d9e2fb92dd0ed9d993509dad935532aede18790c"
 
             [[tokens]]
             token_id = 0 # Must have MOB
@@ -915,7 +915,7 @@ mod tests {
             [[tokens]]
             token_id = 1
             minimum_fee = 1
-            [tokens.master_minters]
+            [tokens.governors]
             signers = """
             -----BEGIN PUBLIC KEY-----
             MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
@@ -928,9 +928,9 @@ mod tests {
        "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-        // The master minters signature should've decoded successfully.
+        // The governors signature should've decoded successfully.
         assert!(!tokens
-            .verify_master_minters_signature(&Ed25519Public::from(&admin_private_key))
+            .verify_governors_signature(&Ed25519Public::from(&minting_trust_root_private_key))
             .is_ok());
     }
 }
