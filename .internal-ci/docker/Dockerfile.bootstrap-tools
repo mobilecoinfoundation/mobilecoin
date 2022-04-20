@@ -1,0 +1,55 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# Dockerfile.bootstrap-tools
+#
+# Multipurpose "toolbox" container for operations, testing and migrations.
+
+ARG REPO_ORG=mobilecoin
+FROM ${REPO_ORG}/runtime-base:latest
+
+SHELL ["/bin/bash", "-c"]
+
+ENV TZ=Etc/UTC
+ENV PYTHONUNBUFFERED=1
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Install updates
+RUN apt-get update \
+ && apt-get upgrade -y \
+ && apt-get install -y \
+        ca-certificates \
+        gettext \
+        libssl1.1 \
+        jq \
+        vim \
+        python3-pip \
+        zstd \
+        openssl \
+ && rm -rf /var/cache/apt \
+ && rm -rf /var/lib/apt/lists/*
+
+# update pip
+RUN pip3 install --upgrade pip
+
+ARG RUST_BIN_PATH=target/release
+COPY ${RUST_BIN_PATH}/fog-sql-recovery-db-migrations /usr/local/bin/
+COPY ${RUST_BIN_PATH}/generate-sample-ledger /usr/local/bin/
+COPY ${RUST_BIN_PATH}/sample-keys /usr/local/bin/
+COPY ${RUST_BIN_PATH}/fog-distribution /usr/local/bin/
+COPY ${RUST_BIN_PATH}/test_client /usr/local/bin/
+COPY ${RUST_BIN_PATH}/fog_ingest_client /usr/local/bin/
+
+# Copy test files, proto and scripts
+COPY .internal-ci/test /test
+COPY .internal-ci/util /util
+COPY api/proto/* /proto/api/
+COPY mobilecoind/api/proto/* /proto/mobilecoind/
+COPY consensus/api/proto/* /proto/consensus/
+COPY mobilecoind/strategies /test/mobilecoind/strategies
+
+# Install mobilecoind integration test requirements
+RUN pip3 install -r /test/mobilecoind/strategies/requirements.txt
+
+# Entrypoint
+COPY .internal-ci/docker/entrypoints/bootstrap-tools.sh /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
