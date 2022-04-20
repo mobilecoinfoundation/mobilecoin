@@ -11,6 +11,7 @@ edition = "2018"
 test_utils = []
 
 [dependencies]
+mc-api = { path = "../../../api" }
 mc-common = { path = "../../../common" }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-ledger-streaming-api = { path = "../api" }
@@ -21,6 +22,9 @@ mc-util-uri = { path = "../../../util/uri" }
 displaydoc = "0.2"
 futures = "0.3"
 grpcio = "0.10"
+protobuf = "2.22"
+reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "gzip"] }
+url = "2.2"
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../../util/build/grpc" }
@@ -33,5 +37,7 @@ mc-common = { path = "../../../common", features = ["loggers"] }
 mc-ledger-streaming-api = { path = "../api", features = ["test_utils"] }
 mc-util-from-random = { path = "../../../util/from-random" }
 
+mockito = "0.31"
 rand_core = "0.6"
 rand_hc = "0.3"
+tokio = { version = "1.16", features = ["macros", "rt-multi-thread"] }

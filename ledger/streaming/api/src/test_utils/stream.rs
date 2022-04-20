@@ -45,7 +45,10 @@ impl<S> BlockStream for MockStream<S>
 where
     S: Stream<Item = Result<BlockStreamComponents>> + Clone,
 {
-    type Stream = S;
+    type Stream<'s>
+    where
+        S: 's,
+    = S;
 
     fn get_block_stream(&self, _starting_height: u64) -> Result<S> {
         Ok(self.source.clone())

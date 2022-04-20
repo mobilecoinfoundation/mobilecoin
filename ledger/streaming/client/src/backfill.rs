@@ -1,68 +1,74 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! A BlockStream that backfills missing indices from a given BlockFetcher.
+//! A [BlockStream] that backfills another [BlockStream] using a [BlockFetcher].
 
 use displaydoc::Display;
 use futures::{FutureExt, Stream, StreamExt};
 use mc_common::logger::{log, Logger};
 use mc_ledger_streaming_api::{BlockFetcher, BlockStream, BlockStreamComponents, Result};
 use mc_transaction_core::BlockIndex;
-use std::{pin::Pin, sync::Arc};
+use std::pin::Pin;
 
 /// A [BlockStream] that backfills another [BlockStream] using a [BlockFetcher].
 #[derive(Debug, Display)]
-pub struct BackfillingStream<S: BlockStream + 'static, F: BlockFetcher + 'static> {
+pub struct BackfillingStream<S: BlockStream, F: BlockFetcher> {
     upstream: S,
-    fetcher: Arc<F>,
+    fetcher: F,
     logger: Logger,
 }
 
-impl<S: BlockStream + 'static, F: BlockFetcher + 'static> BackfillingStream<S, F> {
+impl<S: BlockStream, F: BlockFetcher> BackfillingStream<S, F> {
     /// Instantiate a [BackfillingStream].
     pub fn new(upstream: S, fetcher: F, logger: Logger) -> Self {
         Self {
             upstream,
-            fetcher: Arc::new(fetcher),
+            fetcher,
             logger,
         }
     }
 }
 
-impl<S: BlockStream + 'static, F: BlockFetcher + 'static> BlockStream for BackfillingStream<S, F> {
-    type Stream = impl Stream<Item = Result<BlockStreamComponents>>;
+impl<S: BlockStream, F: BlockFetcher> BlockStream for BackfillingStream<S, F> {
+    type Stream<'s>
+    where
+        Self: 's,
+    = impl Stream<Item = Result<BlockStreamComponents>> + 's;
 
-    fn get_block_stream(&self, starting_height: u64) -> Result<Self::Stream> {
+    fn get_block_stream(&self, starting_height: u64) -> Result<Self::Stream<'_>> {
         self.upstream
             .get_block_stream(starting_height)
             .map(|upstream| {
                 backfill_stream(
                     upstream,
                     starting_height,
-                    self.fetcher.clone(),
+                    &self.fetcher,
                     self.logger.clone(),
                 )
             })
     }
 }
 
-fn backfill_stream<
-    S: Stream<Item = Result<BlockStreamComponents>> + 'static,
-    F: BlockFetcher + 'static,
->(
+fn backfill_stream<'s, S: Stream<Item = Result<BlockStreamComponents>> + 's, F: BlockFetcher>(
     upstream: S,
     starting_height: u64,
-    fetcher: Arc<F>,
+    fetcher: &'s F,
     logger: Logger,
-) -> impl Stream<Item = Result<BlockStreamComponents>> {
+) -> impl Stream<Item = Result<BlockStreamComponents>> + 's {
     use futures::stream::{empty, once};
 
+    // Track the index of the last received block, so we know whether to filter,
+    // backfill, or just return the next block.
     let mut prev_index: Option<BlockIndex> = None;
+    // We may need to return more than one item, so we use flat_map.
     upstream.flat_map(
+        // The stream types are quite different across the different cases, so Box the
+        // intermediate stream.
         move |result| -> Pin<Box<dyn Stream<Item = Result<BlockStreamComponents>>>> {
             let next_index = prev_index.map_or_else(|| starting_height, |index| index + 1);
             match result {
                 Ok(components) => {
                     let index = components.block_data.block().index;
+                    // Check for whether we already yielded this index.
                     if prev_index.is_some() && index <= prev_index.unwrap() {
                         log::info!(
                             logger,
@@ -75,44 +81,28 @@ fn backfill_stream<
 
                     let item_stream = once(async { Ok(components) });
                     if index == next_index {
+                        // Happy path: We got another consecutive item, so just return that.
                         prev_index = Some(index);
                         Box::pin(item_stream)
                     } else {
+                        // Need to backfill up to the current index.
                         let start = prev_index.unwrap_or(starting_height);
                         prev_index = Some(index);
-                        match fetcher.fetch_range(start..index) {
-                            Ok(backfill) => Box::pin(backfill.chain(item_stream)),
-                            Err(fetch_err) => {
-                                log::warn!(
-                                    logger,
-                                    "Failed to backfill blocks with index in {}..{}: {}",
-                                    start,
-                                    index,
-                                    fetch_err
-                                );
-                                Box::pin(once(async { Err(fetch_err) }).chain(item_stream))
-                            }
-                        }
+                        let backfill = fetcher.fetch_range(start..index);
+                        Box::pin(backfill.chain(item_stream))
                     }
                 }
+                // If we get an error, try fetching one item.
                 Err(upstream_error) => {
-                    // If we get an error, fetch one item.
-                    match fetcher.fetch_single(next_index) {
-                        Ok(future) => {
-                            prev_index = Some(next_index);
-                            Box::pin(future.into_stream())
-                        }
-                        Err(fetch_error) => {
-                            log::warn!(
-                                logger,
-                                "Failed to fetch block with index {}: {}; after upstream error: {}",
-                                next_index,
-                                fetch_error,
-                                upstream_error
-                            );
-                            Box::pin(once(async { Err(upstream_error) }))
-                        }
-                    }
+                    log::debug!(
+                        logger,
+                        "Got an error from upstream [prev_index={:?}]: {}",
+                        &prev_index,
+                        upstream_error
+                    );
+                    let future = fetcher.fetch_single(next_index);
+                    prev_index = Some(next_index);
+                    Box::pin(future.into_stream())
                 }
             }
         },
