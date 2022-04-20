@@ -817,7 +817,7 @@ impl<
         let parent_block = self
             .ledger
             .get_block(num_blocks - 1)
-            .expect("Ledger must contain a block.");
+            .expect("Failed to get last block.");
 
         // Split externalized values into the different transaction types
         let mut tx_hashes = Vec::new();
