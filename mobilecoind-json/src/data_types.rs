@@ -864,7 +864,7 @@ impl From<&SignatureRctBulletproofs> for JsonSignatureRctBulletproofs {
             range_proofs: src
                 .get_range_proofs()
                 .iter()
-                .map(|bytes| hex::encode(bytes))
+                .map(hex::encode)
                 .collect(),
             pseudo_output_token_ids: src.pseudo_output_token_ids.clone(),
             output_token_ids: src.output_token_ids.clone(),
