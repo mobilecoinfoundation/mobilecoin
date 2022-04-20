@@ -1,0 +1,17 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chart.fullname" . }}
+  labels:
+    app: fog-test-client
+    {{- include "chart.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: fog-test-client
+    {{- include "chart.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: mgmt
+      port: 9090
+      targetPort: http-mgmt

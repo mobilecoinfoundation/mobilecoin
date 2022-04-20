@@ -1,0 +1,20 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+{{- if .Values.fogRecoveryDatabaseReader.configMap.enabled }}
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: fog-recovery-reader-0-postgresql
+  labels:
+    {{- include "fogServicesConfig.labels" . | nindent 4 }}
+data:
+  postgres-database: {{ .Values.fogRecoveryDatabaseReader.database | quote }}
+  postgres-hostname: {{ .Values.fogRecoveryDatabaseReader.hostname | quote }}
+  postgres-port: {{ .Values.fogRecoveryDatabaseReader.port | quote }}
+  postgres-ssl-options: {{ .Values.fogRecoveryDatabaseReader.options | quote }}
+  postgres-username: {{ .Values.fogRecoveryDatabaseReader.username | quote }}
+  postgresql-database: {{ .Values.fogRecoveryDatabaseReader.database | quote }}
+  postgresql-hostname: {{ .Values.fogRecoveryDatabaseReader.hostname | quote }}
+  postgresql-port: {{ .Values.fogRecoveryDatabaseReader.port | quote }}
+  postgresql-ssl-options: {{ .Values.fogRecoveryDatabaseReader.options | quote }}
+  postgresql-username: {{ .Values.fogRecoveryDatabaseReader.username | quote }}
+{{- end }}

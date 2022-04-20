@@ -1,0 +1,28 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fogServices.fullname" . }}-supervisord-fog-view
+  labels:
+    {{- include "fogServices.labels" . | nindent 4 }}
+data:
+  acct_view.conf: |
+    [program:fogview]
+    priority=100
+    environment=MC_SENTRY_DSN="%(ENV_FOG_VIEW_SENTRY_DSN)s"
+    command=/usr/bin/fog_view_server
+      --client-listen-uri insecure-fog-view://0.0.0.0:3225/
+      --client-responder-id "%(ENV_CLIENT_RESPONDER_ID)s"
+{{- if (include "fogServices.clientAuth" .) }}
+      --client-auth-token-secret "%(ENV_CLIENT_AUTH_TOKEN_SECRET)s"
+      --client-auth-token-max-lifetime 31536000
+{{- end }}
+      --ias-spid %(ENV_IAS_SPID)s
+      --ias-api-key %(ENV_IAS_API_KEY)s
+      --admin-listen-uri insecure-mca://127.0.0.1:8001/
+
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+    autorestart=true

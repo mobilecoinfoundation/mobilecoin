@@ -1,0 +1,220 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "consensusNode.fullname" . }}
+  labels:
+    app: consensus-node
+    {{- include "consensusNode.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: consensus-node
+      {{- include "consensusNode.selectorLabels" . | nindent 6 }}
+      {{- if .Values.loadBalancedNode }}
+      client-load-balanced: 'true'
+      {{- end }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.node.podAnnotations | nindent 8 }}
+      labels:
+        app: consensus-node
+        {{- include "consensusNode.labels" . | nindent 8 }}
+        {{- if .Values.loadBalancedNode }}
+        client-load-balanced: 'true'
+        {{- end }}
+    spec:
+      nodeSelector:
+        {{- toYaml .Values.node.nodeSelector | nindent 8 }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - consensus-node
+              topologyKey: 'kubernetes.io/hostname'
+      tolerations:
+      {{- toYaml .Values.node.tolerations | nindent 6 }}
+      imagePullSecrets:
+      {{- toYaml .Values.imagePullSecrets | nindent 6 }}
+      initContainers:
+      {{- tpl (toYaml .Values.node.initContainers) . | nindent 6 }}
+      containers:
+      - name: node
+        image: '{{ .Values.node.image.org | default .Values.image.org }}/{{ .Values.node.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}'
+        imagePullPolicy: Always
+        command: [ '/usr/bin/supervisord' ]
+        ports:
+        - name: cns-client
+          containerPort: 3223
+        - name: cns-port
+          containerPort: 8443
+        - name: cns-mgmt
+          containerPort: 8000
+        livenessProbe:
+          exec:
+            command:
+            - '/usr/local/bin/grpc_health_probe'
+            - '-addr=:8443'
+          failureThreshold: 3
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command:
+            - '/usr/local/bin/grpc_health_probe'
+            - '-addr=:8443'
+          failureThreshold: 30
+          periodSeconds: 30
+        envFrom:
+        - secretRef:
+            name: {{ include "consensusNode.ledgerDistribution.secret.name" . }}
+        - secretRef:
+            name: {{ include "consensusNode.msgSignerKey.secret.name" . }}
+        - secretRef:
+            name: ias
+        env:
+        - name: PATH
+          value: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/intel/sgxsdk/bin:/opt/intel/sgxsdk/bin/x64'
+        - name: RUST_BACKTRACE
+          value: '1'
+        - name: RUST_LOG
+          value: 'info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn'
+        - name: LOCAL_NODE_ID
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "consensusNode.nodeConfig.configMap.name" . }}
+              key: peerHostname
+        # Responder ID will need to be made variable when we fix load balanced consensus nodes.
+        - name: CLIENT_RESPONDER_ID
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "consensusNode.nodeConfig.configMap.name" . }}
+              key: clientHostname
+        - name: MC_LOG_EXTRA_CONTEXT
+          value: 'mc.local_node_id=$(LOCAL_NODE_ID)'
+        - name: CONSENSUS_SERVICE_SENTRY_DSN
+          valueFrom:
+            configMapKeyRef:
+              name: sentry
+              key: consensus-sentry-dsn
+        - name: LEDGER_DISTRIBUTION_SENTRY_DSN
+          valueFrom:
+            configMapKeyRef:
+              name: sentry
+              key: ledger-distribution-sentry-dsn
+        - name: MC_BRANCH
+          valueFrom:
+            configMapKeyRef:
+              name: mobilecoin-network
+              key: network
+        - name: CLIENT_AUTH_TOKEN_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: client-auth-token
+              key: token
+              optional: true
+        - name: BLOCK_VERSION
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "consensusNode.nodeConfig.configMap.name" . }}
+              key: blockVersion
+        # This file is generated at consensus node startup and should be persistent as long as its on the same node.
+        - name: SEALED_BLOCK_SIGNING_KEY
+          value: /sealed-signing-key/block-signing-key
+        volumeMounts:
+        - name: sealed-signing-key
+          mountPath: /sealed-signing-key
+        - name: aesm-socket-dir
+          mountPath: /var/run/aesmd
+        - name: config-dir
+          mountPath: /config
+        - name: ledger-db-dir
+          mountPath: /ledger
+        - name: keys-dir
+          mountPath: /keys
+        - name: node-cert
+          mountPath: /certs
+          readOnly: true
+        - name: supervisor-conf
+          mountPath: /etc/supervisor/conf.d
+          readOnly: true
+        resources:
+          {{- toYaml .Values.node.resources | nindent 10}}
+      {{- if eq .Values.jaegerTracing.enabled true }}
+      - name: jaeger-agent
+        image: jaegertracing/jaeger-agent:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5775
+          name: zk-compact-trft
+          protocol: UDP
+        - containerPort: 5778
+          name: config-rest
+          protocol: TCP
+        - containerPort: 6831
+          name: jg-compact-trft
+          protocol: UDP
+        - containerPort: 6832
+          name: jg-binary-trft
+          protocol: UDP
+        - containerPort: 14271
+          name: admin-http
+          protocol: TCP
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        args:
+        - --reporter.grpc.host-port={{ .Values.jaegerTracing.collector }}
+        - --reporter.type=grpc
+        - --agent.tags=cluster=undefined,container.name=node,deployment.name={{ include "consensusNode.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
+      {{- end }}
+      volumes:
+      - name: sealed-signing-key
+        emptyDir: {}
+      - name: keys-dir
+        emptyDir: {}
+      - name: aesm-socket-dir
+        emptyDir: {}
+      - name: config-dir
+        configMap:
+          name: {{ include "consensusNode.networkConfig.configMap.name" . }}
+      - name: node-cert
+        secret:
+          secretName: {{ include "consensusNode.fullname" . }}-internal-tls
+      - name: supervisor-conf
+        projected:
+          sources:
+          - configMap:
+              name: {{ include "consensusNode.fullname" . }}-supervisor-daemon
+          - configMap:
+              name: {{ include "consensusNode.fullname" . }}-supervisor-sgx
+          - configMap:
+              name: {{ include "consensusNode.fullname" . }}-supervisor-consensus
+          - configMap:
+              name: {{ include "consensusNode.fullname" . }}-supervisor-ledger-distribution
+          - configMap:
+              name: {{ include "consensusNode.fullname" . }}-supervisor-admin-http-gw
+      - name: ledger-db-dir
+        {{- if eq .Values.node.persistence.enabled true }}
+        persistentVolumeClaim:
+          claimName: {{ include "consensusNode.fullname" . }}-data
+        {{- else }}
+        emptyDir: {}
+        {{- end }}

@@ -1,0 +1,21 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "fogIngest.fullname" . }}
+  labels:
+    publish: grafana-cloud
+    app: fog-ingest
+    {{- include "fogIngest.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: fog-ingest
+      {{- include "fogIngest.selectorLabels" . | nindent 6 }}
+  endpoints:
+  - port: mgmt
+    relabelings:
+    - targetLabel: network
+      replacement: {{ include "fogIngest.mobileCoinNetwork.network" . }}
+    - targetLabel: partner
+      replacement: {{ include "fogIngest.mobileCoinNetwork.partner" . }}

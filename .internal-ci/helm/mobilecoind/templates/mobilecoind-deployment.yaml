@@ -1,0 +1,119 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mobilecoind.fullname" . }}
+  labels:
+    app: mobilecoind
+    {{- include "mobilecoind.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mobilecoind
+      {{- include "mobilecoind.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+      labels:
+        app: mobilecoind
+        {{- include "mobilecoind.labels" . | nindent 8 }}
+    spec:
+      nodeSelector:
+        {{- toYaml .Values.mobilecoindNodeSelector | nindent 8 }}
+      imagePullSecrets:
+      {{- toYaml .Values.imagePullSecrets | nindent 6 }}
+      initContainers:
+      {{- tpl (toYaml .Values.mobilecoind.initContainers) . | nindent 6 }}
+      containers:
+      - name: mobilecoind
+        image: '{{ .Values.mobilecoind.image.org | default .Values.image.org }}/{{ .Values.mobilecoind.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}'
+        imagePullPolicy: Always
+        command: [ "/usr/bin/supervisord" ]
+        ports:
+        - name: mobilecoind-rpc
+          containerPort: 3229
+        # Hold liveness and readiness until this probe passes.
+        startupProbe:
+          exec:
+            command:
+            - "/usr/local/bin/grpc_health_probe"
+            - "-addr=:3229"
+          failureThreshold: 30
+          periodSeconds: 10
+        # Will wait for startup probe to succeed. When this passes k8s won't kill the service.
+        livenessProbe:
+          exec:
+            command:
+            - "/usr/local/bin/grpc_health_probe"
+            - "-addr=:3229"
+          failureThreshold: 3
+          periodSeconds: 30
+        # Will wait for startup probe to succeed. When this passes services/ingress will pass traffic
+        readinessProbe:
+          exec:
+            command:
+            - "/usr/local/bin/grpc_health_probe"
+            - "-addr=:3229"
+          failureThreshold: 4
+          periodSeconds: 30
+        env:
+        - name: "RUST_BACKTRACE"
+          value: "full"
+        - name: "RUST_LOG"
+          value: "info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusoto_signature=error,h2=error,rocket=warn,<unknown>=warn"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: supervisor-conf
+          mountPath: /etc/supervisor/conf.d
+          readOnly: true
+      {{- if eq .Values.jaegerTracing.enabled true }}
+      - name: jaeger-agent
+        image: jaegertracing/jaeger-agent:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5775
+          name: zk-compact-trft
+          protocol: UDP
+        - containerPort: 5778
+          name: config-rest
+          protocol: TCP
+        - containerPort: 6831
+          name: jg-compact-trft
+          protocol: UDP
+        - containerPort: 6832
+          name: jg-binary-trft
+          protocol: UDP
+        - containerPort: 14271
+          name: admin-http
+          protocol: TCP
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        args:
+        - --reporter.grpc.host-port={{ .Values.jaegerTracing.collector }}
+        - --reporter.type=grpc
+        - --agent.tags=cluster=undefined,container.name=node,deployment.name={{ include "mobilecoind.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
+      {{- end }}
+      volumes:
+      - name: data
+        emptyDir: {}
+      - name: supervisor-conf
+        projected:
+          sources:
+          - configMap:
+              name: {{ include "mobilecoind.fullname" . }}-supervisor-daemon-config
+          - configMap:
+              name: mobilecoind-supervisord-mobilecoind

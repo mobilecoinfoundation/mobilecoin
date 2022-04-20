@@ -1,0 +1,35 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+
+
+clientAuth:
+  token: ''
+
+ias:
+  key: ''
+  spid: ''
+
+mobileCoinNetwork:
+  network: ''
+  partner: ''
+
+sentry:
+  consensus-sentry-dsn: ''
+  ledger-distribution-sentry-dsn: ''
+  fog-report-sentry-dsn: ''
+  fog-view-sentry-dsn: ''
+  fog-ledger-sentry-dsn: ''
+  fog-ingest-sentry-dsn: ''
+
+### Consensus nodes for mobilecoind processes (managed by superviosrd)
+#   Configure with chart external ConfigMap or values here.
+#   peer url must have '?responder-id=' query string if 'load balanced'
+#   tx-source-id is the public url for the s3 bucket containing the ledger from the node.
+mobilecoind:
+  threshold: ''
+  nodes: []
+  #   - client: 'node1.prod.mobilecoinww.com:443'
+  #     txSourceUrl: https://ledger.mobilecoinww.com/node1.prod.mobilecoinww.com
+  #   - client: 'node2.prod.mobilecoinww.com:443'
+  #     txSourceUrl: https://ledger.mobilecoinww.com/node2.prod.mobilecoinww.com
+  #   - client: 'node3.prod.mobilecoinww.com:443'
+  #     txSourceUrl: https://ledger.mobilecoinww.com/node3.prod.mobilecoinww.com

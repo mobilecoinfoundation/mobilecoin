@@ -1,0 +1,48 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v2
+name: mc-core-dev-env-setup
+description: Populate configuration for a dev environment.
+type: application
+version: 0.0.0
+appVersion: 0.0.0
+dependencies:
+- name: mc-core-common-config
+  alias: mcCoreCommonConfig
+  repository: file://../mc-core-common-config
+  version: 0.0.0
+  condition: mcCoreCommonConfig.enabled
+- name: consensus-node-config
+  alias: consensusNodeConfig1
+  repository: file://../consensus-node-config
+  version: 0.0.0
+  condition: consensusNodeConfig1.enabled
+- name: consensus-node-config
+  version: 0.0.0
+  repository: file://../consensus-node-config
+  alias: consensusNodeConfig2
+  condition: consensusNodeConfig2.enabled
+- name: consensus-node-config
+  alias: consensusNodeConfig3
+  repository: file://../consensus-node-config
+  version: 0.0.0
+  condition: consensusNodeConfig3.enabled
+- name: consensus-node-config
+  alias: consensusNodeConfig4
+  repository: file://../consensus-node-config
+  version: 0.0.0
+  condition: consensusNodeConfig4.enabled
+- name: consensus-node-config
+  alias: consensusNodeConfig5
+  repository: file://../consensus-node-config
+  version: 0.0.0
+  condition: consensusNodeConfig5.enabled
+- name: fog-ingest-config
+  alias: fogIngestConfig
+  repository: file://../fog-ingest-config
+  version: 0.0.0
+  condition: fogIngestConfig.enabled
+- name: fog-services-config
+  alias: fogServicesConfig
+  repository: file://../fog-services-config
+  version: 0.0.0
+  condition: fogServicesConfig.enabled

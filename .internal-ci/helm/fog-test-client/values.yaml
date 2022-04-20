@@ -1,0 +1,72 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+### Chart Overrides.
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets:
+- name: docker-credentials
+
+
+### Configuration and Secrets
+fogTestClientConfig:
+  ### populates keys directory, expects .b58pub and .json files for each key.
+  # Generate with:
+  #   kubectl create secret generic fog-test-client -o yaml --dry-run=client \
+  #     --from-file ./keys \
+  #     | grep -v creationTimestamp > fog-test-client-secret.yaml
+  keysSecret:
+    name: fog-test-client-keys
+
+  ### populates urls and vars
+  # Generate with:
+  #   kubectl create configmap fog-test-client -o yaml --dry-run=client \
+  #     --from-literal=FOG_VIEW="${FOG_VIEW}" \
+  #     --from-literal=FOG_LEDGER="${FOG_LEDGER}" \
+  #     --from-literal=CONSENSUS_VALIDATORS="${CONSENSUS_VALIDATORS}" \
+  #     | grep -v creationTimestamp > "fog-test-client-configMap.yaml"
+  configMap:
+    name: fog-test-client
+
+  ### populates enclave measurement .css files
+  # Generate with:
+  #   kubectl create configmap fog-test-client-measurements -o yaml --dry-run=client \
+  #     --from-file ./measurements \
+  #     | grep -v creationTimestamp > fog-test-client-measurements-configMap.yaml
+  measurementsConfigMap:
+    name: fog-test-client-measurements
+
+  ### Enable for Signal Fog environments.
+  #   Secret used to generate token when communicating with signal view/ledger services.
+  # Generate with:
+  #   kubectl create secret generic fog-client-auth-token -o yaml --dry-run=client \
+  #     --from-literal=token="${CLIENT_AUTH_TOKEN_SECRET}" \
+  #     | grep -v creationTimestamp > fog-client-auth-token-secret.yaml
+  fogClientAuthTokenSecret:
+    name: fog-client-auth-token
+    enabled: false
+
+
+### Deployments
+fogTestClient:
+  replicaCount: 1
+  image:
+    repository: mobilecoin/fog-test-client
+    tag: ""
+  podAnnotations:
+    fluentbit.io/include: 'true'
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+mobileCoinNetwork:
+  configMap:
+    external: true
+    name: mobilecoin-network
+  # test, prod, alpha... 
+  network: ""
+  # mc, mcww, signal...
+  partner: ""
+
+serviceMonitor:
+  enabled: true
