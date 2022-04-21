@@ -87,9 +87,8 @@ impl SgxLibraryCollection for [Library] {
 ///
 /// # Arguments
 ///
-/// * `sgx` - The SGX environment for the current build.  This helps to determine if one needs to
-///     link to sim or hw libraries.
-///
+/// * `sgx` - The SGX environment for the current build.  This helps to
+///   determine if one needs to link to sim or hw libraries.
 pub fn link_to_sgx_libraries(sgx: &SgxEnvironment) -> Result<(), Error> {
     let mut config = Config::new();
     config
@@ -126,13 +125,15 @@ pub fn link_to_sgx_libraries(sgx: &SgxEnvironment) -> Result<(), Error> {
 
     // These need to be linked after the rest of the code so can't use the
     // `rustc_lib_arg`
-    rustc_link_arg!("--whole-archive", 
+    rustc_link_arg!(
+        "--whole-archive",
         &format!("-lsgx_trts{}", sim_postfix),
         "--no-whole-archive",
         "-lsgx_tcxx",
         "-lsgx_tcrypto",
         &format!("-lsgx_tservice{}", sim_postfix),
-        "-lsgx_tstdc");
+        "-lsgx_tstdc"
+    );
 
     Ok(())
 }
