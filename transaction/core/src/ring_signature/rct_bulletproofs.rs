@@ -75,6 +75,8 @@ pub struct SignatureRctBulletproofs {
     /// A range proof, one for each token id that is used in the transaction.
     ///
     /// The range proofs correspond to the sorted order of token ids used.
+    ///
+    /// Note: This is EMPTY if mixed transactions is not enabled
     #[prost(bytes, repeated, tag = "4")]
     pub range_proofs: Vec<Vec<u8>>,
 
@@ -738,32 +740,49 @@ mod rct_bulletproofs_tests {
             num_mixins: usize,
             rng: &mut RNG,
         ) -> Self {
+            Self::random_mixed(block_version, num_inputs, num_mixins, 1, rng)
+        }
+
+        fn random_mixed<RNG: RngCore + CryptoRng>(
+            block_version: BlockVersion,
+            num_inputs: usize,
+            num_mixins: usize,
+            num_token_ids: usize,
+            rng: &mut RNG,
+        ) -> Self {
             let mut message = [0u8; 32];
             rng.fill_bytes(&mut message);
 
-            let fee_token_id =
-                TokenId::from(if block_version.masked_token_id_feature_is_supported() {
-                    rng.next_u64()
-                } else {
-                    0
-                });
+            if !block_version.mixed_transactions_are_supported() && num_token_ids != 1 {
+                panic!("more than one token id not supported at this block version");
+            }
 
-            let generator = generators(*fee_token_id);
+            let mut token_ids: Vec<u64> = (0..num_token_ids).map(|_| rng.next_u64()).collect();
+
+            if !block_version.masked_token_id_feature_is_supported() {
+                token_ids[0] = 0;
+            }
+
+            // First token id is the fee
+            let fee_token_id = TokenId::from(token_ids[0]);
+
+            let mut generator_cache = GeneratorCache::default();
 
             let mut rings = Vec::new();
             let mut real_input_indices = Vec::new();
             let mut input_secrets = Vec::new();
 
-            for _i in 0..num_inputs {
+            for i in 0..num_inputs {
                 let mut ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)> = Vec::new();
                 // Create random mixins.
                 for _i in 0..num_mixins {
+                    let generator = generator_cache.get(fee_token_id);
                     let address =
                         CompressedRistrettoPublic::from(RistrettoPublic::from_random(rng));
                     let commitment = {
                         let value = rng.next_u64();
                         let blinding = Scalar::random(rng);
-                        CompressedCommitment::new(value, blinding, &generator)
+                        CompressedCommitment::new(value, blinding, generator)
                     };
                     ring.push((address, commitment));
                 }
@@ -774,6 +793,10 @@ mod rct_bulletproofs_tests {
 
                 let value = rng.next_u64();
                 let blinding = Scalar::random(rng);
+
+                let token_id = TokenId::from(token_ids[i % token_ids.len()]);
+                let generator = generator_cache.get(token_id);
+
                 let commitment = CompressedCommitment::new(value, blinding, &generator);
 
                 let real_index = rng.next_u64() as usize % (num_mixins + 1);
@@ -784,7 +807,7 @@ mod rct_bulletproofs_tests {
                 input_secrets.push(InputSecret {
                     onetime_private_key,
                     value,
-                    token_id: fee_token_id,
+                    token_id,
                     blinding,
                 });
             }
@@ -873,7 +896,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 1..=2u32,
+            block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -895,7 +918,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 1..=2u32,
+            block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -916,7 +939,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 1..=2u32,
+            block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -941,11 +964,38 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 1..=2u32,
+            block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
+            let fee = 0;
+            let signature = params.sign(fee, &mut rng).unwrap();
+
+            let result = signature.verify(
+                block_version,
+                &params.message,
+                &params.rings,
+                &params.get_output_commitments(),
+                fee,
+                params.fee_token_id,
+                &mut rng,
+            );
+            result.unwrap();
+        }
+
+        #[test]
+        // `verify` should accept valid signatures with mixed token ids.
+        fn verify_accepts_valid_signatures_mixed_token_ids(
+            num_inputs in 1..8usize,
+            num_mixins in 1..17usize,
+            num_token_ids in 2..4usize,
+            seed in any::<[u8; 32]>(),
+            block_version in 3..=3u32,
+        ) {
+            let block_version: BlockVersion = block_version.try_into().unwrap();
+            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let params = SignatureParams::random_mixed(block_version, num_inputs, num_mixins, num_token_ids, &mut rng);
             let fee = 0;
             let signature = params.sign(fee, &mut rng).unwrap();
 
@@ -967,7 +1017,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 1..=2u32,
+            block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -999,7 +1049,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 1..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 1..=2u32,
+            block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -1073,12 +1123,57 @@ mod rct_bulletproofs_tests {
         }
 
         #[test]
+        // `verify` rejects a signature with invalid range proof, block version >=3.
+        fn test_verify_rejects_signature_with_invalid_range_proof_block_version3(
+            num_inputs in 1..8usize,
+            num_mixins in 1..17usize,
+            seed in any::<[u8; 32]>(),
+            block_version in 3..=3u32,
+        ) {
+            let block_version: BlockVersion = block_version.try_into().unwrap();
+            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
+            let fee = 0;
+            let mut signature = params.sign(fee, &mut rng).unwrap();
+
+            // Modify the range proof
+            let wrong_range_proof = {
+                let values = [13; 6];
+                let blindings: Vec<Scalar> = values
+                    .iter()
+                    .map(|_value| Scalar::random(&mut rng))
+                    .collect();
+                let (range_proof, _commitments) =
+                    generate_range_proofs(&values, &blindings, &params.generator(), &mut rng).unwrap();
+                range_proof
+            };
+
+            signature.range_proofs[0] = wrong_range_proof.to_bytes();
+
+            let result = signature.verify(
+                block_version,
+                &params.message,
+                &params.rings,
+                &params.get_output_commitments(),
+                fee,
+                params.fee_token_id,
+                &mut rng,
+            );
+
+            match result {
+                Err(Error::RangeProofError(_)) => {},
+                Err(err) => { panic!("Expected: RangeProofError, found {}", err) },
+                Ok(()) => { panic!("Expected: RangeProofError, found Ok") },
+            };
+        }
+
+        #[test]
         // `verify` rejects a signature that spends the same input in two different rings.
         fn test_verify_rejects_signature_with_duplicate_key_images(
             num_inputs in 4..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 1..=2u32,
+            block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -1112,7 +1207,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 4..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 1..=2u32,
+            block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -1137,7 +1232,7 @@ mod rct_bulletproofs_tests {
             num_inputs in 2..8usize,
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
-            block_version in 1..=2u32,
+            block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
@@ -1176,11 +1271,10 @@ mod rct_bulletproofs_tests {
                 }
                 _ => panic!("Unexpected success")
             }
-
         }
 
         #[test]
-        // block version two signatures should not validate at block version two
+        // block version one signatures should not validate at block version two
         fn validate_block_version_one_as_two_should_fail(
             num_inputs in 2..8usize,
             num_mixins in 1..17usize,
@@ -1291,6 +1385,96 @@ mod rct_bulletproofs_tests {
             params.fee_token_id = 1.into();
 
             assert_eq!(params.sign(fee, &mut rng), Err(Error::TokenIdNotAllowed));
+        }
+
+        #[test]
+        // signatures with mixed tokens should not work if the output token ids are tampered with
+        fn test_verify_signature_rejects_change_to_output_token_id(
+            num_inputs in 2..8usize,
+            num_mixins in 1..17usize,
+            num_token_ids in 2..4usize,
+            seed in any::<[u8; 32]>(),
+            block_version in 3..=3u32,
+        ) {
+            let block_version = BlockVersion::try_from(block_version).unwrap();
+            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let params = SignatureParams::random_mixed(block_version, num_inputs, num_mixins,num_token_ids, &mut rng);
+
+            let fee = 0;
+            let mut signature = params.sign(fee, &mut rng).unwrap();
+
+            signature.verify(
+                block_version,
+                &params.message,
+                &params.rings,
+                &params.get_output_commitments(),
+                fee,
+                params.fee_token_id,
+                &mut rng,
+            ).unwrap();
+
+            signature.output_token_ids[0] = signature.output_token_ids[1];
+
+            let result = signature.verify(
+                block_version,
+                &params.message,
+                &params.rings,
+                &params.get_output_commitments(),
+                fee,
+                params.fee_token_id,
+                &mut rng,
+            );
+
+            match result {
+                Err(Error::RangeProofError(_)) => {},
+                Err(err) => { panic!("Expected: RangeProofError, found {}", err) },
+                Ok(()) => { panic!("Expected: RangeProofError, found Ok") },
+            };
+        }
+
+        #[test]
+        // signatures with mixed tokens should not work if the pseudo-output token ids are tampered with
+        fn test_verify_signature_rejects_change_to_pseudo_output_token_id(
+            num_inputs in 2..8usize,
+            num_mixins in 1..17usize,
+            num_token_ids in 2..4usize,
+            seed in any::<[u8; 32]>(),
+            block_version in 3..=3u32,
+        ) {
+            let block_version = BlockVersion::try_from(block_version).unwrap();
+            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let params = SignatureParams::random_mixed(block_version, num_inputs, num_mixins, num_token_ids, &mut rng);
+
+            let fee = 0;
+            let mut signature = params.sign(fee, &mut rng).unwrap();
+
+            signature.verify(
+                block_version,
+                &params.message,
+                &params.rings,
+                &params.get_output_commitments(),
+                fee,
+                params.fee_token_id,
+                &mut rng,
+            ).unwrap();
+
+            signature.pseudo_output_token_ids[0] = signature.pseudo_output_token_ids[1];
+
+            let result = signature.verify(
+                block_version,
+                &params.message,
+                &params.rings,
+                &params.get_output_commitments(),
+                fee,
+                params.fee_token_id,
+                &mut rng,
+            );
+
+            match result {
+                Err(Error::RangeProofError(_)) => {},
+                Err(err) => { panic!("Expected: RangeProofError, found {}", err) },
+                Ok(()) => { panic!("Expected: RangeProofError, found Ok") },
+            };
         }
 
     } // end proptest
