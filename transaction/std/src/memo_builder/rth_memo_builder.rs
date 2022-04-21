@@ -14,7 +14,9 @@ use super::{
 };
 use crate::ChangeDestination;
 use mc_account_keys::{PublicAddress, ShortAddressHash};
-use mc_transaction_core::{tokens::Mob, MemoContext, MemoPayload, NewMemoError, Token};
+use mc_transaction_core::{
+    tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token, TokenId,
+};
 
 /// This memo builder attaches 0x0100 Authenticated Sender Memos to normal
 /// outputs, and 0x0200 Destination Memos to change outputs.
@@ -64,10 +66,12 @@ pub struct RTHMemoBuilder {
     last_recipient: ShortAddressHash,
     // Tracks the total outlay so far
     total_outlay: u64,
+    // Tracks the total outlay token id
+    outlay_token_id: Option<TokenId>,
     // Tracks the number of recipients so far
     num_recipients: u8,
     // Tracks the fee
-    fee: u64,
+    fee: Amount,
 }
 
 impl Default for RTHMemoBuilder {
@@ -79,8 +83,12 @@ impl Default for RTHMemoBuilder {
             wrote_destination_memo: false,
             last_recipient: Default::default(),
             total_outlay: 0,
+            outlay_token_id: None,
             num_recipients: 0,
-            fee: Mob::MINIMUM_FEE,
+            fee: Amount {
+                value: Mob::MINIMUM_FEE,
+                token_id: Mob::ID,
+            },
         }
     }
 }
@@ -132,7 +140,7 @@ impl RTHMemoBuilder {
 
 impl MemoBuilder for RTHMemoBuilder {
     /// Set the fee
-    fn set_fee(&mut self, fee: u64) -> Result<(), NewMemoError> {
+    fn set_fee(&mut self, fee: Amount) -> Result<(), NewMemoError> {
         if self.wrote_destination_memo {
             return Err(NewMemoError::FeeAfterChange);
         }
@@ -143,16 +151,25 @@ impl MemoBuilder for RTHMemoBuilder {
     /// Build a memo for a normal output (to another party).
     fn make_memo_for_output(
         &mut self,
-        value: u64,
+        amount: Amount,
         recipient: &PublicAddress,
         memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
         if self.wrote_destination_memo {
             return Err(NewMemoError::OutputsAfterChange);
         }
+        // Check if the outlay is mixing token ids
+        if let Some(prev_token_id) = self.outlay_token_id {
+            if prev_token_id != amount.token_id {
+                return Err(NewMemoError::MixedTokenIds);
+            }
+        } else {
+            // If this is the first outlay, then this is the token id for the whole outlay.
+            self.outlay_token_id = Some(amount.token_id);
+        }
         self.total_outlay = self
             .total_outlay
-            .checked_add(value)
+            .checked_add(amount.value)
             .ok_or(NewMemoError::LimitsExceeded("total_outlay"))?;
         self.num_recipients = self
             .num_recipients
@@ -185,7 +202,7 @@ impl MemoBuilder for RTHMemoBuilder {
     /// Build a memo for a change output (to ourselves).
     fn make_memo_for_change_output(
         &mut self,
-        _value: u64,
+        amount: Amount,
         _change_destination: &ChangeDestination,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
@@ -195,11 +212,36 @@ impl MemoBuilder for RTHMemoBuilder {
         if self.wrote_destination_memo {
             return Err(NewMemoError::MultipleChangeOutputs);
         }
+        // Check if the outlay is mixing token ids
+        if let Some(prev_token_id) = self.outlay_token_id {
+            if prev_token_id != amount.token_id {
+                return Err(NewMemoError::MixedTokenIds);
+            }
+        } else {
+            // If no outlays occurred yet, this should be the token id for the whole tx.
+            self.outlay_token_id = Some(amount.token_id);
+        }
+
+        // If the fee is not the same token id as the outlay, then
+        // total_outlay.checked_add(self.fee.value) is wrong.
+        // We need to specify token-id aware RTH memos
+        if self.fee.token_id != amount.token_id {
+            panic!(
+                "self fee token id != amount.token_id: {}, {}",
+                self.fee.token_id, amount.token_id
+            );
+            //return Err(NewMemoError::MixedTokenIds);
+        }
+
         self.total_outlay = self
             .total_outlay
-            .checked_add(self.fee)
+            .checked_add(self.fee.value)
             .ok_or(NewMemoError::LimitsExceeded("total_outlay"))?;
-        match DestinationMemo::new(self.last_recipient.clone(), self.total_outlay, self.fee) {
+        match DestinationMemo::new(
+            self.last_recipient.clone(),
+            self.total_outlay,
+            self.fee.value,
+        ) {
             Ok(mut d_memo) => {
                 self.wrote_destination_memo = true;
                 d_memo.set_num_recipients(self.num_recipients);

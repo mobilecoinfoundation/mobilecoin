@@ -24,8 +24,8 @@ pub enum TxBuilderError {
     /// Bad Amount: {0}
     BadAmount(AmountError),
 
-    /// Input had wrong token id: Expected {0}, Found {1}
-    WrongTokenType(TokenId, TokenId),
+    /// Mixed Transactions not allowed: Expected {0}, Found {1}
+    MixedTransactionsNotAllowed(TokenId, TokenId),
 
     /// New Tx: {0}
     NewTx(NewTxError),
