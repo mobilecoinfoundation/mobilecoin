@@ -81,10 +81,10 @@ impl SinkManager {
 }
 
 impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for DbStream<US, L> {
-    type Stream = impl Stream<Item = StreamResult<BlockStreamComponents>>;
+    type Stream<'s> = impl Stream<Item = StreamResult<BlockStreamComponents>> + 's;
 
-    /// Get block sink stream at a specific height
-    fn get_block_stream(&self, starting_height: u64) -> StreamResult<Self::Stream> {
+    /// Get block stream that performs block sinking
+    fn get_block_stream(&self, starting_height: u64) -> StreamResult<Self::Stream<'_>> {
         let num_blocks = self.ledger.num_blocks().unwrap();
 
         // Check to ensure we don't start more than 1 block ahead of what's currently in
@@ -241,15 +241,16 @@ fn start_sink_thread(
 mod tests {
 
     use super::*;
-    use mc_common::logger::{log, test_with_logger, Logger};
+    use mc_common::logger::{test_with_logger, Logger};
     use mc_ledger_db::test_utils::get_mock_ledger;
-    use mc_ledger_streaming_api::test_utils::stream::get_stream_with_n_components;
+    use mc_ledger_streaming_api::test_utils::{make_components, stream};
 
     #[test_with_logger]
     fn assert_pass_through_and_storage(logger: Logger) {
-        let upstream = get_stream_with_n_components(403);
+        let components = make_components(403);
+        let upstream = stream::mock_stream_from_components(components);
         let dest_ledger = get_mock_ledger(0);
-        let bs = DbStream::new(upstream, dest_ledger, true, logger.clone());
+        let bs = DbStream::new(upstream, dest_ledger, true, logger);
         let mut go_stream = bs.get_block_stream(0).unwrap();
 
         futures::executor::block_on(async move {
@@ -259,7 +260,6 @@ mod tests {
                 count += 1;
             }
 
-            log::info!(logger, "counted {} blocks", count);
             assert_eq!(count, 403);
         });
     }

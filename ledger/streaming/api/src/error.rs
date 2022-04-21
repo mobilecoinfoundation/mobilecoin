@@ -29,7 +29,7 @@ pub enum Error {
     /// {0}
     Other(String),
 
-    /// DB Access Error" {0}
+    /// DB Access Error: {0}
     DBAccess(String),
 
     /// Block validation failed: {0}
@@ -38,8 +38,6 @@ pub enum Error {
     /// SCP Consensus Behind: last externalized block {0} - highest block {1}
     ConsensusBlocked(SlotIndex, SlotIndex),
 
-    /// Ledger DB Access Error
-    DBAccess(String),
 }
 
 impl std::error::Error for Error {}
