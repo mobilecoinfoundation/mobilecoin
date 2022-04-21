@@ -158,7 +158,7 @@ mod tests {
         // Error at the end.
         items[4] = Err(Error::Grpc("end".to_owned()));
 
-        let upstream = MockStream::new(items);
+        let upstream = MockStream::from_items(items);
         let fetcher = MockFetcher::new(5);
         let source = BackfillingStream::new(upstream, fetcher, logger);
 

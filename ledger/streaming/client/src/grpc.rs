@@ -2,7 +2,6 @@
 
 //! A [Streamer] that streams blocks using the `LedgerUpdates` gRPC API.
 
-use displaydoc::Display;
 use futures::{Stream, StreamExt};
 use mc_common::logger::{log, o, Logger};
 use mc_ledger_streaming_api::{
@@ -11,13 +10,13 @@ use mc_ledger_streaming_api::{
 };
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConnectionUri;
-use std::{convert::TryFrom, sync::Arc, time::Duration};
+use std::{convert::TryFrom, fmt::Debug, sync::Arc, time::Duration};
 
 /// A [Streamer] that streams blocks using the `LedgerUpdates` gRPC API.
-#[derive(Display)]
 pub struct GrpcBlockSource {
     /// The gRPC client
     client: LedgerUpdatesClient,
+    uri_str: String,
     /// A logger object
     logger: Logger,
 }
@@ -25,11 +24,16 @@ pub struct GrpcBlockSource {
 impl GrpcBlockSource {
     /// Instantiate a [GrpcBlockSource] pulling from the given `uri`.
     pub fn new(uri: &impl ConnectionUri, env: Arc<grpcio::Environment>, logger: Logger) -> Self {
-        let logger = logger.new(o!("uri" => uri.to_string()));
+        let uri_str = uri.to_string();
+        let logger = logger.new(o!("uri" => uri_str.clone()));
         let channel =
             grpcio::ChannelBuilder::default_channel_builder(env).connect_to_uri(uri, &logger);
         let client = LedgerUpdatesClient::new(channel);
-        Self { client, logger }
+        Self {
+            client,
+            uri_str,
+            logger,
+        }
     }
 
     /// Make the Subscribe gRPC call.
@@ -79,6 +83,14 @@ impl Streamer<Result<BlockData>, BlockIndex> for GrpcBlockSource {
             }
         });
         Ok(result)
+    }
+}
+
+impl Debug for GrpcBlockSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GrpcBlockSource")
+            .field("uri", &self.uri_str)
+            .finish()
     }
 }
 

@@ -11,6 +11,7 @@ pub mod block_validator;
 pub mod grpc;
 pub mod http_fetcher;
 pub mod ledger_sink;
+pub mod local_fetcher;
 pub mod scp_validator;
 pub mod url;
 
@@ -18,6 +19,12 @@ pub mod url;
 pub mod test_utils;
 
 pub use crate::{
-    backfill::BackfillingStream, grpc::GrpcBlockSource, http_fetcher::HttpBlockFetcher,
+    backfill::BackfillingStream,
+    block_validator::BlockValidator,
+    grpc::GrpcBlockSource,
+    http_fetcher::HttpBlockFetcher,
+    ledger_sink::DbStream,
+    local_fetcher::LocalBlockFetcher,
+    scp_validator::{GenericNodeId, QuorumSet, QuorumSetMember, SCPValidator},
     url::BlockchainUrl,
 };

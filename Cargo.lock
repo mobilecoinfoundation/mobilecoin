@@ -5079,7 +5079,6 @@ dependencies = [
  "grpcio",
  "hashbrown 0.12.1",
  "mc-api",
- "mc-blockchain-test-utils",
  "mc-blockchain-types",
  "mc-common",
  "mc-consensus-scp-types",
@@ -5094,6 +5093,34 @@ dependencies = [
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
  "reqwest",
+ "tokio",
+ "url",
+]
+
+[[package]]
+name = "mc-ledger-streaming-pipeline"
+version = "1.3.0-pre0"
+dependencies = [
+ "async-channel",
+ "displaydoc",
+ "futures",
+ "grpcio",
+ "mc-api",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-ledger-db",
+ "mc-ledger-streaming-api",
+ "mc-ledger-streaming-client",
+ "mc-ledger-streaming-publisher",
+ "mc-transaction-core",
+ "mc-util-from-random",
+ "mc-util-grpc",
+ "mc-util-uri",
+ "mockito",
+ "protobuf",
+ "rand_core 0.6.3",
+ "rand_hc 0.3.1",
+ "tempdir",
  "tokio",
  "url",
 ]
@@ -5115,6 +5142,7 @@ dependencies = [
  "mc-ledger-streaming-api",
  "mc-util-grpc",
  "mc-util-uri",
+ "portpicker",
  "protobuf",
  "tokio",
 ]

@@ -8,7 +8,8 @@ pub trait Streamer<Element, Request> {
     /// The specific type of stream.
     type Stream<'s>: Stream<Item = Element> + 's
     where
-        Self: 's;
+        Self: 's,
+        Request: 's;
 
     /// Start streaming elements.
     /// starting_height is a hint to the stream impl for where to start:
@@ -21,11 +22,13 @@ pub trait Fetcher<Element, SingleRequest, MultipleRequest> {
     /// Future for fetching single elements.
     type Single<'s>: Future<Output = Element> + 's
     where
-        Self: 's;
+        Self: 's,
+        SingleRequest: 's;
     /// Stream for fetching multiple elements.
     type Multiple<'s>: Stream<Item = Element> + 's
     where
-        Self: 's;
+        Self: 's,
+        MultipleRequest: 's;
 
     /// Fetch a single element matching the given request.
     fn fetch_single(&self, request: SingleRequest) -> Self::Single<'_>;

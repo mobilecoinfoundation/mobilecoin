@@ -4,35 +4,42 @@
 //! data.
 
 use crate::{BlockData, BlockIndex, Result, Streamer};
-use futures::Stream;
+use futures::{
+    stream::{iter, Iter},
+    Stream, StreamExt,
+};
 
 /// Mock implementation of [Streamer<Result<BlockData>>], backed by pre-defined
 /// data.
 #[derive(Clone, Debug)]
-pub struct MockStream {
-    items: Vec<Result<BlockData>>,
+pub struct MockStream<S: Stream + Clone> {
+    stream: S,
 }
 
-impl MockStream {
-    /// Instantiate a MockStream with the given items.
-    /// A subset of the items will be cloned for each `get_stream` call.
-    pub fn new(items: Vec<Result<BlockData>>) -> Self {
-        Self { items }
+impl<S: Stream + Clone> MockStream<S> {
+    /// Instantiate a MockStream with the given stream.
+    pub fn new(stream: S) -> Self {
+        Self { stream }
+    }
+}
+
+type BlockVecIntoIter = <Vec<Result<BlockData>> as IntoIterator>::IntoIter;
+impl MockStream<Iter<BlockVecIntoIter>> {
+    /// Instantiate a MockStream with the given results.
+    pub fn from_items(results: Vec<Result<BlockData>>) -> Self {
+        Self::new(iter(results))
     }
 
     /// Instantiate a MockStream with the given blocks.
     pub fn from_blocks(src: Vec<BlockData>) -> Self {
-        let items: Vec<Result<BlockData>> = src.into_iter().map(Ok).collect();
-        Self::new(items)
+        Self::from_items(src.into_iter().map(Ok).collect())
     }
 }
 
-impl Streamer<Result<BlockData>, BlockIndex> for MockStream {
-    type Stream<'s> = impl Stream<Item = Result<BlockData>> + 's;
+impl<S: Stream + Clone> Streamer<S::Item, BlockIndex> for MockStream<S> {
+    type Stream<'s> = impl Stream<Item = S::Item> + 's where Self: 's;
 
-    fn get_stream(&self, starting_height: BlockIndex) -> Result<Self::Stream<'_>> {
-        let start_index = starting_height as usize;
-        let items = self.items.iter().skip(start_index).cloned();
-        Ok(futures::stream::iter(items))
+    fn get_stream(&self, index: BlockIndex) -> Result<Self::Stream<'_>> {
+        Ok(self.stream.clone().skip(index as usize))
     }
 }

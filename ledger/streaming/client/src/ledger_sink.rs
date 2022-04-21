@@ -12,7 +12,8 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 /// ledger db. This sink should live downstream from a verification source that
 /// has already done block content, scp, and avr validation and thus is
 /// considered a trusted stream
-pub struct DbStream<US: Streamer<Result<BlockData>, BlockIndex> + 'static, L: Ledger + 'static> {
+#[derive(Debug)]
+pub struct DbStream<US: Streamer<Result<BlockData>, BlockIndex>, L: Ledger + Clone + 'static> {
     /// Upstream block stream combinator
     upstream: US,
 
@@ -26,9 +27,7 @@ pub struct DbStream<US: Streamer<Result<BlockData>, BlockIndex> + 'static, L: Le
     logger: Logger,
 }
 
-impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, L: Ledger + Clone + 'static>
-    DbStream<US, L>
-{
+impl<US: Streamer<Result<BlockData>, BlockIndex>, L: Ledger + Clone + 'static> DbStream<US, L> {
     /// Initialize a stream factory from an upstream source
     pub fn new(upstream: US, ledger: L, pass_through_synced_blocks: bool, logger: Logger) -> Self {
         Self {
@@ -38,12 +37,22 @@ impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, L: Ledger + Clone + 
             logger,
         }
     }
+
+    /// Get a reference to the ledger.
+    pub fn ledger(&self) -> &L {
+        &self.ledger
+    }
+
+    /// Get a mutable reference to the ledger.
+    pub fn ledger_mut(&mut self) -> &mut L {
+        &mut self.ledger
+    }
 }
 
-impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, L: Ledger + Clone + 'static>
+impl<US: Streamer<Result<BlockData>, BlockIndex>, L: Ledger + Clone + 'static>
     Streamer<Result<BlockData>, BlockIndex> for DbStream<US, L>
 {
-    type Stream<'s> = impl Stream<Item = Result<BlockData>> + 's;
+    type Stream<'s> = impl Stream<Item = Result<BlockData>> + 's where US: 's, L: 's;
 
     /// Get block stream that performs block sinking
     fn get_stream(&self, starting_height: BlockIndex) -> Result<Self::Stream<'_>> {
@@ -88,6 +97,12 @@ impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, L: Ledger + Clone + 
         let output_stream =
             futures::stream::unfold((stream, state), |(mut stream, mut state)| async move {
                 if let Some(result) = stream.next().await {
+                    log::info!(
+                        state.logger,
+                        "Got result {:?} with state {:?}",
+                        result,
+                        state
+                    );
                     if let Ok(block_data) = result {
                         state.last_block_received = block_data.block().index;
                         if state.can_start_sync() {
@@ -110,6 +125,7 @@ impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, L: Ledger + Clone + 
                         return Some((result, (stream, state)));
                     }
                 } else {
+                    log::info!(state.logger, "Failed to get result {:?}", state);
                     // If we're behind, wait for the rest of the blocks to sync then end
                     if state.is_behind() {
                         log::debug!(
@@ -135,6 +151,7 @@ impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, L: Ledger + Clone + 
 }
 
 /// Object to manage the state of the ledger sink process
+#[derive(Debug)]
 struct SinkState {
     /// Channel to send blocks ledger sink thread to be synced
     sender: Sender<BlockData>,
@@ -197,6 +214,12 @@ fn start_sink_thread(
     // Launch ledger sink thread
     std::thread::spawn(move || {
         while let Some(block_data) = rcv_in.blocking_recv() {
+            log::info!(
+                &logger,
+                "Sync thread got block {}",
+                block_data.block().index + 1
+            );
+
             // If there's an error syncing the blocks, end thread
             if let Err(err) = ledger.append_block_data(&block_data) {
                 log::error!(

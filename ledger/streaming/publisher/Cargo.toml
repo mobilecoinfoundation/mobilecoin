@@ -26,7 +26,8 @@ displaydoc = "0.2"
 flo_stream = "0.7"
 futures = "0.3"
 grpcio = "0.10"
-protobuf = "2.22"
+portpicker = "0.1"
+protobuf = "2.27"
 tokio = { version = "1.16", features = ["fs"], optional = true }
 
 [dev-dependencies]

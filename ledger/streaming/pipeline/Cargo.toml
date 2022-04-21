@@ -1,0 +1,53 @@
+[package]
+name = "mc-ledger-streaming-pipeline"
+version = "1.3.0-pre0"
+authors = ["MobileCoin"]
+license = "MIT OR Apache-2.0"
+edition = "2021"
+
+[lib]
+
+[features]
+default = []
+client = ["mc-ledger-streaming-client"]
+publisher = ["publisher_local", "publisher_s3"]
+publisher_local = ["mc-ledger-streaming-publisher/local"]
+publisher_s3 = ["mc-ledger-streaming-publisher/s3"]
+# FIXME when weak-dep-features are stabilized: test_utils = ["mc-ledger-streaming-publisher?/test_utils", "mc-ledger-streaming-client?/test_utils"]
+test_utils = []
+
+[dependencies]
+mc-api = { path = "../../../api" }
+mc-common = { path = "../../../common" }
+mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-ledger-db = { path = "../../db" }
+mc-ledger-streaming-api = { path = "../api" }
+mc-ledger-streaming-client = { path = "../client", optional = true }
+mc-ledger-streaming-publisher = { path = "../publisher", optional = true }
+mc-transaction-core = { path = "../../../transaction/core" }
+mc-util-grpc = { path = "../../../util/grpc" }
+mc-util-uri = { path = "../../../util/uri" }
+
+displaydoc = "0.2"
+futures = "0.3"
+grpcio = "0.10"
+protobuf = "2.27"
+url = "2.2"
+
+[dev-dependencies]
+mc-common = { path = "../../../common", features = ["loggers"] }
+mc-ledger-db = { path = "../../db", features = ["test_utils"] }
+mc-ledger-streaming-api = { path = "../api", features = ["test_utils"] }
+mc-util-from-random = { path = "../../../util/from-random" }
+
+async-channel = "1.6"
+mockito = "0.31"
+rand_core = "0.6"
+rand_hc = "0.3"
+tempdir = "0.3"
+tokio = { version = "1.17", features = ["macros", "rt-multi-thread"] }
+
+
+[[test]]
+name = "local"
+required-features = ["client", "publisher_local"]

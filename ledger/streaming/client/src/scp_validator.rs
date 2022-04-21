@@ -10,61 +10,43 @@ use mc_common::{
     logger::{log, Logger},
     NodeID,
 };
-use mc_consensus_scp_types::{GenericNodeId, QuorumSet, QuorumSetMember, SlotIndex};
 use mc_ledger_streaming_api::{BlockData, BlockIndex, Error, Result, Streamer};
 use std::future;
 
 const MAX_BLOCK_DEFICIT: u64 = 50;
 
-/// Enum to allow monadic results other than Some & None for
-/// stream types were None would terminate the stream. Useful for
-/// stream combinations like Scan --> Filter_Map
-pub enum Ready<T> {
-    /// Value with data container to indicate a value is ready
-    Ready(T),
-
-    /// Indicates to subsequent future/stream upstream is not ready
-    NotReady,
-}
+pub use mc_consensus_scp_types::{GenericNodeId, QuorumSet, QuorumSetMember, SlotIndex};
 
 /// SCP Validation stream factory, this factory takes in a group of
 /// streams from individual peers and validate that they pass SCP consensus.
 /// Note this will consume all other streams and return a single result
+#[derive(Debug)]
 pub struct SCPValidator<
     US: Streamer<Result<BlockData>, BlockIndex> + 'static,
     ID: GenericNodeId + Send = NodeID,
 > {
     upstreams: HashMap<ID, US>,
-    logger: Logger,
     scp_validation_state: SCPValidationState<ID>,
+    logger: Logger,
 }
 
 impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, ID: GenericNodeId + Send>
     SCPValidator<US, ID>
 {
     /// Create new SCP validator stream factory
-    pub fn new(
-        upstreams: HashMap<ID, US>,
-        logger: Logger,
-        local_node_id: ID,
-        quorum_set: QuorumSet<ID>,
-    ) -> Self {
-        let scp_validation_state =
-            SCPValidationState::new(local_node_id, quorum_set, logger.clone());
+    pub fn new(upstreams: HashMap<ID, US>, quorum_set: QuorumSet<ID>, logger: Logger) -> Self {
+        let scp_validation_state = SCPValidationState::new(quorum_set, logger.clone());
         Self {
             upstreams,
-            logger,
             scp_validation_state,
+            logger,
         }
     }
 }
 
 /// State of SCP validation
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SCPValidationState<ID: GenericNodeId + Send = NodeID> {
-    /// The local node ID.
-    local_node_id: ID,
-
     /// The quorum set of the node we are tracking state for.
     local_quorum_set: QuorumSet<ID>,
 
@@ -81,11 +63,10 @@ pub struct SCPValidationState<ID: GenericNodeId + Send = NodeID> {
     logger: Logger,
 }
 
-impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
+impl<ID: GenericNodeId + Send> SCPValidationState<ID> {
     /// Create new validator object
-    pub fn new(local_node_id: ID, local_quorum_set: QuorumSet<ID>, logger: Logger) -> Self {
+    pub fn new(local_quorum_set: QuorumSet<ID>, logger: Logger) -> Self {
         Self {
-            local_node_id,
             local_quorum_set,
             slots_to_externalized_blocks: HashMap::new(),
             highest_slot_index: 0,
@@ -156,8 +137,7 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
             let mut blocks = self.slots_to_externalized_blocks.remove(&index).unwrap();
             log::trace!(
                 self.logger,
-                "Node: {} found a quorum slice for block {}",
-                self.local_node_id,
+                "SCP found a quorum slice for block {}",
                 self.highest_slot_index,
             );
 
@@ -244,6 +224,17 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
     }
 }
 
+/// Enum to allow monadic results other than Some & None for
+/// stream types were None would terminate the stream. Useful for
+/// stream combinations like Scan --> Filter_Map
+pub enum Ready<T> {
+    /// Value with data container to indicate a value is ready
+    Ready(T),
+
+    /// Indicates to subsequent future/stream upstream is not ready
+    NotReady,
+}
+
 impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, ID: GenericNodeId + Send>
     Streamer<Result<BlockData>, BlockIndex> for SCPValidator<US, ID>
 {
@@ -304,12 +295,8 @@ impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, ID: GenericNodeId + 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_blockchain_test_utils::test_node_id;
     use mc_common::logger::{test_with_logger, Logger};
-    use mc_ledger_streaming_api::{
-        test_utils::{make_blocks, MockStream},
-        BlockIndex,
-    };
+    use mc_ledger_streaming_api::test_utils::{test_node_id,make_blocks, MockStream};
 
     #[test_with_logger]
     fn scp_validates_nodes_in_quorum(logger: Logger) {
@@ -347,9 +334,7 @@ mod tests {
         for i in 0..9 {
             upstreams.insert(nodes.get(i).unwrap().clone(), s.clone());
         }
-        let local_node_id = test_node_id(10);
-
-        let validator = SCPValidator::new(upstreams, logger.clone(), local_node_id, quorum_set);
+        let validator = SCPValidator::new(upstreams, quorum_set, logger);
 
         futures::executor::block_on(async move {
             let mut scp_stream = validator.get_stream(0).unwrap();
@@ -357,7 +342,7 @@ mod tests {
             while let Some(result) = scp_stream.next().await {
                 index = result.unwrap().block().index;
             }
-            assert_eq!(index, 99)
+            assert_eq!(index, 19)
         });
     }
 }

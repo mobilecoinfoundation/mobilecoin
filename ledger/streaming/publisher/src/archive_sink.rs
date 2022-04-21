@@ -15,12 +15,13 @@ use mc_api::{block_num_to_s3block_path, merged_block_num_to_s3block_path};
 use mc_common::logger::{log, Logger};
 use mc_ledger_db::Ledger;
 use mc_ledger_streaming_api::{ArchiveBlock, ArchiveBlocks, BlockData, Error, Result};
+use std::collections::VecDeque;
 #[cfg(any(feature = "local", feature = "s3"))]
 use std::path::PathBuf;
-use std::{collections::VecDeque, convert::TryFrom};
 
 /// A block sink that writes [ArchiveBlock] and [ArchiveBlocks] to files, with
 /// the help of a [ProtoWriter], e.g. to S3 or local files.
+#[derive(Debug)]
 pub struct ArchiveBlockSink<W: ProtoWriter, L: Ledger> {
     writer: W,
     ledger: L,
@@ -31,9 +32,9 @@ pub struct ArchiveBlockSink<W: ProtoWriter, L: Ledger> {
 #[cfg(feature = "s3")]
 impl<L: Ledger> ArchiveBlockSink<S3ClientProtoWriter, L> {
     /// Instantiate a sink uploading to the given path under the given region.
-    pub fn new_s3(region: aws_sdk_s3::Region, path: PathBuf, ledger: L, logger: Logger) -> Self {
+    pub fn new_s3(region: aws_sdk_s3::Region, s3_path: PathBuf, ledger: L, logger: Logger) -> Self {
         Self::new(
-            S3ClientProtoWriter::new(region, path),
+            S3ClientProtoWriter::new(region, s3_path),
             ledger,
             DEFAULT_MERGED_BLOCKS_BUCKET_SIZES.to_vec(),
             logger,
@@ -43,12 +44,12 @@ impl<L: Ledger> ArchiveBlockSink<S3ClientProtoWriter, L> {
     /// Instantiate a sink uploading to the given path with the given S3 Config.
     pub fn new_s3_config(
         config: aws_sdk_s3::Config,
-        path: PathBuf,
+        s3_path: PathBuf,
         ledger: L,
         logger: Logger,
     ) -> Self {
         Self::new(
-            S3ClientProtoWriter::from_config(config, path),
+            S3ClientProtoWriter::from_config(config, s3_path),
             ledger,
             DEFAULT_MERGED_BLOCKS_BUCKET_SIZES.to_vec(),
             logger,
@@ -60,9 +61,9 @@ impl<L: Ledger> ArchiveBlockSink<S3ClientProtoWriter, L> {
 impl<L: Ledger> ArchiveBlockSink<LocalFileProtoWriter, L> {
     /// Instantiate an [AcrhiveBlockSink] with a [LocalFileProtoWriter] rooted
     /// at the given path.
-    pub fn new_local(path: PathBuf, ledger: L, logger: Logger) -> Self {
+    pub fn new_local(local_path: PathBuf, ledger: L, logger: Logger) -> Self {
         Self::new(
-            LocalFileProtoWriter::new(path),
+            LocalFileProtoWriter::new(local_path),
             ledger,
             DEFAULT_MERGED_BLOCKS_BUCKET_SIZES.to_vec(),
             logger,
@@ -91,40 +92,39 @@ impl<W: ProtoWriter, L: Ledger> ArchiveBlockSink<W, L> {
         }
     }
 
+    /// Write a single [BlockData].
+    ///     /// The returned value is a `Future` where the `Output` type is
+    /// `Result<()>`; it is executed entirely for its side effects, while
+    /// propagating errors back to the caller.
+
+    pub async fn write(&self, block_data: &BlockData) -> Result<ArchiveBlock> {
+        let archive_block = write_single_block(block_data, &self.writer).await?;
+        maybe_write_merged_blocks(
+            block_data.block().index,
+            &self.merged_blocks_bucket_sizes,
+            &self.ledger,
+            &self.writer,
+            &self.logger,
+        )
+        .await?;
+        Ok(archive_block)
+    }
+
     /// Consume the given `Stream`.
-    /// The returned value is a `Stream` where the `Output` type is
+    /// The returned value is a `Stream` where the `Item` type is
     /// `Result<()>`; it is executed entirely for its side effects, while
     /// propagating errors back to the caller.
     pub fn consume<'s, S: Stream<Item = Result<BlockData>>>(
-        &'s mut self,
+        &'s self,
         stream: S,
-    ) -> impl Stream<Item = Result<()>> + 's
+    ) -> impl Stream<Item = Result<ArchiveBlock>> + 's
     where
         S: 's,
     {
-        let writer = &self.writer;
-        let ledger = &self.ledger;
-        let logger = &self.logger;
-        let merged_blocks_bucket_sizes = &self.merged_blocks_bucket_sizes;
-        stream.then(move |result| {
-            let mut writer = writer.clone();
-            async move {
-                match result {
-                    Ok(block_data) => {
-                        let index = block_data.block().index;
-                        let writer_mut = &mut writer;
-                        write_single_block(&block_data, writer_mut).await?;
-                        maybe_write_merged_blocks(
-                            index,
-                            merged_blocks_bucket_sizes,
-                            ledger,
-                            writer_mut,
-                            logger,
-                        )
-                        .await
-                    }
-                    Err(e) => Err(e),
-                }
+        stream.then(move |result| async move {
+            match result {
+                Ok(block_data) => self.write(&block_data).await,
+                Err(e) => Err(e),
             }
         })
     }
@@ -172,17 +172,21 @@ async fn maybe_write_merged_blocks<'s>(
     Ok(())
 }
 
-async fn write_single_block(block_data: &BlockData, writer: &mut impl ProtoWriter) -> Result<()> {
+async fn write_single_block(
+    block_data: &BlockData,
+    writer: &impl ProtoWriter,
+) -> Result<ArchiveBlock> {
     let index = block_data.block().index;
     let proto = ArchiveBlock::from(block_data);
     let dest = block_num_to_s3block_path(index);
-    writer.upload(&proto, &dest).await
+    writer.upload(&proto, &dest).await?;
+    Ok(proto)
 }
 
 async fn write_merged_block(
     items: &[BlockData],
     bucket_size: usize,
-    writer: &mut impl ProtoWriter,
+    writer: &impl ProtoWriter,
 ) -> Result<()> {
     assert_eq!(items.len(), bucket_size);
     let indexes = items
@@ -227,7 +231,7 @@ mod tests {
             }
         }
 
-        fn log_call(&mut self, name: &str, dest: &Path) {
+        fn log_call(&self, name: &str, dest: &Path) {
             let name = name.to_owned();
             let dest = dest.to_path_buf();
             let mut calls = self.calls.lock().unwrap();
@@ -244,7 +248,7 @@ mod tests {
 
     impl ProtoWriter for MockWriter {
         fn upload<'up, M: protobuf::Message>(
-            &'up mut self,
+            &'up self,
             proto: &'up M,
             dest: &'up Path,
         ) -> Self::Future<'up> {
@@ -266,7 +270,7 @@ mod tests {
             .expect_get_block_data()
             .returning(move |index| Ok(items[index as usize].clone()));
 
-        let mut sink = ArchiveBlockSink::new(writer, ledger, [10].to_vec(), logger);
+        let sink = ArchiveBlockSink::new(writer, ledger, [10].to_vec(), logger);
 
         let stream = source.get_stream(0).expect("get_stream");
         let result_stream = sink.consume(stream);
@@ -295,7 +299,7 @@ mod tests {
             }
         });
 
-        let mut sink = ArchiveBlockSink::new(writer, ledger, [10].to_vec(), logger);
+        let sink = ArchiveBlockSink::new(writer, ledger, [10].to_vec(), logger);
 
         let stream = source.get_stream(0).expect("get_stream");
         let result_stream = sink.consume(stream);
@@ -321,7 +325,7 @@ mod tests {
         let mut items: Vec<Result<BlockData>> = make_blocks(11).into_iter().map(Ok).collect();
         items[1] = Err(Error::Other("test".to_string()));
         items[8] = Err(Error::Other("test".to_string()));
-        let source = MockStream::new(items.clone());
+        let source = MockStream::from_items(items.clone());
         let mut ledger = MockLedger::new();
         ledger.expect_get_block_data().returning(move |index| {
             items[index as usize]
@@ -330,7 +334,7 @@ mod tests {
                 .map_err(|_| mc_ledger_db::Error::NotFound)
         });
 
-        let mut sink = ArchiveBlockSink::new(writer, ledger, [10].to_vec(), logger);
+        let sink = ArchiveBlockSink::new(writer, ledger, [10].to_vec(), logger);
 
         let stream = source.get_stream(0).expect("get_stream");
         let result_stream = sink.consume(stream);

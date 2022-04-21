@@ -18,7 +18,6 @@ use mc_ledger_streaming_api::{
 use protobuf::Message;
 use reqwest::Client;
 use std::{
-    convert::{TryFrom, TryInto},
     ops::Range,
     sync::{
         atomic::{AtomicU64, Ordering},
@@ -297,6 +296,7 @@ impl HttpBlockFetcher {
         indexes: Range<BlockIndex>,
     ) -> impl Stream<Item = Result<BlockData>> + '_ {
         let n = indexes.end - indexes.start - 1;
+        // TODO: Support splitting up the indexes across multiple buckets.
         for bucket in &self.merged_blocks_bucket_sizes {
             let bucket_u64 = *bucket as u64;
             if bucket_u64 < n {

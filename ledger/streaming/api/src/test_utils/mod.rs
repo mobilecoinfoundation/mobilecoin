@@ -12,4 +12,5 @@ pub use self::{
     stream::MockStream,
 };
 
+pub use mc_blockchain_test_utils::test_node_id;
 pub use mc_ledger_db::test_utils::get_test_ledger_blocks as make_blocks;

@@ -33,7 +33,7 @@ impl LocalFileProtoWriter {
 }
 
 impl ProtoWriter for LocalFileProtoWriter {
-    fn upload<'up, M: Message>(&'up mut self, proto: &'up M, dest: &'up Path) -> Self::Future<'up> {
+    fn upload<'up, M: Message>(&'up self, proto: &'up M, dest: &'up Path) -> Self::Future<'up> {
         let dest = self.root.join(dest);
         self.write(dest, proto.write_to_bytes())
     }

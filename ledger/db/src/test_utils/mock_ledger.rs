@@ -14,7 +14,10 @@ use mc_transaction_core::{
     TokenId,
 };
 use mc_util_test_helper::get_seeded_rng;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::{
+    fmt,
+    sync::{Arc, Mutex, MutexGuard},
+};
 
 #[derive(Default)]
 pub struct MockLedgerInner {
@@ -226,6 +229,20 @@ impl Ledger for MockLedger {
         _mint_tx: &MintTx,
     ) -> Result<ActiveMintConfig, Error> {
         unimplemented!()
+    }
+}
+
+impl fmt::Debug for MockLedger {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Ok(inner) = self.inner.lock() {
+            f.debug_struct("MockLedger")
+                .field("block_data_by_index", &inner.block_data_by_index)
+                .field("tx_outs_by_index", &inner.tx_outs_by_index)
+                .field("key_images", &inner.key_images)
+                .finish_non_exhaustive()
+        } else {
+            f.write_str("MockLedger(<mutex poisoned>)")
+        }
     }
 }
 

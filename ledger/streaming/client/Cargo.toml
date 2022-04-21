@@ -22,14 +22,13 @@ mc-util-uri = { path = "../../../util/uri" }
 displaydoc = "0.2"
 futures = "0.3"
 grpcio = "0.10"
-hashbrown = "0.12.0"
-protobuf = "2.22"
+hashbrown = "0.12"
+protobuf = "2.27"
 reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "gzip"] }
-tokio = "1.17.0"
+tokio = { version = "1.17", default-features = false, features = ["fs"] }
 url = "2.2"
 
 [dev-dependencies]
-mc-blockchain-test-utils = { path = "../../../blockchain/test-utils" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-ledger-db = { path = "../../../ledger/db", features = ["test_utils"] }
 mc-ledger-streaming-api = { path = "../api", features = ["test_utils"] }
@@ -38,4 +37,4 @@ mc-util-from-random = { path = "../../../util/from-random" }
 mockito = "0.31"
 rand_core = "0.6"
 rand_hc = "0.3"
-tokio = { version = "1.16", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

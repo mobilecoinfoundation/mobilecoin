@@ -10,7 +10,7 @@ use mc_common::logger::Logger;
 use mc_ledger_streaming_api::{
     streaming_blocks::SubscribeRequest,
     streaming_blocks_grpc::{create_ledger_updates, LedgerUpdates},
-    ArchiveBlock, Result,
+    ArchiveBlock, Result, BlockData,
 };
 use mc_util_grpc::ConnectionUriGrpcioServer;
 use mc_util_uri::ConnectionUri;
@@ -18,6 +18,7 @@ use std::sync::Arc;
 
 /// A sink that consumes a [Stream] of [ArchiveBlock]s and publishes the
 /// results over gRPC [LedgerUpdates].
+#[derive(Debug)]
 pub struct GrpcServerSink {
     publisher: Arc<Mutex<ExpiringPublisher<ArchiveBlock>>>,
     logger: Logger,
@@ -34,20 +35,42 @@ impl GrpcServerSink {
         }
     }
 
-    /// Consume a [Stream] of [ArchiveBlock]s.
-    /// The returned value is a `Stream` where the `Output` type is
+    /// Publish an [ArchiveBlock] to all current subscribers.
+    ///
+    /// The returned value is a [Future] where the `Output` type is
     /// `Result<()>`; it is executed entirely for its side effects, while
     /// propagating errors back to the caller.
+    pub async fn publish(&self, archive_block: ArchiveBlock) -> Result<()> {
+        let mut publisher = self.publisher.lock().await;
+        publisher.publish(archive_block).await;
+        Ok(())
+    }
+
+    /// Convert the given [BlockData] into an [ArchiveBlock] and publish it.
+    ///
+    /// The returned value is a [Future] where the `Output` type is
+    /// `Result<()>`; it is executed entirely for its side effects, while
+    /// propagating errors back to the caller.
+    pub async fn write(&self, block_data: &BlockData) -> Result<()> {
+        self.publish(ArchiveBlock::from(block_data)).await
+    }
+
+    /// Consume a [Stream] of [ArchiveBlock]s, publishing each block to all
+    /// current subscribers.
+    ///
+    /// The returned value is a [Stream] where the `Item` type is `Result<()>`;
+    /// it is executed entirely for its side effects, while propagating errors
+    /// back to the caller.
     pub fn consume_protos<'a>(
         &self,
         stream: impl Stream<Item = Result<ArchiveBlock>> + 'a,
     ) -> impl Stream<Item = Result<()>> + 'a {
         let publisher = self.publisher.clone();
-        stream.and_then(move |data| {
+        stream.and_then(move |archive_block| {
             let publisher = publisher.clone();
             async move {
                 let mut publisher = publisher.lock().await;
-                publisher.publish(data).await;
+                publisher.publish(archive_block).await;
                 Ok(())
             }
         })
@@ -65,7 +88,7 @@ impl GrpcServerSink {
     }
 
     /// Create a [grpcio::Server] with a [LedgerUpdates] service backed by
-    /// this instance.
+    /// this instance. The caller is responsible for starting the server.
     pub fn create_server(
         &self,
         uri: &impl ConnectionUri,
@@ -77,7 +100,7 @@ impl GrpcServerSink {
             .build()
     }
 
-    /// Helper to create a local server.
+    /// Helper to create and start a local server.
     #[cfg(any(test, feature = "test_utils"))]
     pub fn create_local_server(
         &self,
@@ -85,13 +108,15 @@ impl GrpcServerSink {
     ) -> (grpcio::Server, mc_util_uri::ConsensusPeerUri) {
         use std::str::FromStr;
 
-        let port = get_free_port();
+        let port = portpicker::pick_unused_port().expect("pick_unused_port");
         let uri =
             mc_util_uri::ConsensusPeerUri::from_str(&format!("insecure-mcp://localhost:{}", port))
                 .expect("Failed to parse local server URL");
-        let server = self
+        let mut server = self
             .create_server(&uri, env)
             .expect("Failed to create server");
+        server.start();
+
         (server, uri)
     }
 }
@@ -128,14 +153,6 @@ impl LedgerUpdates for PublishHelper {
     }
 }
 
-/// Heuristic for grabbing a free port.
-#[cfg(any(test, feature = "test_utils"))]
-pub fn get_free_port() -> u16 {
-    use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
-    static PORT_NR: AtomicUsize = AtomicUsize::new(0);
-    PORT_NR.fetch_add(1, SeqCst) as u16 + 4242
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -146,8 +163,12 @@ mod tests {
 
     fn exercise_sink<E: Spawn>(executor: &E, logger: Logger) {
         let sink = GrpcServerSink::new(logger.clone());
-        let env = Arc::new(grpcio::EnvBuilder::new().name_prefix("test-sink").build());
-        let (_server, uri) = sink.create_local_server(env.clone());
+        let server_env = Arc::new(
+            grpcio::EnvBuilder::new()
+                .name_prefix("test-sink-server")
+                .build(),
+        );
+        let (_server, uri) = sink.create_local_server(server_env);
 
         let (mut sender, receiver) = futures::channel::mpsc::channel(5);
         executor
@@ -160,6 +181,11 @@ mod tests {
         executor
             .spawn(async move {
                 let mut response = ArchiveBlock::new();
+                let env = Arc::new(
+                    grpcio::EnvBuilder::new()
+                        .name_prefix("test-sink-client")
+                        .build(),
+                );
 
                 let mut client_1 = TestClient::new(&uri, env.clone());
                 client_1.subscribe().await;

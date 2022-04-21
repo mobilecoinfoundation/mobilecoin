@@ -72,7 +72,7 @@ impl S3ClientProtoWriter {
 }
 
 impl ProtoWriter for S3ClientProtoWriter {
-    fn upload<'up, M: Message>(&'up mut self, proto: &'up M, dest: &'up Path) -> Self::Future<'up> {
+    fn upload<'up, M: Message>(&'up self, proto: &'up M, dest: &'up Path) -> Self::Future<'up> {
         self.write_to_s3(dest, proto.write_to_bytes())
     }
 
