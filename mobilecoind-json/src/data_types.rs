@@ -923,7 +923,7 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
             )
         })?;
         signature.set_range_proof_bytes(range_proof_bytes);
-        let range_proofs: Vec<Vec<u8>> = src
+        let range_proofs = src
             .range_proofs
             .iter()
             .map(|hex_str| {
