@@ -921,7 +921,7 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
         signature.set_ring_signatures(RepeatedField::from_vec(ring_sigs));
         signature.set_pseudo_output_commitments(RepeatedField::from_vec(commitments));
         let range_proof_bytes = hex::decode(&src.range_proof_bytes)
-            .map_err(|err| format!("Could not decode from hex: {}", err))?;
+            .map_err(|err| format!("Could not decode top-level range proof from hex '{}': {}", &src.range_proof_bytes, err))?;
         signature.set_range_proof_bytes(range_proof_bytes);
         let range_proofs: Vec<Vec<u8>> = src
             .range_proofs
