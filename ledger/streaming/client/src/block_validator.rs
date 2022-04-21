@@ -34,10 +34,10 @@ impl<US: BlockStream + 'static, L: Ledger + 'static> BlockValidator<US, L> {
 }
 
 impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for BlockValidator<US, L> {
-    type Stream = impl Stream<Item = StreamResult<BlockStreamComponents>>;
+    type Stream<'s> = impl Stream<Item = StreamResult<BlockStreamComponents>> + 's;
 
     /// Get block stream that performs validation
-    fn get_block_stream(&self, starting_height: u64) -> StreamResult<Self::Stream> {
+    fn get_block_stream(&self, starting_height: u64) -> StreamResult<Self::Stream<'_>> {
         //get block id from ledger if it exists, else initialize to an empty value
         let ledger = self.ledger.clone();
         let prev_block_id = if self.ledger.is_some() && starting_height > 0 {
@@ -131,11 +131,10 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for Blo
 
 #[cfg(test)]
 mod tests {
-    use mc_common::logger::{log, test_with_logger, Logger};
+    use mc_common::logger::{test_with_logger, Logger};
     use mc_ledger_db::test_utils::{get_mock_ledger, MockLedger};
     use mc_ledger_streaming_api::test_utils::{
-        make_components, make_quorum_set, mock_stream_from_components, stream,
-        stream::SimpleMockStream,
+        make_components, make_quorum_set, stream::mock_stream_from_components,
     };
     use mc_transaction_core::BlockIndex;
 
@@ -143,9 +142,10 @@ mod tests {
 
     #[test_with_logger]
     fn validation_without_ledger(logger: Logger) {
-        let simple_stream = stream::get_stream_with_n_components(20);
-        let block_validator: BlockValidator<SimpleMockStream, MockLedger> =
-            BlockValidator::new(simple_stream, None, logger.clone());
+        let components = make_components(20);
+        let upstream = mock_stream_from_components(components);
+        let ledger: Option<MockLedger> = None;
+        let block_validator = BlockValidator::new(upstream, ledger, logger);
 
         futures::executor::block_on(async move {
             let mut stream = block_validator.get_block_stream(2).unwrap();
@@ -153,21 +153,16 @@ mod tests {
             while let Some(data) = stream.next().await {
                 index = data.unwrap().block_data.block().index;
             }
-
-            log::info!(
-                logger,
-                "validated {} blocks without ledger validation",
-                index
-            );
             assert_eq!(index, 19);
         });
     }
 
     #[test_with_logger]
     fn validation_from_zero_block(logger: Logger) {
-        let simple_stream = stream::get_stream_with_n_components(20);
-        let block_validator: BlockValidator<SimpleMockStream, MockLedger> =
-            BlockValidator::new(simple_stream, None, logger.clone());
+        let components = make_components(20);
+        let upstream = mock_stream_from_components(components);
+        let ledger: Option<MockLedger> = None;
+        let block_validator = BlockValidator::new(upstream, ledger, logger);
 
         futures::executor::block_on(async move {
             let mut stream = block_validator.get_block_stream(0).unwrap();
@@ -176,11 +171,6 @@ mod tests {
                 index = data.unwrap().block_data.block().index;
             }
 
-            log::info!(
-                logger,
-                "validated {} blocks without ledger validation",
-                index
-            );
             assert_eq!(index, 19);
         });
     }
@@ -195,9 +185,9 @@ mod tests {
                 .append_block(block_data.block(), block_data.contents(), None)
                 .unwrap();
         }
-
-        let stream = SimpleMockStream::new_from_components(components);
-        let block_validator = BlockValidator::new(stream, Some(mock_ledger), logger.clone());
+        let ledger = Some(mock_ledger);
+        let upstream = mock_stream_from_components(components);
+        let block_validator = BlockValidator::new(upstream, ledger, logger);
 
         futures::executor::block_on(async move {
             let mut stream = block_validator.get_block_stream(2).unwrap();
@@ -206,7 +196,6 @@ mod tests {
                 index = data.unwrap().block_data.block().index;
             }
 
-            log::info!(logger, "validated {} blocks with ledger validation", index);
             assert_eq!(index, 19);
         });
     }
@@ -214,22 +203,14 @@ mod tests {
     #[test_with_logger]
     fn invalid_previous_blocks_fail(logger: Logger) {
         let mock_ledger = get_mock_ledger(4);
-        let quorum_set = make_quorum_set();
-        let mut components = Vec::new();
-        for i in 0..4 {
-            components.push(BlockStreamComponents::new(
-                mock_ledger.get_block_data(i).unwrap(),
-                quorum_set.clone(),
-                None,
-            ))
-        }
-
-        let stream = mock_stream_from_components(components);
-        let block_validator = BlockValidator::new(stream, Some(mock_ledger), logger.clone());
+        let ledger = Some(mock_ledger);
+        let upstream = mock_stream_from_components(make_components(4));
+        let block_validator = BlockValidator::new(upstream, ledger, logger.clone());
 
         futures::executor::block_on(async move {
             let mut stream = block_validator.get_block_stream(2).unwrap();
             if let Some(data) = stream.next().await {
+                log::info!(logger, "{:?}", data);
                 assert!(matches!(data, Err(StreamError::BlockValidation(_))));
             }
         });
@@ -247,9 +228,10 @@ mod tests {
                 None,
             ))
         }
+        let ledger = Some(mock_ledger);
 
-        let stream = mock_stream_from_components(components);
-        let block_validator = BlockValidator::new(stream, Some(mock_ledger), logger.clone());
+        let upstream = mock_stream_from_components(components);
+        let block_validator = BlockValidator::new(upstream, ledger, logger);
 
         futures::executor::block_on(async move {
             let mut stream = block_validator.get_block_stream(1).unwrap();
