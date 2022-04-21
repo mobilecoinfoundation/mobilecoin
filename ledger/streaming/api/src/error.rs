@@ -23,7 +23,6 @@ pub enum Error {
     /// Invalid signature: {0}
     Signature(String),
 
-<<<<<<< HEAD
     /// IO Error: {0}
     IO(String, std::io::ErrorKind),
 
@@ -35,9 +34,6 @@ pub enum Error {
 
     /// Block validation failed: {0}
     BlockValidation(String),
-
-    /// Ledger DB Access Error
-    DBAccess,
 
     /// SCP Consensus Behind: last externalized block {0} - highest block {1}
     ConsensusBlocked(SlotIndex, SlotIndex),

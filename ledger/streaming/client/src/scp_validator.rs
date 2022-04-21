@@ -4,6 +4,7 @@
 //! a single stream
 
 use crate::streaming_futures::{Ready, Ready::NotReady};
+use hashbrown::HashMap;
 use futures::{stream, Stream, StreamExt};
 use mc_common::{
     logger::{log, Logger},
@@ -14,12 +15,12 @@ use mc_ledger_streaming_api::{
     BlockStream, BlockStreamComponents, Error as StreamError, Result as StreamResult,
 };
 use mc_transaction_core::BlockID;
-use std::{collections::HashMap, future};
+use std::future;
 
 /// SCP Validation streaming factor, this stream will take in a group of block
 /// streams from individual peers and validate that they pass SCP consensus.
 /// Note this will consume all other streams and return a single result
-pub struct SCPValidator<US: BlockStream, ID: GenericNodeId + Send = NodeID> {
+pub struct SCPValidator<US: BlockStream + 'static, ID: GenericNodeId + Send = NodeID> {
     upstreams: Vec<(ID, US)>,
     logger: Logger,
     scp_validation_state: SCPValidationState<ID>,
@@ -49,19 +50,7 @@ pub struct SCPValidationState<ID: GenericNodeId + Send = NodeID> {
 
 const MAX_BLOCK_DEFICIT: u64 = 50;
 
-/// Helper trait to easily transform streams between two generic types
-pub trait TransformStream<T> {
-    /// Definition of what the output stream should look like
-    type OutputStream;
-
-    /// Optional modifier such as extra data
-    type Modifier;
-
-    /// Transform a stream from one predictable type to another
-    fn transform_stream(&self, stream: T, modifier: Option<Self::Modifier>) -> Self::OutputStream;
-}
-
-impl<US: BlockStream, ID: GenericNodeId + Send> SCPValidator<US, ID> {
+impl<US: BlockStream + 'static, ID: GenericNodeId + Send> SCPValidator<US, ID> {
     /// Create new SCP validator stream factory
     pub fn new(
         upstreams: Vec<(ID, US)>,
@@ -76,20 +65,6 @@ impl<US: BlockStream, ID: GenericNodeId + Send> SCPValidator<US, ID> {
             logger,
             scp_validation_state,
         }
-    }
-}
-
-impl<
-        US: BlockStream + 'static,
-        S: Stream<Item = StreamResult<BlockStreamComponents>>,
-        ID: GenericNodeId + Send,
-    > TransformStream<S> for SCPValidator<US, ID>
-{
-    type OutputStream = impl Stream<Item = (Self::Modifier, StreamResult<BlockStreamComponents>)>;
-    type Modifier = ID;
-
-    fn transform_stream(&self, stream: S, modifier: Option<Self::Modifier>) -> Self::OutputStream {
-        stream.map(move |component| (modifier.clone().unwrap(), component))
     }
 }
 
@@ -117,7 +92,7 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
         }
 
         // Otherwise associate it with the node it was received from
-        if let std::collections::hash_map::Entry::Vacant(e) =
+        if let hashbrown::hash_map::Entry::Vacant(e) =
             self.slots_to_externalized_blocks.entry(index)
         {
             let mut node_map = HashMap::new();
@@ -291,7 +266,8 @@ impl<US: BlockStream + 'static, ID: GenericNodeId + Send> BlockStream for SCPVal
             let (node_id, upstream) = stream_factory;
             log::info!(self.logger, "Generating new stream from {:?}", node_id);
             let us = upstream.get_block_stream(starting_height).unwrap();
-            merged_streams.push(Box::pin(self.transform_stream(us, Some(node_id.clone()))));
+            let peer_id = node_id.clone();
+            merged_streams.push(Box::pin(us.map(move |component| (peer_id.clone(), component))));
         }
 
         // Create SCP validation state object and insert it into stateful stream

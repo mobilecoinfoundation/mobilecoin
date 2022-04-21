@@ -74,13 +74,14 @@ impl<L: Ledger> Future for WriteBlock<L> {
     type Output = StreamResult<BlockStreamComponents>;
 
     ///Attempt to write block and return the block index written
-    fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match self.get_mut().write_block() {
             Ok(component) => Poll::Ready(Ok(component)),
             Err(err) => match err {
                 ClientError::BlockIndexTooFar(_) => Poll::Pending,
                 ClientError::Locked(reason) => {
                     if reason == LockReason::WouldBlock {
+                        cx.waker().wake_by_ref();
                         Poll::Pending
                     } else {
                         Poll::Ready(Err(StreamError::DBAccess))
@@ -136,12 +137,13 @@ impl<'a, L: Ledger> Future for ReadLedger<'a, L> {
     type Output = StreamResult<ReadResponse>;
 
     ///Attempt to write block and return the block index written
-    fn poll(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match self.get_mut().do_read() {
             Ok(read_result) => Poll::Ready(Ok(read_result)),
             Err(err) => match err {
                 ClientError::Locked(reason) => {
                     if reason == LockReason::WouldBlock {
+                        cx.waker().wake_by_ref();
                         Poll::Pending
                     } else {
                         Poll::Ready(Err(StreamError::DBAccess))
