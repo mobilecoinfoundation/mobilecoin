@@ -59,7 +59,7 @@ pub struct ActiveMintConfigs {
 
     /// The original MintConfigTx that this object was created from.
     #[prost(message, required, tag = "3")]
-    mint_config_tx: MintConfigTx,
+    pub mint_config_tx: MintConfigTx,
 }
 
 impl ActiveMintConfigs {
@@ -80,7 +80,7 @@ impl ActiveMintConfigs {
 
     /// Attempt to get an ActiveMintConfig that that is capable of minting the
     /// given amount of tokens.
-    fn get_active_mint_config_for_mint_tx(
+    pub fn get_active_mint_config_for_mint_tx(
         &self,
         mint_tx: &MintTx,
     ) -> Result<ActiveMintConfig, Error> {
