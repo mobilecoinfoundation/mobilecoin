@@ -13,6 +13,8 @@ pub mod url;
 
 pub mod block_validator;
 
+pub mod scp_validator;
+
 #[cfg(any(test, feature = "test_utils"))]
 pub mod test_utils;
 
