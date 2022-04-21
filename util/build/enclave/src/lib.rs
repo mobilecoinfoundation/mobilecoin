@@ -612,8 +612,7 @@ impl Builder {
 /// * `bare_name`: The bare library name, which will have the necessary prefix
 ///   and suffix added.
 fn dynamic_library_filename(bare_name: &str) -> PathBuf {
-    let mut basename = "lib".to_owned();
-    basename.push_str(bare_name);
+    let basename = format!("lib{}", bare_name);
     let mut full_name = PathBuf::from(basename);
     full_name.set_extension("so");
     full_name
