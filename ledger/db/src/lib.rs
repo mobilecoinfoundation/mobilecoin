@@ -889,15 +889,6 @@ pub fn key_bytes_to_u64(bytes: &[u8]) -> u64 {
     u64::from_be_bytes(bytes.try_into().unwrap())
 }
 
-pub fn u32_to_key_bytes(value: u32) -> [u8; 4] {
-    value.to_be_bytes()
-}
-
-pub fn key_bytes_to_u32(bytes: &[u8]) -> u32 {
-    assert_eq!(4, bytes.len());
-    u32::from_be_bytes(bytes.try_into().unwrap())
-}
-
 #[cfg(test)]
 mod ledger_db_test {
     use super::*;
