@@ -861,11 +861,7 @@ impl From<&SignatureRctBulletproofs> for JsonSignatureRctBulletproofs {
                 .map(|x| hex::encode(x.get_data()))
                 .collect(),
             range_proof_bytes: hex::encode(src.get_range_proof_bytes()),
-            range_proofs: src
-                .get_range_proofs()
-                .iter()
-                .map(hex::encode)
-                .collect(),
+            range_proofs: src.get_range_proofs().iter().map(hex::encode).collect(),
             pseudo_output_token_ids: src.pseudo_output_token_ids.clone(),
             output_token_ids: src.output_token_ids.clone(),
         }
@@ -920,14 +916,23 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
         let mut signature = SignatureRctBulletproofs::new();
         signature.set_ring_signatures(RepeatedField::from_vec(ring_sigs));
         signature.set_pseudo_output_commitments(RepeatedField::from_vec(commitments));
-        let range_proof_bytes = hex::decode(&src.range_proof_bytes)
-            .map_err(|err| format!("Could not decode top-level range proof from hex '{}': {}", &src.range_proof_bytes, err))?;
+        let range_proof_bytes = hex::decode(&src.range_proof_bytes).map_err(|err| {
+            format!(
+                "Could not decode top-level range proof from hex '{}': {}",
+                &src.range_proof_bytes, err
+            )
+        })?;
         signature.set_range_proof_bytes(range_proof_bytes);
         let range_proofs: Vec<Vec<u8>> = src
             .range_proofs
             .iter()
             .map(|hex_str| {
-                hex::decode(hex_str).map_err(|err| format!("Could not decode range proof from hex '{}': {}", hex_str, err))
+                hex::decode(hex_str).map_err(|err| {
+                    format!(
+                        "Could not decode range proof from hex '{}': {}",
+                        hex_str, err
+                    )
+                })
             })
             .collect::<Result<Vec<Vec<u8>>, String>>()?;
         signature.set_range_proofs(RepeatedField::from(range_proofs));
