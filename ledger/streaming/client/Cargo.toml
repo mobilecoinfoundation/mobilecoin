@@ -28,12 +28,6 @@ reqwest = { version = "0.11", default-features = false, features = ["rustls-tls"
 tokio = "1.17.0"
 url = "2.2"
 
-[build-dependencies]
-mc-util-build-grpc = { path = "../../../util/build/grpc" }
-mc-util-build-script = { path = "../../../util/build/script" }
-
-cargo-emit = "0.2"
-
 [dev-dependencies]
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-ledger-db = { path = "../../../ledger/db", features = ["test_utils"] }
