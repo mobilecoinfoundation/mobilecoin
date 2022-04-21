@@ -263,8 +263,8 @@ impl SgxConsensusEnclave {
             return Err(Error::InvalidLocalMembershipProof);
         }
 
-        // Sanity check - since our caller (TxManager::tx_hashes_to_block) collects all
-        // proof of memberships and root element at a time the ledger is not
+        // Sanity check - since our caller (ByzantineLedgerWorker/TxManager) collects
+        // all proof of memberships and root element at a time the ledger is not
         // expected to change, we should end with the same root element for all
         // transactions.
         if root_element != &root_elements[0] {
