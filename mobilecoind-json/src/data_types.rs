@@ -927,7 +927,7 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
             .range_proofs
             .iter()
             .map(|hex_str| {
-                hex::decode(hex_str).map_err(|err| format!("Could not decode from hex: {}", err))
+                hex::decode(hex_str).map_err(|err| format!("Could not decode range proof from hex '{}': {}", hex_str, err))
             })
             .collect::<Result<Vec<Vec<u8>>, String>>()?;
         signature.set_range_proofs(RepeatedField::from(range_proofs));
