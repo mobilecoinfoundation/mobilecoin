@@ -244,10 +244,10 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
 }
 
 impl<US: BlockStream + 'static, ID: GenericNodeId + Send> BlockStream for SCPValidator<US, ID> {
-    type Stream = impl Stream<Item = StreamResult<BlockStreamComponents>>;
+    type Stream<'s> = impl Stream<Item = StreamResult<BlockStreamComponents>> + 's;
 
     /// Get block stream that performs validation
-    fn get_block_stream(&self, starting_height: u64) -> StreamResult<Self::Stream> {
+    fn get_block_stream(&self, starting_height: u64) -> StreamResult<Self::Stream<'_>> {
         // Merge all streams into one
         let mut merged_streams = stream::SelectAll::new();
         for stream_factory in &self.upstreams {
@@ -304,9 +304,8 @@ impl<US: BlockStream + 'static, ID: GenericNodeId + Send> BlockStream for SCPVal
 mod tests {
     use mc_common::logger::{test_with_logger, Logger};
     use mc_consensus_scp::test_utils::test_node_id;
-    use mc_ledger_streaming_api::test_utils::stream::SimpleMockStream;
+    use mc_ledger_streaming_api::test_utils::{make_components, stream};
     use mc_transaction_core::BlockIndex;
-
     use super::*;
 
     #[test_with_logger]
@@ -341,7 +340,8 @@ mod tests {
             ],
         );
         assert!(quorum_set.is_valid());
-        let s = SimpleMockStream::new(100);
+        let components = make_components(100);
+        let s = stream::mock_stream_from_components(components);
         let mut upstreams = HashMap::new();
         for i in 0..9 {
             upstreams.insert(nodes.get(i).unwrap().clone(), s.clone());
