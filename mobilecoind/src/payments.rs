@@ -988,20 +988,24 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
         let change = input_value - total_value - tx_builder.get_fee();
 
-        // TODO: If you want to support mixed transactions, use outlay-specific token id
-        // here
-        let change_amount = Amount {
-            value: change,
-            token_id,
-        };
+        // If we do have nonzero change, add an output for that as well.
+        // TODO: Should the exchange write destination memos?
+        // If so then we must always write a change output, even if the change is zero
+        if change > 0 {
+            // TODO: If you want to support mixed transactions, use outlay-specific token id
+            // here
+            let change_amount = Amount {
+                value: change,
+                token_id,
+            };
 
-        // If we do, add an output for that as well.
-        let change_dest =
-            ChangeDestination::from_subaddress_index(from_account_key, change_subaddress);
+            let change_dest =
+                ChangeDestination::from_subaddress_index(from_account_key, change_subaddress);
 
-        tx_builder
-            .add_change_output(change_amount, &change_dest, rng)
-            .map_err(|err| Error::TxBuild(format!("failed adding output (change): {}", err)))?;
+            tx_builder
+                .add_change_output(change_amount, &change_dest, rng)
+                .map_err(|err| Error::TxBuild(format!("failed adding output (change): {}", err)))?;
+        }
 
         // Set tombstone block.
         tx_builder.set_tombstone_block(tombstone_block);
