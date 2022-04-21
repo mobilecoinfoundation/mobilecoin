@@ -98,7 +98,10 @@ pub fn get_test_databases(
             block_version,
             &mut ledger_db,
             &public_addresses,
-            DEFAULT_PER_RECIPIENT_AMOUNT,
+            Amount {
+                value: DEFAULT_PER_RECIPIENT_AMOUNT,
+                token_id: Mob::ID,
+            },
             &key_images,
             rng,
         );
@@ -147,14 +150,14 @@ fn generate_ledger_db(path: &str) -> LedgerDB {
 /// # Arguments
 /// * `ledger_db` - Ledger database instance.
 /// * `recipients` - Recipients of outputs.
-/// * `output_value` - The amount each recipient will get.
+/// * `output_amount` - The amount each recipient will get.
 /// * `key_images` - Key images to include in the block.
 /// * `rng` - Random number generator.
 pub fn add_block_to_ledger_db(
     block_version: BlockVersion,
     ledger_db: &mut LedgerDB,
     recipients: &[PublicAddress],
-    output_value: u64,
+    output_amount: Amount,
     key_images: &[KeyImage],
     rng: &mut (impl CryptoRng + RngCore),
 ) -> u64 {
@@ -165,11 +168,7 @@ pub fn add_block_to_ledger_db(
         .map(|recipient| {
             let mut result = TxOut::new(
                 // TODO: allow for subaddress index!
-                Amount {
-                    value: output_value,
-                    // TODO: allow for other token id
-                    token_id: Mob::ID,
-                },
+                output_amount,
                 recipient,
                 &RistrettoPrivate::from_random(rng),
                 Default::default(),
@@ -288,7 +287,6 @@ pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(
         ledger_db.clone(),
         mobilecoind_db.clone(),
         conn_manager.clone(),
-        Mob::ID,
         fog_resolver_factory.unwrap_or(Arc::new(|_| Ok(FPR::default()))),
         logger.clone(),
     );
@@ -301,7 +299,6 @@ pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(
         network_state,
         uri,
         None,
-        Mob::ID,
         logger,
     );
 

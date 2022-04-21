@@ -13,7 +13,6 @@ use mc_fog_report_connection::GrpcFogReportConnection;
 use mc_fog_report_validation::FogResolver;
 use mc_mobilecoind_api::MobilecoindUri;
 use mc_sgx_css::Signature;
-use mc_transaction_core::TokenId;
 use mc_util_parse::{load_css_file, parse_duration_in_seconds};
 use mc_util_uri::{ConnectionUri, ConsensusClientUri, FogUri};
 #[cfg(feature = "ip-check")]
@@ -99,10 +98,6 @@ pub struct Config {
     /// Automatically migrate the ledger db into the most recent version.
     #[clap(long, env = "MC_LEDGER_DB_MIGRATE")]
     pub ledger_db_migrate: bool,
-
-    /// Token id
-    #[structopt(long, env = "MC_TOKEN_ID", default_value = "0")]
-    pub token_id: TokenId,
 }
 
 fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet<ResponderId>, String> {

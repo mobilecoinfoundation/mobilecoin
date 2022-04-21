@@ -421,9 +421,8 @@ mod test {
         },
     };
     use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
-
     use mc_common::logger::{test_with_logger, Logger};
-    use mc_transaction_core::tx::TxOut;
+    use mc_transaction_core::{tokens::Mob, tx::TxOut, Amount, Token};
     use rand::{rngs::StdRng, SeedableRng};
     use std::iter::FromIterator;
 
@@ -588,7 +587,10 @@ mod test {
             BlockVersion::MAX,
             &mut ledger_db,
             &[recipients[1].clone()],
-            DEFAULT_PER_RECIPIENT_AMOUNT,
+            Amount {
+                value: DEFAULT_PER_RECIPIENT_AMOUNT,
+                token_id: Mob::ID,
+            },
             &[utxos[0].key_image.clone()],
             &mut rng,
         );
@@ -656,7 +658,10 @@ mod test {
             BlockVersion::MAX,
             &mut ledger_db,
             &[recipients[0].clone()],
-            0,
+            Amount {
+                value: 0,
+                token_id: Mob::ID,
+            },
             &[utxos[0].key_image.clone()],
             &mut rng,
         );
