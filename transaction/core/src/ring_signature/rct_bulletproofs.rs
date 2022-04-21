@@ -8,9 +8,7 @@
 
 extern crate alloc;
 
-use alloc::vec;
-
-use alloc::{collections::BTreeSet, vec::Vec};
+use alloc::{collections::BTreeSet, vec, vec::Vec};
 use bulletproofs_og::RangeProof;
 use core::convert::TryFrom;
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
@@ -253,8 +251,7 @@ impl SignatureRctBulletproofs {
             let range_proof = RangeProof::from_bytes(&self.range_proof_bytes)
                 .map_err(|_e| Error::RangeProofDeserializationError)?;
 
-            check_range_proofs(&range_proof, &commitments, generator, rng)
-                .map_err(|_e| Error::RangeProofError)?;
+            check_range_proofs(&range_proof, &commitments, generator, rng)?
         } else {
             // When mixed transactions are supported, self.range_proofs should contain
             // a range proof correspond to each token id used in the transaction, in sorted
@@ -296,8 +293,7 @@ impl SignatureRctBulletproofs {
                 let range_proof = RangeProof::from_bytes(range_proof)
                     .map_err(|_e| Error::RangeProofDeserializationError)?;
 
-                check_range_proofs(&range_proof, &commitments, generator, rng)
-                    .map_err(|_e| Error::RangeProofError)?;
+                check_range_proofs(&range_proof, &commitments, generator, rng)?
             }
         }
 
@@ -470,8 +466,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
             )
             .unzip();
         let (range_proof, _commitments) =
-            generate_range_proofs(&values, &blindings, generator, rng)
-                .map_err(|_e| Error::RangeProofError)?;
+            generate_range_proofs(&values, &blindings, generator, rng)?;
 
         (range_proof.to_bytes().to_vec(), vec![])
     } else {
@@ -519,8 +514,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
             );
 
             let (range_proof, _commitments) =
-                generate_range_proofs(&values, &blindings, generator, rng)
-                    .map_err(|_e| Error::RangeProofError)?;
+                generate_range_proofs(&values, &blindings, generator, rng)?;
 
             range_proofs.push(range_proof.to_bytes());
         }
@@ -1071,7 +1065,11 @@ mod rct_bulletproofs_tests {
                 &mut rng,
             );
 
-            assert_eq!(result, Err(Error::RangeProofError));
+            match result {
+                Err(Error::RangeProofError(_)) => {},
+                Err(err) => { panic!("Expected: RangeProofError, found {}", err) },
+                Ok(()) => { panic!("Expected: RangeProofError, found Ok") },
+            };
         }
 
         #[test]
@@ -1270,7 +1268,11 @@ mod rct_bulletproofs_tests {
                 TokenId::from(*params.fee_token_id + 1),
                 &mut rng,
             );
-            assert_eq!(result, Err(Error::RangeProofError));
+            match result {
+                Err(Error::RangeProofError(_)) => {},
+                Err(err) => { panic!("Expected: RangeProofError, found {}", err) },
+                Ok(()) => { panic!("Expected: RangeProofError, found Ok") },
+            };
         }
 
         #[test]

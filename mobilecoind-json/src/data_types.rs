@@ -937,8 +937,8 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
             .collect::<Result<Vec<Vec<u8>>, String>>()?;
         signature.set_range_proofs(RepeatedField::from(range_proofs));
 
-        signature.set_pseudo_output_token_ids(signature.pseudo_output_token_ids.clone());
-        signature.set_output_token_ids(signature.output_token_ids.clone());
+        signature.set_pseudo_output_token_ids(src.pseudo_output_token_ids.clone());
+        signature.set_output_token_ids(src.output_token_ids.clone());
 
         Ok(signature)
     }
@@ -1473,8 +1473,23 @@ mod test {
             proto2.get_tx().get_signature().pseudo_output_commitments
         );
         assert_eq!(
+            proto_proposal.get_tx().get_signature().range_proof_bytes,
+            proto2.get_tx().get_signature().range_proof_bytes,
+        );
+        assert_eq!(
             proto_proposal.get_tx().get_signature().range_proofs,
             proto2.get_tx().get_signature().range_proofs
+        );
+        assert_eq!(
+            proto_proposal
+                .get_tx()
+                .get_signature()
+                .pseudo_output_token_ids,
+            proto2.get_tx().get_signature().pseudo_output_token_ids,
+        );
+        assert_eq!(
+            proto_proposal.get_tx().get_signature().output_token_ids,
+            proto2.get_tx().get_signature().output_token_ids,
         );
 
         assert_eq!(proto_proposal.get_tx().signature, proto2.get_tx().signature);

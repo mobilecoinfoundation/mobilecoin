@@ -2,13 +2,13 @@
 
 //! Errors which can occur in connection to ring signatures
 
+use crate::range_proofs::error::Error as RangeProofError;
+use alloc::string::{String, ToString};
 use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 
 /// An error which can occur in connection to a ring signature
-#[derive(
-    Clone, Copy, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
-)]
+#[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum Error {
     /// Incorrect length for array copy, provided `{0}`, required `{1}`.
     LengthMismatch(usize, usize),
@@ -49,8 +49,8 @@ pub enum Error {
      */
     ValueNotConserved,
 
-    /// Invalid RangeProof
-    RangeProofError,
+    /// Invalid RangeProof: {0}
+    RangeProofError(String),
 
     /// RangeProof Deserialization failed
     RangeProofDeserializationError,
@@ -86,5 +86,11 @@ pub enum Error {
 impl From<mc_util_repr_bytes::LengthMismatch> for Error {
     fn from(src: mc_util_repr_bytes::LengthMismatch) -> Self {
         Error::LengthMismatch(src.found, src.expected)
+    }
+}
+
+impl From<RangeProofError> for Error {
+    fn from(src: RangeProofError) -> Self {
+        Error::RangeProofError(src.to_string())
     }
 }
