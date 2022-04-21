@@ -142,7 +142,7 @@ pub fn create_transaction_with_amount_and_comparer<
     tx_out: &TxOut,
     sender: &AccountKey,
     recipient: &PublicAddress,
-    amount: u64,
+    value: u64,
     fee: u64,
     tombstone_block: BlockIndex,
     rng: &mut R,
@@ -192,6 +192,11 @@ pub fn create_transaction_with_amount_and_comparer<
     )
     .unwrap();
     transaction_builder.add_input(input_credentials);
+
+    let amount = Amount {
+        value,
+        token_id: sender_amount.token_id,
+    };
 
     // Output
     transaction_builder

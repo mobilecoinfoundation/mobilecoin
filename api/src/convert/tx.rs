@@ -34,7 +34,7 @@ mod tests {
         onetime_keys::recover_onetime_private_key,
         tokens::Mob,
         tx::{Tx, TxOut, TxOutMembershipProof},
-        BlockVersion, Token,
+        Amount, BlockVersion, Token,
     };
     use mc_transaction_core_test_utils::MockFogResolver;
     use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
@@ -106,7 +106,14 @@ mod tests {
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0).unwrap();
             transaction_builder
-                .add_output(65536, &bob.default_subaddress(), &mut rng)
+                .add_output(
+                    Amount {
+                        value: 65536,
+                        token_id: Mob::ID,
+                    },
+                    &bob.default_subaddress(),
+                    &mut rng,
+                )
                 .unwrap();
 
             let tx = transaction_builder.build(&mut rng).unwrap();

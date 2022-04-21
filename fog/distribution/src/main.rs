@@ -814,7 +814,7 @@ fn build_tx(
             let target_address = to_account.default_subaddress();
 
             tx_builder
-                .add_output(value, &target_address, &mut rng)
+                .add_output(Amount { value, token_id }, &target_address, &mut rng)
                 .expect("failed to add output");
         }
     }

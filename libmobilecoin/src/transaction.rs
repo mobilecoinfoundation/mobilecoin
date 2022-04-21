@@ -19,7 +19,7 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    BlockVersion, CompressedCommitment, EncryptedMemo, MaskedAmount, Token,
+    Amount, BlockVersion, CompressedCommitment, EncryptedMemo, MaskedAmount, Token,
 };
 
 use mc_transaction_std::{
@@ -498,6 +498,13 @@ pub extern "C" fn mc_transaction_builder_add_output(
             .as_slice_mut_of_len(TxOutConfirmationNumber::size())
             .expect("out_tx_out_confirmation_number length is insufficient");
 
+        // TODO: If you want to support mixed transactions, use something other
+        // than fee_token_id here.
+        let amount = Amount {
+            value: amount,
+            token_id: transaction_builder.get_fee_token_id(),
+        };
+
         let (tx_out, confirmation) =
             transaction_builder.add_output(amount, &recipient_address, &mut rng)?;
 
@@ -540,6 +547,13 @@ pub extern "C" fn mc_transaction_builder_add_change_output(
             .into_mut()
             .as_slice_mut_of_len(TxOutConfirmationNumber::size())
             .expect("out_tx_out_confirmation_number length is insufficient");
+
+        // TODO: If you want to support mixed transactions, use something other
+        // than fee_token_id here.
+        let amount = Amount {
+            value: amount,
+            token_id: transaction_builder.get_fee_token_id(),
+        };
 
         let (tx_out, confirmation) =
             transaction_builder.add_change_output(amount, &change_destination, &mut rng)?;

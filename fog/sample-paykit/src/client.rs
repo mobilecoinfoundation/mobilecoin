@@ -700,13 +700,20 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     // Resolve account server key if the receiver specifies an account service in
     // their public address
     tx_builder
-        .add_output(amount.value, target_address, rng)
+        .add_output(amount, target_address, rng)
         .map_err(Error::AddOutput)?;
 
     let change_destination = ChangeDestination::from(source_account_key);
 
     tx_builder
-        .add_change_output(change, &change_destination, rng)
+        .add_change_output(
+            Amount {
+                value: change,
+                token_id: amount.token_id,
+            },
+            &change_destination,
+            rng,
+        )
         .map_err(|err| {
             log::error!(logger, "Could not add change due to {:?}", err);
             Error::AddOutput(err)

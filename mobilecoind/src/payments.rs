@@ -21,7 +21,7 @@ use mc_transaction_core::{
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    BlockIndex, BlockVersion, TokenId,
+    Amount, BlockIndex, BlockVersion, TokenId,
 };
 use mc_transaction_std::{
     ChangeDestination, EmptyMemoBuilder, InputCredentials, TransactionBuilder,
@@ -963,8 +963,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let mut tx_out_to_outlay_index = HashMap::default();
         let mut outlay_confirmation_numbers = Vec::default();
         for (i, outlay) in destinations.iter().enumerate() {
+            // TODO: If you want to support mixed transactions, use outlay-specific token id
+            // here
+            let amount = Amount {
+                value: outlay.value,
+                token_id,
+            };
             let (tx_out, confirmation_number) = tx_builder
-                .add_output(outlay.value, &outlay.receiver, rng)
+                .add_output(amount, &outlay.receiver, rng)
                 .map_err(|err| Error::TxBuild(format!("failed adding output: {}", err)))?;
 
             tx_out_to_outlay_index.insert(tx_out, i);
@@ -982,17 +988,20 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
         let change = input_value - total_value - tx_builder.get_fee();
 
-        // If we do, add an output for that as well.
-        // TODO: Should the exchange write destination memos?
-        // If so then we must always write a change output, even if the change is zero
-        if change > 0 {
-            let change_dest =
-                ChangeDestination::from_subaddress_index(from_account_key, change_subaddress);
+        // TODO: If you want to support mixed transactions, use outlay-specific token id
+        // here
+        let change_amount = Amount {
+            value: change,
+            token_id,
+        };
 
-            tx_builder
-                .add_change_output(change, &change_dest, rng)
-                .map_err(|err| Error::TxBuild(format!("failed adding output (change): {}", err)))?;
-        }
+        // If we do, add an output for that as well.
+        let change_dest =
+            ChangeDestination::from_subaddress_index(from_account_key, change_subaddress);
+
+        tx_builder
+            .add_change_output(change_amount, &change_dest, rng)
+            .map_err(|err| Error::TxBuild(format!("failed adding output (change): {}", err)))?;
 
         // Set tombstone block.
         tx_builder.set_tombstone_block(tombstone_block);

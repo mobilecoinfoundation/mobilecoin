@@ -585,7 +585,14 @@ mod combine_tests {
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0).unwrap();
             transaction_builder
-                .add_output(123, &bob.default_subaddress(), &mut rng)
+                .add_output(
+                    Amount {
+                        value: 123,
+                        token_id: Mob::ID,
+                    },
+                    &bob.default_subaddress(),
+                    &mut rng,
+                )
                 .unwrap();
 
             let tx = transaction_builder.build(&mut rng).unwrap();
@@ -669,7 +676,14 @@ mod combine_tests {
                     transaction_builder.add_input(input_credentials);
                     transaction_builder.set_fee(0).unwrap();
                     transaction_builder
-                        .add_output(88, &bob.default_subaddress(), &mut rng)
+                        .add_output(
+                            Amount {
+                                value: 88,
+                                token_id: Mob::ID,
+                            },
+                            &bob.default_subaddress(),
+                            &mut rng,
+                        )
                         .unwrap();
 
                     let tx = transaction_builder.build(&mut rng).unwrap();
@@ -744,7 +758,14 @@ mod combine_tests {
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &bob.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount {
+                            value: 123,
+                            token_id: Mob::ID,
+                        },
+                        &bob.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -781,7 +802,14 @@ mod combine_tests {
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount {
+                            value: 123,
+                            token_id: Mob::ID,
+                        },
+                        &recipient_account.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -844,7 +872,14 @@ mod combine_tests {
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount {
+                            value: 123,
+                            token_id: Mob::ID,
+                        },
+                        &recipient_account.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -937,7 +972,14 @@ mod combine_tests {
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &bob.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount {
+                            value: 123,
+                            token_id: Mob::ID,
+                        },
+                        &bob.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -975,7 +1017,14 @@ mod combine_tests {
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount {
+                            value: 123,
+                            token_id: Mob::ID,
+                        },
+                        &recipient_account.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let mut tx = transaction_builder.build(&mut rng).unwrap();
@@ -1039,7 +1088,14 @@ mod combine_tests {
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount {
+                            value: 123,
+                            token_id: Mob::ID,
+                        },
+                        &recipient_account.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();

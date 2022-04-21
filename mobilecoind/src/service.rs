@@ -2922,7 +2922,14 @@ mod test {
             EmptyMemoBuilder::default(),
         );
         let (tx_out, tx_confirmation) = transaction_builder
-            .add_output(10, &receiver.subaddress(0), &mut rng)
+            .add_output(
+                Amount {
+                    value: 10,
+                    token_id: Mob::ID,
+                },
+                &receiver.subaddress(0),
+                &mut rng,
+            )
             .unwrap();
 
         add_txos_to_ledger_db(BLOCK_VERSION, &mut ledger_db, &[tx_out.clone()], &mut rng);
@@ -5236,7 +5243,10 @@ mod test {
         );
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
-                10,
+                Amount {
+                    value: 10,
+                    token_id: Mob::ID,
+                },
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
                 &mut rng,
             )
@@ -5348,7 +5358,10 @@ mod test {
         );
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
-                10,
+                Amount {
+                    value: 10,
+                    token_id: Mob::ID,
+                },
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
                 &mut rng,
             )

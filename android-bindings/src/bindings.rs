@@ -48,7 +48,7 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    BlockVersion, CompressedCommitment, MaskedAmount, Token,
+    Amount, BlockVersion, CompressedCommitment, MaskedAmount, Token,
 };
 
 use mc_transaction_std::{
@@ -1692,12 +1692,19 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1output(
 
             let value = jni_big_int_to_u64(env, value)?;
 
+            // TODO: If you want to support mixed transactions, use something other
+            // than fee_token_id here.
+            let amount = Amount {
+                value: value as u64,
+                token_id: tx_builder.get_fee_token_id(),
+            };
+
             let recipient: MutexGuard<PublicAddress> =
                 env.get_rust_field(recipient, RUST_OBJ_FIELD)?;
 
             let mut rng = McRng::default();
             let (tx_out, confirmation_number) =
-                tx_builder.add_output(value as u64, &recipient, &mut rng)?;
+                tx_builder.add_output(amount, &recipient, &mut rng)?;
             if !confirmation_number_out.is_null() {
                 let len = env.get_array_length(confirmation_number_out)?;
                 if len as usize >= confirmation_number.to_vec().len() {
