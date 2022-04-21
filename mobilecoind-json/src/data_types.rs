@@ -937,6 +937,9 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
             .collect::<Result<Vec<Vec<u8>>, String>>()?;
         signature.set_range_proofs(RepeatedField::from(range_proofs));
 
+        signature.set_pseudo_output_token_ids(signature.pseudo_output_token_ids.clone());
+        signature.set_output_token_ids(signature.output_token_ids.clone());
+
         Ok(signature)
     }
 }
