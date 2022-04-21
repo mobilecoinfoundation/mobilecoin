@@ -201,10 +201,6 @@ impl Ledger for MockLedger {
         unimplemented!()
     }
 
-    fn get_active_mint_configs_map(&self) -> Result<HashMap<TokenId, ActiveMintConfigs>, Error> {
-        unimplemented!()
-    }
-
     fn check_mint_config_tx_nonce(&self, _nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
         unimplemented!()
     }

@@ -23,7 +23,7 @@ use lmdb::{
     Database, DatabaseFlags, Environment, EnvironmentFlags, RoTransaction, RwTransaction,
     Transaction, WriteFlags,
 };
-use mc_common::{logger::global_log, HashMap};
+use mc_common::logger::global_log;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     membership_proofs::Range,
@@ -384,13 +384,6 @@ impl Ledger for LedgerDB {
         let db_transaction = self.env.begin_ro_txn()?;
         self.mint_config_store
             .get_active_mint_configs(token_id, &db_transaction)
-    }
-
-    /// Return the full map of TokenId -> ActiveMintConfigs.
-    fn get_active_mint_configs_map(&self) -> Result<HashMap<TokenId, ActiveMintConfigs>, Error> {
-        let db_transaction = self.env.begin_ro_txn()?;
-        self.mint_config_store
-            .get_active_mint_configs_map(&db_transaction)
     }
 
     /// Checks if the ledger contains a given MintConfigTx nonce.
