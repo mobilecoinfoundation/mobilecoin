@@ -44,6 +44,8 @@ mock! {
 
         fn get_fee_recipient(&self) -> ConsensusEnclaveResult<FeePublicKey>;
 
+        fn get_minting_trust_root(&self) -> ConsensusEnclaveResult<Ed25519Public>;
+
         fn client_accept(&self, req: ClientAuthRequest) -> ConsensusEnclaveResult<(ClientAuthResponse, ClientSession)>;
 
         fn client_close(&self, channel_id: ClientSession) -> ConsensusEnclaveResult<()>;
