@@ -7,6 +7,9 @@ metadata:
   labels:
     {{- include "fogServicesConfig.labels" . | nindent 4 }}
 data:
+# Note in live environments these values are populated by terraform.
+# When we clean this up we will need to take in account other tools.
+# duplication to support postgres chart and fog configs.
   postgres-database: {{ .Values.fogRecoveryDatabaseReader.database | quote }}
   postgres-hostname: {{ .Values.fogRecoveryDatabaseReader.hostname | quote }}
   postgres-port: {{ .Values.fogRecoveryDatabaseReader.port | quote }}
