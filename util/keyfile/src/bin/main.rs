@@ -28,7 +28,7 @@ fn print_keyfile_bytes(bytes: Vec<u8>) {
 fn main() {
     let mut n_files = 0usize;
     for path in env::args().skip(1) {
-        print_keyfile_bytes(fs::read(path).expect("Could not read file"));
+        print_keyfile_bytes(fs::read(path).expect(&format!("Could not read file '{}'", path)));
         n_files += 1;
     }
 
