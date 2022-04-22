@@ -7,10 +7,9 @@
 #![deny(missing_docs)]
 
 pub mod backfill;
-pub mod error;
+pub mod block_validator;
 pub mod grpc;
 pub mod http_fetcher;
-pub mod block_validator;
 pub mod ledger_sink;
 pub mod scp_validator;
 pub mod url;

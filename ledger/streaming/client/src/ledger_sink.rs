@@ -89,10 +89,10 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for DbS
 
         // Check to ensure we don't start more than 1 block ahead of what's currently in
         // the ledger (doing so will cause errors if we try to append a block)
-        if num_blocks > 0 && starting_height - num_blocks > 0 {
+        if num_blocks > 0 && starting_height > num_blocks {
             let err = StreamError::DBAccess(format!(
-                "attempted to start {} blocks ahead of synced ledger height",
-                num_blocks - starting_height
+                "attempted to start at block {} but ledger height is {}",
+                starting_height, num_blocks,
             ));
             log::error!(self.logger, "{:?}", err);
             return Err(err);
@@ -101,7 +101,7 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for DbS
         // If our local ledger is already ahead, but we still want to forward on blocks,
         // determine at which block we'll start syncing.
         let sync_start_height = if self.pass_through_synced_blocks && num_blocks > 0 {
-            num_blocks + 1
+            num_blocks
         } else {
             // If we're not okay with it, throw an error
             if starting_height < num_blocks {
@@ -246,8 +246,8 @@ mod tests {
     use mc_ledger_streaming_api::test_utils::{make_components, stream};
 
     #[test_with_logger]
-    fn assert_pass_through_and_storage(logger: Logger) {
-        let components = make_components(403);
+    fn test_sink_from_start_block(logger: Logger) {
+        let components = make_components(420);
         let upstream = stream::mock_stream_from_components(components);
         let dest_ledger = get_mock_ledger(0);
         let bs = DbStream::new(upstream, dest_ledger, true, logger);
@@ -260,7 +260,55 @@ mod tests {
                 count += 1;
             }
 
-            assert_eq!(count, 403);
+            assert_eq!(count, 420);
         });
+    }
+
+    #[test_with_logger]
+    fn test_blocks_lower_than_stored_pass_through(logger: Logger) {
+        let components = make_components(420);
+        let upstream = stream::mock_stream_from_components(components);
+        let dest_ledger = get_mock_ledger(42);
+        let bs = DbStream::new(upstream, dest_ledger, true, logger);
+        let mut block_stream = bs.get_block_stream(20).unwrap();
+
+        futures::executor::block_on(async move {
+            let mut count = 20;
+            while let Some(component) = block_stream.next().await {
+                assert_eq!(component.unwrap().block_data.block().index, count);
+                count += 1;
+            }
+
+            assert_eq!(count, 420);
+        });
+    }
+
+    #[test_with_logger]
+    fn test_can_start_at_arbitrary_valid_height(logger: Logger) {
+        let components = make_components(420);
+        let upstream = stream::mock_stream_from_components(components);
+        let dest_ledger = get_mock_ledger(42);
+        let bs = DbStream::new(upstream, dest_ledger, true, logger);
+        let mut block_stream = bs.get_block_stream(42).unwrap();
+
+        futures::executor::block_on(async move {
+            let mut count = 42;
+            while let Some(component) = block_stream.next().await {
+                assert_eq!(component.unwrap().block_data.block().index, count);
+                count += 1;
+            }
+
+            assert_eq!(count, 420);
+        });
+    }
+
+    #[test_with_logger]
+    fn test_stream_creation_fails_if_requesting_blocks_above_ledger_height(logger: Logger) {
+        let components = make_components(3);
+        let upstream = stream::mock_stream_from_components(components);
+        let dest_ledger = get_mock_ledger(1);
+        let bs = DbStream::new(upstream, dest_ledger, true, logger);
+        let block_stream = bs.get_block_stream(2);
+        assert!(matches!(block_stream, Err(StreamError::DBAccess(_))));
     }
 }
