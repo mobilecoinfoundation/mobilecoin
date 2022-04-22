@@ -1203,7 +1203,7 @@ mod tests {
         // The worker must be behind.
         let first_sync_at = Instant::now();
         worker.ledger_sync_state = LedgerSyncState::IsBehind {
-            attempt_sync_at: first_sync_at.clone(),
+            attempt_sync_at: first_sync_at,
             num_sync_attempts: 7,
         };
 
@@ -1264,7 +1264,7 @@ mod tests {
         // The worker must be behind.
         let first_sync_at = Instant::now();
         worker.ledger_sync_state = LedgerSyncState::IsBehind {
-            attempt_sync_at: first_sync_at.clone(),
+            attempt_sync_at: first_sync_at,
             num_sync_attempts: 7,
         };
 
@@ -1311,7 +1311,7 @@ mod tests {
         for tx_hash in &tx_hashes[0..100] {
             tx_manager
                 .expect_validate()
-                .with(eq(tx_hash.clone()))
+                .with(eq(*tx_hash))
                 .return_const(Ok(()));
         }
 
@@ -1319,7 +1319,7 @@ mod tests {
         for tx_hash in &tx_hashes[100..103] {
             tx_manager
                 .expect_validate()
-                .with(eq(tx_hash.clone()))
+                .with(eq(*tx_hash))
                 .return_const(Err(TxManagerError::TransactionValidation(
                     TransactionValidationError::TombstoneBlockExceeded,
                 )));
@@ -1329,14 +1329,14 @@ mod tests {
         for tx_hash in &tx_hashes[103..] {
             tx_manager
                 .expect_validate()
-                .with(eq(tx_hash.clone()))
+                .with(eq(*tx_hash))
                 .return_const(Ok(()));
         }
 
         let connection_manager = get_connection_manager(&node_id, &peers, &logger);
         let (task_sender, task_receiver) = get_channel();
 
-        let previous_block = Block::new_origin_block(&vec![]);
+        let previous_block = Block::new_origin_block(&[]);
         ledger
             .expect_get_block()
             .times(1)
@@ -1363,11 +1363,11 @@ mod tests {
         );
 
         // Should return true when the task queue is empty.
-        assert_eq!(worker.receive_tasks(), true);
+        assert!(worker.receive_tasks());
 
         // Should return false when a StopTrigger is consumed.
         task_sender.send(TaskMessage::StopTrigger).unwrap();
-        assert_eq!(worker.receive_tasks(), false);
+        assert!(!worker.receive_tasks());
 
         for tx_hash in &tx_hashes {
             task_sender
@@ -1379,7 +1379,7 @@ mod tests {
         }
         // Initially, pending_values should be empty.
         assert!(worker.pending_values.is_empty());
-        assert_eq!(worker.receive_tasks(), true);
+        assert!(worker.receive_tasks());
         // Should maintain the invariant that pending_values only contains tx_hashes
         // corresponding to transactions that are valid w.r.t. the current ledger.
         assert_eq!(worker.pending_values.len(), tx_hashes.len() - 3);
@@ -1395,7 +1395,7 @@ mod tests {
 
         // Initially, pending_consensus_msgs should be empty.
         assert_eq!(worker.pending_consensus_msgs, vec![]);
-        assert_eq!(worker.receive_tasks(), true);
+        assert!(worker.receive_tasks());
         // The message from the task queue should now be pending.
         assert_eq!(worker.pending_consensus_msgs.len(), 1);
     }
@@ -1425,7 +1425,7 @@ mod tests {
         for tx_hash in &tx_hashes {
             tx_manager
                 .expect_validate()
-                .with(eq(tx_hash.clone()))
+                .with(eq(*tx_hash))
                 .return_const(Err(TxManagerError::TransactionValidation(
                     TransactionValidationError::TombstoneBlockExceeded,
                 )));
@@ -1461,7 +1461,7 @@ mod tests {
                 .unwrap();
         }
 
-        assert_eq!(worker.receive_tasks(), true);
+        assert!(worker.receive_tasks());
         // Should maintain the invariant that pending_values and pending_values map
         // only contain tx_hashes corresponding to transactions that are valid w.r.t the
         // current ledger.
@@ -1664,7 +1664,7 @@ mod tests {
         ledger_sync.expect_is_behind().return_const(false);
         scp_node
             .expect_max_externalized_slots()
-            .return_const(5 as usize);
+            .return_const(5_usize);
         scp_node.expect_process_timeouts().return_const(Vec::new());
         scp_node.expect_get_externalized_values().return_const(vec![
             ConsensusValue::TxHash(hash_tx1),

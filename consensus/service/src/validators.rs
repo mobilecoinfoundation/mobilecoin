@@ -234,8 +234,10 @@ pub mod well_formed_tests {
 
         // This tx_context contains highest_indices that exceed the number of TxOuts in
         // the ledger.
-        let mut tx_context = TxContext::default();
-        tx_context.highest_indices = vec![99, 10002, 445];
+        let tx_context = TxContext {
+            highest_indices: vec![99, 10002, 445],
+            ..Default::default()
+        };
 
         match untrusted.well_formed_check(&tx_context) {
             Ok((_cur_block_index, _membership_proofs)) => {
@@ -977,7 +979,7 @@ mod combine_tests {
                     .unwrap();
 
                 let mut tx = transaction_builder.build(&mut rng).unwrap();
-                tx.prefix.outputs[0].public_key = first_client_tx.output_public_keys()[0].clone();
+                tx.prefix.outputs[0].public_key = first_client_tx.output_public_keys()[0];
                 WellFormedTxContext::from_tx(&tx, 0)
             };
 

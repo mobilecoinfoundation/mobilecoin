@@ -310,7 +310,7 @@ fn struct_schema_evolution() {
             b: Some(99),
             c: Default::default(),
             d: 0,
-            e: vec!['a' as u8]
+            e: vec![b'a']
         }
         .digest32::<MerlinTranscript>(b"test"),
         ThingV7 {

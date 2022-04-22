@@ -103,7 +103,7 @@ mod tests {
         let signer_3 = Ed25519Pair::from_random(&mut rng);
 
         let mint_config = MintConfig {
-            token_id: token_id,
+            token_id,
             signer_set: SignerSet::new(
                 vec![
                     signer_1.public_key(),
@@ -116,7 +116,7 @@ mod tests {
         };
 
         let prefix = MintTxPrefix {
-            token_id: token_id,
+            token_id,
             amount: 100,
             view_public_key: RistrettoPublic::from_random(&mut rng),
             spend_public_key: RistrettoPublic::from_random(&mut rng),
@@ -142,7 +142,7 @@ mod tests {
         let signer_3 = Ed25519Pair::from_random(&mut rng);
 
         let mint_config = MintConfig {
-            token_id: token_id,
+            token_id,
             signer_set: SignerSet::new(
                 vec![
                     signer_1.public_key(),
@@ -184,7 +184,7 @@ mod tests {
         let signer_3 = Ed25519Pair::from_random(&mut rng);
 
         let mint_config = MintConfig {
-            token_id: token_id,
+            token_id,
             signer_set: SignerSet::new(
                 vec![
                     signer_1.public_key(),
@@ -197,7 +197,7 @@ mod tests {
         };
 
         let prefix = MintTxPrefix {
-            token_id: token_id,
+            token_id,
             amount: mint_config.mint_limit + 1,
             view_public_key: RistrettoPublic::from_random(&mut rng),
             spend_public_key: RistrettoPublic::from_random(&mut rng),
@@ -226,7 +226,7 @@ mod tests {
         let signer_3 = Ed25519Pair::from_random(&mut rng);
 
         let mint_config = MintConfig {
-            token_id: token_id,
+            token_id,
             signer_set: SignerSet::new(
                 vec![
                     signer_1.public_key(),
@@ -239,7 +239,7 @@ mod tests {
         };
 
         let prefix = MintTxPrefix {
-            token_id: token_id,
+            token_id,
             amount: 1,
             view_public_key: RistrettoPublic::from_random(&mut rng),
             spend_public_key: RistrettoPublic::from_random(&mut rng),
@@ -265,7 +265,7 @@ mod tests {
         let signer_1 = Ed25519Pair::from_random(&mut rng);
 
         let prefix = MintTxPrefix {
-            token_id: token_id,
+            token_id,
             amount: 10,
             view_public_key: RistrettoPublic::from_random(&mut rng),
             spend_public_key: RistrettoPublic::from_random(&mut rng),
@@ -289,7 +289,7 @@ mod tests {
         let signer_2 = Ed25519Pair::from_random(&mut rng);
 
         let prefix = MintTxPrefix {
-            token_id: token_id,
+            token_id,
             amount: 1,
             view_public_key: RistrettoPublic::from_random(&mut rng),
             spend_public_key: RistrettoPublic::from_random(&mut rng),
@@ -315,7 +315,7 @@ mod tests {
         let signer_1 = Ed25519Pair::from_random(&mut rng);
 
         let prefix = MintTxPrefix {
-            token_id: token_id,
+            token_id,
             amount: 1,
             view_public_key: RistrettoPublic::from_random(&mut rng),
             spend_public_key: RistrettoPublic::from_random(&mut rng),
@@ -354,7 +354,7 @@ mod tests {
             Err(Error::InvalidSignature)
         );
 
-        let mut prefix3 = prefix.clone();
+        let mut prefix3 = prefix;
         prefix3.nonce.push(5);
         let tx = MintTx {
             prefix: prefix3,

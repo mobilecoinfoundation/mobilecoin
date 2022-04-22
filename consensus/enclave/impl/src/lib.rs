@@ -2302,14 +2302,10 @@ mod tests {
             let output1 = block_contents
                 .outputs
                 .iter()
-                .find(|output| {
-                    output
-                        .view_key_match(&recipient1.view_private_key())
-                        .is_ok()
-                })
+                .find(|output| output.view_key_match(recipient1.view_private_key()).is_ok())
                 .unwrap();
             let (amount, _) = output1
-                .view_key_match(&recipient1.view_private_key())
+                .view_key_match(recipient1.view_private_key())
                 .unwrap();
             assert_eq!(amount.value, 12);
             assert_eq!(amount.token_id, token_id1);
@@ -2317,14 +2313,10 @@ mod tests {
             let output2 = block_contents
                 .outputs
                 .iter()
-                .find(|output| {
-                    output
-                        .view_key_match(&recipient2.view_private_key())
-                        .is_ok()
-                })
+                .find(|output| output.view_key_match(recipient2.view_private_key()).is_ok())
                 .unwrap();
             let (amount, _) = output2
-                .view_key_match(&recipient2.view_private_key())
+                .view_key_match(recipient2.view_private_key())
                 .unwrap();
             assert_eq!(amount.value, 200);
             assert_eq!(amount.token_id, token_id2);
@@ -2966,14 +2958,10 @@ mod tests {
             let output1 = block_contents
                 .outputs
                 .iter()
-                .find(|output| {
-                    output
-                        .view_key_match(&recipient1.view_private_key())
-                        .is_ok()
-                })
+                .find(|output| output.view_key_match(recipient1.view_private_key()).is_ok())
                 .unwrap();
             let (amount, _) = output1
-                .view_key_match(&recipient1.view_private_key())
+                .view_key_match(recipient1.view_private_key())
                 .unwrap();
             assert_eq!(amount.value, 12);
             assert_eq!(amount.token_id, token_id1);
@@ -2981,14 +2969,10 @@ mod tests {
             let output2 = block_contents
                 .outputs
                 .iter()
-                .find(|output| {
-                    output
-                        .view_key_match(&recipient2.view_private_key())
-                        .is_ok()
-                })
+                .find(|output| output.view_key_match(recipient2.view_private_key()).is_ok())
                 .unwrap();
             let (amount, _) = output2
-                .view_key_match(&recipient2.view_private_key())
+                .view_key_match(recipient2.view_private_key())
                 .unwrap();
             assert_eq!(amount.value, 200);
             assert_eq!(amount.token_id, token_id2);

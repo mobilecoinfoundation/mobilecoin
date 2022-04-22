@@ -36,14 +36,14 @@ fn test_ingest_sealed_key_recovery(logger: Logger) {
 
     let config = IngestServerConfig {
         ias_spid: Default::default(),
-        local_node_id: local_node_id.clone(),
+        local_node_id,
         client_listen_uri: FogIngestUri::from_str(&format!(
             "insecure-fog-ingest://0.0.0.0:{}/",
             base_port + 4
         ))
         .unwrap(),
         peer_listen_uri: igp_uri.clone(),
-        peers: btreeset![igp_uri.clone()],
+        peers: btreeset![igp_uri],
         fog_report_id: Default::default(),
         max_transactions: 10_000,
         pubkey_expiry_window: 100,
@@ -101,14 +101,7 @@ fn test_ingest_sealed_key_recovery(logger: Logger) {
     drop(std::fs::remove_file(&state_file));
 
     let ra_client = AttestClient::new("").expect("Could not create IAS client");
-    let node = IngestServer::new(
-        config.clone(),
-        ra_client,
-        db.clone(),
-        watcher.clone(),
-        ledger_db.clone(),
-        logger.clone(),
-    );
+    let node = IngestServer::new(config, ra_client, db, watcher, ledger_db, logger.clone());
 
     let summary3 = node.get_ingest_summary();
     assert_ne!(

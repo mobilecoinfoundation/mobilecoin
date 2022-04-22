@@ -483,14 +483,14 @@ mod mint_config_tx_tests {
             mint_tx_manager.combine_mint_config_txs(
                 &[
                     mint_config_tx3.clone(),
-                    mint_config_tx4.clone(),
+                    mint_config_tx4,
                     mint_config_tx1.clone(),
                     mint_config_tx3.clone(),
-                    mint_config_tx3.clone(),
+                    mint_config_tx3,
                     mint_config_tx2.clone(),
                     mint_config_tx1.clone(),
-                    mint_config_tx1.clone(),
-                    mint_config_tx2.clone(),
+                    mint_config_tx1,
+                    mint_config_tx2,
                 ],
                 100
             ),
@@ -539,15 +539,15 @@ mod mint_config_tx_tests {
             mint_tx_manager.combine_mint_config_txs(
                 &[
                     mint_config_tx3.clone(),
-                    mint_config_tx4.clone(),
+                    mint_config_tx4,
                     mint_config_tx1.clone(),
-                    mint_config_tx5.clone(),
-                    mint_config_tx3.clone(),
+                    mint_config_tx5,
+                    mint_config_tx3,
                     mint_config_tx2.clone(),
                     mint_config_tx1.clone(),
-                    mint_config_tx1.clone(),
-                    mint_config_tx2.clone(),
-                    mint_config_tx6.clone(),
+                    mint_config_tx1,
+                    mint_config_tx2,
+                    mint_config_tx6,
                 ],
                 3
             ),

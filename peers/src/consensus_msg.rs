@@ -218,7 +218,7 @@ mod tests {
         let num_blocks = 10;
         let ledger = get_mock_ledger(num_blocks);
 
-        let msg = ConsensusMsg::from_scp_msg(
+        ConsensusMsg::from_scp_msg(
             &ledger,
             Msg::new(
                 local_node_id,
@@ -233,8 +233,7 @@ mod tests {
             ),
             &local_signer_key,
         )
-        .unwrap();
-        msg
+        .unwrap()
     }
 
     // Correctly-constructed signature should verify.

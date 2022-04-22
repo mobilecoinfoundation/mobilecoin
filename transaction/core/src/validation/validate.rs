@@ -614,7 +614,7 @@ mod tests {
 
         assert!(tx_out.e_memo.is_none());
         assert_eq!(
-            validate_memo_exists(&tx_out),
+            validate_memo_exists(tx_out),
             Err(TransactionValidationError::MissingMemo)
         );
 
@@ -622,7 +622,7 @@ mod tests {
         let tx_out = tx.prefix.outputs.first().unwrap();
 
         assert!(tx_out.e_memo.is_some());
-        assert_eq!(validate_memo_exists(&tx_out), Ok(()));
+        assert_eq!(validate_memo_exists(tx_out), Ok(()));
     }
 
     #[test]
@@ -632,14 +632,14 @@ mod tests {
         let tx_out = tx.prefix.outputs.first().unwrap();
 
         assert!(tx_out.e_memo.is_none());
-        assert_eq!(validate_no_memo_exists(&tx_out), Ok(()));
+        assert_eq!(validate_no_memo_exists(tx_out), Ok(()));
 
         let (tx, _) = create_test_tx(BlockVersion::ONE);
         let tx_out = tx.prefix.outputs.first().unwrap();
 
         assert!(tx_out.e_memo.is_some());
         assert_eq!(
-            validate_no_memo_exists(&tx_out),
+            validate_no_memo_exists(tx_out),
             Err(TransactionValidationError::MemosNotAllowed)
         );
     }
@@ -653,7 +653,7 @@ mod tests {
 
         assert!(tx_out.masked_amount.masked_token_id.is_empty());
         assert_eq!(
-            validate_masked_token_id_exists(&tx_out),
+            validate_masked_token_id_exists(tx_out),
             Err(TransactionValidationError::MissingMaskedTokenId)
         );
 
@@ -661,7 +661,7 @@ mod tests {
         let tx_out = tx.prefix.outputs.first().unwrap();
 
         assert!(!tx_out.masked_amount.masked_token_id.is_empty());
-        assert_eq!(validate_memo_exists(&tx_out), Ok(()));
+        assert_eq!(validate_memo_exists(tx_out), Ok(()));
     }
 
     #[test]
@@ -671,14 +671,14 @@ mod tests {
         let tx_out = tx.prefix.outputs.first().unwrap();
 
         assert!(tx_out.masked_amount.masked_token_id.is_empty());
-        assert_eq!(validate_no_masked_token_id_exists(&tx_out), Ok(()));
+        assert_eq!(validate_no_masked_token_id_exists(tx_out), Ok(()));
 
         let (tx, _) = create_test_tx(BlockVersion::TWO);
         let tx_out = tx.prefix.outputs.first().unwrap();
 
         assert!(!tx_out.masked_amount.masked_token_id.is_empty());
         assert_eq!(
-            validate_no_masked_token_id_exists(&tx_out),
+            validate_no_masked_token_id_exists(tx_out),
             Err(TransactionValidationError::MaskedTokenIdNotAllowed)
         );
     }
@@ -1149,7 +1149,7 @@ mod tests {
         for block_version in BlockVersion::iterator() {
             let (mut tx, _ledger) = create_test_tx(block_version);
 
-            tx.prefix.fee = tx.prefix.fee + 1;
+            tx.prefix.fee += 1;
 
             match validate_signature(block_version, &tx, &mut rng) {
                 Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
@@ -1169,7 +1169,7 @@ mod tests {
         for _ in 0..3 {
             let (mut tx, _ledger) = create_test_tx(BlockVersion::TWO);
 
-            tx.prefix.token_id = tx.prefix.token_id + 1;
+            tx.prefix.token_id += 1;
 
             match validate_signature(BlockVersion::TWO, &tx, &mut rng) {
                 Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.

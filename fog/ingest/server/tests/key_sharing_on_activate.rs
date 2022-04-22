@@ -61,7 +61,7 @@ fn make_node(
         pubkey_expiry_window: 100,
         peer_checkup_period: None,
         watcher_timeout: Duration::default(),
-        state_file: Some(StateFile::new(state_file.clone())),
+        state_file: Some(StateFile::new(state_file)),
         enclave_path: get_enclave_path(mc_fog_ingest_enclave::ENCLAVE_FILE),
         omap_capacity: OMAP_CAPACITY,
     };
@@ -155,19 +155,19 @@ fn test_key_sharing_on_activate(logger: Logger) {
     assert_eq!(node0_key, node4_key);
 
     assert!(
-        !node1.activate().is_ok(),
+        node1.activate().is_err(),
         "node1 should not have been able to activate"
     );
     assert!(
-        !node2.activate().is_ok(),
+        node2.activate().is_err(),
         "node2 should not have been able to activate"
     );
     assert!(
-        !node3.activate().is_ok(),
+        node3.activate().is_err(),
         "node3 should not have been able to activate"
     );
     assert!(
-        !node4.activate().is_ok(),
+        node4.activate().is_err(),
         "node4 should not have been able to activate"
     );
 
@@ -192,19 +192,19 @@ fn test_key_sharing_on_activate(logger: Logger) {
         "node0 didn't get the old key back after node1 was activated"
     );
     assert!(
-        !node0.activate().is_ok(),
+        node0.activate().is_err(),
         "node1 should not have been able to activate"
     );
     assert!(
-        !node2.activate().is_ok(),
+        node2.activate().is_err(),
         "node2 should not have been able to activate"
     );
     assert!(
-        !node3.activate().is_ok(),
+        node3.activate().is_err(),
         "node3 should not have been able to activate"
     );
     assert!(
-        !node4.activate().is_ok(),
+        node4.activate().is_err(),
         "node4 should not have been able to activate"
     );
 

@@ -360,7 +360,7 @@ mod tests {
         let well_formed_encrypted_tx = WellFormedEncryptedTx::default();
         let well_formed_tx_context = WellFormedTxContext::new(
             0,
-            tx_hash.clone(),
+            tx_hash,
             Default::default(),
             Default::default(),
             Default::default(),
@@ -375,7 +375,7 @@ mod tests {
         let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
         assert_eq!(tx_manager.num_entries(), 0);
 
-        assert!(tx_manager.insert(tx_context.clone()).is_ok());
+        assert!(tx_manager.insert(tx_context).is_ok());
         assert_eq!(tx_manager.num_entries(), 1);
         assert!(tx_manager.lock_cache().contains_key(&tx_hash));
     }
@@ -401,7 +401,7 @@ mod tests {
         let well_formed_encrypted_tx = WellFormedEncryptedTx::default();
         let well_formed_tx_context = WellFormedTxContext::new(
             0,
-            tx_hash.clone(),
+            tx_hash,
             Default::default(),
             Default::default(),
             Default::default(),
@@ -421,7 +421,7 @@ mod tests {
         assert!(tx_manager.lock_cache().contains_key(&tx_hash));
 
         // Re-inserting should also be Ok.
-        assert!(tx_manager.insert(tx_context.clone()).is_ok());
+        assert!(tx_manager.insert(tx_context).is_ok());
         assert_eq!(tx_manager.num_entries(), 1);
         assert!(tx_manager.lock_cache().contains_key(&tx_hash));
     }
@@ -444,7 +444,7 @@ mod tests {
         let mock_enclave = MockConsensusEnclave::new();
 
         let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
-        assert!(tx_manager.insert(tx_context.clone()).is_err());
+        assert!(tx_manager.insert(tx_context).is_err());
         assert_eq!(tx_manager.num_entries(), 0);
     }
 
@@ -470,7 +470,7 @@ mod tests {
             .return_const(Err(EnclaveError::Signature));
 
         let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
-        assert!(tx_manager.insert(tx_context.clone()).is_err());
+        assert!(tx_manager.insert(tx_context).is_err());
         assert_eq!(tx_manager.num_entries(), 0);
     }
 
@@ -501,7 +501,7 @@ mod tests {
                 .cache
                 .lock()
                 .unwrap()
-                .insert(context.tx_hash().clone(), cache_entry);
+                .insert(*context.tx_hash(), cache_entry);
         }
 
         assert_eq!(tx_manager.num_entries(), 14);
@@ -562,7 +562,7 @@ mod tests {
             .cache
             .lock()
             .unwrap()
-            .insert(tx_context.tx_hash.clone(), cache_entry);
+            .insert(tx_context.tx_hash, cache_entry);
 
         assert!(tx_manager.validate(&tx_context.tx_hash).is_ok());
     }
@@ -614,7 +614,7 @@ mod tests {
             .cache
             .lock()
             .unwrap()
-            .insert(tx_context.tx_hash.clone(), cache_entry);
+            .insert(tx_context.tx_hash, cache_entry);
 
         match tx_manager.validate(&tx_context.tx_hash) {
             Err(TxManagerError::TransactionValidation(
@@ -643,7 +643,7 @@ mod tests {
         for tx_hash in &tx_hashes {
             let context = WellFormedTxContext::new(
                 Default::default(),
-                tx_hash.clone(),
+                *tx_hash,
                 Default::default(),
                 Default::default(),
                 Default::default(),
@@ -659,7 +659,7 @@ mod tests {
                 .cache
                 .lock()
                 .unwrap()
-                .insert(context.tx_hash().clone(), cache_entry);
+                .insert(*context.tx_hash(), cache_entry);
         }
         assert_eq!(tx_manager.num_entries(), tx_hashes.len());
 
@@ -686,7 +686,7 @@ mod tests {
         for tx_hash in &tx_hashes[2..] {
             let context = WellFormedTxContext::new(
                 Default::default(),
-                tx_hash.clone(),
+                *tx_hash,
                 Default::default(),
                 Default::default(),
                 Default::default(),
@@ -702,13 +702,10 @@ mod tests {
                 .cache
                 .lock()
                 .unwrap()
-                .insert(context.tx_hash().clone(), cache_entry);
+                .insert(*context.tx_hash(), cache_entry);
         }
 
-        match tx_manager.combine(&tx_hashes) {
-            Ok(_combined) => panic!(),
-            _ => {} // This is expected.
-        }
+        assert!(tx_manager.combine(&tx_hashes).is_err());
     }
 
     // TODO: tx_hashed_to_block should provide correct proofs for highest indices
@@ -786,7 +783,7 @@ mod tests {
 
         // This transaction is not in the cache.
         let not_in_cache = TxHash([66u8; 32]);
-        tx_hashes.insert(2, not_in_cache.clone());
+        tx_hashes.insert(2, not_in_cache);
 
         match tx_manager.tx_hashes_to_well_formed_encrypted_txs_and_proofs(&tx_hashes[..]) {
             Ok(_) => {
@@ -819,7 +816,7 @@ mod tests {
         for tx_hash in &tx_hashes {
             let context = WellFormedTxContext::new(
                 Default::default(),
-                tx_hash.clone(),
+                *tx_hash,
                 Default::default(),
                 Default::default(),
                 Default::default(),
@@ -835,7 +832,7 @@ mod tests {
                 .cache
                 .lock()
                 .unwrap()
-                .insert(context.tx_hash().clone(), cache_entry);
+                .insert(*context.tx_hash(), cache_entry);
         }
         assert_eq!(tx_manager.num_entries(), tx_hashes.len());
 
@@ -883,7 +880,7 @@ mod tests {
         for tx_hash in &tx_hashes {
             let context = WellFormedTxContext::new(
                 Default::default(),
-                tx_hash.clone(),
+                *tx_hash,
                 Default::default(),
                 Default::default(),
                 Default::default(),
@@ -899,7 +896,7 @@ mod tests {
                 .cache
                 .lock()
                 .unwrap()
-                .insert(context.tx_hash().clone(), cache_entry);
+                .insert(*context.tx_hash(), cache_entry);
         }
         assert_eq!(tx_manager.num_entries(), tx_hashes.len());
 
@@ -930,7 +927,7 @@ mod tests {
             .cache
             .lock()
             .unwrap()
-            .insert(tx_hash.clone(), cache_entry);
+            .insert(tx_hash, cache_entry);
 
         // Get something that is in the cache.
         assert_eq!(
@@ -957,7 +954,7 @@ mod tests {
         for tx_hash in &tx_hashes {
             let context = WellFormedTxContext::new(
                 Default::default(),
-                tx_hash.clone(),
+                *tx_hash,
                 Default::default(),
                 Default::default(),
                 Default::default(),
@@ -973,7 +970,7 @@ mod tests {
                 .cache
                 .lock()
                 .unwrap()
-                .insert(context.tx_hash().clone(), cache_entry);
+                .insert(*context.tx_hash(), cache_entry);
         }
         assert_eq!(tx_manager.num_entries(), tx_hashes.len());
     }

@@ -96,7 +96,7 @@ fn one_active_node_idle_nodes_different_keys_produces_prometheus_metrics(logger:
     // Initialize an OverSeerService object
     let mut overseer_service = OverseerService::new(
         vec![client_listen_uri0, client_listen_uri1, client_listen_uri2],
-        recovery_db.clone(),
+        recovery_db,
         logger.clone(),
     );
     overseer_service.start().unwrap();

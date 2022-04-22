@@ -30,13 +30,10 @@ fn test_sync_keys_from_remote(logger: Logger) {
         .arg(ingest_server_set_up_data.primary_ingest_server_peer_uri)
         .assert()
         .success()
-        .stdout(predicate::str::contains(format!(
-            "{}",
-            hex::encode(
-                ingest_server_set_up_data
-                    .primary_ingest_server_ingress_pubkey
-                    .get_data()
-            )
+        .stdout(predicate::str::contains(hex::encode(
+            ingest_server_set_up_data
+                .primary_ingest_server_ingress_pubkey
+                .get_data(),
         )));
 }
 
@@ -77,14 +74,14 @@ fn set_up_ingest_servers(logger: Logger) -> IngestServerSetUpData {
 
         let config = IngestServerConfig {
             ias_spid: Default::default(),
-            local_node_id: local_node_id.clone(),
+            local_node_id,
             client_listen_uri: FogIngestUri::from_str(&format!(
                 "insecure-fog-ingest://0.0.0.0:{}/",
                 BASE_PORT + 4
             ))
             .unwrap(),
             peer_listen_uri: igp_uri.clone(),
-            peers: btreeset![igp_uri.clone()],
+            peers: btreeset![igp_uri],
             fog_report_id: Default::default(),
             max_transactions: 10_000,
             pubkey_expiry_window: 100,
@@ -142,7 +139,7 @@ fn set_up_ingest_servers(logger: Logger) -> IngestServerSetUpData {
             client_listen_uri: FogIngestUri::from_str(&backup_ingest_server_client_uri_str)
                 .unwrap(),
             peer_listen_uri: igp_uri.clone(),
-            peers: btreeset![igp_uri.clone()],
+            peers: btreeset![igp_uri],
             fog_report_id: Default::default(),
             max_transactions: 10_000,
             pubkey_expiry_window: 100,
@@ -164,25 +161,18 @@ fn set_up_ingest_servers(logger: Logger) -> IngestServerSetUpData {
         let ledger_db = LedgerDB::open(ledger_db_path.path()).unwrap();
 
         let ra_client = AttestClient::new("").expect("Could not create IAS client");
-        let mut node = IngestServer::new(
-            config,
-            ra_client,
-            db.clone(),
-            watcher,
-            ledger_db,
-            logger.clone(),
-        );
+        let mut node = IngestServer::new(config, ra_client, db, watcher, ledger_db, logger.clone());
 
         node.start().expect("Could not start Ingest Service");
         node
     };
 
-    return IngestServerSetUpData {
+    IngestServerSetUpData {
         _primary_ingest_server: primary_ingest_server,
         _backup_ingest_server: backup_ingest_server,
         _db_test_context: db_test_context,
-        backup_ingest_server_client_uri: backup_ingest_server_client_uri_str.to_owned(),
-        primary_ingest_server_peer_uri: primary_ingest_server_peer_uri_str.to_owned(),
+        backup_ingest_server_client_uri: backup_ingest_server_client_uri_str,
+        primary_ingest_server_peer_uri: primary_ingest_server_peer_uri_str,
         primary_ingest_server_ingress_pubkey: primary_ingest_server_ingress_pubkey.clone(),
-    };
+    }
 }

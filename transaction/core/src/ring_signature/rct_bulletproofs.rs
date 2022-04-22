@@ -750,7 +750,7 @@ mod rct_bulletproofs_tests {
             // Modify an output value
             {
                 let index = rng.next_u64() as usize % (num_inputs);
-                let (_value, blinding) = params.output_values_and_blindings[index].clone();
+                let (_value, blinding) = params.output_values_and_blindings[index];
                 params.output_values_and_blindings[index] = (rng.next_u64(), blinding);
             }
 
@@ -826,8 +826,8 @@ mod rct_bulletproofs_tests {
 
             // Duplicate one of the rings.
             params.rings[2] = params.rings[3].clone();
-            params.output_values_and_blindings[2] = params.output_values_and_blindings[3].clone();
-            params.input_secrets[2] = params.input_secrets[3].clone();
+            params.output_values_and_blindings[2] = params.output_values_and_blindings[3];
+            params.input_secrets[2] = params.input_secrets[3];
             params.real_input_indices[2] = params.real_input_indices[3];
 
             let signature = params.sign(fee, &mut rng).unwrap();

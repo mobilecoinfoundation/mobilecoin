@@ -209,7 +209,7 @@ mod test {
 
     #[test]
     fn test_serde() {
-        let report: Report = TEST_REPORT1.clone().into();
+        let report: Report = TEST_REPORT1.into();
         let serialized = serialize(&report).expect("Could not serialize report");
         let report2: Report = deserialize(&serialized).expect("Could not deserialize report");
         assert_eq!(report, report2);
@@ -217,24 +217,24 @@ mod test {
 
     #[test]
     fn test_debug() {
-        let report: Report = TEST_REPORT1.clone().into();
+        let report: Report = TEST_REPORT1.into();
         let debug_str = format!("{:?}", &report);
         assert_eq!(&debug_str, TEST_REPORT_DEBUGSTR);
     }
 
     #[test]
     fn test_ord() {
-        let report1: Report = TEST_REPORT1.clone().into();
+        let report1: Report = TEST_REPORT1.into();
         let mut report2 = report1;
         assert_eq!(report1, report2);
-        assert!(!(report1 < report2));
+        assert!(report1 >= report2);
 
         let orig_value = report2.0.key_id.id[0];
         report2.0.key_id.id[0] = 255;
         assert!(report1 < report2);
         report2.0.key_id.id[0] = orig_value;
         assert_eq!(report1, report2);
-        assert!(!(report1 < report2));
+        assert!(report1 >= report2);
     }
 
     #[test]

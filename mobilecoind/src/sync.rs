@@ -591,7 +591,7 @@ mod test {
                 value: DEFAULT_PER_RECIPIENT_AMOUNT,
                 token_id: Mob::ID,
             },
-            &[utxos[0].key_image.clone()],
+            &[utxos[0].key_image],
             &mut rng,
         );
 
@@ -662,7 +662,7 @@ mod test {
                 value: 0,
                 token_id: Mob::ID,
             },
-            &[utxos[0].key_image.clone()],
+            &[utxos[0].key_image],
             &mut rng,
         );
 

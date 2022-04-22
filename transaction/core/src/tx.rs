@@ -799,7 +799,7 @@ mod tests {
                 &bob_addr,
                 &tx_private_key,
                 Default::default(),
-                |_| Ok(Some(memo_val.clone())),
+                |_| Ok(Some(memo_val)),
             )
             .unwrap();
 
@@ -835,7 +835,7 @@ mod tests {
                 &bob.change_subaddress(),
                 &tx_private_key,
                 Default::default(),
-                |_| Ok(Some(memo_val.clone())),
+                |_| Ok(Some(memo_val)),
             )
             .unwrap();
 

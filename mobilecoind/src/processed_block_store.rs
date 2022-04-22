@@ -518,8 +518,7 @@ mod test {
                 .expect("block_processed failed");
 
             let monitor_data2 = MonitorData::new(
-                account.clone(),
-                30, // first_subaddress
+                account, 30, // first_subaddress
                 20, // num_subaddresses
                 0,  // first_block
                 "", // name

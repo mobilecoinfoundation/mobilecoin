@@ -61,20 +61,12 @@ mod tests {
     fn test_membership_proof_from() {
         let index: u64 = 128_465;
         let highest_index: u64 = 781_384_772_994;
-        let mut hashes = Vec::<TxOutMembershipElement>::default();
-        // Add some arbitrary hashes.
-        hashes.push(TxOutMembershipElement::new(
-            Range::new(0, 1).unwrap(),
-            [2u8; 32],
-        ));
-        hashes.push(TxOutMembershipElement::new(
-            Range::new(0, 3).unwrap(),
-            [4u8; 32],
-        ));
-        hashes.push(TxOutMembershipElement::new(
-            Range::new(0, 7).unwrap(),
-            [8u8; 32],
-        ));
+        let hashes = vec![
+            // Add some arbitrary hashes.
+            TxOutMembershipElement::new(Range::new(0, 1).unwrap(), [2u8; 32]),
+            TxOutMembershipElement::new(Range::new(0, 3).unwrap(), [4u8; 32]),
+            TxOutMembershipElement::new(Range::new(0, 7).unwrap(), [8u8; 32]),
+        ];
         let tx_out_membership_proof =
             TxOutMembershipProof::new(index, highest_index, hashes.clone());
 

@@ -180,36 +180,33 @@ mod tests {
         // `validate` should be called one for each pending value.
         tx_manager
             .expect_validate()
-            .with(eq(values[0].clone()))
+            .with(eq(values[0]))
             .return_const(Ok(()));
         // This transaction has expired.
         tx_manager
             .expect_validate()
-            .with(eq(values[1].clone()))
+            .with(eq(values[1]))
             .return_const(Err(TxManagerError::TransactionValidation(
                 TransactionValidationError::TombstoneBlockExceeded,
             )));
         tx_manager
             .expect_validate()
-            .with(eq(values[2].clone()))
+            .with(eq(values[2]))
             .return_const(Ok(()));
 
         let mut pending_values =
             PendingValues::new(Arc::new(tx_manager), Arc::new(mint_tx_manager));
-        assert!(pending_values.push(values[0].clone().into(), None));
-        assert!(!pending_values.push(values[1].clone().into(), None));
-        assert!(pending_values.push(values[2].clone().into(), None));
+        assert!(pending_values.push(values[0].into(), None));
+        assert!(!pending_values.push(values[1].into(), None));
+        assert!(pending_values.push(values[2].into(), None));
 
         assert_eq!(
             pending_values.pending_values,
-            vec![values[0].clone().into(), values[2].clone().into()]
+            vec![values[0].into(), values[2].into()]
         );
         assert_eq!(
             pending_values.pending_values_map,
-            HashMap::from_iter(vec![
-                (values[0].clone().into(), None),
-                (values[2].clone().into(), None)
-            ])
+            HashMap::from_iter(vec![(values[0].into(), None), (values[2].into(), None)])
         );
     }
 
@@ -268,18 +265,18 @@ mod tests {
         // `validate` should be called one for each pending value.
         tx_manager
             .expect_validate()
-            .with(eq(tx_hashes[0].clone()))
+            .with(eq(tx_hashes[0]))
             .return_const(Ok(()));
         // This transaction has expired.
         tx_manager
             .expect_validate()
-            .with(eq(tx_hashes[1].clone()))
+            .with(eq(tx_hashes[1]))
             .return_const(Err(TxManagerError::TransactionValidation(
                 TransactionValidationError::TombstoneBlockExceeded,
             )));
         tx_manager
             .expect_validate()
-            .with(eq(tx_hashes[2].clone()))
+            .with(eq(tx_hashes[2]))
             .return_const(Ok(()));
 
         // Create new PendingValues and forcefully shove the pending tx_hashes into it

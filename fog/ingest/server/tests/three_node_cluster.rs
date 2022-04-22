@@ -219,12 +219,9 @@ fn three_node_cluster_activation_retiry(logger: Logger) {
     WatcherDB::create(&watcher_path).unwrap();
     // Open the watcher db
     let tx_source_url = Url::from_str("https://localhost").unwrap();
-    let watcher = mc_watcher::watcher_db::WatcherDB::open_rw(
-        &watcher_path,
-        &[tx_source_url.clone()],
-        logger.clone(),
-    )
-    .expect("Could not create watcher_db");
+    let watcher =
+        mc_watcher::watcher_db::WatcherDB::open_rw(&watcher_path, &[tx_source_url], logger.clone())
+            .expect("Could not create watcher_db");
 
     // Set up an empty ledger db.
     let ledger_db_path = blockchain_path.path().join("ledger_db");
@@ -433,12 +430,9 @@ fn three_node_cluster_fencing(logger: Logger) {
     WatcherDB::create(&watcher_path).unwrap();
     // Open the watcher db
     let tx_source_url = Url::from_str("https://localhost").unwrap();
-    let watcher = mc_watcher::watcher_db::WatcherDB::open_rw(
-        &watcher_path,
-        &[tx_source_url.clone()],
-        logger.clone(),
-    )
-    .expect("Could not create watcher_db");
+    let watcher =
+        mc_watcher::watcher_db::WatcherDB::open_rw(&watcher_path, &[tx_source_url], logger.clone())
+            .expect("Could not create watcher_db");
 
     // Set up an empty ledger db.
     let ledger_db_path = blockchain_path.path().join("ledger_db");

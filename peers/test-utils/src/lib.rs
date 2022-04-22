@@ -453,9 +453,9 @@ mod threaded_broadcaster_tests {
                 &local_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -478,9 +478,9 @@ mod threaded_broadcaster_tests {
                 &local_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -544,9 +544,9 @@ mod threaded_broadcaster_tests {
                 &node2_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -564,9 +564,9 @@ mod threaded_broadcaster_tests {
             let msg2 =
                 create_consensus_msg(&ledger, node2, quorum_set, 1, "msg2", &node2_signer_key);
 
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -629,9 +629,9 @@ mod threaded_broadcaster_tests {
                 &local_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -663,9 +663,9 @@ mod threaded_broadcaster_tests {
                 &local_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
 
             broadcaster.barrier();
 

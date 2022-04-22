@@ -548,7 +548,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
 
         // Make unattested ledger client
         let client = FogUntrustedLedgerGrpcClient::new(
-            client_uri.clone(),
+            client_uri,
             GRPC_RETRY_CONFIG,
             grpc_env,
             logger.clone(),
@@ -709,7 +709,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
 
         // Make unattested ledger client
         let client = FogUntrustedLedgerGrpcClient::new(
-            client_uri.clone(),
+            client_uri,
             GRPC_RETRY_CONFIG,
             grpc_env,
             logger.clone(),
@@ -720,7 +720,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
 
         // Try to get tx out records
         let queries: Vec<CompressedRistrettoPublic> =
-            vec![(&[0u8; 32]).into(), real_tx_out0.public_key.clone()];
+            vec![(&[0u8; 32]).into(), real_tx_out0.public_key];
         let result = client.get_tx_outs(queries).unwrap();
         // Check that we got expected num_blocks value
         assert_eq!(result.num_blocks, 4);
@@ -759,8 +759,8 @@ fn generate_ledger_db(path: &Path) -> LedgerDB {
     // DELETE the old database if it already exists.
     let _ = std::fs::remove_file(path.join("data.mdb"));
     LedgerDB::create(path).expect("Could not create ledger_db");
-    let db = LedgerDB::open(path).expect("Could not open ledger_db");
-    db
+
+    LedgerDB::open(path).expect("Could not open ledger_db")
 }
 
 // This is like mobilecoind::test_utils::generate_ledger_db, which is
@@ -808,8 +808,6 @@ fn add_block_to_ledger_db(
 
     let num_blocks = ledger_db.num_blocks().expect("failed to get block height");
 
-    let new_block;
-
     // Get timestamp derived from the number of blocks
     let (timestamp, _timestamp_result_code) = if num_blocks > 0 {
         (num_blocks * 100, TimestampResultCode::TimestampFound)
@@ -818,7 +816,7 @@ fn add_block_to_ledger_db(
     };
 
     // num_blocks is the block_index of the block we are now adding
-    if num_blocks > 0 {
+    let new_block = if num_blocks > 0 {
         for src_url in watcher.get_config_urls().unwrap().iter() {
             let block = Block {
                 // Dummy block - we don't work with blocks in this test framework
@@ -842,11 +840,11 @@ fn add_block_to_ledger_db(
         let parent = ledger_db
             .get_block(num_blocks - 1)
             .expect("failed to get parent block");
-        new_block =
-            Block::new_with_parent(block_version, &parent, &Default::default(), &block_contents);
+
+        Block::new_with_parent(block_version, &parent, &Default::default(), &block_contents)
     } else {
-        new_block = Block::new_origin_block(&outputs);
-    }
+        Block::new_origin_block(&outputs)
+    };
 
     ledger_db
         .append_block(&new_block, &block_contents, None)

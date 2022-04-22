@@ -427,14 +427,14 @@ mod membership_proof_tests {
     fn test_is_valid_singleton() {
         let tx_outs = get_tx_outs(1);
         let tx_out = tx_outs.get(0).unwrap();
-        let hash = hash_leaf(&tx_out);
+        let hash = hash_leaf(tx_out);
         let elems = vec![TxOutMembershipElement {
             range: Range::new(0, 0).unwrap(),
             hash: hash.into(),
         }];
         let proof = TxOutMembershipProof::new(0, 0, elems);
 
-        assert!(is_membership_proof_valid(&tx_out, &proof, &hash).unwrap());
+        assert!(is_membership_proof_valid(tx_out, &proof, &hash).unwrap());
     }
 
     #[test]
@@ -461,7 +461,7 @@ mod membership_proof_tests {
             .unwrap();
 
         assert!(is_membership_proof_valid(
-            &tx_outs.get(5).unwrap(),
+            tx_outs.get(5).unwrap(),
             &proof_of_five,
             &known_root_hash
         )
@@ -472,7 +472,7 @@ mod membership_proof_tests {
             .unwrap();
 
         assert!(is_membership_proof_valid(
-            &tx_outs.get(3).unwrap(),
+            tx_outs.get(3).unwrap(),
             &proof_of_three,
             &known_root_hash
         )
@@ -511,7 +511,7 @@ mod membership_proof_tests {
                         3
                     )
                 ),
-                is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash)
+                is_membership_proof_valid(tx_outs.get(5).unwrap(), &proof, &known_root_hash)
             );
         }
 
@@ -525,7 +525,7 @@ mod membership_proof_tests {
             proof.index = 6;
             assert_eq!(
                 Err(MembershipProofError::HighestIndexMismatch),
-                is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash)
+                is_membership_proof_valid(tx_outs.get(5).unwrap(), &proof, &known_root_hash)
             );
         }
     }
@@ -570,7 +570,7 @@ mod membership_proof_tests {
             proof.highest_index = 2;
             assert_eq!(
                 Err(MembershipProofError::HighestIndexMismatch),
-                is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash)
+                is_membership_proof_valid(tx_outs.get(5).unwrap(), &proof, &known_root_hash)
             );
         }
 
@@ -586,7 +586,7 @@ mod membership_proof_tests {
             proof.highest_index = 8;
             assert_eq!(
                 Err(MembershipProofError::HighestIndexMismatch),
-                is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash)
+                is_membership_proof_valid(tx_outs.get(5).unwrap(), &proof, &known_root_hash)
             );
         }
     }
@@ -622,7 +622,7 @@ mod membership_proof_tests {
             };
             assert_eq!(
                 Err(MembershipProofError::UnexpectedMembershipElement(3)),
-                is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash)
+                is_membership_proof_valid(tx_outs.get(5).unwrap(), &proof, &known_root_hash)
             );
         }
     }
@@ -660,7 +660,7 @@ mod membership_proof_tests {
             .unwrap();
 
         assert!(
-            is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash).unwrap()
+            is_membership_proof_valid(tx_outs.get(5).unwrap(), &proof, &known_root_hash).unwrap()
         );
 
         let mut proof1 = proof.clone();
@@ -668,15 +668,15 @@ mod membership_proof_tests {
 
         assert_eq!(
             Err(MembershipProofError::MissingLeafHash(5)),
-            is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof1, &known_root_hash)
+            is_membership_proof_valid(tx_outs.get(5).unwrap(), &proof1, &known_root_hash)
         );
 
-        let mut proof2 = proof.clone();
+        let mut proof2 = proof;
         proof2.elements.remove(1);
 
         assert_eq!(
             Err(MembershipProofError::UnexpectedMembershipElement(2)),
-            is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof2, &known_root_hash)
+            is_membership_proof_valid(tx_outs.get(5).unwrap(), &proof2, &known_root_hash)
         );
     }
 
@@ -707,7 +707,7 @@ mod membership_proof_tests {
         let rederived_proof = derive_proof_at_index(&proof).unwrap();
         // The rederived proof must be a valid proof.
         assert!(is_membership_proof_valid(
-            &tx_outs.get(5).unwrap(),
+            tx_outs.get(5).unwrap(),
             &rederived_proof,
             &known_root_hash
         )
@@ -768,7 +768,7 @@ mod membership_proof_tests {
 
         // The rederived proof must be a valid proof.
         assert!(is_membership_proof_valid(
-            &tx_outs.get(16).unwrap(),
+            tx_outs.get(16).unwrap(),
             &rederived_proof,
             &known_root_hash
         )
@@ -1152,7 +1152,7 @@ pub mod tx_out_store_tests {
                                        tx_out_0
         */
         let tx_out_zero: &TxOut = tx_outs.get(0).unwrap();
-        let leaf_hash_zero = hash_leaf(&tx_out_zero);
+        let leaf_hash_zero = hash_leaf(tx_out_zero);
         {
             // The first root hash should be the leaf hash fn applied to the single TxOut.
             let _index = tx_out_store.push(tx_out_zero, &mut rw_transaction).unwrap();
@@ -1170,7 +1170,7 @@ pub mod tx_out_store_tests {
                              tx_out_0                tx_out_1
         */
         let tx_out_one: &TxOut = tx_outs.get(1).unwrap();
-        let leaf_hash_one = hash_leaf(&tx_out_one);
+        let leaf_hash_one = hash_leaf(tx_out_one);
         let root_hash_one = {
             // The second root hash should be the internal hash fn applied to the leaf hash
             // fn of tx_out_zero and tx_out_one.
@@ -1193,10 +1193,10 @@ pub mod tx_out_store_tests {
                  tx_out_0                tx_out_1              tx_out_2
         */
         let tx_out_two: &TxOut = tx_outs.get(2).unwrap();
-        let leaf_hash_two = hash_leaf(&tx_out_two);
+        let leaf_hash_two = hash_leaf(tx_out_two);
         {
             let _index = tx_out_store.push(tx_out_two, &mut rw_transaction).unwrap();
-            let right = hash_nodes(&hash_leaf(&tx_out_two), &NIL_HASH);
+            let right = hash_nodes(&hash_leaf(tx_out_two), &NIL_HASH);
             let expected_root_hash = hash_nodes(&root_hash_one, &right);
             let root_hash = tx_out_store.get_root_merkle_hash(&rw_transaction).unwrap();
             assert_eq!(expected_root_hash, root_hash);
@@ -1214,7 +1214,7 @@ pub mod tx_out_store_tests {
              tx_out_0                tx_out_1              tx_out_2               tx_out_3
         */
         let tx_out_three: &TxOut = tx_outs.get(3).unwrap();
-        let leaf_hash_three = hash_leaf(&tx_out_three);
+        let leaf_hash_three = hash_leaf(tx_out_three);
         {
             let _index = tx_out_store
                 .push(tx_out_three, &mut rw_transaction)

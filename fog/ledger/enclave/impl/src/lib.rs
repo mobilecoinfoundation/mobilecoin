@@ -233,7 +233,7 @@ mod tests {
         // add test KeyImageData record to ledger oram
         let v_result1 = key_image_store.add_record(&rec.key_image, rec.block_index, rec.timestamp);
 
-        assert!(v_result1.is_ok() && !v_result1.is_err());
+        assert!(v_result1.is_ok());
 
         //query the ledger oram for the record using the key_image
         let v = key_image_store.find_record(&rec.key_image);
@@ -250,7 +250,7 @@ mod tests {
         let v_result2 =
             key_image_store.add_record(&rec2.key_image, rec2.block_index, rec2.timestamp);
 
-        assert!(v_result2.is_ok() && !v_result2.is_err());
+        assert!(v_result2.is_ok());
 
         //query the ledger oram for the record using the key_image
         let v2 = key_image_store.find_record(&rec2.key_image);
@@ -266,7 +266,7 @@ mod tests {
         let v_result3 =
             key_image_store.add_record(&rec3.key_image, rec3.block_index, rec3.timestamp);
 
-        assert!(v_result3.is_ok() && !v_result3.is_err());
+        assert!(v_result3.is_ok());
         //we can add the record even if the key image is all zero bytes
         let rec3 = KeyImageData {
             key_image: KeyImage::from(0),
@@ -278,7 +278,7 @@ mod tests {
             key_image_store.add_record(&rec3.key_image, rec3.block_index, rec3.timestamp);
 
         // we should not get back "invalid key" error
-        assert!(!v_result.is_err());
+        assert!(v_result.is_ok());
 
         //query the ledger oram for the record using the key_image
         let v3 = key_image_store.find_record(&rec3.key_image);

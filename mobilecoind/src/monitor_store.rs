@@ -339,6 +339,7 @@ mod test {
     use mc_util_from_random::FromRandom;
     use rand_chacha::ChaChaRng;
     use rand_core::SeedableRng;
+    use std::{assert_matches::assert_matches, collections::HashSet};
 
     /// A randomly generated RSA subjectPublicKeyInfo, used as a fog authority.
     const AUTHORITY_PUBKEY: &str = r"-----BEGIN PUBLIC KEY-----
@@ -408,7 +409,7 @@ pKZkdp8MQU5TLFOE9qjNeVsCAwEAAQ==
 
         // Set up a db with 3 random recipients and 10 blocks.
         let (_ledger_db, mobilecoind_db) =
-            get_test_databases(BlockVersion::MAX, 3, &vec![], 10, logger.clone(), &mut rng);
+            get_test_databases(BlockVersion::MAX, 3, &[], 10, logger.clone(), &mut rng);
 
         // Check that there are no monitors yet.
         assert_eq!(
@@ -440,7 +441,7 @@ pKZkdp8MQU5TLFOE9qjNeVsCAwEAAQ==
                 .keys()
                 .cloned()
                 .collect::<Vec<MonitorId>>(),
-            vec![monitor_id0.clone()]
+            vec![monitor_id0]
         );
 
         let _ = mobilecoind_db
@@ -452,9 +453,8 @@ pKZkdp8MQU5TLFOE9qjNeVsCAwEAAQ==
                 .expect("failed to get map")
                 .keys()
                 .cloned()
-                .collect::<Vec<MonitorId>>()
-                .sort(),
-            vec![monitor_id0.clone(), monitor_id1.clone()].sort()
+                .collect::<HashSet<_>>(),
+            HashSet::from([monitor_id0, monitor_id1])
         );
 
         // Check that monitor data is recoverable.
@@ -462,26 +462,20 @@ pKZkdp8MQU5TLFOE9qjNeVsCAwEAAQ==
             mobilecoind_db
                 .get_monitor_data(&monitor_id1)
                 .expect("failed getting monitor data 1"),
-            monitor_data1.clone()
+            monitor_data1
         );
         assert_eq!(
             mobilecoind_db
                 .get_monitor_data(&monitor_id0)
                 .expect("failed getting monitor data 0"),
-            monitor_data0.clone()
+            monitor_data0
         );
 
         // monitor_id2 was never inserted into the database, so getting its data should
         // fail.
-        #[allow(clippy::match_wild_err_arm)]
-        match mobilecoind_db.get_monitor_data(&monitor_id2) {
-            Ok(_) => {
-                panic!("shouldn't happen");
-            }
-            Err(Error::MonitorIdNotFound) => {}
-            Err(_) => {
-                panic!("shouldn't happen");
-            }
-        }
+        assert_matches!(
+            mobilecoind_db.get_monitor_data(&monitor_id2),
+            Err(Error::MonitorIdNotFound)
+        );
     }
 }

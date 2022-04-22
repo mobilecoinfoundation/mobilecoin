@@ -673,7 +673,7 @@ pub mod transaction_builder_tests {
 
         let onetime_private_key = recover_onetime_private_key(
             &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
-            &account.view_private_key(),
+            account.view_private_key(),
             &account.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
         );
 
@@ -807,13 +807,13 @@ pub mod transaction_builder_tests {
 
             // The output should belong to the correct recipient.
             assert!(
-                subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &output).unwrap()
+                subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, output).unwrap()
             );
 
             // The output should have the correct value and confirmation number
             {
                 let public_key = RistrettoPublic::try_from(&output.public_key).unwrap();
-                assert!(confirmation.validate(&public_key, &recipient.view_private_key()));
+                assert!(confirmation.validate(&public_key, recipient.view_private_key()));
             }
 
             // The transaction should have a valid signature.
@@ -888,13 +888,13 @@ pub mod transaction_builder_tests {
 
             // The output should belong to the correct recipient.
             assert!(
-                subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &output).unwrap()
+                subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, output).unwrap()
             );
 
             // The output should have the correct value and confirmation number
             {
                 let public_key = RistrettoPublic::try_from(&output.public_key).unwrap();
-                assert!(confirmation.validate(&public_key, &recipient.view_private_key()));
+                assert!(confirmation.validate(&public_key, recipient.view_private_key()));
             }
 
             // The output's fog hint should contain the correct public key.
@@ -973,7 +973,7 @@ pub mod transaction_builder_tests {
 
             // The output should belong to the correct recipient.
             assert!(
-                subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &output).unwrap()
+                subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, output).unwrap()
             );
 
             // The output's fog hint should contain the correct public key.
@@ -1168,17 +1168,17 @@ pub mod transaction_builder_tests {
                 validate_tx_out(block_version, change).unwrap();
 
                 assert!(
-                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
+                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, change)
                         .unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, &change).unwrap()
+                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &output).unwrap()
+                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, output).unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, &output)
+                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, output)
                         .unwrap()
                 );
 
@@ -1194,7 +1194,7 @@ pub mod transaction_builder_tests {
                     assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = output.e_memo.clone().unwrap().decrypt(&ss);
+                        let memo = output.e_memo.unwrap().decrypt(&ss);
                         assert_eq!(memo, MemoPayload::default());
                     }
                 }
@@ -1225,7 +1225,7 @@ pub mod transaction_builder_tests {
                     assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = change.e_memo.clone().unwrap().decrypt(&ss);
+                        let memo = change.e_memo.unwrap().decrypt(&ss);
                         assert_eq!(memo, MemoPayload::default());
                     }
                 }
@@ -1344,17 +1344,17 @@ pub mod transaction_builder_tests {
                 validate_tx_out(block_version, change).unwrap();
 
                 assert!(
-                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
+                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, change)
                         .unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, &change).unwrap()
+                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &output).unwrap()
+                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, output).unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, &output)
+                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, output)
                         .unwrap()
                 );
 
@@ -1370,7 +1370,7 @@ pub mod transaction_builder_tests {
                     assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = output.e_memo.clone().unwrap().decrypt(&ss);
+                        let memo = output.e_memo.unwrap().decrypt(&ss);
                         match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                             MemoType::AuthenticatedSender(memo) => {
                                 assert_eq!(
@@ -1409,7 +1409,7 @@ pub mod transaction_builder_tests {
                     assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = change.e_memo.clone().unwrap().decrypt(&ss);
+                        let memo = change.e_memo.unwrap().decrypt(&ss);
                         match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                             MemoType::Destination(memo) => {
                                 assert_eq!(
@@ -1501,17 +1501,17 @@ pub mod transaction_builder_tests {
                 validate_tx_out(block_version, change).unwrap();
 
                 assert!(
-                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
+                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, change)
                         .unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, &change).unwrap()
+                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &output).unwrap()
+                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, output).unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, &output)
+                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, output)
                         .unwrap()
                 );
 
@@ -1527,7 +1527,7 @@ pub mod transaction_builder_tests {
                     assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = output.e_memo.clone().unwrap().decrypt(&ss);
+                        let memo = output.e_memo.unwrap().decrypt(&ss);
                         match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                             MemoType::AuthenticatedSender(memo) => {
                                 assert_eq!(
@@ -1566,7 +1566,7 @@ pub mod transaction_builder_tests {
                     assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = change.e_memo.clone().unwrap().decrypt(&ss);
+                        let memo = change.e_memo.unwrap().decrypt(&ss);
                         match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                             MemoType::Destination(memo) => {
                                 assert_eq!(
@@ -1658,17 +1658,17 @@ pub mod transaction_builder_tests {
                 validate_tx_out(block_version, change).unwrap();
 
                 assert!(
-                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
+                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, change)
                         .unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, &change).unwrap()
+                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &output).unwrap()
+                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, output).unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, &output)
+                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, output)
                         .unwrap()
                 );
 
@@ -1684,7 +1684,7 @@ pub mod transaction_builder_tests {
                     assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = output.e_memo.clone().unwrap().decrypt(&ss);
+                        let memo = output.e_memo.unwrap().decrypt(&ss);
                         match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                             MemoType::AuthenticatedSenderWithPaymentRequestId(memo) => {
                                 assert_eq!(
@@ -1724,7 +1724,7 @@ pub mod transaction_builder_tests {
                     assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = change.e_memo.clone().unwrap().decrypt(&ss);
+                        let memo = change.e_memo.unwrap().decrypt(&ss);
                         match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                             MemoType::Destination(memo) => {
                                 assert_eq!(
@@ -1815,17 +1815,17 @@ pub mod transaction_builder_tests {
                 validate_tx_out(block_version, change).unwrap();
 
                 assert!(
-                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
+                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, change)
                         .unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, &change).unwrap()
+                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &output).unwrap()
+                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, output).unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, &output)
+                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, output)
                         .unwrap()
                 );
 
@@ -1841,7 +1841,7 @@ pub mod transaction_builder_tests {
                     assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = output.e_memo.clone().unwrap().decrypt(&ss);
+                        let memo = output.e_memo.unwrap().decrypt(&ss);
                         match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                             MemoType::AuthenticatedSenderWithPaymentRequestId(memo) => {
                                 assert_eq!(
@@ -1881,7 +1881,7 @@ pub mod transaction_builder_tests {
                     assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = change.e_memo.clone().unwrap().decrypt(&ss);
+                        let memo = change.e_memo.unwrap().decrypt(&ss);
                         match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                             MemoType::Unused(_) => {}
                             _ => {
@@ -1960,17 +1960,17 @@ pub mod transaction_builder_tests {
                 validate_tx_out(block_version, change).unwrap();
 
                 assert!(
-                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &change)
+                    !subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, change)
                         .unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, &change).unwrap()
+                    !subaddress_matches_tx_out(&sender, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &output).unwrap()
+                    !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, output).unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, &output)
+                    !subaddress_matches_tx_out(&recipient, CHANGE_SUBADDRESS_INDEX, output)
                         .unwrap()
                 );
 
@@ -1986,7 +1986,7 @@ pub mod transaction_builder_tests {
                     assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = output.e_memo.clone().unwrap().decrypt(&ss);
+                        let memo = output.e_memo.unwrap().decrypt(&ss);
                         match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                             MemoType::Unused(_) => {}
                             _ => {
@@ -2008,7 +2008,7 @@ pub mod transaction_builder_tests {
                     assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = change.e_memo.clone().unwrap().decrypt(&ss);
+                        let memo = change.e_memo.unwrap().decrypt(&ss);
                         match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                             MemoType::Destination(memo) => {
                                 assert_eq!(
@@ -2129,24 +2129,20 @@ pub mod transaction_builder_tests {
                 validate_tx_out(block_version, change).unwrap();
 
                 assert!(
-                    !subaddress_matches_tx_out(&bob, DEFAULT_SUBADDRESS_INDEX, &change).unwrap()
+                    !subaddress_matches_tx_out(&bob, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&alice, DEFAULT_SUBADDRESS_INDEX, &change).unwrap()
+                    !subaddress_matches_tx_out(&alice, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&alice, CHANGE_SUBADDRESS_INDEX, &output).unwrap()
+                    !subaddress_matches_tx_out(&alice, CHANGE_SUBADDRESS_INDEX, output).unwrap()
+                );
+                assert!(!subaddress_matches_tx_out(&bob, CHANGE_SUBADDRESS_INDEX, output).unwrap());
+                assert!(
+                    !subaddress_matches_tx_out(&charlie, DEFAULT_SUBADDRESS_INDEX, change).unwrap()
                 );
                 assert!(
-                    !subaddress_matches_tx_out(&bob, CHANGE_SUBADDRESS_INDEX, &output).unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&charlie, DEFAULT_SUBADDRESS_INDEX, &change)
-                        .unwrap()
-                );
-                assert!(
-                    !subaddress_matches_tx_out(&charlie, DEFAULT_SUBADDRESS_INDEX, &output)
-                        .unwrap()
+                    !subaddress_matches_tx_out(&charlie, DEFAULT_SUBADDRESS_INDEX, output).unwrap()
                 );
 
                 // The 1st output should belong to the correct recipient and have correct amount
@@ -2161,7 +2157,7 @@ pub mod transaction_builder_tests {
                     assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = output.e_memo.clone().unwrap().decrypt(&ss);
+                        let memo = output.e_memo.unwrap().decrypt(&ss);
                         match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                             MemoType::AuthenticatedSender(memo) => {
                                 assert_eq!(
@@ -2197,7 +2193,7 @@ pub mod transaction_builder_tests {
                     assert_eq!(amount.token_id, token_id);
 
                     if block_version.e_memo_feature_is_supported() {
-                        let memo = change.e_memo.clone().unwrap().decrypt(&ss);
+                        let memo = change.e_memo.unwrap().decrypt(&ss);
                         match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                             MemoType::Destination(memo) => {
                                 assert_eq!(
@@ -2341,7 +2337,7 @@ pub mod transaction_builder_tests {
 
             let onetime_private_key = recover_onetime_private_key(
                 &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
-                &alice.view_private_key(),
+                alice.view_private_key(),
                 &alice.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
             );
 
@@ -2568,8 +2564,7 @@ pub mod transaction_builder_tests {
                 !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &burn_tx_out).unwrap()
             );
             assert!(
-                subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &change_tx_out)
-                    .unwrap()
+                subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, change_tx_out).unwrap()
             );
 
             // Test that view key matching works with the burn tx out with burn address view
@@ -2586,12 +2581,12 @@ pub mod transaction_builder_tests {
             // Test that view key matching works with the change tx out with sender's view
             // key
             let (amount, _) = change_tx_out
-                .view_key_match(&sender.view_private_key())
+                .view_key_match(sender.view_private_key())
                 .unwrap();
             assert_eq!(amount.value, change_value);
 
             assert!(burn_tx_out
-                .view_key_match(&sender.view_private_key())
+                .view_key_match(sender.view_private_key())
                 .is_err());
         }
     }

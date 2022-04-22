@@ -368,7 +368,7 @@ mod test {
             .to_str()
             .expect("Could not get path as string");
 
-        let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger.clone())
+        let mobilecoind_db = Database::new(mobilecoind_db_path, logger.clone())
             .expect("failed creating new mobilecoind db");
 
         // The db starts unencrypted.
@@ -377,7 +377,7 @@ mod test {
 
         // We should be able to insert a monitor at this point.
         let monitor_data = MonitorData::new(
-            account_key.clone(),
+            account_key,
             0,  // first_subaddress
             10, // num_subaddresses
             0,  // first_block
@@ -392,7 +392,7 @@ mod test {
         // We should be able to get our monitor.
         assert_eq!(
             mobilecoind_db.get_monitor_map().unwrap(),
-            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+            HashMap::from_iter(vec![(monitor_id, monitor_data.clone())])
         );
 
         // Re-encrypting with an empty password should not affect things.
@@ -403,7 +403,7 @@ mod test {
 
         assert_eq!(
             mobilecoind_db.get_monitor_map().unwrap(),
-            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+            HashMap::from_iter(vec![(monitor_id, monitor_data.clone())])
         );
 
         // Checking an empty password should not affect anything.
@@ -414,7 +414,7 @@ mod test {
 
         assert_eq!(
             mobilecoind_db.get_monitor_map().unwrap(),
-            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+            HashMap::from_iter(vec![(monitor_id, monitor_data.clone())])
         );
 
         // Checking a non-empty password should error and not affect things.
@@ -425,7 +425,7 @@ mod test {
 
         assert_eq!(
             mobilecoind_db.get_monitor_map().unwrap(),
-            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+            HashMap::from_iter(vec![(monitor_id, monitor_data.clone())])
         );
 
         // Set a password.
@@ -436,11 +436,11 @@ mod test {
 
         assert_eq!(
             mobilecoind_db.get_monitor_map().unwrap(),
-            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+            HashMap::from_iter(vec![(monitor_id, monitor_data.clone())])
         );
 
         // Re-open the db.
-        let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger.clone())
+        let mobilecoind_db = Database::new(mobilecoind_db_path, logger.clone())
             .expect("failed creating new mobilecoind db");
 
         // This time we're encrypted and locked.
@@ -469,13 +469,13 @@ mod test {
 
         assert_eq!(
             mobilecoind_db.get_monitor_map().unwrap(),
-            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+            HashMap::from_iter(vec![(monitor_id, monitor_data.clone())])
         );
 
         // Re-encrypt and repeat the test.
         mobilecoind_db.re_encrypt(&[11; 32]).unwrap();
 
-        let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger.clone())
+        let mobilecoind_db = Database::new(mobilecoind_db_path, logger.clone())
             .expect("failed creating new mobilecoind db");
 
         assert!(mobilecoind_db.is_db_encrypted());
@@ -499,14 +499,14 @@ mod test {
 
         assert_eq!(
             mobilecoind_db.get_monitor_map().unwrap(),
-            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+            HashMap::from_iter(vec![(monitor_id, monitor_data.clone())])
         );
 
         // Remove password and try again.
         mobilecoind_db.re_encrypt(&[]).unwrap();
 
-        let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger)
-            .expect("failed creating new mobilecoind db");
+        let mobilecoind_db =
+            Database::new(mobilecoind_db_path, logger).expect("failed creating new mobilecoind db");
 
         assert!(!mobilecoind_db.is_db_encrypted());
         assert!(mobilecoind_db.is_unlocked());
@@ -515,7 +515,7 @@ mod test {
 
         assert_eq!(
             mobilecoind_db.get_monitor_map().unwrap(),
-            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+            HashMap::from_iter(vec![(monitor_id, monitor_data)])
         );
     }
 
@@ -527,7 +527,7 @@ mod test {
 
         // Set up a db with 3 random recipients and 10 blocks.
         let (_ledger_db, mobilecoind_db) =
-            get_test_databases(BlockVersion::ZERO, 3, &vec![], 10, logger.clone(), &mut rng);
+            get_test_databases(BlockVersion::ZERO, 3, &[], 10, logger.clone(), &mut rng);
 
         // A test accouunt.
         let account_key = AccountKey::random(&mut rng);
