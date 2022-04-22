@@ -226,11 +226,7 @@ impl MemoBuilder for RTHMemoBuilder {
         // total_outlay.checked_add(self.fee.value) is wrong.
         // We need to specify token-id aware RTH memos
         if self.fee.token_id != amount.token_id {
-            panic!(
-                "self fee token id != amount.token_id: {}, {}",
-                self.fee.token_id, amount.token_id
-            );
-            //return Err(NewMemoError::MixedTokenIds);
+            return Err(NewMemoError::MixedTokenIds);
         }
 
         self.total_outlay = self

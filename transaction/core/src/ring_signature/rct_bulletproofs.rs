@@ -11,7 +11,10 @@ extern crate alloc;
 use alloc::{collections::BTreeSet, vec, vec::Vec};
 use bulletproofs_og::RangeProof;
 use core::convert::TryFrom;
-use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
+use curve25519_dalek::{
+    ristretto::{CompressedRistretto, RistrettoPoint},
+    traits::Identity,
+};
 use mc_common::HashSet;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
@@ -521,7 +524,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
             range_proofs.push(range_proof.to_bytes());
         }
 
-        (Default::default(), range_proofs)
+        (vec![], range_proofs)
     };
 
     // The actual pseudo output commitments use the blindings from
@@ -549,13 +552,15 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         let sum_of_pseudo_output_commitments: RistrettoPoint =
             pseudo_output_commitments.iter().sum();
 
-        let generator = generator_cache.get(fee_token_id);
         // The implicit fee output.
+        let generator = generator_cache.get(fee_token_id);
         let fee_commitment = generator.commit(Scalar::from(fee), *FEE_BLINDING);
 
         let difference =
             sum_of_output_commitments + fee_commitment - sum_of_pseudo_output_commitments;
-        if difference != generator.commit(Scalar::zero(), Scalar::zero()) {
+        // RistrettoPoint::identity() is the zero point of Ristretto group, this is the
+        // same as generator.commit(Zero, Zero) and is faster.
+        if difference != RistrettoPoint::identity() {
             return Err(Error::ValueNotConserved);
         }
     }
@@ -695,6 +700,7 @@ mod rct_bulletproofs_tests {
         CompressedCommitment,
     };
     use alloc::vec::Vec;
+    use assert_matches::assert_matches;
     use core::convert::TryInto;
     use curve25519_dalek::scalar::Scalar;
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
@@ -1115,11 +1121,7 @@ mod rct_bulletproofs_tests {
                 &mut rng,
             );
 
-            match result {
-                Err(Error::RangeProofError(_)) => {},
-                Err(err) => { panic!("Expected: RangeProofError, found {}", err) },
-                Ok(()) => { panic!("Expected: RangeProofError, found Ok") },
-            };
+            assert_matches!(result, Err(Error::RangeProof(_)));
         }
 
         #[test]
@@ -1160,11 +1162,8 @@ mod rct_bulletproofs_tests {
                 &mut rng,
             );
 
-            match result {
-                Err(Error::RangeProofError(_)) => {},
-                Err(err) => { panic!("Expected: RangeProofError, found {}", err) },
-                Ok(()) => { panic!("Expected: RangeProofError, found Ok") },
-            };
+
+            assert_matches!(result, Err(Error::RangeProof(_)));
         }
 
         #[test]
@@ -1362,11 +1361,8 @@ mod rct_bulletproofs_tests {
                 TokenId::from(*params.fee_token_id + 1),
                 &mut rng,
             );
-            match result {
-                Err(Error::RangeProofError(_)) => {},
-                Err(err) => { panic!("Expected: RangeProofError, found {}", err) },
-                Ok(()) => { panic!("Expected: RangeProofError, found Ok") },
-            };
+
+            assert_matches!(result, Err(Error::RangeProof(_)));
         }
 
         #[test]
@@ -1425,11 +1421,7 @@ mod rct_bulletproofs_tests {
                 &mut rng,
             );
 
-            match result {
-                Err(Error::RangeProofError(_)) => {},
-                Err(err) => { panic!("Expected: RangeProofError, found {}", err) },
-                Ok(()) => { panic!("Expected: RangeProofError, found Ok") },
-            };
+            assert_matches!(result, Err(Error::RangeProof(_)));
         }
 
         #[test]
@@ -1470,11 +1462,7 @@ mod rct_bulletproofs_tests {
                 &mut rng,
             );
 
-            match result {
-                Err(Error::RangeProofError(_)) => {},
-                Err(err) => { panic!("Expected: RangeProofError, found {}", err) },
-                Ok(()) => { panic!("Expected: RangeProofError, found Ok") },
-            };
+            assert_matches!(result, Err(Error::RangeProof(_)));
         }
 
     } // end proptest
