@@ -1,0 +1,31 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+# Adding a separate ingress for each host so we don't stomp on existing certs.
+{{- $hosts := split "\n" (include "fogServices.fogReportHosts" . | trim) }}
+{{- range $hosts }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "fogServices.fullname" $ }}-fog-report-http-{{ . }}
+  labels:
+    app: fog-report
+    {{- include "fogServices.labels" $ | nindent 4 }}
+  annotations:
+    {{- toYaml $.Values.fogReport.ingress.http.annotations | nindent 4 }}
+spec:
+  tls:
+  - hosts:
+    - {{ . }}
+    secretName: {{ . }}-fog-tls
+  rules:
+  - host: {{ . }}
+    http:
+      paths:
+      - path: /gw/report.ReportAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "fogServices.fullname" $ }}-fog-report
+            port:
+              number: 8222
+---
+{{- end }}

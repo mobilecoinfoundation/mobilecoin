@@ -1,0 +1,203 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "fogIngest.fullname" . }}
+  labels:
+    {{- include "fogIngest.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.fogIngest.replicaCount }}
+  selector:
+    matchLabels:
+      app: fog-ingest
+      {{- include "fogIngest.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "fogIngest.fullname" . }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.fogIngest.podAnnotations | nindent 8 }}
+      labels:
+        app: fog-ingest
+        {{- include "fogIngest.labels" . | nindent 8 }}
+    spec:
+      imagePullSecrets:
+      {{- toYaml .Values.imagePullSecrets | nindent 6 }}
+      terminationGracePeriodSeconds: 30
+      dnsConfig:
+        options:
+        - name: ndots
+          value: "1"
+      initContainers:
+      {{- toYaml .Values.fogIngest.initContainers | nindent 6 }}
+      containers:
+      - name: fog-ingest
+        image: "{{ .Values.fogIngest.image.org | default .Values.image.org }}/{{ .Values.fogIngest.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.fogIngest.image.pullPolicy }}
+        command: [ "/usr/bin/supervisord" ]
+        ports:
+        - name: ingest
+          containerPort: 3226
+        - name: peer
+          containerPort: 8090
+        - name: mgmt
+          containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: fog-ingest
+        - secretRef:
+            name: ias
+        env:
+        - name: RUST_BACKTRACE
+          value: {{ .Values.fogIngest.rust.backtrace | quote }}
+        - name: RUST_LOG
+          value: {{ .Values.fogIngest.rust.log | quote }}
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        # LOCAL_NODE_ID on ingest needs to be the name of the Service object that points to THIS ingest server
+        - name: LOCAL_NODE_ID
+          value: "$(MY_POD_NAME).{{ include "fogIngest.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:8090"
+        - name: FOG_INGEST_SENTRY_DSN
+          valueFrom:
+            configMapKeyRef:
+              name: sentry
+              key: fog-ingest-sentry-dsn
+        # Maps to Sentry Environment
+        - name: MC_BRANCH
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: FOGDB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: fog-recovery-postgresql
+              key: postgresql-hostname
+        - name: FOGDB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: fog-recovery-postgresql
+              key: postgresql-username
+        - name: FOGDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fog-recovery-postgresql
+              key: postgresql-password
+        - name: FOGDB_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: fog-recovery-postgresql
+              key: postgresql-database
+        - name: FOGDB_SSL_OPTIONS
+          valueFrom:
+            configMapKeyRef:
+              name: fog-recovery-postgresql
+              key: postgresql-ssl-options
+        - name: DATABASE_URL
+          value: 'postgres://$(FOGDB_USER):$(FOGDB_PASSWORD)@$(FOGDB_HOST)/$(FOGDB_DATABASE)$(FOGDB_SSL_OPTIONS)'
+        - name: STATE_FILE
+          value: /var/run/ingest-state-file
+        startupProbe:
+          exec:
+            command:
+            - "/usr/local/bin/grpc_health_probe"
+            - "-addr=:3226"
+          failureThreshold: 30
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command:
+            - '/usr/local/bin/grpc_health_probe'
+            - '-addr=:3226'
+          failureThreshold: 5
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command:
+            - '/usr/local/bin/grpc_health_probe'
+            - '-addr=:3226'
+          failureThreshold: 2
+          periodSeconds: 30
+        volumeMounts:
+        - name: aesm-socket-dir
+          mountPath: /var/run/aesmd
+        - name: fog-data
+          mountPath: /fog-data
+        - name: ingest-run-data
+          mountPath: /ingest-run-data
+        - name: supervisor-conf
+          mountPath: /etc/supervisor/conf.d
+          readOnly: true
+        resources:
+          {{- toYaml .Values.fogIngest.resources | nindent 10 }}
+      {{- if eq .Values.jaegerTracing.enabled true }}
+      - name: jaeger-agent
+        image: jaegertracing/jaeger-agent:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 5775
+            name: zk-compact-trft
+            protocol: UDP
+          - containerPort: 5778
+            name: config-rest
+            protocol: TCP
+          - containerPort: 6831
+            name: jg-compact-trft
+            protocol: UDP
+          - containerPort: 6832
+            name: jg-binary-trft
+            protocol: UDP
+          - containerPort: 14271
+            name: admin-http
+            protocol: TCP
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+        args:
+          - --reporter.grpc.host-port={{ .Values.jaegerTracing.collector }}
+          - --reporter.type=grpc
+          - --agent.tags=cluster=undefined,container.name=fog-ingest,deployment.name={{ include "fogIngest.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
+      {{- end }}
+      nodeSelector:
+        {{- toYaml .Values.fogIngest.nodeSelector | nindent 8 }}
+      tolerations:
+      {{- toYaml .Values.fogIngest.tolerations | nindent 6 }}
+      affinity:
+        {{- toYaml .Values.fogIngest.affinity | nindent 8 }}
+      volumes:
+      {{- if eq .Values.fogIngest.persistence.enabled false }}
+      - name: fog-data
+        emptyDir: {}
+      {{- end }}
+      - name: aesm-socket-dir
+        emptyDir: {}
+      - name: ingest-run-data
+        emptyDir: {}
+      - name: supervisor-conf
+        projected:
+          sources:
+          - configMap:
+              name: {{ include "fogIngest.fullname" . }}-supervisord-sgx
+          - configMap:
+              name: {{ include "fogIngest.fullname" . }}-supervisord-daemon
+          - configMap:
+              name: fog-supervisord-mobilecoind
+          - configMap:
+              name: {{ include "fogIngest.fullname" . }}-supervisord-fog-ingest
+          - configMap:
+              name: {{ include "fogIngest.fullname" . }}-supervisord-admin
+  {{- if .Values.fogIngest.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: fog-data
+    spec:
+      {{- toYaml .Values.fogIngest.persistence.spec | nindent 6 }}
+  {{- end }}

@@ -1,0 +1,76 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+fullnameOverride: ''
+
+###  mc-core-common-config child chart configuration.
+#    See ../mc-core-common-config for details.
+mcCoreCommonConfig:
+  enabled: false
+
+###  mobilecoind-config child chart configuration.
+#    See ../mc-core-common-config for details.
+mobilecoindConfig:
+  enabled: false
+
+# Pods share the image tag.
+image:
+  org: mobilecoin
+  tag: '' # Overrides the image tag whose default is the chart appVersion.
+
+imagePullSecrets: 
+  - name: docker-credentials
+
+mobilecoind:
+  image:
+    org: ''
+    name: mobilecoind
+
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-production-http
+      haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
+      haproxy.org/server-ssl: "false"             # The backend (server) is http
+      haproxy.org/timeout-client: 239s            # 4 min timeout on azure
+      haproxy.org/timeout-server: 239s
+      haproxy.org/timeout-http-keep-alive: 120s
+      haproxy.org/abortonclose: "true"
+      haproxy.org/backend-config-snippet: |-
+        http-reuse aggressive
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+
+  # TODO: enable persistence, need a pvc
+  # persistence:
+  #   enabled: false
+  #   spec:
+  #     storageClassName: fast
+  #     accessModes:
+  #     - ReadWriteOnce
+  #     resources:
+  #       requests:
+  #         storage: 128Gi
+
+  initContainers:
+  - name: migrate-ledger
+    image: '{{ .Values.mobilecoind.image.org | default .Values.image.org }}/{{ .Values.mobilecoind.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}'
+    imagePullPolicy: IfNotPresent
+    command: [ "/bin/bash" ]
+    args:
+    - -c
+    - |
+      set -x
+      if [ -f /mobilecoin/ledger/data.mdb ]; then
+        /usr/bin/mc-ledger-migration --ledger-db /data/ledger
+      fi
+    volumeMounts:
+    - name: data
+      mountPath: /data
+
+  nodeSelector: {}
+
+  podAnnotations:
+    fluentbit.io/include: 'true' # collect logs with fluentbit
+    fluentbit.io/exclude-jaeger-agent: 'true'
+
+jaegerTracing:
+  enabled: true
+  collector: 'dns:///jaeger-collector:14250'

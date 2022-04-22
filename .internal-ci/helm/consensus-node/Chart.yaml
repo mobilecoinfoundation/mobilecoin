@@ -1,0 +1,18 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v2
+name: consensus-node
+description: MobileCoin consensus node
+type: application
+version: 0.0.0
+appVersion: 0.0.0
+dependencies:
+- name: consensus-node-config
+  repository: file://../consensus-node-config
+  version: 0.0.0
+  condition: consensusNodeConfig.enabled
+  alias: consensusNodeConfig
+- name: mc-core-common-config
+  repository: file://../mc-core-common-config
+  version: 0.0.0
+  condition: mcCoreCommonConfig.enabled
+  alias: mcCoreCommonConfig

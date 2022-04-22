@@ -1,0 +1,132 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ include "chart.fullname" . }}"
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+    app: fog-test-client
+spec:
+  replicas: {{ .Values.fogTestClient.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "chart.selectorLabels" . | nindent 6 }}
+      app: fog-test-client
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.fogTestClient.podAnnotations | nindent 8 }}
+      labels:
+        {{- include "chart.selectorLabels" . | nindent 8 }}
+        app: fog-test-client
+    spec:
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+      - name: fog-test-client
+        image: "{{ .Values.fogTestClient.image.repository }}:{{ .Values.fogTestClient.image.tag }}"
+        imagePullPolicy: Always
+        securityContext:
+          capabilities:
+            drop:
+            - all
+          readOnlyRootFilesystem: true
+        env:
+        - name: FOG_VIEW
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.fogTestClientConfig.configMap.name }}
+              key: FOG_VIEW
+        - name: FOG_LEDGER
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.fogTestClientConfig.configMap.name }}
+              key: FOG_LEDGER
+        - name: CONSENSUS_VALIDATORS
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.fogTestClientConfig.configMap.name }}
+              key: CONSENSUS_VALIDATORS
+        - name: CONSENSUS_WAIT
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.fogTestClientConfig.configMap.name }}
+              key: CONSENSUS_WAIT
+        - name: TRANSFER_AMOUNT
+          value: "100000000000"
+        {{- if.Values.fogTestClientConfig.fogClientAuthTokenSecret.enabled }}
+        - name: CLIENT_AUTH_TOKEN_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.fogTestClientConfig.fogClientAuthTokenSecret.name }}
+              key: token
+        {{- end }}
+        ports:
+        - name: grpc-mgmt
+          containerPort: 8001
+          protocol: TCP
+        readinessProbe:
+          tcpSocket:
+            port: 8001
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 8001
+          initialDelaySeconds: 20
+          periodSeconds: 20
+        volumeMounts:
+        - mountPath: /keys
+          name: keys
+        - mountPath: /measurements
+          name: measurements
+        resources:
+          {{- toYaml .Values.fogTestClient.resources | nindent 12 }}
+      - name: admin-gateway
+        image: "{{ .Values.fogTestClient.image.repository }}:{{ .Values.fogTestClient.image.tag }}"
+        imagePullPolicy: Always
+        securityContext:
+          capabilities:
+            drop:
+            - all
+          readOnlyRootFilesystem: true
+        env:
+        - name: RUST_LOG
+          value: warn
+        ports:
+        - name: http-mgmt
+          containerPort: 9090
+          protocol: TCP
+        command:
+        - /usr/local/bin/mc-admin-http-gateway
+        args:
+        - --admin-uri=insecure-mca://127.0.0.1:8001/
+        - --listen-host=0.0.0.0
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9090
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9090
+          initialDelaySeconds: 20
+          periodSeconds: 20
+      nodeSelector:
+        {{- toYaml .Values.fogTestClient.nodeSelector | nindent 8 }}
+      affinity:
+        {{- toYaml .Values.fogTestClient.affinity | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.fogTestClient.tolerations | nindent 8 }}
+      volumes:
+      - name: keys
+        secret:
+          secretName: {{ .Values.fogTestClientConfig.keysSecret.name }}
+      - name: measurements
+        configMap:
+          name: {{ .Values.fogTestClientConfig.measurementsConfigMap.name }}
