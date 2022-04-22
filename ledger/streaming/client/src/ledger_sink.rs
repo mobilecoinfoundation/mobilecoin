@@ -123,52 +123,49 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for DbS
         // Create the stream
         let output_stream =
             futures::stream::unfold((stream, manager), |(mut stream, mut manager)| async move {
-                loop {
-                    if let Some(component) = stream.next().await {
-                        if let Ok(component) = component {
-                            manager.last_block_received = component.block_data.block().index;
-                            if manager.can_start_sync() {
-                                // If we're above what's in the ledger, starting syncing the blocks
-                                if let Err(_) = manager.sender.send(component).await {
-                                    //TODO: Discuss whether thread error should stop stream or
-                                    // self-heal TODO: it's
-                                    // possible just to restart the upstream & thread here
-                                    // TODO: so that the downstream doesn't necessarily notice
-                                    log::error!(
-                                        manager.logger,
-                                        "ledger sync thread stopped, aborting stream"
-                                    );
-                                    break;
-                                }
-                            } else {
-                                // Else pass them through
-                                return Some((Ok(component), (stream, manager)));
+                if let Some(component) = stream.next().await {
+                    if let Ok(component) = component {
+                        manager.last_block_received = component.block_data.block().index;
+                        if manager.can_start_sync() {
+                            // If we're above what's in the ledger, starting syncing the blocks
+                            if manager.sender.send(component).await.is_err() {
+                                //TODO: Discuss whether thread error should stop stream or
+                                // self-heal TODO: it's
+                                // possible just to restart the upstream & thread here
+                                // TODO: so that the downstream doesn't necessarily notice
+                                log::error!(
+                                    manager.logger,
+                                    "ledger sync thread stopped, aborting stream"
+                                );
+                                return None;
                             }
                         } else {
-                            return Some((component, (stream, manager)));
+                            // Else pass them through
+                            return Some((Ok(component), (stream, manager)));
                         }
                     } else {
-                        // If we're behind, wait for the rest of the blocks to sync then end
-                        if manager.is_behind() {
-                            log::debug!(
-                                manager.logger,
-                                "upstream terminated, waiting for the rest of the blocks to sync"
-                            );
-                        } else {
-                            log::warn!(manager.logger, "upstream stopped, ending stream");
-                            break;
-                        }
+                        return Some((component, (stream, manager)));
                     }
-                    if let Some(component) = manager.receiver.recv().await {
-                        manager.last_block_synced = component.block_data.block().index;
-                        return Some((Ok(component), (stream, manager)));
+                } else {
+                    // If we're behind, wait for the rest of the blocks to sync then end
+                    if manager.is_behind() {
+                        log::debug!(
+                            manager.logger,
+                            "upstream terminated, waiting for the rest of the blocks to sync"
+                        );
                     } else {
-                        // TODO: Discuss whether we want to heal the stream or not
-                        log::error!(manager.logger, "sink thread stopped, ending stream");
-                        break;
+                        log::warn!(manager.logger, "upstream stopped, ending stream");
+                        return None;
                     }
                 }
-                None
+                if let Some(component) = manager.receiver.recv().await {
+                    manager.last_block_synced = component.block_data.block().index;
+                    Some((Ok(component), (stream, manager)))
+                } else {
+                    // TODO: Discuss whether we want to heal the stream or not
+                    log::error!(manager.logger, "sink thread stopped, ending stream");
+                    None
+                }
             });
         Ok(Box::pin(output_stream))
     }
@@ -203,10 +200,7 @@ fn start_sink_thread(
     // Launch ledger sink thread
     std::thread::spawn(move || {
         while let Some(component) = rcv_in.blocking_recv() {
-            let signature = match component.block_data.signature() {
-                Some(signature) => Some(signature.clone()),
-                _ => None,
-            };
+            let signature = component.block_data.signature().as_ref().cloned();
 
             // If there's an error syncing the blocks, end thread
             if let Err(err) = ledger.append_block(
