@@ -3,9 +3,9 @@
 //! Serializeable data types that wrap the mobilecoind API.
 
 use mc_api::external::{
-    CompressedRistretto, EncryptedFogHint, EncryptedMemo, KeyImage, MaskedAmount, PublicAddress,
-    RingMLSAG, SignatureRctBulletproofs, Tx, TxIn, TxOutMembershipElement, TxOutMembershipHash,
-    TxOutMembershipProof, TxPrefix,
+    CompressedRistretto, EncryptedFogHint, EncryptedMemo, InputRules, KeyImage, MaskedAmount,
+    PublicAddress, RingMLSAG, SignatureRctBulletproofs, Tx, TxIn, TxOutMembershipElement,
+    TxOutMembershipHash, TxOutMembershipProof, TxPrefix,
 };
 use protobuf::RepeatedField;
 use serde_derive::{Deserialize, Serialize};
@@ -713,9 +713,48 @@ pub struct JsonMembershipProofResponse {
 }
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
+pub struct JsonInputRules {
+    pub required_outputs: Vec<JsonTxOut>,
+    pub max_tombstone_block: u64,
+}
+
+impl From<&InputRules> for JsonInputRules {
+    fn from(src: &InputRules) -> Self {
+        Self {
+            required_outputs: src
+                .get_required_outputs()
+                .iter()
+                .map(JsonTxOut::from)
+                .collect(),
+            max_tombstone_block: src.max_tombstone_block,
+        }
+    }
+}
+
+impl TryFrom<&JsonInputRules> for InputRules {
+    type Error = String;
+
+    fn try_from(src: &JsonInputRules) -> Result<InputRules, String> {
+        let mut input_rules = InputRules::new();
+        input_rules.set_required_outputs(RepeatedField::from(
+            src.required_outputs
+                .iter()
+                .map(|out| {
+                    mc_api::external::TxOut::try_from(out)
+                        .map_err(|err| format!("Could not get TxOut: {}", err))
+                })
+                .collect::<Result<Vec<_>, String>>()?,
+        ));
+        input_rules.max_tombstone_block = src.max_tombstone_block;
+        Ok(input_rules)
+    }
+}
+
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonTxIn {
     pub ring: Vec<JsonTxOut>,
     pub proofs: Vec<JsonTxOutMembershipProof>,
+    pub input_rules: Option<JsonInputRules>,
 }
 
 impl From<&TxIn> for JsonTxIn {
@@ -727,6 +766,7 @@ impl From<&TxIn> for JsonTxIn {
                 .iter()
                 .map(JsonTxOutMembershipProof::from)
                 .collect(),
+            input_rules: src.input_rules.as_ref().map(JsonInputRules::from),
         }
     }
 }
@@ -749,9 +789,18 @@ impl TryFrom<&JsonTxIn> for TxIn {
             proofs.push(p_proof);
         }
 
+        let input_rules = src
+            .input_rules
+            .as_ref()
+            .map(InputRules::try_from)
+            .transpose()?;
+
         let mut txin = TxIn::new();
         txin.set_ring(RepeatedField::from_vec(outputs));
         txin.set_proofs(RepeatedField::from_vec(proofs));
+        if let Some(rules) = input_rules {
+            txin.set_input_rules(rules);
+        }
 
         Ok(txin)
     }

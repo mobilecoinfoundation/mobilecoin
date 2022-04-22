@@ -1,7 +1,7 @@
 //! Convert to/from external::TxIn.
 
 use crate::{convert::ConversionError, external};
-use mc_transaction_core::{tx, tx::TxOutMembershipProof};
+use mc_transaction_core::{tx, tx::TxOutMembershipProof, InputRules};
 use std::convert::TryFrom;
 
 /// Convert tx::TxIn --> external::TxIn.
@@ -18,6 +18,10 @@ impl From<&tx::TxIn> for external::TxIn {
             .map(external::TxOutMembershipProof::from)
             .collect();
         tx_in.set_proofs(proofs.into());
+
+        if let Some(input_rules) = source.input_rules.as_ref() {
+            tx_in.set_input_rules(input_rules.into());
+        }
 
         tx_in
     }
@@ -40,7 +44,53 @@ impl TryFrom<&external::TxIn> for tx::TxIn {
             proofs.push(tx_proof);
         }
 
-        let tx_in = tx::TxIn { ring, proofs };
+        let input_rules = source
+            .input_rules
+            .as_ref()
+            .map(InputRules::try_from)
+            .transpose()?;
+
+        let tx_in = tx::TxIn {
+            ring,
+            proofs,
+            input_rules,
+        };
         Ok(tx_in)
+    }
+}
+
+/// Convert InputRules --> external::InputRules.
+impl From<&InputRules> for external::InputRules {
+    fn from(source: &InputRules) -> Self {
+        let mut input_rules = external::InputRules::new();
+
+        let required_outputs: Vec<external::TxOut> = source
+            .required_outputs
+            .iter()
+            .map(external::TxOut::from)
+            .collect();
+        input_rules.set_required_outputs(required_outputs.into());
+
+        input_rules.set_max_tombstone_block(source.max_tombstone_block);
+
+        input_rules
+    }
+}
+
+/// Convert external::InputRules --> InputRules
+impl TryFrom<&external::InputRules> for InputRules {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::InputRules) -> Result<Self, Self::Error> {
+        let required_outputs = source
+            .get_required_outputs()
+            .iter()
+            .map(tx::TxOut::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+        let max_tombstone_block = source.max_tombstone_block;
+        Ok(InputRules {
+            required_outputs,
+            max_tombstone_block,
+        })
     }
 }

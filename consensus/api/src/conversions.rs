@@ -16,7 +16,7 @@ use crate::{
 use mc_api::ConversionError;
 use mc_transaction_core::{
     mint::MintValidationError, ring_signature, validation::TransactionValidationError as Error,
-    BlockVersion, TokenId,
+    BlockVersion, InputRuleError, TokenId,
 };
 use std::convert::{From, TryFrom, TryInto};
 
@@ -60,6 +60,13 @@ impl From<Error> for ProposeTxResult {
             Error::MissingMaskedTokenId => Self::MissingMaskedTokenId,
             Error::MaskedTokenIdNotAllowed => Self::MaskedTokenIdNotAllowed,
             Error::UnsortedOutputs => Self::UnsortedOutputs,
+            Error::InputRulesNotAllowed => Self::InputRulesNotAllowed,
+            Error::InputRule(InputRuleError::MissingRequiredOutput) => {
+                Self::InputRuleMissingRequiredOutput
+            }
+            Error::InputRule(InputRuleError::MaxTombstoneBlockExceeded) => {
+                Self::InputRuleMaxTombstoneBlockExceeded
+            }
         }
     }
 }
@@ -109,6 +116,13 @@ impl TryInto<Error> for ProposeTxResult {
             Self::MissingMaskedTokenId => Ok(Error::MissingMaskedTokenId),
             Self::MaskedTokenIdNotAllowed => Ok(Error::MaskedTokenIdNotAllowed),
             Self::UnsortedOutputs => Ok(Error::UnsortedOutputs),
+            Self::InputRulesNotAllowed => Ok(Error::InputRulesNotAllowed),
+            Self::InputRuleMissingRequiredOutput => {
+                Ok(Error::InputRule(InputRuleError::MissingRequiredOutput))
+            }
+            Self::InputRuleMaxTombstoneBlockExceeded => {
+                Ok(Error::InputRule(InputRuleError::MaxTombstoneBlockExceeded))
+            }
         }
     }
 }

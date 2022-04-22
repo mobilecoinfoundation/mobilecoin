@@ -226,6 +226,19 @@ message TxIn {
 
     // Proof that each TxOut in `ring` is in the ledger.
     repeated TxOutMembershipProof proofs = 2;
+
+    // Any rules specified by the signed input
+    InputRules input_rules = 3;
+}
+
+message InputRules {
+    // Outputs required to appear in the TxPrefix for the Tx to be valid
+    repeated TxOut required_outputs = 1;
+
+    // A maximum value which the tombstone block for the Tx cannot exceed
+    //
+    // A value of zero here means no limit is enforced
+    fixed64 max_tombstone_block = 2;
 }
 
 // A transaction that a client submits to consensus

@@ -21,6 +21,7 @@ use mc_crypto_keys::{KeyError, RistrettoPrivate, RistrettoPublic};
 mod amount;
 mod blockchain;
 mod domain_separators;
+mod input_rules;
 mod memo;
 mod token;
 mod tx_error;
@@ -41,6 +42,7 @@ pub mod proptest_fixtures;
 
 pub use amount::{Amount, AmountError, Commitment, CompressedCommitment, MaskedAmount};
 pub use blockchain::*;
+pub use input_rules::{InputRuleError, InputRules};
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
 pub use token::{tokens, Token, TokenId};
 pub use tx::MemoContext;

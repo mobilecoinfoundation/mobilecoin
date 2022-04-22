@@ -13,15 +13,14 @@ use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::create_shared_secret,
-    ring_signature::{InputSecret, OutputSecret, SignatureRctBulletproofs},
+    ring_signature::{OutputSecret, SignableInputRing, SignatureRctBulletproofs},
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
-    Amount, BlockVersion, CompressedCommitment, MemoContext, MemoPayload, NewMemoError, Token,
-    TokenId,
+    Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, Token, TokenId,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
-use std::cmp::Ordering;
+use std::{cmp::Ordering, convert::TryFrom};
 
 /// A trait used to compare the transaction outputs
 pub trait TxOutputsOrdering {
@@ -413,13 +412,14 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .map(|input_credential| TxIn {
                 ring: input_credential.ring.clone(),
                 proofs: input_credential.membership_proofs.clone(),
+                input_rules: None,
             })
             .collect();
 
         self.outputs_and_shared_secrets
             .sort_by(|(a, _), (b, _)| O::cmp(&a.public_key, &b.public_key));
 
-        let output_values_and_blindings: Vec<OutputSecret> = self
+        let output_secrets: Vec<OutputSecret> = self
             .outputs_and_shared_secrets
             .iter()
             .map(|(tx_out, shared_secret)| {
@@ -431,59 +431,35 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             })
             .collect();
 
-        let (outputs, _shared_serets): (Vec<TxOut>, Vec<_>) =
-            self.outputs_and_shared_secrets.into_iter().unzip();
+        let (outputs, _shared_secrets): (Vec<TxOut>, Vec<_>) =
+            self.outputs_and_shared_secrets.drain(..).unzip();
 
         let tx_prefix = TxPrefix::new(inputs, outputs, self.fee, self.tombstone_block);
 
-        let mut rings: Vec<Vec<(CompressedRistrettoPublic, CompressedCommitment)>> = Vec::new();
-        for input in &tx_prefix.inputs {
-            let ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)> = input
-                .ring
-                .iter()
-                .map(|tx_out| (tx_out.target_key, tx_out.masked_amount.commitment))
-                .collect();
-            rings.push(ring);
-        }
-
-        let real_input_indices: Vec<usize> = self
+        let signable_input_rings = self
             .input_credentials
             .iter()
-            .map(|input_credential| input_credential.real_index)
-            .collect();
+            .map(|cred| {
+                let result = SignableInputRing::try_from(cred)?;
 
-        // One-time private key, amount value, and amount blinding for each real input.
-        let mut input_secrets: Vec<InputSecret> = Default::default();
-        for input_credential in &self.input_credentials {
-            let masked_amount = &input_credential.ring[input_credential.real_index].masked_amount;
-            let shared_secret = create_shared_secret(
-                &input_credential.real_output_public_key,
-                &input_credential.view_private_key,
-            );
-            let (amount, blinding) = masked_amount.get_value(&shared_secret)?;
-            if !self.block_version.mixed_transactions_are_supported()
-                && amount.token_id != self.fee.token_id
-            {
-                return Err(TxBuilderError::MixedTransactionsNotAllowed(
-                    self.fee.token_id,
-                    amount.token_id,
-                ));
-            }
-            input_secrets.push(InputSecret {
-                onetime_private_key: input_credential.onetime_private_key,
-                amount,
-                blinding,
-            });
-        }
+                if !self.block_version.mixed_transactions_are_supported()
+                    && result.input_secret.amount.token_id != self.fee.token_id
+                {
+                    return Err(TxBuilderError::MixedTransactionsNotAllowed(
+                        self.fee.token_id,
+                        result.input_secret.amount.token_id,
+                    ));
+                }
+                Ok(result)
+            })
+            .collect::<Result<Vec<SignableInputRing>, _>>()?;
 
         let message = tx_prefix.hash().0;
         let signature = SignatureRctBulletproofs::sign(
             self.block_version,
             &message,
-            &rings,
-            &real_input_indices,
-            &input_secrets,
-            &output_values_and_blindings,
+            &signable_input_rings,
+            &output_secrets,
             self.fee,
             rng,
         )?;

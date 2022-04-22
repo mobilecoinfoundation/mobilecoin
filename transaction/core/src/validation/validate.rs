@@ -11,10 +11,9 @@ use crate::{
     constants::*,
     membership_proofs::{derive_proof_at_index, is_membership_proof_valid},
     tx::{Tx, TxOut, TxOutMembershipProof, TxPrefix},
-    Amount, BlockVersion, CompressedCommitment, TokenId,
+    Amount, BlockVersion, TokenId,
 };
 use mc_common::HashSet;
-use mc_crypto_keys::CompressedRistrettoPublic;
 use rand_core::{CryptoRng, RngCore};
 
 /// Determines if the transaction is valid, with respect to the provided
@@ -84,6 +83,12 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     if block_version.validate_transaction_outputs_are_sorted() {
         validate_outputs_are_sorted(&tx.prefix)?;
+    }
+
+    if block_version.signed_input_rules_are_supported() {
+        validate_all_input_rules(block_version, tx)?;
+    } else {
+        validate_no_input_rules_exist(tx)?;
     }
 
     Ok(())
@@ -289,18 +294,7 @@ pub fn validate_signature<R: RngCore + CryptoRng>(
     tx: &Tx,
     rng: &mut R,
 ) -> TransactionValidationResult<()> {
-    let rings: Vec<Vec<(CompressedRistrettoPublic, CompressedCommitment)>> = tx
-        .prefix
-        .inputs
-        .iter()
-        .map(|input| {
-            input
-                .ring
-                .iter()
-                .map(|tx_out| (tx_out.target_key, tx_out.masked_amount.commitment))
-                .collect()
-        })
-        .collect();
+    let rings = tx.prefix.get_input_rings();
 
     let output_commitments = tx.prefix.output_commitments();
 
@@ -458,6 +452,29 @@ pub fn validate_tombstone(
         return Err(TransactionValidationError::TombstoneBlockTooFar);
     }
 
+    Ok(())
+}
+
+/// Any input rules imposed on the Tx must satisfied
+pub fn validate_all_input_rules(
+    block_version: BlockVersion,
+    tx: &Tx,
+) -> TransactionValidationResult<()> {
+    for input in tx.prefix.inputs.iter() {
+        if let Some(rules) = input.input_rules.as_ref() {
+            rules.verify(block_version, tx)?;
+        }
+    }
+    Ok(())
+}
+
+/// Any input rules imposed on the Tx must satisfied
+pub fn validate_no_input_rules_exist(tx: &Tx) -> TransactionValidationResult<()> {
+    for input in tx.prefix.inputs.iter() {
+        if input.input_rules.is_some() {
+            return Err(TransactionValidationError::InputRulesNotAllowed);
+        }
+    }
     Ok(())
 }
 

@@ -20,10 +20,11 @@ use crate::{
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
+    input_rules::InputRules,
     membership_proofs::Range,
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
-    ring_signature::{KeyImage, SignatureRctBulletproofs},
+    ring_signature::{KeyImage, SignatureRctBulletproofs, SignedInputRing},
     CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
 };
 
@@ -221,6 +222,11 @@ impl TxPrefix {
             .map(|output| output.masked_amount.commitment)
             .collect()
     }
+
+    /// Get all input rings.
+    pub fn get_input_rings(&self) -> Vec<SignedInputRing> {
+        self.inputs.iter().map(SignedInputRing::from).collect()
+    }
 }
 
 /// An "input" to a transaction.
@@ -237,6 +243,28 @@ pub struct TxIn {
     /// Prost only works with Vec.
     #[prost(message, repeated, tag = "2")]
     pub proofs: Vec<TxOutMembershipProof>,
+
+    /// Any rules associated to this input, per MCIP #31
+    #[prost(message, tag = "3")]
+    pub input_rules: Option<InputRules>,
+}
+
+impl From<&TxIn> for SignedInputRing {
+    fn from(src: &TxIn) -> SignedInputRing {
+        SignedInputRing {
+            members: src
+                .ring
+                .iter()
+                .map(|tx_out| {
+                    (
+                        tx_out.target_key.clone(),
+                        tx_out.masked_amount.commitment.clone(),
+                    )
+                })
+                .collect(),
+            input_rules: src.input_rules.clone(),
+        }
+    }
 }
 
 /// An output created by a transaction.
@@ -637,6 +665,7 @@ mod tests {
         let tx_in = TxIn {
             ring: vec![tx_out.clone()],
             proofs: vec![],
+            input_rules: None,
         };
 
         // TxIn = decode(encode(TxIn))
@@ -700,6 +729,7 @@ mod tests {
         let tx_in = TxIn {
             ring: vec![tx_out.clone()],
             proofs: vec![],
+            input_rules: None,
         };
 
         // TxIn = decode(encode(TxIn))

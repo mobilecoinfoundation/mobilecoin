@@ -27,8 +27,27 @@ use crate::{
     domain_separators::EXTENDED_MESSAGE_DOMAIN_TAG,
     range_proofs::{check_range_proofs, generate_range_proofs},
     ring_signature::{mlsag::RingMLSAG, Error, GeneratorCache, KeyImage, Scalar},
-    Amount, BlockVersion, Commitment, CompressedCommitment,
+    Amount, BlockVersion, Commitment, CompressedCommitment, InputRules,
 };
+
+/// A representation of the part of the input ring needed to create an MLSAG
+#[derive(Clone, Debug)]
+pub struct SignableInputRing {
+    /// A reduced representation of the TxOut's in the ring. For each ring
+    /// member we have only:
+    /// * The onetime-address (tx_out.target_key)
+    /// * The compressed commitment (tx_out.amount.commitment)
+    pub members: Vec<(CompressedRistrettoPublic, CompressedCommitment)>,
+
+    /// The index of the real input among these ring members
+    pub real_input_index: usize,
+
+    /// The secrets needed to sign that input
+    pub input_secret: InputSecret,
+
+    /// The rules that will be associated to this signature after we sign it
+    pub input_rules: Option<InputRules>,
+}
 
 /// The secrets corresponding to an input needed to create a signature
 #[derive(Clone, Debug)]
@@ -48,6 +67,19 @@ pub struct OutputSecret {
     pub amount: Amount,
     /// The blinding factor of the output we are creating
     pub blinding: Scalar,
+}
+
+/// The parts of a signed input ring needed to validate an MLSAG
+#[derive(Clone, Debug)]
+pub struct SignedInputRing {
+    /// A reduced representation of the TxOut's in the ring. For each ring
+    /// member we have only:
+    /// * The onetime-address (tx_out.target_key)
+    /// * The compressed commitment (tx_out.amount.commitment)
+    pub members: Vec<(CompressedRistrettoPublic, CompressedCommitment)>,
+
+    /// The rules that are associated to this signature, if any
+    pub input_rules: Option<InputRules>,
 }
 
 /// An RCT_TYPE_BULLETPROOFS_2 signature
@@ -108,9 +140,7 @@ impl SignatureRctBulletproofs {
     pub fn sign<CSPRNG: RngCore + CryptoRng>(
         block_version: BlockVersion,
         message: &[u8; 32],
-        rings: &[Vec<(CompressedRistrettoPublic, CompressedCommitment)>],
-        real_input_indices: &[usize],
-        input_secrets: &[InputSecret],
+        signable_input_rings: &[SignableInputRing],
         output_secrets: &[OutputSecret],
         fee: Amount,
         rng: &mut CSPRNG,
@@ -118,9 +148,7 @@ impl SignatureRctBulletproofs {
         sign_with_balance_check(
             block_version,
             message,
-            rings,
-            real_input_indices,
-            input_secrets,
+            signable_input_rings,
             output_secrets,
             fee,
             true,
@@ -132,9 +160,8 @@ impl SignatureRctBulletproofs {
     ///
     /// # Arguments
     /// * `block_version` - This may influence details of the signature
-    /// * `message` - The signed message.
-    /// * `rings` - One or more rings of one-time addresses and amount
-    ///   commitments.
+    /// * `message` - The message which was signed
+    /// * `rings` - One or more rings which were signed to create this signature
     /// * `output_commitments` - Output amount commitments.
     /// * `fee` - Value of the implicit fee output.
     /// * `fee_token_id` - This determines the pedersen generator for fee
@@ -144,7 +171,7 @@ impl SignatureRctBulletproofs {
         &self,
         block_version: BlockVersion,
         message: &[u8; 32],
-        rings: &[Vec<(CompressedRistrettoPublic, CompressedCommitment)>],
+        rings: &[SignedInputRing],
         output_commitments: &[CompressedCommitment],
         fee: Amount,
         rng: &mut CSPRNG,
@@ -367,9 +394,23 @@ impl SignatureRctBulletproofs {
 
         // Each MLSAG must be valid.
         for (i, ring) in rings.iter().enumerate() {
+            let mut rules_digest = [0u8; 32];
+            if let Some(rules) = &ring.input_rules {
+                rules_digest
+                    .copy_from_slice(&rules.digest32::<MerlinTranscript>(b"mc-input-rules")[..]);
+            }
+
+            // If there are input rules, then the signature is over the rules digest
+            // If not, then it is the entire extended message digest
+            let this_was_signed: &[u8] = if ring.input_rules.is_some() {
+                &rules_digest
+            } else {
+                &extended_message_digest
+            };
+
             let ring_signature = &self.ring_signatures[i];
             let pseudo_output = self.pseudo_output_commitments[i];
-            ring_signature.verify(&extended_message_digest, ring, &pseudo_output)?;
+            ring_signature.verify(&this_was_signed, &ring.members, &pseudo_output)?;
         }
 
         // Signature is valid.
@@ -390,9 +431,8 @@ impl SignatureRctBulletproofs {
 /// # Arguments
 /// * `block_version` - This may influence details of the signature
 /// * `message` - The messages to be signed, e.g. Hash(TxPrefix).
-/// * `rings` - One or more rings of one-time addresses and amount commitments.
-/// * `real_input_indices` - The index of the real input in each ring.
-/// * `input_secrets` - Input secret for each real input.
+/// * `rings` - One or more rings of one-time addresses and amount commitments,
+///   with secrets for the real input
 /// * `output_values_and_blindings` - Output secret for each output amount
 ///   commitment.
 /// * `fee` - Value of the implicit fee output.
@@ -402,9 +442,7 @@ impl SignatureRctBulletproofs {
 fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     block_version: BlockVersion,
     message: &[u8; 32],
-    rings: &[Vec<(CompressedRistrettoPublic, CompressedCommitment)>],
-    real_input_indices: &[usize],
-    input_secrets: &[InputSecret],
+    rings: &[SignableInputRing],
     output_secrets: &[OutputSecret],
     fee: Amount,
     check_value_is_preserved: bool,
@@ -417,9 +455,9 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     // input and output token ids must match fee_token_id if mixed transactions is
     // not enabled
     if !block_version.mixed_transactions_are_supported() {
-        if input_secrets
+        if rings
             .iter()
-            .any(|sec| sec.amount.token_id != fee.token_id)
+            .any(|ring| ring.input_secret.amount.token_id != fee.token_id)
         {
             return Err(Error::MixedTransactionsNotAllowed);
         }
@@ -435,26 +473,18 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         return Err(Error::NoInputs);
     }
     let num_inputs = rings.len();
-    let ring_size = rings[0].len();
+    let ring_size = rings[0].members.len();
     if ring_size == 0 {
         return Err(Error::InvalidRingSize(0));
     }
 
-    // Each ring must have the same size.
     for ring in rings {
-        if ring.len() != ring_size {
-            return Err(Error::InvalidRingSize(ring.len()));
+        // Each ring must have the same size.
+        if ring.members.len() != ring_size {
+            return Err(Error::InvalidRingSize(ring.members.len()));
         }
-    }
-
-    // `input_secrets` must contain an element for each input.
-    if input_secrets.len() != num_inputs {
-        return Err(Error::InvalidInputSecretsSize(input_secrets.len()));
-    }
-
-    // Each `real_input_index` must be in [0,ring_size - 1].
-    for i in real_input_indices {
-        if *i >= ring_size {
+        // Each `real_input_index` must be in [0,ring_size - 1].
+        if ring.real_input_index >= ring_size {
             return Err(Error::IndexOutOfBounds);
         }
     }
@@ -478,10 +508,10 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     pseudo_output_blindings.push(last_blinding);
 
     // Create Range proofs for outputs and pseudo-outputs.
-    let pseudo_output_values_and_blindings: Vec<(u64, Scalar)> = input_secrets
+    let pseudo_output_values_and_blindings: Vec<(u64, Scalar)> = rings
         .iter()
         .zip(pseudo_output_blindings.iter())
-        .map(|(secret, blinding)| (secret.amount.value, *blinding))
+        .map(|(ring, blinding)| (ring.input_secret.amount.value, *blinding))
         .collect();
 
     // Create a pedersen generator cache
@@ -513,8 +543,8 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         let token_ids = {
             let mut token_ids = BTreeSet::default();
             token_ids.insert(fee.token_id);
-            for secret in input_secrets {
-                token_ids.insert(secret.amount.token_id);
+            for ring in rings {
+                token_ids.insert(ring.input_secret.amount.token_id);
             }
             for secret in output_secrets {
                 token_ids.insert(secret.amount.token_id);
@@ -526,12 +556,12 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
             let generator = generator_cache.get(token_id);
 
             // The input blinding is not the same as corresponding pseudo-output blinding
-            let (values, blindings): (Vec<_>, Vec<_>) = input_secrets
+            let (values, blindings): (Vec<_>, Vec<_>) = rings
                 .iter()
                 .zip(pseudo_output_blindings.iter())
-                .filter_map(|(secret, blinding)| {
-                    if secret.amount.token_id == token_id {
-                        Some((secret.amount.value, *blinding))
+                .filter_map(|(ring, blinding)| {
+                    if ring.input_secret.amount.token_id == token_id {
+                        Some((ring.input_secret.amount.value, *blinding))
                     } else {
                         None
                     }
@@ -560,13 +590,13 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
 
     // The actual pseudo output commitments use the blindings from
     // `pseudo_output_blinding` and not the original true input.
-    let pseudo_output_commitments: Vec<RistrettoPoint> = input_secrets
+    let pseudo_output_commitments: Vec<RistrettoPoint> = rings
         .iter()
         .zip(pseudo_output_blindings.iter())
-        .map(|(secret, blinding)| {
+        .map(|(ring, blinding)| {
             generator_cache
-                .get(secret.amount.token_id)
-                .commit(Scalar::from(secret.amount.value), *blinding)
+                .get(ring.input_secret.amount.token_id)
+                .commit(Scalar::from(ring.input_secret.amount.value), *blinding)
         })
         .collect();
 
@@ -616,27 +646,37 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     // Prove that the signer is allowed to spend a public key in each ring, and that
     // the input's value equals the value of the pseudo_output.
     let mut ring_signatures: Vec<RingMLSAG> = Vec::new();
-    for i in 0..num_inputs {
-        let real_index = real_input_indices[i];
-        let input_secret = &input_secrets[i];
-        let generator = generator_cache.get(input_secret.amount.token_id);
+    for (ring, pseudo_output_blinding) in rings.iter().zip(pseudo_output_blindings) {
+        let mut rules_digest = [0u8; 32];
+        if let Some(rules) = &ring.input_rules {
+            rules_digest
+                .copy_from_slice(&rules.digest32::<MerlinTranscript>(b"mc-input-rules")[..]);
+        }
+
+        let sign_this: &[u8] = if ring.input_rules.is_some() {
+            &rules_digest
+        } else {
+            &extended_message_digest
+        };
+
+        let generator = generator_cache.get(ring.input_secret.amount.token_id);
         let ring_signature = RingMLSAG::sign(
-            &extended_message_digest,
-            &rings[i],
-            real_index,
-            &input_secret.onetime_private_key,
-            input_secret.amount.value,
-            &input_secret.blinding,
-            &pseudo_output_blindings[i],
+            sign_this,
+            &ring.members,
+            ring.real_input_index,
+            &ring.input_secret.onetime_private_key,
+            ring.input_secret.amount.value,
+            &ring.input_secret.blinding,
+            &pseudo_output_blinding,
             generator,
             rng,
         )?;
         ring_signatures.push(ring_signature);
     }
 
-    let mut pseudo_output_token_ids: Vec<u64> = input_secrets
+    let mut pseudo_output_token_ids: Vec<u64> = rings
         .iter()
-        .map(|secret| *secret.amount.token_id)
+        .map(|ring| *ring.input_secret.amount.token_id)
         .collect();
     let mut output_token_ids: Vec<u64> = output_secrets
         .iter()
@@ -722,6 +762,15 @@ fn extend_message(
     extended_message
 }
 
+impl From<&SignableInputRing> for SignedInputRing {
+    fn from(src: &SignableInputRing) -> SignedInputRing {
+        SignedInputRing {
+            members: src.members.clone(),
+            input_rules: src.input_rules.clone(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod rct_bulletproofs_tests {
     use super::*;
@@ -747,14 +796,7 @@ mod rct_bulletproofs_tests {
         message: [u8; 32],
 
         /// Rings of input onetime addresses and amount commitments.
-        rings: Vec<Vec<(CompressedRistrettoPublic, CompressedCommitment)>>,
-
-        /// The index of the real input in each ring.
-        real_input_indices: Vec<usize>,
-
-        /// One-time private key, amount value, and amount blinding for each
-        /// real input.
-        input_secrets: Vec<InputSecret>,
+        rings: Vec<SignableInputRing>,
 
         /// Value and blinding for each output amount commitment.
         output_secrets: Vec<OutputSecret>,
@@ -806,11 +848,10 @@ mod rct_bulletproofs_tests {
             let mut generator_cache = GeneratorCache::default();
 
             let mut rings = Vec::new();
-            let mut real_input_indices = Vec::new();
-            let mut input_secrets = Vec::new();
 
             for i in 0..num_inputs {
-                let mut ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)> = Vec::new();
+                let mut ring_members: Vec<(CompressedRistrettoPublic, CompressedCommitment)> =
+                    Vec::new();
                 // Create random mixins.
                 for _i in 0..num_mixins {
                     let generator = generator_cache.get(fee_token_id);
@@ -821,7 +862,7 @@ mod rct_bulletproofs_tests {
                         let blinding = Scalar::random(rng);
                         CompressedCommitment::new(value, blinding, generator)
                     };
-                    ring.push((address, commitment));
+                    ring_members.push((address, commitment));
                 }
                 // The real input.
                 let onetime_private_key = RistrettoPrivate::from_random(rng);
@@ -836,25 +877,28 @@ mod rct_bulletproofs_tests {
 
                 let commitment = CompressedCommitment::new(value, blinding, generator);
 
-                let real_index = rng.next_u64() as usize % (num_mixins + 1);
-                ring.insert(real_index, (onetime_public_key, commitment));
+                let real_input_index = rng.next_u64() as usize % (num_mixins + 1);
+                ring_members.insert(real_input_index, (onetime_public_key, commitment));
 
-                rings.push(ring);
-                real_input_indices.push(real_index);
-                input_secrets.push(InputSecret {
-                    onetime_private_key,
-                    amount: Amount::new(value, token_id),
-                    blinding,
+                rings.push(SignableInputRing {
+                    members: ring_members,
+                    real_input_index,
+                    input_secret: InputSecret {
+                        onetime_private_key,
+                        amount: Amount::new(value, token_id),
+                        blinding,
+                    },
+                    input_rules: None,
                 });
             }
 
             // Create one output with the same value as each input.
-            let output_secrets: Vec<_> = input_secrets
+            let output_secrets: Vec<_> = rings
                 .iter()
-                .map(|secret| {
+                .map(|ring| {
                     let blinding = Scalar::random(rng);
                     OutputSecret {
-                        amount: secret.amount,
+                        amount: ring.input_secret.amount,
                         blinding,
                     }
                 })
@@ -863,8 +907,6 @@ mod rct_bulletproofs_tests {
             SignatureParams {
                 message,
                 rings,
-                real_input_indices,
-                input_secrets,
                 output_secrets,
                 block_version,
                 fee_token_id,
@@ -884,6 +926,10 @@ mod rct_bulletproofs_tests {
                 .collect()
         }
 
+        fn get_signed_input_rings(&self) -> Vec<SignedInputRing> {
+            self.rings.iter().map(SignedInputRing::from).collect()
+        }
+
         fn sign<RNG: RngCore + CryptoRng>(
             &self,
             fee: u64,
@@ -893,8 +939,6 @@ mod rct_bulletproofs_tests {
                 self.block_version,
                 &self.message,
                 &self.rings,
-                &self.real_input_indices,
-                &self.input_secrets,
                 &self.output_secrets,
                 Amount::new(fee, self.fee_token_id),
                 rng,
@@ -910,8 +954,6 @@ mod rct_bulletproofs_tests {
                 self.block_version,
                 &self.message,
                 &self.rings,
-                &self.real_input_indices,
-                &self.input_secrets,
                 &self.output_secrets,
                 Amount::new(fee, self.fee_token_id),
                 false,
@@ -956,7 +998,7 @@ mod rct_bulletproofs_tests {
             let block_version: BlockVersion = block_version.try_into().unwrap();
             let mut rng: StdRng = SeedableRng::from_seed(seed);
             let mut params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
-            params.rings[0] = Vec::new();
+            params.rings[0].members = Vec::new();
 
             let result = params.sign(0, &mut rng);
 
@@ -1008,7 +1050,7 @@ mod rct_bulletproofs_tests {
             let result = signature.verify(
                 block_version,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(fee, params.fee_token_id),
                 &mut rng,
@@ -1034,7 +1076,7 @@ mod rct_bulletproofs_tests {
             let result = signature.verify(
                 block_version,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(fee, params.fee_token_id),
                 &mut rng,
@@ -1064,7 +1106,7 @@ mod rct_bulletproofs_tests {
             let result = signature.verify(
                 block_version,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(fee, params.fee_token_id),
                 &mut rng,
@@ -1097,7 +1139,7 @@ mod rct_bulletproofs_tests {
             let result = invalid_signature.verify(
                 block_version,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(fee, params.fee_token_id),
                 &mut rng,
@@ -1137,7 +1179,7 @@ mod rct_bulletproofs_tests {
             let result = signature.verify(
                 block_version,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(fee, params.fee_token_id),
                 &mut rng,
@@ -1177,7 +1219,7 @@ mod rct_bulletproofs_tests {
             let result = signature.verify(
                 block_version,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(fee, params.fee_token_id),
                 &mut rng,
@@ -1202,16 +1244,15 @@ mod rct_bulletproofs_tests {
 
             // Duplicate one of the rings.
             params.rings[2] = params.rings[3].clone();
-            params.output_secrets[2] = params.output_secrets[3].clone();
-            params.input_secrets[2] = params.input_secrets[3].clone();
-            params.real_input_indices[2] = params.real_input_indices[3];
+            // Duplicate corresponding the output also, so we don't get "value not conserved" error
+            params.output_secrets[2].amount = params.output_secrets[3].amount;
 
             let signature = params.sign(fee, &mut rng).unwrap();
 
             let result = signature.verify(
                 block_version,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(fee, params.fee_token_id),
                 &mut rng,
@@ -1265,7 +1306,7 @@ mod rct_bulletproofs_tests {
             let result = signature.verify(
                 block_version,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(fee, params.fee_token_id),
                 &mut rng,
@@ -1277,7 +1318,7 @@ mod rct_bulletproofs_tests {
             match signature.verify(
                 block_version,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(wrong_fee, params.fee_token_id),
                 &mut rng,
@@ -1308,7 +1349,7 @@ mod rct_bulletproofs_tests {
             let result = signature.verify(
                 BlockVersion::TWO,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(fee, params.fee_token_id),
                 &mut rng,
@@ -1334,7 +1375,7 @@ mod rct_bulletproofs_tests {
             let result = signature.verify(
                 BlockVersion::ONE,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(fee, params.fee_token_id),
                 &mut rng,
@@ -1360,7 +1401,7 @@ mod rct_bulletproofs_tests {
             signature.verify(
                 BlockVersion::TWO,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(fee, params.fee_token_id),
                 &mut rng,
@@ -1370,7 +1411,7 @@ mod rct_bulletproofs_tests {
             let result = signature.verify(
                 BlockVersion::TWO,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(fee, TokenId::from(*params.fee_token_id + 1)),
                 &mut rng,
@@ -1416,7 +1457,7 @@ mod rct_bulletproofs_tests {
             signature.verify(
                 block_version,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(fee, params.fee_token_id),
                 &mut rng,
@@ -1427,7 +1468,7 @@ mod rct_bulletproofs_tests {
             let result = signature.verify(
                 block_version,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(fee, params.fee_token_id),
                 &mut rng,
@@ -1455,7 +1496,7 @@ mod rct_bulletproofs_tests {
             signature.verify(
                 block_version,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(fee, params.fee_token_id),
                 &mut rng,
@@ -1466,7 +1507,7 @@ mod rct_bulletproofs_tests {
             let result = signature.verify(
                 block_version,
                 &params.message,
-                &params.rings,
+                &params.get_signed_input_rings(),
                 &params.get_output_commitments(),
                 Amount::new(fee, params.fee_token_id),
                 &mut rng,
