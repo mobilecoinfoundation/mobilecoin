@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Mock enclave, used for tests
 
@@ -200,9 +200,12 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         _block_index: u64,
         _proofs: Vec<TxOutMembershipProof>,
     ) -> Result<(WellFormedEncryptedTx, WellFormedTxContext)> {
-        let tx = mc_util_serial::decode(&locally_encrypted_tx.0)?;
+        let tx: Tx = mc_util_serial::decode(&locally_encrypted_tx.0)?;
         let well_formed_encrypted_tx = WellFormedEncryptedTx(locally_encrypted_tx.0);
-        let well_formed_tx_context = WellFormedTxContext::from(&tx);
+
+        // hack
+        let priority = tx.prefix.fee;
+        let well_formed_tx_context = WellFormedTxContext::from_tx(&tx, priority);
 
         Ok((well_formed_encrypted_tx, well_formed_tx_context))
     }
@@ -276,9 +279,9 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         let minted_tx_outs = get_outputs(
             block_version,
             &inputs
-                .mint_txs
+                .mint_txs_with_config
                 .iter()
-                .map(|mint_tx| {
+                .map(|(mint_tx, _mint_config_tx, _mint_config)| {
                     let recipient = PublicAddress::new(
                         &mint_tx.prefix.spend_public_key,
                         &mint_tx.prefix.view_public_key,
@@ -302,7 +305,11 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         let block_contents = BlockContents {
             key_images,
             outputs,
-            mint_txs: inputs.mint_txs,
+            mint_txs: inputs
+                .mint_txs_with_config
+                .into_iter()
+                .map(|(mint_tx, _mint_config_tx, _mint_config)| mint_tx)
+                .collect(),
             validated_mint_config_txs,
         };
 

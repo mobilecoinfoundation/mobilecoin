@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use aligned_cmov::{
     typenum::{U1024, U16, U32, U4096, U64, U8},

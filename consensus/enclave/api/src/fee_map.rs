@@ -9,6 +9,35 @@ use mc_crypto_digestible::Digestible;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Serialize};
 
+/// The log base 2 of the smallest allowed minimum fee, in the smallest
+/// representable units.
+/// This minimum exists because it helps the computation of priority from fees
+/// to work in a nice way.
+///
+/// Priority is computed by "normalizing" the fee for each token, using the
+/// minimum fee. However, before dividing fee by minimum fee, we divide minimum
+/// fee by (1 << 7) = 128.
+///
+/// This allows that if you increase the fee by e.g. 1%, then it always leads to
+/// an integer difference in the priority and leads to your
+/// transaction actually being ranked higher when the network sorts the tx's.
+///
+/// If we don't do this, then you can only increase the fee paid in increments
+/// of the minimum fee to see an actual increase in priority. So effectively,
+/// once the network is under load, the fees immediately double, then triple.
+/// This seems undesirable.
+///
+/// (The choice of 128 is arbitrary, it's the first power of two >= 100.)
+///
+/// Because we divide minimum fee by by 128, and the result must be nonzero, we
+/// must have that the minimum fee itself is at least as large as what we are
+/// dividing by. This is fine because 128 in the smallest representable units is
+/// a negligible amount of any currency.
+///
+/// The smallest allowed minimum fee is required to be a power of two, because
+/// dividing by a power of two is fast and constant time.
+pub const SMALLEST_MINIMUM_FEE_LOG2: u64 = 7;
+
 /// A map of fee value by token id.
 #[derive(Clone, Debug, Deserialize, Digestible, Eq, Hash, PartialEq, Serialize)]
 pub struct FeeMap {
@@ -75,8 +104,14 @@ impl FeeMap {
 
     /// Check if a given fee map is valid.
     pub fn is_valid_map(minimum_fees: &BTreeMap<TokenId, u64>) -> Result<(), Error> {
-        // All fees must be greater than 0.
-        if let Some((token_id, fee)) = minimum_fees.iter().find(|(_token_id, fee)| **fee == 0) {
+        // All minimum fees must be greater than 128 in the smallest representable unit.
+        // This is because we divide the minimum fee by 128 when computing priority
+        // numbers, to allow that increments of 1% of the minimum fee affect the
+        // priority of a payment.
+        if let Some((token_id, fee)) = minimum_fees
+            .iter()
+            .find(|(_token_id, fee)| (**fee >> SMALLEST_MINIMUM_FEE_LOG2) == 0)
+        {
             return Err(Error::InvalidFee(*token_id, *fee));
         }
 
@@ -120,13 +155,13 @@ mod test {
     /// Valid fee maps ids should be accepted
     #[test]
     fn valid_fee_maps_accepted() {
-        let fee_map1 = FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(2), 2000)]).unwrap();
+        let fee_map1 = FeeMap::try_from_iter([(Mob::ID, 1000), (TokenId::from(2), 20000)]).unwrap();
         assert!(fee_map1.get_fee_for_token(&Mob::ID).is_some());
 
-        let fee_map2 = FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(2), 300)]).unwrap();
+        let fee_map2 = FeeMap::try_from_iter([(Mob::ID, 1000), (TokenId::from(2), 3000)]).unwrap();
         assert!(fee_map2.get_fee_for_token(&Mob::ID).is_some());
 
-        let fee_map3 = FeeMap::try_from_iter([(Mob::ID, 100), (TokenId::from(30), 300)]).unwrap();
+        let fee_map3 = FeeMap::try_from_iter([(Mob::ID, 1000), (TokenId::from(30), 3000)]).unwrap();
         assert!(fee_map3.get_fee_for_token(&Mob::ID).is_some());
     }
 
@@ -142,7 +177,7 @@ mod test {
         );
 
         assert_eq!(
-            FeeMap::is_valid_map(&BTreeMap::from_iter(vec![(test_token_id, 100)])),
+            FeeMap::is_valid_map(&BTreeMap::from_iter(vec![(test_token_id, 1000)])),
             Err(Error::MissingFee(Mob::ID)),
         );
 
@@ -153,8 +188,13 @@ mod test {
         );
 
         assert_eq!(
+            FeeMap::is_valid_map(&BTreeMap::from_iter(vec![(Mob::ID, 10)])),
+            Err(Error::InvalidFee(Mob::ID, 10)),
+        );
+
+        assert_eq!(
             FeeMap::is_valid_map(&BTreeMap::from_iter(vec![
-                (Mob::ID, 10),
+                (Mob::ID, 1000),
                 (test_token_id, 0)
             ])),
             Err(Error::InvalidFee(test_token_id, 0)),

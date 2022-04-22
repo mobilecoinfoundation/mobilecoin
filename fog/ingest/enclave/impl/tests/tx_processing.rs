@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use mc_account_keys::AccountKey;
 use mc_common::{
@@ -88,7 +88,7 @@ fn test_ingest_enclave(logger: Logger) {
         assert_eq!(tx_rows.len(), 10);
 
         // Check that the tx row ciphertexts have the right size
-        const EXPECTED_PAYLOAD_SIZE: usize = 233; // The observed tx_row.payload size
+        const EXPECTED_PAYLOAD_SIZE: usize = 237; // The observed tx_row.payload size
         for tx_row in tx_rows.iter() {
             assert_eq!(
                 tx_row.payload.len(), EXPECTED_PAYLOAD_SIZE,

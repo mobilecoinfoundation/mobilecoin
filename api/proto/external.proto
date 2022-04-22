@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // MUST BE KEPT IN SYNC WITH RUST CODE!
 
@@ -243,7 +243,7 @@ message TxPrefix {
     uint64 tombstone_block = 4;
 
     // Token id for this transaction
-    fixed32 token_id = 5;
+    fixed64 token_id = 5;
 }
 
 message RingMLSAG {
@@ -315,7 +315,7 @@ message VerificationReport {
 /// The contents of a mint-tx, which is a transaction to mint new tokens.
 message MintTxPrefix {
     /// Token ID we are minting.
-    uint32 token_id = 1;
+    uint64 token_id = 1;
 
     /// Amount we are minting.
     uint64 amount = 2;
@@ -345,7 +345,7 @@ message MintTx {
 /// transactions, for which token and at what total limit.
 message MintConfig {
     /// Token ID this configuration applies to.
-    uint32 token_id = 1;
+    uint64 token_id = 1;
 
     /// The set of keys that can sign a minting transaction.
     Ed25519SignerSet signer_set = 2;
@@ -359,7 +359,7 @@ message MintConfig {
 /// minting configuration for a single token ID.
 message MintConfigTxPrefix {
     /// Token ID we are replacing the configuration set for.
-    uint32 token_id = 1;
+    uint64 token_id = 1;
 
     /// The new configuration.
     repeated MintConfig configs = 2;
@@ -370,6 +370,10 @@ message MintConfigTxPrefix {
 
     /// The block index at which this transaction is no longer valid.
     uint64 tombstone_block = 4;
+
+    /// The maximal amount that can be minted by configurations specified in
+    /// this tx. This amount is shared amongst all configs.
+    uint64 total_mint_limit = 5;
 }
 
 /// A mint-config transaction coupled with a signature over it.

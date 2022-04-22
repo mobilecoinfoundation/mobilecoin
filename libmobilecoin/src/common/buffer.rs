@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use super::{FfiTryFrom, TryFromFfi};
 use crate::LibMcError;
@@ -195,6 +195,46 @@ impl<'a> TryFromFfi<&McBuffer<'a>> for [u8; 32] {
     #[inline]
     fn try_from_ffi(src: &McBuffer<'a>) -> Result<Self, LibMcError> {
         Ok(*<&'a [u8; 32]>::try_from_ffi(src)?)
+    }
+}
+
+impl<'a> TryFromFfi<&McBuffer<'a>> for &'a [u8; 64] {
+    type Error = LibMcError;
+
+    #[inline]
+    fn try_from_ffi(src: &McBuffer<'a>) -> Result<Self, LibMcError> {
+        let src = src.as_slice_of_len(64)?;
+        // SAFETY: ok to unwrap because we just checked length
+        Ok(<&[u8; 64]>::try_from(src).unwrap())
+    }
+}
+
+impl<'a> TryFromFfi<&McBuffer<'a>> for [u8; 64] {
+    type Error = LibMcError;
+
+    #[inline]
+    fn try_from_ffi(src: &McBuffer<'a>) -> Result<Self, LibMcError> {
+        Ok(*<&'a [u8; 64]>::try_from_ffi(src)?)
+    }
+}
+
+impl<'a> TryFromFfi<&McBuffer<'a>> for &'a [u8; 66] {
+    type Error = LibMcError;
+
+    #[inline]
+    fn try_from_ffi(src: &McBuffer<'a>) -> Result<Self, LibMcError> {
+        let src = src.as_slice_of_len(66)?;
+        // SAFETY: ok to unwrap because we just checked length
+        Ok(<&[u8; 66]>::try_from(src).unwrap())
+    }
+}
+
+impl<'a> TryFromFfi<&McBuffer<'a>> for [u8; 66] {
+    type Error = LibMcError;
+
+    #[inline]
+    fn try_from_ffi(src: &McBuffer<'a>) -> Result<Self, LibMcError> {
+        Ok(*<&'a [u8; 66]>::try_from_ffi(src)?)
     }
 }
 

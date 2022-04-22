@@ -9,7 +9,9 @@ use mc_consensus_api::{
     consensus_client_grpc::ConsensusClientApiClient, consensus_common_grpc::BlockchainApiClient,
     empty::Empty,
 };
+use mc_consensus_enclave_api::GovernorsSigner;
 use mc_consensus_mint_client::{Commands, Config};
+use mc_crypto_keys::Ed25519Pair;
 use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::{
     constants::MAX_TOMBSTONE_BLOCKS,
@@ -17,7 +19,6 @@ use mc_transaction_core::{
 };
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use serde::de::DeserializeOwned;
-use serde_json::to_string_pretty;
 use std::{fs, path::PathBuf, sync::Arc};
 
 fn main() {
@@ -51,9 +52,22 @@ fn main() {
                 .try_into_mint_config_tx(|| panic!("missing tombstone block"))
                 .expect("failed creating tx");
 
-            let json = to_string_pretty(&tx).expect("failed serializing tx");
+            let json = serde_json::to_string_pretty(&tx).expect("failed serializing tx");
 
             fs::write(out, json).expect("failed writing output file");
+        }
+
+        Commands::HashMintConfigTx { params } => {
+            let tx_prefix = params
+                .try_into_mint_config_tx_prefix(|| panic!("missing tombstone block"))
+                .expect("failed creating tx prefix");
+
+            // Print the nonce, since if we generated it randomlly then there is no way to
+            // reconstruct the tx prefix that is being hashed without it.
+            println!("Nonce: {}", hex::encode(&tx_prefix.nonce));
+
+            let hash = tx_prefix.hash();
+            println!("Hash: {}", hex::encode(hash));
         }
 
         Commands::SubmitMintConfigTx { node, tx_filenames } => {
@@ -114,9 +128,22 @@ fn main() {
                 .try_into_mint_tx(|| panic!("missing tombstone block"))
                 .expect("failed creating tx");
 
-            let json = to_string_pretty(&tx).expect("failed serializing tx");
+            let json = serde_json::to_string_pretty(&tx).expect("failed serializing tx");
 
             fs::write(out, json).expect("failed writing output file");
+        }
+
+        Commands::HashMintTx { params } => {
+            let tx_prefix = params
+                .try_into_mint_tx_prefix(|| panic!("missing tombstone block"))
+                .expect("failed creating tx prefix");
+
+            // Print the nonce, since if we generated it randomlly then there is no way to
+            // reconstruct the tx prefix that is being hashed without it.
+            println!("Nonce: {}", hex::encode(&tx_prefix.nonce));
+
+            let hash = tx_prefix.hash();
+            println!("Hash: {}", hex::encode(hash));
         }
 
         Commands::SubmitMintTx { node, tx_filenames } => {
@@ -150,6 +177,35 @@ fn main() {
                 .propose_mint_tx(&(&merged_tx).into())
                 .expect("propose tx");
             println!("response: {:?}", resp);
+        }
+
+        Commands::SignGovernors {
+            signing_key,
+            mut tokens,
+            output_toml,
+            output_json,
+        } => {
+            let governors_map = tokens
+                .token_id_to_governors()
+                .expect("governors configuration error");
+            let signature = Ed25519Pair::from(signing_key)
+                .sign_governors_map(&governors_map)
+                .expect("failed signing governors map");
+            println!("Signature: {}", hex::encode(signature.as_ref()));
+            println!("Put this signature in the governors configuration file in the key \"governors_signature\".");
+
+            tokens.governors_signature = Some(signature);
+
+            if let Some(path) = output_toml {
+                let toml_str = toml::to_string_pretty(&tokens).expect("failed serializing toml");
+                fs::write(path, toml_str).expect("failed writing output file");
+            }
+
+            if let Some(path) = output_json {
+                let json_str =
+                    serde_json::to_string_pretty(&tokens).expect("failed serializing json");
+                fs::write(path, json_str).expect("failed writing output file");
+            }
         }
     }
 }

@@ -1,10 +1,10 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The Consensus Service SGX Enclave Proxy
 
 pub use mc_consensus_enclave_api::{
     BlockchainConfig, ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeeMap,
-    FeeMapError, FeePublicKey, FormBlockInputs, LocallyEncryptedTx, MasterMintersMap, Result,
+    FeeMapError, FeePublicKey, FormBlockInputs, GovernorsMap, LocallyEncryptedTx, Result,
     TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 

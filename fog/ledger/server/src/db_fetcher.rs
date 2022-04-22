@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A background thread, in the server side, that continuously checks the
 //! LedgerDB for new blocks, then gets all the key images associated to those

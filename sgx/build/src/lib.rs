@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};

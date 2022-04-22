@@ -19,10 +19,13 @@ use mc_common::{
     logger::{log, Logger},
     HashSet,
 };
-use mc_consensus_enclave::MasterMintersMap;
+use mc_consensus_enclave::GovernorsMap;
 use mc_ledger_db::{Error as LedgerError, Ledger};
 use mc_transaction_core::{
-    mint::{validate_mint_config_tx, validate_mint_tx, MintConfigTx, MintTx, MintValidationError},
+    mint::{
+        validate_mint_config_tx, validate_mint_tx, MintConfig, MintConfigTx, MintTx,
+        MintValidationError,
+    },
     BlockVersion, TokenId,
 };
 
@@ -34,8 +37,8 @@ pub struct MintTxManagerImpl<L: Ledger> {
     /// The configured block version.
     block_version: BlockVersion,
 
-    /// A map of token id -> master minters.
-    token_id_to_master_minters: MasterMintersMap,
+    /// A map of token id -> governors.
+    token_id_to_governors: GovernorsMap,
 
     /// Logger.
     logger: Logger,
@@ -45,13 +48,13 @@ impl<L: Ledger> MintTxManagerImpl<L> {
     pub fn new(
         ledger_db: L,
         block_version: BlockVersion,
-        token_id_to_master_minters: MasterMintersMap,
+        token_id_to_governors: GovernorsMap,
         logger: Logger,
     ) -> Self {
         Self {
             ledger_db,
             block_version,
-            token_id_to_master_minters,
+            token_id_to_governors,
             logger,
         }
     }
@@ -71,13 +74,13 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
             ));
         }
 
-        // Get the master minters for this token id.
+        // Get the governors for this token id.
         let token_id = TokenId::from(mint_config_tx.prefix.token_id);
-        let master_minters = self
-            .token_id_to_master_minters
-            .get_master_minters_for_token(&token_id)
+        let governors = self
+            .token_id_to_governors
+            .get_governors_for_token(&token_id)
             .ok_or(MintTxManagerError::MintValidation(
-                MintValidationError::NoMasterMinters(token_id),
+                MintValidationError::NoGovernors(token_id),
             ))?;
 
         // Get the current block index.
@@ -88,7 +91,7 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
             mint_config_tx,
             current_block_index,
             self.block_version,
-            &master_minters,
+            &governors,
         )?;
 
         Ok(())
@@ -138,7 +141,7 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
                 LedgerError::NotFound => {
                     MintTxManagerError::MintValidation(MintValidationError::NoMatchingMintConfig)
                 }
-                LedgerError::MintLimitExceeded(_, _) => {
+                LedgerError::MintLimitExceeded(_, _, _) => {
                     MintTxManagerError::MintValidation(MintValidationError::AmountExceedsMintLimit)
                 }
                 err => err.into(),
@@ -201,6 +204,31 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
 
         Ok(allowed_txs)
     }
+
+    fn mint_txs_with_config(
+        &self,
+        txs: &[MintTx],
+    ) -> MintTxManagerResult<Vec<(MintTx, MintConfigTx, MintConfig)>> {
+        txs.iter()
+            .map(|mint_tx| {
+                let active_mint_configs = self
+                    .ledger_db
+                    .get_active_mint_configs(TokenId::from(mint_tx.prefix.token_id))?
+                    .ok_or(MintTxManagerError::MintValidation(
+                        MintValidationError::NoMatchingMintConfig,
+                    ))?;
+
+                let active_mint_config =
+                    active_mint_configs.get_active_mint_config_for_mint_tx(mint_tx)?;
+
+                Ok((
+                    mint_tx.clone(),
+                    active_mint_configs.mint_config_tx,
+                    active_mint_config.mint_config,
+                ))
+            })
+            .collect::<MintTxManagerResult<_>>()
+    }
 }
 
 #[cfg(test)]
@@ -229,17 +257,13 @@ mod mint_config_tx_tests {
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
         let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
-        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
         )])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger,
-            BlockVersion::MAX,
-            token_id_to_master_minters,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
 
         assert_eq!(
             mint_tx_manager.validate_mint_config_tx(&mint_config_tx),
@@ -265,7 +289,7 @@ mod mint_config_tx_tests {
         let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id_2, &mut rng);
         let (mint_config_tx3, signers3) = create_mint_config_tx_and_signers(token_id_3, &mut rng);
-        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![
             (
                 token_id_1,
                 SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1),
@@ -280,12 +304,8 @@ mod mint_config_tx_tests {
             ),
         ])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger,
-            BlockVersion::MAX,
-            token_id_to_master_minters,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
 
         assert_eq!(
             mint_tx_manager.validate_mint_config_tx(&mint_config_tx1),
@@ -317,7 +337,7 @@ mod mint_config_tx_tests {
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
         let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
-        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
         )])
@@ -325,7 +345,7 @@ mod mint_config_tx_tests {
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger.clone(),
             BlockVersion::MAX,
-            token_id_to_master_minters,
+            token_id_to_governors,
             logger,
         );
 
@@ -376,23 +396,19 @@ mod mint_config_tx_tests {
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
         let (_mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
-        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
         )])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger,
-            BlockVersion::MAX,
-            token_id_to_master_minters,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
 
         let (mint_config_tx2, _signers) = create_mint_config_tx_and_signers(token_id_2, &mut rng);
         assert_eq!(
             mint_tx_manager.validate_mint_config_tx(&mint_config_tx2),
             Err(MintTxManagerError::MintValidation(
-                MintValidationError::NoMasterMinters(token_id_2)
+                MintValidationError::NoGovernors(token_id_2)
             ))
         );
     }
@@ -412,17 +428,13 @@ mod mint_config_tx_tests {
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
         let (mut mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
-        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
         )])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger,
-            BlockVersion::MAX,
-            token_id_to_master_minters,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
 
         mint_config_tx.prefix.tombstone_block += 1;
 
@@ -451,17 +463,13 @@ mod mint_config_tx_tests {
         let (mint_config_tx2, _) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let (mint_config_tx3, _) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let (mint_config_tx4, _) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
-        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
         )])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger,
-            BlockVersion::MAX,
-            token_id_to_master_minters,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
 
         let mut expected_result = vec![
             mint_config_tx1.clone(),
@@ -508,17 +516,13 @@ mod mint_config_tx_tests {
         let (mint_config_tx4, _) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let (mint_config_tx5, _) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
         let (mint_config_tx6, _) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
-        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
         )])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger,
-            BlockVersion::MAX,
-            token_id_to_master_minters,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
 
         let mut expected_result = vec![
             mint_config_tx1.clone(),
@@ -599,19 +603,15 @@ mod mint_tx_tests {
         ledger.append_block(&block, &block_contents, None).unwrap();
 
         // Create MintTxManagerImpl
-        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
         )])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger,
-            BlockVersion::MAX,
-            token_id_to_master_minters,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
 
-        // Create a valid MintTx signed by the master minter.
+        // Create a valid MintTx signed by the governor.
         let mint_tx = create_mint_tx(
             token_id_1,
             &[Ed25519Pair::from(signers[0].private_key())],
@@ -659,7 +659,7 @@ mod mint_tx_tests {
         ledger.append_block(&block, &block_contents, None).unwrap();
 
         // Create MintTxManagerImpl
-        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![
             (
                 token_id_1,
                 SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1),
@@ -670,12 +670,8 @@ mod mint_tx_tests {
             ),
         ])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger,
-            BlockVersion::MAX,
-            token_id_to_master_minters,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
 
         // Check valid transactions.
         let mint_tx1 = create_mint_tx(
@@ -739,7 +735,7 @@ mod mint_tx_tests {
         ledger.append_block(&block, &block_contents, None).unwrap();
 
         // Create MintTxManagerImpl
-        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![
             (
                 token_id_1,
                 SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1),
@@ -750,12 +746,8 @@ mod mint_tx_tests {
             ),
         ])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger,
-            BlockVersion::MAX,
-            token_id_to_master_minters,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
 
         // Sign the wrong signer.
         let mint_tx = create_mint_tx(
@@ -804,9 +796,10 @@ mod mint_tx_tests {
         );
     }
 
-    /// validate_mint_tx rejects a mint tx that exceeds the mint limit.
+    /// validate_mint_tx rejects a mint tx that exceeds a specific config mint
+    /// limit.
     #[test_with_logger]
-    fn validate_mint_tx_refused_over_minting(logger: Logger) {
+    fn validate_mint_tx_refused_over_minting_specific_config(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
         let token_id_1 = TokenId::from(1);
 
@@ -836,7 +829,7 @@ mod mint_tx_tests {
         ledger.append_block(&block, &block_contents, None).unwrap();
 
         // Create MintTxManagerImpl
-        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
         )])
@@ -844,7 +837,7 @@ mod mint_tx_tests {
         let mint_tx_manager = MintTxManagerImpl::new(
             ledger.clone(),
             BlockVersion::MAX,
-            token_id_to_master_minters,
+            token_id_to_governors,
             logger,
         );
 
@@ -869,6 +862,121 @@ mod mint_tx_tests {
             token_id_1,
             &[Ed25519Pair::from(signers[0].private_key())],
             mint_config_tx.prefix.configs[0].mint_limit - 1,
+            &mut rng,
+        );
+
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
+
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+        let block_contents = BlockContents {
+            mint_txs: vec![mint_tx],
+            outputs: vec![create_test_tx_out(&mut rng)],
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        // Create a MintTx that exceeds the mint limit
+        let mint_tx = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            2,
+            &mut rng,
+        );
+
+        assert_eq!(
+            mint_tx_manager.validate_mint_tx(&mint_tx),
+            Err(MintTxManagerError::MintValidation(
+                MintValidationError::AmountExceedsMintLimit
+            ))
+        );
+
+        // Sanity that a MintTx that does not exceed the limit passes validation.
+        let mint_tx = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            1,
+            &mut rng,
+        );
+
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
+    }
+
+    /// validate_mint_tx rejects a mint tx that exceeds the overall mint limit.
+    #[test_with_logger]
+    fn validate_mint_tx_refused_over_minting_total_limit(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let token_id_1 = TokenId::from(1);
+
+        let mut ledger = create_ledger();
+        let n_blocks = 3;
+        let block_version = BlockVersion::MAX;
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+        // Create a mint configuration and append it to the ledger.
+        let (mut mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
+
+        mint_config_tx.prefix.total_mint_limit = mint_config_tx.prefix.configs[0].mint_limit - 1;
+
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+        let block_contents = BlockContents {
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx)],
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        // Create MintTxManagerImpl
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
+            token_id_1,
+            SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+        )])
+        .unwrap();
+        let mint_tx_manager = MintTxManagerImpl::new(
+            ledger.clone(),
+            BlockVersion::MAX,
+            token_id_to_governors,
+            logger,
+        );
+
+        // Create a MintTx that exceeds the total mint limit
+        let mint_tx = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            mint_config_tx.prefix.configs[0].mint_limit,
+            &mut rng,
+        );
+
+        assert_eq!(
+            mint_tx_manager.validate_mint_tx(&mint_tx),
+            Err(MintTxManagerError::MintValidation(
+                MintValidationError::AmountExceedsMintLimit
+            ))
+        );
+
+        // Append a block that contains a valid MintTx, to test that the allowed
+        // minting limit decreases.
+        let mint_tx = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            mint_config_tx.prefix.configs[0].mint_limit - 2,
             &mut rng,
         );
 
@@ -949,19 +1057,15 @@ mod mint_tx_tests {
         ledger.append_block(&block, &block_contents, None).unwrap();
 
         // Create MintTxManagerImpl
-        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
         )])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger,
-            BlockVersion::MAX,
-            token_id_to_master_minters,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
 
-        // Create a valid MintTx signed by the master minter.
+        // Create a valid MintTx signed by the governor.
         let mut mint_tx = create_mint_tx(
             token_id_1,
             &[Ed25519Pair::from(signers[0].private_key())],
@@ -1040,17 +1144,13 @@ mod mint_tx_tests {
         ];
 
         // Create MintTxManagerImpl
-        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
         )])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger,
-            BlockVersion::MAX,
-            token_id_to_master_minters,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
 
         let mut expected_result = mint_txs.clone();
         expected_result.sort();
@@ -1156,17 +1256,13 @@ mod mint_tx_tests {
         ];
 
         // Create MintTxManagerImpl
-        let token_id_to_master_minters = MasterMintersMap::try_from_iter(vec![(
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
             token_id_1,
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
         )])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger,
-            BlockVersion::MAX,
-            token_id_to_master_minters,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
 
         // The expected result is that we get 3 transactions, one for each
         // configuration. We use the amount to sanity check this.

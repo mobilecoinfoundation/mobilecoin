@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Defines a trait, and a serializable structure representing an RPC call,
 //! for the API the view server uses to talk to the view enclave

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Verifiers which check the IAS quote status result for particular
 //! [`MrEnclave`](::mc_attest_core::MrEnclave) and

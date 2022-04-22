@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // Consensus service data types used by both client-facing and peer-facing APIs.
 
@@ -25,7 +25,7 @@ message LastBlockInfoResponse {
     uint64 mob_minimum_fee = 2 [deprecated = true];
 
     // A map of token id -> minimum fee
-    map<uint32, uint64> minimum_fees = 3;
+    map<uint64, uint64> minimum_fees = 3;
 
     // Current network_block version, appropriate for new transactions.
     //

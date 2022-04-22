@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Database storage for discovered outputs.
 //! * Manages the mapping of (monitor id, subaddress index) -> [UnspentTxOut]s.
@@ -58,8 +58,8 @@ pub struct UnspentTxOut {
     pub attempted_spend_tombstone: u64,
 
     /// The token id of this TxOut
-    #[prost(uint32, tag = "7")]
-    pub token_id: u32,
+    #[prost(uint64, tag = "7")]
+    pub token_id: u64,
 }
 
 /// Type used as the key in the utxo_id_to_utxo  database.

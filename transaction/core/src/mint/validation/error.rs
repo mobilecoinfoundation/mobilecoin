@@ -13,7 +13,7 @@ pub enum Error {
     InvalidBlockVersion(BlockVersion),
 
     /// Invalid token id: {0}
-    InvalidTokenId(u32),
+    InvalidTokenId(TokenId),
 
     /// Invalid nonce length: {0}
     InvalidNonceLength(usize),
@@ -36,8 +36,8 @@ pub enum Error {
     /// Amount exceeds mint limit
     AmountExceedsMintLimit,
 
-    /// No master minters configured for token id {0}
-    NoMasterMinters(TokenId),
+    /// No governors configured for token id {0}
+    NoGovernors(TokenId),
 
     /// Nonce already seen in ledger
     NonceAlreadyUsed,

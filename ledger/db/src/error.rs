@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use displaydoc::Display;
 use mc_transaction_core::{membership_proofs::RangeError, BlockID, BlockIndex};
@@ -70,8 +70,10 @@ pub enum Error {
     /// Invalid mint configuration: {0}
     InvalidMintConfig(String),
 
-    /// Mint limit exceeded: {0} > {1}
-    MintLimitExceeded(u64, u64),
+    /** Mint limit exceeded: Attempted to mint {0}, currently minted {1} out
+     * of {2}
+     */
+    MintLimitExceeded(u64, u64, u64),
 
     /// Total minted amount cannot decrease: {0} < {1}
     TotalMintedAmountCannotDecrease(u64, u64),

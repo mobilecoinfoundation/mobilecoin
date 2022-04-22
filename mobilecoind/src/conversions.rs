@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Utilities for converting between `mobilecoind` and `mobilecoind_api` data
 //! types.

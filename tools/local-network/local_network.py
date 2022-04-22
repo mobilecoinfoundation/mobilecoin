@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# Copyright (c) 2018-2021 The MobileCoin Foundation
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 
 # TODO
 # - Better errors on missing env vars
@@ -222,17 +222,17 @@ class Node:
                 { "token_id": 0, "minimum_fee": self.minimum_fee },
                 {
                     "token_id": 1,
-                    "minimum_fee": 1,
-                    "master_minters": {
-                        "signers": open(os.path.join(MINTING_KEYS_DIR, 'master-minter1.pub')).read(),
+                    "minimum_fee": 1000,
+                    "governors": {
+                        "signers": open(os.path.join(MINTING_KEYS_DIR, 'governor1.pub')).read(),
                         "threshold": 1
                     }
                 },
                 {
                     "token_id": 2,
-                    "minimum_fee": 1,
-                    "master_minters": {
-                        "signers": open(os.path.join(MINTING_KEYS_DIR, 'master-minter2.pub')).read(),
+                    "minimum_fee": 1000,
+                    "governors": {
+                        "signers": open(os.path.join(MINTING_KEYS_DIR, 'governor2.pub')).read(),
                         "threshold": 1
                     }
                 },
@@ -240,6 +240,15 @@ class Node:
         }
         with open(self.tokens_config_file, 'w') as f:
             json.dump(tokens_config, f)
+
+        #  Sign the governors with the admin key.
+        subprocess.check_output(' '.join([
+            f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mc-consensus-mint-client',
+            'sign-governors',
+            f'--tokens {self.tokens_config_file}',
+            f'--signing-key {MINTING_KEYS_DIR}/minting-trust-root.pem',
+            f'--output-json {self.tokens_config_file}',
+        ]), shell=True)
 
         cmd = ' '.join([
             f'cd {PROJECT_DIR} && exec {TARGET_DIR}/consensus-service',
@@ -452,7 +461,7 @@ class Network:
             )
 
         subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mobilecoind -p mc-crypto-x509-test-vectors -p mc-consensus-mint-client {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mobilecoind -p mc-crypto-x509-test-vectors -p mc-consensus-mint-client -p mc-util-seeded-ed25519-key-gen {CARGO_FLAGS}',
             shell=True,
             check=True,
         )
@@ -479,11 +488,14 @@ class Network:
     def generate_minting_keys(self):
        os.mkdir(MINTING_KEYS_DIR)
 
-       subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {MINTING_KEYS_DIR}/master-minter1', shell=True)
-       subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/master-minter1 -out {MINTING_KEYS_DIR}/master-minter1.pub', shell=True)
+       subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {MINTING_KEYS_DIR}/governor1', shell=True)
+       subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/governor1 -out {MINTING_KEYS_DIR}/governor1.pub', shell=True)
 
-       subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {MINTING_KEYS_DIR}/master-minter2', shell=True)
-       subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/master-minter2 -out {MINTING_KEYS_DIR}/master-minter2.pub', shell=True)
+       subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {MINTING_KEYS_DIR}/governor2', shell=True)
+       subprocess.check_output(f'openssl pkey -pubout -in {MINTING_KEYS_DIR}/governor2 -out {MINTING_KEYS_DIR}/governor2.pub', shell=True)
+
+       # This matches the hardcoded key in consensus/enclave/impl/build.rs
+       subprocess.check_output(f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mc-util-seeded-ed25519-key-gen --seed abababababababababababababababababababababababababababababababab > {MINTING_KEYS_DIR}/minting-trust-root.pem', shell=True)
 
     def start(self):
         self.stop()

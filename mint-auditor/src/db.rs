@@ -51,8 +51,8 @@ pub const COUNTERS_KEY: &str = "counters";
 #[derive(Deserialize, Eq, Message, PartialEq, Serialize)]
 pub struct BlockAuditData {
     /// A map of token id -> calculated balance.
-    #[prost(btree_map = "uint32, uint64", tag = 1)]
-    pub balance_map: BTreeMap<u32, u64>,
+    #[prost(btree_map = "uint64, uint64", tag = 1)]
+    pub balance_map: BTreeMap<u64, u64>,
 }
 
 /// Statistics we keep track of.
@@ -239,15 +239,24 @@ impl MintAuditorDb {
                 .mint_config_store
                 .get_active_mint_config_for_mint_tx(mint_tx, &db_txn)
             {
-                Ok(_) => {
+                Ok(active_mint_config) => {
                     // Got a match, which is what we were hoping would happen.
+                    // Update the total amount this configuration has minted.
+                    let total_minted = active_mint_config.total_minted + mint_tx.prefix.amount;
+                    self.mint_config_store.update_total_minted(
+                        &active_mint_config.mint_config,
+                        total_minted,
+                        &mut db_txn,
+                    )?;
                 }
-                Err(LedgerDbError::NotFound) | Err(LedgerDbError::MintLimitExceeded(_, _)) => {
+                Err(err @ LedgerDbError::NotFound)
+                | Err(err @ LedgerDbError::MintLimitExceeded(_, _, _)) => {
                     log::crit!(
                         self.logger,
-                        "Block {}: Found mint tx {} that did not match any active mint config!",
+                        "Block {}: Found mint tx {} that did not match any active mint config: {}",
                         block_index,
                         mint_tx,
+                        err,
                     );
 
                     counters.num_mint_txs_without_matching_mint_config += 1;
@@ -992,6 +1001,130 @@ mod tests {
                 num_blocks_synced: block.index + 1,
                 num_burns_exceeding_balance: 0,
                 num_mint_txs_without_matching_mint_config: 2,
+            }
+        );
+    }
+
+    // MintTxs that exceed the MintConfigTx limit get counted.
+    #[test_with_logger]
+    fn test_sync_blocks_counts_mint_txs_exceeding_total_mint_limit(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let token_id1 = TokenId::from(1);
+
+        let mint_audit_db_path = tempdir().unwrap();
+        let mint_audit_db = MintAuditorDb::create_or_open(&mint_audit_db_path, logger).unwrap();
+
+        let mut ledger_db = create_ledger();
+        let account_key = AccountKey::random(&mut rng);
+        let initial_num_blocks = 3;
+        initialize_ledger(
+            BlockVersion::MAX,
+            &mut ledger_db,
+            initial_num_blocks,
+            &account_key,
+            &mut rng,
+        );
+
+        // The blocks we currently have in the ledger contain no burning or minting.
+        for block_index in 0..initial_num_blocks {
+            let block_data = ledger_db.get_block_data(block_index).unwrap();
+
+            let mint_audit_data = mint_audit_db
+                .sync_block(block_data.block(), block_data.contents())
+                .unwrap();
+
+            assert_eq!(mint_audit_data, BlockAuditData::default());
+        }
+
+        // Sync a block that contains a MintConfigTx with a total limit we are able to
+        // exceed.
+        let (mut mint_config_tx1, signers1) =
+            create_mint_config_tx_and_signers(token_id1, &mut rng);
+        mint_config_tx1.prefix.total_mint_limit = 2;
+
+        assert!(
+            mint_config_tx1.prefix.configs[0].mint_limit > mint_config_tx1.prefix.total_mint_limit
+        );
+
+        let block_contents = BlockContents {
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx1)],
+            ..Default::default()
+        };
+
+        let parent_block = ledger_db
+            .get_block(ledger_db.num_blocks().unwrap() - 1)
+            .unwrap();
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        let mint_audit_data = mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        assert_eq!(
+            mint_audit_data,
+            BlockAuditData {
+                balance_map: BTreeMap::default(),
+            }
+        );
+
+        // Sync a block that mints the total mint limit.
+        let mint_tx1 = create_mint_tx(
+            token_id1,
+            &signers1,
+            mint_config_tx1.prefix.total_mint_limit,
+            &mut rng,
+        );
+
+        let block_contents = BlockContents {
+            mint_txs: vec![mint_tx1],
+            outputs: (0..3).map(|_i| create_test_tx_out(&mut rng)).collect(),
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        mint_audit_db.sync_block(&block, &block_contents).unwrap();
+
+        assert_eq!(
+            mint_audit_db.get_counters().unwrap(),
+            Counters {
+                num_blocks_synced: block.index + 1,
+                num_burns_exceeding_balance: 0,
+                num_mint_txs_without_matching_mint_config: 0,
+            }
+        );
+
+        // Minting more should get flagged since we are exceeding the total mint limit.
+        let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
+
+        let block_contents = BlockContents {
+            mint_txs: vec![mint_tx1],
+            outputs: (0..3).map(|_i| create_test_tx_out(&mut rng)).collect(),
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        mint_audit_db.sync_block(&block, &block_contents).unwrap();
+
+        assert_eq!(
+            mint_audit_db.get_counters().unwrap(),
+            Counters {
+                num_blocks_synced: block.index + 1,
+                num_burns_exceeding_balance: 0,
+                num_mint_txs_without_matching_mint_config: 1,
             }
         );
     }

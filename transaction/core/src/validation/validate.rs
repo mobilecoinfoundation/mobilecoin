@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Transaction validation.
 
@@ -11,7 +11,7 @@ use crate::{
     constants::*,
     membership_proofs::{derive_proof_at_index, is_membership_proof_valid},
     tx::{Tx, TxOut, TxOutMembershipProof, TxPrefix},
-    BlockVersion, CompressedCommitment,
+    BlockVersion, CompressedCommitment, TokenId,
 };
 use mc_common::HashSet;
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -265,7 +265,7 @@ fn validate_no_masked_token_id_exists(tx_out: &TxOut) -> TransactionValidationRe
 /// All outputs have a masked token id (old-style TxOuts (Pre MCIP #25) are
 /// rejected)
 fn validate_masked_token_id_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
-    if tx_out.masked_amount.masked_token_id.len() != 4 {
+    if tx_out.masked_amount.masked_token_id.len() != TokenId::NUM_BYTES {
         return Err(TransactionValidationError::MissingMaskedTokenId);
     }
     Ok(())

@@ -41,6 +41,7 @@ impl From<&MintConfigTxPrefix> for external::MintConfigTxPrefix {
         dst.set_configs(src.configs.iter().map(external::MintConfig::from).collect());
         dst.set_nonce(src.nonce.clone());
         dst.set_tombstone_block(src.tombstone_block);
+        dst.set_total_mint_limit(src.total_mint_limit);
         dst
     }
 }
@@ -61,6 +62,7 @@ impl TryFrom<&external::MintConfigTxPrefix> for MintConfigTxPrefix {
             configs,
             nonce: source.get_nonce().to_vec(),
             tombstone_block: source.get_tombstone_block(),
+            total_mint_limit: source.get_total_mint_limit(),
         })
     }
 }
@@ -157,6 +159,7 @@ mod tests {
                 ],
                 nonce: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
                 tombstone_block: 100,
+                total_mint_limit: 123456,
             },
             signature: test_multi_sig(),
         };

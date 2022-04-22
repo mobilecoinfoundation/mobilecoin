@@ -11,12 +11,12 @@ use mc_common::{
 };
 use mc_consensus_enclave::{BlockchainConfig, ConsensusServiceSgxEnclave, ENCLAVE_FILE};
 use mc_consensus_service::{
-    config::Config,
     consensus_service::{ConsensusService, ConsensusServiceError},
     mint_tx_manager::MintTxManagerImpl,
     tx_manager::TxManagerImpl,
     validators::DefaultTxManagerUntrustedInterfaces,
 };
+use mc_consensus_service_config::Config;
 use mc_ledger_db::LedgerDB;
 use mc_util_cli::ParserWithBuildInfo;
 use std::{
@@ -34,10 +34,10 @@ fn main() -> Result<(), ConsensusServiceError> {
     let config = Config::parse();
     let local_node_id = config.node_id();
     let fee_map = config.tokens().fee_map().expect("Could not parse fee map");
-    let master_minters_map = config
+    let governors_map = config
         .tokens()
-        .token_id_to_master_minters()
-        .expect("Could not parse master minters map");
+        .token_id_to_governors()
+        .expect("Could not parse governors map");
 
     let (logger, _global_logger_guard) = create_app_logger(o!(
         "mc.local_node_id" => local_node_id.responder_id.to_string(),
@@ -67,7 +67,8 @@ fn main() -> Result<(), ConsensusServiceError> {
 
     let blockchain_config = BlockchainConfig {
         fee_map: fee_map.clone(),
-        master_minters_map: master_minters_map.clone(),
+        governors_map: governors_map.clone(),
+        governors_signature: config.tokens().governors_signature,
         block_version: config.block_version,
     };
 
@@ -116,7 +117,7 @@ fn main() -> Result<(), ConsensusServiceError> {
     let mint_tx_manager = MintTxManagerImpl::new(
         local_ledger.clone(),
         config.block_version,
-        master_minters_map,
+        governors_map,
         logger.clone(),
     );
 

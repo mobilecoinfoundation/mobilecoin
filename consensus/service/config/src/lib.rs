@@ -3,10 +3,12 @@
 //! Configuration parameters for the Consensus Service application.
 #![deny(missing_docs)]
 
+mod error;
 mod network;
 mod tokens;
 
-use crate::config::{network::NetworkConfig, tokens::TokensConfig};
+pub use crate::{error::Error, network::NetworkConfig, tokens::TokensConfig};
+
 use clap::Parser;
 use mc_attest_core::ProviderId;
 use mc_common::{NodeID, ResponderId};
@@ -172,7 +174,7 @@ fn parse_block_version(s: &str) -> Result<BlockVersion, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_consensus_enclave::FeeMap;
+    use mc_consensus_enclave_api::FeeMap;
     use mc_transaction_core::{tokens::Mob, Token};
 
     #[test]

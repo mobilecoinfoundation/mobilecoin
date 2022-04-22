@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2020 MobileCoin Inc.
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 
 import argparse
 import os
@@ -27,7 +27,7 @@ class FogNetwork(Network):
             '-p mc-fog-ledger-server',
             '-p mc-fog-report-server',
             '-p mc-fog-sql-recovery-db',
-            '-p mc-fog-test-client'
+            '-p mc-fog-test-client',
             '-p mc-fog-view-server',
             f'{CARGO_FLAGS}',
         ]))

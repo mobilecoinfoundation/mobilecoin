@@ -2,10 +2,10 @@
 
 //! Tokens configuration.
 
-use crate::consensus_service::ConsensusServiceError;
+use crate::error::Error;
 use mc_common::HashSet;
-use mc_consensus_enclave::{FeeMap, MasterMintersMap};
-use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public};
+use mc_consensus_enclave_api::{FeeMap, GovernorsMap, GovernorsVerifier};
+use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, Ed25519Signature};
 use mc_crypto_multisig::SignerSet;
 use mc_transaction_core::{tokens::Mob, Token, TokenId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -18,7 +18,7 @@ mod pem_signer_set {
     use super::*;
     use pem::Pem;
 
-    /// A helper struct for ser/derserializing an Ed25519 SignerSet that is PEM
+    /// A helper struct for ser/deserializing an Ed25519 SignerSet that is PEM
     /// encoded.
     #[derive(Serialize, Deserialize)]
     struct PemSignerSet {
@@ -76,6 +76,35 @@ mod pem_signer_set {
     }
 }
 
+mod hex_signature {
+    use super::*;
+    use std::convert::TryFrom;
+
+    /// Helper method for serializing an Ed25519Signature into a hex string.
+    pub fn serialize<S: Serializer>(
+        signature: &Option<Ed25519Signature>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        signature.as_ref().map(hex::encode).serialize(serializer)
+    }
+
+    /// A helper method for deserializing an Ed25519Signature from a hex string.
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<Ed25519Signature>, D::Error> {
+        let hex_string: Option<String> = Deserialize::deserialize(deserializer)?;
+        match hex_string.as_deref() {
+            None | Some("") => Ok(None),
+            Some(hex_string) => {
+                let bytes = hex::decode(hex_string).map_err(serde::de::Error::custom)?;
+                Ok(Some(
+                    Ed25519Signature::try_from(&bytes[..]).map_err(serde::de::Error::custom)?,
+                ))
+            }
+        }
+    }
+}
+
 /// Single token configuration.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TokenConfig {
@@ -93,11 +122,11 @@ pub struct TokenConfig {
     #[serde(default)]
     allow_any_fee: bool,
 
-    /// Master minters - if set, controls the set of keys that can sign
+    /// Governors - if set, controls the set of keys that can sign
     /// minting-configuration transactions.
     /// Not supported for MOB
     #[serde(default, with = "pem_signer_set")]
-    master_minters: Option<SignerSet<Ed25519Public>>,
+    governors: Option<SignerSet<Ed25519Public>>,
 }
 
 impl TokenConfig {
@@ -113,62 +142,49 @@ impl TokenConfig {
             .or_else(|| FeeMap::default().get_fee_for_token(&self.token_id()))
     }
 
-    /// Master minters config, when available.
-    pub fn master_minters(&self) -> Option<&SignerSet<Ed25519Public>> {
-        // Can never have master minters for MOB
+    /// Governors config, when available.
+    pub fn governors(&self) -> Option<&SignerSet<Ed25519Public>> {
+        // Can never have governors for MOB
         if self.token_id == TokenId::MOB {
             return None;
         }
-        self.master_minters.as_ref()
+        self.governors.as_ref()
     }
 
     /// Check if the token configuration is valid.
-    pub fn validate(&self) -> Result<(), ConsensusServiceError> {
+    pub fn validate(&self) -> Result<(), Error> {
         // We must have a fee for every configured token.
         if self.minimum_fee_or_default().is_none() {
-            return Err(ConsensusServiceError::Configuration(
-                "missing minimum fee".to_string(),
-            ));
+            return Err(Error::MissingMinimumFee(self.token_id));
         }
 
         // By default, we restrict MOB minimum fee to a sane value.
         if self.token_id == Mob::ID {
             let mob_fee = self.minimum_fee_or_default().unwrap(); // We are guaranteed to have a minimum fee for MOB.
             if !self.allow_any_fee && !ACCEPTABLE_MOB_FEE_VALUES.contains(&mob_fee) {
-                return Err(ConsensusServiceError::Configuration(format!(
-                    "Fee {} picoMOB is out of bounds",
-                    mob_fee
-                )));
+                return Err(Error::FeeOutOfBounds(mob_fee, self.token_id));
             }
         } else {
             // allow_any_fee can only be used for MOB
             if self.allow_any_fee {
-                return Err(ConsensusServiceError::Configuration(
-                    "allow_any_fee can only be used for MOB".to_string(),
-                ));
+                return Err(Error::AllowAnyFeeNotAllowed(self.token_id));
             }
         }
 
         // Validate minting configuration if present.
-        if let Some(master_minters) = &self.master_minters {
+        if let Some(governors) = &self.governors {
             // MOB cannot be minted.
             if self.token_id == TokenId::MOB {
-                return Err(ConsensusServiceError::Configuration(
-                    "MOB cannot have minting configuration".to_string(),
-                ));
+                return Err(Error::MintConfigNotAllowed(self.token_id));
             }
 
-            // We must have at least one master minter.
-            if master_minters.signers().is_empty() || master_minters.threshold() == 0 {
-                return Err(ConsensusServiceError::Configuration(
-                    "must have at least one signer".to_string(),
-                ));
+            // We must have at least one governor.
+            if governors.signers().is_empty() || governors.threshold() == 0 {
+                return Err(Error::NoSigners(self.token_id));
             }
 
-            if master_minters.threshold() as usize > master_minters.signers().len() {
-                return Err(ConsensusServiceError::Configuration(
-                    "signer set threshold is greater than the number of signers".to_string(),
-                ));
+            if governors.threshold() as usize > governors.signers().len() {
+                return Err(Error::SignerSetThresholdExceedsSigners(self.token_id));
             }
         }
 
@@ -180,6 +196,11 @@ impl TokenConfig {
 /// Tokens configuration.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TokensConfig {
+    /// Governors signature generated using the `mc-consensus-mint-client
+    /// sign-governors` command.
+    #[serde(default, with = "hex_signature")]
+    pub governors_signature: Option<Ed25519Signature>,
+
     /// Token configurations (one for each supported token).
     tokens: Vec<TokenConfig>,
 }
@@ -187,11 +208,12 @@ pub struct TokensConfig {
 impl Default for TokensConfig {
     fn default() -> Self {
         Self {
+            governors_signature: None,
             tokens: vec![TokenConfig {
                 token_id: Mob::ID,
                 minimum_fee: Some(Mob::MINIMUM_FEE),
                 allow_any_fee: false,
-                master_minters: None,
+                governors: None,
             }],
         }
     }
@@ -199,29 +221,18 @@ impl Default for TokensConfig {
 
 impl TokensConfig {
     /// Get the tokens configuration by loading the tokens.toml/json file.
-    pub fn load_from_path(path: impl AsRef<Path>) -> Result<Self, ConsensusServiceError> {
+    pub fn load_from_path(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path.as_ref();
 
         // Read configuration file.
-        let data = fs::read_to_string(path).map_err(|err| {
-            ConsensusServiceError::Configuration(format!("error reading file: {}", err))
-        })?;
+        let data = fs::read_to_string(path)?;
 
         // Parse configuration file.
         let tokens_config: Self = match path.extension().and_then(|ext| ext.to_str()) {
-            None => Err(ConsensusServiceError::Configuration(
-                "failed figuring out file extension".to_owned(),
-            )),
-            Some("toml") => toml::from_str(&data).map_err(|err| {
-                ConsensusServiceError::Configuration(format!("TOML parsing: {:?}", err))
-            }),
-            Some("json") => serde_json::from_str(&data).map_err(|err| {
-                ConsensusServiceError::Configuration(format!("JSON parsing: {:?}", err))
-            }),
-            Some(ext) => Err(ConsensusServiceError::Configuration(format!(
-                "Unrecognized extension '{}'",
-                ext
-            ))),
+            None => Err(Error::PathExtension),
+            Some("toml") => toml::from_str(&data).map_err(Error::from),
+            Some("json") => serde_json::from_str(&data).map_err(Error::from),
+            Some(ext) => Err(Error::UnrecognizedExtension(ext.to_string())),
         }?;
 
         tokens_config.validate()?;
@@ -229,34 +240,21 @@ impl TokensConfig {
     }
 
     /// Validate the tokens configuration.
-    pub fn validate(&self) -> Result<(), ConsensusServiceError> {
+    pub fn validate(&self) -> Result<(), Error> {
         // Cannot have duplicate configuration for a single token.
         let unique_token_ids = HashSet::from_iter(self.tokens.iter().map(|token| token.token_id));
         if unique_token_ids.len() != self.tokens.len() {
-            return Err(ConsensusServiceError::Configuration(
-                "duplicate token configuration found".to_owned(),
-            ));
+            return Err(Error::DuplicateTokenConfig);
         }
 
         // Must have MOB.
         if self.get_token_config(&Mob::ID).is_none() {
-            return Err(ConsensusServiceError::Configuration(
-                "MOB token configuration not found".to_owned(),
-            ));
+            return Err(Error::MissingMobConfig);
         }
 
         // Validate the configuration of each token
         for token in self.tokens.iter() {
-            token.validate().map_err(|err| {
-                if let ConsensusServiceError::Configuration(msg) = err {
-                    ConsensusServiceError::Configuration(format!(
-                        "token id {}: {}",
-                        token.token_id, msg
-                    ))
-                } else {
-                    err
-                }
-            })?;
+            token.validate()?;
         }
 
         // Tokens configuration is valid.
@@ -269,58 +267,58 @@ impl TokensConfig {
     }
 
     /// Construct a FeeMap based on the configuration.
-    pub fn fee_map(&self) -> Result<FeeMap, ConsensusServiceError> {
+    pub fn fee_map(&self) -> Result<FeeMap, Error> {
         self.validate()?;
 
-        FeeMap::try_from_iter(
+        Ok(FeeMap::try_from_iter(
             self.tokens
                 .iter()
                 .map(|token_config| {
                     Ok((
                         token_config.token_id,
-                        token_config.minimum_fee_or_default().ok_or_else(|| {
-                            ConsensusServiceError::Configuration(format!(
-                                "missing minimum fee for token id {:?}",
-                                token_config.token_id
-                            ))
-                        })?,
+                        token_config
+                            .minimum_fee_or_default()
+                            .ok_or(Error::MissingMinimumFee(token_config.token_id))?,
                     ))
                 })
-                .collect::<Result<Vec<_>, ConsensusServiceError>>()?,
-        )
-        .map_err(|err| ConsensusServiceError::Configuration(format!("FeeMap: {}", err)))
+                .collect::<Result<Vec<_>, Error>>()?,
+        )?)
     }
     /// Get the entire set of configured tokens.
     pub fn tokens(&self) -> &[TokenConfig] {
         &self.tokens
     }
 
-    /// Get a map of token id -> master minters.
-    pub fn token_id_to_master_minters(&self) -> Result<MasterMintersMap, ConsensusServiceError> {
+    /// Get a map of token id -> governors.
+    pub fn token_id_to_governors(&self) -> Result<GovernorsMap, Error> {
         self.validate()?;
 
-        MasterMintersMap::try_from_iter(self.tokens.iter().filter_map(|token_config| {
-            token_config
-                .master_minters
-                .as_ref()
-                .map(|master_minters| (token_config.token_id, master_minters.clone()))
-        }))
-        .map_err(|err| ConsensusServiceError::Configuration(format!("MasterMintersMap: {}", err)))
+        Ok(GovernorsMap::try_from_iter(self.tokens.iter().filter_map(
+            |token_config| {
+                token_config
+                    .governors
+                    .as_ref()
+                    .map(|governors| (token_config.token_id, governors.clone()))
+            },
+        ))?)
+    }
+
+    /// Verify the governors signature against a given public key
+    pub fn verify_governors_signature(&self, key: &Ed25519Public) -> Result<(), Error> {
+        let governors_map = self.token_id_to_governors()?;
+        let signature = self
+            .governors_signature
+            .as_ref()
+            .ok_or(Error::MissingGovernorsSignature)?;
+        Ok(key.verify_governors_map(&governors_map, signature)?)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mc_crypto_keys::Ed25519Private;
     use std::convert::TryFrom;
-
-    fn assert_validation_error(tokens: &TokensConfig, err: &str) {
-        match tokens.validate() {
-            Ok(_) => panic!("expected an error"),
-            Err(ConsensusServiceError::Configuration(msg)) => assert_eq!(msg, err),
-            Err(e) => panic!("Unexpected error: {}", e),
-        }
-    }
 
     #[test]
     fn empty_config() {
@@ -336,7 +334,7 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since MOB is not specified.
-        assert_validation_error(&tokens, "MOB token configuration not found");
+        assert!(matches!(tokens.validate(), Err(Error::MissingMobConfig)));
     }
 
     #[test]
@@ -357,7 +355,7 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since we must have the MOB token configured.
-        assert_validation_error(&tokens, "MOB token configuration not found");
+        assert!(matches!(tokens.validate(), Err(Error::MissingMobConfig)));
         assert!(tokens.fee_map().is_err());
     }
 
@@ -378,7 +376,7 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since we must have the MOB token configured.
-        assert_validation_error(&tokens, "MOB token configuration not found");
+        assert!(matches!(tokens.validate(), Err(Error::MissingMobConfig)));
         assert!(tokens.fee_map().is_err());
     }
 
@@ -567,7 +565,9 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since the minimum fee for the second token is unknown.
-        assert_validation_error(&tokens, "token id 6: missing minimum fee");
+        assert!(
+            matches!(tokens.validate(), Err(Error::MissingMinimumFee(token_id)) if token_id == TokenId::from(6))
+        );
 
         // Getting the fee map should also fail.
         assert!(tokens.fee_map().is_err());
@@ -596,9 +596,8 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since allow_any_fee cannot be used on non-MOB tokens.
-        assert_validation_error(
-            &tokens,
-            "token id 1: allow_any_fee can only be used for MOB",
+        assert!(
+            matches!(tokens.validate(), Err(Error::AllowAnyFeeNotAllowed(token_id)) if token_id == TokenId::from(1))
         );
     }
 
@@ -620,7 +619,9 @@ mod tests {
         assert_eq!(tokens, tokens2);
 
         // Validation should fail since the fee is outside the allowed eange.
-        assert_validation_error(&tokens, "token id 0: Fee 1 picoMOB is out of bounds");
+        assert!(
+            matches!(tokens.validate(), Err(Error::FeeOutOfBounds(fee, token_id)) if fee == 1 && token_id == Mob::ID)
+        );
     }
 
     #[test]
@@ -641,8 +642,10 @@ mod tests {
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
         assert_eq!(tokens, tokens2);
 
-        // Validation should fail since the fee is outside the allowed eange.
-        assert_validation_error(&tokens, "token id 0: Fee 1 picoMOB is out of bounds");
+        // Validation should fail since the fee is outside the allowed range.
+        assert!(
+            matches!(tokens.validate(), Err(Error::FeeOutOfBounds(fee, token_id)) if fee == 1 && token_id == Mob::ID)
+        );
     }
 
     #[test]
@@ -675,12 +678,12 @@ mod tests {
     }
 
     #[test]
-    fn master_minters_serialize_deserialize_works() {
+    fn governors_serialize_deserialize_works() {
         let token_config = TokenConfig {
             token_id: TokenId::from(123),
             minimum_fee: Some(456),
             allow_any_fee: false,
-            master_minters: Some(SignerSet::new(
+            governors: Some(SignerSet::new(
                 vec![
                     Ed25519Public::try_from(&[3u8; 32][..]).unwrap(),
                     Ed25519Public::try_from(&[123u8; 32][..]).unwrap(),
@@ -697,12 +700,21 @@ mod tests {
 
     #[test]
     fn valid_minting_config() {
+        // Key generating using `openssl genpkey -algorithm ED25519`
+        let minting_trust_root_private_key_pem = pem::parse(
+            r#"-----BEGIN PRIVATE KEY-----
+            MC4CAQAwBQYDK2VwBCIEIC4Z5GeRSzvx61R4ydQK/1bOGLLDGptNwsEnzaMTV9KI
+            -----END PRIVATE KEY-----"#,
+        )
+        .unwrap();
+        let minting_trust_root_private_key =
+            Ed25519Private::try_from_der(&minting_trust_root_private_key_pem.contents[..]).unwrap();
+
         // Keys were generated using:
         // ```sh
         // pri_pem=$(openssl genpkey -algorithm ED25519)
         // echo -n "${pri_pem}" | openssl pkey -pubout
         // ```
-
         let pem1 = pem::parse(
             r#"-----BEGIN PUBLIC KEY-----
             MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
@@ -720,13 +732,17 @@ mod tests {
         let key2 = Ed25519Public::try_from_der(&pem2.contents[..]).unwrap();
 
         let input_toml: &str = r#"
+            # Signature generated by taking the above file and the admin private key above and running:
+            # cargo run --bin mc-consensus-mint-client -- sign-governors --tokens tokens.toml --signing-key private.pem
+            governors_signature = "d68fb53632835c23209528387cab9722bc5a2e6d092138468efa5babe11af7c2a20412cd90dcce2344febb23570e1961e6da37aa01e0bd9db4697a910f9fa408"
+
             [[tokens]]
             token_id = 0 # Must have MOB
-            
+
             [[tokens]]
             token_id = 1
             minimum_fee = 1
-            [tokens.master_minters]
+            [tokens.governors]
             signers = """
             -----BEGIN PUBLIC KEY-----
             MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
@@ -740,12 +756,13 @@ mod tests {
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         let input_json: &str = r#"{
+            "governors_signature": "d68fb53632835c23209528387cab9722bc5a2e6d092138468efa5babe11af7c2a20412cd90dcce2344febb23570e1961e6da37aa01e0bd9db4697a910f9fa408",
             "tokens": [
                 { "token_id": 0 },
                 {
                     "token_id": 1,
                     "minimum_fee": 1,
-                    "master_minters": {
+                    "governors": {
                         "signers": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=\n-----END PUBLIC KEY-----\n-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=\n-----END PUBLIC KEY-----",
                         "threshold": 1
                     }
@@ -763,7 +780,7 @@ mod tests {
             tokens
                 .get_token_config(&TokenId::from(1))
                 .unwrap()
-                .master_minters()
+                .governors()
                 .unwrap()
                 .signers()[0],
             key1
@@ -773,11 +790,15 @@ mod tests {
             tokens
                 .get_token_config(&TokenId::from(1))
                 .unwrap()
-                .master_minters()
+                .governors()
                 .unwrap()
                 .signers()[1],
             key2
         );
+        // The governors signature should've decoded successfully.
+        tokens
+            .verify_governors_signature(&Ed25519Public::from(&minting_trust_root_private_key))
+            .unwrap();
     }
 
     #[test]
@@ -785,8 +806,8 @@ mod tests {
         let input_toml: &str = r#"
             [[tokens]]
             token_id = 0
-            
-            [tokens.master_minters]
+
+            [tokens.governors]
             signers = """
             -----BEGIN PUBLIC KEY-----
             MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
@@ -797,7 +818,9 @@ mod tests {
 
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-        assert_validation_error(&tokens, "token id 0: MOB cannot have minting configuration");
+        assert!(
+            matches!(tokens.validate(), Err(Error::MintConfigNotAllowed(token_id)) if token_id == Mob::ID)
+        );
     }
 
     #[test]
@@ -805,18 +828,20 @@ mod tests {
         let input_toml: &str = r#"
             [[tokens]]
             token_id = 0 # Must have MOB
-            
+
             [[tokens]]
             token_id = 2
             minimum_fee = 1
-            [tokens.master_minters]
+            [tokens.governors]
             signers = ""
             threshold = 1
        "#;
 
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-        assert_validation_error(&tokens, "token id 2: must have at least one signer");
+        assert!(
+            matches!(tokens.validate(), Err(Error::NoSigners(token_id)) if token_id == TokenId::from(2))
+        );
     }
 
     #[test]
@@ -827,7 +852,7 @@ mod tests {
             [[tokens]]
             token_id = 2
             minimum_fee = 1
-            [tokens.master_minters]
+            [tokens.governors]
             signers = """
             -----BEGIN PUBLIC KEY-----
             MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
@@ -838,7 +863,9 @@ mod tests {
 
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-        assert_validation_error(&tokens, "token id 2: must have at least one signer");
+        assert!(
+            matches!(tokens.validate(), Err(Error::NoSigners(token_id)) if token_id == TokenId::from(2))
+        );
     }
 
     #[test]
@@ -858,7 +885,52 @@ mod tests {
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         // Validation should fail since we must have the MOB token configured.
-        assert_validation_error(&tokens, "duplicate token configuration found");
+        assert!(matches!(
+            tokens.validate(),
+            Err(Error::DuplicateTokenConfig)
+        ));
         assert!(tokens.fee_map().is_err());
+    }
+
+    #[test]
+    fn verify_governors_signature_detects_incorrect_signature() {
+        // Key generating using `openssl genpkey -algorithm ED25519`
+        let minting_trust_root_private_key_pem = pem::parse(
+            r#"-----BEGIN PRIVATE KEY-----
+            MC4CAQAwBQYDK2VwBCIEIC4Z5GeRSzvx61R4ydQK/1bOGLLDGptNwsEnzaMTV9KI
+            -----END PRIVATE KEY-----"#,
+        )
+        .unwrap();
+        let minting_trust_root_private_key =
+            Ed25519Private::try_from_der(&minting_trust_root_private_key_pem.contents[..]).unwrap();
+
+        let input_toml: &str = r#"
+            # Signature generated by taking the above file and the admin private key above and running:
+            # cargo run --bin mc-consensus-mint-client -- sign-governors --tokens tokens.toml --signing-key private.pem
+            governors_signature = "a07b628ebb74acd222a8d267f01dedbf1389db7ec3f2bb51d2270f4b43b4f2ebcdd5b43ee7574783ba483b03d9e2fb92dd0ed9d993509dad935532aede18790c"
+
+            [[tokens]]
+            token_id = 0 # Must have MOB
+
+            [[tokens]]
+            token_id = 1
+            minimum_fee = 1
+            [tokens.governors]
+            signers = """
+            -----BEGIN PUBLIC KEY-----
+            MCowBQYDK2VwAyEAyj6m0NRTlw/R28Q+R7vBakwybuaNFneKrvRVAYNp5WQ=
+            -----END PUBLIC KEY-----
+            -----BEGIN PUBLIC KEY-----
+            MCowBQYDK2VwAyEAl3XVo/DeiTjHn8dYQuEtBjQrEWNQSKpfzw3X9dewSVY=
+            -----END PUBLIC KEY-----
+            """
+            threshold = 2 # The signature was generated when this was set to 1
+       "#;
+        let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
+
+        // The governors signature should've decoded successfully.
+        assert!(!tokens
+            .verify_governors_signature(&Ed25519Public::from(&minting_trust_root_private_key))
+            .is_ok());
     }
 }

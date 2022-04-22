@@ -33,34 +33,39 @@ pub fn create_mint_config_tx_and_signers(
     let mut nonce: Vec<u8> = vec![0u8; NONCE_LENGTH];
     rng.fill_bytes(&mut nonce);
 
+    // We use next_u32 for individual configurations mint limit to ensure the total
+    // mint limit does not overflow.
+    let configs = vec![
+        MintConfig {
+            token_id: *token_id,
+            signer_set: SignerSet::new(vec![signer_1.public_key()], 1),
+            mint_limit: rng.next_u32() as u64,
+        },
+        MintConfig {
+            token_id: *token_id,
+            signer_set: SignerSet::new(vec![signer_2.public_key(), signer_3.public_key()], 1),
+            mint_limit: rng.next_u32() as u64,
+        },
+        MintConfig {
+            token_id: *token_id,
+            signer_set: SignerSet::new(
+                vec![
+                    signer_3.public_key(),
+                    signer_4.public_key(),
+                    signer_5.public_key(),
+                ],
+                2,
+            ),
+            mint_limit: rng.next_u32() as u64,
+        },
+    ];
+
     let prefix = MintConfigTxPrefix {
         token_id: *token_id,
-        configs: vec![
-            MintConfig {
-                token_id: *token_id,
-                signer_set: SignerSet::new(vec![signer_1.public_key()], 1),
-                mint_limit: rng.next_u64(),
-            },
-            MintConfig {
-                token_id: *token_id,
-                signer_set: SignerSet::new(vec![signer_2.public_key(), signer_3.public_key()], 1),
-                mint_limit: rng.next_u64(),
-            },
-            MintConfig {
-                token_id: *token_id,
-                signer_set: SignerSet::new(
-                    vec![
-                        signer_3.public_key(),
-                        signer_4.public_key(),
-                        signer_5.public_key(),
-                    ],
-                    2,
-                ),
-                mint_limit: rng.next_u64(),
-            },
-        ],
+        configs: configs.clone(),
         nonce,
         tombstone_block: 10,
+        total_mint_limit: configs[0].mint_limit + configs[1].mint_limit + configs[2].mint_limit,
     };
 
     let message = prefix.hash();

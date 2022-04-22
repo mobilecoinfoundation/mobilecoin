@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! An RCT_TYPE_BULLETPROOFS_2 signature.
 //!
@@ -70,7 +70,7 @@ impl SignatureRctBulletproofs {
         input_secrets: &[(RistrettoPrivate, u64, Scalar)],
         output_values_and_blindings: &[(u64, Scalar)],
         fee: u64,
-        token_id: u32,
+        token_id: u64,
         rng: &mut CSPRNG,
     ) -> Result<Self, Error> {
         sign_with_balance_check(
@@ -105,7 +105,7 @@ impl SignatureRctBulletproofs {
         rings: &[Vec<(CompressedRistrettoPublic, CompressedCommitment)>],
         output_commitments: &[CompressedCommitment],
         fee: u64,
-        token_id: u32,
+        token_id: u64,
         rng: &mut CSPRNG,
     ) -> Result<(), Error> {
         if !block_version.masked_token_id_feature_is_supported() && token_id != 0 {
@@ -247,7 +247,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     input_secrets: &[(RistrettoPrivate, u64, Scalar)],
     output_values_and_blindings: &[(u64, Scalar)],
     fee: u64,
-    token_id: u32,
+    token_id: u64,
     check_value_is_preserved: bool,
     rng: &mut CSPRNG,
 ) -> Result<SignatureRctBulletproofs, Error> {
@@ -480,7 +480,7 @@ mod rct_bulletproofs_tests {
         block_version: BlockVersion,
 
         /// Token id
-        token_id: u32,
+        token_id: u64,
     }
 
     impl SignatureParams {
@@ -498,7 +498,7 @@ mod rct_bulletproofs_tests {
             rng.fill_bytes(&mut message);
 
             let token_id = if block_version.masked_token_id_feature_is_supported() {
-                rng.next_u32()
+                rng.next_u64()
             } else {
                 0
             };

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The MobileCoin consensus service.
 
@@ -6,7 +6,6 @@ use crate::{
     api::{AttestedApiService, BlockchainApiService, ClientApiService, PeerApiService},
     background_work_queue::BackgroundWorkQueue,
     byzantine_ledger::ByzantineLedger,
-    config::Config,
     counters,
     mint_tx_manager::MintTxManager,
     peer_keepalive::PeerKeepalive,
@@ -27,6 +26,7 @@ use mc_common::{
 use mc_connection::{Connection, ConnectionManager};
 use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
 use mc_consensus_enclave::{ConsensusEnclave, Error as ConsensusEnclaveError};
+use mc_consensus_service_config::{Config, Error as ConfigError};
 use mc_crypto_keys::DistinguishedEncoding;
 use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
 use mc_peers::{ConsensusValue, PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
@@ -61,13 +61,18 @@ pub enum ConsensusServiceError {
     /// Report cache error: `{0}`
     ReportCache(ReportCacheError),
     /// Configuration: `{0}`
-    Configuration(String),
+    Config(ConfigError),
     /// Consensus enclave error: `{0}`
     ConsensusEnclave(ConsensusEnclaveError),
 }
 impl From<ReportCacheError> for ConsensusServiceError {
     fn from(src: ReportCacheError) -> Self {
         ConsensusServiceError::ReportCache(src)
+    }
+}
+impl From<ConfigError> for ConsensusServiceError {
+    fn from(src: ConfigError) -> Self {
+        ConsensusServiceError::Config(src)
     }
 }
 impl From<ConsensusEnclaveError> for ConsensusServiceError {
@@ -503,6 +508,7 @@ impl<
             .set(ByzantineLedger::new(
                 self.local_node_id.clone(),
                 self.config.network().quorum_set(),
+                self.enclave.clone(),
                 self.peer_manager.clone(),
                 self.ledger_db.clone(),
                 self.tx_manager.clone(),

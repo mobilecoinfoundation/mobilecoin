@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Defines the MemoBuilder trait, and the Default implementation
 //! The memo builder for recoverable transaction history is defined in a

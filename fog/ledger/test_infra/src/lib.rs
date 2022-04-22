@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Functionality for mocking and testing components in the ledger server
 
@@ -10,7 +10,7 @@ use mc_fog_ledger_enclave::{
     GetOutputsResponse, LedgerEnclave, OutputContext, Result as EnclaveResult,
 };
 use mc_fog_ledger_enclave_api::{KeyImageData, UntrustedKeyImageQueryResponse};
-use mc_ledger_db::{ActiveMintConfig, Error, Ledger};
+use mc_ledger_db::{ActiveMintConfig, ActiveMintConfigs, Error, Ledger};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     mint::MintTx,
@@ -189,7 +189,14 @@ impl Ledger for MockLedger {
         unimplemented!()
     }
 
-    fn get_active_mint_configs(&self, _token_id: TokenId) -> Result<Vec<ActiveMintConfig>, Error> {
+    fn get_active_mint_configs(
+        &self,
+        _token_id: TokenId,
+    ) -> Result<Option<ActiveMintConfigs>, Error> {
+        unimplemented!()
+    }
+
+    fn get_active_mint_configs_map(&self) -> Result<HashMap<TokenId, ActiveMintConfigs>, Error> {
         unimplemented!()
     }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2021 MobileCoin Inc.
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 
 import argparse
 import json
@@ -375,7 +375,7 @@ class FogConformanceTest:
         if not os.path.exists(enclave_pem):
             log_and_run_shell(f'openssl genrsa -out {enclave_pem} -3 3072')
 
-        log_and_run_shell(f"cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY={enclave_pem} INGEST_ENCLAVE_PRIVKEY={enclave_pem} LEDGER_ENCLAVE_PRIVKEY={enclave_pem} VIEW_ENCLAVE_PRIVKEY={enclave_pem} exec cargo build -p mc-util-keyfile -p mc-admin-http-gateway -p mc-crypto-x509-test-vectors -p mc-fog-view-server -p mc-fog-ledger-server -p mc-fog-ingest-server -p mc-fog-report-server -p mc-fog-report-cli -p mc-fog-ingest-client -p mc-fog-sql-recovery-db -p mc-fog-sample-paykit -p mc-fog-test-infra {flags}")
+        log_and_run_shell(f"cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY={enclave_pem} INGEST_ENCLAVE_PRIVKEY={enclave_pem} LEDGER_ENCLAVE_PRIVKEY={enclave_pem} VIEW_ENCLAVE_PRIVKEY={enclave_pem} exec cargo build -p mc-util-keyfile -p mc-admin-http-gateway -p mc-crypto-x509-test-vectors -p mc-fog-view-server -p mc-fog-ledger-server -p mc-fog-ingest-server -p mc-fog-report-server -p mc-fog-report-cli -p mc-fog-ingest-client -p mc-fog-sql-recovery-db -p mc-fog-sample-paykit -p mc-fog-test-infra  -p mc-consensus-mint-client -p mc-util-seeded-ed25519-key-gen {flags}")
 
     def __init__(self, work_dir, args):
         self.release = args.release

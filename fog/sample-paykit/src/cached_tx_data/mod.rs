@@ -1,13 +1,17 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::error::{Error, Result, TxOutMatchingError};
 use core::{
     cmp::{max, min},
     convert::TryFrom,
+    ops::{Range, RangeInclusive},
     result::Result as StdResult,
 };
 use displaydoc::Display;
-use mc_account_keys::{AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX};
+use mc_account_keys::{
+    AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
+    INVALID_SUBADDRESS_INDEX,
+};
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::RistrettoPublic;
 use mc_fog_api::{fog_common, ledger};
@@ -52,13 +56,18 @@ const MAX_KEY_IMAGES_PER_QUERY: usize = 100;
 /// Telemetry: Number of txos returned from query.
 const TELEMETRY_NUM_TXOS_KEY: Key = telemetry_static_key!("num-txos");
 
-/// Highest subaddress index we support.
+/// Subaddress index ranges which we support.
+/// The "low range" is any indices counting up from 0.
+/// The "high range" is any "special" indices counting down from u64::MAX.
+/// (See MCIP #36)
+///
 /// If TxOut's are found which belong to us but at an unsupported subaddress
 /// index, this will be detected, and a "SubaddressNotFound" error will be
 /// returned, and the client will not spend this TxOut, and the balance of this
 /// account will not reflect such TxOut's. This has to cover at least the
 /// default and change subaddress indexes.
-const MAX_SUBADDRESS_INDEX: u64 = CHANGE_SUBADDRESS_INDEX;
+const SUBADDRESS_LOW_RANGE: RangeInclusive<u64> = 0..=DEFAULT_SUBADDRESS_INDEX;
+const SUBADDRESS_HIGH_RANGE: Range<u64> = CHANGE_SUBADDRESS_INDEX..INVALID_SUBADDRESS_INDEX;
 
 /// This object keeps track of all TxOut's that are known to be ours, and which
 /// have been spent. It allows to check the current balance of the account, and
@@ -120,7 +129,8 @@ pub struct CachedTxData {
 impl CachedTxData {
     /// Create a new CachedTxData object
     pub fn new(account_key: AccountKey, address_book: Vec<PublicAddress>, logger: Logger) -> Self {
-        let spsk_to_index = (0..=MAX_SUBADDRESS_INDEX)
+        let spsk_to_index = SUBADDRESS_LOW_RANGE
+            .chain(SUBADDRESS_HIGH_RANGE)
             .map(|index| (*account_key.subaddress(index).spend_public_key(), index))
             .collect();
 
