@@ -1,4 +1,4 @@
-// Copyright 2018-2021 The MobileCoin Foundation
+// Copyright 2018-2022 The MobileCoin Foundation
 
 //! This module contains code related to reading/writing mnemonic-based accounts
 //! (either as protobuf or JSON strings) and converting them into AccountKey
