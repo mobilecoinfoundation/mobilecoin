@@ -251,7 +251,7 @@ impl SignatureRctBulletproofs {
                 .collect();
 
             let range_proof = RangeProof::from_bytes(&self.range_proof_bytes)
-                .map_err(|_e| Error::RangeProofDeserializationError)?;
+                .map_err(|_e| Error::RangeProofDeserialization)?;
 
             check_range_proofs(&range_proof, &commitments, generator, rng)?
         } else {
@@ -293,7 +293,7 @@ impl SignatureRctBulletproofs {
                 );
 
                 let range_proof = RangeProof::from_bytes(range_proof)
-                    .map_err(|_e| Error::RangeProofDeserializationError)?;
+                    .map_err(|_e| Error::RangeProofDeserialization)?;
 
                 check_range_proofs(&range_proof, &commitments, generator, rng)?
             }

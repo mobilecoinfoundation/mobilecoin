@@ -50,10 +50,10 @@ pub enum Error {
     ValueNotConserved,
 
     /// Invalid RangeProof: {0}
-    RangeProofError(String),
+    RangeProof(String),
 
     /// RangeProof Deserialization failed
-    RangeProofDeserializationError,
+    RangeProofDeserialization,
 
     /// TokenId is not allowed at this block version
     TokenIdNotAllowed,
@@ -91,6 +91,6 @@ impl From<mc_util_repr_bytes::LengthMismatch> for Error {
 
 impl From<RangeProofError> for Error {
     fn from(src: RangeProofError) -> Self {
-        Error::RangeProofError(src.to_string())
+        Error::RangeProof(src.to_string())
     }
 }
