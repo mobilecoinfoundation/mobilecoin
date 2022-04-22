@@ -1,0 +1,23 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Dispatch (manual) Job - Delete target dev namespace and all of its components.
+
+name: mobilecoin-dispatch-dev-delete
+
+on:
+  workflow_dispatch:
+    inputs:
+      namespace:
+        description: "Target Namespace"
+        type: string
+        required: true
+
+jobs:
+  delete:
+    uses: ./.github/workflows/mobilecoin-workflow-dev-delete.yaml
+    with:
+      namespace: ${{ github.event.inputs.namespace }}
+    secrets:
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}

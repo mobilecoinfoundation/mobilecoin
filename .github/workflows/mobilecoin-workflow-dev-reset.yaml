@@ -1,0 +1,99 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Reusable Workflow - Reset/remove all components from a development namespace.
+
+name: mobilecoin-workflow-dev-reset
+
+on:
+  workflow_call:
+    inputs:
+      namespace:
+        description: "Target Namespace"
+        type: string
+        required: true
+    secrets:
+      RANCHER_CLUSTER:
+        description: "Rancher cluster name"
+        required: true
+      RANCHER_URL:
+        description: "Rancher server URL"
+        required: true
+      RANCHER_TOKEN:
+        description: "Rancher access token"
+        required: true
+      LEDGER_AWS_ACCESS_KEY_ID:
+        description: "Ledger AWS S3 access"
+        required: true
+      LEDGER_AWS_SECRET_ACCESS_KEY:
+        description: "Ledger AWS S3 access"
+        required: true
+
+# We don't want to just delete the namespace on every run we need to preserve letsEncrypt certificates due to rate limits. We can delete app charts, postgres and dangling PVCs
+jobs:
+  list-values:
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: values
+      run: |
+        echo namespace ${{ inputs.namespace }}
+
+  reset-releases:
+    runs-on: [self-hosted, Linux, small]
+    strategy:
+      matrix:
+        chart:
+        - consensus-node-1
+        - consensus-node-2
+        - consensus-node-3
+        - consensus-node-4
+        - consensus-node-5
+        - fog-ingest-blue
+        - fog-ingest-green
+        - fog-recovery-postgresql
+        - fog-services
+        - mobilecoind
+    steps:
+    - name: Delete release
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-release-delete
+        namespace: ${{ inputs.namespace }}
+        release_name: ${{ matrix.chart }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+
+  reset-storage:
+    needs:
+    - reset-releases
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Delete PersistentVolumeClaims
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: pvcs-delete
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+
+  reset-s3:
+    needs:
+    - reset-releases
+    runs-on: [self-hosted, Linux, small]
+    container:
+      image: amazon/aws-cli:latest
+    steps:
+    - name: Clear out s3 bucket objects
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.LEDGER_AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.LEDGER_AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: eu-central-1
+        BUCKET: mobilecoin.eu.development.chain
+        NAMESPACE: ${{ inputs.namespace }}
+      run: |
+        aws s3 rm --only-show-errors --recursive s3://${BUCKET}/node1.${NAMESPACE}.development.mobilecoin.com
+        aws s3 rm --only-show-errors --recursive s3://${BUCKET}/node2.${NAMESPACE}.development.mobilecoin.com
+        aws s3 rm --only-show-errors --recursive s3://${BUCKET}/node3.${NAMESPACE}.development.mobilecoin.com
+        aws s3 rm --only-show-errors --recursive s3://${BUCKET}/node4.${NAMESPACE}.development.mobilecoin.com
+        aws s3 rm --only-show-errors --recursive s3://${BUCKET}/node5.${NAMESPACE}.development.mobilecoin.com

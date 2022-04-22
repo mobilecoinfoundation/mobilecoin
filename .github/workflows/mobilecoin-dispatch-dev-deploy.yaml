@@ -1,0 +1,47 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Dispatch (manual) Job - Deploy core apps to the development namespace.
+
+name: mobilecoin-dispatch-dev-deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      namespace:
+        description: "Target Namespace"
+        type: string
+        required: true
+      version:
+        description: "Chart Version"
+        type: string
+        required: true
+      docker_image_org:
+        description: "Docker Image Org"
+        type: string
+        required: true
+        default: docker.io/mobilecoin
+      ingest_color:
+        description: "Fog Ingest blue/green"
+        type: string
+        required: true
+        default: blue
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
+    with:
+      namespace: ${{ github.event.inputs.namespace }}
+      version: ${{ github.event.inputs.version }}
+      docker_image_org: ${{ github.event.inputs.docker_image_org }}
+      ingest_color: ${{ github.event.inputs.ingest_color }}
+    secrets:
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.LEDGER_AWS_ACCESS_KEY_ID }}
+      LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.LEDGER_AWS_SECRET_ACCESS_KEY }}
+      IAS_KEY: ${{ secrets.IAS_KEY }}
+      IAS_SPID: ${{ secrets.IAS_SPID }}
+      FOG_REPORT_SIGNING_CERT: ${{ secrets.FOG_REPORT_SIGNING_CERT }}
+      FOG_REPORT_SIGNING_CERT_KEY: ${{ secrets.FOG_REPORT_SIGNING_CERT_KEY }}
+      FOG_REPORT_SIGNING_CA_CERT: ${{ secrets.FOG_REPORT_SIGNING_CA_CERT }}

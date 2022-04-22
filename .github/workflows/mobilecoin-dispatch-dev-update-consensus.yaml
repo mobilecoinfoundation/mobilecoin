@@ -1,0 +1,40 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Dispatch (manual) Job - Update consensus nodes in a development namespace.
+
+name: mobilecoin-dispatch-dev-update-consensus
+
+on:
+  workflow_dispatch:
+    inputs:
+      namespace:
+        description: "Target Namespace"
+        type: string
+        required: true
+      version:
+        description: "Chart Version"
+        type: string
+        required: true
+      block_version:
+        description: "Block Version"
+        type: string
+        required: true
+        default: '0'
+
+jobs:
+  update-consensus-block-version:
+    uses: ./.github/workflows/mobilecoin-workflow-dev-update-block-version.yaml
+    with:
+      namespace: ${{ github.event.inputs.namespace }}
+      block_version: "${{ github.event.inputs.block_version }}"
+      version: ${{ github.event.inputs.version }}
+    secrets:
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.LEDGER_AWS_ACCESS_KEY_ID }}
+      LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.LEDGER_AWS_SECRET_ACCESS_KEY }}
+      IAS_KEY: ${{ secrets.IAS_KEY }}
+      IAS_SPID: ${{ secrets.IAS_SPID }}
+      FOG_REPORT_SIGNING_CERT: ${{ secrets.FOG_REPORT_SIGNING_CERT }}
+      FOG_REPORT_SIGNING_CERT_KEY: ${{ secrets.FOG_REPORT_SIGNING_CERT_KEY }}
