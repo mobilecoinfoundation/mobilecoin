@@ -56,6 +56,10 @@ pub struct ActiveMintConfigs {
     /// this set of configurations has been made active.
     #[prost(uint64, tag = "2")]
     pub total_mint_limit: u64,
+
+    /// The original MintConfigTx that this object was created from.
+    #[prost(message, required, tag = "3")]
+    pub mint_config_tx: MintConfigTx,
 }
 
 impl ActiveMintConfigs {
@@ -73,6 +77,84 @@ impl ActiveMintConfigs {
             false
         }
     }
+
+    /// Attempt to get an ActiveMintConfig that that is capable of minting the
+    /// given amount of tokens.
+    pub fn get_active_mint_config_for_mint_tx(
+        &self,
+        mint_tx: &MintTx,
+    ) -> Result<ActiveMintConfig, Error> {
+        // Check if the amount minted is going to tip us over the limit.
+        if !self.can_mint(mint_tx.prefix.amount) {
+            // should be changed to address that.
+            return Err(Error::MintLimitExceeded(
+                mint_tx.prefix.amount,
+                self.total_minted(),
+                self.total_mint_limit,
+            ));
+        }
+
+        // Sanity check that the MintConfigs match what was inside the original
+        // transaction.
+        let mint_configs = self
+            .configs
+            .iter()
+            .map(|c| &c.mint_config)
+            .collect::<Vec<_>>();
+        if mint_configs
+            != self
+                .mint_config_tx
+                .prefix
+                .configs
+                .iter()
+                .collect::<Vec<&MintConfig>>()
+        {
+            return Err(Error::InvalidMintConfig(
+                "MintConfigs do not match origianl transaction".to_string(),
+            ));
+        }
+
+        // Our default error is NotFound, in case we are unable to find a mint config
+        // that matches the mint tx. We might override it if we find one but the
+        // amount will exceed the mint limit.
+        let mut error = Error::NotFound;
+
+        let message = mint_tx.prefix.hash();
+        for active_mint_config in &self.configs {
+            // See if this mint config has signed the mint tx.
+            if active_mint_config
+                .mint_config
+                .signer_set
+                .verify(&message, &mint_tx.signature)
+                .is_err()
+            {
+                continue;
+            }
+
+            // This mint config has signed the mint tx. Is it allowed to mint the given
+            // amount of tokens?
+            // If we overflow (checked_add returns None) then we will keep looking for an
+            // active mint configuration that is able to accommodate the MintTx.
+            if let Some(new_total_minted) = active_mint_config
+                .total_minted
+                .checked_add(mint_tx.prefix.amount)
+            {
+                if new_total_minted <= active_mint_config.mint_config.mint_limit {
+                    return Ok(active_mint_config.clone());
+                }
+            }
+
+            // We found a mint config with a matching signature, but it cannot accommodate
+            // the amount this transaction is trying to mint.
+            error = Error::MintLimitExceeded(
+                mint_tx.prefix.amount,
+                active_mint_config.total_minted,
+                active_mint_config.mint_config.mint_limit,
+            );
+        }
+
+        Err(error)
+    }
 }
 
 impl From<&MintConfigTx> for ActiveMintConfigs {
@@ -88,6 +170,7 @@ impl From<&MintConfigTx> for ActiveMintConfigs {
                 })
                 .collect(),
             total_mint_limit: mint_config_tx.prefix.total_mint_limit,
+            mint_config_tx: mint_config_tx.clone(),
         }
     }
 }
@@ -262,57 +345,8 @@ impl MintConfigStore {
         let active_mint_configs = self
             .get_active_mint_configs(TokenId::from(mint_tx.prefix.token_id), db_transaction)?
             .ok_or(Error::NotFound)?;
-        let message = mint_tx.prefix.hash();
 
-        // Check if the amount minted is going to tip us over the limit.
-        if !active_mint_configs.can_mint(mint_tx.prefix.amount) {
-            // should be changed to address that.
-            return Err(Error::MintLimitExceeded(
-                mint_tx.prefix.amount,
-                active_mint_configs.total_minted(),
-                active_mint_configs.total_mint_limit,
-            ));
-        }
-
-        // Our default error is NotFound, in case we are unable to find a mint config
-        // that matches the mint tx. We might override it if we find one but the
-        // amount will exceed the mint limit.
-        let mut error = Error::NotFound;
-
-        for active_mint_config in active_mint_configs.configs {
-            // See if this mint config has signed the mint tx.
-            if active_mint_config
-                .mint_config
-                .signer_set
-                .verify(&message, &mint_tx.signature)
-                .is_err()
-            {
-                continue;
-            }
-
-            // This mint config has signed the mint tx. Is it allowed to mint the given
-            // amount of tokens?
-            // If we overflow (checked_add returns None) then we will keep looking for an
-            // active mint configuration that is able to accommodate the MintTx.
-            if let Some(new_total_minted) = active_mint_config
-                .total_minted
-                .checked_add(mint_tx.prefix.amount)
-            {
-                if new_total_minted <= active_mint_config.mint_config.mint_limit {
-                    return Ok(active_mint_config);
-                }
-            }
-
-            // We found a mint config with a matching signature, but it cannot accommodate
-            // the amount this transaction is trying to mint.
-            error = Error::MintLimitExceeded(
-                mint_tx.prefix.amount,
-                active_mint_config.total_minted,
-                active_mint_config.mint_config.mint_limit,
-            );
-        }
-
-        Err(error)
+        active_mint_configs.get_active_mint_config_for_mint_tx(mint_tx)
     }
 
     /// Update the total minted amount for a given MintConfig.

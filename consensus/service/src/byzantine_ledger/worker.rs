@@ -70,6 +70,9 @@ pub struct ByzantineLedgerWorker<
     // Tx manager.
     tx_manager: Arc<TXM>,
 
+    // Mint tx manager.
+    mint_tx_manager: Arc<MTXM>,
+
     // A map of responder id to a list of tx hashes that it is unable to provide. This allows us to
     // skip attempting to fetch txs that are bound to fail. A BTreeSet is used to speed up lookups
     // as expect to be doing more lookups than inserts.
@@ -170,6 +173,7 @@ impl<
             highest_issued_msg,
             ledger,
             tx_manager: tx_manager.clone(),
+            mint_tx_manager: mint_tx_manager.clone(),
             broadcaster,
             connection_manager,
             logger,
@@ -836,7 +840,13 @@ impl<
         let well_formed_encrypted_txs_with_proofs = self
             .tx_manager
             .tx_hashes_to_well_formed_encrypted_txs_and_proofs(&tx_hashes)
-            .unwrap_or_else(|e| panic!("Failed to build block from {:?}: {:?}", tx_hashes, e));
+            .unwrap_or_else(|e| panic!("failed resolving tx_hashes {:?}: {:?}", tx_hashes, e));
+
+        // Bundle mint_txs with the matching configuration that allows the minting.
+        let mint_txs_with_config = self
+            .mint_tx_manager
+            .mint_txs_with_config(&mint_txs)
+            .unwrap_or_else(|e| panic!("failed resolving mint txs {:?}: {:?}", mint_txs, e));
 
         // Get the root membership element, which is needed for validating the
         // membership proofs (and also storing in the block for bookkeeping
@@ -854,7 +864,7 @@ impl<
                 FormBlockInputs {
                     well_formed_encrypted_txs_with_proofs,
                     mint_config_txs,
-                    mint_txs,
+                    mint_txs_with_config,
                 },
                 &root_element,
             )
@@ -877,7 +887,7 @@ mod tests {
             worker::ByzantineLedgerWorker,
             IS_BEHIND_GRACE_PERIOD, MAX_PENDING_VALUES_TO_NOMINATE,
         },
-        mint_tx_manager::MockMintTxManager,
+        mint_tx_manager::{MintTxManagerImpl, MockMintTxManager},
         tx_manager::{MockTxManager, TxManager, TxManagerError, TxManagerImpl},
         validators::DefaultTxManagerUntrustedInterfaces,
     };
@@ -887,6 +897,7 @@ mod tests {
         NodeID, ResponderId,
     };
     use mc_connection::ConnectionManager;
+    use mc_consensus_enclave::GovernorsMap;
     use mc_consensus_enclave_mock::{ConsensusServiceMockEnclave, MockConsensusEnclave};
     use mc_consensus_scp::{
         msg::{NominatePayload, Topic::Nominate},
@@ -894,6 +905,7 @@ mod tests {
         MockScpNode, Msg, QuorumSet,
     };
     use mc_crypto_keys::Ed25519Pair;
+    use mc_crypto_multisig::SignerSet;
     use mc_ledger_db::{Ledger, MockLedger}; // Don't use test_utils::MockLedger.
     use mc_ledger_sync::{LedgerSyncError, MockLedgerSync, SCPNetworkState};
     use mc_peers::{ConsensusMsg, ConsensusValue, MockBroadcast, VerifiedConsensusMsg};
@@ -901,9 +913,12 @@ mod tests {
     use mc_transaction_core::{
         tx::{Tx, TxHash},
         validation::TransactionValidationError,
-        Block, BlockVersion,
+        Block, BlockContents, BlockVersion, TokenId,
     };
-    use mc_transaction_core_test_utils::{create_ledger, create_transaction, initialize_ledger};
+    use mc_transaction_core_test_utils::{
+        create_ledger, create_mint_config_tx_and_signers, create_mint_tx_to_recipient,
+        create_transaction, initialize_ledger, mint_config_tx_to_validated,
+    };
     use mc_util_metered_channel::{Receiver, Sender};
     use mc_util_metrics::OpMetrics;
     use mockall::predicate::eq;
@@ -1585,7 +1600,7 @@ mod tests {
             _ledger,
             mut ledger_sync,
             _tx_manager,
-            mint_tx_manager,
+            _mint_tx_manager,
             broadcast,
         ) = get_mocks(&local_node_id, &quorum_set, n_blocks);
         let enclave = ConsensusServiceMockEnclave::default();
@@ -1612,6 +1627,39 @@ mod tests {
             .insert(ConsensusServiceMockEnclave::tx_to_tx_context(&txs[2]))
             .unwrap();
 
+        // Generate a minting transaction.
+        let token_id1 = TokenId::from(2);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let mint_recipient = AccountKey::random(&mut rng);
+
+        let mint_tx1 = create_mint_tx_to_recipient(
+            token_id1,
+            &signers1,
+            12,
+            &mint_recipient.default_subaddress(),
+            &mut rng,
+        );
+
+        // Put MintConfigTx into the ledger so that MintTxManager::mint_txs_with_config
+        // can resolve it.
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+        let block_contents = BlockContents {
+            validated_mint_config_txs: vec![mint_config_tx_to_validated(&mint_config_tx1)],
+            ..Default::default()
+        };
+        let block = Block::new_with_parent(
+            block_version,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
+        let governors_map = GovernorsMap::try_from_iter([(token_id1, signer_set1)]).unwrap();
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger.clone(), block_version, governors_map, logger.clone());
+
         // Configure our mocks to land us into complete_current_slot
         ledger_sync.expect_is_behind().return_const(false);
         scp_node
@@ -1622,6 +1670,7 @@ mod tests {
             ConsensusValue::TxHash(hash_tx1),
             ConsensusValue::TxHash(hash_tx2),
             ConsensusValue::TxHash(hash_tx3),
+            ConsensusValue::MintTx(mint_tx1.clone()),
         ]);
         scp_node
             .expect_get_current_slot_metrics()
@@ -1654,20 +1703,23 @@ mod tests {
         worker.tick();
 
         // A new block should appear, with the outputs of our transactions.
-        let parent_block = ledger.get_block(n_blocks - 1).unwrap();
-        let block = ledger.get_block(n_blocks).unwrap();
-        let block_contents = ledger.get_block_contents(n_blocks).unwrap();
+        let block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+        let block_contents = ledger.get_block_contents(block.index).unwrap();
+        let parent_block = ledger.get_block(block.index - 1).unwrap();
 
         assert_eq!(block.index, parent_block.index + 1);
         assert_eq!(block.parent_id, parent_block.id);
 
         // The mock enclave does not mint a fee output, so the number of outputs matches
         // the number of transactions that we fed into it.
-        assert_eq!(block_contents.outputs.len(), 3);
+        assert_eq!(block_contents.outputs.len(), 4);
 
         assert!(block_contents.outputs.contains(&txs[0].prefix.outputs[0]));
         assert!(block_contents.outputs.contains(&txs[1].prefix.outputs[0]));
         assert!(block_contents.outputs.contains(&txs[2].prefix.outputs[0]));
+
+        // Our mint tx should make it into the block.
+        assert_eq!(block_contents.mint_txs, vec![mint_tx1]);
     }
 
     // TODO: test process_consensus_msgs

@@ -4,7 +4,7 @@
 //! combine callbacks.
 
 use crate::mint_tx_manager::MintTxManagerResult;
-use mc_transaction_core::mint::{MintConfigTx, MintTx};
+use mc_transaction_core::mint::{MintConfig, MintConfigTx, MintTx};
 
 #[cfg(test)]
 use mockall::*;
@@ -50,4 +50,18 @@ pub trait MintTxManager: Send {
         txs: &[MintTx],
         max_elements: usize,
     ) -> MintTxManagerResult<Vec<MintTx>>;
+
+    /// Lookup active mint configuration for a list of mint transactions.
+    /// This is used by the consensus enclave to determine whether MintTxs are
+    /// legitimate before proceeding to mint a block.
+    ///
+    /// # Arguments
+    /// * `txs` - List of transactions to lookup configuration for.
+    ///
+    /// Returns the list of transactions coupled with configuration that backs
+    /// the minting.
+    fn mint_txs_with_config(
+        &self,
+        txs: &[MintTx],
+    ) -> MintTxManagerResult<Vec<(MintTx, MintConfigTx, MintConfig)>>;
 }
