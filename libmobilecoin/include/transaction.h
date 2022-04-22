@@ -381,7 +381,7 @@ bool mc_memo_destination_memo_create(
   McMutableBuffer* MC_NONNULL out_memo_data,
   McError* MC_NULLABLE * MC_NULLABLE out_error
 )
-MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
+MC_ATTRIBUTE_NONNULL(1, 5);
 
 /// # Preconditions
 ///
