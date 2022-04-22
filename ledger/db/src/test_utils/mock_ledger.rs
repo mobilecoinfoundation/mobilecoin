@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{ActiveMintConfig, ActiveMintConfigs, Error, Ledger};
 use mc_account_keys::AccountKey;
@@ -198,6 +198,10 @@ impl Ledger for MockLedger {
         &self,
         _token_id: TokenId,
     ) -> Result<Option<ActiveMintConfigs>, Error> {
+        unimplemented!()
+    }
+
+    fn get_active_mint_configs_map(&self) -> Result<HashMap<TokenId, ActiveMintConfigs>, Error> {
         unimplemented!()
     }
 

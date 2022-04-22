@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Serves node-to-node gRPC requests.
 
@@ -494,7 +494,7 @@ mod tests {
             get_incoming_consensus_msgs_sender_ok(),
             get_scp_client_value_sender(),
             get_fetch_latest_msg_fn(),
-            known_responder_ids.clone(),
+            known_responder_ids,
             logger,
         );
 
@@ -524,7 +524,7 @@ mod tests {
             let mut ledger = MockLedger::new();
             ledger
                 .expect_get_block()
-                .return_const(Ok(Block::new_origin_block(&vec![])));
+                .return_const(Ok(Block::new_origin_block(&[])));
             mc_peers::ConsensusMsg::from_scp_msg(&ledger, scp_msg, &node_x_signer_key).unwrap()
         };
 
@@ -598,7 +598,7 @@ mod tests {
             let mut ledger = MockLedger::new();
             ledger
                 .expect_get_block()
-                .return_const(Ok(Block::new_origin_block(&vec![])));
+                .return_const(Ok(Block::new_origin_block(&[])));
             mc_peers::ConsensusMsg::from_scp_msg(&ledger, scp_msg, &node_a_signer_key).unwrap()
         };
 
@@ -716,7 +716,7 @@ mod tests {
             let mut ledger = MockLedger::new();
             ledger
                 .expect_get_block()
-                .return_const(Ok(Block::new_origin_block(&vec![])));
+                .return_const(Ok(Block::new_origin_block(&[])));
             mc_peers::ConsensusMsg::from_scp_msg(&ledger, scp_msg, &wrong_signer_key).unwrap()
         };
 

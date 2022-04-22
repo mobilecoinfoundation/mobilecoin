@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // Expose retrying wrappers for RDRAND 32 and 64 versions as appropriate
 // Note: Only expeted to compile on x86 and x86_64

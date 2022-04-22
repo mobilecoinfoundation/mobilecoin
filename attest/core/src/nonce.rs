@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Nonce structures
 
@@ -229,7 +229,7 @@ mod test {
     /// Test that our hex decoding matches hex::decode
     fn test_string_from_and_hex_decoding() {
         let s = "029a2f3945a8f6bb1fb5b11a54283a40";
-        let ias_nonce = IasNonce::from_hex(&s).unwrap();
+        let ias_nonce = IasNonce::from_hex(s).unwrap();
         assert_eq!(
             [2, 154, 47, 57, 69, 168, 246, 187, 31, 181, 177, 26, 84, 40, 58, 64],
             ias_nonce.0

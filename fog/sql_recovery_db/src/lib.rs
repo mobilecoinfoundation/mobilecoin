@@ -1534,7 +1534,7 @@ mod tests {
             egress_key1.version
         );
         assert_eq!(ingest_invocations[0].start_block, 0);
-        assert_eq!(ingest_invocations[0].decommissioned, false);
+        assert!(!ingest_invocations[0].decommissioned);
 
         assert_eq!(
             IngestInvocationId::from(ingest_invocations[1].id),
@@ -1550,7 +1550,7 @@ mod tests {
             egress_key2.version
         );
         assert_eq!(ingest_invocations[1].start_block, 100);
-        assert_eq!(ingest_invocations[1].decommissioned, false);
+        assert!(!ingest_invocations[1].decommissioned);
     }
 
     #[test_with_logger]
@@ -1575,7 +1575,7 @@ mod tests {
         assert_eq!(ranges.len(), 1);
         assert_eq!(ranges[0].id, invoc_id1);
         assert_eq!(ranges[0].start_block, 123);
-        assert_eq!(ranges[0].decommissioned, false);
+        assert!(!ranges[0].decommissioned);
         assert_eq!(ranges[0].last_ingested_block, None);
 
         // Add an ingested block and see that last_ingested_block gets updated.
@@ -1588,7 +1588,7 @@ mod tests {
             assert_eq!(ranges.len(), 1);
             assert_eq!(ranges[0].id, invoc_id1);
             assert_eq!(ranges[0].start_block, 123);
-            assert_eq!(ranges[0].decommissioned, false);
+            assert!(!ranges[0].decommissioned);
             assert_eq!(ranges[0].last_ingested_block, Some(block_index));
         }
 
@@ -1602,12 +1602,12 @@ mod tests {
 
         assert_eq!(ranges[0].id, invoc_id1);
         assert_eq!(ranges[0].start_block, 123);
-        assert_eq!(ranges[0].decommissioned, false);
+        assert!(!ranges[0].decommissioned);
         assert_eq!(ranges[0].last_ingested_block, Some(129));
 
         assert_eq!(ranges[1].id, invoc_id2);
         assert_eq!(ranges[1].start_block, 1020);
-        assert_eq!(ranges[1].decommissioned, false);
+        assert!(!ranges[1].decommissioned);
         assert_eq!(ranges[1].last_ingested_block, None);
 
         // Decomission the first ingest invocation and validate the returned data.
@@ -1618,12 +1618,12 @@ mod tests {
 
         assert_eq!(ranges[0].id, invoc_id1);
         assert_eq!(ranges[0].start_block, 123);
-        assert_eq!(ranges[0].decommissioned, true);
+        assert!(ranges[0].decommissioned);
         assert_eq!(ranges[0].last_ingested_block, Some(129));
 
         assert_eq!(ranges[1].id, invoc_id2);
         assert_eq!(ranges[1].start_block, 1020);
-        assert_eq!(ranges[1].decommissioned, false);
+        assert!(!ranges[1].decommissioned);
         assert_eq!(ranges[1].last_ingested_block, None);
 
         // Decomission the second ingest invocation and validate the returned data.
@@ -1634,12 +1634,12 @@ mod tests {
 
         assert_eq!(ranges[0].id, invoc_id1);
         assert_eq!(ranges[0].start_block, 123);
-        assert_eq!(ranges[0].decommissioned, true);
+        assert!(ranges[0].decommissioned);
         assert_eq!(ranges[0].last_ingested_block, Some(129));
 
         assert_eq!(ranges[1].id, invoc_id2);
         assert_eq!(ranges[1].start_block, 1020);
-        assert_eq!(ranges[1].decommissioned, true);
+        assert!(ranges[1].decommissioned);
         assert_eq!(ranges[1].last_ingested_block, None);
     }
 
@@ -1666,12 +1666,12 @@ mod tests {
 
         assert_eq!(ranges[0].id, invoc_id1);
         assert_eq!(ranges[0].start_block, 123);
-        assert_eq!(ranges[0].decommissioned, false);
+        assert!(!ranges[0].decommissioned);
         assert_eq!(ranges[0].last_ingested_block, None);
 
         assert_eq!(ranges[1].id, invoc_id2);
         assert_eq!(ranges[1].start_block, 456);
-        assert_eq!(ranges[1].decommissioned, false);
+        assert!(!ranges[1].decommissioned);
         assert_eq!(ranges[1].last_ingested_block, None);
 
         // Ensure we do not have any decommissioning events.
@@ -1679,13 +1679,7 @@ mod tests {
         assert_eq!(
             events
                 .iter()
-                .filter(
-                    |event| if let FogUserEvent::DecommissionIngestInvocation(_) = event {
-                        true
-                    } else {
-                        false
-                    }
-                )
+                .filter(|event| matches!(event, FogUserEvent::DecommissionIngestInvocation(_)))
                 .count(),
             0
         );
@@ -1698,12 +1692,12 @@ mod tests {
 
         assert_eq!(ranges[0].id, invoc_id1);
         assert_eq!(ranges[0].start_block, 123);
-        assert_eq!(ranges[0].decommissioned, false);
+        assert!(!ranges[0].decommissioned);
         assert_eq!(ranges[0].last_ingested_block, None);
 
         assert_eq!(ranges[1].id, invoc_id2);
         assert_eq!(ranges[1].start_block, 456);
-        assert_eq!(ranges[1].decommissioned, true);
+        assert!(ranges[1].decommissioned);
         assert_eq!(ranges[1].last_ingested_block, None);
 
         // We should have one decommissioning event.
@@ -1741,17 +1735,17 @@ mod tests {
 
         assert_eq!(ranges[0].id, invoc_id1);
         assert_eq!(ranges[0].start_block, 123);
-        assert_eq!(ranges[0].decommissioned, true);
+        assert!(ranges[0].decommissioned);
         assert_eq!(ranges[0].last_ingested_block, None);
 
         assert_eq!(ranges[1].id, invoc_id2);
         assert_eq!(ranges[1].start_block, 456);
-        assert_eq!(ranges[1].decommissioned, true);
+        assert!(ranges[1].decommissioned);
         assert_eq!(ranges[1].last_ingested_block, None);
 
         assert_eq!(ranges[2].id, invoc_id3);
         assert_eq!(ranges[2].start_block, 456);
-        assert_eq!(ranges[2].decommissioned, false);
+        assert!(!ranges[2].decommissioned);
         assert_eq!(ranges[2].last_ingested_block, None);
 
         // We should have one decommissioning event and one new ingest invocation event.
@@ -1810,8 +1804,8 @@ mod tests {
                 .order_by(schema::ingest_invocations::dsl::id)
                 .load(&conn)
                 .unwrap();
-        let mut invoc1_orig_last_active_at = invocs_last_active_at[0].clone();
-        let invoc2_orig_last_active_at = invocs_last_active_at[1].clone();
+        let mut invoc1_orig_last_active_at = invocs_last_active_at[0];
+        let invoc2_orig_last_active_at = invocs_last_active_at[1];
 
         // Sleep a second so that the timestamp update would show if it happens.
         std::thread::sleep(std::time::Duration::from_secs(1));
@@ -1857,7 +1851,7 @@ mod tests {
         assert!(invocs_last_active_at[0] > invoc1_orig_last_active_at);
         assert_eq!(invocs_last_active_at[1], invoc2_orig_last_active_at);
 
-        invoc1_orig_last_active_at = invocs_last_active_at[0].clone();
+        invoc1_orig_last_active_at = invocs_last_active_at[0];
 
         // Sleep so that timestamp change is noticeable if it happens
         std::thread::sleep(std::time::Duration::from_secs(1));
@@ -2426,7 +2420,7 @@ mod tests {
 
         assert_eq!(
             db.get_all_reports().unwrap(),
-            vec![(report_id2.into(), report2.clone())]
+            vec![(report_id2.into(), report2)]
         );
 
         // Retire the ingress public key
@@ -2493,7 +2487,7 @@ mod tests {
             )
             .unwrap(),
             vec![IngressPublicKeyRecord {
-                key: ingress_key1.clone(),
+                key: ingress_key1,
                 status: IngressPublicKeyStatus {
                     start_block: 123,
                     pubkey_expiry: 0,
@@ -2522,7 +2516,7 @@ mod tests {
             ),
             HashSet::from_iter(vec![
                 IngressPublicKeyRecord {
-                    key: ingress_key1.clone(),
+                    key: ingress_key1,
                     status: IngressPublicKeyStatus {
                         start_block: 123,
                         pubkey_expiry: 0,
@@ -2532,7 +2526,7 @@ mod tests {
                     last_scanned_block: None,
                 },
                 IngressPublicKeyRecord {
-                    key: ingress_key2.clone(),
+                    key: ingress_key2,
                     status: IngressPublicKeyStatus {
                         start_block: 456,
                         pubkey_expiry: 0,
@@ -2568,7 +2562,7 @@ mod tests {
                 ),
                 HashSet::from_iter(vec![
                     IngressPublicKeyRecord {
-                        key: ingress_key1.clone(),
+                        key: ingress_key1,
                         status: IngressPublicKeyStatus {
                             start_block: 123,
                             pubkey_expiry: 0,
@@ -2578,7 +2572,7 @@ mod tests {
                         last_scanned_block: Some(block_id),
                     },
                     IngressPublicKeyRecord {
-                        key: ingress_key2.clone(),
+                        key: ingress_key2,
                         status: IngressPublicKeyStatus {
                             start_block: 456,
                             pubkey_expiry: 0,
@@ -2609,7 +2603,7 @@ mod tests {
             ),
             HashSet::from_iter(vec![
                 IngressPublicKeyRecord {
-                    key: ingress_key1.clone(),
+                    key: ingress_key1,
                     status: IngressPublicKeyStatus {
                         start_block: 123,
                         pubkey_expiry: 0,
@@ -2619,7 +2613,7 @@ mod tests {
                     last_scanned_block: Some(130),
                 },
                 IngressPublicKeyRecord {
-                    key: ingress_key2.clone(),
+                    key: ingress_key2,
                     status: IngressPublicKeyStatus {
                         start_block: 456,
                         pubkey_expiry: 0,
@@ -2648,7 +2642,7 @@ mod tests {
             ),
             HashSet::from_iter(vec![
                 IngressPublicKeyRecord {
-                    key: ingress_key1.clone(),
+                    key: ingress_key1,
                     status: IngressPublicKeyStatus {
                         start_block: 123,
                         pubkey_expiry: 0,
@@ -2658,7 +2652,7 @@ mod tests {
                     last_scanned_block: Some(130),
                 },
                 IngressPublicKeyRecord {
-                    key: ingress_key2.clone(),
+                    key: ingress_key2,
                     status: IngressPublicKeyStatus {
                         start_block: 456,
                         pubkey_expiry: 0,
@@ -2696,7 +2690,7 @@ mod tests {
             ),
             HashSet::from_iter(vec![
                 IngressPublicKeyRecord {
-                    key: ingress_key1.clone(),
+                    key: ingress_key1,
                     status: IngressPublicKeyStatus {
                         start_block: 123,
                         pubkey_expiry: 0,
@@ -2706,7 +2700,7 @@ mod tests {
                     last_scanned_block: Some(130),
                 },
                 IngressPublicKeyRecord {
-                    key: ingress_key2.clone(),
+                    key: ingress_key2,
                     status: IngressPublicKeyStatus {
                         start_block: 456,
                         pubkey_expiry: 888,
@@ -2747,7 +2741,7 @@ mod tests {
                 ),
                 HashSet::from_iter(vec![
                     IngressPublicKeyRecord {
-                        key: ingress_key1.clone(),
+                        key: ingress_key1,
                         status: IngressPublicKeyStatus {
                             start_block: 123,
                             pubkey_expiry: 0,
@@ -2757,7 +2751,7 @@ mod tests {
                         last_scanned_block: Some(130),
                     },
                     IngressPublicKeyRecord {
-                        key: ingress_key2.clone(),
+                        key: ingress_key2,
                         status: IngressPublicKeyStatus {
                             start_block: 456,
                             pubkey_expiry: 888,
@@ -2782,7 +2776,7 @@ mod tests {
             )
             .unwrap(),
             vec![IngressPublicKeyRecord {
-                key: ingress_key2.clone(),
+                key: ingress_key2,
                 status: IngressPublicKeyStatus {
                     start_block: 456,
                     pubkey_expiry: 888,
@@ -2831,7 +2825,7 @@ mod tests {
             )
             .unwrap(),
             vec![IngressPublicKeyRecord {
-                key: ingress_key1.clone(),
+                key: ingress_key1,
                 status: IngressPublicKeyStatus {
                     start_block: 123,
                     pubkey_expiry: 0,
@@ -2894,7 +2888,7 @@ mod tests {
             )
             .unwrap(),
             vec![IngressPublicKeyRecord {
-                key: ingress_key1.clone(),
+                key: ingress_key1,
                 status: IngressPublicKeyStatus {
                     start_block: 123,
                     pubkey_expiry: 0,
@@ -2964,7 +2958,7 @@ mod tests {
             ),
             HashSet::<IngressPublicKeyRecord>::from_iter(vec![
                 IngressPublicKeyRecord {
-                    key: ingress_key1.clone(),
+                    key: ingress_key1,
                     status: IngressPublicKeyStatus {
                         start_block: 123,
                         pubkey_expiry: 0,
@@ -2974,7 +2968,7 @@ mod tests {
                     last_scanned_block: None,
                 },
                 IngressPublicKeyRecord {
-                    key: ingress_key2.clone(),
+                    key: ingress_key2,
                     status: IngressPublicKeyStatus {
                         start_block: 456,
                         pubkey_expiry: 0,
@@ -3062,7 +3056,7 @@ mod tests {
         let ranges = db.get_ingestable_ranges().unwrap();
         assert_eq!(ranges.len(), 1);
         assert_eq!(ranges[0].start_block, 123);
-        assert_eq!(ranges[0].decommissioned, false);
+        assert!(!ranges[0].decommissioned);
         assert_eq!(ranges[0].last_ingested_block, None);
 
         // This makes last_scanned_block equal 10.
@@ -3097,7 +3091,7 @@ mod tests {
             .unwrap();
 
         let expected = IngressPublicKeyRecord {
-            key: ingress_key1.clone(),
+            key: ingress_key1,
             status: IngressPublicKeyStatus {
                 start_block: 0,
                 pubkey_expiry: 20,
@@ -3299,7 +3293,7 @@ mod tests {
         assert_eq!(ranges.len(), 1);
         assert_eq!(ranges[0].id, invoc_id1);
         assert_eq!(ranges[0].start_block, 123);
-        assert_eq!(ranges[0].decommissioned, false);
+        assert!(!ranges[0].decommissioned);
         assert_eq!(ranges[0].last_ingested_block, None);
 
         // This makes last_scanned_block equal 10.
@@ -3374,7 +3368,7 @@ mod tests {
         assert_eq!(ranges.len(), 1);
         assert_eq!(ranges[0].id, invoc_id1);
         assert_eq!(ranges[0].start_block, 123);
-        assert_eq!(ranges[0].decommissioned, false);
+        assert!(!ranges[0].decommissioned);
         assert_eq!(ranges[0].last_ingested_block, None);
 
         // This makes last_scanned_block equal 10.
@@ -3409,7 +3403,7 @@ mod tests {
             .unwrap();
 
         let expected = IngressPublicKeyRecord {
-            key: ingress_key1.clone(),
+            key: ingress_key1,
             status: IngressPublicKeyStatus {
                 start_block: 0,
                 pubkey_expiry: 15,

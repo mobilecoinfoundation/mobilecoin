@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Utilities for mobilecoind unit tests
 
@@ -86,7 +86,7 @@ pub fn get_test_databases(
         .to_str()
         .expect("Could not get path as string");
 
-    let mut ledger_db = generate_ledger_db(&ledger_db_path);
+    let mut ledger_db = generate_ledger_db(ledger_db_path);
 
     for block_index in 0..num_blocks {
         let key_images = if block_index == 0 {
@@ -98,14 +98,17 @@ pub fn get_test_databases(
             block_version,
             &mut ledger_db,
             &public_addresses,
-            DEFAULT_PER_RECIPIENT_AMOUNT,
+            Amount {
+                value: DEFAULT_PER_RECIPIENT_AMOUNT,
+                token_id: Mob::ID,
+            },
             &key_images,
             rng,
         );
     }
 
-    let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger)
-        .expect("failed creating new mobilecoind db");
+    let mobilecoind_db =
+        Database::new(mobilecoind_db_path, logger).expect("failed creating new mobilecoind db");
 
     (ledger_db, mobilecoind_db)
 }
@@ -137,8 +140,8 @@ fn generate_ledger_db(path: &str) -> LedgerDB {
     // DELETE the old database if it already exists.
     let _ = std::fs::remove_file(format!("{}/data.mdb", path));
     LedgerDB::create(&PathBuf::from(path)).expect("Could not create ledger_db");
-    let db = LedgerDB::open(&PathBuf::from(path)).expect("Could not open ledger_db");
-    db
+
+    LedgerDB::open(&PathBuf::from(path)).expect("Could not open ledger_db")
 }
 
 /// Adds a block containing one txo for each provided recipient and returns new
@@ -147,14 +150,14 @@ fn generate_ledger_db(path: &str) -> LedgerDB {
 /// # Arguments
 /// * `ledger_db` - Ledger database instance.
 /// * `recipients` - Recipients of outputs.
-/// * `output_value` - The amount each recipient will get.
+/// * `output_amount` - The amount each recipient will get.
 /// * `key_images` - Key images to include in the block.
 /// * `rng` - Random number generator.
 pub fn add_block_to_ledger_db(
     block_version: BlockVersion,
     ledger_db: &mut LedgerDB,
     recipients: &[PublicAddress],
-    output_value: u64,
+    output_amount: Amount,
     key_images: &[KeyImage],
     rng: &mut (impl CryptoRng + RngCore),
 ) -> u64 {
@@ -165,11 +168,7 @@ pub fn add_block_to_ledger_db(
         .map(|recipient| {
             let mut result = TxOut::new(
                 // TODO: allow for subaddress index!
-                Amount {
-                    value: output_value,
-                    // TODO: allow for other token id
-                    token_id: Mob::ID,
-                },
+                output_amount,
                 recipient,
                 &RistrettoPrivate::from_random(rng),
                 Default::default(),
@@ -189,16 +188,15 @@ pub fn add_block_to_ledger_db(
         ..Default::default()
     };
 
-    let new_block;
-    if num_blocks > 0 {
+    let new_block = if num_blocks > 0 {
         let parent = ledger_db
             .get_block(num_blocks - 1)
             .expect("failed to get parent block");
-        new_block =
-            Block::new_with_parent(block_version, &parent, &Default::default(), &block_contents);
+
+        Block::new_with_parent(block_version, &parent, &Default::default(), &block_contents)
     } else {
-        new_block = Block::new_origin_block(&outputs);
-    }
+        Block::new_origin_block(&outputs)
+    };
 
     ledger_db
         .append_block(&new_block, &block_contents, None)
@@ -215,27 +213,26 @@ pub fn add_block_to_ledger_db(
 pub fn add_txos_to_ledger_db(
     block_version: BlockVersion,
     ledger_db: &mut LedgerDB,
-    outputs: &Vec<TxOut>,
+    outputs: &[TxOut],
     rng: &mut (impl CryptoRng + RngCore),
 ) -> u64 {
     let block_contents = BlockContents {
         key_images: vec![KeyImage::from(rng.next_u64())],
-        outputs: outputs.clone(),
+        outputs: outputs.to_owned(),
         ..Default::default()
     };
 
     let num_blocks = ledger_db.num_blocks().expect("failed to get block height");
 
-    let new_block;
-    if num_blocks > 0 {
+    let new_block = if num_blocks > 0 {
         let parent = ledger_db
             .get_block(num_blocks - 1)
             .expect("failed to get parent block");
-        new_block =
-            Block::new_with_parent(block_version, &parent, &Default::default(), &block_contents);
+
+        Block::new_with_parent(block_version, &parent, &Default::default(), &block_contents)
     } else {
-        new_block = Block::new_origin_block(&outputs);
-    }
+        Block::new_origin_block(outputs)
+    };
 
     ledger_db
         .append_block(&new_block, &block_contents, None)
@@ -288,8 +285,7 @@ pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(
         ledger_db.clone(),
         mobilecoind_db.clone(),
         conn_manager.clone(),
-        Mob::ID,
-        fog_resolver_factory.unwrap_or(Arc::new(|_| Ok(FPR::default()))),
+        fog_resolver_factory.unwrap_or_else(|| Arc::new(|_| Ok(FPR::default()))),
         logger.clone(),
     );
 
@@ -301,7 +297,6 @@ pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(
         network_state,
         uri,
         None,
-        Mob::ID,
         logger,
     );
 
@@ -373,7 +368,7 @@ pub fn get_testing_environment(
 
     for data in monitors {
         mobilecoind_db
-            .add_monitor(&data)
+            .add_monitor(data)
             .expect("failed adding monitor");
     }
 

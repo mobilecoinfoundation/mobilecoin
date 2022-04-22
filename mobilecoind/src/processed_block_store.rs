@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Database storage for data obtained by processing blocks.
 //! * Stores a map of (monitor id, block number) -> list of transactions that
@@ -103,6 +103,10 @@ pub struct ProcessedTxOut {
     /// Direction.
     #[prost(enumeration = "ProcessedTxOutDirection", tag = "5")]
     pub direction: i32,
+
+    /// Token id.
+    #[prost(uint64, tag = "8")]
+    pub token_id: u64,
 }
 
 impl ProcessedTxOut {
@@ -113,6 +117,7 @@ impl ProcessedTxOut {
             key_image: src.key_image,
             value: src.value,
             direction: ProcessedTxOutDirection::Received as i32,
+            token_id: src.token_id,
         }
     }
 
@@ -123,6 +128,7 @@ impl ProcessedTxOut {
             key_image: src.key_image,
             value: src.value,
             direction: ProcessedTxOutDirection::Spent as i32,
+            token_id: src.token_id,
         }
     }
 }
@@ -512,8 +518,7 @@ mod test {
                 .expect("block_processed failed");
 
             let monitor_data2 = MonitorData::new(
-                account.clone(),
-                30, // first_subaddress
+                account, 30, // first_subaddress
                 20, // num_subaddresses
                 0,  // first_block
                 "", // name

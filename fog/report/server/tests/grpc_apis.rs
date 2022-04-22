@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // Exercise report server grpc APIs and check for expected behavior
 
@@ -37,8 +37,7 @@ fn report_server_grpc_tests(logger: Logger) {
     let env = Arc::new(grpcio::EnvBuilder::new().build());
 
     let report_client = {
-        let ch = ChannelBuilder::default_channel_builder(env.clone())
-            .connect_to_uri(&client_uri, &logger);
+        let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&client_uri, &logger);
         report_grpc::ReportApiClient::new(ch)
     };
 

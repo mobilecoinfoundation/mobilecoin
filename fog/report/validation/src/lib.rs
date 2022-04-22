@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Logic for representing fog public keys from the fog-report server
 //! that have been fully validated, and the associated metadata.

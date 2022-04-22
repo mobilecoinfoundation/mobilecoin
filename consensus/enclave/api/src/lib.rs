@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! APIs for MobileCoin Consensus Node Enclaves
 
@@ -37,7 +37,7 @@ use mc_common::ResponderId;
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, RistrettoPublic, X25519Public};
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_transaction_core::{
-    mint::{MintConfigTx, MintTx},
+    mint::{MintConfig, MintConfigTx, MintTx},
     ring_signature::KeyImage,
     tx::{Tx, TxHash, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockSignature, TokenId,
@@ -241,8 +241,8 @@ pub struct FormBlockInputs {
     /// Updating minting configuration transactions
     pub mint_config_txs: Vec<MintConfigTx>,
 
-    /// Minting transactions
-    pub mint_txs: Vec<MintTx>,
+    /// Minting transactions coupled with configuration information.
+    pub mint_txs_with_config: Vec<(MintTx, MintConfigTx, MintConfig)>,
 }
 
 /// The API for interacting with a consensus node's enclave.

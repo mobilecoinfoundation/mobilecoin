@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! LedgerSyncService provides a mechanism for synchronizing a local ledger with
 //! the network. It uses consensus nodes as the source of truth for blocks, and
@@ -886,7 +886,7 @@ mod tests {
         let sync_service =
             LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger.clone());
 
-        assert_eq!(sync_service.is_behind(&network_state), false);
+        assert!(!sync_service.is_behind(&network_state));
     }
 
     // A blocking set of peers on a higher slot isn't enough to consider this node
@@ -928,7 +928,7 @@ mod tests {
             ));
         }
 
-        assert_eq!(sync_service.is_behind(&network_state), false);
+        assert!(!sync_service.is_behind(&network_state));
 
         // Now Node B also externalizes a higher slot.
         // The set {Node A, Node B} is blocking, and {Node A, Node B} \union {local
@@ -946,7 +946,7 @@ mod tests {
             ));
         }
 
-        assert_eq!(sync_service.is_behind(&network_state), true);
+        assert!(sync_service.is_behind(&network_state));
     }
 
     #[test_with_logger]
@@ -1024,7 +1024,7 @@ mod tests {
 
         let transactions_by_block = get_block_contents(
             transactions_fetcher,
-            &responder_ids.as_slice(),
+            responder_ids.as_slice(),
             &blocks,
             Duration::from_secs(1),
             &logger,
@@ -1103,7 +1103,7 @@ mod tests {
 
         let transactions_by_block = get_block_contents(
             transactions_fetcher,
-            &responder_ids.as_slice(),
+            responder_ids.as_slice(),
             &blocks,
             Duration::from_secs(1),
             &logger,
@@ -1443,7 +1443,7 @@ mod tests {
         let (block_two, mut contents_two) = blocks_and_contents.get(2).unwrap().clone();
         contents_two
             .key_images
-            .push(contents_one.key_images.get(0).unwrap().clone());
+            .push(*contents_one.key_images.get(0).unwrap());
         potentially_safe_blocks_and_contents.push((block_two, contents_two));
 
         let safe_blocks: Vec<(Block, BlockContents)> = identify_safe_blocks(
@@ -1480,7 +1480,7 @@ mod tests {
         let (block_two, mut contents_two) = blocks_and_contents.get(2).unwrap().clone();
         contents_two
             .key_images
-            .push(contents_one.key_images.get(0).unwrap().clone());
+            .push(*contents_one.key_images.get(0).unwrap());
         potentially_safe_blocks_and_contents.push((block_two, contents_two));
 
         let safe_blocks: Vec<(Block, BlockContents)> = identify_safe_blocks(

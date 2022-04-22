@@ -56,12 +56,13 @@ mod tests {
             let minted_outputs: Vec<TxOut> = {
                 // Mint an initial collection of outputs, including one belonging to
                 // `sender_account`.
-                let mut recipient_and_amounts: Vec<(PublicAddress, u64)> = Vec::new();
-                recipient_and_amounts.push((alice.default_subaddress(), 65536));
+                let recipient_and_amounts: Vec<(PublicAddress, u64)> = vec![
+                    (alice.default_subaddress(), 65536),
+                    // Some outputs belonging to this account will be used as mix-ins.
+                    (charlie.default_subaddress(), 65536),
+                    (charlie.default_subaddress(), 65536),
+                ];
 
-                // Some outputs belonging to this account will be used as mix-ins.
-                recipient_and_amounts.push((charlie.default_subaddress(), 65536));
-                recipient_and_amounts.push((charlie.default_subaddress(), 65536));
                 mc_transaction_core_test_utils::get_outputs(
                     block_version,
                     &recipient_and_amounts,

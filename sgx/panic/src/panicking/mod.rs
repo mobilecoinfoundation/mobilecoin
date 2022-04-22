@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module defines a `panic_handler` lang item and defines a function
 //! `log_and_panic` which does logging as appropriate before calling to

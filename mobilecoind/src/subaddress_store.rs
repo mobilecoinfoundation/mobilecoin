@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Database storage for subaddress indices
 //! * A lookup table, mapping subaddress_spend_public_key to monitor_id and

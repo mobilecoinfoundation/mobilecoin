@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Range proofs are used to prove that a set of committed values are all
 //! in a well-defined range, without revealing the values.
@@ -160,7 +160,7 @@ pub mod tests {
             generate_range_proofs(&values, &blindings, &generators(0), &mut rng).unwrap();
 
         // Modify a commitment.
-        let mut wrong_commitments = commitments.clone();
+        let mut wrong_commitments = commitments;
         wrong_commitments[0] = RistrettoPoint::random(&mut rng).compress();
 
         match check_range_proofs(&proof, &wrong_commitments, &generators(0), &mut rng) {

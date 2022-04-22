@@ -24,6 +24,7 @@ use alloc::{
     collections::BTreeSet,
     format,
     string::{String, ToString},
+    vec,
     vec::Vec,
 };
 use constant_time_division::ct_u64_divide;
@@ -58,7 +59,8 @@ use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResu
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
     mint::{
-        validate_mint_config_tx, MintConfigTx, MintTx, MintValidationError, ValidatedMintConfigTx,
+        validate_mint_config_tx, validate_mint_tx, MintConfig, MintConfigTx, MintTx,
+        MintValidationError, ValidatedMintConfigTx,
     },
     ring_signature::{KeyImage, Scalar},
     tokens::Mob,
@@ -231,7 +233,7 @@ impl SgxConsensusEnclave {
         // ledger that were used to validate the transactions.
         let mut root_elements = Vec::new();
 
-        // We need to make sure all transacctions are all valid. We also ensure they all
+        // We need to make sure all transactions are valid. We also ensure they all
         // point at the same root membership element.
         for (tx, proofs) in transactions_with_proofs.iter() {
             let token_id = TokenId::from(tx.prefix.token_id);
@@ -263,8 +265,8 @@ impl SgxConsensusEnclave {
             return Err(Error::InvalidLocalMembershipProof);
         }
 
-        // Sanity check - since our caller (TxManager::tx_hashes_to_block) collects all
-        // proof of memberships and root element at a time the ledger is not
+        // Sanity check - since our caller (ByzantineLedgerWorker/TxManager) collects
+        // all proof of memberships and root element at a time the ledger is not
         // expected to change, we should end with the same root element for all
         // transactions.
         if root_element != &root_elements[0] {
@@ -363,24 +365,57 @@ impl SgxConsensusEnclave {
     }
 
     /// Validate a list of MintTxs.
-    fn validate_mint_txs(&self, mint_txs: &[MintTx]) -> Result<()> {
-        // TODO: iterate over each indivdual transaction and validate it. This requires
-        // the enclave has knowledge of active minting configurations.
-        // This validation already happens in untruested, but it will be nice to do it
-        // here as well. This will get implemetend in a follow up PR.
-
-        // Ensure all nonces are unique.
+    fn validate_mint_txs(
+        &self,
+        mint_txs_with_config: Vec<(MintTx, MintConfigTx, MintConfig)>,
+        current_block_index: u64,
+        config: &BlockchainConfig,
+    ) -> Result<Vec<MintTx>> {
+        // Ensure all nonces are unique and all transactions matches the associated
+        // configuration.
+        let mut mint_txs = Vec::with_capacity(mint_txs_with_config.len());
         let mut seen_nonces = BTreeSet::default();
-        for tx in mint_txs {
-            if !seen_nonces.insert(tx.prefix.nonce.clone()) {
+        for (mint_tx, mint_config_tx, mint_config) in mint_txs_with_config {
+            // The nonce should be unique.
+            if !seen_nonces.insert(mint_tx.prefix.nonce.clone()) {
                 return Err(Error::FormBlock(format!(
                     "Duplicate MintTx nonce: {:?}",
-                    tx.prefix.nonce
+                    mint_tx.prefix.nonce
                 )));
             }
+
+            // The associated MintConfigTx should be for the same token being minted.
+            if mint_config_tx.prefix.token_id != mint_tx.prefix.token_id {
+                return Err(Error::FormBlock(format!(
+                    "MintTx token_id does not match MintConfigTx token_id: {:?} != {:?}",
+                    mint_tx.prefix.token_id, mint_config_tx.prefix.token_id
+                )));
+            }
+
+            // The specific MintConfig used should be part of the provided MintConfigTx.
+            if !mint_config_tx.prefix.configs.contains(&mint_config) {
+                return Err(Error::FormBlock(format!(
+                    "MintTx {} referenced a MintConfig that is not part of the MintConfigTx",
+                    mint_tx,
+                )));
+            }
+
+            // The associated MintConfigTx should be valid.
+            self.validate_mint_config_txs(vec![mint_config_tx], current_block_index, config)?;
+
+            // The MintTx should be valid.
+            validate_mint_tx(
+                &mint_tx,
+                current_block_index,
+                config.block_version,
+                &mint_config,
+            )?;
+
+            // MintTx is valid.
+            mint_txs.push(mint_tx);
         }
 
-        Ok(())
+        Ok(mint_txs)
     }
 }
 
@@ -813,8 +848,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             .collect::<Result<Vec<TxOut>>>()?;
 
         // Get the list of MintTxs included in the block.
-        self.validate_mint_txs(&inputs.mint_txs)?;
-        let mint_txs = inputs.mint_txs;
+        let mint_txs =
+            self.validate_mint_txs(inputs.mint_txs_with_config, parent_block.index + 1, config)?;
 
         // Collect outputs and key images.
         let mut outputs: Vec<TxOut> = Vec::new();
@@ -2155,8 +2190,8 @@ mod tests {
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(2);
 
-        let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
-        let (_mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
 
         let recipient1 = AccountKey::random(&mut rng);
         let recipient2 = AccountKey::random(&mut rng);
@@ -2219,7 +2254,18 @@ mod tests {
                 .form_block(
                     &parent_block,
                     FormBlockInputs {
-                        mint_txs: vec![mint_tx1.clone(), mint_tx2.clone()],
+                        mint_txs_with_config: vec![
+                            (
+                                mint_tx1.clone(),
+                                mint_config_tx1.clone(),
+                                mint_config_tx1.prefix.configs[0].clone(),
+                            ),
+                            (
+                                mint_tx2.clone(),
+                                mint_config_tx2.clone(),
+                                mint_config_tx2.prefix.configs[0].clone(),
+                            ),
+                        ],
                         ..Default::default()
                     },
                     &root_element,
@@ -2256,14 +2302,10 @@ mod tests {
             let output1 = block_contents
                 .outputs
                 .iter()
-                .find(|output| {
-                    output
-                        .view_key_match(&recipient1.view_private_key())
-                        .is_ok()
-                })
+                .find(|output| output.view_key_match(recipient1.view_private_key()).is_ok())
                 .unwrap();
             let (amount, _) = output1
-                .view_key_match(&recipient1.view_private_key())
+                .view_key_match(recipient1.view_private_key())
                 .unwrap();
             assert_eq!(amount.value, 12);
             assert_eq!(amount.token_id, token_id1);
@@ -2271,14 +2313,10 @@ mod tests {
             let output2 = block_contents
                 .outputs
                 .iter()
-                .find(|output| {
-                    output
-                        .view_key_match(&recipient2.view_private_key())
-                        .is_ok()
-                })
+                .find(|output| output.view_key_match(recipient2.view_private_key()).is_ok())
                 .unwrap();
             let (amount, _) = output2
-                .view_key_match(&recipient2.view_private_key())
+                .view_key_match(recipient2.view_private_key())
                 .unwrap();
             assert_eq!(amount.value, 200);
             assert_eq!(amount.token_id, token_id2);
@@ -2291,7 +2329,7 @@ mod tests {
 
         let token_id1 = TokenId::from(1);
 
-        let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
         let recipient1 = AccountKey::random(&mut rng);
 
@@ -2342,7 +2380,18 @@ mod tests {
             let form_block_result = enclave.form_block(
                 &parent_block,
                 FormBlockInputs {
-                    mint_txs: vec![mint_tx1.clone(), mint_tx1.clone()],
+                    mint_txs_with_config: vec![
+                        (
+                            mint_tx1.clone(),
+                            mint_config_tx1.clone(),
+                            mint_config_tx1.prefix.configs[0].clone(),
+                        ),
+                        (
+                            mint_tx1.clone(),
+                            mint_config_tx1.clone(),
+                            mint_config_tx1.prefix.configs[0].clone(),
+                        ),
+                    ],
                     ..Default::default()
                 },
                 &root_element,
@@ -2353,6 +2402,91 @@ mod tests {
             } else {
                 panic!("Expected FormBlock error, got: {:#?}", form_block_result);
             }
+        }
+    }
+
+    #[test_with_logger]
+    fn form_block_rejects_mint_tx_by_unknown_governor(logger: Logger) {
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+
+        let token_id1 = TokenId::from(1);
+        let token_id2 = TokenId::from(2);
+
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (_mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+
+        let recipient1 = AccountKey::random(&mut rng);
+
+        let mint_tx1 = create_mint_tx_to_recipient(
+            token_id1,
+            &signers1,
+            12,
+            &recipient1.default_subaddress(),
+            &mut rng,
+        );
+
+        let signer_set2 = SignerSet::new(signers2.iter().map(|s| s.public_key()).collect(), 1);
+
+        let governors_map = GovernorsMap::try_from_iter([
+            // NOTE: token_id1 is also governed by signer_set2, which means a MintTx signed with a
+            // config that is signed by signer_set1 should get refused.
+            (token_id1, signer_set2.clone()),
+            (token_id2, signer_set2),
+        ])
+        .unwrap();
+
+        for block_version in BlockVersion::iterator() {
+            if !block_version.mint_transactions_are_supported() {
+                continue;
+            }
+
+            let enclave = SgxConsensusEnclave::new(logger.clone());
+            let blockchain_config = BlockchainConfig {
+                block_version,
+                governors_map: governors_map.clone(),
+                governors_signature: sign_governors_map(&governors_map),
+                ..Default::default()
+            };
+            enclave
+                .enclave_init(
+                    &Default::default(),
+                    &Default::default(),
+                    &None,
+                    blockchain_config,
+                )
+                .unwrap();
+
+            // Initialize a ledger.
+            let sender = AccountKey::random(&mut rng);
+            let mut ledger = create_ledger();
+            let n_blocks = 3;
+            initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+            // Form block
+            let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+            let root_element = ledger.get_root_tx_out_membership_element().unwrap();
+
+            let form_block_result = enclave.form_block(
+                &parent_block,
+                FormBlockInputs {
+                    mint_txs_with_config: vec![(
+                        mint_tx1.clone(),
+                        // This config is not going to get accepted because our governors map
+                        // wants different signers.
+                        mint_config_tx1.clone(),
+                        mint_config_tx1.prefix.configs[0].clone(),
+                    )],
+                    ..Default::default()
+                },
+                &root_element,
+            );
+            assert_eq!(
+                form_block_result,
+                Err(Error::MalformedMintingTx(
+                    MintValidationError::InvalidSignature
+                ))
+            );
         }
     }
 
@@ -2650,8 +2784,8 @@ mod tests {
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(2);
 
-        let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
-        let (_mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
 
         let recipient1 = AccountKey::random(&mut rng);
         let recipient2 = AccountKey::random(&mut rng);
@@ -2754,7 +2888,18 @@ mod tests {
                     &parent_block,
                     FormBlockInputs {
                         well_formed_encrypted_txs_with_proofs,
-                        mint_txs: vec![mint_tx1.clone(), mint_tx2.clone()],
+                        mint_txs_with_config: vec![
+                            (
+                                mint_tx1.clone(),
+                                mint_config_tx1.clone(),
+                                mint_config_tx1.prefix.configs[0].clone(),
+                            ),
+                            (
+                                mint_tx2.clone(),
+                                mint_config_tx2.clone(),
+                                mint_config_tx2.prefix.configs[0].clone(),
+                            ),
+                        ],
                         ..Default::default()
                     },
                     &root_element,
@@ -2813,14 +2958,10 @@ mod tests {
             let output1 = block_contents
                 .outputs
                 .iter()
-                .find(|output| {
-                    output
-                        .view_key_match(&recipient1.view_private_key())
-                        .is_ok()
-                })
+                .find(|output| output.view_key_match(recipient1.view_private_key()).is_ok())
                 .unwrap();
             let (amount, _) = output1
-                .view_key_match(&recipient1.view_private_key())
+                .view_key_match(recipient1.view_private_key())
                 .unwrap();
             assert_eq!(amount.value, 12);
             assert_eq!(amount.token_id, token_id1);
@@ -2828,14 +2969,10 @@ mod tests {
             let output2 = block_contents
                 .outputs
                 .iter()
-                .find(|output| {
-                    output
-                        .view_key_match(&recipient2.view_private_key())
-                        .is_ok()
-                })
+                .find(|output| output.view_key_match(recipient2.view_private_key()).is_ok())
                 .unwrap();
             let (amount, _) = output2
-                .view_key_match(&recipient2.view_private_key())
+                .view_key_match(recipient2.view_private_key())
                 .unwrap();
             assert_eq!(amount.value, 200);
             assert_eq!(amount.token_id, token_id2);

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A mock collection of users that can send a stream of transactions to ingest
 //! node, and then exercise the view node to try to find them.

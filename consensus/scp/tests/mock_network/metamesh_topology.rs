@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! "Metamesh" network topologies.
 
@@ -73,8 +73,7 @@ pub fn metamesh(
                 .cloned()
                 .collect::<Vec<QuorumSet>>();
 
-            let mut inner_quorum_sets = Vec::<QuorumSet>::new();
-            inner_quorum_sets.push(inner_quorum_set_for_this_org);
+            let mut inner_quorum_sets = vec![inner_quorum_set_for_this_org];
             inner_quorum_sets.append(&mut inner_quorum_sets_for_other_orgs);
 
             // connect this node to all other nodes

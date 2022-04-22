@@ -177,7 +177,7 @@ mod tests {
         let ledger_path = TempDir::new("ledger").unwrap();
         setup_ledger_dir(
             &Some(origin_block_path.path().to_path_buf()),
-            &ledger_path.path().to_path_buf(),
+            ledger_path.path(),
         );
     }
 
@@ -196,7 +196,7 @@ mod tests {
 
         setup_ledger_dir(
             &Some(origin_block_path.path().to_path_buf()),
-            &ledger_path.path().to_path_buf(),
+            ledger_path.path(),
         );
 
         let new_data_path = ledger_path.path().join("data.mdb");
@@ -219,7 +219,7 @@ mod tests {
 
         setup_ledger_dir(
             &Some(origin_block_path.path().to_path_buf()),
-            &ledger_path.path().to_path_buf(),
+            ledger_path.path(),
         );
 
         let new_data_path = ledger_path.path().join("data.mdb");
@@ -247,7 +247,7 @@ mod tests {
 
         setup_ledger_dir(
             &Some(origin_block_path.path().to_path_buf()),
-            &ledger_path.path().to_path_buf(),
+            ledger_path.path(),
         );
 
         let mut data_file = File::open(&ledger_data_path).unwrap();

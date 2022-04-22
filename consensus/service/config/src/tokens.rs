@@ -566,7 +566,7 @@ mod tests {
 
         // Validation should fail since the minimum fee for the second token is unknown.
         assert!(
-            matches!(tokens.validate(), Err(Error::MissingMinimumFee(token_id)) if token_id == TokenId::from(6))
+            matches!(tokens.validate(), Err(Error::MissingMinimumFee(token_id)) if token_id == 6)
         );
 
         // Getting the fee map should also fail.
@@ -597,7 +597,7 @@ mod tests {
 
         // Validation should fail since allow_any_fee cannot be used on non-MOB tokens.
         assert!(
-            matches!(tokens.validate(), Err(Error::AllowAnyFeeNotAllowed(token_id)) if token_id == TokenId::from(1))
+            matches!(tokens.validate(), Err(Error::AllowAnyFeeNotAllowed(token_id)) if token_id == 1)
         );
     }
 
@@ -806,7 +806,7 @@ mod tests {
         let input_toml: &str = r#"
             [[tokens]]
             token_id = 0
-            
+
             [tokens.governors]
             signers = """
             -----BEGIN PUBLIC KEY-----
@@ -828,7 +828,7 @@ mod tests {
         let input_toml: &str = r#"
             [[tokens]]
             token_id = 0 # Must have MOB
-            
+
             [[tokens]]
             token_id = 2
             minimum_fee = 1
@@ -839,9 +839,7 @@ mod tests {
 
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-        assert!(
-            matches!(tokens.validate(), Err(Error::NoSigners(token_id)) if token_id == TokenId::from(2))
-        );
+        assert!(matches!(tokens.validate(), Err(Error::NoSigners(token_id)) if token_id == 2));
     }
 
     #[test]
@@ -863,9 +861,7 @@ mod tests {
 
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
-        assert!(
-            matches!(tokens.validate(), Err(Error::NoSigners(token_id)) if token_id == TokenId::from(2))
-        );
+        assert!(matches!(tokens.validate(), Err(Error::NoSigners(token_id)) if token_id == 2));
     }
 
     #[test]
@@ -929,8 +925,8 @@ mod tests {
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         // The governors signature should've decoded successfully.
-        assert!(!tokens
+        assert!(tokens
             .verify_governors_signature(&Ed25519Public::from(&minting_trust_root_private_key))
-            .is_ok());
+            .is_err());
     }
 }

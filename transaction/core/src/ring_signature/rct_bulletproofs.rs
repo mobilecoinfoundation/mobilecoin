@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! An RCT_TYPE_BULLETPROOFS_2 signature.
 //!
@@ -397,7 +397,7 @@ fn compute_extended_message_either_version(
     pseudo_output_commitments: &[CompressedCommitment],
     range_proof_bytes: &[u8],
 ) -> Vec<u8> {
-    if block_version >= BlockVersion::TWO {
+    if block_version.mlsags_sign_extended_message_digest() {
         // New-style extended message using merlin
         digest_extended_message(message, pseudo_output_commitments, range_proof_bytes).to_vec()
     } else {
@@ -750,7 +750,7 @@ mod rct_bulletproofs_tests {
             // Modify an output value
             {
                 let index = rng.next_u64() as usize % (num_inputs);
-                let (_value, blinding) = params.output_values_and_blindings[index].clone();
+                let (_value, blinding) = params.output_values_and_blindings[index];
                 params.output_values_and_blindings[index] = (rng.next_u64(), blinding);
             }
 
@@ -826,8 +826,8 @@ mod rct_bulletproofs_tests {
 
             // Duplicate one of the rings.
             params.rings[2] = params.rings[3].clone();
-            params.output_values_and_blindings[2] = params.output_values_and_blindings[3].clone();
-            params.input_secrets[2] = params.input_secrets[3].clone();
+            params.output_values_and_blindings[2] = params.output_values_and_blindings[3];
+            params.input_secrets[2] = params.input_secrets[3];
             params.real_input_indices[2] = params.real_input_indices[3];
 
             let signature = params.sign(fee, &mut rng).unwrap();

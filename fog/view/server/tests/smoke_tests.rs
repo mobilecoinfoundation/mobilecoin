@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // This integration-level test mocks out consensus and tries to show
 // that the users are able to recover their transactions.
@@ -91,7 +91,7 @@ fn get_test_environment(
         let mut server = ViewServer::new(
             config,
             enclave,
-            db.clone(),
+            db,
             ra_client,
             SystemTimeProvider::default(),
             logger.clone(),
@@ -109,7 +109,7 @@ fn get_test_environment(
         let mut verifier = Verifier::default();
         verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
-        FogViewGrpcClient::new(uri, GRPC_RETRY_CONFIG, verifier, grpcio_env.clone(), logger)
+        FogViewGrpcClient::new(uri, GRPC_RETRY_CONFIG, verifier, grpcio_env, logger)
     };
 
     (db_test_context, server, client)

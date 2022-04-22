@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module defines `Sealable` trait, `IntelSealed` object, and
 //! `ParseSealedError` These objects are portable and can be used without

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Persistent storage for the blockchain.
 #![warn(unused_extern_crates)]
@@ -23,7 +23,7 @@ use lmdb::{
     Database, DatabaseFlags, Environment, EnvironmentFlags, RoTransaction, RwTransaction,
     Transaction, WriteFlags,
 };
-use mc_common::logger::global_log;
+use mc_common::{logger::global_log, HashMap};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     membership_proofs::Range,
@@ -384,6 +384,13 @@ impl Ledger for LedgerDB {
         let db_transaction = self.env.begin_ro_txn()?;
         self.mint_config_store
             .get_active_mint_configs(token_id, &db_transaction)
+    }
+
+    /// Return the full map of TokenId -> ActiveMintConfigs.
+    fn get_active_mint_configs_map(&self) -> Result<HashMap<TokenId, ActiveMintConfigs>, Error> {
+        let db_transaction = self.env.begin_ro_txn()?;
+        self.mint_config_store
+            .get_active_mint_configs_map(&db_transaction)
     }
 
     /// Checks if the ledger contains a given MintConfigTx nonce.
@@ -880,10 +887,6 @@ pub fn u64_to_key_bytes(value: u64) -> [u8; 8] {
 pub fn key_bytes_to_u64(bytes: &[u8]) -> u64 {
     assert_eq!(8, bytes.len());
     u64::from_be_bytes(bytes.try_into().unwrap())
-}
-
-pub fn u32_to_key_bytes(value: u32) -> [u8; 4] {
-    value.to_be_bytes()
 }
 
 #[cfg(test)]
@@ -1884,7 +1887,7 @@ mod ledger_db_test {
             key_images: key_images2,
             outputs: outputs2,
             validated_mint_config_txs: vec![to_validated(&mint_config_tx3)],
-            mint_txs: vec![mint_tx1.clone(), mint_tx2.clone()],
+            mint_txs: vec![mint_tx1, mint_tx2],
         };
         let block2 = Block::new_with_parent(
             BLOCK_VERSION,
@@ -2117,7 +2120,7 @@ mod ledger_db_test {
         );
 
         let block_contents3 = BlockContents {
-            mint_txs: vec![mint_tx2.clone(), mint_tx1.clone()],
+            mint_txs: vec![mint_tx2, mint_tx1],
             outputs: vec![create_test_tx_out(&mut rng), create_test_tx_out(&mut rng)],
             ..Default::default()
         };
@@ -2185,7 +2188,7 @@ mod ledger_db_test {
         );
 
         let block_contents2 = BlockContents {
-            mint_txs: vec![mint_tx1.clone()],
+            mint_txs: vec![mint_tx1],
             outputs: vec![create_test_tx_out(&mut rng)],
             ..Default::default()
         };
@@ -2282,7 +2285,7 @@ mod ledger_db_test {
         );
 
         let block_contents3 = BlockContents {
-            mint_txs: vec![mint_tx2.clone()],
+            mint_txs: vec![mint_tx2],
             outputs: vec![create_test_tx_out(&mut rng)],
             ..Default::default()
         };
@@ -2331,7 +2334,7 @@ mod ledger_db_test {
         let mint_tx3 = create_mint_tx(token_id1, &signers1, 11, &mut rng);
 
         let block_contents3 = BlockContents {
-            mint_txs: vec![mint_tx3.clone()],
+            mint_txs: vec![mint_tx3],
             outputs: vec![create_test_tx_out(&mut rng)],
             ..Default::default()
         };
@@ -2602,7 +2605,7 @@ mod ledger_db_test {
 
         // The ledger should each key image.
         for key_image in &key_images {
-            assert!(ledger_db.contains_key_image(&key_image).unwrap());
+            assert!(ledger_db.contains_key_image(key_image).unwrap());
         }
     }
 
@@ -2900,7 +2903,7 @@ mod ledger_db_test {
             let tx_out = create_test_tx_out(&mut rng);
             let outputs = vec![tx_out];
             BlockContents {
-                key_images: block_one_key_images.clone(),
+                key_images: block_one_key_images,
                 outputs,
                 ..Default::default()
             }
@@ -2939,7 +2942,7 @@ mod ledger_db_test {
 
         let block_one_contents = {
             let mut tx_out = create_test_tx_out(&mut rng);
-            tx_out.public_key = existing_tx_out.public_key.clone();
+            tx_out.public_key = existing_tx_out.public_key;
             let outputs = vec![tx_out];
             let key_images = vec![KeyImage::from(rng.next_u64())];
             BlockContents {

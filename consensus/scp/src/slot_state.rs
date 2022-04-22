@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The state held by a single slot. Currently this duplicates the state inside
 //! `Slot` and is only used for debug/serialization purposes but a future change

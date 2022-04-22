@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2021 MobileCoin Inc.
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 
 import argparse
 import json

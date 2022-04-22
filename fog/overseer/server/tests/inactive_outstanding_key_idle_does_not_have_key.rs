@@ -42,12 +42,9 @@ fn inactive_oustanding_key_idle_node_does_not_have_key_idle_node_is_activated_an
 
     // Open the watcher db
     let tx_source_url = Url::from_str("https://localhost").unwrap();
-    let watcher = mc_watcher::watcher_db::WatcherDB::open_rw(
-        &watcher_path,
-        &[tx_source_url.clone()],
-        logger.clone(),
-    )
-    .expect("Could not create watcher_db");
+    let watcher =
+        mc_watcher::watcher_db::WatcherDB::open_rw(&watcher_path, &[tx_source_url], logger.clone())
+            .expect("Could not create watcher_db");
 
     // Set up an empty ledger db.
     let ledger_db_path = blockchain_path.path().join("ledger_db");

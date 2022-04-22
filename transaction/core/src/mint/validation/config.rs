@@ -166,7 +166,7 @@ mod tests {
         );
 
         assert_eq!(
-            validate_configs(1.into(), &[mint_config1.clone(), mint_config2.clone()]),
+            validate_configs(1.into(), &[mint_config1, mint_config2]),
             Err(Error::InvalidTokenId(123.into()))
         );
     }
@@ -225,7 +225,7 @@ mod tests {
 
         let prefix = MintConfigTxPrefix {
             token_id: *token_id,
-            configs: vec![mint_config1.clone(), mint_config2.clone()],
+            configs: vec![mint_config1, mint_config2],
             nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
             total_mint_limit: 100,
@@ -342,7 +342,7 @@ mod tests {
 
         let prefix = MintConfigTxPrefix {
             token_id: *token_id,
-            configs: vec![mint_config1.clone(), mint_config2.clone()],
+            configs: vec![mint_config1, mint_config2],
             nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
             total_mint_limit: 100,
@@ -373,10 +373,7 @@ mod tests {
 
         // Tamper with the tombstone block.
         let signature = MultiSig::new(vec![governor_1.try_sign(message.as_ref()).unwrap()]);
-        let mut tx = MintConfigTx {
-            prefix: prefix.clone(),
-            signature,
-        };
+        let mut tx = MintConfigTx { prefix, signature };
         tx.prefix.tombstone_block += 1;
         assert_eq!(
             validate_signature(
@@ -420,7 +417,7 @@ mod tests {
 
         let prefix = MintConfigTxPrefix {
             token_id: *token_id,
-            configs: vec![mint_config1.clone(), mint_config2.clone()],
+            configs: vec![mint_config1, mint_config2],
             nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
             total_mint_limit: 100,
@@ -467,10 +464,7 @@ mod tests {
             governor_1.try_sign(message.as_ref()).unwrap(),
             governor_2.try_sign(message.as_ref()).unwrap(),
         ]);
-        let tx = MintConfigTx {
-            prefix: prefix.clone(),
-            signature,
-        };
+        let tx = MintConfigTx { prefix, signature };
         assert_eq!(
             validate_signature(
                 &tx,
@@ -506,7 +500,7 @@ mod tests {
 
         let prefix = MintConfigTxPrefix {
             token_id: *token_id,
-            configs: vec![mint_config1.clone(), mint_config2.clone()],
+            configs: vec![mint_config1, mint_config2],
             nonce: vec![2u8; NONCE_LENGTH],
             tombstone_block: 123,
             total_mint_limit: 100,
@@ -518,10 +512,7 @@ mod tests {
             governor_1.try_sign(message.as_ref()).unwrap(),
             governor_1.try_sign(message.as_ref()).unwrap(),
         ]);
-        let tx = MintConfigTx {
-            prefix: prefix.clone(),
-            signature,
-        };
+        let tx = MintConfigTx { prefix, signature };
         assert_eq!(
             validate_signature(
                 &tx,

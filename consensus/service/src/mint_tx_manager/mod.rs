@@ -22,7 +22,10 @@ use mc_common::{
 use mc_consensus_enclave::GovernorsMap;
 use mc_ledger_db::{Error as LedgerError, Ledger};
 use mc_transaction_core::{
-    mint::{validate_mint_config_tx, validate_mint_tx, MintConfigTx, MintTx, MintValidationError},
+    mint::{
+        validate_mint_config_tx, validate_mint_tx, MintConfig, MintConfigTx, MintTx,
+        MintValidationError,
+    },
     BlockVersion, TokenId,
 };
 
@@ -200,6 +203,31 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         });
 
         Ok(allowed_txs)
+    }
+
+    fn mint_txs_with_config(
+        &self,
+        txs: &[MintTx],
+    ) -> MintTxManagerResult<Vec<(MintTx, MintConfigTx, MintConfig)>> {
+        txs.iter()
+            .map(|mint_tx| {
+                let active_mint_configs = self
+                    .ledger_db
+                    .get_active_mint_configs(TokenId::from(mint_tx.prefix.token_id))?
+                    .ok_or(MintTxManagerError::MintValidation(
+                        MintValidationError::NoMatchingMintConfig,
+                    ))?;
+
+                let active_mint_config =
+                    active_mint_configs.get_active_mint_config_for_mint_tx(mint_tx)?;
+
+                Ok((
+                    mint_tx.clone(),
+                    active_mint_configs.mint_config_tx,
+                    active_mint_config.mint_config,
+                ))
+            })
+            .collect::<MintTxManagerResult<_>>()
     }
 }
 
@@ -455,14 +483,14 @@ mod mint_config_tx_tests {
             mint_tx_manager.combine_mint_config_txs(
                 &[
                     mint_config_tx3.clone(),
-                    mint_config_tx4.clone(),
+                    mint_config_tx4,
                     mint_config_tx1.clone(),
                     mint_config_tx3.clone(),
-                    mint_config_tx3.clone(),
+                    mint_config_tx3,
                     mint_config_tx2.clone(),
                     mint_config_tx1.clone(),
-                    mint_config_tx1.clone(),
-                    mint_config_tx2.clone(),
+                    mint_config_tx1,
+                    mint_config_tx2,
                 ],
                 100
             ),
@@ -511,15 +539,15 @@ mod mint_config_tx_tests {
             mint_tx_manager.combine_mint_config_txs(
                 &[
                     mint_config_tx3.clone(),
-                    mint_config_tx4.clone(),
+                    mint_config_tx4,
                     mint_config_tx1.clone(),
-                    mint_config_tx5.clone(),
-                    mint_config_tx3.clone(),
+                    mint_config_tx5,
+                    mint_config_tx3,
                     mint_config_tx2.clone(),
                     mint_config_tx1.clone(),
-                    mint_config_tx1.clone(),
-                    mint_config_tx2.clone(),
-                    mint_config_tx6.clone(),
+                    mint_config_tx1,
+                    mint_config_tx2,
+                    mint_config_tx6,
                 ],
                 3
             ),

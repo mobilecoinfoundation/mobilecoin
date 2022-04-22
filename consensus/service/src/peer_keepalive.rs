@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! PeerKeepalive is used to start a thread that periodically pings nodes we
 //! have not received an SCP statement from in a while. This allows nodes who

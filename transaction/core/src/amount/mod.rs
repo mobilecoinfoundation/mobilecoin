@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A commitment to an output's amount, denominated in picoMOB.
 //!
@@ -282,7 +282,7 @@ mod amount_tests {
                     let amount = Amount { value, token_id: token_id.into() };
                     let amount = MaskedAmount::new(amount, &shared_secret).unwrap();
                     let blinding = get_blinding(&shared_secret);
-                    let expected_commitment = CompressedCommitment::new(value, blinding.into(), &generators(token_id));
+                    let expected_commitment = CompressedCommitment::new(value, blinding, &generators(token_id));
                     assert_eq!(amount.commitment, expected_commitment);
             }
 
@@ -308,7 +308,7 @@ mod amount_tests {
                 token_id in any::<u64>(),
                 shared_secret in arbitrary_ristretto_public()) {
                 let amount = Amount { value, token_id: token_id.into() };
-                let masked_amount = MaskedAmount::new(amount.clone(), &shared_secret).unwrap();
+                let masked_amount = MaskedAmount::new(amount, &shared_secret).unwrap();
                 let result = masked_amount.get_value(&shared_secret);
                 let blinding = get_blinding(&shared_secret);
                 let expected = Ok((amount, blinding));

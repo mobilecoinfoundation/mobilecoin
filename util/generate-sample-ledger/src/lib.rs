@@ -197,7 +197,7 @@ mod tests {
         let hint_slice = "Vaccine 90% effective";
         let output = create_output(
             &account_key.subaddress(0),
-            amount.clone(),
+            amount,
             &mut fixed_rng,
             Some(hint_slice),
             &logger,
@@ -210,7 +210,7 @@ mod tests {
         let hint_slice = "Covid-19 Vaccine 90% Up to 90% Effective in Late-Stage Trials - LONDON — the University of Oxford added their vaccine candidate to a growing list of shots showing promising effectiveness against Covid-19 — setting in motion disparate regulatory and distribution tracks that executives and researchers hope will result in the start of widespread vaccinations by the end of the year.";
         let output = create_output(
             &account_key.subaddress(0),
-            amount.clone(),
+            amount,
             &mut fixed_rng,
             Some(hint_slice),
             &logger,

@@ -394,7 +394,7 @@ mod tests {
                 .get_block_data_map(block_datas[0].block().index)
                 .unwrap(),
             HashMap::from_iter(vec![
-                (tx_src_url1.clone(), block_datas[0].clone()),
+                (tx_src_url1, block_datas[0].clone()),
                 (tx_src_url2.clone(), block_datas[0].clone()),
             ])
         );
@@ -402,7 +402,7 @@ mod tests {
             watcher_db
                 .get_block_data_map(block_datas[1].block().index)
                 .unwrap(),
-            HashMap::from_iter(vec![(tx_src_url2.clone(), block_datas[1].clone()),])
+            HashMap::from_iter(vec![(tx_src_url2, block_datas[1].clone()),])
         );
     }
 }

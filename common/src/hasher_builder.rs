@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This file provides a no-std Hasher object that is wired to take seeds from
 //! mcrand RdRandRng. This hasher is used in `mc_common::HashMap` in and out of

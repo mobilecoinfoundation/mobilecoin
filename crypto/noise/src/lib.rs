@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A type-parameterized implementation of the Noise framework, with some
 //! hooks for supporting MobileCoin's usage while talking to an enclave.

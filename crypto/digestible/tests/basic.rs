@@ -1,7 +1,7 @@
 //! Tests and test vectors for digestible implementations of rust builtin and
 //! stdlib types.
 
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_POINT, scalar::Scalar};
 use mc_crypto_digestible::{Digestible, MerlinTranscript};

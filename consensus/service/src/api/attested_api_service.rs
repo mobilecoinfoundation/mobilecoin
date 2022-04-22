@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Serves node-to-node attested gRPC requests.
 
@@ -182,7 +182,7 @@ mod peer_tests {
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
-            Err(err @ _) => {
+            Err(err) => {
                 panic!("Unexpected error {:?}", err);
             }
         }
@@ -250,7 +250,7 @@ mod client_tests {
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
-            Err(err @ _) => {
+            Err(err) => {
                 panic!("Unexpected error {:?}", err);
             }
         }

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A Federated, Byzantine Fault-Tolerant Ledger.
 //!
@@ -19,6 +19,7 @@ use crate::{
 use displaydoc::Display;
 use mc_common::{logger::Logger, NodeID, ResponderId};
 use mc_connection::{BlockchainConnection, ConnectionManager};
+use mc_consensus_enclave::ConsensusEnclave;
 use mc_consensus_scp::{scp_log::LoggingScpNode, Node, QuorumSet, ScpNode};
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
@@ -94,6 +95,7 @@ impl ByzantineLedger {
     /// # Arguments
     /// * `node_id` - The local node's ID.
     /// * `quorum_set` - The local node's quorum set.
+    /// * `enclave` - Consensus enclave.
     /// * `peer_manager` - PeerManager
     /// * `ledger` - The local node's ledger.
     /// * `tx_manager` - TxManager
@@ -103,15 +105,17 @@ impl ByzantineLedger {
     /// * `tx_source_urls` - Source URLs for fetching block contents.
     /// * `scp_debug_dir` - If Some, debugging info will be written in this
     ///   directory.
-    /// * `logger` -
+    /// * `logger` - Logger.
     pub fn new<
         PC: BlockchainConnection + ConsensusConnection + 'static,
         L: Ledger + Clone + Sync + 'static,
         TXM: TxManager + Send + Sync + 'static,
         MTXM: MintTxManager + Send + Sync + 'static,
+        E: ConsensusEnclave + Send + Sync + 'static,
     >(
         node_id: NodeID,
         quorum_set: QuorumSet,
+        enclave: E,
         peer_manager: ConnectionManager<PC>,
         ledger: L,
         tx_manager: Arc<TXM>,
@@ -215,6 +219,7 @@ impl ByzantineLedger {
             );
 
             let mut worker = ByzantineLedgerWorker::new(
+                enclave,
                 scp_node,
                 msg_signer_key,
                 ledger,
@@ -314,7 +319,7 @@ mod tests {
         tx_manager::{MockTxManager, TxManagerImpl},
         validators::DefaultTxManagerUntrustedInterfaces,
     };
-    use hex;
+
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
     use mc_consensus_scp::{core_types::Ballot, msg::*, SlotIndex};
@@ -361,7 +366,7 @@ mod tests {
     // Get the local node's NodeID and message signer key.
     pub fn get_local_node_config(node_id: u32) -> (NodeID, ConsensusPeerUri, Arc<Ed25519Pair>) {
         let secret_key = Ed25519Private::try_from_der(
-            &base64::decode("MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo")
+            base64::decode("MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo")
                 .unwrap()
                 .as_slice(),
         )
@@ -432,6 +437,10 @@ mod tests {
         let num_blocks = 1;
         initialize_ledger(BLOCK_VERSION, &mut ledger, num_blocks, &sender, &mut rng);
 
+        // Mock enclave.
+        let enclave = ConsensusServiceMockEnclave::default();
+        enclave.blockchain_config.lock().unwrap().block_version = BLOCK_VERSION;
+
         // Mock peer_manager
         let peer_manager = ConnectionManager::new(
             vec![
@@ -461,21 +470,22 @@ mod tests {
         let broadcaster = Arc::new(Mutex::new(MockBroadcast::new()));
 
         let byzantine_ledger = ByzantineLedger::new(
-            local_node_id.clone(),
-            local_quorum_set.clone(),
+            local_node_id,
+            local_quorum_set,
+            enclave,
             peer_manager,
             ledger.clone(),
-            tx_manager.clone(),
+            tx_manager,
             mint_tx_manager,
             broadcaster,
-            msg_signer_key.clone(),
+            msg_signer_key,
             Vec::new(),
             None,
             logger.clone(),
         );
 
         // Initially, byzantine_ledger is not behind.
-        assert_eq!(byzantine_ledger.is_behind(), false);
+        assert!(!byzantine_ledger.is_behind());
     }
 
     // Initially, ByzantineLedger should emit the normal SCPStatements from
@@ -554,6 +564,7 @@ mod tests {
         let byzantine_ledger = ByzantineLedger::new(
             local_node_id.clone(),
             local_quorum_set.clone(),
+            enclave,
             peer_manager,
             ledger.clone(),
             tx_manager.clone(),
@@ -686,7 +697,7 @@ mod tests {
                 }
             }
 
-            thread::sleep(Duration::from_millis(100 as u64));
+            thread::sleep(Duration::from_millis(100_u64));
         }
 
         {
@@ -790,7 +801,7 @@ mod tests {
                 break;
             }
 
-            thread::sleep(Duration::from_millis(100 as u64));
+            thread::sleep(Duration::from_millis(100_u64));
         }
 
         let mut emitted_msgs = mock_peer_state
@@ -932,6 +943,7 @@ mod tests {
         let byzantine_ledger = ByzantineLedger::new(
             local_node_id.clone(),
             local_quorum_set.clone(),
+            enclave,
             peer_manager,
             ledger.clone(),
             tx_manager,
@@ -1020,7 +1032,7 @@ mod tests {
                 }
             }
 
-            thread::sleep(Duration::from_millis(100 as u64));
+            thread::sleep(Duration::from_millis(100_u64));
         }
 
         {
@@ -1103,7 +1115,7 @@ mod tests {
                 break;
             }
 
-            thread::sleep(Duration::from_millis(100 as u64));
+            thread::sleep(Duration::from_millis(100_u64));
         }
 
         let mut emitted_msgs = mock_peer_state
@@ -1124,9 +1136,9 @@ mod tests {
                         C: Ballot::new(
                             55,
                             &[
-                                ConsensusValue::MintTx(tx1.clone()),
-                                ConsensusValue::MintTx(tx2.clone()),
-                                ConsensusValue::MintTx(tx3.clone()),
+                                ConsensusValue::MintTx(tx1),
+                                ConsensusValue::MintTx(tx2),
+                                ConsensusValue::MintTx(tx3),
                             ]
                         ),
                         HN: 66,
