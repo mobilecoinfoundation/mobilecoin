@@ -96,6 +96,12 @@ impl BlockVersion {
     pub fn mint_transactions_are_supported(&self) -> bool {
         self.0 >= 2
     }
+
+    /// The extended message digest is used when signing MLSAGs
+    /// in block version 2 and higher. This is described in MCIP #25.
+    pub fn mlsags_sign_extended_message_digest(&self) -> bool {
+        self.0 >= 2
+    }
 }
 
 impl Deref for BlockVersion {

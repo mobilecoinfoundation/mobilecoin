@@ -397,7 +397,7 @@ fn compute_extended_message_either_version(
     pseudo_output_commitments: &[CompressedCommitment],
     range_proof_bytes: &[u8],
 ) -> Vec<u8> {
-    if block_version >= BlockVersion::TWO {
+    if block_version.mlsags_sign_extended_message_digest() {
         // New-style extended message using merlin
         digest_extended_message(message, pseudo_output_commitments, range_proof_bytes).to_vec()
     } else {
