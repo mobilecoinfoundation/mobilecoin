@@ -3,15 +3,14 @@
 //! Convert to/from external::VerificationReport
 
 use crate::external;
-use mc_attest_core::{VerificationReport, VerificationSignature};
-use protobuf::RepeatedField;
+use mc_attest_verifier_types::{VerificationReport, VerificationSignature};
 
 impl From<&VerificationReport> for external::VerificationReport {
     fn from(src: &VerificationReport) -> Self {
         let mut dst = external::VerificationReport::new();
 
         dst.set_sig((&src.sig).into());
-        dst.set_chain(RepeatedField::from_slice(&src.chain));
+        dst.set_chain((&src.chain[..]).into());
         dst.set_http_body(src.http_body.clone());
         dst
     }

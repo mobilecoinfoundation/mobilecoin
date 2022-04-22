@@ -3,7 +3,7 @@
 //! Convert to/from external::VerificationSignature
 
 use crate::external;
-use mc_attest_core::VerificationSignature;
+use mc_attest_verifier_types::VerificationSignature;
 
 impl From<&VerificationSignature> for external::VerificationSignature {
     fn from(src: &VerificationSignature) -> Self {
