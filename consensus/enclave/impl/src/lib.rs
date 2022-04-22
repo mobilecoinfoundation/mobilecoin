@@ -536,6 +536,11 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         })
     }
 
+    fn get_minting_trust_root(&self) -> Result<Ed25519Public> {
+        Ed25519Public::try_from(&MINTING_TRUST_ROOT_PUBLIC_KEY[..])
+            .map_err(Error::ParseMintingTrustRootPublicKey)
+    }
+
     fn client_accept(&self, req: ClientAuthRequest) -> Result<(ClientAuthResponse, ClientSession)> {
         Ok(self.ake.client_accept(req)?)
     }

@@ -160,6 +160,12 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
+    fn get_minting_trust_root(&self) -> Result<Ed25519Public> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetMintingTrustRoot)?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
     fn client_accept(&self, req: ClientAuthRequest) -> Result<(ClientAuthResponse, ClientSession)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::ClientAccept(req))?;
         let outbuf = self.enclave_call(&inbuf)?;
