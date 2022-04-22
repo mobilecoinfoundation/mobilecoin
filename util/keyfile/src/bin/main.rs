@@ -15,7 +15,7 @@ fn print_keyfile_bytes(bytes: Vec<u8>) {
     let acct_key = if let Ok(identity) =
         mc_util_keyfile::read_root_entropy_keyfile_data(Cursor::new(bytes.as_slice()))
     {
-        println!("{:?}", identity);
+        println!("Identity: {:?}", identity);
         AccountKey::from(&identity)
     } else {
         mc_util_keyfile::read_keyfile_data(Cursor::new(bytes.as_slice()))
