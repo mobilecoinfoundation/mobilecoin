@@ -23,7 +23,7 @@ use lmdb::{
     Database, DatabaseFlags, Environment, EnvironmentFlags, RoTransaction, RwTransaction,
     Transaction, WriteFlags,
 };
-use mc_common::logger::global_log;
+use mc_common::{logger::global_log, HashMap};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     membership_proofs::Range,
@@ -384,6 +384,13 @@ impl Ledger for LedgerDB {
         let db_transaction = self.env.begin_ro_txn()?;
         self.mint_config_store
             .get_active_mint_configs(token_id, &db_transaction)
+    }
+
+    /// Return the full map of TokenId -> ActiveMintConfigs.
+    fn get_active_mint_configs_map(&self) -> Result<HashMap<TokenId, ActiveMintConfigs>, Error> {
+        let db_transaction = self.env.begin_ro_txn()?;
+        self.mint_config_store
+            .get_active_mint_configs_map(&db_transaction)
     }
 
     /// Checks if the ledger contains a given MintConfigTx nonce.
@@ -880,10 +887,6 @@ pub fn u64_to_key_bytes(value: u64) -> [u8; 8] {
 pub fn key_bytes_to_u64(bytes: &[u8]) -> u64 {
     assert_eq!(8, bytes.len());
     u64::from_be_bytes(bytes.try_into().unwrap())
-}
-
-pub fn u32_to_key_bytes(value: u32) -> [u8; 4] {
-    value.to_be_bytes()
 }
 
 #[cfg(test)]
