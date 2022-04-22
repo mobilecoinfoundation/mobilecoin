@@ -41,12 +41,6 @@ impl From<AccountKeyError> for Error {
     }
 }
 
-impl From<DecodeError> for Error {
-    fn from(src: DecodeError) -> Error {
-        Error::Decode(format!("{}", src))
-    }
-}
-
 impl From<EncodeError> for Error {
     fn from(src: EncodeError) -> Error {
         Error::Encode(format!("{}", src))

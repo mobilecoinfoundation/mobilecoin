@@ -127,7 +127,7 @@ pub struct TestClientConfig {
     pub grpc_retry_config: GrpcRetryConfig,
 
     /// What token id to use for the test
-    #[structopt(long, env = "MC_TOKEN_ID", default_value = "0")]
+    #[clap(long, env = "MC_TOKEN_ID", default_value = "0")]
     pub token_id: TokenId,
 }
 

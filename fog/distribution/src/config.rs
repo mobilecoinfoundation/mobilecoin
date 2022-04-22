@@ -14,7 +14,7 @@ use std::{path::PathBuf, sync::Arc};
 
 /// Configuration parameters for the fog distribution utility
 #[derive(Clone, Debug, Parser)]
-#[structopt(
+#[clap(
     name = "fog-distribution",
     about = "Transfer funds from source accounts (bootstrapped) to destination accounts (which may have fog). This slams the network with many Txs in parallel as a stress test.",
     version
