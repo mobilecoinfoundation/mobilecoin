@@ -27,12 +27,12 @@ fn main() {
         .general
         .fog_report_url
         .as_ref()
-        .map(AsRef::<str>::as_ref);
+        .map(String::as_str);
     let fog_report_id = config
         .general
         .fog_report_id
         .as_ref()
-        .map(AsRef::<str>::as_ref);
+        .map(String::as_str);
     let fog_authority_spki = config
         .general
         .fog_authority_spki
