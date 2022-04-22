@@ -1,4 +1,4 @@
-// Copyright 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module contains the implementation of the fog authority signing and
 //! verification services for ristretto keys.

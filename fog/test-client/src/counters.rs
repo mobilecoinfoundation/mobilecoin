@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 MobileCoin Inc.
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Prometheus metrics, interesting when the test runs continuously
 

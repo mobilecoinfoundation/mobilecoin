@@ -1,4 +1,4 @@
-// Copyright 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module contains the traits for creating and verifying signatures over
 //! fog authority public keys and the canonical signing context/domain separator
