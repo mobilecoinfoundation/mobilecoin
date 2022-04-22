@@ -8,7 +8,7 @@ use displaydoc::Display;
 use mc_account_keys::Error as AccountKeyError;
 use mc_account_keys_slip10::Error as Slip10Error;
 use mc_util_serial::DecodeError as MCUtilSerialDecodeError;
-use prost::{DecodeError, EncodeError};
+use prost::{EncodeError};
 use serde_json::Error as JsonError;
 use std::io::Error as IoError;
 
