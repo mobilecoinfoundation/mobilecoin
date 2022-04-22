@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2018-2021 The MobileCoin Foundation
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 #
 # Launches a local `mc-mobilecoind` instance that syncs the ledger from two nodes in the
 # test network and hosts a wallet service running on port 4444, then launches a local

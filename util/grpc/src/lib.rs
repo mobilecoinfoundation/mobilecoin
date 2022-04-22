@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Utilities related to grpc bindings, particularly, setting up routes,
 //! creating grpc error objects, and various common services like the admin

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Fog-distribution is a tool which serves two purposes:
 //! * Transfer funds from bootstrapped ledger to fog accounts (which can't get

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This crate provides functionality for creating CSPRNG sequences
 //! from the results of key exchanges. The key exchange messages are versioned,

@@ -1,4 +1,4 @@
-// Copyright 2018-2021 The MobileCoin Foundation
+// Copyright 2018-2022 The MobileCoin Foundation
 
 //! This module provides implementations of the report signer for the Ed25519
 //! signature scheme.

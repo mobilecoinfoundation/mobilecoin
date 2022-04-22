@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! LedgerSyncService provides a mechanism for synchronizing a local ledger with
 //! the network. It uses consensus nodes as the source of truth for blocks, and

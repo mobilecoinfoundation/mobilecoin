@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 /// Tests of the behavior of the macro-generated Digestible implementations
 use mc_crypto_digestible::{Digestible, MerlinTranscript};

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Range proofs are used to prove that a set of committed values are all
 //! in a well-defined range, without revealing the values.

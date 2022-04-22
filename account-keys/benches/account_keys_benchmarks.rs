@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use mc_account_keys::AccountKey;

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 MobileCoin Inc.
+// Copyright (c) 2018-2022 MobileCoin Inc.
 
 //! Helper functions intended to return canned certificate data
 

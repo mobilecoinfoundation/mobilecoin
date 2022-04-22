@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# Copyright (c) 2018-2021 The MobileCoin Foundation
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 
 # TODO
 # - Better errors on missing env vars

@@ -1,4 +1,4 @@
-// Copyright 2018-2021 The MobileCoin Foundation
+// Copyright 2018-2022 The MobileCoin Foundation
 
 use crate::{common::*, LibMcError};
 use bip39::{Language, Mnemonic};

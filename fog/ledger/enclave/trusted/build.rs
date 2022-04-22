@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 MobileCoin Inc.
+// Copyright (c) 2018-2022 MobileCoin Inc.
 
 //! Generate the binding code that lives inside the enclave and link it in.
 

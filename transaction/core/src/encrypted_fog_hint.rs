@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Define DiscoveryHint buffer size, and serialization defs for it
 //! Also define `fake_onetime_hint` which samples the distribution that

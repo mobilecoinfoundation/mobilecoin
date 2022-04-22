@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use mc_consensus_enclave::{TxContext, WellFormedTxContext};
 use mc_transaction_core::{

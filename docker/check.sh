@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2018-2021 The MobileCoin Foundation
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 #
 # This script performs any "health checks" that are not considered unit tests,
 # such as code formatting, that are run in CI.
