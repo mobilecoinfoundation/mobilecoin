@@ -3555,7 +3555,6 @@ name = "mc-fog-ingest-enclave-impl"
 version = "1.3.0-pre0"
 dependencies = [
  "aligned-cmov",
- "hex",
  "mc-account-keys",
  "mc-attest-core",
  "mc-attest-enclave-api",
@@ -3576,7 +3575,6 @@ dependencies = [
  "mc-sgx-compat",
  "mc-sgx-report-cache-api",
  "mc-transaction-core",
- "mc-transaction-std",
  "mc-util-from-random",
  "mc-util-logger-macros",
  "mc-util-serial",

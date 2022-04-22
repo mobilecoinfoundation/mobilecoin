@@ -18,7 +18,6 @@ mc-crypto-rand = { path = "../../../../crypto/rand" }
 mc-sgx-compat = { path = "../../../../sgx/compat" }
 mc-sgx-report-cache-api = { path = "../../../../sgx/report-cache/api" }
 mc-transaction-core = { path = "../../../../transaction/core", default-features = false }
-mc-transaction-std = { path = "../../../../transaction/std", default-features = false }
 mc-util-from-random = { path = "../../../../util/from-random" }
 mc-util-serial = { path = "../../../../util/serial" }
 
@@ -38,7 +37,6 @@ rand_core = { version = "0.6", default-features = false }
 zeroize = { version = "1.5", default-features = false }
 
 [dev-dependencies]
-hex = "0.4.3"
 
 mc-account-keys = { path = "../../../../account-keys" }
 mc-common = { path = "../../../../common", features = ["loggers"] }
