@@ -29,7 +29,7 @@ pub enum Error {
     /// {0}
     Other(String),
 
-    /// DB Access Error" {0}
+    /// DB Access Error: {0}
     DBAccess(String),
 
     /// Block validation failed: {0}

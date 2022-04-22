@@ -5,8 +5,6 @@ authors = ["MobileCoin"]
 license = "MIT OR Apache-2.0"
 edition = "2018"
 
-[lib]
-
 [features]
 test_utils = []
 
@@ -25,9 +23,9 @@ displaydoc = "0.2"
 futures = "0.3"
 grpcio = "0.10"
 hashbrown = "0.12.0"
-pin-project = "1.0.10"
 protobuf = "2.22"
 reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "gzip"] }
+tokio = "1.17.0"
 url = "2.2"
 
 [build-dependencies]
