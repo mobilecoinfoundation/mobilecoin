@@ -8,7 +8,7 @@ use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 
 /// An error which can occur in connection to a ring signature
-#[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum Error {
     /// Incorrect length for array copy, provided `{0}`, required `{1}`.
     LengthMismatch(usize, usize),
