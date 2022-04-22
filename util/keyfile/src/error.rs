@@ -8,7 +8,7 @@ use displaydoc::Display;
 use mc_account_keys::Error as AccountKeyError;
 use mc_account_keys_slip10::Error as Slip10Error;
 use mc_util_serial::DecodeError as MCUtilSerialDecodeError;
-use prost::{EncodeError};
+use prost::{DecodeError as ProstDecodeError, EncodeError as ProstEncodeError};
 use serde_json::Error as JsonError;
 use std::io::Error as IoError;
 
@@ -41,8 +41,14 @@ impl From<AccountKeyError> for Error {
     }
 }
 
-impl From<EncodeError> for Error {
-    fn from(src: EncodeError) -> Error {
+impl From<ProstEncodeError> for Error {
+    fn from(src: ProstEncodeError) -> Error {
+        Error::Encode(format!("{}", src))
+    }
+}
+
+impl From<ProstDecodeError> for Error {
+    fn from(src: ProstDecodeError) -> Error {
         Error::Encode(format!("{}", src))
     }
 }
