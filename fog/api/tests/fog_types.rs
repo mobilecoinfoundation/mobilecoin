@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // Test that mc_fog_types structs match the protos defined in .proto files,
 // by testing that they round-trip through the proto-generated rust types

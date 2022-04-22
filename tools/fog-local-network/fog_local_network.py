@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2020 MobileCoin Inc.
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 
 import argparse
 import os

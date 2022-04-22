@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 #![no_std]
 
@@ -16,7 +16,7 @@ pub fn _eprint(args: core::fmt::Arguments) {
 }
 
 extern "C" {
-    /// This is the OCALL prototype for passing message buffers to the untrusted code. See
-    /// sgx_debug_edl crate.
+    /// This is the OCALL prototype for passing message buffers to the untrusted
+    /// code. See sgx_debug_edl crate.
     fn eprintln_message(msg: *const u8, msg_len: usize);
 }

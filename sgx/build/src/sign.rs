@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Builder for signing an enclave using the sgx_sign binary application
 
@@ -27,7 +27,8 @@ impl Default for TcsPolicy {
 
 /// This builder creates the Enclave.config.xml config file used by sgx_sign.
 ///
-/// See "Intel SGX Developer Reference" section "Enclave Configuration File" for more information.
+/// See "Intel SGX Developer Reference" section "Enclave Configuration File" for
+/// more information.
 #[derive(Clone, Debug, Default)]
 pub struct SgxConfigBuilder {
     prod_id: Option<u16>,
@@ -206,7 +207,8 @@ pub struct SgxSign {
     /// The path to the sgx_sign executable.
     sgx_sign_path: PathBuf,
 
-    /// Whether to ignore the presence of relocations in the enclave shared object.
+    /// Whether to ignore the presence of relocations in the enclave shared
+    /// object.
     ignore_rel_error: bool,
     /// Whether to ignore .init sections in the enclave.
     ignore_init_sec_error: bool,
@@ -230,8 +232,9 @@ impl SgxSign {
         self
     }
 
-    /// Sign the given enclave object with the given private key and write the resulting enclave to
-    /// the given path. Note that online signatures are inherently insecure.
+    /// Sign the given enclave object with the given private key and write the
+    /// resulting enclave to the given path. Note that online signatures are
+    /// inherently insecure.
     pub fn sign(
         &mut self,
         unsigned_enclave: &Path,
@@ -272,7 +275,8 @@ impl SgxSign {
         self
     }
 
-    /// Generate the data required for offline signing, and write it to the given output data path.
+    /// Generate the data required for offline signing, and write it to the
+    /// given output data path.
     pub fn gendata(
         &mut self,
         unsigned_enclave: &Path,
@@ -310,8 +314,8 @@ impl SgxSign {
         self
     }
 
-    /// Combine an unsigned enclave and signature into the output enclave, after checking the
-    /// signature.
+    /// Combine an unsigned enclave and signature into the output enclave, after
+    /// checking the signature.
     pub fn catsig(
         &mut self,
         unsigned_enclave: &Path,
@@ -409,8 +413,8 @@ impl From<PathBuf> for SgxSign {
     }
 }
 
-/// Construct an SgxSign utility, using $SGX_SDK/bin/x64/sgx_sign or /opt/intel/sgxsdk/bin/sgx_sign
-/// (if SGX_SDK is not defind) as the executable.
+/// Construct an SgxSign utility, using $SGX_SDK/bin/x64/sgx_sign or
+/// /opt/intel/sgxsdk/bin/sgx_sign (if SGX_SDK is not defind) as the executable.
 impl Default for SgxSign {
     fn default() -> Self {
         let mut sgx_sign_path =

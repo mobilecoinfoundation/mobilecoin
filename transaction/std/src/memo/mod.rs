@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Defines an object for each known high-level memo type,
 //! and an enum to allow matching recovered memos to one of these types.

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2018-2021 The MobileCoin Foundation
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 #
 # This script is intended to make sample data (bootstrapped ledger) suitable
 # for local-networktests.

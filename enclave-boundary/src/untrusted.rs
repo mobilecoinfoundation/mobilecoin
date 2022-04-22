@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use alloc::{vec, vec::Vec};
 use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t};

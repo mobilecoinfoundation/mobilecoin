@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // This integration-level test mocks out consensus and tries to show
 // that the users are able to recover their transactions.

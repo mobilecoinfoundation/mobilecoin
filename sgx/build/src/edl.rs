@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Edger8r Tool Wrapper
 
@@ -21,8 +21,8 @@ pub struct Edger8r {
 }
 
 impl Edger8r {
-    /// Set an enclave name. This will be used to generate the EDL filename if edl_path is
-    /// unspecified.
+    /// Set an enclave name. This will be used to generate the EDL filename if
+    /// edl_path is unspecified.
     pub fn enclave_name(&mut self, enclave_name: &str) -> &mut Self {
         self.enclave_name = enclave_name.to_owned();
         self
@@ -114,7 +114,8 @@ impl Edger8r {
         build_generated_code(&output_dir, &edl_name);
     }
 
-    /// Generate and compile the code which will run inside the enclave using the given EDL.
+    /// Generate and compile the code which will run inside the enclave using
+    /// the given EDL.
     pub fn build_trusted(&mut self) -> &mut Self {
         self.do_build(true);
         self

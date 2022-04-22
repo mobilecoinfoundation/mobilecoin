@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use prost::Message as ProstMessage;
 use protobuf::Message as ProtobufMessage;

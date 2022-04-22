@@ -1,4 +1,4 @@
-// Copyright 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module contains the traits and implementations for creating and
 //! verifying signatures over governor maps and the canonical signing
