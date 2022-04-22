@@ -1,10 +1,10 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Test client error type
 
 use displaydoc::Display;
 use mc_fog_sample_paykit::Error as SamplePaykitError;
-use mc_transaction_core::BlockVersionError;
+use mc_transaction_core::{BlockVersionError, TokenId};
 
 /// Error that can occur when running a test transfer
 #[derive(Display, Debug)]
@@ -35,6 +35,10 @@ pub enum TestClientError {
     ConfirmTx(SamplePaykitError),
     /// Block version error: {0}
     BlockVersion(BlockVersionError),
+    /// Client error while getting a fee: {0}
+    GetFee(SamplePaykitError),
+    /// TokenId is not configured in consensus (no fee is available): {0}
+    TokenNotConfigured(TokenId),
 }
 
 impl From<BlockVersionError> for TestClientError {

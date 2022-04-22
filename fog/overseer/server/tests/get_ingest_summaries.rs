@@ -43,6 +43,7 @@ fn one_active_node_produces_ingest_summaries(logger: Logger) {
     let origin_contents = BlockContents {
         key_images: Default::default(),
         outputs: origin_txo.clone(),
+        ..Default::default()
     };
     let origin_block = Block::new_origin_block(&origin_txo);
     ledger
@@ -91,7 +92,7 @@ fn one_active_node_produces_ingest_summaries(logger: Logger) {
     // Initialize an OverSeerService object
     let mut overseer_service = OverseerService::new(
         vec![client_listen_uri0, client_listen_uri1, client_listen_uri2],
-        recovery_db.clone(),
+        recovery_db,
         logger.clone(),
     );
     overseer_service.start().unwrap();

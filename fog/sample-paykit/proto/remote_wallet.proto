@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 /// This file contains a simple service wrapper for a wallet that is used by the fog conformance tests
 /// to perform balance checks against an arbitrary client implementation.

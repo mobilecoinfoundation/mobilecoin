@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! MobileCoin Logging.
 //!
@@ -72,6 +72,7 @@ cfg_if::cfg_if! {
             )
         }
 
+        /// Helper struct for tracing elapsed time.
         pub struct TraceTime<'a> {
             logger: Logger,
             rstatic: slog::RecordStatic<'a>,
@@ -80,6 +81,7 @@ cfg_if::cfg_if! {
         }
 
         impl<'a> TraceTime<'a> {
+            /// Start a timer with the given message.
             pub fn new(logger: Logger, rstatic: slog::RecordStatic<'a>, msg: String) -> Self {
                 let start = Instant::now();
                 Self {

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Validates that a transaction or list of transactions are safe to append to
 //! the ledger.
@@ -28,7 +28,7 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{
     ring_signature::KeyImage,
-    tx::{TxHash, TxOutMembershipElement, TxOutMembershipProof},
+    tx::{TxHash, TxOutMembershipProof},
     validation::{validate_tombstone, TransactionValidationError, TransactionValidationResult},
 };
 use std::{collections::HashSet, iter::FromIterator, sync::Arc};
@@ -169,14 +169,6 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
             .get_tx_out_proof_of_memberships(indexes)
             .map_err(|e| TransactionValidationError::Ledger(e.to_string()))
     }
-
-    fn get_root_tx_out_membership_element(
-        &self,
-    ) -> TransactionValidationResult<TxOutMembershipElement> {
-        self.ledger
-            .get_root_tx_out_membership_element()
-            .map_err(|e| TransactionValidationError::Ledger(e.to_string()))
-    }
 }
 
 #[cfg(test)]
@@ -242,8 +234,10 @@ pub mod well_formed_tests {
 
         // This tx_context contains highest_indices that exceed the number of TxOuts in
         // the ledger.
-        let mut tx_context = TxContext::default();
-        tx_context.highest_indices = vec![99, 10002, 445];
+        let tx_context = TxContext {
+            highest_indices: vec![99, 10002, 445],
+            ..Default::default()
+        };
 
         match untrusted.well_formed_check(&tx_context) {
             Ok((_cur_block_index, _membership_proofs)) => {
@@ -595,7 +589,7 @@ mod combine_tests {
                 .unwrap();
 
             let tx = transaction_builder.build(&mut rng).unwrap();
-            let client_tx = WellFormedTxContext::from(&tx);
+            let client_tx = WellFormedTxContext::from_tx(&tx, 0);
 
             // "Combining" a singleton set should return a vec containing the single
             // element.
@@ -679,7 +673,7 @@ mod combine_tests {
                         .unwrap();
 
                     let tx = transaction_builder.build(&mut rng).unwrap();
-                    WellFormedTxContext::from(&tx)
+                    WellFormedTxContext::from_tx(&tx, 0)
                 };
                 transaction_set.push(client_tx);
             }
@@ -754,7 +748,7 @@ mod combine_tests {
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
-                WellFormedTxContext::from(&tx)
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // Create another transaction that attempts to spend `tx_out`.
@@ -791,7 +785,7 @@ mod combine_tests {
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
-                WellFormedTxContext::from(&tx)
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // This transaction spends a different TxOut, unrelated to `first_client_tx` and
@@ -854,7 +848,7 @@ mod combine_tests {
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
-                WellFormedTxContext::from(&tx)
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // `combine` the set of transactions.
@@ -947,7 +941,7 @@ mod combine_tests {
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
-                WellFormedTxContext::from(&tx)
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // Create another transaction that attempts to spend `tx_out2` but has the same
@@ -985,8 +979,8 @@ mod combine_tests {
                     .unwrap();
 
                 let mut tx = transaction_builder.build(&mut rng).unwrap();
-                tx.prefix.outputs[0].public_key = first_client_tx.output_public_keys()[0].clone();
-                WellFormedTxContext::from(&tx)
+                tx.prefix.outputs[0].public_key = first_client_tx.output_public_keys()[0];
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // This transaction spends a different TxOut, unrelated to `first_client_tx` and
@@ -1049,7 +1043,7 @@ mod combine_tests {
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
-                WellFormedTxContext::from(&tx)
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // `combine` the set of transactions.

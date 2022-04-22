@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // This integration-level test mocks out consensus and tries to show
 // that the users are able to recover their transactions.
@@ -91,7 +91,7 @@ fn get_test_environment(
         let mut server = ViewServer::new(
             config,
             enclave,
-            db.clone(),
+            db,
             ra_client,
             SystemTimeProvider::default(),
             logger.clone(),
@@ -109,7 +109,7 @@ fn get_test_environment(
         let mut verifier = Verifier::default();
         verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
-        FogViewGrpcClient::new(uri, GRPC_RETRY_CONFIG, verifier, grpcio_env.clone(), logger)
+        FogViewGrpcClient::new(uri, GRPC_RETRY_CONFIG, verifier, grpcio_env, logger)
     };
 
     (db_test_context, server, client)
@@ -146,7 +146,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id1,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             0,
             2,
@@ -161,7 +161,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id1,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             1,
             6,
@@ -184,7 +184,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id2,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             2,
             12,
@@ -219,7 +219,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id2,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             3,
             12,
@@ -234,7 +234,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id2,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             4,
             16,
@@ -251,7 +251,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id2,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             5,
             20,

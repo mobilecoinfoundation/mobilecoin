@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 /// Protos to be used for displaying encoded strings to users
 
@@ -20,6 +20,9 @@ message PaymentRequest {
 
     /// Any additional text explaining the request
     string memo = 3;
+
+    /// Token id to transact in.
+    uint64 token_id = 4;
 }
 
 /// Message encoding a private key and a UTXO, for the purpose of

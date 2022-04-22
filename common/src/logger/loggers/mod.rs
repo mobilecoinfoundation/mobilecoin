@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 /// Sets chan_size for stdout, gelf, and UDP loggers
 const STDOUT_CHANNEL_SIZE: usize = 100_000;

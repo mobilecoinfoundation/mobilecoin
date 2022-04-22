@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Database storage for discovered outputs.
 //! * Manages the mapping of (monitor id, subaddress index) -> [UnspentTxOut]s.
@@ -58,8 +58,8 @@ pub struct UnspentTxOut {
     pub attempted_spend_tombstone: u64,
 
     /// The token id of this TxOut
-    #[prost(uint32, tag = "7")]
-    pub token_id: u32,
+    #[prost(uint64, tag = "7")]
+    pub token_id: u64,
 }
 
 /// Type used as the key in the utxo_id_to_utxo  database.
@@ -442,7 +442,7 @@ mod test {
     ) -> (Arc<Environment>, LedgerDB, UtxoStore, Vec<UnspentTxOut>) {
         // Set up a db with 3 random recipients and 10 blocks.
         let (ledger_db, _mobilecoind_db) =
-            get_test_databases(BlockVersion::ONE, 3, &vec![], 10, logger.clone(), &mut rng);
+            get_test_databases(BlockVersion::ZERO, 3, &[], 10, logger.clone(), &mut rng);
 
         // Get a few TxOuts to play with, and use them to construct UnspentTxOuts.
         let utxos: Vec<UnspentTxOut> = (0..5)
@@ -708,7 +708,7 @@ mod test {
     fn test_remove_utxos_by_key_images(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
         let (env, _ledger_db, utxo_store, mut utxos) = setup_test_utxo_store(&mut rng, &logger);
-        let key_images: Vec<KeyImage> = utxos.iter().map(|utxo| utxo.key_image.clone()).collect();
+        let key_images: Vec<KeyImage> = utxos.iter().map(|utxo| utxo.key_image).collect();
 
         // Some random monitor ids to play with
         let (_monitor_data, monitor_id0) = get_test_monitor_data_and_id(&mut rng);
@@ -835,12 +835,8 @@ mod test {
                 .remove_utxos_by_key_images(&mut db_txn, &monitor_id0, &key_images)
                 .unwrap();
             assert_eq!(
-                HashSet::from_iter(removed_utxos.iter().map(|utxo| utxo.key_image.clone())),
-                HashSet::from_iter(vec![
-                    key_images[0].clone(),
-                    key_images[1].clone(),
-                    key_images[2].clone()
-                ])
+                HashSet::from_iter(removed_utxos.iter().map(|utxo| utxo.key_image)),
+                HashSet::from_iter(vec![key_images[0], key_images[1], key_images[2]])
             );
 
             assert_eq!(

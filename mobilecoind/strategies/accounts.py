@@ -1,9 +1,11 @@
-# Copyright (c) 2018-2021 The MobileCoin Foundation
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 
 import grpc
 import json
+import logging
 import time
 import os
+import sys
 import uuid
 import mobilecoind_api_pb2
 import mobilecoind_api_pb2_grpc
@@ -11,6 +13,9 @@ from collections import namedtuple
 from enum import Enum
 from random import randint
 from google.protobuf.empty_pb2 import Empty
+
+logging.basicConfig(stream = sys.stdout, level = logging.INFO, format="%(levelname)s:%(module)s:%(lineno)s: %(message)s")
+
 
 AccountData = namedtuple("AccountData",
                          ["account_key", "monitor_id", "public_address"])
@@ -64,7 +69,7 @@ def load_key_and_register(keyfile, stub) -> AccountData:
 
 def register_random_key(stub, outdir) -> AccountData:
     entropy = [randint(0, 255) for i in range(32)]
-    print("entropy = ", entropy)
+    logging.debug("entropy = %s", entropy)
     data = {"root_entropy": entropy}
     outfile = 'account_keys_{}.json'.format(uuid.uuid4())
     with open(os.path.join(outdir, outfile), 'w') as out:
@@ -73,25 +78,25 @@ def register_random_key(stub, outdir) -> AccountData:
 
 
 def wait_for_accounts_sync(stub, accounts, wait_secs):
-    print("accounts = ", accounts[0])
+    logging.debug("accounts = %s", accounts[0])
     block_count = stub.GetLedgerInfo(Empty()).block_count
     synced_ids = {a: False for a in accounts}
     while not all(synced_ids.values()):
-        print(".", end="", flush=True)
+        logging.info("Waiting for accounts to sync")
         for a in synced_ids:
             request = mobilecoind_api_pb2.GetMonitorStatusRequest(monitor_id=a)
             monitor_block = stub.GetMonitorStatus(request).status.next_block
             if monitor_block == block_count:
                 synced_ids[a] = True
         time.sleep(wait_secs)
-    print("All accounts synced")
+    logging.info("All accounts synced")
 
 
 def get_synced_accounts(stub, accounts):
     block_count = stub.GetLedgerInfo(Empty()).block_count
     synced = {a: False for a in accounts}
     while not any(synced.values()):
-        print(".", end="", flush=True)
+        logging.info("Waiting for accounts to sync")
         for a in synced:
             request = mobilecoind_api_pb2.GetMonitorStatusRequest(monitor_id=a)
             monitor_block = stub.GetMonitorStatus(request).status.next_block
@@ -119,12 +124,12 @@ def poll_mitosis(starting_balance, account_data, tx_stats, stub):
                     # FIXME: don't know status currently...see below in poll
                     tx_stats[tx_id]['status'] = TransferStatus.success
             except Exception as exc:
-                print(f"Got Balance exception: {repr(exc)}")
+                logging.error("Got Balance exception: %s", repr(exc))
         pending = [k for k in complete if not complete[k]]
-        print("Still pending:", len(pending))
+        logging.info("Still pending: %s", len(pending))
         time.sleep(2)
-    print("All accounts transfers complete")
-    print(f"Stats: {tx_stats}")
+    logging.info("All accounts transfers complete")
+    logging.debug(tx_stats)
     return tx_stats
 
 
@@ -141,22 +146,23 @@ def poll(monitor_id, tx_stats, stub):
                         receiver_tx_receipt_list=receipts[tx_id]["receipt"].receiver_tx_receipt_list
                     ))
                 if resp.status == mobilecoind_api_pb2.TxStatus.TombstoneBlockExceeded:
-                    print("Transfer did not complete in time", tx_id)
+                    logging.warning("Transfer did not complete in time: %s", tx_id)
                     complete[tx_id] = True
                     tx_stats[tx_id]['time_delta'] = time.time(
                     ) - tx_stats[tx_id]['start']
                     tx_stats[tx_id]['status'] = TransferStatus.tombstoned
                 elif resp.status == mobilecoind_api_pb2.TxStatus.Verified:
-                    print("Transfer complete", tx_id)
+                    logging.info("Transfer complete %s", tx_id)
                     complete[tx_id] = True
                     tx_stats[tx_id]['time_delta'] = time.time(
                     ) - tx_stats[tx_id]['start']
                     tx_stats[tx_id]['status'] = TransferStatus.success
                 else:
-                    print("Transfer status unknown", resp.status)
+                    logging.warning("Transfer status unknown: %s", resp.status)
             except Exception as e:
-                print(f"TransferStatus exception: {repr(e)}")
+                logging.error("TransferStatus exception: %s", repr(e))
         pending = [k for k in complete if not complete[k]]
         time.sleep(0.25)
-    print(f"All accounts transfers complete: Stats:\n {tx_stats}")
+    logging.info("All accounts transfers complete")
+    logging.debug(tx_stats)
     return tx_stats

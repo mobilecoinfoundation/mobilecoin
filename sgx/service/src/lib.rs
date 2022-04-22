@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Provides safe interfaces to sgx_tservice functionality
 
@@ -65,8 +65,8 @@ fn usize_for_sgx(val: usize) -> Result<u32, sgx_status_t> {
     Ok(val as u32)
 }
 
-/// For a given plaintext length, how large an outbuffer should I use to seal it?
-/// Note that using the wrong size is an error per intel SDK
+/// For a given plaintext length, how large an outbuffer should I use to seal
+/// it? Note that using the wrong size is an error per intel SDK
 /// Per Intel, the result is u32::max_value() if there is an error
 pub fn calc_sealed_data_size(
     plaintext_len: usize,
@@ -86,7 +86,8 @@ pub fn calc_sealed_data_size(
 
 /// Given a plaintext, seal it to MRENCLAVE identity
 /// The entire outbuffer will be used
-/// It is an error if out_buffer.len() does not equal calc_sealed_data_size(plaintext.len())
+/// It is an error if out_buffer.len() does not equal
+/// calc_sealed_data_size(plaintext.len())
 pub fn seal_data(
     plaintext: &[u8],
     additional_mac_txt: &[u8],
@@ -111,10 +112,12 @@ pub fn seal_data(
     }
 }
 
-/// Given sealed data, get the lengths of sealed payload and additional mac text.
-/// Also double check that these numbers make sense given the length of the sealed data.
+/// Given sealed data, get the lengths of sealed payload and additional mac
+/// text. Also double check that these numbers make sense given the length of
+/// the sealed data.
 ///
-/// If the sealed blob has nonzero additional mac text, we fail with SGX_ERROR_UNEXPECTED
+/// If the sealed blob has nonzero additional mac text, we fail with
+/// SGX_ERROR_UNEXPECTED
 pub fn get_sealed_payload_sizes(sealed_data: &[u8]) -> Result<(u32, u32), sgx_status_t> {
     let sealed_len = usize_for_sgx(sealed_data.len())?;
 
@@ -124,8 +127,9 @@ pub fn get_sealed_payload_sizes(sealed_data: &[u8]) -> Result<(u32, u32), sgx_st
     let mac_len = unsafe { sgx_get_add_mac_txt_len(sealed_ptr) };
     let payload_len = unsafe { sgx_get_encrypt_txt_len(sealed_ptr) };
 
-    // Check that the numbers in the header actually match the length of the buffer we recieved
-    // If not then the input is malformed and we should not make allocations and should warn the user.
+    // Check that the numbers in the header actually match the length of the buffer
+    // we recieved If not then the input is malformed and we should not make
+    // allocations and should warn the user.
     if unsafe { sgx_calc_sealed_data_size(mac_len, payload_len) } != sealed_len {
         return Err(sgx_status_t::SGX_ERROR_INVALID_PARAMETER);
     }
@@ -136,14 +140,16 @@ pub fn get_sealed_payload_sizes(sealed_data: &[u8]) -> Result<(u32, u32), sgx_st
 /// Unseal data sealed using seal_data, into an outbuffer
 /// The length of the outbuffer should be determined using `authenticate_sealed`
 ///
-/// Note that the MAC is actually checked in both `authenticate_sealed` and this function,
-/// we want to make sure the MAC is checked before we get_encrypt_txt_len so that we don't get DOS'ed
-/// by being forced to allocate a large buffer, but SGX does not provide a version of unseal that
+/// Note that the MAC is actually checked in both `authenticate_sealed` and this
+/// function, we want to make sure the MAC is checked before we
+/// get_encrypt_txt_len so that we don't get DOS'ed by being forced to allocate
+/// a large buffer, but SGX does not provide a version of unseal that
 /// doesn't check MAC.
 ///
-/// If additional mac txt is present in the sealed blob, we fail with SGX_ERROR_UNEXPECTED.
-/// If unsealing succeeds, we return the portion of the outbuffer that we wrote to (which is normally
-/// the whole thing if you allocated the amount indicated by `authenticate_sealed`.
+/// If additional mac txt is present in the sealed blob, we fail with
+/// SGX_ERROR_UNEXPECTED. If unsealing succeeds, we return the portion of the
+/// outbuffer that we wrote to (which is normally the whole thing if you
+/// allocated the amount indicated by `authenticate_sealed`.
 pub fn unseal_data(
     sealed_data: &[u8],
     plaintext_out: &mut [u8],

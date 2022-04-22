@@ -1,12 +1,16 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::Error;
-use mc_common::Hash;
+use crate::{
+    mint_config_store::{ActiveMintConfig, ActiveMintConfigs},
+    Error,
+};
+use mc_common::{Hash, HashMap};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
+    mint::MintTx,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockIndex, BlockSignature,
+    Block, BlockContents, BlockData, BlockIndex, BlockSignature, TokenId,
 };
 use mockall::*;
 
@@ -90,4 +94,30 @@ pub trait Ledger: Send {
         }
         self.get_block(num_blocks - 1)
     }
+
+    /// Get active mint configurations for a given token id.
+    fn get_active_mint_configs(
+        &self,
+        token_id: TokenId,
+    ) -> Result<Option<ActiveMintConfigs>, Error>;
+
+    /// Return the full map of TokenId -> ActiveMintConfigs.
+    fn get_active_mint_configs_map(&self) -> Result<HashMap<TokenId, ActiveMintConfigs>, Error>;
+
+    /// Checks if the ledger contains a given MintConfigTx nonce.
+    /// If so, returns the index of the block in which it entered the ledger.
+    /// Ok(None) is returned when the nonce is not in the ledger.
+    fn check_mint_config_tx_nonce(&self, nonce: &[u8]) -> Result<Option<BlockIndex>, Error>;
+
+    /// Checks if the ledger contains a given MintTx nonce.
+    /// If so, returns the index of the block in which it entered the ledger.
+    /// Ok(None) is returned when the nonce is not in the ledger.
+    fn check_mint_tx_nonce(&self, nonce: &[u8]) -> Result<Option<BlockIndex>, Error>;
+
+    /// Attempt to get an active mint configuration that is able to verify and
+    /// accommodate a given MintTx.
+    fn get_active_mint_config_for_mint_tx(
+        &self,
+        mint_tx: &MintTx,
+    ) -> Result<ActiveMintConfig, Error>;
 }

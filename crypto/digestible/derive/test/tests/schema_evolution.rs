@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 /// Tests of the schema evolution properties of derive(Digestible)
 /// implementations
@@ -310,7 +310,7 @@ fn struct_schema_evolution() {
             b: Some(99),
             c: Default::default(),
             d: 0,
-            e: vec!['a' as u8]
+            e: vec![b'a']
         }
         .digest32::<MerlinTranscript>(b"test"),
         ThingV7 {

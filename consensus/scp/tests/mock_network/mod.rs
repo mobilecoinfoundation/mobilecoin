@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Thread-based simulation for consensus networks.
 
@@ -251,7 +251,7 @@ impl SCPNetwork {
 
         for peer_id in peers {
             nodes_map
-                .get_mut(&peer_id)
+                .get_mut(peer_id)
                 .expect("failed to get peer from nodes_map")
                 .send_msg(amsg.clone());
         }
@@ -531,24 +531,28 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
     let node_ids: Vec<NodeID> = network_config.nodes.iter().map(|n| n.id.clone()).collect();
 
     // check that all ledgers start empty
-    for n in 0..network_config.nodes.len() {
-        assert!(simulation.get_ledger_size(&node_ids[n]) == 0);
+    for node_id in node_ids.iter().take(network_config.nodes.len()) {
+        assert!(simulation.get_ledger_size(node_id) == 0);
     }
 
     // push values
     let mut last_log = Instant::now();
-    for i in 0..test_options.values_to_submit {
+    for (i, value) in values
+        .iter()
+        .take(test_options.values_to_submit)
+        .enumerate()
+    {
         let start = Instant::now();
 
         if test_options.submit_in_parallel {
             // simulate broadcast of values to all nodes in parallel
-            for n in 0..network_config.nodes.len() {
-                simulation.push_value(&node_ids[n], &values[i]);
+            for node_id in node_ids.iter().take(network_config.nodes.len()) {
+                simulation.push_value(node_id, value);
             }
         } else {
             // submit values to nodes in sequence
             let n = i % network_config.nodes.len();
-            simulation.push_value(&node_ids[n], &values[i]);
+            simulation.push_value(&node_ids[n], value);
         }
 
         if last_log.elapsed().as_millis() > 999 {
@@ -596,7 +600,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
                 panic!("test failed due to timeout");
             }
 
-            let num_externalized_values = simulation.get_ledger_size(&node_id);
+            let num_externalized_values = simulation.get_ledger_size(node_id);
             if num_externalized_values >= test_options.values_to_submit {
                 // if the validity_fn does not enforce unique values, we can end up
                 // with values that appear in multiple slots. This is not a problem
@@ -644,7 +648,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
         // check that all submitted values are externalized at least once
         // duplicate values are possible depending on validity_fn
         let externalized_values_hashset = simulation
-            .get_ledger(&node_id)
+            .get_ledger(node_id)
             .iter()
             .flatten()
             .cloned()
@@ -681,7 +685,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
     // Check that all of the externalized ledgers match block-by-block
     let first_node_ledger = simulation.get_ledger(&node_ids[0]);
     for node_id in node_ids.iter().skip(1) {
-        let other_node_ledger = simulation.get_ledger(&node_id);
+        let other_node_ledger = simulation.get_ledger(node_id);
 
         if first_node_ledger.len() != other_node_ledger.len() {
             log::error!(

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Utilities related to grpc bindings, particularly, setting up routes,
 //! creating grpc error objects, and various common services like the admin
@@ -67,6 +67,10 @@ pub fn send_result<T>(
 ) {
     let logger = logger.clone();
     let success = resp.is_ok();
+    let code = match &resp {
+        Ok(_) => RpcStatusCode::OK,
+        Err(e) => e.code(),
+    };
 
     match resp {
         Ok(ok) => ctx.spawn(
@@ -82,6 +86,7 @@ pub fn send_result<T>(
     }
 
     SVC_COUNTERS.resp(&ctx, success);
+    SVC_COUNTERS.status_code(&ctx, code);
 }
 
 macro_rules! report_err_with_code(

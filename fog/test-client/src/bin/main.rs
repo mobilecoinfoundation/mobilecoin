@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! Test Client
 
@@ -10,11 +11,11 @@ use mc_fog_test_client::{
     error::TestClientError,
     test_client::{TestClient, TestClientPolicy},
 };
+use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
 use mc_util_parse::{load_css_file, CssSignature};
 use serde::Serialize;
 use std::sync::Arc;
-use structopt::StructOpt;
 
 #[derive(Serialize, Debug, Clone)]
 struct JsonData {
@@ -26,7 +27,7 @@ fn main() {
     mc_common::setup_panic_handler();
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
-    let config = TestClientConfig::from_args();
+    let config = TestClientConfig::parse();
 
     let _tracer = mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
         .expect("Failed setting telemetry tracer");

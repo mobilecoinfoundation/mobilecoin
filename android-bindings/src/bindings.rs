@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! JNI wrappers for our various objects.
 
@@ -1175,7 +1175,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_init_1jni(
             env.get_rust_field(fog_resolver, RUST_OBJ_FIELD)?;
         // FIXME: block version should be a parameter, it should be the latest
         // version that fog ledger told us about, or that we got from ledger-db
-        let block_version = BlockVersion::ONE;
+        let block_version = BlockVersion::ZERO;
         // Note: RTHMemoBuilder can be selected here, but we will only actually
         // write memos if block_version is large enough that memos are supported.
         // If block version is < 2, then transaction builder will filter out memos.

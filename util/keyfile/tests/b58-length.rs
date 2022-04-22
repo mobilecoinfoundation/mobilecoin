@@ -15,12 +15,7 @@ fn test_b58pub_length<T: RngCore + CryptoRng>(
     num_trials: usize,
     rng: &mut T,
 ) -> bool {
-    let url = format!(
-        "fog://{}",
-        std::iter::repeat("a")
-            .take(domain_length)
-            .collect::<String>()
-    );
+    let url = format!("fog://{}", "a".repeat(domain_length));
     for _ in 0..num_trials {
         let root_id = RootIdentity::random_with_fog(
             rng,
@@ -43,7 +38,7 @@ fn test_b58pub_length<T: RngCore + CryptoRng>(
             return true;
         }
     }
-    return false;
+    false
 }
 
 #[test]

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! MobileCoin transaction data types, transaction construction and validation
 //! routines
@@ -29,6 +29,7 @@ pub mod constants;
 pub mod encrypted_fog_hint;
 pub mod fog_hint;
 pub mod membership_proofs;
+pub mod mint;
 pub mod onetime_keys;
 pub mod range_proofs;
 pub mod ring_signature;

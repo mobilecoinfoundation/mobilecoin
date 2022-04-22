@@ -10,7 +10,7 @@
 version: 2.1
 
 defaults:
-  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_25
+  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_26
   android-bindings-builder: &android-bindings-builder gcr.io/mobilenode-211420/android-bindings-builder:1_4
   default-xcode-version: &default-xcode-version "12.0.0"
 
@@ -471,14 +471,14 @@ commands:
             export VIEW_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
             export MC_LOG=trace
 
-            cargo build -p mc-util-keyfile -p mc-util-generate-sample-ledger -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mobilecoind -p mc-crypto-x509-test-vectors -p mc-fog-distribution -p mc-fog-test-client -p mc-fog-ingest-server -p mc-fog-ingest-client -p mc-fog-view-server -p mc-fog-report-server -p mc-fog-ledger-server -p mc-fog-sql-recovery-db --release
+            cargo build -p mc-util-keyfile -p mc-util-generate-sample-ledger -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-util-grpc-admin-tool -p mc-mobilecoind -p mc-crypto-x509-test-vectors -p mc-fog-distribution -p mc-fog-test-client -p mc-fog-ingest-server -p mc-fog-ingest-client -p mc-fog-view-server -p mc-fog-report-server -p mc-fog-ledger-server -p mc-fog-sql-recovery-db  -p mc-consensus-mint-client -p mc-util-seeded-ed25519-key-gen --release
             export FOG_AUTHORITY_ROOT=$(./target/release/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head)
             ./target/release/sample-keys --num 10 --seed=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
             ./target/release/generate-sample-ledger --txs 100
 
             MC_LOG="info,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error" \
             LEDGER_BASE=$(pwd)/ledger \
-            python3 tools/fog-local-network/fog_local_network.py --network-type dense5 --skip-build &
+            python3 tools/fog-local-network/fog_local_network.py --network-type dense5 --skip-build --block-version 2 &
 
             sleep 20
 

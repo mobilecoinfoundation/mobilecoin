@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! MobileCoin Client SDK for Rust
 #![deny(missing_docs)]
@@ -30,6 +30,7 @@ pub use crate::{
 };
 pub use cached_tx_data::MemoHandlerError;
 pub use mc_account_keys::{AccountKey, PublicAddress};
+pub use mc_connection::BlockInfo;
 pub use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 pub use mc_transaction_core::{
     onetime_keys::recover_onetime_private_key,

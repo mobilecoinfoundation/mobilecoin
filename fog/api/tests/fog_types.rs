@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // Test that mc_fog_types structs match the protos defined in .proto files,
 // by testing that they round-trip through the proto-generated rust types
@@ -262,9 +262,11 @@ fn check_key_images_response_round_trip() {
     }
 
     run_with_several_seeds(|mut rng| {
-        let mut test_val = mc_fog_types::ledger::CheckKeyImagesResponse::default();
-        test_val.num_blocks = rng.next_u32() as u64;
-        test_val.global_txo_count = rng.next_u32() as u64;
+        let mut test_val = mc_fog_types::ledger::CheckKeyImagesResponse {
+            num_blocks: rng.next_u32() as u64,
+            global_txo_count: rng.next_u32() as u64,
+            ..Default::default()
+        };
         for _ in 0..20 {
             test_val
                 .results
@@ -401,39 +403,39 @@ impl Sample for [u8; 32] {
 
 impl Sample for KexRngPubkey {
     fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
-        let mut result = KexRngPubkey::default();
-        result.public_key = <[u8; 32]>::sample(rng).to_vec();
-        result.version = rng.next_u32();
-        result
+        Self {
+            public_key: <[u8; 32]>::sample(rng).to_vec(),
+            version: rng.next_u32(),
+        }
     }
 }
 
 impl Sample for mc_fog_types::view::RngRecord {
     fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
-        let mut result = Self::default();
-        result.ingest_invocation_id = rng.next_u64() as i64;
-        result.pubkey = <KexRngPubkey>::sample(rng);
-        result.start_block = rng.next_u64();
-        result
+        Self {
+            ingest_invocation_id: rng.next_u64() as i64,
+            pubkey: KexRngPubkey::sample(rng),
+            start_block: rng.next_u64(),
+        }
     }
 }
 
 impl Sample for mc_fog_types::view::DecommissionedIngestInvocation {
     fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
-        let mut result = Self::default();
-        result.ingest_invocation_id = rng.next_u64() as i64;
-        result.last_ingested_block = rng.next_u64();
-        result
+        Self {
+            ingest_invocation_id: rng.next_u64() as i64,
+            last_ingested_block: rng.next_u64(),
+        }
     }
 }
 
 impl Sample for mc_fog_types::view::TxOutSearchResult {
     fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
-        let mut result = Self::default();
-        result.search_key = <[u8; 32]>::sample(rng).to_vec();
-        result.ciphertext = <[u8; 32]>::sample(rng).to_vec();
-        result.result_code = 1;
-        result
+        Self {
+            search_key: <[u8; 32]>::sample(rng).to_vec(),
+            ciphertext: <[u8; 32]>::sample(rng).to_vec(),
+            result_code: 1,
+        }
     }
 }
 
@@ -441,7 +443,7 @@ impl Sample for MaskedAmount {
     fn sample<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
         let amount = Amount {
             value: rng.next_u32() as u64,
-            token_id: rng.next_u32().into(),
+            token_id: rng.next_u64().into(),
         };
         MaskedAmount::new(amount, &RistrettoPublic::from_random(rng)).unwrap()
     }

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 extern crate alloc;
 
@@ -384,7 +384,7 @@ mod mlsag_tests {
             let mut message = [0u8; 32];
             rng.fill_bytes(&mut message);
 
-            let generator = generators(rng.next_u32());
+            let generator = generators(rng.next_u64());
 
             let mut ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)> = Vec::new();
             for _i in 0..num_mixins {
@@ -611,7 +611,7 @@ mod mlsag_tests {
 
             // Sign with an input blinding that differs from the real input's amount commitment.
             {
-                let mut params = params.clone();
+                let mut params = params;
                 let wrong_blinding = Scalar::random(&mut rng);
 
                 params.blinding = wrong_blinding;
@@ -808,7 +808,7 @@ mod mlsag_tests {
 
             // Modify the signature to have too many responses.
             {
-                let mut invalid_signature = signature.clone();
+                let mut invalid_signature = signature;
                 invalid_signature.responses.push(CurveScalar::from_random(&mut rng));
 
                 let result =

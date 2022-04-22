@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! This load test creates an ingest server, adds users to it, and adds blocks,
 //! creating one block every 5 seconds.
@@ -11,6 +12,7 @@
 //! Processing Txos gets slower as the map gets more full, the load test
 //! should be updated to measure this effect.
 
+use clap::Parser;
 use grpcio::{ChannelBuilder, Error as GrpcioError};
 use mc_account_keys::AccountKey;
 use mc_common::logger::{log, Logger};
@@ -35,7 +37,6 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use structopt::StructOpt;
 use tempdir::TempDir;
 
 // Compute mean and std_dev of timings
@@ -114,9 +115,15 @@ impl core::fmt::Display for TestResult {
     }
 }
 
+/// RAII gaurd for a child process, which kills the child on drop.
 pub struct AutoKillChild(pub std::process::Child);
 
 impl AutoKillChild {
+    /// Assert that the child process is still alive.
+    ///
+    /// Panics:
+    ///  * If the process stopped unexpectedly.
+    ///  * If there is an error while getting the process' status.
     pub fn assert_not_stopped(&mut self) {
         match self.0.try_wait() {
             Ok(Some(stat)) => {
@@ -197,7 +204,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
         LedgerDB::create(ledger_db_path.path()).unwrap();
         let mut ledger_db = LedgerDB::open(ledger_db_path.path()).unwrap();
 
-        let block_version = BlockVersion::ONE;
+        let block_version = BlockVersion::ZERO;
 
         mc_transaction_core_test_utils::initialize_ledger(
             block_version,
@@ -398,20 +405,20 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
     test_results
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(
+#[derive(Debug, Parser)]
+#[clap(
     name = "fog-ingest-server-load-test",
     about = "Spawns and drives a fog ingest server with input in order to measure its performance"
 )]
 struct LoadTestOptions {
-    #[structopt(long)]
+    #[clap(long, env = "MC_USER_CAPACITY")]
     user_capacity: Option<Vec<u64>>,
 }
 
 fn main() {
     mc_common::setup_panic_handler();
 
-    let opt = LoadTestOptions::from_args();
+    let opt = LoadTestOptions::parse();
 
     // Reduce log level maybe?
     let logger = mc_common::logger::create_root_logger();

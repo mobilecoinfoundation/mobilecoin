@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Error types converting to/from encodings.
 
@@ -85,3 +85,6 @@ impl From<Error> for FmtError {
         FmtError
     }
 }
+
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}

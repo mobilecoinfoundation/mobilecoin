@@ -1,4 +1,4 @@
-// Copyright 2018-2021 MobileCoin, Inc.
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Main Method for the Fog Report Server
 
@@ -6,9 +6,9 @@ use grpcio::{RpcStatus, RpcStatusCode};
 use mc_common::{logger, sentry};
 use mc_fog_report_server::{Config, Materials, Server};
 use mc_fog_sql_recovery_db::SqlRecoveryDb;
+use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::AdminServer;
 use std::{convert::TryFrom, env, sync::Arc};
-use structopt::StructOpt;
 
 fn main() {
     mc_common::setup_panic_handler();
@@ -16,7 +16,7 @@ fn main() {
 
     let (logger, _global_logger_guard) = logger::create_app_logger(logger::o!());
 
-    let config = Config::from_args();
+    let config = Config::parse();
 
     let materials = Materials::try_from(&config).expect("Could not read cryptographic materials");
 

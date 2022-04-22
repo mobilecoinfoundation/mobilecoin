@@ -1,9 +1,12 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Helper module for setting up logging to Sentry
 
 use std::env;
 
 pub use sentry::configure_scope;
 
+/// Initialize Sentry logging.
 pub fn init() -> Option<sentry::ClientInitGuard> {
     // See if we have the two required environment variables for configuring Sentry.
     let dsn = env::var("MC_SENTRY_DSN")

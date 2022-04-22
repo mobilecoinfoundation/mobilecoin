@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The Node ID type
 
@@ -51,7 +51,9 @@ impl From<KeyError> for NodeIDError {
 /// key
 #[derive(Clone, Serialize, Deserialize, Digestible)]
 pub struct NodeID {
+    /// The Responder ID for this node
     pub responder_id: ResponderId,
+    /// The public message-signing key for this node
     pub public_key: Ed25519Public,
 }
 

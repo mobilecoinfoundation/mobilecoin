@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Conversions between "API types" and "domain/persistence types".
 //!
@@ -22,8 +22,11 @@ mod account_key;
 mod amount;
 mod compressed_ristretto;
 mod curve_scalar;
+mod ed25519_multisig;
 mod ed25519_signature;
 mod key_image;
+mod mint_config;
+mod mint_tx;
 mod public_address;
 mod ring_mlsag;
 mod ristretto_private;
@@ -36,6 +39,7 @@ mod tx_out_confirmation_number;
 mod tx_out_membership_element;
 mod tx_out_membership_proof;
 mod tx_prefix;
+mod validated_mint_config;
 mod verification_report;
 mod verification_signature;
 mod watcher;

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! MobileCoin ring signatures
 
@@ -43,7 +43,7 @@ lazy_static! {
 /// Note: our H is not the same point as the dalek library's default version
 ///
 /// For amounts, H varies based on the token id.
-pub fn generators(token_id: u32) -> PedersenGens {
+pub fn generators(token_id: u64) -> PedersenGens {
     let mut hasher = Blake2b512::new();
     hasher.update(&HASH_TO_POINT_DOMAIN_TAG);
 
@@ -61,6 +61,10 @@ pub fn generators(token_id: u32) -> PedersenGens {
         buf[1] ^= id_bytes[1];
         buf[2] ^= id_bytes[2];
         buf[3] ^= id_bytes[3];
+        buf[4] ^= id_bytes[4];
+        buf[5] ^= id_bytes[5];
+        buf[6] ^= id_bytes[6];
+        buf[7] ^= id_bytes[7];
         hasher.update(buf);
     }
 

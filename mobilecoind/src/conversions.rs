@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Utilities for converting between `mobilecoind` and `mobilecoind_api` data
 //! types.
@@ -213,7 +213,7 @@ mod test {
         let rust = UnspentTxOut {
             tx_out: tx_out.clone(),
             subaddress_index,
-            key_image: key_image.clone(),
+            key_image,
             value,
             attempted_spend_height,
             attempted_spend_tombstone,
@@ -303,9 +303,9 @@ mod test {
             let attempted_spend_tombstone = 1234;
 
             UnspentTxOut {
-                tx_out: tx_out.clone(),
+                tx_out,
                 subaddress_index,
-                key_image: key_image.clone(),
+                key_image,
                 value,
                 attempted_spend_height,
                 attempted_spend_tombstone,
@@ -316,7 +316,7 @@ mod test {
         let outlay = {
             let public_addr = AccountKey::random(&mut rng).default_subaddress();
             Outlay {
-                receiver: public_addr.clone(),
+                receiver: public_addr,
                 value: 1234,
             }
         };

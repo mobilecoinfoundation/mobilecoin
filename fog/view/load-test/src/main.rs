@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! A utility to load-test a fog-view server.
 
@@ -10,6 +11,7 @@ use mc_fog_kex_rng::{NewFromKex, VersionedKexRng};
 use mc_fog_uri::FogViewUri;
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_fog_view_protocol::FogViewConnection;
+use mc_util_cli::ParserWithBuildInfo;
 use mc_util_grpc::GrpcRetryConfig;
 use std::{
     path::PathBuf,
@@ -21,30 +23,30 @@ use std::{
     thread,
     time::Duration,
 };
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, clap::Parser)]
+#[clap(version)]
 struct Config {
     /// Path to root identity file to use
     /// Note: This contains the fog-url which is the same as the report-server
     /// uri
-    #[structopt(long)]
+    #[clap(long, short, env = "MC_KEYFILE")]
     pub keyfile: PathBuf,
 
     /// View server URI
-    #[structopt(long)]
+    #[clap(long, short, env = "MC_VIEW_URI")]
     pub view_uri: String,
 
     /// Number of worker threads
-    #[structopt(long, default_value = "1")]
+    #[clap(long, default_value = "1", env = "MC_NUM_WORKERS")]
     pub num_workers: usize,
 
     /// Number of search keys to include in request
-    #[structopt(long, default_value = "100")]
+    #[clap(long, default_value = "100", env = "MC_NUM_SEARCH_KEYS")]
     pub num_search_keys: usize,
 
     /// Grpc retry config
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub grpc_retry_config: GrpcRetryConfig,
 }
 
@@ -78,7 +80,7 @@ fn worker_thread(
 }
 
 fn main() {
-    let config = Config::from_args();
+    let config = Config::parse();
     let logger = create_root_logger();
 
     let root_identity =

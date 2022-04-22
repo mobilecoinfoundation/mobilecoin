@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (c) 2018-2021 The MobileCoin Foundation
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 
 """
 The purpose of this script is to print the balances for all keys in
@@ -12,13 +12,14 @@ Example setup and usage:
 ```
 """
 import argparse
-import grpc
+import logging
+import sys
 import mobilecoind_api_pb2
-import mobilecoind_api_pb2_grpc
 import os
 from accounts import connect, load_key_and_register
 from google.protobuf.empty_pb2 import Empty
 
+logging.basicConfig(stream = sys.stdout, level = logging.INFO, format="%(levelname)s:%(module)s:%(lineno)s: %(message)s")
 
 def parse_args() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
@@ -43,14 +44,14 @@ def parse_args() -> argparse.ArgumentParser:
 
 if __name__ == '__main__':
     args = parse_args()
-    print(args)
+    logging.debug(args)
 
     stub = connect(args.mobilecoind_host, args.mobilecoind_port)
     block_count = stub.GetLedgerInfo(Empty()).block_count
     total = 0
     for keyfile in sorted(
             filter(lambda x: x.endswith(".json"), os.listdir(args.key_dir))):
-        print(keyfile)
+        logging.info("%s", keyfile)
 
         account_data = load_key_and_register(
             os.path.join(args.key_dir, keyfile), stub)
@@ -59,14 +60,14 @@ if __name__ == '__main__':
         request = mobilecoind_api_pb2.GetMonitorStatusRequest(monitor_id=account_data.monitor_id)
         monitor_block = stub.GetMonitorStatus(request).status.next_block
         if block_count != monitor_block:
-            print(f"\tAccount not synced.")
+            logging.info("Account not synced")
         else:
             resp = stub.GetBalance(
                 mobilecoind_api_pb2.GetBalanceRequest(monitor_id=account_data.monitor_id))
             balance = resp.balance
             total += balance
-            print(f"\tBalance: {resp.balance:,}")
+            logging.info("Balance: %s", resp.balance)
             # Remove balances of 0 FIXME: MC-367 also from mobilecoind wallet
             if int(balance) == 0 and args.prune:
                 os.remove(os.path.join(args.key_dir, keyfile))
-    print(f"Total balance of key collection: {total:,} PicoMob")
+    logging.info("Total balance of key collection: %s PicoMob", total)

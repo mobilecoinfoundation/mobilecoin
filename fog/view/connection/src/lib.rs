@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A client object that creates an attested connection with a fog view enclave
 //! mediated over grpc. Can be used to make high-level requests.

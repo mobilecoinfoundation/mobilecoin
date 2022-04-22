@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use diesel::{result::Error as DieselError, ConnectionError};
 use displaydoc::Display;
@@ -8,6 +8,7 @@ use mc_fog_types::common::BlockRange;
 use prost::{DecodeError, EncodeError};
 use r2d2::Error as R2d2Error;
 
+/// Enum for error types.
 #[derive(Display, Debug)]
 pub enum Error {
     /// Orm: {0}

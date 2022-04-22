@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! Entrypoint for the MobileCoin server.
 
@@ -10,12 +11,14 @@ use mc_common::{
 };
 use mc_consensus_enclave::{BlockchainConfig, ConsensusServiceSgxEnclave, ENCLAVE_FILE};
 use mc_consensus_service::{
-    config::Config,
     consensus_service::{ConsensusService, ConsensusServiceError},
+    mint_tx_manager::MintTxManagerImpl,
     tx_manager::TxManagerImpl,
     validators::DefaultTxManagerUntrustedInterfaces,
 };
+use mc_consensus_service_config::Config;
 use mc_ledger_db::LedgerDB;
+use mc_util_cli::ParserWithBuildInfo;
 use std::{
     env,
     fs::File,
@@ -23,15 +26,18 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use structopt::StructOpt;
 
 fn main() -> Result<(), ConsensusServiceError> {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
 
-    let config = Config::from_args();
+    let config = Config::parse();
     let local_node_id = config.node_id();
     let fee_map = config.tokens().fee_map().expect("Could not parse fee map");
+    let governors_map = config
+        .tokens()
+        .token_id_to_governors()
+        .expect("Could not parse governors map");
 
     let (logger, _global_logger_guard) = create_app_logger(o!(
         "mc.local_node_id" => local_node_id.responder_id.to_string(),
@@ -61,6 +67,8 @@ fn main() -> Result<(), ConsensusServiceError> {
 
     let blockchain_config = BlockchainConfig {
         fee_map: fee_map.clone(),
+        governors_map: governors_map.clone(),
+        governors_signature: config.tokens().governors_signature,
         block_version: config.block_version,
     };
 
@@ -106,12 +114,20 @@ fn main() -> Result<(), ConsensusServiceError> {
         logger.clone(),
     );
 
+    let mint_tx_manager = MintTxManagerImpl::new(
+        local_ledger.clone(),
+        config.block_version,
+        governors_map,
+        logger.clone(),
+    );
+
     let mut consensus_service = ConsensusService::new(
         config,
         enclave,
         local_ledger,
         ias_client,
         Arc::new(tx_manager),
+        Arc::new(mint_tx_manager),
         Arc::new(SystemTimeProvider::default()),
         logger.clone(),
     );
@@ -161,7 +177,7 @@ mod tests {
         let ledger_path = TempDir::new("ledger").unwrap();
         setup_ledger_dir(
             &Some(origin_block_path.path().to_path_buf()),
-            &ledger_path.path().to_path_buf(),
+            ledger_path.path(),
         );
     }
 
@@ -180,7 +196,7 @@ mod tests {
 
         setup_ledger_dir(
             &Some(origin_block_path.path().to_path_buf()),
-            &ledger_path.path().to_path_buf(),
+            ledger_path.path(),
         );
 
         let new_data_path = ledger_path.path().join("data.mdb");
@@ -203,7 +219,7 @@ mod tests {
 
         setup_ledger_dir(
             &Some(origin_block_path.path().to_path_buf()),
-            &ledger_path.path().to_path_buf(),
+            ledger_path.path(),
         );
 
         let new_data_path = ledger_path.path().join("data.mdb");
@@ -231,7 +247,7 @@ mod tests {
 
         setup_ledger_dir(
             &Some(origin_block_path.path().to_path_buf()),
-            &ledger_path.path().to_path_buf(),
+            ledger_path.path(),
         );
 
         let mut data_file = File::open(&ledger_data_path).unwrap();

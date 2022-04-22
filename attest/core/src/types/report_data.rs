@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The report data structure
 
@@ -85,7 +85,7 @@ mod test {
 
     #[test]
     fn test_serde() {
-        let data: ReportData = REPORT_DATA_TEST.clone().into();
+        let data: ReportData = REPORT_DATA_TEST.into();
         let serialized = serialize(&data).expect("Could not serialize report_data");
         let data2: ReportData =
             deserialize(&serialized).expect("Could not deserialize report_data");
@@ -102,7 +102,7 @@ mod test {
 
         let mask = ReportDataMask::new_with_mask(&REPORT_DATA_TEST.d[..], &bitmask[..])
             .expect("Could not create mask structure");
-        let data: ReportData = REPORT_DATA_TEST.clone().into();
+        let data: ReportData = REPORT_DATA_TEST.into();
 
         assert!(mask.eq(&data));
     }

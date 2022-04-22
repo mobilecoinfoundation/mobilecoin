@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::conf;
 use std::{
@@ -89,7 +89,8 @@ pub fn get_mrenclave(dumpfile: &Path) -> (PathBuf, PathBuf) {
 
 // Parse intel's goofy hex format
 // Search for a key, then search for 0xAB blocks after it, adding AB to result.
-// Keep doing this and consuming whitepsace until the next character is not whitespace or we reach the end
+// Keep doing this and consuming whitepsace until the next character is not
+// whitespace or we reach the end
 fn parse_hex_after(mut text: &str, key: &str) -> String {
     let mut result = String::new();
     while !text.is_empty() && !text.starts_with(key) {

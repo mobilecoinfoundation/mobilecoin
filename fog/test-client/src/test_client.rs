@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The TestClient supports two use-cases:
 //! - End-to-end testing (used in continuous deployment)
@@ -272,8 +272,21 @@ impl TestClient {
         let mut rng = McRng::default();
         assert!(target_address.fog_report_url().is_some());
 
-        // Get the current fee from consensus
-        let fee = source_client.get_fee().unwrap_or(Mob::MINIMUM_FEE);
+        // Get the current minimum fee from consensus
+        // FIXME: #1671, this retry should be inside ThickClient and not here.
+        let fee = self
+            .grpc_retry_config
+            .retry(|| -> Result<Option<u64>, _> {
+                source_client.get_minimum_fee(self.policy.token_id)
+            })
+            .map_err(|retry_error| {
+                if let retry::Error::Operation { error, .. } = retry_error {
+                    TestClientError::GetFee(error)
+                } else {
+                    panic!("other types of retry error are unreachable")
+                }
+            })?
+            .ok_or(TestClientError::TokenNotConfigured(self.policy.token_id))?;
 
         // Scope for build operation
         let transaction = {
@@ -775,6 +788,12 @@ impl TestClient {
                         }
                         TestClientError::CheckBalance(_) => {
                             counters::CHECK_BALANCE_ERROR_COUNT.inc();
+                        }
+                        TestClientError::GetFee(_) => {
+                            counters::GET_FEE_ERROR_COUNT.inc();
+                        }
+                        TestClientError::TokenNotConfigured(_) => {
+                            counters::TOKEN_NOT_CONFIGURED_ERROR_COUNT.inc();
                         }
                         TestClientError::BuildTx(_) => {
                             counters::BUILD_TX_ERROR_COUNT.inc();

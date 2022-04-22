@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{ring_signature::CurveScalar, tokens::Mob, Amount, MaskedAmount, Token};
 use curve25519_dalek::scalar::Scalar;

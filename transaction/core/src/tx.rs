@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Definition of a MobileCoin transaction and a MobileCoin TxOut
 
@@ -165,8 +165,8 @@ pub struct TxPrefix {
     pub tombstone_block: u64,
 
     /// Token id for this transaction
-    #[prost(fixed32, tag = "5")]
-    pub token_id: u32,
+    #[prost(fixed64, tag = "5")]
+    pub token_id: u64,
 }
 
 impl TxPrefix {
@@ -182,7 +182,7 @@ impl TxPrefix {
         inputs: Vec<TxIn>,
         outputs: Vec<TxOut>,
         fee: u64,
-        token_id: u32,
+        token_id: u64,
         tombstone_block: u64,
     ) -> TxPrefix {
         TxPrefix {
@@ -799,7 +799,7 @@ mod tests {
                 &bob_addr,
                 &tx_private_key,
                 Default::default(),
-                |_| Ok(Some(memo_val.clone())),
+                |_| Ok(Some(memo_val)),
             )
             .unwrap();
 
@@ -835,7 +835,7 @@ mod tests {
                 &bob.change_subaddress(),
                 &tx_private_key,
                 Default::default(),
-                |_| Ok(Some(memo_val.clone())),
+                |_| Ok(Some(memo_val)),
             )
             .unwrap();
 

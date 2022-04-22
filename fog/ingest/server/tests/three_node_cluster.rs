@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Tests involving activation and retiry of a three node ingest cluster
 
@@ -117,7 +117,11 @@ fn add_test_block<T: RngCore + CryptoRng>(ledger: &mut LedgerDB, watcher: &Watch
 
     let key_images = vec![KeyImage::from(rng.next_u64())];
 
-    let block_contents = BlockContents::new(key_images, random_output(rng));
+    let block_contents = BlockContents {
+        key_images,
+        outputs: random_output(rng),
+        ..Default::default()
+    };
 
     // Fake proofs
     let root_element = TxOutMembershipElement {
@@ -126,7 +130,7 @@ fn add_test_block<T: RngCore + CryptoRng>(ledger: &mut LedgerDB, watcher: &Watch
     };
 
     let block = Block::new_with_parent(
-        BlockVersion::ONE,
+        BlockVersion::ZERO,
         &last_block,
         &root_element,
         &block_contents,
@@ -215,12 +219,9 @@ fn three_node_cluster_activation_retiry(logger: Logger) {
     WatcherDB::create(&watcher_path).unwrap();
     // Open the watcher db
     let tx_source_url = Url::from_str("https://localhost").unwrap();
-    let watcher = mc_watcher::watcher_db::WatcherDB::open_rw(
-        &watcher_path,
-        &[tx_source_url.clone()],
-        logger.clone(),
-    )
-    .expect("Could not create watcher_db");
+    let watcher =
+        mc_watcher::watcher_db::WatcherDB::open_rw(&watcher_path, &[tx_source_url], logger.clone())
+            .expect("Could not create watcher_db");
 
     // Set up an empty ledger db.
     let ledger_db_path = blockchain_path.path().join("ledger_db");
@@ -233,6 +234,7 @@ fn three_node_cluster_activation_retiry(logger: Logger) {
     let origin_contents = BlockContents {
         key_images: Default::default(),
         outputs: origin_txo.clone(),
+        ..Default::default()
     };
     let origin_block = Block::new_origin_block(&origin_txo);
     ledger
@@ -428,12 +430,9 @@ fn three_node_cluster_fencing(logger: Logger) {
     WatcherDB::create(&watcher_path).unwrap();
     // Open the watcher db
     let tx_source_url = Url::from_str("https://localhost").unwrap();
-    let watcher = mc_watcher::watcher_db::WatcherDB::open_rw(
-        &watcher_path,
-        &[tx_source_url.clone()],
-        logger.clone(),
-    )
-    .expect("Could not create watcher_db");
+    let watcher =
+        mc_watcher::watcher_db::WatcherDB::open_rw(&watcher_path, &[tx_source_url], logger.clone())
+            .expect("Could not create watcher_db");
 
     // Set up an empty ledger db.
     let ledger_db_path = blockchain_path.path().join("ledger_db");
@@ -446,6 +445,7 @@ fn three_node_cluster_fencing(logger: Logger) {
     let origin_contents = BlockContents {
         key_images: Default::default(),
         outputs: origin_txo.clone(),
+        ..Default::default()
     };
     let origin_block = Block::new_origin_block(&origin_txo);
     ledger

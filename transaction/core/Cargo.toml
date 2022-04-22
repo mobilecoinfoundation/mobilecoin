@@ -14,7 +14,7 @@ hex_fmt = "0.3"
 hkdf = "0.12"
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 merlin = { version = "3.0", default-features = false }
-prost = { version = "0.9", default-features = false, features = ["prost-derive"] }
+prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.6", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 sha2 = { version = "0.10", default-features = false }
@@ -28,6 +28,7 @@ mc-crypto-box = { path = "../../crypto/box" }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-crypto-multisig = { path = "../../crypto/multisig", default-features = false }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 mc-util-serial = { path = "../../util/serial" }
@@ -59,5 +60,6 @@ mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" 
 mc-crypto-rand = { path = "../../crypto/rand" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
+mc-transaction-std = { path = "../../transaction/std", features= ["test-only"] }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 mc-util-test-helper = { path = "../../util/test-helper" }

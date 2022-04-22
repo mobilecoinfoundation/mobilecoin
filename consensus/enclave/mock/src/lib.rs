@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Mock enclave, used for tests
 
@@ -12,6 +12,7 @@ pub use mc_consensus_enclave_api::{
     WellFormedEncryptedTx, WellFormedTxContext,
 };
 
+use mc_account_keys::PublicAddress;
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
@@ -21,16 +22,19 @@ use mc_common::ResponderId;
 use mc_crypto_keys::{
     Ed25519Pair, Ed25519Public, RistrettoPublic, X25519EphemeralPrivate, X25519Public,
 };
+use mc_crypto_multisig::SignerSet;
 use mc_crypto_rand::McRng;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     membership_proofs::compute_implied_merkle_root,
+    mint::ValidatedMintConfigTx,
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
     Block, BlockContents, BlockSignature, Token, TokenId,
 };
+use mc_transaction_core_test_utils::get_outputs;
 use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng;
@@ -196,9 +200,12 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         _block_index: u64,
         _proofs: Vec<TxOutMembershipProof>,
     ) -> Result<(WellFormedEncryptedTx, WellFormedTxContext)> {
-        let tx = mc_util_serial::decode(&locally_encrypted_tx.0)?;
+        let tx: Tx = mc_util_serial::decode(&locally_encrypted_tx.0)?;
         let well_formed_encrypted_tx = WellFormedEncryptedTx(locally_encrypted_tx.0);
-        let well_formed_tx_context = WellFormedTxContext::from(&tx);
+
+        // hack
+        let priority = tx.prefix.fee;
+        let well_formed_tx_context = WellFormedTxContext::from_tx(&tx, priority);
 
         Ok((well_formed_encrypted_tx, well_formed_tx_context))
     }
@@ -216,7 +223,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         &self,
         parent_block: &Block,
         inputs: FormBlockInputs,
-        _root_element: &TxOutMembershipElement,
+        root_element: &TxOutMembershipElement,
     ) -> Result<(Block, BlockContents, BlockSignature)> {
         let block_version = self.blockchain_config.lock().unwrap().block_version;
         let transactions_with_proofs: Vec<(Tx, Vec<TxOutMembershipProof>)> = inputs
@@ -247,16 +254,18 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
             )?;
 
             for proof in proofs {
-                let root_element = compute_implied_merkle_root(proof)
+                let implied_root = compute_implied_merkle_root(proof)
                     .map_err(|_e| TransactionValidationError::InvalidLedgerContext)?;
-                root_elements.push(root_element.clone());
+                root_elements.push(implied_root);
             }
         }
 
         root_elements.sort();
         root_elements.dedup();
 
-        if root_elements.len() != 1 {
+        if !transactions_with_proofs.is_empty()
+            && (root_elements.len() != 1 || root_elements[0] != *root_element)
+        {
             return Err(Error::InvalidLocalMembershipProof);
         }
 
@@ -267,14 +276,45 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
             outputs.extend(tx.prefix.outputs.into_iter());
         }
 
-        let block_contents = BlockContents::new(key_images, outputs);
-
-        let block = Block::new_with_parent(
+        let minted_tx_outs = get_outputs(
             block_version,
-            parent_block,
-            &root_elements[0],
-            &block_contents,
+            &inputs
+                .mint_txs_with_config
+                .iter()
+                .map(|(mint_tx, _mint_config_tx, _mint_config)| {
+                    let recipient = PublicAddress::new(
+                        &mint_tx.prefix.spend_public_key,
+                        &mint_tx.prefix.view_public_key,
+                    );
+                    (recipient, mint_tx.prefix.amount)
+                })
+                .collect::<Vec<_>>(),
+            &mut rng,
         );
+        outputs.extend(minted_tx_outs);
+
+        let validated_mint_config_txs = inputs
+            .mint_config_txs
+            .into_iter()
+            .map(|mint_config_tx| ValidatedMintConfigTx {
+                mint_config_tx,
+                signer_set: SignerSet::default(),
+            })
+            .collect();
+
+        let block_contents = BlockContents {
+            key_images,
+            outputs,
+            mint_txs: inputs
+                .mint_txs_with_config
+                .into_iter()
+                .map(|(mint_tx, _mint_config_tx, _mint_config)| mint_tx)
+                .collect(),
+            validated_mint_config_txs,
+        };
+
+        let block =
+            Block::new_with_parent(block_version, parent_block, root_element, &block_contents);
 
         let signature = BlockSignature::from_block_and_keypair(&block, &self.signing_keypair)?;
 

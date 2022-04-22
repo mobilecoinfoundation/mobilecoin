@@ -22,7 +22,7 @@ mc-util-uri = { path = "../util/uri" }
 aes-gcm = "0.9.4"
 cookie = "0.16"
 displaydoc = "0.2"
-grpcio = "0.10.0"
+grpcio = "0.10.2"
 retry = "1.3"
 secrecy = "0.8"
 sha2 = "0.10"

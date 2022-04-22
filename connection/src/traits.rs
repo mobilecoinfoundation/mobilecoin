@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Traits which connection implementations can implement.
 
@@ -65,6 +65,10 @@ pub struct BlockInfo {
 
     /// Minimum fee for each token id supported by the node
     pub minimum_fees: BTreeMap<TokenId, u64>,
+
+    /// Block version reported by the network.
+    /// This is the configured block version on the node.
+    pub network_block_version: u32,
 }
 
 impl BlockInfo {
@@ -104,6 +108,7 @@ impl From<LastBlockInfoResponse> for BlockInfo {
         BlockInfo {
             block_index: src.index,
             minimum_fees,
+            network_block_version: src.network_block_version,
         }
     }
 }

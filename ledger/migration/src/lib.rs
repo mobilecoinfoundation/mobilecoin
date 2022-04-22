@@ -3,13 +3,15 @@
 //! Ledger migration: Perform updates of LedgerDB to accommodate for
 //! backward-incompatible changes.
 
+#![allow(clippy::inconsistent_digit_grouping)]
+
 use lmdb::{DatabaseFlags, Environment, Transaction, WriteFlags};
 use mc_common::logger::{log, Logger};
 use mc_ledger_db::{
     key_bytes_to_u64, tx_out_store::TX_OUT_INDEX_BY_PUBLIC_KEY_DB_NAME, u64_to_key_bytes, Error,
-    LedgerDbMetadataStoreSettings, MetadataStore, TxOutStore, TxOutsByBlockValue,
-    BLOCK_NUMBER_BY_TX_OUT_INDEX, COUNTS_DB_NAME, MAX_LMDB_DATABASES, MAX_LMDB_FILE_SIZE,
-    NUM_BLOCKS_KEY, TX_OUTS_BY_BLOCK_DB_NAME,
+    LedgerDbMetadataStoreSettings, MetadataStore, MintConfigStore, MintTxStore, TxOutStore,
+    TxOutsByBlockValue, BLOCK_NUMBER_BY_TX_OUT_INDEX, COUNTS_DB_NAME, MAX_LMDB_DATABASES,
+    MAX_LMDB_FILE_SIZE, NUM_BLOCKS_KEY, TX_OUTS_BY_BLOCK_DB_NAME,
 };
 use mc_util_lmdb::MetadataStoreError;
 use mc_util_serial::decode;
@@ -40,19 +42,20 @@ pub fn migrate(ledger_db_path: impl AsRef<Path>, logger: &Logger) {
 
         match version.is_compatible_with_latest() {
             Ok(_) => {
+                log::info!(logger, "Ledger db is compatible with latest version");
                 break;
             }
-            // Version 20200610 came after 20200427 and introduced the TxOut public key -> index
+            // Version 2020_06_10 came after 2020_04_27 and introduced the TxOut public key -> index
             // store.
-            Err(MetadataStoreError::VersionIncompatible(20200427, _)) => {
-                log::info!(logger, "Ledger db migrating from version 20200427 to 20200610, this might take awhile...");
+            Err(MetadataStoreError::VersionIncompatible(2020_04_27, _)) => {
+                log::info!(logger, "Ledger db migrating from version 2020_04_27 to 2020_06_10, this might take awhile...");
 
                 construct_tx_out_index_by_public_key_from_existing_data(&env, logger)
                     .expect("Failed constructing tx out index by public key database");
 
                 let mut db_txn = env.begin_rw_txn().expect("Failed starting rw transaction");
                 metadata_store
-                    .set_version(&mut db_txn, 20200610)
+                    .set_version(&mut db_txn, 2020_06_10)
                     .expect("Failed setting metadata version");
                 log::info!(
                     logger,
@@ -61,17 +64,17 @@ pub fn migrate(ledger_db_path: impl AsRef<Path>, logger: &Logger) {
                 );
                 db_txn.commit().expect("Failed committing transaction");
             }
-            // Version 20200707 came after 20200610 introduced the TxOut global index -> block index
-            // store.
-            Err(MetadataStoreError::VersionIncompatible(20200610, _)) => {
-                log::info!(logger, "Ledger db migrating from version 20200610 to 20200707, this might take awhile...");
+            // Version 2020_07_07 came after 2020_06_10 and introduced the TxOut global index ->
+            // block index store.
+            Err(MetadataStoreError::VersionIncompatible(2020_06_10, _)) => {
+                log::info!(logger, "Ledger db migrating from version 2020_06_10 to 2020_07_07, this might take awhile...");
 
                 construct_block_number_by_tx_out_index_from_existing_data(&env, logger)
                     .expect("Failed constructing block number by tx out index database");
 
                 let mut db_txn = env.begin_rw_txn().expect("Failed starting rw transaction");
                 metadata_store
-                    .set_version(&mut db_txn, 20200707)
+                    .set_version(&mut db_txn, 2020_07_07)
                     .expect("Failed setting metadata version");
                 log::info!(
                     logger,
@@ -80,6 +83,30 @@ pub fn migrate(ledger_db_path: impl AsRef<Path>, logger: &Logger) {
                 );
                 db_txn.commit().expect("Failed committing transaction");
             }
+            // Version 2022_02_22 came after 2020_07_07 and introduced minting.
+            Err(MetadataStoreError::VersionIncompatible(2020_07_07, _)) => {
+                log::info!(
+                    logger,
+                    "Ledger db migrating from version 2020_07_07 to 2022_02_22..."
+                );
+                MintConfigStore::create(&env).expect("Failed creating MintConfigStore");
+                MintTxStore::create(&env).expect("Failed creating MintTxStore");
+
+                backfill_empty_mint_stores(&env, logger)
+                    .expect("Failed backfilling empty mint stores");
+
+                let mut db_txn = env.begin_rw_txn().expect("Failed starting rw transaction");
+                metadata_store
+                    .set_version(&mut db_txn, 2022_02_22)
+                    .expect("Failed setting metadata version");
+                log::info!(
+                    logger,
+                    "Ledger db migration complete, now at version: {:?}",
+                    metadata_store.get_version(&db_txn),
+                );
+                db_txn.commit().expect("Failed committing transaction");
+            }
+
             // Don't know how to migrate.
             Err(err) => {
                 panic!("Error while migrating: {:?}", err);
@@ -185,6 +212,38 @@ fn construct_block_number_by_tx_out_index_from_existing_data(
             log::info!(
                 logger,
                 "Constructing block_number_by_tx_out_index: {}% complete",
+                percents
+            );
+        }
+    }
+    Ok(db_txn.commit()?)
+}
+
+/// A utility function for backfilling empty mint tx data for all existing
+/// blocks. This is necessary because we store an empty list of mint txs for
+/// blocks that did not contain any.
+fn backfill_empty_mint_stores(env: &Environment, logger: &Logger) -> Result<(), Error> {
+    // Open pre-existing databases that has data we need.
+    let mint_config_store = MintConfigStore::new(env)?;
+    let mint_tx_store = MintTxStore::new(env)?;
+    let counts_db = env.open_db(Some(COUNTS_DB_NAME))?;
+
+    let mut db_txn = env.begin_rw_txn()?;
+
+    let num_blocks = key_bytes_to_u64(db_txn.get(counts_db, &NUM_BLOCKS_KEY)?);
+
+    let mut percents: u64 = 0;
+    for block_index in 0..num_blocks {
+        mint_config_store.write_validated_mint_config_txs(block_index, &[], &mut db_txn)?;
+        mint_tx_store.write_mint_txs(block_index, &[], &mint_config_store, &mut db_txn)?;
+
+        // Throttled logging.
+        let new_percents = block_index * 100 / num_blocks;
+        if new_percents != percents {
+            percents = new_percents;
+            log::info!(
+                logger,
+                "Backfilling empty mint stores: {}% complete",
                 percents
             );
         }

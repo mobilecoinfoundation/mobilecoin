@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A tool for writing private and public key files to disk,
 //! corresponding to `mc_account_keys::RootIdentity`, and
@@ -10,9 +10,10 @@ use rand::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;
 use std::{cmp::Ordering, ffi::OsStr, fs, path::Path};
 
+/// A default seed for [write_default_keyfiles()] calls.
 pub const DEFAULT_SEED: [u8; 32] = [1; 32];
 
-// Write a single pair of keyfiles using a given name and data
+/// Write a single pair of keyfiles using a given name and data
 pub fn write_keyfiles<P: AsRef<Path>>(
     path: P,
     name: &str,
@@ -36,7 +37,7 @@ fn keyfile_name(i: usize) -> String {
     format!("account_keys_{}", i)
 }
 
-// Write the sequence of default user key files used in tests and demos
+/// Write the sequence of default user key files used in tests and demos
 pub fn write_default_keyfiles<P: AsRef<Path>>(
     path: P,
     num_accounts: usize,
@@ -61,7 +62,7 @@ pub fn write_default_keyfiles<P: AsRef<Path>>(
     Ok(())
 }
 
-// Read default pubkeys used in tests and demos
+/// Read default pubkeys used in tests and demos
 pub fn read_default_pubfiles<P: AsRef<Path>>(
     path: P,
 ) -> Result<Vec<PublicAddress>, std::io::Error> {
@@ -80,7 +81,7 @@ pub fn read_default_pubfiles<P: AsRef<Path>>(
     Ok(result)
 }
 
-// Read default root entropies
+/// Read default root entropies
 pub fn read_default_root_entropies<P: AsRef<Path>>(
     path: P,
 ) -> Result<Vec<RootIdentity>, std::io::Error> {

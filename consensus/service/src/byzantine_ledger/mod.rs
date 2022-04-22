@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A Federated, Byzantine Fault-Tolerant Ledger.
 //!
@@ -13,10 +13,13 @@ mod worker;
 use crate::{
     byzantine_ledger::{task_message::TaskMessage, worker::ByzantineLedgerWorker},
     counters,
-    tx_manager::TxManager,
+    mint_tx_manager::{MintTxManager, MintTxManagerError},
+    tx_manager::{TxManager, TxManagerError},
 };
+use displaydoc::Display;
 use mc_common::{logger::Logger, NodeID, ResponderId};
 use mc_connection::{BlockchainConnection, ConnectionManager};
+use mc_consensus_enclave::ConsensusEnclave;
 use mc_consensus_scp::{scp_log::LoggingScpNode, Node, QuorumSet, ScpNode};
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
@@ -24,6 +27,7 @@ use mc_ledger_sync::{LedgerSyncService, ReqwestTransactionsFetcher};
 use mc_peers::{
     Broadcast, ConsensusConnection, ConsensusMsg, ConsensusValue, VerifiedConsensusMsg,
 };
+use mc_transaction_core::mint::constants::{MAX_MINT_CONFIG_TXS_PER_BLOCK, MAX_MINT_TXS_PER_BLOCK};
 use mc_util_metered_channel::Sender;
 use std::{
     path::PathBuf,
@@ -63,31 +67,59 @@ pub struct ByzantineLedger {
     highest_issued_msg: Arc<Mutex<Option<ConsensusMsg>>>,
 }
 
+/// An error type for mc-consensus-scp validation/combine callbacks.
+#[derive(Clone, Debug, Display)]
+enum UnifiedNodeError {
+    /// TxManager: {0}
+    TxManager(TxManagerError),
+
+    /// MintTxManager: {0}
+    MintTxManager(MintTxManagerError),
+}
+
+impl From<TxManagerError> for UnifiedNodeError {
+    fn from(src: TxManagerError) -> Self {
+        Self::TxManager(src)
+    }
+}
+
+impl From<MintTxManagerError> for UnifiedNodeError {
+    fn from(src: MintTxManagerError) -> Self {
+        Self::MintTxManager(src)
+    }
+}
+
 impl ByzantineLedger {
     /// Create a new ByzantineLedger
     ///
     /// # Arguments
     /// * `node_id` - The local node's ID.
     /// * `quorum_set` - The local node's quorum set.
+    /// * `enclave` - Consensus enclave.
     /// * `peer_manager` - PeerManager
     /// * `ledger` - The local node's ledger.
     /// * `tx_manager` - TxManager
+    /// * `mint_tx_manager` - MintTxManager
     /// * `broadcaster` - Broadcaster
     /// * `msg_signer_key` - Signs consensus messages issued by this node.
     /// * `tx_source_urls` - Source URLs for fetching block contents.
     /// * `scp_debug_dir` - If Some, debugging info will be written in this
     ///   directory.
-    /// * `logger` -
+    /// * `logger` - Logger.
     pub fn new<
         PC: BlockchainConnection + ConsensusConnection + 'static,
         L: Ledger + Clone + Sync + 'static,
         TXM: TxManager + Send + Sync + 'static,
+        MTXM: MintTxManager + Send + Sync + 'static,
+        E: ConsensusEnclave + Send + Sync + 'static,
     >(
         node_id: NodeID,
         quorum_set: QuorumSet,
+        enclave: E,
         peer_manager: ConnectionManager<PC>,
         ledger: L,
         tx_manager: Arc<TXM>,
+        mint_tx_manager: Arc<MTXM>,
         broadcaster: Arc<Mutex<dyn Broadcast>>,
         msg_signer_key: Arc<Ed25519Pair>,
         tx_source_urls: Vec<String>,
@@ -98,25 +130,62 @@ impl ByzantineLedger {
         let scp_node: Box<dyn ScpNode<ConsensusValue>> = {
             let tx_manager_validate = tx_manager.clone();
             let tx_manager_combine = tx_manager.clone();
+            let mint_tx_manager_validate = mint_tx_manager.clone();
+            let mint_tx_manager_combine = mint_tx_manager.clone();
             let current_slot_index = ledger.num_blocks().unwrap();
             let node = Node::new(
                 node_id.clone(),
                 quorum_set,
+                // Validation callback
                 Arc::new(move |scp_value| match scp_value {
-                    ConsensusValue::TxHash(tx_hash) => tx_manager_validate.validate(tx_hash),
+                    ConsensusValue::TxHash(tx_hash) => tx_manager_validate
+                        .validate(tx_hash)
+                        .map_err(UnifiedNodeError::from),
+
+                    ConsensusValue::MintConfigTx(mint_config_tx) => mint_tx_manager_validate
+                        .validate_mint_config_tx(mint_config_tx)
+                        .map_err(UnifiedNodeError::from),
+
+                    ConsensusValue::MintTx(mint_tx) => mint_tx_manager_validate
+                        .validate_mint_tx(mint_tx)
+                        .map_err(UnifiedNodeError::from),
                 }),
+                // Combine callback
                 Arc::new(move |scp_values| {
                     let mut tx_hashes = Vec::new();
+                    let mut mint_config_txs = Vec::new();
+                    let mut mint_txs = Vec::new();
 
                     for value in scp_values {
                         match value {
                             ConsensusValue::TxHash(tx_hash) => tx_hashes.push(*tx_hash),
+                            ConsensusValue::MintConfigTx(mint_config_tx) => {
+                                mint_config_txs.push(mint_config_tx.clone());
+                            }
+                            ConsensusValue::MintTx(mint_tx) => {
+                                mint_txs.push(mint_tx.clone());
+                            }
                         }
                     }
                     let tx_hashes = tx_manager_combine.combine(&tx_hashes[..])?;
-
                     let tx_hashes_iter = tx_hashes.into_iter().map(ConsensusValue::TxHash);
-                    Ok(tx_hashes_iter.collect())
+
+                    let mint_config_txs = mint_tx_manager_combine.combine_mint_config_txs(
+                        &mint_config_txs[..],
+                        MAX_MINT_CONFIG_TXS_PER_BLOCK,
+                    )?;
+                    let mint_config_txs_iter = mint_config_txs
+                        .into_iter()
+                        .map(ConsensusValue::MintConfigTx);
+
+                    let mint_txs = mint_tx_manager_combine
+                        .combine_mint_txs(&mint_txs[..], MAX_MINT_TXS_PER_BLOCK)?;
+                    let mint_txs_iter = mint_txs.into_iter().map(ConsensusValue::MintTx);
+
+                    Ok(tx_hashes_iter
+                        .chain(mint_config_txs_iter)
+                        .chain(mint_txs_iter)
+                        .collect())
                 }),
                 current_slot_index,
                 logger.clone(),
@@ -150,12 +219,14 @@ impl ByzantineLedger {
             );
 
             let mut worker = ByzantineLedgerWorker::new(
+                enclave,
                 scp_node,
                 msg_signer_key,
                 ledger,
                 ledger_sync_service,
                 peer_manager,
                 tx_manager,
+                mint_tx_manager,
                 broadcaster.clone(),
                 task_receiver,
                 is_behind.clone(),
@@ -244,10 +315,11 @@ impl Drop for ByzantineLedger {
 mod tests {
     use super::*;
     use crate::{
+        mint_tx_manager::{MintTxManagerImpl, MockMintTxManager},
         tx_manager::{MockTxManager, TxManagerImpl},
         validators::DefaultTxManagerUntrustedInterfaces,
     };
-    use hex;
+
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
     use mc_consensus_scp::{core_types::Ballot, msg::*, SlotIndex};
@@ -255,13 +327,15 @@ mod tests {
     use mc_ledger_db::Ledger;
     use mc_peers::{MockBroadcast, ThreadedBroadcaster};
     use mc_peers_test_utils::MockPeerConnection;
-    use mc_transaction_core::BlockVersion;
+    use mc_transaction_core::{Block, BlockContents, BlockVersion, TokenId};
     use mc_transaction_core_test_utils::{
-        create_ledger, create_transaction, initialize_ledger, AccountKey,
+        create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_transaction,
+        initialize_ledger, mint_config_tx_to_validated, AccountKey,
     };
     use mc_util_from_random::FromRandom;
     use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri, ConsensusPeerUri};
     use rand::{rngs::StdRng, SeedableRng};
+    use serial_test::serial;
     use std::{
         collections::BTreeSet,
         convert::TryInto,
@@ -272,7 +346,7 @@ mod tests {
     };
 
     // Run these tests with a particular block version
-    const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
+    const BLOCK_VERSION: BlockVersion = BlockVersion::ZERO;
 
     fn test_peer_uri(node_id: u32, pubkey: String) -> PeerUri {
         PeerUri::from_str(&format!(
@@ -292,7 +366,7 @@ mod tests {
     // Get the local node's NodeID and message signer key.
     pub fn get_local_node_config(node_id: u32) -> (NodeID, ConsensusPeerUri, Arc<Ed25519Pair>) {
         let secret_key = Ed25519Private::try_from_der(
-            &base64::decode("MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo")
+            base64::decode("MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo")
                 .unwrap()
                 .as_slice(),
         )
@@ -343,6 +417,7 @@ mod tests {
     }
 
     #[test_with_logger]
+    #[serial(counters)]
     fn test_is_behind(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([216u8; 32]);
 
@@ -361,6 +436,10 @@ mod tests {
         let sender = AccountKey::random(&mut rng);
         let num_blocks = 1;
         initialize_ledger(BLOCK_VERSION, &mut ledger, num_blocks, &sender, &mut rng);
+
+        // Mock enclave.
+        let enclave = ConsensusServiceMockEnclave::default();
+        enclave.blockchain_config.lock().unwrap().block_version = BLOCK_VERSION;
 
         // Mock peer_manager
         let peer_manager = ConnectionManager::new(
@@ -384,29 +463,35 @@ mod tests {
         // Mock tx_manager
         let tx_manager = Arc::new(MockTxManager::new());
 
+        // Mock mint_tx_manager
+        let mint_tx_manager = Arc::new(MockMintTxManager::new());
+
         // Mock broadcaster
         let broadcaster = Arc::new(Mutex::new(MockBroadcast::new()));
 
         let byzantine_ledger = ByzantineLedger::new(
-            local_node_id.clone(),
-            local_quorum_set.clone(),
+            local_node_id,
+            local_quorum_set,
+            enclave,
             peer_manager,
             ledger.clone(),
-            tx_manager.clone(),
+            tx_manager,
+            mint_tx_manager,
             broadcaster,
-            msg_signer_key.clone(),
+            msg_signer_key,
             Vec::new(),
             None,
             logger.clone(),
         );
 
         // Initially, byzantine_ledger is not behind.
-        assert_eq!(byzantine_ledger.is_behind(), false);
+        assert!(!byzantine_ledger.is_behind());
     }
 
     // Initially, ByzantineLedger should emit the normal SCPStatements from
     // single-slot consensus.
     #[test_with_logger]
+    #[serial(counters)]
     fn test_single_slot_consensus(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([209u8; 32]);
 
@@ -469,12 +554,21 @@ mod tests {
             logger.clone(),
         ));
 
+        let mint_tx_manager = Arc::new(MintTxManagerImpl::new(
+            ledger.clone(),
+            BLOCK_VERSION,
+            Default::default(),
+            logger.clone(),
+        ));
+
         let byzantine_ledger = ByzantineLedger::new(
             local_node_id.clone(),
             local_quorum_set.clone(),
+            enclave,
             peer_manager,
             ledger.clone(),
             tx_manager.clone(),
+            mint_tx_manager,
             broadcaster,
             local_signer_key.clone(),
             Vec::new(),
@@ -603,7 +697,7 @@ mod tests {
                 }
             }
 
-            thread::sleep(Duration::from_millis(100 as u64));
+            thread::sleep(Duration::from_millis(100_u64));
         }
 
         {
@@ -707,7 +801,7 @@ mod tests {
                 break;
             }
 
-            thread::sleep(Duration::from_millis(100 as u64));
+            thread::sleep(Duration::from_millis(100_u64));
         }
 
         let mut emitted_msgs = mock_peer_state
@@ -752,5 +846,318 @@ mod tests {
     // normal SCPStatements from single-slot consensus.
     fn test_ledger_sync() {
         unimplemented!()
+    }
+
+    // ByzantineLedger should emit the normal SCPStatements from
+    // single-slot consensus that contains mint txs.
+    #[test_with_logger]
+    #[serial(counters)]
+    fn test_single_slot_consensus_on_mint_txs(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([209u8; 32]);
+
+        // Other nodes.
+        let peers = get_peers(&[22, 33, 44], &mut rng);
+
+        let node_a = peers[0].clone();
+        let node_b = peers[1].clone();
+
+        // Local node.
+        let (local_node_id, _, local_signer_key) = get_local_node_config(11);
+
+        // Local node's quorum set.
+        let local_quorum_set =
+            QuorumSet::new_with_node_ids(2, vec![node_a.id.clone(), node_b.id.clone()]);
+
+        // Local node's Ledger.
+        let mut ledger = create_ledger();
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(BLOCK_VERSION, &mut ledger, 1, &sender, &mut rng);
+
+        // Generate a mint config and put it in the ledger so that validation of MintTxs
+        // can take place.
+        let token_id1 = TokenId::from(1);
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+        let block_contents = BlockContents {
+            validated_mint_config_txs: vec![mint_config_tx_to_validated(&mint_config_tx1)],
+            ..Default::default()
+        };
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        // Mock peer_manager
+        let mock_peer = MockPeerConnection::new(
+            node_a.uri.clone(),
+            local_node_id.clone(),
+            ledger.clone(),
+            10,
+        );
+
+        // We use this later to examine the messages received by this peer.
+        let mock_peer_state = mock_peer.state.clone();
+
+        // Set up peer_manager.
+        let peer_manager = ConnectionManager::new(
+            vec![
+                mock_peer,
+                MockPeerConnection::new(
+                    node_b.uri.clone(),
+                    local_node_id.clone(),
+                    ledger.clone(),
+                    10,
+                ),
+            ],
+            logger.clone(),
+        );
+
+        let broadcaster = Arc::new(Mutex::new(ThreadedBroadcaster::new(
+            &peer_manager,
+            &mc_peers::ThreadedBroadcasterFibonacciRetryPolicy::default(),
+            logger.clone(),
+        )));
+
+        let enclave = ConsensusServiceMockEnclave::default();
+        enclave.blockchain_config.lock().unwrap().block_version = BlockVersion::MAX;
+
+        let tx_manager = Arc::new(TxManagerImpl::new(
+            enclave.clone(),
+            DefaultTxManagerUntrustedInterfaces::new(ledger.clone()),
+            logger.clone(),
+        ));
+
+        let mint_tx_manager = Arc::new(MintTxManagerImpl::new(
+            ledger.clone(),
+            BlockVersion::MAX,
+            Default::default(),
+            logger.clone(),
+        ));
+
+        let byzantine_ledger = ByzantineLedger::new(
+            local_node_id.clone(),
+            local_quorum_set.clone(),
+            enclave,
+            peer_manager,
+            ledger.clone(),
+            tx_manager,
+            mint_tx_manager,
+            broadcaster,
+            local_signer_key.clone(),
+            Vec::new(),
+            None,
+            logger.clone(),
+        );
+
+        // Initially, there should be no messages to the network.
+        {
+            assert_eq!(
+                mock_peer_state
+                    .lock()
+                    .expect("Could not lock mock peer state")
+                    .msgs
+                    .len(),
+                0
+            );
+        }
+
+        // Generate and submit transactions.
+        let tx1 = create_mint_tx(
+            token_id1,
+            &[Ed25519Pair::from(signers1[0].private_key())],
+            10,
+            &mut rng,
+        );
+        let tx2 = create_mint_tx(
+            token_id1,
+            &[Ed25519Pair::from(signers1[0].private_key())],
+            20,
+            &mut rng,
+        );
+        let tx3 = create_mint_tx(
+            token_id1,
+            &[Ed25519Pair::from(signers1[0].private_key())],
+            30,
+            &mut rng,
+        );
+
+        byzantine_ledger.push_values(
+            vec![
+                ConsensusValue::MintTx(tx1.clone()),
+                ConsensusValue::MintTx(tx2.clone()),
+                ConsensusValue::MintTx(tx3.clone()),
+            ],
+            Some(Instant::now()),
+        );
+
+        let num_blocks = ledger.num_blocks().unwrap();
+        let slot_index = num_blocks as SlotIndex;
+
+        // After some time, this node should nominate its client values.
+        let expected_msg = ConsensusMsg::from_scp_msg(
+            &ledger,
+            Msg::new(
+                local_node_id.clone(),
+                local_quorum_set.clone(),
+                slot_index,
+                Topic::Nominate(NominatePayload {
+                    X: BTreeSet::from_iter(vec![
+                        ConsensusValue::MintTx(tx1.clone()),
+                        ConsensusValue::MintTx(tx2.clone()),
+                        ConsensusValue::MintTx(tx3.clone()),
+                    ]),
+                    Y: BTreeSet::default(),
+                }),
+            ),
+            &local_signer_key,
+        )
+        .unwrap();
+
+        let deadline = Instant::now() + Duration::from_secs(60);
+        while Instant::now() < deadline {
+            {
+                if mock_peer_state
+                    .lock()
+                    .expect("Could not lock mock peer state")
+                    .msgs
+                    .contains(&expected_msg)
+                {
+                    break;
+                }
+            }
+
+            thread::sleep(Duration::from_millis(100_u64));
+        }
+
+        {
+            let msgs = &mock_peer_state
+                .lock()
+                .expect("Could not lock mock peer state")
+                .msgs;
+            assert!(
+                msgs.contains(&expected_msg),
+                "Nominate msg not found. msgs={:#?}",
+                msgs,
+            );
+        }
+
+        // Push ballot statements from node_a and node_b so that consensus is reached.
+        byzantine_ledger.handle_consensus_msg(
+            ConsensusMsg::from_scp_msg(
+                &ledger,
+                Msg::new(
+                    node_a.id.clone(),
+                    node_a.quorum_set.clone(),
+                    slot_index,
+                    Topic::Commit(CommitPayload {
+                        B: Ballot::new(
+                            100,
+                            &[
+                                ConsensusValue::MintTx(tx1.clone()),
+                                ConsensusValue::MintTx(tx2.clone()),
+                                ConsensusValue::MintTx(tx3.clone()),
+                            ],
+                        ),
+                        PN: 77,
+                        CN: 55,
+                        HN: 66,
+                    }),
+                ),
+                &node_a.signer_key,
+            )
+            .unwrap()
+            .try_into()
+            .unwrap(),
+            node_a.id.responder_id.clone(),
+        );
+
+        byzantine_ledger.handle_consensus_msg(
+            ConsensusMsg::from_scp_msg(
+                &ledger,
+                Msg::new(
+                    node_b.id.clone(),
+                    node_b.quorum_set.clone(),
+                    slot_index,
+                    Topic::Commit(CommitPayload {
+                        B: Ballot::new(
+                            100,
+                            &[
+                                ConsensusValue::MintTx(tx1.clone()),
+                                ConsensusValue::MintTx(tx2.clone()),
+                                ConsensusValue::MintTx(tx3.clone()),
+                            ],
+                        ),
+                        PN: 77,
+                        CN: 55,
+                        HN: 66,
+                    }),
+                ),
+                &node_b.signer_key,
+            )
+            .unwrap()
+            .try_into()
+            .unwrap(),
+            node_a.id.responder_id,
+        );
+
+        // After some time, this node should emit some statements and write a new block
+        // to its ledger.
+        let deadline = Instant::now() + Duration::from_secs(60);
+        while Instant::now() < deadline {
+            let num_blocks_after = ledger.num_blocks().unwrap();
+            if num_blocks_after > num_blocks {
+                break;
+            }
+
+            thread::sleep(Duration::from_millis(100_u64));
+        }
+
+        let mut emitted_msgs = mock_peer_state
+            .lock()
+            .expect("Could not lock peer state")
+            .msgs
+            .clone();
+        assert!(!emitted_msgs.is_empty());
+        assert_eq!(
+            emitted_msgs.pop_back().unwrap(),
+            ConsensusMsg::from_scp_msg(
+                &ledger,
+                Msg::new(
+                    local_node_id,
+                    local_quorum_set,
+                    slot_index,
+                    Topic::Externalize(ExternalizePayload {
+                        C: Ballot::new(
+                            55,
+                            &[
+                                ConsensusValue::MintTx(tx1),
+                                ConsensusValue::MintTx(tx2),
+                                ConsensusValue::MintTx(tx3),
+                            ]
+                        ),
+                        HN: 66,
+                    }),
+                ),
+                &local_signer_key
+            )
+            .unwrap(),
+        );
+
+        // The local ledger should now contain a new block.
+        let num_blocks_after = ledger.num_blocks().unwrap();
+        assert_eq!(num_blocks + 1, num_blocks_after);
+
+        // The block should have a valid signature.
+        let block = ledger.get_block(num_blocks).unwrap();
+        let signature = ledger.get_block_signature(num_blocks).unwrap();
+
+        let signature_verification_result = signature.verify(&block);
+        assert!(signature_verification_result.is_ok());
     }
 }

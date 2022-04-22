@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Domain separation tags for hash functions used in the MobileCoin transaction
 //! protocol.
@@ -49,3 +49,9 @@ pub const TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG: &str = "mc_tx_out_confirmation_n
 
 /// Domain separator for computing the extended message digest
 pub const EXTENDED_MESSAGE_DOMAIN_TAG: &str = "mc_extended_message";
+
+// Domain separator for hashing MintConfigTxPrefixs
+pub const MINT_CONFIG_TX_PREFIX_DOMAIN_TAG: &str = "mc_mint_config_tx_prefix";
+
+/// Domain separator for hashing MintTxPrefixs
+pub const MINT_TX_PREFIX_DOMAIN_TAG: &str = "mc_mint_tx_prefix";

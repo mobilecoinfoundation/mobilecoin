@@ -1,9 +1,11 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Utilities for creating MobileCoin transactions, intended for client-side
 //! use and not intended to be used inside of enclaves.
 
 #![deny(missing_docs)]
+
+extern crate core;
 
 mod change_destination;
 mod error;
@@ -21,7 +23,7 @@ pub use memo::{
     UnusedMemo,
 };
 pub use memo_builder::{EmptyMemoBuilder, MemoBuilder, RTHMemoBuilder};
-pub use transaction_builder::TransactionBuilder;
+pub use transaction_builder::{DefaultTxOutputsOrdering, TransactionBuilder, TxOutputsOrdering};
 
 // Re-export this to help the exported macros work
 pub use mc_transaction_core::MemoPayload;

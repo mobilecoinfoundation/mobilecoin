@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use mc_common::{
     logger::{test_with_logger, Logger},
@@ -13,13 +13,12 @@ use std::str::FromStr;
 const VIEW_OMAP_CAPACITY: u64 = 1024 * 1024;
 
 fn get_enclave(logger: Logger) -> SgxViewEnclave {
-    let sgx_enclave = SgxViewEnclave::new(
+    SgxViewEnclave::new(
         get_enclave_path(mc_fog_view_enclave::ENCLAVE_FILE),
         ResponderId::from_str("abc:123").unwrap(),
         VIEW_OMAP_CAPACITY,
         logger.clone(),
-    );
-    sgx_enclave
+    )
 }
 
 #[test_with_logger]

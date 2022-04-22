@@ -1,17 +1,78 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // Consensus service client-facing data types and service descriptors.
 
 syntax = "proto3";
 import "attest.proto";
 import "consensus_common.proto";
+import "external.proto";
 
 package consensus_client;
 
 option go_package = "mobilecoin/api";
 
+enum MintValidationResultCode {
+    Ok = 0;
+    InvalidBlockVersion = 1;
+    InvalidTokenId = 2;
+    InvalidNonceLength = 3;
+    InvalidSignerSet = 4;
+    InvalidSignature = 5;
+    TombstoneBlockExceeded = 6;
+    TombstoneBlockTooFar = 7;
+    Unknown = 8;
+    AmountExceedsMintLimit = 9;
+    NoGovernors = 10;
+    NonceAlreadyUsed = 11;
+    NoMatchingMintConfig = 12;
+}
+
+message MintValidationResult {
+    /// The actual result code.
+    MintValidationResultCode code = 1;
+
+    /// Block version, if result is InvalidBlockVersion.
+    uint32 block_version = 2;
+
+    /// Token ID, if result is InvalidTokenId or NoGovernors.
+    uint64 token_id = 3;
+
+    /// Nonce length, if result is InvalidNonceLength
+    uint64 nonce_length = 4;
+}
+
+/// Response from ProposeMintConfigTx RPC call.
+message ProposeMintConfigTxResponse {
+    /// Result.
+    MintValidationResult result = 1;
+
+    /// The number of blocks in the ledger at the time the request was received.
+    uint64 block_count = 2;
+
+    /// The block version which is in effect right now
+    uint32 block_version = 3;
+}
+
+/// Response from ProposeMintTx RPC call.
+message ProposeMintTxResponse {
+    /// Result.
+    MintValidationResult result = 1;
+
+    /// The number of blocks in the ledger at the time the request was received.
+    uint64 block_count = 2;
+
+    /// The block version which is in effect right now
+    uint32 block_version = 3;
+}
+
 service ConsensusClientAPI {
     /// This API call is made with an encrypted payload for the enclave,
     /// indicating a new value to be acted upon.
     rpc ClientTxPropose(attest.Message) returns (consensus_common.ProposeTxResponse);
+
+    /// Propose a new MintConfigTx.
+    rpc ProposeMintConfigTx(external.MintConfigTx) returns (ProposeMintConfigTxResponse);
+
+    /// Propose a new MintTx.
+    rpc ProposeMintTx(external.MintTx) returns (ProposeMintTxResponse);
 }
