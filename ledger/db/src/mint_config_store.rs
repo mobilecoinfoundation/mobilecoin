@@ -52,17 +52,18 @@ pub struct ActiveMintConfigs {
     #[prost(message, repeated, tag = "1")]
     pub configs: Vec<ActiveMintConfig>,
 
-    /// The total amount that can be minted by the configurations above, once
-    /// this set of configurations has been made active.
-    #[prost(uint64, tag = "2")]
-    pub total_mint_limit: u64,
-
     /// The original MintConfigTx that this object was created from.
-    #[prost(message, required, tag = "3")]
+    #[prost(message, required, tag = "2")]
     pub mint_config_tx: MintConfigTx,
 }
 
 impl ActiveMintConfigs {
+    /// The total amount that can be minted by all configurations tgether, once
+    /// this set has been made active.
+    pub fn total_mint_limit(&self) -> u64 {
+        self.mint_config_tx.prefix.total_mint_limit
+    }
+
     /// Get the total amount that was minted across all configurations.
     pub fn total_minted(&self) -> u64 {
         self.configs.iter().map(|c| c.total_minted).sum()
@@ -72,7 +73,7 @@ impl ActiveMintConfigs {
     /// limit.
     pub fn can_mint(&self, amount: u64) -> bool {
         if let Some(new_total_minted) = self.total_minted().checked_add(amount) {
-            new_total_minted <= self.total_mint_limit
+            new_total_minted <= self.total_mint_limit()
         } else {
             false
         }
@@ -90,7 +91,7 @@ impl ActiveMintConfigs {
             return Err(Error::MintLimitExceeded(
                 mint_tx.prefix.amount,
                 self.total_minted(),
-                self.total_mint_limit,
+                self.total_mint_limit(),
             ));
         }
 
@@ -169,7 +170,6 @@ impl From<&MintConfigTx> for ActiveMintConfigs {
                     total_minted: 0,
                 })
                 .collect(),
-            total_mint_limit: mint_config_tx.prefix.total_mint_limit,
             mint_config_tx: mint_config_tx.clone(),
         }
     }
@@ -390,11 +390,11 @@ impl MintConfigStore {
         active_mint_config.total_minted = amount;
 
         // Sanity check that we didn't go over the total mint limit.
-        if active_mint_configs.total_minted() > active_mint_configs.total_mint_limit {
+        if active_mint_configs.total_minted() > active_mint_configs.total_mint_limit() {
             return Err(Error::MintLimitExceeded(
                 mint_increase_amount,
                 active_mint_configs.total_minted(),
-                active_mint_configs.total_mint_limit,
+                active_mint_configs.total_mint_limit(),
             ));
         }
 
