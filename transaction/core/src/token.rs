@@ -8,10 +8,10 @@ use serde::{Deserialize, Serialize};
 #[derive(
     Clone, Copy, Debug, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
 )]
-pub struct TokenId(u32);
+pub struct TokenId(u64);
 
-impl From<u32> for TokenId {
-    fn from(src: u32) -> Self {
+impl From<u64> for TokenId {
+    fn from(src: u64) -> Self {
         Self(src)
     }
 }
@@ -27,7 +27,7 @@ impl TokenId {
 }
 
 impl Deref for TokenId {
-    type Target = u32;
+    type Target = u64;
 
     fn deref(&self) -> &Self::Target {
         &self.0
