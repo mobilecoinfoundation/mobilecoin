@@ -1,3 +1,5 @@
+// Copyright (c) 2022 The MobileCoin Foundation
+
 //! A simple generator cache
 
 use super::{generators, PedersenGens};
@@ -5,7 +7,7 @@ use crate::TokenId;
 use alloc::collections::BTreeMap;
 
 /// GeneratorCache is a simple object which caches computations of
-/// generator: TokenId -> RistrettoPoint
+/// generator: TokenId -> PedersenGens
 ///
 /// This is intended just to be used in the scope of a single transaction,
 /// and we therefore don't require it to be constant-time.
