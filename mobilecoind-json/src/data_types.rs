@@ -837,14 +837,33 @@ impl From<&RingMLSAG> for JsonRingMLSAG {
     }
 }
 
+// Representa TokenId (u64) using string, when serializing to Json
+// This does not rely on the serde-json arbitrary precision feature, which
+// (we fear) might break other things
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
+#[serde(transparent)]
+pub struct JsonTokenId(#[serde(with = "serde_with::rust::display_fromstr")] pub u64);
+
+impl From<&u64> for JsonTokenId {
+    fn from(src: &u64) -> Self {
+        Self(*src)
+    }
+}
+
+impl From<&JsonTokenId> for u64 {
+    fn from(src: &JsonTokenId) -> u64 {
+        src.0
+    }
+}
+
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonSignatureRctBulletproofs {
     pub ring_signatures: Vec<JsonRingMLSAG>,
     pub pseudo_output_commitments: Vec<String>,
     pub range_proof_bytes: String,
     pub range_proofs: Vec<String>,
-    pub pseudo_output_token_ids: Vec<u64>,
-    pub output_token_ids: Vec<u64>,
+    pub pseudo_output_token_ids: Vec<JsonTokenId>,
+    pub output_token_ids: Vec<JsonTokenId>,
 }
 
 impl From<&SignatureRctBulletproofs> for JsonSignatureRctBulletproofs {
@@ -862,8 +881,8 @@ impl From<&SignatureRctBulletproofs> for JsonSignatureRctBulletproofs {
                 .collect(),
             range_proof_bytes: hex::encode(src.get_range_proof_bytes()),
             range_proofs: src.get_range_proofs().iter().map(hex::encode).collect(),
-            pseudo_output_token_ids: src.pseudo_output_token_ids.clone(),
-            output_token_ids: src.output_token_ids.clone(),
+            pseudo_output_token_ids: src.pseudo_output_token_ids.iter().map(Into::into).collect(),
+            output_token_ids: src.output_token_ids.iter().map(Into::into).collect(),
         }
     }
 }
@@ -937,8 +956,10 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
             .collect::<Result<_, _>>()?;
         signature.set_range_proofs(range_proofs);
 
-        signature.set_pseudo_output_token_ids(src.pseudo_output_token_ids.clone());
-        signature.set_output_token_ids(src.output_token_ids.clone());
+        signature.set_pseudo_output_token_ids(
+            src.pseudo_output_token_ids.iter().map(Into::into).collect(),
+        );
+        signature.set_output_token_ids(src.output_token_ids.iter().map(Into::into).collect());
 
         Ok(signature)
     }
