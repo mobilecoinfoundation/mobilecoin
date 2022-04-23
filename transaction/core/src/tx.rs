@@ -24,7 +24,7 @@ use crate::{
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
     ring_signature::{KeyImage, SignatureRctBulletproofs},
-    CompressedCommitment, NewMemoError, NewTxError, TokenId, ViewKeyMatchError,
+    CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
 };
 
 /// Transaction hash length, in bytes.
@@ -176,21 +176,19 @@ impl TxPrefix {
     /// * `inputs` - Inputs spent by the transaction.
     /// * `outputs` - Outputs created by the transaction.
     /// * `fee` - Transaction fee.
-    /// * `fee_token_id` - Transaction fee token id.
     /// * `tombstone_block` - The block index at which this transaction is no
     ///   longer valid.
     pub fn new(
         inputs: Vec<TxIn>,
         outputs: Vec<TxOut>,
-        fee: u64,
-        fee_token_id: TokenId,
+        fee: Amount,
         tombstone_block: u64,
     ) -> TxPrefix {
         TxPrefix {
             inputs,
             outputs,
-            fee,
-            fee_token_id: *fee_token_id,
+            fee: fee.value,
+            fee_token_id: *fee.token_id,
             tombstone_block,
         }
     }
