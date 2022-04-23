@@ -1609,7 +1609,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_init_1jni(
             fog_resolver.clone(),
             memo_builder_box,
         );
-      
+
         Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, tx_builder)?)
     })
 }
