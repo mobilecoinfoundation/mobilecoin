@@ -107,10 +107,7 @@ mod tests {
             transaction_builder.set_fee(0).unwrap();
             transaction_builder
                 .add_output(
-                    Amount {
-                        value: 65536,
-                        token_id: Mob::ID,
-                    },
+                    Amount::new(65536, Mob::ID),
                     &bob.default_subaddress(),
                     &mut rng,
                 )

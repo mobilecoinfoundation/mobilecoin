@@ -707,10 +707,7 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
 
     tx_builder
         .add_change_output(
-            Amount {
-                value: change,
-                token_id: amount.token_id,
-            },
+            Amount::new(change, amount.token_id),
             &change_destination,
             rng,
         )

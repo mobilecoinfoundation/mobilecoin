@@ -536,10 +536,7 @@ mod combine_tests {
             let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
             let tx_out = TxOut::new(
-                Amount {
-                    value: 123,
-                    token_id: Mob::ID,
-                },
+                Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &tx_secret_key_for_txo,
                 Default::default(),
