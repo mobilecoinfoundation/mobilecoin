@@ -1598,7 +1598,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_init_1jni(
         // Note: RTHMemoBuilder can be selected here, but we will only actually
         // write memos if block_version is large enough that memos are supported.
         // If block version is < 2, then transaction builder will filter out memos.
-        let memo_builder_box: Box<dyn MemoBuilder + Send + Sync> = 
+        let memo_builder_box: Box<dyn MemoBuilder + Send + Sync> =
             env.take_rust_field(memo_builder_box, RUST_OBJ_FIELD)?;
         // FIXME #1595: The token id should be a parameter and not hard coded to Mob
         // here
@@ -1606,8 +1606,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_init_1jni(
         let tx_builder = TransactionBuilder::new_with_box(
             block_version,
             token_id,
-            fog_resolver.clone(), 
-            memo_builder_box
+            fog_resolver.clone(),
+            memo_builder_box,
         );
       
         Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, tx_builder)?)
@@ -1841,9 +1841,9 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_Util_recover_1onetime_1private_
         |env| {
             let tx_pub_key: MutexGuard<RistrettoPublic> =
                 env.get_rust_field(tx_pub_key, RUST_OBJ_FIELD)?;
-            let tx_target_key: MutexGuard<RistrettoPublic> = 
+            let tx_target_key: MutexGuard<RistrettoPublic> =
                 env.get_rust_field(tx_target_key, RUST_OBJ_FIELD)?;
-            let account_key: MutexGuard<AccountKey> = 
+            let account_key: MutexGuard<AccountKey> =
                 env.get_rust_field(account_key, RUST_OBJ_FIELD)?;
 
             let subaddress_spk = recover_public_subaddress_spend_key(
