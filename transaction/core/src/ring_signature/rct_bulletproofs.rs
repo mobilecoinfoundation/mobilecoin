@@ -27,7 +27,7 @@ use crate::{
     domain_separators::EXTENDED_MESSAGE_DOMAIN_TAG,
     range_proofs::{check_range_proofs, generate_range_proofs},
     ring_signature::{mlsag::RingMLSAG, Error, GeneratorCache, KeyImage, Scalar},
-    Amount, BlockVersion, Commitment, CompressedCommitment, TokenId,
+    Amount, BlockVersion, Commitment, CompressedCommitment,
 };
 
 /// The secrets corresponding to an input needed to create a signature
@@ -35,10 +35,8 @@ use crate::{
 pub struct InputSecret {
     /// The one-time private key for the output we are trying to spend
     pub onetime_private_key: RistrettoPrivate,
-    /// The value of the output we are trying to spend
-    pub value: u64,
-    /// The token id of the output we are trying to spend
-    pub token_id: TokenId,
+    /// The amount of the output
+    pub amount: Amount,
     /// The blinding factor of the output we are trying to spend
     pub blinding: Scalar,
 }
@@ -46,10 +44,8 @@ pub struct InputSecret {
 /// The secrets corresponding to an output needed to create a signature
 #[derive(Clone, Debug)]
 pub struct OutputSecret {
-    /// The value of the output we are creating
-    pub value: u64,
-    /// The token id of the output we are creating
-    pub token_id: TokenId,
+    /// The amount of the output we are creating
+    pub amount: Amount,
     /// The blinding factor of the output we are creating
     pub blinding: Scalar,
 }
@@ -386,12 +382,15 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     // input and output token ids must match fee_token_id if mixed transactions is
     // not enabled
     if !block_version.mixed_transactions_are_supported() {
-        if input_secrets.iter().any(|sec| sec.token_id != fee.token_id) {
+        if input_secrets
+            .iter()
+            .any(|sec| sec.amount.token_id != fee.token_id)
+        {
             return Err(Error::MixedTransactionsNotAllowed);
         }
         if output_secrets
             .iter()
-            .any(|sec| sec.token_id != fee.token_id)
+            .any(|sec| sec.amount.token_id != fee.token_id)
         {
             return Err(Error::MixedTransactionsNotAllowed);
         }
@@ -447,7 +446,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     let pseudo_output_values_and_blindings: Vec<(u64, Scalar)> = input_secrets
         .iter()
         .zip(pseudo_output_blindings.iter())
-        .map(|(secret, blinding)| (secret.value, *blinding))
+        .map(|(secret, blinding)| (secret.amount.value, *blinding))
         .collect();
 
     // Create a pedersen generator cache
@@ -465,7 +464,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
             .chain(
                 output_secrets
                     .iter()
-                    .map(|secret| (secret.value, secret.blinding)),
+                    .map(|secret| (secret.amount.value, secret.blinding)),
             )
             .unzip();
         let (range_proof, _commitments) =
@@ -480,10 +479,10 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
             let mut token_ids = BTreeSet::default();
             token_ids.insert(fee.token_id);
             for secret in input_secrets {
-                token_ids.insert(secret.token_id);
+                token_ids.insert(secret.amount.token_id);
             }
             for secret in output_secrets {
-                token_ids.insert(secret.token_id);
+                token_ids.insert(secret.amount.token_id);
             }
             token_ids
         };
@@ -496,15 +495,15 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
                 .iter()
                 .zip(pseudo_output_blindings.iter())
                 .filter_map(|(secret, blinding)| {
-                    if secret.token_id == token_id {
-                        Some((secret.value, *blinding))
+                    if secret.amount.token_id == token_id {
+                        Some((secret.amount.value, *blinding))
                     } else {
                         None
                     }
                 })
                 .chain(output_secrets.iter().filter_map(|secret| {
-                    if secret.token_id == token_id {
-                        Some((secret.value, secret.blinding))
+                    if secret.amount.token_id == token_id {
+                        Some((secret.amount.value, secret.blinding))
                     } else {
                         None
                     }
@@ -532,8 +531,8 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         .zip(pseudo_output_blindings.iter())
         .map(|(secret, blinding)| {
             generator_cache
-                .get(secret.token_id)
-                .commit(Scalar::from(secret.value), *blinding)
+                .get(secret.amount.token_id)
+                .commit(Scalar::from(secret.amount.value), *blinding)
         })
         .collect();
 
@@ -542,8 +541,8 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
             .iter()
             .map(|secret| {
                 generator_cache
-                    .get(secret.token_id)
-                    .commit(Scalar::from(secret.value), secret.blinding)
+                    .get(secret.amount.token_id)
+                    .commit(Scalar::from(secret.amount.value), secret.blinding)
             })
             .sum();
 
@@ -586,13 +585,13 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     for i in 0..num_inputs {
         let real_index = real_input_indices[i];
         let input_secret = &input_secrets[i];
-        let generator = generator_cache.get(input_secret.token_id);
+        let generator = generator_cache.get(input_secret.amount.token_id);
         let ring_signature = RingMLSAG::sign(
             &extended_message_digest,
             &rings[i],
             real_index,
             &input_secret.onetime_private_key,
-            input_secret.value,
+            input_secret.amount.value,
             &input_secret.blinding,
             &pseudo_output_blindings[i],
             generator,
@@ -603,11 +602,11 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
 
     let mut pseudo_output_token_ids: Vec<u64> = input_secrets
         .iter()
-        .map(|secret| *secret.token_id)
+        .map(|secret| *secret.amount.token_id)
         .collect();
     let mut output_token_ids: Vec<u64> = output_secrets
         .iter()
-        .map(|secret| *secret.token_id)
+        .map(|secret| *secret.amount.token_id)
         .collect();
 
     if !block_version.mixed_transactions_are_supported() {
@@ -695,7 +694,7 @@ mod rct_bulletproofs_tests {
     use crate::{
         range_proofs::generate_range_proofs,
         ring_signature::{generators, Error, KeyImage, PedersenGens},
-        CompressedCommitment,
+        CompressedCommitment, TokenId,
     };
     use alloc::vec::Vec;
     use assert_matches::assert_matches;
@@ -810,8 +809,7 @@ mod rct_bulletproofs_tests {
                 real_input_indices.push(real_index);
                 input_secrets.push(InputSecret {
                     onetime_private_key,
-                    value,
-                    token_id,
+                    amount: Amount::new(value, token_id),
                     blinding,
                 });
             }
@@ -822,8 +820,7 @@ mod rct_bulletproofs_tests {
                 .map(|secret| {
                     let blinding = Scalar::random(rng);
                     OutputSecret {
-                        value: secret.value,
-                        token_id: secret.token_id,
+                        amount: secret.amount,
                         blinding,
                     }
                 })
@@ -845,9 +842,9 @@ mod rct_bulletproofs_tests {
                 .iter()
                 .map(|secret| {
                     CompressedCommitment::new(
-                        secret.value,
+                        secret.amount.value,
                         secret.blinding,
-                        &generators(*secret.token_id),
+                        &generators(*secret.amount.token_id),
                     )
                 })
                 .collect()
@@ -1057,7 +1054,7 @@ mod rct_bulletproofs_tests {
             // Modify an output value
             {
                 let index = rng.next_u64() as usize % (num_inputs);
-                params.output_secrets[index].value = rng.next_u64();
+                params.output_secrets[index].amount.value = rng.next_u64();
             }
 
             // Sign, without checking that value is preserved.
@@ -1227,7 +1224,7 @@ mod rct_bulletproofs_tests {
             let mut params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let popped_secret = params.output_secrets.pop().unwrap();
-            let fee = popped_secret.value;
+            let fee = popped_secret.amount.value;
 
             let signature = params.sign(fee, &mut rng).unwrap();
 
@@ -1270,7 +1267,7 @@ mod rct_bulletproofs_tests {
             let mut params = SignatureParams::random(BlockVersion::ONE, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let popped_secret = params.output_secrets.pop().unwrap();
-            let fee = popped_secret.value;
+            let fee = popped_secret.amount.value;
 
             let signature = params.sign(fee, &mut rng).unwrap();
 
@@ -1296,7 +1293,7 @@ mod rct_bulletproofs_tests {
             let mut params = SignatureParams::random(BlockVersion::TWO, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let popped_secret = params.output_secrets.pop().unwrap();
-            let fee = popped_secret.value;
+            let fee = popped_secret.amount.value;
 
             let signature = params.sign(fee, &mut rng).unwrap();
 
@@ -1322,7 +1319,7 @@ mod rct_bulletproofs_tests {
             let mut params = SignatureParams::random(BlockVersion::TWO, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let popped_secret = params.output_secrets.pop().unwrap();
-            let fee = popped_secret.value;
+            let fee = popped_secret.amount.value;
 
             let signature = params.sign(fee, &mut rng).unwrap();
 
@@ -1359,7 +1356,7 @@ mod rct_bulletproofs_tests {
             let mut params = SignatureParams::random(BlockVersion::ONE, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let popped_secret = params.output_secrets.pop().unwrap();
-            let fee = popped_secret.value;
+            let fee = popped_secret.amount.value;
 
             params.fee_token_id = 1.into();
 

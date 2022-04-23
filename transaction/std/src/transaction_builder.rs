@@ -322,7 +322,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     pub fn set_fee(&mut self, fee_value: u64) -> Result<(), TxBuilderError> {
         // Set the fee in memo builder first, so that it can signal an error
         // before we set self.fee, and don't have to roll back.
-        let mut new_fee = self.fee.clone();
+        let mut new_fee = self.fee;
         new_fee.value = fee_value;
         self.memo_builder
             .as_mut()
@@ -430,11 +430,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                 let (amount, blinding) = masked_amount
                     .get_value(shared_secret)
                     .expect("TransactionBuilder created an invalid Amount");
-                OutputSecret {
-                    value: amount.value,
-                    token_id: amount.token_id,
-                    blinding,
-                }
+                OutputSecret { amount, blinding }
             })
             .collect();
 
@@ -478,8 +474,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             }
             input_secrets.push(InputSecret {
                 onetime_private_key: input_credential.onetime_private_key,
-                value: amount.value,
-                token_id: amount.token_id,
+                amount,
                 blinding,
             });
         }
