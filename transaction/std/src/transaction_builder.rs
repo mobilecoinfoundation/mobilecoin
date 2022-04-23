@@ -58,11 +58,9 @@ pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
     /// expires, and can no longer be added to the blockchain
     tombstone_block: u64,
     /// The fee paid in connection to this transaction
-    fee: u64,
-    /// The fee token id for this transaction.
     /// If mixed transactions feature is off, then everything must be this token
     /// id.
-    fee_token_id: TokenId,
+    fee: Amount,
     /// The source of validated fog pubkeys used for this transaction
     fog_resolver: FPR,
     /// The limit on the tombstone block value imposed pubkey_expiry values in
@@ -122,21 +120,16 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         // instead of allowing that they might never call that.
         // It is also janky that we default to Mob::MINIMUM_FEE even though the
         // token id may not be Mob, but changing that for now will break tests.
-        let fee_value = Mob::MINIMUM_FEE;
-        let fee_amount = Amount {
-            value: fee_value,
-            token_id: fee_token_id,
-        };
+        let fee = Amount::new(Mob::MINIMUM_FEE, fee_token_id);
         memo_builder
-            .set_fee(fee_amount)
+            .set_fee(fee)
             .expect("memo builder should not complain at this point");
         TransactionBuilder {
             block_version,
             input_credentials: Vec::new(),
             outputs_and_shared_secrets: Vec::new(),
             tombstone_block: u64::max_value(),
-            fee: fee_value,
-            fee_token_id,
+            fee,
             fog_resolver,
             fog_tombstone_block_limit: u64::max_value(),
             memo_builder: Some(memo_builder),
@@ -283,10 +276,10 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         let (hint, pubkey_expiry) = create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
 
         if !self.block_version.mixed_transactions_are_supported()
-            && self.fee_token_id != amount.token_id
+            && self.fee.token_id != amount.token_id
         {
             return Err(TxBuilderError::MixedTransactionsNotAllowed(
-                self.fee_token_id,
+                self.fee.token_id,
                 amount.token_id,
             ));
         }
@@ -329,25 +322,24 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     pub fn set_fee(&mut self, fee_value: u64) -> Result<(), TxBuilderError> {
         // Set the fee in memo builder first, so that it can signal an error
         // before we set self.fee, and don't have to roll back.
+        let mut new_fee = self.fee.clone();
+        new_fee.value = fee_value;
         self.memo_builder
             .as_mut()
             .expect("memo builder is missing, this is a logic error")
-            .set_fee(Amount {
-                value: fee_value,
-                token_id: self.fee_token_id,
-            })?;
-        self.fee = fee_value;
+            .set_fee(new_fee)?;
+        self.fee = new_fee;
         Ok(())
     }
 
     /// Gets the transaction fee.
     pub fn get_fee(&self) -> u64 {
-        self.fee
+        self.fee.value
     }
 
     /// Gets the fee token id
     pub fn get_fee_token_id(&self) -> TokenId {
-        self.fee_token_id
+        self.fee.token_id
     }
 
     /// Consume the builder and return the transaction.
@@ -391,7 +383,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         }
 
         if !self.block_version.masked_token_id_feature_is_supported()
-            && self.fee_token_id != Mob::ID
+            && self.fee.token_id != Mob::ID
         {
             return Err(TxBuilderError::FeatureNotSupportedAtBlockVersion(
                 *self.block_version,
@@ -452,8 +444,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         let tx_prefix = TxPrefix::new(
             inputs,
             outputs,
-            self.fee,
-            self.fee_token_id,
+            self.fee.value,
+            self.fee.token_id,
             self.tombstone_block,
         );
 
@@ -483,10 +475,10 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             );
             let (amount, blinding) = masked_amount.get_value(&shared_secret)?;
             if !self.block_version.mixed_transactions_are_supported()
-                && amount.token_id != self.fee_token_id
+                && amount.token_id != self.fee.token_id
             {
                 return Err(TxBuilderError::MixedTransactionsNotAllowed(
-                    self.fee_token_id,
+                    self.fee.token_id,
                     amount.token_id,
                 ));
             }
@@ -506,7 +498,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             &real_input_indices,
             &input_secrets,
             &output_values_and_blindings,
-            Amount::new(self.fee, TokenId::from(self.fee_token_id)),
+            self.fee,
             rng,
         )?;
 
