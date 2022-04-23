@@ -213,7 +213,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_AttestedClient_get_1binding(
                 AttestedClientState::Ready(ready) => Ok(ready.binding()),
             }?;
 
-            Ok(env.byte_array_from_slice(&binding)?)
+            Ok(env.byte_array_from_slice(binding)?)
         },
     )
 }
@@ -529,7 +529,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_PublicAddress_get_1fog_1authori
             let address: MutexGuard<PublicAddress> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
             match address.fog_authority_sig() {
                 None => Ok(JObject::null().into_inner()),
-                Some(out) => Ok(env.byte_array_from_slice(&out)?),
+                Some(out) => Ok(env.byte_array_from_slice(out)?),
             }
         },
     )
@@ -1021,7 +1021,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_AccountKey_get_1fog_1authority_
             let account_key: MutexGuard<AccountKey> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
             match account_key.fog_authority_spki() {
                 None => Ok(JObject::null().into_inner()),
-                Some(out) => Ok(env.byte_array_from_slice(&out)?),
+                Some(out) => Ok(env.byte_array_from_slice(out)?),
             }
         },
     )
@@ -1690,7 +1690,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1output(
             let mut tx_builder: MutexGuard<TransactionBuilder<FogResolver>> =
                 env.get_rust_field(obj, RUST_OBJ_FIELD)?;
 
-            let value = jni_big_int_to_u64(&env, value)?;
+            let value = jni_big_int_to_u64(env, value)?;
 
             let recipient: MutexGuard<PublicAddress> =
                 env.get_rust_field(recipient, RUST_OBJ_FIELD)?;
@@ -1738,7 +1738,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1change_
             let source_account_key: MutexGuard<AccountKey> =
                 env.get_rust_field(source_account_key, RUST_OBJ_FIELD)?;
 
-            let value = jni_big_int_to_u64(&env, value)?;
+            let value = jni_big_int_to_u64(env, value)?;
             let change_destination: ChangeDestination =
                 ChangeDestination::from(&*source_account_key);
             let mut rng = McRng::default();
@@ -1889,7 +1889,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_Util_attest_1verify_1report(
                 verification_report_data.quote.report_body()?.report_data();
             let report_data_bytes: &[u8] = report_data.as_ref();
 
-            Ok(env.byte_array_from_slice(&report_data_bytes)?)
+            Ok(env.byte_array_from_slice(report_data_bytes)?)
         },
     )
 }
@@ -1933,7 +1933,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_Util_bigint2string(
         || Ok(JObject::null().into_inner()),
         &env,
         |env| {
-            let val = jni_big_int_to_u64(&env, value)?;
+            let val = jni_big_int_to_u64(env, value)?;
             Ok(env.new_string(val.to_string())?.into_inner())
         },
     )
@@ -2402,7 +2402,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_Mnemonics_entropy_1from_1mnemon
 
             let entropy = mnemonic.entropy();
 
-            Ok(env.byte_array_from_slice(&entropy)?)
+            Ok(env.byte_array_from_slice(entropy)?)
         },
     )
 }
