@@ -11,7 +11,7 @@ use crate::{
     constants::*,
     membership_proofs::{derive_proof_at_index, is_membership_proof_valid},
     tx::{Tx, TxOut, TxOutMembershipProof, TxPrefix},
-    BlockVersion, CompressedCommitment, TokenId,
+    Amount, BlockVersion, CompressedCommitment, TokenId,
 };
 use mc_common::HashSet;
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -309,8 +309,7 @@ pub fn validate_signature<R: RngCore + CryptoRng>(
             message,
             &rings,
             &output_commitments,
-            tx.prefix.fee,
-            TokenId::from(tx.prefix.fee_token_id),
+            Amount::new(tx.prefix.fee, TokenId::from(tx.prefix.fee_token_id)),
             rng,
         )
         .map_err(TransactionValidationError::InvalidTransactionSignature)

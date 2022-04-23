@@ -625,10 +625,7 @@ mod combine_tests {
                     let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
                     let tx_out = TxOut::new(
-                        Amount {
-                            value: 88,
-                            token_id: Mob::ID,
-                        },
+                        Amount::new(88, Mob::ID),
                         &alice.default_subaddress(),
                         &tx_secret_key_for_txo,
                         Default::default(),
@@ -677,10 +674,7 @@ mod combine_tests {
                     transaction_builder.set_fee(0).unwrap();
                     transaction_builder
                         .add_output(
-                            Amount {
-                                value: 88,
-                                token_id: Mob::ID,
-                            },
+                            Amount::new(88, Mob::ID),
                             &bob.default_subaddress(),
                             &mut rng,
                         )
@@ -759,10 +753,7 @@ mod combine_tests {
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
                     .add_output(
-                        Amount {
-                            value: 123,
-                            token_id: Mob::ID,
-                        },
+                        Amount::new(123, Mob::ID),
                         &bob.default_subaddress(),
                         &mut rng,
                     )
@@ -803,10 +794,7 @@ mod combine_tests {
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
                     .add_output(
-                        Amount {
-                            value: 123,
-                            token_id: Mob::ID,
-                        },
+                        Amount::new(123, Mob::ID),
                         &recipient_account.default_subaddress(),
                         &mut rng,
                     )
@@ -824,10 +812,7 @@ mod combine_tests {
                 // The transaction keys.
                 let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
                 let tx_out = TxOut::new(
-                    Amount {
-                        value: 123,
-                        token_id: Mob::ID,
-                    },
+                    Amount::new(123, Mob::ID),
                     &alice.default_subaddress(),
                     &tx_secret_key_for_txo,
                     Default::default(),
@@ -873,10 +858,7 @@ mod combine_tests {
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
                     .add_output(
-                        Amount {
-                            value: 123,
-                            token_id: Mob::ID,
-                        },
+                        Amount::new(123, Mob::ID),
                         &recipient_account.default_subaddress(),
                         &mut rng,
                     )
@@ -909,10 +891,7 @@ mod combine_tests {
 
             // Create two TxOuts that were sent to Alice.
             let tx_out1 = TxOut::new(
-                Amount {
-                    value: 123,
-                    token_id: Mob::ID,
-                },
+                Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -920,10 +899,7 @@ mod combine_tests {
             .unwrap();
 
             let tx_out2 = TxOut::new(
-                Amount {
-                    value: 123,
-                    token_id: Mob::ID,
-                },
+                Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -973,10 +949,7 @@ mod combine_tests {
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
                     .add_output(
-                        Amount {
-                            value: 123,
-                            token_id: Mob::ID,
-                        },
+                        Amount::new(123, Mob::ID),
                         &bob.default_subaddress(),
                         &mut rng,
                     )
@@ -1018,10 +991,7 @@ mod combine_tests {
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
                     .add_output(
-                        Amount {
-                            value: 123,
-                            token_id: Mob::ID,
-                        },
+                        Amount::new(123, Mob::ID),
                         &recipient_account.default_subaddress(),
                         &mut rng,
                     )
@@ -1040,10 +1010,7 @@ mod combine_tests {
                 // The transaction keys.
                 let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
                 let tx_out = TxOut::new(
-                    Amount {
-                        value: 123,
-                        token_id: Mob::ID,
-                    },
+                    Amount::new(123, Mob::ID),
                     &alice.default_subaddress(),
                     &tx_secret_key_for_txo,
                     Default::default(),
@@ -1089,10 +1056,7 @@ mod combine_tests {
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
                     .add_output(
-                        Amount {
-                            value: 123,
-                            token_id: Mob::ID,
-                        },
+                        Amount::new(123, Mob::ID),
                         &recipient_account.default_subaddress(),
                         &mut rng,
                     )

@@ -27,7 +27,7 @@ use crate::{
     domain_separators::EXTENDED_MESSAGE_DOMAIN_TAG,
     range_proofs::{check_range_proofs, generate_range_proofs},
     ring_signature::{mlsag::RingMLSAG, Error, GeneratorCache, KeyImage, Scalar},
-    BlockVersion, Commitment, CompressedCommitment, TokenId,
+    Amount, BlockVersion, Commitment, CompressedCommitment, TokenId,
 };
 
 /// The secrets corresponding to an input needed to create a signature
@@ -116,8 +116,7 @@ impl SignatureRctBulletproofs {
         real_input_indices: &[usize],
         input_secrets: &[InputSecret],
         output_secrets: &[OutputSecret],
-        fee: u64,
-        fee_token_id: TokenId,
+        fee: Amount,
         rng: &mut CSPRNG,
     ) -> Result<Self, Error> {
         sign_with_balance_check(
@@ -128,7 +127,6 @@ impl SignatureRctBulletproofs {
             input_secrets,
             output_secrets,
             fee,
-            fee_token_id,
             true,
             rng,
         )
@@ -152,11 +150,10 @@ impl SignatureRctBulletproofs {
         message: &[u8; 32],
         rings: &[Vec<(CompressedRistrettoPublic, CompressedCommitment)>],
         output_commitments: &[CompressedCommitment],
-        fee: u64,
-        fee_token_id: TokenId,
+        fee: Amount,
         rng: &mut CSPRNG,
     ) -> Result<(), Error> {
-        if !block_version.masked_token_id_feature_is_supported() && fee_token_id != 0 {
+        if !block_version.masked_token_id_feature_is_supported() && fee.token_id != 0 {
             return Err(Error::TokenIdNotAllowed);
         }
 
@@ -223,7 +220,7 @@ impl SignatureRctBulletproofs {
         // Collect list of of unique token ids
         let token_ids = {
             let mut token_ids = BTreeSet::default();
-            token_ids.insert(fee_token_id);
+            token_ids.insert(fee.token_id);
             for token_id in &self.output_token_ids {
                 token_ids.insert(token_id.into());
             }
@@ -245,7 +242,7 @@ impl SignatureRctBulletproofs {
                 return Err(Error::TooManyRangeProofs);
             }
 
-            let generator = generator_cache.get(fee_token_id);
+            let generator = generator_cache.get(fee.token_id);
             let commitments: Vec<CompressedRistretto> = self
                 .pseudo_output_commitments
                 .iter()
@@ -317,11 +314,13 @@ impl SignatureRctBulletproofs {
                 .sum();
 
             // The implicit fee output.
-            let generator = generator_cache.get(fee_token_id);
-            let fee_commitment = generator.commit(Scalar::from(fee), *FEE_BLINDING);
+            let generator = generator_cache.get(fee.token_id);
+            let fee_commitment = generator.commit(Scalar::from(fee.value), *FEE_BLINDING);
             let difference =
                 sum_of_output_commitments + fee_commitment - sum_of_pseudo_output_commitments;
-            if difference != generator.commit(Scalar::zero(), Scalar::zero()) {
+            // RistrettoPoint::identity() is the zero point of Ristretto group, this is the
+            // same as generator.commit(Zero, Zero) and is faster.
+            if difference != RistrettoPoint::identity() {
                 return Err(Error::ValueNotConserved);
             }
         }
@@ -376,24 +375,23 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     real_input_indices: &[usize],
     input_secrets: &[InputSecret],
     output_secrets: &[OutputSecret],
-    fee: u64,
-    fee_token_id: TokenId,
+    fee: Amount,
     check_value_is_preserved: bool,
     rng: &mut CSPRNG,
 ) -> Result<SignatureRctBulletproofs, Error> {
-    if !block_version.masked_token_id_feature_is_supported() && fee_token_id != 0 {
+    if !block_version.masked_token_id_feature_is_supported() && fee.token_id != 0 {
         return Err(Error::TokenIdNotAllowed);
     }
 
     // input and output token ids must match fee_token_id if mixed transactions is
     // not enabled
     if !block_version.mixed_transactions_are_supported() {
-        if input_secrets.iter().any(|sec| sec.token_id != fee_token_id) {
+        if input_secrets.iter().any(|sec| sec.token_id != fee.token_id) {
             return Err(Error::MixedTransactionsNotAllowed);
         }
         if output_secrets
             .iter()
-            .any(|sec| sec.token_id != fee_token_id)
+            .any(|sec| sec.token_id != fee.token_id)
         {
             return Err(Error::MixedTransactionsNotAllowed);
         }
@@ -459,7 +457,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     // range proofs is present when they are.
     let (range_proof, range_proofs) = if !block_version.mixed_transactions_are_supported() {
         // The implicit fee output is omitted from the range proof because it is known.
-        let generator = generator_cache.get(fee_token_id);
+        let generator = generator_cache.get(fee.token_id);
 
         let (values, blindings): (Vec<_>, Vec<_>) = pseudo_output_values_and_blindings
             .iter()
@@ -480,7 +478,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         // Collect list of of unique token ids
         let token_ids = {
             let mut token_ids = BTreeSet::default();
-            token_ids.insert(fee_token_id);
+            token_ids.insert(fee.token_id);
             for secret in input_secrets {
                 token_ids.insert(secret.token_id);
             }
@@ -553,8 +551,8 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
             pseudo_output_commitments.iter().sum();
 
         // The implicit fee output.
-        let generator = generator_cache.get(fee_token_id);
-        let fee_commitment = generator.commit(Scalar::from(fee), *FEE_BLINDING);
+        let generator = generator_cache.get(fee.token_id);
+        let fee_commitment = generator.commit(Scalar::from(fee.value), *FEE_BLINDING);
 
         let difference =
             sum_of_output_commitments + fee_commitment - sum_of_pseudo_output_commitments;
@@ -867,8 +865,7 @@ mod rct_bulletproofs_tests {
                 &self.real_input_indices,
                 &self.input_secrets,
                 &self.output_secrets,
-                fee,
-                self.fee_token_id,
+                Amount::new(fee, self.fee_token_id),
                 rng,
             )
         }
@@ -885,8 +882,7 @@ mod rct_bulletproofs_tests {
                 &self.real_input_indices,
                 &self.input_secrets,
                 &self.output_secrets,
-                fee,
-                self.fee_token_id,
+                Amount::new(fee, self.fee_token_id),
                 false,
                 rng,
             )
@@ -983,8 +979,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                fee,
-                params.fee_token_id,
+                Amount::new(fee, params.fee_token_id),
                 &mut rng,
             );
             result.unwrap();
@@ -1010,8 +1005,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                fee,
-                params.fee_token_id,
+                Amount::new(fee, params.fee_token_id),
                 &mut rng,
             );
             result.unwrap();
@@ -1041,8 +1035,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                fee,
-                params.fee_token_id,
+                Amount::new(fee, params.fee_token_id),
                 &mut rng,
             );
 
@@ -1075,8 +1068,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                fee,
-                params.fee_token_id,
+                Amount::new(fee, params.fee_token_id),
                 &mut rng,
             );
 
@@ -1116,8 +1108,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                fee,
-                params.fee_token_id,
+                Amount::new(fee, params.fee_token_id),
                 &mut rng,
             );
 
@@ -1157,8 +1148,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                fee,
-                params.fee_token_id,
+                Amount::new(fee, params.fee_token_id),
                 &mut rng,
             );
 
@@ -1192,8 +1182,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                fee,
-                params.fee_token_id,
+                Amount::new(fee, params.fee_token_id),
                 &mut rng,
             );
 
@@ -1247,8 +1236,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                fee,
-                params.fee_token_id,
+                Amount::new(fee, params.fee_token_id),
                 &mut rng,
             );
             result.unwrap();
@@ -1260,8 +1248,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                wrong_fee,
-                params.fee_token_id,
+                Amount::new(wrong_fee, params.fee_token_id),
                 &mut rng,
             ) {
                 Err(Error::ValueNotConserved) => {} // Expected
@@ -1292,8 +1279,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                fee,
-                params.fee_token_id,
+                Amount::new(fee, params.fee_token_id),
                 &mut rng,
             );
             assert!(result.is_err());
@@ -1319,8 +1305,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                fee,
-                params.fee_token_id,
+                Amount::new(fee, params.fee_token_id),
                 &mut rng,
             );
             assert!(result.is_err());
@@ -1346,8 +1331,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                fee,
-                params.fee_token_id,
+                Amount::new(fee, params.fee_token_id),
                 &mut rng,
             ).unwrap();
 
@@ -1357,8 +1341,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                fee,
-                TokenId::from(*params.fee_token_id + 1),
+                Amount::new(fee, TokenId::from(*params.fee_token_id + 1)),
                 &mut rng,
             );
 
@@ -1404,8 +1387,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                fee,
-                params.fee_token_id,
+                Amount::new(fee, params.fee_token_id),
                 &mut rng,
             ).unwrap();
 
@@ -1416,8 +1398,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                fee,
-                params.fee_token_id,
+                Amount::new(fee, params.fee_token_id),
                 &mut rng,
             );
 
@@ -1445,8 +1426,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                fee,
-                params.fee_token_id,
+                Amount::new(fee, params.fee_token_id),
                 &mut rng,
             ).unwrap();
 
@@ -1457,8 +1437,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
-                fee,
-                params.fee_token_id,
+                Amount::new(fee, params.fee_token_id),
                 &mut rng,
             );
 
