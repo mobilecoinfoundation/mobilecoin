@@ -54,5 +54,20 @@ message ConsensusNodeConfig {
 
     // Governors signature.
     external.Ed25519Signature governors_signature = 3;
+
+    // Peer responder id.
+    string peer_responder_id = 4;
+
+    // Client responser id.
+    string client_responder_id = 5;
+
+    // Block signing key.
+    external.Ed25519Public block_signing_key = 6;
+
+    // Currently configured block version.
+    uint32 block_version = 7;
+
+    // SCP message signing key.
+    external.Ed25519Public scp_message_signing_key = 8;
 }
 

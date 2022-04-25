@@ -187,10 +187,14 @@ impl ClientApiService {
         let mut response = ConsensusNodeConfig::new();
         response.set_minting_trust_root((&self.enclave.get_minting_trust_root()?).into());
         response.set_token_config_map(token_config_map);
-
         if let Some(governors_signature) = tokens_config.governors_signature.as_ref() {
             response.set_governors_signature(governors_signature.into());
         }
+        response.set_peer_responder_id(self.config.peer_responder_id.to_string());
+        response.set_client_responder_id(self.config.client_responder_id.to_string());
+        response.set_block_signing_key((&self.enclave.get_signer()?).into());
+        response.set_block_version(*self.config.block_version);
+        response.set_scp_message_signing_key((&self.config.msg_signer_key.public_key()).into());
 
         Ok(response)
     }
