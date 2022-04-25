@@ -2623,7 +2623,7 @@ pub mod transaction_builder_tests {
 
             transaction_builder
                 .add_change_output(
-                        Amount::new(change_value, token_id),
+                    Amount::new(change_value, token_id),
                     &sender_change_dest,
                     &mut rng,
                 )
@@ -2687,7 +2687,7 @@ pub mod transaction_builder_tests {
 
         let amount1 = Amount::new(1475 * MILLIMOB_TO_PICOMOB, Mob::ID);
         let change_amount = Amount::new(128 * MILLIMOB_TO_PICOMOB, Mob::ID);
-        let amount2 = Amount::new(999999, 2.into())'
+        let amount2 = Amount::new(999999, 2.into());
 
         let tx_out1_right_amount = Amount::new(
             amount1.value - change_amount.value - Mob::MINIMUM_FEE,
@@ -2813,7 +2813,7 @@ pub mod transaction_builder_tests {
 
         let amount1 = Amount::new(1475 * MILLIMOB_TO_PICOMOB, Mob::ID);
         let change_amount = Amount::new(128 * MILLIMOB_TO_PICOMOB, Mob::ID);
-        let amount2 = Amount::new(999999, 2.into())'
+        let amount2 = Amount::new(999999, 2.into());
 
         let tx_out1_right_amount = Amount::new(
             amount1.value - change_amount.value - Mob::MINIMUM_FEE,
