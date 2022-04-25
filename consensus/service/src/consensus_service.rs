@@ -388,10 +388,7 @@ impl<
             .register_service(health_service)
             .register_service(attested_service)
             .register_service(build_info_service)
-            .channel_args(
-                <ServerBuilder as ConnectionUriGrpcioServer>::default_channel_builder(env)
-                    .build_args(),
-            )
+            .set_default_channel_args(env)
             .bind_using_uri(&self.config.client_listen_uri, self.logger.clone());
 
         let mut server = server_builder.build().unwrap();
