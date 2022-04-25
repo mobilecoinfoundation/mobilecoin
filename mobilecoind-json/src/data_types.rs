@@ -248,7 +248,7 @@ impl From<&mc_mobilecoind_api::GetUnspentTxOutListResponse> for JsonUtxosRespons
 #[derive(Deserialize, Default, Debug)]
 pub struct JsonCreateRequestCodeRequest {
     pub receiver: JsonPublicAddress,
-    pub value: Option<String>,
+    pub value: Option<JsonU64>,
     pub memo: Option<String>,
 }
 
@@ -454,7 +454,7 @@ impl From<&mc_mobilecoind_api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
 pub struct JsonSendPaymentRequest {
     pub request_data: JsonParseRequestCodeResponse,
     pub max_input_utxo_value: Option<JsonU64>,
-    pub change_subaddress: Option<String>,
+    pub change_subaddress: Option<JsonU64>,
 }
 
 #[derive(Deserialize, Serialize, Default, Debug)]
@@ -480,8 +480,8 @@ impl From<&mc_mobilecoind_api::SendPaymentResponse> for JsonSendPaymentResponse 
 pub struct JsonPayAddressCodeRequest {
     pub receiver_b58_address_code: String,
     pub value: JsonU64,
-    pub max_input_utxo_value: Option<String>,
-    pub change_subaddress: Option<String>,
+    pub max_input_utxo_value: Option<JsonU64>,
+    pub change_subaddress: Option<JsonU64>,
 }
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
