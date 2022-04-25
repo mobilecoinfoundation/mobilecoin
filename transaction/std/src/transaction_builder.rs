@@ -2626,10 +2626,7 @@ pub mod transaction_builder_tests {
 
             transaction_builder
                 .add_change_output(
-                    Amount {
-                        value: change_value,
-                        token_id,
-                    },
+                        Amount::new(change_value, token_id),
                     &sender_change_dest,
                     &mut rng,
                 )
