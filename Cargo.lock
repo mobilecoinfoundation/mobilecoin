@@ -574,7 +574,7 @@ version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b6d248e3ca02f3fbfabcb9284464c596baec223a26d91bbf44a5a62ddb0d900"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "heck",
  "indexmap",
  "log 0.4.14",
@@ -680,9 +680,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.1.10"
+version = "3.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3124f3f75ce09e22d1410043e1e24f2ecc44fad3afe4f08408f1f7663d68da2b"
+checksum = "7c167e37342afc5f33fd87bbc870cedd020d2a6dffa05d45ccd9241fbdd146db"
 dependencies = [
  "atty",
  "bitflags",
@@ -1719,7 +1719,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 name = "go-grpc-gateway-testing"
 version = "1.0.0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "displaydoc",
  "futures 0.3.21",
  "grpcio",
@@ -2525,7 +2525,7 @@ dependencies = [
 name = "mc-admin-http-gateway"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "grpcio",
  "mc-common",
  "mc-util-grpc",
@@ -2984,7 +2984,7 @@ dependencies = [
 name = "mc-consensus-mint-client"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "grpcio",
  "hex",
  "mc-account-keys",
@@ -3034,7 +3034,7 @@ dependencies = [
 name = "mc-consensus-scp-play"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "mc-common",
  "mc-consensus-scp",
  "mc-transaction-core",
@@ -3048,7 +3048,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "base64 0.13.0",
  "chrono",
- "clap 3.1.10",
+ "clap 3.1.12",
  "curve25519-dalek",
  "displaydoc",
  "fs_extra",
@@ -3109,7 +3109,7 @@ name = "mc-consensus-service-config"
 version = "1.3.0-pre0"
 dependencies = [
  "base64 0.13.0",
- "clap 3.1.10",
+ "clap 3.1.12",
  "displaydoc",
  "hex",
  "mc-attest-core",
@@ -3332,7 +3332,7 @@ name = "mc-crypto-x509-test-vectors"
 version = "1.3.0-pre0"
 dependencies = [
  "cargo-emit",
- "clap 3.1.10",
+ "clap 3.1.12",
  "mc-crypto-keys",
  "mc-util-build-script",
  "pem",
@@ -3397,7 +3397,7 @@ dependencies = [
 name = "mc-fog-distribution"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "crossbeam-channel",
  "curve25519-dalek",
  "grpcio",
@@ -3454,7 +3454,7 @@ name = "mc-fog-ingest-client"
 version = "1.3.0-pre0"
 dependencies = [
  "assert_cmd",
- "clap 3.1.10",
+ "clap 3.1.12",
  "displaydoc",
  "grpcio",
  "hex",
@@ -3598,7 +3598,7 @@ dependencies = [
 name = "mc-fog-ingest-server"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "dirs 4.0.0",
  "displaydoc",
  "futures 0.3.21",
@@ -3783,7 +3783,7 @@ dependencies = [
 name = "mc-fog-ledger-server"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "displaydoc",
  "futures 0.3.21",
  "grpcio",
@@ -3852,7 +3852,7 @@ dependencies = [
 name = "mc-fog-load-testing"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "grpcio",
  "mc-account-keys",
  "mc-common",
@@ -3924,7 +3924,7 @@ dependencies = [
 name = "mc-fog-overseer-server"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "displaydoc",
  "grpcio",
  "lazy_static",
@@ -4007,7 +4007,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "base64 0.13.0",
  "binascii",
- "clap 3.1.10",
+ "clap 3.1.12",
  "grpcio",
  "mc-account-keys",
  "mc-attest-core",
@@ -4044,7 +4044,7 @@ dependencies = [
 name = "mc-fog-report-server"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "displaydoc",
  "futures 0.3.21",
  "grpcio",
@@ -4116,7 +4116,7 @@ name = "mc-fog-sample-paykit"
 version = "1.3.0-pre0"
 dependencies = [
  "cargo-emit",
- "clap 3.1.10",
+ "clap 3.1.12",
  "displaydoc",
  "futures 0.3.21",
  "grpcio",
@@ -4209,7 +4209,7 @@ name = "mc-fog-sql-recovery-db"
 version = "1.3.0-pre0"
 dependencies = [
  "chrono",
- "clap 3.1.10",
+ "clap 3.1.12",
  "diesel",
  "diesel-derive-enum",
  "diesel_migrations",
@@ -4241,7 +4241,7 @@ dependencies = [
 name = "mc-fog-test-client"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "displaydoc",
  "grpcio",
  "hex_fmt",
@@ -4272,7 +4272,7 @@ dependencies = [
 name = "mc-fog-test-infra"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "digest 0.10.3",
  "hex",
  "mc-account-keys",
@@ -4447,7 +4447,7 @@ dependencies = [
 name = "mc-fog-view-load-test"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "grpcio",
  "mc-account-keys",
  "mc-attest-verifier",
@@ -4489,7 +4489,7 @@ dependencies = [
 name = "mc-fog-view-server"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "displaydoc",
  "futures 0.3.21",
  "grpcio",
@@ -4565,7 +4565,7 @@ dependencies = [
 name = "mc-ledger-distribution"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "dirs 4.0.0",
  "displaydoc",
  "mc-api",
@@ -4586,7 +4586,7 @@ dependencies = [
 name = "mc-ledger-from-archive"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "mc-api",
  "mc-common",
  "mc-ledger-db",
@@ -4597,7 +4597,7 @@ dependencies = [
 name = "mc-ledger-migration"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "lmdb-rkv",
  "mc-common",
  "mc-ledger-db",
@@ -4641,7 +4641,7 @@ dependencies = [
 name = "mc-mint-auditor"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "displaydoc",
  "grpcio",
  "hostname",
@@ -4689,7 +4689,7 @@ name = "mc-mobilecoind"
 version = "1.3.0-pre0"
 dependencies = [
  "aes-gcm",
- "clap 3.1.10",
+ "clap 3.1.12",
  "crossbeam-channel",
  "displaydoc",
  "grpcio",
@@ -4770,7 +4770,7 @@ dependencies = [
 name = "mc-mobilecoind-json"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "grpcio",
  "hex",
  "mc-api",
@@ -4936,7 +4936,7 @@ dependencies = [
 name = "mc-sgx-css-dump"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "hex_fmt",
  "mc-sgx-css",
 ]
@@ -5171,7 +5171,7 @@ dependencies = [
 name = "mc-util-b58-decoder"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "hex",
  "mc-api",
 ]
@@ -5234,7 +5234,7 @@ dependencies = [
 name = "mc-util-cli"
 version = "0.1.0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "mc-util-build-info",
 ]
 
@@ -5265,7 +5265,7 @@ dependencies = [
 name = "mc-util-generate-sample-ledger"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "hex",
  "mc-account-keys",
  "mc-common",
@@ -5285,7 +5285,7 @@ name = "mc-util-grpc"
 version = "1.3.0-pre0"
 dependencies = [
  "base64 0.13.0",
- "clap 3.1.10",
+ "clap 3.1.12",
  "cookie 0.16.0",
  "displaydoc",
  "futures 0.3.21",
@@ -5318,7 +5318,7 @@ dependencies = [
 name = "mc-util-grpc-admin-tool"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "grpcio",
  "mc-common",
  "mc-util-grpc",
@@ -5329,7 +5329,7 @@ dependencies = [
 name = "mc-util-grpc-token-generator"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "hex",
  "mc-common",
  "mc-util-grpc",
@@ -5345,7 +5345,7 @@ name = "mc-util-keyfile"
 version = "1.3.0-pre0"
 dependencies = [
  "base64 0.13.0",
- "clap 3.1.10",
+ "clap 3.1.12",
  "displaydoc",
  "hex",
  "mc-account-keys",
@@ -5430,7 +5430,7 @@ dependencies = [
 name = "mc-util-seeded-ed25519-key-gen"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "hex",
  "mc-crypto-keys",
  "mc-util-from-random",
@@ -5463,7 +5463,7 @@ dependencies = [
 name = "mc-util-test-helper"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "itertools",
  "lazy_static",
  "mc-account-keys",
@@ -5512,7 +5512,7 @@ dependencies = [
 name = "mc-watcher"
 version = "1.3.0-pre0"
 dependencies = [
- "clap 3.1.10",
+ "clap 3.1.12",
  "displaydoc",
  "futures 0.3.21",
  "grpcio",
@@ -6406,7 +6406,7 @@ version = "2.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2ef1dc036942fac2470fdb8a911f125404ee9129e9e807f3d12d8589001a38f"
 dependencies = [
- "log 0.3.9",
+ "log 0.4.14",
  "which 4.2.4",
 ]
 
