@@ -14,35 +14,6 @@ use std::{
     str::FromStr,
 };
 
-/// An enumeration of target family types
-#[derive(Clone, Copy, Debug)]
-pub enum TargetFamily {
-    /// The environment is some form of unix
-    Unix,
-    /// The environment is some form of windows
-    Windows,
-}
-
-/// An enumeration of errors which can occur while parsing the target family
-/// environment variable
-#[derive(Clone, Debug, Display)]
-pub enum TargetFamilyError {
-    /// Unknown family: {0}
-    Unknown(String),
-}
-
-impl TryFrom<&str> for TargetFamily {
-    type Error = TargetFamilyError;
-
-    fn try_from(src: &str) -> Result<TargetFamily, Self::Error> {
-        match src {
-            "unix" => Ok(TargetFamily::Unix),
-            "windows" => Ok(TargetFamily::Windows),
-            other => Err(TargetFamilyError::Unknown(other.to_owned())),
-        }
-    }
-}
-
 /// An enumeration of endianness types
 #[derive(Clone, Copy, Debug)]
 pub enum Endianness {
@@ -79,8 +50,6 @@ pub enum EnvironmentError {
     Var(String, VarError),
     /// Endianness error: {0}
     Endianness(EndiannessError),
-    /// Target family error: {0}
-    TargetFamily(TargetFamilyError),
     /// Could not parse {0}: {1}
     ParseInt(String, ParseIntError),
     /// Output directory badly constructed: {0:?}
@@ -90,12 +59,6 @@ pub enum EnvironmentError {
 impl From<EndiannessError> for EnvironmentError {
     fn from(src: EndiannessError) -> EnvironmentError {
         EnvironmentError::Endianness(src)
-    }
-}
-
-impl From<TargetFamilyError> for EnvironmentError {
-    fn from(src: TargetFamilyError) -> EnvironmentError {
-        EnvironmentError::TargetFamily(src)
     }
 }
 

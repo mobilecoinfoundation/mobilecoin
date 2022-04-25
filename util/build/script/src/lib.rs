@@ -10,7 +10,7 @@ mod vars;
 pub use crate::{
     cargo_build::CargoBuilder,
     env::{
-        Endianness, EndiannessError, Environment, EnvironmentError, TargetFamily, TargetFamilyError,
+        Endianness, EndiannessError, Environment, EnvironmentError,
     },
     utils::rerun_if_path_changed,
 };
