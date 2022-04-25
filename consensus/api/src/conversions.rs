@@ -261,7 +261,7 @@ impl TryFrom<&consensus_config::ActiveMintConfigs> for mc_ledger_db::ActiveMintC
         let configs = src
             .get_configs()
             .iter()
-            .map(|config| config.try_into())
+            .map(TryInto::try_into)
             .collect::<Result<Vec<_>, _>>()?;
         let mint_config_tx = src.get_mint_config_tx().try_into()?;
         Ok(Self {
