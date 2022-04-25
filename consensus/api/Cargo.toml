@@ -9,11 +9,20 @@ links = "mc-consensus-api"
 [dependencies]
 mc-api = { path = "../../api" }
 mc-attest-api = { path = "../../attest/api" }
+mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }
 
 futures = "0.3"
 grpcio = "0.10.2"
 protobuf = "2.27.1"
+
+[dev-dependencies]
+mc-crypto-multisig = { path = "../../crypto/multisig" }
+mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
+mc-util-serial = { path = "../../util/serial" }
+
+rand_core = "0.6"
+rand_hc = "0.3"
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../util/build/grpc" }

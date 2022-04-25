@@ -16,6 +16,8 @@ use mc_consensus_api::{
     consensus_client::{ProposeMintConfigTxResponse, ProposeMintTxResponse},
     consensus_client_grpc::ConsensusClientApi,
     consensus_common::{ProposeTxResponse, ProposeTxResult},
+    consensus_config::{ConsensusNodeConfig, TokenConfig},
+    empty::Empty,
 };
 use mc_consensus_enclave::ConsensusEnclave;
 use mc_consensus_service_config::Config;
@@ -154,6 +156,39 @@ impl ClientApiService {
         counters::PROPOSE_MINT_TX.inc();
         Ok(response)
     }
+
+    /// Get the node's configuration.
+    fn get_node_config_impl(&self) -> Result<ConsensusNodeConfig, ConsensusGrpcError> {
+        let tokens_config = self.config.tokens();
+
+        let token_config_map = tokens_config
+            .tokens()
+            .iter()
+            .map(|token_config| {
+                let mut grpc_token_config = TokenConfig::new();
+                grpc_token_config.set_token_id(*token_config.token_id());
+                grpc_token_config
+                    .set_minimum_fee(token_config.minimum_fee_or_default().unwrap_or(0));
+                if let Some(governors) = token_config.governors() {
+                    grpc_token_config.set_governors(governors.into());
+                }
+
+                let active_mint_configs = self
+                    .ledger
+                    .get_active_mint_configs(token_config.token_id())?;
+                if let Some(active_mint_configs) = active_mint_configs.as_ref() {
+                    grpc_token_config.set_active_mint_configs(active_mint_configs.into());
+                }
+
+                Ok((*token_config.token_id(), grpc_token_config))
+            })
+            .collect::<Result<_, ConsensusGrpcError>>()?;
+
+        let mut response = ConsensusNodeConfig::new();
+        response.set_minting_trust_root((&self.enclave.get_minting_trust_root()?).into());
+        response.set_token_config_map(token_config_map);
+        Ok(response)
+    }
 }
 
 impl ConsensusClientApi for ClientApiService {
@@ -263,6 +298,19 @@ impl ConsensusClientApi for ClientApiService {
             response.set_block_version(*self.config.block_version);
             Ok(response)
         });
+
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            send_result(ctx, sink, result, logger)
+        });
+    }
+
+    fn get_node_config(
+        &mut self,
+        ctx: RpcContext,
+        _empty: Empty,
+        sink: UnarySink<ConsensusNodeConfig>,
+    ) {
+        let result = self.get_node_config_impl().map_err(RpcStatus::from);
 
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(ctx, sink, result, logger)
