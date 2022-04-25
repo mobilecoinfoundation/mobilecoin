@@ -12,7 +12,7 @@ source_org=mobilecoin
 source_tag=demo-v20220307170316
 
 push_org=mobilecoin
-push_tag=1.1.3-dev
+push_tag=v1.1.3-dev
 
 images=(bootstrap-tools fogingest fog-ledger fogreport fogview go-grpc-gateway mobilecoind node_hw fog-test-client)
 
