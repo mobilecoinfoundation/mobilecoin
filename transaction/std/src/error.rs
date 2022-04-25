@@ -56,6 +56,12 @@ pub enum TxBuilderError {
 
     /// Feature is not supported at this block version ({0}): {1}
     FeatureNotSupportedAtBlockVersion(u32, &'static str),
+
+    /// Signed input rules not allowed at this block version
+    SignedInputRulesNotAllowed,
+
+    /// Missing membership proof
+    MissingMembershipProofs,
 }
 
 impl From<mc_util_serial::encode::Error> for TxBuilderError {

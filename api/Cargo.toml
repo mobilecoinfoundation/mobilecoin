@@ -36,14 +36,15 @@ cargo-emit = "0.2.1"
 [dev-dependencies]
 mc-crypto-x509-test-vectors = { path = "../crypto/x509/test-vectors" }
 mc-test-vectors-b58-encodings = { path = "../test-vectors/b58-encodings" }
-mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
-mc-transaction-std = { path = "../transaction/std" }
+mc-fog-report-validation-test-utils = { path = "../fog/report/validation/test-utils" }
+mc-transaction-std = { path = "../transaction/std", features = ["test-only"] }
 mc-util-from-random = { path = "../util/from-random" }
 mc-util-test-helper = { path = "../util/test-helper" }
 mc-util-test-vector = { path = "../util/test-vector" }
 mc-util-test-with-data = { path = "../util/test-with-data" }
 
 generic-array = "0.14"
+maplit = "1.0"
 pem = "1.0"
 prost = { version = "0.10", default-features = false }
 rand = "0.8"

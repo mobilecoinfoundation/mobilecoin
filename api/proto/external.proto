@@ -231,6 +231,7 @@ message TxIn {
     InputRules input_rules = 3;
 }
 
+// Rules enforced on a transaction by a signed input within it (MCIP #31)
 message InputRules {
     // Outputs required to appear in the TxPrefix for the Tx to be valid
     repeated TxOut required_outputs = 1;
@@ -428,4 +429,35 @@ message MintConfigTx {
 message ValidatedMintConfigTx {
     MintConfigTx mint_config_tx = 1;
     Ed25519SignerSet signer_set = 2;
+}
+
+// The amount and blinding factor of a TxOut
+message UnmaskedAmount {
+    // The value of the amount commitment
+    fixed64 value = 1;
+
+    // The token_id of the amount commitment
+    fixed64 token_id = 2;
+
+    // The blinding factor of the amount commitment
+    CurveScalar blinding = 3;
+}
+
+// A pre-signed transaction input with associated rules, as described in MCIP #31
+message SignedContingentInput {
+    // The tx_in which was signed
+    TxIn tx_in = 1;
+
+    // The Ring MLSAG signature, conferring spending authority
+    RingMLSAG mlsag = 2;
+
+    // The amount and blinding of the pseudo-output of the MLSAG
+    UnmaskedAmount pseudo_output_amount = 3;
+
+    /// The amount and blinding of any TxOut required by the input rules
+    repeated UnmaskedAmount required_output_amounts = 4;
+
+    /// The tx_out global index of each ring member
+    /// This helps the recipient of this payload construct proofs of membership for the ring
+    repeated fixed64 tx_out_global_indices = 5;
 }

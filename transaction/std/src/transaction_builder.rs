@@ -4,7 +4,10 @@
 //!
 //! See https://cryptonote.org/img/cryptonote_transaction.png
 
-use crate::{InputCredentials, MemoBuilder, ReservedDestination, TxBuilderError};
+use crate::{
+    input_materials::InputMaterials, ReservedDestination, InputCredentials, MemoBuilder,
+    TxBuilderError,
+};
 use core::{cmp::min, fmt::Debug};
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
@@ -13,14 +16,15 @@ use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::create_shared_secret,
-    ring_signature::{OutputSecret, SignableInputRing, SignatureRctBulletproofs},
+    ring_signature::{InputRing, OutputSecret, SignatureRctBulletproofs},
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
-    Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, Token, TokenId,
+    Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, SignedContingentInput,
+    SignedContingentInputError, Token, TokenId,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
-use std::{cmp::Ordering, convert::TryFrom};
+use std::cmp::Ordering;
 
 /// A trait used to compare the transaction outputs
 pub trait TxOutputsOrdering {
@@ -49,10 +53,10 @@ impl TxOutputsOrdering for DefaultTxOutputsOrdering {
 pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
     /// The block version that we are targeting for this transaction
     block_version: BlockVersion,
-    /// The input credentials used to form the transaction
-    input_credentials: Vec<InputCredentials>,
-    /// The outputs created by the transaction, and associated shared secrets
-    outputs_and_shared_secrets: Vec<(TxOut, RistrettoPublic)>,
+    /// The input material used to form the transaction
+    input_materials: Vec<InputMaterials>,
+    /// The outputs created by the transaction, and associated output secret
+    outputs_and_secrets: Vec<(TxOut, OutputSecret)>,
     /// The tombstone_block value, a block index in which the transaction
     /// expires, and can no longer be added to the blockchain
     tombstone_block: u64,
@@ -122,8 +126,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         memo_builder.set_fee(fee)?;
         Ok(TransactionBuilder {
             block_version,
-            input_credentials: Vec::new(),
-            outputs_and_shared_secrets: Vec::new(),
+            input_materials: Vec::new(),
+            outputs_and_secrets: Vec::new(),
             tombstone_block: u64::max_value(),
             fee,
             fog_resolver,
@@ -138,7 +142,73 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// * `input_credentials` - Credentials required to construct a ring
     ///   signature for an input.
     pub fn add_input(&mut self, input_credentials: InputCredentials) {
-        self.input_credentials.push(input_credentials);
+        self.input_materials
+            .push(InputMaterials::Signable(input_credentials));
+    }
+
+    /// Add a pre-signed Input to the transaction, also fulfilling any
+    /// requirements imposed by the signed rules, so that our transaction
+    /// will be valid.
+    ///
+    /// Note: Before adding a signed_contingent_input, you probably want to:
+    /// * validate it (call .validate())
+    /// * check if key image appreared already (call .key_image())
+    /// * provide merkle proofs of membership for each ring member (see
+    ///   .tx_out_global_indices)
+    ///
+    /// # Arguments
+    /// * `signed_contingent_input` - The pre-signed input we are adding
+    pub fn add_presigned_input(
+        &mut self,
+        sci: SignedContingentInput,
+    ) -> Result<(), SignedContingentInputError> {
+        if let Some(rules) = sci.tx_in.input_rules.as_ref() {
+            // Enforce all rules so that our transaction will be valid
+            if rules.required_outputs.len() != sci.required_output_amounts.len() {
+                return Err(SignedContingentInputError::WrongNumberOfRequiredOutputAmounts);
+            }
+            // 1. Required outputs
+            for (required_output, unmasked_amount) in rules
+                .required_outputs
+                .iter()
+                .zip(sci.required_output_amounts.iter())
+            {
+                // Check if the required output is already there
+                if self
+                    .outputs_and_secrets
+                    .iter()
+                    .find(|(output, _sec)| output == required_output)
+                    .is_none()
+                {
+                    // If not, add it
+                    self.outputs_and_secrets
+                        .push((required_output.clone(), unmasked_amount.clone().into()));
+                }
+            }
+            // 2. Max tombstone block
+            if rules.max_tombstone_block != 0 {
+                self.impose_tombstone_block_limit(rules.max_tombstone_block);
+            }
+        }
+
+        self.add_presigned_input_raw(sci);
+        Ok(())
+    }
+
+    /// Add a pre-signed Input to the transaction, without also fulfilling
+    /// any of its rules. You will have to add any required outputs, adjust
+    /// tombstone block, etc., for the transaction to be valid.
+    ///
+    /// Note: Before adding a signed_contingent_input, you probably want to:
+    /// * validate it (call .validate())
+    /// * check if key image appreared already (call .key_image())
+    /// * provide merkle proofs of membership for each ring member (see
+    ///   .tx_out_global_indices)
+    ///
+    /// # Arguments
+    /// * `signed_contingent_input` - The pre-signed input we are adding
+    pub fn add_presigned_input_raw(&mut self, sci: SignedContingentInput) {
+        self.input_materials.push(InputMaterials::Presigned(sci));
     }
 
     /// Add a non-change output to the transaction.
@@ -283,10 +353,16 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         let (tx_out, shared_secret) =
             create_output_with_fog_hint(self.block_version, amount, recipient, hint, memo_fn, rng)?;
 
+        let (amount, blinding) = tx_out
+            .masked_amount
+            .get_value(&shared_secret)
+            .expect("TransactionBuilder created an invalid Amount");
+        let output_secret = OutputSecret { amount, blinding };
+
         self.impose_tombstone_block_limit(pubkey_expiry);
 
-        self.outputs_and_shared_secrets
-            .push((tx_out.clone(), shared_secret));
+        self.outputs_and_secrets
+            .push((tx_out.clone(), output_secret));
 
         let confirmation = TxOutConfirmationNumber::from(&shared_secret);
 
@@ -387,78 +463,76 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             ));
         }
 
-        if self.input_credentials.is_empty() {
+        if self.input_materials.is_empty() {
             return Err(TxBuilderError::NoInputs);
         }
 
         // All inputs must have rings of the same size.
         if self
-            .input_credentials
+            .input_materials
             .windows(2)
-            .any(|win| win[0].ring.len() != win[1].ring.len())
+            .any(|win| win[0].ring_size() != win[1].ring_size())
         {
             return Err(TxBuilderError::InvalidRingSize);
+        }
+
+        for input in self.input_materials.iter() {
+            if !self.block_version.mixed_transactions_are_supported() {
+                if input.amount().token_id != self.fee.token_id {
+                    return Err(TxBuilderError::MixedTransactionsNotAllowed(
+                        self.fee.token_id,
+                        input.amount().token_id,
+                    ));
+                }
+            }
+
+            match input {
+                InputMaterials::Presigned(input) => {
+                    if !self.block_version.signed_input_rules_are_supported() {
+                        return Err(TxBuilderError::SignedInputRulesNotAllowed);
+                    }
+                    // TODO: Also validate membership proofs?
+                    if input.tx_in.ring.len() != input.tx_in.proofs.len() {
+                        return Err(TxBuilderError::MissingMembershipProofs);
+                    }
+                }
+                InputMaterials::Signable(input) => {
+                    // TODO: Also validate membership proofs?
+                    if input.ring.len() != input.membership_proofs.len() {
+                        return Err(TxBuilderError::MissingMembershipProofs);
+                    }
+                }
+            }
         }
 
         // Construct a list of sorted inputs.
         // Inputs are sorted by the first ring element's public key. Note that each ring
         // is also sorted.
-        self.input_credentials
-            .sort_by(|a, b| a.ring[0].public_key.cmp(&b.ring[0].public_key));
+        self.input_materials
+            .sort_by(|a, b| a.sort_key().cmp(&b.sort_key()));
 
-        let inputs: Vec<TxIn> = self
-            .input_credentials
-            .iter()
-            .map(|input_credential| TxIn {
-                ring: input_credential.ring.clone(),
-                proofs: input_credential.membership_proofs.clone(),
-                input_rules: None,
-            })
-            .collect();
+        let inputs: Vec<TxIn> = self.input_materials.iter().map(TxIn::from).collect();
 
-        self.outputs_and_shared_secrets
+        // Outputs are sorted according to the rule (but generally by public key)
+        self.outputs_and_secrets
             .sort_by(|(a, _), (b, _)| O::cmp(&a.public_key, &b.public_key));
 
-        let output_secrets: Vec<OutputSecret> = self
-            .outputs_and_shared_secrets
-            .iter()
-            .map(|(tx_out, shared_secret)| {
-                let masked_amount = &tx_out.masked_amount;
-                let (amount, blinding) = masked_amount
-                    .get_value(shared_secret)
-                    .expect("TransactionBuilder created an invalid Amount");
-                OutputSecret { amount, blinding }
-            })
-            .collect();
-
-        let (outputs, _shared_secrets): (Vec<TxOut>, Vec<_>) =
-            self.outputs_and_shared_secrets.drain(..).unzip();
+        let (outputs, output_secrets): (Vec<TxOut>, Vec<_>) =
+            self.outputs_and_secrets.drain(..).unzip();
 
         let tx_prefix = TxPrefix::new(inputs, outputs, self.fee, self.tombstone_block);
 
-        let signable_input_rings = self
-            .input_credentials
-            .iter()
-            .map(|cred| {
-                let result = SignableInputRing::try_from(cred)?;
-
-                if !self.block_version.mixed_transactions_are_supported()
-                    && result.input_secret.amount.token_id != self.fee.token_id
-                {
-                    return Err(TxBuilderError::MixedTransactionsNotAllowed(
-                        self.fee.token_id,
-                        result.input_secret.amount.token_id,
-                    ));
-                }
-                Ok(result)
-            })
-            .collect::<Result<Vec<SignableInputRing>, _>>()?;
+        let input_rings = self
+            .input_materials
+            .into_iter()
+            .map(Into::into)
+            .collect::<Vec<InputRing>>();
 
         let message = tx_prefix.hash().0;
         let signature = SignatureRctBulletproofs::sign(
             self.block_version,
             &message,
-            &signable_input_rings,
+            &input_rings,
             &output_secrets,
             self.fee,
             rng,
@@ -589,7 +663,7 @@ pub mod transaction_builder_tests {
                 get_input_credentials(block_version, amount, &sender, &fpr, &mut rng);
 
             let membership_proofs = input_credentials.membership_proofs.clone();
-            let key_image = KeyImage::from(&input_credentials.onetime_private_key);
+            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
@@ -671,7 +745,7 @@ pub mod transaction_builder_tests {
                 get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
 
             let membership_proofs = input_credentials.membership_proofs.clone();
-            let key_image = KeyImage::from(&input_credentials.onetime_private_key);
+            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,

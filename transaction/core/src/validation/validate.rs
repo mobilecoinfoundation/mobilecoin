@@ -221,7 +221,7 @@ pub fn validate_inputs_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidation
     )
 }
 
-/// Outputs must be sorted by the public key
+/// Outputs must be sorted by the tx public key
 pub fn validate_outputs_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidationResult<()> {
     check_sorted(
         &tx_prefix.outputs,

@@ -84,6 +84,12 @@ pub enum Error {
 
     /// No commitments were found for {0}, this is a logic error
     NoCommitmentsForTokenId(TokenId),
+
+    /// All rings were presigned, but this is not allowed
+    AllRingsPresigned,
+
+    /// Signed input rules not allowed at this revision
+    SignedInputRulesNotAllowed,
 }
 
 impl From<mc_util_repr_bytes::LengthMismatch> for Error {

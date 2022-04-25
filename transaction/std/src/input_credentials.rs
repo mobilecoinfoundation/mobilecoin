@@ -5,8 +5,7 @@ use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_transaction_core::{
     onetime_keys::create_shared_secret,
     ring_signature::{InputSecret, SignableInputRing},
-    tx::{TxOut, TxOutMembershipProof},
-    AmountError,
+    tx::{TxIn, TxOut, TxOutMembershipProof},
 };
 use std::convert::TryFrom;
 use zeroize::Zeroize;
@@ -23,11 +22,8 @@ pub struct InputCredentials {
     /// Index in `ring` of the "real" output being spent.
     pub real_index: usize,
 
-    /// Private key for the "real" output being spent.
-    pub onetime_private_key: RistrettoPrivate,
-
-    /// TxOut shared secret
-    pub tx_out_shared_secret: RistrettoPublic,
+    /// Secrets needed to spend the real output
+    pub input_secret: InputSecret,
 }
 
 impl InputCredentials {
@@ -84,45 +80,52 @@ impl InputCredentials {
             .position(|element| *element == real_input)
             .expect("Must still contain real input");
 
-        Ok(InputCredentials {
-            ring,
-            membership_proofs,
-            real_index,
-            onetime_private_key,
-            tx_out_shared_secret,
-        })
-    }
-}
-
-impl TryFrom<&InputCredentials> for SignableInputRing {
-    type Error = AmountError;
-    fn try_from(src: &InputCredentials) -> Result<SignableInputRing, AmountError> {
-        let masked_amount = &src.ring[src.real_index].masked_amount;
-        let (amount, blinding) = masked_amount.get_value(&src.tx_out_shared_secret)?;
+        let masked_amount = &ring[real_index].masked_amount;
+        let (amount, blinding) = masked_amount.get_value(&tx_out_shared_secret)?;
 
         let input_secret = InputSecret {
-            onetime_private_key: src.onetime_private_key,
+            onetime_private_key,
             amount,
             blinding,
         };
 
-        Ok(SignableInputRing {
+        Ok(InputCredentials {
+            ring,
+            membership_proofs,
+            real_index,
+            input_secret,
+        })
+    }
+}
+
+impl From<InputCredentials> for SignableInputRing {
+    fn from(src: InputCredentials) -> SignableInputRing {
+        SignableInputRing {
             members: src
                 .ring
                 .iter()
                 .map(|tx_out| (tx_out.target_key, tx_out.masked_amount.commitment))
                 .collect(),
             real_input_index: src.real_index,
-            input_secret,
+            input_secret: src.input_secret.clone(),
             input_rules: None,
-        })
+        }
+    }
+}
+
+impl From<&InputCredentials> for TxIn {
+    fn from(input_credential: &InputCredentials) -> TxIn {
+        TxIn {
+            ring: input_credential.ring.clone(),
+            proofs: input_credential.membership_proofs.clone(),
+            input_rules: None,
+        }
     }
 }
 
 impl Zeroize for InputCredentials {
     fn zeroize(&mut self) {
         self.real_index.zeroize();
-        self.onetime_private_key.zeroize();
     }
 }
 

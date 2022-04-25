@@ -49,7 +49,41 @@ pub struct SignableInputRing {
     pub input_rules: Option<InputRules>,
 }
 
-/// The secrets corresponding to an input needed to create a signature
+/// A presigned RingMLSAG and ancillary data needed to incorporate it into a
+/// signature
+#[derive(Clone, Debug)]
+pub struct PresignedInputRing {
+    /// The mlsag signature authorizing the spending of an input
+    pub mlsag: RingMLSAG,
+    /// The amount and blinding factor of the pseudo output
+    pub pseudo_output_secret: OutputSecret,
+}
+
+/// An enum which is either a PresignedInputRing or a SignableInputRing
+///
+/// This enum is needed because all TxIn's are required to appear in sorted
+/// order, regardless of if they are presigned. This gives the signer a way to
+/// control the order in which they will appear.
+#[derive(Clone, Debug)]
+pub enum InputRing {
+    /// A signable input ring
+    Signable(SignableInputRing),
+    /// A presigned input ring
+    Presigned(PresignedInputRing),
+}
+
+impl InputRing {
+    /// Get the amount of the pseudo-output of this ring
+    pub fn amount(&self) -> &Amount {
+        match self {
+            InputRing::Signable(ring) => &ring.input_secret.amount,
+            InputRing::Presigned(ring) => &ring.pseudo_output_secret.amount,
+        }
+    }
+}
+
+/// The secrets needed to create a signature that spends an existing output as
+/// an input
 #[derive(Clone, Debug)]
 pub struct InputSecret {
     /// The one-time private key for the output we are trying to spend
@@ -60,7 +94,8 @@ pub struct InputSecret {
     pub blinding: Scalar,
 }
 
-/// The secrets corresponding to an output needed to create a signature
+/// The secrets corresponding to an output that we are trying to authorize
+/// creation of
 #[derive(Clone, Debug)]
 pub struct OutputSecret {
     /// The amount of the output we are creating
@@ -69,7 +104,7 @@ pub struct OutputSecret {
     pub blinding: Scalar,
 }
 
-/// The parts of a signed input ring needed to validate an MLSAG
+/// The parts of a TxIn needed to validate a corresponding MLSAG
 #[derive(Clone, Debug)]
 pub struct SignedInputRing {
     /// A reduced representation of the TxOut's in the ring. For each ring
@@ -140,7 +175,7 @@ impl SignatureRctBulletproofs {
     pub fn sign<CSPRNG: RngCore + CryptoRng>(
         block_version: BlockVersion,
         message: &[u8; 32],
-        signable_input_rings: &[SignableInputRing],
+        input_rings: &[InputRing],
         output_secrets: &[OutputSecret],
         fee: Amount,
         rng: &mut CSPRNG,
@@ -148,7 +183,7 @@ impl SignatureRctBulletproofs {
         sign_with_balance_check(
             block_version,
             message,
-            signable_input_rings,
+            input_rings,
             output_secrets,
             fee,
             true,
@@ -433,8 +468,8 @@ impl SignatureRctBulletproofs {
 /// * `message` - The messages to be signed, e.g. Hash(TxPrefix).
 /// * `rings` - One or more rings of one-time addresses and amount commitments,
 ///   with secrets for the real input
-/// * `output_values_and_blindings` - Output secret for each output amount
-///   commitment.
+/// * `presigned_rings` - Zero or more pre-signed input rings
+/// * `output_secrets` - Output secret for each output amount commitment.
 /// * `fee` - Value of the implicit fee output.
 /// * `fee_token_id` - Token id of the fee output.
 /// * `check_value_is_preserved` - If true, check that the value of inputs
@@ -442,7 +477,7 @@ impl SignatureRctBulletproofs {
 fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     block_version: BlockVersion,
     message: &[u8; 32],
-    rings: &[SignableInputRing],
+    rings: &[InputRing],
     output_secrets: &[OutputSecret],
     fee: Amount,
     check_value_is_preserved: bool,
@@ -457,7 +492,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     if !block_version.mixed_transactions_are_supported() {
         if rings
             .iter()
-            .any(|ring| ring.input_secret.amount.token_id != fee.token_id)
+            .any(|ring| ring.amount().token_id != fee.token_id)
         {
             return Err(Error::MixedTransactionsNotAllowed);
         }
@@ -469,49 +504,67 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         }
     }
 
+    // Presigned rings and input rules cannot be used if signed input rules are not
+    // enabled
+    if !block_version.signed_input_rules_are_supported() {
+        for ring in rings {
+            match ring {
+                InputRing::Presigned(_) => {
+                    return Err(Error::SignedInputRulesNotAllowed);
+                }
+                InputRing::Signable(ring) => {
+                    if ring.input_rules.is_some() {
+                        return Err(Error::SignedInputRulesNotAllowed);
+                    }
+                }
+            };
+        }
+    }
+
     if rings.is_empty() {
         return Err(Error::NoInputs);
     }
-    let num_inputs = rings.len();
-    let ring_size = rings[0].members.len();
+    let ring_size = rings
+        .iter()
+        .filter_map(|ring| {
+            if let InputRing::Signable(ring) = ring {
+                Some(ring.members.len())
+            } else {
+                None
+            }
+        })
+        .next()
+        .ok_or(Error::AllRingsPresigned)?;
+
     if ring_size == 0 {
         return Err(Error::InvalidRingSize(0));
     }
 
     for ring in rings {
-        // Each ring must have the same size.
-        if ring.members.len() != ring_size {
-            return Err(Error::InvalidRingSize(ring.members.len()));
-        }
-        // Each `real_input_index` must be in [0,ring_size - 1].
-        if ring.real_input_index >= ring_size {
-            return Err(Error::IndexOutOfBounds);
+        if let InputRing::Signable(ring) = ring {
+            // Each ring must have the same size.
+            if ring.members.len() != ring_size {
+                return Err(Error::InvalidRingSize(ring.members.len()));
+            }
+            // Each `real_input_index` must be in [0,ring_size - 1].
+            if ring.real_input_index >= ring_size {
+                return Err(Error::IndexOutOfBounds);
+            }
         }
     }
 
-    // Blindings for pseudo_outputs. All but the last are random.
-    // Constructing blindings in this way ensures that sum_of_outputs -
-    // sum_of_pseudo_outputs = 0 if the sum of outputs and the sum of
-    // pseudo_outputs have equal value.
-    let mut pseudo_output_blindings: Vec<Scalar> = Vec::new();
-    for _i in 0..num_inputs - 1 {
-        pseudo_output_blindings.push(Scalar::random(rng));
-    }
-    // The implicit fee output is ommitted because its blinding is zero.
-    //
-    // Note: This implicit fee output is not the same as the accumulated fee output
-    // produced by the enclave -- the blinding of that output is not zero.
-    let sum_of_output_blindings: Scalar = output_secrets.iter().map(|secret| secret.blinding).sum();
-
-    let sum_of_pseudo_output_blindings: Scalar = pseudo_output_blindings.iter().sum();
-    let last_blinding: Scalar = sum_of_output_blindings - sum_of_pseudo_output_blindings;
-    pseudo_output_blindings.push(last_blinding);
+    // This computes a sequence of appropriate pseudo output blindings, one for each
+    // ring. For Signable rings, this will be a random number, but the last is
+    // chosen so that the sum of all blinding factors is zero.
+    // For pre-signed rings, we cannot change blinding, so we have to use what was
+    // signed.
+    let pseudo_output_blindings = compute_pseudo_output_blindings(rings, output_secrets, rng)?;
 
     // Create Range proofs for outputs and pseudo-outputs.
     let pseudo_output_values_and_blindings: Vec<(u64, Scalar)> = rings
         .iter()
         .zip(pseudo_output_blindings.iter())
-        .map(|(ring, blinding)| (ring.input_secret.amount.value, *blinding))
+        .map(|(ring, blinding)| (ring.amount().value, *blinding))
         .collect();
 
     // Create a pedersen generator cache
@@ -544,7 +597,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
             let mut token_ids = BTreeSet::default();
             token_ids.insert(fee.token_id);
             for ring in rings {
-                token_ids.insert(ring.input_secret.amount.token_id);
+                token_ids.insert(ring.amount().token_id);
             }
             for secret in output_secrets {
                 token_ids.insert(secret.amount.token_id);
@@ -560,8 +613,8 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
                 .iter()
                 .zip(pseudo_output_blindings.iter())
                 .filter_map(|(ring, blinding)| {
-                    if ring.input_secret.amount.token_id == token_id {
-                        Some((ring.input_secret.amount.value, *blinding))
+                    if ring.amount().token_id == token_id {
+                        Some((ring.amount().value, *blinding))
                     } else {
                         None
                     }
@@ -595,8 +648,8 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         .zip(pseudo_output_blindings.iter())
         .map(|(ring, blinding)| {
             generator_cache
-                .get(ring.input_secret.amount.token_id)
-                .commit(Scalar::from(ring.input_secret.amount.value), *blinding)
+                .get(ring.amount().token_id)
+                .commit(Scalar::from(ring.amount().value), *blinding)
         })
         .collect();
 
@@ -645,39 +698,46 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
 
     // Prove that the signer is allowed to spend a public key in each ring, and that
     // the input's value equals the value of the pseudo_output.
-    let mut ring_signatures: Vec<RingMLSAG> = Vec::new();
-    for (ring, pseudo_output_blinding) in rings.iter().zip(pseudo_output_blindings) {
-        let mut rules_digest = [0u8; 32];
-        if let Some(rules) = &ring.input_rules {
-            rules_digest
-                .copy_from_slice(&rules.digest32::<MerlinTranscript>(b"mc-input-rules")[..]);
-        }
-
-        let sign_this: &[u8] = if ring.input_rules.is_some() {
-            &rules_digest
-        } else {
-            &extended_message_digest
-        };
-
-        let generator = generator_cache.get(ring.input_secret.amount.token_id);
-        let ring_signature = RingMLSAG::sign(
-            sign_this,
-            &ring.members,
-            ring.real_input_index,
-            &ring.input_secret.onetime_private_key,
-            ring.input_secret.amount.value,
-            &ring.input_secret.blinding,
-            &pseudo_output_blinding,
-            generator,
-            rng,
-        )?;
-        ring_signatures.push(ring_signature);
-    }
-
-    let mut pseudo_output_token_ids: Vec<u64> = rings
+    let ring_signatures: Vec<RingMLSAG> = rings
         .iter()
-        .map(|ring| *ring.input_secret.amount.token_id)
-        .collect();
+        .zip(pseudo_output_blindings)
+        .map(
+            |(ring, pseudo_output_blinding)| -> Result<RingMLSAG, Error> {
+                Ok(match ring {
+                    InputRing::Signable(ring) => {
+                        let rules_digest = ring
+                            .input_rules
+                            .as_ref()
+                            .map(|rules| rules.digest())
+                            .unwrap_or_default();
+
+                        let sign_this: &[u8] = if ring.input_rules.is_some() {
+                            &rules_digest
+                        } else {
+                            &extended_message_digest
+                        };
+
+                        let generator = generator_cache.get(ring.input_secret.amount.token_id);
+                        RingMLSAG::sign(
+                            sign_this,
+                            &ring.members,
+                            ring.real_input_index,
+                            &ring.input_secret.onetime_private_key,
+                            ring.input_secret.amount.value,
+                            &ring.input_secret.blinding,
+                            &pseudo_output_blinding,
+                            generator,
+                            rng,
+                        )?
+                    }
+                    InputRing::Presigned(ring) => ring.mlsag.clone(),
+                })
+            },
+        )
+        .collect::<Result<_, _>>()?;
+
+    let mut pseudo_output_token_ids: Vec<u64> =
+        rings.iter().map(|ring| *ring.amount().token_id).collect();
     let mut output_token_ids: Vec<u64> = output_secrets
         .iter()
         .map(|secret| *secret.amount.token_id)
@@ -701,6 +761,76 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         pseudo_output_token_ids,
         output_token_ids,
     })
+}
+
+/// Computes appropriate pseudo-output blinding values for each input ring.
+///
+/// Arguments:
+/// * The input rings, both pre-signed and signable.
+/// * The output secrets
+///
+/// Returns:
+/// * The blinding factor for each pseudo output, corresponding to each ring.
+///
+/// Requirements:
+/// * At least one ring must not be pre-signed.
+///
+/// Post-conditions:
+/// * The sum_of_output blindings - sum_of_pseudo_output blindings = 0
+fn compute_pseudo_output_blindings<CSPRNG: RngCore + CryptoRng>(
+    rings: &[InputRing],
+    output_secrets: &[OutputSecret],
+    rng: &mut CSPRNG,
+) -> Result<Vec<Scalar>, Error> {
+    // The implicit fee output is ommitted because its blinding is zero.
+    //
+    // Note: This implicit fee output is not the same as the accumulated fee output
+    // produced by the enclave -- the blinding of that output is not zero.
+    let sum_of_output_blindings: Scalar = output_secrets.iter().map(|secret| secret.blinding).sum();
+    let sum_of_presigned_pseudo_output_blindings: Scalar = rings
+        .iter()
+        .filter_map(|ring| {
+            if let InputRing::Presigned(ring) = ring {
+                Some(ring.pseudo_output_secret.blinding)
+            } else {
+                None
+            }
+        })
+        .sum();
+
+    let last_unsigned_ring_index = rings
+        .iter()
+        .rposition(|x| matches!(x, InputRing::Signable(_)))
+        .ok_or(Error::AllRingsPresigned)?;
+
+    // The sum of all presigned pseudo output blindings, plus any that we have
+    // chosen randomly for signable pseudo outputs.
+    let mut running_sum = sum_of_presigned_pseudo_output_blindings;
+
+    // Blindings for pseudo_outputs. All but the last are random.
+    // Constructing blindings in this way ensures that sum_of_outputs -
+    // sum_of_pseudo_outputs = 0 if the sum of outputs and the sum of
+    // pseudo_outputs have equal value.
+    Ok(rings
+        .iter()
+        .enumerate()
+        .map(|(idx, ring)| {
+            match ring {
+                InputRing::Signable(_ring) => {
+                    if idx == last_unsigned_ring_index {
+                        // At this point, the running sum is the sum of all pseudo output blindings,
+                        // except this one.
+                        sum_of_output_blindings - running_sum
+                    } else {
+                        let random = Scalar::random(rng);
+                        running_sum += random;
+                        random
+                    }
+                }
+                InputRing::Presigned(ring) => ring.pseudo_output_secret.blinding,
+            }
+        })
+        .collect())
 }
 
 /// Toggles between old-style and new-style extended message
@@ -930,6 +1060,14 @@ mod rct_bulletproofs_tests {
             self.rings.iter().map(SignedInputRing::from).collect()
         }
 
+        fn get_input_rings(&self) -> Vec<InputRing> {
+            self.rings
+                .iter()
+                .cloned()
+                .map(InputRing::Signable)
+                .collect()
+        }
+
         fn sign<RNG: RngCore + CryptoRng>(
             &self,
             fee: u64,
@@ -938,7 +1076,7 @@ mod rct_bulletproofs_tests {
             SignatureRctBulletproofs::sign(
                 self.block_version,
                 &self.message,
-                &self.rings,
+                &self.get_input_rings(),
                 &self.output_secrets,
                 Amount::new(fee, self.fee_token_id),
                 rng,
@@ -953,7 +1091,7 @@ mod rct_bulletproofs_tests {
             sign_with_balance_check(
                 self.block_version,
                 &self.message,
-                &self.rings,
+                &self.get_input_rings(),
                 &self.output_secrets,
                 Amount::new(fee, self.fee_token_id),
                 false,
