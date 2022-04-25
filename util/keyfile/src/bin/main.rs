@@ -11,16 +11,15 @@ use std::{
     io::{Cursor, Read},
 };
 
-fn print_keyfile_bytes(bytes: Vec<u8>) {
-    let acct_key = if let Ok(identity) =
-        mc_util_keyfile::read_root_entropy_keyfile_data(Cursor::new(bytes.as_slice()))
-    {
-        println!("Identity: {:?}", identity);
-        AccountKey::from(&identity)
-    } else {
-        mc_util_keyfile::read_keyfile_data(Cursor::new(bytes.as_slice()))
-            .expect("Could not parse key file as either mnemonic or legacy entropy")
-    };
+fn print_keyfile_bytes(bytes: &[u8]) {
+    let acct_key =
+        if let Ok(identity) = mc_util_keyfile::read_root_entropy_keyfile_data(Cursor::new(bytes)) {
+            println!("Identity: {:?}", identity);
+            AccountKey::from(&identity)
+        } else {
+            mc_util_keyfile::read_keyfile_data(Cursor::new(bytes))
+                .expect("Could not parse key file as either mnemonic or legacy entropy")
+        };
 
     println!("{:?}", acct_key);
 }
@@ -28,7 +27,9 @@ fn print_keyfile_bytes(bytes: Vec<u8>) {
 fn main() {
     let mut n_files = 0usize;
     for path in env::args().skip(1) {
-        print_keyfile_bytes(fs::read(path).expect(&format!("Could not read file '{}'", path)));
+        print_keyfile_bytes(
+            &fs::read(path.clone()).expect(&format!("Could not read file '{}'", path)),
+        );
         n_files += 1;
     }
 
@@ -37,6 +38,6 @@ fn main() {
         io::stdin()
             .read_to_end(&mut buf)
             .expect("No files provided, and no stdin");
-        print_keyfile_bytes(buf);
+        print_keyfile_bytes(&buf);
     }
 }

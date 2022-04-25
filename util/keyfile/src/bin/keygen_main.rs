@@ -8,6 +8,8 @@ use clap::Parser;
 use mc_util_keyfile::{config::Config as GeneralConfig, keygen};
 use rand::{RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
+
+/// Keygen config.
 #[derive(Debug, Parser)]
 struct Config {
     #[clap(flatten)]
@@ -16,6 +18,7 @@ struct Config {
     /// The key name.
     pub name: String,
 }
+
 fn main() {
     let config = Config::parse();
     let path = config
