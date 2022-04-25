@@ -96,6 +96,11 @@ pub fn link_to_sgx_libraries(sgx: &SgxEnvironment) -> Result<(), Error> {
         .print_system_libs(true)
         .cargo_metadata(false)
         .env_metadata(true);
+
+    // We want to propagate any error from `probe()`. This means that we must
+    // collect the Results prior to iterating on them, since a IntoIterator for
+    // Result<R, E> will omit any errors.
+    // https://stackoverflow.com/questions/59852161/how-to-handle-result-in-flat-map/59852696#59852696
     let lib_paths = if sgx.sgx_mode() == SgxMode::Simulation {
         SGX_SIMULATION_LIBS
     } else {
