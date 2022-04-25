@@ -11,6 +11,35 @@ use protobuf::RepeatedField;
 use serde_derive::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
+// Represents u64 using string, when serializing to Json
+// Javascript integers are not 64 bit, and so it is not really proper json.
+// Using string avoids issues with some json parsers not handling large numbers
+// well.
+//
+// This does not rely on the serde-json arbitrary precision feature, which
+// (we fear) might break other things (e.g. https://github.com/serde-rs/json/issues/505)
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
+#[serde(transparent)]
+pub struct JsonU64(#[serde(with = "serde_with::rust::display_fromstr")] pub u64);
+
+impl From<&u64> for JsonU64 {
+    fn from(src: &u64) -> Self {
+        Self(*src)
+    }
+}
+
+impl From<&JsonU64> for u64 {
+    fn from(src: &JsonU64) -> u64 {
+        src.0
+    }
+}
+
+impl From<JsonU64> for u64 {
+    fn from(src: JsonU64) -> u64 {
+        src.0
+    }
+}
+
 #[derive(Deserialize, Default, Debug)]
 pub struct JsonPasswordRequest {
     pub password: String,
@@ -148,7 +177,7 @@ pub struct JsonUnspentTxOut {
     pub tx_out: JsonTxOut,
     pub subaddress_index: u64,
     pub key_image: String,
-    pub value: String, // Needs to be String since Javascript ints are not 64 bit.
+    pub value: JsonU64,
     pub attempted_spend_height: u64,
     pub attempted_spend_tombstone: u64,
     pub monitor_id: String,
@@ -160,7 +189,7 @@ impl From<&mc_mobilecoind_api::UnspentTxOut> for JsonUnspentTxOut {
             tx_out: src.get_tx_out().into(),
             subaddress_index: src.get_subaddress_index(),
             key_image: hex::encode(&src.get_key_image().get_data()),
-            value: src.value.to_string(),
+            value: JsonU64(src.value),
             attempted_spend_height: src.get_attempted_spend_height(),
             attempted_spend_tombstone: src.get_attempted_spend_tombstone(),
             monitor_id: hex::encode(&src.get_monitor_id()),
@@ -187,11 +216,7 @@ impl TryFrom<&JsonUnspentTxOut> for mc_mobilecoind_api::UnspentTxOut {
         );
         utxo.set_subaddress_index(src.subaddress_index);
         utxo.set_key_image(key_image);
-        utxo.set_value(
-            src.value
-                .parse::<u64>()
-                .map_err(|err| format!("Failed to parse u64 from value: {}", err))?,
-        );
+        utxo.set_value(src.value.into());
         utxo.set_attempted_spend_height(src.attempted_spend_height);
         utxo.set_attempted_spend_tombstone(src.attempted_spend_tombstone);
         utxo.set_monitor_id(
@@ -340,7 +365,7 @@ impl TryFrom<&JsonPublicAddress> for PublicAddress {
 #[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonParseRequestCodeResponse {
     pub receiver: JsonPublicAddress,
-    pub value: String,
+    pub value: JsonU64,
     pub memo: String,
 }
 
@@ -348,7 +373,7 @@ impl From<&mc_mobilecoind_api::ParseRequestCodeResponse> for JsonParseRequestCod
     fn from(src: &mc_mobilecoind_api::ParseRequestCodeResponse) -> Self {
         Self {
             receiver: JsonPublicAddress::from(src.get_receiver()),
-            value: src.get_value().to_string(),
+            value: JsonU64(src.get_value()),
             memo: src.get_memo().to_string(),
         }
     }
@@ -428,7 +453,7 @@ impl From<&mc_mobilecoind_api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
 #[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonSendPaymentRequest {
     pub request_data: JsonParseRequestCodeResponse,
-    pub max_input_utxo_value: Option<String>, // String due to u64 limitation.
+    pub max_input_utxo_value: Option<JsonU64>,
     pub change_subaddress: Option<String>,
 }
 
@@ -454,21 +479,21 @@ impl From<&mc_mobilecoind_api::SendPaymentResponse> for JsonSendPaymentResponse 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct JsonPayAddressCodeRequest {
     pub receiver_b58_address_code: String,
-    pub value: String,
+    pub value: JsonU64,
     pub max_input_utxo_value: Option<String>,
     pub change_subaddress: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonOutlay {
-    pub value: String,
+    pub value: JsonU64,
     pub receiver: JsonPublicAddress,
 }
 
 impl From<&mc_mobilecoind_api::Outlay> for JsonOutlay {
     fn from(src: &mc_mobilecoind_api::Outlay) -> Self {
         Self {
-            value: src.get_value().to_string(),
+            value: JsonU64(src.get_value()),
             receiver: src.get_receiver().into(),
         }
     }
@@ -479,11 +504,7 @@ impl TryFrom<&JsonOutlay> for mc_mobilecoind_api::Outlay {
 
     fn try_from(src: &JsonOutlay) -> Result<mc_mobilecoind_api::Outlay, String> {
         let mut outlay = mc_mobilecoind_api::Outlay::new();
-        outlay.set_value(
-            src.value
-                .parse::<u64>()
-                .map_err(|err| format!("Failed to parse u64 from value: {}", err))?,
-        );
+        outlay.set_value(src.value.into());
         outlay.set_receiver(
             PublicAddress::try_from(&src.receiver)
                 .map_err(|err| format!("Could not convert receiver: {}", err))?,
@@ -496,7 +517,7 @@ impl TryFrom<&JsonOutlay> for mc_mobilecoind_api::Outlay {
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonMaskedAmount {
     pub commitment: String,
-    pub masked_value: String,
+    pub masked_value: JsonU64,
     pub masked_token_id: String,
 }
 
@@ -504,7 +525,7 @@ impl From<&MaskedAmount> for JsonMaskedAmount {
     fn from(src: &MaskedAmount) -> Self {
         Self {
             commitment: hex::encode(src.get_commitment().get_data()),
-            masked_value: src.get_masked_value().to_string(),
+            masked_value: JsonU64(src.get_masked_value()),
             masked_token_id: hex::encode(src.get_masked_token_id()),
         }
     }
@@ -543,12 +564,7 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
         );
         let mut masked_amount = MaskedAmount::new();
         masked_amount.set_commitment(commitment);
-        masked_amount.set_masked_value(
-            src.masked_amount
-                .masked_value
-                .parse::<u64>()
-                .map_err(|err| format!("Failed to parse u64 from value: {}", err))?,
-        );
+        masked_amount.set_masked_value(src.masked_amount.masked_value.into());
         masked_amount.set_masked_token_id(
             hex::decode(&src.masked_amount.masked_token_id)
                 .map_err(|err| format!("Failed to decode masked token id hex: {}", err))?,
@@ -589,8 +605,8 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonRange {
-    pub from: String,
-    pub to: String,
+    pub from: JsonU64,
+    pub to: JsonU64,
 }
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
@@ -603,8 +619,8 @@ impl From<&TxOutMembershipElement> for JsonTxOutMembershipElement {
     fn from(src: &TxOutMembershipElement) -> Self {
         Self {
             range: JsonRange {
-                from: src.get_range().get_from().to_string(),
-                to: src.get_range().get_to().to_string(),
+                from: JsonU64(src.get_range().get_from()),
+                to: JsonU64(src.get_range().get_to()),
             },
             hash: hex::encode(src.get_hash().get_data()),
         }
@@ -613,16 +629,16 @@ impl From<&TxOutMembershipElement> for JsonTxOutMembershipElement {
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonTxOutMembershipProof {
-    pub index: String,
-    pub highest_index: String,
+    pub index: JsonU64,
+    pub highest_index: JsonU64,
     pub elements: Vec<JsonTxOutMembershipElement>,
 }
 
 impl From<&TxOutMembershipProof> for JsonTxOutMembershipProof {
     fn from(src: &TxOutMembershipProof) -> Self {
         Self {
-            index: src.get_index().to_string(),
-            highest_index: src.get_highest_index().to_string(),
+            index: JsonU64(src.get_index()),
+            highest_index: JsonU64(src.get_highest_index()),
             elements: src
                 .get_elements()
                 .iter()
@@ -639,20 +655,8 @@ impl TryFrom<&JsonTxOutMembershipProof> for TxOutMembershipProof {
         let mut elements: Vec<TxOutMembershipElement> = Vec::new();
         for element in &src.elements {
             let mut range = mc_api::external::Range::new();
-            range.set_from(
-                element
-                    .range
-                    .from
-                    .parse::<u64>()
-                    .map_err(|err| format!("Failed to parse u64 from range.from: {}", err))?,
-            );
-            range.set_to(
-                element
-                    .range
-                    .to
-                    .parse::<u64>()
-                    .map_err(|err| format!("Failed to parse u64 from range.to: {}", err))?,
-            );
+            range.set_from(element.range.from.into());
+            range.set_to(element.range.to.into());
 
             let mut hash = TxOutMembershipHash::new();
             hash.set_data(
@@ -667,16 +671,8 @@ impl TryFrom<&JsonTxOutMembershipProof> for TxOutMembershipProof {
         }
 
         let mut proof = TxOutMembershipProof::new();
-        proof.set_index(
-            src.index
-                .parse::<u64>()
-                .map_err(|err| format!("Failed to parse u64 from index: {}", err))?,
-        );
-        proof.set_highest_index(
-            src.highest_index
-                .parse::<u64>()
-                .map_err(|err| format!("Failed to parse u64 from highest_index: {}", err))?,
-        );
+        proof.set_index(src.index.into());
+        proof.set_highest_index(src.highest_index.into());
         proof.set_elements(RepeatedField::from_vec(elements));
 
         Ok(proof)
@@ -765,8 +761,8 @@ impl TryFrom<&JsonTxIn> for TxIn {
 pub struct JsonTxPrefix {
     pub inputs: Vec<JsonTxIn>,
     pub outputs: Vec<JsonTxOut>,
-    pub fee: String,
-    tombstone_block: String,
+    pub fee: JsonU64,
+    tombstone_block: JsonU64,
 }
 
 impl From<&TxPrefix> for JsonTxPrefix {
@@ -774,8 +770,8 @@ impl From<&TxPrefix> for JsonTxPrefix {
         Self {
             inputs: src.get_inputs().iter().map(JsonTxIn::from).collect(),
             outputs: src.get_outputs().iter().map(JsonTxOut::from).collect(),
-            fee: src.get_fee().to_string(),
-            tombstone_block: src.get_tombstone_block().to_string(),
+            fee: JsonU64(src.get_fee()),
+            tombstone_block: JsonU64(src.get_tombstone_block()),
         }
     }
 }
@@ -801,16 +797,8 @@ impl TryFrom<&JsonTxPrefix> for TxPrefix {
         let mut prefix = TxPrefix::new();
         prefix.set_inputs(RepeatedField::from_vec(inputs));
         prefix.set_outputs(RepeatedField::from_vec(outputs));
-        prefix.set_fee(
-            src.fee
-                .parse::<u64>()
-                .map_err(|err| format!("Failed to parse u64 from fee: {}", err))?,
-        );
-        prefix.set_tombstone_block(
-            src.tombstone_block
-                .parse::<u64>()
-                .map_err(|err| format!("Failed to parse u64 from tombstone_block: {}", err))?,
-        );
+        prefix.set_fee(src.fee.into());
+        prefix.set_tombstone_block(src.tombstone_block.into());
 
         Ok(prefix)
     }
@@ -837,33 +825,14 @@ impl From<&RingMLSAG> for JsonRingMLSAG {
     }
 }
 
-// Representa TokenId (u64) using string, when serializing to Json
-// This does not rely on the serde-json arbitrary precision feature, which
-// (we fear) might break other things
-#[derive(Deserialize, Serialize, Default, Debug, Clone)]
-#[serde(transparent)]
-pub struct JsonTokenId(#[serde(with = "serde_with::rust::display_fromstr")] pub u64);
-
-impl From<&u64> for JsonTokenId {
-    fn from(src: &u64) -> Self {
-        Self(*src)
-    }
-}
-
-impl From<&JsonTokenId> for u64 {
-    fn from(src: &JsonTokenId) -> u64 {
-        src.0
-    }
-}
-
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonSignatureRctBulletproofs {
     pub ring_signatures: Vec<JsonRingMLSAG>,
     pub pseudo_output_commitments: Vec<String>,
     pub range_proof_bytes: String,
     pub range_proofs: Vec<String>,
-    pub pseudo_output_token_ids: Vec<JsonTokenId>,
-    pub output_token_ids: Vec<JsonTokenId>,
+    pub pseudo_output_token_ids: Vec<JsonU64>,
+    pub output_token_ids: Vec<JsonU64>,
 }
 
 impl From<&SignatureRctBulletproofs> for JsonSignatureRctBulletproofs {
@@ -1226,30 +1195,30 @@ impl From<&mc_mobilecoind_api::GetTxStatusAsReceiverResponse> for JsonStatusResp
 
 #[derive(Serialize, Default, Debug)]
 pub struct JsonLedgerInfoResponse {
-    pub block_count: String,
-    pub txo_count: String,
+    pub block_count: JsonU64,
+    pub txo_count: JsonU64,
 }
 
 impl From<&mc_mobilecoind_api::GetLedgerInfoResponse> for JsonLedgerInfoResponse {
     fn from(src: &mc_mobilecoind_api::GetLedgerInfoResponse) -> Self {
         Self {
-            block_count: src.block_count.to_string(),
-            txo_count: src.txo_count.to_string(),
+            block_count: JsonU64(src.block_count),
+            txo_count: JsonU64(src.txo_count),
         }
     }
 }
 
 #[derive(Serialize, Default, Debug)]
 pub struct JsonBlockInfoResponse {
-    pub key_image_count: String,
-    pub txo_count: String,
+    pub key_image_count: JsonU64,
+    pub txo_count: JsonU64,
 }
 
 impl From<&mc_mobilecoind_api::GetBlockInfoResponse> for JsonBlockInfoResponse {
     fn from(src: &mc_mobilecoind_api::GetBlockInfoResponse) -> Self {
         Self {
-            key_image_count: src.key_image_count.to_string(),
-            txo_count: src.txo_count.to_string(),
+            key_image_count: JsonU64(src.key_image_count),
+            txo_count: JsonU64(src.txo_count),
         }
     }
 }
@@ -1259,8 +1228,8 @@ pub struct JsonBlockDetailsResponse {
     pub block_id: String,
     pub version: u32,
     pub parent_id: String,
-    pub index: String,
-    pub cumulative_txo_count: String,
+    pub index: JsonU64,
+    pub cumulative_txo_count: JsonU64,
     pub contents_hash: String,
     pub key_images: Vec<String>,
     pub txos: Vec<JsonTxOut>,
@@ -1274,8 +1243,8 @@ impl From<&mc_mobilecoind_api::GetBlockResponse> for JsonBlockDetailsResponse {
             block_id: hex::encode(&block.get_id().get_data()),
             version: block.get_version(),
             parent_id: hex::encode(&block.get_parent_id().get_data()),
-            index: block.get_index().to_string(),
-            cumulative_txo_count: block.get_cumulative_txo_count().to_string(),
+            index: JsonU64(block.get_index()),
+            cumulative_txo_count: JsonU64(block.get_cumulative_txo_count()),
             contents_hash: hex::encode(&block.get_contents_hash().get_data()),
             key_images: src
                 .get_key_images()
@@ -1293,7 +1262,7 @@ pub struct JsonProcessedTxOut {
     pub subaddress_index: u64,
     pub public_key: String,
     pub key_image: String,
-    pub value: String, // Needs to be String since Javascript ints are not 64 bit.
+    pub value: JsonU64,
     pub direction: String,
 }
 
@@ -1310,7 +1279,7 @@ impl From<&mc_mobilecoind_api::ProcessedTxOut> for JsonProcessedTxOut {
             subaddress_index: src.subaddress_index,
             public_key: hex::encode(&src.get_public_key().get_data()),
             key_image: hex::encode(&src.get_key_image().get_data()),
-            value: src.value.to_string(),
+            value: JsonU64(src.value),
             direction: direction_str.to_owned(),
         }
     }
