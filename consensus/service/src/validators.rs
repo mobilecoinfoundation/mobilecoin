@@ -583,10 +583,7 @@ mod combine_tests {
             transaction_builder.set_fee(0).unwrap();
             transaction_builder
                 .add_output(
-                    Amount {
-                        value: 123,
-                        token_id: Mob::ID,
-                    },
+                    Amount::new(123, Mob::ID),
                     &bob.default_subaddress(),
                     &mut rng,
                 )
