@@ -72,10 +72,11 @@ mod tests {
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
-                Mob::ID,
+                Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 MockFogResolver::default(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             let ring: Vec<TxOut> = minted_outputs.clone();
             let public_key = RistrettoPublic::try_from(&minted_outputs[0].public_key).unwrap();

@@ -80,51 +80,47 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// Initializes a new TransactionBuilder.
     ///
     /// # Arguments
+    /// * `block_version` - The block version rules to use when building this
+    ///   transaction
+    /// * `fee` - The fee (and token id) to use for this transaction. Note: The
+    ///   fee token id cannot be changed later, and before mixed transactions
+    ///   feature, every input and output must have this token id.
     /// * `fog_resolver` - Source of validated fog keys to use with this
     ///   transaction
     /// * `memo_builder` - An object which creates memos for the TxOuts in this
     ///   transaction
     pub fn new<MB: MemoBuilder + 'static + Send + Sync>(
         block_version: BlockVersion,
-        token_id: TokenId,
+        fee: Amount,
         fog_resolver: FPR,
         memo_builder: MB,
-    ) -> Self {
-        TransactionBuilder::new_with_box(
-            block_version,
-            token_id,
-            fog_resolver,
-            Box::new(memo_builder),
-        )
+    ) -> Result<Self, TxBuilderError> {
+        TransactionBuilder::new_with_box(block_version, fee, fog_resolver, Box::new(memo_builder))
     }
 
     /// Initializes a new TransactionBuilder, using a Box<dyn MemoBuilder>
     /// instead of statically typed
     ///
     /// # Arguments
-    /// * `block_version` - The block version to use when building a transaction
-    /// * `fee_token_id` - The token id of the fee output
+    /// * `block_version` - The block version rules to use when building this
+    ///   transaction
+    /// * `fee` - The fee (and token id) to use for this transaction. Note: The
+    ///   fee token id cannot be changed later, and before mixed transactions
+    ///   feature, every input and output must have this token id.
     /// * `fog_resolver` - Source of validated fog keys to use with this
     ///   transaction
     /// * `memo_builder` - An object which creates memos for the TxOuts in this
     ///   transaction
     pub fn new_with_box(
         block_version: BlockVersion,
-        fee_token_id: TokenId,
+        fee: Amount,
         fog_resolver: FPR,
         mut memo_builder: Box<dyn MemoBuilder + Send + Sync>,
-    ) -> Self {
-        // HACK: make sure that the memo builder
+    ) -> Result<Self, TxBuilderError> {
+        // make sure that the memo builder
         // is initialized to the same fee as the transaction builder
-        // It might be better to require the user to call `set_fee` at some point
-        // instead of allowing that they might never call that.
-        // It is also janky that we default to Mob::MINIMUM_FEE even though the
-        // token id may not be Mob, but changing that for now will break tests.
-        let fee = Amount::new(Mob::MINIMUM_FEE, fee_token_id);
-        memo_builder
-            .set_fee(fee)
-            .expect("memo builder should not complain at this point");
-        TransactionBuilder {
+        memo_builder.set_fee(fee)?;
+        Ok(TransactionBuilder {
             block_version,
             input_credentials: Vec::new(),
             outputs_and_shared_secrets: Vec::new(),
@@ -133,7 +129,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             fog_resolver,
             fog_tombstone_block_limit: u64::max_value(),
             memo_builder: Some(memo_builder),
-        }
+        })
     }
 
     /// Add an Input to the transaction.
@@ -732,10 +728,11 @@ pub mod transaction_builder_tests {
     ) -> Result<Tx, TxBuilderError> {
         let mut transaction_builder = TransactionBuilder::new(
             block_version,
-            token_id,
+            Amount::new(Mob::MINIMUM_FEE, token_id),
             fog_resolver.clone(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let input_value = 1000;
         let output_value = 10;
 
@@ -803,8 +800,13 @@ pub mod transaction_builder_tests {
             let membership_proofs = input_credentials.membership_proofs.clone();
             let key_image = KeyImage::from(&input_credentials.onetime_private_key);
 
-            let mut transaction_builder =
-                TransactionBuilder::new(block_version, token_id, fpr, EmptyMemoBuilder::default());
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(Mob::MINIMUM_FEE, token_id),
+                fpr,
+                EmptyMemoBuilder::default(),
+            )
+            .unwrap();
 
             transaction_builder.add_input(input_credentials);
             let (_txout, confirmation) = transaction_builder
@@ -882,10 +884,11 @@ pub mod transaction_builder_tests {
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
-                token_id,
+                Amount::new(Mob::MINIMUM_FEE, token_id),
                 fog_resolver,
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             transaction_builder.add_input(input_credentials);
             let (_txout, confirmation) = transaction_builder
@@ -972,10 +975,11 @@ pub mod transaction_builder_tests {
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
-                token_id,
+                Amount::new(Mob::MINIMUM_FEE, token_id),
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             let input_credentials =
                 get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
@@ -1047,10 +1051,11 @@ pub mod transaction_builder_tests {
             {
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
 
@@ -1081,10 +1086,11 @@ pub mod transaction_builder_tests {
             {
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(500);
 
@@ -1144,10 +1150,11 @@ pub mod transaction_builder_tests {
             {
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
 
@@ -1324,10 +1331,11 @@ pub mod transaction_builder_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     memo_builder,
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
 
@@ -1484,10 +1492,11 @@ pub mod transaction_builder_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     memo_builder,
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
                 transaction_builder.set_fee(Mob::MINIMUM_FEE * 4).unwrap();
@@ -1646,10 +1655,11 @@ pub mod transaction_builder_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     memo_builder,
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
 
@@ -1807,10 +1817,11 @@ pub mod transaction_builder_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     memo_builder,
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
 
@@ -1956,10 +1967,11 @@ pub mod transaction_builder_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     memo_builder,
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
 
@@ -2130,10 +2142,11 @@ pub mod transaction_builder_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     memo_builder,
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
 
@@ -2321,10 +2334,11 @@ pub mod transaction_builder_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     memo_builder,
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
 
@@ -2434,8 +2448,13 @@ pub mod transaction_builder_tests {
             )
             .unwrap();
 
-            let mut transaction_builder =
-                TransactionBuilder::new(block_version, token_id, fpr, EmptyMemoBuilder::default());
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(Mob::MINIMUM_FEE, token_id),
+                fpr,
+                EmptyMemoBuilder::default(),
+            )
+            .unwrap();
             transaction_builder.add_input(input_credentials);
 
             let wrong_value = 999;
@@ -2599,10 +2618,11 @@ pub mod transaction_builder_tests {
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
-                token_id,
+                Amount::new(Mob::MINIMUM_FEE, token_id),
                 fog_resolver.clone(),
                 memo_builder,
-            );
+            )
+            .unwrap();
 
             let input_credentials = get_input_credentials(
                 block_version,
@@ -2698,8 +2718,13 @@ pub mod transaction_builder_tests {
             let block_version = BlockVersion::try_from(block_version).unwrap();
             let memo_builder = EmptyMemoBuilder::default();
 
-            let mut transaction_builder =
-                TransactionBuilder::new(block_version, Mob::ID, fog_resolver.clone(), memo_builder);
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(Mob::MINIMUM_FEE, Mob::ID),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
 
             let input_credentials =
                 get_input_credentials(block_version, amount1, &sender, &fog_resolver, &mut rng);
@@ -2825,8 +2850,13 @@ pub mod transaction_builder_tests {
         let mut test_fn = |block_version, tx_out1_amount| -> Result<_, _> {
             let memo_builder = EmptyMemoBuilder::default();
 
-            let mut transaction_builder =
-                TransactionBuilder::new(block_version, Mob::ID, fog_resolver.clone(), memo_builder);
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(Mob::MINIMUM_FEE, Mob::ID),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
 
             let input_credentials =
                 get_input_credentials(block_version, amount1, &sender, &fog_resolver, &mut rng);

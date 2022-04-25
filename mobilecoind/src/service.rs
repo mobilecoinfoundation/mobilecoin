@@ -2917,10 +2917,11 @@ mod test {
         let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
-            Mob::ID,
+            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let (tx_out, tx_confirmation) = transaction_builder
             .add_output(Amount::new(10, Mob::ID), &receiver.subaddress(0), &mut rng)
             .unwrap();
@@ -5230,10 +5231,11 @@ mod test {
 
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
-            Mob::ID,
+            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
                 Amount::new(10, Mob::ID),
@@ -5342,10 +5344,11 @@ mod test {
 
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
-            Mob::ID,
+            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
                 Amount::new(10, Mob::ID),

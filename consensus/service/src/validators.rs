@@ -575,10 +575,11 @@ mod combine_tests {
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
-                Mob::ID,
+                Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 MockFogResolver::default(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0).unwrap();
             transaction_builder
@@ -634,10 +635,11 @@ mod combine_tests {
 
                     let mut transaction_builder = TransactionBuilder::new(
                         block_version,
-                        Mob::ID,
+                        Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                         MockFogResolver::default(),
                         EmptyMemoBuilder::default(),
-                    );
+                    )
+                    .unwrap();
 
                     // Create InputCredentials to spend the TxOut.
                     let onetime_private_key = recover_onetime_private_key(
@@ -739,10 +741,11 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
@@ -780,10 +783,11 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
@@ -844,10 +848,11 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
@@ -935,10 +940,11 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
@@ -977,10 +983,11 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
@@ -1042,10 +1049,11 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder

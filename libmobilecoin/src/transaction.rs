@@ -378,14 +378,12 @@ pub extern "C" fn mc_transaction_builder_create(
 
         let mut transaction_builder = TransactionBuilder::new_with_box(
             block_version,
-            token_id,
+            Amount::new(fee, token_id),
             fog_resolver,
             memo_builder_box,
-        );
+        )
+        .expect("Could not create transaction builder");
 
-        transaction_builder
-            .set_fee(fee)
-            .expect("failure not expected");
         transaction_builder.set_tombstone_block(tombstone_block);
         Some(transaction_builder)
     })
