@@ -15,7 +15,6 @@
 //! more details.
 
 use clap::Parser;
-use mc_account_keys::AccountKey;
 use mc_common::logger::{create_root_logger, log};
 use mc_fog_sample_paykit::ClientBuilder;
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
@@ -50,9 +49,8 @@ fn main() {
     let config = Config::parse();
     let logger = create_root_logger();
 
-    let root_identity =
+    let account_key =
         mc_util_keyfile::read_keyfile(config.keyfile).expect("Could not read private key file");
-    let account_key = AccountKey::from(&root_identity);
 
     // Note: The balance check program is not supposed to submit anything to
     // consensus or talk to consensus, so this is just a dummy value

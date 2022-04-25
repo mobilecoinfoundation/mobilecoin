@@ -17,7 +17,7 @@ struct Config {
 fn main() {
     let config = Config::parse();
 
-    let pubaddress = read_pubfile(config.pubfile.clone()).expect("Could not read pubfile");
+    let pubaddress = read_pubfile(&config.pubfile).expect("Could not read pubfile");
 
     println!(
         "Public address for {:?}: \n\t {:?}",

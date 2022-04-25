@@ -341,6 +341,7 @@ message GenerateMnemonicResponse {
 message GetAccountKeyFromRootEntropyRequest {
     bytes root_entropy = 1;
 }
+
 // Generate an AccountKey from a mnemonic.
 message GetAccountKeyFromMnemonicRequest {
     string mnemonic = 1;

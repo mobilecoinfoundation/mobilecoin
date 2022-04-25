@@ -83,9 +83,8 @@ fn main() {
     let config = Config::parse();
     let logger = create_root_logger();
 
-    let root_identity =
+    let account_key =
         mc_util_keyfile::read_keyfile(config.keyfile).expect("Could not read private key file");
-    let account_key = AccountKey::from(&root_identity);
 
     let num_reqs = Arc::new(AtomicU64::new(0));
     for _ in 0..config.num_workers {

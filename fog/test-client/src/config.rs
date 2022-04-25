@@ -127,7 +127,7 @@ pub struct TestClientConfig {
     pub grpc_retry_config: GrpcRetryConfig,
 
     /// What token id to use for the test
-    #[structopt(long, env = "MC_TOKEN_ID", default_value = "0")]
+    #[clap(long, env = "MC_TOKEN_ID", default_value = "0")]
     pub token_id: TokenId,
 }
 
@@ -140,12 +140,11 @@ impl TestClientConfig {
 
         // Load the key files
         log::info!(logger, "Loading account keys from {:?}", key_dir);
-        mc_util_keyfile::keygen::read_default_root_entropies(&key_dir)
+        mc_util_keyfile::keygen::read_default_mnemonics(&key_dir)
             .unwrap()
-            .iter()
+            .into_iter()
             .take(self.num_clients)
-            .map(AccountKey::from)
-            .collect()
+            .collect::<_>()
     }
 }
 

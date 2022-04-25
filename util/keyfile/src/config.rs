@@ -1,51 +1,53 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
-
-//! Configuration for generating key files for a new user identity.
-
+//! Configuration parameters for generating key files for a new user identity
 use clap::Parser;
-use rand::{rngs::StdRng, SeedableRng};
-use std::path::PathBuf;
+use hex::FromHex;
+use std::{fs, path::PathBuf};
 
-/// Configuration for generating key files for a new user identity.
+// Hack to work around Vec special handling in clap
+type VecBytes = Vec<u8>;
+/// Configuration for generating key files for a new user identity
 #[derive(Debug, Parser)]
 pub struct Config {
-    /// Optional FogURL for the accounts
-    #[clap(short, long, env = "MC_ACCT")]
-    pub acct: Option<String>,
+    /// Fog Report URL
+    #[clap(long, env = "MC_FOG_REPORT_URL")]
+    pub fog_report_url: Option<String>,
 
-    /// Desired name of keyfiles e.g. 'alice' -> alice.pub, alice.bin.
-    #[clap(short, long, env = "MC_NAME")]
-    pub name: String,
+    /// Fog Report ID
+    #[clap(long, env = "MC_FOG_REPORT_ID")]
+    pub fog_report_id: Option<String>,
 
-    /// Root entropy to use, in hex format
-    /// (e.g. 1234567812345678123456781234567812345678123456781234567812345678).
-    #[clap(short, long, parse(try_from_str = hex::FromHex::from_hex), conflicts_with("seed"), env = "MC_ROOT")]
-    pub root: Option<[u8; 32]>,
+    /// Fog Authority subjectPublicKeyInfo, loaded from a PEM root certificate
+    #[clap(long, parse(try_from_str = load_spki_from_pemfile), env = "MC_FOG_AUTHORITY_ROOT")]
+    pub fog_authority_root: Option<VecBytes>,
 
-    /// Seed to use to generate root entropy.
-    #[clap(short, long, conflicts_with("root"), env = "MC_SEED")]
-    pub seed: Option<u8>,
+    /// Fog Authority subjectPublicKeyInfo, encoded in base 64
+    #[clap(long, parse(try_from_str = decode_base64), env = "MC_FOG_AUTHORITY_SPKI")]
+    pub fog_authority_spki: Option<VecBytes>,
 
     /// Output directory, defaults to current directory.
     #[clap(long, env = "MC_OUTPUT_DIR")]
     pub output_dir: Option<PathBuf>,
+
+    /// Seed to use when generating keys (e.g.
+    /// 1234567812345678123456781234567812345678123456781234567812345678).
+    #[clap(short, long, parse(try_from_str = FromHex::from_hex), env = "MC_SEED", default_value = "0101010101010101010101010101010101010101010101010101010101010101")]
+    pub seed: [u8; 32],
 }
 
-impl Config {
-    /// Get or generate root entropy.
-    // This consumes self because it might not be deterministic
-    pub fn get_root_entropy(self) -> [u8; 32] {
-        if let Some(root) = self.root {
-            return root;
-        }
-        if let Some(seed) = self.seed {
-            use rand::Rng;
-            let mut rng: StdRng = SeedableRng::from_seed([seed; 32]);
-            return rng.gen();
-        }
-        use mc_crypto_rand::RngCore;
-        let mut result = [0u8; 32];
-        mc_crypto_rand::McRng::default().fill_bytes(&mut result);
-        result
-    }
+/// Given a path as a string, read the file, parse it as PEM into DER, parse the
+/// DER into x509, and extract the subjectPublicKeyInfo as bytes.
+fn load_spki_from_pemfile(src: &str) -> Result<Vec<u8>, String> {
+    x509_signature::parse_certificate(
+        &pem::parse(fs::read(src).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())?
+            .contents,
+    )
+    .map_err(|e| format!("{:?}", e))
+    .map(|cert| cert.subject_public_key_info().spki().to_vec())
+}
+
+/// Given the spki bytes as base64, decode them
+fn decode_base64(src: &str) -> Result<VecBytes, String> {
+    base64::decode(src).map_err(|e| e.to_string())
 }

@@ -121,24 +121,18 @@ fn main() {
 
     let config = Config::parse();
 
-    // Read account root_entropies from disk
-    let src_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_root_entropies(
+    // Read account keys from disk
+    let src_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_mnemonics(
         config.sample_data_dir.join(Path::new("keys")),
     )
-    .expect("Could not read default root entropies from keys")
-    .iter()
-    .map(AccountKey::from)
-    .collect();
+    .expect("Could not read default mnemonics from keys");
 
-    let dest_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_root_entropies(
+    let dest_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_mnemonics(
         config
             .sample_data_dir
             .join(Path::new(&config.fog_keys_subdir)),
     )
-    .expect("Could not read fog keys")
-    .iter()
-    .map(AccountKey::from)
-    .collect();
+    .expect("Could not read fog keys");
 
     // Open the ledger_db to process the bootstrapped ledger
     log::info!(logger, "Loading ledger");

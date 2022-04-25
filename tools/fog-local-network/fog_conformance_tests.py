@@ -147,7 +147,8 @@ class RemoteWallet:
         with grpc.insecure_channel(self.remote_wallet_host_port) as channel:
             stub = remote_wallet_pb2_grpc.RemoteWalletApiStub(channel)
             response = self._retrying_grpc_request(stub.FreshBalanceCheck, remote_wallet_pb2.FreshBalanceCheckRequest(
-                root_entropy=bytes(key['root_entropy']),
+                mnemonic=key['mnemonic'],
+                account_index = key['account_index'],
                 fog_uri=self.fog_url,
             ))
 
@@ -417,7 +418,6 @@ class FogConformanceTest:
 
         # Report server url
         report_server_url = f'insecure-fog://localhost:{BASE_REPORT_CLIENT_PORT}'
-
         # Get chain and key
 
         root = subprocess.check_output(f"{self.target_dir}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head",
@@ -430,7 +430,7 @@ class FogConformanceTest:
 
         # Create account keys
         print("Creating account keys...")
-        log_and_run_shell(f"cd {self.work_dir} && {self.target_dir}/sample-keys --num 5 --fog-report-url {report_server_url} --fog-authority-root {root}")
+        log_and_run_shell(f"cd {self.work_dir} && {self.target_dir}/sample-keys --num 5 --fog-report-url {report_server_url} --fog-authority-root {root} --fog-report-id \"\"")
         self.keys_dir = os.path.join(self.work_dir, 'keys')
 
         # Creating ledgers

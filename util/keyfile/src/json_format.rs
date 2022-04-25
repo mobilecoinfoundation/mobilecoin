@@ -1,10 +1,6 @@
-//! We mostly try to serialize our types using protobuf,
-//! but early in the project we were using a json-based representation of
-//! account key root entropy. As part of our CD, we maintain the
-//! strategies/test_client code based on this format.
-//!
-//! It is NOT RECOMMENDED to use this for new code, please use protobuf
-//! RootIdentity This is only being used in the .json files.
+//! JSON formats for private keys together with fog data.
+//! Files formatted in this way are sufficient to derive an account key in
+//! a self-contained way without any context, which is useful for many tools.
 
 use mc_account_keys::{RootEntropy, RootIdentity};
 use serde::{Deserialize, Serialize};
@@ -14,9 +10,9 @@ use serde::{Deserialize, Serialize};
 pub struct RootIdentityJson {
     /// Root entropy used to derive a user's private keys.
     pub root_entropy: [u8; 32],
-    /// User's account server, if any.
+    /// User's fog url, if any.
     pub fog_url: String,
-    /// User's report id
+    /// User's report id, if any.
     pub fog_report_id: String,
     /// User's fog authority subjectPublicKeyInfo bytes, if any
     pub fog_authority_spki: Vec<u8>,

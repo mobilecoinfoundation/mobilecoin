@@ -27,7 +27,7 @@
 
 use clap::Parser;
 use core::convert::TryFrom;
-use mc_account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX};
+use mc_account_keys::DEFAULT_SUBADDRESS_INDEX;
 use mc_common::logger::create_root_logger;
 use mc_crypto_hashes::{Blake2b256, Digest};
 use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate, RistrettoPublic};
@@ -101,13 +101,10 @@ fn main() {
     let fog_pubkey = RistrettoPublic::try_from(&config.fog_pubkey)
         .expect("Could not parse fog_pubkey as Ristretto");
 
-    // Read user root entropy keys from disk
-    let root_entropies = mc_util_keyfile::keygen::read_default_root_entropies(config.keys)
-        .expect("Could not read root identity files");
-    assert_ne!(0, root_entropies.len());
-
-    // Create account keys from this
-    let account_keys: Vec<AccountKey> = root_entropies.iter().map(AccountKey::from).collect();
+    // Read account keys from disk
+    let account_keys = mc_util_keyfile::keygen::read_default_mnemonics(config.keys)
+        .expect("Could not read mnemonic files");
+    assert_ne!(0, account_keys.len());
 
     // Open the ledger db
     let mut ledger = LedgerDB::open(&config.ledger).expect("Could not open ledger db");
