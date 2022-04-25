@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The MobileCoin Foundation
+// Copyright (c) 2022 The MobileCoin Foundation
 
 // Consensus service configuration data types.
 
@@ -70,4 +70,3 @@ message ConsensusNodeConfig {
     // SCP message signing key.
     external.Ed25519Public scp_message_signing_key = 8;
 }
-
