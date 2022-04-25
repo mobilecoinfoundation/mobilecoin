@@ -66,7 +66,7 @@ pub struct SignatureRctBulletproofs {
     /// struct may derive Default, which is a requirement for serializing
     /// with Prost.
     ///
-    /// Note: This is EMPTY if mixed transactions is enabled
+    /// Note: This is EMPTY if mixed transactions are enabled
     #[prost(bytes, tag = "3")]
     #[digestible(never_omit)]
     pub range_proof_bytes: Vec<u8>,
