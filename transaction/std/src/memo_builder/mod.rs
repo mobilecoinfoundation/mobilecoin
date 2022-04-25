@@ -9,7 +9,10 @@ use core::fmt::Debug;
 use mc_account_keys::PublicAddress;
 use mc_transaction_core::{MemoContext, MemoPayload, NewMemoError};
 
+mod burn_redemption_memo_builder;
 mod rth_memo_builder;
+
+pub use burn_redemption_memo_builder::BurnRedemptionMemoBuilder;
 pub use rth_memo_builder::RTHMemoBuilder;
 
 /// The MemoBuilder trait defines the API that the transaction builder uses

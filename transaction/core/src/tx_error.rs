@@ -5,6 +5,7 @@
 use crate::AmountError;
 use alloc::string::String;
 use displaydoc::Display;
+use mc_account_keys::PublicAddress;
 use mc_crypto_keys::KeyError;
 
 /// An error that occurs when creating a new TxOut
@@ -65,6 +66,12 @@ pub enum NewMemoError {
     OutputsAfterChange,
     /// Changing the fee after the change output is not supported
     FeeAfterChange,
+    /// Invalid recipient address
+    InvalidRecipient(PublicAddress),
+    /// Multiple outputs are not supported
+    MultipleOutputs,
+    /// Missing output
+    MissingOutput,
     /// Other: {0}
     Other(String),
 }
