@@ -85,10 +85,7 @@ impl Default for RTHMemoBuilder {
             total_outlay: 0,
             outlay_token_id: None,
             num_recipients: 0,
-            fee: Amount {
-                value: Mob::MINIMUM_FEE,
-                token_id: Mob::ID,
-            },
+            fee: Amount::new(Mob::MINIMUM_FEE, Mob::ID),
         }
     }
 }
