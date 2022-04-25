@@ -15,7 +15,12 @@ use crate::error::Error;
 use bip39::Mnemonic;
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use mc_api::printable::PrintableWrapper;
-use std::{convert::TryInto, fs::File, io, io::prelude::*, path::Path};
+use std::{
+    convert::TryInto,
+    fs::File,
+    io::{Read, Write},
+    path::Path,
+};
 
 /// Write a user's account details to disk
 pub fn write_keyfile<P: AsRef<Path>>(
@@ -44,7 +49,7 @@ pub fn read_root_entropy_keyfile<P: AsRef<Path>>(path: P) -> Result<RootIdentity
 
 /// Read keyfile data from the given buffer into a legacy `RootIdentity`
 /// structure
-pub fn read_root_entropy_keyfile_data<R: io::Read>(buffer: R) -> Result<RootIdentity, Error> {
+pub fn read_root_entropy_keyfile_data<R: Read>(buffer: R) -> Result<RootIdentity, Error> {
     Ok(serde_json::from_reader::<R, RootIdentityJson>(buffer)?.into())
 }
 
@@ -54,7 +59,7 @@ pub fn read_keyfile<P: AsRef<Path>>(path: P) -> Result<AccountKey, Error> {
 }
 
 /// Read user root identity from any implementor of `Read`
-pub fn read_keyfile_data<R: io::Read>(buffer: R) -> Result<AccountKey, Error> {
+pub fn read_keyfile_data<R: Read>(buffer: R) -> Result<AccountKey, Error> {
     Ok(serde_json::from_reader::<R, UncheckedMnemonicAccount>(buffer)?.try_into()?)
 }
 
@@ -69,7 +74,7 @@ pub fn read_pubfile<P: AsRef<Path>>(path: P) -> Result<PublicAddress, Error> {
 }
 
 /// Read user pubfile from any implementor of `Read`
-pub fn read_pubfile_data<R: std::io::Read>(buffer: &mut R) -> Result<PublicAddress, Error> {
+pub fn read_pubfile_data<R: Read>(buffer: &mut R) -> Result<PublicAddress, Error> {
     let data = {
         let mut data = Vec::new();
         buffer.read_to_end(&mut data)?;
@@ -99,9 +104,7 @@ pub fn read_b58pubfile<P: AsRef<Path>>(path: P) -> Result<PublicAddress, std::io
 }
 
 /// Read user b58 pubfile from any implementor of `Read`
-pub fn read_b58pubfile_data<R: std::io::Read>(
-    buffer: &mut R,
-) -> Result<PublicAddress, std::io::Error> {
+pub fn read_b58pubfile_data<R: Read>(buffer: &mut R) -> Result<PublicAddress, std::io::Error> {
     let data = {
         let mut data = String::new();
         buffer.read_to_string(&mut data)?;
