@@ -28,7 +28,7 @@ fn main() {
     let mut n_files = 0usize;
     for path in env::args().skip(1) {
         print_keyfile_bytes(
-            &fs::read(path.clone()).expect(&format!("Could not read file '{}'", path)),
+            &fs::read(path.clone()).unwrap_or_else(|_| panic!("Could not read file '{}'", path)),
         );
         n_files += 1;
     }
