@@ -2811,18 +2811,9 @@ pub mod transaction_builder_tests {
         let recipient = AccountKey::random(&mut rng);
         let recipient_addr = recipient.default_subaddress();
 
-        let amount1 = Amount {
-            value: 1475 * MILLIMOB_TO_PICOMOB,
-            token_id: Mob::ID,
-        };
-        let change_amount = Amount {
-            value: 128 * MILLIMOB_TO_PICOMOB,
-            token_id: Mob::ID,
-        };
-        let amount2 = Amount {
-            value: 999999,
-            token_id: 2.into(),
-        };
+        let amount1 = Amount::new(1475 * MILLIMOB_TO_PICOMOB, Mob::ID);
+        let change_amount = Amount::new(128 * MILLIMOB_TO_PICOMOB, Mob::ID);
+        let amount2 = Amount::new(999999, 2.into())'
 
         let tx_out1_right_amount = Amount::new(
             amount1.value - change_amount.value - Mob::MINIMUM_FEE,
