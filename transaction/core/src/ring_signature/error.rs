@@ -2,7 +2,7 @@
 
 //! Errors which can occur in connection to ring signatures
 
-use crate::range_proofs::error::Error as RangeProofError;
+use crate::{range_proofs::error::Error as RangeProofError, TokenId};
 use alloc::string::{String, ToString};
 use displaydoc::Display;
 use serde::{Deserialize, Serialize};
@@ -81,6 +81,9 @@ pub enum Error {
 
     /// Missing expected range proofs (expected: {0}, found: {1})
     MissingRangeProofs(usize, usize),
+
+    /// No commitments were found for {0}, this is a logic error
+    NoCommitmentsForTokenId(TokenId),
 }
 
 impl From<mc_util_repr_bytes::LengthMismatch> for Error {

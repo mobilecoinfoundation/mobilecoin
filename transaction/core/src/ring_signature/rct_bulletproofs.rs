@@ -510,10 +510,9 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
                 }))
                 .unzip();
 
-            assert!(
-                !values.is_empty(),
-                "logic error when accumulating commitments for token id"
-            );
+            if values.is_empty() {
+                return Err(Error::NoCommitmentsForTokenId(token_id));
+            }
 
             let (range_proof, _commitments) =
                 generate_range_proofs(&values, &blindings, generator, rng)?;
