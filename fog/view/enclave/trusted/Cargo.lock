@@ -1344,6 +1344,7 @@ dependencies = [
  "cargo-emit",
  "cc",
  "displaydoc",
+ "itertools",
  "mc-util-build-script",
  "pkg-config",
 ]

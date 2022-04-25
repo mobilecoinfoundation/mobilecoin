@@ -8,6 +8,7 @@ readme = "README.md"
 
 [dependencies]
 mc-util-build-script = { path = "../script" }
+itertools = "0.10"
 
 cargo-emit = "0.2.1"
 cc = "1.0"

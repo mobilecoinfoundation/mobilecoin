@@ -3,6 +3,7 @@
 use crate::{SgxEnvironment, SgxMode};
 use cargo_emit::{rustc_link_arg, rustc_link_lib, rustc_link_search};
 use displaydoc::Display;
+use itertools::Itertools;
 use pkg_config::{Config, Error as PkgConfigError, Library};
 use std::{
     collections::HashSet,
@@ -97,10 +98,8 @@ pub fn link_to_sgx_libraries(sgx: &SgxEnvironment) -> Result<(), Error> {
         .cargo_metadata(false)
         .env_metadata(true);
 
-    // We want to propagate any error from `probe()`. This means that we must
-    // collect the Results prior to iterating on them, since a IntoIterator for
-    // Result<R, E> will omit any errors.
-    // https://stackoverflow.com/questions/59852161/how-to-handle-result-in-flat-map/59852696#59852696
+    // NB: `flat_map()` doesn't work here because Result::IntoIterator omits
+    // Errors
     let lib_paths = if sgx.sgx_mode() == SgxMode::Simulation {
         SGX_SIMULATION_LIBS
     } else {
@@ -108,10 +107,8 @@ pub fn link_to_sgx_libraries(sgx: &SgxEnvironment) -> Result<(), Error> {
     }
     .iter()
     .map(|libname| Ok(config.probe(libname)?.link_paths))
-    .collect::<Result<Vec<Vec<PathBuf>>, PkgConfigError>>()?
-    .into_iter()
-    .flatten()
-    .collect::<HashSet<PathBuf>>();
+    .flatten_ok()
+    .collect::<Result<HashSet<PathBuf>, PkgConfigError>>()?;
 
     for path in lib_paths {
         if sgx.sgx_mode() == SgxMode::Simulation {
