@@ -6,7 +6,6 @@ edition = "2018"
 
 [features]
 test_utils = ["rand"]
-
 # The migration_support feature exposes some internals that should only be used by the `mc-ledger-migration` tool.
 migration_support = []
 
@@ -34,5 +33,6 @@ mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-multisig = { path = "../../crypto/multisig" }
 mc-crypto-rand = { path = "../../crypto/rand" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
+
 rand = "0.8"
 tempdir = "0.3"
