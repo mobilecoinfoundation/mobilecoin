@@ -187,6 +187,11 @@ impl ClientApiService {
         let mut response = ConsensusNodeConfig::new();
         response.set_minting_trust_root((&self.enclave.get_minting_trust_root()?).into());
         response.set_token_config_map(token_config_map);
+
+        if let Some(governors_signature) = tokens_config.governors_signature.as_ref() {
+            response.set_governors_signature(governors_signature.into());
+        }
+
         Ok(response)
     }
 }

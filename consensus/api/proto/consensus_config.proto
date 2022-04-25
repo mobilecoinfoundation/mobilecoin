@@ -52,6 +52,7 @@ message ConsensusNodeConfig {
     // token id -> configuration map.
     map<uint64, TokenConfig> token_config_map = 2;
 
-    // TODO Governors signature?
+    // Governors signature.
+    external.Ed25519Signature governors_signature = 3;
 }
 
