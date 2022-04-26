@@ -1592,12 +1592,9 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_init_1jni(
         // write memos if block_version is large enough that memos are supported.
         // If block version is < 2, then transaction builder will filter out memos.
         let memo_builder_box: Box<dyn MemoBuilder + Send + Sync> =
-        env.take_rust_field(memo_builder_box, RUST_OBJ_FIELD)?;
-        let tx_builder = TransactionBuilder::new_with_box(
-            block_version,
-            fog_resolver.clone(),
-            memo_builder_box,
-        );
+            env.take_rust_field(memo_builder_box, RUST_OBJ_FIELD)?;
+        let tx_builder =
+            TransactionBuilder::new_with_box(block_version, fog_resolver.clone(), memo_builder_box);
 
         Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, tx_builder)?)
     })
