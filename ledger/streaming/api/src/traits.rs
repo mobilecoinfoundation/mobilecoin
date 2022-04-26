@@ -1,14 +1,14 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::{BlockStreamComponents, Result};
+use crate::Result;
 use futures::{Future, Stream};
-use mc_transaction_core::BlockIndex;
+use mc_transaction_core::{BlockData, BlockIndex};
 use std::ops::Range;
 
 /// A stream of blocks with associated data.
 pub trait BlockStream {
     /// The specific type of stream.
-    type Stream<'s>: Stream<Item = Result<BlockStreamComponents>> + 's
+    type Stream<'s>: Stream<Item = Result<BlockData>> + 's
     where
         Self: 's;
 
@@ -21,11 +21,11 @@ pub trait BlockStream {
 /// A helper that can fetch blocks on demand.
 pub trait BlockFetcher {
     /// Future for fetching single blocks.
-    type Single<'s>: Future<Output = Result<BlockStreamComponents>> + 's
+    type Single<'s>: Future<Output = Result<BlockData>> + 's
     where
         Self: 's;
     /// Stream for fetching multiple blocks.
-    type Multiple<'s>: Stream<Item = Result<BlockStreamComponents>> + 's
+    type Multiple<'s>: Stream<Item = Result<BlockData>> + 's
     where
         Self: 's;
 

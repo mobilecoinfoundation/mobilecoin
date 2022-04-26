@@ -11,7 +11,7 @@ use mc_common::{
 };
 use mc_consensus_scp::{GenericNodeId, QuorumSet, QuorumSetMember, SlotIndex};
 use mc_ledger_streaming_api::{
-    BlockStream, BlockStreamComponents, Error as StreamError, Result as StreamResult,
+    BlockData, BlockStream, Error as StreamError, Result as StreamResult,
 };
 use mc_transaction_core::BlockID;
 use std::future;
@@ -46,7 +46,7 @@ pub struct SCPValidationState<ID: GenericNodeId + Send = NodeID> {
     local_quorum_set: QuorumSet<ID>,
 
     /// Highest slot that a given node has externalized.
-    slots_to_externalized_blocks: HashMap<SlotIndex, HashMap<ID, BlockStreamComponents>>,
+    slots_to_externalized_blocks: HashMap<SlotIndex, HashMap<ID, BlockData>>,
 
     /// Highest block externalized
     highest_slot_index: SlotIndex,
@@ -91,10 +91,10 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
         }
     }
 
-    /// Fill slot with received component for certain block_height. If we've
+    /// Fill slot with received BlockData for certain block_height. If we've
     /// already recorded a block for that slot, discard it.
-    pub fn update_slot(&mut self, node_id: ID, component: BlockStreamComponents) {
-        let index = component.block_data.block().index;
+    pub fn update_slot(&mut self, node_id: ID, block_data: BlockData) {
+        let index = block_data.block().index;
 
         // If we've already externalized a block at this index, ignore it
         if index <= self.highest_slot_index && self.highest_slot_index > 0 {
@@ -103,7 +103,7 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
 
         // Otherwise associate it with the node it was received from
         let node_map = self.slots_to_externalized_blocks.entry(index).or_default();
-        node_map.insert(node_id, component);
+        node_map.insert(node_id, block_data);
     }
 
     /// After block is externalized, remove records at previous slot
@@ -117,7 +117,7 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
     }
 
     /// Determine if we can externalize a block, if so return the block
-    pub fn attempt_externalize_block(&mut self) -> Option<BlockStreamComponents> {
+    pub fn attempt_externalize_block(&mut self) -> Option<BlockData> {
         // Set our target index one block above the highest block externalized
         // unless we're recording the genesis block
         let mut index = self.highest_slot_index + 1;
@@ -136,9 +136,9 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
         // quorum slice for this node
         let mut selected_node = None;
         if let Some(block_id) = self.find_quorum(&self.local_quorum_set, index) {
-            let components = self.slots_to_externalized_blocks.get(&index).unwrap();
-            for (node_id, component) in components {
-                if &component.block_data.block().id == block_id {
+            let blocks = self.slots_to_externalized_blocks.get(&index).unwrap();
+            for (node_id, block_data) in blocks {
+                if &block_data.block().id == block_id {
                     selected_node = Some(node_id.clone());
                     break;
                 }
@@ -147,7 +147,7 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
 
         // If we found quorum and a matching block, return it
         if let Some(selected_node) = selected_node {
-            let mut components = self.slots_to_externalized_blocks.remove(&index).unwrap();
+            let mut blocks = self.slots_to_externalized_blocks.remove(&index).unwrap();
             log::trace!(
                 self.logger,
                 "Node: {} found a quorum slice for block {}",
@@ -158,7 +158,7 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
             // Increment our targets
             self.highest_slot_index += 1;
             self.num_blocks_externalized += 1;
-            return components.remove(&selected_node);
+            return blocks.remove(&selected_node);
         }
 
         // If not let consumers know
@@ -182,10 +182,10 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
                 // what block they externalized
                 match member {
                     QuorumSetMember::Node(node_id) => {
-                        if let Some(component) = tracked_blocks.get(node_id) {
+                        if let Some(block_data) = tracked_blocks.get(node_id) {
                             // Record a vote for the block externalized
                             ballot_map
-                                .entry(&component.block_data.block().id)
+                                .entry(&block_data.block().id)
                                 .and_modify(|vec| vec.push(member))
                                 .or_insert_with(|| vec![member]);
                             nodes_counted += 1;
@@ -247,7 +247,7 @@ impl<US: BlockStream + 'static, ID: GenericNodeId + Send> BlockStream for SCPVal
     type Stream<'s>
     where
         ID: 's,
-    = impl Stream<Item = StreamResult<BlockStreamComponents>> + 's;
+    = impl Stream<Item = StreamResult<BlockData>> + 's;
 
     /// Get block stream that performs validation
     fn get_block_stream(&self, starting_height: u64) -> StreamResult<Self::Stream<'_>> {
@@ -258,9 +258,7 @@ impl<US: BlockStream + 'static, ID: GenericNodeId + Send> BlockStream for SCPVal
             log::info!(self.logger, "Generating new stream from {:?}", node_id);
             let us = upstream.get_block_stream(starting_height).unwrap();
             let peer_id = node_id.clone();
-            merged_streams.push(Box::pin(
-                us.map(move |component| (peer_id.clone(), component)),
-            ));
+            merged_streams.push(Box::pin(us.map(move |result| (peer_id.clone(), result))));
         }
 
         // Create SCP validation state object and insert it into stateful stream
@@ -270,14 +268,14 @@ impl<US: BlockStream + 'static, ID: GenericNodeId + Send> BlockStream for SCPVal
         }
 
         Ok(merged_streams
-            .scan(validation_state, |scp_state, (node_id, component)| {
-                if let Ok(component) = component {
-                    // Put component into underlying state
-                    scp_state.update_slot(node_id, component);
+            .scan(validation_state, |scp_state, (node_id, result)| {
+                if let Ok(block_data) = result {
+                    // Put block into underlying state
+                    scp_state.update_slot(node_id, block_data);
 
                     // Attempt to externalize it if there's quorum
-                    if let Some(component) = scp_state.attempt_externalize_block() {
-                        return future::ready(Some(Ready::Ready(Ok(component))));
+                    if let Some(block_data) = scp_state.attempt_externalize_block() {
+                        return future::ready(Some(Ready::Ready(Ok(block_data))));
                     }
                 }
 
@@ -291,9 +289,9 @@ impl<US: BlockStream + 'static, ID: GenericNodeId + Send> BlockStream for SCPVal
                 future::ready(Some(Ready::NotReady))
             })
             .filter_map(|result| {
-                // If the component is in ready state forward it to next stream
-                if let Ready::Ready(component) = result {
-                    return future::ready(Some(component));
+                // If the block data is in ready state forward it to next stream
+                if let Ready::Ready(result) = result {
+                    return future::ready(Some(result));
                 }
 
                 // If no ready message was received don't send anything onwards
@@ -308,43 +306,41 @@ mod tests {
     use super::*;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_consensus_scp::test_utils::test_node_id;
-    use mc_ledger_streaming_api::test_utils::{make_components, stream};
+    use mc_ledger_streaming_api::test_utils::{make_blocks, MockStream};
     use mc_transaction_core::BlockIndex;
 
     #[test_with_logger]
     fn scp_validates_nodes_in_quorum(logger: Logger) {
-        let mut nodes = Vec::new();
-        for i in 1..10 {
-            nodes.push(test_node_id(i));
-        }
+        let nodes = (1..10).map(test_node_id).collect::<Vec<_>>();
 
         let quorum_set = QuorumSet::new(
             5,
             vec![
-                QuorumSetMember::Node(nodes.get(0).unwrap().clone()),
-                QuorumSetMember::Node(nodes.get(1).unwrap().clone()),
-                QuorumSetMember::Node(nodes.get(2).unwrap().clone()),
-                QuorumSetMember::Node(nodes.get(3).unwrap().clone()),
+                QuorumSetMember::Node(nodes[0].clone()),
+                QuorumSetMember::Node(nodes[1].clone()),
+                QuorumSetMember::Node(nodes[2].clone()),
+                QuorumSetMember::Node(nodes[3].clone()),
                 QuorumSetMember::InnerSet(QuorumSet::new(
                     2,
                     vec![
-                        QuorumSetMember::Node(nodes.get(4).unwrap().clone()),
-                        QuorumSetMember::Node(nodes.get(5).unwrap().clone()),
-                        QuorumSetMember::Node(nodes.get(6).unwrap().clone()),
+                        QuorumSetMember::Node(nodes[4].clone()),
+                        QuorumSetMember::Node(nodes[5].clone()),
+                        QuorumSetMember::Node(nodes[6].clone()),
                     ],
                 )),
                 QuorumSetMember::InnerSet(QuorumSet::new(
                     2,
                     vec![
-                        QuorumSetMember::Node(nodes.get(7).unwrap().clone()),
-                        QuorumSetMember::Node(nodes.get(8).unwrap().clone()),
+                        QuorumSetMember::Node(nodes[7].clone()),
+                        QuorumSetMember::Node(nodes[8].clone()),
                     ],
                 )),
             ],
         );
         assert!(quorum_set.is_valid());
-        let components = make_components(100);
-        let s = stream::mock_stream_from_components(components);
+
+        let blocks = make_blocks(100);
+        let s = MockStream::from_blocks(blocks);
         let mut upstreams = HashMap::new();
         for i in 0..9 {
             upstreams.insert(nodes.get(i).unwrap().clone(), s.clone());
@@ -356,8 +352,8 @@ mod tests {
         futures::executor::block_on(async move {
             let mut scp_stream = validator.get_block_stream(0).unwrap();
             let mut index: BlockIndex = 0;
-            while let Some(component) = scp_stream.next().await {
-                index = component.unwrap().block_data.block().index;
+            while let Some(result) = scp_stream.next().await {
+                index = result.unwrap().block().index;
             }
             assert_eq!(index, 99)
         });
