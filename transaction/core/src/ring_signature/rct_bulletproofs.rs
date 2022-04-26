@@ -283,10 +283,9 @@ impl SignatureRctBulletproofs {
                     })
                     .collect();
 
-                assert!(
-                    !commitments.is_empty(),
-                    "logic error when accumulating commitments for token id"
-                );
+                if commitments.is_empty() {
+                    return Err(Error::NoCommitmentsForTokenId(*token_id));
+                }
 
                 let range_proof = RangeProof::from_bytes(range_proof)
                     .map_err(|_e| Error::RangeProofDeserialization)?;
