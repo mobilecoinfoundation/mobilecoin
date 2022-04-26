@@ -834,7 +834,7 @@ mod rct_bulletproofs_tests {
                 let token_id = TokenId::from(token_ids[i % token_ids.len()]);
                 let generator = generator_cache.get(token_id);
 
-                let commitment = CompressedCommitment::new(value, blinding, &generator);
+                let commitment = CompressedCommitment::new(value, blinding, generator);
 
                 let real_index = rng.next_u64() as usize % (num_mixins + 1);
                 ring.insert(real_index, (onetime_public_key, commitment));

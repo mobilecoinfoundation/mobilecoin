@@ -221,7 +221,7 @@ mod test {
             10,
             Some(fqdn),
             Some(fog_report_id),
-            Some(&fog_authority_spki),
+            Some(fog_authority_spki),
             DEFAULT_SEED,
         )
         .expect("Error writing default keyfiles to dir1");
@@ -230,7 +230,7 @@ mod test {
             10,
             Some(fqdn),
             Some(fog_report_id),
-            Some(&fog_authority_spki),
+            Some(fog_authority_spki),
             DEFAULT_SEED,
         )
         .expect("Error writing default keyfiles to dir2");
