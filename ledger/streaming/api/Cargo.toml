@@ -8,7 +8,7 @@ build = "build.rs"
 edition = "2018"
 
 [features]
-test_utils = []
+test_utils = ["mc-consensus-scp/test_utils"]
 
 [dependencies]
 mc-api = { path = "../../../api" }
@@ -33,9 +33,5 @@ cargo-emit = "0.2"
 
 [dev-dependencies]
 mc-common = { path = "../../../common", features = ["loggers"] }
+mc-consensus-scp = { path = "../../../consensus/scp", features = ["test_utils"] }
 mc-ledger-streaming-api = { path = "../api", features = ["test_utils"] }
-mc-util-from-random = { path = "../../../util/from-random" }
-
-rand = "0.8"
-rand_core = "0.6"
-rand_hc = "0.3"

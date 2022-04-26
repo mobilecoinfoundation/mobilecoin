@@ -9,14 +9,10 @@ use crate::ProtoWriter;
 #[cfg(feature = "s3")]
 use crate::S3ClientProtoWriter;
 use futures::{Stream, StreamExt};
-use mc_api::{
-    block_num_to_s3block_path,
-    blockchain::{ArchiveBlock, ArchiveBlocks},
-    merged_block_num_to_s3block_path,
-};
+use mc_api::{block_num_to_s3block_path, merged_block_num_to_s3block_path};
 use mc_common::logger::{log, Logger};
 use mc_ledger_db::Ledger;
-use mc_ledger_streaming_api::{components_to_archive_blocks, BlockStreamComponents, Error, Result};
+use mc_ledger_streaming_api::{ArchiveBlock, ArchiveBlocks, BlockData, Error, Result};
 #[cfg(any(feature = "local", feature = "s3"))]
 use std::path::PathBuf;
 use std::{collections::VecDeque, convert::TryFrom};
@@ -104,7 +100,7 @@ impl<W: ProtoWriter, L: Ledger> ArchiveBlockSink<W, L> {
     /// The returned value is a `Stream` where the `Output` type is
     /// `Result<()>`; it is executed entirely for its side effects, while
     /// propagating errors back to the caller.
-    pub fn consume<'s, S: Stream<Item = Result<BlockStreamComponents>>>(
+    pub fn consume<'s, S: Stream<Item = Result<BlockData>>>(
         &'s mut self,
         stream: S,
     ) -> impl Stream<Item = Result<()>> + 's
@@ -119,10 +115,10 @@ impl<W: ProtoWriter, L: Ledger> ArchiveBlockSink<W, L> {
             let mut writer = writer.clone();
             async move {
                 match result {
-                    Ok(components) => {
-                        let index = components.block_data.block().index;
+                    Ok(block_data) => {
+                        let index = block_data.block().index;
                         let writer_mut = &mut writer;
-                        write_single_block(&components, writer_mut).await?;
+                        write_single_block(&block_data, writer_mut).await?;
                         maybe_write_merged_blocks(
                             index,
                             merged_blocks_bucket_sizes,
@@ -166,7 +162,6 @@ async fn maybe_write_merged_blocks<'s, W: ProtoWriter, L: Ledger>(
         cache.reserve(bucket_usize);
         while cache.len() < bucket_usize {
             let index = last_index - (cache.len() as u64);
-            // TODO(#1682): Include QuorumSet, VerificationReport.
             // TODO: Switch this blocking call to an async method, or use `spawn_blocking`.
             let block = ledger.get_block_data(index).map_err(|e| {
                 Error::Other(format!(
@@ -174,8 +169,7 @@ async fn maybe_write_merged_blocks<'s, W: ProtoWriter, L: Ledger>(
                     index, e
                 ))
             })?;
-            let components = BlockStreamComponents::new(block, None, None);
-            cache.push_front(components);
+            cache.push_front(block);
         }
 
         write_merged_block(cache.make_contiguous(), bucket, writer).await?;
@@ -183,25 +177,22 @@ async fn maybe_write_merged_blocks<'s, W: ProtoWriter, L: Ledger>(
     Ok(())
 }
 
-async fn write_single_block<W: ProtoWriter>(
-    components: &BlockStreamComponents,
-    writer: &mut W,
-) -> Result<()> {
-    let index = components.block_data.block().index;
-    let proto = ArchiveBlock::from(components);
+async fn write_single_block<W: ProtoWriter>(block_data: &BlockData, writer: &mut W) -> Result<()> {
+    let index = block_data.block().index;
+    let proto = ArchiveBlock::from(block_data);
     let dest = block_num_to_s3block_path(index);
     writer.upload(&proto, &dest).await
 }
 
 async fn write_merged_block<W: ProtoWriter>(
-    items: &[BlockStreamComponents],
+    items: &[BlockData],
     bucket_size: u64,
     writer: &mut W,
 ) -> Result<()> {
     assert_eq!(items.len() as u64, bucket_size);
     let indexes = items
         .iter()
-        .map(|b| b.block_data.block().index)
+        .map(|block_data| block_data.block().index)
         .collect::<Vec<_>>();
     debug_assert!(
         indexes.windows(2).all(|w| w[0] == w[1] - 1),
@@ -209,7 +200,7 @@ async fn write_merged_block<W: ProtoWriter>(
         "Expected contiguous block indexes, got {:?}",
         indexes,
     );
-    let proto: ArchiveBlocks = components_to_archive_blocks(items);
+    let proto = ArchiveBlocks::from(items);
     let dest = merged_block_num_to_s3block_path(bucket_size, indexes[0]);
     writer.upload(&proto, &dest).await
 }
@@ -221,7 +212,7 @@ mod tests {
     use mc_common::{logger::test_with_logger, HashMap};
     use mc_ledger_db::MockLedger;
     use mc_ledger_streaming_api::{
-        test_utils::{make_components, MockStream},
+        test_utils::{make_blocks, MockStream},
         BlockStream,
     };
     use std::{
@@ -273,12 +264,12 @@ mod tests {
     fn exercise_basic(logger: Logger) {
         let writer = MockWriter::new();
         let writer_calls = writer.calls.clone();
-        let items = make_components(11);
-        let source = MockStream::from_components(items.clone());
+        let items = make_blocks(11);
+        let source = MockStream::from_blocks(items.clone());
         let mut ledger = MockLedger::new();
         ledger
             .expect_get_block_data()
-            .returning(move |index| Ok(items[index as usize].block_data.clone()));
+            .returning(move |index| Ok(items[index as usize].clone()));
 
         let mut sink = ArchiveBlockSink::new(writer, ledger, [10].to_vec(), logger);
 
@@ -296,12 +287,12 @@ mod tests {
     fn propagates_ledger_errors(logger: Logger) {
         let writer = MockWriter::new();
         let writer_calls = writer.calls.clone();
-        let items = make_components(11);
-        let source = MockStream::from_components(items.clone());
+        let items = make_blocks(11);
+        let source = MockStream::from_blocks(items.clone());
         let mut ledger = MockLedger::new();
         ledger.expect_get_block_data().returning(move |index| {
             if index < 5 {
-                Ok(items[index as usize].block_data.clone())
+                Ok(items[index as usize].clone())
             } else {
                 Err(mc_ledger_db::Error::NotFound)
             }
@@ -330,16 +321,15 @@ mod tests {
     fn propagates_stream_errors(logger: Logger) {
         let writer = MockWriter::new();
         let writer_calls = writer.calls.clone();
-        let mut items: Vec<Result<BlockStreamComponents>> =
-            make_components(11).into_iter().map(Ok).collect();
+        let mut items: Vec<Result<BlockData>> = make_blocks(11).into_iter().map(Ok).collect();
         items[1] = Err(Error::Other("test".to_string()));
         items[8] = Err(Error::Other("test".to_string()));
-        let source = MockStream::from_items(items.clone());
+        let source = MockStream::new(items.clone());
         let mut ledger = MockLedger::new();
         ledger.expect_get_block_data().returning(move |index| {
             items[index as usize]
                 .as_ref()
-                .map(|c| c.block_data.clone())
+                .map(|block_data| block_data.clone())
                 .map_err(|_| mc_ledger_db::Error::NotFound)
         });
 

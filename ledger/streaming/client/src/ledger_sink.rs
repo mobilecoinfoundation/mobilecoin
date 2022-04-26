@@ -6,7 +6,7 @@ use futures::stream::{Stream, StreamExt};
 use mc_common::logger::{log, Logger};
 use mc_ledger_db::Ledger;
 use mc_ledger_streaming_api::{
-    BlockStream, BlockStreamComponents, Error as StreamError, Result as StreamResult,
+    BlockData, BlockStream, Error as StreamError, Result as StreamResult,
 };
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
@@ -31,10 +31,10 @@ pub struct DbStream<US: BlockStream + 'static, L: Ledger + 'static> {
 /// Object to manage the state of the ledger sink process
 struct SinkManager {
     /// Channel to send blocks ledger sink thread to be synced
-    sender: Sender<BlockStreamComponents>,
+    sender: Sender<BlockData>,
 
     /// Channel to receive blocks that have been synced
-    receiver: Receiver<BlockStreamComponents>,
+    receiver: Receiver<BlockData>,
 
     /// Last block we've received from the upstream
     last_block_received: u64,
@@ -52,8 +52,8 @@ struct SinkManager {
 impl SinkManager {
     /// Create new manager for the block sink
     fn new(
-        sender: Sender<BlockStreamComponents>,
-        receiver: Receiver<BlockStreamComponents>,
+        sender: Sender<BlockData>,
+        receiver: Receiver<BlockData>,
         last_block_received: u64,
         last_block_synced: u64,
         sync_start_height: u64,
@@ -81,7 +81,7 @@ impl SinkManager {
 }
 
 impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for DbStream<US, L> {
-    type Stream<'s> = impl Stream<Item = StreamResult<BlockStreamComponents>> + 's;
+    type Stream<'s> = impl Stream<Item = StreamResult<BlockData>> + 's;
 
     /// Get block stream that performs block sinking
     fn get_block_stream(&self, starting_height: u64) -> StreamResult<Self::Stream<'_>> {
@@ -123,12 +123,12 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for DbS
         // Create the stream
         let output_stream =
             futures::stream::unfold((stream, manager), |(mut stream, mut manager)| async move {
-                if let Some(component) = stream.next().await {
-                    if let Ok(component) = component {
-                        manager.last_block_received = component.block_data.block().index;
+                if let Some(result) = stream.next().await {
+                    if let Ok(block_data) = result {
+                        manager.last_block_received = block_data.block().index;
                         if manager.can_start_sync() {
                             // If we're above what's in the ledger, starting syncing the blocks
-                            if manager.sender.send(component).await.is_err() {
+                            if manager.sender.send(block_data).await.is_err() {
                                 //TODO: Discuss whether thread error should stop stream or
                                 // self-heal TODO: it's
                                 // possible just to restart the upstream & thread here
@@ -141,10 +141,10 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for DbS
                             }
                         } else {
                             // Else pass them through
-                            return Some((Ok(component), (stream, manager)));
+                            return Some((Ok(block_data), (stream, manager)));
                         }
                     } else {
-                        return Some((component, (stream, manager)));
+                        return Some((result, (stream, manager)));
                     }
                 } else {
                     // If we're behind, wait for the rest of the blocks to sync then end
@@ -158,9 +158,9 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for DbS
                         return None;
                     }
                 }
-                if let Some(component) = manager.receiver.recv().await {
-                    manager.last_block_synced = component.block_data.block().index;
-                    Some((Ok(component), (stream, manager)))
+                if let Some(block_data) = manager.receiver.recv().await {
+                    manager.last_block_synced = block_data.block().index;
+                    Some((Ok(block_data), (stream, manager)))
                 } else {
                     // TODO: Discuss whether we want to heal the stream or not
                     log::error!(manager.logger, "sink thread stopped, ending stream");
@@ -186,42 +186,34 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> DbStream<US, L> {
 fn start_sink_thread(
     mut ledger: impl Ledger + 'static,
     logger: Logger,
-) -> (
-    Sender<BlockStreamComponents>,
-    Receiver<BlockStreamComponents>,
-) {
+) -> (Sender<BlockData>, Receiver<BlockData>) {
     // Initialize sending and receiving channels
     let (send_out, rcv_out) = channel(10000);
-    let (send_in, mut rcv_in): (
-        Sender<BlockStreamComponents>,
-        Receiver<BlockStreamComponents>,
-    ) = channel(10000);
+    let (send_in, mut rcv_in) = channel::<BlockData>(10000);
 
     // Launch ledger sink thread
     std::thread::spawn(move || {
-        while let Some(component) = rcv_in.blocking_recv() {
-            let signature = component.block_data.signature().as_ref().cloned();
+        while let Some(block_data) = rcv_in.blocking_recv() {
+            let signature = block_data.signature().as_ref().cloned();
 
             // If there's an error syncing the blocks, end thread
-            if let Err(err) = ledger.append_block(
-                component.block_data.block(),
-                component.block_data.contents(),
-                signature,
-            ) {
+            if let Err(err) =
+                ledger.append_block(block_data.block(), block_data.contents(), signature)
+            {
                 log::error!(
                     logger,
                     "Error {:?} occurred during attempt to write block {}",
                     err,
-                    component.block_data.block().index,
+                    block_data.block().index,
                 );
                 break;
             };
 
             // If message channels are broken, end thread
-            if let Err(err) = send_out.try_send(component) {
+            if let Err(err) = send_out.try_send(block_data) {
                 log::error!(
                     logger,
-                    "sending component to stream failed with error {:?}",
+                    "sending block data to stream failed with error {:?}",
                     err
                 );
                 break;
@@ -237,20 +229,20 @@ mod tests {
     use super::*;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_ledger_db::test_utils::get_mock_ledger;
-    use mc_ledger_streaming_api::test_utils::{make_components, stream};
+    use mc_ledger_streaming_api::test_utils::{make_blocks, MockStream};
 
     #[test_with_logger]
     fn test_sink_from_start_block(logger: Logger) {
-        let components = make_components(420);
-        let upstream = stream::mock_stream_from_components(components);
+        let blocks = make_blocks(420);
+        let upstream = MockStream::from_blocks(blocks);
         let dest_ledger = get_mock_ledger(0);
         let bs = DbStream::new(upstream, dest_ledger, true, logger);
         let mut go_stream = bs.get_block_stream(0).unwrap();
 
         futures::executor::block_on(async move {
             let mut count = 0;
-            while let Some(component) = go_stream.next().await {
-                assert_eq!(component.unwrap().block_data.block().index, count);
+            while let Some(block_data) = go_stream.next().await {
+                assert_eq!(block_data.unwrap().block().index, count);
                 count += 1;
             }
 
@@ -260,16 +252,16 @@ mod tests {
 
     #[test_with_logger]
     fn test_blocks_lower_than_stored_pass_through(logger: Logger) {
-        let components = make_components(420);
-        let upstream = stream::mock_stream_from_components(components);
+        let blocks = make_blocks(420);
+        let upstream = MockStream::from_blocks(blocks);
         let dest_ledger = get_mock_ledger(42);
         let bs = DbStream::new(upstream, dest_ledger, true, logger);
         let mut block_stream = bs.get_block_stream(20).unwrap();
 
         futures::executor::block_on(async move {
             let mut count = 20;
-            while let Some(component) = block_stream.next().await {
-                assert_eq!(component.unwrap().block_data.block().index, count);
+            while let Some(block_data) = block_stream.next().await {
+                assert_eq!(block_data.unwrap().block().index, count);
                 count += 1;
             }
 
@@ -279,16 +271,16 @@ mod tests {
 
     #[test_with_logger]
     fn test_can_start_at_arbitrary_valid_height(logger: Logger) {
-        let components = make_components(420);
-        let upstream = stream::mock_stream_from_components(components);
+        let blocks = make_blocks(420);
+        let upstream = MockStream::from_blocks(blocks);
         let dest_ledger = get_mock_ledger(42);
         let bs = DbStream::new(upstream, dest_ledger, true, logger);
         let mut block_stream = bs.get_block_stream(42).unwrap();
 
         futures::executor::block_on(async move {
             let mut count = 42;
-            while let Some(component) = block_stream.next().await {
-                assert_eq!(component.unwrap().block_data.block().index, count);
+            while let Some(block_data) = block_stream.next().await {
+                assert_eq!(block_data.unwrap().block().index, count);
                 count += 1;
             }
 
@@ -298,8 +290,8 @@ mod tests {
 
     #[test_with_logger]
     fn test_stream_creation_fails_if_requesting_blocks_above_ledger_height(logger: Logger) {
-        let components = make_components(3);
-        let upstream = stream::mock_stream_from_components(components);
+        let blocks = make_blocks(3);
+        let upstream = MockStream::from_blocks(blocks);
         let dest_ledger = get_mock_ledger(1);
         let bs = DbStream::new(upstream, dest_ledger, true, logger);
         let block_stream = bs.get_block_stream(2);

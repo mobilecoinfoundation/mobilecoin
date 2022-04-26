@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! A sink that consumes a [Stream] of [SubscribeResponse]s and publishes the
+//! A sink that consumes a [Stream] of [ArchiveBlock]s and publishes the
 //! results over gRPC [LedgerUpdates].
 
 use flo_stream::{ExpiringPublisher, MessagePublisher, Subscriber};
@@ -8,23 +8,23 @@ use futures::{lock::Mutex, FutureExt, Stream, StreamExt, TryStreamExt};
 use grpcio::ServerStreamingSink;
 use mc_common::logger::Logger;
 use mc_ledger_streaming_api::{
-    streaming_blocks::{SubscribeRequest, SubscribeResponse},
+    streaming_blocks::SubscribeRequest,
     streaming_blocks_grpc::{create_ledger_updates, LedgerUpdates},
-    Result,
+    ArchiveBlock, Result,
 };
 use mc_util_grpc::ConnectionUriGrpcioServer;
 use mc_util_uri::ConnectionUri;
 use std::sync::Arc;
 
-/// A sink that consumes a [Stream] of [SubscribeResponse]s and publishes the
+/// A sink that consumes a [Stream] of [ArchiveBlock]s and publishes the
 /// results over gRPC [LedgerUpdates].
 pub struct GrpcServerSink {
-    publisher: Arc<Mutex<ExpiringPublisher<SubscribeResponse>>>,
+    publisher: Arc<Mutex<ExpiringPublisher<ArchiveBlock>>>,
     logger: Logger,
 }
 
 impl GrpcServerSink {
-    /// Instantiate a sink that publishes [SubscribeResponse]s over the
+    /// Instantiate a sink that publishes [ArchiveBlock]s over the
     /// [LedgerUpdates] gRPC API.
     pub fn new(logger: Logger) -> Self {
         Self {
@@ -34,13 +34,13 @@ impl GrpcServerSink {
         }
     }
 
-    /// Consume a [Stream] of [SubscribeResponse]s.
+    /// Consume a [Stream] of [ArchiveBlock]s.
     /// The returned value is a `Stream` where the `Output` type is
     /// `Result<()>`; it is executed entirely for its side effects, while
     /// propagating errors back to the caller.
     pub fn consume_protos<'a>(
         &self,
-        stream: impl Stream<Item = Result<SubscribeResponse>> + 'a,
+        stream: impl Stream<Item = Result<ArchiveBlock>> + 'a,
     ) -> impl Stream<Item = Result<()>> + 'a {
         let publisher = self.publisher.clone();
         stream.and_then(move |data| {
@@ -98,11 +98,11 @@ impl GrpcServerSink {
 
 #[derive(Clone)]
 struct PublishHelper {
-    subscriber: Subscriber<SubscribeResponse>,
+    subscriber: Subscriber<ArchiveBlock>,
 }
 
 impl PublishHelper {
-    pub fn new(subscriber: Subscriber<SubscribeResponse>) -> Self {
+    pub fn new(subscriber: Subscriber<ArchiveBlock>) -> Self {
         Self { subscriber }
     }
 }
@@ -112,19 +112,14 @@ impl LedgerUpdates for PublishHelper {
         &mut self,
         ctx: grpcio::RpcContext,
         req: SubscribeRequest,
-        sink: ServerStreamingSink<SubscribeResponse>,
+        sink: ServerStreamingSink<ArchiveBlock>,
     ) {
         let starting_height = req.starting_height;
         let stream = self
             .subscriber
             .clone()
             .skip_while(move |resp| {
-                let block_index = resp
-                    .get_result()
-                    .get_block()
-                    .get_v1()
-                    .get_block()
-                    .get_index();
+                let block_index = resp.get_v1().get_block().get_index();
                 futures::future::ready(block_index < starting_height)
             })
             .map(|resp| Ok((resp, grpcio::WriteFlags::default())));
@@ -164,38 +159,23 @@ mod tests {
 
         executor
             .spawn(async move {
-                let mut response = SubscribeResponse::new();
+                let mut response = ArchiveBlock::new();
 
                 let mut client_1 = TestClient::new(&uri, env.clone());
                 client_1.subscribe().await;
-                response
-                    .mut_result()
-                    .mut_block()
-                    .mut_v1()
-                    .mut_block()
-                    .set_index(0);
+                response.mut_v1().mut_block().set_index(0);
                 sender.try_send(Ok(response.clone())).expect("send failed");
 
                 let mut client_2 = TestClient::new(&uri, env.clone());
                 client_2.subscribe().await;
 
-                response
-                    .mut_result()
-                    .mut_block()
-                    .mut_v1()
-                    .mut_block()
-                    .set_index(1);
+                response.mut_v1().mut_block().set_index(1);
                 sender.try_send(Ok(response.clone())).expect("send failed");
 
                 let mut client_3 = TestClient::new(&uri, env.clone());
                 client_3.subscribe().await;
 
-                response
-                    .mut_result()
-                    .mut_block()
-                    .mut_v1()
-                    .mut_block()
-                    .set_index(2);
+                response.mut_v1().mut_block().set_index(2);
                 sender.try_send(Ok(response.clone())).expect("send failed");
 
                 assert_eq!(3, client_1.response_count());
