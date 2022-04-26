@@ -104,7 +104,7 @@ impl MemoBuilder for BurnRedemptionMemoBuilder {
         }
         self.burn_amount = value;
         self.wrote_burn_memo = true;
-        Ok(BurnRedemptionMemo::new(self.memo_data.clone()).into())
+        Ok(BurnRedemptionMemo::new(self.memo_data).into())
     }
 
     /// Build a memo for a change output (to ourselves).
