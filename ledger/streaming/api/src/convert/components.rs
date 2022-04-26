@@ -55,7 +55,7 @@ mod tests {
 
     #[test]
     fn test_roundtrip() {
-        let contents = BlockContents::new(vec![], vec![]);
+        let contents = BlockContents::default();
         let block = Block::new_origin_block(&[]);
         let block_data = BlockData::new(block, contents, None);
         let quorum_set = make_quorum_set();
