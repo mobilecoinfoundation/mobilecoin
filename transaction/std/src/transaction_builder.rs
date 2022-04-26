@@ -2667,6 +2667,64 @@ pub mod transaction_builder_tests {
             );
         }
 
+        // Happy flow without change
+        {
+            let mut memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
+            memo_builder.enable_destination_memo();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                token_id,
+                fog_resolver.clone(),
+                memo_builder,
+            );
+
+            transaction_builder.set_fee(3).unwrap();
+
+            let input_credentials = get_input_credentials(
+                block_version,
+                Amount {
+                    value: 113,
+                    token_id,
+                },
+                &AccountKey::random(&mut rng),
+                &fog_resolver,
+                &mut rng,
+            );
+            transaction_builder.add_input(input_credentials);
+
+            let (burn_output, _confirmation) = transaction_builder
+                .add_output(110, &burn_address(), &mut rng)
+                .unwrap();
+
+            let tx = transaction_builder.build(&mut rng).expect("build tx");
+
+            assert_eq!(tx.prefix.outputs.len(), 1);
+            assert_eq!(burn_output, tx.prefix.outputs[0]);
+
+            // Test that view key matching works with the burn tx out with burn address view
+            // key
+            let (amount, _) = burn_output
+                .view_key_match(&burn_address_view_private())
+                .unwrap();
+            assert_eq!(amount.value, 110);
+
+            // Burn output should have a burn redemption memo
+            let ss = get_tx_out_shared_secret(
+                &burn_address_view_private(),
+                &RistrettoPublic::try_from(&burn_output.public_key).unwrap(),
+            );
+            let memo = burn_output.e_memo.unwrap().decrypt(&ss);
+            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                MemoType::BurnRedemption(memo) => {
+                    assert_eq!(memo.memo_data(), &[2u8; 64],);
+                }
+                _ => {
+                    panic!("unexpected memo type")
+                }
+            }
+        }
+
         // Happy flow with change
         {
             let mut memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
