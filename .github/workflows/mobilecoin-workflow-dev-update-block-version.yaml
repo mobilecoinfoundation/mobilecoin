@@ -15,7 +15,6 @@ on:
         description: "block_version"
         type: string
         required: true
-        default: '0'
       version:
         description: "release version"
         type: string
