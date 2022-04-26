@@ -295,7 +295,7 @@ fn create_request_code(
     // Generate b58 code
     let mut req = mc_mobilecoind_api::CreateRequestCodeRequest::new();
     req.set_receiver(receiver);
-    if let Some(value) = request.value.clone() {
+    if let Some(value) = request.value {
         req.set_value(u64::from(value));
     }
     if let Some(memo) = request.memo.clone() {
