@@ -2696,6 +2696,9 @@ pub mod transaction_builder_tests {
 
     #[test]
     // Test that sending mixed transactions works
+    // 
+    // This test uses inputs of two different token IDs, paying the fee and creating change with
+    // TokenID1, and "passing through" the second token ID with its full amount as output.
     fn test_mixed_transactions() {
         let mut rng: StdRng = SeedableRng::from_seed([18u8; 32]);
 
