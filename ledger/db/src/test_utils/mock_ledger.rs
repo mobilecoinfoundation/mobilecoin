@@ -311,7 +311,7 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
 /// * `key_images_per_block` - number of key images per block
 /// * `max_token_id` - number of distinct token ids in blocks
 pub fn get_custom_test_ledger_blocks(
-    outputs_per_recipient_per_block: usize,
+    outputs_per_recipient_per_token_per_block: usize,
     num_accounts: usize,
     num_blocks: usize,
     key_images_per_block: usize,
