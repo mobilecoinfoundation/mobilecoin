@@ -22,6 +22,7 @@ rocket = { version = "0.4.10", default-features = false }
 rocket_contrib = { version = "0.4.10", default-features = false, features = ["json"] }
 serde = "1.0"
 serde_derive = "1.0"
+serde_with = "1.12"
 
 [dev-dependencies]
 mc-crypto-keys = { path = "../crypto/keys" }

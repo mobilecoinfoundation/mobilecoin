@@ -536,10 +536,7 @@ mod combine_tests {
             let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
             let tx_out = TxOut::new(
-                Amount {
-                    value: 123,
-                    token_id: Mob::ID,
-                },
+                Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &tx_secret_key_for_txo,
                 Default::default(),
@@ -578,14 +575,19 @@ mod combine_tests {
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
-                Mob::ID,
+                Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 MockFogResolver::default(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0).unwrap();
             transaction_builder
-                .add_output(123, &bob.default_subaddress(), &mut rng)
+                .add_output(
+                    Amount::new(123, Mob::ID),
+                    &bob.default_subaddress(),
+                    &mut rng,
+                )
                 .unwrap();
 
             let tx = transaction_builder.build(&mut rng).unwrap();
@@ -618,10 +620,7 @@ mod combine_tests {
                     let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
                     let tx_out = TxOut::new(
-                        Amount {
-                            value: 88,
-                            token_id: Mob::ID,
-                        },
+                        Amount::new(88, Mob::ID),
                         &alice.default_subaddress(),
                         &tx_secret_key_for_txo,
                         Default::default(),
@@ -636,10 +635,11 @@ mod combine_tests {
 
                     let mut transaction_builder = TransactionBuilder::new(
                         block_version,
-                        Mob::ID,
+                        Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                         MockFogResolver::default(),
                         EmptyMemoBuilder::default(),
-                    );
+                    )
+                    .unwrap();
 
                     // Create InputCredentials to spend the TxOut.
                     let onetime_private_key = recover_onetime_private_key(
@@ -669,7 +669,11 @@ mod combine_tests {
                     transaction_builder.add_input(input_credentials);
                     transaction_builder.set_fee(0).unwrap();
                     transaction_builder
-                        .add_output(88, &bob.default_subaddress(), &mut rng)
+                        .add_output(
+                            Amount::new(88, Mob::ID),
+                            &bob.default_subaddress(),
+                            &mut rng,
+                        )
                         .unwrap();
 
                     let tx = transaction_builder.build(&mut rng).unwrap();
@@ -737,14 +741,19 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &bob.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount::new(123, Mob::ID),
+                        &bob.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -774,14 +783,19 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount::new(123, Mob::ID),
+                        &recipient_account.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -796,10 +810,7 @@ mod combine_tests {
                 // The transaction keys.
                 let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
                 let tx_out = TxOut::new(
-                    Amount {
-                        value: 123,
-                        token_id: Mob::ID,
-                    },
+                    Amount::new(123, Mob::ID),
                     &alice.default_subaddress(),
                     &tx_secret_key_for_txo,
                     Default::default(),
@@ -837,14 +848,19 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount::new(123, Mob::ID),
+                        &recipient_account.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -874,10 +890,7 @@ mod combine_tests {
 
             // Create two TxOuts that were sent to Alice.
             let tx_out1 = TxOut::new(
-                Amount {
-                    value: 123,
-                    token_id: Mob::ID,
-                },
+                Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -885,10 +898,7 @@ mod combine_tests {
             .unwrap();
 
             let tx_out2 = TxOut::new(
-                Amount {
-                    value: 123,
-                    token_id: Mob::ID,
-                },
+                Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -930,14 +940,19 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &bob.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount::new(123, Mob::ID),
+                        &bob.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -968,14 +983,19 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount::new(123, Mob::ID),
+                        &recipient_account.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let mut tx = transaction_builder.build(&mut rng).unwrap();
@@ -991,10 +1011,7 @@ mod combine_tests {
                 // The transaction keys.
                 let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
                 let tx_out = TxOut::new(
-                    Amount {
-                        value: 123,
-                        token_id: Mob::ID,
-                    },
+                    Amount::new(123, Mob::ID),
                     &alice.default_subaddress(),
                     &tx_secret_key_for_txo,
                     Default::default(),
@@ -1032,14 +1049,19 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount::new(123, Mob::ID),
+                        &recipient_account.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();

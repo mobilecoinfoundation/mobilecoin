@@ -9,8 +9,8 @@ use mc_transaction_core::{
 /// An error that can occur when using the TransactionBuilder
 #[derive(Debug, Display)]
 pub enum TxBuilderError {
-    /// Ring Signature construction failed
-    RingSignatureFailed,
+    /// Ring Signature construction failed: {0}
+    RingSignatureFailed(ring_signature::Error),
 
     /// Range proof construction failed
     RangeProofFailed,
@@ -24,8 +24,8 @@ pub enum TxBuilderError {
     /// Bad Amount: {0}
     BadAmount(AmountError),
 
-    /// Input had wrong token id: Expected {0}, Found {1}
-    WrongTokenType(TokenId, TokenId),
+    /// Mixed Transactions not allowed: Expected {0}, Found {1}
+    MixedTransactionsNotAllowed(TokenId, TokenId),
 
     /// New Tx: {0}
     NewTx(NewTxError),
@@ -89,8 +89,8 @@ impl From<mc_crypto_keys::KeyError> for TxBuilderError {
 }
 
 impl From<ring_signature::Error> for TxBuilderError {
-    fn from(_: Error) -> Self {
-        TxBuilderError::RingSignatureFailed
+    fn from(src: Error) -> Self {
+        TxBuilderError::RingSignatureFailed(src)
     }
 }
 

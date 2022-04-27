@@ -39,6 +39,7 @@ mc-util-uri = { path = "../util/uri" }
 aes-gcm = { version = "0.9.4", default-features = false }
 anyhow = "1.0"
 displaydoc = { version = "0.2", default-features = false }
+generic-array = { version = "0.14", features = ["more_lengths", "serde"] }
 jni = { version = "0.19.0", default-features = false }
 protobuf = "2.27.1"
 rand = { version = "0.8", default-features = false }

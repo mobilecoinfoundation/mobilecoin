@@ -72,6 +72,8 @@ pub enum NewMemoError {
     MultipleOutputs,
     /// Missing output
     MissingOutput,
+    /// Mixed Token Ids are not supported in these memos
+    MixedTokenIds,
     /// Other: {0}
     Other(String),
 }

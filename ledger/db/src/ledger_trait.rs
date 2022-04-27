@@ -1,9 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::{
-    mint_config_store::{ActiveMintConfig, ActiveMintConfigs},
-    Error,
-};
+use crate::{ActiveMintConfig, ActiveMintConfigs, Error};
 use mc_common::{Hash, HashMap};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{

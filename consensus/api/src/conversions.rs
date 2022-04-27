@@ -11,7 +11,9 @@
 use crate::{
     consensus_client::{MintValidationResult, MintValidationResultCode},
     consensus_common::ProposeTxResult,
+    consensus_config,
 };
+use mc_api::ConversionError;
 use mc_transaction_core::{
     mint::MintValidationError, ring_signature, validation::TransactionValidationError as Error,
     BlockVersion, TokenId,
@@ -214,5 +216,171 @@ impl TryInto<MintValidationError> for MintValidationResult {
     }
 }
 
+/// Convert mc_ledger_db::ActiveMintConfig -->
+/// consensus_config::ActiveMintConfig
+impl From<&mc_ledger_db::ActiveMintConfig> for consensus_config::ActiveMintConfig {
+    fn from(src: &mc_ledger_db::ActiveMintConfig) -> Self {
+        let mut dst = Self::new();
+        dst.set_mint_config((&src.mint_config).into());
+        dst.set_total_minted(src.total_minted);
+        dst
+    }
+}
+
+/// Convert consensus_config::ActiveMintConfig -->
+/// mc_ledger_db::ActiveMintConfig
+impl TryFrom<&consensus_config::ActiveMintConfig> for mc_ledger_db::ActiveMintConfig {
+    type Error = ConversionError;
+
+    fn try_from(src: &consensus_config::ActiveMintConfig) -> Result<Self, Self::Error> {
+        let mint_config = src.get_mint_config().try_into()?;
+        Ok(Self {
+            mint_config,
+            total_minted: src.get_total_minted(),
+        })
+    }
+}
+
+/// Convert mc_ledger_db::ActiveMintConfigs -->
+/// consensus_config::ActiveMintConfigs
+impl From<&mc_ledger_db::ActiveMintConfigs> for consensus_config::ActiveMintConfigs {
+    fn from(src: &mc_ledger_db::ActiveMintConfigs) -> Self {
+        let mut dst = Self::new();
+        dst.set_configs(src.configs.iter().map(|config| config.into()).collect());
+        dst.set_mint_config_tx((&src.mint_config_tx).into());
+        dst
+    }
+}
+
+/// Convert consensus_config::ActiveMintConfigs -->
+/// mc_ledger_db::ActiveMintConfigs
+impl TryFrom<&consensus_config::ActiveMintConfigs> for mc_ledger_db::ActiveMintConfigs {
+    type Error = ConversionError;
+
+    fn try_from(src: &consensus_config::ActiveMintConfigs) -> Result<Self, Self::Error> {
+        let configs = src
+            .get_configs()
+            .iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()?;
+        let mint_config_tx = src.get_mint_config_tx().try_into()?;
+        Ok(Self {
+            configs,
+            mint_config_tx,
+        })
+    }
+}
+
 #[cfg(test)]
-mod conversion_tests {}
+mod conversion_tests {
+    use super::*;
+    use mc_crypto_multisig::SignerSet;
+    use mc_transaction_core::mint::MintConfig;
+    use mc_transaction_core_test_utils::create_mint_config_tx_and_signers;
+    use mc_util_serial::{decode, encode};
+    use protobuf::Message;
+    use rand_core::SeedableRng;
+    use rand_hc::Hc128Rng;
+
+    #[test]
+    fn test_convert_active_mint_config() {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let (_mint_config_tx, signers) = create_mint_config_tx_and_signers(2.into(), &mut rng);
+        let signer_set = SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1);
+
+        let source = mc_ledger_db::ActiveMintConfig {
+            mint_config: MintConfig {
+                token_id: 123,
+                signer_set,
+                mint_limit: 10000,
+            },
+            total_minted: 102,
+        };
+
+        // decode(encode(source)) should be the identity function.
+        {
+            let bytes = encode(&source);
+            let recovered = decode(&bytes).unwrap();
+            assert_eq!(source, recovered);
+        }
+
+        // Converting mc_ledger_db::ActiveMintConfig ->
+        // consensus_config::ActiveMintConfig -> mc_ledger_db::ActiveMintConfig
+        // should be the identity function.
+        {
+            let external = consensus_config::ActiveMintConfig::from(&source);
+            let recovered = mc_ledger_db::ActiveMintConfig::try_from(&external).unwrap();
+            assert_eq!(source, recovered);
+        }
+
+        // Encoding with prost, decoding with protobuf should be the identity
+        // function.
+        {
+            let bytes = encode(&source);
+            let recovered = consensus_config::ActiveMintConfig::parse_from_bytes(&bytes).unwrap();
+            assert_eq!(recovered, consensus_config::ActiveMintConfig::from(&source));
+        }
+
+        // Encoding with protobuf, decoding with prost should be the identity function.
+        {
+            let external = consensus_config::ActiveMintConfig::from(&source);
+            let bytes = external.write_to_bytes().unwrap();
+            let recovered: mc_ledger_db::ActiveMintConfig = decode(&bytes).unwrap();
+            assert_eq!(source, recovered);
+        }
+    }
+
+    #[test]
+    fn test_convert_active_mint_configs() {
+        let mut rng = Hc128Rng::from_seed([1u8; 32]);
+        let (mint_config_tx, signers) = create_mint_config_tx_and_signers(2.into(), &mut rng);
+        let signer_set = SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1);
+
+        let source = mc_ledger_db::ActiveMintConfigs {
+            configs: vec![mc_ledger_db::ActiveMintConfig {
+                mint_config: MintConfig {
+                    token_id: 123,
+                    signer_set,
+                    mint_limit: 10000,
+                },
+                total_minted: 102,
+            }],
+            mint_config_tx,
+        };
+
+        // decode(encode(source)) should be the identity function.
+        {
+            let bytes = encode(&source);
+            let recovered = decode(&bytes).unwrap();
+            assert_eq!(source, recovered);
+        }
+
+        // Converting mc_ledger_db::ActiveMintConfigs ->
+        // consensus_config::ActiveMintConfigs -> mc_ledger_db::ActiveMintConfigs
+        // should be the identity function.
+        {
+            let external = consensus_config::ActiveMintConfigs::from(&source);
+            let recovered = mc_ledger_db::ActiveMintConfigs::try_from(&external).unwrap();
+            assert_eq!(source, recovered);
+        }
+
+        // Encoding with prost, decoding with protobuf should be the identity
+        // function.
+        {
+            let bytes = encode(&source);
+            let recovered = consensus_config::ActiveMintConfigs::parse_from_bytes(&bytes).unwrap();
+            assert_eq!(
+                recovered,
+                consensus_config::ActiveMintConfigs::from(&source)
+            );
+        }
+
+        // Encoding with protobuf, decoding with prost should be the identity function.
+        {
+            let external = consensus_config::ActiveMintConfigs::from(&source);
+            let bytes = external.write_to_bytes().unwrap();
+            let recovered: mc_ledger_db::ActiveMintConfigs = decode(&bytes).unwrap();
+            assert_eq!(source, recovered);
+        }
+    }
+}
