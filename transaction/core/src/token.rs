@@ -19,6 +19,12 @@ impl From<u64> for TokenId {
     }
 }
 
+impl From<&u64> for TokenId {
+    fn from(src: &u64) -> Self {
+        Self(*src)
+    }
+}
+
 impl fmt::Display for TokenId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)

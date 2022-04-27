@@ -65,6 +65,8 @@ pub enum NewMemoError {
     OutputsAfterChange,
     /// Changing the fee after the change output is not supported
     FeeAfterChange,
+    /// Mixed Token Ids are not supported in these memos
+    MixedTokenIds,
     /// Other: {0}
     Other(String),
 }

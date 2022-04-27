@@ -295,12 +295,8 @@ fn create_request_code(
     // Generate b58 code
     let mut req = mc_mobilecoind_api::CreateRequestCodeRequest::new();
     req.set_receiver(receiver);
-    if let Some(value) = request.value.clone() {
-        req.set_value(
-            value
-                .parse::<u64>()
-                .map_err(|err| format!("Failed to parse value field: {}", err))?,
-        );
+    if let Some(value) = request.value {
+        req.set_value(u64::from(value));
     }
     if let Some(memo) = request.memo.clone() {
         req.set_memo(memo);
@@ -392,21 +388,14 @@ fn build_and_submit(
     // Generate an outlay
     let mut outlay = mc_mobilecoind_api::Outlay::new();
     outlay.set_receiver(public_address);
-    outlay.set_value(
-        transfer
-            .request_data
-            .value
-            .parse::<u64>()
-            .map_err(|err| format!("Failed to parse request_code.amount: {}", err))?,
-    );
+    outlay.set_value(transfer.request_data.value.into());
 
     // Get max_input_utxo_value.
     let max_input_utxo_value = transfer
         .max_input_utxo_value
-        .clone()
-        .unwrap_or_else(|| "0".to_owned()) // A value of 0 disables the max limit.
-        .parse::<u64>()
-        .map_err(|err| format!("Failed to parse max_input_utxo_value: {}", err))?;
+        .as_ref()
+        .map(u64::from)
+        .unwrap_or(0);
 
     // Send the payment request
     let mut req = mc_mobilecoind_api::SendPaymentRequest::new();
@@ -416,11 +405,7 @@ fn build_and_submit(
     req.set_max_input_utxo_value(max_input_utxo_value);
     if let Some(subaddress) = transfer.change_subaddress.as_ref() {
         req.set_override_change_subaddress(true);
-        req.set_change_subaddress(
-            subaddress
-                .parse::<u64>()
-                .map_err(|err| format!("Failed to parse change subaddress: {}", err))?,
-        )
+        req.set_change_subaddress(u64::from(subaddress))
     }
 
     let resp = state
@@ -449,18 +434,14 @@ fn pay_address_code(
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
     // Get amount.
-    let amount = transfer
-        .value
-        .parse::<u64>()
-        .map_err(|err| format!("Failed parsing amount: {}", err))?;
+    let amount = u64::from(transfer.value);
 
     // Get max_input_utxo_value.
     let max_input_utxo_value = transfer
         .max_input_utxo_value
-        .clone()
-        .unwrap_or_else(|| "0".to_owned()) // A value of 0 disables the max limit.
-        .parse::<u64>()
-        .map_err(|err| format!("Failed to parse max_input_utxo_value: {}", err))?;
+        .as_ref()
+        .map(u64::from)
+        .unwrap_or(0);
 
     // Send the pay address code request
     let mut req = mc_mobilecoind_api::PayAddressCodeRequest::new();
@@ -471,11 +452,7 @@ fn pay_address_code(
     req.set_max_input_utxo_value(max_input_utxo_value);
     if let Some(subaddress) = transfer.change_subaddress.as_ref() {
         req.set_override_change_subaddress(true);
-        req.set_change_subaddress(
-            subaddress
-                .parse::<u64>()
-                .map_err(|err| format!("Failed to parse change subaddress: {}", err))?,
-        )
+        req.set_change_subaddress(u64::from(subaddress))
     }
 
     let resp = state
@@ -509,13 +486,7 @@ fn generate_request_code_transaction(
     // Generate an outlay
     let mut outlay = mc_mobilecoind_api::Outlay::new();
     outlay.set_receiver(public_address);
-    outlay.set_value(
-        request
-            .transfer
-            .value
-            .parse::<u64>()
-            .map_err(|err| format!("Failed to parse amount: {}", err))?,
-    );
+    outlay.set_value(request.transfer.value.into());
 
     let inputs: Vec<mc_mobilecoind_api::UnspentTxOut> = request
         .input_list

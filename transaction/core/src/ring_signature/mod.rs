@@ -14,12 +14,14 @@ use mc_crypto_keys::RistrettoPublic;
 
 mod curve_scalar;
 mod error;
+mod generator_cache;
 mod key_image;
 mod mlsag;
 mod rct_bulletproofs;
 
 pub use curve_scalar::*;
 pub use error::Error;
+pub use generator_cache::*;
 pub use key_image::*;
 pub use mlsag::*;
 pub use rct_bulletproofs::*;

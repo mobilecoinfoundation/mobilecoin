@@ -606,9 +606,13 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
         memo_builder.set_sender_credential(SenderMemoCredential::from(source_account_key));
         memo_builder.enable_destination_memo();
 
-        TransactionBuilder::new(block_version, amount.token_id, fog_resolver, memo_builder)
+        TransactionBuilder::new(
+            block_version,
+            Amount::new(fee, amount.token_id),
+            fog_resolver,
+            memo_builder,
+        )?
     };
-    tx_builder.set_fee(fee)?;
 
     let input_amount = inputs
         .iter()
@@ -700,13 +704,17 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     // Resolve account server key if the receiver specifies an account service in
     // their public address
     tx_builder
-        .add_output(amount.value, target_address, rng)
+        .add_output(amount, target_address, rng)
         .map_err(Error::AddOutput)?;
 
     let change_destination = ChangeDestination::from(source_account_key);
 
     tx_builder
-        .add_change_output(change, &change_destination, rng)
+        .add_change_output(
+            Amount::new(change, amount.token_id),
+            &change_destination,
+            rng,
+        )
         .map_err(|err| {
             log::error!(logger, "Could not add change due to {:?}", err);
             Error::AddOutput(err)

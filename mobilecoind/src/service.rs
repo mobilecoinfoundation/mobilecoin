@@ -2917,12 +2917,13 @@ mod test {
         let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
-            Mob::ID,
+            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let (tx_out, tx_confirmation) = transaction_builder
-            .add_output(10, &receiver.subaddress(0), &mut rng)
+            .add_output(Amount::new(10, Mob::ID), &receiver.subaddress(0), &mut rng)
             .unwrap();
 
         add_txos_to_ledger_db(BLOCK_VERSION, &mut ledger_db, &[tx_out.clone()], &mut rng);
@@ -5230,13 +5231,14 @@ mod test {
 
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
-            Mob::ID,
+            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
-                10,
+                Amount::new(10, Mob::ID),
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
                 &mut rng,
             )
@@ -5342,13 +5344,14 @@ mod test {
 
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
-            Mob::ID,
+            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
-                10,
+                Amount::new(10, Mob::ID),
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
                 &mut rng,
             )

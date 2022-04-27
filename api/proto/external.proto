@@ -242,20 +242,49 @@ message TxPrefix {
     // The block index at which this transaction is no longer valid.
     uint64 tombstone_block = 4;
 
-    // Token id for this transaction
-    fixed64 token_id = 5;
+    // Token id for the fee of this transaction
+    fixed64 fee_token_id = 5;
 }
 
+// A ring mlsag is a group-ring signature conferring spending authority of one TxOut
+// which is part of a TxIn.
 message RingMLSAG {
+    // The initial challenge value for the ring signature
     CurveScalar c_zero = 1;
+    // The "responses", one for each input which is signed
     repeated CurveScalar responses = 2;
+    // The key image is a hash unique to the "true" spent input. This cannot
+    // be linked back to determine the true spent input, but the input cannot be
+    // spent again without producing the same key image value, so this is used to
+    // prevent double-spends.
     KeyImage key_image = 3;
 }
 
 message SignatureRctBulletproofs {
+    // A ring-signature, one for each TxIn, producing one pseudo-output and key image.
     repeated RingMLSAG ring_signatures = 1;
+    // The amount commitments for each pseudo-output.
+    // There must be one of these for each TxIn.
     repeated CompressedRistretto pseudo_output_commitments = 2;
-    bytes range_proofs = 3;
+    // Before mixed transactions feature, there is one range proof for all pseudo-output
+    // and output commitments, whose serialized bytes appear here.
+    // After mixed transactions feature, this field is empty.
+    bytes range_proof_bytes = 3;
+    // Before mixed transactions feature, this field is empty.
+    // After mixed transactions feature, this field contains one range proof for each
+    // token id which appears in the transaction, in sorted order of token ids.
+    // It range-proofs the pseudo-outputs and outputs with that token id, in the order
+    // that they appear in the transaction.
+    repeated bytes range_proofs = 4;
+    // The token ids of each pseudo ouptut. There must be one of these for each TxIn.
+    // Before mixed transactions feature, this field is empty, and the token ids of
+    // all pseudo-outputs are inferred from the tx.prefix.fee_token_id.
+    repeated fixed64 pseudo_output_token_ids = 5;
+    // The token ids of each output. There must be one of these for each output of the Tx.
+    // (tx.prefix.outputs).
+    // Before mixed transactions feature, this field is empty, and the token ids of
+    // all outputs are inferred from the tx.prefix.fee_token_id.
+    repeated fixed64 output_token_ids = 6;
 }
 
 message Tx {
