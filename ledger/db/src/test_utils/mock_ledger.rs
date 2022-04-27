@@ -304,7 +304,7 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
 /// Get blocks with custom content in order to simulate conditions seen in
 /// production
 ///
-/// * `outputs_per_recipient_per_token_per_block` - number of outputs for each 
+/// * `outputs_per_recipient_per_token_per_block` - number of outputs for each
 ///   unique token type per account per block
 /// * `num_accounts` - number of accounts in the blocks
 /// * `num_blocks` - number of simulated blocks to create
@@ -320,13 +320,15 @@ pub fn get_custom_test_ledger_blocks(
     let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
     // Number of total tx outputs in all blocks
-    let num_outputs: u64 =
-        (num_accounts * outputs_per_recipient_per_token_per_block * num_blocks * (max_token_id as usize + 1))
-            as u64;
+    let num_outputs: u64 = (num_accounts
+        * outputs_per_recipient_per_token_per_block
+        * num_blocks
+        * (max_token_id as usize + 1)) as u64;
     assert!(num_outputs >= 16);
 
     // Initialize other defaults
-    let picomob_per_output: u64 = ((TOTAL_MOB as f64 / num_outputs as f64) * 1000000000000.0) as u64;
+    let picomob_per_output: u64 =
+        ((TOTAL_MOB as f64 / num_outputs as f64) * 1000000000000.0) as u64;
     let recipients = (0..num_accounts)
         .map(|_| AccountKey::random(&mut rng).default_subaddress())
         .collect::<Vec<_>>();
