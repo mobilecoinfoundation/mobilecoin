@@ -193,7 +193,7 @@ jobs:
       with:
         path: |
           go_build_artifacts
-        # Key is a hash of all the .rs, .proto and Cargo.toml files.
+        # Key is a hash of all the .go, go.* and .proto files.
         # if code changes, invalidate cache and rebuild
         key: ${{ secrets.CACHE_BUSTER }}-${{ runner.os }}-${{ hashFiles('go-grpc-gateway/**/*.go', 'go-grpc-gateway/go.*', '**/*.proto') }}-go-build-artifacts
 
