@@ -736,15 +736,15 @@ impl TryFrom<&JsonInputRules> for InputRules {
 
     fn try_from(src: &JsonInputRules) -> Result<InputRules, String> {
         let mut input_rules = InputRules::new();
-        input_rules.set_required_outputs(RepeatedField::from(
+        input_rules.set_required_outputs(
             src.required_outputs
                 .iter()
                 .map(|out| {
                     mc_api::external::TxOut::try_from(out)
                         .map_err(|err| format!("Could not get TxOut: {}", err))
                 })
-                .collect::<Result<Vec<_>, String>>()?,
-        ));
+                .collect::<Result<_, String>>()?,
+        );
         input_rules.max_tombstone_block = src.max_tombstone_block;
         Ok(input_rules)
     }

@@ -64,12 +64,12 @@ impl From<&InputRules> for external::InputRules {
     fn from(source: &InputRules) -> Self {
         let mut input_rules = external::InputRules::new();
 
-        let required_outputs: Vec<external::TxOut> = source
+        let required_outputs = source
             .required_outputs
             .iter()
             .map(external::TxOut::from)
             .collect();
-        input_rules.set_required_outputs(required_outputs.into());
+        input_rules.set_required_outputs(required_outputs);
 
         input_rules.set_max_tombstone_block(source.max_tombstone_block);
 

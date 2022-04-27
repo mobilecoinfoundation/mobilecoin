@@ -18,15 +18,15 @@ use prost::Message;
 #[derive(Clone, Eq, Message, PartialEq)]
 pub struct UnmaskedAmount {
     /// The value of the amount commitment
-    #[prost(fixed64, tag = "1")]
+    #[prost(fixed64, tag = 1)]
     pub value: u64,
 
     /// The token id of the amount commitment
-    #[prost(fixed64, tag = "2")]
+    #[prost(fixed64, tag = 2)]
     pub token_id: u64,
 
     /// The blinding factor of the amount commitment
-    #[prost(message, required, tag = "3")]
+    #[prost(message, required, tag = 3)]
     pub blinding: CurveScalar,
 }
 
@@ -36,25 +36,25 @@ pub struct UnmaskedAmount {
 #[derive(Clone, Eq, Message, PartialEq)]
 pub struct SignedContingentInput {
     /// The tx_in which was signed over
-    #[prost(message, required, tag = "1")]
+    #[prost(message, required, tag = 1)]
     pub tx_in: TxIn,
 
     /// The Ring MLSAG signature, conferring spending authority
-    #[prost(message, required, tag = "2")]
+    #[prost(message, required, tag = 2)]
     pub mlsag: RingMLSAG,
 
     /// The amount and blinding of the pseudo-output of the MLSAG
-    #[prost(message, required, tag = "3")]
+    #[prost(message, required, tag = 3)]
     pub pseudo_output_amount: UnmaskedAmount,
 
     /// The amount and blinding of any TxOut required by the input rules
-    #[prost(message, repeated, tag = "4")]
+    #[prost(message, repeated, tag = 4)]
     pub required_output_amounts: Vec<UnmaskedAmount>,
 
     /// The tx_out global index of each ring member
     /// This helps the recipient of this payload construct proofs of membership
     /// for the ring
-    #[prost(fixed64, repeated, tag = "5")]
+    #[prost(fixed64, repeated, tag = 5)]
     pub tx_out_global_indices: Vec<u64>,
 }
 
@@ -78,7 +78,7 @@ impl SignedContingentInput {
         let pseudo_output = CompressedCommitment::from(&Commitment::new(
             self.pseudo_output_amount.value,
             self.pseudo_output_amount.blinding.into(),
-            &generator,
+            generator,
         ));
 
         let rules_digest = self
@@ -108,7 +108,7 @@ impl SignedContingentInput {
                 let expected_commitment = CompressedCommitment::from(&Commitment::new(
                     amount.value,
                     amount.blinding.into(),
-                    &generator,
+                    generator,
                 ));
                 if expected_commitment != output.masked_amount.commitment {
                     return Err(SignedContingentInputError::RequiredOutputMismatch);
@@ -132,10 +132,7 @@ impl From<SignedContingentInput> for PresignedInputRing {
 impl From<UnmaskedAmount> for OutputSecret {
     fn from(src: UnmaskedAmount) -> Self {
         Self {
-            amount: Amount {
-                value: src.value,
-                token_id: src.token_id.into(),
-            },
+            amount: Amount::new(src.value, src.token_id.into()),
             blinding: src.blinding.into(),
         }
     }

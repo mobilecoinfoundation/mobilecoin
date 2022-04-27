@@ -53,9 +53,9 @@ impl TxOutputsOrdering for DefaultTxOutputsOrdering {
 pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
     /// The block version that we are targeting for this transaction
     block_version: BlockVersion,
-    /// The input material used to form the transaction
+    /// The input materials used to form the transaction.
     input_materials: Vec<InputMaterials>,
-    /// The outputs created by the transaction, and associated output secret
+    /// The outputs created by the transaction, and associated output secrets.
     outputs_and_secrets: Vec<(TxOut, OutputSecret)>,
     /// The tombstone_block value, a block index in which the transaction
     /// expires, and can no longer be added to the blockchain
@@ -174,11 +174,10 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                 .zip(sci.required_output_amounts.iter())
             {
                 // Check if the required output is already there
-                if self
+                if !self
                     .outputs_and_secrets
                     .iter()
-                    .find(|(output, _sec)| output == required_output)
-                    .is_none()
+                    .any(|(output, _sec)| output == required_output)
                 {
                     // If not, add it
                     self.outputs_and_secrets
@@ -477,13 +476,13 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         }
 
         for input in self.input_materials.iter() {
-            if !self.block_version.mixed_transactions_are_supported() {
-                if input.amount().token_id != self.fee.token_id {
-                    return Err(TxBuilderError::MixedTransactionsNotAllowed(
-                        self.fee.token_id,
-                        input.amount().token_id,
-                    ));
-                }
+            if !self.block_version.mixed_transactions_are_supported()
+                && input.amount().token_id != self.fee.token_id
+            {
+                return Err(TxBuilderError::MixedTransactionsNotAllowed(
+                    self.fee.token_id,
+                    input.amount().token_id,
+                ));
             }
 
             match input {
@@ -509,7 +508,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         // Inputs are sorted by the first ring element's public key. Note that each ring
         // is also sorted.
         self.input_materials
-            .sort_by(|a, b| a.sort_key().cmp(&b.sort_key()));
+            .sort_by(|a, b| a.sort_key().cmp(b.sort_key()));
 
         let inputs: Vec<TxIn> = self.input_materials.iter().map(TxIn::from).collect();
 

@@ -88,7 +88,7 @@ pub fn validate<R: RngCore + CryptoRng>(
     if block_version.signed_input_rules_are_supported() {
         validate_all_input_rules(block_version, tx)?;
     } else {
-        validate_no_input_rules_exist(tx)?;
+        validate_that_no_input_rules_exist(tx)?;
     }
 
     Ok(())
@@ -104,7 +104,7 @@ pub fn validate_tx_out(
     if block_version.e_memo_feature_is_supported() {
         validate_memo_exists(tx_out)?;
     } else {
-        validate_no_memo_exists(tx_out)?;
+        validate_that_no_memo_exists(tx_out)?;
     }
 
     // If masked token id is supported, then all outputs must have masked_token_id
@@ -116,7 +116,7 @@ pub fn validate_tx_out(
     if block_version.masked_token_id_feature_is_supported() {
         validate_masked_token_id_exists(tx_out)?;
     } else {
-        validate_no_masked_token_id_exists(tx_out)?;
+        validate_that_no_masked_token_id_exists(tx_out)?;
     }
 
     Ok(())
@@ -247,7 +247,7 @@ pub fn validate_outputs_public_keys_are_unique(tx: &Tx) -> TransactionValidation
 }
 
 /// All outputs have no memo (new-style TxOuts (Post MCIP #3) are rejected)
-pub fn validate_no_memo_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
+pub fn validate_that_no_memo_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
     if tx_out.e_memo.is_some() {
         return Err(TransactionValidationError::MemosNotAllowed);
     }
@@ -264,7 +264,7 @@ pub fn validate_memo_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
 
 /// All outputs have no masked token id (new-style TxOuts (Post MCIP #25) are
 /// rejected)
-pub fn validate_no_masked_token_id_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
+pub fn validate_that_no_masked_token_id_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
     if !tx_out.masked_amount.masked_token_id.is_empty() {
         return Err(TransactionValidationError::MaskedTokenIdNotAllowed);
     }
@@ -469,7 +469,7 @@ pub fn validate_all_input_rules(
 }
 
 /// Any input rules imposed on the Tx must satisfied
-pub fn validate_no_input_rules_exist(tx: &Tx) -> TransactionValidationResult<()> {
+pub fn validate_that_no_input_rules_exist(tx: &Tx) -> TransactionValidationResult<()> {
     for input in tx.prefix.inputs.iter() {
         if input.input_rules.is_some() {
             return Err(TransactionValidationError::InputRulesNotAllowed);

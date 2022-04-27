@@ -14,7 +14,7 @@ use mc_transaction_core::{
     tokens::Mob,
     tx::{Tx, TxOutMembershipHash, TxOutMembershipProof},
     validation::*,
-    BlockVersion, Token,
+    BlockVersion, InputRules, Token,
 };
 use mc_transaction_core_test_utils::{
     create_ledger, create_transaction, create_transaction_with_amount_and_comparer,
@@ -108,19 +108,19 @@ fn test_validate_memo_exists() {
 
 #[test]
 // Should return MemosNotAllowed when memos are present in an output
-fn test_validate_no_memo_exists() {
+fn test_validate_that_no_memo_exists() {
     let (tx, _) = create_test_tx(BlockVersion::ZERO);
     let tx_out = tx.prefix.outputs.first().unwrap();
 
     assert!(tx_out.e_memo.is_none());
-    assert_eq!(validate_no_memo_exists(tx_out), Ok(()));
+    assert_eq!(validate_that_no_memo_exists(tx_out), Ok(()));
 
     let (tx, _) = create_test_tx(BlockVersion::ONE);
     let tx_out = tx.prefix.outputs.first().unwrap();
 
     assert!(tx_out.e_memo.is_some());
     assert_eq!(
-        validate_no_memo_exists(tx_out),
+        validate_that_no_memo_exists(tx_out),
         Err(TransactionValidationError::MemosNotAllowed)
     );
 }
@@ -152,14 +152,14 @@ fn test_validate_no_masked_token_id_exists() {
     let tx_out = tx.prefix.outputs.first().unwrap();
 
     assert!(tx_out.masked_amount.masked_token_id.is_empty());
-    assert_eq!(validate_no_masked_token_id_exists(tx_out), Ok(()));
+    assert_eq!(validate_that_no_masked_token_id_exists(tx_out), Ok(()));
 
     let (tx, _) = create_test_tx(BlockVersion::TWO);
     let tx_out = tx.prefix.outputs.first().unwrap();
 
     assert!(!tx_out.masked_amount.masked_token_id.is_empty());
     assert_eq!(
-        validate_no_masked_token_id_exists(tx_out),
+        validate_that_no_masked_token_id_exists(tx_out),
         Err(TransactionValidationError::MaskedTokenIdNotAllowed)
     );
 }
@@ -852,48 +852,46 @@ fn test_global_validate_for_blocks_with_sorted_outputs() {
     }
 }
 
-    // Test that input rules validation is working
-    #[test]
-    fn test_input_rules_validation() {
-        let block_version = BlockVersion::THREE;
+// Test that input rules validation is working
+#[test]
+fn test_input_rules_validation() {
+    let block_version = BlockVersion::THREE;
 
-        for _ in 0..3 {
-            let (mut tx, _ledger) = create_test_tx(block_version);
+    let (mut tx, _ledger) = create_test_tx(block_version);
 
-            // Check that the Tx is following input rules (vacuously)
-            validate_all_input_rules(block_version, &tx).unwrap();
+    // Check that the Tx is following input rules (vacuously)
+    validate_all_input_rules(block_version, &tx).unwrap();
 
-            // Modify the Tx to have some input rules.
-            // (This invalidates the signature, but we aren't checking that here)
-            let first_tx_out = tx.prefix.outputs[0].clone();
+    // Modify the Tx to have some input rules.
+    // (This invalidates the signature, but we aren't checking that here)
+    let first_tx_out = tx.prefix.outputs[0].clone();
 
-            // Declare the first tx out as a required output
-            tx.prefix.inputs[0].input_rules = Some(InputRules {
-                required_outputs: vec![first_tx_out],
-                max_tombstone_block: 0,
-            });
+    // Declare the first tx out as a required output
+    tx.prefix.inputs[0].input_rules = Some(InputRules {
+        required_outputs: vec![first_tx_out],
+        max_tombstone_block: 0,
+    });
 
-            // Check that the Tx is following input rules (vacuously)
-            validate_all_input_rules(block_version, &tx).unwrap();
+    // Check that the Tx is following input rules (vacuously)
+    validate_all_input_rules(block_version, &tx).unwrap();
 
-            // Modify the input rules to refer to a non-existent tx out
-            let rules = tx.prefix.inputs[0].input_rules.as_mut().unwrap();
-            rules.required_outputs[0].masked_amount.masked_value += 1;
+    // Modify the input rules to refer to a non-existent tx out
+    let rules = tx.prefix.inputs[0].input_rules.as_mut().unwrap();
+    rules.required_outputs[0].masked_amount.masked_value += 1;
 
-            assert!(validate_all_input_rules(block_version, &tx).is_err());
+    assert!(validate_all_input_rules(block_version, &tx).is_err());
 
-            // Set masked value back, now modify tombstone block
-            let rules = tx.prefix.inputs[0].input_rules.as_mut().unwrap();
-            rules.required_outputs[0].masked_amount.masked_value -= 1;
-            rules.max_tombstone_block = tx.prefix.tombstone_block - 1;
+    // Set masked value back, now modify tombstone block
+    let rules = tx.prefix.inputs[0].input_rules.as_mut().unwrap();
+    rules.required_outputs[0].masked_amount.masked_value -= 1;
+    rules.max_tombstone_block = tx.prefix.tombstone_block - 1;
 
-            assert!(validate_all_input_rules(block_version, &tx).is_err());
+    assert!(validate_all_input_rules(block_version, &tx).is_err());
 
-            // Set the tombstone block limit to be more permissive, now everything should be
-            // good
-            let rules = tx.prefix.inputs[0].input_rules.as_mut().unwrap();
-            rules.max_tombstone_block = tx.prefix.tombstone_block;
+    // Set the tombstone block limit to be more permissive, now everything should be
+    // good
+    let rules = tx.prefix.inputs[0].input_rules.as_mut().unwrap();
+    rules.max_tombstone_block = tx.prefix.tombstone_block;
 
-            validate_all_input_rules(block_version, &tx).unwrap();
-        }
-    }
+    validate_all_input_rules(block_version, &tx).unwrap();
+}

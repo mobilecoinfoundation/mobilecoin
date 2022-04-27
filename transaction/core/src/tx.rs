@@ -255,12 +255,7 @@ impl From<&TxIn> for SignedInputRing {
             members: src
                 .ring
                 .iter()
-                .map(|tx_out| {
-                    (
-                        tx_out.target_key.clone(),
-                        tx_out.masked_amount.commitment.clone(),
-                    )
-                })
+                .map(|tx_out| (tx_out.target_key, tx_out.masked_amount.commitment))
                 .collect(),
             input_rules: src.input_rules.clone(),
         }

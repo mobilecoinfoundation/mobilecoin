@@ -35,8 +35,8 @@ cargo-emit = "0.2.1"
 
 [dev-dependencies]
 mc-crypto-x509-test-vectors = { path = "../crypto/x509/test-vectors" }
-mc-test-vectors-b58-encodings = { path = "../test-vectors/b58-encodings" }
 mc-fog-report-validation-test-utils = { path = "../fog/report/validation/test-utils" }
+mc-test-vectors-b58-encodings = { path = "../test-vectors/b58-encodings" }
 mc-transaction-std = { path = "../transaction/std", features = ["test-only"] }
 mc-util-from-random = { path = "../util/from-random" }
 mc-util-test-helper = { path = "../util/test-helper" }

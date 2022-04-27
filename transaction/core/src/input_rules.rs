@@ -40,20 +40,12 @@ impl InputRules {
     /// Verify that a Tx conforms to the rules.
     pub fn verify(&self, _block_version: BlockVersion, tx: &Tx) -> Result<(), InputRuleError> {
         // Verify max_tombstone_block
-        if self.max_tombstone_block != 0 {
-            if tx.prefix.tombstone_block > self.max_tombstone_block {
-                return Err(InputRuleError::MaxTombstoneBlockExceeded);
-            }
+        if self.max_tombstone_block != 0 && tx.prefix.tombstone_block > self.max_tombstone_block {
+            return Err(InputRuleError::MaxTombstoneBlockExceeded);
         }
         // Verify required_outputs
         for required_output in self.required_outputs.iter() {
-            if tx
-                .prefix
-                .outputs
-                .iter()
-                .find(|x| x == &required_output)
-                .is_none()
-            {
+            if !tx.prefix.outputs.iter().any(|x| x == required_output) {
                 return Err(InputRuleError::MissingRequiredOutput);
             }
         }
