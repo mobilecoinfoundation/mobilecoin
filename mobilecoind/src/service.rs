@@ -16,7 +16,9 @@ use crate::{
 };
 use bip39::{Language, Mnemonic, MnemonicType};
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
-use mc_account_keys::{AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX};
+use mc_account_keys::{
+    burn_address, AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX,
+};
 use mc_account_keys_slip10::Slip10KeyGenerator;
 use mc_common::{
     logger::{log, Logger},
@@ -38,6 +40,7 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     TokenId,
 };
+use mc_transaction_std::{BurnRedemptionMemo, BurnRedemptionMemoBuilder};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result, AdminService,
@@ -46,7 +49,7 @@ use mc_util_grpc::{
 use mc_watcher::watcher_db::WatcherDB;
 use protobuf::{ProtobufEnum, RepeatedField};
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     sync::{Arc, Mutex, RwLock},
 };
 
@@ -880,6 +883,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &outlays,
                 request.fee,
                 request.tombstone,
+                None,
             )
             .map_err(|err| {
                 rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
@@ -972,6 +976,116 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             })?;
 
         let mut response = mc_mobilecoind_api::GenerateTxFromTxOutListResponse::new();
+        response.set_tx_proposal((&tx_proposal).into());
+        Ok(response)
+    }
+
+    fn generate_burn_redemption_tx_impl(
+        &mut self,
+        request: mc_mobilecoind_api::GenerateBurnRedemptionTxRequest,
+    ) -> Result<mc_mobilecoind_api::GenerateBurnRedemptionTxResponse, RpcStatus> {
+        // Get sender monitor id from request.
+        let sender_monitor_id = MonitorId::try_from(&request.sender_monitor_id)
+            .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
+
+        // Get monitor data for this monitor.
+        let sender_monitor_data = self
+            .mobilecoind_db
+            .get_monitor_data(&sender_monitor_id)
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.get_monitor_data", err, &self.logger)
+            })?;
+
+        // Check that change_subaddress is covered by this monitor.
+        if !sender_monitor_data
+            .subaddress_indexes()
+            .contains(&request.change_subaddress)
+        {
+            return Err(RpcStatus::with_message(
+                RpcStatusCode::INVALID_ARGUMENT,
+                "change_subaddress".into(),
+            ));
+        }
+
+        // Get the list of potential inputs passed to.
+        let input_list: Vec<UnspentTxOut> = request
+            .get_input_list()
+            .iter()
+            .enumerate()
+            .map(|(i, proto_utxo)| {
+                // Proto -> Rust struct conversion.
+                let utxo = UnspentTxOut::try_from(proto_utxo).map_err(|err| {
+                    rpc_internal_error("unspent_tx_out.try_from", err, &self.logger)
+                })?;
+
+                // Verify token id matches.
+                if utxo.token_id != request.token_id {
+                    return Err(RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        format!("input_list[{}].token_id", i),
+                    ));
+                }
+
+                // Verify this output belongs to the monitor.
+                let subaddress_id = self
+                    .mobilecoind_db
+                    .get_subaddress_id_by_utxo_id(&UtxoId::from(&utxo))
+                    .map_err(|err| {
+                        rpc_internal_error(
+                            "mobilecoind_db.get_subaddress_id_by_utxo_id",
+                            err,
+                            &self.logger,
+                        )
+                    })?;
+
+                if subaddress_id.monitor_id != sender_monitor_id {
+                    return Err(RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        format!("input_list.{}", i),
+                    ));
+                }
+
+                // Success.
+                Ok(utxo)
+            })
+            .collect::<Result<Vec<UnspentTxOut>, RpcStatus>>()?;
+
+        // Generate the list of outlays.
+        let outlays = vec![Outlay {
+            value: request.get_burn_amount(),
+            receiver: burn_address(),
+        }];
+
+        // Create memo builder.
+        let mut memo_data = request.get_redemption_memo().to_vec();
+        if memo_data.is_empty() {
+            memo_data.resize(BurnRedemptionMemo::MEMO_DATA_LEN, 0);
+        }
+        let memo_data_array = memo_data.try_into().map_err(|_err| {
+            RpcStatus::with_message(RpcStatusCode::INVALID_ARGUMENT, "redemption_memo".into())
+        })?;
+
+        let memo_builder = BurnRedemptionMemoBuilder::new(memo_data_array);
+
+        // Attempt to construct a transaction.
+        let tx_proposal = self
+            .transactions_manager
+            .build_transaction(
+                &sender_monitor_id,
+                TokenId::from(request.token_id),
+                request.change_subaddress,
+                &input_list,
+                &outlays,
+                request.fee,
+                request.tombstone,
+                Some(Box::new(memo_builder)),
+            )
+            .map_err(|err| {
+                rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
+            })?;
+
+        // Success.
+        let mut response = mc_mobilecoind_api::GenerateBurnRedemptionTxResponse::new();
         response.set_tx_proposal((&tx_proposal).into());
         Ok(response)
     }
@@ -1735,6 +1849,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &outlays,
                 request.fee,
                 request.tombstone,
+                None,
             )
             .map_err(|err| {
                 rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
@@ -1928,6 +2043,7 @@ build_api! {
     generate_optimization_tx GenerateOptimizationTxRequest GenerateOptimizationTxResponse generate_optimization_tx_impl,
     generate_transfer_code_tx GenerateTransferCodeTxRequest GenerateTransferCodeTxResponse generate_transfer_code_tx_impl,
     generate_tx_from_tx_out_list GenerateTxFromTxOutListRequest GenerateTxFromTxOutListResponse generate_tx_from_tx_out_list_impl,
+    generate_burn_redemption_tx GenerateBurnRedemptionTxRequest GenerateBurnRedemptionTxResponse generate_burn_redemption_tx_impl,
     submit_tx SubmitTxRequest SubmitTxResponse submit_tx_impl,
 
     // Databases

@@ -44,6 +44,7 @@ service MobilecoindAPI {
     rpc GenerateOptimizationTx (GenerateOptimizationTxRequest) returns (GenerateOptimizationTxResponse) {}
     rpc GenerateTransferCodeTx (GenerateTransferCodeTxRequest) returns (GenerateTransferCodeTxResponse) {}
     rpc GenerateTxFromTxOutList (GenerateTxFromTxOutListRequest) returns (GenerateTxFromTxOutListResponse) {}
+    rpc GenerateBurnRedemptionTx (GenerateBurnRedemptionTxRequest) returns (GenerateBurnRedemptionTxResponse) {}
     rpc SubmitTx (SubmitTxRequest) returns (SubmitTxResponse) {}
 
     // Databases
@@ -560,6 +561,46 @@ message GenerateTxFromTxOutListRequest {
 }
 
 message GenerateTxFromTxOutListResponse {
+    TxProposal tx_proposal = 1;
+}
+
+// Generate a burn redemption transaction proposal object.
+// Notes:
+// - Sum of inputs needs to be greater than the burn amount and fee.
+// - The set of inputs to use would be chosen automatically by mobilecoind.
+// - The fee field could be set to zero, in which case mobilecoind would try and choose a fee.
+message GenerateBurnRedemptionTxRequest {
+    // Monitor id sending the funds.
+    bytes sender_monitor_id = 1;
+
+    // Subaddress to return change to.
+    uint64 change_subaddress = 2;
+
+    // List of UnspentTxOuts to be spent by the transaction.
+    // All UnspentTxOuts must belong to the same sender_monitor_id.
+    // mobilecoind would choose a subset of these inputs to construct the transaction.
+    // Total input amount must be >= burn amount + fee.
+    repeated UnspentTxOut input_list = 3;
+
+    // Amount to be burnt. This excludes change and fee.
+    uint64 burn_amount = 4;
+
+    // Fee (setting to 0 causes mobilecoind to choose a value).
+    // The value used can be checked (but not changed) in tx_proposal.tx.prefix.fee
+    uint64 fee = 5;
+
+    // Tombstone block (setting to 0 causes mobilecoind to choose a value).
+    // The value used can be checked (but not changed) in tx_proposal.tx.prefix.tombstone_block
+    uint64 tombstone = 6;
+
+    // Token id to use for the transaction.
+    uint64 token_id = 7;
+
+    // Optional 64 bytes of data to include in the burn redemption memo that is attached to the burn TxOut.
+    // If not provided zeros will be used.
+    bytes redemption_memo = 8;
+}
+message GenerateBurnRedemptionTxResponse {
     TxProposal tx_proposal = 1;
 }
 
