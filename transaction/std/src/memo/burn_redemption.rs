@@ -15,15 +15,8 @@ use crate::impl_memo_type_conversions;
 /// blockchain.
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct BurnRedemptionMemo {
-    /// The memo data
-    /// TODO: The contents of this have not yet been determined. It will likely
-    /// contain some or all of the following:
-    /// 1) The type of address that the redeemed external asset will be sent to
-    ///   (e.g. ERC20 wallet, ERC20 contract, etc.)
-    /// 2) The external blockchain on which the redemptio is taking place
-    ///    (e.g. Ethereum, Polygon, etc.)
-    /// 3) Address receiving the redeemed asset This is just a placeholder for
-    ///    now.
+    /// The memo data.
+    /// The contents of the memo depend on the token being burnt, and as such do not have a strict schema.
     memo_data: [u8; 64],
 }
 
