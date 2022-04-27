@@ -316,16 +316,19 @@ impl SignatureRctBulletproofs {
         // We are checking that this sum is equal to the zero point (zero vector).
         //
         // At this point, we appeal to the "orthogonality" of the bases G, H_1, H_2, ...
-        // We assume that because they were chosen by hashing to curve, it is infeasible
-        // for any to find a nontrivial linear relation between them. (See generators
+        // We assume that it is infeasible for anyone to find a nontrivial linear
+        // relation between them.
+        //
+        // (See generators
         // module doc for justification of this, but basically it's because we hash to
         // curve.)
         //
-        // If someone submits a transaction where this sum is zero, and they do not know
-        // any "nontrivial" linear combination of G, H_1, ...
+        // Therefore, if someone submits a transaction where this sum is zero, and they
+        // cannot not know any "nontrivial" linear combination of G, H_1, ...
         // then this must be a trivial linear combination.
+        // A trivial linear combination is one where all the coefficients are zero.
         // This implies that w_j = 0 for all j, which implies that value was not created
-        // or destroyed, as required.
+        // or destroyed in any token id, as required.
         //
         // So we don't need to do a separate loop here once per token id, we can just
         // add everything together and check for zero.
