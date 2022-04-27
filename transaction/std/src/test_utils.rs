@@ -42,11 +42,9 @@ pub fn create_output<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
         recipient,
         hint,
         |_| {
-            Ok(if block_version.e_memo_feature_is_supported() {
-                Some(MemoPayload::default())
-            } else {
-                None
-            })
+            Ok(block_version
+                .e_memo_feature_is_supported()
+                .then(|| MemoPayload::default()))
         },
         rng,
     )
@@ -82,10 +80,7 @@ pub fn get_ring<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
         } else {
             Mob::ID
         };
-        let amount = Amount {
-            value: amount.value,
-            token_id,
-        };
+        let amount = Amount::new(amount.value, token_id);
         let (tx_out, _) =
             create_output(block_version, amount, &address, fog_resolver, rng).unwrap();
         ring.push(tx_out);
