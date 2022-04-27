@@ -9,8 +9,8 @@ use alloc::collections::BTreeMap;
 /// GeneratorCache is a simple object which caches computations of
 /// generator: TokenId -> PedersenGens
 ///
-/// This is intended just to be used in the scope of a single transaction,
-/// and we therefore don't require it to be constant-time.
+/// This is intended just to be used in the scope of constructing or validating
+/// a single transaction, and we therefore don't require it to be constant-time.
 #[derive(Default, Clone)]
 pub struct GeneratorCache {
     cache: BTreeMap<TokenId, PedersenGens>,
