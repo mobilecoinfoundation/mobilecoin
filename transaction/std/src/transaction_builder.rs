@@ -106,7 +106,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     ///   transaction
     /// * `fee` - The fee (and token id) to use for this transaction. Note: The
     ///   fee token id cannot be changed later, and before mixed transactions
-    ///   feature, every input and output must have the same token id as the fee.
+    ///   feature, every input and output must have the same token id as the
+    ///   fee.
     /// * `fog_resolver` - Source of validated fog keys to use with this
     ///   transaction
     /// * `memo_builder` - An object which creates memos for the TxOuts in this
@@ -2696,9 +2697,10 @@ pub mod transaction_builder_tests {
 
     #[test]
     // Test that sending mixed transactions works
-    // 
-    // This test uses inputs of two different token IDs, paying the fee and creating change with
-    // TokenID1, and "passing through" the second token ID with its full amount as output.
+    //
+    // This test uses inputs of two different token IDs, paying the fee and creating
+    // change with TokenID1, and "passing through" the second token ID with its
+    // full amount as output.
     fn test_mixed_transactions() {
         let mut rng: StdRng = SeedableRng::from_seed([18u8; 32]);
 
@@ -2781,8 +2783,8 @@ pub mod transaction_builder_tests {
                     .unwrap()
             );
 
-            // Test that recipients's default subaddress owns the correct output, and not the other
-            // tx outs
+            // Test that recipients's default subaddress owns the correct output, and not
+            // the other tx outs
             assert!(
                 subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &tx_out1).unwrap()
             );

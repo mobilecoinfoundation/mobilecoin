@@ -252,8 +252,8 @@ impl SignatureRctBulletproofs {
             check_range_proofs(&range_proof, &commitments, generator, rng)?
         } else {
             // When mixed transactions are supported, self.range_proofs should contain
-            // a range proof corresponding to each token id used in the transaction, in sorted
-            // order. range_proof_bytes should be empty
+            // a range proof corresponding to each token id used in the transaction, in
+            // sorted order. range_proof_bytes should be empty
             if !self.range_proof_bytes.is_empty() {
                 return Err(Error::UnexpectedRangeProof);
             }
