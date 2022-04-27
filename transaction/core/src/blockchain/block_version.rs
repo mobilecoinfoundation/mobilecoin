@@ -68,7 +68,7 @@ impl BlockVersion {
     /// Constant for block version two
     pub const TWO: Self = Self(2);
 
-    /// Constant for block version two
+    /// Constant for block version three
     pub const THREE: Self = Self(3);
 
     /// Iterator over block versions from one up to max, inclusive. For use in
