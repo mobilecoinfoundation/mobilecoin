@@ -304,8 +304,8 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
 /// Get blocks with custom content in order to simulate conditions seen in
 /// production
 ///
-/// * `outputs_per_recipient_per_block` - transaction outputs per account per
-///   block
+/// * `outputs_per_recipient_per_token_per_block` - number of outputs for each 
+///   unique token type per account per block
 /// * `num_accounts` - number of accounts in the blocks
 /// * `num_blocks` - number of simulated blocks to create
 /// * `key_images_per_block` - number of key images per block
@@ -321,12 +321,12 @@ pub fn get_custom_test_ledger_blocks(
 
     // Number of total tx outputs in all blocks
     let num_outputs: u64 =
-        (num_accounts * outputs_per_recipient_per_block * num_blocks * (max_token_id as usize + 1))
+        (num_accounts * outputs_per_recipient_per_token_per_block * num_blocks * (max_token_id as usize + 1))
             as u64;
     assert!(num_outputs >= 16);
 
     // Initialize other defaults
-    let picomob_per_output: u64 = (TOTAL_MOB / num_outputs) * 1_000_000_000_000;
+    let picomob_per_output: u64 = ((TOTAL_MOB as f64 / num_outputs as f64) * 1000000000000.0) as u64;
     let recipients = (0..num_accounts)
         .map(|_| AccountKey::random(&mut rng).default_subaddress())
         .collect::<Vec<_>>();
@@ -335,12 +335,12 @@ pub fn get_custom_test_ledger_blocks(
     let mut previous_block: Option<Block> = None;
 
     // Create the tx outs for all of the simulated blocks
-    for _ in 0..num_blocks as u64 {
+    for _ in 0..num_blocks {
         let mut outputs: Vec<TxOut> = Vec::new();
         for recipient in &recipients {
             let tx_private_key = RistrettoPrivate::from_random(&mut rng);
-            for _ in 0..outputs_per_recipient_per_block {
-                // Create outputs for each token id in round-robin fashion
+            for _ in 0..outputs_per_recipient_per_token_per_block {
+                // Create outputs for each token id
                 for token_id in 0..=max_token_id {
                     let amount = Amount {
                         value: picomob_per_output,
