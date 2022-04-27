@@ -2667,6 +2667,46 @@ pub mod transaction_builder_tests {
             );
         }
 
+        // Setting fee afte change output has been written is not allowed.
+        {
+            let mut memo_builder = BurnRedemptionMemoBuilder::new([3u8; 64]);
+            memo_builder.enable_destination_memo();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                token_id,
+                fog_resolver.clone(),
+                memo_builder,
+            );
+
+            transaction_builder.set_fee(3).unwrap();
+
+            let input_credentials = get_input_credentials(
+                block_version,
+                Amount {
+                    value: 113,
+                    token_id,
+                },
+                &AccountKey::random(&mut rng),
+                &fog_resolver,
+                &mut rng,
+            );
+            transaction_builder.add_input(input_credentials);
+
+            let (_burn_tx_out, _confirmation) = transaction_builder
+                .add_output(100, &burn_address(), &mut rng)
+                .unwrap();
+
+            transaction_builder
+                .add_change_output(10, &change_destination, &mut rng)
+                .unwrap();
+
+            let result = transaction_builder.set_fee(1235);
+            assert_matches!(
+                result,
+                Err(TxBuilderError::Memo(NewMemoError::FeeAfterChange))
+            );
+        }
         // Happy flow without change
         {
             let mut memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
@@ -2727,7 +2767,7 @@ pub mod transaction_builder_tests {
 
         // Happy flow with change
         {
-            let mut memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
+            let mut memo_builder = BurnRedemptionMemoBuilder::new([3u8; 64]);
             memo_builder.enable_destination_memo();
 
             let mut transaction_builder = TransactionBuilder::new(
@@ -2808,7 +2848,7 @@ pub mod transaction_builder_tests {
             let memo = burn_output.e_memo.unwrap().decrypt(&ss);
             match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                 MemoType::BurnRedemption(memo) => {
-                    assert_eq!(memo.memo_data(), &[2u8; 64],);
+                    assert_eq!(memo.memo_data(), &[3u8; 64],);
                 }
                 _ => {
                     panic!("unexpected memo type")

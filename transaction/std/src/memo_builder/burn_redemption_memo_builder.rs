@@ -20,7 +20,7 @@ use mc_transaction_core::{tokens::Mob, MemoContext, MemoPayload, NewMemoError, T
 /// Usage:
 /// You should usually use this like:
 ///
-///   let memo_data = [1; 64]; // TODO: contents of this are still not designed.
+///   let memo_data = [1; BurnRedemptionMemo::MEMO_DATA_LEN];
 ///   let mut mb = BurnRedemptionMemoBuilder::new(memo_data);
 ///   mb.enable_destination_memo();
 ///
