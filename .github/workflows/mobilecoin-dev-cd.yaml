@@ -96,7 +96,7 @@ jobs:
     - name: Write environment values
       env:
         ENCLAVE_SIGNING_KEY_PATH: ${{ github.workspace }}/.tmp/enclave_signing.pem
-        ENCLAVE_SIGNING_KEY: ${{ secrets.ENCLAVE_SIGNING_KEY }}
+        ENCLAVE_SIGNING_KEY: ${{ secrets.DEV_ENCLAVE_SIGNING_KEY }}
       run: |
         mkdir -p ${GITHUB_WORKSPACE}/.tmp
         echo "${ENCLAVE_SIGNING_KEY}" > "${ENCLAVE_SIGNING_KEY_PATH}"
@@ -380,8 +380,8 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-s3-publish
-        aws_access_key_id: ${{ secrets.CHARTS_AWS_ACCESS_KEY_ID }}
-        aws_secret_access_key: ${{ secrets.CHARTS_AWS_SECRET_ACCESS_KEY }}
+        aws_access_key_id: ${{ secrets.PUBLIC_CHARTS_AWS_ACCESS_KEY_ID }}
+        aws_secret_access_key: ${{ secrets.PUBLIC_CHARTS_AWS_SECRET_ACCESS_KEY }}
         aws_default_region: us-east-2
         chart_repo: s3://charts.mobilecoin.com
         chart_app_version: ${{ steps.meta.outputs.tag }}
