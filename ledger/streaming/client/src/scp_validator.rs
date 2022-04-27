@@ -156,8 +156,10 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
             );
 
             // Increment our targets
-            self.highest_slot_index += 1;
             self.num_blocks_externalized += 1;
+            if !(self.num_blocks_externalized == 1 && self.highest_slot_index == 0) {
+                self.highest_slot_index += 1;
+            }
             return blocks.remove(&selected_node);
         }
 
@@ -239,7 +241,7 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
 
     /// Check if our recorded quorum is lagging behind what we've received
     pub fn is_behind(&self) -> bool {
-        self.highest_block_received() - self.highest_slot_index > MAX_BLOCK_DEFICIT
+        self.highest_block_received() > self.highest_slot_index + MAX_BLOCK_DEFICIT
     }
 }
 
@@ -255,13 +257,18 @@ impl<US: BlockStream + 'static, ID: GenericNodeId + Send> BlockStream for SCPVal
         let mut merged_streams = stream::SelectAll::new();
         for stream_factory in &self.upstreams {
             let (node_id, upstream) = stream_factory;
-            log::info!(self.logger, "Generating new stream from {:?}", node_id);
+            log::debug!(self.logger, "Generating new stream from {:?}", node_id);
             let us = upstream.get_block_stream(starting_height).unwrap();
             let peer_id = node_id.clone();
             merged_streams.push(Box::pin(us.map(move |result| (peer_id.clone(), result))));
         }
 
         // Create SCP validation state object and insert it into stateful stream
+        log::info!(
+            self.logger,
+            "Creating SCP validation stream from {} upstreams",
+            self.upstreams.len()
+        );
         let mut validation_state = self.scp_validation_state.clone();
         if starting_height > 0 {
             validation_state.set_highest_externalized_slot(starting_height - 1);
@@ -275,6 +282,11 @@ impl<US: BlockStream + 'static, ID: GenericNodeId + Send> BlockStream for SCPVal
 
                     // Attempt to externalize it if there's quorum
                     if let Some(block_data) = scp_state.attempt_externalize_block() {
+                        log::debug!(
+                            scp_state.logger,
+                            "upstreams have consensus on block {}",
+                            block_data.block().index;
+                        );
                         return future::ready(Some(Ready::Ready(Ok(block_data))));
                     }
                 }

@@ -116,13 +116,15 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for DbS
         };
 
         // Get the upstream, start our thread, and initialize our sink management object
+        log::info!(self.logger, "creating ledger sink stream & thread");
         let (tx, rcv) = start_sink_thread(self.ledger.clone(), self.logger.clone());
         let manager = SinkManager::new(tx, rcv, 0, 0, sync_start_height, self.logger.clone());
         let stream = Box::pin(self.upstream.get_block_stream(starting_height).unwrap());
 
         // Create the stream
-        let output_stream =
-            futures::stream::unfold((stream, manager), |(mut stream, mut manager)| async move {
+        let output_stream = futures::stream::unfold(
+            (stream, manager),
+            |(mut stream, mut manager)| async move {
                 if let Some(result) = stream.next().await {
                     if let Ok(block_data) = result {
                         manager.last_block_received = block_data.block().index;
@@ -149,16 +151,23 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for DbS
                 } else {
                     // If we're behind, wait for the rest of the blocks to sync then end
                     if manager.is_behind() {
-                        log::debug!(
+                        log::warn!(
                             manager.logger,
-                            "upstream terminated, waiting for the rest of the blocks to sync"
+                            "upstream terminated with {} blocks received, waiting to sync up to block {}",
+                            manager.last_block_received,
+                            manager.last_block_synced,
                         );
                     } else {
-                        log::warn!(manager.logger, "upstream stopped, ending stream");
+                        log::warn!(manager.logger,
+                            "upstream ended, ending downstream - blocks received: {}, blocks synced: {}",
+                            manager.last_block_received,
+                            manager.last_block_synced,
+                        );
                         return None;
                     }
                 }
                 if let Some(block_data) = manager.receiver.recv().await {
+                    log::debug!(manager.logger, "block {} synced", block_data.block().index);
                     manager.last_block_synced = block_data.block().index;
                     Some((Ok(block_data), (stream, manager)))
                 } else {
@@ -166,7 +175,8 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for DbS
                     log::error!(manager.logger, "sink thread stopped, ending stream");
                     None
                 }
-            });
+            },
+        );
         Ok(Box::pin(output_stream))
     }
 }
@@ -181,6 +191,11 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> DbStream<US, L> {
             logger,
         }
     }
+
+    /// Replace ledger
+    pub fn reinitialize_ledger(&mut self, ledger: L) {
+        self.ledger = ledger;
+    }
 }
 
 fn start_sink_thread(
@@ -193,6 +208,7 @@ fn start_sink_thread(
 
     // Launch ledger sink thread
     std::thread::spawn(move || {
+        log::debug!(logger, "starting ledger sink thread");
         while let Some(block_data) = rcv_in.blocking_recv() {
             let signature = block_data.signature().as_ref().cloned();
 
@@ -219,6 +235,10 @@ fn start_sink_thread(
                 break;
             }
         }
+        log::debug!(
+            logger,
+            "upstream receiver channel ended, ending ledger sink thread"
+        );
     });
     (send_in, rcv_out)
 }

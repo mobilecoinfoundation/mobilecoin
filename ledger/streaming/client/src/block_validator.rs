@@ -50,82 +50,95 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for Blo
         log::info!(self.logger, "Creating block validation stream");
         let stream = self.upstream.get_block_stream(starting_height)?;
 
-        Ok(stream.scan(
-            (
-                ledger,
-                prev_block_id,
-                additional_key_images,
-                starting_height,
-            ),
-            |state, result| {
-                match result {
-                    Ok(block_data) => {
-                        let (ledger, prev_block_id, additional_key_images, starting_height) = state;
+        Ok(
+            stream.scan(
+                (
+                    ledger,
+                    prev_block_id,
+                    additional_key_images,
+                    starting_height,
+                    self.logger.clone(),
+                ),
+                |state, result| {
+                    match result {
+                        Ok(block_data) => {
+                            let (
+                                ledger,
+                                prev_block_id,
+                                additional_key_images,
+                                starting_height,
+                                logger,
+                            ) = state;
 
-                        let block = block_data.block();
-                        let block_contents = block_data.contents();
+                            let block = block_data.block();
+                            let block_contents = block_data.contents();
 
-                        if *starting_height == block.index && ledger.is_none() && block.index > 0 {
-                            *prev_block_id = block.parent_id.clone();
-                        }
+                            if *starting_height == block.index
+                                && ledger.is_none()
+                                && block.index > 0
+                            {
+                                *prev_block_id = block.parent_id.clone();
+                            }
 
-                        // Check if parent block matches last block seen
-                        if &block.parent_id != prev_block_id {
-                            return future::ready(Some(Err(StreamError::BlockValidation(
-                                "Block parent ID doesn't match".to_string(),
-                            ))));
-                        }
+                            // Check if parent block matches last block seen
+                            if &block.parent_id != prev_block_id {
+                                return future::ready(Some(Err(StreamError::BlockValidation(
+                                    "Block parent ID doesn't match".to_string(),
+                                ))));
+                            }
 
-                        // Check if key images already in ledger
-                        if let Some(ledger) = ledger {
-                            for key_image in &block_contents.key_images {
-                                // Check if the key image is already in the local ledger.
-                                match ledger.contains_key_image(key_image) {
-                                    Ok(contains_key_image) => {
-                                        if contains_key_image
-                                            || additional_key_images.contains(key_image)
-                                        {
+                            // Check if key images already in ledger
+                            if let Some(ledger) = ledger {
+                                for key_image in &block_contents.key_images {
+                                    // Check if the key image is already in the local ledger.
+                                    match ledger.contains_key_image(key_image) {
+                                        Ok(contains_key_image) => {
+                                            if contains_key_image
+                                                || additional_key_images.contains(key_image)
+                                            {
+                                                return future::ready(Some(Err(
+                                                    StreamError::BlockValidation(
+                                                        "Contains spent key image".to_string(),
+                                                    ),
+                                                )));
+                                            }
+                                        }
+                                        Err(err) => {
                                             return future::ready(Some(Err(
-                                                StreamError::BlockValidation(
-                                                    "Contains spent key image".to_string(),
-                                                ),
+                                                StreamError::DBAccess(err.to_string()),
                                             )));
                                         }
                                     }
-                                    Err(err) => {
-                                        return future::ready(Some(Err(StreamError::DBAccess(
-                                            err.to_string(),
-                                        ))));
-                                    }
+                                    additional_key_images.insert(*key_image);
                                 }
-                                additional_key_images.insert(*key_image);
                             }
+
+                            // Compute the hash of the block
+                            let derived_block_id = compute_block_id(
+                                block.version,
+                                &block.parent_id,
+                                block.index,
+                                block.cumulative_txo_count,
+                                &block.root_element,
+                                &block_contents.hash(),
+                            );
+
+                            // The block's ID must agree with the merkle hash of its transactions.
+                            if block.id != derived_block_id {
+                                return future::ready(Some(Err(StreamError::BlockValidation(
+                                    "Hash of transactions don't match claimed block id".to_string(),
+                                ))));
+                            }
+
+                            log::debug!(logger, "block {} validated", block.index);
+                            *prev_block_id = block.id.clone();
+                            future::ready(Some(Ok(block_data)))
                         }
-
-                        // Compute the hash of the block
-                        let derived_block_id = compute_block_id(
-                            block.version,
-                            &block.parent_id,
-                            block.index,
-                            block.cumulative_txo_count,
-                            &block.root_element,
-                            &block_contents.hash(),
-                        );
-
-                        // The block's ID must agree with the merkle hash of its transactions.
-                        if block.id != derived_block_id {
-                            return future::ready(Some(Err(StreamError::BlockValidation(
-                                "Hash of transactions don't match claimed block id".to_string(),
-                            ))));
-                        }
-
-                        *prev_block_id = block.id.clone();
-                        future::ready(Some(Ok(block_data)))
+                        Err(err) => future::ready(Some(Err(err))),
                     }
-                    Err(err) => future::ready(Some(Err(err))),
-                }
-            },
-        ))
+                },
+            ),
+        )
     }
 }
 

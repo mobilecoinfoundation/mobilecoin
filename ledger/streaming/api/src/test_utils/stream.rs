@@ -4,6 +4,7 @@
 
 use crate::{BlockData, BlockStream, Result};
 use futures::Stream;
+use mc_ledger_db::test_utils::mock_ledger::get_custom_test_ledger_blocks;
 
 /// Mock implementation of BlockStream, backed by pre-defined data.
 #[derive(Clone, Debug)]
@@ -33,4 +34,36 @@ impl BlockStream for MockStream {
         let items = self.items.iter().cloned().skip(start_index);
         Ok(futures::stream::iter(items))
     }
+}
+
+/// Create a mock stream with blocks that resemble those seen in productoin
+///
+/// * `outputs_per_recipient_per_block` - transaction outputs per account per
+///   block
+/// * `num_accounts` - number of accounts in the simulated blocks
+/// * `num_blocks` - number of simulated blocks to create
+/// * `key_images_per_block` - number of simulated key images per block
+///
+/// Returns a MockStream that when driven will produce blocks with the contents
+/// specified in the above parameters
+pub fn mock_stream_with_custom_block_contents(
+    outputs_per_recipient_per_block: usize,
+    num_accounts: usize,
+    num_blocks: usize,
+    key_images_per_block: usize,
+    max_token_id: u64,
+) -> MockStream {
+    let blocks = get_custom_test_ledger_blocks(
+        outputs_per_recipient_per_block,
+        num_accounts,
+        num_blocks,
+        key_images_per_block,
+        max_token_id,
+    );
+
+    let block_data: Vec<BlockData> = blocks
+        .into_iter()
+        .map(move |(block, block_contents)| BlockData::new(block, block_contents, None))
+        .collect();
+    MockStream::from_blocks(block_data)
 }
