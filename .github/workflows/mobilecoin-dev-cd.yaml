@@ -61,7 +61,7 @@ jobs:
 #########################################
 # Build binaries
 #########################################
-  build-cargo-hardware:
+  build-rust-hardware-projects:
     runs-on: [self-hosted, Linux, large]
     container:
       image: mobilecoin/rust-sgx-base@sha256:565e0b31ba40379098de222d63f13fee9fc3f7b72318743794f103f79e85fbca
@@ -71,7 +71,7 @@ jobs:
 
     - name: Cache rust build binaries
       if: "! contains(github.event.head_commit.message, '[skip build]')"
-      id: artifact_cache
+      id: rust_artifact_cache
       uses: actions/cache@v3
       with:
         path: |
@@ -83,7 +83,7 @@ jobs:
     - name: Cache cargo packages
       # We don't need cargo packages if we already have binaries.
       if: |
-        steps.artifact_cache.outputs.cache-hit != 'true' &&
+        steps.rust_artifact_cache.outputs.cache-hit != 'true' &&
         ! contains(github.event.head_commit.message, '[skip build]')
       uses: actions/cache@v3
       with:
@@ -103,9 +103,9 @@ jobs:
         mkdir -p ${GITHUB_WORKSPACE}/.tmp
         echo "${ENCLAVE_SIGNING_KEY}" > "${ENCLAVE_SIGNING_KEY_PATH}"
 
-    - name: Build Rust
+    - name: Build rust hardware projects
       if: |
-        steps.artifact_cache.outputs.cache-hit != 'true' &&
+        steps.rust_artifact_cache.outputs.cache-hit != 'true' &&
         ! contains(github.event.head_commit.message, '[skip build]')
       env:
         IAS_MODE: DEV
@@ -140,7 +140,7 @@ jobs:
 
     - name: Copy artifacts to cache
       if: |
-        steps.artifact_cache.outputs.cache-hit != 'true' &&
+        steps.rust_artifact_cache.outputs.cache-hit != 'true' &&
         ! contains(github.event.head_commit.message, '[skip build]')
       run: |
         mkdir -p build_artifacts
@@ -149,7 +149,7 @@ jobs:
 
     - name: Create css measurements
       if: |
-        steps.artifact_cache.outputs.cache-hit != 'true' &&
+        steps.rust_artifact_cache.outputs.cache-hit != 'true' &&
         ! contains(github.event.head_commit.message, '[skip build]')
       shell: bash
       run: |
@@ -199,7 +199,7 @@ jobs:
 
     - name: Build go-grpc-gateway
       if: |
-        steps.artifact_cache.outputs.cache-hit != 'true' &&
+        steps.rust_artifact_cache.outputs.cache-hit != 'true' &&
         ! contains(github.event.head_commit.message, '[skip build]')
       run: |
         cd go-grpc-gateway
@@ -292,7 +292,7 @@ jobs:
 
     - name: Cache rust build binaries
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
-      id: artifact_cache
+      id: rust_artifact_cache
       uses: actions/cache@v3
       with:
         path: |
