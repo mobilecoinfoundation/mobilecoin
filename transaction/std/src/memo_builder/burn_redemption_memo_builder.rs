@@ -47,7 +47,7 @@ pub struct BurnRedemptionMemoBuilder {
     wrote_burn_memo: bool,
     // Tracks if we already wrote a destination memo, for error reporting
     wrote_destination_memo: bool,
-    // Tracks the amount being burn
+    // Tracks the amount being burned
     burn_amount: u64,
     // Tracks the fee
     fee: u64,
