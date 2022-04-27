@@ -2850,10 +2850,16 @@ dependencies = [
  "grpcio",
  "mc-api",
  "mc-attest-api",
+ "mc-crypto-multisig",
+ "mc-ledger-db",
  "mc-transaction-core",
+ "mc-transaction-core-test-utils",
  "mc-util-build-grpc",
  "mc-util-build-script",
+ "mc-util-serial",
  "protobuf",
+ "rand_core 0.6.3",
+ "rand_hc 0.3.1",
 ]
 
 [[package]]

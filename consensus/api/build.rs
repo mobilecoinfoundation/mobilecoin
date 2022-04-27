@@ -30,6 +30,7 @@ fn main() {
         &[
             "consensus_client.proto",
             "consensus_common.proto",
+            "consensus_config.proto",
             "consensus_peer.proto",
         ],
     );
