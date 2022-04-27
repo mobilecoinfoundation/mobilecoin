@@ -11,8 +11,6 @@ env:
 on:
   push:
     branches:
-    # TODO: Remove after current 1.2.0 branch
-    - release-1.2.0
     - release/v[0-9]+.[0-9]+.[0-9]+
     - feature/*
     - develop
@@ -75,10 +73,10 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          build_artifacts
+          rust_build_artifacts
         # Key is a hash of all the .rs, .proto and Cargo.toml files.
         # if code changes, invalidate cache and rebuild
-        key: ${{ secrets.CACHE_BUSTER }}-${{ runner.os }}-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml') }}-cargo-build-artifacts
+        key: ${{ secrets.CACHE_BUSTER }}-${{ runner.os }}-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml') }}-rust-build-artifacts
 
     - name: Cache cargo packages
       # We don't need cargo packages if we already have binaries.
@@ -143,9 +141,9 @@ jobs:
         steps.rust_artifact_cache.outputs.cache-hit != 'true' &&
         ! contains(github.event.head_commit.message, '[skip build]')
       run: |
-        mkdir -p build_artifacts
-        find target/release -maxdepth 1 -executable -type f -exec cp "{}" build_artifacts/ \;
-        find target/release -maxdepth 1 -name "*.signed.so" -exec cp "{}" build_artifacts/ \;
+        mkdir -p rust_build_artifacts
+        find target/release -maxdepth 1 -executable -type f -exec cp "{}" rust_build_artifacts/ \;
+        find target/release -maxdepth 1 -name "*.signed.so" -exec cp "{}" rust_build_artifacts/ \;
 
     - name: Create css measurements
       if: |
@@ -153,7 +151,7 @@ jobs:
         ! contains(github.event.head_commit.message, '[skip build]')
       shell: bash
       run: |
-        cd build_artifacts
+        cd rust_build_artifacts
         for i in *.signed.so
         do
           css=$(echo -n "${i}" | sed -r 's/(.*)\.signed\.so/\1/')
@@ -163,14 +161,14 @@ jobs:
     - name: check artifacts
       if: "! contains(github.event.head_commit.message, '[skip build]')"
       run: |
-        ls -alR build_artifacts
+        ls -alR rust_build_artifacts
 
     - name: Upload Artifacts
       if: "! contains(github.event.head_commit.message, '[skip build]')"
       uses: actions/upload-artifact@v3
       with:
         name: rust-binaries
-        path: build_artifacts/
+        path: rust_build_artifacts/
 
   build-go-projects:
     runs-on: [self-hosted, Linux, large]
@@ -271,7 +269,7 @@ jobs:
     runs-on: [self-hosted, Linux, small]
     needs:
     - build-go-projects
-    - build-cargo-hardware
+    - build-rust-hardware-projects
     - docker-base
     strategy:
       matrix:
@@ -296,8 +294,8 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          build_artifacts
-        key: ${{ secrets.CACHE_BUSTER }}-${{ runner.os }}-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml') }}-cargo-build-artifacts
+          rust_build_artifacts
+        key: ${{ secrets.CACHE_BUSTER }}-${{ runner.os }}-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml') }}-rust-build-artifacts
 
     - name: Cache go build binaries
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
