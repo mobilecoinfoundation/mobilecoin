@@ -106,7 +106,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     ///   transaction
     /// * `fee` - The fee (and token id) to use for this transaction. Note: The
     ///   fee token id cannot be changed later, and before mixed transactions
-    ///   feature, every input and output must have this token id.
+    ///   feature, every input and output must have the same token id as the fee.
     /// * `fog_resolver` - Source of validated fog keys to use with this
     ///   transaction
     /// * `memo_builder` - An object which creates memos for the TxOuts in this
