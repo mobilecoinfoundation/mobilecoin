@@ -867,7 +867,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             fog_resolver_factory(&fog_uris).map_err(Error::Fog)?
         };
 
-        // TODO: Use RTH memo builder, optionally?
+        // TODO (GH #1522): Use RTH memo builder, optionally?
 
         let fee_amount = Amount::new(fee, token_id);
 
@@ -962,8 +962,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let mut tx_out_to_outlay_index = HashMap::default();
         let mut outlay_confirmation_numbers = Vec::default();
         for (i, outlay) in destinations.iter().enumerate() {
-            // TODO: If you want to support mixed transactions, use outlay-specific token id
-            // here
+            // TODO (GH #1867): If you want to support mixed transactions, use
+            // outlay-specific token id here
             let amount = Amount {
                 value: outlay.value,
                 token_id,
@@ -988,7 +988,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let change = input_value - total_value - tx_builder.get_fee();
 
         // If we do have nonzero change, add an output for that as well.
-        // TODO: Should the exchange write destination memos?
+        // TODO (GH #1522): Should the exchange write destination memos?
         // If so then we must always write a change output, even if the change is zero
         if change > 0 {
             // TODO: If you want to support mixed transactions, use outlay-specific token id

@@ -1693,7 +1693,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1output(
 
             let value = jni_big_int_to_u64(env, value)?;
 
-            // TODO: If you want to do mixed transactions, use something other
+            // TODO (GH #1867): If you want to do mixed transactions, use something other
             // than fee_token_id here.
             let amount = Amount {
                 value: value as u64,
@@ -1751,7 +1751,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1change_
                 ChangeDestination::from(&*source_account_key);
             let mut rng = McRng::default();
 
-            // TODO: If you want to do mixed transactions, use something other
+            // TODO (GH #1867): If you want to do mixed transactions, use something other
             // than fee_token_id here.
             let amount = Amount {
                 value: value as u64,
