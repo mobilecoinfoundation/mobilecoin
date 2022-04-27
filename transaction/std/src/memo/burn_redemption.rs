@@ -18,7 +18,7 @@ pub struct BurnRedemptionMemo {
     /// The memo data.
     /// The contents of the memo depend on the token being burnt, and as such do
     /// not have a strict schema.
-    memo_data: [u8; 64],
+    memo_data: [u8; Self::MEMO_DATA_LEN],
 }
 
 impl RegisteredMemoType for BurnRedemptionMemo {
@@ -26,27 +26,30 @@ impl RegisteredMemoType for BurnRedemptionMemo {
 }
 
 impl BurnRedemptionMemo {
+    /// The length of the custom memo data.
+    pub const MEMO_DATA_LEN: usize = 64;
+
     /// Create a new BurnRedemptionMemo.
-    pub fn new(memo_data: [u8; 64]) -> Self {
+    pub fn new(memo_data: [u8; Self::MEMO_DATA_LEN]) -> Self {
         BurnRedemptionMemo { memo_data }
     }
 
     /// Get the memo data
-    pub fn memo_data(&self) -> &[u8; 64] {
+    pub fn memo_data(&self) -> &[u8; Self::MEMO_DATA_LEN] {
         &self.memo_data
     }
 }
 
-impl From<&[u8; 64]> for BurnRedemptionMemo {
-    fn from(src: &[u8; 64]) -> Self {
-        let mut memo_data = [0u8; 64];
+impl From<&[u8; Self::MEMO_DATA_LEN]> for BurnRedemptionMemo {
+    fn from(src: &[u8; Self::MEMO_DATA_LEN]) -> Self {
+        let mut memo_data = [0u8; Self::MEMO_DATA_LEN];
         memo_data.copy_from_slice(src);
         Self { memo_data }
     }
 }
 
-impl From<BurnRedemptionMemo> for [u8; 64] {
-    fn from(src: BurnRedemptionMemo) -> [u8; 64] {
+impl From<BurnRedemptionMemo> for [u8; BurnRedemptionMemo::MEMO_DATA_LEN] {
+    fn from(src: BurnRedemptionMemo) -> [u8; BurnRedemptionMemo::MEMO_DATA_LEN] {
         src.memo_data
     }
 }
