@@ -337,7 +337,7 @@ jobs:
       with:
         build-args: |
           REPO_ORG=${{ env.DOCKER_ORG }}
-          RUST_BIN_PATH=build_artifacts
+          RUST_BIN_PATH=rust_build_artifacts
           GO_BIN_PATH=go_build_artifacts
         cache-from: type=registry,ref=${{ env.DOCKER_ORG }}/${{ matrix.image }}:buildcache-${{ steps.meta.outputs.branch }}
         cache-to: type=registry,ref=${{ env.DOCKER_ORG }}/${{ matrix.image }}:buildcache-${{ steps.meta.outputs.branch }}
