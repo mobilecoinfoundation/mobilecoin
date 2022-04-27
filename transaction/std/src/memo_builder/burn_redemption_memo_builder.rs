@@ -10,7 +10,7 @@ use super::{
 };
 use crate::ChangeDestination;
 use mc_account_keys::{burn_address, PublicAddress, ShortAddressHash};
-use mc_transaction_core::{tokens::Mob, MemoContext, MemoPayload, NewMemoError, Token};
+use mc_transaction_core::{tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token};
 
 /// This memo builder attaches 0x0001 Burn Redemption Memos to an output going
 /// to the designated burn address, and 0x0200 Destination Memos to change
@@ -43,14 +43,12 @@ pub struct BurnRedemptionMemoBuilder {
     memo_data: [u8; 64],
     // Whether destination memos are enabled.
     destination_memo_enabled: bool,
-    // Tracks if we already wrote a burn memo, for error reporting
-    wrote_burn_memo: bool,
     // Tracks if we already wrote a destination memo, for error reporting
     wrote_destination_memo: bool,
     // Tracks the amount being burned
-    burn_amount: u64,
+    burn_amount: Option<Amount>,
     // Tracks the fee
-    fee: u64,
+    fee: Amount,
 }
 
 impl BurnRedemptionMemoBuilder {
@@ -59,10 +57,9 @@ impl BurnRedemptionMemoBuilder {
         Self {
             memo_data,
             destination_memo_enabled: false,
-            wrote_burn_memo: false,
             wrote_destination_memo: false,
-            burn_amount: 0,
-            fee: Mob::MINIMUM_FEE,
+            burn_amount: None,
+            fee: Amount::new(Mob::MINIMUM_FEE, Mob::ID),
         }
     }
     /// Enable destination memos
@@ -78,7 +75,7 @@ impl BurnRedemptionMemoBuilder {
 
 impl MemoBuilder for BurnRedemptionMemoBuilder {
     /// Set the fee
-    fn set_fee(&mut self, fee: u64) -> Result<(), NewMemoError> {
+    fn set_fee(&mut self, fee: Amount) -> Result<(), NewMemoError> {
         if self.wrote_destination_memo {
             return Err(NewMemoError::FeeAfterChange);
         }
@@ -89,28 +86,27 @@ impl MemoBuilder for BurnRedemptionMemoBuilder {
     /// Build a memo for the burn output.
     fn make_memo_for_output(
         &mut self,
-        value: u64,
+        amount: Amount,
         recipient: &PublicAddress,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
         if *recipient != burn_address() {
             return Err(NewMemoError::InvalidRecipient(recipient.clone()));
         }
-        if self.wrote_burn_memo {
+        if self.burn_amount.is_some() {
             return Err(NewMemoError::MultipleOutputs);
         }
         if self.wrote_destination_memo {
             return Err(NewMemoError::OutputsAfterChange);
         }
-        self.burn_amount = value;
-        self.wrote_burn_memo = true;
+        self.burn_amount = Some(amount);
         Ok(BurnRedemptionMemo::new(self.memo_data).into())
     }
 
     /// Build a memo for a change output (to ourselves).
     fn make_memo_for_change_output(
         &mut self,
-        _value: u64,
+        change_amount: Amount,
         _change_destination: &ChangeDestination,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
@@ -120,17 +116,24 @@ impl MemoBuilder for BurnRedemptionMemoBuilder {
         if self.wrote_destination_memo {
             return Err(NewMemoError::MultipleChangeOutputs);
         }
-        if !self.wrote_burn_memo {
+        if self.burn_amount.is_none() {
             return Err(NewMemoError::MissingOutput);
         }
-        let total_outlay = self
-            .burn_amount
-            .checked_add(self.fee)
+        let burn_amount = self.burn_amount.clone().unwrap();
+        if burn_amount.token_id != self.fee.token_id
+            || burn_amount.token_id != change_amount.token_id
+        {
+            return Err(NewMemoError::MixedTokenIds);
+        }
+
+        let total_outlay = burn_amount
+            .value
+            .checked_add(self.fee.value)
             .ok_or(NewMemoError::LimitsExceeded("total_outlay"))?;
         match DestinationMemo::new(
             ShortAddressHash::from(&burn_address()),
             total_outlay,
-            self.fee,
+            self.fee.value,
         ) {
             Ok(mut d_memo) => {
                 self.wrote_destination_memo = true;
