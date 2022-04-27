@@ -16,7 +16,8 @@ use crate::impl_memo_type_conversions;
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct BurnRedemptionMemo {
     /// The memo data.
-    /// The contents of the memo depend on the token being burnt, and as such do not have a strict schema.
+    /// The contents of the memo depend on the token being burnt, and as such do
+    /// not have a strict schema.
     memo_data: [u8; 64],
 }
 
