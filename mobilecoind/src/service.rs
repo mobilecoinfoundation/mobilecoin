@@ -1065,7 +1065,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             RpcStatus::with_message(RpcStatusCode::INVALID_ARGUMENT, "redemption_memo".into())
         })?;
 
-        let memo_builder = BurnRedemptionMemoBuilder::new(memo_data_array);
+        let mut memo_builder = BurnRedemptionMemoBuilder::new(memo_data_array);
+        if request.enable_destination_memo {
+            memo_builder.enable_destination_memo();
+        }
 
         // Attempt to construct a transaction.
         let tx_proposal = self
@@ -2083,7 +2086,8 @@ mod test {
     };
     use grpcio::Error as GrpcError;
     use mc_account_keys::{
-        burn_address_view_private, AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX,
+        burn_address_view_private, AccountKey, PublicAddress, ShortAddressHash,
+        DEFAULT_SUBADDRESS_INDEX,
     };
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_keys::RistrettoPrivate;
@@ -3989,6 +3993,7 @@ mod test {
         request.set_fee(200_000);
         request.set_token_id(*token_id2);
         request.set_redemption_memo(vec![5u8; BurnRedemptionMemo::MEMO_DATA_LEN]);
+        request.set_enable_destination_memo(true);
 
         // Test the happy flow.
         {
@@ -4002,7 +4007,7 @@ mod test {
             assert_eq!(tx.prefix.outputs.len(), 2);
 
             // Validate the change output.
-            let (_change_tx_out, change_amount) = tx
+            let (change_tx_out, change_amount) = tx
                 .prefix
                 .outputs
                 .iter()
@@ -4015,6 +4020,31 @@ mod test {
                 .expect("Didn't find sender's change output");
 
             assert_eq!(change_amount.value, 1_000_000_000_000 - 100_000 - 200_000);
+
+            let ss = get_tx_out_shared_secret(
+                sender.view_private_key(),
+                &RistrettoPublic::try_from(&change_tx_out.public_key).unwrap(),
+            );
+            let memo = change_tx_out.e_memo.unwrap().decrypt(&ss);
+            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                MemoType::Destination(memo) => {
+                    assert_eq!(
+                        memo.get_address_hash(),
+                        &ShortAddressHash::from(&burn_address()),
+                        "lookup based on address hash failed"
+                    );
+                    assert_eq!(memo.get_num_recipients(), 1);
+                    assert_eq!(memo.get_fee(), 200_000);
+                    assert_eq!(
+                        memo.get_total_outlay(),
+                        300_000,
+                        "outlay should be amount sent to recipient + fee"
+                    );
+                }
+                _ => {
+                    panic!("unexpected memo type")
+                }
+            }
 
             // Validate the burn output.
             let (burn_tx_out, burn_amount) = tx

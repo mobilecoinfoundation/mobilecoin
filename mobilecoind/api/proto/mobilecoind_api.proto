@@ -599,6 +599,9 @@ message GenerateBurnRedemptionTxRequest {
     // Optional 64 bytes of data to include in the burn redemption memo that is attached to the burn TxOut.
     // If not provided zeros will be used.
     bytes redemption_memo = 8;
+
+    // Enable RTH destination memo.
+    bool enable_destination_memo = 9;
 }
 message GenerateBurnRedemptionTxResponse {
     TxProposal tx_proposal = 1;
