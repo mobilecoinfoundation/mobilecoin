@@ -137,7 +137,7 @@ impl SignatureRctBulletproofs {
     ///   commitments.
     /// * `output_commitments` - Output amount commitments.
     /// * `fee` - Value of the implicit fee output.
-    /// * `fee_token id` - This determines the pedersen generator for fee
+    /// * `fee_token_id` - This determines the pedersen generator for fee
     ///   commitment
     /// * `rng` - randomness
     pub fn verify<CSPRNG: RngCore + CryptoRng>(
