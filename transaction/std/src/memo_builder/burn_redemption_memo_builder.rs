@@ -119,7 +119,7 @@ impl MemoBuilder for BurnRedemptionMemoBuilder {
         if self.burn_amount.is_none() {
             return Err(NewMemoError::MissingOutput);
         }
-        let burn_amount = self.burn_amount.clone().unwrap();
+        let burn_amount = self.burn_amount.unwrap();
         if burn_amount.token_id != self.fee.token_id
             || burn_amount.token_id != change_amount.token_id
         {
