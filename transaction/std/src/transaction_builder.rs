@@ -2781,7 +2781,7 @@ pub mod transaction_builder_tests {
                     .unwrap()
             );
 
-            // Test that recipients's default subaddress owns the change, and not the other
+            // Test that recipients's default subaddress owns the correct output, and not the other
             // tx outs
             assert!(
                 subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &tx_out1).unwrap()
