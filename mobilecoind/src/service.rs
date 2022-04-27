@@ -2082,7 +2082,9 @@ mod test {
         utxo_store::UnspentTxOut,
     };
     use grpcio::Error as GrpcError;
-    use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
+    use mc_account_keys::{
+        burn_address_view_private, AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX,
+    };
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_keys::RistrettoPrivate;
     use mc_crypto_rand::RngCore;
@@ -2097,11 +2099,12 @@ mod test {
         tx::{Tx, TxOut},
         Amount, Block, BlockContents, BlockVersion, Token,
     };
-    use mc_transaction_std::{EmptyMemoBuilder, TransactionBuilder};
+    use mc_transaction_std::{EmptyMemoBuilder, MemoType, TransactionBuilder};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
     use std::{
+        assert_matches::assert_matches,
         convert::{TryFrom, TryInto},
         iter::FromIterator,
         str::FromStr,
@@ -3914,6 +3917,140 @@ mod test {
                     .collect(),
             ));
             assert!(client.generate_tx(&request).is_err());
+        }
+    }
+
+    #[test_with_logger]
+    fn test_generate_burn_redemption_tx(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+        let token_id2 = TokenId::from(2);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                BLOCK_VERSION,
+                3,
+                &[sender.default_subaddress()],
+                &[],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Add a block with a non-MOB token ID.
+        add_block_to_ledger_db(
+            BlockVersion::MAX,
+            &mut ledger_db,
+            &vec![
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                sender.default_subaddress(),
+            ],
+            Amount {
+                value: 1_000_000_000_000,
+                token_id: token_id2,
+            },
+            &[KeyImage::from(101)],
+            &mut rng,
+        );
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs that we want to burn
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, 0)
+            .unwrap()
+            .iter()
+            .filter(|utxo| utxo.token_id == token_id2)
+            .map(Into::into)
+            .collect::<RepeatedField<_>>();
+        assert!(!utxos.is_empty());
+
+        // Prepare request
+        let mut request = mc_mobilecoind_api::GenerateBurnRedemptionTxRequest::new();
+        request.set_sender_monitor_id(monitor_id.to_vec());
+        request.set_change_subaddress(0);
+        request.set_input_list(utxos);
+        request.set_burn_amount(100_000);
+        request.set_fee(200_000);
+        request.set_token_id(*token_id2);
+        request.set_redemption_memo(vec![5u8; BurnRedemptionMemo::MEMO_DATA_LEN]);
+
+        // Test the happy flow.
+        {
+            let response = client.generate_burn_redemption_tx(&request).unwrap();
+
+            // Sanity test the response.
+            let tx_proposal = response.get_tx_proposal();
+            let tx = Tx::try_from(tx_proposal.get_tx()).unwrap();
+
+            // Two outputs - change and burn
+            assert_eq!(tx.prefix.outputs.len(), 2);
+
+            // Validate the change output.
+            let (_change_tx_out, change_amount) = tx
+                .prefix
+                .outputs
+                .iter()
+                .find_map(|tx_out| {
+                    tx_out
+                        .view_key_match(sender.view_private_key())
+                        .map(|(amount, _commitment)| (tx_out.clone(), amount))
+                        .ok()
+                })
+                .expect("Didn't find sender's change output");
+
+            assert_eq!(change_amount.value, 1_000_000_000_000 - 100_000 - 200_000);
+
+            // Validate the burn output.
+            let (burn_tx_out, burn_amount) = tx
+                .prefix
+                .outputs
+                .iter()
+                .find_map(|tx_out| {
+                    tx_out
+                        .view_key_match(&burn_address_view_private())
+                        .map(|(amount, _commitment)| (tx_out.clone(), amount))
+                        .ok()
+                })
+                .expect("Didn't find burn output");
+
+            assert_eq!(burn_amount.value, 100_000);
+
+            let ss = get_tx_out_shared_secret(
+                &burn_address_view_private(),
+                &RistrettoPublic::try_from(&burn_tx_out.public_key).unwrap(),
+            );
+            let memo = burn_tx_out.e_memo.unwrap().decrypt(&ss);
+            assert_matches!(MemoType::try_from(&memo).expect("Couldn't decrypt memo"), MemoType::BurnRedemption(memo) if memo.memo_data() == &[5u8; 64]);
+        }
+
+        // Invalid memo data length results in an error.
+        {
+            let mut request = request.clone();
+            request.set_redemption_memo(vec![5u8; BurnRedemptionMemo::MEMO_DATA_LEN + 1]);
+            assert!(client.generate_burn_redemption_tx(&request).is_err());
+        }
+
+        // Trying to burn more than we have results in an error.
+        {
+            let mut request = request.clone();
+            request.set_burn_amount(1_000_000_000_000);
+            assert!(client.generate_burn_redemption_tx(&request).is_err());
         }
     }
 
