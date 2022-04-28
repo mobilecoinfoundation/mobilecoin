@@ -5,5 +5,5 @@ target = "../../../x86_64-mobilecoin-none-sgx.json"
 build-std = ["core", "alloc"]
 
 [env]
-RUST_MBEDTLS_TARGET = "x86_64-unknown-linux-gnu"
+RUST_MBEDTLS_BINDGEN_TARGET = "x86_64-unknown-linux-gnu"
 PKG_CONFIG_ALLOW_CROSS = "1"
