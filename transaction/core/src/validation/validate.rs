@@ -486,3 +486,14 @@ fn check_unique<T: Eq + core::hash::Hash>(
 
     Ok(())
 }
+
+// NOTE: There are unit tests of every validation function, which appear in
+// transaction/core/tests/validation.rs.
+//
+// The reason that these appear there is,
+// many of the tests use `mc-transaction-core-test-utils` which itself depends
+// on `mc-ledger-db` and `mc-transaction-core`, and this creates a circular
+// dependency which leads to build problems, if the unit tests appear in-line
+// here.
+//
+// Please add tests for any new validation functions there. Thank you!

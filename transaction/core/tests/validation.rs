@@ -1,9 +1,13 @@
+// Copyright (c) 2022 The MobileCoin Foundation
+
+//! This module is meant to unit test all of the functionality in the validation
+//! module in mc-transaction-core.
+
 extern crate alloc;
 
 use alloc::vec::Vec;
-
 use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes};
-
+use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
     constants::{MAX_TOMBSTONE_BLOCKS, RING_SIZE},
     membership_proofs::Range,
@@ -12,8 +16,6 @@ use mc_transaction_core::{
     validation::*,
     BlockVersion, Token,
 };
-
-use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core_test_utils::{
     create_ledger, create_transaction, create_transaction_with_amount_and_comparer,
     initialize_ledger, AccountKey, InverseTxOutputsOrdering, INITIALIZE_LEDGER_AMOUNT,
@@ -247,6 +249,7 @@ fn test_validate_membership_proofs_invalid_range_in_root_proof() {
 }
 
 #[test]
+// Test that validate_number_of_inputs is working as expected
 fn test_validate_number_of_inputs() {
     for block_version in BlockVersion::iterator() {
         let (orig_tx, _ledger) = create_test_tx(block_version);
@@ -276,6 +279,7 @@ fn test_validate_number_of_inputs() {
 }
 
 #[test]
+// Test that validate_number_of_outputs is working as expected
 fn test_validate_number_of_outputs() {
     for block_version in BlockVersion::iterator() {
         let (orig_tx, _ledger) = create_test_tx(block_version);
@@ -305,6 +309,7 @@ fn test_validate_number_of_outputs() {
 }
 
 #[test]
+// Test that validate_ring_sizes is working as expected
 fn test_validate_ring_sizes() {
     for block_version in BlockVersion::iterator() {
         let (tx, _ledger) = create_test_tx(block_version);
@@ -373,6 +378,7 @@ fn test_validate_ring_sizes() {
 }
 
 #[test]
+// Test that validate_ring_elements_are_unique is working as expected
 fn test_validate_ring_elements_are_unique() {
     for block_version in BlockVersion::iterator() {
         let (tx, _ledger) = create_test_tx(block_version);
