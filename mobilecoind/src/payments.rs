@@ -882,13 +882,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             opt_memo_builder.unwrap_or_else(|| Box::new(EmptyMemoBuilder::default()));
 
         let fee_amount = Amount::new(fee, token_id);
-        let mut tx_builder = TransactionBuilder::new_with_box(
-            block_version,
-            fee_amount,
-            fog_resolver,
-            memo_builder,
-        )
-        .map_err(|err| Error::TxBuild(format!("Error creating transaction builder: {}", err)))?;
+        let mut tx_builder =
+            TransactionBuilder::new_with_box(block_version, fee_amount, fog_resolver, memo_builder)
+                .map_err(|err| {
+                    Error::TxBuild(format!("Error creating transaction builder: {}", err))
+                })?;
 
         // Unzip each vec of tuples into a tuple of vecs.
         let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
