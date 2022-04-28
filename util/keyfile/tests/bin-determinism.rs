@@ -39,7 +39,7 @@ fn sample_keys_determinism() {
     assert!(Command::new(sample_keys_bin.clone())
         .args(&[
             "--output-dir",
-            &tempdir_path,
+            tempdir_path,
             "--num",
             "10",
             "--fog-report-url",
@@ -58,7 +58,7 @@ fn sample_keys_determinism() {
     assert!(Command::new(sample_keys_bin)
         .args(&[
             "--output-dir",
-            &tempdir2_path,
+            tempdir2_path,
             "--num",
             "10",
             "--fog-report-url",
@@ -66,7 +66,7 @@ fn sample_keys_determinism() {
             "--fog-report-id",
             "",
             "--fog-authority-root",
-            &fog_authority_root,
+            fog_authority_root,
         ])
         .status()
         .expect("sample_keys failed")
@@ -106,7 +106,7 @@ fn sample_keys_determinism2() {
     assert!(Command::new(sample_keys_bin.clone())
         .args(&[
             "--output-dir",
-            &tempdir_path,
+            tempdir_path,
             "--num",
             "10",
             "--fog-report-url",
@@ -125,7 +125,7 @@ fn sample_keys_determinism2() {
     assert!(Command::new(sample_keys_bin)
         .args(&[
             "--output-dir",
-            &tempdir2_path,
+            tempdir2_path,
             "--num",
             "20",
             "--fog-report-url",

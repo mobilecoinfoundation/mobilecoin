@@ -3116,8 +3116,7 @@ pub mod transaction_builder_tests {
                 !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &tx_out2).unwrap()
             );
             assert!(
-                subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &change_tx_out)
-                    .unwrap()
+                subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, change_tx_out).unwrap()
             );
 
             // Test that recipients's default subaddress owns the correct output, and not
@@ -3131,13 +3130,13 @@ pub mod transaction_builder_tests {
             assert!(!subaddress_matches_tx_out(
                 &recipient,
                 DEFAULT_SUBADDRESS_INDEX,
-                &change_tx_out
+                change_tx_out
             )
             .unwrap());
 
             // Test that view key matching works with the two tx outs
             let (amount, _) = tx_out1
-                .view_key_match(&recipient.view_private_key())
+                .view_key_match(recipient.view_private_key())
                 .unwrap();
             assert_eq!(
                 amount.value,
@@ -3146,24 +3145,24 @@ pub mod transaction_builder_tests {
             assert_eq!(amount.token_id, Mob::ID);
 
             let (amount, _) = tx_out2
-                .view_key_match(&recipient.view_private_key())
+                .view_key_match(recipient.view_private_key())
                 .unwrap();
             assert_eq!(amount, amount2);
 
             assert!(change_tx_out
-                .view_key_match(&recipient.view_private_key())
+                .view_key_match(recipient.view_private_key())
                 .is_err());
 
             // Test that view key matching works with the change tx out with sender's view
             // key
             let (amount, _) = change_tx_out
-                .view_key_match(&sender.view_private_key())
+                .view_key_match(sender.view_private_key())
                 .unwrap();
             assert_eq!(amount.value, change_amount.value);
 
-            assert!(tx_out1.view_key_match(&sender.view_private_key()).is_err());
+            assert!(tx_out1.view_key_match(sender.view_private_key()).is_err());
 
-            assert!(tx_out2.view_key_match(&sender.view_private_key()).is_err());
+            assert!(tx_out2.view_key_match(sender.view_private_key()).is_err());
         }
     }
 
@@ -3228,7 +3227,7 @@ pub mod transaction_builder_tests {
 
             assert!(test_fn(block_version, tx_out1_right_amount).is_ok());
 
-            let mut tx_out1_wrong_amount = tx_out1_right_amount.clone();
+            let mut tx_out1_wrong_amount = tx_out1_right_amount;
             tx_out1_wrong_amount.value -= 1;
             assert!(test_fn(block_version, tx_out1_wrong_amount).is_err());
 
