@@ -11,8 +11,6 @@ env:
 on:
   push:
     branches:
-    # TODO: Remove after current 1.2.0 branch
-    - release-1.2.0
     - release/v[0-9]+.[0-9]+.[0-9]+
     - feature/*
     - develop
@@ -75,10 +73,10 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          build_artifacts
+          rust_build_artifacts
         # Key is a hash of all the .rs, .proto and Cargo.toml files.
         # if code changes, invalidate cache and rebuild
-        key: ${{ secrets.CACHE_BUSTER }}-${{ runner.os }}-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml') }}-cargo-build-artifacts
+        key: ${{ secrets.CACHE_BUSTER }}-${{ runner.os }}-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml') }}-rust-build-artifacts
 
     - name: Cache cargo packages
       # We don't need cargo packages if we already have binaries.
@@ -98,7 +96,7 @@ jobs:
     - name: Write environment values
       env:
         ENCLAVE_SIGNING_KEY_PATH: ${{ github.workspace }}/.tmp/enclave_signing.pem
-        ENCLAVE_SIGNING_KEY: ${{ secrets.ENCLAVE_SIGNING_KEY }}
+        ENCLAVE_SIGNING_KEY: ${{ secrets.DEV_ENCLAVE_SIGNING_KEY }}
       run: |
         mkdir -p ${GITHUB_WORKSPACE}/.tmp
         echo "${ENCLAVE_SIGNING_KEY}" > "${ENCLAVE_SIGNING_KEY_PATH}"
@@ -143,9 +141,9 @@ jobs:
         steps.rust_artifact_cache.outputs.cache-hit != 'true' &&
         ! contains(github.event.head_commit.message, '[skip build]')
       run: |
-        mkdir -p build_artifacts
-        find target/release -maxdepth 1 -executable -type f -exec cp "{}" build_artifacts/ \;
-        find target/release -maxdepth 1 -name "*.signed.so" -exec cp "{}" build_artifacts/ \;
+        mkdir -p rust_build_artifacts
+        find target/release -maxdepth 1 -executable -type f -exec cp "{}" rust_build_artifacts/ \;
+        find target/release -maxdepth 1 -name "*.signed.so" -exec cp "{}" rust_build_artifacts/ \;
 
     - name: Create css measurements
       if: |
@@ -153,7 +151,7 @@ jobs:
         ! contains(github.event.head_commit.message, '[skip build]')
       shell: bash
       run: |
-        cd build_artifacts
+        cd rust_build_artifacts
         for i in *.signed.so
         do
           css=$(echo -n "${i}" | sed -r 's/(.*)\.signed\.so/\1/')
@@ -163,14 +161,14 @@ jobs:
     - name: check artifacts
       if: "! contains(github.event.head_commit.message, '[skip build]')"
       run: |
-        ls -alR build_artifacts
+        ls -alR rust_build_artifacts
 
     - name: Upload Artifacts
       if: "! contains(github.event.head_commit.message, '[skip build]')"
       uses: actions/upload-artifact@v3
       with:
         name: rust-binaries
-        path: build_artifacts/
+        path: rust_build_artifacts/
 
   build-go-projects:
     runs-on: [self-hosted, Linux, large]
@@ -271,7 +269,7 @@ jobs:
     runs-on: [self-hosted, Linux, small]
     needs:
     - build-go-projects
-    - build-cargo-hardware
+    - build-rust-hardware-projects
     - docker-base
     strategy:
       matrix:
@@ -296,8 +294,8 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          build_artifacts
-        key: ${{ secrets.CACHE_BUSTER }}-${{ runner.os }}-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml') }}-cargo-build-artifacts
+          rust_build_artifacts
+        key: ${{ secrets.CACHE_BUSTER }}-${{ runner.os }}-${{ hashFiles('**/*.rs', '**/*.proto', '**/Cargo.toml') }}-rust-build-artifacts
 
     - name: Cache go build binaries
       if: "! contains(github.event.head_commit.message, '[skip docker]')"
@@ -339,7 +337,7 @@ jobs:
       with:
         build-args: |
           REPO_ORG=${{ env.DOCKER_ORG }}
-          RUST_BIN_PATH=build_artifacts
+          RUST_BIN_PATH=rust_build_artifacts
           GO_BIN_PATH=go_build_artifacts
         cache-from: type=registry,ref=${{ env.DOCKER_ORG }}/${{ matrix.image }}:buildcache-${{ steps.meta.outputs.branch }}
         cache-to: type=registry,ref=${{ env.DOCKER_ORG }}/${{ matrix.image }}:buildcache-${{ steps.meta.outputs.branch }}
@@ -382,8 +380,8 @@ jobs:
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
       with:
         action: helm-s3-publish
-        aws_access_key_id: ${{ secrets.CHARTS_AWS_ACCESS_KEY_ID }}
-        aws_secret_access_key: ${{ secrets.CHARTS_AWS_SECRET_ACCESS_KEY }}
+        aws_access_key_id: ${{ secrets.PUBLIC_CHARTS_AWS_ACCESS_KEY_ID }}
+        aws_secret_access_key: ${{ secrets.PUBLIC_CHARTS_AWS_SECRET_ACCESS_KEY }}
         aws_default_region: us-east-2
         chart_repo: s3://charts.mobilecoin.com
         chart_app_version: ${{ steps.meta.outputs.tag }}
