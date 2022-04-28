@@ -540,7 +540,10 @@ fn create_fog_hint<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
 #[cfg(test)]
 pub mod transaction_builder_tests {
     use super::*;
-    use crate::{EmptyMemoBuilder, MemoType, RTHMemoBuilder, SenderMemoCredential};
+    use crate::{
+        BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoType, RTHMemoBuilder, SenderMemoCredential,
+    };
+    use assert_matches::assert_matches;
     use maplit::btreemap;
     use mc_account_keys::{
         burn_address, burn_address_view_private, AccountKey, ShortAddressHash,
@@ -555,7 +558,7 @@ pub mod transaction_builder_tests {
         subaddress_matches_tx_out,
         tx::TxOutMembershipProof,
         validation::{validate_signature, validate_tx_out},
-        TokenId,
+        NewTxError, TokenId,
     };
     use rand::{rngs::StdRng, SeedableRng};
     use std::convert::TryFrom;
@@ -2629,6 +2632,325 @@ pub mod transaction_builder_tests {
             assert!(burn_tx_out
                 .view_key_match(sender.view_private_key())
                 .is_err());
+        }
+    }
+
+    #[test]
+    // Transaction builder with Burn Redemption memo builder
+    fn test_transaction_builder_burn_redemption_memos() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let block_version = BlockVersion::MAX;
+        let token_id = TokenId::from(5);
+        let fog_resolver = MockFogResolver::default();
+        let sender = AccountKey::random(&mut rng);
+        let change_destination = ChangeDestination::from(&sender);
+
+        // Adding an output that is not to the burn address is not allowed.
+        {
+            let memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            let recipient = AccountKey::random(&mut rng);
+            let result =
+                transaction_builder.add_output(100, &recipient.default_subaddress(), &mut rng);
+            assert_matches!(
+                result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::InvalidRecipient
+                )))
+            );
+        }
+
+        // Adding two burn outputs is not allowed.
+        {
+            let memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            transaction_builder
+                .add_output(100, &burn_address(), &mut rng)
+                .unwrap();
+
+            let result = transaction_builder.add_output(100, &burn_address(), &mut rng);
+            assert_matches!(
+                result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::MultipleOutputs
+                )))
+            );
+        }
+
+        // Adding a change output before a burn output is not allowed.
+        {
+            let mut memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
+            memo_builder.enable_destination_memo();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            let result = transaction_builder.add_change_output(10, &change_destination, &mut rng);
+
+            assert_matches!(
+                result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::MissingOutput
+                )))
+            );
+        }
+
+        // Setting fee after change output has been written is not allowed.
+        {
+            let mut memo_builder = BurnRedemptionMemoBuilder::new([3u8; 64]);
+            memo_builder.enable_destination_memo();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            transaction_builder.set_fee(3).unwrap();
+
+            let input_credentials = get_input_credentials(
+                block_version,
+                Amount::new(113, token_id),
+                &AccountKey::random(&mut rng),
+                &fog_resolver,
+                &mut rng,
+            );
+            transaction_builder.add_input(input_credentials);
+
+            let (_burn_tx_out, _confirmation) = transaction_builder
+                .add_output(100, &burn_address(), &mut rng)
+                .unwrap();
+
+            transaction_builder
+                .add_change_output(10, &change_destination, &mut rng)
+                .unwrap();
+
+            let result = transaction_builder.set_fee(1235);
+            assert_matches!(
+                result,
+                Err(TxBuilderError::Memo(NewMemoError::FeeAfterChange))
+            );
+        }
+
+        // Change in a different token is not allowed.
+        {
+            let mut memo_builder = BurnRedemptionMemoBuilder::new([3u8; 64]);
+            memo_builder.enable_destination_memo();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, Mob::ID),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            let (_burn_tx_out, _confirmation) = transaction_builder
+                .add_output(100, &burn_address(), &mut rng)
+                .unwrap();
+
+            let result = transaction_builder.add_change_output(10, &change_destination, &mut rng);
+
+            assert_matches!(
+                result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::MixedTokenIds
+                )))
+            );
+        }
+
+        // Happy flow without change
+        {
+            let mut memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
+            memo_builder.enable_destination_memo();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            transaction_builder.set_fee(3).unwrap();
+
+            let input_credentials = get_input_credentials(
+                block_version,
+                Amount::new(113, token_id),
+                &AccountKey::random(&mut rng),
+                &fog_resolver,
+                &mut rng,
+            );
+            transaction_builder.add_input(input_credentials);
+
+            let (burn_output, _confirmation) = transaction_builder
+                .add_output(110, &burn_address(), &mut rng)
+                .unwrap();
+
+            let tx = transaction_builder.build(&mut rng).expect("build tx");
+
+            assert_eq!(tx.prefix.outputs.len(), 1);
+            assert_eq!(burn_output, tx.prefix.outputs[0]);
+
+            // Test that view key matching works with the burn tx out with burn address view
+            // key
+            let (amount, _) = burn_output
+                .view_key_match(&burn_address_view_private())
+                .unwrap();
+            assert_eq!(amount, Amount::new(110, token_id));
+
+            // Burn output should have a burn redemption memo
+            let ss = get_tx_out_shared_secret(
+                &burn_address_view_private(),
+                &RistrettoPublic::try_from(&burn_output.public_key).unwrap(),
+            );
+            let memo = burn_output.e_memo.unwrap().decrypt(&ss);
+            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                MemoType::BurnRedemption(memo) => {
+                    assert_eq!(memo.memo_data(), &[2u8; 64],);
+                }
+                _ => {
+                    panic!("unexpected memo type")
+                }
+            }
+        }
+
+        // Happy flow with change
+        {
+            let mut memo_builder = BurnRedemptionMemoBuilder::new([3u8; 64]);
+            memo_builder.enable_destination_memo();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            transaction_builder.set_fee(3).unwrap();
+
+            let input_credentials = get_input_credentials(
+                block_version,
+                Amount::new(113, token_id),
+                &AccountKey::random(&mut rng),
+                &fog_resolver,
+                &mut rng,
+            );
+            transaction_builder.add_input(input_credentials);
+
+            let (burn_tx_out, _confirmation) = transaction_builder
+                .add_output(100, &burn_address(), &mut rng)
+                .unwrap();
+
+            transaction_builder
+                .add_change_output(100, &change_destination, &mut rng)
+                .unwrap();
+
+            let tx = transaction_builder.build(&mut rng).expect("build tx");
+
+            assert_eq!(tx.prefix.outputs.len(), 2);
+
+            let burn_output = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| tx_out.public_key == burn_tx_out.public_key)
+                .expect("Didn't find recipient's output");
+            let change_output = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
+                })
+                .expect("Didn't find sender's output");
+
+            // Test that view key matching works with the burn tx out with burn address view
+            // key
+            let (amount, _) = burn_output
+                .view_key_match(&burn_address_view_private())
+                .unwrap();
+            assert_eq!(amount, Amount::new(100, token_id));
+
+            assert!(change_output
+                .view_key_match(&burn_address_view_private())
+                .is_err());
+
+            // Test that view key matching works with the change tx out with sender's view
+            // key
+            let (amount, _) = change_output
+                .view_key_match(sender.view_private_key())
+                .unwrap();
+            assert_eq!(amount, Amount::new(10, token_id));
+
+            assert!(burn_output
+                .view_key_match(sender.view_private_key())
+                .is_err());
+
+            // Burn output should have a burn redemption memo
+            let ss = get_tx_out_shared_secret(
+                &burn_address_view_private(),
+                &RistrettoPublic::try_from(&burn_output.public_key).unwrap(),
+            );
+            let memo = burn_output.e_memo.unwrap().decrypt(&ss);
+            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                MemoType::BurnRedemption(memo) => {
+                    assert_eq!(memo.memo_data(), &[3u8; 64],);
+                }
+                _ => {
+                    panic!("unexpected memo type")
+                }
+            }
+
+            // Change output should have a destination memo
+            let ss = get_tx_out_shared_secret(
+                sender.view_private_key(),
+                &RistrettoPublic::try_from(&change_output.public_key).unwrap(),
+            );
+            let memo = change_output.e_memo.unwrap().decrypt(&ss);
+            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                MemoType::Destination(memo) => {
+                    assert_eq!(
+                        memo.get_address_hash(),
+                        &ShortAddressHash::from(&burn_address()),
+                        "lookup based on address hash failed"
+                    );
+                    assert_eq!(memo.get_num_recipients(), 1);
+                    assert_eq!(memo.get_fee(), 3);
+                    assert_eq!(
+                        memo.get_total_outlay(),
+                        103,
+                        "outlay should be amount sent to recipient + fee"
+                    );
+                }
+                _ => {
+                    panic!("unexpected memo type")
+                }
+            }
         }
     }
 }

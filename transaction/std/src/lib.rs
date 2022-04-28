@@ -18,11 +18,11 @@ pub use change_destination::ChangeDestination;
 pub use error::TxBuilderError;
 pub use input_credentials::InputCredentials;
 pub use memo::{
-    AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
-    DestinationMemoError, MemoDecodingError, MemoType, RegisteredMemoType, SenderMemoCredential,
-    UnusedMemo,
+    AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, BurnRedemptionMemo,
+    DestinationMemo, DestinationMemoError, MemoDecodingError, MemoType, RegisteredMemoType,
+    SenderMemoCredential, UnusedMemo,
 };
-pub use memo_builder::{EmptyMemoBuilder, MemoBuilder, RTHMemoBuilder};
+pub use memo_builder::{BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoBuilder, RTHMemoBuilder};
 pub use transaction_builder::{DefaultTxOutputsOrdering, TransactionBuilder, TxOutputsOrdering};
 
 // Re-export this to help the exported macros work
