@@ -61,12 +61,16 @@ jobs:
     name: 👾 Environment Info 👾
     runs-on: [self-hosted, Linux, small]
     steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
     - name: List input values
       run: |
         echo namespace ${{ inputs.namespace }}
         echo version ${{ inputs.version }}
         echo docker_image_org ${{ inputs.docker_image_org }}
         echo ingest_color ${{ inputs.ingest_color }}
+
     - name: 👾 Print Environment Details 👾
       env:
         NAMESPACE: ${{ inputs.namespace }}
