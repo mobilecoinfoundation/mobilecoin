@@ -40,7 +40,7 @@ use mc_transaction_core::{tokens::Mob, Amount, MemoContext, MemoPayload, NewMemo
 #[derive(Clone, Debug)]
 pub struct BurnRedemptionMemoBuilder {
     // The memo data we will attach to the burn output.
-    memo_data: [u8; 64],
+    memo_data: [u8; BurnRedemptionMemo::MEMO_DATA_LEN],
     // Whether destination memos are enabled.
     destination_memo_enabled: bool,
     // Tracks if we already wrote a destination memo, for error reporting
@@ -53,7 +53,7 @@ pub struct BurnRedemptionMemoBuilder {
 
 impl BurnRedemptionMemoBuilder {
     /// Construct a new BurnRedemptionMemoBuilder.
-    pub fn new(memo_data: [u8; 64]) -> Self {
+    pub fn new(memo_data: [u8; BurnRedemptionMemo::MEMO_DATA_LEN]) -> Self {
         Self {
             memo_data,
             destination_memo_enabled: false,
@@ -116,10 +116,7 @@ impl MemoBuilder for BurnRedemptionMemoBuilder {
         if self.wrote_destination_memo {
             return Err(NewMemoError::MultipleChangeOutputs);
         }
-        if self.burn_amount.is_none() {
-            return Err(NewMemoError::MissingOutput);
-        }
-        let burn_amount = self.burn_amount.unwrap();
+        let burn_amount = self.burn_amount.ok_or(NewMemoError::MissingOutput)?;
         if burn_amount.token_id != self.fee.token_id
             || burn_amount.token_id != change_amount.token_id
         {
