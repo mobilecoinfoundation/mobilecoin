@@ -34,6 +34,7 @@ curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
 
 [dev-dependencies]
+assert_matches = "1.5"
 maplit = "1.0"
 yaml-rust = "0.4"
 
