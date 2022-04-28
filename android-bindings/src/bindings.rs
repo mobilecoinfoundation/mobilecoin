@@ -21,7 +21,7 @@ use jni::{
 };
 use mc_account_keys::{
     AccountKey, PublicAddress, RootEntropy, RootIdentity, ShortAddressHash,
-    CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
+    CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX, INVALID_SUBADDRESS_INDEX,
 };
 use mc_account_keys_slip10::Slip10KeyGenerator;
 use mc_api::printable::PrintableWrapper;
@@ -1396,8 +1396,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOut_compute_1key_1image(
                 &tx_out_target_key,
                 &tx_pub_key,
             );
-            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (DEFAULT_SUBADDRESS_INDEX
-                ..=CHANGE_SUBADDRESS_INDEX)
+            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (0..=DEFAULT_SUBADDRESS_INDEX)
+                .chain(CHANGE_SUBADDRESS_INDEX..INVALID_SUBADDRESS_INDEX)
                 .map(|index| (*account_key.subaddress(index).spend_public_key(), index))
                 .collect();
             let subaddress_index = spsk_to_index
@@ -1866,8 +1866,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_Util_recover_1onetime_1private_
                 &tx_target_key,
                 &tx_pub_key,
             );
-            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (DEFAULT_SUBADDRESS_INDEX
-                ..=CHANGE_SUBADDRESS_INDEX)
+            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (0..=DEFAULT_SUBADDRESS_INDEX)
+                .chain(CHANGE_SUBADDRESS_INDEX..INVALID_SUBADDRESS_INDEX)
                 .map(|index| (*account_key.subaddress(index).spend_public_key(), index))
                 .collect();
             let subaddress_index = spsk_to_index
