@@ -91,7 +91,7 @@ impl MemoBuilder for BurnRedemptionMemoBuilder {
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
         if *recipient != burn_address() {
-            return Err(NewMemoError::InvalidRecipient(recipient.clone()));
+            return Err(NewMemoError::InvalidRecipient);
         }
         if self.burn_amount.is_some() {
             return Err(NewMemoError::MultipleOutputs);

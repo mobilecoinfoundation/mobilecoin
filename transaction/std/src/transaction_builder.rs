@@ -2726,7 +2726,12 @@ pub mod transaction_builder_tests {
                 &recipient.default_subaddress(),
                 &mut rng,
             );
-            assert_matches!(result, Err(TxBuilderError::NewTx(NewTxError::Memo(NewMemoError::InvalidRecipient(addr)))) if addr == recipient.default_subaddress());
+            assert_matches!(
+                result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::InvalidRecipient
+                )))
+            );
         }
 
         // Adding two burn outputs is not allowed.
