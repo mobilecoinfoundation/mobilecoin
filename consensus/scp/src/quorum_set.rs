@@ -4,7 +4,7 @@
 //!
 //! A quorum set includes the members of the network, which a given node trusts
 //! and depends on.
-use mc_common::{NodeID, ResponderId};
+use mc_common::NodeID;
 use mc_crypto_digestible::Digestible;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -407,8 +407,8 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
     }
 }
 
-impl<ID: GenericNodeId + AsRef<ResponderId>> From<&QuorumSet<ID>> for QuorumSet<ResponderId> {
-    fn from(src: &QuorumSet<ID>) -> QuorumSet<ResponderId> {
+impl<ID: GenericNodeId + AsRef<NodeID>> From<&QuorumSet<ID>> for QuorumSet<NodeID> {
+    fn from(src: &QuorumSet<ID>) -> QuorumSet<NodeID> {
         let members = src
             .members
             .iter()

@@ -6,7 +6,7 @@
 use clap::Parser;
 use displaydoc::Display;
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
-use mc_common::{logger::Logger, ResponderId};
+use mc_common::{logger::Logger, NodeID};
 use mc_connection::{ConnectionManager, HardcodedCredentialsProvider, ThickClient};
 use mc_consensus_scp::QuorumSet;
 use mc_fog_report_connection::GrpcFogReportConnection;
@@ -55,7 +55,7 @@ pub struct Config {
     /// {"threshold":1,"members":[{"type":"Node","args":"node2.test.mobilecoin.
     /// com:443"},{"type":"Node","args":"node3.test.mobilecoin.com:443"}]}
     #[clap(long, parse(try_from_str = parse_quorum_set_from_json), env = "MC_QUORUM_SET")]
-    quorum_set: Option<QuorumSet<ResponderId>>,
+    quorum_set: Option<QuorumSet<NodeID>>,
 
     /// URLs to use for transaction data.
     ///
@@ -100,8 +100,8 @@ pub struct Config {
     pub ledger_db_migrate: bool,
 }
 
-fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet<ResponderId>, String> {
-    let quorum_set: QuorumSet<ResponderId> = serde_json::from_str(src)
+fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet<NodeID>, String> {
+    let quorum_set: QuorumSet<NodeID> = serde_json::from_str(src)
         .map_err(|err| format!("Error parsing quorum set {}: {:?}", src, err))?;
 
     if !quorum_set.is_valid() {
@@ -142,14 +142,14 @@ impl From<reqwest::Error> for ConfigError {
 impl Config {
     /// Parse the quorom set.
     /// Panics on error.
-    pub fn quorum_set(&self) -> QuorumSet<ResponderId> {
+    pub fn quorum_set(&self) -> QuorumSet<NodeID> {
         // If we have an explicit quorum set, use that.
         if let Some(quorum_set) = &self.quorum_set {
             return quorum_set.clone();
         }
 
         // Otherwise create a quorum set that includes all of the peers we know about.
-        let node_ids = self.peers_config.responder_ids();
+        let node_ids = self.peers_config.node_ids();
         QuorumSet::new_with_node_ids(node_ids.len() as u32, node_ids)
     }
 
@@ -276,14 +276,14 @@ pub struct PeersConfig {
 
 impl PeersConfig {
     /// Parse the peer URIs as ResponderIds.
-    pub fn responder_ids(&self) -> Vec<ResponderId> {
+    pub fn node_ids(&self) -> Vec<NodeID> {
         self.peers
             .as_ref()
             .unwrap()
             .iter()
             .map(|peer| {
-                peer.responder_id().unwrap_or_else(|err| {
-                    panic!("Could not get responder_id from peer URI {}: {}", peer, err)
+                peer.node_id().unwrap_or_else(|err| {
+                    panic!("Could not get node_id from peer URI {}: {}", peer, err)
                 })
             })
             .collect()

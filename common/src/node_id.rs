@@ -109,8 +109,8 @@ impl From<&NodeID> for ResponderId {
 }
 
 // This is needed for SCPNetworkState's NetworkState implementation.
-impl AsRef<ResponderId> for NodeID {
-    fn as_ref(&self) -> &ResponderId {
-        &self.responder_id
+impl AsRef<NodeID> for NodeID {
+    fn as_ref(&self) -> &NodeID {
+        &self
     }
 }

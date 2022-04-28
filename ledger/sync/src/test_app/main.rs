@@ -4,7 +4,7 @@
 
 use mc_account_keys::AccountKey;
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
-use mc_common::{logger::log, ResponderId};
+use mc_common::{logger::log, NodeID};
 use mc_connection::{ConnectionManager, HardcodedCredentialsProvider, ThickClient};
 use mc_consensus_scp::{test_utils::test_node_id, QuorumSet};
 use mc_ledger_db::{Ledger, LedgerDB};
@@ -129,13 +129,13 @@ fn main() {
     let node_2 = test_node_id(2);
     let node_3 = test_node_id(3);
     let node_4 = test_node_id(4);
-    let quorum_set: QuorumSet<ResponderId> = QuorumSet::new_with_node_ids(
+    let quorum_set: QuorumSet<NodeID> = QuorumSet::new_with_node_ids(
         3,
         vec![
-            node_1.responder_id,
-            node_2.responder_id,
-            node_3.responder_id,
-            node_4.responder_id,
+            node_1,
+            node_2,
+            node_3,
+            node_4,
         ],
     );
     let mut network_state =

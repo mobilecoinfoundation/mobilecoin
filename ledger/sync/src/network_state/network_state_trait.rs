@@ -2,7 +2,7 @@
 
 //! Tracks the state of peers' ledgers.
 
-use mc_common::ResponderId;
+use mc_common::NodeID;
 use mc_transaction_core::BlockIndex;
 use std::collections::HashSet;
 
@@ -15,7 +15,7 @@ pub trait NetworkState: Send {
     ///
     /// # Arguments
     /// * `conn_ids` - IDs of other nodes.
-    fn is_blocking_and_quorum(&self, conn_ids: &HashSet<ResponderId>) -> bool;
+    fn is_blocking_and_quorum(&self, conn_ids: &HashSet<NodeID>) -> bool;
 
     /// Returns true if the local node has "fallen behind its peers" and should
     /// attempt to sync.

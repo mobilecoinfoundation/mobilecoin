@@ -10,7 +10,7 @@ use mc_api::{block_num_to_s3block_path, blockchain, merged_block_num_to_s3block_
 use mc_common::{
     logger::{log, Logger},
     lru::LruCache,
-    ResponderId,
+    NodeID,
 };
 use mc_transaction_core::{Block, BlockData, BlockIndex};
 use protobuf::Message;
@@ -361,7 +361,7 @@ impl TransactionsFetcher for ReqwestTransactionsFetcher {
 
     fn get_block_data(
         &self,
-        _safe_responder_ids: &[ResponderId],
+        _safe_responder_ids: &[NodeID],
         block: &Block,
     ) -> Result<BlockData, Self::Error> {
         self.get_block_data_by_index(block.index, Some(block))

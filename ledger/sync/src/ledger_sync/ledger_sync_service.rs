@@ -11,7 +11,7 @@ use crate::{
 };
 use mc_common::{
     logger::{log, Logger},
-    trace_time, ResponderId,
+    trace_time, NodeID,
 };
 use mc_connection::{
     BlockchainConnection, Connection, ConnectionManager, RetryableBlockchainConnection,
@@ -103,7 +103,7 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
         &mut self,
         network_state: &impl NetworkState,
         limit: u32,
-    ) -> Option<(Vec<ResponderId>, BlockIndex, Vec<Block>)> {
+    ) -> Option<(Vec<NodeID>, BlockIndex, Vec<Block>)> {
         trace_time!(self.logger, "get_potentially_safe_blocks");
 
         let next_block_index: BlockIndex = self.ledger.num_blocks().unwrap();
@@ -115,7 +115,7 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
             next_block_index + BlockIndex::from(limit)
         );
 
-        let node_to_blocks: HashMap<ResponderId, Vec<Block>> = get_blocks(
+        let node_to_blocks: HashMap<NodeID, Vec<Block>> = get_blocks(
             &self.manager,
             last_block,
             limit,
@@ -123,37 +123,37 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
             &self.logger,
         );
 
-        for (responder_id, blocks) in &node_to_blocks {
+        for (node_id, blocks) in &node_to_blocks {
             log::debug!(
                 self.logger,
                 "Received {} blocks from node {}",
                 blocks.len(),
-                responder_id
+                node_id
             );
         }
 
-        let grouping: BTreeMap<BlockIndex, HashMap<BlockID, HashSet<ResponderId>>> =
+        let grouping: BTreeMap<BlockIndex, HashMap<BlockID, HashSet<NodeID>>> =
             group_by_block(&node_to_blocks);
 
         // If sync_target is Some, it indicates that the local ledger should attempt to
         // be synced from the given nodes, up to and including the Block with
         // the given BlockID in BlockIndex.
-        let mut sync_target: Option<(BlockIndex, BlockID, Vec<ResponderId>)> = None;
+        let mut sync_target: Option<(BlockIndex, BlockID, Vec<NodeID>)> = None;
 
         // Iterate over groupings, starting with the highest block index.
         // Starting with the highest block index is a greedy strategy, and should be
         // more efficient in the normal case where all nodes agree, or when a
         // new ledger must download a large number of blocks.
         'outer: for (block_index, block_id_to_nodes) in grouping.iter().rev() {
-            for (block_id, responder_ids) in block_id_to_nodes.iter() {
-                if network_state.is_blocking_and_quorum(responder_ids) {
+            for (block_id, node_ids) in block_id_to_nodes.iter() {
+                if network_state.is_blocking_and_quorum(node_ids) {
                     // It should be possible to sync with these nodes up to `block_id` at
                     // `block_index`.
                     //
                     // Note: in the event of a network fork, there may be multiple distinct sets of
                     // nodes that could be chosen here. Arbitrarily, we take the first such set of
                     // nodes.
-                    let node_vec: Vec<ResponderId> = responder_ids.iter().cloned().collect();
+                    let node_vec: Vec<NodeID> = node_ids.iter().cloned().collect();
                     sync_target = Some((*block_index, block_id.clone(), node_vec));
                     break 'outer;
                 }
@@ -163,27 +163,27 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
         // Return None if no blocks are available.
         sync_target.as_ref()?;
 
-        // All nodes in `responder_ids` should have the same blocks up to
+        // All nodes in `node_ids` should have the same blocks up to
         // `sync_to_block_index`. Copy those blocks from one of the nodes.
-        let (sync_to_block_index, _block_id, responder_ids) = sync_target.unwrap();
-        if let Some(responder_id) = responder_ids.get(0) {
-            if let Some(blocks) = node_to_blocks.get(responder_id) {
+        let (sync_to_block_index, _block_id, node_ids) = sync_target.unwrap();
+        if let Some(node_id) = node_ids.get(0) {
+            if let Some(blocks) = node_to_blocks.get(node_id) {
                 let blocks_to_sync: Vec<Block> = blocks
                     .iter()
                     .filter(|block| block.index <= sync_to_block_index)
                     .cloned()
                     .collect();
-                Some((responder_ids.clone(), sync_to_block_index, blocks_to_sync))
+                Some((node_ids.clone(), sync_to_block_index, blocks_to_sync))
             } else {
                 log::error!(
                     self.logger,
                     "No blocks for peer {:?} in sync_target?",
-                    responder_id
+                    node_id
                 );
                 None
             }
         } else {
-            log::error!(self.logger, "responder_ids in sync_target is empty?!");
+            log::error!(self.logger, "node_ids in sync_target is empty?!");
             None
         }
     }
@@ -285,7 +285,7 @@ impl<
     ) -> Result<(), LedgerSyncError> {
         trace_time!(self.logger, "attempt_ledger_sync");
         tracer!().in_span("attempt_ledger_sync", |_cx| {
-            let (responder_ids, _, potentially_safe_blocks) = self
+            let (node_ids, _, potentially_safe_blocks) = self
                 .get_potentially_safe_blocks(network_state, limit)
                 .ok_or(LedgerSyncError::NoSafeBlocks)?;
 
@@ -299,7 +299,7 @@ impl<
             let block_index_to_opt_transactions: BTreeMap<BlockIndex, Option<BlockContents>> =
                 get_block_contents(
                     self.transactions_fetcher.clone(),
-                    &responder_ids,
+                    &node_ids,
                     &potentially_safe_blocks,
                     self.get_transactions_timeout,
                     &self.logger,
@@ -392,12 +392,12 @@ fn get_blocks<BC: BlockchainConnection + 'static>(
     limit: u32,
     timeout: Duration,
     logger: &Logger,
-) -> HashMap<ResponderId, Vec<Block>> {
+) -> HashMap<NodeID, Vec<Block>> {
     trace_time!(logger, "get_blocks");
 
     // Query each peer in a separate worker thread. A separate thread performs a
     // timeout. Any responses obtained before the timeout are returned.
-    type ResultsMap = HashMap<ResponderId, Vec<Block>>;
+    type ResultsMap = HashMap<NodeID, Vec<Block>>;
     let results_and_condvar = Arc::new((Mutex::new(ResultsMap::default()), Condvar::new()));
 
     let append_after_block = Arc::new(append_after_block);
@@ -415,8 +415,8 @@ fn get_blocks<BC: BlockchainConnection + 'static>(
                 let start = thread_append_after_block.index + 1;
                 let end = start + u64::from(limit);
                 let mut blocks_result = Vec::new();
-                let responder_id = match conn.uri().responder_id() {
-                    Ok(responder_id) => responder_id,
+                let node_id = match conn.uri().node_id() {
+                    Ok(node_id) => node_id,
                     Err(e) => {
                         log::warn!(
                             logger,
@@ -448,7 +448,7 @@ fn get_blocks<BC: BlockchainConnection + 'static>(
                 // would be represented as an empty vector and would be filtered out before
                 // returning from this function.
                 let mut results = lock.lock().expect("mutex poisoned");
-                results.insert(responder_id, blocks_result);
+                results.insert(node_id, blocks_result);
                 condvar.notify_one();
             })
             .expect("Failed spawning GetBlocks thread!");
@@ -466,7 +466,7 @@ fn get_blocks<BC: BlockchainConnection + 'static>(
     worker_results
         .clone()
         .into_iter()
-        .filter(|(_responder_id, blocks)| !blocks.is_empty())
+        .filter(|(_node_id, blocks)| !blocks.is_empty())
         .collect()
 }
 
@@ -495,11 +495,11 @@ fn verify_block_ids(
 /// (if any).
 ///
 /// # Arguments
-/// * `node_to_blocks` - mapping from ResponderId to a consecutive list of
+/// * `node_to_blocks` - mapping from NodeID to a consecutive list of
 ///   Blocks externalized by that node.
 fn group_by_block(
-    node_to_blocks: &HashMap<ResponderId, Vec<Block>>,
-) -> BTreeMap<BlockIndex, HashMap<BlockID, HashSet<ResponderId>>> {
+    node_to_blocks: &HashMap<NodeID, Vec<Block>>,
+) -> BTreeMap<BlockIndex, HashMap<BlockID, HashSet<NodeID>>> {
     // For each block index, this partitions nodes according to the contents of the
     // block they externalized. A BTreeMap allows efficient iteration of entries
     // sorted by block index, in addition to the usual HashMap functionality.
@@ -507,21 +507,21 @@ fn group_by_block(
     // The BlockID is the hash of the entire block contents, which is why we can
     // group by it. Block IDs are verified before they are handed to this
     // function.
-    let mut block_index_to_grouping: BTreeMap<BlockIndex, HashMap<BlockID, HashSet<ResponderId>>> =
+    let mut block_index_to_grouping: BTreeMap<BlockIndex, HashMap<BlockID, HashSet<NodeID>>> =
         BTreeMap::new();
 
-    for (responder_id, blocks) in node_to_blocks {
+    for (node_id, blocks) in node_to_blocks {
         for block in blocks.iter() {
-            let block_id_to_group: &mut HashMap<BlockID, HashSet<ResponderId>> =
+            let block_id_to_group: &mut HashMap<BlockID, HashSet<NodeID>> =
                 block_index_to_grouping
                     .entry(block.index)
                     .or_insert_with(HashMap::default);
 
-            let group: &mut HashSet<ResponderId> = block_id_to_group
+            let group: &mut HashSet<NodeID> = block_id_to_group
                 .entry(block.id.clone())
                 .or_insert_with(HashSet::default);
 
-            group.insert(responder_id.clone());
+            group.insert(node_id.clone());
         }
     }
     block_index_to_grouping
@@ -538,8 +538,8 @@ fn group_by_block(
 /// * `transactions_fetcher` - The mechanism used for fetching transaction
 ///   contents for a given
 /// block.
-/// * `safe_responder_ids` - ResponderIds that have been identified as agreeing
-///   with eachother on the `blocks` we want to fetch.
+/// * `safe_node_ids` - NodeIDs that have been identified as agreeing
+///   with each other on the `blocks` we want to fetch.
 /// * `blocks` - List of blocks to fetch transactions for.
 /// * `timeout` - Overall request timeout.
 ///
@@ -547,7 +547,7 @@ fn group_by_block(
 /// until all transactions have been retrieved.
 fn get_block_contents<TF: TransactionsFetcher + 'static>(
     transactions_fetcher: Arc<TF>,
-    safe_responder_ids: &[ResponderId],
+    safe_node_ids: &[NodeID],
     blocks: &[Block],
     timeout: Duration,
     logger: &Logger,
@@ -592,7 +592,7 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
         let thread_receiver = receiver.clone();
         let thread_logger = logger.clone();
         let thread_transactions_fetcher = transactions_fetcher.clone();
-        let thread_safe_responder_ids = safe_responder_ids.to_owned();
+        let thread_safe_node_ids = safe_node_ids.to_owned();
 
         let thread_handle = thread::Builder::new()
             .name(format!("GetTxs:{}", worker_num))
@@ -629,7 +629,7 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
                             );
 
                             match thread_transactions_fetcher
-                                .get_block_data(thread_safe_responder_ids.as_slice(), &block)
+                                .get_block_data(thread_safe_node_ids.as_slice(), &block)
                                 .map_err(LedgerSyncError::from)
                                 .and_then(|block_data| {
                                     if block != *block_data.block() {
@@ -899,13 +899,13 @@ mod tests {
         let node_b = (test_node_id(33), trivial_quorum_set);
 
         let local_node_id = test_node_id(11);
-        let local_quorum_set: QuorumSet<ResponderId> = QuorumSet::new_with_node_ids(
+        let local_quorum_set: QuorumSet<NodeID> = QuorumSet::new_with_node_ids(
             2,
-            vec![node_a.0.clone().responder_id, node_b.0.clone().responder_id],
+            vec![node_a.0.clone(), node_b.0.clone()],
         );
         let local_slot_index: SlotIndex = 5;
 
-        let mut network_state = SCPNetworkState::new(local_node_id.responder_id, local_quorum_set);
+        let mut network_state = SCPNetworkState::new(local_node_id, local_quorum_set);
         let ledger = get_mock_ledger(local_slot_index as usize);
         let conn_manager = ConnectionManager::<MockPeerConnection>::new(vec![], logger.clone());
         let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
@@ -918,7 +918,7 @@ mod tests {
         {
             let slot_index: SlotIndex = 8;
             network_state.push(Msg::new(
-                node_a.0.responder_id.clone(),
+                node_a.0.clone(),
                 node_a.1,
                 slot_index,
                 Topic::Externalize(ExternalizePayload {
@@ -936,7 +936,7 @@ mod tests {
         {
             let slot_index: SlotIndex = 9;
             network_state.push(Msg::new(
-                node_b.0.responder_id.clone(),
+                node_b.0.clone(),
                 node_b.1,
                 slot_index,
                 Topic::Externalize(ExternalizePayload {
@@ -973,11 +973,11 @@ mod tests {
         let responses = get_blocks(&conn_manager, first_block.clone(), limit, timeout, &logger);
 
         // Only node 1 should be in the responses.
-        assert!(responses.contains_key(&test_peer_uri(1).responder_id().unwrap()));
-        assert!(!responses.contains_key(&test_peer_uri(2).responder_id().unwrap()));
+        assert!(responses.contains_key(&test_peer_uri(1).node_id().unwrap()));
+        assert!(!responses.contains_key(&test_peer_uri(2).node_id().unwrap()));
 
         // `responses` should contain Vec<Block> from fast_peer.
-        let blocks_received = &responses[&test_peer_uri(1).responder_id().unwrap()];
+        let blocks_received = &responses[&test_peer_uri(1).node_id().unwrap()];
         assert_eq!(blocks_received.len(), limit as usize);
 
         let first = first_block.index + 1;
@@ -992,20 +992,23 @@ mod tests {
     fn test_get_transactions(logger: Logger) {
         let local_node_id = test_node_id(123);
 
+        let node_id_1= local_node_id.clone();
+        let node_id_2 = local_node_id.clone();
+
         let num_blocks = 25;
         let mock_ledger = get_mock_ledger(num_blocks);
 
-        let conn_manager = ConnectionManager::new(
+        let _conn_manager = ConnectionManager::new(
             vec![
                 MockPeerConnection::new(
                     test_peer_uri(1),
-                    local_node_id.clone(),
+                   node_id_1.clone(),
                     mock_ledger.clone(),
                     10,
                 ),
                 MockPeerConnection::new(
                     test_peer_uri(2),
-                    local_node_id.clone(),
+                    node_id_2.clone(),
                     mock_ledger.clone(),
                     10,
                 ),
@@ -1016,7 +1019,7 @@ mod tests {
 
         let transactions_fetcher = Arc::new(MockTransactionsFetcher::new(mock_ledger.clone()));
 
-        let responder_ids: Vec<ResponderId> = conn_manager.responder_ids();
+        let node_ids: Vec<NodeID> = vec![node_id_1.clone(), node_id_2.clone()];
 
         let blocks: Vec<Block> = (0..10)
             .map(|idx| mock_ledger.get_block(idx).unwrap())
@@ -1024,7 +1027,7 @@ mod tests {
 
         let transactions_by_block = get_block_contents(
             transactions_fetcher,
-            responder_ids.as_slice(),
+            node_ids.as_slice(),
             &blocks,
             Duration::from_secs(1),
             &logger,
@@ -1064,10 +1067,13 @@ mod tests {
     fn test_get_transactions_validates_block(logger: Logger) {
         let local_node_id = test_node_id(123);
 
+        let node_id_1= local_node_id.clone();
+        let node_id_2 = local_node_id.clone();
+
         let num_blocks = 25;
         let mock_ledger = get_mock_ledger(num_blocks);
 
-        let conn_manager = ConnectionManager::new(
+        let _conn_manager = ConnectionManager::new(
             vec![
                 MockPeerConnection::new(
                     test_peer_uri(1),
@@ -1088,7 +1094,7 @@ mod tests {
 
         let transactions_fetcher = Arc::new(MockTransactionsFetcher::new(mock_ledger.clone()));
 
-        let responder_ids: Vec<ResponderId> = conn_manager.responder_ids();
+        let node_ids: Vec<NodeID> = vec![node_id_1.clone(), node_id_2.clone()];
 
         let mut blocks: Vec<Block> = (0..10)
             .map(|idx| mock_ledger.get_block(idx).unwrap())
@@ -1103,7 +1109,7 @@ mod tests {
 
         let transactions_by_block = get_block_contents(
             transactions_fetcher,
-            responder_ids.as_slice(),
+            node_ids.as_slice(),
             &blocks,
             Duration::from_secs(1),
             &logger,
@@ -1167,15 +1173,15 @@ mod tests {
         let node_b = (test_node_id(33), trivial_quorum_set);
 
         let local_node_id = test_node_id(11);
-        let local_quorum_set: QuorumSet<ResponderId> = QuorumSet::new_with_node_ids(
+        let local_quorum_set: QuorumSet<NodeID> = QuorumSet::new_with_node_ids(
             2,
-            vec![node_a.0.clone().responder_id, node_b.0.clone().responder_id],
+            vec![node_a.0.clone(), node_b.0.clone()],
         );
 
         let num_blocks = 17;
         let mock_ledger = get_mock_ledger(num_blocks);
-        let mut network_state = SCPNetworkState::<ResponderId>::new(
-            local_node_id.responder_id.clone(),
+        let mut network_state = SCPNetworkState::<NodeID>::new(
+            local_node_id.clone(),
             local_quorum_set,
         );
         let mut peer_conns = Vec::<MockPeerConnection>::new();
@@ -1186,7 +1192,7 @@ mod tests {
             peer_conns.push(peer_a);
 
             network_state.push(Msg::new(
-                node_a.0.clone().responder_id,
+                node_a.0.clone(),
                 node_a.1,
                 mock_ledger.num_blocks().unwrap() - 1,
                 Topic::Externalize(ExternalizePayload {
@@ -1202,7 +1208,7 @@ mod tests {
             peer_conns.push(peer_b);
 
             network_state.push(Msg::new(
-                node_b.0.clone().responder_id,
+                node_b.0.clone(),
                 node_b.1,
                 mock_ledger.num_blocks().unwrap() - 1,
                 Topic::Externalize(ExternalizePayload {
@@ -1218,10 +1224,10 @@ mod tests {
         let mut sync_service =
             LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger.clone());
 
-        let (responder_ids, block_index, potentially_safe_blocks) = sync_service
+        let (node_ids, block_index, potentially_safe_blocks) = sync_service
             .get_potentially_safe_blocks(&network_state, 100)
             .expect("No potentially safe blocks returned");
-        assert_eq!(responder_ids.len(), 2);
+        assert_eq!(node_ids.len(), 2);
 
         // Both peers have `num_blocks -1` blocks other than the origin block.
         assert_eq!(potentially_safe_blocks.len(), num_blocks - 1);
@@ -1243,13 +1249,13 @@ mod tests {
         let node_b = (test_node_id(33), trivial_quorum_set);
 
         let local_node_id = test_node_id(11);
-        let local_quorum_set: QuorumSet<ResponderId> = QuorumSet::new_with_node_ids(
+        let local_quorum_set: QuorumSet<NodeID> = QuorumSet::new_with_node_ids(
             2,
-            vec![node_a.0.clone().responder_id, node_b.0.clone().responder_id],
+            vec![node_a.0.clone(), node_b.0.clone()],
         );
 
-        let mut network_state = SCPNetworkState::<ResponderId>::new(
-            local_node_id.responder_id.clone(),
+        let mut network_state = SCPNetworkState::<NodeID>::new(
+            local_node_id.clone(),
             local_quorum_set,
         );
         let mut peer_conns = Vec::<MockPeerConnection>::new();
@@ -1261,7 +1267,7 @@ mod tests {
             let ledger = get_mock_ledger(145);
 
             network_state.push(Msg::new(
-                node_a.0.clone().responder_id,
+                node_a.0.clone(),
                 node_a.1,
                 ledger.num_blocks().unwrap() - 1,
                 Topic::Externalize(ExternalizePayload {
@@ -1278,7 +1284,7 @@ mod tests {
             let ledger = get_mock_ledger(25);
 
             network_state.push(Msg::new(
-                node_b.0.clone().responder_id,
+                node_b.0.clone(),
                 node_b.1,
                 ledger.num_blocks().unwrap() - 1,
                 Topic::Externalize(ExternalizePayload {
@@ -1297,10 +1303,10 @@ mod tests {
         let mut sync_service =
             LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger.clone());
 
-        let (responder_ids, slot_index, blocks) = sync_service
+        let (node_ids, slot_index, blocks) = sync_service
             .get_potentially_safe_blocks(&network_state, 100)
             .unwrap();
-        assert_eq!(responder_ids.len(), 2);
+        assert_eq!(node_ids.len(), 2);
 
         // Both peers have 24 blocks other than the origin block. We had  9 other blocks
         // to start with, so we synced 15 (9 + 15 = 24)
@@ -1323,12 +1329,12 @@ mod tests {
         let node_b = (test_node_id(33), trivial_quorum_set);
 
         let local_node_id = test_node_id(11);
-        let local_quorum_set: QuorumSet<ResponderId> =
-            QuorumSet::new_with_node_ids(2, vec![node_a.0.responder_id, node_b.0.responder_id]);
+        let local_quorum_set: QuorumSet<NodeID> =
+            QuorumSet::new_with_node_ids(2, vec![node_a.0, node_b.0]);
 
         let mut peer_conns = Vec::<MockPeerConnection>::new();
-        let network_state = SCPNetworkState::<ResponderId>::new(
-            local_node_id.responder_id.clone(),
+        let network_state = SCPNetworkState::<NodeID>::new(
+            local_node_id.clone(),
             local_quorum_set,
         );
 
@@ -1351,12 +1357,12 @@ mod tests {
         let mut sync_service =
             LedgerSyncService::new(ledger, conn_manager, transactions_fetcher, logger.clone());
 
-        if let Some((responder_ids, block_index, blocks)) =
+        if let Some((node_ids, block_index, blocks)) =
             sync_service.get_potentially_safe_blocks(&network_state, 100)
         {
             panic!(
                 "Node IDs: {:?}, block index: {:?}, blocks: {:?}",
-                responder_ids, block_index, blocks
+                node_ids, block_index, blocks
             );
         }
     }
@@ -1530,22 +1536,22 @@ mod tests {
             .map(|(block, _transactions)| block.clone())
             .collect();
 
-        let mut node_to_blocks: HashMap<ResponderId, Vec<Block>> = HashMap::default();
+        let mut node_to_blocks: HashMap<NodeID, Vec<Block>> = HashMap::default();
         {
             let blocks = blocks[0..7].to_vec();
-            node_to_blocks.insert(test_peer_uri(1).responder_id().unwrap(), blocks);
+            node_to_blocks.insert(test_peer_uri(1).node_id().unwrap(), blocks);
         }
         {
             let blocks = blocks[0..17].to_vec();
-            node_to_blocks.insert(test_peer_uri(2).responder_id().unwrap(), blocks);
+            node_to_blocks.insert(test_peer_uri(2).node_id().unwrap(), blocks);
         }
         {
             //            let (blocks, _) = get_test_ledger_blocks(4);
             let blocks = blocks[0..4].to_vec();
-            node_to_blocks.insert(test_peer_uri(3).responder_id().unwrap(), blocks);
+            node_to_blocks.insert(test_peer_uri(3).node_id().unwrap(), blocks);
         }
 
-        let grouping: BTreeMap<SlotIndex, HashMap<BlockID, HashSet<ResponderId>>> =
+        let grouping: BTreeMap<SlotIndex, HashMap<BlockID, HashSet<NodeID>>> =
             group_by_block(&node_to_blocks);
 
         for (_block_index, block_id_to_nodes) in grouping.iter().rev() {
@@ -1565,9 +1571,9 @@ mod tests {
             let block_id: BlockID = blocks.get(1).unwrap().id.clone();
             let nodes = groups.get(&block_id).unwrap();
             assert_eq!(nodes.len(), 3);
-            assert!(nodes.contains(&test_peer_uri(1).responder_id().unwrap()));
-            assert!(nodes.contains(&test_peer_uri(2).responder_id().unwrap()));
-            assert!(nodes.contains(&test_peer_uri(3).responder_id().unwrap()));
+            assert!(nodes.contains(&test_peer_uri(1).node_id().unwrap()));
+            assert!(nodes.contains(&test_peer_uri(2).node_id().unwrap()));
+            assert!(nodes.contains(&test_peer_uri(3).node_id().unwrap()));
         }
 
         {
@@ -1577,8 +1583,8 @@ mod tests {
             let block_id: BlockID = blocks.get(5).unwrap().id.clone();
             let nodes = groups.get(&block_id).unwrap();
             assert_eq!(nodes.len(), 2);
-            assert!(nodes.contains(&test_peer_uri(1).responder_id().unwrap()));
-            assert!(nodes.contains(&test_peer_uri(2).responder_id().unwrap()));
+            assert!(nodes.contains(&test_peer_uri(1).node_id().unwrap()));
+            assert!(nodes.contains(&test_peer_uri(2).node_id().unwrap()));
         }
 
         {
@@ -1588,7 +1594,7 @@ mod tests {
             let block_id: BlockID = blocks.get(9).unwrap().id.clone();
             let nodes = groups.get(&block_id).unwrap();
             assert_eq!(nodes.len(), 1);
-            assert!(nodes.contains(&test_peer_uri(2).responder_id().unwrap()));
+            assert!(nodes.contains(&test_peer_uri(2).node_id().unwrap()));
         }
     }
 }

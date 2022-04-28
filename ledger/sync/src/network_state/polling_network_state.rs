@@ -7,30 +7,21 @@
 use crate::{NetworkState, SCPNetworkState};
 use mc_common::{
     logger::{log, Logger},
-    ResponderId,
+    NodeID,
 };
 use mc_connection::{
-    BlockchainConnection, Connection, ConnectionManager, RetryableBlockchainConnection,
-};
-use mc_consensus_scp::{
-    core_types::Ballot, msg::ExternalizePayload, Msg, QuorumSet, SlotIndex, Topic,
+    BlockchainConnection, Connection, ConnectionManager, RetryableBlockchainConnection, }; use mc_consensus_scp::{
+    core_types::Ballot, msg::ExternalizePayload, test_utils, Msg, QuorumSet, SlotIndex, Topic,
 };
 use mc_transaction_core::BlockIndex;
 use mc_util_uri::ConnectionUri;
 use retry::delay::{jitter, Fibonacci};
 use std::{
     collections::{HashMap, HashSet},
-    str::FromStr,
     sync::{Arc, Condvar, Mutex},
     thread,
     time::Duration,
 };
-
-// Since PollingNetworkState is not a full-fledged consensus node, it does not
-// have a local node id. However, quorum tests inside the scp crate require a
-// local node id, so we provide one. Ideally this should not be a node id that
-// can be used on a real network.
-const FAKE_NODE_ID: &str = "fake:7777";
 
 pub struct PollingNetworkState<BC: BlockchainConnection> {
     /// Connection manager (for consensus nodes we are going to poll).
@@ -38,7 +29,7 @@ pub struct PollingNetworkState<BC: BlockchainConnection> {
 
     /// SCPNetworkState instance that provides the actual blocking/quorum set
     /// check logic.
-    scp_network_state: SCPNetworkState<ResponderId>,
+    scp_network_state: SCPNetworkState<NodeID>,
 
     /// Logger.
     logger: Logger,
@@ -46,14 +37,19 @@ pub struct PollingNetworkState<BC: BlockchainConnection> {
 
 impl<BC: BlockchainConnection + 'static> PollingNetworkState<BC> {
     pub fn new(
-        quorum_set: QuorumSet<ResponderId>,
+        quorum_set: QuorumSet<NodeID>,
         manager: ConnectionManager<BC>,
         logger: Logger,
     ) -> Self {
         // Since we want to re-use the findQuorum method on our QuorumSet object,
         // fabricate a message map based on the current block indexes we're
         // aware of.
-        let local_node_id = ResponderId::from_str(FAKE_NODE_ID).unwrap();
+
+        // Since PollingNetworkState is not a full-fledged consensus node, it does not
+        // have a local node id. However, quorum tests inside the scp crate require a
+        // local node id, so we provide one. Ideally this should not be a node id that
+        // can be used on a real network.
+        let local_node_id = test_utils::test_node_id(0);
 
         Self {
             manager,
@@ -64,19 +60,19 @@ impl<BC: BlockchainConnection + 'static> PollingNetworkState<BC> {
 
     /// Polls peers to find out the current state of the network.
     pub fn poll(&mut self) {
-        type ResultsMap = HashMap<ResponderId, Option<BlockIndex>>;
+        type ResultsMap = HashMap<NodeID, Option<BlockIndex>>;
         let results_and_condvar = Arc::new((Mutex::new(ResultsMap::default()), Condvar::new()));
 
         for conn in self.manager.conns() {
-            let responder_id = conn
+            let node_id = conn
                 .uri()
-                .responder_id()
-                .expect("Could not get responder_id from URI");
+                .node_id()
+                .expect("Could not get node_id from URI");
 
             let thread_logger = self.logger.clone();
             let thread_results_and_condvar = results_and_condvar.clone();
             thread::Builder::new()
-                .name(format!("Poll:{}", responder_id))
+                .name(format!("Poll:{}", node_id))
                 .spawn(move || {
                     log::debug!(thread_logger, "Getting last block from {}", conn);
 
@@ -94,7 +90,7 @@ impl<BC: BlockchainConnection + 'static> PollingNetworkState<BC> {
                                 conn,
                                 index
                             );
-                            results.insert(responder_id.clone(), Some(*index));
+                            results.insert(node_id.clone(), Some(*index));
                         }
                         Err(err) => {
                             log::error!(
@@ -103,7 +99,7 @@ impl<BC: BlockchainConnection + 'static> PollingNetworkState<BC> {
                                 conn,
                                 err
                             );
-                            results.insert(responder_id.clone(), None);
+                            results.insert(node_id.clone(), None);
                         }
                     }
                     condvar.notify_one();
@@ -127,10 +123,10 @@ impl<BC: BlockchainConnection + 'static> PollingNetworkState<BC> {
         );
 
         // Hackishly feed into SCPNetworkState
-        for (responder_id, block_index) in results.iter() {
+        for (node_id, block_index) in results.iter() {
             if let Some(block_index) = block_index {
-                self.scp_network_state.push(Msg::<&str, ResponderId>::new(
-                    responder_id.clone(),
+                self.scp_network_state.push(Msg::<&str, NodeID>::new(
+                    node_id.clone(),
                     QuorumSet::empty(),
                     *block_index as SlotIndex,
                     Topic::Externalize(ExternalizePayload {
@@ -142,7 +138,7 @@ impl<BC: BlockchainConnection + 'static> PollingNetworkState<BC> {
         }
     }
 
-    pub fn peer_to_current_block_index(&self) -> &HashMap<ResponderId, BlockIndex> {
+    pub fn peer_to_current_block_index(&self) -> &HashMap<NodeID, BlockIndex> {
         self.scp_network_state.peer_to_current_slot()
     }
 
@@ -157,9 +153,9 @@ impl<BC: BlockchainConnection> NetworkState for PollingNetworkState<BC> {
     /// the local node is included, a quorum.
     ///
     /// # Arguments
-    /// * `responder_ids` - IDs of other nodes.
-    fn is_blocking_and_quorum(&self, conn_ids: &HashSet<ResponderId>) -> bool {
-        self.scp_network_state.is_blocking_and_quorum(conn_ids)
+    /// * `node_ids` - connection IDs of other nodes.
+    fn is_blocking_and_quorum(&self, node_ids: &HashSet<NodeID>) -> bool {
+        self.scp_network_state.is_blocking_and_quorum(node_ids)
     }
 
     /// Returns true if the local node has "fallen behind its peers" and should

@@ -3,7 +3,7 @@
 //! NetworkState implementation for the `scp` module.
 
 use crate::NetworkState;
-use mc_common::{NodeID, ResponderId};
+use mc_common::NodeID;
 use mc_consensus_scp::{
     core_types::Ballot, msg::ExternalizePayload, predicates::FuncPredicate, GenericNodeId, Msg,
     QuorumSet, SlotIndex, Topic, Value,
@@ -59,24 +59,24 @@ impl<ID: GenericNodeId + Clone + Eq + PartialEq + Hash + Send> SCPNetworkState<I
     }
 }
 
-impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serialize> NetworkState
+impl<ID: GenericNodeId + Send + AsRef<NodeID> + DeserializeOwned + Serialize> NetworkState
     for SCPNetworkState<ID>
 {
     /// Returns true if `peers` forms a blocking set for this node and, if the
     /// local node is included, a quorum.
     ///
     /// # Arguments
-    /// * `responder_ids` - IDs of other nodes.
-    fn is_blocking_and_quorum(&self, responder_ids: &HashSet<ResponderId>) -> bool {
-        // Construct a map of responder id -> dummy message so that we could leverage
+    /// * `node_ids` - IDs of other nodes.
+    fn is_blocking_and_quorum(&self, node_ids: &HashSet<NodeID>) -> bool {
+        // Construct a map of node_id -> dummy message so that we could leverage
         // the existing quorum findBlockingSet/findQuorum code.
-        let msg_map = responder_ids
+        let msg_map = node_ids
             .iter()
-            .map(|responder_id| {
+            .map(|node_id| {
                 (
-                    responder_id.clone(),
-                    Msg::<&str, ResponderId>::new(
-                        responder_id.clone(),
+                    node_id.clone(),
+                    Msg::<&str, NodeID>::new(
+                        node_id.clone(),
                         QuorumSet::empty(),
                         1,
                         Topic::Externalize(ExternalizePayload {
@@ -88,27 +88,27 @@ impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serializ
             })
             .collect();
 
-        let quorum_set: QuorumSet<ResponderId> = (&self.local_quorum_set).into();
+        let quorum_set: QuorumSet<NodeID> = (&self.local_quorum_set).into();
 
-        // Check if responder_ids form a blocking set
+        // Check if node_ids form a blocking set
         let fp = FuncPredicate {
-            test_fn: &|msg: &Msg<&str, ResponderId>| responder_ids.contains(&msg.sender_id),
+            test_fn: &|msg: &Msg<&str, NodeID>| node_ids.contains(&msg.sender_id),
         };
         let (node_ids, _pred) = quorum_set.findBlockingSet(&msg_map, fp);
         if node_ids.is_empty() {
             return false;
         }
 
-        // Check if responder_ids form a quorum
+        // Check if node_ids form a quorum
         let fp = FuncPredicate {
-            test_fn: &|msg: &Msg<&str, ResponderId>| responder_ids.contains(&msg.sender_id),
+            test_fn: &|msg: &Msg<&str, NodeID>| node_ids.contains(&msg.sender_id),
         };
         let (node_ids, _pred) = quorum_set.findQuorum(self.local_node_id.as_ref(), &msg_map, fp);
         if node_ids.is_empty() {
             return false;
         }
 
-        // responder_ids are a blocking set and a quorum.
+        // _ids are a blocking set and a quorum.
         true
     }
 
@@ -179,9 +179,9 @@ mod tests {
     #[test]
     fn test_new() {
         let local_node_id = test_node_id(1);
-        let local_node_quorum_set = QuorumSet::<ResponderId>::empty();
+        let local_node_quorum_set = QuorumSet::<NodeID>::empty();
         let network_state =
-            SCPNetworkState::<ResponderId>::new(local_node_id.responder_id, local_node_quorum_set);
+            SCPNetworkState::<NodeID>::new(local_node_id, local_node_quorum_set);
         assert_eq!(network_state.peer_to_current_slot().len(), 0);
     }
 
@@ -189,13 +189,13 @@ mod tests {
     // Nominate/Prepare/Commit(slot_index = 5) implies that slot_index 4 was
     // externalized.
     fn test_push_nominate_prepare_commit() {
-        let sender_id = test_node_id(11).responder_id;
-        let quorum_set = QuorumSet::<ResponderId>::empty();
+        let sender_id = test_node_id(11);
+        let quorum_set = QuorumSet::<NodeID>::empty();
 
         let local_node_id = test_node_id(1);
-        let local_node_quorum_set = QuorumSet::<ResponderId>::empty();
+        let local_node_quorum_set = QuorumSet::<NodeID>::empty();
         let mut network_state =
-            SCPNetworkState::<ResponderId>::new(local_node_id.responder_id, local_node_quorum_set);
+            SCPNetworkState::<NodeID>::new(local_node_id, local_node_quorum_set);
 
         let slot_index: SlotIndex = 5;
 
@@ -264,13 +264,13 @@ mod tests {
     #[test]
     // Externalize(slot_index = 5) implies that slot_index 5 was externalized.
     fn test_push_externalize() {
-        let sender_id = test_node_id(11).responder_id;
-        let quorum_set = QuorumSet::<ResponderId>::empty();
+        let sender_id = test_node_id(11);
+        let quorum_set = QuorumSet::<NodeID>::empty();
 
         let local_node_id = test_node_id(1);
-        let local_node_quorum_set = QuorumSet::<ResponderId>::empty();
+        let local_node_quorum_set = QuorumSet::<NodeID>::empty();
         let mut network_state =
-            SCPNetworkState::<ResponderId>::new(local_node_id.responder_id, local_node_quorum_set);
+            SCPNetworkState::<NodeID>::new(local_node_id, local_node_quorum_set);
 
         let slot_index: SlotIndex = 5;
         // ExternalizeStatement
@@ -297,18 +297,18 @@ mod tests {
     fn test_push_out_of_order_statement() {
         // Initially, the NetworkState knows that node 11 has externalized slot 8.
         let local_node_id = test_node_id(1);
-        let local_node_quorum_set = QuorumSet::<ResponderId>::empty();
+        let local_node_quorum_set = QuorumSet::<NodeID>::empty();
         let mut network_state =
-            SCPNetworkState::<ResponderId>::new(local_node_id.responder_id, local_node_quorum_set);
+            SCPNetworkState::<NodeID>::new(local_node_id, local_node_quorum_set);
 
-        let sender_id = test_node_id(11).responder_id;
+        let sender_id = test_node_id(11);
         network_state
             .id_to_current_slot
             .insert(sender_id.clone(), 8);
 
         // Push a "stale" Externalize message for slot 5.
         {
-            let quorum_set = QuorumSet::<ResponderId>::empty();
+            let quorum_set = QuorumSet::<NodeID>::empty();
             let slot_index: SlotIndex = 5;
 
             network_state.push(Msg::new(
@@ -334,14 +334,14 @@ mod tests {
     // NetworkState should correctly track the state of multiple senders.
     fn test_multiple_senders() {
         let local_node_id = test_node_id(1);
-        let local_node_quorum_set = QuorumSet::<ResponderId>::empty();
+        let local_node_quorum_set = QuorumSet::<NodeID>::empty();
         let mut network_state =
-            SCPNetworkState::<ResponderId>::new(local_node_id.responder_id, local_node_quorum_set);
+            SCPNetworkState::<NodeID>::new(local_node_id, local_node_quorum_set);
 
-        let sender_a_id = test_node_id(11).responder_id;
-        let sender_b_id = test_node_id(22).responder_id;
+        let sender_a_id = test_node_id(11);
+        let sender_b_id = test_node_id(22);
 
-        let quorum_set = QuorumSet::<ResponderId>::empty();
+        let quorum_set = QuorumSet::<NodeID>::empty();
 
         // A Prepare message from sender A.
         let slot_index: SlotIndex = 5;
@@ -387,7 +387,7 @@ mod tests {
     }
 
     #[test]
-    // NetworkState is_behind should only return true when `responder_ids` form
+    // NetworkState is_behind should only return true when `NodeIDs` form
     // both a blocking set and a quorum.
     fn test_is_behind() {
         let local_node_quorum_set: QuorumSet = {
@@ -484,18 +484,18 @@ mod tests {
         let network_state = SCPNetworkState::new(local_node_id, local_node_quorum_set);
 
         assert!(!network_state
-            .is_blocking_and_quorum(&HashSet::from_iter(vec![test_node_id(0).responder_id])));
+            .is_blocking_and_quorum(&HashSet::from_iter(vec![test_node_id(0)])));
 
         assert!(!network_state
-            .is_blocking_and_quorum(&HashSet::from_iter(vec![test_node_id(1).responder_id])));
+            .is_blocking_and_quorum(&HashSet::from_iter(vec![test_node_id(1)])));
 
         assert!(network_state
-            .is_blocking_and_quorum(&HashSet::from_iter(vec![test_node_id(2).responder_id])));
+            .is_blocking_and_quorum(&HashSet::from_iter(vec![test_node_id(2)])));
 
         assert!(
             network_state.is_blocking_and_quorum(&HashSet::from_iter(vec![
-                test_node_id(0).responder_id,
-                test_node_id(2).responder_id
+                test_node_id(0),
+                test_node_id(2),
             ]))
         );
     }

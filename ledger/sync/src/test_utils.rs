@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{TransactionFetcherError, TransactionsFetcher};
-use mc_common::ResponderId;
+use mc_common::NodeID;
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{Block, BlockData};
 
@@ -23,7 +23,7 @@ impl<L: Ledger + Sync> TransactionsFetcher for MockTransactionsFetcher<L> {
 
     fn get_block_data(
         &self,
-        _safe_responder_ids: &[ResponderId],
+        _safe_node_ids: &[NodeID],
         block: &Block,
     ) -> Result<BlockData, Self::Error> {
         self.ledger
