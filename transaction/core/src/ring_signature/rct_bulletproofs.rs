@@ -19,6 +19,7 @@ use mc_common::HashSet;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_util_serial::prost::Message;
+use mc_util_zip_exact::{zip_exact, ZipExactError};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
@@ -269,19 +270,26 @@ impl SignatureRctBulletproofs {
             for (token_id, range_proof) in token_ids.iter().zip(self.range_proofs.iter()) {
                 let generator = generator_cache.get(*token_id);
 
-                let commitments: Vec<CompressedRistretto> = self
-                    .pseudo_output_commitments
-                    .iter()
-                    .zip(self.pseudo_output_token_ids.iter())
-                    .chain(output_commitments.iter().zip(self.output_token_ids.iter()))
-                    .filter_map(|(compressed_commitment, this_token_id)| {
-                        if token_id == this_token_id {
-                            Some(compressed_commitment.point)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
+                let commitments: Vec<CompressedRistretto> = zip_exact(
+                    self.pseudo_output_commitments.iter(),
+                    self.pseudo_output_token_ids.iter(),
+                )
+                .chain(zip_exact(
+                    output_commitments.iter(),
+                    self.output_token_ids.iter(),
+                ))
+                .filter_map(|result| {
+                    result
+                        .map(|(compressed_commitment, this_token_id)| {
+                            if token_id == this_token_id {
+                                Some(compressed_commitment.point)
+                            } else {
+                                None
+                            }
+                        })
+                        .transpose()
+                })
+                .collect::<Result<_, ZipExactError>>()?;
 
                 if commitments.is_empty() {
                     return Err(Error::NoCommitmentsForTokenId(*token_id));
