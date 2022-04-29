@@ -2,13 +2,13 @@
 
 //! Errors which can occur in connection to ring signatures
 
-use crate::{range_proofs::error::Error as RangeProofError, TokenId};
-use alloc::string::{String, ToString};
 use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 
 /// An error which can occur in connection to a ring signature
-#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Copy, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
+)]
 pub enum Error {
     /// Incorrect length for array copy, provided `{0}`, required `{1}`.
     LengthMismatch(usize, usize),
@@ -49,51 +49,15 @@ pub enum Error {
      */
     ValueNotConserved,
 
-    /// Invalid RangeProof: {0}
-    RangeProof(String),
-
-    /// RangeProof Deserialization failed
-    RangeProofDeserialization,
+    /// Invalid RangeProof
+    RangeProofError,
 
     /// TokenId is not allowed at this block version
     TokenIdNotAllowed,
-
-    /// Missing pseudo-output token ids
-    MissingPseudoOutputTokenIds,
-
-    /// Missing output token ids
-    MissingOutputTokenIds,
-
-    /// Pseudo-output token ids not allowed at this block version
-    PseudoOutputTokenIdsNotAllowed,
-
-    /// Output token ids not allowed at this block version
-    OutputTokenIdsNotAllowed,
-
-    /// Mixed token ids in transactions not allowed at this block version
-    MixedTransactionsNotAllowed,
-
-    /// Too many range proofs for the block version
-    TooManyRangeProofs,
-
-    /// Unexpected range proof for the block version
-    UnexpectedRangeProof,
-
-    /// Missing expected range proofs (expected: {0}, found: {1})
-    MissingRangeProofs(usize, usize),
-
-    /// No commitments were found for {0}, this is a logic error
-    NoCommitmentsForTokenId(TokenId),
 }
 
 impl From<mc_util_repr_bytes::LengthMismatch> for Error {
     fn from(src: mc_util_repr_bytes::LengthMismatch) -> Self {
         Error::LengthMismatch(src.found, src.expected)
-    }
-}
-
-impl From<RangeProofError> for Error {
-    fn from(src: RangeProofError) -> Self {
-        Error::RangeProof(src.to_string())
     }
 }

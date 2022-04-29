@@ -11,7 +11,7 @@ use crate::{
     constants::*,
     membership_proofs::{derive_proof_at_index, is_membership_proof_valid},
     tx::{Tx, TxOut, TxOutMembershipProof, TxPrefix},
-    Amount, BlockVersion, CompressedCommitment, TokenId,
+    BlockVersion, CompressedCommitment, TokenId,
 };
 use mc_common::HashSet;
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -28,7 +28,7 @@ use rand_core::{CryptoRng, RngCore};
 /// * `root_proofs` - Membership proofs for each input ring element contained in
 ///   `tx`.
 /// * `minimum_fee` - The minimum fee for the token indicated by
-///   tx.prefix.fee_token_id
+///   tx.prefix.token_id
 /// * `csprng` - Cryptographically secure random number generator.
 pub fn validate<R: RngCore + CryptoRng>(
     tx: &Tx,
@@ -313,7 +313,8 @@ pub fn validate_signature<R: RngCore + CryptoRng>(
             message,
             &rings,
             &output_commitments,
-            Amount::new(tx.prefix.fee, TokenId::from(tx.prefix.fee_token_id)),
+            tx.prefix.fee,
+            tx.prefix.token_id,
             rng,
         )
         .map_err(TransactionValidationError::InvalidTransactionSignature)

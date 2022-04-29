@@ -6,7 +6,7 @@ use bulletproofs_og::ProofError;
 use displaydoc::Display;
 
 /// An error which can occur in connection to a range proof
-#[derive(Debug, Clone, Eq, Display, PartialEq)]
+#[derive(Debug, Display, PartialEq)]
 pub enum Error {
     /// ProofError: `{0:?}`
     ProofError(ProofError),

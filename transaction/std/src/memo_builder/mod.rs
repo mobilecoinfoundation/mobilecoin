@@ -7,7 +7,7 @@
 use super::{memo, ChangeDestination};
 use core::fmt::Debug;
 use mc_account_keys::PublicAddress;
-use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
+use mc_transaction_core::{MemoContext, MemoPayload, NewMemoError};
 
 mod burn_redemption_memo_builder;
 mod rth_memo_builder;
@@ -33,12 +33,12 @@ pub trait MemoBuilder: Debug {
     /// and gets a chance to report an error, if the fee is too large, or if it
     /// is being changed too late
     /// in the process, and memos that are already written would be invalid.
-    fn set_fee(&mut self, amount: Amount) -> Result<(), NewMemoError>;
+    fn set_fee(&mut self, value: u64) -> Result<(), NewMemoError>;
 
     /// Build a memo for a normal output (to another party).
     fn make_memo_for_output(
         &mut self,
-        amount: Amount,
+        value: u64,
         recipient: &PublicAddress,
         memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError>;
@@ -46,7 +46,7 @@ pub trait MemoBuilder: Debug {
     /// Build a memo for a change output (to ourselves).
     fn make_memo_for_change_output(
         &mut self,
-        amount: Amount,
+        value: u64,
         change_destination: &ChangeDestination,
         memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError>;
@@ -58,13 +58,13 @@ pub trait MemoBuilder: Debug {
 pub struct EmptyMemoBuilder;
 
 impl MemoBuilder for EmptyMemoBuilder {
-    fn set_fee(&mut self, _fee: Amount) -> Result<(), NewMemoError> {
+    fn set_fee(&mut self, _fee: u64) -> Result<(), NewMemoError> {
         Ok(())
     }
 
     fn make_memo_for_output(
         &mut self,
-        _value: Amount,
+        _value: u64,
         _recipient: &PublicAddress,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
@@ -73,7 +73,7 @@ impl MemoBuilder for EmptyMemoBuilder {
 
     fn make_memo_for_change_output(
         &mut self,
-        _value: Amount,
+        _value: u64,
         _change_destination: &ChangeDestination,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {

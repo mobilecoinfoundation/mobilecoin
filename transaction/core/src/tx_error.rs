@@ -65,14 +65,6 @@ pub enum NewMemoError {
     OutputsAfterChange,
     /// Changing the fee after the change output is not supported
     FeeAfterChange,
-    /// Invalid recipient address
-    InvalidRecipient,
-    /// Multiple outputs are not supported
-    MultipleOutputs,
-    /// Missing output
-    MissingOutput,
-    /// Mixed Token Ids are not supported in these memos
-    MixedTokenIds,
     /// Other: {0}
     Other(String),
 }
