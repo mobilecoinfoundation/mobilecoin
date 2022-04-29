@@ -2,8 +2,8 @@
 #![deny(missing_docs)]
 //! Create some default keys for use in demos and testing
 use clap::Parser;
+use mc_common::logger::{create_app_logger, log, o};
 use mc_util_keyfile::config::Config as GeneralConfig;
-use mc_common::logger::{create_app_logger, o, log};
 
 #[derive(Debug, Parser)]
 struct Config {
