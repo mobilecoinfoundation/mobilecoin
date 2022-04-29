@@ -566,7 +566,7 @@ message GenerateTxFromTxOutListResponse {
 
 // Generate a burn redemption transaction proposal object.
 // Notes:
-// - Sum of inputs needs to be greater than the burn amount and fee.
+// - Sum of inputs needs to be greater than or equal to the burn amount and fee.
 // - The set of inputs to use would be chosen automatically by mobilecoind.
 // - The fee field could be set to zero, in which case mobilecoind would try and choose a fee.
 message GenerateBurnRedemptionTxRequest {
