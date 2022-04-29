@@ -6,7 +6,7 @@
 use flo_stream::{ExpiringPublisher, MessagePublisher, Subscriber};
 use futures::{lock::Mutex, FutureExt, Stream, StreamExt, TryStreamExt};
 use grpcio::ServerStreamingSink;
-use mc_common::logger::Logger;
+use mc_common::logger::{log, Logger};
 use mc_ledger_streaming_api::{
     streaming_blocks::SubscribeRequest,
     streaming_blocks_grpc::{create_ledger_updates, LedgerUpdates},
@@ -29,7 +29,7 @@ impl GrpcServerSink {
     pub fn new(logger: Logger) -> Self {
         Self {
             // Buffer a few responses.
-            publisher: Arc::new(Mutex::new(ExpiringPublisher::new(3))),
+            publisher: Arc::new(Mutex::new(ExpiringPublisher::new(10))),
             logger,
         }
     }
@@ -43,6 +43,7 @@ impl GrpcServerSink {
         stream: impl Stream<Item = Result<ArchiveBlock>> + 'a,
     ) -> impl Stream<Item = Result<()>> + 'a {
         let publisher = self.publisher.clone();
+        log::debug!(self.logger, "Publishing archive blocks to gRPC stream");
         stream.and_then(move |data| {
             let publisher = publisher.clone();
             async move {
@@ -55,12 +56,13 @@ impl GrpcServerSink {
 
     /// Create a [LedgerUpdates] handler.
     pub fn create_handler(&self) -> impl LedgerUpdates + Clone + Send + Sync + 'static {
-        let mut publisher = futures::executor::block_on(self.publisher.lock());
+        let mut publisher = futures::executor::block_on(async { self.publisher.lock().await });
         PublishHelper::new(publisher.subscribe())
     }
 
     /// Create a [grpcio::Service] with a [LedgerUpdates] handler.
     pub fn create_service(&self) -> grpcio::Service {
+        log::debug!(self.logger, "creating gRPC service for block sink");
         create_ledger_updates(self.create_handler())
     }
 

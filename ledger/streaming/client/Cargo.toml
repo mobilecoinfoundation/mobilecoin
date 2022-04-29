@@ -15,17 +15,18 @@ mc-consensus-scp = { path = "../../../consensus/scp" }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-ledger-db = { path = "../../../ledger/db" }
 mc-ledger-streaming-api = { path = "../api" }
+mc-ledger-streaming-publisher = { path = "../publisher" }
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-uri = { path = "../../../util/uri" }
 
 displaydoc = "0.2"
-futures = "0.3"
+futures = { version = "0.3", features = ["thread-pool"] }
 grpcio = "0.10"
 hashbrown = "0.12.0"
 protobuf = "2.22"
 reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "gzip"] }
-tokio = "1.17.0"
+tokio = { version = "1.16.0", optional = true }
 url = "2.2"
 
 [dev-dependencies]

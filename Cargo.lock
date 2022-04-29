@@ -5166,6 +5166,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-ledger-db",
  "mc-ledger-streaming-api",
+ "mc-ledger-streaming-publisher",
  "mc-transaction-core",
  "mc-util-from-random",
  "mc-util-grpc",

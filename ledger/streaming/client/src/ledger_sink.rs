@@ -2,13 +2,16 @@
 
 //! Creates a block sink stream factory
 
-use futures::stream::{Stream, StreamExt};
+use futures::{
+    channel::mpsc::{self, Receiver, Sender},
+    stream::{Stream, StreamExt},
+    SinkExt,
+};
 use mc_common::logger::{log, Logger};
 use mc_ledger_db::Ledger;
 use mc_ledger_streaming_api::{
     BlockData, BlockStream, Error as StreamError, Result as StreamResult,
 };
-use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 /// A block sink that takes blocks from a passed stream and puts them into
 /// ledger db. This sink should live downstream from a verification source that
@@ -166,7 +169,7 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for DbS
                         return None;
                     }
                 }
-                if let Some(block_data) = manager.receiver.recv().await {
+                if let Some(block_data) = manager.receiver.next().await {
                     log::debug!(manager.logger, "block {} synced", block_data.block().index);
                     manager.last_block_synced = block_data.block().index;
                     Some((Ok(block_data), (stream, manager)))
@@ -203,13 +206,13 @@ fn start_sink_thread(
     logger: Logger,
 ) -> (Sender<BlockData>, Receiver<BlockData>) {
     // Initialize sending and receiving channels
-    let (send_out, rcv_out) = channel(10000);
-    let (send_in, mut rcv_in) = channel::<BlockData>(10000);
+    let (mut send_out, rcv_out) = mpsc::channel(5000);
+    let (send_in, mut rcv_in) = mpsc::channel::<BlockData>(5000);
 
     // Launch ledger sink thread
     std::thread::spawn(move || {
         log::debug!(logger, "starting ledger sink thread");
-        while let Some(block_data) = rcv_in.blocking_recv() {
+        while let Some(block_data) = futures::executor::block_on(async { rcv_in.next().await }) {
             let signature = block_data.signature().as_ref().cloned();
 
             // If there's an error syncing the blocks, end thread

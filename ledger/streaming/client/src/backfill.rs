@@ -82,11 +82,24 @@ fn backfill_stream<'s, S: Stream<Item = Result<BlockData>> + 's, F: BlockFetcher
                     let item_stream = once(async { Ok(block_data) });
                     if index == next_index {
                         // Happy path: We got another consecutive item, so just return that.
+                        log::debug!(
+                            logger,
+                            "received properly ordered block: index received {}, prev index {:?}",
+                            index,
+                            prev_index,
+                        );
                         prev_index = Some(index);
                         Box::pin(item_stream)
                     } else {
+                        log::debug!(
+                            logger,
+                            "received out of order block: index received {}, prev index {:?}",
+                            index,
+                            prev_index,
+                        );
                         // Need to backfill up to the current index.
                         let start = prev_index.unwrap_or(starting_height);
+                        log::debug!(logger, "starting backfill at {}", start);
                         prev_index = Some(index);
                         let backfill = fetcher.fetch_range(start..index);
                         Box::pin(backfill.chain(item_stream))
