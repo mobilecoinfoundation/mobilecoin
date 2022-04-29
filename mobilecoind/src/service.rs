@@ -1041,7 +1041,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 if subaddress_id.monitor_id != sender_monitor_id {
                     return Err(RpcStatus::with_message(
                         RpcStatusCode::INVALID_ARGUMENT,
-                        format!("input_list.{}", i),
+                        format!("input_list[{}].monitor_id", i),
                     ));
                 }
 
