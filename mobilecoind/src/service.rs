@@ -4079,7 +4079,7 @@ mod test {
         // Trying to burn more than we have results in an error.
         {
             let mut request = request.clone();
-            request.set_burn_amount(1_000_000_000_000);
+            request.set_burn_amount(1_000_000_000_000 - request.get_fee() + 1);
             assert!(client.generate_burn_redemption_tx(&request).is_err());
         }
     }
