@@ -1015,7 +1015,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .map(|(i, proto_utxo)| {
                 // Proto -> Rust struct conversion.
                 let utxo = UnspentTxOut::try_from(proto_utxo).map_err(|err| {
-                    rpc_internal_error("unspent_tx_out.try_from", err, &self.logger)
+                    rpc_internal_error(format!("unspent_tx_out[{}].try_from", i), err, &self.logger)
                 })?;
 
                 // Verify token id matches.
