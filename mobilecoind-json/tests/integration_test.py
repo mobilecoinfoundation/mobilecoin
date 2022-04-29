@@ -4,15 +4,14 @@
 #
 # Integration test that uses mobilecoind-json to submit a transaction and check balance.
 
-
 import argparse
-import logging
-import sys
 import glob
-import os
 import json
-import urllib.request
+import logging
+import os
+import sys
 import time
+import urllib.request
 
 
 logging.basicConfig(stream = sys.stdout, level = logging.INFO, format="%(levelname)s:%(module)s:%(lineno)s: %(message)s")
