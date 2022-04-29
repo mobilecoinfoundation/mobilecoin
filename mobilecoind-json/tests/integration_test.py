@@ -22,7 +22,7 @@ class MobilecoindJsonClient:
         if not base_url.endswith("/"):
             base_url += "/"
         self.base_url = base_url
-    
+
     def request(self, url, data=None):
         req = urllib.request.Request(self.base_url + url)
 
@@ -35,7 +35,7 @@ class MobilecoindJsonClient:
             response = urllib.request.urlopen(req, data_bytes)
         else:
             response = urllib.request.urlopen(req)
-        
+
         return json.loads(response.read())
 
     def get_balance(self, monitor_id, subaddress_index=0):
@@ -156,7 +156,7 @@ def test_pay_address_code(client, monitor_ids):
         raise Exception(f"Failed tx_status_as_sender check: {response}")
 
     # Check the status as the receiver
-    response = client.tx_status_as_receiver(monitor_ids[1], tx_info["receiver_tx_receipt_list"][0]) 
+    response = client.tx_status_as_receiver(monitor_ids[1], tx_info["receiver_tx_receipt_list"][0])
     logging.info(f"tx_status_as_receiver: {response}")
     if response["status"] != "verified":
         raise Exception(f"Failed tx_status_as_receiver check: {response}")
@@ -192,4 +192,4 @@ if __name__ == '__main__':
         args.key_dir,
         args.max_seconds,
     )
- 
+
