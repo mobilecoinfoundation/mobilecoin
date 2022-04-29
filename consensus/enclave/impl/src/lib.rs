@@ -692,15 +692,6 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let minimum_fee = ct_min_fee_map
             .get(&fee_token_id)
             .ok_or(TransactionValidationError::TokenNotYetConfigured)?;
-
-        // Make sure any extra token ids that appear in the outputs are also already
-        // configured. (this was github issue #1868)
-        for token_id in tx.signature.output_token_ids.iter() {
-            ct_min_fee_map
-                .get(&TokenId::from(token_id))
-                .ok_or(TransactionValidationError::TokenNotYetConfigured)?;
-        }
-
         mc_transaction_core::validation::validate(
             &tx,
             block_index,
