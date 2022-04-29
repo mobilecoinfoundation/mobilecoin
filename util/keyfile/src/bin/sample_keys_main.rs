@@ -3,6 +3,7 @@
 //! Create some default keys for use in demos and testing
 use clap::Parser;
 use mc_util_keyfile::config::Config as GeneralConfig;
+use mc_common::logger::{create_app_logger, o, log};
 
 #[derive(Debug, Parser)]
 struct Config {
@@ -15,6 +16,8 @@ struct Config {
 }
 
 fn main() {
+    let (logger, _global_logger_guard) = create_app_logger(o!());
+
     let config = Config::parse();
 
     let path = config
@@ -33,9 +36,10 @@ fn main() {
     if config.general.fog_report_url.is_some() && spki.is_none() {
         panic!("Fog report url was passed, so fog is enabled, but no fog authority spki was provided. This is needed for the fog authority signature scheme. Use --fog-authority-root to pass a .pem file or --fog-authority-spki to pass base64 encoded bytes specifying this.")
     }
-
-    if config.general.fog_report_url.is_some() && config.general.fog_report_id.is_none() {
-        panic!("Fog report url was passed, so fog is enabled, but no fog report id was provided. This is needed for the fog authority signature scheme. Use --fog_report_id to pass an id string specifying this.")
+    let mut fog_report_id = config.general.fog_report_id.as_deref();
+    if config.general.fog_report_url.is_some() && fog_report_id.is_none() {
+        log::info!(logger, "Fog report url was passed, so fog is enabled, but no fog report id was provided. Using default value instead. Use --fog-report-id to pass string specifying this.");
+        fog_report_id = Some("");
     }
 
     println!("Writing {} keys to {:?}", config.num, path);
@@ -44,7 +48,7 @@ fn main() {
         path,
         config.num,
         config.general.fog_report_url.as_deref(),
-        config.general.fog_report_id.as_deref(),
+        fog_report_id,
         spki.as_deref(),
         config.general.seed,
     )
