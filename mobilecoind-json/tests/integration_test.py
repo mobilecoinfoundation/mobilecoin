@@ -126,7 +126,7 @@ def run_test(mobilecoind_json_url, keys_dir, max_seconds):
         monitor_ids.append(monitor_id)
 
     # Run tests
-    #test_pay_address_code(client, monitor_ids)
+    test_pay_address_code(client, monitor_ids)
     test_utxos(client, monitor_ids[1])
 
 def test_pay_address_code(client, monitor_ids):
