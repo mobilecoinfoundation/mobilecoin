@@ -24,7 +24,7 @@ use mc_transaction_core::{
     Amount, BlockIndex, BlockVersion, TokenId,
 };
 use mc_transaction_std::{
-    ChangeDestination, EmptyMemoBuilder, InputCredentials, TransactionBuilder,
+    ChangeDestination, EmptyMemoBuilder, InputCredentials, MemoBuilder, TransactionBuilder,
 };
 use mc_util_uri::FogUri;
 use rand::Rng;
@@ -221,6 +221,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `outlays` - Output amounts and recipients.
     /// * `opt_fee` - Transaction fee in picoMOB. If zero, defaults to MIN_FEE.
     /// * `opt_tombstone` - Tombstone block. If zero, sets to default.
+    /// * `opt_memo_builder` - Optional memo builder to use instead of the
+    ///   default one (EmptyMemoBuilder).
     pub fn build_transaction(
         &self,
         sender_monitor_id: &MonitorId,
@@ -230,6 +232,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         outlays: &[Outlay],
         opt_fee: u64,
         opt_tombstone: u64,
+        opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
     ) -> Result<TxProposal, Error> {
         let logger = self.logger.new(o!("sender_monitor_id" => sender_monitor_id.to_string(), "outlays" => format!("{:?}", outlays)));
         log::trace!(logger, "Building pending transaction...");
@@ -325,6 +328,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             outlays,
             tombstone_block,
             &self.fog_resolver_factory,
+            opt_memo_builder,
             &mut rng,
             &self.logger,
         )?;
@@ -446,6 +450,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             &outlays,
             tombstone_block,
             &self.fog_resolver_factory,
+            None,
             &mut rng,
             &self.logger,
         )?;
@@ -548,6 +553,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             &outlays,
             tombstone_block,
             &self.fog_resolver_factory,
+            None,
             &mut rng,
             &self.logger,
         )?;
@@ -823,6 +829,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `destinations` - Outputs of the transaction.
     /// * `tombstone_block` - Tombstone block of the transaciton.
     /// * `fog_pubkey_resolver` - Provides Fog key report, when Fog is enabled.
+    /// * `opt_memo_builder` - Optional memo builder to use instead of the
+    ///   default one (EmptyMemoBuilder).
     /// * `rng` - randomness
     /// * `logger` - Logger
     fn build_tx_proposal(
@@ -836,6 +844,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         destinations: &[Outlay],
         tombstone_block: BlockIndex,
         fog_resolver_factory: &Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
+        opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
         rng: &mut (impl RngCore + CryptoRng),
         logger: &Logger,
     ) -> Result<TxProposal, Error> {
@@ -867,18 +876,17 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             fog_resolver_factory(&fog_uris).map_err(Error::Fog)?
         };
 
-        // TODO: Use RTH memo builder, optionally?
+        // Create tx_builder.
+        // TODO (GH #1522): Use RTH memo builder, optionally?
+        let memo_builder: Box<dyn MemoBuilder + Send + Sync> =
+            opt_memo_builder.unwrap_or_else(|| Box::new(EmptyMemoBuilder::default()));
 
         let fee_amount = Amount::new(fee, token_id);
-
-        // Create tx_builder.
-        let mut tx_builder = TransactionBuilder::new(
-            block_version,
-            fee_amount,
-            fog_resolver,
-            EmptyMemoBuilder::default(),
-        )
-        .map_err(|err| Error::TxBuild(format!("Error cretaing TransactionBuilder: {}", err)))?;
+        let mut tx_builder =
+            TransactionBuilder::new_with_box(block_version, fee_amount, fog_resolver, memo_builder)
+                .map_err(|err| {
+                    Error::TxBuild(format!("Error creating transaction builder: {}", err))
+                })?;
 
         // Unzip each vec of tuples into a tuple of vecs.
         let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
