@@ -102,9 +102,6 @@ def load_keys(keys_dir):
 
 
 def run_test(mobilecoind_json_url, keys_dir, max_seconds):
-    if not mobilecoind_json_url.endswith("/"):
-        mobilecoind_json_url += "/"
-
     logging.info(f"mobilecoind-json integration test starting with url={mobilecoind_json_url} keys_dir={keys_dir} max_seconds={max_seconds}")
     keys = load_keys(keys_dir)
     if not keys:
