@@ -43,21 +43,21 @@ macro_rules! impl_memo_enum {
         }
 
         // Try to match memo type from src.get_memo_type
-        impl TryFrom<&crate::MemoPayload> for $enum_name {
-            type Error = crate::MemoDecodingError;
-            fn try_from(src: &crate::MemoPayload) -> Result<Self, Self::Error> {
+        impl TryFrom<&$crate::MemoPayload> for $enum_name {
+            type Error = $crate::MemoDecodingError;
+            fn try_from(src: &$crate::MemoPayload) -> Result<Self, Self::Error> {
                 let memo_type_bytes: [u8; 2] = *src.get_memo_type();
 
                 match memo_type_bytes {
-                    $(<$memo_type as crate::RegisteredMemoType>::MEMO_TYPE_BYTES => Ok($enum_name::$memo_name(<$memo_type>::from(src.get_memo_data()))),)+
-                    _ => Err(crate::MemoDecodingError::UnknownMemoType(memo_type_bytes))
+                    $(<$memo_type as $crate::RegisteredMemoType>::MEMO_TYPE_BYTES => Ok($enum_name::$memo_name(<$memo_type>::from(src.get_memo_data()))),)+
+                    _ => Err($crate::MemoDecodingError::UnknownMemoType(memo_type_bytes))
                 }
             }
         }
 
         // Implement From<$enum_name> for MemoPayload
-        impl From<$enum_name> for crate::MemoPayload {
-            fn from(src: $enum_name) -> crate::MemoPayload {
+        impl From<$enum_name> for $crate::MemoPayload {
+            fn from(src: $enum_name) -> $crate::MemoPayload {
                 match src {
                     $($enum_name::$memo_name(memo) => memo.into(),)+
                 }
@@ -75,10 +75,10 @@ macro_rules! impl_memo_enum {
 #[macro_export]
 macro_rules! impl_memo_type_conversions {
     ($memo_type: ty) => {
-        impl From<$memo_type> for crate::MemoPayload {
-            fn from(src: $memo_type) -> crate::MemoPayload {
-                crate::MemoPayload::new(
-                    <$memo_type as crate::RegisteredMemoType>::MEMO_TYPE_BYTES,
+        impl From<$memo_type> for $crate::MemoPayload {
+            fn from(src: $memo_type) -> $crate::MemoPayload {
+                $crate::MemoPayload::new(
+                    <$memo_type as $crate::RegisteredMemoType>::MEMO_TYPE_BYTES,
                     src.into(),
                 )
             }

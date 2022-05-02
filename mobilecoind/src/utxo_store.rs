@@ -69,13 +69,13 @@ impl From<&UnspentTxOut> for UtxoId {
     fn from(src: &UnspentTxOut) -> Self {
         // The key image uniquely identifies a TxOut, which uniquely identifies an
         // UnspentTxOut.
-        Self::from(&src.key_image)
+        (&src.key_image).into()
     }
 }
 
 impl From<&KeyImage> for UtxoId {
     fn from(src: &KeyImage) -> Self {
-        Self::from(src.as_bytes())
+        src.as_bytes().into()
     }
 }
 

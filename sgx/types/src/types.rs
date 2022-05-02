@@ -27,7 +27,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use core::default::Default;
-use core::mem::zeroed;
 use error::*;
 use marker::ContiguousMemory;
 
@@ -1138,23 +1137,3 @@ pub const SL_DEFAULT_FALLBACK_RETRIES: ::uint32_t = 20000;
 pub const SL_DEFAULT_SLEEP_RETRIES: ::uint32_t = 20000;
 pub const SL_DEFUALT_MAX_TASKS_QWORDS: ::uint32_t = 1;
 pub const SL_MAX_TASKS_MAX_QWORDS: ::uint32_t = 8;
-
-pub const _SGX_USWITCHLESS_WORKER_EVENT_NUM: ::size_t = 4;
-
-pub struct sgx_uswitchless_config_t {
-    pub switchless_calls_pool_size_qwords: ::uint32_t,
-    pub num_uworkers: ::uint32_t,
-    pub num_tworkers: ::uint32_t,
-    pub retries_before_fallback: ::uint32_t,
-    pub retries_before_sleep: ::uint32_t,
-    pub callback_func: [sgx_uswitchless_worker_callback_t; _SGX_USWITCHLESS_WORKER_EVENT_NUM],
-}
-
-impl Default for sgx_uswitchless_config_t {
-    fn default() -> sgx_uswitchless_config_t {
-        let mut config: sgx_uswitchless_config_t = unsafe{ zeroed() };
-        config.num_uworkers = 1;
-        config.num_tworkers = 1;
-        config
-    }
-}
