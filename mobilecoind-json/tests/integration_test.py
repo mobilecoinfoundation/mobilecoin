@@ -57,14 +57,6 @@ class MobilecoindJsonClient:
     def get_ledger_local(self):
         return self.request(f"ledger/local")
 
-    def wait_for_monitor_to_sync(self, monitor_id, poll_interval=0.1):
-        while True:
-            local_ledger = self.get_ledger_local()
-            monitor = self.get_monitor(monitor_id)
-            if int(monitor["next_block"]) >= int(local_ledger["block_count"]):
-                break
-            time.sleep(poll_interval)
-
     def account_key_from_mnemonic(self, mnemonic):
         return self.request("account-key-from-mnemonic", {"mnemonic": mnemonic})
 
@@ -85,6 +77,14 @@ class MobilecoindJsonClient:
 
     def get_utxos(self, monitor_id, subaddress_index=0):
         return self.request(f"monitors/{monitor_id}/subaddresses/{subaddress_index}/utxos")["output_list"]
+
+    def wait_for_monitor_to_sync(self, monitor_id, poll_interval=0.1):
+        while True:
+            local_ledger = self.get_ledger_local()
+            monitor = self.get_monitor(monitor_id)
+            if int(monitor["next_block"]) >= int(local_ledger["block_count"]):
+                break
+            time.sleep(poll_interval)
 
 
 def load_keys(keys_dir):
