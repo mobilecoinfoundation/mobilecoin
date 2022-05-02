@@ -87,28 +87,8 @@ jobs:
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
 
-  # This effectively inline `tools/lint.sh` for better GH integration
-  # and parallelization.
   lint-rust:
     runs-on: ubuntu-latest
-
-    strategy:
-      # Run each variation to completion.
-      fail-fast: false
-      matrix:
-        workspace:
-          # via `grep -irl '\[workspace\]' **/Cargo.toml | xargs dirname`
-          - .
-          - consensus/enclave/trusted
-          - fog/ingest/enclave/trusted
-          - fog/ledger/enclave/trusted
-          - fog/view/enclave/trusted
-    defaults:
-      run:
-        working-directory: ${{ matrix.workspace }}
-
-    permissions:
-      checks: write
 
     steps:
       - name: Check out code
@@ -117,44 +97,8 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           components: rustfmt, clippy
-      - name: Check formatting
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: -- --unstable-features --check
-
-      - name: Check workflow permissions (for Clippy annotations)
-        id: check_permissions
-        uses: scherermichael-oss/action-has-permission@master
-        with:
-          required-permission: write
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Clippy
-        if: ${{ steps.check_permissions.outputs.has-permission }}
-        uses: actions-rs/clippy-check@v1
-        with:
-          args: --workspace --all-targets --all-features -- -D warnings
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Clippy (without annotations)
-        if: ${{ !steps.check_permissions.outputs.has-permission }}
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --workspace --all-targets --all-features -- -D warnings
-
-      - name: Install cargo-sort
-        run: |
-          cd ${RUNNER_TEMP:-/tmp}
-          curl -LO https://github.com/DevinR528/cargo-sort/releases/latest/download/cargo-sort-x86_64-unknown-linux-gnu.tar.gz
-          tar xf cargo-sort-x86_64-unknown-linux-gnu.tar.gz -C ${CARGO_HOME:-~/.cargo}/bin
-      - name: Check Cargo.toml sorted
-        uses: actions-rs/cargo@v1
-        with:
-          command: sort
-          args: --check --workspace --grouped
-
+      - name: Run lint script
+        run: ./tools/lint.sh
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
 
