@@ -14,7 +14,7 @@ pub struct Config {
     pub fog_report_url: Option<String>,
 
     /// Fog Report ID
-    #[clap(long, env = "MC_FOG_REPORT_ID")]
+    #[clap(long, env = "MC_FOG_REPORT_ID", default_value = "")]
     pub fog_report_id: Option<String>,
 
     /// Fog Authority subjectPublicKeyInfo, loaded from a PEM root certificate
