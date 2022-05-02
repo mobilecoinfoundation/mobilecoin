@@ -2,7 +2,6 @@
 #![deny(missing_docs)]
 //! Create some default keys for use in demos and testing
 use clap::Parser;
-use mc_common::logger::{create_app_logger, log, o};
 use mc_util_keyfile::config::Config as GeneralConfig;
 
 #[derive(Debug, Parser)]
@@ -16,8 +15,6 @@ struct Config {
 }
 
 fn main() {
-    let (logger, _global_logger_guard) = create_app_logger(o!());
-
     let config = Config::parse();
 
     let path = config
@@ -43,7 +40,7 @@ fn main() {
         path,
         config.num,
         config.general.fog_report_url.as_deref(),
-        config.general.fog_report_id.as_deref(),
+        &config.general.fog_report_id,
         spki.as_deref(),
         config.general.seed,
     )

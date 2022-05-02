@@ -27,7 +27,6 @@ path = "src/bin/read_pubfile.rs"
 mc-account-keys = { path = "../../account-keys" }
 mc-account-keys-slip10 = { path = "../../account-keys/slip10" }
 mc-api = { path = "../../api" }
-mc-common = { path = "../../common", features = ["loggers"] }
 mc-crypto-rand = { path = "../../crypto/rand" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-serial = { path = "../../util/serial", features = [ "std" ] }
