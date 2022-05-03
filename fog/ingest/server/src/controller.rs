@@ -1288,7 +1288,7 @@ where
             state_file_data.set_summary(summary);
             state_file_data.set_sealed_ingress_key(sealed_key);
 
-            log::info!(self.logger, "Writing state file to {:?}", state_file_data);
+            log::debug!(self.logger, "Writing state file to {:?}", state_file);
             state_file
                 .write(&state_file_data)
                 .expect("Failed writing state file, this is fatal");

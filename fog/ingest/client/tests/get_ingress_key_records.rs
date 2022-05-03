@@ -20,7 +20,7 @@ use std::{str::FromStr, time::Duration};
 use tempdir::TempDir;
 
 const OMAP_CAPACITY: u64 = 256;
-const BASE_PORT: u32 = 3220;
+const BASE_PORT: u32 = 3320;
 
 #[test_with_logger]
 fn test_get_ingress_key_records(logger: Logger) {

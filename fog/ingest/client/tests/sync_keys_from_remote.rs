@@ -17,7 +17,7 @@ use std::{str::FromStr, time::Duration};
 use tempdir::TempDir;
 
 const OMAP_CAPACITY: u64 = 256;
-const BASE_PORT: u32 = 3220;
+const BASE_PORT: u32 = 3330;
 
 #[test_with_logger]
 fn test_sync_keys_from_remote(logger: Logger) {

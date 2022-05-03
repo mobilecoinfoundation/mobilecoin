@@ -275,6 +275,6 @@ fn test_ingest_pool_sql(logger: Logger) {
         log::info!(logger, "Trial {}", trial_count);
 
         let db = db_test_context.get_db_instance();
-        test_ingest_pool_integration::<AttestClient, _>(db, 3220, logger.clone())
+        test_ingest_pool_integration::<AttestClient, _>(db, 3240, logger.clone())
     })
 }

@@ -34,16 +34,7 @@ use mc_transaction_core::{Block, BlockID, BlockVersion};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::GrpcRetryConfig;
 use rand::{rngs::StdRng, SeedableRng};
-use std::{
-    str::FromStr,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
-    },
-    time::Duration,
-};
-
-static PORT_NR: AtomicUsize = AtomicUsize::new(40100);
+use std::{str::FromStr, sync::Arc, time::Duration};
 
 const GRPC_RETRY_CONFIG: GrpcRetryConfig = GrpcRetryConfig {
     grpc_retry_count: 3,
@@ -61,8 +52,7 @@ fn get_test_environment(
     let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
     let db = db_test_context.get_db_instance();
 
-    let port = PORT_NR.fetch_add(1, Ordering::SeqCst) as u16;
-
+    let port = portpicker::pick_unused_port().expect("pick_unused_port");
     let uri = FogViewUri::from_str(&format!("insecure-fog-view://127.0.0.1:{}", port)).unwrap();
 
     let server = {
