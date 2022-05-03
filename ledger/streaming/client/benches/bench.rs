@@ -181,9 +181,7 @@ fn bench_simulated_pipeline(b: &mut Bencher) {
         // Sink simulated blocks into server broadcast
         executor.spawn(sink.consume_protos(archive_block_stream.clone()).for_each(
             |result| async move {
-                if result.is_err() {
-                    println!("Error is {:?}", result);
-                }
+                result.expect("unexpected error");
             },
         ));
 
@@ -194,9 +192,7 @@ fn bench_simulated_pipeline(b: &mut Bencher) {
                 if count == 999 {
                     // Only unwrap block when necessary to avoid extra work in the benchmark
                     let index = block_data.unwrap().block().index;
-                    if index == 999 {
-                        break;
-                    }
+                    assert_eq!(index, 999);
                 }
                 count += 1;
             }
