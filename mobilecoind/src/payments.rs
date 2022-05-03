@@ -979,7 +979,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         if total_value > input_value {
             return Err(Error::InsufficientFunds);
         }
-        let change = input_value - total_value - tx_builder.get_fee();
+        let change = input_value - total_value - tx_builder.get_fee().value;
 
         // If we do, add an output for that as well.
         // TODO: Should the exchange write destination memos?

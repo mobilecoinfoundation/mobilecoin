@@ -18,7 +18,6 @@ use mc_transaction_core::{
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
     Amount, BlockVersion, CompressedCommitment, MemoContext, MemoPayload, NewMemoError, Token,
-    TokenId,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
@@ -320,14 +319,9 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         Ok(())
     }
 
-    /// Gets the transaction fee.
-    pub fn get_fee(&self) -> u64 {
-        self.fee.value
-    }
-
-    /// Gets the transaction fee token id.
-    pub fn get_fee_token_id(&self) -> TokenId {
-        self.fee.token_id
+    /// Gets the transaction fee amount
+    pub fn get_fee(&self) -> Amount {
+        self.fee
     }
 
     /// Consume the builder and return the transaction.

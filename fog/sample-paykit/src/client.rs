@@ -613,7 +613,7 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     let input_amount = inputs
         .iter()
         .fold(0, |acc, (txo, _)| acc + txo.amount.value);
-    let fee = tx_builder.get_fee();
+    let fee = tx_builder.get_fee().value;
     if (amount.value + fee) > input_amount {
         return Err(Error::InsufficientFunds);
     }
