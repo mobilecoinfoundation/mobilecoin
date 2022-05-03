@@ -44,7 +44,7 @@ class MobilecoindJsonClient:
             raise Exception(f"Invalid response: {response}")
         return int(response["balance"])
 
-    def create_monitor(self, account_key, first_subaddress_index=0, num_subaddresses=10):
+    def create_monitor(self, account_key, first_subaddress_index=0, num_subaddresses=1):
         return self.request(f"monitors", {
             "account_key": account_key,
             "first_subaddress": first_subaddress_index,
