@@ -28,14 +28,14 @@ pub fn write_keyfiles<P: AsRef<Path>>(
     mnemonic: &Mnemonic,
     account_index: u32,
     fog_report_url: Option<&str>,
-    fog_report_id: Option<&str>,
+    fog_report_id: &str,
     fog_authority_spki: Option<&[u8]>,
 ) -> Result<(), Error> {
     let slip10key = mnemonic.clone().derive_slip10_key(account_index);
-    let acct_key = match (fog_report_url, fog_report_id, fog_authority_spki) {
-        (None, None, None) => AccountKey::try_from(slip10key)
+    let acct_key = match (fog_report_url, fog_authority_spki) {
+        (None, None) => AccountKey::try_from(slip10key)
             .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err.to_string()))?,
-        (Some(fog_report_url), Some(fog_report_id), Some(fog_authority_spki)) => {
+        (Some(fog_report_url), Some(fog_authority_spki)) => {
             slip10key.try_into_account_key(fog_report_url, fog_report_id, fog_authority_spki)?
         }
         _ => return Err(Error::MissingFogDetails),
@@ -69,7 +69,7 @@ pub fn write_default_keyfiles<P: AsRef<Path>>(
     path: P,
     num_accounts: usize,
     fog_report_url: Option<&str>,
-    fog_report_id: Option<&str>,
+    fog_report_id: &str,
     fog_authority_spki: Option<&[u8]>,
     seed: [u8; 32],
 ) -> Result<(), Error> {
@@ -220,7 +220,7 @@ mod test {
             &dir1,
             10,
             Some(fqdn),
-            Some(fog_report_id),
+            fog_report_id,
             Some(fog_authority_spki),
             DEFAULT_SEED,
         )
@@ -229,7 +229,7 @@ mod test {
             &dir2,
             10,
             Some(fqdn),
-            Some(fog_report_id),
+            fog_report_id,
             Some(fog_authority_spki),
             DEFAULT_SEED,
         )
@@ -245,9 +245,9 @@ mod test {
         let dir1 = tempfile::tempdir().expect("Could not create temporary dir1");
         let dir2 = tempfile::tempdir().expect("Could not create temporary dir2");
 
-        write_default_keyfiles(&dir1, 10, None, None, None, DEFAULT_SEED)
+        write_default_keyfiles(&dir1, 10, None, "", None, DEFAULT_SEED)
             .expect("Could not write keyfiles to dir1");
-        write_default_keyfiles(&dir2, 10, None, None, None, DEFAULT_SEED)
+        write_default_keyfiles(&dir2, 10, None, "", None, DEFAULT_SEED)
             .expect("Could not write keyfiles to dir2");
 
         assert_default_pubfiles_eq(&dir1, &dir2);
@@ -270,7 +270,7 @@ mod test {
 
         let dir1 = tempfile::tempdir().expect("Could not create temporary dir1");
 
-        write_default_keyfiles(&dir1, 10, None, None, None, DEFAULT_SEED)
+        write_default_keyfiles(&dir1, 10, None, "", None, DEFAULT_SEED)
             .expect("Could not write example keyfiles");
 
         let mut actual = read_default_keyfiles(&dir1)
