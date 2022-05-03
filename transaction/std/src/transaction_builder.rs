@@ -2844,7 +2844,7 @@ pub mod transaction_builder_tests {
                 .unwrap();
 
             transaction_builder
-                .add_change_output(100, &change_destination, &mut rng)
+                .add_change_output(10, &change_destination, &mut rng)
                 .unwrap();
 
             let tx = transaction_builder.build(&mut rng).expect("build tx");
