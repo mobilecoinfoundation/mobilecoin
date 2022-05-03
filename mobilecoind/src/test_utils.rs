@@ -260,13 +260,11 @@ pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(
     let peer1 = MockBlockchainConnection::new(test_client_uri(1), ledger_db.clone(), 0);
     let peer2 = MockBlockchainConnection::new(test_client_uri(2), ledger_db.clone(), 0);
 
-    let quorum_set = QuorumSet::new_with_node_ids(
-        2,
-        vec![
-            peer1.uri().responder_id().unwrap(),
-            peer2.uri().responder_id().unwrap(),
-        ],
-    );
+    let node_ids = vec![
+        peer1.uri().host_and_port_responder_id().unwrap(),
+        peer2.uri().host_and_port_responder_id().unwrap(),
+    ];
+    let quorum_set = QuorumSet::new_with_node_ids(2, node_ids);
 
     let conn_manager = ConnectionManager::new(vec![peer1, peer2], logger.clone());
 
