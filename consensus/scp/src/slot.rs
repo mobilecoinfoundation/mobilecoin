@@ -22,15 +22,15 @@ use mc_common::{
 };
 #[cfg(test)]
 use mockall::*;
+use primitive_types::{U256, U512};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
+    convert::TryFrom,
     fmt::Display,
     sync::Arc,
     time::{Duration, Instant},
 };
-use std::convert::TryFrom;
-use primitive_types::{U512, U256};
 
 /// The various phases of the SCP protocol.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -499,7 +499,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             let mut tmp = U512::from(U256::max_value());
             tmp = tmp.saturating_mul(U512::from(num));
             tmp = tmp / U512::from(denom);
-            let weight256 = U256::try_from(tmp).expect("failure calculating weight (max_u256 * k -> 2^512) / n");
+            let weight256 = U256::try_from(tmp)
+                .expect("failure calculating weight (max_u256 * k -> 2^512) / n");
 
             let gi_one = utils::slot_round_salted_keccak(
                 slot_index,
