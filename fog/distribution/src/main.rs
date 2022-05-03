@@ -712,20 +712,18 @@ fn build_tx(
     let block_version = BlockVersion::try_from(BLOCK_VERSION.load(Ordering::SeqCst))
         .expect("Unsupported block version");
 
-    // Use token id for first spendable tx out
-    let token_id = spendable_txouts.first().unwrap().amount.token_id;
+    // FIXME: This needs to be the fee for the current token, not MOB.
+    // However, bootstrapping non MOB tokens is not supported right now.
+    let fee_amount = Amount::new(MOB_FEE.load(Ordering::SeqCst), Mob::ID);
 
     // Create tx_builder.
     let mut tx_builder = TransactionBuilder::new(
         block_version,
-        token_id,
+        fee_amount,
         fog_resolver,
         EmptyMemoBuilder::default(),
-    );
-
-    // FIXME: This needs to be the fee for the current token, not MOB.
-    // However, bootstrapping non MOB tokens is not supported right now.
-    tx_builder.set_fee(MOB_FEE.load(Ordering::SeqCst)).unwrap();
+    )
+    .unwrap();
 
     // Unzip each vec of tuples into a tuple of vecs.
     let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
@@ -804,7 +802,7 @@ fn build_tx(
 
     // Add ouputs
     for (i, (utxo, _proof)) in utxos_with_proofs.iter().enumerate() {
-        if utxo.amount.token_id == token_id {
+        if utxo.amount.token_id == Mob::ID {
             let mut value = utxo.amount.value;
             // Use the first input to pay for the fee.
             if i == 0 {

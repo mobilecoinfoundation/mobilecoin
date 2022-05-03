@@ -310,7 +310,7 @@ pub fn validate_signature<R: RngCore + CryptoRng>(
             &rings,
             &output_commitments,
             tx.prefix.fee,
-            tx.prefix.token_id,
+            tx.prefix.fee_token_id,
             rng,
         )
         .map_err(TransactionValidationError::InvalidTransactionSignature)
@@ -1169,7 +1169,7 @@ mod tests {
         for _ in 0..3 {
             let (mut tx, _ledger) = create_test_tx(BlockVersion::TWO);
 
-            tx.prefix.token_id += 1;
+            tx.prefix.fee_token_id += 1;
 
             match validate_signature(BlockVersion::TWO, &tx, &mut rng) {
                 Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.

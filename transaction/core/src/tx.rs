@@ -166,7 +166,7 @@ pub struct TxPrefix {
 
     /// Token id for this transaction
     #[prost(fixed64, tag = "5")]
-    pub token_id: u64,
+    pub fee_token_id: u64,
 }
 
 impl TxPrefix {
@@ -181,15 +181,14 @@ impl TxPrefix {
     pub fn new(
         inputs: Vec<TxIn>,
         outputs: Vec<TxOut>,
-        fee: u64,
-        token_id: u64,
+        fee: Amount,
         tombstone_block: u64,
     ) -> TxPrefix {
         TxPrefix {
             inputs,
             outputs,
-            fee,
-            token_id,
+            fee: fee.value,
+            fee_token_id: *fee.token_id,
             tombstone_block,
         }
     }
@@ -649,7 +648,7 @@ mod tests {
             inputs: vec![tx_in],
             outputs: vec![tx_out],
             fee: Mob::MINIMUM_FEE,
-            token_id: *Mob::ID,
+            fee_token_id: *Mob::ID,
             tombstone_block: 23,
         };
 
@@ -712,7 +711,7 @@ mod tests {
             inputs: vec![tx_in],
             outputs: vec![tx_out],
             fee: Mob::MINIMUM_FEE,
-            token_id: *Mob::ID,
+            fee_token_id: *Mob::ID,
             tombstone_block: 23,
         };
 

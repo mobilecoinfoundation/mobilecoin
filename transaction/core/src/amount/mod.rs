@@ -41,6 +41,13 @@ pub struct Amount {
     pub token_id: TokenId,
 }
 
+impl Amount {
+    /// Create a new amount
+    pub fn new(value: u64, token_id: TokenId) -> Self {
+        Self { value, token_id }
+    }
+}
+
 /// A commitment to an amount of MobileCoin or a related token, as it appears on
 /// the blockchain. This is a "blinded" commitment, and only the sender and
 /// receiver know the value and token id.

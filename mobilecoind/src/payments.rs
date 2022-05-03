@@ -21,7 +21,7 @@ use mc_transaction_core::{
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    BlockIndex, BlockVersion, TokenId,
+    Amount, BlockIndex, BlockVersion, TokenId,
 };
 use mc_transaction_std::{
     ChangeDestination, EmptyMemoBuilder, InputCredentials, TransactionBuilder,
@@ -869,17 +869,16 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // TODO: Use RTH memo builder, optionally?
 
+        let fee_amount = Amount::new(fee, token_id);
+
         // Create tx_builder.
         let mut tx_builder = TransactionBuilder::new(
             block_version,
-            token_id,
+            fee_amount,
             fog_resolver,
             EmptyMemoBuilder::default(),
-        );
-
-        tx_builder
-            .set_fee(fee)
-            .map_err(|err| Error::TxBuild(format!("Error setting fee: {}", err)))?;
+        )
+        .map_err(|err| Error::TxBuild(format!("Error cretaing TransactionBuilder: {}", err)))?;
 
         // Unzip each vec of tuples into a tuple of vecs.
         let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
