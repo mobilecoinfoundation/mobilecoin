@@ -2756,31 +2756,8 @@ pub mod transaction_builder_tests {
         }
 
         // Change in a different token is not allowed.
-        {
-            let mut memo_builder = BurnRedemptionMemoBuilder::new([3u8; 64]);
-            memo_builder.enable_destination_memo();
-
-            let mut transaction_builder = TransactionBuilder::new(
-                block_version,
-                Amount::new(10, Mob::ID),
-                fog_resolver.clone(),
-                memo_builder,
-            )
-            .unwrap();
-
-            let (_burn_tx_out, _confirmation) = transaction_builder
-                .add_output(100, &burn_address(), &mut rng)
-                .unwrap();
-
-            let result = transaction_builder.add_change_output(10, &change_destination, &mut rng);
-
-            assert_matches!(
-                result,
-                Err(TxBuilderError::NewTx(NewTxError::Memo(
-                    NewMemoError::MixedTokenIds
-                )))
-            );
-        }
+        // Note: We cannot test for the mixed tokens because mixed transactions
+        // are not supported at all in the TransactionBuilder API in 1.2 branch.
 
         // Happy flow without change
         {
