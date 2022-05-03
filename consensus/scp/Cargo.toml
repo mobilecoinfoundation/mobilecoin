@@ -17,7 +17,7 @@ mc-crypto-keys = { path = "../../crypto/keys" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 
-bigint = "4.4"
+primitive-types = "0.11.1"
 maplit = "1.0.2"
 mockall = "0.11.0"
 rand = "0.8"

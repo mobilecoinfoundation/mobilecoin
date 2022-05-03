@@ -29,6 +29,8 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
+use std::convert::TryFrom;
+use primitive_types::{U512, U256};
 
 /// The various phases of the SCP protocol.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -494,10 +496,10 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             // weight256 is the node's weight, scaled to 0..<max uint256>
             // (weight256 = <max uint256> * <num> / <denom>)
             let (num, denom) = self.weight(node_id);
-            let mut tmp = bigint::U512::from(bigint::U256::max_value());
-            tmp = tmp.saturating_mul(bigint::U512::from(num));
-            tmp = tmp.overflowing_div(bigint::U512::from(denom)).0;
-            let weight256 = bigint::U256::from(tmp);
+            let mut tmp = U512::from(U256::max_value());
+            tmp = tmp.saturating_mul(U512::from(num));
+            tmp = tmp / U512::from(denom);
+            let weight256 = U256::try_from(tmp).expect("failure calculating weight (max_u256 * k -> 2^512) / n");
 
             let gi_one = utils::slot_round_salted_keccak(
                 slot_index,
@@ -518,7 +520,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
     fn find_max_priority_peer(&self, round: u32) -> NodeID {
         let neighbors = self.neighbors(self.slot_index, round);
         let mut result = self.node_id.clone();
-        let mut max_priority = bigint::U256::zero();
+        let mut max_priority = U256::zero();
 
         for node_id in neighbors.iter() {
             // NOTE: this deviates from the spec. Without doing this we may have nomination
