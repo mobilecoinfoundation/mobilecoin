@@ -34,17 +34,13 @@ fn main() {
         panic!("Fog report url was passed, so fog is enabled, but no fog authority spki was provided. This is needed for the fog authority signature scheme. Use --fog-authority-root to pass a .pem file or --fog-authority-spki to pass base64 encoded bytes specifying this.")
     }
 
-    if config.general.fog_report_url.is_some() && config.general.fog_report_id.is_none() {
-        panic!("Fog report url was passed, so fog is enabled, but no fog report id was provided. This is needed for the fog authority signature scheme. Use --fog_report_id to pass an id string specifying this.")
-    }
-
     println!("Writing {} keys to {:?}", config.num, path);
 
     mc_util_keyfile::keygen::write_default_keyfiles(
         path,
         config.num,
         config.general.fog_report_url.as_deref(),
-        config.general.fog_report_id.as_deref(),
+        &config.general.fog_report_id,
         spki.as_deref(),
         config.general.seed,
     )
