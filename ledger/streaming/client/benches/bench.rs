@@ -8,7 +8,7 @@ use mc_common::logger::log;
 use mc_consensus_scp::test_utils::test_node_id;
 use mc_ledger_db::test_utils::get_mock_ledger;
 use mc_ledger_streaming_api::{
-    test_utils::{make_quorum_set, stream},
+    test_utils::{make_quorum_set, MockStream},
     ArchiveBlock, BlockStream, Result as StreamResult,
 };
 use mc_ledger_streaming_client::{
@@ -26,7 +26,7 @@ fn bench_ledger_sink_for_1000_blocks(b: &mut Bencher) {
 
     // Create simulated upstream with 1000 realistic blocks and fake ledger to sink
     // into
-    let upstream_producer = stream::mock_stream_with_custom_block_contents(1, 3, 1000, 2, 0);
+    let upstream_producer = MockStream::with_custom_block_contents(1, 3, 1000, 2, 0);
     let ledger = get_mock_ledger(0);
 
     // Initialize ledger sink stream
@@ -50,7 +50,7 @@ fn bench_scp_validation_for_1000_blocks(b: &mut Bencher) {
     // Create 9 simulated upstreams with 1000 realistic blocks and simulated quorum
     // set
     let quorum_set = make_quorum_set();
-    let upstream_producer = stream::mock_stream_with_custom_block_contents(1, 3, 1000, 2, 0);
+    let upstream_producer = MockStream::with_custom_block_contents(1, 3, 1000, 2, 0);
     let mut upstreams = HashMap::new();
     for i in 0..9 {
         upstreams.insert(test_node_id(i), upstream_producer.clone());
@@ -72,7 +72,7 @@ fn bench_validation_for_1000_blocks(b: &mut Bencher) {
     let logger = mc_common::logger::create_test_logger("benchmark:validate_1000_blocks".into());
 
     // Initialize upstream producer and fake ledger
-    let upstream_producer = stream::mock_stream_with_custom_block_contents(1, 3, 1000, 2, 0);
+    let upstream_producer = MockStream::with_custom_block_contents(1, 3, 1000, 2, 0);
     let ledger = Some(get_mock_ledger(0));
 
     // Initialize block validation component
@@ -94,7 +94,7 @@ fn bench_integrated_components(b: &mut Bencher) {
     // Create 9 simulated upstreams with 1000 realistic blocks, simulated quorum
     // set, and fake ledger to sink into
     let quorum_set = make_quorum_set();
-    let upstream_producer = stream::mock_stream_with_custom_block_contents(1, 3, 1000, 2, 0);
+    let upstream_producer = MockStream::with_custom_block_contents(1, 3, 1000, 2, 0);
     let mut upstreams = HashMap::new();
     let ledger = get_mock_ledger(0);
     for i in 0..9 {
