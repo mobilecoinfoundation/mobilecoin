@@ -9,7 +9,7 @@ use mc_watcher::watcher_db::WatcherDB;
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng;
 use regex::Regex;
-use rocket::local::Client;
+use rocket::local::blocking::Client;
 use std::time::Duration;
 use tempdir::TempDir;
 
@@ -100,22 +100,19 @@ fn one_active_node_produces_ingest_summaries(logger: Logger) {
     // Set up the Rocket instance
     let overseer_state = OverseerState { overseer_service };
     // TODO: Consider testing the CLI here instead.
-    let rocket_config: rocket::Config =
-        rocket::Config::build(rocket::config::Environment::Development)
-            // TODO: Make these either passed from CLI or in a Rocket.toml.
-            .address("127.0.0.1")
-            .port(PORT_NUMBER)
-            .unwrap();
+    let rocket_config = rocket::Config::figment()
+        .merge(("port", PORT_NUMBER))
+        .merge(("address", "127.0.0.1"));
     let rocket = server::initialize_rocket_server(rocket_config, overseer_state);
-    let client = Client::new(rocket).expect("valid rocket instance");
+    let client = Client::tracked(rocket).expect("valid rocket instance");
     client.post("/enable").dispatch();
 
     // Give overseer time to perform its logic.
     std::thread::sleep(Duration::from_secs(10));
 
-    let mut response = client.get("/ingest_summaries").dispatch();
+    let response = client.get("/ingest_summaries").dispatch();
 
-    let body = response.body_string().unwrap();
+    let body = response.into_string().unwrap();
     let active_pattern = Regex::new("ACTIVE").unwrap();
     active_pattern.captures(&body);
 
