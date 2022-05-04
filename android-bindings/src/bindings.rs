@@ -21,7 +21,7 @@ use jni::{
 };
 use mc_account_keys::{
     AccountKey, PublicAddress, RootEntropy, RootIdentity, ShortAddressHash,
-    CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
+    CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX, INVALID_SUBADDRESS_INDEX,
 };
 use mc_account_keys_slip10::Slip10KeyGenerator;
 use mc_api::printable::PrintableWrapper;
@@ -48,7 +48,7 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    BlockVersion, CompressedCommitment, MaskedAmount, Token,
+    Amount, BlockVersion, CompressedCommitment, MaskedAmount, Token,
 };
 
 use mc_transaction_std::{
@@ -1396,8 +1396,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOut_compute_1key_1image(
                 &tx_out_target_key,
                 &tx_pub_key,
             );
-            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (DEFAULT_SUBADDRESS_INDEX
-                ..=CHANGE_SUBADDRESS_INDEX)
+            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (0..=DEFAULT_SUBADDRESS_INDEX)
+                .chain(CHANGE_SUBADDRESS_INDEX..INVALID_SUBADDRESS_INDEX)
                 .map(|index| (*account_key.subaddress(index).spend_public_key(), index))
                 .collect();
             let subaddress_index = spsk_to_index
@@ -1603,12 +1603,13 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_init_1jni(
         // FIXME #1595: The token id should be a parameter and not hard coded to Mob
         // here
         let token_id = Mob::ID;
+        let fee_amount = Amount::new(Mob::MINIMUM_FEE, token_id);
         let tx_builder = TransactionBuilder::new_with_box(
             block_version,
-            token_id,
+            fee_amount,
             fog_resolver.clone(),
             memo_builder_box,
-        );
+        )?;
 
         Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, tx_builder)?)
     })
@@ -1692,12 +1693,19 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1output(
 
             let value = jni_big_int_to_u64(env, value)?;
 
+            // TODO (GH #1867): If you want to do mixed transactions, use something other
+            // than fee_token_id here.
+            let amount = Amount {
+                value: value as u64,
+                token_id: tx_builder.get_fee_token_id(),
+            };
+
             let recipient: MutexGuard<PublicAddress> =
                 env.get_rust_field(recipient, RUST_OBJ_FIELD)?;
 
             let mut rng = McRng::default();
             let (tx_out, confirmation_number) =
-                tx_builder.add_output(value as u64, &recipient, &mut rng)?;
+                tx_builder.add_output(amount, &recipient, &mut rng)?;
             if !confirmation_number_out.is_null() {
                 let len = env.get_array_length(confirmation_number_out)?;
                 if len as usize >= confirmation_number.to_vec().len() {
@@ -1743,8 +1751,15 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1change_
                 ChangeDestination::from(&*source_account_key);
             let mut rng = McRng::default();
 
+            // TODO (GH #1867): If you want to do mixed transactions, use something other
+            // than fee_token_id here.
+            let amount = Amount {
+                value: value as u64,
+                token_id: tx_builder.get_fee_token_id(),
+            };
+
             let (tx_out, confirmation_number) =
-                tx_builder.add_change_output(value, &change_destination, &mut rng)?;
+                tx_builder.add_change_output(amount, &change_destination, &mut rng)?;
             if !confirmation_number_out.is_null() {
                 let len = env.get_array_length(confirmation_number_out)?;
                 if len as usize >= confirmation_number.to_vec().len() {
@@ -1851,8 +1866,8 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_Util_recover_1onetime_1private_
                 &tx_target_key,
                 &tx_pub_key,
             );
-            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (DEFAULT_SUBADDRESS_INDEX
-                ..=CHANGE_SUBADDRESS_INDEX)
+            let spsk_to_index: BTreeMap<RistrettoPublic, u64> = (0..=DEFAULT_SUBADDRESS_INDEX)
+                .chain(CHANGE_SUBADDRESS_INDEX..INVALID_SUBADDRESS_INDEX)
                 .map(|index| (*account_key.subaddress(index).spend_public_key(), index))
                 .collect();
             let subaddress_index = spsk_to_index

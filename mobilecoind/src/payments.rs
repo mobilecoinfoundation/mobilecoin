@@ -21,10 +21,10 @@ use mc_transaction_core::{
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    BlockIndex, BlockVersion, TokenId,
+    Amount, BlockIndex, BlockVersion, TokenId,
 };
 use mc_transaction_std::{
-    ChangeDestination, EmptyMemoBuilder, InputCredentials, TransactionBuilder,
+    ChangeDestination, EmptyMemoBuilder, InputCredentials, MemoBuilder, TransactionBuilder,
 };
 use mc_util_uri::FogUri;
 use rand::Rng;
@@ -221,6 +221,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `outlays` - Output amounts and recipients.
     /// * `opt_fee` - Transaction fee in picoMOB. If zero, defaults to MIN_FEE.
     /// * `opt_tombstone` - Tombstone block. If zero, sets to default.
+    /// * `opt_memo_builder` - Optional memo builder to use instead of the
+    ///   default one (EmptyMemoBuilder).
     pub fn build_transaction(
         &self,
         sender_monitor_id: &MonitorId,
@@ -230,6 +232,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         outlays: &[Outlay],
         opt_fee: u64,
         opt_tombstone: u64,
+        opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
     ) -> Result<TxProposal, Error> {
         let logger = self.logger.new(o!("sender_monitor_id" => sender_monitor_id.to_string(), "outlays" => format!("{:?}", outlays)));
         log::trace!(logger, "Building pending transaction...");
@@ -325,6 +328,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             outlays,
             tombstone_block,
             &self.fog_resolver_factory,
+            opt_memo_builder,
             &mut rng,
             &self.logger,
         )?;
@@ -446,6 +450,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             &outlays,
             tombstone_block,
             &self.fog_resolver_factory,
+            None,
             &mut rng,
             &self.logger,
         )?;
@@ -548,6 +553,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             &outlays,
             tombstone_block,
             &self.fog_resolver_factory,
+            None,
             &mut rng,
             &self.logger,
         )?;
@@ -823,6 +829,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `destinations` - Outputs of the transaction.
     /// * `tombstone_block` - Tombstone block of the transaciton.
     /// * `fog_pubkey_resolver` - Provides Fog key report, when Fog is enabled.
+    /// * `opt_memo_builder` - Optional memo builder to use instead of the
+    ///   default one (EmptyMemoBuilder).
     /// * `rng` - randomness
     /// * `logger` - Logger
     fn build_tx_proposal(
@@ -836,6 +844,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         destinations: &[Outlay],
         tombstone_block: BlockIndex,
         fog_resolver_factory: &Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
+        opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
         rng: &mut (impl RngCore + CryptoRng),
         logger: &Logger,
     ) -> Result<TxProposal, Error> {
@@ -867,19 +876,17 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             fog_resolver_factory(&fog_uris).map_err(Error::Fog)?
         };
 
-        // TODO: Use RTH memo builder, optionally?
-
         // Create tx_builder.
-        let mut tx_builder = TransactionBuilder::new(
-            block_version,
-            token_id,
-            fog_resolver,
-            EmptyMemoBuilder::default(),
-        );
+        // TODO (GH #1522): Use RTH memo builder, optionally?
+        let memo_builder: Box<dyn MemoBuilder + Send + Sync> =
+            opt_memo_builder.unwrap_or_else(|| Box::new(EmptyMemoBuilder::default()));
 
-        tx_builder
-            .set_fee(fee)
-            .map_err(|err| Error::TxBuild(format!("Error setting fee: {}", err)))?;
+        let fee_amount = Amount::new(fee, token_id);
+        let mut tx_builder =
+            TransactionBuilder::new_with_box(block_version, fee_amount, fog_resolver, memo_builder)
+                .map_err(|err| {
+                    Error::TxBuild(format!("Error creating transaction builder: {}", err))
+                })?;
 
         // Unzip each vec of tuples into a tuple of vecs.
         let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
@@ -963,8 +970,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let mut tx_out_to_outlay_index = HashMap::default();
         let mut outlay_confirmation_numbers = Vec::default();
         for (i, outlay) in destinations.iter().enumerate() {
+            // TODO (GH #1867): If you want to support mixed transactions, use
+            // outlay-specific token id here
+            let amount = Amount {
+                value: outlay.value,
+                token_id,
+            };
             let (tx_out, confirmation_number) = tx_builder
-                .add_output(outlay.value, &outlay.receiver, rng)
+                .add_output(amount, &outlay.receiver, rng)
                 .map_err(|err| Error::TxBuild(format!("failed adding output: {}", err)))?;
 
             tx_out_to_outlay_index.insert(tx_out, i);
@@ -982,15 +995,22 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
         let change = input_value - total_value - tx_builder.get_fee();
 
-        // If we do, add an output for that as well.
-        // TODO: Should the exchange write destination memos?
+        // If we do have nonzero change, add an output for that as well.
+        // TODO (GH #1522): Should the exchange write destination memos?
         // If so then we must always write a change output, even if the change is zero
         if change > 0 {
+            // TODO: If you want to support mixed transactions, use outlay-specific token id
+            // here
+            let change_amount = Amount {
+                value: change,
+                token_id,
+            };
+
             let change_dest =
                 ChangeDestination::from_subaddress_index(from_account_key, change_subaddress);
 
             tx_builder
-                .add_change_output(change, &change_dest, rng)
+                .add_change_output(change_amount, &change_dest, rng)
                 .map_err(|err| Error::TxBuild(format!("failed adding output (change): {}", err)))?;
         }
 

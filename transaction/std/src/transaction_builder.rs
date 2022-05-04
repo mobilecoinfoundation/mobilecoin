@@ -6,7 +6,6 @@
 
 use crate::{ChangeDestination, InputCredentials, MemoBuilder, TxBuilderError};
 use core::{cmp::min, fmt::Debug};
-use curve25519_dalek::scalar::Scalar;
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_fog_report_validation::FogPubkeyResolver;
@@ -14,7 +13,7 @@ use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::create_shared_secret,
-    ring_signature::SignatureRctBulletproofs,
+    ring_signature::{InputSecret, OutputSecret, SignatureRctBulletproofs},
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
     Amount, BlockVersion, CompressedCommitment, MemoContext, MemoPayload, NewMemoError, Token,
@@ -59,9 +58,9 @@ pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
     /// expires, and can no longer be added to the blockchain
     tombstone_block: u64,
     /// The fee paid in connection to this transaction
-    fee: u64,
-    /// The token id for this transaction
-    token_id: TokenId,
+    /// If mixed transactions feature is off, then everything must be this token
+    /// id.
+    fee: Amount,
     /// The source of validated fog pubkeys used for this transaction
     fog_resolver: FPR,
     /// The limit on the tombstone block value imposed pubkey_expiry values in
@@ -81,49 +80,57 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// Initializes a new TransactionBuilder.
     ///
     /// # Arguments
+    /// * `block_version` - The block version rules to use when building this
+    ///   transaction
+    /// * `fee` - The fee (and token id) to use for this transaction. Note: The
+    ///   fee token id cannot be changed later, and before mixed transactions
+    ///   feature, every input and output must have this token id.
     /// * `fog_resolver` - Source of validated fog keys to use with this
     ///   transaction
     /// * `memo_builder` - An object which creates memos for the TxOuts in this
     ///   transaction
     pub fn new<MB: MemoBuilder + 'static + Send + Sync>(
         block_version: BlockVersion,
-        token_id: TokenId,
+        fee: Amount,
         fog_resolver: FPR,
         memo_builder: MB,
-    ) -> Self {
-        TransactionBuilder::new_with_box(
-            block_version,
-            token_id,
-            fog_resolver,
-            Box::new(memo_builder),
-        )
+    ) -> Result<Self, TxBuilderError> {
+        TransactionBuilder::new_with_box(block_version, fee, fog_resolver, Box::new(memo_builder))
     }
 
     /// Initializes a new TransactionBuilder, using a Box<dyn MemoBuilder>
     /// instead of statically typed
     ///
     /// # Arguments
+    /// * `block_version` - The block version rules to use when building this
+    ///   transaction
+    /// * `fee` - The fee (and token id) to use for this transaction. Note: The
+    ///   fee token id cannot be changed later, and before mixed transactions
+    ///   feature, every input and output must have the same token id as the
+    ///   fee.
     /// * `fog_resolver` - Source of validated fog keys to use with this
     ///   transaction
     /// * `memo_builder` - An object which creates memos for the TxOuts in this
     ///   transaction
     pub fn new_with_box(
         block_version: BlockVersion,
-        token_id: TokenId,
+        fee: Amount,
         fog_resolver: FPR,
-        memo_builder: Box<dyn MemoBuilder + Send + Sync>,
-    ) -> Self {
-        TransactionBuilder {
+        mut memo_builder: Box<dyn MemoBuilder + Send + Sync>,
+    ) -> Result<Self, TxBuilderError> {
+        // make sure that the memo builder
+        // is initialized to the same fee as the transaction builder
+        memo_builder.set_fee(fee)?;
+        Ok(TransactionBuilder {
             block_version,
             input_credentials: Vec::new(),
             outputs_and_shared_secrets: Vec::new(),
             tombstone_block: u64::max_value(),
-            fee: Mob::MINIMUM_FEE,
-            token_id,
+            fee,
             fog_resolver,
             fog_tombstone_block_limit: u64::max_value(),
             memo_builder: Some(memo_builder),
-        }
+        })
     }
 
     /// Add an Input to the transaction.
@@ -142,12 +149,12 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// unused.
     ///
     /// # Arguments
-    /// * `value` - The value of this output, in picoMOB.
+    /// * `amount` - The amount of this output
     /// * `recipient` - The recipient's public address
     /// * `rng` - RNG used to generate blinding for commitment
     pub fn add_output<RNG: CryptoRng + RngCore>(
         &mut self,
-        value: u64,
+        amount: Amount,
         recipient: &PublicAddress,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
@@ -160,12 +167,12 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .expect("memo builder is missing, this is a logic error");
         let block_version = self.block_version;
         let result = self.add_output_with_fog_hint_address(
-            value,
+            amount,
             recipient,
             recipient,
             |memo_ctxt| {
                 if block_version.e_memo_feature_is_supported() {
-                    Some(mb.make_memo_for_output(value, recipient, memo_ctxt)).transpose()
+                    Some(mb.make_memo_for_output(amount, recipient, memo_ctxt)).transpose()
                 } else {
                     Ok(None)
                 }
@@ -197,7 +204,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// unauthenticated.
     ///
     /// # Arguments
-    /// * `value` - The value of this change output.
+    /// * `amount` - The amount of this change output.
     /// * `change_destination` - An object including both a primary address and
     ///   a change subaddress to use to create this change output. The primary
     ///   address is used for the fog hint, the change subaddress owns the
@@ -206,7 +213,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// * `rng` - RNG used to generate blinding for commitment
     pub fn add_change_output<RNG: CryptoRng + RngCore>(
         &mut self,
-        value: u64,
+        amount: Amount,
         change_destination: &ChangeDestination,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
@@ -219,12 +226,12 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .expect("memo builder is missing, this is a logic error");
         let block_version = self.block_version;
         let result = self.add_output_with_fog_hint_address(
-            value,
+            amount,
             &change_destination.change_subaddress,
             &change_destination.primary_address,
             |memo_ctxt| {
                 if block_version.e_memo_feature_is_supported() {
-                    Some(mb.make_memo_for_change_output(value, change_destination, memo_ctxt))
+                    Some(mb.make_memo_for_change_output(amount, change_destination, memo_ctxt))
                         .transpose()
                 } else {
                     Ok(None)
@@ -250,24 +257,30 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// number of requests in half.
     ///
     /// # Arguments
-    /// * `value` - The value of this output, in picoMOB.
+    /// * `amount` - The amount of this output
     /// * `recipient` - The recipient's public address
     /// * `fog_hint_address` - The public address used to create the fog hint
     /// * `memo_fn` - The memo function to use (see TxOut::new_with_memo)
     /// * `rng` - RNG used to generate blinding for commitment
     fn add_output_with_fog_hint_address<RNG: CryptoRng + RngCore>(
         &mut self,
-        value: u64,
+        amount: Amount,
         recipient: &PublicAddress,
         fog_hint_address: &PublicAddress,
         memo_fn: impl FnOnce(MemoContext) -> Result<Option<MemoPayload>, NewMemoError>,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
         let (hint, pubkey_expiry) = create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
-        let amount = Amount {
-            value,
-            token_id: self.token_id,
-        };
+
+        if !self.block_version.mixed_transactions_are_supported()
+            && self.fee.token_id != amount.token_id
+        {
+            return Err(TxBuilderError::MixedTransactionsNotAllowed(
+                self.fee.token_id,
+                amount.token_id,
+            ));
+        }
+
         let (tx_out, shared_secret) =
             create_output_with_fog_hint(self.block_version, amount, recipient, hint, memo_fn, rng)?;
 
@@ -302,21 +315,28 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// Sets the transaction fee.
     ///
     /// # Arguments
-    /// * `fee` - Transaction fee, in picoMOB.
-    pub fn set_fee(&mut self, fee: u64) -> Result<(), TxBuilderError> {
+    /// * `fee_value` - Transaction fee value, in smallest representable units.
+    pub fn set_fee(&mut self, fee_value: u64) -> Result<(), TxBuilderError> {
         // Set the fee in memo builder first, so that it can signal an error
         // before we set self.fee, and don't have to roll back.
+        let mut new_fee = self.fee;
+        new_fee.value = fee_value;
         self.memo_builder
             .as_mut()
             .expect("memo builder is missing, this is a logic error")
-            .set_fee(fee)?;
-        self.fee = fee;
+            .set_fee(new_fee)?;
+        self.fee = new_fee;
         Ok(())
     }
 
     /// Gets the transaction fee.
     pub fn get_fee(&self) -> u64 {
-        self.fee
+        self.fee.value
+    }
+
+    /// Gets the fee token id
+    pub fn get_fee_token_id(&self) -> TokenId {
+        self.fee.token_id
     }
 
     /// Consume the builder and return the transaction.
@@ -359,7 +379,9 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             ));
         }
 
-        if !self.block_version.masked_token_id_feature_is_supported() && self.token_id != Mob::ID {
+        if !self.block_version.masked_token_id_feature_is_supported()
+            && self.fee.token_id != Mob::ID
+        {
             return Err(TxBuilderError::FeatureNotSupportedAtBlockVersion(
                 *self.block_version,
                 "nonzero token id",
@@ -397,7 +419,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         self.outputs_and_shared_secrets
             .sort_by(|(a, _), (b, _)| O::cmp(&a.public_key, &b.public_key));
 
-        let output_values_and_blindings: Vec<(u64, Scalar)> = self
+        let output_values_and_blindings: Vec<OutputSecret> = self
             .outputs_and_shared_secrets
             .iter()
             .map(|(tx_out, shared_secret)| {
@@ -405,20 +427,14 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                 let (amount, blinding) = masked_amount
                     .get_value(shared_secret)
                     .expect("TransactionBuilder created an invalid Amount");
-                (amount.value, blinding)
+                OutputSecret { amount, blinding }
             })
             .collect();
 
         let (outputs, _shared_serets): (Vec<TxOut>, Vec<_>) =
             self.outputs_and_shared_secrets.into_iter().unzip();
 
-        let tx_prefix = TxPrefix::new(
-            inputs,
-            outputs,
-            self.fee,
-            *self.token_id,
-            self.tombstone_block,
-        );
+        let tx_prefix = TxPrefix::new(inputs, outputs, self.fee, self.tombstone_block);
 
         let mut rings: Vec<Vec<(CompressedRistrettoPublic, CompressedCommitment)>> = Vec::new();
         for input in &tx_prefix.inputs {
@@ -437,22 +453,27 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .collect();
 
         // One-time private key, amount value, and amount blinding for each real input.
-        let mut input_secrets: Vec<(RistrettoPrivate, u64, Scalar)> = Vec::new();
+        let mut input_secrets: Vec<InputSecret> = Default::default();
         for input_credential in &self.input_credentials {
-            let onetime_private_key = input_credential.onetime_private_key;
             let masked_amount = &input_credential.ring[input_credential.real_index].masked_amount;
             let shared_secret = create_shared_secret(
                 &input_credential.real_output_public_key,
                 &input_credential.view_private_key,
             );
             let (amount, blinding) = masked_amount.get_value(&shared_secret)?;
-            if amount.token_id != self.token_id {
-                return Err(TxBuilderError::WrongTokenType(
-                    self.token_id,
+            if !self.block_version.mixed_transactions_are_supported()
+                && amount.token_id != self.fee.token_id
+            {
+                return Err(TxBuilderError::MixedTransactionsNotAllowed(
+                    self.fee.token_id,
                     amount.token_id,
                 ));
             }
-            input_secrets.push((onetime_private_key, amount.value, blinding));
+            input_secrets.push(InputSecret {
+                onetime_private_key: input_credential.onetime_private_key,
+                amount,
+                blinding,
+            });
         }
 
         let message = tx_prefix.hash().0;
@@ -464,7 +485,6 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             &input_secrets,
             &output_values_and_blindings,
             self.fee,
-            *self.token_id,
             rng,
         )?;
 
@@ -539,7 +559,10 @@ fn create_fog_hint<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
 #[cfg(test)]
 pub mod transaction_builder_tests {
     use super::*;
-    use crate::{EmptyMemoBuilder, MemoType, RTHMemoBuilder, SenderMemoCredential};
+    use crate::{
+        BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoType, RTHMemoBuilder, SenderMemoCredential,
+    };
+    use assert_matches::assert_matches;
     use maplit::btreemap;
     use mc_account_keys::{
         burn_address, burn_address_view_private, AccountKey, ShortAddressHash,
@@ -554,7 +577,7 @@ pub mod transaction_builder_tests {
         subaddress_matches_tx_out,
         tx::TxOutMembershipProof,
         validation::{validate_signature, validate_tx_out},
-        TokenId,
+        NewTxError, TokenId,
     };
     use rand::{rngs::StdRng, SeedableRng};
     use std::convert::TryFrom;
@@ -709,10 +732,11 @@ pub mod transaction_builder_tests {
     ) -> Result<Tx, TxBuilderError> {
         let mut transaction_builder = TransactionBuilder::new(
             block_version,
-            token_id,
+            Amount::new(Mob::MINIMUM_FEE, token_id),
             fog_resolver.clone(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let input_value = 1000;
         let output_value = 10;
 
@@ -734,7 +758,11 @@ pub mod transaction_builder_tests {
         // Outputs
         for _i in 0..num_outputs {
             transaction_builder
-                .add_output(output_value, &recipient.default_subaddress(), rng)
+                .add_output(
+                    Amount::new(output_value, token_id),
+                    &recipient.default_subaddress(),
+                    rng,
+                )
                 .unwrap();
         }
 
@@ -776,13 +804,18 @@ pub mod transaction_builder_tests {
             let membership_proofs = input_credentials.membership_proofs.clone();
             let key_image = KeyImage::from(&input_credentials.onetime_private_key);
 
-            let mut transaction_builder =
-                TransactionBuilder::new(block_version, token_id, fpr, EmptyMemoBuilder::default());
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(Mob::MINIMUM_FEE, token_id),
+                fpr,
+                EmptyMemoBuilder::default(),
+            )
+            .unwrap();
 
             transaction_builder.add_input(input_credentials);
             let (_txout, confirmation) = transaction_builder
                 .add_output(
-                    value - Mob::MINIMUM_FEE,
+                    Amount::new(value - Mob::MINIMUM_FEE, token_id),
                     &recipient.default_subaddress(),
                     &mut rng,
                 )
@@ -855,15 +888,16 @@ pub mod transaction_builder_tests {
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
-                token_id,
+                Amount::new(Mob::MINIMUM_FEE, token_id),
                 fog_resolver,
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             transaction_builder.add_input(input_credentials);
             let (_txout, confirmation) = transaction_builder
                 .add_output(
-                    value - Mob::MINIMUM_FEE,
+                    Amount::new(value - Mob::MINIMUM_FEE, token_id),
                     &recipient.default_subaddress(),
                     &mut rng,
                 )
@@ -945,10 +979,11 @@ pub mod transaction_builder_tests {
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
-                token_id,
+                Amount::new(Mob::MINIMUM_FEE, token_id),
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             let input_credentials =
                 get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
@@ -956,7 +991,7 @@ pub mod transaction_builder_tests {
 
             let (_txout, _confirmation) = transaction_builder
                 .add_output_with_fog_hint_address(
-                    value - Mob::MINIMUM_FEE,
+                    Amount::new(value - Mob::MINIMUM_FEE, token_id),
                     &recipient.default_subaddress(),
                     &fog_hint_address,
                     |_| Ok(Default::default()),
@@ -1020,10 +1055,11 @@ pub mod transaction_builder_tests {
             {
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
 
@@ -1032,7 +1068,11 @@ pub mod transaction_builder_tests {
                 transaction_builder.add_input(input_credentials);
 
                 let (_txout, _confirmation) = transaction_builder
-                    .add_output(value - Mob::MINIMUM_FEE, &recipient_address, &mut rng)
+                    .add_output(
+                        Amount::new(value - Mob::MINIMUM_FEE, token_id),
+                        &recipient_address,
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -1050,10 +1090,11 @@ pub mod transaction_builder_tests {
             {
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(500);
 
@@ -1062,7 +1103,11 @@ pub mod transaction_builder_tests {
                 transaction_builder.add_input(input_credentials);
 
                 let (_txout, _confirmation) = transaction_builder
-                    .add_output(value - Mob::MINIMUM_FEE, &recipient_address, &mut rng)
+                    .add_output(
+                        Amount::new(value - Mob::MINIMUM_FEE, token_id),
+                        &recipient_address,
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -1109,10 +1154,11 @@ pub mod transaction_builder_tests {
             {
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
 
@@ -1127,14 +1173,18 @@ pub mod transaction_builder_tests {
 
                 let (_txout, _confirmation) = transaction_builder
                     .add_output(
-                        value - change_value - Mob::MINIMUM_FEE,
+                        Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                         &recipient_address,
                         &mut rng,
                     )
                     .unwrap();
 
                 transaction_builder
-                    .add_change_output(change_value, &sender_change_dest, &mut rng)
+                    .add_change_output(
+                        Amount::new(change_value, token_id),
+                        &sender_change_dest,
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -1285,10 +1335,11 @@ pub mod transaction_builder_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     memo_builder,
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
 
@@ -1303,14 +1354,18 @@ pub mod transaction_builder_tests {
 
                 let (_txout, _confirmation) = transaction_builder
                     .add_output(
-                        value - change_value - Mob::MINIMUM_FEE,
+                        Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                         &recipient_address,
                         &mut rng,
                     )
                     .unwrap();
 
                 transaction_builder
-                    .add_change_output(change_value, &sender_change_dest, &mut rng)
+                    .add_change_output(
+                        Amount::new(change_value, token_id),
+                        &sender_change_dest,
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -1441,10 +1496,11 @@ pub mod transaction_builder_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     memo_builder,
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
                 transaction_builder.set_fee(Mob::MINIMUM_FEE * 4).unwrap();
@@ -1460,14 +1516,18 @@ pub mod transaction_builder_tests {
 
                 let (_txout, _confirmation) = transaction_builder
                     .add_output(
-                        value - change_value - Mob::MINIMUM_FEE * 4,
+                        Amount::new(value - change_value - 4 * Mob::MINIMUM_FEE, token_id),
                         &recipient_address,
                         &mut rng,
                     )
                     .unwrap();
 
                 transaction_builder
-                    .add_change_output(change_value, &sender_change_dest, &mut rng)
+                    .add_change_output(
+                        Amount::new(change_value, token_id),
+                        &sender_change_dest,
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -1599,10 +1659,11 @@ pub mod transaction_builder_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     memo_builder,
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
 
@@ -1617,14 +1678,18 @@ pub mod transaction_builder_tests {
 
                 let (_txout, _confirmation) = transaction_builder
                     .add_output(
-                        value - change_value - Mob::MINIMUM_FEE,
+                        Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                         &recipient_address,
                         &mut rng,
                     )
                     .unwrap();
 
                 transaction_builder
-                    .add_change_output(change_value, &sender_change_dest, &mut rng)
+                    .add_change_output(
+                        Amount::new(change_value, token_id),
+                        &sender_change_dest,
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -1756,10 +1821,11 @@ pub mod transaction_builder_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     memo_builder,
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
 
@@ -1774,14 +1840,18 @@ pub mod transaction_builder_tests {
 
                 let (_txout, _confirmation) = transaction_builder
                     .add_output(
-                        value - change_value - Mob::MINIMUM_FEE,
+                        Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                         &recipient_address,
                         &mut rng,
                     )
                     .unwrap();
 
                 transaction_builder
-                    .add_change_output(change_value, &sender_change_dest, &mut rng)
+                    .add_change_output(
+                        Amount::new(change_value, token_id),
+                        &sender_change_dest,
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -1901,10 +1971,11 @@ pub mod transaction_builder_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     memo_builder,
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
 
@@ -1919,14 +1990,18 @@ pub mod transaction_builder_tests {
 
                 let (_txout, _confirmation) = transaction_builder
                     .add_output(
-                        value - change_value - Mob::MINIMUM_FEE,
+                        Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                         &recipient_address,
                         &mut rng,
                     )
                     .unwrap();
 
                 transaction_builder
-                    .add_change_output(change_value, &sender_change_dest, &mut rng)
+                    .add_change_output(
+                        Amount::new(change_value, token_id),
+                        &sender_change_dest,
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -2071,10 +2146,11 @@ pub mod transaction_builder_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     memo_builder,
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
 
@@ -2089,14 +2165,18 @@ pub mod transaction_builder_tests {
 
                 let (_txout, _confirmation) = transaction_builder
                     .add_output(
-                        value - change_value - Mob::MINIMUM_FEE,
+                        Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                         &bob_address,
                         &mut rng,
                     )
                     .unwrap();
 
                 transaction_builder
-                    .add_change_output(change_value, &alice_change_dest, &mut rng)
+                    .add_change_output(
+                        Amount::new(change_value, token_id),
+                        &alice_change_dest,
+                        &mut rng,
+                    )
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -2258,10 +2338,11 @@ pub mod transaction_builder_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    token_id,
+                    Amount::new(Mob::MINIMUM_FEE, token_id),
                     fog_resolver.clone(),
                     memo_builder,
-                );
+                )
+                .unwrap();
 
                 transaction_builder.set_tombstone_block(2000);
 
@@ -2276,14 +2357,18 @@ pub mod transaction_builder_tests {
 
                 let (_txout, _confirmation) = transaction_builder
                     .add_output(
-                        value - change_value - Mob::MINIMUM_FEE,
+                        Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                         &recipient_address,
                         &mut rng,
                     )
                     .unwrap();
 
                 transaction_builder
-                    .add_change_output(change_value, &sender_change_dest, &mut rng)
+                    .add_change_output(
+                        Amount::new(change_value, token_id),
+                        &sender_change_dest,
+                        &mut rng,
+                    )
                     .unwrap();
 
                 assert!(
@@ -2293,14 +2378,22 @@ pub mod transaction_builder_tests {
 
                 assert!(
                     transaction_builder
-                        .add_output(Mob::MINIMUM_FEE, &recipient_address, &mut rng)
+                        .add_output(
+                            Amount::new(Mob::MINIMUM_FEE, token_id),
+                            &recipient_address,
+                            &mut rng
+                        )
                         .is_err(),
-                    "Adding another output after chnage output should be rejected"
+                    "Adding another output after change output should be rejected"
                 );
 
                 assert!(
                     transaction_builder
-                        .add_change_output(change_value, &sender_change_dest, &mut rng)
+                        .add_change_output(
+                            Amount::new(change_value, token_id),
+                            &sender_change_dest,
+                            &mut rng
+                        )
                         .is_err(),
                     "Adding a second change output should be rejected"
                 );
@@ -2359,19 +2452,28 @@ pub mod transaction_builder_tests {
             )
             .unwrap();
 
-            let mut transaction_builder =
-                TransactionBuilder::new(block_version, token_id, fpr, EmptyMemoBuilder::default());
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(Mob::MINIMUM_FEE, token_id),
+                fpr,
+                EmptyMemoBuilder::default(),
+            )
+            .unwrap();
             transaction_builder.add_input(input_credentials);
 
             let wrong_value = 999;
             transaction_builder
-                .add_output(wrong_value, &bob.default_subaddress(), &mut rng)
+                .add_output(
+                    Amount::new(wrong_value, token_id),
+                    &bob.default_subaddress(),
+                    &mut rng,
+                )
                 .unwrap();
 
             let result = transaction_builder.build(&mut rng);
             // Signing should fail if value is not conserved.
             match result {
-                Err(TxBuilderError::RingSignatureFailed) => {} // Expected.
+                Err(TxBuilderError::RingSignatureFailed(_)) => {} // Expected.
                 _ => panic!("Unexpected result {:?}", result),
             }
         }
@@ -2520,10 +2622,11 @@ pub mod transaction_builder_tests {
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
-                token_id,
+                Amount::new(Mob::MINIMUM_FEE, token_id),
                 fog_resolver.clone(),
                 memo_builder,
-            );
+            )
+            .unwrap();
 
             let input_credentials = get_input_credentials(
                 block_version,
@@ -2536,14 +2639,18 @@ pub mod transaction_builder_tests {
 
             let (burn_tx_out, _confirmation) = transaction_builder
                 .add_output(
-                    value - change_value - Mob::MINIMUM_FEE,
+                    Amount::new(value - change_value - Mob::MINIMUM_FEE, token_id),
                     &recipient,
                     &mut rng,
                 )
                 .unwrap();
 
             transaction_builder
-                .add_change_output(change_value, &sender_change_dest, &mut rng)
+                .add_change_output(
+                    Amount::new(change_value, token_id),
+                    &sender_change_dest,
+                    &mut rng,
+                )
                 .unwrap();
 
             let tx = transaction_builder.build(&mut rng).unwrap();
@@ -2588,6 +2695,550 @@ pub mod transaction_builder_tests {
             assert!(burn_tx_out
                 .view_key_match(sender.view_private_key())
                 .is_err());
+        }
+    }
+
+    #[test]
+    // Transaction builder with Burn Redemption memo builder
+    fn test_transaction_builder_burn_redemption_memos() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let block_version = BlockVersion::MAX;
+        let token_id = TokenId::from(5);
+        let fog_resolver = MockFogResolver::default();
+        let sender = AccountKey::random(&mut rng);
+        let change_destination = ChangeDestination::from(&sender);
+
+        // Adding an output that is not to the burn address is not allowed.
+        {
+            let memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            let recipient = AccountKey::random(&mut rng);
+            let result = transaction_builder.add_output(
+                Amount::new(100, token_id),
+                &recipient.default_subaddress(),
+                &mut rng,
+            );
+            assert_matches!(
+                result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::InvalidRecipient
+                )))
+            );
+        }
+
+        // Adding two burn outputs is not allowed.
+        {
+            let memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            transaction_builder
+                .add_output(Amount::new(100, token_id), &burn_address(), &mut rng)
+                .unwrap();
+
+            let result = transaction_builder.add_output(
+                Amount::new(100, token_id),
+                &burn_address(),
+                &mut rng,
+            );
+            assert_matches!(
+                result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::MultipleOutputs
+                )))
+            );
+        }
+
+        // Adding a change output before a burn output is not allowed.
+        {
+            let mut memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
+            memo_builder.enable_destination_memo();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            let result = transaction_builder.add_change_output(
+                Amount::new(10, token_id),
+                &change_destination,
+                &mut rng,
+            );
+
+            assert_matches!(
+                result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::MissingOutput
+                )))
+            );
+        }
+
+        // Setting fee after change output has been written is not allowed.
+        {
+            let mut memo_builder = BurnRedemptionMemoBuilder::new([3u8; 64]);
+            memo_builder.enable_destination_memo();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            transaction_builder.set_fee(3).unwrap();
+
+            let input_credentials = get_input_credentials(
+                block_version,
+                Amount::new(113, token_id),
+                &AccountKey::random(&mut rng),
+                &fog_resolver,
+                &mut rng,
+            );
+            transaction_builder.add_input(input_credentials);
+
+            let (_burn_tx_out, _confirmation) = transaction_builder
+                .add_output(Amount::new(100, token_id), &burn_address(), &mut rng)
+                .unwrap();
+
+            transaction_builder
+                .add_change_output(Amount::new(10, token_id), &change_destination, &mut rng)
+                .unwrap();
+
+            let result = transaction_builder.set_fee(1235);
+            assert_matches!(
+                result,
+                Err(TxBuilderError::Memo(NewMemoError::FeeAfterChange))
+            );
+        }
+
+        // Change in a different token is not allowed.
+        {
+            let mut memo_builder = BurnRedemptionMemoBuilder::new([3u8; 64]);
+            memo_builder.enable_destination_memo();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, Mob::ID),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            let (_burn_tx_out, _confirmation) = transaction_builder
+                .add_output(Amount::new(100, token_id), &burn_address(), &mut rng)
+                .unwrap();
+
+            let result = transaction_builder.add_change_output(
+                Amount::new(10, token_id),
+                &change_destination,
+                &mut rng,
+            );
+
+            assert_matches!(
+                result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::MixedTokenIds
+                )))
+            );
+        }
+
+        // Happy flow without change
+        {
+            let mut memo_builder = BurnRedemptionMemoBuilder::new([2u8; 64]);
+            memo_builder.enable_destination_memo();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            transaction_builder.set_fee(3).unwrap();
+
+            let input_credentials = get_input_credentials(
+                block_version,
+                Amount::new(113, token_id),
+                &AccountKey::random(&mut rng),
+                &fog_resolver,
+                &mut rng,
+            );
+            transaction_builder.add_input(input_credentials);
+
+            let (burn_output, _confirmation) = transaction_builder
+                .add_output(Amount::new(110, token_id), &burn_address(), &mut rng)
+                .unwrap();
+
+            let tx = transaction_builder.build(&mut rng).expect("build tx");
+
+            assert_eq!(tx.prefix.outputs.len(), 1);
+            assert_eq!(burn_output, tx.prefix.outputs[0]);
+
+            // Test that view key matching works with the burn tx out with burn address view
+            // key
+            let (amount, _) = burn_output
+                .view_key_match(&burn_address_view_private())
+                .unwrap();
+            assert_eq!(amount, Amount::new(110, token_id));
+
+            // Burn output should have a burn redemption memo
+            let ss = get_tx_out_shared_secret(
+                &burn_address_view_private(),
+                &RistrettoPublic::try_from(&burn_output.public_key).unwrap(),
+            );
+            let memo = burn_output.e_memo.unwrap().decrypt(&ss);
+            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                MemoType::BurnRedemption(memo) => {
+                    assert_eq!(memo.memo_data(), &[2u8; 64],);
+                }
+                _ => {
+                    panic!("unexpected memo type")
+                }
+            }
+        }
+
+        // Happy flow with change
+        {
+            let mut memo_builder = BurnRedemptionMemoBuilder::new([3u8; 64]);
+            memo_builder.enable_destination_memo();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(10, token_id),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            transaction_builder.set_fee(3).unwrap();
+
+            let input_credentials = get_input_credentials(
+                block_version,
+                Amount::new(113, token_id),
+                &AccountKey::random(&mut rng),
+                &fog_resolver,
+                &mut rng,
+            );
+            transaction_builder.add_input(input_credentials);
+
+            let (burn_tx_out, _confirmation) = transaction_builder
+                .add_output(Amount::new(100, token_id), &burn_address(), &mut rng)
+                .unwrap();
+
+            transaction_builder
+                .add_change_output(Amount::new(10, token_id), &change_destination, &mut rng)
+                .unwrap();
+
+            let tx = transaction_builder.build(&mut rng).expect("build tx");
+
+            assert_eq!(tx.prefix.outputs.len(), 2);
+
+            let burn_output = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| tx_out.public_key == burn_tx_out.public_key)
+                .expect("Didn't find recipient's output");
+            let change_output = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
+                })
+                .expect("Didn't find sender's output");
+
+            // Test that view key matching works with the burn tx out with burn address view
+            // key
+            let (amount, _) = burn_output
+                .view_key_match(&burn_address_view_private())
+                .unwrap();
+            assert_eq!(amount, Amount::new(100, token_id));
+
+            assert!(change_output
+                .view_key_match(&burn_address_view_private())
+                .is_err());
+
+            // Test that view key matching works with the change tx out with sender's view
+            // key
+            let (amount, _) = change_output
+                .view_key_match(sender.view_private_key())
+                .unwrap();
+            assert_eq!(amount, Amount::new(10, token_id));
+
+            assert!(burn_output
+                .view_key_match(sender.view_private_key())
+                .is_err());
+
+            // Burn output should have a burn redemption memo
+            let ss = get_tx_out_shared_secret(
+                &burn_address_view_private(),
+                &RistrettoPublic::try_from(&burn_output.public_key).unwrap(),
+            );
+            let memo = burn_output.e_memo.unwrap().decrypt(&ss);
+            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                MemoType::BurnRedemption(memo) => {
+                    assert_eq!(memo.memo_data(), &[3u8; 64],);
+                }
+                _ => {
+                    panic!("unexpected memo type")
+                }
+            }
+
+            // Change output should have a destination memo
+            let ss = get_tx_out_shared_secret(
+                sender.view_private_key(),
+                &RistrettoPublic::try_from(&change_output.public_key).unwrap(),
+            );
+            let memo = change_output.e_memo.unwrap().decrypt(&ss);
+            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                MemoType::Destination(memo) => {
+                    assert_eq!(
+                        memo.get_address_hash(),
+                        &ShortAddressHash::from(&burn_address()),
+                        "lookup based on address hash failed"
+                    );
+                    assert_eq!(memo.get_num_recipients(), 1);
+                    assert_eq!(memo.get_fee(), 3);
+                    assert_eq!(
+                        memo.get_total_outlay(),
+                        103,
+                        "outlay should be amount sent to recipient + fee"
+                    );
+                }
+                _ => {
+                    panic!("unexpected memo type")
+                }
+            }
+        }
+    }
+
+    #[test]
+    // Test that sending mixed transactions works
+    //
+    // This test uses inputs of two different token IDs, paying the fee and creating
+    // change with TokenID1, and "passing through" the second token ID with its
+    // full amount as output.
+    fn test_mixed_transactions() {
+        let mut rng: StdRng = SeedableRng::from_seed([18u8; 32]);
+
+        let fog_resolver = MockFogResolver::default();
+        let sender = AccountKey::random(&mut rng);
+        let sender_change_dest = ChangeDestination::from(&sender);
+        let recipient = AccountKey::random(&mut rng);
+        let recipient_addr = recipient.default_subaddress();
+
+        let amount1 = Amount::new(1475 * MILLIMOB_TO_PICOMOB, Mob::ID);
+        let change_amount = Amount::new(128 * MILLIMOB_TO_PICOMOB, Mob::ID);
+        let amount2 = Amount::new(999999, 2.into());
+
+        let tx_out1_right_amount = Amount::new(
+            amount1.value - change_amount.value - Mob::MINIMUM_FEE,
+            Mob::ID,
+        );
+
+        for block_version in 3..=*BlockVersion::MAX {
+            let block_version = BlockVersion::try_from(block_version).unwrap();
+            let memo_builder = EmptyMemoBuilder::default();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(Mob::MINIMUM_FEE, Mob::ID),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            let input_credentials =
+                get_input_credentials(block_version, amount1, &sender, &fog_resolver, &mut rng);
+            transaction_builder.add_input(input_credentials);
+
+            let input_credentials =
+                get_input_credentials(block_version, amount2, &sender, &fog_resolver, &mut rng);
+            transaction_builder.add_input(input_credentials);
+
+            let (tx_out1, _confirmation) = transaction_builder
+                .add_output(tx_out1_right_amount, &recipient_addr, &mut rng)
+                .unwrap();
+
+            let (tx_out2, _confirmation) = transaction_builder
+                .add_output(amount2, &recipient_addr, &mut rng)
+                .unwrap();
+
+            transaction_builder
+                .add_change_output(change_amount, &sender_change_dest, &mut rng)
+                .unwrap();
+
+            let tx = transaction_builder.build(&mut rng).unwrap();
+
+            assert_eq!(tx.prefix.outputs.len(), 3);
+            let idx1 = tx
+                .prefix
+                .outputs
+                .iter()
+                .position(|tx_out| tx_out.public_key == tx_out1.public_key)
+                .unwrap();
+            let idx2 = tx
+                .prefix
+                .outputs
+                .iter()
+                .position(|tx_out| tx_out.public_key == tx_out2.public_key)
+                .unwrap();
+            let change_idx = (0..3).find(|x| *x != idx1 && *x != idx2).unwrap();
+
+            let change_tx_out = &tx.prefix.outputs[change_idx];
+
+            // Test that sender's change subaddress owns the change, and not the other tx
+            // outs
+            assert!(
+                !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &tx_out1).unwrap()
+            );
+            assert!(
+                !subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, &tx_out2).unwrap()
+            );
+            assert!(
+                subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, change_tx_out).unwrap()
+            );
+
+            // Test that recipients's default subaddress owns the correct output, and not
+            // the other tx outs
+            assert!(
+                subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &tx_out1).unwrap()
+            );
+            assert!(
+                subaddress_matches_tx_out(&recipient, DEFAULT_SUBADDRESS_INDEX, &tx_out2).unwrap()
+            );
+            assert!(!subaddress_matches_tx_out(
+                &recipient,
+                DEFAULT_SUBADDRESS_INDEX,
+                change_tx_out
+            )
+            .unwrap());
+
+            // Test that view key matching works with the two tx outs
+            let (amount, _) = tx_out1
+                .view_key_match(recipient.view_private_key())
+                .unwrap();
+            assert_eq!(
+                amount.value,
+                amount1.value - change_amount.value - Mob::MINIMUM_FEE
+            );
+            assert_eq!(amount.token_id, Mob::ID);
+
+            let (amount, _) = tx_out2
+                .view_key_match(recipient.view_private_key())
+                .unwrap();
+            assert_eq!(amount, amount2);
+
+            assert!(change_tx_out
+                .view_key_match(recipient.view_private_key())
+                .is_err());
+
+            // Test that view key matching works with the change tx out with sender's view
+            // key
+            let (amount, _) = change_tx_out
+                .view_key_match(sender.view_private_key())
+                .unwrap();
+            assert_eq!(amount.value, change_amount.value);
+
+            assert!(tx_out1.view_key_match(sender.view_private_key()).is_err());
+
+            assert!(tx_out2.view_key_match(sender.view_private_key()).is_err());
+        }
+    }
+
+    #[test]
+    // Test mixed transactions expected failures (imbalanced transactions)
+    fn test_mixed_transactions_expected_failure_imbalanced_transactions() {
+        let mut rng: StdRng = SeedableRng::from_seed([18u8; 32]);
+
+        let fog_resolver = MockFogResolver::default();
+        let sender = AccountKey::random(&mut rng);
+        let sender_change_dest = ChangeDestination::from(&sender);
+        let recipient = AccountKey::random(&mut rng);
+        let recipient_addr = recipient.default_subaddress();
+
+        let amount1 = Amount::new(1475 * MILLIMOB_TO_PICOMOB, Mob::ID);
+        let change_amount = Amount::new(128 * MILLIMOB_TO_PICOMOB, Mob::ID);
+        let amount2 = Amount::new(999999, 2.into());
+
+        let tx_out1_right_amount = Amount::new(
+            amount1.value - change_amount.value - Mob::MINIMUM_FEE,
+            Mob::ID,
+        );
+
+        // Builds a transaction using a particular amount in place of tx_out1, returning
+        // result of `.build()`
+        let mut test_fn = |block_version, tx_out1_amount| -> Result<_, _> {
+            let memo_builder = EmptyMemoBuilder::default();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(Mob::MINIMUM_FEE, Mob::ID),
+                fog_resolver.clone(),
+                memo_builder,
+            )
+            .unwrap();
+
+            let input_credentials =
+                get_input_credentials(block_version, amount1, &sender, &fog_resolver, &mut rng);
+            transaction_builder.add_input(input_credentials);
+
+            let input_credentials =
+                get_input_credentials(block_version, amount2, &sender, &fog_resolver, &mut rng);
+            transaction_builder.add_input(input_credentials);
+
+            let (_tx_out1, _confirmation) = transaction_builder
+                .add_output(tx_out1_amount, &recipient_addr, &mut rng)
+                .unwrap();
+
+            let (_tx_out2, _confirmation) = transaction_builder
+                .add_output(amount2, &recipient_addr, &mut rng)
+                .unwrap();
+
+            transaction_builder
+                .add_change_output(change_amount, &sender_change_dest, &mut rng)
+                .unwrap();
+
+            transaction_builder.build(&mut rng)
+        };
+
+        for block_version in 3..=*BlockVersion::MAX {
+            let block_version = BlockVersion::try_from(block_version).unwrap();
+
+            assert!(test_fn(block_version, tx_out1_right_amount).is_ok());
+
+            let mut tx_out1_wrong_amount = tx_out1_right_amount;
+            tx_out1_wrong_amount.value -= 1;
+            assert!(test_fn(block_version, tx_out1_wrong_amount).is_err());
+
+            tx_out1_wrong_amount.value += 2;
+            assert!(test_fn(block_version, tx_out1_wrong_amount).is_err());
+
+            tx_out1_wrong_amount.token_id = 99.into();
+            assert!(test_fn(block_version, tx_out1_wrong_amount).is_err());
+
+            tx_out1_wrong_amount.value -= 1;
+            assert!(test_fn(block_version, tx_out1_wrong_amount).is_err());
         }
     }
 }

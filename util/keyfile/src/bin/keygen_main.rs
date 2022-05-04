@@ -27,7 +27,7 @@ fn main() {
         .clone()
         .unwrap_or_else(|| std::env::current_dir().unwrap());
     let fog_report_url = config.general.fog_report_url.as_deref();
-    let fog_report_id = config.general.fog_report_id.as_deref();
+    let fog_report_id = config.general.fog_report_id;
     let fog_authority_spki = config
         .general
         .fog_authority_spki
@@ -50,7 +50,7 @@ fn main() {
         &mnemonic,
         0,
         fog_report_url,
-        fog_report_id,
+        &fog_report_id,
         fog_authority_spki,
     )
     .expect("Could not write keyfile");

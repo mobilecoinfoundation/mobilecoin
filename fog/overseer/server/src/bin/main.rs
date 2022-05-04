@@ -12,7 +12,8 @@ use mc_fog_overseer_server::{config::OverseerConfig, server, service::OverseerSe
 use mc_fog_sql_recovery_db::SqlRecoveryDb;
 use mc_util_cli::ParserWithBuildInfo;
 
-fn main() {
+#[rocket::main]
+async fn main() -> Result<(), rocket::Error> {
     mc_common::setup_panic_handler();
     let _sentry_guard = sentry::init();
     let config = OverseerConfig::parse();
@@ -36,12 +37,10 @@ fn main() {
 
     let overseer_state = server::OverseerState { overseer_service };
 
-    let rocket_config: rocket::Config =
-        rocket::Config::build(rocket::config::Environment::Development)
-            .address(config.overseer_listen_host)
-            .port(config.overseer_listen_port)
-            .unwrap();
+    let rocket_config = rocket::Config::figment()
+        .merge(("port", config.overseer_listen_port))
+        .merge(("address", config.overseer_listen_host.clone()));
 
     let rocket = server::initialize_rocket_server(rocket_config, overseer_state);
-    rocket.launch();
+    rocket.launch().await
 }

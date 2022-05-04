@@ -3,8 +3,10 @@
 // Consensus service client-facing data types and service descriptors.
 
 syntax = "proto3";
+import "google/protobuf/empty.proto";
 import "attest.proto";
 import "consensus_common.proto";
+import "consensus_config.proto";
 import "external.proto";
 
 package consensus_client;
@@ -75,4 +77,7 @@ service ConsensusClientAPI {
 
     /// Propose a new MintTx.
     rpc ProposeMintTx(external.MintTx) returns (ProposeMintTxResponse);
+
+    /// Get current node configuration.
+    rpc GetNodeConfig(google.protobuf.Empty) returns (consensus_config.ConsensusNodeConfig);
 }

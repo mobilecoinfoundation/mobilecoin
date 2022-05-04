@@ -715,17 +715,18 @@ fn build_tx(
     // Use token id for first spendable tx out
     let token_id = spendable_txouts.first().unwrap().amount.token_id;
 
+    // FIXME: This needs to be the fee for the current token, not MOB.
+    // However, bootstrapping non MOB tokens is not supported right now.
+    let fee_amount = Amount::new(MOB_FEE.load(Ordering::SeqCst), token_id);
+
     // Create tx_builder.
     let mut tx_builder = TransactionBuilder::new(
         block_version,
-        token_id,
+        fee_amount,
         fog_resolver,
         EmptyMemoBuilder::default(),
-    );
-
-    // FIXME: This needs to be the fee for the current token, not MOB.
-    // However, bootstrapping non MOB tokens is not supported right now.
-    tx_builder.set_fee(MOB_FEE.load(Ordering::SeqCst)).unwrap();
+    )
+    .unwrap();
 
     // Unzip each vec of tuples into a tuple of vecs.
     let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
@@ -814,7 +815,7 @@ fn build_tx(
             let target_address = to_account.default_subaddress();
 
             tx_builder
-                .add_output(value, &target_address, &mut rng)
+                .add_output(Amount { value, token_id }, &target_address, &mut rng)
                 .expect("failed to add output");
         }
     }

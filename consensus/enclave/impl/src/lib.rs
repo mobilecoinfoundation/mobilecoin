@@ -236,10 +236,10 @@ impl SgxConsensusEnclave {
         // We need to make sure all transactions are valid. We also ensure they all
         // point at the same root membership element.
         for (tx, proofs) in transactions_with_proofs.iter() {
-            let token_id = TokenId::from(tx.prefix.token_id);
+            let fee_token_id = TokenId::from(tx.prefix.fee_token_id);
 
             let minimum_fee = ct_min_fees
-                .get(&token_id)
+                .get(&fee_token_id)
                 .ok_or(TransactionValidationError::TokenNotYetConfigured)?;
 
             mc_transaction_core::validation::validate(
@@ -685,13 +685,22 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             .decrypt_bytes(locally_encrypted_tx.0)?;
         let tx: Tx = mc_util_serial::decode(&decrypted_bytes)?;
 
-        let token_id = TokenId::from(tx.prefix.token_id);
+        let fee_token_id = TokenId::from(tx.prefix.fee_token_id);
 
         // Validate.
         let mut csprng = McRng::default();
         let minimum_fee = ct_min_fee_map
-            .get(&token_id)
+            .get(&fee_token_id)
             .ok_or(TransactionValidationError::TokenNotYetConfigured)?;
+
+        // Make sure any extra token ids that appear in the outputs are also already
+        // configured. (this was github issue #1868)
+        for token_id in tx.signature.output_token_ids.iter() {
+            ct_min_fee_map
+                .get(&TokenId::from(token_id))
+                .ok_or(TransactionValidationError::TokenNotYetConfigured)?;
+        }
+
         mc_transaction_core::validation::validate(
             &tx,
             block_index,
@@ -782,8 +791,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // Compute the total fees for each known token id, for tx's in this block.
         let mut total_fees: CtTokenMap<u128> = ct_min_fee_map.keys().cloned().collect();
         for tx in transactions.iter() {
-            let token_id = TokenId::from(tx.prefix.token_id);
-            total_fees.add(&token_id, tx.prefix.fee as u128);
+            let fee_token_id = TokenId::from(tx.prefix.fee_token_id);
+            total_fees.add(&fee_token_id, tx.prefix.fee as u128);
         }
 
         // Sort the token ids which did not appear to the end.

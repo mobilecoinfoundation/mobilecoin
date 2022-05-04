@@ -28,14 +28,14 @@ pub fn write_keyfile<P: AsRef<Path>>(
     mnemonic: &Mnemonic,
     account_index: u32,
     fog_report_url: Option<&str>,
-    fog_report_id: Option<&str>,
+    fog_report_id: &str,
     fog_authority_spki: Option<&[u8]>,
 ) -> Result<(), Error> {
     let json = UncheckedMnemonicAccount {
         mnemonic: Some(mnemonic.clone().into_phrase()),
         account_index: Some(account_index),
         fog_report_url: fog_report_url.map(ToOwned::to_owned),
-        fog_report_id: fog_report_id.map(ToOwned::to_owned),
+        fog_report_id: Some(fog_report_id.to_owned()),
         fog_authority_spki: fog_authority_spki.map(ToOwned::to_owned),
     };
     Ok(serde_json::to_writer(File::create(path)?, &json)?)
@@ -141,7 +141,7 @@ mod testing {
         let dir = tempfile::tempdir().expect("Could not create temp dir");
         let mnemonic = Mnemonic::new(MnemonicType::Words24, Language::English);
         let path = dir.path().join("no_fog");
-        write_keyfile(&path, &mnemonic, 0, None, None, None).expect("Could not write keyfile");
+        write_keyfile(&path, &mnemonic, 0, None, "", None).expect("Could not write keyfile");
         let expected = AccountKey::from(mnemonic.derive_slip10_key(0));
         let actual = read_keyfile(&path).expect("Could not read keyfile");
         assert_eq!(expected, actual);
@@ -170,7 +170,7 @@ mod testing {
             &mnemonic,
             0,
             Some(fog_report_url),
-            Some(fog_report_id),
+            fog_report_id,
             Some(fog_authority_spki),
         )
         .expect("Could not write keyfile");
