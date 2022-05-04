@@ -1,13 +1,12 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Mock [BlockFetcher]
+//! Mock implementation of [Fetcher<Result<BlockData>>].
 
-use crate::{test_utils::make_blocks, BlockData, BlockFetcher, Result};
+use crate::{test_utils::make_blocks, BlockData, BlockIndex, Fetcher, Result};
 use futures::{Future, Stream, StreamExt};
-use mc_transaction_core::BlockIndex;
 use std::ops::Range;
 
-/// Mock implementation of [BlockFetcher].
+/// Mock implementation of [Fetcher<Result<BlockData>>].
 pub struct MockFetcher {
     /// Fetch results.
     pub results: Vec<Result<BlockData>>,
@@ -31,7 +30,7 @@ impl MockFetcher {
     }
 }
 
-impl BlockFetcher for MockFetcher {
+impl Fetcher<Result<BlockData>, BlockIndex, Range<BlockIndex>> for MockFetcher {
     type Single<'s> = impl Future<Output = Result<BlockData>> + 's;
     type Multiple<'s> = impl Stream<Item = Result<BlockData>> + 's;
 
@@ -40,7 +39,7 @@ impl BlockFetcher for MockFetcher {
         async { result }
     }
 
-    fn fetch_range(&self, indexes: Range<BlockIndex>) -> Self::Multiple<'_> {
+    fn fetch_multiple(&self, indexes: Range<BlockIndex>) -> Self::Multiple<'_> {
         futures::stream::iter(indexes).then(move |idx| self.fetch_single(idx))
     }
 }

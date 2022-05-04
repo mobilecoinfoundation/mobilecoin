@@ -213,7 +213,7 @@ mod tests {
     use mc_ledger_db::MockLedger;
     use mc_ledger_streaming_api::{
         test_utils::{make_blocks, MockStream},
-        BlockStream,
+        Streamer,
     };
     use std::{
         path::{Path, PathBuf},
@@ -273,7 +273,7 @@ mod tests {
 
         let mut sink = ArchiveBlockSink::new(writer, ledger, [10].to_vec(), logger);
 
-        let stream = source.get_block_stream(0).expect("get_block_stream");
+        let stream = source.get_stream(0).expect("get_stream");
         let result_stream = sink.consume(stream);
         let result_future = result_stream.for_each(async move |res| res.expect("unexpected error"));
         block_on(result_future);
@@ -300,7 +300,7 @@ mod tests {
 
         let mut sink = ArchiveBlockSink::new(writer, ledger, [10].to_vec(), logger);
 
-        let stream = source.get_block_stream(0).expect("get_block_stream");
+        let stream = source.get_stream(0).expect("get_stream");
         let result_stream = sink.consume(stream);
         let mut got_error = false;
         let result_future = result_stream.for_each(|res| {
@@ -335,7 +335,7 @@ mod tests {
 
         let mut sink = ArchiveBlockSink::new(writer, ledger, [10].to_vec(), logger);
 
-        let stream = source.get_block_stream(0).expect("get_block_stream");
+        let stream = source.get_stream(0).expect("get_stream");
         let result_stream = sink.consume(stream);
         let mut got_error = false;
         let result_future = result_stream.for_each(|res| {

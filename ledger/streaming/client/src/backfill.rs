@@ -1,23 +1,30 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! A [BlockStream] that backfills another [BlockStream] using a [BlockFetcher].
+//! A [Streamer] that backfills another [Streamer] using a [Fetcher].
 
 use displaydoc::Display;
 use futures::{FutureExt, Stream, StreamExt};
 use mc_common::logger::{log, Logger};
-use mc_ledger_streaming_api::{BlockData, BlockFetcher, BlockStream, Result};
+use mc_ledger_streaming_api::{BlockData, Fetcher, Result, Streamer};
 use mc_transaction_core::BlockIndex;
-use std::pin::Pin;
+use std::{ops::Range, pin::Pin};
 
-/// A [BlockStream] that backfills another [BlockStream] using a [BlockFetcher].
+/// A [Streamer] that backfills another [Streamer] using a [Fetcher].
 #[derive(Debug, Display)]
-pub struct BackfillingStream<S: BlockStream, F: BlockFetcher> {
+pub struct BackfillingStream<
+    S: Streamer<Result<BlockData>, BlockIndex>,
+    F: Fetcher<Result<BlockData>, BlockIndex, Range<BlockIndex>>,
+> {
     upstream: S,
     fetcher: F,
     logger: Logger,
 }
 
-impl<S: BlockStream, F: BlockFetcher> BackfillingStream<S, F> {
+impl<
+        S: Streamer<Result<BlockData>, BlockIndex>,
+        F: Fetcher<Result<BlockData>, BlockIndex, Range<BlockIndex>>,
+    > BackfillingStream<S, F>
+{
     /// Instantiate a [BackfillingStream].
     pub fn new(upstream: S, fetcher: F, logger: Logger) -> Self {
         Self {
@@ -28,27 +35,33 @@ impl<S: BlockStream, F: BlockFetcher> BackfillingStream<S, F> {
     }
 }
 
-impl<S: BlockStream, F: BlockFetcher> BlockStream for BackfillingStream<S, F> {
+impl<
+        S: Streamer<Result<BlockData>, BlockIndex>,
+        F: Fetcher<Result<BlockData>, BlockIndex, Range<BlockIndex>>,
+    > Streamer<Result<BlockData>, BlockIndex> for BackfillingStream<S, F>
+{
     type Stream<'s>
     where
         Self: 's,
     = impl Stream<Item = Result<BlockData>> + 's;
 
-    fn get_block_stream(&self, starting_height: u64) -> Result<Self::Stream<'_>> {
-        self.upstream
-            .get_block_stream(starting_height)
-            .map(|upstream| {
-                backfill_stream(
-                    upstream,
-                    starting_height,
-                    &self.fetcher,
-                    self.logger.clone(),
-                )
-            })
+    fn get_stream(&self, starting_height: BlockIndex) -> Result<Self::Stream<'_>> {
+        self.upstream.get_stream(starting_height).map(|upstream| {
+            backfill_stream(
+                upstream,
+                starting_height,
+                &self.fetcher,
+                self.logger.clone(),
+            )
+        })
     }
 }
 
-fn backfill_stream<'s, S: Stream<Item = Result<BlockData>> + 's, F: BlockFetcher>(
+fn backfill_stream<
+    's,
+    S: Stream<Item = Result<BlockData>> + 's,
+    F: Fetcher<Result<BlockData>, BlockIndex, Range<BlockIndex>>,
+>(
     upstream: S,
     starting_height: u64,
     fetcher: &'s F,
@@ -64,7 +77,7 @@ fn backfill_stream<'s, S: Stream<Item = Result<BlockData>> + 's, F: BlockFetcher
         // The stream types are quite different across the different cases, so Box the
         // intermediate stream.
         move |result| -> Pin<Box<dyn Stream<Item = Result<BlockData>>>> {
-            let next_index = prev_index.map_or_else(|| starting_height, |index| index + 1);
+            let next_index = prev_index.map_or_else(|| starting_height, |prev| prev + 1);
             match result {
                 Ok(block_data) => {
                     let index = block_data.block().index;
@@ -88,7 +101,7 @@ fn backfill_stream<'s, S: Stream<Item = Result<BlockData>> + 's, F: BlockFetcher
                         // Need to backfill up to the current index.
                         let start = prev_index.unwrap_or(starting_height);
                         prev_index = Some(index);
-                        let backfill = fetcher.fetch_range(start..index);
+                        let backfill = fetcher.fetch_multiple(start..index);
                         Box::pin(backfill.chain(item_stream))
                     }
                 }
@@ -130,7 +143,7 @@ mod tests {
         let source = BackfillingStream::new(upstream, fetcher, logger);
 
         let result_fut = source
-            .get_block_stream(0)
+            .get_stream(0)
             .expect("Failed to start upstream")
             .map(|resp| resp.expect("expected no errors").block().index)
             .collect::<Vec<_>>();
@@ -154,7 +167,7 @@ mod tests {
         let source = BackfillingStream::new(upstream, fetcher, logger);
 
         let result_fut = source
-            .get_block_stream(0)
+            .get_stream(0)
             .expect("Failed to start upstream")
             .map(|resp| resp.expect("expected no errors").block().index)
             .collect::<Vec<_>>();

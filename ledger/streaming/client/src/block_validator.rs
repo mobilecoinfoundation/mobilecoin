@@ -8,21 +8,24 @@ use mc_common::{
     HashSet,
 };
 use mc_ledger_db::Ledger;
-use mc_ledger_streaming_api::{
-    BlockData, BlockStream, Error as StreamError, Result as StreamResult,
-};
-use mc_transaction_core::{compute_block_id, ring_signature::KeyImage, BlockID};
+use mc_ledger_streaming_api::{BlockData, BlockIndex, Error, Result, Streamer};
+use mc_transaction_core::{ring_signature::KeyImage, BlockID};
 
 /// Create stream factory for validating individual blocks within a stream.
 /// Valid blocks will passed on, blocks that don't pass will pass an error.
 #[derive(Debug, Clone)]
-pub struct BlockValidator<US: BlockStream + 'static, L: Ledger + 'static> {
+pub struct BlockValidator<
+    US: Streamer<Result<BlockData>, BlockIndex> + 'static,
+    L: Ledger + 'static,
+> {
     upstream: US,
     ledger: Option<L>,
     logger: Logger,
 }
 
-impl<US: BlockStream + 'static, L: Ledger + 'static> BlockValidator<US, L> {
+impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, L: Ledger + 'static>
+    BlockValidator<US, L>
+{
     /// Create new block validation stream
     pub fn new(upstream: US, ledger: Option<L>, logger: Logger) -> Self {
         Self {
@@ -33,11 +36,13 @@ impl<US: BlockStream + 'static, L: Ledger + 'static> BlockValidator<US, L> {
     }
 }
 
-impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for BlockValidator<US, L> {
-    type Stream<'s> = impl Stream<Item = StreamResult<BlockData>> + 's;
+impl<US: Streamer<Result<BlockData>, BlockIndex>, L: Ledger + Clone + 'static>
+    Streamer<Result<BlockData>, BlockIndex> for BlockValidator<US, L>
+{
+    type Stream<'s> = impl Stream<Item = Result<BlockData>> + 's;
 
     /// Get block stream that performs validation
-    fn get_block_stream(&self, starting_height: u64) -> StreamResult<Self::Stream<'_>> {
+    fn get_stream(&self, starting_height: BlockIndex) -> Result<Self::Stream<'_>> {
         //get block id from ledger if it exists, else initialize to an empty value
         let ledger = self.ledger.clone();
         let prev_block_id = if self.ledger.is_some() && starting_height > 0 {
@@ -48,9 +53,9 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for Blo
         let additional_key_images: HashSet<KeyImage> = HashSet::default();
 
         log::info!(self.logger, "Creating block validation stream");
-        let stream = self.upstream.get_block_stream(starting_height)?;
+        let stream = self.upstream.get_stream(starting_height)?;
 
-        Ok(stream.scan(
+        let result = stream.scan(
             (
                 ledger,
                 prev_block_id,
@@ -71,7 +76,7 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for Blo
 
                         // Check if parent block matches last block seen
                         if &block.parent_id != prev_block_id {
-                            return future::ready(Some(Err(StreamError::BlockValidation(
+                            return future::ready(Some(Err(Error::BlockValidation(
                                 "Block parent ID doesn't match".to_string(),
                             ))));
                         }
@@ -86,14 +91,14 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for Blo
                                             || additional_key_images.contains(key_image)
                                         {
                                             return future::ready(Some(Err(
-                                                StreamError::BlockValidation(
+                                                Error::BlockValidation(
                                                     "Contains spent key image".to_string(),
                                                 ),
                                             )));
                                         }
                                     }
                                     Err(err) => {
-                                        return future::ready(Some(Err(StreamError::DBAccess(
+                                        return future::ready(Some(Err(Error::DBAccess(
                                             err.to_string(),
                                         ))));
                                     }
@@ -102,20 +107,10 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for Blo
                             }
                         }
 
-                        // Compute the hash of the block
-                        let derived_block_id = compute_block_id(
-                            block.version,
-                            &block.parent_id,
-                            block.index,
-                            block.cumulative_txo_count,
-                            &block.root_element,
-                            &block_contents.hash(),
-                        );
-
                         // The block's ID must agree with the merkle hash of its transactions.
-                        if block.id != derived_block_id {
-                            return future::ready(Some(Err(StreamError::BlockValidation(
-                                "Hash of transactions don't match claimed block id".to_string(),
+                        if !block.is_block_id_valid() {
+                            return future::ready(Some(Err(Error::BlockValidation(
+                                "Invalid BlockID".to_string(),
                             ))));
                         }
 
@@ -125,7 +120,8 @@ impl<US: BlockStream + 'static, L: Ledger + Clone + 'static> BlockStream for Blo
                     Err(err) => future::ready(Some(Err(err))),
                 }
             },
-        ))
+        );
+        Ok(result)
     }
 }
 
@@ -144,7 +140,7 @@ mod tests {
         let block_validator = BlockValidator::new(upstream, ledger, logger);
 
         futures::executor::block_on(async move {
-            let mut stream = block_validator.get_block_stream(2).unwrap();
+            let mut stream = block_validator.get_stream(2).unwrap();
             let mut index = 0;
             while let Some(data) = stream.next().await {
                 index = data.unwrap().block().index;
@@ -161,7 +157,7 @@ mod tests {
         let block_validator = BlockValidator::new(upstream, ledger, logger);
 
         futures::executor::block_on(async move {
-            let mut stream = block_validator.get_block_stream(0).unwrap();
+            let mut stream = block_validator.get_stream(0).unwrap();
             let mut index = 0;
             while let Some(data) = stream.next().await {
                 index = data.unwrap().block().index;
@@ -188,7 +184,7 @@ mod tests {
         let block_validator = BlockValidator::new(upstream, Some(mock_ledger), logger);
 
         futures::executor::block_on(async move {
-            let mut stream = block_validator.get_block_stream(2).unwrap();
+            let mut stream = block_validator.get_stream(2).unwrap();
             let mut index = 0;
             while let Some(data) = stream.next().await {
                 index = data.unwrap().block().index;
@@ -205,10 +201,10 @@ mod tests {
         let block_validator = BlockValidator::new(upstream, Some(mock_ledger), logger.clone());
 
         futures::executor::block_on(async move {
-            let mut stream = block_validator.get_block_stream(2).unwrap();
+            let mut stream = block_validator.get_stream(2).unwrap();
             if let Some(data) = stream.next().await {
                 log::info!(logger, "{:?}", data);
-                assert!(matches!(data, Err(StreamError::BlockValidation(_))));
+                assert!(matches!(data, Err(Error::BlockValidation(_))));
             }
         });
     }
@@ -223,9 +219,9 @@ mod tests {
         let block_validator = BlockValidator::new(upstream, Some(mock_ledger), logger);
 
         futures::executor::block_on(async move {
-            let mut stream = block_validator.get_block_stream(1).unwrap();
+            let mut stream = block_validator.get_stream(1).unwrap();
             if let Some(data) = stream.next().await {
-                assert!(matches!(data, Err(StreamError::BlockValidation(_))));
+                assert!(matches!(data, Err(Error::BlockValidation(_))));
             }
         });
     }
