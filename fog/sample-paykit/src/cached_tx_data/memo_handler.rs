@@ -63,6 +63,14 @@ impl MemoHandler {
         log::trace!(self.logger, "Obtained a memo: {:?}", memo_type);
         match memo_type.clone() {
             MemoType::Unused(_) => Ok(None),
+            MemoType::BurnRedemption(_) => {
+                // TODO: For now we are not validating anything with burn redemption memos.
+                // Right now the memo data is unstructured, so there's nothing
+                // to verify there. In theory we should only find this type of
+                // memo on a the burn account, which cannot be used with the sample paykit since
+                // the spend key is unknown.
+                Ok(Some(memo_type))
+            }
             MemoType::AuthenticatedSender(memo) => {
                 if let Some(addr) = self.contacts.get(&memo.sender_address_hash()) {
                     if bool::from(memo.validate(

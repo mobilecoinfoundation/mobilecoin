@@ -420,7 +420,7 @@ impl From<&mc_mobilecoind_api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
             tx_public_key: hex::encode(&src.get_tx_public_key().get_data()),
             tx_out_hash: hex::encode(&src.get_tx_out_hash()),
             tombstone: src.get_tombstone(),
-            confirmation_number: hex::encode(&src.get_tx_out_hash()),
+            confirmation_number: hex::encode(&src.get_confirmation_number()),
         }
     }
 }
