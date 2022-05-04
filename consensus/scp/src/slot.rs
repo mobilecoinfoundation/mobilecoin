@@ -498,7 +498,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             let (num, denom) = self.weight(node_id);
             let mut tmp = U512::from(U256::max_value());
             tmp = tmp.saturating_mul(U512::from(num));
-            tmp = tmp / U512::from(denom);
+            tmp /= U512::from(denom);
             let weight256 = U256::try_from(tmp)
                 .expect("failure calculating weight (max_u256 * k -> 2^512) / n");
 
