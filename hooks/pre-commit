@@ -81,7 +81,7 @@ else
 fi
 
 printf "${PREFIX} Checking that Cargo.toml dependencies are sorted..."
-cargo sort --workspace --grouped --check
+cargo sort --workspace --grouped --check >/dev/null
 if [ $? == 0 ]; then
 	printf "${SUCCESS}\n"
 else
