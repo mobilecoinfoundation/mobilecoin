@@ -70,7 +70,7 @@ fi
 
 printf "${PREFIX} Checking for cargo-sort... "
 
-cargo sort --version
+cargo sort --version 2>/dev/null
 if [ $? != 0 ]; then
 	printf "${WARNING}: cargo-sort not found, installing... "
 	cargo install cargo-sort >/dev/null
@@ -84,7 +84,7 @@ if [ $? != 0 ]; then
 fi
 
 printf "${PREFIX} Checking for rustfmt ... "
-cargo fmt --version
+cargo fmt --version 2>/dev/null
 if [ $? != 0 ]; then
 	printf "${FAILURE}\n"
 	popd >/dev/null 2>&1
