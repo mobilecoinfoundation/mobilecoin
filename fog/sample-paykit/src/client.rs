@@ -606,14 +606,14 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
         memo_builder.set_sender_credential(SenderMemoCredential::from(source_account_key));
         memo_builder.enable_destination_memo();
 
-        TransactionBuilder::new(block_version, amount.token_id, fog_resolver, memo_builder)
+        let fee_amount = Amount::new(fee, amount.token_id);
+        TransactionBuilder::new(block_version, fee_amount, fog_resolver, memo_builder)?
     };
-    tx_builder.set_fee(fee)?;
 
     let input_amount = inputs
         .iter()
         .fold(0, |acc, (txo, _)| acc + txo.amount.value);
-    let fee = tx_builder.get_fee();
+    let fee = tx_builder.get_fee().value;
     if (amount.value + fee) > input_amount {
         return Err(Error::InsufficientFunds);
     }

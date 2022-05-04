@@ -19,7 +19,7 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    BlockVersion, CompressedCommitment, EncryptedMemo, MaskedAmount, Token,
+    Amount, BlockVersion, CompressedCommitment, EncryptedMemo, MaskedAmount, Token,
 };
 
 use mc_transaction_std::{
@@ -373,19 +373,17 @@ pub extern "C" fn mc_transaction_builder_create(
         // version that fog ledger told us about, or that we got from ledger-db
         //let block_version = BlockVersion::ZERO;
 
-        // TODO #1596: Support token id other than Mob
-        let token_id = Mob::ID;
+        // TODO #1596: Support token id other than Mob (but not in this release)
+        let fee_amount = Amount::new(fee, Mob::ID);
 
         let mut transaction_builder = TransactionBuilder::new_with_box(
             block_version,
-            token_id,
+            fee_amount,
             fog_resolver,
             memo_builder_box,
-        );
+        )
+        .expect("failure not expected");
 
-        transaction_builder
-            .set_fee(fee)
-            .expect("failure not expected");
         transaction_builder.set_tombstone_block(tombstone_block);
         Some(transaction_builder)
     })

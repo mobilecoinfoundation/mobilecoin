@@ -2915,12 +2915,15 @@ mod test {
 
         // Insert into database.
         let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        let fee_amount = Amount::new(Mob::MINIMUM_FEE, Mob::ID);
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
-            Mob::ID,
+            fee_amount,
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let (tx_out, tx_confirmation) = transaction_builder
             .add_output(10, &receiver.subaddress(0), &mut rng)
             .unwrap();
@@ -5228,12 +5231,14 @@ mod test {
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
 
+        let fee_amount = Amount::new(Mob::MINIMUM_FEE, Mob::ID);
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
-            Mob::ID,
+            fee_amount,
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
                 10,
@@ -5340,12 +5345,14 @@ mod test {
         let key = mnemonic.derive_slip10_key(0);
         let account_key = AccountKey::from(key);
 
+        let fee_amount = Amount::new(Mob::MINIMUM_FEE, Mob::ID);
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
-            Mob::ID,
+            fee_amount,
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
                 10,

@@ -34,7 +34,7 @@ mod tests {
         onetime_keys::recover_onetime_private_key,
         tokens::Mob,
         tx::{Tx, TxOut, TxOutMembershipProof},
-        BlockVersion, Token,
+        Amount, BlockVersion, Token,
     };
     use mc_transaction_core_test_utils::MockFogResolver;
     use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
@@ -70,12 +70,14 @@ mod tests {
                 )
             };
 
+            let fee_amount = Amount::new(Mob::MINIMUM_FEE, Mob::ID);
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
-                Mob::ID,
+                fee_amount,
                 MockFogResolver::default(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             let ring: Vec<TxOut> = minted_outputs.clone();
             let public_key = RistrettoPublic::try_from(&minted_outputs[0].public_key).unwrap();

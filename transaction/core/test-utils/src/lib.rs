@@ -149,12 +149,15 @@ pub fn create_transaction_with_amount_and_comparer<
 ) -> Tx {
     let (sender_amount, _) = tx_out.view_key_match(sender.view_private_key()).unwrap();
 
+    let fee_amount = Amount::new(fee, sender_amount.token_id);
+
     let mut transaction_builder = TransactionBuilder::new(
         block_version,
-        sender_amount.token_id,
+        fee_amount,
         MockFogResolver::default(),
         EmptyMemoBuilder::default(),
-    );
+    )
+    .unwrap();
 
     // The first transaction in the origin block should contain enough outputs to
     // use as mixins.
