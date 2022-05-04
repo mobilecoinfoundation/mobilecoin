@@ -68,26 +68,19 @@ else
 	printf "${SUCCESS}\n"
 fi
 
-printf "${PREFIX} Checking that cargo-sort is installed..."
+printf "${PREFIX} Checking for cargo-sort... "
 
 cargo sort --version
-if [ $? == 0 ]; then
-	printf "${SUCCESS}\n"
-else
-	printf "${WARNING}, Installing cargo-sort before continuing."
-	cargo install cargo-sort
-	popd >/dev/null 2>&1
-	exit 1
-fi
-
-printf "${PREFIX} Checking that Cargo.toml dependencies are sorted..."
-cargo sort --workspace --grouped --check >/dev/null
-if [ $? == 0 ]; then
-	printf "${SUCCESS}\n"
-else
-	printf "${FAILURE}\n"
-	popd >/dev/null 2>&1
-	exit 1
+if [ $? != 0 ]; then
+	printf "${WARNING}: cargo-sort not found, installing... "
+	cargo install cargo-sort >/dev/null
+	if [ $? == 0 ]; then
+		printf "${SUCCESS}\n"
+	else
+		printf "${FAILURE}\n"
+		popd >/dev/null 2>&1
+		exit 1
+	fi
 fi
 
 printf "${PREFIX} Checking for rustfmt ... "
@@ -99,6 +92,16 @@ else
 	popd >/dev/null 2>&1
 	exit 1
 fi
+
+printf "${PREFIX} Checking that Cargo.toml dependencies are sorted... "
+cargo sort --workspace --grouped --check >/dev/null
+if [ $? == 0 ]; then
+	printf "${SUCCESS}\n"
+else
+	printf "${FAILURE}\n"
+	FAILED=1
+fi
+
 
 CARGOFMT="cargo fmt -- --unstable-features --skip-children"
 
