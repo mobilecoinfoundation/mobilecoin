@@ -5,7 +5,6 @@
 use alloc::vec;
 
 use alloc::{borrow::ToOwned, vec::Vec};
-use binascii::b64decode;
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     ops::Deref,
@@ -13,6 +12,8 @@ use core::{
 use hex_fmt::HexFmt;
 use mc_util_encodings::{Error as EncodingError, FromBase64};
 use serde::{Deserialize, Serialize};
+
+use crate::B64_CONFIG;
 
 /// A type containing the bytes of a Signature Revocation List
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -76,7 +77,7 @@ impl FromBase64 for SigRL {
             data = vec![];
         } else {
             data = vec![0u8; 4 * (s.len() / 3) + 4];
-            b64decode(s.as_bytes(), data.as_mut_slice())?;
+            base64::decode_config_slice(s.as_bytes(), B64_CONFIG, data.as_mut_slice())?;
         }
         Ok(SigRL { data })
     }

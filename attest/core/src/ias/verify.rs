@@ -15,13 +15,12 @@ use crate::{
     types::{
         epid_group_id::EpidGroupId, measurement::Measurement, pib::PlatformInfoBlob,
         report_data::ReportDataMask,
-    },
+    }, B64_CONFIG,
 };
 use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use binascii::{b64decode, b64encode, hex2bin};
 use core::{
     convert::{TryFrom, TryInto},
     f64::EPSILON,
@@ -89,8 +88,7 @@ impl FromBase64 for EpidPseudonym {
     fn from_base64(src: &str) -> Result<Self, EncodingError> {
         let mut buffer = [0u8; EPID_PSEUDONYM_LEN + 4];
         let buflen = {
-            let output = b64decode(src.as_bytes(), &mut buffer[..])?;
-            output.len()
+            base64::decode_config_slice(src, B64_CONFIG, &mut buffer[..])?
         };
         if buflen != EPID_PSEUDONYM_LEN {
             return Err(EncodingError::InvalidInputLength);
@@ -111,10 +109,10 @@ impl ToBase64 for EpidPseudonym {
             let mut inbuf = Vec::with_capacity(self.b.len() + self.k.len());
             inbuf.extend_from_slice(&self.b);
             inbuf.extend_from_slice(&self.k);
-            match b64encode(&inbuf, dest) {
-                Ok(buffer) => Ok(buffer.len()),
-                Err(_e) => Err(EPID_PSEUDONYM_LEN + 4),
-            }
+            Ok( 
+                base64::encode_config_slice(&inbuf, B64_CONFIG, dest)
+            )
+
         }
     }
 }
@@ -411,12 +409,10 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
         let pse_manifest_hash = match data.remove("pseManifestHash") {
             Some(v) => {
                 let value: String = v.try_into()?;
-                let mut result = Vec::with_capacity(value.len() * 3 / 4 + 4);
-                let result_len = {
-                    let result_slice = hex2bin(value.as_bytes(), &mut result)
-                        .map_err(|e| PseManifestHashError::Parse(e.into()))?;
-                    result_slice.len()
-                };
+                let result_len = value.len() * 2;
+                let mut result = Vec::with_capacity(result_len);
+                hex::decode_to_slice(value.as_bytes(), &mut result)
+                    .map_err(|e| PseManifestHashError::Parse(e.into()))?;
                 result.truncate(result_len);
                 Some(result)
             }
@@ -493,14 +489,11 @@ impl FromHex for VerificationSignature {
     type Error = EncodingError;
 
     fn from_hex(s: &str) -> Result<Self, EncodingError> {
-        // base64 strlength = 4 * (bytelen / 3) + padding
-        let mut data = vec![0u8; 3 * ((s.len() + 4) / 4)];
-        let buflen = {
-            let buffer = b64decode(s.as_bytes(), data.as_mut_slice())?;
-            buffer.len()
-        };
-        data.truncate(buflen);
-        Ok(VerificationSignature::from(data))
+        let result_len = s.len() * 2;
+        let mut result = Vec::with_capacity(result_len);
+        hex::decode_to_slice(s, &mut result)?;
+        result.truncate(result_len);
+        Ok(VerificationSignature::from(result))
     }
 }
 

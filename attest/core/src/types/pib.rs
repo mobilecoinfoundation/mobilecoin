@@ -2,11 +2,8 @@
 
 //! FFI type for the sgx_platform_info_t
 
-use alloc::vec;
-
-use crate::impl_sgx_newtype_for_bytestruct;
-use alloc::borrow::ToOwned;
-use binascii::{b64decode, hex2bin};
+use crate::{impl_sgx_newtype_for_bytestruct, B64_CONFIG};
+use alloc::{borrow::ToOwned, vec};
 use mc_sgx_types::{sgx_platform_info_t, SGX_PLATFORM_INFO_SIZE};
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex};
 
@@ -41,8 +38,7 @@ impl FromBase64 for PlatformInfoBlob {
         // This double-copy awfulness brought to you by Intel(tm) *jingle*
         let mut data = vec![0u8; src.len() / 4 * 3];
         let data_len = {
-            let output = b64decode(src.as_bytes(), data.as_mut_slice())?;
-            output.len()
+            base64::encode_config_slice(src.as_bytes(), B64_CONFIG, data.as_mut_slice())
         };
         data.truncate(data_len);
         let mut retval = Self::default();
@@ -70,7 +66,7 @@ impl FromHex for PlatformInfoBlob {
         };
 
         let mut data = vec![0u8; SGX_PLATFORM_INFO_SIZE + PIB_PREFIX_LEN];
-        hex2bin(owned_src.as_bytes(), data.as_mut_slice())?;
+        hex::decode_to_slice(owned_src.as_bytes(), data.as_mut_slice())?;
 
         let mut retval = Self::default();
         retval.0.platform_info[..].copy_from_slice(&data[PIB_PREFIX_LEN..]);

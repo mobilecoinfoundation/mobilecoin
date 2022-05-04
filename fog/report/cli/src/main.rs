@@ -14,7 +14,6 @@
 //! code changes in the GrpcFogPubkeyResolver object. It might make this a more
 //! useful diagnostic tool.
 
-use binascii::bin2hex;
 use grpcio::EnvBuilder;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
@@ -272,8 +271,9 @@ fn main() {
     };
 
     let mut hex_buf = [0u8; 64];
-    bin2hex(
-        CompressedRistrettoPublic::from(&pubkey).as_ref(),
+    let compressed_ristretto_public = CompressedRistrettoPublic::from(&pubkey);
+    hex::encode_to_slice(
+        <CompressedRistrettoPublic as AsRef<[u8;32]>>::as_ref(&compressed_ristretto_public),
         &mut hex_buf[..],
     )
     .expect("Failed converting to hex");

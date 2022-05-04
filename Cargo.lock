@@ -260,12 +260,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "binascii"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "383d29d513d8764dcdc42ea295d979eb99c3c9f00607b3692cf68a431f7dca72"
-
-[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2657,7 +2651,7 @@ dependencies = [
 name = "mc-attest-core"
 version = "1.3.0-pre0"
 dependencies = [
- "binascii",
+ "base64 0.13.0",
  "bincode",
  "bitflags",
  "cargo-emit",
@@ -2769,11 +2763,11 @@ name = "mc-common"
 version = "1.3.0-pre0"
 dependencies = [
  "backtrace",
- "binascii",
  "cfg-if 1.0.0",
  "chrono",
  "displaydoc",
  "hashbrown",
+ "hex",
  "hex_fmt",
  "hostname",
  "lazy_static",
@@ -3225,12 +3219,13 @@ dependencies = [
 name = "mc-crypto-keys"
 version = "1.3.0-pre0"
 dependencies = [
- "binascii",
+ "base64 0.13.0",
  "curve25519-dalek",
  "digest 0.10.3",
  "displaydoc",
  "ed25519",
  "ed25519-dalek",
+ "hex",
  "hex_fmt",
  "mc-crypto-digestible",
  "mc-crypto-digestible-signature",
@@ -4006,9 +4001,9 @@ name = "mc-fog-report-cli"
 version = "1.3.0-pre0"
 dependencies = [
  "base64 0.13.0",
- "binascii",
  "clap 3.1.12",
  "grpcio",
+ "hex",
  "mc-account-keys",
  "mc-attest-core",
  "mc-attest-verifier",
@@ -5243,7 +5238,6 @@ name = "mc-util-encodings"
 version = "1.3.0-pre0"
 dependencies = [
  "base64 0.13.0",
- "binascii",
  "displaydoc",
  "hex",
  "mc-util-repr-bytes",

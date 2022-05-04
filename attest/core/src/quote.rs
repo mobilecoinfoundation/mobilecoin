@@ -13,9 +13,9 @@ use crate::{
         report_body::ReportBody, report_data::ReportDataMask,
     },
     ProductId, SecurityVersion,
+    B64_CONFIG,
 };
 use alloc::vec::Vec;
-use binascii::{b64decode, b64encode};
 use core::{
     cmp::{max, min},
     convert::{TryFrom, TryInto},
@@ -386,9 +386,8 @@ impl FromBase64 for Quote {
 
         // Create an output buffer of at least MINSIZE bytes
         let mut retval = Quote::with_capacity(expected_len)?;
-        match b64decode(s.as_bytes(), retval.0.as_mut_slice()) {
-            Ok(buffer) => {
-                let bufferlen = buffer.len();
+        match base64::decode_config_slice(s.as_bytes(), B64_CONFIG, retval.0.as_mut_slice()) {
+            Ok(bufferlen) => {
                 if bufferlen != QUOTE_IAS_SIZE && bufferlen != retval.intel_size() {
                     // The size of the decoded bytes does not match the size embedded in the bytes,
                     // and we're not handling an IAS/no-signature quote
@@ -422,10 +421,9 @@ impl ToBase64 for Quote {
         if dest.len() < required_len {
             Err(required_len)
         } else {
-            match b64encode(&self.0[..], dest) {
-                Ok(buffer) => Ok(buffer.len()),
-                Err(_e) => Err(required_len),
-            }
+            Ok(
+                base64::encode_config_slice(&self.0[..], B64_CONFIG, dest)
+            )
         }
     }
 }

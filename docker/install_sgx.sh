@@ -24,7 +24,7 @@ cd /tmp
 (
 	. /etc/os-release
 
-	wget "https://download.01.org/intel-sgx/sgx-linux/2.15/distro/ubuntu${VERSION_ID}-server/sgx_linux_x64_sdk_2.15.100.3.bin"
+	wget "https://download.01.org/intel-sgx/sgx-linux/2.15/distro/ubuntu20.04-server/sgx_linux_x64_sdk_2.15.100.3.bin"
 
 	echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/intel-sgx-archive-keyring.gpg] https://download.01.org/intel-sgx/sgx_repo/ubuntu/ ${UBUNTU_CODENAME} main" > /etc/apt/sources.list.d/intel-sgx.list
 )
