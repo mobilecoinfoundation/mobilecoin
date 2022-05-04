@@ -10,7 +10,7 @@ use mc_transaction_core::{Block, BlockContents};
 use mc_watcher::watcher_db::WatcherDB;
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng;
-use rocket::local::Client;
+use rocket::local::blocking::Client;
 use std::{convert::TryFrom, str::FromStr, time::Duration};
 use tempdir::TempDir;
 use url::Url;
@@ -114,13 +114,9 @@ fn active_key_is_retired_not_outstanding_new_key_is_set_node_activated(logger: L
 
     // Consider testing the CLI here instead. Initialize an OverSeerService
     // object...
-    let rocket_config: rocket::Config =
-        rocket::Config::build(rocket::config::Environment::Development)
-            // TODO: Make these either passed from CLI or in a Rocket.toml.
-            .address("127.0.0.1")
-            .port(PORT_NUMBER)
-            .unwrap();
-
+    let rocket_config = rocket::Config::figment()
+        .merge(("port", PORT_NUMBER))
+        .merge(("address", "127.0.0.1"));
     let mut overseer_service = OverseerService::new(
         vec![client_listen_uri0, client_listen_uri1, client_listen_uri2],
         recovery_db.clone(),
@@ -129,7 +125,7 @@ fn active_key_is_retired_not_outstanding_new_key_is_set_node_activated(logger: L
     overseer_service.start().unwrap();
     let overseer_state = OverseerState { overseer_service };
     let rocket = server::initialize_rocket_server(rocket_config, overseer_state);
-    let client = Client::new(rocket).expect("valid rocket instance");
+    let client = Client::tracked(rocket).expect("valid rocket instance");
     let _req = client.post("/enable").dispatch();
 
     // Retire the current active node.

@@ -7,7 +7,7 @@ use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
 use mc_ledger_db::LedgerDB;
 use mc_watcher::watcher_db::WatcherDB;
-use rocket::local::Client;
+use rocket::local::blocking::Client;
 use std::{convert::TryFrom, str::FromStr, time::Duration};
 use tempdir::TempDir;
 use url::Url;
@@ -92,12 +92,9 @@ fn one_active_node_cluster_state_does_not_change(logger: Logger) {
 
     // Consider testing the CLI here instead
     // Initialize an OverSeerService object...
-    let rocket_config: rocket::Config =
-        rocket::Config::build(rocket::config::Environment::Development)
-            // TODO: Make these either passed from CLI or in a Rocket.toml.
-            .address("127.0.0.1")
-            .port(PORT_NUMBER)
-            .unwrap();
+    let rocket_config = rocket::Config::figment()
+        .merge(("port", PORT_NUMBER))
+        .merge(("address", "127.0.0.1"));
 
     let mut overseer_service = OverseerService::new(
         vec![client_listen_uri0, client_listen_uri1, client_listen_uri2],
@@ -107,7 +104,7 @@ fn one_active_node_cluster_state_does_not_change(logger: Logger) {
     overseer_service.start().unwrap();
     let overseer_state = OverseerState { overseer_service };
     let rocket = server::initialize_rocket_server(rocket_config, overseer_state);
-    let client = Client::new(rocket).expect("valid rocket instance");
+    let client = Client::tracked(rocket).expect("valid rocket instance");
     let _req = client.post("/enable").dispatch();
 
     // Give Overseer time to perform logic
