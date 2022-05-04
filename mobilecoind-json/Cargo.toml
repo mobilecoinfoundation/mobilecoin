@@ -18,8 +18,7 @@ clap = { version = "3.1", features = ["derive", "env"] }
 grpcio = "0.10.2"
 hex = "0.4"
 protobuf = "2.27.1"
-rocket = { version = "0.4.10", default-features = false }
-rocket_contrib = { version = "0.4.10", default-features = false, features = ["json"] }
+rocket = { version = "0.5.0-rc.1", features = ["json"] }
 serde = "1.0"
 serde_derive = "1.0"
 

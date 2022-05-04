@@ -13,8 +13,7 @@ use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, Mobilecoind
 use mc_mobilecoind_json::data_types::*;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use protobuf::RepeatedField;
-use rocket::{delete, get, post, routes};
-use rocket_contrib::json::Json;
+use rocket::{delete, get, post, routes, serde::json::Json};
 use std::{convert::TryFrom, sync::Arc};
 
 /// Command line config, set with defaults that will work with
@@ -47,7 +46,7 @@ struct State {
 /// Set the password for the mobilecoind-db
 #[post("/set-password", format = "json", data = "<password>")]
 fn set_password(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     password: Json<JsonPasswordRequest>,
 ) -> Result<Json<JsonPasswordResponse>, String> {
     let mut req = mc_mobilecoind_api::SetDbPasswordRequest::new();
@@ -65,7 +64,7 @@ fn set_password(
 /// Unlock a previously-encrypted mobilecoind-db
 #[post("/unlock-db", format = "json", data = "<password>")]
 fn unlock_db(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     password: Json<JsonUnlockDbRequest>,
 ) -> Result<Json<JsonUnlockDbResponse>, String> {
     let mut req = mc_mobilecoind_api::UnlockDbRequest::new();
@@ -82,7 +81,7 @@ fn unlock_db(
 
 /// Requests a new root entropy from mobilecoind
 #[post("/entropy")]
-fn entropy(state: rocket::State<State>) -> Result<Json<JsonRootEntropyResponse>, String> {
+fn entropy(state: &rocket::State<State>) -> Result<Json<JsonRootEntropyResponse>, String> {
     let resp = state
         .mobilecoind_api_client
         .generate_root_entropy(&mc_mobilecoind_api::Empty::new())
@@ -92,7 +91,7 @@ fn entropy(state: rocket::State<State>) -> Result<Json<JsonRootEntropyResponse>,
 
 #[get("/entropy/<root_entropy>")]
 fn account_key_from_root_entropy(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     root_entropy: String,
 ) -> Result<Json<JsonAccountKeyResponse>, String> {
     let entropy =
@@ -111,7 +110,7 @@ fn account_key_from_root_entropy(
 
 /// Requests a new mnemonic from mobilecoind
 #[post("/mnemonic")]
-fn mnemonic(state: rocket::State<State>) -> Result<Json<JsonMnemonicResponse>, String> {
+fn mnemonic(state: &rocket::State<State>) -> Result<Json<JsonMnemonicResponse>, String> {
     let resp = state
         .mobilecoind_api_client
         .generate_mnemonic(&mc_mobilecoind_api::Empty::new())
@@ -121,7 +120,7 @@ fn mnemonic(state: rocket::State<State>) -> Result<Json<JsonMnemonicResponse>, S
 
 #[post("/account-key-from-mnemonic", format = "json", data = "<mnemonic>")]
 fn account_key_from_mnemonic(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     mnemonic: Json<JsonMnemonicResponse>,
 ) -> Result<Json<JsonAccountKeyResponse>, String> {
     let mut req = mc_mobilecoind_api::GetAccountKeyFromMnemonicRequest::new();
@@ -139,7 +138,7 @@ fn account_key_from_mnemonic(
 /// above.
 #[post("/monitors", format = "json", data = "<monitor>")]
 fn add_monitor(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     monitor: Json<JsonMonitorRequest>,
 ) -> Result<Json<JsonMonitorResponse>, String> {
     let mut account_key = mc_mobilecoind_api::external::AccountKey::new();
@@ -172,7 +171,7 @@ fn add_monitor(
 
 /// Remove a monitor
 #[delete("/monitors/<monitor_hex>")]
-fn remove_monitor(state: rocket::State<State>, monitor_hex: String) -> Result<(), String> {
+fn remove_monitor(state: &rocket::State<State>, monitor_hex: String) -> Result<(), String> {
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
@@ -189,7 +188,7 @@ fn remove_monitor(state: rocket::State<State>, monitor_hex: String) -> Result<()
 
 /// Gets a list of existing monitors
 #[get("/monitors")]
-fn monitors(state: rocket::State<State>) -> Result<Json<JsonMonitorListResponse>, String> {
+fn monitors(state: &rocket::State<State>) -> Result<Json<JsonMonitorListResponse>, String> {
     let resp = state
         .mobilecoind_api_client
         .get_monitor_list(&mc_mobilecoind_api::Empty::new())
@@ -200,7 +199,7 @@ fn monitors(state: rocket::State<State>) -> Result<Json<JsonMonitorListResponse>
 /// Get the current status of a created monitor
 #[get("/monitors/<monitor_hex>")]
 fn monitor_status(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     monitor_hex: String,
 ) -> Result<Json<JsonMonitorStatusResponse>, String> {
     let monitor_id =
@@ -220,7 +219,7 @@ fn monitor_status(
 /// Balance check using a created monitor and subaddress index
 #[get("/monitors/<monitor_hex>/subaddresses/<subaddress_index>/balance")]
 fn balance(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     monitor_hex: String,
     subaddress_index: u64,
 ) -> Result<Json<JsonBalanceResponse>, String> {
@@ -241,7 +240,7 @@ fn balance(
 
 #[get("/monitors/<monitor_hex>/subaddresses/<subaddress_index>/utxos")]
 fn utxos(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     monitor_hex: String,
     subaddress_index: u64,
 ) -> Result<Json<JsonUtxosResponse>, String> {
@@ -263,7 +262,7 @@ fn utxos(
 /// Balance check using a created monitor and subaddress index
 #[get("/monitors/<monitor_hex>/subaddresses/<subaddress_index>/public-address")]
 fn public_address(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     monitor_hex: String,
     subaddress_index: u64,
 ) -> Result<Json<JsonPublicAddressResponse>, String> {
@@ -286,7 +285,7 @@ fn public_address(
 /// Generates a request code with an optional value and memo
 #[post("/codes/request", format = "json", data = "<request>")]
 fn create_request_code(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     request: Json<JsonCreateRequestCodeRequest>,
 ) -> Result<Json<JsonCreateRequestCodeResponse>, String> {
     let receiver = mc_mobilecoind_api::external::PublicAddress::try_from(&request.receiver)
@@ -317,7 +316,7 @@ fn create_request_code(
 /// Retrieves the data in a request b58_code
 #[get("/codes/request/<b58_code>")]
 fn parse_request_code(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     b58_code: String,
 ) -> Result<Json<JsonParseRequestCodeResponse>, String> {
     let mut req = mc_mobilecoind_api::ParseRequestCodeRequest::new();
@@ -336,7 +335,7 @@ fn parse_request_code(
 /// Generates an address code
 #[post("/codes/address", format = "json", data = "<request>")]
 fn create_address_code(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     request: Json<JsonCreateAddressCodeRequest>,
 ) -> Result<Json<JsonCreateAddressCodeResponse>, String> {
     let receiver = mc_mobilecoind_api::external::PublicAddress::try_from(&request.receiver)
@@ -357,7 +356,7 @@ fn create_address_code(
 /// Retrieves the data in an address b58_code
 #[get("/codes/address/<b58_code>")]
 fn parse_address_code(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     b58_code: String,
 ) -> Result<Json<JsonParseAddressCodeResponse>, String> {
     let mut req = mc_mobilecoind_api::ParseAddressCodeRequest::new();
@@ -379,7 +378,7 @@ fn parse_address_code(
     data = "<transfer>"
 )]
 fn build_and_submit(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     monitor_hex: String,
     subaddress_index: u64,
     transfer: Json<JsonSendPaymentRequest>,
@@ -440,7 +439,7 @@ fn build_and_submit(
     data = "<transfer>"
 )]
 fn pay_address_code(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     monitor_hex: String,
     subaddress_index: u64,
     transfer: Json<JsonPayAddressCodeRequest>,
@@ -496,7 +495,7 @@ fn pay_address_code(
     data = "<request>"
 )]
 fn generate_request_code_transaction(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     monitor_hex: String,
     subaddress_index: u64,
     request: Json<JsonCreateTxProposalRequest>,
@@ -544,7 +543,7 @@ fn generate_request_code_transaction(
 /// Submit a prepared TxProposal
 #[post("/submit-tx", format = "json", data = "<proposal>")]
 fn submit_tx(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     proposal: Json<JsonTxProposalRequest>,
 ) -> Result<Json<JsonSubmitTxResponse>, String> {
     // Send the payment request
@@ -566,7 +565,7 @@ fn submit_tx(
 /// Checks the status of a transfer given a key image and tombstone block
 #[post("/tx/status-as-sender", format = "json", data = "<submit_response>")]
 fn check_transfer_status(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     submit_response: Json<JsonSubmitTxResponse>,
 ) -> Result<Json<JsonStatusResponse>, String> {
     let resp = state
@@ -593,7 +592,7 @@ fn check_transfer_status(
     data = "<receipt>"
 )]
 fn check_receiver_transfer_status(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     monitor_hex: String,
     receipt: Json<JsonReceiverTxReceipt>,
 ) -> Result<Json<JsonStatusResponse>, String> {
@@ -625,7 +624,7 @@ fn check_receiver_transfer_status(
 
 /// Gets information about the entire ledger
 #[get("/ledger/local")]
-fn ledger_info(state: rocket::State<State>) -> Result<Json<JsonLedgerInfoResponse>, String> {
+fn ledger_info(state: &rocket::State<State>) -> Result<Json<JsonLedgerInfoResponse>, String> {
     let resp = state
         .mobilecoind_api_client
         .get_ledger_info(&mc_mobilecoind_api::Empty::new())
@@ -637,7 +636,7 @@ fn ledger_info(state: rocket::State<State>) -> Result<Json<JsonLedgerInfoRespons
 /// Retrieves the data in a request code
 #[get("/ledger/blocks/<block_num>/header")]
 fn block_info(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     block_num: u64,
 ) -> Result<Json<JsonBlockInfoResponse>, String> {
     let mut req = mc_mobilecoind_api::GetBlockInfoRequest::new();
@@ -654,7 +653,7 @@ fn block_info(
 /// Retrieves the details for a given block.
 #[get("/ledger/blocks/<block_num>")]
 fn block_details(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     block_num: u64,
 ) -> Result<Json<JsonBlockDetailsResponse>, String> {
     let mut req = mc_mobilecoind_api::GetBlockRequest::new();
@@ -670,7 +669,7 @@ fn block_details(
 /// Retreives processed block information.
 #[get("/monitors/<monitor_hex>/processed-block/<block_num>")]
 fn processed_block(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     monitor_hex: String,
     block_num: u64,
 ) -> Result<Json<JsonProcessedBlockResponse>, String> {
@@ -692,7 +691,7 @@ fn processed_block(
 /// Get the block index of a given tx out, identified by its public key.
 #[get("/tx-out/<public_key_hex>/block-index")]
 fn tx_out_get_block_index_by_public_key(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     public_key_hex: String,
 ) -> Result<Json<JsonBlockIndexByTxPubKeyResponse>, String> {
     let tx_out_public_key = hex::decode(public_key_hex)
@@ -715,7 +714,7 @@ fn tx_out_get_block_index_by_public_key(
 #[post("/tx-out/proof-of-membership", format = "json", data = "<request>")]
 /// Get a proof of membership for each queried TxOut.
 fn get_proof_of_membership(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     request: Json<JsonMembershipProofRequest>,
 ) -> Result<Json<JsonMembershipProofResponse>, String> {
     // Requested TxOuts.
@@ -757,7 +756,7 @@ fn get_proof_of_membership(
 #[post("/tx-out/mixin", format = "json", data = "<request>")]
 /// Get a list of TxOuts for use as mixins.
 fn get_mixins(
-    state: rocket::State<State>,
+    state: &rocket::State<State>,
     request: Json<JsonMixinRequest>,
 ) -> Result<Json<JsonMixinResponse>, String> {
     let num_mixins = request.num_mixins;
@@ -796,7 +795,8 @@ fn get_mixins(
     Ok(Json(response))
 }
 
-fn main() {
+#[rocket::main]
+async fn main() -> Result<(), rocket::Error> {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
 
@@ -820,12 +820,11 @@ fn main() {
 
     let mobilecoind_api_client = MobilecoindApiClient::new(ch);
 
-    let rocket_config = rocket::Config::build(rocket::config::Environment::Production)
-        .address(&config.listen_host)
-        .port(config.listen_port)
-        .unwrap();
+    let figment = rocket::Config::figment()
+        .merge(("port", config.listen_port))
+        .merge(("address", config.listen_host.clone()));
 
-    rocket::custom(rocket_config)
+    rocket::custom(figment)
         .mount(
             "/",
             routes![
@@ -864,5 +863,6 @@ fn main() {
         .manage(State {
             mobilecoind_api_client,
         })
-        .launch();
+        .launch()
+        .await
 }
