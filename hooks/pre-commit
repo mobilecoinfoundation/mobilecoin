@@ -85,9 +85,7 @@ fi
 
 printf "${PREFIX} Checking for rustfmt ... "
 cargo fmt --version
-if [ $? == 0 ]; then
-	printf "${SUCCESS}\n"
-else
+if [ $? != 0 ]; then
 	printf "${FAILURE}\n"
 	popd >/dev/null 2>&1
 	exit 1
