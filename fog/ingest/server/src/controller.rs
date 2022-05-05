@@ -472,16 +472,16 @@ where
                         Err(Error::PublishReport) => {
                             // This is already logged adequately within
                             // self.publish_report
-                            // 
-                            // Failing to publish a report is not fatal, because we
-                            // attempt to publish
+                            //
+                            // Failing to publish a report is not fatal, because
+                            // we attempt to publish
                             // on every block, and even if it only succeeds half
-                            // the time, it wont make much difference in the pubkey
-                            // expiry window.
+                            // the time, it wont make much difference in the
+                            // pubkey expiry window.
                         }
                         Err(err) => {
-                            // If the error is something other than PublishReport then we should log it
-                            // at a high severity level
+                            // If the error is something other than PublishReport then we should log
+                            // it at a high severity level
                             log::error!(
                                 self.logger,
                                 "Could not publish ingest report at block index {}, will retry: {}",
