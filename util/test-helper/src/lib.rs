@@ -48,16 +48,9 @@ pub fn get_seeded_rng() -> RngType {
 }
 
 pub fn random_str(rng: &mut RngType, len: usize) -> String {
-    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
-                            abcdefghijklmnopqrstuvwxyz\
-                            0123456789";
-
-    let output: String = (0..len)
-        .map(|_| {
-            let idx = (rng.next_u64() % CHARSET.len() as u64) as usize;
-            char::from(CHARSET[idx])
-        })
-        .collect();
-
-    output
+    use rand::{distributions::Alphanumeric, Rng};
+    rng.sample_iter(&Alphanumeric)
+        .take(len)
+        .map(char::from)
+        .collect()
 }
