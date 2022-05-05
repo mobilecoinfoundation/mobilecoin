@@ -141,54 +141,48 @@ where
         let mut buffer = vec![];
         encoder.encode(&metric_families, &mut buffer).unwrap();
 
-        let response = String::from_utf8(buffer)
-            .map_err(|err| format!("Get prometheus metrics from_utf8 failed: {}", err))?;
-
-        Ok(response)
+        String::from_utf8(buffer)
+            .map_err(|err| format!("Get prometheus metrics from_utf8 failed: {}", err))
     }
 
     /// Try and fetch summaries from all ingest clients.
     pub fn get_ingest_summaries(&self) -> Result<GetIngestSummariesResponse, String> {
-        let mut ingest_summaries: HashMap<FogIngestUri, Result<IngestSummary, String>> =
-            HashMap::new();
-        for ingest_client in self.ingest_clients.iter() {
-            match ingest_client.get_status() {
-                Ok(proto_ingest_summary) => {
-                    log::trace!(
-                        self.logger,
-                        "Ingest summary retrieved for {}: {:?}",
-                        ingest_client.get_uri(),
-                        proto_ingest_summary
-                    );
-                    match IngestSummary::try_from(&proto_ingest_summary) {
-                        Ok(ingest_summary) => {
-                            ingest_summaries
-                                .insert(ingest_client.get_uri().clone(), Ok(ingest_summary));
-                        }
-                        Err(err) => {
-                            let error_message = format!(
-                                "Could not construct ingest summary for {}: {}",
-                                ingest_client.get_uri(),
-                                err
-                            );
-                            ingest_summaries
-                                .insert(ingest_client.get_uri().clone(), Err(error_message));
-                        }
+        let ingest_summaries: HashMap<FogIngestUri, Result<IngestSummary, String>> = self
+            .ingest_clients
+            .iter()
+            .map(|ingest_client| {
+                let uri = ingest_client.get_uri();
+                let result = match ingest_client.get_status() {
+                    Ok(proto_ingest_summary) => {
+                        log::trace!(
+                            self.logger,
+                            "Got ingest summary for node with URI '{}': {:?}",
+                            uri,
+                            proto_ingest_summary
+                        );
+                        IngestSummary::try_from(&proto_ingest_summary).map_err(|err| {
+                            format!(
+                                "Could not parse ingest summary for node with URI '{}': {}",
+                                uri, err
+                            )
+                        })
                     }
-                }
-                Err(err) => {
-                    let error_message = format!(
-                        "Unable to retrieve ingest summary for node ({}): {}",
-                        ingest_client.get_uri(),
-                        err
-                    );
-                    ingest_summaries.insert(ingest_client.get_uri().clone(), Err(error_message));
-                }
-            }
-        }
-        let response = GetIngestSummariesResponse { ingest_summaries };
 
-        Ok(response)
+                    Err(err) => {
+                        let error_message = format!(
+                            "Unable to retrieve ingest summary for node with URI '{}': {}",
+                            uri, err
+                        );
+                        log::trace!(self.logger, "{}", error_message);
+                        Err(error_message)
+                    }
+                };
+
+                (uri.clone(), result)
+            })
+            .collect();
+
+        Ok(GetIngestSummariesResponse { ingest_summaries })
     }
 }
 

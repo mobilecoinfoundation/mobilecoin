@@ -3208,6 +3208,7 @@ dependencies = [
  "mc-fog-api",
  "mc-fog-ingest-enclave",
  "mc-fog-ingest-server",
+ "mc-fog-ingest-server-test-utils",
  "mc-fog-recovery-db-iface",
  "mc-fog-sql-recovery-db",
  "mc-fog-test-infra",
@@ -3361,6 +3362,7 @@ dependencies = [
  "mc-fog-ingest-enclave",
  "mc-fog-ingest-enclave-api",
  "mc-fog-ingest-enclave-measurement",
+ "mc-fog-ingest-server-test-utils",
  "mc-fog-recovery-db-iface",
  "mc-fog-sql-recovery-db",
  "mc-fog-test-infra",
@@ -3388,6 +3390,30 @@ dependencies = [
  "retry",
  "serde",
  "serde_json",
+ "tempdir",
+ "url",
+]
+
+[[package]]
+name = "mc-fog-ingest-server-test-utils"
+version = "1.3.0-pre0"
+dependencies = [
+ "mc-attest-net",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-fog-ingest-enclave",
+ "mc-fog-ingest-server",
+ "mc-fog-recovery-db-iface",
+ "mc-fog-sql-recovery-db",
+ "mc-fog-test-infra",
+ "mc-fog-types",
+ "mc-fog-uri",
+ "mc-ledger-db",
+ "mc-transaction-core",
+ "mc-util-from-random",
+ "mc-watcher",
+ "rand_core 0.6.3",
+ "rand_hc 0.3.1",
  "tempdir",
  "url",
 ]
@@ -3677,6 +3703,7 @@ dependencies = [
  "mc-fog-ingest-client",
  "mc-fog-ingest-enclave",
  "mc-fog-ingest-server",
+ "mc-fog-ingest-server-test-utils",
  "mc-fog-recovery-db-iface",
  "mc-fog-sql-recovery-db",
  "mc-fog-test-infra",

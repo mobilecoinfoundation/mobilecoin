@@ -17,6 +17,7 @@ path = "src/main.rs"
 mc-attest-net = { path = "../../../attest/net" }
 mc-fog-ingest-enclave = { path = "../enclave" }
 mc-fog-ingest-server = { path = "../server" }
+mc-fog-ingest-server-test-utils = { path = "../server/test-utils" }
 mc-fog-recovery-db-iface = { path = "../../recovery_db_iface" }
 mc-fog-sql-recovery-db = { path = "../../sql_recovery_db" }
 mc-fog-test-infra = { path = "../../test_infra" }
