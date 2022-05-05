@@ -100,7 +100,6 @@ else
 	FAILED=1
 fi
 
-
 CARGOFMT="cargo fmt -- --unstable-features --skip-children"
 
 # Just check that running rustfmt doesn't do anything to the file. I do this instead of
