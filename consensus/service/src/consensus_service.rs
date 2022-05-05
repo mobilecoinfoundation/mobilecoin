@@ -382,12 +382,13 @@ impl<
                 .build(),
         );
 
-        let server_builder = ServerBuilder::new(env)
+        let server_builder = ServerBuilder::new(env.clone())
             .register_service(client_service)
             .register_service(blockchain_service)
             .register_service(health_service)
             .register_service(attested_service)
             .register_service(build_info_service)
+            .set_default_channel_args(env)
             .bind_using_uri(&self.config.client_listen_uri, self.logger.clone());
 
         let mut server = server_builder.build().unwrap();
