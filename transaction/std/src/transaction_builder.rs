@@ -4,7 +4,7 @@
 //!
 //! See https://cryptonote.org/img/cryptonote_transaction.png
 
-use crate::{ChangeDestination, InputCredentials, MemoBuilder, TxBuilderError};
+use crate::{InputCredentials, MemoBuilder, ReservedDestination, TxBuilderError};
 use core::{cmp::min, fmt::Debug};
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
@@ -214,7 +214,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     pub fn add_change_output<RNG: CryptoRng + RngCore>(
         &mut self,
         amount: Amount,
-        change_destination: &ChangeDestination,
+        change_destination: &ReservedDestination,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
         // Taking self.memo_builder here means that we can call functions on &mut self,
@@ -1132,7 +1132,7 @@ pub mod transaction_builder_tests {
 
         for (block_version, token_id) in get_block_version_token_id_pairs() {
             let sender = AccountKey::random_with_fog(&mut rng);
-            let sender_change_dest = ChangeDestination::from(&sender);
+            let sender_change_dest = ReservedDestination::from(&sender);
             let recipient = AccountKey::random_with_fog(&mut rng);
             let recipient_address = recipient.default_subaddress();
             let ingest_private_key = RistrettoPrivate::from_random(&mut rng);
@@ -1308,7 +1308,7 @@ pub mod transaction_builder_tests {
         for (block_version, token_id) in get_block_version_token_id_pairs() {
             let sender = AccountKey::random_with_fog(&mut rng);
             let sender_addr = sender.default_subaddress();
-            let sender_change_dest = ChangeDestination::from(&sender);
+            let sender_change_dest = ReservedDestination::from(&sender);
             let recipient = AccountKey::random_with_fog(&mut rng);
             let recipient_address = recipient.default_subaddress();
             let ingest_private_key = RistrettoPrivate::from_random(&mut rng);
@@ -2116,7 +2116,7 @@ pub mod transaction_builder_tests {
 
         for (block_version, token_id) in get_block_version_token_id_pairs() {
             let alice = AccountKey::random_with_fog(&mut rng);
-            let alice_change_dest = ChangeDestination::from(&alice);
+            let alice_change_dest = ReservedDestination::from(&alice);
             let bob = AccountKey::random_with_fog(&mut rng);
             let bob_address = bob.default_subaddress();
             let charlie = AccountKey::random_with_fog(&mut rng);
@@ -2311,7 +2311,7 @@ pub mod transaction_builder_tests {
             }
 
             let sender = AccountKey::random_with_fog(&mut rng);
-            let sender_change_dest = ChangeDestination::from(&sender);
+            let sender_change_dest = ReservedDestination::from(&sender);
             let recipient = AccountKey::random_with_fog(&mut rng);
             let recipient_address = recipient.default_subaddress();
             let ingest_private_key = RistrettoPrivate::from_random(&mut rng);
@@ -2607,7 +2607,7 @@ pub mod transaction_builder_tests {
 
         let fog_resolver = MockFogResolver::default();
         let sender = AccountKey::random(&mut rng);
-        let sender_change_dest = ChangeDestination::from(&sender);
+        let sender_change_dest = ReservedDestination::from(&sender);
         let recipient = burn_address();
 
         let value = 1475 * MILLIMOB_TO_PICOMOB;
@@ -2706,7 +2706,7 @@ pub mod transaction_builder_tests {
         let token_id = TokenId::from(5);
         let fog_resolver = MockFogResolver::default();
         let sender = AccountKey::random(&mut rng);
-        let change_destination = ChangeDestination::from(&sender);
+        let change_destination = ReservedDestination::from(&sender);
 
         // Adding an output that is not to the burn address is not allowed.
         {
@@ -3043,7 +3043,7 @@ pub mod transaction_builder_tests {
 
         let fog_resolver = MockFogResolver::default();
         let sender = AccountKey::random(&mut rng);
-        let sender_change_dest = ChangeDestination::from(&sender);
+        let sender_change_dest = ReservedDestination::from(&sender);
         let recipient = AccountKey::random(&mut rng);
         let recipient_addr = recipient.default_subaddress();
 
@@ -3173,7 +3173,7 @@ pub mod transaction_builder_tests {
 
         let fog_resolver = MockFogResolver::default();
         let sender = AccountKey::random(&mut rng);
-        let sender_change_dest = ChangeDestination::from(&sender);
+        let sender_change_dest = ReservedDestination::from(&sender);
         let recipient = AccountKey::random(&mut rng);
         let recipient_addr = recipient.default_subaddress();
 
