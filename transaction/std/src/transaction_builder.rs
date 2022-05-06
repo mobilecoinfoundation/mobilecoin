@@ -560,8 +560,9 @@ pub(crate) fn create_fog_hint<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
 pub mod transaction_builder_tests {
     use super::*;
     use crate::{
-        BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoType, RTHMemoBuilder, SenderMemoCredential,
         test_utils::{get_input_credentials, get_ring, get_transaction},
+        BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoType, RTHMemoBuilder,
+        SenderMemoCredential,
     };
     use assert_matches::assert_matches;
     use maplit::btreemap;
