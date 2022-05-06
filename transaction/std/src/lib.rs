@@ -14,6 +14,9 @@ mod memo;
 mod memo_builder;
 mod transaction_builder;
 
+#[cfg(any(test, feature = "test-only"))]
+pub mod test_utils;
+
 pub use change_destination::ChangeDestination;
 pub use error::TxBuilderError;
 pub use input_credentials::InputCredentials;
