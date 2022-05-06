@@ -108,6 +108,18 @@ impl MemoHandler {
                     Err(MemoHandlerError::FailedSubaddressValidation)
                 }
             }
+            MemoType::GiftCodeCancellation(_) => {
+                // TODO: Add Gift Code Memo Validation
+                Ok(Some(memo_type))
+            }
+            MemoType::GiftCodeFunding(_) => {
+                // TODO: Add Gift Code Memo Validation
+                Ok(Some(memo_type))
+            }
+            MemoType::GiftCodeSender(_) => {
+                // TODO: Add Gift Code Validation
+                Ok(Some(memo_type))
+            }
         }
     }
 }
