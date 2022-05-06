@@ -7,17 +7,16 @@
 
 extern crate core;
 
-mod change_destination;
 mod error;
 mod input_credentials;
 mod memo;
 mod memo_builder;
+mod reserved_destination;
 mod transaction_builder;
 
 #[cfg(any(test, feature = "test-only"))]
 pub mod test_utils;
 
-pub use change_destination::ChangeDestination;
 pub use error::TxBuilderError;
 pub use input_credentials::InputCredentials;
 pub use memo::{
@@ -26,6 +25,7 @@ pub use memo::{
     SenderMemoCredential, UnusedMemo,
 };
 pub use memo_builder::{BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoBuilder, RTHMemoBuilder};
+pub use reserved_destination::ReservedDestination;
 pub use transaction_builder::{DefaultTxOutputsOrdering, TransactionBuilder, TxOutputsOrdering};
 
 // Re-export this to help the exported macros work

@@ -12,7 +12,7 @@ use super::{
     },
     MemoBuilder,
 };
-use crate::ChangeDestination;
+use crate::ReservedDestination;
 use mc_account_keys::{PublicAddress, ShortAddressHash};
 use mc_transaction_core::{
     tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token, TokenId,
@@ -200,7 +200,7 @@ impl MemoBuilder for RTHMemoBuilder {
     fn make_memo_for_change_output(
         &mut self,
         amount: Amount,
-        _change_destination: &ChangeDestination,
+        _change_destination: &ReservedDestination,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
         if !self.destination_memo_enabled {
