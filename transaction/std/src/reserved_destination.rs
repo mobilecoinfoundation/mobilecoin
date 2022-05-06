@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Object representing a destination for change from a transaction
+//! Object containing subaddresses of MobileCoin reserved subaddress indices
 
 use mc_account_keys::{AccountKey, PublicAddress};
 
@@ -45,8 +45,8 @@ impl From<&AccountKey> for ReservedDestination {
 }
 
 impl ReservedDestination {
-    /// Set alternate subaddresseses for reserved addresses. This is useful in some things
-    /// like mobilecoind
+    /// Set alternate subaddresseses for reserved addresses. This is useful in
+    /// some things like mobilecoind
     pub fn from_subaddress_index(
         acct: &AccountKey,
         change_subaddress_index: Option<u64>,
