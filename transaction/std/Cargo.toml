@@ -21,6 +21,7 @@ zeroize = "1"
 
 # MobileCoin dependencies
 mc-account-keys = { path = "../../account-keys" }
+mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-fog-report-validation = { path = "../../fog/report/validation" }
 mc-transaction-core = { path = "../../transaction/core" }

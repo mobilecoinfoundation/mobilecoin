@@ -5207,6 +5207,7 @@ dependencies = [
  "hmac 0.12.1",
  "maplit",
  "mc-account-keys",
+ "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-fog-report-validation",
  "mc-fog-report-validation-test-utils",
