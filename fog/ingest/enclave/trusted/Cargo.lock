@@ -1298,6 +1298,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "mc-util-serial",
+ "mc-util-zip-exact",
  "merlin",
  "prost",
  "rand_core",
@@ -1364,6 +1365,13 @@ dependencies = [
  "prost",
  "serde",
  "serde_cbor",
+]
+
+[[package]]
+name = "mc-util-zip-exact"
+version = "1.3.0-pre0"
+dependencies = [
+ "itertools",
 ]
 
 [[package]]
