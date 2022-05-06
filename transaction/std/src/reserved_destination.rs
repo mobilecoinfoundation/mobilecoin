@@ -30,7 +30,7 @@ pub struct ReservedDestination {
     /// A secret reserved subaddress to which gift code ouputs are sent
     /// when they are created. Similarly to the change_subaddress, gift code
     /// creators can check to see gift codes they've created by checking outputs
-    /// at this address
+    /// at this subaddress
     pub gift_code_subaddress: PublicAddress,
 }
 
