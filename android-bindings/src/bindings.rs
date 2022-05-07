@@ -368,7 +368,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_get_1bytes(
 #[no_mangle]
 pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_finalize_1jni(
     env: JNIEnv,
-    obj: JObject
+    obj: JObject,
 ) {
     jni_ffi_call(&env, |env| {
         let _: MaskedAmount = env.take_rust_field(obj, RUST_OBJ_FIELD)?;
