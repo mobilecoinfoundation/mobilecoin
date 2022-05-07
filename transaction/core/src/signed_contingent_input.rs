@@ -148,6 +148,15 @@ impl From<OutputSecret> for UnmaskedAmount {
     }
 }
 
+impl From<&UnmaskedAmount> for Amount {
+    fn from(src: &UnmaskedAmount) -> Self {
+        Self {
+            value: src.value,
+            token_id: TokenId::from(src.token_id),
+        }
+    }
+}
+
 /// An error which can occur when validating a signed contingent input
 #[derive(Display, Debug, Clone)]
 pub enum SignedContingentInputError {

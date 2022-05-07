@@ -48,10 +48,7 @@ impl InputMaterials {
     pub fn amount(&self) -> Amount {
         match self {
             InputMaterials::Signable(cred) => cred.input_secret.amount,
-            InputMaterials::Presigned(input) => Amount {
-                value: input.pseudo_output_amount.value,
-                token_id: input.pseudo_output_amount.token_id.into(),
-            },
+            InputMaterials::Presigned(input) => Amount::from(&input.pseudo_output_amount),
         }
     }
 
