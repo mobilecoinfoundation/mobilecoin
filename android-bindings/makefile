@@ -99,6 +99,7 @@ copy_artifacts:
 	cp -f ../api/proto/external.proto build/proto/
 	cp -f ../consensus/api/proto/consensus_common.proto build/proto/
 	cp -f ../consensus/api/proto/consensus_peer.proto build/proto/
+	cp -f ../consensus/api/proto/consensus_config.proto build/proto
 	cp -f ../attest/api/proto/attest.proto build/proto/
 	cp -f ../fog/report/api/proto/report.proto build/proto/
 	cp -f ../fog/api/proto/view.proto build/proto/
