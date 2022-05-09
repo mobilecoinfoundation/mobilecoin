@@ -77,10 +77,11 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
     let mut builder = SignedContingentInputBuilder::new(
         block_version,
         input_credentials,
-        vec![0u64, 1u64],
+        vec![0, 1, 2],
         fpr.clone(),
         EmptyMemoBuilder::default(),
-    );
+    )
+    .unwrap();
     builder
         .add_output(Amount::new(400, 0.into()), &recipient, rng)
         .unwrap();
@@ -96,10 +97,11 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
     let mut builder = SignedContingentInputBuilder::new(
         block_version,
         input_credentials,
-        vec![0u64, 1u64],
+        vec![0, 1, 2],
         fpr.clone(),
         EmptyMemoBuilder::default(),
-    );
+    )
+    .unwrap();
     builder
         .add_output(Amount::new(400, 0.into()), &recipient, rng)
         .unwrap();
@@ -118,10 +120,11 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
     let mut builder = SignedContingentInputBuilder::new(
         block_version,
         input_credentials,
-        vec![0u64, 1u64],
+        vec![0, 1, 2],
         fpr.clone(),
         EmptyMemoBuilder::default(),
-    );
+    )
+    .unwrap();
     builder
         .add_output(Amount::new(400, 0.into()), &recipient, rng)
         .unwrap();

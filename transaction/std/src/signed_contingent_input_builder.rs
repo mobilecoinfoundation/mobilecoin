@@ -367,6 +367,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             output_secrets.into_iter().map(Into::into).collect();
 
         Ok(SignedContingentInput {
+            block_version: *self.block_version,
             tx_in,
             mlsag,
             pseudo_output_amount,

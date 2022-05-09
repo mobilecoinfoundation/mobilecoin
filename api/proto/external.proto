@@ -445,19 +445,22 @@ message UnmaskedAmount {
 
 // A pre-signed transaction input with associated rules, as described in MCIP #31
 message SignedContingentInput {
+    // The block version rules used when making this signature
+    uint32 block_version = 1;
+
     // The tx_in which was signed
-    TxIn tx_in = 1;
+    TxIn tx_in = 2;
 
     // The Ring MLSAG signature, conferring spending authority
-    RingMLSAG mlsag = 2;
+    RingMLSAG mlsag = 3;
 
     // The amount and blinding of the pseudo-output of the MLSAG
-    UnmaskedAmount pseudo_output_amount = 3;
+    UnmaskedAmount pseudo_output_amount = 4;
 
     /// The amount and blinding of any TxOut required by the input rules
-    repeated UnmaskedAmount required_output_amounts = 4;
+    repeated UnmaskedAmount required_output_amounts = 5;
 
     /// The tx_out global index of each ring member
     /// This helps the recipient of this payload construct proofs of membership for the ring
-    repeated fixed64 tx_out_global_indices = 5;
+    repeated fixed64 tx_out_global_indices = 6;
 }

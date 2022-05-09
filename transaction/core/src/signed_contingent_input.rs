@@ -35,26 +35,30 @@ pub struct UnmaskedAmount {
 /// motivation.
 #[derive(Clone, Eq, Message, PartialEq)]
 pub struct SignedContingentInput {
+    /// The block version rules we used when making the signature
+    #[prost(uint32, required, tag = 1)]
+    pub block_version: u32,
+
     /// The tx_in which was signed over
-    #[prost(message, required, tag = 1)]
+    #[prost(message, required, tag = 2)]
     pub tx_in: TxIn,
 
     /// The Ring MLSAG signature, conferring spending authority
-    #[prost(message, required, tag = 2)]
+    #[prost(message, required, tag = 3)]
     pub mlsag: RingMLSAG,
 
     /// The amount and blinding of the pseudo-output of the MLSAG
-    #[prost(message, required, tag = 3)]
+    #[prost(message, required, tag = 4)]
     pub pseudo_output_amount: UnmaskedAmount,
 
     /// The amount and blinding of any TxOut required by the input rules
-    #[prost(message, repeated, tag = 4)]
+    #[prost(message, repeated, tag = 5)]
     pub required_output_amounts: Vec<UnmaskedAmount>,
 
     /// The tx_out global index of each ring member
     /// This helps the recipient of this payload construct proofs of membership
     /// for the ring
-    #[prost(fixed64, repeated, tag = 5)]
+    #[prost(fixed64, repeated, tag = 6)]
     pub tx_out_global_indices: Vec<u64>,
 }
 

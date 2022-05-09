@@ -138,10 +138,11 @@ mod tests {
             let mut sci_builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![59],
+                vec![59, 0, 7],
                 fpr.clone(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             sci_builder
                 .add_output(

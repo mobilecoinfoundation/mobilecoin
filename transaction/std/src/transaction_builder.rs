@@ -162,6 +162,9 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         &mut self,
         sci: SignedContingentInput,
     ) -> Result<(), SignedContingentInputError> {
+        // TODO: If there is a block version change that could cause an incompatibility,
+        // we should check for it here, e.g. if sci.block_version differs from
+        // self.block_version
         if let Some(rules) = sci.tx_in.input_rules.as_ref() {
             // Enforce all rules so that our transaction will be valid
             if rules.required_outputs.len() != sci.required_output_amounts.len() {
