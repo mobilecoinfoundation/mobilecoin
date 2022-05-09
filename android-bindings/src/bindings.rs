@@ -407,9 +407,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_unmask_1amount(
             let token_id = env.new_object(
                 "com/mobilecoin/lib/UnsignedLong",
                 "(J)V",
-                &[
-                    jni::objects::JValue::Long(*amount.token_id as i64)
-                ],
+                &[jni::objects::JValue::Long(*amount.token_id as i64)],
             )?;
             Ok(env
                 .new_object(
@@ -418,7 +416,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_unmask_1amount(
                     &[
                         jni::objects::JValue::Object(value), 
                         jni::objects::JValue::Object(token_id),
-                        ],
+                    ],
                 )?
                 .into_inner())
         },
