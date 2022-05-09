@@ -335,7 +335,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
 
         // Now we can create the mlsag
         let mut tx_in = TxIn::from(&self.input_credentials);
-        tx_in.input_rules = Some(input_rules.clone());
+        tx_in.input_rules = Some(input_rules);
         let ring = SignableInputRing::from(self.input_credentials);
 
         let pseudo_output_blinding = Scalar::random(rng);
