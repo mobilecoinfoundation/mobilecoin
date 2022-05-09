@@ -344,7 +344,9 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         let generator = generator_cache.get(ring.input_secret.amount.token_id);
 
         let mlsag = RingMLSAG::sign(
-            &input_rules.digest(),
+            &tx_in
+                .signed_digest()
+                .expect("Tx in should contain rules, this is a logic error"),
             &ring.members,
             ring.real_input_index,
             &ring.input_secret.onetime_private_key,

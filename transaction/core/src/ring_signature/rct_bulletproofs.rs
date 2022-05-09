@@ -27,7 +27,7 @@ use crate::{
     domain_separators::EXTENDED_MESSAGE_DOMAIN_TAG,
     range_proofs::{check_range_proofs, generate_range_proofs},
     ring_signature::{mlsag::RingMLSAG, Error, GeneratorCache, KeyImage, Scalar},
-    Amount, BlockVersion, Commitment, CompressedCommitment, InputRules,
+    Amount, BlockVersion, Commitment, CompressedCommitment,
 };
 
 /// A representation of the part of the input ring needed to create an MLSAG
@@ -110,8 +110,11 @@ pub struct SignedInputRing {
     /// * The compressed commitment (tx_out.amount.commitment)
     pub members: Vec<(CompressedRistrettoPublic, CompressedCommitment)>,
 
-    /// The rules that are associated to this signature, if any
-    pub input_rules: Option<InputRules>,
+    /// The digest that this signature is supposed to have signed.
+    /// If omitted, then the entire extended message digest should have been
+    /// signed. If the input has rules, then a reduced digest is signed
+    /// instead. (See MCIP #31 for rationale)
+    pub signed_digest: Option<[u8; 32]>,
 }
 
 /// An RCT_TYPE_BULLETPROOFS_2 signature
@@ -424,16 +427,11 @@ impl SignatureRctBulletproofs {
 
         // Each MLSAG must be valid.
         for (i, ring) in rings.iter().enumerate() {
-            let rules_digest = ring
-                .input_rules
-                .as_ref()
-                .map(|rules| rules.digest())
-                .unwrap_or_default();
-
-            // If there are input rules, then the signature is over the rules digest
-            // If not, then it is the entire extended message digest
-            let this_was_signed: &[u8] = if ring.input_rules.is_some() {
-                &rules_digest
+            // Normally, the ring signature is made over the entire extended messages
+            // digest. If there are input rules, then the signature is over a
+            // reduced digest. See MCIP #31 for rationale
+            let this_was_signed: &[u8] = if let Some(signed_digest) = ring.signed_digest.as_ref() {
+                &signed_digest[..]
             } else {
                 &extended_message_digest
             };
@@ -872,7 +870,7 @@ impl From<&SignableInputRing> for SignedInputRing {
     fn from(src: &SignableInputRing) -> SignedInputRing {
         SignedInputRing {
             members: src.members.clone(),
-            input_rules: None,
+            signed_digest: None,
         }
     }
 }

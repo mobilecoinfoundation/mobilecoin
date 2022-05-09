@@ -14,7 +14,7 @@ use crate::{
 };
 use alloc::vec::Vec;
 use displaydoc::Display;
-use mc_crypto_digestible::{Digestible, MerlinTranscript};
+use mc_crypto_digestible::Digestible;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
@@ -54,11 +54,6 @@ impl InputRules {
             }
         }
         Ok(())
-    }
-
-    /// Create a 32-byte digest of the rules
-    pub fn digest(&self) -> [u8; 32] {
-        self.digest32::<MerlinTranscript>(b"mc-input-rules")
     }
 }
 

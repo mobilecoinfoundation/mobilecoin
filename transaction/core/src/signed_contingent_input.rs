@@ -87,9 +87,7 @@ impl SignedContingentInput {
 
         let rules_digest = self
             .tx_in
-            .input_rules
-            .as_ref()
-            .map(|rules| rules.digest())
+            .signed_digest()
             .ok_or(SignedContingentInputError::MissingRules)?;
 
         let signed_input_ring = SignedInputRing::from(&self.tx_in);

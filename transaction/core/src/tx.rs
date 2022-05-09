@@ -249,6 +249,27 @@ pub struct TxIn {
     pub input_rules: Option<InputRules>,
 }
 
+impl TxIn {
+    /// This is the digest of the TxIn which is signed per MCIP #31 if there
+    /// are input rules present.
+    ///
+    /// See MCIP #31 for rationale -- by not signing the whole TxPrefix, we
+    /// allow that someone can create this signature who does not have the
+    /// whole TxPrefix.
+    ///
+    /// The membership proofs are not signed, because it is useful to allow that
+    /// someone later may update those proofs. See MCIP #31 for discussion.
+    pub fn signed_digest(&self) -> Option<[u8; 32]> {
+        if self.input_rules.is_some() {
+            let mut this = self.clone();
+            this.proofs.clear();
+            Some(this.digest32::<MerlinTranscript>(b"mc-input-rules-digest"))
+        } else {
+            None
+        }
+    }
+}
+
 impl From<&TxIn> for SignedInputRing {
     fn from(src: &TxIn) -> SignedInputRing {
         SignedInputRing {
@@ -257,7 +278,7 @@ impl From<&TxIn> for SignedInputRing {
                 .iter()
                 .map(|tx_out| (tx_out.target_key, tx_out.masked_amount.commitment))
                 .collect(),
-            input_rules: src.input_rules.clone(),
+            signed_digest: src.signed_digest(),
         }
     }
 }
