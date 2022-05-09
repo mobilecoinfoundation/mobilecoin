@@ -43,6 +43,7 @@ where
     /// Retry failed GRPC requests every 10 seconds.
     const GRPC_RETRY_SECONDS: Duration = Duration::from_millis(10000);
 
+    /// Insantiate the service with the given URIs and DB.
     pub fn new(ingest_cluster_uris: Vec<FogIngestUri>, recovery_db: DB, logger: Logger) -> Self {
         let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
         let ingest_clients: Vec<FogIngestGrpcClient> = ingest_cluster_uris
@@ -89,13 +90,15 @@ where
         Ok(())
     }
 
+    /// Stop the service.
+    /// This blocks on teardown of overseer_worker
     pub fn stop(&mut self) -> Result<(), OverseerError> {
-        // This blocks on teardown of overseer_worker
         self.overseer_worker = None;
 
         Ok(())
     }
 
+    /// Enable Overseer worker.
     pub fn enable(&self) -> Result<String, String> {
         log::info!(self.logger, "Enabling overseer worker");
         let was_enabled = self.is_enabled.swap(true, Ordering::SeqCst);
@@ -107,6 +110,7 @@ where
         Ok(response_message.to_string())
     }
 
+    /// Disable Overseer worker.
     pub fn disable(&self) -> Result<String, String> {
         log::info!(self.logger, "Disabling overseer worker");
         let was_enabled = self.is_enabled.swap(false, Ordering::SeqCst);
@@ -118,6 +122,7 @@ where
         Ok(response_message.to_string())
     }
 
+    /// Get the status for Overseer.
     pub fn get_status(&self) -> Result<String, String> {
         let is_enabled: bool = self.is_enabled.load(Ordering::SeqCst);
         let response_message = match is_enabled {
@@ -128,6 +133,7 @@ where
         Ok(response_message.to_string())
     }
 
+    /// Get metrics to publish.
     pub fn get_metrics(&self) -> Result<String, String> {
         log::trace!(self.logger, "Getting prometheus metrics");
         let metric_families = prometheus::gather();
@@ -141,6 +147,7 @@ where
         Ok(response)
     }
 
+    /// Try and fetch summaries from all ingest clients.
     pub fn get_ingest_summaries(&self) -> Result<GetIngestSummariesResponse, String> {
         let mut ingest_summaries: HashMap<FogIngestUri, Result<IngestSummary, String>> =
             HashMap::new();

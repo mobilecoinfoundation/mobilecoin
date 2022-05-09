@@ -138,6 +138,7 @@ where
     /// error.
     const NUMBER_OF_TRIES: usize = 3;
 
+    /// Start this worker.
     pub fn start(
         ingest_clients: Arc<Vec<FogIngestGrpcClient>>,
         recovery_db: DB,
@@ -178,7 +179,7 @@ where
                 Ok(ingest_summary_node_mappings) => ingest_summary_node_mappings,
                 Err(err) => {
                     log::error!(self.logger, "Encountered an error while retrieving ingest summaries: {}. Returning to beginning of overseer logic.", err);
-                    metrics::utils::increment_unresponsive_node_count(&self.logger);
+                    metrics::increment_unresponsive_node_count(&self.logger);
                     continue;
                 }
             };
@@ -187,7 +188,7 @@ where
                 .iter()
                 .map(|mapping| mapping.ingest_summary.clone())
                 .collect();
-            metrics::utils::set_metrics(&self.logger, ingest_summaries.as_slice());
+            metrics::set_metrics(&self.logger, ingest_summaries.as_slice());
 
             let active_ingest_summary_node_mappings: Vec<&IngestSummaryNodeMapping> =
                 ingest_summary_node_mappings
