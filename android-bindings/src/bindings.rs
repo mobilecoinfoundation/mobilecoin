@@ -377,7 +377,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_finalize_1jni(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_unmask_1value(
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_unmask_1amount(
     env: JNIEnv,
     obj: JObject,
     view_key: JObject,
@@ -397,12 +397,11 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_unmask_1value(
             let (amount, _) = masked_amount.get_value(&shared_secret)?;
             Ok(env
                 .new_object(
-                    "java/math/BigInteger",
-                    "(I[B)V", // public BigInteger(int signum, byte[] magnitude)
+                    "com/mobilecoin/lib/Amount",
+                    "(JJ)V",
                     &[
-                        1.into(),
-                        env.byte_array_from_slice(&amount.value.to_be_bytes())?
-                            .into(),
+                        jni::objects::JValue::Long(amount.value as i64),
+                        jni::objects::JValue::Long(*amount.token_id as i64),
                     ],
                 )?
                 .into_inner())
