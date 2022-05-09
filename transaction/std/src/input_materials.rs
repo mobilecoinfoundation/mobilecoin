@@ -2,8 +2,8 @@
 
 //! Input Materials is a helper struct for the transaction builder.
 //! The transaction builder can get inputs either from input credentials,
-//! or signed contingent inputs. In one case the input is being signed by us,
-//! and in the other it is already signed.
+//! or signed contingent inputs. In one case the input is being signed now using
+//! the builder, and in the other it is already signed.
 //!
 //! The transaction builder is required to sort these in order of tx public key
 //! of the first element of the ring being signed, then hand them off to build

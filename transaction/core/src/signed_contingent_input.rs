@@ -72,6 +72,10 @@ impl SignedContingentInput {
     /// * The required output amounts actually correspond to the required
     ///   outputs
     pub fn validate(&self) -> Result<(), SignedContingentInputError> {
+        if self.tx_out_global_indices.len() != self.tx_in.ring.len() {
+            return Err(SignedContingentInputError::WrongNumberOfGlobalIndices);
+        }
+
         let mut generator_cache = GeneratorCache::default();
         let generator = generator_cache.get(TokenId::from(self.pseudo_output_amount.token_id));
 
@@ -162,6 +166,8 @@ impl From<&UnmaskedAmount> for Amount {
 pub enum SignedContingentInputError {
     /// The number of required outputs did not match to the number of amounts
     WrongNumberOfRequiredOutputAmounts,
+    /// The number of global indices did not match the number of inputs
+    WrongNumberOfGlobalIndices,
     /// The amount of a required output was incorrect
     RequiredOutputMismatch,
     /// Input rules are missing

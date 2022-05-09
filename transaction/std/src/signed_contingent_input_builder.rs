@@ -3,7 +3,10 @@
 //! A builder object for signed contingent inputs (see MCIP #31)
 //! This plays a similar role to the transaction builder.
 
-use crate::{InputCredentials, MemoBuilder, ReservedDestination, TxBuilderError};
+use crate::{
+    InputCredentials, MemoBuilder, ReservedDestination, SignedContingentInputBuilderError,
+    TxBuilderError,
+};
 use core::cmp::min;
 use mc_account_keys::PublicAddress;
 use mc_fog_report_validation::FogPubkeyResolver;
@@ -69,7 +72,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         tx_out_global_indices: Vec<u64>,
         fog_resolver: FPR,
         memo_builder: MB,
-    ) -> Self {
+    ) -> Result<Self, SignedContingentInputBuilderError> {
         Self::new_with_box(
             block_version,
             input_credentials,
@@ -96,8 +99,16 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         tx_out_global_indices: Vec<u64>,
         fog_resolver: FPR,
         memo_builder: Box<dyn MemoBuilder + Send + Sync>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, SignedContingentInputBuilderError> {
+        if input_credentials.ring.len() != tx_out_global_indices.len() {
+            return Err(
+                SignedContingentInputBuilderError::IncorrectGlobalIndexCount(
+                    input_credentials.ring.len(),
+                    tx_out_global_indices.len(),
+                ),
+            );
+        }
+        Ok(Self {
             block_version,
             input_credentials,
             tx_out_global_indices,
@@ -106,7 +117,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             fog_resolver,
             fog_tombstone_block_limit: u64::max_value(),
             memo_builder: Some(memo_builder),
-        }
+        })
     }
 
     /// Add a non-change output to the transaction.
@@ -428,10 +439,11 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3],
+                vec![3, 0, 9],
                 fog_resolver,
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             let (_txout, confirmation) = builder
                 .add_output(amount2, &recipient.default_subaddress(), &mut rng)
@@ -551,10 +563,11 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3],
+                vec![3, 4, 5],
                 fog_resolver,
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             let (_txout, confirmation) = builder
                 .add_output(amount2, &recipient.default_subaddress(), &mut rng)
@@ -661,10 +674,11 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3],
+                vec![3, 7, 6],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder
@@ -907,10 +921,11 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3],
+                vec![3, 2, 4],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder
@@ -1123,10 +1138,11 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3],
+                vec![3, 4, 5],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             // Alice requests 100_000 token2 in exchange
             let (_txout, _confirmation) = builder
@@ -1155,10 +1171,11 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![4],
+                vec![4, 5, 6],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             // Bob keeps the change from token id 2
             let bob_change_dest = ReservedDestination::from(&bob);
@@ -1420,10 +1437,11 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3],
+                vec![3, 1, 2],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder
@@ -1510,10 +1528,11 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3],
+                vec![3, 8, 9],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder
@@ -1619,10 +1638,11 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3],
+                vec![3, 9, 8],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder
@@ -1724,10 +1744,11 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3],
+                vec![3, 7, 8],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder
@@ -1832,10 +1853,11 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3],
+                vec![3, 1, 2],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder
@@ -1955,10 +1977,11 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3],
+                vec![3, 0, 7],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder
@@ -2073,10 +2096,11 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3],
+                vec![3, 0, 9],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder
@@ -2182,10 +2206,11 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3],
+                vec![3, 4, 5],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder

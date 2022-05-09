@@ -111,3 +111,11 @@ impl From<NewMemoError> for TxBuilderError {
         TxBuilderError::Memo(src)
     }
 }
+
+/// An error that can occur when creating a signed contingent input builder
+#[derive(Debug, Display)]
+pub enum SignedContingentInputBuilderError {
+    /// Passed an incorrect number of global indices: {0} ring elements, {1}
+    /// indices
+    IncorrectGlobalIndexCount(usize, usize),
+}
