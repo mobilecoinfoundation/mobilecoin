@@ -117,4 +117,12 @@ impl From<NewMemoError> for TxBuilderError {
 pub enum SignedContingentInputBuilderError {
     /// Incorrect number of global indices: {0} ring elements, {1} indices
     IncorrectGlobalIndexCount(usize, usize),
+    /// Memo: {0}
+    Memo(NewMemoError),
+}
+
+impl From<NewMemoError> for SignedContingentInputBuilderError {
+    fn from(src: NewMemoError) -> Self {
+        SignedContingentInputBuilderError::Memo(src)
+    }
 }

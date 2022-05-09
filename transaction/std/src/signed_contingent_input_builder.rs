@@ -14,7 +14,7 @@ use mc_transaction_core::{
     ring_signature::{GeneratorCache, OutputSecret, RingMLSAG, Scalar, SignableInputRing},
     tx::{TxIn, TxOut, TxOutConfirmationNumber},
     Amount, BlockVersion, InputRules, MemoContext, MemoPayload, NewMemoError,
-    SignedContingentInput, UnmaskedAmount,
+    SignedContingentInput, TokenId, UnmaskedAmount,
 };
 use rand_core::{CryptoRng, RngCore};
 
@@ -102,7 +102,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         input_credentials: InputCredentials,
         tx_out_global_indices: Vec<u64>,
         fog_resolver: FPR,
-        memo_builder: Box<dyn MemoBuilder + Send + Sync>,
+        mut memo_builder: Box<dyn MemoBuilder + Send + Sync>,
     ) -> Result<Self, SignedContingentInputBuilderError> {
         if input_credentials.ring.len() != tx_out_global_indices.len() {
             return Err(
@@ -112,6 +112,10 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
                 ),
             );
         }
+        // The fee is paid by the party using the transaction builder, not the
+        // party using the signed contingent input. So we say 0 for purpose of memos
+        // here, which go on change outputs for the party using this builder.
+        memo_builder.set_fee(Amount::new(0, TokenId::from(0)))?;
         Ok(Self {
             block_version,
             input_credentials,
