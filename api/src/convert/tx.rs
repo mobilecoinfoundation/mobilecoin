@@ -154,8 +154,8 @@ mod tests {
 
             let sci = sci_builder.build(&mut rng).unwrap();
 
-            // Alice sends this token2 amount to Bob from Charlie, paying Charlie 1000 MOB
-            // as he desires.
+            // Alice sends this token2 amount to Bob from Charlie, paying Charlie 1 MOB
+            // as he desires, and returning .475 MOB as change to herself.
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
                 Amount::new(Mob::MINIMUM_FEE, Mob::ID),
