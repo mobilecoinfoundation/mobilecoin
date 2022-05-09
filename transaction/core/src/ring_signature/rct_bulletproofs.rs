@@ -213,6 +213,10 @@ impl SignatureRctBulletproofs {
             return Err(Error::TokenIdNotAllowed);
         }
 
+        if rings.iter().all(|ring| ring.signed_digest.is_some()) {
+            return Err(Error::AllRingsPresigned);
+        }
+
         // Signature must contain one ring signature for each ring.
         if rings.len() != self.ring_signatures.len() {
             return Err(Error::LengthMismatch(
