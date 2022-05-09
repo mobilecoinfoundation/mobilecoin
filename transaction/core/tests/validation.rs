@@ -5,87 +5,22 @@
 
 extern crate alloc;
 
+mod util;
+
 use alloc::vec::Vec;
 use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes};
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_db::Ledger;
 use mc_transaction_core::{
     constants::{MAX_TOMBSTONE_BLOCKS, RING_SIZE},
     membership_proofs::Range,
     tokens::Mob,
-    tx::{Tx, TxOutMembershipHash, TxOutMembershipProof},
+    tx::{TxOutMembershipHash, TxOutMembershipProof},
     validation::*,
     BlockVersion, InputRules, Token,
 };
-use mc_transaction_core_test_utils::{
-    create_ledger, create_transaction, create_transaction_with_amount_and_comparer,
-    initialize_ledger, AccountKey, InverseTxOutputsOrdering, INITIALIZE_LEDGER_AMOUNT,
-};
-use mc_transaction_std::{DefaultTxOutputsOrdering, TxOutputsOrdering};
+use mc_transaction_core_test_utils::{InverseTxOutputsOrdering, INITIALIZE_LEDGER_AMOUNT};
 use rand::{rngs::StdRng, SeedableRng};
-
-fn create_test_tx(block_version: BlockVersion) -> (Tx, LedgerDB) {
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-    let sender = AccountKey::random(&mut rng);
-    let mut ledger = create_ledger();
-    let n_blocks = 1;
-    initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
-
-    // Spend an output from the last block.
-    let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-    let tx_out = block_contents.outputs[0].clone();
-
-    let recipient = AccountKey::random(&mut rng);
-    let tx = create_transaction(
-        block_version,
-        &mut ledger,
-        &tx_out,
-        &sender,
-        &recipient.default_subaddress(),
-        n_blocks + 1,
-        &mut rng,
-    );
-
-    (tx, ledger)
-}
-
-fn create_test_tx_with_amount(
-    block_version: BlockVersion,
-    amount: u64,
-    fee: u64,
-) -> (Tx, LedgerDB) {
-    create_test_tx_with_amount_and_comparer::<DefaultTxOutputsOrdering>(block_version, amount, fee)
-}
-
-fn create_test_tx_with_amount_and_comparer<O: TxOutputsOrdering>(
-    block_version: BlockVersion,
-    amount: u64,
-    fee: u64,
-) -> (Tx, LedgerDB) {
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-    let sender = AccountKey::random(&mut rng);
-    let mut ledger = create_ledger();
-    let n_blocks = 1;
-    initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
-
-    // Spend an output from the last block.
-    let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-    let tx_out = block_contents.outputs[0].clone();
-
-    let recipient = AccountKey::random(&mut rng);
-    let tx = create_transaction_with_amount_and_comparer::<_, _, O>(
-        block_version,
-        &mut ledger,
-        &tx_out,
-        &sender,
-        &recipient.default_subaddress(),
-        amount,
-        fee,
-        n_blocks + 1,
-        &mut rng,
-    );
-
-    (tx, ledger)
-}
+use util::*;
 
 #[test]
 // Should return MissingMemo when memos are missing in an output
@@ -872,7 +807,7 @@ fn test_input_rules_validation() {
         max_tombstone_block: 0,
     });
 
-    // Check that the Tx is following input rules (vacuously)
+    // Check that the Tx is following input rules (the required output is there)
     validate_all_input_rules(block_version, &tx).unwrap();
 
     // Modify the input rules to refer to a non-existent tx out

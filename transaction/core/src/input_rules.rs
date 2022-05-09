@@ -39,6 +39,10 @@ pub struct InputRules {
 impl InputRules {
     /// Verify that a Tx conforms to the rules.
     pub fn verify(&self, _block_version: BlockVersion, tx: &Tx) -> Result<(), InputRuleError> {
+        // NOTE: If this function gets too busy, we should split it into several smaller
+        // functions NOTE: The tests for this function are in
+        // transaction/core/tests/input_rules.rs
+
         // Verify max_tombstone_block
         if self.max_tombstone_block != 0 && tx.prefix.tombstone_block > self.max_tombstone_block {
             return Err(InputRuleError::MaxTombstoneBlockExceeded);
