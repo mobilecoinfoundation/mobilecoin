@@ -83,7 +83,7 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
     )
     .unwrap();
     builder
-        .add_output(Amount::new(400, 0.into()), &recipient, rng)
+        .add_required_output(Amount::new(400, 0.into()), &recipient, rng)
         .unwrap();
     result.push(builder.build(rng).unwrap());
 
@@ -103,10 +103,10 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
     )
     .unwrap();
     builder
-        .add_output(Amount::new(400, 0.into()), &recipient, rng)
+        .add_required_output(Amount::new(400, 0.into()), &recipient, rng)
         .unwrap();
     builder
-        .add_output(Amount::new(600, 2.into()), &recipient2, rng)
+        .add_required_output(Amount::new(600, 2.into()), &recipient2, rng)
         .unwrap();
     result.push(builder.build(rng).unwrap());
 
@@ -126,13 +126,13 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
     )
     .unwrap();
     builder
-        .add_output(Amount::new(400, 0.into()), &recipient, rng)
+        .add_required_output(Amount::new(400, 0.into()), &recipient, rng)
         .unwrap();
     builder
-        .add_output(Amount::new(600, 2.into()), &recipient2, rng)
+        .add_required_output(Amount::new(600, 2.into()), &recipient2, rng)
         .unwrap();
     builder
-        .add_change_output(Amount::new(100, 1.into()), &sender_change_dest, rng)
+        .add_required_change_output(Amount::new(100, 1.into()), &sender_change_dest, rng)
         .unwrap();
     result.push(builder.build(rng).unwrap());
 

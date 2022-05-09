@@ -34,8 +34,9 @@ pub struct SignedContingentInputBuilder<FPR: FogPubkeyResolver> {
     input_credentials: InputCredentials,
     /// Global indices for the tx out's in the ring
     tx_out_global_indices: Vec<u64>,
-    /// The outputs created by the transaction, and associated secrets
-    outputs_and_secrets: Vec<(TxOut, OutputSecret)>,
+    /// The outputs required by the rules for this signed input, and associated
+    /// secrets
+    required_outputs_and_secrets: Vec<(TxOut, OutputSecret)>,
     /// The tombstone_block value, a block index in which the signed input
     /// expires, and can no longer be used. (This works by implying a limit
     /// on the tombstone block for any transaction which incorporates the signed
@@ -48,7 +49,7 @@ pub struct SignedContingentInputBuilder<FPR: FogPubkeyResolver> {
     /// in fog pubkeys used so far
     fog_tombstone_block_limit: u64,
     /// A policy object implementing MemoBuilder which constructs memos for
-    /// this transaction.
+    /// the outputs which are required by the rules.
     ///
     /// This is an Option in order to allow working around the borrow checker.
     /// Box<dyn ...> is used because having more generic parameters creates more
@@ -65,10 +66,10 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     ///   input
     /// * `input_credentials` - Credentials for the input we are signing
     /// * `tx_out_global_indices` - Global indices for the tx out's in the ring
-    /// * `fog_resolver` - Source of validated fog keys to use with this
-    ///   transaction
+    /// * `fog_resolver` - Source of validated fog keys to use with outputs for
+    ///   this signed contingent input
     /// * `memo_builder` - An object which creates memos for the TxOuts in this
-    ///   transaction
+    ///   signed contingent input
     pub fn new<MB: MemoBuilder + 'static + Send + Sync>(
         block_version: BlockVersion,
         input_credentials: InputCredentials,
@@ -92,8 +93,8 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     /// * `block_version` - The block version to use when signing the input
     /// * `input_credentials` - Credentials for the input we are signing
     /// * `tx_out_global_indices` - Global indices for the tx out's in the ring
-    /// * `fog_resolver` - Source of validated fog keys to use with this signed
-    ///   contingent input
+    /// * `fog_resolver` - Source of validated fog keys to use with outputs for
+    ///   this signed contingent input
     /// * `memo_builder` - An object which creates memos for the TxOuts in this
     ///   signed contingent input
     pub fn new_with_box(
@@ -115,7 +116,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             block_version,
             input_credentials,
             tx_out_global_indices,
-            outputs_and_secrets: Vec::new(),
+            required_outputs_and_secrets: Vec::new(),
             tombstone_block: u64::max_value(),
             fog_resolver,
             fog_tombstone_block_limit: u64::max_value(),
@@ -123,7 +124,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         })
     }
 
-    /// Add a non-change output to the transaction.
+    /// Add a non-change required output to the input rules.
     ///
     /// If a sender memo credential has been set, this will create an
     /// authenticated sender memo for the TxOut. Otherwise the memo will be
@@ -133,7 +134,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     /// * `amount` - The amount of this output
     /// * `recipient` - The recipient's public address
     /// * `rng` - RNG used to generate blinding for commitment
-    pub fn add_output<RNG: CryptoRng + RngCore>(
+    pub fn add_required_output<RNG: CryptoRng + RngCore>(
         &mut self,
         amount: Amount,
         recipient: &PublicAddress,
@@ -147,7 +148,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             .take()
             .expect("memo builder is missing, this is a logic error");
         let block_version = self.block_version;
-        let result = self.add_output_with_fog_hint_address(
+        let result = self.add_required_output_with_fog_hint_address(
             amount,
             recipient,
             recipient,
@@ -165,7 +166,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         result
     }
 
-    /// Add a standard change output to the transaction.
+    /// Add a standard change required output to the input rules.
     ///
     /// The change output is meant to send any value in the inputs not already
     /// sent via outputs or fee, back to the sender's address.
@@ -192,7 +193,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     ///   change output. These can both be obtained from an account key, but
     ///   this API does not require the account key.
     /// * `rng` - RNG used to generate blinding for commitment
-    pub fn add_change_output<RNG: CryptoRng + RngCore>(
+    pub fn add_required_change_output<RNG: CryptoRng + RngCore>(
         &mut self,
         amount: Amount,
         change_destination: &ReservedDestination,
@@ -206,7 +207,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             .take()
             .expect("memo builder is missing, this is a logic error");
         let block_version = self.block_version;
-        let result = self.add_output_with_fog_hint_address(
+        let result = self.add_required_output_with_fog_hint_address(
             amount,
             &change_destination.change_subaddress,
             &change_destination.primary_address,
@@ -225,8 +226,8 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         result
     }
 
-    /// Add an output to the transaction, using `fog_hint_address` to construct
-    /// the fog hint.
+    /// Add a required output to the rules, using `fog_hint_address` to
+    /// construct the fog hint.
     ///
     /// This is a private implementation detail, and generally, fog users expect
     /// that the transactions that they receive from fog belong to the account
@@ -243,7 +244,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     /// * `fog_hint_address` - The public address used to create the fog hint
     /// * `memo_fn` - The memo function to use (see TxOut::new_with_memo)
     /// * `rng` - RNG used to generate blinding for commitment
-    fn add_output_with_fog_hint_address<RNG: CryptoRng + RngCore>(
+    fn add_required_output_with_fog_hint_address<RNG: CryptoRng + RngCore>(
         &mut self,
         amount: Amount,
         recipient: &PublicAddress,
@@ -271,7 +272,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
 
         self.impose_tombstone_block_limit(pubkey_expiry);
 
-        self.outputs_and_secrets
+        self.required_outputs_and_secrets
             .push((tx_out.clone(), output_secret));
 
         let confirmation = TxOutConfirmationNumber::from(&shared_secret);
@@ -318,11 +319,11 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             ));
         }
 
-        self.outputs_and_secrets
+        self.required_outputs_and_secrets
             .sort_by(|(a, _), (b, _)| a.public_key.cmp(&b.public_key));
 
         let (outputs, output_secrets): (Vec<TxOut>, Vec<_>) =
-            self.outputs_and_secrets.drain(..).unzip();
+            self.required_outputs_and_secrets.drain(..).unzip();
 
         let input_rules = InputRules {
             required_outputs: outputs,
@@ -451,7 +452,7 @@ pub mod tests {
             .unwrap();
 
             let (_txout, confirmation) = builder
-                .add_output(amount2, &recipient.default_subaddress(), &mut rng)
+                .add_required_output(amount2, &recipient.default_subaddress(), &mut rng)
                 .unwrap();
 
             builder.set_tombstone_block(2000);
@@ -575,7 +576,7 @@ pub mod tests {
             .unwrap();
 
             let (_txout, confirmation) = builder
-                .add_output(amount2, &recipient.default_subaddress(), &mut rng)
+                .add_required_output(amount2, &recipient.default_subaddress(), &mut rng)
                 .unwrap();
 
             builder.set_tombstone_block(2000);
@@ -687,7 +688,7 @@ pub mod tests {
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder
-                .add_output(amount2, &alice.default_subaddress(), &mut rng)
+                .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
             let sci = builder.build(&mut rng).unwrap();
@@ -934,7 +935,7 @@ pub mod tests {
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder
-                .add_output(amount2, &alice.default_subaddress(), &mut rng)
+                .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
             let sci = builder.build(&mut rng).unwrap();
@@ -1151,7 +1152,7 @@ pub mod tests {
 
             // Alice requests 100_000 token2 in exchange
             let (_txout, _confirmation) = builder
-                .add_output(
+                .add_required_output(
                     Amount::new(100_000, token2),
                     &alice.default_subaddress(),
                     &mut rng,
@@ -1185,12 +1186,16 @@ pub mod tests {
             // Bob keeps the change from token id 2
             let bob_change_dest = ReservedDestination::from(&bob);
             builder
-                .add_change_output(Amount::new(200_000, token2), &bob_change_dest, &mut rng)
+                .add_required_change_output(
+                    Amount::new(200_000, token2),
+                    &bob_change_dest,
+                    &mut rng,
+                )
                 .unwrap();
 
             // Bob wants 666 of token id 3
             builder
-                .add_output(
+                .add_required_output(
                     Amount::new(666, token3),
                     &bob.default_subaddress(),
                     &mut rng,
@@ -1450,7 +1455,7 @@ pub mod tests {
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder
-                .add_output(amount2, &alice.default_subaddress(), &mut rng)
+                .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
             let sci = builder.build(&mut rng).unwrap();
@@ -1541,7 +1546,7 @@ pub mod tests {
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder
-                .add_output(amount2, &alice.default_subaddress(), &mut rng)
+                .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
             let sci = builder.build(&mut rng).unwrap();
@@ -1651,7 +1656,7 @@ pub mod tests {
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder
-                .add_output(amount2, &alice.default_subaddress(), &mut rng)
+                .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
             let sci = builder.build(&mut rng).unwrap();
@@ -1756,8 +1761,8 @@ pub mod tests {
             .unwrap();
 
             // Alice requests amount2 worth of token id 2 in exchange
-            let (_txout, _confirmation) = builder
-                .add_output(amount2, &alice.default_subaddress(), &mut rng)
+            builder
+                .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
             let sci = builder.build(&mut rng).unwrap();
@@ -1866,7 +1871,7 @@ pub mod tests {
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder
-                .add_output(amount2, &alice.default_subaddress(), &mut rng)
+                .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
             let mut sci = builder.build(&mut rng).unwrap();
@@ -1990,7 +1995,7 @@ pub mod tests {
 
             // Alice requests amount2 worth of token id 2 in exchange
             let (_txout, _confirmation) = builder
-                .add_output(amount2, &alice.default_subaddress(), &mut rng)
+                .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
             let mut sci = builder.build(&mut rng).unwrap();
@@ -2108,8 +2113,8 @@ pub mod tests {
             .unwrap();
 
             // Alice requests amount2 worth of token id 2 in exchange
-            let (_txout, _confirmation) = builder
-                .add_output(amount2, &alice.default_subaddress(), &mut rng)
+            builder
+                .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
             let sci = builder.build(&mut rng).unwrap();
@@ -2218,8 +2223,8 @@ pub mod tests {
             .unwrap();
 
             // Alice requests amount2 worth of token id 2 in exchange
-            let (_txout, _confirmation) = builder
-                .add_output(amount2, &alice.default_subaddress(), &mut rng)
+            builder
+                .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
             let mut sci = builder.build(&mut rng).unwrap();

@@ -145,7 +145,7 @@ mod tests {
             .unwrap();
 
             sci_builder
-                .add_output(
+                .add_required_output(
                     Amount::new(1000 * MILLIMOB_TO_PICOMOB, Mob::ID),
                     &charlie.default_subaddress(),
                     &mut rng,
