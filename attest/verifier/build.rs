@@ -25,7 +25,7 @@ use rand_hc::Hc128Rng;
 use std::{
     convert::TryFrom,
     env,
-    fs::{read, read_to_string, remove_file, write},
+    fs::{read, remove_file, write},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
@@ -123,7 +123,7 @@ fn main() {
     let mut signer_key_path = data_path.clone();
     signer_key_path.push("signer.key");
 
-    let mut chain_path = data_path.clone();
+    let mut chain_path = data_path;
     chain_path.push("chain.pem");
 
     cargo_emit::rerun_if_env_changed!("MC_SEED");
@@ -140,19 +140,12 @@ fn main() {
     purge_expired_cert(&root_anchor_path);
     purge_expired_cert(&chain_path);
 
-    let mut previous_seed_path = data_path;
-    previous_seed_path.push("previous_seed.txt");
-
-    let previous_seed = read_to_string(&previous_seed_path).unwrap_or_default();
-
     let new_seed = match env::var("MC_SEED") {
-        Ok(seed_hex) => Some(seed_hex),
-        Err(_) => None,
+        Ok(_) => true,
+        Err(_) => false,
     };
 
-    if !(root_anchor_path.exists() && signer_key_path.exists() && chain_path.exists())
-        || (new_seed.is_some() && new_seed != Some(previous_seed))
-    {
+    if !(root_anchor_path.exists() && signer_key_path.exists() && chain_path.exists()) || new_seed {
         const ROOT_SUBJECT: &str = "C=US,ST=CA,L=Santa Clara,O=Intel Corporation,CN=Simulation Intel SGX Attestation Report Signing CA\0";
         const SIGNER_SUBJECT: &str = "C=US,ST=CA,L=Santa Clara,O=Intel Corporation,CN=Simulation Intel SGX Attestation Report Signer\0";
 
@@ -279,9 +272,6 @@ fn main() {
             .expect("Could not create PEM string of certificate");
 
         write(chain_path, &(root_cert_pem + &signer_cert_pem)).expect("Unable to write cert chain");
-        if let Some(new_seed) = new_seed {
-            write(previous_seed_path, &new_seed).expect("Unable to write previous seed");
-        }
     }
 
     let env = Environment::default();
