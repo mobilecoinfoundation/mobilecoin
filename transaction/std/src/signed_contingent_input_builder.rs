@@ -28,21 +28,24 @@ use rand_core::{CryptoRng, RngCore};
 /// use the memos in the TxOuts.
 #[derive(Debug)]
 pub struct SignedContingentInputBuilder<FPR: FogPubkeyResolver> {
-    /// The block version that we are targeting for this transaction
+    /// The block version that we are targeting for this input
     block_version: BlockVersion,
-    /// The input material used to form the transaction
+    /// The input which is being signed
     input_credentials: InputCredentials,
     /// Global indices for the tx out's in the ring
     tx_out_global_indices: Vec<u64>,
     /// The outputs created by the transaction, and associated secrets
     outputs_and_secrets: Vec<(TxOut, OutputSecret)>,
-    /// The tombstone_block value, a block index in which the transaction
-    /// expires, and can no longer be added to the blockchain
+    /// The tombstone_block value, a block index in which the signed input
+    /// expires, and can no longer be used. (This works by implying a limit
+    /// on the tombstone block for any transaction which incorporates the signed
+    /// input.)
     tombstone_block: u64,
-    /// The source of validated fog pubkeys used for this transaction
+    /// The source of validated fog pubkeys used for this signed contingent
+    /// input
     fog_resolver: FPR,
-    /// The limit on the tombstone block value imposed pubkey_expiry values in
-    /// fog pubkeys used so far
+    /// The limit on the tombstone block value imposed by pubkey_expiry values
+    /// in fog pubkeys used so far
     fog_tombstone_block_limit: u64,
     /// A policy object implementing MemoBuilder which constructs memos for
     /// this transaction.
@@ -333,8 +336,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         // Now we can create the mlsag
         let mut tx_in = TxIn::from(&self.input_credentials);
         tx_in.input_rules = Some(input_rules.clone());
-        let mut ring = SignableInputRing::from(self.input_credentials);
-        ring.input_rules = Some(input_rules.clone());
+        let ring = SignableInputRing::from(self.input_credentials);
 
         let pseudo_output_blinding = Scalar::random(rng);
 
