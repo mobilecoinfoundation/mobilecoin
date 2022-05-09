@@ -108,7 +108,6 @@ impl From<InputCredentials> for SignableInputRing {
                 .collect(),
             real_input_index: src.real_index,
             input_secret: src.input_secret.clone(),
-            input_rules: None,
         }
     }
 }

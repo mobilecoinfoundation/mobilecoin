@@ -44,9 +44,6 @@ pub struct SignableInputRing {
 
     /// The secrets needed to sign that input
     pub input_secret: InputSecret,
-
-    /// The rules that will be associated to this signature after we sign it
-    pub input_rules: Option<InputRules>,
 }
 
 /// A presigned RingMLSAG and ancillary data needed to incorporate it into a
@@ -198,9 +195,7 @@ impl SignatureRctBulletproofs {
     /// * `message` - The message which was signed
     /// * `rings` - One or more rings which were signed to create this signature
     /// * `output_commitments` - Output amount commitments.
-    /// * `fee` - Value of the implicit fee output.
-    /// * `fee_token_id` - This determines the pedersen generator for fee
-    ///   commitment
+    /// * `fee` - Amount of the implicit fee output. commitment
     /// * `rng` - randomness
     pub fn verify<CSPRNG: RngCore + CryptoRng>(
         &self,
@@ -468,10 +463,8 @@ impl SignatureRctBulletproofs {
 /// * `message` - The messages to be signed, e.g. Hash(TxPrefix).
 /// * `rings` - One or more rings of one-time addresses and amount commitments,
 ///   with secrets for the real input
-/// * `presigned_rings` - Zero or more pre-signed input rings
 /// * `output_secrets` - Output secret for each output amount commitment.
-/// * `fee` - Value of the implicit fee output.
-/// * `fee_token_id` - Token id of the fee output.
+/// * `fee` - Amount of the implicit fee output.
 /// * `check_value_is_preserved` - If true, check that the value of inputs
 /// * `rng` - randomness
 fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
@@ -512,11 +505,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
                 InputRing::Presigned(_) => {
                     return Err(Error::SignedInputRulesNotAllowed);
                 }
-                InputRing::Signable(ring) => {
-                    if ring.input_rules.is_some() {
-                        return Err(Error::SignedInputRulesNotAllowed);
-                    }
-                }
+                InputRing::Signable(_) => {}
             };
         }
     }
@@ -705,21 +694,9 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
             |(ring, pseudo_output_blinding)| -> Result<RingMLSAG, Error> {
                 Ok(match ring {
                     InputRing::Signable(ring) => {
-                        let rules_digest = ring
-                            .input_rules
-                            .as_ref()
-                            .map(|rules| rules.digest())
-                            .unwrap_or_default();
-
-                        let sign_this: &[u8] = if ring.input_rules.is_some() {
-                            &rules_digest
-                        } else {
-                            &extended_message_digest
-                        };
-
                         let generator = generator_cache.get(ring.input_secret.amount.token_id);
                         RingMLSAG::sign(
-                            sign_this,
+                            &extended_message_digest,
                             &ring.members,
                             ring.real_input_index,
                             &ring.input_secret.onetime_private_key,
@@ -896,7 +873,7 @@ impl From<&SignableInputRing> for SignedInputRing {
     fn from(src: &SignableInputRing) -> SignedInputRing {
         SignedInputRing {
             members: src.members.clone(),
-            input_rules: src.input_rules.clone(),
+            input_rules: None,
         }
     }
 }
