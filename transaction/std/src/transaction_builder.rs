@@ -5,7 +5,7 @@
 //! See https://cryptonote.org/img/cryptonote_transaction.png
 
 use crate::{
-    input_materials::InputMaterials, ReservedDestination, InputCredentials, MemoBuilder,
+    input_materials::InputMaterials, InputCredentials, MemoBuilder, ReservedDestination,
     TxBuilderError,
 };
 use core::{cmp::min, fmt::Debug};
