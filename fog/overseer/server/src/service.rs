@@ -184,3 +184,13 @@ where
         Ok(response)
     }
 }
+
+impl<DB: RecoveryDb + Clone + Send + Sync + 'static> Drop for OverseerService<DB>
+where
+    OverseerError: From<DB::Error>,
+{
+    fn drop(&mut self) {
+        let _ = self.disable();
+        let _ = self.stop();
+    }
+}
