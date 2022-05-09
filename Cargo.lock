@@ -2670,6 +2670,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-serial",
  "once_cell",
+ "pem",
  "prost",
  "rand 0.8.5",
  "rand_core 0.6.3",
