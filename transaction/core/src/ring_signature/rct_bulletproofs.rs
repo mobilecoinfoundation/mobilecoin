@@ -515,14 +515,13 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     }
     let ring_size = rings
         .iter()
-        .filter_map(|ring| {
+        .find_map(|ring| {
             if let InputRing::Signable(ring) = ring {
                 Some(ring.members.len())
             } else {
                 None
             }
         })
-        .next()
         .ok_or(Error::AllRingsPresigned)?;
 
     if ring_size == 0 {
@@ -995,7 +994,6 @@ mod rct_bulletproofs_tests {
                         amount: Amount::new(value, token_id),
                         blinding,
                     },
-                    input_rules: None,
                 });
             }
 
