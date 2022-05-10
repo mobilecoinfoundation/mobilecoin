@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! A [BlockFetcher] that downloads [BlockData] from the given URI.
+//! A [Fetcher] that downloads [BlockData] from the given URI.
 
 use crate::BlockchainUrl;
 use displaydoc::Display;
@@ -9,7 +9,7 @@ use mc_common::{
     logger::{log, o, Logger},
     LruCache,
 };
-use mc_ledger_streaming_api::{ArchiveBlock, ArchiveBlocks, BlockFetcher, Error, Result};
+use mc_ledger_streaming_api::{ArchiveBlock, ArchiveBlocks, Error, Fetcher, Result};
 use mc_transaction_core::{Block, BlockData, BlockIndex};
 use protobuf::Message;
 use reqwest::Client;
@@ -34,7 +34,7 @@ pub const DEFAULT_MERGED_BLOCKS_BUCKET_SIZES: &[u64] = &[10000, 1000, 100];
 /// Maximum number of pre-fetched blocks to keep in cache.
 pub const MAX_PREFETCHED_BLOCKS: usize = 10000;
 
-/// A [BlockFetcher] that downloads [BlockData] from the given URI.
+/// A [Fetcher] that downloads [BlockData] from the given URI.
 #[derive(Debug, Display)]
 pub struct HttpBlockFetcher {
     /// The blockchain URL.
@@ -315,7 +315,7 @@ impl HttpBlockFetcher {
     }
 }
 
-impl BlockFetcher for HttpBlockFetcher {
+impl Fetcher<Result<BlockData>, BlockIndex, Range<BlockIndex>> for HttpBlockFetcher {
     type Single<'s> = impl Future<Output = Result<BlockData>> + 's;
     type Multiple<'s> = impl Stream<Item = Result<BlockData>> + 's;
 
@@ -323,7 +323,7 @@ impl BlockFetcher for HttpBlockFetcher {
         self.get_block_data_by_index(index, None)
     }
 
-    fn fetch_range(&self, indexes: Range<BlockIndex>) -> Self::Multiple<'_> {
+    fn fetch_multiple(&self, indexes: Range<BlockIndex>) -> Self::Multiple<'_> {
         self.get_range_prefer_merged(indexes).flatten_stream()
     }
 }
@@ -374,7 +374,7 @@ mod tests {
         let mut fetcher = create_fetcher();
         fetcher.set_merged_blocks_bucket_sizes(&[10]);
         fetcher
-            .fetch_range(0..10)
+            .fetch_multiple(0..10)
             .enumerate()
             .for_each_concurrent(None, move |(index, result)| {
                 let block_data =
@@ -404,7 +404,7 @@ mod tests {
         let mut fetcher = create_fetcher();
         fetcher.set_merged_blocks_bucket_sizes(&[10]);
         fetcher
-            .fetch_range(0..10)
+            .fetch_multiple(0..10)
             .enumerate()
             .for_each_concurrent(None, move |(index, result)| {
                 let block_data =

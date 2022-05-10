@@ -1,19 +1,19 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! A [BlockStream] that streams blocks using the `LedgerUpdates` gRPC API.
+//! A [Streamer] that streams blocks using the `LedgerUpdates` gRPC API.
 
 use displaydoc::Display;
 use futures::{Stream, StreamExt};
 use mc_common::logger::{log, o, Logger};
 use mc_ledger_streaming_api::{
     streaming_blocks::SubscribeRequest, streaming_blocks_grpc::LedgerUpdatesClient, ArchiveBlock,
-    BlockData, BlockStream, Result,
+    BlockData, BlockIndex, Result, Streamer,
 };
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConnectionUri;
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 
-/// A [BlockStream] that streams blocks using the `LedgerUpdates` gRPC API.
+/// A [Streamer] that streams blocks using the `LedgerUpdates` gRPC API.
 #[derive(Display)]
 pub struct GrpcBlockSource {
     /// The gRPC client
@@ -48,10 +48,10 @@ impl GrpcBlockSource {
     }
 }
 
-impl BlockStream for GrpcBlockSource {
+impl Streamer<Result<BlockData>, BlockIndex> for GrpcBlockSource {
     type Stream<'s> = impl Stream<Item = Result<BlockData>> + 's;
 
-    fn get_block_stream(&self, starting_height: u64) -> Result<Self::Stream<'_>> {
+    fn get_stream(&self, starting_height: BlockIndex) -> Result<Self::Stream<'_>> {
         use futures::stream::iter;
 
         let logger = &self.logger;
@@ -97,7 +97,7 @@ mod tests {
         let source = GrpcBlockSource::new(&uri, env, logger.clone());
 
         let result_fut = source
-            .get_block_stream(0)
+            .get_stream(0)
             .expect("Failed to start block stream")
             .map(|result| {
                 let block_data = result.expect("Error decoding block data");
@@ -119,7 +119,7 @@ mod tests {
 
         let mut got_error = false;
         let result_fut = source
-            .get_block_stream(0)
+            .get_stream(0)
             .expect("Failed to start block stream")
             .filter_map(|resp| match resp {
                 Ok(block_data) => ready(Some(block_data.block().index)),

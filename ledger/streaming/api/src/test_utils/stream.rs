@@ -1,11 +1,13 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Mock BlockStream
+//! Mock implementation of [Streamer<Result<BlockData>>], backed by pre-defined
+//! data.
 
-use crate::{BlockData, BlockStream, Result};
+use crate::{BlockData, BlockIndex, Result, Streamer};
 use futures::Stream;
 
-/// Mock implementation of BlockStream, backed by pre-defined data.
+/// Mock implementation of [Streamer<Result<BlockData>>], backed by pre-defined
+/// data.
 #[derive(Clone, Debug)]
 pub struct MockStream {
     items: Vec<Result<BlockData>>,
@@ -13,7 +15,7 @@ pub struct MockStream {
 
 impl MockStream {
     /// Instantiate a MockStream with the given items.
-    /// A subset of the items will be cloned for each `get_block_stream` call.
+    /// A subset of the items will be cloned for each `get_stream` call.
     pub fn new(items: Vec<Result<BlockData>>) -> Self {
         Self { items }
     }
@@ -25,10 +27,10 @@ impl MockStream {
     }
 }
 
-impl BlockStream for MockStream {
+impl Streamer<Result<BlockData>, BlockIndex> for MockStream {
     type Stream<'s> = impl Stream<Item = Result<BlockData>> + 's;
 
-    fn get_block_stream(&self, starting_height: u64) -> Result<Self::Stream<'_>> {
+    fn get_stream(&self, starting_height: BlockIndex) -> Result<Self::Stream<'_>> {
         let start_index = starting_height as usize;
         let items = self.items.iter().cloned().skip(start_index);
         Ok(futures::stream::iter(items))

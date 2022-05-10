@@ -10,11 +10,11 @@ use mc_common::{
     NodeID,
 };
 use mc_consensus_scp::{GenericNodeId, QuorumSet, QuorumSetMember, SlotIndex};
-use mc_ledger_streaming_api::{
-    BlockData, BlockStream, Error as StreamError, Result as StreamResult,
-};
+use mc_ledger_streaming_api::{BlockData, BlockIndex, Error, Result, Streamer};
 use mc_transaction_core::BlockID;
 use std::future;
+
+const MAX_BLOCK_DEFICIT: u64 = 50;
 
 /// Enum to allow monadic results other than Some & None for
 /// stream types were None would terminate the stream. Useful for
@@ -30,10 +30,33 @@ pub enum Ready<T> {
 /// SCP Validation stream factory, this factory takes in a group of
 /// streams from individual peers and validate that they pass SCP consensus.
 /// Note this will consume all other streams and return a single result
-pub struct SCPValidator<US: BlockStream + 'static, ID: GenericNodeId + Send = NodeID> {
+pub struct SCPValidator<
+    US: Streamer<Result<BlockData>, BlockIndex> + 'static,
+    ID: GenericNodeId + Send = NodeID,
+> {
     upstreams: HashMap<ID, US>,
     logger: Logger,
     scp_validation_state: SCPValidationState<ID>,
+}
+
+impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, ID: GenericNodeId + Send>
+    SCPValidator<US, ID>
+{
+    /// Create new SCP validator stream factory
+    pub fn new(
+        upstreams: HashMap<ID, US>,
+        logger: Logger,
+        local_node_id: ID,
+        quorum_set: QuorumSet<ID>,
+    ) -> Self {
+        let scp_validation_state =
+            SCPValidationState::new(local_node_id, quorum_set, logger.clone());
+        Self {
+            upstreams,
+            logger,
+            scp_validation_state,
+        }
+    }
 }
 
 /// State of SCP validation
@@ -56,26 +79,6 @@ pub struct SCPValidationState<ID: GenericNodeId + Send = NodeID> {
 
     /// Logger
     logger: Logger,
-}
-
-const MAX_BLOCK_DEFICIT: u64 = 50;
-
-impl<US: BlockStream + 'static, ID: GenericNodeId + Send> SCPValidator<US, ID> {
-    /// Create new SCP validator stream factory
-    pub fn new(
-        upstreams: HashMap<ID, US>,
-        logger: Logger,
-        local_node_id: ID,
-        quorum_set: QuorumSet<ID>,
-    ) -> Self {
-        let scp_validation_state =
-            SCPValidationState::new(local_node_id, quorum_set, logger.clone());
-        Self {
-            upstreams,
-            logger,
-            scp_validation_state,
-        }
-    }
 }
 
 impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
@@ -243,20 +246,22 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
     }
 }
 
-impl<US: BlockStream + 'static, ID: GenericNodeId + Send> BlockStream for SCPValidator<US, ID> {
+impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, ID: GenericNodeId + Send>
+    Streamer<Result<BlockData>, BlockIndex> for SCPValidator<US, ID>
+{
     type Stream<'s>
     where
         ID: 's,
-    = impl Stream<Item = StreamResult<BlockData>> + 's;
+    = impl Stream<Item = Result<BlockData>> + 's;
 
     /// Get block stream that performs validation
-    fn get_block_stream(&self, starting_height: u64) -> StreamResult<Self::Stream<'_>> {
+    fn get_stream(&self, starting_height: BlockIndex) -> Result<Self::Stream<'_>> {
         // Merge all streams into one
         let mut merged_streams = stream::SelectAll::new();
         for stream_factory in &self.upstreams {
             let (node_id, upstream) = stream_factory;
             log::info!(self.logger, "Generating new stream from {:?}", node_id);
-            let us = upstream.get_block_stream(starting_height).unwrap();
+            let us = upstream.get_stream(starting_height)?;
             let peer_id = node_id.clone();
             merged_streams.push(Box::pin(us.map(move |result| (peer_id.clone(), result))));
         }
@@ -280,7 +285,7 @@ impl<US: BlockStream + 'static, ID: GenericNodeId + Send> BlockStream for SCPVal
                 }
 
                 if scp_state.is_behind() {
-                    return future::ready(Some(Ready::Ready(Err(StreamError::ConsensusBlocked(
+                    return future::ready(Some(Ready::Ready(Err(Error::ConsensusBlocked(
                         scp_state.highest_externalized_slot(),
                         scp_state.highest_block_received(),
                     )))));
@@ -350,7 +355,7 @@ mod tests {
         let validator = SCPValidator::new(upstreams, logger.clone(), local_node_id, quorum_set);
 
         futures::executor::block_on(async move {
-            let mut scp_stream = validator.get_block_stream(0).unwrap();
+            let mut scp_stream = validator.get_stream(0).unwrap();
             let mut index: BlockIndex = 0;
             while let Some(result) = scp_stream.next().await {
                 index = result.unwrap().block().index;
