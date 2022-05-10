@@ -34,6 +34,7 @@ use mc_attest_verifier::Verifier;
 use mc_fog_report_types::ReportResponse;
 use mc_fog_sig::Verifier as FogSigVerifier;
 use mc_util_uri::{FogUri, UriParseError};
+use serde::{Deserialize, Serialize};
 
 /// Represents a set of unvalidated responses from Fog report servers
 /// Key = Fog-url that was contacted, must match the string in user's public
@@ -76,7 +77,7 @@ pub type FogReportResponses = BTreeMap<String, ReportResponse>;
 /// hints for transactions, without talking to the internet, and so is
 /// compatible with offline transactions to fog recipients. Only getting the
 /// FogReportResponses requires an online connection.
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct FogResolver {
     responses: FogReportResponses,
     verifier: IngestReportVerifier,

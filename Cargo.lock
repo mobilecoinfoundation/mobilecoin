@@ -3792,6 +3792,7 @@ dependencies = [
  "mc-util-serial",
  "mc-util-uri",
  "mockall",
+ "serde",
 ]
 
 [[package]]
