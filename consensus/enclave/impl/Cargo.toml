@@ -58,7 +58,9 @@ rand = "0.8"
 rand_hc = "0.3"
 
 [build-dependencies]
+mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-util-build-script = { path = "../../../util/build/script" }
 
 cargo-emit = "0.2"
 hex = "0.4"
+pem = "1.0"
