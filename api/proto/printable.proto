@@ -45,20 +45,17 @@ message TransferPayload {
     bytes bip39_entropy = 4;
 }
 
-/// Message encoding information about a TxOut required to locate a TxOut,
+/// Message encoding information required to locate a TxOut,
 /// un-blind the amount, and spend the TxOut. This can be used to give
-/// MobileCoin to a both FOG users & non-FOG users who may not yet have
+/// MobileCoin to both FOG & non-FOG users who may not yet have
 // a MobileCoin account enabled
 message TxOutGiftCode {
-
   // The global index of the TxOut that has been gifted. This allows
   // the receiver to find & uniquely identify the TxOut
   uint64 global_index = 1;
-
   // The one-time private key which can be used to spend the TxOut
   external.RistrettoPrivate onetime_private_key = 2;
-
-  // The shared secret used to unblind the amount of the TxOut
+  // The shared secret used to un-blind the amount of the TxOut
   external.CompressedRistretto shared_secret = 3;
 
 }

@@ -21,10 +21,10 @@ use mc_crypto_keys::{KeyError, RistrettoPrivate, RistrettoPublic};
 mod amount;
 mod blockchain;
 mod domain_separators;
-mod tx_out_gift_code;
 mod memo;
 mod token;
 mod tx_error;
+mod tx_out_gift_code;
 
 pub mod constants;
 pub mod encrypted_fog_hint;

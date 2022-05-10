@@ -41,8 +41,8 @@ impl TxOutGiftCode {
 
     /// Un-blind amount given a MaskedAmount object
     pub fn unblind_amount(&self, masked_amount: MaskedAmount) -> Result<Amount, AmountError> {
-        let (amount, _) = masked_amount.get_value(&self.shared_secret)?;
-        Ok(amount)
+        masked_amount.get_value(&self.shared_secret)
+            .map(|(amount, _)| amount)
     }
 
     /// Un-blind amount given a masked value and token id
@@ -51,9 +51,8 @@ impl TxOutGiftCode {
         masked_value: u64,
         masked_token_id: &[u8],
     ) -> Result<Amount, AmountError> {
-        let (_, amount) =
-            MaskedAmount::reconstruct(masked_value, masked_token_id, &self.shared_secret)?;
-        Ok(amount)
+        MaskedAmount::reconstruct(masked_value, masked_token_id, &self.shared_secret)
+            .map(|(_, amount)| amount)
     }
 }
 
