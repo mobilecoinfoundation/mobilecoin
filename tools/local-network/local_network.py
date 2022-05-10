@@ -160,7 +160,7 @@ class Node:
         self.ledger_distribution_process = None
         self.admin_http_gateway_process = None
         self.ledger_dir = os.path.join(WORK_DIR, f'node-ledger-{self.node_num}')
-        self.ledger_distribution_dir = os.path.join(WORK_DIR, f'node-ledger-distribution-{self.node_num}')
+        self.ledger_distribution_dir = os.path.join(TARGET_DIR, f'node-ledger-distribution-{self.node_num}')
         self.msg_signer_key_file = os.path.join(WORK_DIR, f'node-scp-{self.node_num}.pem')
         self.tokens_config_file = os.path.join(WORK_DIR, f'node-tokens-{self.node_num}.json')
         subprocess.check_output(f'openssl genpkey -algorithm ed25519 -out {self.msg_signer_key_file}', shell=True)
