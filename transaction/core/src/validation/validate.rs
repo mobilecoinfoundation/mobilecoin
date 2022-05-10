@@ -468,7 +468,7 @@ pub fn validate_all_input_rules(
     Ok(())
 }
 
-/// Any input rules imposed on the Tx must satisfied
+/// Validate that no input have input rules
 pub fn validate_that_no_input_rules_exist(tx: &Tx) -> TransactionValidationResult<()> {
     for input in tx.prefix.inputs.iter() {
         if input.input_rules.is_some() {
