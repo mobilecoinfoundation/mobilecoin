@@ -21,7 +21,7 @@ use mc_crypto_keys::{KeyError, RistrettoPrivate, RistrettoPublic};
 mod amount;
 mod blockchain;
 mod domain_separators;
-mod gift_code;
+mod tx_out_gift_code;
 mod memo;
 mod token;
 mod tx_error;
@@ -42,11 +42,11 @@ pub mod proptest_fixtures;
 
 pub use amount::{Amount, AmountError, Commitment, CompressedCommitment, MaskedAmount};
 pub use blockchain::*;
-pub use gift_code::GiftCode;
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
 pub use token::{tokens, Token, TokenId};
 pub use tx::MemoContext;
 pub use tx_error::{NewMemoError, NewTxError, ViewKeyMatchError};
+pub use tx_out_gift_code::TxOutGiftCode;
 
 use core::convert::TryFrom;
 use mc_account_keys::AccountKey;

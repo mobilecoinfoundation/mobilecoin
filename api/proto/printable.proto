@@ -49,7 +49,7 @@ message TransferPayload {
 /// un-blind the amount, and spend the TxOut. This can be used to give
 /// MobileCoin to a both FOG users & non-FOG users who may not yet have
 // a MobileCoin account enabled
-message GiftCode {
+message TxOutGiftCode {
 
   // The global index of the TxOut that has been gifted. This allows
   // the receiver to find & uniquely identify the TxOut
@@ -70,5 +70,5 @@ message PrintableWrapper { oneof wrapper {
     external.PublicAddress public_address = 1;
     PaymentRequest payment_request = 2;
     TransferPayload transfer_payload = 3;
-    GiftCode gift_code = 4;
+    TxOutGiftCode tx_out_gift_code = 4;
 }}
