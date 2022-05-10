@@ -1,0 +1,16 @@
+[package]
+name = "mc-attest-verifier-types"
+version = "1.3.0-pre0"
+authors = ["MobileCoin"]
+edition = "2018"
+description = "This crate contains the type definitions for attestation"
+
+[dependencies]
+mc-crypto-digestible = { path = "../../../crypto/digestible" }
+mc-util-encodings = { path = "../../../util/encodings" }
+
+binascii = "0.1.2"
+displaydoc = { version = "0.2", default-features = false }
+hex_fmt = "0.3"
+prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

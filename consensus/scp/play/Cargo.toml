@@ -10,7 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 mc-common = { path = "../../../common", features = ["loggers"] }
-mc-consensus-scp = { path = "../../../consensus/scp" }
+mc-consensus-scp = { path = "../../../consensus/scp", features = ["test_utils"] }
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-uri = { path = "../../../util/uri" }
 

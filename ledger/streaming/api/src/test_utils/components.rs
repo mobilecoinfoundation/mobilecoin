@@ -13,7 +13,7 @@ pub fn make_components(count: usize) -> Vec<BlockStreamComponents> {
     let mut parent: Option<Block> = None;
     (0..count)
         .map(|i| {
-            let contents = BlockContents::new(vec![], vec![]);
+            let contents = BlockContents::default();
             let block = if i == 0 {
                 Block::new_origin_block(&[])
             } else {

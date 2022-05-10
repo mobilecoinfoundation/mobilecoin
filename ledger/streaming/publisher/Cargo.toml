@@ -29,12 +29,6 @@ grpcio = "0.10"
 protobuf = "2.22"
 tokio = { version = "1.16", features = ["fs"], optional = true }
 
-[build-dependencies]
-mc-util-build-grpc = { path = "../../../util/build/grpc" }
-mc-util-build-script = { path = "../../../util/build/script" }
-
-cargo-emit = "0.2"
-
 [dev-dependencies]
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-rand = { path = "../../../crypto/rand" }

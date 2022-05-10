@@ -6,18 +6,22 @@ use crate::{
     msg::Topic::*,
     quorum_set::QuorumSet,
 };
-use mc_common::NodeID;
-use mc_crypto_digestible::Digestible;
-use mc_util_serial::prost::alloc::fmt::Formatter;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::{
+
+use alloc::{
+    collections::BTreeSet,
+    format,
+    string::{String, ToString},
+};
+use core::{
     cmp,
     cmp::Ordering,
-    collections::{hash_map::DefaultHasher, BTreeSet, HashSet},
     fmt,
-    fmt::{Debug, Display},
-    hash::{Hash, Hasher},
+    fmt::{Debug, Display, Formatter},
+    hash::{BuildHasher, Hash, Hasher},
 };
+use mc_common::{HashSet, HasherBuilder, NodeID};
+use mc_crypto_digestible::Digestible;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// The highest possible ballot counter.
 pub const INFINITY: u32 = <u32>::max_value();
@@ -629,9 +633,10 @@ impl<V: Value, ID: GenericNodeId> fmt::Display for Msg<V, ID> {
         };
 
         // Returns "<set.len, hash(set)>".
+        let hasher_builder = HasherBuilder::default();
         let format_b_tree_set = |b_tree_set: &BTreeSet<V>| {
             let hash = {
-                let mut hasher = DefaultHasher::new();
+                let mut hasher = hasher_builder.build_hasher();
                 b_tree_set.hash(&mut hasher);
                 hasher.finish()
             };
@@ -677,9 +682,8 @@ impl<V: Value, ID: GenericNodeId> fmt::Display for Msg<V, ID> {
 mod msg_tests {
     use super::*;
     use crate::test_utils::test_node_id;
+    use core::iter::FromIterator;
     use rand::seq::SliceRandom;
-    use std::iter::FromIterator;
-    extern crate mc_util_test_helper;
 
     #[test]
     /// Prepare implies "vote_or_accept prepare" for B, P, and PP.
@@ -733,7 +737,7 @@ mod msg_tests {
         );
 
         let votes_or_accepts_prepared = msg.votes_or_accepts_prepared();
-        let expected = HashSet::from_iter(vec![Ballot::new(INFINITY, &ballot.X)]);
+        let expected = HashSet::from_iter([Ballot::new(INFINITY, &ballot.X)]);
         assert_eq!(votes_or_accepts_prepared, expected);
     }
 
@@ -754,7 +758,7 @@ mod msg_tests {
         );
 
         let votes_or_accepts_prepared = msg.votes_or_accepts_prepared();
-        let expected = HashSet::from_iter(vec![Ballot::new(INFINITY, &ballot.X)]);
+        let expected = HashSet::from_iter([Ballot::new(INFINITY, &ballot.X)]);
 
         assert_eq!(votes_or_accepts_prepared, expected);
     }
@@ -787,7 +791,7 @@ mod msg_tests {
             );
 
             let accepts_prepared = msg.accepts_prepared();
-            let expected = HashSet::from_iter(vec![prepared, prepared_prime]);
+            let expected = HashSet::from_iter([prepared, prepared_prime]);
             assert_eq!(accepts_prepared, expected);
         }
 
@@ -832,7 +836,7 @@ mod msg_tests {
         );
 
         let accepts_prepared = msg.accepts_prepared();
-        let expected = HashSet::from_iter(vec![Ballot::new(9, &ballot.X)]);
+        let expected = HashSet::from_iter([Ballot::new(9, &ballot.X)]);
         assert_eq!(accepts_prepared, expected);
     }
 
@@ -852,7 +856,7 @@ mod msg_tests {
         );
 
         let accepts_prepared = msg.accepts_prepared();
-        let expected = HashSet::from_iter(vec![Ballot::new(INFINITY, &ballot.X)]);
+        let expected = HashSet::from_iter([Ballot::new(INFINITY, &ballot.X)]);
         assert_eq!(accepts_prepared, expected);
     }
 
@@ -1055,8 +1059,8 @@ mod msg_tests {
     // NominatePayload serialize/deserialize work as expected.
     fn nominatepayload_deserialize_works() {
         let payload = NominatePayload::<u32> {
-            X: BTreeSet::from_iter(vec![1, 2, 3]),
-            Y: BTreeSet::from_iter(vec![10, 20, 30]),
+            X: BTreeSet::from_iter([1, 2, 3]),
+            Y: BTreeSet::from_iter([10, 20, 30]),
         };
 
         let serialized_payload = mc_util_serial::serialize(&payload).unwrap();

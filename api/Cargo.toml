@@ -8,7 +8,7 @@ links = "mc-api"
 
 [dependencies]
 mc-account-keys = { path = "../account-keys" }
-mc-attest-core = { path = "../attest/core" }
+mc-attest-verifier-types = { path = "../attest/verifier/types" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-multisig = { path = "../crypto/multisig" }
 mc-transaction-core = { path = "../transaction/core" }

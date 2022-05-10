@@ -1,17 +1,17 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Core types for MobileCoin's implementation of SCP.
-use mc_crypto_digestible::Digestible;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::{
+use alloc::{sync::Arc, vec::Vec};
+use core::{
     clone::Clone,
     cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd},
-    collections::hash_map::DefaultHasher,
     fmt,
     fmt::{Debug, Display},
-    hash::{Hash, Hasher},
-    sync::Arc,
+    hash::{BuildHasher, Hash, Hasher},
 };
+use mc_common::HasherBuilder;
+use mc_crypto_digestible::Digestible;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// A generic node identifier.
 pub trait GenericNodeId:
@@ -125,7 +125,7 @@ impl<V: Value> PartialOrd for Ballot<V> {
 // This makes debugging easier when looking at large ballots.
 impl<V: Value> fmt::Display for Ballot<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut hasher = DefaultHasher::new();
+        let mut hasher = HasherBuilder::default().build_hasher();
         self.X.hash(&mut hasher);
         let hashed_X_values = hasher.finish();
         write!(f, "<{}, {}:{:x}>", self.N, self.X.len(), hashed_X_values)
