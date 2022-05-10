@@ -14,6 +14,7 @@ use mc_util_repr_bytes::{
 };
 use prost::Message;
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 use crate::{
     amount::{Amount, AmountError, MaskedAmount},
@@ -284,7 +285,7 @@ impl From<&TxIn> for SignedInputRing {
 }
 
 /// An output created by a transaction.
-#[derive(Clone, Deserialize, Eq, Hash, PartialEq, Serialize, Message, Digestible)]
+#[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
 pub struct TxOut {
     /// The amount being sent.
     #[prost(message, required, tag = "1")]
@@ -457,7 +458,7 @@ impl TxOut {
 ///
 /// # References
 /// * [How Log Proofs Work](http://www.certificate-transparency.org/log-proofs-work)
-#[derive(Clone, Deserialize, Eq, PartialEq, Serialize, Message, Digestible)]
+#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize, Zeroize)]
 pub struct TxOutMembershipProof {
     /// Index of the TxOut that this proof refers to.
     #[prost(uint64, tag = "1")]
@@ -493,9 +494,11 @@ impl TxOutMembershipProof {
     }
 }
 
-#[derive(Clone, Deserialize, Eq, PartialOrd, Ord, PartialEq, Serialize, Message, Digestible)]
 /// An element of a TxOut membership proof, denoting an internal hash node in a
 /// Merkle tree.
+#[derive(
+    Clone, Deserialize, Digestible, Eq, Message, Ord, PartialEq, PartialOrd, Serialize, Zeroize,
+)]
 pub struct TxOutMembershipElement {
     /// The range of leaf nodes "under" this internal hash.
     #[prost(message, required, tag = "1")]
@@ -516,11 +519,21 @@ impl TxOutMembershipElement {
     }
 }
 
+/// A hash in a TxOut membership proof.
 #[derive(
-    Clone, Deserialize, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Debug, Digestible,
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    Digestible,
+    Eq,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize,
+    Zeroize,
 )]
 #[digestible(transparent)]
-/// A hash in a TxOut membership proof.
 pub struct TxOutMembershipHash(pub [u8; 32]);
 
 impl TxOutMembershipHash {

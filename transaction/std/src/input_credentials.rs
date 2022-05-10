@@ -11,7 +11,8 @@ use std::convert::TryFrom;
 use zeroize::Zeroize;
 
 /// Credentials required to construct a ring signature for an input.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Zeroize)]
+#[zeroize(drop)]
 pub struct InputCredentials {
     /// A "ring" containing "mixins" and the one "real" TxOut to be spent.
     pub ring: Vec<TxOut>,
@@ -119,17 +120,5 @@ impl From<&InputCredentials> for TxIn {
             proofs: input_credential.membership_proofs.clone(),
             input_rules: None,
         }
-    }
-}
-
-impl Zeroize for InputCredentials {
-    fn zeroize(&mut self) {
-        self.real_index.zeroize();
-    }
-}
-
-impl Drop for InputCredentials {
-    fn drop(&mut self) {
-        self.zeroize();
     }
 }

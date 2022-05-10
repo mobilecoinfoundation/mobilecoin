@@ -21,6 +21,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_util_serial::prost::Message;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 use crate::{
     constants::FEE_BLINDING,
@@ -81,7 +82,8 @@ impl InputRing {
 
 /// The secrets needed to create a signature that spends an existing output as
 /// an input
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Zeroize)]
+#[zeroize(drop)]
 pub struct InputSecret {
     /// The one-time private key for the output we are trying to spend
     pub onetime_private_key: RistrettoPrivate,
@@ -93,7 +95,8 @@ pub struct InputSecret {
 
 /// The secrets corresponding to an output that we are trying to authorize
 /// creation of
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Zeroize)]
+#[zeroize(drop)]
 pub struct OutputSecret {
     /// The amount of the output we are creating
     pub amount: Amount,
