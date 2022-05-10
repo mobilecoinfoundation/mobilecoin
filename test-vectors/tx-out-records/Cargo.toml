@@ -2,7 +2,7 @@
 name = "mc-test-vectors-tx-out-records"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 hex = "0.4"
