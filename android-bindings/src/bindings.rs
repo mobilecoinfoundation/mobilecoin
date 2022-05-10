@@ -414,7 +414,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_unmask_1amount(
                     "com/mobilecoin/lib/Amount",
                     "(Ljava/math/BigInteger;Lcom/mobilecoin/lib/UnsignedLong;)V",
                     &[
-                        jni::objects::JValue::Object(value), 
+                        jni::objects::JValue::Object(value),
                         jni::objects::JValue::Object(token_id),
                     ],
                 )?
