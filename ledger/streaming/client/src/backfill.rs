@@ -5,7 +5,7 @@
 use displaydoc::Display;
 use futures::{FutureExt, Stream, StreamExt};
 use mc_common::logger::{log, Logger};
-use mc_ledger_streaming_api::{BlockFetcher, BlockStream, BlockStreamComponents, Result};
+use mc_ledger_streaming_api::{BlockData, BlockFetcher, BlockStream, Result};
 use mc_transaction_core::BlockIndex;
 use std::pin::Pin;
 
@@ -32,7 +32,7 @@ impl<S: BlockStream, F: BlockFetcher> BlockStream for BackfillingStream<S, F> {
     type Stream<'s>
     where
         Self: 's,
-    = impl Stream<Item = Result<BlockStreamComponents>> + 's;
+    = impl Stream<Item = Result<BlockData>> + 's;
 
     fn get_block_stream(&self, starting_height: u64) -> Result<Self::Stream<'_>> {
         self.upstream
@@ -48,12 +48,12 @@ impl<S: BlockStream, F: BlockFetcher> BlockStream for BackfillingStream<S, F> {
     }
 }
 
-fn backfill_stream<'s, S: Stream<Item = Result<BlockStreamComponents>> + 's, F: BlockFetcher>(
+fn backfill_stream<'s, S: Stream<Item = Result<BlockData>> + 's, F: BlockFetcher>(
     upstream: S,
     starting_height: u64,
     fetcher: &'s F,
     logger: Logger,
-) -> impl Stream<Item = Result<BlockStreamComponents>> + 's {
+) -> impl Stream<Item = Result<BlockData>> + 's {
     use futures::stream::{empty, once};
 
     // Track the index of the last received block, so we know whether to filter,
@@ -63,11 +63,11 @@ fn backfill_stream<'s, S: Stream<Item = Result<BlockStreamComponents>> + 's, F: 
     upstream.flat_map(
         // The stream types are quite different across the different cases, so Box the
         // intermediate stream.
-        move |result| -> Pin<Box<dyn Stream<Item = Result<BlockStreamComponents>>>> {
+        move |result| -> Pin<Box<dyn Stream<Item = Result<BlockData>>>> {
             let next_index = prev_index.map_or_else(|| starting_height, |index| index + 1);
             match result {
-                Ok(components) => {
-                    let index = components.block_data.block().index;
+                Ok(block_data) => {
+                    let index = block_data.block().index;
                     // Check for whether we already yielded this index.
                     if prev_index.is_some() && index <= prev_index.unwrap() {
                         log::info!(
@@ -79,7 +79,7 @@ fn backfill_stream<'s, S: Stream<Item = Result<BlockStreamComponents>> + 's, F: 
                         return Box::pin(empty());
                     }
 
-                    let item_stream = once(async { Ok(components) });
+                    let item_stream = once(async { Ok(block_data) });
                     if index == next_index {
                         // Happy path: We got another consecutive item, so just return that.
                         prev_index = Some(index);
@@ -115,24 +115,24 @@ mod tests {
     use futures::executor::block_on;
     use mc_common::logger::test_with_logger;
     use mc_ledger_streaming_api::{
-        test_utils::{make_components, MockFetcher, MockStream},
+        test_utils::{make_blocks, MockFetcher, MockStream},
         Error,
     };
 
     #[test_with_logger]
     fn handles_unordered_stream(logger: Logger) {
-        let mut components = make_components(5);
+        let mut blocks = make_blocks(5);
         // Mini-shuffle.
-        components.swap(0, 2);
-        components.swap(1, 3);
-        let upstream = MockStream::from_components(components);
+        blocks.swap(0, 2);
+        blocks.swap(1, 3);
+        let upstream = MockStream::from_blocks(blocks);
         let fetcher = MockFetcher::new(5);
         let source = BackfillingStream::new(upstream, fetcher, logger);
 
         let result_fut = source
             .get_block_stream(0)
             .expect("Failed to start upstream")
-            .map(|resp| resp.expect("expected no errors").block_data.block().index)
+            .map(|resp| resp.expect("expected no errors").block().index)
             .collect::<Vec<_>>();
 
         let result = block_on(result_fut);
@@ -141,8 +141,7 @@ mod tests {
 
     #[test_with_logger]
     fn backfills_on_error(logger: Logger) {
-        let mut items: Vec<Result<BlockStreamComponents>> =
-            make_components(5).into_iter().map(Ok).collect();
+        let mut items: Vec<Result<BlockData>> = make_blocks(5).into_iter().map(Ok).collect();
         // Error at the beginning.
         items[0] = Err(Error::Grpc("start".to_owned()));
         // Mid-stream error.
@@ -150,14 +149,14 @@ mod tests {
         // Error at the end.
         items[4] = Err(Error::Grpc("end".to_owned()));
 
-        let upstream = MockStream::from_items(items);
+        let upstream = MockStream::new(items);
         let fetcher = MockFetcher::new(5);
         let source = BackfillingStream::new(upstream, fetcher, logger);
 
         let result_fut = source
             .get_block_stream(0)
             .expect("Failed to start upstream")
-            .map(|resp| resp.expect("expected no errors").block_data.block().index)
+            .map(|resp| resp.expect("expected no errors").block().index)
             .collect::<Vec<_>>();
 
         let result = block_on(result_fut);

@@ -21,10 +21,6 @@ fn main() {
 
     mc_util_build_grpc::compile_protos_and_generate_mod_rs(
         &all_proto_dirs,
-        &[
-            "archive_blocks.proto",
-            "quorum_set.proto",
-            "streaming_blocks.proto",
-        ],
+        &["archive_blocks.proto", "streaming_blocks.proto"],
     );
 }

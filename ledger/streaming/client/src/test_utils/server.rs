@@ -4,9 +4,10 @@
 
 use futures::{FutureExt, StreamExt};
 use mc_ledger_streaming_api::{
-    streaming_blocks::{SubscribeRequest, SubscribeResponse},
+    streaming_blocks::SubscribeRequest,
     streaming_blocks_grpc::{create_ledger_updates, LedgerUpdates},
     test_utils::Responses,
+    ArchiveBlock,
 };
 use mc_util_uri::ConnectionUri;
 use std::{str::FromStr, sync::Arc};
@@ -72,7 +73,7 @@ impl LedgerUpdates for MockLedgerUpdates {
         &mut self,
         ctx: grpcio::RpcContext,
         _req: SubscribeRequest,
-        sink: grpcio::ServerStreamingSink<SubscribeResponse>,
+        sink: grpcio::ServerStreamingSink<ArchiveBlock>,
     ) {
         // The sink requires WriteFlags in addition to the value.
         let responses = self

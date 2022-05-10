@@ -6,8 +6,8 @@
 syntax = "proto3";
 
 package quorum_set;
-
 import "external.proto";
+option go_package = "mobilecoin/api";
 
 message Node {
     string responder_id = 1;

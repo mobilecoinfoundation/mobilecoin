@@ -815,6 +815,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-consensus-scp-core"
+version = "1.3.0-pre0"
+dependencies = [
+ "mc-common",
+ "mc-crypto-digestible",
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "serde",
+]
+
+[[package]]
 name = "mc-crypto-ake-enclave"
 version = "1.3.0-pre0"
 dependencies = [
@@ -1303,7 +1314,9 @@ dependencies = [
  "hkdf",
  "lazy_static",
  "mc-account-keys",
+ "mc-attest-verifier-types",
  "mc-common",
+ "mc-consensus-scp-core",
  "mc-crypto-box",
  "mc-crypto-digestible",
  "mc-crypto-hashes",

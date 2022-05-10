@@ -7,28 +7,12 @@ syntax = "proto3";
 package streaming_blocks;
 
 import "blockchain.proto";
-import "external.proto";
-import "quorum_set.proto";
 
 message SubscribeRequest {
     /// Block index to start from.
     uint64 starting_height = 1;
 }
 
-message BlockWithQuorumSet {
-    /// The block data.
-    blockchain.ArchiveBlock block = 1;
-    /// QuorumSet when the block was externalized.
-    quorum_set.QuorumSet quorum_set = 2;
-    /// Attestation Verification report.
-    external.VerificationReport report = 3;
-}
-
-message SubscribeResponse {
-    BlockWithQuorumSet result = 1;
-    external.Ed25519Signature result_signature = 2;
-}
-
 service LedgerUpdates {
-    rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse);
+    rpc Subscribe(SubscribeRequest) returns (stream blockchain.ArchiveBlock);
 }

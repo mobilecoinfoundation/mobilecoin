@@ -1,23 +1,20 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! A [BlockFetcher] that downloads [ArchiveBlocks] from the given URI.
+//! A [BlockFetcher] that downloads [BlockData] from the given URI.
 
 use crate::BlockchainUrl;
 use displaydoc::Display;
 use futures::{lock::Mutex, Future, FutureExt, Stream, StreamExt};
-use mc_api::blockchain::{ArchiveBlock, ArchiveBlocks};
 use mc_common::{
     logger::{log, o, Logger},
     LruCache,
 };
-use mc_ledger_streaming_api::{
-    archive_blocks_to_components, BlockFetcher, BlockStreamComponents, Error, Result,
-};
-use mc_transaction_core::{Block, BlockIndex};
+use mc_ledger_streaming_api::{ArchiveBlock, ArchiveBlocks, BlockFetcher, Error, Result};
+use mc_transaction_core::{Block, BlockData, BlockIndex};
 use protobuf::Message;
 use reqwest::Client;
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     ops::Range,
     sync::{
         atomic::{AtomicU64, Ordering},
@@ -37,7 +34,7 @@ pub const DEFAULT_MERGED_BLOCKS_BUCKET_SIZES: &[u64] = &[10000, 1000, 100];
 /// Maximum number of pre-fetched blocks to keep in cache.
 pub const MAX_PREFETCHED_BLOCKS: usize = 10000;
 
-/// A [BlockFetcher] that downloads [ArchiveBlocks] from the given URI.
+/// A [BlockFetcher] that downloads [BlockData] from the given URI.
 #[derive(Debug, Display)]
 pub struct HttpBlockFetcher {
     /// The blockchain URL.
@@ -49,9 +46,9 @@ pub struct HttpBlockFetcher {
     /// Merged blocks bucket sizes to attempt fetching.
     merged_blocks_bucket_sizes: Vec<u64>,
 
-    /// Cache mapping a [BlockIndex] to [BlockStreamComponents], filled by
+    /// Cache mapping a [BlockIndex] to [BlockData], filled by
     /// merged blocks when possible.
-    cache: Arc<Mutex<LruCache<BlockIndex, BlockStreamComponents>>>,
+    cache: Arc<Mutex<LruCache<BlockIndex, BlockData>>>,
 
     /// Number of successful cache hits when attempting to get block data.
     /// Used for debugging purposes.
@@ -109,7 +106,7 @@ impl HttpBlockFetcher {
         &self,
         block_index: BlockIndex,
         expected_block: Option<&Block>,
-    ) -> Result<BlockStreamComponents> {
+    ) -> Result<BlockData> {
         // Try and see if we can get this block from our cache.
         if let Some(cached) = self.get_cached(block_index, expected_block).await {
             return Ok(cached);
@@ -147,18 +144,18 @@ impl HttpBlockFetcher {
         // Try and get the block.
         log::debug!(
             self.logger,
-            "Attempting to fetch block {} from {}",
+            "Attempting to fetch block #{} from {}",
             block_index,
             url
         );
 
         let archive_block: ArchiveBlock = self.fetch_protobuf_object(&url).await?;
-        let components = BlockStreamComponents::try_from(&archive_block)?;
+        let block_data = BlockData::try_from(&archive_block)?;
 
         // If the caller is expecting a specific block, check that we received data for
         // the block they asked for
         if let Some(expected_block) = expected_block {
-            if expected_block != components.block_data.block() {
+            if expected_block != block_data.block() {
                 return Err(Error::Other(format!(
                     "Block data mismatch (downloaded from {})",
                     url
@@ -171,20 +168,20 @@ impl HttpBlockFetcher {
         log::trace!(
             self.logger,
             "Cache miss while getting block #{} (total hits/misses: {}/{})",
-            components.block_data.block().index,
+            block_data.block().index,
             hits,
             misses
         );
 
         // Got what we wanted!
-        Ok(components)
+        Ok(block_data)
     }
 
     async fn get_cached(
         &self,
         block_index: BlockIndex,
         expected_block: Option<&Block>,
-    ) -> Option<BlockStreamComponents> {
+    ) -> Option<BlockData> {
         // Sanity test.
         if let Some(expected_block) = expected_block {
             assert_eq!(block_index, expected_block.index);
@@ -196,12 +193,12 @@ impl HttpBlockFetcher {
         // assumption that our primary caller, LedgerSyncService, is not
         // going to try and fetch the same block twice if it managed to get
         // a valid block.
-        cache.pop(&block_index).and_then(|components| {
-            let index = components.block_data.block().index;
+        cache.pop(&block_index).and_then(|block_data| {
+            let index = block_data.block().index;
             // If we expect a specific Block then compare what the cache had with what we
             // expect.
             if let Some(expected_block) = expected_block {
-                if components.block_data.block() == expected_block {
+                if block_data.block() == expected_block {
                     let hits = self.hits.fetch_add(1, Ordering::SeqCst);
                     let misses = self.misses.load(Ordering::SeqCst);
                     log::trace!(
@@ -211,18 +208,18 @@ impl HttpBlockFetcher {
                         hits,
                         misses
                     );
-                    Some(components)
+                    Some(block_data)
                 } else {
                     log::warn!(
                         self.logger,
                         "Got cached block {:?} but actually requested {:?}! This should not happen",
-                        components.block_data.block(),
+                        block_data.block(),
                         expected_block
                     );
                     None
                 }
             } else if index == block_index {
-                Some(components)
+                Some(block_data)
             } else {
                 log::error!(
                     self.logger,
@@ -284,14 +281,14 @@ impl HttpBlockFetcher {
                 ))
             })?;
         let archive_blocks: ArchiveBlocks = self.fetch_protobuf_object(&url).await?;
-        let merged = archive_blocks_to_components(&archive_blocks)?;
-        let result = merged.len();
+        let blocks: Vec<BlockData> = (&archive_blocks).try_into()?;
+        let result = blocks.len();
         log::debug!(self.logger, "Got {} merged results from {}", result, url);
 
         {
             let mut cache = self.cache.lock().await;
-            for components in merged.into_iter() {
-                cache.put(components.block_data.block().index, components);
+            for block_data in blocks.into_iter() {
+                cache.put(block_data.block().index, block_data);
             }
         }
         Ok(result)
@@ -300,7 +297,7 @@ impl HttpBlockFetcher {
     async fn get_range_prefer_merged(
         &self,
         indexes: Range<BlockIndex>,
-    ) -> impl Stream<Item = Result<BlockStreamComponents>> + '_ {
+    ) -> impl Stream<Item = Result<BlockData>> + '_ {
         let n = indexes.end - indexes.start - 1;
         for bucket in &self.merged_blocks_bucket_sizes {
             if *bucket < n {
@@ -319,8 +316,8 @@ impl HttpBlockFetcher {
 }
 
 impl BlockFetcher for HttpBlockFetcher {
-    type Single<'s> = impl Future<Output = Result<BlockStreamComponents>> + 's;
-    type Multiple<'s> = impl Stream<Item = Result<BlockStreamComponents>> + 's;
+    type Single<'s> = impl Future<Output = Result<BlockData>> + 's;
+    type Multiple<'s> = impl Stream<Item = Result<BlockData>> + 's;
 
     fn fetch_single(&self, index: BlockIndex) -> Self::Single<'_> {
         self.get_block_data_by_index(index, None)
@@ -335,7 +332,7 @@ impl BlockFetcher for HttpBlockFetcher {
 mod tests {
     use super::*;
     use futures::future::ready;
-    use mc_ledger_streaming_api::{components_to_archive_blocks, test_utils::make_components};
+    use mc_ledger_streaming_api::test_utils::make_blocks;
     use mockito::{mock, server_url};
     use std::str::FromStr;
 
@@ -354,7 +351,7 @@ mod tests {
 
     #[tokio::test]
     async fn fetch_single() {
-        let items = make_components(1);
+        let items = make_blocks(1);
         let expected = ArchiveBlock::from(&items[0]);
         let mock_request = mock("GET", "/00/00/00/00/00/00/00/0000000000000001.pb")
             .with_body(expected.write_to_bytes().expect("expected.write_to_bytes"))
@@ -362,15 +359,14 @@ mod tests {
 
         let result = create_fetcher().fetch_single(1).await;
         mock_request.assert();
-        let data = result.expect("expected data");
-        // TODO(#1682): Include QuorumSet, VerificationReport.
-        assert_eq!(data.block_data, items[0].block_data);
+        let block_data = result.expect("expected data");
+        assert_eq!(block_data, items[0]);
     }
 
     #[tokio::test]
     async fn fetch_multiple_merged() {
-        let items = make_components(10);
-        let expected = components_to_archive_blocks(&items);
+        let items = make_blocks(10);
+        let expected = ArchiveBlocks::from(&items[..]);
         let mock_request = mock("GET", "/merged-10/00/00/00/00/00/00/00/0000000000000000.pb")
             .with_body(expected.write_to_bytes().expect("expected.write_to_bytes"))
             .create();
@@ -381,10 +377,9 @@ mod tests {
             .fetch_range(0..10)
             .enumerate()
             .for_each_concurrent(None, move |(index, result)| {
-                let components =
+                let block_data =
                     result.expect(&format!("unexpected error for item #{}", index + 1));
-                // TODO(#1682): Include QuorumSet, VerificationReport.
-                assert_eq!(components.block_data, items[index].block_data);
+                assert_eq!(block_data, items[index]);
                 ready(())
             })
             .await;
@@ -393,12 +388,12 @@ mod tests {
 
     #[tokio::test]
     async fn fetch_multiple_no_merged() {
-        let items = make_components(10);
+        let items = make_blocks(10);
         let mock_requests = items
             .iter()
-            .map(|components| {
-                let index = components.block_data.block().index;
-                let bytes = ArchiveBlock::from(components)
+            .map(|block_data| {
+                let index = block_data.block().index;
+                let bytes = ArchiveBlock::from(block_data)
                     .write_to_bytes()
                     .expect(&format!("expected[{}].write_to_bytes", index));
                 let path = format!("/00/00/00/00/00/00/00/{:016x}.pb", index);
@@ -412,10 +407,9 @@ mod tests {
             .fetch_range(0..10)
             .enumerate()
             .for_each_concurrent(None, move |(index, result)| {
-                let components =
+                let block_data =
                     result.expect(&format!("unexpected error for item #{}", index + 1));
-                // TODO(#1682): Include QuorumSet, VerificationReport.
-                assert_eq!(components.block_data, items[index].block_data);
+                assert_eq!(block_data, items[index]);
                 ready(())
             })
             .await;
