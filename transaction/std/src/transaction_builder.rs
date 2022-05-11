@@ -43,8 +43,11 @@ impl TxOutputsOrdering for DefaultTxOutputsOrdering {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct TxOutContext {
+    /// TxOut that comes from a transaction builder add_output/add_change_output
     pub tx_out: TxOut,
+    /// confirmation that comes from a transaction builder add_output/add_change_output
     pub confirmation: TxOutConfirmationNumber,
+    /// Shared Secret that comes from a transaction builder add_output/add_change_output
     pub shared_secret: RistrettoPublic
 }
 
