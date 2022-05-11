@@ -42,6 +42,10 @@ pub const INVALID_SUBADDRESS_INDEX: u64 = u64::MAX;
 /// counting down from `u64::MAX`. (See MCIP #4, MCIP #36)
 pub const CHANGE_SUBADDRESS_INDEX: u64 = u64::MAX - 1;
 
+/// The subaddress derived using u64::MAX - 2 is the reserved subaddress
+/// for gift code TxOuts to be sent as specified in MCIP #32.
+pub const GIFT_CODE_SUBADDRESS_INDEX: u64 = u64::MAX - 2;
+
 /// A MobileCoin user's public subaddress.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Message, Clone, Digestible)]
 pub struct PublicAddress {
@@ -365,6 +369,12 @@ impl AccountKey {
         self.subaddress(CHANGE_SUBADDRESS_INDEX)
     }
 
+    /// Get the account's gift code subaddress.
+    #[inline]
+    pub fn gift_code_subaddress(&self) -> PublicAddress {
+        self.subaddress(GIFT_CODE_SUBADDRESS_INDEX)
+    }
+
     /// Get the account's i^th subaddress.
     pub fn subaddress(&self, index: u64) -> PublicAddress {
         let view_public_key = {
@@ -433,6 +443,11 @@ impl AccountKey {
     /// The private view key for the change subaddress.
     pub fn change_subaddress_view_private(&self) -> RistrettoPrivate {
         self.subaddress_view_private(CHANGE_SUBADDRESS_INDEX)
+    }
+
+    /// The private view key for the gift code subaddress.
+    pub fn gift_code_subaddress_view_private(&self) -> RistrettoPrivate {
+        self.subaddress_view_private(GIFT_CODE_SUBADDRESS_INDEX)
     }
 
     /// The private view key for the i^th subaddress.

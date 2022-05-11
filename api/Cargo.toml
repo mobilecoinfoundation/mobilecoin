@@ -17,7 +17,7 @@ mc-util-serial = { path = "../util/serial" }
 mc-watcher-api = { path = "../watcher/api" }
 
 bs58 = "0.4.0"
-crc = "2.1.0"
+crc = "3.0.0"
 displaydoc = { version = "0.2", default-features = false }
 protobuf = "2.27.1"
 

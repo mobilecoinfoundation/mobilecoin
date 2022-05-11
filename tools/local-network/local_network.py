@@ -31,7 +31,7 @@ PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'
 MOB_RELEASE = os.getenv('MOB_RELEASE', '1')
 CARGO_FLAGS = '--release'
 TARGET_DIR = 'target/release'
-WORK_DIR = '/tmp/mc-local-network'
+WORK_DIR =  os.path.join(PROJECT_DIR, TARGET_DIR, 'mc-local-network')
 MINTING_KEYS_DIR = os.path.join(WORK_DIR, 'minting-keys')
 CLI_PORT = 31337
 

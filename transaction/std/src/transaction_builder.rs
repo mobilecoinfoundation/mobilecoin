@@ -4,7 +4,7 @@
 //!
 //! See https://cryptonote.org/img/cryptonote_transaction.png
 
-use crate::{ChangeDestination, InputCredentials, MemoBuilder, TxBuilderError};
+use crate::{InputCredentials, MemoBuilder, ReservedDestination, TxBuilderError};
 use core::{cmp::min, fmt::Debug};
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
@@ -214,7 +214,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     pub fn add_change_output<RNG: CryptoRng + RngCore>(
         &mut self,
         amount: Amount,
-        change_destination: &ChangeDestination,
+        change_destination: &ReservedDestination,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
         // Taking self.memo_builder here means that we can call functions on &mut self,
@@ -505,7 +505,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 /// * `fog_hint` - The encrypted fog hint to use
 /// * `memo_fn` - The memo function to use -- see TxOut::new_with_memo docu
 /// * `rng` -
-fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
+pub(crate) fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
     block_version: BlockVersion,
     amount: Amount,
     recipient: &PublicAddress,
@@ -538,7 +538,7 @@ fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
 /// * `encrypted_fog_hint` - The fog hint to use for a TxOut.
 /// * `pubkey_expiry` - The block at which this fog pubkey expires, or
 ///   u64::max_value() Imposes a limit on tombstone block for the transaction
-fn create_fog_hint<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
+pub(crate) fn create_fog_hint<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     recipient: &PublicAddress,
     fog_resolver: &FPR,
     rng: &mut RNG,
@@ -560,7 +560,9 @@ fn create_fog_hint<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
 pub mod transaction_builder_tests {
     use super::*;
     use crate::{
-        BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoType, RTHMemoBuilder, SenderMemoCredential,
+        test_utils::{get_input_credentials, get_ring, get_transaction},
+        BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoType, RTHMemoBuilder,
+        SenderMemoCredential,
     };
     use assert_matches::assert_matches;
     use maplit::btreemap;
@@ -581,197 +583,6 @@ pub mod transaction_builder_tests {
     };
     use rand::{rngs::StdRng, SeedableRng};
     use std::convert::TryFrom;
-
-    /// Creates a TxOut that sends `value` to `recipient`.
-    ///
-    /// Note: This is only used in test code
-    ///
-    /// # Arguments
-    /// * `value` - Value of the output, in picoMOB.
-    /// * `recipient` - Recipient's address.
-    /// * `fog_resolver` - Set of prefetched fog public keys to choose from
-    /// * `rng` - Entropy for the encryption.
-    ///
-    /// # Returns
-    /// * A transaction output, and the shared secret for this TxOut.
-    fn create_output<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
-        block_version: BlockVersion,
-        amount: Amount,
-        recipient: &PublicAddress,
-        fog_resolver: &FPR,
-        rng: &mut RNG,
-    ) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
-        let (hint, _pubkey_expiry) = create_fog_hint(recipient, fog_resolver, rng)?;
-        create_output_with_fog_hint(
-            block_version,
-            amount,
-            recipient,
-            hint,
-            |_| {
-                Ok(if block_version.e_memo_feature_is_supported() {
-                    Some(MemoPayload::default())
-                } else {
-                    None
-                })
-            },
-            rng,
-        )
-    }
-
-    /// Creates a ring of of TxOuts.
-    ///
-    /// # Arguments
-    /// * `block_version` - The block version for the TxOut's
-    /// * `token_id` - The token id for the real element
-    /// * `ring_size` - Number of elements in the ring.
-    /// * `account` - Owner of one of the ring elements.
-    /// * `value` - Value of the real element.
-    /// * `fog_resolver` - Fog public keys
-    /// * `rng` - Randomness.
-    ///
-    /// Returns (ring, real_index)
-    fn get_ring<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
-        block_version: BlockVersion,
-        amount: Amount,
-        ring_size: usize,
-        account: &AccountKey,
-        fog_resolver: &FPR,
-        rng: &mut RNG,
-    ) -> (Vec<TxOut>, usize) {
-        let mut ring: Vec<TxOut> = Vec::new();
-
-        // Create ring_size - 1 mixins with assorted token ids
-        for idx in 0..ring_size - 1 {
-            let address = AccountKey::random(rng).default_subaddress();
-            let token_id = if block_version.masked_token_id_feature_is_supported() {
-                TokenId::from(idx as u64)
-            } else {
-                Mob::ID
-            };
-            let amount = Amount {
-                value: amount.value,
-                token_id,
-            };
-            let (tx_out, _) =
-                create_output(block_version, amount, &address, fog_resolver, rng).unwrap();
-            ring.push(tx_out);
-        }
-
-        // Insert the real element.
-        let real_index = (rng.next_u64() % ring_size as u64) as usize;
-        let (tx_out, _) = create_output(
-            block_version,
-            amount,
-            &account.default_subaddress(),
-            fog_resolver,
-            rng,
-        )
-        .unwrap();
-        ring.insert(real_index, tx_out);
-        assert_eq!(ring.len(), ring_size);
-
-        (ring, real_index)
-    }
-
-    /// Creates an `InputCredentials` for an account.
-    ///
-    /// # Arguments
-    /// * `block_version` - Block version to use for the tx outs
-    /// * `token_id` - Token id for the real element
-    /// * `account` - Owner of one of the ring elements.
-    /// * `value` - Value of the real element.
-    /// * `fog_resolver` - Fog public keys
-    /// * `rng` - Randomness.
-    ///
-    /// Returns (input_credentials)
-    fn get_input_credentials<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
-        block_version: BlockVersion,
-        amount: Amount,
-        account: &AccountKey,
-        fog_resolver: &FPR,
-        rng: &mut RNG,
-    ) -> InputCredentials {
-        let (ring, real_index) = get_ring(block_version, amount, 3, account, fog_resolver, rng);
-        let real_output = ring[real_index].clone();
-
-        let onetime_private_key = recover_onetime_private_key(
-            &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
-            account.view_private_key(),
-            &account.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
-        );
-
-        let membership_proofs: Vec<TxOutMembershipProof> = ring
-            .iter()
-            .map(|_tx_out| {
-                // TransactionBuilder does not validate membership proofs, but does require one
-                // for each ring member.
-                TxOutMembershipProof::default()
-            })
-            .collect();
-
-        InputCredentials::new(
-            ring,
-            membership_proofs,
-            real_index,
-            onetime_private_key,
-            *account.view_private_key(),
-        )
-        .unwrap()
-    }
-
-    // Uses TransactionBuilder to build a transaction.
-    fn get_transaction<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver + Clone>(
-        block_version: BlockVersion,
-        token_id: TokenId,
-        num_inputs: usize,
-        num_outputs: usize,
-        sender: &AccountKey,
-        recipient: &AccountKey,
-        fog_resolver: FPR,
-        rng: &mut RNG,
-    ) -> Result<Tx, TxBuilderError> {
-        let mut transaction_builder = TransactionBuilder::new(
-            block_version,
-            Amount::new(Mob::MINIMUM_FEE, token_id),
-            fog_resolver.clone(),
-            EmptyMemoBuilder::default(),
-        )
-        .unwrap();
-        let input_value = 1000;
-        let output_value = 10;
-
-        // Inputs
-        for _i in 0..num_inputs {
-            let input_credentials = get_input_credentials(
-                block_version,
-                Amount {
-                    value: input_value,
-                    token_id,
-                },
-                sender,
-                &fog_resolver,
-                rng,
-            );
-            transaction_builder.add_input(input_credentials);
-        }
-
-        // Outputs
-        for _i in 0..num_outputs {
-            transaction_builder
-                .add_output(
-                    Amount::new(output_value, token_id),
-                    &recipient.default_subaddress(),
-                    rng,
-                )
-                .unwrap();
-        }
-
-        // Set the fee so that sum(inputs) = sum(outputs) + fee.
-        let fee = num_inputs as u64 * input_value - num_outputs as u64 * output_value;
-        transaction_builder.set_fee(fee).unwrap();
-
-        transaction_builder.build(rng)
-    }
 
     // Helper which produces a list of block_version, TokenId pairs to iterate over
     // in tests
@@ -1132,7 +943,7 @@ pub mod transaction_builder_tests {
 
         for (block_version, token_id) in get_block_version_token_id_pairs() {
             let sender = AccountKey::random_with_fog(&mut rng);
-            let sender_change_dest = ChangeDestination::from(&sender);
+            let sender_change_dest = ReservedDestination::from(&sender);
             let recipient = AccountKey::random_with_fog(&mut rng);
             let recipient_address = recipient.default_subaddress();
             let ingest_private_key = RistrettoPrivate::from_random(&mut rng);
@@ -1308,7 +1119,7 @@ pub mod transaction_builder_tests {
         for (block_version, token_id) in get_block_version_token_id_pairs() {
             let sender = AccountKey::random_with_fog(&mut rng);
             let sender_addr = sender.default_subaddress();
-            let sender_change_dest = ChangeDestination::from(&sender);
+            let sender_change_dest = ReservedDestination::from(&sender);
             let recipient = AccountKey::random_with_fog(&mut rng);
             let recipient_address = recipient.default_subaddress();
             let ingest_private_key = RistrettoPrivate::from_random(&mut rng);
@@ -2116,7 +1927,7 @@ pub mod transaction_builder_tests {
 
         for (block_version, token_id) in get_block_version_token_id_pairs() {
             let alice = AccountKey::random_with_fog(&mut rng);
-            let alice_change_dest = ChangeDestination::from(&alice);
+            let alice_change_dest = ReservedDestination::from(&alice);
             let bob = AccountKey::random_with_fog(&mut rng);
             let bob_address = bob.default_subaddress();
             let charlie = AccountKey::random_with_fog(&mut rng);
@@ -2311,7 +2122,7 @@ pub mod transaction_builder_tests {
             }
 
             let sender = AccountKey::random_with_fog(&mut rng);
-            let sender_change_dest = ChangeDestination::from(&sender);
+            let sender_change_dest = ReservedDestination::from(&sender);
             let recipient = AccountKey::random_with_fog(&mut rng);
             let recipient_address = recipient.default_subaddress();
             let ingest_private_key = RistrettoPrivate::from_random(&mut rng);
@@ -2607,7 +2418,7 @@ pub mod transaction_builder_tests {
 
         let fog_resolver = MockFogResolver::default();
         let sender = AccountKey::random(&mut rng);
-        let sender_change_dest = ChangeDestination::from(&sender);
+        let sender_change_dest = ReservedDestination::from(&sender);
         let recipient = burn_address();
 
         let value = 1475 * MILLIMOB_TO_PICOMOB;
@@ -2706,7 +2517,7 @@ pub mod transaction_builder_tests {
         let token_id = TokenId::from(5);
         let fog_resolver = MockFogResolver::default();
         let sender = AccountKey::random(&mut rng);
-        let change_destination = ChangeDestination::from(&sender);
+        let change_destination = ReservedDestination::from(&sender);
 
         // Adding an output that is not to the burn address is not allowed.
         {
@@ -3043,7 +2854,7 @@ pub mod transaction_builder_tests {
 
         let fog_resolver = MockFogResolver::default();
         let sender = AccountKey::random(&mut rng);
-        let sender_change_dest = ChangeDestination::from(&sender);
+        let sender_change_dest = ReservedDestination::from(&sender);
         let recipient = AccountKey::random(&mut rng);
         let recipient_addr = recipient.default_subaddress();
 
@@ -3173,7 +2984,7 @@ pub mod transaction_builder_tests {
 
         let fog_resolver = MockFogResolver::default();
         let sender = AccountKey::random(&mut rng);
-        let sender_change_dest = ChangeDestination::from(&sender);
+        let sender_change_dest = ReservedDestination::from(&sender);
         let recipient = AccountKey::random(&mut rng);
         let recipient_addr = recipient.default_subaddress();
 

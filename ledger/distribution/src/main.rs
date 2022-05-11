@@ -14,10 +14,12 @@ use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{BlockData, BlockIndex};
 use mc_util_telemetry::{mark_span_as_active, start_block_span, tracer, Tracer};
 use protobuf::Message;
-use rusoto_core::{Region, RusotoError};
-use rusoto_s3::{PutObjectError, PutObjectRequest, S3Client, S3};
+use retry::{delay, retry, OperationResult};
+use rusoto_core::Region;
+use rusoto_s3::{PutObjectRequest, S3Client, S3};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
+use tokio::runtime::Handle;
 
 /// Block writer.
 pub trait BlockHandler {
@@ -105,38 +107,37 @@ impl S3BlockWriter {
     }
 
     fn write_bytes_to_s3(&self, path: &str, filename: &str, value: &[u8]) {
-        let result: Result<
-            retry::OperationResult<(), ()>,
-            retry::Error<retry::OperationResult<(), RusotoError<PutObjectError>>>,
-        > = retry::retry(
-            retry::delay::Exponential::from_millis(10).map(retry::delay::jitter),
+        let runtime = Handle::current();
+        let result = retry(
+            delay::Exponential::from_millis(10).map(delay::jitter),
             || {
                 let req = PutObjectRequest {
                     bucket: path.to_string(),
-                    key: String::from(filename),
+                    key: filename.to_string(),
                     body: Some(value.to_vec().into()),
                     acl: Some("public-read".to_string()),
                     ..Default::default()
                 };
 
-                self.s3_client
-                    .put_object(req)
-                    .sync()
-                    .map(|_| retry::OperationResult::Ok(()))
-                    .map_err(|err: RusotoError<PutObjectError>| {
-                        log::warn!(
-                            self.logger,
-                            "Failed writing {}: {:?}, retrying...",
-                            filename,
-                            err
-                        );
-                        retry::OperationResult::Retry(err)
-                    })
+                runtime
+                    .block_on(self.s3_client.put_object(req))
+                    .map_or_else(
+                        |err| {
+                            log::warn!(
+                                self.logger,
+                                "Failed writing {}: {:?}, retrying...",
+                                filename,
+                                err
+                            );
+                            OperationResult::Retry(err)
+                        },
+                        OperationResult::Ok,
+                    )
             },
         );
 
         // We should always succeed since retrying should never stop until that happens.
-        assert!(result.is_ok());
+        result.expect("failed to write to S3");
     }
 }
 
@@ -240,11 +241,12 @@ impl BlockHandler for LocalBlockWriter {
 
         fs::create_dir_all(dir)
             .unwrap_or_else(|e| panic!("failed creating directory {:?}: {:?}", dir, e));
-        fs::write(&dest, bytes).unwrap_or_else(|_| {
+        fs::write(&dest, bytes).unwrap_or_else(|err| {
             panic!(
-                "failed writing block #{} to {:?}",
+                "failed writing block #{} to {:?}: {}",
                 block_data.block().index,
-                dest
+                dest,
+                err
             )
         });
     }
@@ -280,10 +282,10 @@ impl BlockHandler for LocalBlockWriter {
 
         fs::create_dir_all(dir)
             .unwrap_or_else(|e| panic!("failed creating directory {:?}: {:?}", dir, e));
-        fs::write(&dest, bytes).unwrap_or_else(|_| {
+        fs::write(&dest, bytes).unwrap_or_else(|err| {
             panic!(
-                "failed writing merged block #{}-{} to {:?}",
-                first_block_index, last_block_index, dest
+                "failed writing merged block #{}-{} to {:?}: {}",
+                first_block_index, last_block_index, dest, err,
             )
         });
     }
@@ -299,6 +301,12 @@ fn main() {
 
     let _tracer = mc_util_telemetry::setup_default_tracer(env!("CARGO_PKG_NAME"))
         .expect("Failed setting telemetry tracer");
+
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("tokio runtime");
+    let _enter_guard = runtime.enter();
 
     // Get path to our state file.
     let state_file_path = config.state_file.clone().unwrap_or_else(|| {
