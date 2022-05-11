@@ -23,7 +23,7 @@ pub use memo::{
     SenderMemoCredential, UnusedMemo,
 };
 pub use memo_builder::{BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoBuilder, RTHMemoBuilder};
-pub use transaction_builder::{DefaultTxOutputsOrdering, TransactionBuilder, TxOutputsOrdering};
+pub use transaction_builder::{DefaultTxOutputsOrdering, TransactionBuilder, TxOutContext, TxOutputsOrdering};
 
 // Re-export this to help the exported macros work
 pub use mc_transaction_core::MemoPayload;

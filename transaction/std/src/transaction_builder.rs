@@ -40,11 +40,12 @@ impl TxOutputsOrdering for DefaultTxOutputsOrdering {
 
 /// Transaction output context is produced by add_output method
 /// Used for receipt creation
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct TxOutContext {
-    tx_out: TxOut,
-    confirmation: TxOutConfirmationNumber,
-    shared_secret: RistrettoPublic
+    pub tx_out: TxOut,
+    pub confirmation: TxOutConfirmationNumber,
+    pub shared_secret: RistrettoPublic
 }
 
 /// Helper utility for building and signing a CryptoNote-style transaction,

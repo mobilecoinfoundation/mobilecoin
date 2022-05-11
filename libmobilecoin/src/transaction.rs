@@ -481,6 +481,7 @@ pub extern "C" fn mc_transaction_builder_add_output(
     recipient_address: FfiRefPtr<McPublicAddress>,
     rng_callback: FfiOptMutPtr<McRngCallback>,
     out_tx_out_confirmation_number: FfiMutPtr<McMutableBuffer>,
+    out_tx_out_shared_secret: FfiMutPtr<McMutableBuffer>,
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
 ) -> FfiOptOwnedPtr<McData> {
     ffi_boundary_with_error(out_error, || {
@@ -496,11 +497,12 @@ pub extern "C" fn mc_transaction_builder_add_output(
             .as_slice_mut_of_len(TxOutConfirmationNumber::size())
             .expect("out_tx_out_confirmation_number length is insufficient");
 
-        let (tx_out, confirmation) =
-            transaction_builder.add_output(amount, &recipient_address, &mut rng)?;
+        let tx_out_context =
+            transaction_builder.add_output_with_context(amount, &recipient_address, &mut rng)?;
 
-        out_tx_out_confirmation_number.copy_from_slice(confirmation.as_ref());
-        Ok(mc_util_serial::encode(&tx_out))
+        out_tx_out_confirmation_number.copy_from_slice(tx_out_context.confirmation.as_ref());
+        out_tx_out_shared_secret.copy_from_slice(tx_out_context.shared_secret.as_ref());
+        Ok(mc_util_serial::encode(&tx_out_context.tx_out))
     })
 }
 
@@ -523,6 +525,7 @@ pub extern "C" fn mc_transaction_builder_add_change_output(
     amount: u64,
     rng_callback: FfiOptMutPtr<McRngCallback>,
     out_tx_out_confirmation_number: FfiMutPtr<McMutableBuffer>,
+    out_tx_out_shared_secret: FfiMutPtr<McMutableBuffer>,
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
 ) -> FfiOptOwnedPtr<McData> {
     ffi_boundary_with_error(out_error, || {
@@ -539,11 +542,12 @@ pub extern "C" fn mc_transaction_builder_add_change_output(
             .as_slice_mut_of_len(TxOutConfirmationNumber::size())
             .expect("out_tx_out_confirmation_number length is insufficient");
 
-        let (tx_out, confirmation) =
-            transaction_builder.add_change_output(amount, &change_destination, &mut rng)?;
+        let tx_out_context =
+            transaction_builder.add_change_output_with_context(amount, &change_destination, &mut rng)?;
 
-        out_tx_out_confirmation_number.copy_from_slice(confirmation.as_ref());
-        Ok(mc_util_serial::encode(&tx_out))
+        out_tx_out_confirmation_number.copy_from_slice(tx_out_context.confirmation.as_ref());
+        out_tx_out_shared_secret.copy_from_slice(tx_out_context.shared_secret.as_ref());
+        Ok(mc_util_serial::encode(&tx_out_context.tx_out))
     })
 }
 
