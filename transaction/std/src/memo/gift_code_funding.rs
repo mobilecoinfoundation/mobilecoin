@@ -206,11 +206,12 @@ mod tests {
     #[test]
     fn test_gift_code_funding_memo_created_with_notes_near_max_byte_lengths() {
         // Create notes near max length
-        let note_len_minus_one =
-            str::from_utf8(&[b'6'; GiftCodeFundingMemo::NOTE_DATA_LEN - 1]).unwrap();
-        let note_len_exact = str::from_utf8(&[b'6'; GiftCodeFundingMemo::NOTE_DATA_LEN]).unwrap();
-        let note_len_plus_one =
-            str::from_utf8(&[b'6'; GiftCodeFundingMemo::NOTE_DATA_LEN + 1]).unwrap();
+        const LEN_EXACT: usize = GiftCodeFundingMemo::NOTE_DATA_LEN;
+        const LEN_MINUS_ONE: usize = GiftCodeFundingMemo::NOTE_DATA_LEN - 1;
+        const LEN_PLUS_ONE: usize = GiftCodeFundingMemo::NOTE_DATA_LEN + 1;
+        let note_len_minus_one = str::from_utf8(&[b'6'; LEN_MINUS_ONE]).unwrap();
+        let note_len_exact = str::from_utf8(&[b'6'; LEN_EXACT]).unwrap();
+        let note_len_plus_one = str::from_utf8(&[b'6'; LEN_PLUS_ONE]).unwrap();
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let key = RistrettoPublic::from_random(&mut rng);
 
@@ -220,14 +221,15 @@ mod tests {
         let memo_len_plus_one = GiftCodeFundingMemo::new(&key, note_len_plus_one);
 
         // Check note lengths match or error on creation if note is too large
-        let _memo_err: Result<GiftCodeFundingMemo, MemoError> =
-            Err(MemoError::BadLength(GiftCodeFundingMemo::NOTE_DATA_LEN + 1));
         assert_eq!(
             memo_len_minus_one.funding_note().unwrap(),
             note_len_minus_one
         );
         assert_eq!(memo_len_exact.funding_note().unwrap(), note_len_exact);
-        assert!(matches!(memo_len_plus_one, _memo_err));
+        assert!(matches!(
+            memo_len_plus_one,
+            Err(MemoError::BadLength(LEN_PLUS_ONE))
+        ));
 
         // Check public keys match for successful memo lengths for memos that didn't
         // error

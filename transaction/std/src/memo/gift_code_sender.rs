@@ -135,11 +135,12 @@ mod tests {
     #[test]
     fn test_gift_code_sender_memo_created_with_notes_near_max_byte_lengths() {
         // Create notes near max length
-        let note_len_minus_one =
-            str::from_utf8(&[b'6'; GiftCodeSenderMemo::MEMO_DATA_LEN - 1]).unwrap();
-        let note_len_exact = str::from_utf8(&[b'6'; GiftCodeSenderMemo::MEMO_DATA_LEN]).unwrap();
-        let note_len_plus_one =
-            str::from_utf8(&[b'6'; GiftCodeSenderMemo::MEMO_DATA_LEN + 1]).unwrap();
+        const LEN_EXACT: usize = GiftCodeSenderMemo::MEMO_DATA_LEN;
+        const LEN_MINUS_ONE: usize = GiftCodeSenderMemo::MEMO_DATA_LEN - 1;
+        const LEN_PLUS_ONE: usize = GiftCodeSenderMemo::MEMO_DATA_LEN + 1;
+        let note_len_minus_one = str::from_utf8(&[b'6'; LEN_MINUS_ONE]).unwrap();
+        let note_len_exact = str::from_utf8(&[b'6'; LEN_EXACT]).unwrap();
+        let note_len_plus_one = str::from_utf8(&[b'6'; LEN_PLUS_ONE]).unwrap();
 
         // Create memos from notes
         let memo_len_minus_one = GiftCodeSenderMemo::new(note_len_minus_one).unwrap();
@@ -147,14 +148,15 @@ mod tests {
         let memo_len_plus_one = GiftCodeSenderMemo::new(note_len_plus_one);
 
         // Check note lengths match or error on creation if too large
-        let _memo_err: Result<GiftCodeSenderMemo, MemoError> =
-            Err(MemoError::BadLength(GiftCodeSenderMemo::MEMO_DATA_LEN + 1));
         assert_eq!(
             memo_len_minus_one.sender_note().unwrap(),
             note_len_minus_one
         );
         assert_eq!(memo_len_exact.sender_note().unwrap(), note_len_exact);
-        assert!(matches!(memo_len_plus_one, _memo_err));
+        assert!(matches!(
+            memo_len_plus_one,
+            Err(MemoError::BadLength(LEN_PLUS_ONE))
+        ));
     }
 
     #[test]
