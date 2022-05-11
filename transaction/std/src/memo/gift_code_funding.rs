@@ -248,7 +248,7 @@ mod tests {
         memo_bytes[0..GiftCodeFundingMemo::HASH_DATA_LEN].copy_from_slice(&hash_bytes);
         memo_bytes
             [(GiftCodeFundingMemo::HASH_DATA_LEN - 1)..(GiftCodeFundingMemo::MEMO_DATA_LEN - 2)]
-            .copy_from_slice(&note.as_bytes());
+            .copy_from_slice(note.as_bytes());
         let memo = GiftCodeFundingMemo::from(&memo_bytes);
 
         // Check that the hash isn't correctly verified
@@ -270,7 +270,7 @@ mod tests {
         let mut memo_bytes = [0u8; GiftCodeFundingMemo::MEMO_DATA_LEN];
         memo_bytes[0..GiftCodeFundingMemo::HASH_DATA_LEN].copy_from_slice(&hash_bytes);
         memo_bytes[GiftCodeFundingMemo::HASH_DATA_LEN..(GiftCodeFundingMemo::MEMO_DATA_LEN - 1)]
-            .copy_from_slice(&note.as_bytes());
+            .copy_from_slice(note.as_bytes());
 
         // Corrupt bytes
         memo_bytes[2] = 42;
@@ -296,7 +296,7 @@ mod tests {
         let mut memo_bytes = [0u8; GiftCodeFundingMemo::MEMO_DATA_LEN];
         memo_bytes[0..GiftCodeFundingMemo::HASH_DATA_LEN].copy_from_slice(&hash_bytes);
         memo_bytes[GiftCodeFundingMemo::HASH_DATA_LEN..(GiftCodeFundingMemo::MEMO_DATA_LEN - 1)]
-            .copy_from_slice(&note.as_bytes());
+            .copy_from_slice(note.as_bytes());
         let memo = GiftCodeFundingMemo::from(&memo_bytes);
 
         // Check that the hash is correctly verified
