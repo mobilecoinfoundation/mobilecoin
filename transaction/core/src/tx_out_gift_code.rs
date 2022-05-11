@@ -41,7 +41,8 @@ impl TxOutGiftCode {
 
     /// Un-blind amount given a MaskedAmount object
     pub fn unblind_amount(&self, masked_amount: MaskedAmount) -> Result<Amount, AmountError> {
-        masked_amount.get_value(&self.shared_secret)
+        masked_amount
+            .get_value(&self.shared_secret)
             .map(|(amount, _)| amount)
     }
 
@@ -60,9 +61,16 @@ impl TxOutGiftCode {
 impl ConstantTimeEq for TxOutGiftCode {
     fn ct_eq(&self, other: &Self) -> Choice {
         self.global_index.ct_eq(&other.global_index).ct_eq(
-            &self.onetime_private_key.ct_eq(&other.onetime_private_key).ct_eq(
-                &self.shared_secret.as_ref().ct_eq(other.shared_secret.as_ref()))
-            )
+            &self
+                .onetime_private_key
+                .ct_eq(&other.onetime_private_key)
+                .ct_eq(
+                    &self
+                        .shared_secret
+                        .as_ref()
+                        .ct_eq(other.shared_secret.as_ref()),
+                ),
+        )
     }
 }
 
