@@ -27,8 +27,8 @@ impl GiftCodeCancellationMemo {
     pub const MEMO_DATA_LEN: usize = 64;
 
     /// Create a new gift code memo
-    pub fn new(memo_data: [u8; Self::MEMO_DATA_LEN]) -> Self {
-        GiftCodeCancellationMemo { memo_data }
+    pub fn new(global_index: u64) -> Self {
+        GiftCodeCancellationMemo::from(global_index)
     }
 
     /// Get the memo data
@@ -42,7 +42,7 @@ impl GiftCodeCancellationMemo {
     }
 }
 
-impl From<&[u8; 64]> for GiftCodeCancellationMemo {
+impl From<&[u8; Self::MEMO_DATA_LEN]> for GiftCodeCancellationMemo {
     fn from(src: &[u8; Self::MEMO_DATA_LEN]) -> Self {
         let mut memo_data = [0u8; Self::MEMO_DATA_LEN];
         memo_data.copy_from_slice(src);
@@ -52,7 +52,7 @@ impl From<&[u8; 64]> for GiftCodeCancellationMemo {
 
 impl From<GiftCodeCancellationMemo> for [u8; GiftCodeCancellationMemo::MEMO_DATA_LEN] {
     fn from(src: GiftCodeCancellationMemo) -> [u8; GiftCodeCancellationMemo::MEMO_DATA_LEN] {
-        src.memo_data
+        src.memo_data.clone()
     }
 }
 

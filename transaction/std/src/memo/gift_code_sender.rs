@@ -8,6 +8,14 @@ use crate::{impl_memo_type_conversions, RegisteredMemoType};
 use mc_transaction_core::MemoError;
 use std::{convert::TryFrom, str};
 
+/// A gift code is considered "redeemed" when the receiver of
+/// a gift code message uses the private spend key of the gift
+/// code TxOut (originally sent to the sender's reserved gift
+/// subaddress) to send the TxOut to them themselves. When that
+/// happens, the receiver can write an optional 64 byte null
+/// terminated utf-8 string in the memo field of an associated
+/// change TxOut to record any desired info about the gift code
+/// redemption.
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct GiftCodeSenderMemo {
     /// The data representing the gift code memo
@@ -23,8 +31,8 @@ impl GiftCodeSenderMemo {
     pub const MEMO_DATA_LEN: usize = 64;
 
     /// Create a new gift code memo
-    pub fn new(memo_data: [u8; Self::MEMO_DATA_LEN]) -> Self {
-        GiftCodeSenderMemo { memo_data }
+    pub fn new(note_data: &'static str) -> Result<Self, MemoError> {
+        GiftCodeSenderMemo::try_from(note_data)
     }
 
     /// Get the memo data
@@ -33,14 +41,12 @@ impl GiftCodeSenderMemo {
     }
 
     /// Get the sender note
-    pub fn sender_note(&self) -> &str {
-        str::from_utf8(&self.memo_data)
-            .unwrap()
-            .trim_matches(char::from(0))
+    pub fn sender_note(&self) -> Result<&str, MemoError> {
+        Ok(str::from_utf8(&self.memo_data)?.trim_matches(char::from(0)))
     }
 }
 
-impl From<&[u8; 64]> for GiftCodeSenderMemo {
+impl From<&[u8; Self::MEMO_DATA_LEN]> for GiftCodeSenderMemo {
     fn from(src: &[u8; Self::MEMO_DATA_LEN]) -> Self {
         let mut memo_data = [0u8; Self::MEMO_DATA_LEN];
         memo_data.copy_from_slice(src);
@@ -61,6 +67,7 @@ impl TryFrom<&str> for GiftCodeSenderMemo {
         if src.len() > Self::MEMO_DATA_LEN {
             return Err(MemoError::BadLength(src.len()));
         }
+
         let mut memo_data = [0u8; Self::MEMO_DATA_LEN];
         memo_data[0..src.len()].copy_from_slice(src.as_bytes());
         Ok(Self { memo_data })
@@ -78,6 +85,6 @@ mod tests {
     fn test_gift_code_sender_memo_to_and_from_str() {
         let note = "Dear Kitty, you received cash money MeowbleCoin UwU";
         let memo = GiftCodeSenderMemo::try_from(note).unwrap();
-        assert_eq!(memo.sender_note(), note);
+        assert_eq!(memo.sender_note().unwrap(), note);
     }
 }

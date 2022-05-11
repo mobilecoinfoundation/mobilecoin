@@ -31,13 +31,12 @@ impl RegisteredMemoType for GiftCodeFundingMemo {
 
 impl GiftCodeFundingMemo {
     /// Create a new gift funding code memo
-    pub fn new(tx_out_public_key: RistrettoPublic, note: &str) -> Result<Self, MemoError> {
+    pub fn new(tx_out_public_key: &RistrettoPublic, note: &str) -> Result<Self, MemoError> {
         // Check if note is of valid length and initialize memo data
         if note.len() > Self::NOTE_DATA_LEN {
             return Err(MemoError::BadLength(note.len()));
         }
         let mut memo_data = [0u8; Self::MEMO_DATA_LEN];
-
         // Compute TxOut hash and store it into the memo data
         memo_data[0..Self::HASH_DATA_LEN]
             .copy_from_slice(&tx_out_public_key_short_hash(tx_out_public_key));
@@ -64,33 +63,30 @@ impl GiftCodeFundingMemo {
     }
 
     /// Check if a given public key matches
-    /// TODO: Should this be constant time?
-    pub fn public_key_matches(&self, tx_out_public_key: RistrettoPublic) -> bool {
-        tx_out_public_key_short_hash(tx_out_public_key) == self.memo_data[0..4]
+    pub fn public_key_matches(&self, tx_out_public_key: &RistrettoPublic) -> bool {
+        tx_out_public_key_short_hash(tx_out_public_key) == self.memo_data[0..Self::HASH_DATA_LEN]
     }
 
     /// Get funding note from memo
-    pub fn funding_note(&self) -> &str {
+    pub fn funding_note(&self) -> Result<&str, MemoError> {
         let note_data = &self.memo_data[Self::HASH_DATA_LEN..];
-        str::from_utf8(note_data)
-            .unwrap()
-            .trim_matches(char::from(0))
+        Ok(str::from_utf8(note_data)?.trim_matches(char::from(0)))
     }
 }
 
 // Compute first four bytes of TxOut hash
 fn tx_out_public_key_short_hash(
-    tx_out_public_key: RistrettoPublic,
+    tx_out_public_key: &RistrettoPublic,
 ) -> [u8; GiftCodeFundingMemo::HASH_DATA_LEN] {
     let mut hasher = Blake2b512::new();
-    hasher.update("mc-memo-mac");
+    hasher.update("mc-gift-funding-tx-pub-key");
     hasher.update(tx_out_public_key.as_ref().compress().as_bytes());
     hasher.finalize().as_slice()[0..GiftCodeFundingMemo::HASH_DATA_LEN]
         .try_into()
         .unwrap()
 }
 
-impl From<&[u8; 64]> for GiftCodeFundingMemo {
+impl From<&[u8; Self::MEMO_DATA_LEN]> for GiftCodeFundingMemo {
     fn from(src: &[u8; Self::MEMO_DATA_LEN]) -> Self {
         let mut memo_data = [0u8; Self::MEMO_DATA_LEN];
         memo_data.copy_from_slice(src);
@@ -117,12 +113,61 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let note = "Cash money MeowbleCoin for Kitty";
         let txout_public_key = RistrettoPublic::from_random(&mut rng);
-        let memo = GiftCodeFundingMemo::new(txout_public_key, note).unwrap();
+        let memo = GiftCodeFundingMemo::new(&txout_public_key, note).unwrap();
 
         // Check that the note is extracted properly
-        assert_eq!(memo.funding_note(), note);
+        assert_eq!(memo.funding_note().unwrap(), note);
 
         // Check that the public key can be verified
-        assert!(memo.public_key_matches(txout_public_key));
+        assert!(memo.public_key_matches(&txout_public_key));
+    }
+
+    #[test]
+    fn test_gift_verify_wrong_public_key_doesnt_match() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let note = "Cash money MeowbleCoin for Kitty";
+        let txout_public_key = RistrettoPublic::from_random(&mut rng);
+        let other_key = RistrettoPublic::from_random(&mut rng);
+        let memo = GiftCodeFundingMemo::new(&txout_public_key, note).unwrap();
+
+        // Check that the public key can be verified
+        assert!(!memo.public_key_matches(&other_key));
+    }
+
+    #[test]
+    fn test_gift_creating_notes_near_max_byte_lengths() {
+        let note_59 = "01234567890123456789012345678901234567890123456789012345678";
+        let note_60 = "012345678901234567890123456789012345678901234567890123456789";
+        let note_61 = "0123456789012345678901234567890123456789012345678901234567890";
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let txout_public_key = RistrettoPublic::from_random(&mut rng);
+        let memo_59 = GiftCodeFundingMemo::new(&txout_public_key, note_59).unwrap();
+        let memo_60 = GiftCodeFundingMemo::new(&txout_public_key, note_60).unwrap();
+        let memo_61 = GiftCodeFundingMemo::new(&txout_public_key, note_61);
+        // Check that the public key can be verified
+        assert_eq!(memo_59.funding_note().unwrap(), note_59);
+        assert_eq!(memo_60.funding_note().unwrap(), note_60);
+        assert!(matches!(memo_61, Err(MemoError::BadLength(61))));
+    }
+
+    #[test]
+    fn test_gift_overlapping_byte_allocations_fail() {
+        let mut memo_bytes = [0u8; GiftCodeFundingMemo::MEMO_DATA_LEN];
+        let note_61 = "0123456789012345678901234567890123456789012345678901234567890";
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let txout_public_key = RistrettoPublic::from_random(&mut rng);
+        let hash_bytes = tx_out_public_key_short_hash(&txout_public_key);
+        memo_bytes[0..GiftCodeFundingMemo::HASH_DATA_LEN].copy_from_slice(&hash_bytes);
+        memo_bytes[(GiftCodeFundingMemo::HASH_DATA_LEN - 1)..GiftCodeFundingMemo::MEMO_DATA_LEN]
+            .copy_from_slice(&note_61.as_bytes());
+        let memo = GiftCodeFundingMemo::from(&memo_bytes);
+        // Check that the hash isn't correctly verified
+        assert!(!memo.public_key_matches(&txout_public_key));
+
+        // Check that note is erroneous
+        assert_eq!(
+            memo.funding_note().unwrap(),
+            "123456789012345678901234567890123456789012345678901234567890"
+        );
     }
 }

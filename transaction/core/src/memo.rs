@@ -34,7 +34,10 @@ use aes::{
     cipher::{FromBlockCipher, StreamCipher},
     Aes256, Aes256Ctr, NewBlockCipher,
 };
-use core::convert::{TryFrom, TryInto};
+use core::{
+    convert::{TryFrom, TryInto},
+    str::Utf8Error,
+};
 use displaydoc::Display;
 use generic_array::{
     sequence::Split,
@@ -221,6 +224,15 @@ derive_prost_message_from_repr_bytes!(MemoPayload);
 pub enum MemoError {
     /// Wrong length for memo payload: {0}
     BadLength(usize),
+
+    /// Utf-8 did note properly decode
+    Utf8Decoding,
+}
+
+impl From<Utf8Error> for MemoError {
+    fn from(_: Utf8Error) -> Self {
+        Self::Utf8Decoding
+    }
 }
 
 #[cfg(test)]
