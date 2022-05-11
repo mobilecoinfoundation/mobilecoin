@@ -151,6 +151,26 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         value: u64,
         recipient: &PublicAddress,
         rng: &mut RNG,
+    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+        let context = self.add_output_with_context(value, recipient, rng)?;
+        Ok((context.tx_out, context.confirmation))
+    }
+
+    /// Add a non-change output to the transaction.
+    ///
+    /// If a sender memo credential has been set, this will create an
+    /// authenticated sender memo for the TxOut. Otherwise the memo will be
+    /// unused.
+    ///
+    /// # Arguments
+    /// * `value` - The value of this output, in picoMOB.
+    /// * `recipient` - The recipient's public address
+    /// * `rng` - RNG used to generate blinding for commitment
+    pub fn add_output_with_context<RNG: CryptoRng + RngCore>(
+        &mut self,
+        value: u64,
+        recipient: &PublicAddress,
+        rng: &mut RNG,
     ) -> Result<TxOutContext, TxBuilderError> {
         // Taking self.memo_builder here means that we can call functions on &mut self,
         // and pass them something that has captured the memo builder.
@@ -161,7 +181,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .expect("memo builder is missing, this is a logic error");
         let block_version = self.block_version;
         let token_id = self.fee.token_id;
-        let result = self.add_output_with_fog_hint_address(
+        let result = self.add_output_with_fog_hint_address_with_context(
             value,
             recipient,
             recipient,
@@ -216,6 +236,43 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         value: u64,
         change_destination: &ChangeDestination,
         rng: &mut RNG,
+    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+        let context = self.add_change_output_with_context(value, change_destination, rng)?;
+        Ok((context.tx_out, context.confirmation))
+    }
+
+    /// Add a standard change output to the transaction.
+    ///
+    /// The change output is meant to send any value in the inputs not already
+    /// sent via outputs or fee, back to the sender's address.
+    /// The caller should ensure that the math adds up, and that
+    /// change_value + total_outlays + fee = total_input_value
+    ///
+    /// (Here, outlay means a non-change output).
+    ///
+    /// A change output should be sent to the dedicated change subaddress of the
+    /// sender.
+    ///
+    /// If provided, a Destination memo is attached to this output, which allows
+    /// for recoverable transaction history.
+    ///
+    /// The use of dedicated change subaddress for change outputs allows to
+    /// authenticate the contents of destination memos, which are otherwise
+    /// unauthenticated.
+    ///
+    /// # Arguments
+    /// * `value` - The value of this change output.
+    /// * `change_destination` - An object including both a primary address and
+    ///   a change subaddress to use to create this change output. The primary
+    ///   address is used for the fog hint, the change subaddress owns the
+    ///   change output. These can both be obtained from an account key, but
+    ///   this API does not require the account key.
+    /// * `rng` - RNG used to generate blinding for commitment
+    pub fn add_change_output_with_context<RNG: CryptoRng + RngCore>(
+        &mut self,
+        value: u64,
+        change_destination: &ChangeDestination,
+        rng: &mut RNG,
     ) -> Result<TxOutContext, TxBuilderError> {
         // Taking self.memo_builder here means that we can call functions on &mut self,
         // and pass them something that has captured the memo builder.
@@ -226,7 +283,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .expect("memo builder is missing, this is a logic error");
         let block_version = self.block_version;
         let token_id = self.fee.token_id;
-        let result = self.add_output_with_fog_hint_address(
+        let result = self.add_output_with_fog_hint_address_with_context(
             value,
             &change_destination.change_subaddress,
             &change_destination.primary_address,
@@ -267,7 +324,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// * `fog_hint_address` - The public address used to create the fog hint
     /// * `memo_fn` - The memo function to use (see TxOut::new_with_memo)
     /// * `rng` - RNG used to generate blinding for commitment
-    fn add_output_with_fog_hint_address<RNG: CryptoRng + RngCore>(
+    fn add_output_with_fog_hint_address_with_context<RNG: CryptoRng + RngCore>(
         &mut self,
         value: u64,
         recipient: &PublicAddress,
