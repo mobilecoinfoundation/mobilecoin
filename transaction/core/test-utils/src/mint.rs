@@ -64,7 +64,7 @@ pub fn create_mint_config_tx_and_signers(
         token_id: *token_id,
         configs: configs.clone(),
         nonce,
-        tombstone_block: 10,
+        tombstone_block: 2,
         total_mint_limit: configs[0].mint_limit + configs[1].mint_limit + configs[2].mint_limit,
     };
 
