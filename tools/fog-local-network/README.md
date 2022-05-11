@@ -58,8 +58,11 @@ In order to use it, the following steps are necessary.
     # Create a set of target keys. They would be identical to the first N keys inside `keys/`. This is needed if you don't
     # want to send to transactions to all 1000 keys created at step 1.
     # Notice the addition of the --output-dir argument
-    cargo run -p mc-util-keyfile --bin sample-keys --release -- --num 10
-    --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $(${CARGO_TARGET_DIR:-target}/release/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head)
+    cargo run -p mc-util-keyfile --bin sample-keys --release -- \
+        --num 10 \
+        --output-dir fog_keys \
+        --fog-report-url 'insecure-fog://localhost:6200' \
+        --fog-authority-root $(${CARGO_TARGET_DIR:-target}/release/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head)
 
     # Run the distribution script. This takes awhile and you should see transactions going through by looking at the logs.
     SGX_MODE=SW IAS_MODE=DEV MC_LOG=debug \
