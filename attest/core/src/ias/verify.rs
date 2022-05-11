@@ -409,7 +409,7 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
         let pse_manifest_hash = match data.remove("pseManifestHash") {
             Some(v) => {
                 let value: String = v.try_into()?;
-                let result_len = value.len() * 2;
+                let result_len = value.len() / 2;
                 let mut result = Vec::with_capacity(result_len);
                 hex::decode_to_slice(value.as_bytes(), &mut result)
                     .map_err(|e| PseManifestHashError::Parse(e.into()))?;
@@ -489,7 +489,8 @@ impl FromHex for VerificationSignature {
     type Error = EncodingError;
 
     fn from_hex(s: &str) -> Result<Self, EncodingError> {
-        let result_len = s.len() * 2;
+        // 2 hex chars per byte
+        let result_len = s.len() / 2;
         let mut result = Vec::with_capacity(result_len);
         hex::decode_to_slice(s, &mut result)?;
         result.truncate(result_len);
