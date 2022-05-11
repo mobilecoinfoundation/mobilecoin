@@ -86,14 +86,11 @@ impl FromBase64 for EpidPseudonym {
 
     /// Parse a Base64-encoded string into a 128-byte EpidPseudonym
     fn from_base64(src: &str) -> Result<Self, EncodingError> {
-        let mut buffer = [0u8; EPID_PSEUDONYM_LEN + 4];
-        let buflen = {
-            base64::decode_config_slice(src, B64_CONFIG, &mut buffer[..])?
-        };
-        if buflen != EPID_PSEUDONYM_LEN {
+        let buffer = base64::decode_config(src, B64_CONFIG)?;
+        if buffer.len() != EPID_PSEUDONYM_LEN {
             return Err(EncodingError::InvalidInputLength);
         }
-        let (left, right) = buffer.split_at(buflen / 2);
+        let (left, right) = buffer.split_at(buffer.len() / 2);
         Ok(Self {
             b: Vec::from(left),
             k: Vec::from(right),
@@ -409,12 +406,10 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
         let pse_manifest_hash = match data.remove("pseManifestHash") {
             Some(v) => {
                 let value: String = v.try_into()?;
-                let result_len = value.len() / 2;
-                let mut result = Vec::with_capacity(result_len);
-                hex::decode_to_slice(value.as_bytes(), &mut result)
-                    .map_err(|e| PseManifestHashError::Parse(e.into()))?;
-                result.truncate(result_len);
-                Some(result)
+                Some(
+                    hex::decode(value.as_bytes())
+                        .map_err(|e| PseManifestHashError::Parse(e.into()))?
+                )
             }
             None => None,
         };
@@ -490,11 +485,7 @@ impl FromHex for VerificationSignature {
 
     fn from_hex(s: &str) -> Result<Self, EncodingError> {
         // 2 hex chars per byte
-        let result_len = s.len() / 2;
-        let mut result = Vec::with_capacity(result_len);
-        hex::decode_to_slice(s, &mut result)?;
-        result.truncate(result_len);
-        Ok(VerificationSignature::from(result))
+        Ok(hex::decode(s)?.into())
     }
 }
 

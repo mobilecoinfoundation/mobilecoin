@@ -5,7 +5,7 @@
 use crate::{impl_sgx_newtype_for_bytestruct, B64_CONFIG};
 use alloc::{borrow::ToOwned, vec};
 use mc_sgx_types::{sgx_platform_info_t, SGX_PLATFORM_INFO_SIZE};
-use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex};
+use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex, base64_buffer_size};
 
 /// An opaque platform info blob structure.
 #[derive(Clone, Copy, Default)]
@@ -30,20 +30,16 @@ impl FromBase64 for PlatformInfoBlob {
             return Err(EncodingError::InvalidInputLength);
         }
 
-        let expected_len = src.len() / 4 * 3;
+        let expected_len = base64_buffer_size(src.len());
         if expected_len < SGX_PLATFORM_INFO_SIZE {
             return Err(EncodingError::InvalidInputLength);
         }
 
-        // This double-copy awfulness brought to you by Intel(tm) *jingle*
-        let mut data = vec![0u8; src.len() / 4 * 3];
-        let data_len = {
-            base64::encode_config_slice(src.as_bytes(), B64_CONFIG, data.as_mut_slice())
-        };
-        data.truncate(data_len);
-        let mut retval = Self::default();
-        retval.0.platform_info[..].copy_from_slice(&data[4..(SGX_PLATFORM_INFO_SIZE + 4)]);
-        Ok(retval)
+        let data = base64::encode_config(src.as_bytes(), B64_CONFIG);
+
+        let mut return_val = Self::default();
+        return_val.0.platform_info[..].copy_from_slice(&data.as_bytes()[4..(SGX_PLATFORM_INFO_SIZE + 4)]);
+        Ok(return_val)
     }
 }
 

@@ -8,7 +8,7 @@ use alloc::vec;
 // Dependencies
 use crate::{traits::*, B64_CONFIG};
 use alloc::{
-    string::{String, ToString},
+    string::ToString,
     vec::Vec,
 };
 use core::{
@@ -56,17 +56,12 @@ impl Debug for X25519Secret {
         hasher.update(self.as_ref());
         let hash_results = hasher.finalize();
 
-        let mut hash_strbuf: Vec<u8> = Vec::with_capacity(hash_results.len() * 2);
-        let hash_len = hash_results.len() * 2;
-        
-        hex::decode_to_slice(&hash_results, &mut hash_strbuf).map_err(|_e| FmtError)?;
-
-        hash_strbuf.truncate(hash_len);
+        let output = hex::decode(&hash_results).map_err(|_e| FmtError)?;
 
         write!(
             f,
             "X25519Secret SHA-256: {}",
-            from_utf8(&hash_strbuf).map_err(|_e| FmtError)?
+            from_utf8(&output).map_err(|_e| FmtError)?
         )
     }
 }
@@ -250,13 +245,11 @@ impl Debug for X25519Public {
     /// ```
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         let der = self.to_der();
-        let mut b64_output = vec![0u8; der.len() * 4 / 3 + 4];
-        let final_len = base64::encode_config_slice(&der, B64_CONFIG, &mut b64_output);
-        b64_output.truncate(final_len);
+        let encoded = base64::encode_config(&der, B64_CONFIG);
         write!(
             f,
             "-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n",
-            String::from_utf8(b64_output).map_err(|_e| FmtError)?
+            encoded
         )
     }
 }
