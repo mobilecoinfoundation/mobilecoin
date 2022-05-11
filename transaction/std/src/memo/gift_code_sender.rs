@@ -31,7 +31,7 @@ impl GiftCodeSenderMemo {
     pub const MEMO_DATA_LEN: usize = 64;
 
     /// Create a new gift code memo
-    pub fn new(note_data: &'static str) -> Result<Self, MemoError> {
+    pub fn new(note_data: &str) -> Result<Self, MemoError> {
         GiftCodeSenderMemo::try_from(note_data)
     }
 

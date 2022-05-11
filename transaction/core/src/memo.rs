@@ -225,7 +225,7 @@ pub enum MemoError {
     /// Wrong length for memo payload: {0}
     BadLength(usize),
 
-    /// Utf-8 did note properly decode
+    /// Utf-8 did not properly decode
     Utf8Decoding,
 }
 
