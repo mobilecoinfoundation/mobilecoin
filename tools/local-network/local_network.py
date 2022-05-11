@@ -30,14 +30,14 @@ IAS_SPID = os.getenv('IAS_SPID', default='0'*32) # 16 bytes
 PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 MOB_RELEASE = os.getenv('MOB_RELEASE', '1')
 CARGO_FLAGS = '--release'
-TARGET_DIR = 'target/release'
-WORK_DIR =  os.path.join(PROJECT_DIR, TARGET_DIR, 'mc-local-network')
+TARGET_DIR = os.path.join(os.getenv('CARGO_TARGET_DIR', os.path.join(PROJECT_DIR, 'target')), 'release')
+WORK_DIR =  os.path.join(TARGET_DIR, 'mc-local-network')
 MINTING_KEYS_DIR = os.path.join(WORK_DIR, 'minting-keys')
 CLI_PORT = 31337
 
 if MOB_RELEASE == '0':
     CARGO_FLAGS = ''
-    TARGET_DIR = 'target/debug'
+    TARGET_DIR = os.path.join(os.getenv('CARGO_TARGET_DIR', os.path.join(PROJECT_DIR, 'target')), 'debug')
 
 # Sane default log configuration
 if 'MC_LOG' not in os.environ:
