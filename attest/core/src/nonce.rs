@@ -147,8 +147,7 @@ impl ToHex for IasNonce {
     fn to_hex(&self, dest: &mut [u8]) -> Result<usize, usize> {
         let bytes = self.as_ref();
         match hex::encode_to_slice(bytes, dest) {
-            // Previously binascii was used instead of hex. 
-            // Binascii would always return input.len() * 2.
+            // Return the number of bytes used, per ToHex spec.
             Ok(()) => Ok(bytes.len()*2),
             Err(_e) => Err(IAS_NONCE_STR_LENGTH),
         }
