@@ -362,7 +362,7 @@ macro_rules! impl_base64str_for_bytestruct {
 
                 // Create an output buffer of at least MINSIZE bytes
                 let mut retval = Self::default();
-                $crate::traits::b64decode(s.as_bytes(), $crate::traits::B64_CONFIG, &mut (retval.0).$fieldname[..])?;
+                $crate::traits::b64decode(s.as_bytes(), $crate::B64_CONFIG, &mut (retval.0).$fieldname[..])?;
                 Ok(retval)
             }
         }
