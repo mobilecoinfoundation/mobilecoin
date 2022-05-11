@@ -24,6 +24,7 @@ mod domain_separators;
 mod memo;
 mod token;
 mod tx_error;
+mod tx_out_gift_code;
 
 pub mod constants;
 pub mod encrypted_fog_hint;
@@ -45,6 +46,7 @@ pub use memo::{EncryptedMemo, MemoError, MemoPayload};
 pub use token::{tokens, Token, TokenId};
 pub use tx::MemoContext;
 pub use tx_error::{NewMemoError, NewTxError, ViewKeyMatchError};
+pub use tx_out_gift_code::TxOutGiftCode;
 
 use core::convert::TryFrom;
 use mc_account_keys::AccountKey;
