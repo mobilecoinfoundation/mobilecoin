@@ -23,7 +23,7 @@ jobs:
     strategy:
       matrix:
         num_runners: [2]
-        runner_index: [0, 1]
+        runner_index: [1, 2]
       # Run each shard to completion.
       fail-fast: false
     env:
@@ -38,9 +38,10 @@ jobs:
       - name: List packages to test
         run: |
           cargo test -p 2>&1 | \
-            grep mc- | \
+            awk "/mc-/ { print \"-p \" \$1 }" | \
             grep -v -e mc-fog -e mc-consensus | \
-            awk "NR % $NUM_RUNNERS == $RUNNER_INDEX { print \"-p \" \$1 }" | \
+            sort > /tmp/test-packages
+          split -n l/$RUNNER_INDEX/$NUM_RUNNERS /tmp/test-packages | \
             tee /tmp/mc-test-packages
           # Hack: mc-util-sample-ledger needs mc-util-keyfile bins.
           # TODO: Replace with artifact deps when that does not require
@@ -60,7 +61,7 @@ jobs:
     strategy:
       matrix:
         num_runners: [2]
-        runner_index: [0, 1]
+        runner_index: [1, 2]
       # Run each shard to completion.
       fail-fast: false
     env:
@@ -75,8 +76,9 @@ jobs:
       - name: List packages to test
         run: |
           cargo test -p 2>&1 | \
-            grep mc-consensus | \
-            awk "NR % $NUM_RUNNERS == $RUNNER_INDEX { print \"-p \" \$1 }" | \
+            awk "/mc-consensus/ { print \"-p \" \$1 }" | \
+            sort > /tmp/test-packages
+          split -n l/$RUNNER_INDEX/$NUM_RUNNERS /tmp/test-packages | \
             tee /tmp/consensus-test-packages
       - name: Run tests
         uses: ./.github/actions/run-mc-tests
@@ -91,7 +93,7 @@ jobs:
     strategy:
       matrix:
         num_runners: [2]
-        runner_index: [0, 1]
+        runner_index: [1, 2]
       # Run each shard to completion.
       fail-fast: false
     env:
@@ -109,9 +111,10 @@ jobs:
       - name: List packages to test
         run: |
           cargo test -p 2>&1 | \
-            grep mc-fog | \
+            awk "/mc-fog/ { print \"-p \" \$1 }" | \
             grep -v mc-fog-ingest | \
-            awk "NR % $NUM_RUNNERS == $RUNNER_INDEX { print \"-p \" \$1 }" | \
+            sort > /tmp/test-packages
+          split -n l/$RUNNER_INDEX/$NUM_RUNNERS /tmp/test-packages | \
             tee /tmp/fog-test-packages
           # Hack: mc-fog-distribution needs bins from
           # mc-util-{keyfile,generate-sample-ledger}.
