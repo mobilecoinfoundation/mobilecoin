@@ -89,7 +89,7 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
         // Perform the actual validation.
         validate_mint_config_tx(
             mint_config_tx,
-            current_block_index,
+            Some(current_block_index),
             self.block_version,
             &governors,
         )?;
