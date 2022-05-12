@@ -342,13 +342,13 @@ mod tests {
         let input_toml: &str = r#"
             [[tokens]]
             token_id = 1
-            minimum_fee = 123000
+            minimum_fee = 128000
         "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         let input_json: &str = r#"{
             "tokens": [
-                { "token_id": 1, "minimum_fee": 123000 }
+                { "token_id": 1, "minimum_fee": 128000 }
             ]
         }"#;
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
@@ -385,13 +385,13 @@ mod tests {
         let input_toml: &str = r#"
             [[tokens]]
             token_id = 0
-            minimum_fee = 123000
+            minimum_fee = 128000
         "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         let input_json: &str = r#"{
             "tokens": [
-                { "token_id": 0, "minimum_fee": 123000 }
+                { "token_id": 0, "minimum_fee": 128000 }
             ]
         }"#;
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
@@ -401,7 +401,7 @@ mod tests {
         assert!(tokens.validate().is_ok());
         assert_eq!(
             tokens.get_token_config(&Mob::ID).unwrap().minimum_fee,
-            Some(123000)
+            Some(128000)
         );
 
         // A random token id does not exist.
@@ -447,18 +447,18 @@ mod tests {
         let input_toml: &str = r#"
             [[tokens]]
             token_id = 0
-            minimum_fee = 123000
+            minimum_fee = 128000
 
             [[tokens]]
             token_id = 6
-            minimum_fee = 456000
+            minimum_fee = 512000
         "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         let input_json: &str = r#"{
             "tokens": [
-                { "token_id": 0, "minimum_fee": 123000 },
-                { "token_id": 6, "minimum_fee": 456000 }
+                { "token_id": 0, "minimum_fee": 128000 },
+                { "token_id": 6, "minimum_fee": 512000 }
             ]
         }"#;
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
@@ -472,20 +472,20 @@ mod tests {
                 .get_token_config(&Mob::ID)
                 .unwrap()
                 .minimum_fee_or_default(),
-            Some(123000)
+            Some(128000)
         );
         assert_eq!(
             tokens
                 .get_token_config(&test_token)
                 .unwrap()
                 .minimum_fee_or_default(),
-            Some(456000)
+            Some(512000)
         );
 
         // Fee map looks good.
         assert_eq!(
             tokens.fee_map().unwrap(),
-            FeeMap::try_from_iter(vec![(Mob::ID, 123000), (test_token, 456000)]).unwrap(),
+            FeeMap::try_from_iter(vec![(Mob::ID, 128000), (test_token, 512000)]).unwrap(),
         );
 
         // A random token id does not exist.
@@ -501,14 +501,14 @@ mod tests {
 
             [[tokens]]
             token_id = 6
-            minimum_fee = 456000
+            minimum_fee = 512000
         "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
         let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 0 },
-                { "token_id": 6, "minimum_fee": 456000 }
+                { "token_id": 6, "minimum_fee": 512000 }
             ]
         }"#;
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
@@ -529,7 +529,7 @@ mod tests {
                 .get_token_config(&test_token)
                 .unwrap()
                 .minimum_fee_or_default(),
-            Some(456000)
+            Some(512000)
         );
 
         // Fee map looks good.
@@ -548,7 +548,7 @@ mod tests {
         let input_toml: &str = r#"
             [[tokens]]
             token_id = 0
-            minimum_fee = 123000
+            minimum_fee = 128000
 
             [[tokens]]
             token_id = 6
@@ -557,7 +557,7 @@ mod tests {
 
         let input_json: &str = r#"{
             "tokens": [
-                { "token_id": 0, "minimum_fee": 123000 },
+                { "token_id": 0, "minimum_fee": 128000 },
                 { "token_id": 6 }
             ]
         }"#;
@@ -581,7 +581,7 @@ mod tests {
 
             [[tokens]]
             token_id = 1
-            minimum_fee = 123000
+            minimum_fee = 128000
             allow_any_fee = true
         "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
@@ -589,7 +589,7 @@ mod tests {
         let input_json: &str = r#"{
             "tokens": [
                 { "token_id": 0 },
-                { "token_id": 1, "minimum_fee": 123000, "allow_any_fee": true }
+                { "token_id": 1, "minimum_fee": 128000, "allow_any_fee": true }
             ]
         }"#;
         let tokens2: TokensConfig = serde_json::from_str(input_json).expect("failed parsing json");
@@ -872,11 +872,11 @@ mod tests {
 
             [[tokens]]
             token_id = 1
-            minimum_fee = 123000
+            minimum_fee = 128000
 
             [[tokens]]
             token_id = 1
-            minimum_fee = 123000
+            minimum_fee = 128000
         "#;
         let tokens: TokensConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
