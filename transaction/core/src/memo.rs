@@ -49,9 +49,12 @@ use mc_util_repr_bytes::{
     derive_repr_bytes_from_as_ref_and_try_from, derive_serde_from_repr_bytes,
 };
 use sha2::Sha512;
+use zeroize::Zeroize;
 
 /// An encrypted memo, which can be decrypted by the recipient of a TxOut.
-#[derive(Clone, Copy, Default, Debug, Eq, Hash, Digestible, Ord, PartialEq, PartialOrd)]
+#[derive(
+    Clone, Copy, Debug, Default, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Zeroize,
+)]
 pub struct EncryptedMemo(GenericArray<u8, U66>);
 
 impl AsRef<[u8]> for EncryptedMemo {

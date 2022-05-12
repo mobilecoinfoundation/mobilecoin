@@ -5,87 +5,22 @@
 
 extern crate alloc;
 
+mod util;
+
 use alloc::vec::Vec;
 use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes};
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_db::Ledger;
 use mc_transaction_core::{
     constants::{MAX_TOMBSTONE_BLOCKS, RING_SIZE},
     membership_proofs::Range,
     tokens::Mob,
-    tx::{Tx, TxOutMembershipHash, TxOutMembershipProof},
+    tx::{TxOutMembershipHash, TxOutMembershipProof},
     validation::*,
-    BlockVersion, Token,
+    BlockVersion, InputRules, Token,
 };
-use mc_transaction_core_test_utils::{
-    create_ledger, create_transaction, create_transaction_with_amount_and_comparer,
-    initialize_ledger, AccountKey, InverseTxOutputsOrdering, INITIALIZE_LEDGER_AMOUNT,
-};
-use mc_transaction_std::{DefaultTxOutputsOrdering, TxOutputsOrdering};
+use mc_transaction_core_test_utils::{InverseTxOutputsOrdering, INITIALIZE_LEDGER_AMOUNT};
 use rand::{rngs::StdRng, SeedableRng};
-
-fn create_test_tx(block_version: BlockVersion) -> (Tx, LedgerDB) {
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-    let sender = AccountKey::random(&mut rng);
-    let mut ledger = create_ledger();
-    let n_blocks = 1;
-    initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
-
-    // Spend an output from the last block.
-    let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-    let tx_out = block_contents.outputs[0].clone();
-
-    let recipient = AccountKey::random(&mut rng);
-    let tx = create_transaction(
-        block_version,
-        &mut ledger,
-        &tx_out,
-        &sender,
-        &recipient.default_subaddress(),
-        n_blocks + 1,
-        &mut rng,
-    );
-
-    (tx, ledger)
-}
-
-fn create_test_tx_with_amount(
-    block_version: BlockVersion,
-    amount: u64,
-    fee: u64,
-) -> (Tx, LedgerDB) {
-    create_test_tx_with_amount_and_comparer::<DefaultTxOutputsOrdering>(block_version, amount, fee)
-}
-
-fn create_test_tx_with_amount_and_comparer<O: TxOutputsOrdering>(
-    block_version: BlockVersion,
-    amount: u64,
-    fee: u64,
-) -> (Tx, LedgerDB) {
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-    let sender = AccountKey::random(&mut rng);
-    let mut ledger = create_ledger();
-    let n_blocks = 1;
-    initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
-
-    // Spend an output from the last block.
-    let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-    let tx_out = block_contents.outputs[0].clone();
-
-    let recipient = AccountKey::random(&mut rng);
-    let tx = create_transaction_with_amount_and_comparer::<_, _, O>(
-        block_version,
-        &mut ledger,
-        &tx_out,
-        &sender,
-        &recipient.default_subaddress(),
-        amount,
-        fee,
-        n_blocks + 1,
-        &mut rng,
-    );
-
-    (tx, ledger)
-}
+use util::*;
 
 #[test]
 // Should return MissingMemo when memos are missing in an output
@@ -108,19 +43,19 @@ fn test_validate_memo_exists() {
 
 #[test]
 // Should return MemosNotAllowed when memos are present in an output
-fn test_validate_no_memo_exists() {
+fn test_validate_that_no_memo_exists() {
     let (tx, _) = create_test_tx(BlockVersion::ZERO);
     let tx_out = tx.prefix.outputs.first().unwrap();
 
     assert!(tx_out.e_memo.is_none());
-    assert_eq!(validate_no_memo_exists(tx_out), Ok(()));
+    assert_eq!(validate_that_no_memo_exists(tx_out), Ok(()));
 
     let (tx, _) = create_test_tx(BlockVersion::ONE);
     let tx_out = tx.prefix.outputs.first().unwrap();
 
     assert!(tx_out.e_memo.is_some());
     assert_eq!(
-        validate_no_memo_exists(tx_out),
+        validate_that_no_memo_exists(tx_out),
         Err(TransactionValidationError::MemosNotAllowed)
     );
 }
@@ -152,14 +87,14 @@ fn test_validate_no_masked_token_id_exists() {
     let tx_out = tx.prefix.outputs.first().unwrap();
 
     assert!(tx_out.masked_amount.masked_token_id.is_empty());
-    assert_eq!(validate_no_masked_token_id_exists(tx_out), Ok(()));
+    assert_eq!(validate_that_no_masked_token_id_exists(tx_out), Ok(()));
 
     let (tx, _) = create_test_tx(BlockVersion::TWO);
     let tx_out = tx.prefix.outputs.first().unwrap();
 
     assert!(!tx_out.masked_amount.masked_token_id.is_empty());
     assert_eq!(
-        validate_no_masked_token_id_exists(tx_out),
+        validate_that_no_masked_token_id_exists(tx_out),
         Err(TransactionValidationError::MaskedTokenIdNotAllowed)
     );
 }
@@ -850,4 +785,48 @@ fn test_global_validate_for_blocks_with_sorted_outputs() {
             }
         )
     }
+}
+
+// Test that input rules validation is working
+#[test]
+fn test_input_rules_validation() {
+    let block_version = BlockVersion::THREE;
+
+    let (mut tx, _ledger) = create_test_tx(block_version);
+
+    // Check that the Tx is following input rules (vacuously)
+    validate_all_input_rules(block_version, &tx).unwrap();
+
+    // Modify the Tx to have some input rules.
+    // (This invalidates the signature, but we aren't checking that here)
+    let first_tx_out = tx.prefix.outputs[0].clone();
+
+    // Declare the first tx out as a required output
+    tx.prefix.inputs[0].input_rules = Some(InputRules {
+        required_outputs: vec![first_tx_out],
+        max_tombstone_block: 0,
+    });
+
+    // Check that the Tx is following input rules (the required output is there)
+    validate_all_input_rules(block_version, &tx).unwrap();
+
+    // Modify the input rules to refer to a non-existent tx out
+    let rules = tx.prefix.inputs[0].input_rules.as_mut().unwrap();
+    rules.required_outputs[0].masked_amount.masked_value += 1;
+
+    assert!(validate_all_input_rules(block_version, &tx).is_err());
+
+    // Set masked value back, now modify tombstone block
+    let rules = tx.prefix.inputs[0].input_rules.as_mut().unwrap();
+    rules.required_outputs[0].masked_amount.masked_value -= 1;
+    rules.max_tombstone_block = tx.prefix.tombstone_block - 1;
+
+    assert!(validate_all_input_rules(block_version, &tx).is_err());
+
+    // Set the tombstone block limit to be more permissive, now everything should be
+    // good
+    let rules = tx.prefix.inputs[0].input_rules.as_mut().unwrap();
+    rules.max_tombstone_block = tx.prefix.tombstone_block;
+
+    validate_all_input_rules(block_version, &tx).unwrap();
 }
