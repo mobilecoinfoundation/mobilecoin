@@ -39,15 +39,10 @@ pub fn jni_ffi_call_or<R>(
         // it, we know that no harm will come if we panic while trying to
         // process it.
         let panic_error = AssertUnwindSafe(panic_error);
-        // Rust 2021 disjoint closure capture means a dummy let is needed as
-        // panic_error.0 is not unwind safe
-        catch_unwind(|| {
-            let _ = &panic_error;
-            Err(McError::Panic(format_panic(panic_error.0)))
-        })
-        // If this also panics then we just abort because at this point it's likely
-        // something terrible has gone wrong and the situation is no longer tenable.
-        .unwrap_or_else(|_| abort())
+        catch_unwind(|| Err(McError::Panic(format_panic(&*panic_error))))
+            // If this also panics then we just abort because at this point it's likely
+            // something terrible has gone wrong and the situation is no longer tenable.
+            .unwrap_or_else(|_| abort())
     });
 
     match result {
@@ -97,15 +92,15 @@ pub fn jni_big_int_to_u64(env: &JNIEnv, obj: JObject) -> Result<u64, McError> {
 
 /// Utility method to convert a panic error, as represented by Rust's unwinding
 /// mechanism into a meaningful string that can be displayed to the user.
-fn format_panic(panic_error: Box<dyn Any>) -> String {
-    let panic_error = match panic_error.downcast::<String>() {
-        Ok(msg) => return msg.to_string(),
-        Err(panic_error) => panic_error,
+fn format_panic(panic_error: &dyn Any) -> String {
+    let panic_error = match panic_error.downcast_ref::<String>() {
+        Some(msg) => return msg.to_string(),
+        None => panic_error,
     };
 
-    let _panic_error = match panic_error.downcast::<&'static str>() {
-        Ok(msg) => return msg.to_string(),
-        Err(panic_error) => panic_error,
+    let _panic_error = match panic_error.downcast_ref::<&'static str>() {
+        Some(msg) => return msg.to_string(),
+        None => panic_error,
     };
 
     "Panic happened, reason was not a string.".to_owned()
