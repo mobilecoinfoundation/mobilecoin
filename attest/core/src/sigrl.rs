@@ -7,11 +7,10 @@ use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     ops::Deref,
 };
+use crate::B64_CONFIG;
 use hex_fmt::HexFmt;
 use mc_util_encodings::{Error as EncodingError, FromBase64};
 use serde::{Deserialize, Serialize};
-
-use crate::B64_CONFIG;
 
 /// A type containing the bytes of a Signature Revocation List
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]

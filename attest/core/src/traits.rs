@@ -2,26 +2,19 @@
 
 //! Trait definitions for rust structures with an FFI analogue
 
-// Re-export macros our macros are using
 pub(crate) use alloc::format as _alloc_format;
-
-// Re-export types our macros are using
 pub(crate) use alloc::vec::Vec;
+pub(crate) use base64::decode_config_slice as b64decode;
+pub(crate) use base64::encode_config_slice as b64encode;
 pub(crate) use core::{
     cmp::{Ord, Ordering},
     convert::TryFrom,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-
-pub(crate) use base64::decode_config_slice as b64decode;
-pub(crate) use base64::encode_config_slice as b64encode;
-pub(crate) use crate::B64_CONFIG;
-
 pub(crate) use hex::encode_to_slice as bin2hex;
 pub(crate) use hex::decode_to_slice as hex2bin;
 pub(crate) use hex_fmt::HexFmt;
-
 pub(crate) use mc_util_encodings::{
     base64_buffer_size, base64_size, Error as EncodingError, FromBase64, FromHex, IntelLayout,
     ToBase64, ToHex, ToX64,
@@ -374,7 +367,7 @@ macro_rules! impl_base64str_for_bytestruct {
                     Err(required_buffer_len)
                 } else {
                     Ok( 
-                        $crate::traits::b64encode(&(self.0).$fieldname[..], $crate::traits::B64_CONFIG, dest) 
+                        $crate::traits::b64encode(&(self.0).$fieldname[..], $crate::B64_CONFIG, dest) 
                     )
                 }
             }
