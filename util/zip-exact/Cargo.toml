@@ -7,4 +7,4 @@ description = "An iterator helper"
 readme = "README.md"
 
 [dependencies]
-serde = "1.0"
+serde = { version = "1.0", default-features = false }
