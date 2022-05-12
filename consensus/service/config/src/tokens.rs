@@ -535,7 +535,7 @@ mod tests {
         // Fee map looks good.
         assert_eq!(
             tokens.fee_map().unwrap(),
-            FeeMap::try_from_iter(vec![(Mob::ID, Mob::MINIMUM_FEE), (test_token, 456000)]).unwrap(),
+            FeeMap::try_from_iter(vec![(Mob::ID, Mob::MINIMUM_FEE), (test_token, 512000)]).unwrap(),
         );
 
         // A random token id does not exist.
