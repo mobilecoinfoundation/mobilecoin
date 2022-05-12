@@ -1170,7 +1170,7 @@ mod mint_tx_tests {
         // index is less than tombstone_block. n_blocks controls how many blocks
         // we create, specifically it will result in blocks with indexes [0, n_blocks).
         // setting n_blocks to tombstone_block - 1 means the transaction will be valid
-        // for exactly 1 block, but once thats written it will exceed it. However, we
+        // for exactly 1 block, but once that's written it will exceed it. However, we
         // subtract 2 since we also need to add a block for the mint config tx.
         let n_blocks = mint_tx.prefix.tombstone_block - 2;
         let block_version = BlockVersion::MAX;
