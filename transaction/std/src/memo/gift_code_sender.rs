@@ -35,18 +35,15 @@ impl GiftCodeSenderMemo {
         GiftCodeSenderMemo::try_from(note_data)
     }
 
-    /// Get the memo data
-    pub fn memo_data(&self) -> &[u8; Self::MEMO_DATA_LEN] {
-        &self.memo_data
-    }
-
     /// Get the sender note
     pub fn sender_note(&self) -> Result<&str, MemoError> {
-        let note = str::from_utf8(&self.memo_data)?;
-        if let Some(note) = note.split_once(char::from(0)) {
-            return Ok(note.0);
-        }
-        Ok(note)
+        let index = if let Some(terminator) = &self.memo_data.iter().position(|b| b == &0u8) {
+            *terminator
+        } else {
+            Self::MEMO_DATA_LEN
+        };
+
+        str::from_utf8(&self.memo_data[0..index]).map_err(Into::into)
     }
 }
 

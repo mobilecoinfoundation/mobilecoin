@@ -31,11 +31,6 @@ impl GiftCodeCancellationMemo {
         GiftCodeCancellationMemo::from(global_index)
     }
 
-    /// Get the memo data
-    pub fn memo_data(&self) -> &[u8; Self::MEMO_DATA_LEN] {
-        &self.memo_data
-    }
-
     /// Get global TxOut index of the cancelled gift code
     pub fn cancelled_gift_code_index(&self) -> u64 {
         u64::from_le_bytes(self.memo_data[0..8].try_into().unwrap())

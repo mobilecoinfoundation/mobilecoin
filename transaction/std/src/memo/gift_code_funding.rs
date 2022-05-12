@@ -57,11 +57,6 @@ impl GiftCodeFundingMemo {
     /// Length of the utf-8 note
     pub const NOTE_DATA_LEN: usize = 60;
 
-    /// Get the memo data
-    pub fn memo_data(&self) -> &[u8; Self::MEMO_DATA_LEN] {
-        &self.memo_data
-    }
-
     /// Check if a given public key matches
     pub fn public_key_matches(&self, tx_out_public_key: &RistrettoPublic) -> bool {
         tx_out_public_key_short_hash(tx_out_public_key) == self.memo_data[0..Self::HASH_DATA_LEN]
@@ -69,11 +64,18 @@ impl GiftCodeFundingMemo {
 
     /// Get funding note from memo
     pub fn funding_note(&self) -> Result<&str, MemoError> {
-        let note = str::from_utf8(&self.memo_data[Self::HASH_DATA_LEN..])?;
-        if let Some(note) = note.split_once(char::from(0)) {
-            return Ok(note.0);
-        }
-        Ok(note)
+        let index = if let Some(terminator) = &self
+            .memo_data
+            .iter()
+            .enumerate()
+            .position(|(i, b)| i >= Self::HASH_DATA_LEN && b == &0u8)
+        {
+            *terminator
+        } else {
+            Self::MEMO_DATA_LEN
+        };
+
+        str::from_utf8(&self.memo_data[Self::HASH_DATA_LEN..index]).map_err(Into::into)
     }
 }
 
