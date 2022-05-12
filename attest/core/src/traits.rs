@@ -4,16 +4,16 @@
 
 pub(crate) use alloc::format as _alloc_format;
 pub(crate) use alloc::vec::Vec;
-pub(crate) use base64::decode_config_slice as b64decode;
-pub(crate) use base64::encode_config_slice as b64encode;
+pub(crate) use base64::decode_config_slice as b64_decode;
+pub(crate) use base64::encode_config_slice as b64_encode;
 pub(crate) use core::{
     cmp::{Ord, Ordering},
     convert::TryFrom,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-pub(crate) use hex::encode_to_slice as bin2hex;
-pub(crate) use hex::decode_to_slice as hex2bin;
+pub(crate) use hex::encode_to_slice as hex_encode;
+pub(crate) use hex::decode_to_slice as hex_decode;
 pub(crate) use hex_fmt::HexFmt;
 pub(crate) use mc_util_encodings::{
     base64_buffer_size, base64_size, Error as EncodingError, FromBase64, FromHex, IntelLayout,
@@ -355,7 +355,7 @@ macro_rules! impl_base64str_for_bytestruct {
 
                 // Create an output buffer of at least MINSIZE bytes
                 let mut retval = Self::default();
-                $crate::traits::b64decode(s.as_bytes(), $crate::B64_CONFIG, &mut (retval.0).$fieldname[..])?;
+                $crate::traits::b64_decode(s.as_bytes(), $crate::B64_CONFIG, &mut (retval.0).$fieldname[..])?;
                 Ok(retval)
             }
         }
@@ -367,7 +367,7 @@ macro_rules! impl_base64str_for_bytestruct {
                     Err(required_buffer_len)
                 } else {
                     Ok( 
-                        $crate::traits::b64encode(&(self.0).$fieldname[..], $crate::B64_CONFIG, dest) 
+                        $crate::traits::b64_encode(&(self.0).$fieldname[..], $crate::B64_CONFIG, dest) 
                     )
                 }
             }
@@ -391,7 +391,7 @@ macro_rules! impl_hexstr_for_bytestruct {
                 }
 
                 let mut retval = Self::default();
-                $crate::traits::hex2bin(s.as_bytes(), &mut (retval.0).$fieldname[..])?;
+                $crate::traits::hex_decode(s.as_bytes(), &mut (retval.0).$fieldname[..])?;
                 Ok(retval)
             }
         }
@@ -399,7 +399,7 @@ macro_rules! impl_hexstr_for_bytestruct {
         impl $crate::traits::ToHex for $wrapper {
             fn to_hex(&self, dest: &mut [u8]) -> core::result::Result<usize, usize> {
                 let source = &(self.0).$fieldname[..];
-                match $crate::traits::bin2hex(source, dest) {
+                match $crate::traits::hex_encode(source, dest) {
                     Ok(()) => Ok(source.len()*2),
                     Err(_e) => Err($size * 2),
                 }
