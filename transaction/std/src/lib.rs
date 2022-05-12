@@ -24,7 +24,7 @@ pub use memo::{
 };
 pub use memo_builder::{BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoBuilder, RTHMemoBuilder};
 pub use transaction_builder::{
-    DefaultTxOutputsOrdering, TransactionBuilder, TxOutContext, TxOutputsOrdering
+    DefaultTxOutputsOrdering, TransactionBuilder, TxOutContext, TxOutputsOrdering,
 };
 
 // Re-export this to help the exported macros work

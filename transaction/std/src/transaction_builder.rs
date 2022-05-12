@@ -46,7 +46,8 @@ pub struct TxOutContext {
     /// TxOut that comes from a transaction builder
     /// add_output/add_change_output
     pub tx_out: TxOut,
-    /// confirmation that comes from a transaction builder add_output/add_change_output
+    /// confirmation that comes from a transaction builder
+    /// add_output/add_change_output
     pub confirmation: TxOutConfirmationNumber,
     /// Shared Secret that comes from a transaction builder
     /// add_output/add_change_output
@@ -353,7 +354,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 
         let confirmation = TxOutConfirmationNumber::from(&shared_secret);
 
-        Ok(TxOutContext{
+        Ok(TxOutContext {
             tx_out,
             confirmation,
             shared_secret,
