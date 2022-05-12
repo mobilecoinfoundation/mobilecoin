@@ -408,11 +408,7 @@ impl SgxConsensusEnclave {
             // result in TombstoneBlockExceeded after enough blocks have been appended
             // following it. The workaround here is to pretend that the current
             // block index it is being validated against is within the tombstone range.
-            let config_block_index = mint_config_tx
-                .prefix
-                .tombstone_block
-                .checked_sub(1)
-                .unwrap_or(0);
+            let config_block_index = mint_config_tx.prefix.tombstone_block.saturating_sub(1);
             self.validate_mint_config_txs(vec![mint_config_tx], config_block_index, config)?;
 
             // The MintTx should be valid.

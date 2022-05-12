@@ -251,7 +251,7 @@ mod mint_config_tx_tests {
         let token_id_1 = TokenId::from(1);
 
         let mut ledger = create_ledger();
-        let n_blocks = 3;
+        let n_blocks = 1;
         let block_version = BlockVersion::MAX;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
@@ -281,7 +281,7 @@ mod mint_config_tx_tests {
         let token_id_3 = TokenId::from(3);
 
         let mut ledger = create_ledger();
-        let n_blocks = 3;
+        let n_blocks = 1;
         let block_version = BlockVersion::MAX;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
@@ -397,7 +397,7 @@ mod mint_config_tx_tests {
         let token_id_1 = TokenId::from(1);
 
         let mut ledger = create_ledger();
-        let n_blocks = 3;
+        let n_blocks = 1;
         let block_version = BlockVersion::MAX;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
@@ -488,7 +488,7 @@ mod mint_config_tx_tests {
         let token_id_1 = TokenId::from(1);
 
         let mut ledger = create_ledger();
-        let n_blocks = 3;
+        let n_blocks = 1;
         let block_version = BlockVersion::MAX;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
