@@ -31,6 +31,10 @@ IAS_API_KEY = os.getenv('IAS_API_KEY', default='0'*64) # 32 bytes
 IAS_SPID = os.getenv('IAS_SPID', default='0'*32) # 16 bytes
 
 FOG_SQL_DATABASE_NAME = 'fog_local'
+# Use env.DATABASE_URL if it exists, else use postgres://$PGHOST/fog_local,
+# falling back to postgres://localhost/fog_local.
+DATABASE_URL_ENV = 'DATABASE_URL=${DATABASE_URL:-postgres://${PGHOST:-localhost}/%s}' % FOG_SQL_DATABASE_NAME
+
 
 def target_dir(release):
     default_target_dir = os.path.join(PROJECT_DIR, 'target')
@@ -105,7 +109,7 @@ class FogIngest:
         print(f'Starting fog ingest {self.name}')
         cmd = ' '.join([
             'MC_LOG=trace',
-            f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME}',
+            DATABASE_URL_ENV,
             f'exec {self.target_dir}/fog_ingest_server',
             f'--ledger-db={self.ledger_db_path}',
             f'--client-listen-uri={self.client_listen_url}',
@@ -191,7 +195,7 @@ class FogView:
 
         print(f'Starting fog view {self.name}')
         cmd = ' '.join([
-            f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME}',
+            DATABASE_URL_ENV,
             f'exec {self.target_dir}/fog_view_server',
             f'--client-listen-uri={self.client_listen_url}',
             f'--client-responder-id={self.client_responder_id}',
@@ -240,7 +244,7 @@ class FogReport:
 
         print(f'Starting fog report {self.name}')
         cmd = ' '.join([
-            f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME}',
+            DATABASE_URL_ENV,
             f'exec {self.target_dir}/report_server',
             f'--client-listen-uri={self.client_listen_url}',
             f'--admin-listen-uri=insecure-mca://{LISTEN_HOST}:{self.admin_port}/',
