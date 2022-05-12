@@ -150,8 +150,7 @@ pub enum Error {
     /// Token `{0}` has invalid fee (too small) `{1}`
     InvalidFeeTooSmall(TokenId, u64),
 
-    /// Token `{0}` has invalid fee (not divisible by smallest minimum fee)
-    /// `{1}`
+    /// Token `{0}` has invalid fee (not divisible) `{1}`
     InvalidFeeNotDivisible(TokenId, u64),
 
     /// Token `{0}` is missing from the fee map
