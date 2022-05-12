@@ -40,7 +40,7 @@ impl ConnectionUriGrpcioChannel for ChannelBuilder {
                 None => ChannelCredentialsBuilder::new().build(),
             };
 
-            log::debug!(logger, "Creating secure gRPC connection to {}", uri.addr(),);
+            log::debug!(logger, "Creating secure gRPC connection to {}", uri.addr());
 
             self.secure_connect(&uri.addr(), creds)
         } else {
@@ -86,8 +86,15 @@ impl ConnectionUriGrpcioServer for ServerBuilder {
                 .tls_key_path()
                 .expect("Uri must have tls-key in when using TLS");
 
-            let reloader = ServerCertReloader::new(&tls_chain_path, &tls_key_path, logger)
+            let reloader = ServerCertReloader::new(&tls_chain_path, &tls_key_path, logger.clone())
                 .expect("Failed creating ServerCertReloader");
+
+            log::debug!(
+                logger,
+                "Binding secure gRPC server to {}:{}",
+                uri.host(),
+                uri.port(),
+            );
 
             self.bind_with_fetcher(
                 uri.host(),
@@ -96,6 +103,13 @@ impl ConnectionUriGrpcioServer for ServerBuilder {
                 CertificateRequestType::DontRequestClientCertificate,
             )
         } else {
+            log::warn!(
+                logger,
+                "Binding insecure gRPC server to {}:{}",
+                uri.host(),
+                uri.port(),
+            );
+
             self.bind(uri.host(), uri.port())
         }
     }
