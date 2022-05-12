@@ -97,21 +97,21 @@ mod test {
     #[test]
     fn different_fee_maps_result_in_different_responder_ids() {
         let config1: BlockchainConfigWithDigest = BlockchainConfig {
-            fee_map: FeeMap::try_from_iter([(Mob::ID, 1000), (TokenId::from(2), 2000)]).unwrap(),
+            fee_map: FeeMap::try_from_iter([(Mob::ID, 1024), (TokenId::from(2), 2048)]).unwrap(),
             governors_map: GovernorsMap::default(),
             governors_signature: None,
             block_version: BlockVersion::ZERO,
         }
         .into();
         let config2: BlockchainConfigWithDigest = BlockchainConfig {
-            fee_map: FeeMap::try_from_iter([(Mob::ID, 1000), (TokenId::from(2), 300)]).unwrap(),
+            fee_map: FeeMap::try_from_iter([(Mob::ID, 1024), (TokenId::from(2), 384)]).unwrap(),
             governors_map: GovernorsMap::default(),
             governors_signature: None,
             block_version: BlockVersion::ZERO,
         }
         .into();
         let config3: BlockchainConfigWithDigest = BlockchainConfig {
-            fee_map: FeeMap::try_from_iter([(Mob::ID, 1000), (TokenId::from(30), 300)]).unwrap(),
+            fee_map: FeeMap::try_from_iter([(Mob::ID, 1024), (TokenId::from(30), 384)]).unwrap(),
             governors_map: GovernorsMap::default(),
             governors_signature: None,
             block_version: BlockVersion::ZERO,
@@ -147,7 +147,7 @@ mod test {
         );
 
         let config4: BlockchainConfigWithDigest = BlockchainConfig {
-            fee_map: FeeMap::try_from_iter([(Mob::ID, 200), (TokenId::from(30), 300)]).unwrap(),
+            fee_map: FeeMap::try_from_iter([(Mob::ID, 256), (TokenId::from(30), 384)]).unwrap(),
             governors_map: GovernorsMap::default(),
             governors_signature: None,
             block_version: BlockVersion::ONE,

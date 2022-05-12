@@ -45,7 +45,7 @@ use mc_common::{
     ResponderId,
 };
 use mc_consensus_enclave_api::{
-    BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeePublicKey,
+    BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeeMap, FeePublicKey,
     FormBlockInputs, GovernorsVerifier, LocallyEncryptedTx, Result, SealedBlockSigningKey,
     TxContext, WellFormedEncryptedTx, WellFormedTxContext, SMALLEST_MINIMUM_FEE_LOG2,
 };
@@ -458,6 +458,9 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         sealed_key: &Option<SealedBlockSigningKey>,
         blockchain_config: BlockchainConfig,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
+        // Check that fee map is actually well formed
+        FeeMap::is_valid_map(blockchain_config.fee_map.as_ref()).map_err(Error::FeeMap)?;
+
         // Validate governors signature.
         if !blockchain_config.governors_map.is_empty() {
             let signature = blockchain_config
@@ -1493,9 +1496,9 @@ mod tests {
             let blockchain_config = BlockchainConfig {
                 block_version,
                 fee_map: FeeMap::try_from_iter([
-                    (Mob::ID, 1000000),
-                    (token_id1, 1000),
-                    (token_id2, 1000),
+                    (Mob::ID, 2_000_000),
+                    (token_id1, 1024),
+                    (token_id2, 1024),
                 ])
                 .unwrap(),
                 ..Default::default()
