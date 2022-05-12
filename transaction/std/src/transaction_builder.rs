@@ -188,7 +188,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .expect("memo builder is missing, this is a logic error");
         let block_version = self.block_version;
         let token_id = self.fee.token_id;
-        let result = self.add_output_with_fog_hint_address_with_context(
+        let result = self.add_output_with_fog_hint_address(
             value,
             recipient,
             recipient,
@@ -290,7 +290,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .expect("memo builder is missing, this is a logic error");
         let block_version = self.block_version;
         let token_id = self.fee.token_id;
-        let result = self.add_output_with_fog_hint_address_with_context(
+        let result = self.add_output_with_fog_hint_address(
             value,
             &change_destination.change_subaddress,
             &change_destination.primary_address,
@@ -331,14 +331,14 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// * `fog_hint_address` - The public address used to create the fog hint
     /// * `memo_fn` - The memo function to use (see TxOut::new_with_memo)
     /// * `rng` - RNG used to generate blinding for commitment
-    fn add_output_with_fog_hint_address_with_context<RNG: CryptoRng + RngCore>(
+    fn add_output_with_fog_hint_address<RNG: CryptoRng + RngCore>(
         &mut self,
         value: u64,
         recipient: &PublicAddress,
         fog_hint_address: &PublicAddress,
         memo_fn: impl FnOnce(MemoContext) -> Result<Option<MemoPayload>, NewMemoError>,
         rng: &mut RNG,
-    ) -> Result<TxOutContext, TxBuilderError> {
+    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
         let (hint, pubkey_expiry) = create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
         let amount = Amount {
             value,
@@ -354,11 +354,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 
         let confirmation = TxOutConfirmationNumber::from(&shared_secret);
 
-        Ok(TxOutContext {
-            tx_out,
-            confirmation,
-            shared_secret,
-        })
+        Ok((tx_out, confirmation))
     }
 
     /// Sets the tombstone block, clamping to smallest pubkey expiry value.
