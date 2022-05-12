@@ -7,7 +7,6 @@ pub use ed25519::signature::{DigestSigner, DigestVerifier, Signature, Signer, Ve
 pub use mc_util_repr_bytes::{typenum::Unsigned, GenericArray, LengthMismatch, ReprBytes};
 
 use alloc::{string::String, vec::Vec};
-
 use core::{convert::TryFrom, fmt::Debug, hash::Hash};
 use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
