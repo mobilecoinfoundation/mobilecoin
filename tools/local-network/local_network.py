@@ -11,7 +11,6 @@ import os
 import shutil
 import socketserver
 import subprocess
-import sys
 import threading
 import time
 from pprint import pformat
@@ -37,7 +36,7 @@ else:
     BUILD_TYPE = 'debug'
 
 BASE_TARGET_DIR = os.getenv('CARGO_TARGET_DIR', os.path.join(PROJECT_DIR, 'target'))
-TARGET_DIR = os.path.join(BASE_TARGET_DIR, BUILD_TYPE)
+TARGET_DIR = os.path.join(os.path.relpath(BASE_TARGET_DIR, PROJECT_DIR), BUILD_TYPE)
 WORK_DIR =  os.path.join(TARGET_DIR, 'mc-local-network')
 MINTING_KEYS_DIR = os.path.join(WORK_DIR, 'minting-keys')
 CLI_PORT = 31337
