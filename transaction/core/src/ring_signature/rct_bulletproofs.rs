@@ -19,6 +19,7 @@ use mc_common::HashSet;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_util_serial::prost::Message;
+use mc_util_zip_exact::zip_exact;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
@@ -333,22 +334,25 @@ impl SignatureRctBulletproofs {
 
             // For each used token id, and range proof, we have to pick out the matching
             // outputs and pseudo outputs and verify the range proof.
-            for (token_id, range_proof) in token_ids.iter().zip(self.range_proofs.iter()) {
+            for (token_id, range_proof) in zip_exact(token_ids.iter(), self.range_proofs.iter())? {
                 let generator = generator_cache.get(*token_id);
 
-                let commitments: Vec<CompressedRistretto> = self
-                    .pseudo_output_commitments
-                    .iter()
-                    .zip(self.pseudo_output_token_ids.iter())
-                    .chain(output_commitments.iter().zip(self.output_token_ids.iter()))
-                    .filter_map(|(compressed_commitment, this_token_id)| {
-                        if token_id == this_token_id {
-                            Some(compressed_commitment.point)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
+                let commitments: Vec<CompressedRistretto> = zip_exact(
+                    self.pseudo_output_commitments.iter(),
+                    self.pseudo_output_token_ids.iter(),
+                )?
+                .chain(zip_exact(
+                    output_commitments.iter(),
+                    self.output_token_ids.iter(),
+                )?)
+                .filter_map(|(compressed_commitment, this_token_id)| {
+                    if token_id == this_token_id {
+                        Some(compressed_commitment.point)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
 
                 if commitments.is_empty() {
                     return Err(Error::NoCommitmentsForTokenId(*token_id));
@@ -602,24 +606,23 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
             let generator = generator_cache.get(token_id);
 
             // The input blinding is not the same as corresponding pseudo-output blinding
-            let (values, blindings): (Vec<_>, Vec<_>) = rings
-                .iter()
-                .zip(pseudo_output_blindings.iter())
-                .filter_map(|(ring, blinding)| {
-                    if ring.amount().token_id == token_id {
-                        Some((ring.amount().value, *blinding))
-                    } else {
-                        None
-                    }
-                })
-                .chain(output_secrets.iter().filter_map(|secret| {
-                    if secret.amount.token_id == token_id {
-                        Some((secret.amount.value, secret.blinding))
-                    } else {
-                        None
-                    }
-                }))
-                .unzip();
+            let (values, blindings): (Vec<_>, Vec<_>) =
+                zip_exact(rings.iter(), pseudo_output_blindings.iter())?
+                    .filter_map(|(ring, blinding)| {
+                        if ring.amount().token_id == token_id {
+                            Some((ring.amount().value, *blinding))
+                        } else {
+                            None
+                        }
+                    })
+                    .chain(output_secrets.iter().filter_map(|secret| {
+                        if secret.amount.token_id == token_id {
+                            Some((secret.amount.value, secret.blinding))
+                        } else {
+                            None
+                        }
+                    }))
+                    .unzip();
 
             if values.is_empty() {
                 return Err(Error::NoCommitmentsForTokenId(token_id));
@@ -636,15 +639,14 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
 
     // The actual pseudo output commitments use the blindings from
     // `pseudo_output_blinding` and not the original true input.
-    let pseudo_output_commitments: Vec<RistrettoPoint> = rings
-        .iter()
-        .zip(pseudo_output_blindings.iter())
-        .map(|(ring, blinding)| {
-            generator_cache
-                .get(ring.amount().token_id)
-                .commit(Scalar::from(ring.amount().value), *blinding)
-        })
-        .collect();
+    let pseudo_output_commitments: Vec<RistrettoPoint> =
+        zip_exact(rings.iter(), pseudo_output_blindings.iter())?
+            .map(|(ring, blinding)| {
+                generator_cache
+                    .get(ring.amount().token_id)
+                    .commit(Scalar::from(ring.amount().value), *blinding)
+            })
+            .collect();
 
     if check_value_is_preserved {
         let sum_of_output_commitments: RistrettoPoint = output_secrets
