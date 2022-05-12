@@ -30,7 +30,7 @@ impl FromBase64 for PlatformInfoBlob {
             return Err(EncodingError::InvalidInputLength);
         }
 
-        let expected_len = base64_buffer_size(src.len());
+        let expected_len = src.len() / 4 * 3;
         if expected_len < SGX_PLATFORM_INFO_SIZE {
             return Err(EncodingError::InvalidInputLength);
         }
