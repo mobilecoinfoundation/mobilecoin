@@ -1482,8 +1482,8 @@ mod tests {
                 block_version,
                 fee_map: FeeMap::try_from_iter([
                     (Mob::ID, 1000000),
-                    (token_id1, 1000),
-                    (token_id2, 1000),
+                    (token_id1, 1024),
+                    (token_id2, 1024),
                 ])
                 .unwrap(),
                 ..Default::default()
