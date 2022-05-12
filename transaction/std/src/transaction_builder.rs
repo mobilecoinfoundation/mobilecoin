@@ -43,12 +43,14 @@ impl TxOutputsOrdering for DefaultTxOutputsOrdering {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct TxOutContext {
-    /// TxOut that comes from a transaction builder add_output/add_change_output
+    /// TxOut that comes from a transaction builder
+    /// add_output/add_change_output
     pub tx_out: TxOut,
     /// confirmation that comes from a transaction builder add_output/add_change_output
     pub confirmation: TxOutConfirmationNumber,
-    /// Shared Secret that comes from a transaction builder add_output/add_change_output
-    pub shared_secret: RistrettoPublic
+    /// Shared Secret that comes from a transaction builder
+    /// add_output/add_change_output
+    pub shared_secret: RistrettoPublic,
 }
 
 /// Helper utility for building and signing a CryptoNote-style transaction,
@@ -351,7 +353,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 
         let confirmation = TxOutConfirmationNumber::from(&shared_secret);
 
-        Ok(TxOutContext{tx_out, confirmation, shared_secret})
+        Ok(TxOutContext{
+            tx_out,
+            confirmation,
+            shared_secret,
+        })
     }
 
     /// Sets the tombstone block, clamping to smallest pubkey expiry value.
