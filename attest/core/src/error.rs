@@ -241,12 +241,7 @@ pub enum QuoteError {
 
 impl From<base64::DecodeError> for QuoteError {
     fn from(src: base64::DecodeError) -> Self {
-        use base64::DecodeError::*;
-        let kind = match src {
-            InvalidLength => EncodingError::InvalidInputLength,
-            InvalidByte(_, _)|InvalidLastSymbol(_, _) => EncodingError::InvalidInput,
-        };
-        QuoteError::Encoding(kind)
+        QuoteError::Encoding(src.into())
     }
 }
 
