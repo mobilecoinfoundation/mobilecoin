@@ -35,7 +35,7 @@ impl FromBase64 for PlatformInfoBlob {
             return Err(EncodingError::InvalidInputLength);
         }
 
-        let data = base64::encode_config(src.as_bytes(), B64_CONFIG);
+        let data = base64::decode_config(src.as_bytes(), B64_CONFIG)?;
 
         let mut return_val = Self::default();
         return_val.0.platform_info[..].copy_from_slice(&data.as_bytes()[4..(SGX_PLATFORM_INFO_SIZE + 4)]);
