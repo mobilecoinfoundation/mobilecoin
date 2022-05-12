@@ -1491,7 +1491,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOutContext_get_1tx_1out(
         &env,
         |env| {
             let tx_out_context: MutexGuard<TxOutContext> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
-            let tx_out = tx_out_context.tx_out.clone();
+            let tx_out = tx_out_context.tx_out.to_owned();
             let mbox = Box::new(Mutex::new(tx_out));
             let ptr: *mut Mutex<TxOut> = Box::into_raw(mbox);
             Ok(ptr as jlong)
@@ -1503,16 +1503,15 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOutContext_get_1tx_1out(
 pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOutContext_get_1confirmation_1number(
     env: JNIEnv,
     obj: JObject,
-) -> jlong {
+) -> jbyteArray {
     jni_ffi_call_or(
-        || Ok(0),
+        || Ok(JObject::null().into_inner()),
         &env,
         |env| {
             let tx_out_context: MutexGuard<TxOutContext> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
-            let confirmation = tx_out_context.confirmation.clone();
-            let mbox = Box::new(Mutex::new(confirmation));
-            let ptr: *mut Mutex<TxOutConfirmationNumber> = Box::into_raw(mbox);
-            Ok(ptr as jlong)
+            let confirmation_number = &tx_out_context.confirmation;
+            let bytes = mc_util_serial::encode(confirmation_number);
+            Ok(env.byte_array_from_slice(&bytes)?)
         },
     )
 }
@@ -1527,7 +1526,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TxOutContext_get_1shared_1secre
         &env,
         |env| {
             let tx_out_context: MutexGuard<TxOutContext> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
-            let shared_secret = tx_out_context.shared_secret.clone();
+            let shared_secret = tx_out_context.shared_secret.to_owned();
             let mbox = Box::new(Mutex::new(shared_secret));
             let ptr: *mut Mutex<RistrettoPublic> = Box::into_raw(mbox);
             Ok(ptr as jlong)
