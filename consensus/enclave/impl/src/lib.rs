@@ -2265,10 +2265,10 @@ mod tests {
             let sender = AccountKey::random(&mut rng);
             let mut ledger = create_ledger();
 
-            // We want more blocks than the tombstone of the mint config txs since we want
-            // to make sure that minting that relies on an old MintConfigTx (one that is
+            // We want the next block that getts appended to the ledger to exceed the tombstone limit of the mint config tx,
+            // since we want to make sure that minting that relies on an old MintConfigTx (one that is
             // past its tombstone block) still validate and mint successfully.
-            let n_blocks = mint_config_tx1.prefix.tombstone_block + 2;
+            let n_blocks = mint_config_tx1.prefix.tombstone_block;
             initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
             // Form block
