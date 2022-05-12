@@ -18,6 +18,7 @@ use mc_transaction_core::{
     mint::{MintConfigTx, MintTx},
 };
 use mc_util_grpc::ConnectionUriGrpcioChannel;
+use protobuf::ProtobufEnum;
 use serde::de::DeserializeOwned;
 use std::{fs, path::PathBuf, process::exit, sync::Arc};
 

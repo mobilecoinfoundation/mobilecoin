@@ -30,6 +30,7 @@ clap = { version = "3.1", features = ["derive", "env"] }
 grpcio = "0.10.2"
 hex = "0.4"
 pem = "1.0"
+protobuf = "2.27.1"
 rand = "0.8"
 serde = "1"
 serde_json = "1.0"

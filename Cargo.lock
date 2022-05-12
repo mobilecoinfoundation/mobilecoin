@@ -2735,6 +2735,7 @@ dependencies = [
  "mc-util-parse",
  "mc-util-uri",
  "pem",
+ "protobuf",
  "rand 0.8.5",
  "serde",
  "serde_json",
