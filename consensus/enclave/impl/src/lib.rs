@@ -45,7 +45,7 @@ use mc_common::{
     ResponderId,
 };
 use mc_consensus_enclave_api::{
-    BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeePublicKey,
+    BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeeMap, FeePublicKey,
     FormBlockInputs, GovernorsVerifier, LocallyEncryptedTx, Result, SealedBlockSigningKey,
     TxContext, WellFormedEncryptedTx, WellFormedTxContext, SMALLEST_MINIMUM_FEE_LOG2,
 };
