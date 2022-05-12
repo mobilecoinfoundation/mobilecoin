@@ -446,6 +446,9 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         sealed_key: &Option<SealedBlockSigningKey>,
         blockchain_config: BlockchainConfig,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
+        // Check that fee map is actually well formed
+        FeeMap::is_valid_map(&blockchain_config.fee_map).map_err(Error::FeeMap)?;
+
         // Validate governors signature.
         if !blockchain_config.governors_map.is_empty() {
             let signature = blockchain_config
