@@ -2,7 +2,6 @@
 
 //! Main Method for the Fog Report Server
 
-use grpcio::{RpcStatus, RpcStatusCode};
 use mc_common::{logger, sentry};
 use mc_fog_report_server::{Config, Materials, Server};
 use mc_fog_sql_recovery_db::SqlRecoveryDb;
@@ -20,21 +19,24 @@ fn main() {
 
     let materials = Materials::try_from(&config).expect("Could not read cryptographic materials");
 
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL environment variable missing");
     let db = SqlRecoveryDb::new_from_url(
-        &env::var("DATABASE_URL").expect("DATABASE_URL environment variable missing"),
+        &database_url,
         config.postgres_config.clone(),
         logger.clone(),
     )
-    .expect("Failed connecting to database");
+    .unwrap_or_else(|err| {
+        panic!(
+            "fog-report cannot connect to database '{}': {:?}",
+            database_url, err
+        )
+    });
 
     let mut server = Server::new(db, &config.client_listen_uri, materials, logger.clone());
     server.start();
 
-    let config2 = config.clone();
-    let get_config_json = Arc::new(move || {
-        serde_json::to_string(&config2)
-            .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, format!("{:?}", err)))
-    });
+    let config_json = serde_json::to_string(&config).expect("failed to serialize config to JSON");
+    let get_config_json = Arc::new(move || Ok(config_json.clone()));
     let _admin_server = config.admin_listen_uri.as_ref().map(|admin_listen_uri| {
         AdminServer::start(
             None,
@@ -44,7 +46,7 @@ fn main() {
             Some(get_config_json),
             logger,
         )
-        .expect("Failed starting admin server")
+        .expect("Failed starting fog-report admin server")
     });
 
     loop {
