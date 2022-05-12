@@ -1481,7 +1481,7 @@ mod tests {
             let blockchain_config = BlockchainConfig {
                 block_version,
                 fee_map: FeeMap::try_from_iter([
-                    (Mob::ID, 1000000),
+                    (Mob::ID, 2_000_000),
                     (token_id1, 1024),
                     (token_id2, 1024),
                 ])
