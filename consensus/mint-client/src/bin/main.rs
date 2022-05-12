@@ -18,8 +18,9 @@ use mc_transaction_core::{
     mint::{MintConfigTx, MintTx},
 };
 use mc_util_grpc::ConnectionUriGrpcioChannel;
+use protobuf::ProtobufEnum;
 use serde::de::DeserializeOwned;
-use std::{fs, path::PathBuf, sync::Arc};
+use std::{fs, path::PathBuf, process::exit, sync::Arc};
 
 fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
@@ -45,6 +46,11 @@ fn main() {
                 .propose_mint_config_tx(&(&tx).into())
                 .expect("propose tx");
             println!("response: {:?}", resp);
+
+            // Relying on the success result code being 0, we terminate ourselves in a way
+            // that allows whoever started this binary to easily determine if submitting the
+            // transaction succeeded.
+            exit(resp.get_result().get_code().value());
         }
 
         Commands::GenerateMintConfigTx { out, params } => {
@@ -101,6 +107,11 @@ fn main() {
                 .propose_mint_config_tx(&(&merged_tx).into())
                 .expect("propose tx");
             println!("response: {:?}", resp);
+
+            // Relying on the success result code being 0, we terminate ourselves in a way
+            // that allows whoever started this binary to easily determine if submitting the
+            // transaction succeeded.
+            exit(resp.get_result().get_code().value());
         }
 
         Commands::GenerateAndSubmitMintTx { node, params } => {
@@ -121,6 +132,11 @@ fn main() {
                 .propose_mint_tx(&(&tx).into())
                 .expect("propose tx");
             println!("response: {:?}", resp);
+
+            // Relying on the success result code being 0, we terminate ourselves in a way
+            // that allows whoever started this binary to easily determine if submitting the
+            // transaction succeeded.
+            exit(resp.get_result().get_code().value());
         }
 
         Commands::GenerateMintTx { out, params } => {
@@ -177,6 +193,11 @@ fn main() {
                 .propose_mint_tx(&(&merged_tx).into())
                 .expect("propose tx");
             println!("response: {:?}", resp);
+
+            // Relying on the success result code being 0, we terminate ourselves in a way
+            // that allows whoever started this binary to easily determine if submitting the
+            // transaction succeeded.
+            exit(resp.get_result().get_code().value());
         }
 
         Commands::SignGovernors {
