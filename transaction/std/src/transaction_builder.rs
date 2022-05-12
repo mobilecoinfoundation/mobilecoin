@@ -338,7 +338,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         fog_hint_address: &PublicAddress,
         memo_fn: impl FnOnce(MemoContext) -> Result<Option<MemoPayload>, NewMemoError>,
         rng: &mut RNG,
-    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+    ) -> Result<TxOutContext, TxBuilderError> {
         let (hint, pubkey_expiry) = create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
         let amount = Amount {
             value,
@@ -354,7 +354,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 
         let confirmation = TxOutConfirmationNumber::from(&shared_secret);
 
-        Ok((tx_out, confirmation))
+        Ok(TxOutContext {
+            tx_out,
+            confirmation,
+            shared_secret,
+        })
     }
 
     /// Sets the tombstone block, clamping to smallest pubkey expiry value.
@@ -1043,7 +1047,7 @@ pub mod transaction_builder_tests {
                 get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
             transaction_builder.add_input(input_credentials);
 
-            let (_txout, _confirmation) = transaction_builder
+            let _tx_out_context = transaction_builder
                 .add_output_with_fog_hint_address(
                     value - Mob::MINIMUM_FEE,
                     &recipient.default_subaddress(),
