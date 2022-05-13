@@ -24,12 +24,13 @@ pub use input_credentials::InputCredentials;
 pub use memo::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, BurnRedemptionMemo,
     DestinationMemo, DestinationMemoError, GiftCodeCancellationMemo, GiftCodeFundingMemo,
-    GiftCodeSenderMemo, MemoDecodingError, MemoType, RegisteredMemoType,
-    SenderMemoCredential, UnusedMemo,
+    GiftCodeSenderMemo, MemoDecodingError, MemoType, RegisteredMemoType, SenderMemoCredential,
+    UnusedMemo,
 };
-pub use memo_builder::{BurnRedemptionMemoBuilder, EmptyMemoBuilder,
-                       GiftCodeCancellationMemoBuilder, GiftCodeFundingMemoBuilder,
-                       GiftCodeSenderMemoBuilder, MemoBuilder, RTHMemoBuilder};
+pub use memo_builder::{
+    BurnRedemptionMemoBuilder, EmptyMemoBuilder, GiftCodeCancellationMemoBuilder,
+    GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder, MemoBuilder, RTHMemoBuilder,
+};
 pub use reserved_destination::ReservedDestination;
 pub use signed_contingent_input_builder::SignedContingentInputBuilder;
 pub use transaction_builder::{DefaultTxOutputsOrdering, TransactionBuilder, TxOutputsOrdering};

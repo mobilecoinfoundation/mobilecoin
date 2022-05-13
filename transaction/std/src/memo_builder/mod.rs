@@ -15,7 +15,6 @@ mod gift_code_funding_memo_builder;
 mod gift_code_sender_memo_builder;
 mod rth_memo_builder;
 
-
 pub use burn_redemption_memo_builder::BurnRedemptionMemoBuilder;
 pub use gift_code_cancellation_memo_builder::GiftCodeCancellationMemoBuilder;
 pub use gift_code_funding_memo_builder::GiftCodeFundingMemoBuilder;

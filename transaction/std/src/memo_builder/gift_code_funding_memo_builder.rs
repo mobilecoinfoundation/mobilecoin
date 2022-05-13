@@ -3,7 +3,10 @@
 //! Defines the Memo Builder for the gift code funding memo (0x0201)
 //! specified in MCIP #32
 
-use crate::{memo::{UnusedMemo, GiftCodeFundingMemo}, MemoBuilder, ReservedDestination};
+use crate::{
+    memo::{GiftCodeFundingMemo, UnusedMemo},
+    MemoBuilder, ReservedDestination,
+};
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::RistrettoPublic;
 use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
@@ -15,11 +18,11 @@ use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
 /// | -->0x0201<--    | Gift Code Funding Memo                            |
 /// |    0x0202       | Gift Code Cancellation Memo                       |
 /// This memo builder builds a gift code funding memo (0x0201). When a gift
-/// code is funded, the amount of the gift code is sent to a TxOut at the 
-/// Sender's reserved gift code subaddress and a second zero valued TxOut 
-/// is sent to the sender's reserved change subaddress with the gift code 
-/// funding memo attached. The funding memo will include the first 4 bytes 
-/// of the hash of the gift code TxOut sent to the sender's reserved gift 
+/// code is funded, the amount of the gift code is sent to a TxOut at the
+/// Sender's reserved gift code subaddress and a second zero valued TxOut
+/// is sent to the sender's reserved change subaddress with the gift code
+/// funding memo attached. The funding memo will include the first 4 bytes
+/// of the hash of the gift code TxOut sent to the sender's reserved gift
 /// code subaddress and 60 bytes for an optional utf-8 memo.
 ///
 /// IMPORTANT NOTE: The public_key of the zero valued TxOut that the Gift Code
@@ -55,7 +58,9 @@ impl GiftCodeFundingMemoBuilder {
     /// 60 bytes.
     pub fn set_funding_note(&mut self, note: &str) -> Result<(), NewMemoError> {
         if note.len() > GiftCodeFundingMemo::NOTE_DATA_LEN {
-            return Err(NewMemoError::BadInputs("Note memo cannot be greater than 60 bytes".into()))
+            return Err(NewMemoError::BadInputs(
+                "Note memo cannot be greater than 60 bytes".into(),
+            ));
         }
         self.note = note.into();
         Ok(())
@@ -132,5 +137,14 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
                 "Missing gift code TxOut public key".into(),
             ));
         }
+    }
+}
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gift_code() {
+        // Tests forthcoming
     }
 }

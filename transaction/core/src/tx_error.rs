@@ -88,14 +88,13 @@ pub enum NewMemoError {
 }
 
 impl From<MemoError> for NewMemoError {
-    fn from (src: MemoError) -> Self {
+    fn from(src: MemoError) -> Self {
         match src {
             MemoError::Utf8Decoding => Self::Utf8Decoding,
-            MemoError::BadLength(byte_len) => {
-                Self::BadInputs(
-                    format!("Input of length: {} exceeded max byte length", byte_len)
-                )
-            }
+            MemoError::BadLength(byte_len) => Self::BadInputs(format!(
+                "Input of length: {} exceeded max byte length",
+                byte_len
+            )),
         }
     }
 }

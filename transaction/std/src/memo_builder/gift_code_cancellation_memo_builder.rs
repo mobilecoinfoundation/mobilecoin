@@ -3,7 +3,10 @@
 //! Defines the Memo Builder for the gift code cancellation memo (0x0202)
 //! specified in MCIP #32
 
-use super::{memo::{UnusedMemo, GiftCodeCancellationMemo}, ReservedDestination, MemoBuilder};
+use super::{
+    memo::{GiftCodeCancellationMemo, UnusedMemo},
+    MemoBuilder, ReservedDestination,
+};
 use mc_account_keys::PublicAddress;
 use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
 
@@ -95,5 +98,14 @@ impl MemoBuilder for GiftCodeCancellationMemoBuilder {
                 "Missing global index of TxOut to be cancelled".into(),
             ));
         }
+    }
+}
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gift_code() {
+        // Tests forthcoming
     }
 }

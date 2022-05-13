@@ -3,7 +3,10 @@
 //! Defines the Memo Builder for the gift code sender memo (0x0002)
 //! specified in MCIP #32
 
-use crate::{memo::{GiftCodeSenderMemo, UnusedMemo}, MemoBuilder, ReservedDestination};
+use crate::{
+    memo::{GiftCodeSenderMemo, UnusedMemo},
+    MemoBuilder, ReservedDestination,
+};
 use mc_account_keys::PublicAddress;
 use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
 
@@ -45,7 +48,9 @@ impl GiftCodeSenderMemoBuilder {
     /// 64 bytes.
     pub fn set_gift_code_sender_note(&mut self, note: &str) -> Result<(), NewMemoError> {
         if note.len() > GiftCodeSenderMemo::MEMO_DATA_LEN {
-            return Err(NewMemoError::BadInputs("Sender note cannot be longer than 64 bytes".into()));
+            return Err(NewMemoError::BadInputs(
+                "Sender note cannot be longer than 64 bytes".into(),
+            ));
         }
         self.note = note.into();
         Ok(())
@@ -96,5 +101,14 @@ impl MemoBuilder for GiftCodeSenderMemoBuilder {
         };
         self.wrote_change_memo = true;
         Ok(GiftCodeSenderMemo::new(self.note.as_str())?.into())
+    }
+}
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gift_code() {
+        // Tests forthcoming
     }
 }
