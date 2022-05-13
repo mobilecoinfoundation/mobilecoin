@@ -180,7 +180,7 @@ class MintAuditorTest:
 
             # Burn 300 tokens
             burn_amount = 300
-            fee_amount = 1000
+            fee_amount = 1024
             utxos = self.mobilecoind_client.get_utxos(monitor_id, token_id)
             tx_proposal = self.mobilecoind_client.generate_burn_redemption_tx(
                 monitor_id,
