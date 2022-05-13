@@ -201,7 +201,7 @@ class MintAuditorTest:
 
             previous_minted_amount = current_minted_amount
             current_minted_amount = dict(response.block_audit_data.balance_map).get(token_id)
-            assert current_minted_amount == previous_minted_amount - burn_amount
+            assert current_minted_amount == previous_minted_amount - burn_amount, (current_minted_amount, previous_minted_amount, burn_amount)
 
             # Sanity check the counters
             logging.info("Checking counters")
