@@ -35,9 +35,9 @@ else:
     CARGO_FLAGS = ''
     BUILD_TYPE = 'debug'
 
-BASE_TARGET_DIR = os.getenv('CARGO_TARGET_DIR', os.path.join(PROJECT_DIR, 'target'))
+BASE_TARGET_DIR = os.getenv('CARGO_TARGET_DIR', 'target')
 TARGET_DIR = os.path.join(os.path.relpath(BASE_TARGET_DIR, PROJECT_DIR), BUILD_TYPE)
-WORK_DIR =  os.path.join(TARGET_DIR, 'mc-local-network')
+WORK_DIR =  os.path.join(PROJECT_DIR, TARGET_DIR, 'mc-local-network')
 MINTING_KEYS_DIR = os.path.join(WORK_DIR, 'minting-keys')
 CLI_PORT = 31337
 
