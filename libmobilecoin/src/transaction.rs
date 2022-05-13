@@ -498,7 +498,7 @@ pub extern "C" fn mc_transaction_builder_add_output(
             .expect("out_tx_out_confirmation_number length is insufficient");
 
         let tx_out_context =
-            transaction_builder.add_output_with_context(amount, &recipient_address, &mut rng)?;
+            transaction_builder.add_output(amount, &recipient_address, &mut rng)?;
 
         out_tx_out_confirmation_number.copy_from_slice(tx_out_context.confirmation.as_ref());
 
@@ -548,7 +548,7 @@ pub extern "C" fn mc_transaction_builder_add_change_output(
             .as_slice_mut_of_len(TxOutConfirmationNumber::size())
             .expect("out_tx_out_confirmation_number length is insufficient");
 
-        let tx_out_context = transaction_builder.add_change_output_with_context(
+        let tx_out_context = transaction_builder.add_change_output(
             amount,
             &change_destination,
             &mut rng,
