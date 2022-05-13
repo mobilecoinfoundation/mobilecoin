@@ -2,7 +2,7 @@
 name = "mc-util-cli"
 version = "0.1.0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 mc-util-build-info = { path = "../build/info" }

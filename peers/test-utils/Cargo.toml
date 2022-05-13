@@ -2,7 +2,7 @@
 name = "mc-peers-test-utils"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 mc-common = { path = "../../common" }

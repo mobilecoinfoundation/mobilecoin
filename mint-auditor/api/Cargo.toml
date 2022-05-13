@@ -3,7 +3,7 @@ name = "mc-mint-auditor-api"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
 build = "build.rs"
-edition = "2018"
+edition = "2021"
 links = "mc-mint-auditor-api"
 
 [dependencies]
