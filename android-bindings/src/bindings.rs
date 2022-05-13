@@ -1773,7 +1773,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1output(
 
             let mut rng = McRng::default();
             let tx_out_context =
-                tx_builder.add_output_with_context(value as u64, &recipient, &mut rng)?;
+                tx_builder.add_output(value as u64, &recipient, &mut rng)?;
             let confirmation_number = &tx_out_context.confirmation;
             if !confirmation_number_out.is_null() {
                 let len = env.get_array_length(confirmation_number_out)?;
@@ -1821,7 +1821,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1change_
             let mut rng = McRng::default();
 
             let tx_out_context =
-                tx_builder.add_change_output_with_context(value, &change_destination, &mut rng)?;
+                tx_builder.add_change_output(value, &change_destination, &mut rng)?;
             let confirmation_number = &tx_out_context.confirmation;
             if !confirmation_number_out.is_null() {
                 let len = env.get_array_length(confirmation_number_out)?;
