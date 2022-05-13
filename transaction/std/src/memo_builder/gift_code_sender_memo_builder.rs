@@ -33,15 +33,18 @@ pub struct GiftCodeSenderMemoBuilder {
     wrote_change_memo: bool,
 }
 
-impl GiftCodeSenderMemoBuilder {
-    /// Create a new gift code sender memo builder
-    pub fn new() -> Self {
+// Create an empty GiftCodeSenderMemoBuilder
+impl Default for GiftCodeSenderMemoBuilder {
+    fn default() -> Self {
         Self {
             note: "".into(),
             gift_code_change_memo_enabled: true,
             wrote_change_memo: false,
         }
     }
+}
+
+impl GiftCodeSenderMemoBuilder {
     /// Set a utf-8 note (up to 64 bytes) onto the sender memo indicating
     /// any desired info about the gift code. This method will enforce the
     /// 64 byte limit with a NewMemoErr if the &str passed is longer than
@@ -105,7 +108,6 @@ impl MemoBuilder for GiftCodeSenderMemoBuilder {
 }
 
 mod tests {
-    use super::*;
 
     #[test]
     fn test_gift_code() {

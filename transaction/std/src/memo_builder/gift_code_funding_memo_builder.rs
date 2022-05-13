@@ -42,9 +42,9 @@ pub struct GiftCodeFundingMemoBuilder {
     wrote_change_memo: bool,
 }
 
-impl GiftCodeFundingMemoBuilder {
-    /// Create a new gift code funding memo builder
-    pub fn new() -> Self {
+// Create an empty GiftCodeFundingMemoBuilder
+impl Default for GiftCodeFundingMemoBuilder {
+    fn default() -> Self {
         Self {
             note: "".into(),
             gift_code_tx_out_public_key: None,
@@ -52,6 +52,9 @@ impl GiftCodeFundingMemoBuilder {
             wrote_change_memo: false,
         }
     }
+}
+
+impl GiftCodeFundingMemoBuilder {
     /// Set a utf-8 note (up to 60 bytes) onto the funding memo indicating
     /// what the gift code was for. This method will enforce the 60 byte
     /// limit with a NewMemoErr if the &str passed is longer than
@@ -131,17 +134,16 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
         }
         if let Some(tx_out_public_key) = self.gift_code_tx_out_public_key.take() {
             self.wrote_change_memo = true;
-            return Ok(GiftCodeFundingMemo::new(&tx_out_public_key, self.note.as_str())?.into());
+            Ok(GiftCodeFundingMemo::new(&tx_out_public_key, self.note.as_str())?.into())
         } else {
-            return Err(NewMemoError::MissingInput(
+            Err(NewMemoError::MissingInput(
                 "Missing gift code TxOut public key".into(),
-            ));
+            ))
         }
     }
 }
 
 mod tests {
-    use super::*;
 
     #[test]
     fn test_gift_code() {

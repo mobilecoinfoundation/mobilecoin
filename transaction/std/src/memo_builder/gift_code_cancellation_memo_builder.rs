@@ -33,15 +33,18 @@ pub struct GiftCodeCancellationMemoBuilder {
     wrote_change_memo: bool,
 }
 
-impl GiftCodeCancellationMemoBuilder {
-    /// Create a new cancellation gift code memo builder
-    pub fn new() -> Self {
+// Create an empty GiftCodeCancellationMemoBuilder
+impl Default for GiftCodeCancellationMemoBuilder {
+    fn default() -> Self {
         Self {
             gift_code_tx_out_global_index: None,
             gift_code_change_memo_enabled: true,
             wrote_change_memo: false,
         }
     }
+}
+
+impl GiftCodeCancellationMemoBuilder {
     /// Set the index of the gift code TxOut that was cancelled
     pub fn set_gift_code_tx_out_index(&mut self, tx_out_global_index: u64) {
         self.gift_code_tx_out_global_index = Some(tx_out_global_index)
@@ -92,17 +95,16 @@ impl MemoBuilder for GiftCodeCancellationMemoBuilder {
         }
         self.wrote_change_memo = true;
         if let Some(tx_out_global_index) = self.gift_code_tx_out_global_index.take() {
-            return Ok(GiftCodeCancellationMemo::from(tx_out_global_index).into());
+            Ok(GiftCodeCancellationMemo::from(tx_out_global_index).into())
         } else {
-            return Err(NewMemoError::MissingInput(
+            Err(NewMemoError::MissingInput(
                 "Missing global index of TxOut to be cancelled".into(),
-            ));
+            ))
         }
     }
 }
 
 mod tests {
-    use super::*;
 
     #[test]
     fn test_gift_code() {
