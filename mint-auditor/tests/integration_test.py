@@ -176,7 +176,7 @@ class MintAuditorTest:
             response = self.wait_for_mint_auditor_to_sync()
 
             current_minted_amount = dict(response.block_audit_data.balance_map).get(token_id)
-            assert current_minted_amount == previous_minted_amount + mint_amount
+            assert current_minted_amount == previous_minted_amount + mint_amount, (current_minted_amount, previous_minted_amount, mint_amount)
 
             # Burn 300 tokens
             burn_amount = 300
