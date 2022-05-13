@@ -241,7 +241,7 @@ McData* MC_NULLABLE mc_transaction_builder_add_change_output(
   McMutableBuffer* MC_NONNULL out_tx_out_shared_secret,
   McError* MC_NULLABLE * MC_NULLABLE out_error
 )
-MC_ATTRIBUTE_NONNULL(1, 2, 4, 7);
+MC_ATTRIBUTE_NONNULL(1, 2, 4, 5, 6);
 
 /// # Preconditions
 ///
