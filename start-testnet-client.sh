@@ -19,7 +19,7 @@ echo "Pulling down TestNet consensus validator signature material"
 SIGSTRUCT_URI=$(curl -s https://enclave-distribution.test.mobilecoin.com/production.json | grep sigstruct | awk '{print $2}' | tr -d \")
 curl -O https://enclave-distribution.test.mobilecoin.com/${SIGSTRUCT_URI}
 
-TARGETDIR=./target/release
+TARGETDIR=${CARGO_TARGET_DIR:-./target}/release
 
 echo "Building mobilecoind and mc-mobilecoind-json. This will take a few moments."
 SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
