@@ -25,6 +25,7 @@ use mc_transaction_core::{
 };
 use mc_transaction_std::{
     ChangeDestination, EmptyMemoBuilder, InputCredentials, MemoBuilder, TransactionBuilder,
+    TxOutContext,
 };
 use mc_util_uri::FogUri;
 use rand::Rng;
