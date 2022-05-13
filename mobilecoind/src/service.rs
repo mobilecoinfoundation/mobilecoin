@@ -40,7 +40,7 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     TokenId,
 };
-use mc_transaction_std::{BurnRedemptionMemo, BurnRedemptionMemoBuilder};
+use mc_transaction_std::{BurnRedemptionMemo, BurnRedemptionMemoBuilder, TxOutContext};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result, AdminService,
@@ -5522,7 +5522,7 @@ mod test {
             EmptyMemoBuilder::default(),
         )
         .unwrap();
-        let (tx_out, _tx_confirmation) = transaction_builder
+        let TxOutContext {tx_out, _tx_confirmation, ..} = transaction_builder
             .add_output(
                 10,
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
@@ -5636,7 +5636,7 @@ mod test {
             EmptyMemoBuilder::default(),
         )
         .unwrap();
-        let (tx_out, _tx_confirmation) = transaction_builder
+        let TxOutContext {tx_out, _tx_confirmation, ..} = transaction_builder
             .add_output(
                 10,
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
