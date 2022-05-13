@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+
+# Copyright (c) 2022 The MobileCoin Foundation
+#
+# Integration test that tests the mint auditor tracks mints and burns.
+
 import argparse
 import grpc
 import logging
