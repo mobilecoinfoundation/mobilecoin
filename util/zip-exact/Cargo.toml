@@ -1,0 +1,10 @@
+[package]
+name = "mc-util-zip-exact"
+version = "1.3.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+description = "An iterator helper"
+readme = "README.md"
+
+[dependencies]
+serde = { version = "1.0", default-features = false }
