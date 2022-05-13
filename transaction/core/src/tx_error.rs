@@ -2,8 +2,8 @@
 
 //! Errors that can occur when creating a new TxOut
 
-use crate::AmountError;
-use alloc::string::String;
+use crate::{AmountError, MemoError};
+use alloc::{format, string::String};
 use displaydoc::Display;
 use mc_crypto_keys::KeyError;
 
@@ -71,8 +71,31 @@ pub enum NewMemoError {
     MultipleOutputs,
     /// Missing output
     MissingOutput,
+    /// Missing required input to build the memo: {0}
+    MissingInput(String),
     /// Mixed Token Ids are not supported in these memos
     MixedTokenIds,
+    /// Destination memo is not supported
+    DestinationMemoNotAllowed,
+    /// Improperly configured input: {0}
+    BadInputs(String),
+    /// Creation
+    Creation(MemoError),
+    /// Utf-8 did not properly decode
+    Utf8Decoding,
     /// Other: {0}
     Other(String),
+}
+
+impl From<MemoError> for NewMemoError {
+    fn from (src: MemoError) -> Self {
+        match src {
+            MemoError::Utf8Decoding => Self::Utf8Decoding,
+            MemoError::BadLength(byte_len) => {
+                Self::BadInputs(
+                    format!("Input of length: {} exceeded max byte length", byte_len)
+                )
+            }
+        }
+    }
 }
