@@ -7,8 +7,7 @@ use mc_api::external;
 use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
 use mc_transaction_core::{Amount, BlockVersion, SignedContingentInput};
 use mc_transaction_std::{
-    test_utils::get_input_credentials, EmptyMemoBuilder, ReservedDestination,
-    SignedContingentInputBuilder,
+    test_utils::get_input_credentials, AddressBook, EmptyMemoBuilder, SignedContingentInputBuilder,
 };
 use mc_util_from_random::FromRandom;
 use mc_util_test_helper::{run_with_several_seeds, CryptoRng, RngCore};
@@ -53,7 +52,7 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
     let sender = AccountKey::random(rng);
     let recipient = AccountKey::random(rng).default_subaddress();
     let recipient2 = AccountKey::random_with_fog(rng).default_subaddress();
-    let sender_change_dest = ReservedDestination::from(&sender);
+    let sender_change_dest = AddressBook::from(&sender);
 
     let fpr = MockFogResolver(btreemap! {
                         recipient2

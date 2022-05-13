@@ -10,9 +10,8 @@ use super::{
         AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
         DestinationMemoError, SenderMemoCredential, UnusedMemo,
     },
-    MemoBuilder,
+    AddressBook, MemoBuilder,
 };
-use crate::ReservedDestination;
 use mc_account_keys::{PublicAddress, ShortAddressHash};
 use mc_transaction_core::{
     tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token, TokenId,
@@ -200,7 +199,7 @@ impl MemoBuilder for RTHMemoBuilder {
     fn make_memo_for_change_output(
         &mut self,
         amount: Amount,
-        _change_destination: &ReservedDestination,
+        _change_destination: &AddressBook,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
         if !self.destination_memo_enabled {

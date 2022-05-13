@@ -4,7 +4,7 @@
 //! The memo builder for recoverable transaction history is defined in a
 //! submodule.
 
-use super::{memo, ReservedDestination};
+use super::{memo, AddressBook};
 use core::fmt::Debug;
 use mc_account_keys::PublicAddress;
 use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
@@ -47,7 +47,7 @@ pub trait MemoBuilder: Debug {
     fn make_memo_for_change_output(
         &mut self,
         amount: Amount,
-        change_destination: &ReservedDestination,
+        change_destination: &AddressBook,
         memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError>;
 }
@@ -74,7 +74,7 @@ impl MemoBuilder for EmptyMemoBuilder {
     fn make_memo_for_change_output(
         &mut self,
         _value: Amount,
-        _change_destination: &ReservedDestination,
+        _change_destination: &AddressBook,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
         Ok(memo::UnusedMemo {}.into())

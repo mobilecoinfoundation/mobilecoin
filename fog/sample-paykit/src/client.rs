@@ -32,7 +32,7 @@ use mc_transaction_core::{
     Amount, BlockIndex, BlockVersion, TokenId,
 };
 use mc_transaction_std::{
-    InputCredentials, MemoType, RTHMemoBuilder, ReservedDestination, SenderMemoCredential,
+    AddressBook, InputCredentials, MemoType, RTHMemoBuilder, SenderMemoCredential,
     TransactionBuilder,
 };
 use mc_util_telemetry::{block_span_builder, telemetry_static_key, tracer, Key, Span};
@@ -707,7 +707,7 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
         .add_output(amount, target_address, rng)
         .map_err(Error::AddOutput)?;
 
-    let change_destination = ReservedDestination::from(source_account_key);
+    let change_destination = AddressBook::from(source_account_key);
 
     tx_builder
         .add_change_output(

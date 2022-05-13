@@ -7,18 +7,19 @@
 
 extern crate core;
 
+mod address_book;
 mod error;
 mod input_credentials;
 mod input_materials;
 mod memo;
 mod memo_builder;
-mod reserved_destination;
 mod signed_contingent_input_builder;
 mod transaction_builder;
 
 #[cfg(any(test, feature = "test-only"))]
 pub mod test_utils;
 
+pub use address_book::AddressBook;
 pub use error::{SignedContingentInputBuilderError, TxBuilderError};
 pub use input_credentials::InputCredentials;
 pub use memo::{
@@ -27,7 +28,6 @@ pub use memo::{
     SenderMemoCredential, UnusedMemo,
 };
 pub use memo_builder::{BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoBuilder, RTHMemoBuilder};
-pub use reserved_destination::ReservedDestination;
 pub use signed_contingent_input_builder::SignedContingentInputBuilder;
 pub use transaction_builder::{DefaultTxOutputsOrdering, TransactionBuilder, TxOutputsOrdering};
 

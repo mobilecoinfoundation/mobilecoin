@@ -24,7 +24,7 @@ use mc_transaction_core::{
     Amount, BlockIndex, BlockVersion, TokenId,
 };
 use mc_transaction_std::{
-    EmptyMemoBuilder, InputCredentials, MemoBuilder, ReservedDestination, TransactionBuilder,
+    AddressBook, EmptyMemoBuilder, InputCredentials, MemoBuilder, TransactionBuilder,
 };
 use mc_util_uri::FogUri;
 use rand::Rng;
@@ -1006,11 +1006,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 token_id,
             };
 
-            let change_dest = ReservedDestination::from_subaddress_index(
-                from_account_key,
-                Some(change_subaddress),
-                None,
-            );
+            let change_dest =
+                AddressBook::from_subaddress_index(from_account_key, Some(change_subaddress), None);
 
             tx_builder
                 .add_change_output(change_amount, &change_dest, rng)
