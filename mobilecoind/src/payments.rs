@@ -970,7 +970,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let mut tx_out_to_outlay_index = HashMap::default();
         let mut outlay_confirmation_numbers = Vec::default();
         for (i, outlay) in destinations.iter().enumerate() {
-            let (tx_out, confirmation_number) = tx_builder
+            let TxOutContext {tx_out, confirmation_number, ..} = tx_builder
                 .add_output(outlay.value, &outlay.receiver, rng)
                 .map_err(|err| Error::TxBuild(format!("failed adding output: {}", err)))?;
 
