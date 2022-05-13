@@ -53,4 +53,5 @@ mc-watcher = { path = "../../../watcher" }
 # fog
 mc-fog-ingest-enclave = { path = "../../ingest/enclave" }
 mc-fog-ingest-server = { path = "../../ingest/server" }
+mc-fog-ingest-server-test-utils = { path = "../../ingest/server/test-utils" }
 mc-fog-test-infra = { path = "../../test_infra" }

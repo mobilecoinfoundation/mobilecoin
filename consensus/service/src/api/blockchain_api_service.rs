@@ -189,17 +189,7 @@ mod tests {
     use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
     use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator};
     use rand::{rngs::StdRng, SeedableRng};
-    use std::{
-        collections::HashMap,
-        iter::FromIterator,
-        sync::atomic::{AtomicUsize, Ordering::SeqCst},
-        time::Duration,
-    };
-
-    fn get_free_port() -> u16 {
-        static PORT_NR: AtomicUsize = AtomicUsize::new(0);
-        PORT_NR.fetch_add(1, SeqCst) as u16 + 30200
-    }
+    use std::{collections::HashMap, iter::FromIterator, time::Duration};
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server<L: Ledger + Clone + 'static>(
@@ -209,7 +199,7 @@ mod tests {
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
-            .bind("127.0.0.1", get_free_port())
+            .bind("127.0.0.1", 0)
             .build()
             .unwrap();
         server.start();

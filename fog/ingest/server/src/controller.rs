@@ -515,8 +515,16 @@ where
         // tx_rows are records containing tx outs, encrypted for the users.
         // there is typically (and at most) one tx row per tx out that comes in.
         let mut tx_rows = Vec::with_capacity(block_contents.outputs.len());
-        for chunk in block_contents.outputs.chunks(self.config.max_transactions) {
-            log::trace!(self.logger, "Chunk of {}", chunk.len());
+        let chunks = block_contents.outputs.chunks(self.config.max_transactions);
+        let num_chunks = chunks.len();
+        for (chunk_index, chunk) in chunks.enumerate() {
+            log::trace!(
+                self.logger,
+                "Chunk {}/{} with {} TxOuts",
+                chunk_index + 1,
+                num_chunks,
+                chunk.len()
+            );
 
             let txs_chunk = TxsForIngest {
                 block_index: block.index,
@@ -1288,7 +1296,7 @@ where
             state_file_data.set_summary(summary);
             state_file_data.set_sealed_ingress_key(sealed_key);
 
-            log::info!(self.logger, "Writing state file to {:?}", state_file_data);
+            log::debug!(self.logger, "Writing state file to {:?}", state_file);
             state_file
                 .write(&state_file_data)
                 .expect("Failed writing state file, this is fatal");

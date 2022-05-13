@@ -59,16 +59,14 @@ pub fn initialize_rocket_server<T: rocket::figment::Provider>(
     rocket_config: T,
     state: OverseerState<SqlRecoveryDb>,
 ) -> rocket::Rocket<rocket::Build> {
-    rocket::custom(rocket_config)
-        .mount(
-            "/",
-            routes![
-                enable,
-                disable,
-                get_status,
-                get_metrics,
-                get_ingest_summaries
-            ],
-        )
-        .manage(state)
+    rocket::custom(rocket_config).manage(state).mount(
+        "/",
+        routes![
+            enable,
+            disable,
+            get_status,
+            get_metrics,
+            get_ingest_summaries
+        ],
+    )
 }

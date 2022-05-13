@@ -30,10 +30,7 @@ use mc_watcher::watcher_db::WatcherDB;
 use std::{
     path::PathBuf,
     str::FromStr,
-    sync::{
-        atomic::{AtomicUsize, Ordering::SeqCst},
-        Arc, RwLock,
-    },
+    sync::{Arc, RwLock},
 };
 use tempdir::TempDir;
 
@@ -242,8 +239,7 @@ pub fn add_txos_to_ledger_db(
 }
 
 pub fn get_free_port() -> u16 {
-    static PORT_NR: AtomicUsize = AtomicUsize::new(0);
-    PORT_NR.fetch_add(1, SeqCst) as u16 + 30100
+    portpicker::pick_unused_port().expect("pick_unused_port")
 }
 
 pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(

@@ -59,6 +59,7 @@ mc-fog-types = { path = "../../types" }
 mc-fog-uri = { path = "../../uri" }
 
 [dev-dependencies]
+mc-fog-ingest-server-test-utils = { path = "test-utils" }
 mc-fog-test-infra = { path = "../../test_infra" }
 mc-util-build-info = { path = "../../../util/build/info" }
 mc-util-from-random = { path = "../../../util/from-random" }
