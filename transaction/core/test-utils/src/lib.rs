@@ -8,6 +8,7 @@ pub use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
+    signer::DummyRingSigner,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
     Amount, Block, BlockID, BlockIndex, BlockVersion, Token,
@@ -208,7 +209,9 @@ pub fn create_transaction_with_amount_and_comparer<
     transaction_builder.set_tombstone_block(tombstone_block);
 
     // Build and return the transaction
-    transaction_builder.build_with_sorter::<R, O>(rng).unwrap()
+    transaction_builder
+        .build_with_sorter::<R, O, DummyRingSigner>(&DummyRingSigner {}, rng)
+        .unwrap()
 }
 
 /// Populates the LedgerDB with initial data.

@@ -28,25 +28,9 @@ use crate::{
     domain_separators::EXTENDED_MESSAGE_DOMAIN_TAG,
     range_proofs::{check_range_proofs, generate_range_proofs},
     ring_signature::{mlsag::RingMLSAG, Error, GeneratorCache, KeyImage, ReducedTxOut, Scalar},
-    signer::RingSigner,
+    signer::{RingSigner, SignableInputRing},
     Amount, BlockVersion, Commitment, CompressedCommitment,
 };
-
-/// A representation of the part of the input ring needed to create an MLSAG
-#[derive(Clone, Debug)]
-pub struct SignableInputRing {
-    /// A reduced representation of the TxOut's in the ring. For each ring
-    /// member we have only:
-    /// * The onetime-address (tx_out.target_key)
-    /// * The compressed commitment (tx_out.amount.commitment)
-    pub members: Vec<ReducedTxOut>,
-
-    /// The index of the real input among these ring members
-    pub real_input_index: usize,
-
-    /// The secrets needed to sign that input
-    pub input_secret: InputSecret,
-}
 
 /// A presigned RingMLSAG and ancillary data needed to incorporate it into a
 /// signature
@@ -79,19 +63,6 @@ impl InputRing {
             InputRing::Presigned(ring) => &ring.pseudo_output_secret.amount,
         }
     }
-}
-
-/// The secrets needed to create a signature that spends an existing output as
-/// an input
-#[derive(Clone, Debug, Zeroize)]
-#[zeroize(drop)]
-pub struct InputSecret {
-    /// The subaddress index for the output we are trying to spend
-    pub subaddress_index: u64,
-    /// The amount of the output
-    pub amount: Amount,
-    /// The blinding factor of the output we are trying to spend
-    pub blinding: Scalar,
 }
 
 /// The secrets corresponding to an output that we are trying to authorize
@@ -881,7 +852,8 @@ mod rct_bulletproofs_tests {
     use super::*;
     use crate::{
         range_proofs::generate_range_proofs,
-        ring_signature::{generators, Error, KeyImage, PedersenGens},
+        ring_signature::{generators, Error, KeyImage, MLSAGError, PedersenGens, ReducedTxOut},
+        signer::{DummyRingSigner, InputSecret, OneTimeKeyOrAlternative, SignableInputRing},
         CompressedCommitment, TokenId,
     };
     use alloc::vec::Vec;
@@ -955,24 +927,25 @@ mod rct_bulletproofs_tests {
             let mut rings = Vec::new();
 
             for i in 0..num_inputs {
-                let mut ring_members: Vec<(CompressedRistrettoPublic, CompressedCommitment)> =
-                    Vec::new();
+                let mut ring_members: Vec<ReducedTxOut> = Vec::new();
                 // Create random mixins.
                 for _i in 0..num_mixins {
+                    let public_key = CompressedRistrettoPublic::from_random(rng);
+                    let target_key = CompressedRistrettoPublic::from_random(rng);
                     let generator = generator_cache.get(fee_token_id);
-                    let address =
-                        CompressedRistrettoPublic::from(RistrettoPublic::from_random(rng));
                     let commitment = {
                         let value = rng.next_u64();
                         let blinding = Scalar::random(rng);
                         CompressedCommitment::new(value, blinding, generator)
                     };
-                    ring_members.push((address, commitment));
+                    ring_members.push(ReducedTxOut {
+                        public_key,
+                        target_key,
+                        commitment,
+                    });
                 }
                 // The real input.
                 let onetime_private_key = RistrettoPrivate::from_random(rng);
-                let onetime_public_key =
-                    CompressedRistrettoPublic::from(RistrettoPublic::from(&onetime_private_key));
 
                 let value = rng.next_u64();
                 let blinding = Scalar::random(rng);
@@ -982,14 +955,25 @@ mod rct_bulletproofs_tests {
 
                 let commitment = CompressedCommitment::new(value, blinding, generator);
 
+                let reduced_tx_out = ReducedTxOut {
+                    target_key: CompressedRistrettoPublic::from(RistrettoPublic::from(
+                        &onetime_private_key,
+                    )),
+                    public_key: CompressedRistrettoPublic::from_random(rng),
+                    commitment,
+                };
+
                 let real_input_index = rng.next_u64() as usize % (num_mixins + 1);
-                ring_members.insert(real_input_index, (onetime_public_key, commitment));
+                ring_members.insert(real_input_index, reduced_tx_out);
+
+                let onetime_key_or_alternative =
+                    OneTimeKeyOrAlternative::OneTimeKey(onetime_private_key);
 
                 rings.push(SignableInputRing {
                     members: ring_members,
                     real_input_index,
                     input_secret: InputSecret {
-                        onetime_private_key,
+                        onetime_key_or_alternative,
                         amount: Amount::new(value, token_id),
                         blinding,
                     },
@@ -1053,6 +1037,7 @@ mod rct_bulletproofs_tests {
                 &self.get_input_rings(),
                 &self.output_secrets,
                 Amount::new(fee, self.fee_token_id),
+                &DummyRingSigner {},
                 rng,
             )
         }
@@ -1069,6 +1054,7 @@ mod rct_bulletproofs_tests {
                 &self.output_secrets,
                 Amount::new(fee, self.fee_token_id),
                 false,
+                &DummyRingSigner {},
                 rng,
             )
         }
@@ -1224,7 +1210,7 @@ mod rct_bulletproofs_tests {
                 &mut rng,
             );
 
-            assert_eq!(result, Err(Error::InvalidSignature));
+            assert_eq!(result, Err(Error::MLSAG(MLSAGError::InvalidSignature)));
         }
 
         #[test]

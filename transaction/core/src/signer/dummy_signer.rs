@@ -1,18 +1,19 @@
 use super::{Error, OneTimeKeyOrAlternative, RingSigner, SignableInputRing};
-use crate::{
-    onetime_keys::recover_onetime_private_key,
-    ring_signature::{generators, CryptoRngCore, RingMLSAG, Scalar},
-};
-use mc_account_keys::AccountKey;
+use crate::ring_signature::{generators, CryptoRngCore, RingMLSAG, Scalar};
 use mc_crypto_keys::RistrettoPublic;
 
-/// An implementation of RingSigner that holds private keys
+/// An implementation of RingSigner that holds nothing
+///
+/// This version only works if the input secret actually includes the one-time
+/// private key, and returns an error if only the alternative is supplied.
+///
+/// The purpose of this is to avoid the need to refactor existing working
+/// software like SDKs that would not benefit from migrating to the
+/// LocalRingSigner, at least for now
 #[derive(Clone, Debug)]
-pub struct LocalRingSigner {
-    key: AccountKey,
-}
+pub struct DummyRingSigner {}
 
-impl RingSigner for LocalRingSigner {
+impl RingSigner for DummyRingSigner {
     fn sign(
         &self,
         message: &[u8],
@@ -26,17 +27,11 @@ impl RingSigner for LocalRingSigner {
             .ok_or(Error::RealInputIndexOutOfBounds)?;
         let target_key = RistrettoPublic::try_from(&real_input.target_key)?;
 
-        // First, compute the one-time private key
+        // First, get the one-time private key
         let onetime_private_key = match ring.input_secret.onetime_key_or_alternative {
             OneTimeKeyOrAlternative::OneTimeKey(key) => key,
-            OneTimeKeyOrAlternative::SubaddressIndex(subaddress_index) => {
-                let public_key = RistrettoPublic::try_from(&real_input.public_key)?;
-
-                recover_onetime_private_key(
-                    &public_key,
-                    &self.key.view_private_key(),
-                    &self.key.subaddress_spend_private(subaddress_index),
-                )
+            OneTimeKeyOrAlternative::SubaddressIndex(_) => {
+                return Err(Error::NoPathToSpendKey);
             }
         };
 
@@ -60,11 +55,5 @@ impl RingSigner for LocalRingSigner {
             &generator,
             rng,
         )?)
-    }
-}
-
-impl From<&AccountKey> for LocalRingSigner {
-    fn from(src: &AccountKey) -> Self {
-        Self { key: src.clone() }
     }
 }

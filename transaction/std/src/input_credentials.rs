@@ -4,7 +4,7 @@ use crate::TxBuilderError;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_transaction_core::{
     onetime_keys::create_shared_secret,
-    ring_signature::{InputSecret, SignableInputRing},
+    signer::{InputSecret, OneTimeKeyOrAlternative, SignableInputRing},
     tx::{TxIn, TxOut, TxOutMembershipProof},
 };
 use std::convert::TryFrom;
@@ -84,8 +84,11 @@ impl InputCredentials {
         let masked_amount = &ring[real_index].masked_amount;
         let (amount, blinding) = masked_amount.get_value(&tx_out_shared_secret)?;
 
+        // We always have the one-time key in this flow
+        let onetime_key_or_alternative = OneTimeKeyOrAlternative::OneTimeKey(onetime_private_key);
+
         let input_secret = InputSecret {
-            onetime_private_key,
+            onetime_key_or_alternative,
             amount,
             blinding,
         };
@@ -102,11 +105,7 @@ impl InputCredentials {
 impl From<InputCredentials> for SignableInputRing {
     fn from(src: InputCredentials) -> SignableInputRing {
         SignableInputRing {
-            members: src
-                .ring
-                .iter()
-                .map(|tx_out| (tx_out.target_key, tx_out.masked_amount.commitment))
-                .collect(),
+            members: src.ring.iter().map(Into::into).collect(),
             real_input_index: src.real_index,
             input_secret: src.input_secret.clone(),
         }

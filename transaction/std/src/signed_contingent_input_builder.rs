@@ -11,7 +11,8 @@ use core::cmp::min;
 use mc_account_keys::PublicAddress;
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
-    ring_signature::{GeneratorCache, OutputSecret, RingMLSAG, Scalar, SignableInputRing},
+    ring_signature::{OutputSecret, Scalar},
+    signer::{RingSigner, SignableInputRing},
     tx::{TxIn, TxOut, TxOutConfirmationNumber},
     Amount, BlockVersion, InputRules, MemoContext, MemoPayload, NewMemoError,
     SignedContingentInput, TokenId, UnmaskedAmount,
@@ -297,6 +298,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     /// Consume the builder and return the transaction.
     pub fn build<RNG: CryptoRng + RngCore>(
         mut self,
+        ring_signer: &impl RingSigner,
         rng: &mut RNG,
     ) -> Result<SignedContingentInput, TxBuilderError> {
         if !self.block_version.signed_input_rules_are_supported()
@@ -349,20 +351,12 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
 
         let pseudo_output_blinding = Scalar::random(rng);
 
-        let mut generator_cache = GeneratorCache::default();
-        let generator = generator_cache.get(ring.input_secret.amount.token_id);
-
-        let mlsag = RingMLSAG::sign(
+        let mlsag = ring_signer.sign(
             &tx_in
                 .signed_digest()
                 .expect("Tx in should contain rules, this is a logic error"),
-            &ring.members,
-            ring.real_input_index,
-            &ring.input_secret.onetime_private_key,
-            ring.input_secret.amount.value,
-            &ring.input_secret.blinding,
-            &pseudo_output_blinding,
-            generator,
+            &ring,
+            pseudo_output_blinding,
             rng,
         )?;
 

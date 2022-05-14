@@ -404,7 +404,8 @@ impl From<mc_util_repr_bytes::LengthMismatch> for MLSAGError {
 mod mlsag_tests {
     use crate::{
         ring_signature::{
-            generators, mlsag::RingMLSAG, CurveScalar, Error, KeyImage, PedersenGens, Scalar,
+            generators, mlsag::RingMLSAG, CurveScalar, KeyImage, MLSAGError as Error, PedersenGens,
+            ReducedTxOut, Scalar,
         },
         CompressedCommitment,
     };
@@ -421,7 +422,7 @@ mod mlsag_tests {
     #[derive(Clone)]
     struct RingMLSAGParameters {
         message: [u8; 32],
-        ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)>,
+        ring: Vec<ReducedTxOut>,
         real_index: usize,
         onetime_private_key: RistrettoPrivate,
         value: u64,
@@ -441,28 +442,39 @@ mod mlsag_tests {
 
             let generator = generators(rng.next_u64());
 
-            let mut ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)> = Vec::new();
+            let mut ring: Vec<ReducedTxOut> = Vec::new();
             for _i in 0..num_mixins {
-                let address = CompressedRistrettoPublic::from(RistrettoPublic::from_random(rng));
+                let public_key = CompressedRistrettoPublic::from_random(rng);
+                let target_key = CompressedRistrettoPublic::from_random(rng);
                 let commitment = {
                     let value = rng.next_u64();
                     let blinding = Scalar::random(rng);
                     CompressedCommitment::new(value, blinding, &generator)
                 };
-                ring.push((address, commitment));
+                ring.push(ReducedTxOut {
+                    public_key,
+                    target_key,
+                    commitment,
+                });
             }
 
             // The real input.
             let onetime_private_key = RistrettoPrivate::from_random(rng);
-            let onetime_public_key =
-                CompressedRistrettoPublic::from(RistrettoPublic::from(&onetime_private_key));
 
             let value = rng.next_u64();
             let blinding = Scalar::random(rng);
             let commitment = CompressedCommitment::new(value, blinding, &generator);
 
+            let reduced_tx_out = ReducedTxOut {
+                target_key: CompressedRistrettoPublic::from(RistrettoPublic::from(
+                    &onetime_private_key,
+                )),
+                public_key: CompressedRistrettoPublic::from_random(rng),
+                commitment,
+            };
+
             let real_index = rng.next_u64() as usize % (num_mixins + 1);
-            ring.insert(real_index, (onetime_public_key, commitment));
+            ring.insert(real_index, reduced_tx_out);
             assert_eq!(ring.len(), num_mixins + 1);
 
             Self {
@@ -780,10 +792,10 @@ mod mlsag_tests {
 
             let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding, &params.generator);
 
-            // Modify a ring element's public key.
+            // Modify a ring element's target key.
             {
                 let index = (rng.next_u64() as usize) % num_mixins;
-                params.ring[index].0 = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
+                params.ring[index].target_key = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
 
                 let result = signature.verify(&params.message, &params.ring, &output_commitment);
 
@@ -798,7 +810,7 @@ mod mlsag_tests {
                 let index = (rng.next_u64() as usize) % num_mixins;
                 let value = rng.next_u64();
                 let blinding = Scalar::random(&mut rng);
-                params.ring[index].1 = CompressedCommitment::new(value, blinding, &params.generator);
+                params.ring[index].commitment = CompressedCommitment::new(value, blinding, &params.generator);
 
                 let result = signature.verify(&params.message, &params.ring, &output_commitment);
 

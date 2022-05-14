@@ -17,6 +17,7 @@ use mc_transaction_core::{
     fog_hint::FogHint,
     onetime_keys::create_shared_secret,
     ring_signature::{InputRing, OutputSecret, SignatureRctBulletproofs},
+    signer::RingSigner,
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
     Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, SignedContingentInput,
@@ -422,24 +423,34 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     }
 
     /// Consume the builder and return the transaction.
-    pub fn build<RNG: CryptoRng + RngCore>(self, rng: &mut RNG) -> Result<Tx, TxBuilderError> {
-        self.build_with_comparer_internal::<RNG, DefaultTxOutputsOrdering>(rng)
+    pub fn build<RNG: CryptoRng + RngCore, S: RingSigner>(
+        self,
+        ring_signer: &S,
+        rng: &mut RNG,
+    ) -> Result<Tx, TxBuilderError> {
+        self.build_with_comparer_internal::<RNG, DefaultTxOutputsOrdering, S>(ring_signer, rng)
     }
 
     /// Consume the builder and return the transaction with a comparer.
     /// Used only in testing library.
     #[cfg(feature = "test-only")]
-    pub fn build_with_sorter<RNG: CryptoRng + RngCore, O: TxOutputsOrdering>(
+    pub fn build_with_sorter<RNG: CryptoRng + RngCore, O: TxOutputsOrdering, S: RingSigner>(
         self,
+        ring_signer: &S,
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
-        self.build_with_comparer_internal::<RNG, O>(rng)
+        self.build_with_comparer_internal::<RNG, O, S>(ring_signer, rng)
     }
 
     /// Consume the builder and return the transaction with a comparer
     /// (internal usage only).
-    fn build_with_comparer_internal<RNG: CryptoRng + RngCore, O: TxOutputsOrdering>(
+    fn build_with_comparer_internal<
+        RNG: CryptoRng + RngCore,
+        O: TxOutputsOrdering,
+        S: RingSigner,
+    >(
         mut self,
+        ring_signer: &S,
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
         // Note: Origin block has block version zero, so some clients like slam that
@@ -542,6 +553,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             &input_rings,
             &output_secrets,
             self.fee,
+            ring_signer,
             rng,
         )?;
 

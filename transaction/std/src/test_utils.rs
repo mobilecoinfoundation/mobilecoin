@@ -12,6 +12,7 @@ use mc_crypto_keys::RistrettoPublic;
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
     onetime_keys::*,
+    signer::DummyRingSigner,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
     Amount, BlockVersion, MemoContext, NewMemoError, Token, TokenId,
@@ -203,7 +204,7 @@ pub fn get_transaction<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver + Clone>
     let fee = num_inputs as u64 * input_value - num_outputs as u64 * output_value;
     transaction_builder.set_fee(fee).unwrap();
 
-    transaction_builder.build(rng)
+    transaction_builder.build(&DummyRingSigner {}, rng)
 }
 
 /// Build simulated change memo with zero amount

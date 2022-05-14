@@ -3,7 +3,8 @@
 use displaydoc::Display;
 use mc_fog_report_validation::FogPubkeyError;
 use mc_transaction_core::{
-    ring_signature, ring_signature::Error, AmountError, NewMemoError, NewTxError, TokenId,
+    ring_signature, ring_signature::Error, signer::Error as SignerError, AmountError, NewMemoError,
+    NewTxError, TokenId,
 };
 
 /// An error that can occur when using the TransactionBuilder
@@ -62,6 +63,9 @@ pub enum TxBuilderError {
 
     /// Missing membership proof
     MissingMembershipProofs,
+
+    /// Signer: {0}
+    Signer(SignerError),
 }
 
 impl From<mc_util_serial::encode::Error> for TxBuilderError {
@@ -97,6 +101,12 @@ impl From<mc_crypto_keys::KeyError> for TxBuilderError {
 impl From<ring_signature::Error> for TxBuilderError {
     fn from(src: Error) -> Self {
         TxBuilderError::RingSignatureFailed(src)
+    }
+}
+
+impl From<SignerError> for TxBuilderError {
+    fn from(src: SignerError) -> Self {
+        TxBuilderError::Signer(src)
     }
 }
 
