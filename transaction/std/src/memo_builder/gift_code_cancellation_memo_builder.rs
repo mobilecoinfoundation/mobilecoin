@@ -11,11 +11,11 @@ use mc_account_keys::PublicAddress;
 use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
 
 /// There are three possible gift code memo types specified in MCIP #32
-/// | Memo type bytes | Name                                              |
-/// | -----------     | -----------                                       |
-/// |    0x0002       | Gift Code Sender Memo                             |
-/// |    0x0201       | Gift Code Funding Memo                            |
-/// | -->0x0202<--    | Gift Code Cancellation Memo                       |
+/// | Memo type bytes | Name                        |
+/// | -----------     | -----------                 |
+/// |    0x0002       | Gift Code Sender Memo       |
+/// |    0x0201       | Gift Code Funding Memo      |
+/// | -->0x0202<--    | Gift Code Cancellation Memo |
 /// This memo builder builds a gift code cancellation memo (0x0202). Gift code
 /// cancellation is defined as the sender sending the gift code TxOut at the
 /// gift code subaddress back to their default address prior to it being spent

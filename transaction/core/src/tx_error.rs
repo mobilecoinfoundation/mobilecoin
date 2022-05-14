@@ -56,7 +56,7 @@ impl From<AmountError> for ViewKeyMatchError {
 /// We have included error codes for some known useful error conditions.
 /// For a custom MemoBuilder, you can try to reuse those, or use the Other
 /// error code.
-#[derive(Debug, Display, PartialEq, Eq)]
+#[derive(Debug, Display, Eq, PartialEq)]
 pub enum NewMemoError {
     /// Limits for '{0}' value exceeded
     LimitsExceeded(&'static str),
