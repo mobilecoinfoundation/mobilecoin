@@ -894,7 +894,7 @@ pub mod transaction_builder_tests {
             .unwrap();
 
             transaction_builder.add_input(input_credentials);
-            let TxOutContext {_txout, confirmation, ..} = transaction_builder
+            let TxOutContext {confirmation, ..} = transaction_builder
                 .add_output(
                     value - Mob::MINIMUM_FEE,
                     &recipient.default_subaddress(),
