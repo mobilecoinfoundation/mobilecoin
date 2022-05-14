@@ -3047,7 +3047,7 @@ mod test {
             EmptyMemoBuilder::default(),
         )
         .unwrap();
-        let (tx_out, tx_confirmation) = transaction_builder
+        let TxOutContext {tx_out, confirmation, ..} = transaction_builder
             .add_output(10, &receiver.subaddress(0), &mut rng)
             .unwrap();
 
@@ -3064,7 +3064,7 @@ mod test {
             ));
             receipt.set_tx_out_hash(hash.to_vec());
             receipt.set_tombstone(10);
-            receipt.set_confirmation_number(tx_confirmation.to_vec());
+            receipt.set_confirmation_number(confirmation.to_vec());
 
             let mut request = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
             request.set_receipt(receipt);
@@ -5522,7 +5522,7 @@ mod test {
             EmptyMemoBuilder::default(),
         )
         .unwrap();
-        let TxOutContext {tx_out, _tx_confirmation, ..} = transaction_builder
+        let TxOutContext {tx_out, ..} = transaction_builder
             .add_output(
                 10,
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
@@ -5636,7 +5636,7 @@ mod test {
             EmptyMemoBuilder::default(),
         )
         .unwrap();
-        let TxOutContext {tx_out, _tx_confirmation, ..} = transaction_builder
+        let TxOutContext {tx_out, ..} = transaction_builder
             .add_output(
                 10,
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
