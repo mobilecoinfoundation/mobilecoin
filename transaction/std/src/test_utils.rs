@@ -3,11 +3,12 @@
 //! Utilities that help with testing the transaction builder and related objects
 
 use crate::{
-    EmptyMemoBuilder, InputCredentials, MemoBuilder, MemoPayload, ReservedDestination,
-    TransactionBuilder, TxBuilderError,
+    EmptyMemoBuilder, GiftCodeFundingMemo, GiftCodeSenderMemo, InputCredentials, MemoBuilder,
+    MemoPayload, ReservedDestination, TransactionBuilder, TxBuilderError,
 };
-use core::convert::TryFrom;
+use core::convert::{TryFrom, TryInto};
 use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
+use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::RistrettoPublic;
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
@@ -229,4 +230,47 @@ pub fn build_change_memo_with_amount(
 
     //Build memo
     builder.make_memo_for_change_output(change_amount, &alice_address_book, memo_context)
+}
+
+/// Utilities for decoding and verifying memo data
+pub struct MemoDecoder;
+
+impl MemoDecoder {
+    /// Get the sender note
+    pub fn decode_sender_note(memo_data: &[u8; GiftCodeSenderMemo::MEMO_DATA_LEN]) -> &str {
+        let index = if let Some(terminator) = memo_data.iter().position(|b| b == &0u8) {
+            terminator
+        } else {
+            GiftCodeSenderMemo::MEMO_DATA_LEN
+        };
+
+        std::str::from_utf8(&memo_data[0..index]).unwrap()
+    }
+
+    /// Get funding note from memo
+    pub fn decode_funding_note(memo_data: &[u8; GiftCodeFundingMemo::MEMO_DATA_LEN]) -> &str {
+        let index = if let Some(terminator) = memo_data
+            .iter()
+            .enumerate()
+            .position(|(i, b)| i >= GiftCodeFundingMemo::HASH_DATA_LEN && b == &0u8)
+        {
+            terminator
+        } else {
+            GiftCodeFundingMemo::MEMO_DATA_LEN
+        };
+
+        std::str::from_utf8(&memo_data[GiftCodeFundingMemo::HASH_DATA_LEN..index]).unwrap()
+    }
+
+    /// Get the first four bytes of a gift code TxOut public key
+    pub fn tx_out_public_key_short_hash(
+        tx_out_public_key: &RistrettoPublic,
+    ) -> [u8; GiftCodeFundingMemo::HASH_DATA_LEN] {
+        let mut hasher = Blake2b512::new();
+        hasher.update("mc-gift-funding-tx-pub-key");
+        hasher.update(tx_out_public_key.as_ref().compress().as_bytes());
+        hasher.finalize().as_slice()[0..GiftCodeFundingMemo::HASH_DATA_LEN]
+            .try_into()
+            .unwrap()
+    }
 }

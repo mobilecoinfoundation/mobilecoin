@@ -117,7 +117,7 @@ impl MemoBuilder for GiftCodeCancellationMemoBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::build_zero_value_change_memo;
+    use crate::test_utils::{build_change_memo_with_amount, build_zero_value_change_memo};
     use std::convert::TryInto;
 
     #[test]
@@ -166,6 +166,21 @@ mod tests {
             memo_payload,
             Err(NewMemoError::MultipleChangeOutputs)
         ));
+    }
+
+    #[test]
+    fn test_gift_code_cancellation_memo_fails_for_nonzero_amount() {
+        // Create memo builder
+        let mut builder = GiftCodeCancellationMemoBuilder::default();
+
+        // Set the cancellation index
+        let index = 666;
+        builder.set_gift_code_tx_out_index(index);
+
+        // Build the memo payload
+        let amount = Amount::new(666, 0.into());
+        let memo_payload = build_change_memo_with_amount(&mut builder, amount);
+        assert!(matches!(memo_payload, Err(NewMemoError::BadInputs(_))));
     }
 
     #[test]

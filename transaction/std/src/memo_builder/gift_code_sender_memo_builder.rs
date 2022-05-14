@@ -31,8 +31,9 @@ pub struct GiftCodeSenderMemoBuilder {
     gift_code_change_memo_enabled: bool,
     // Whether we've already written the change memo
     wrote_change_memo: bool,
-    // Whetever we've set a valid note
-    wrote_valid_note: bool,
+    // Whether our last note setting attempt was invalid and the note hasn't
+    // been reset with a valid note or cleared
+    attempted_invalid_note: bool,
 }
 
 // Create an empty GiftCodeSenderMemoBuilder
@@ -42,7 +43,7 @@ impl Default for GiftCodeSenderMemoBuilder {
             note: "".into(),
             gift_code_change_memo_enabled: true,
             wrote_change_memo: false,
-            wrote_valid_note: true,
+            attempted_invalid_note: false,
         }
     }
 }
@@ -54,16 +55,18 @@ impl GiftCodeSenderMemoBuilder {
     /// 64 bytes.
     pub fn set_gift_code_sender_note(&mut self, note: &str) -> Result<(), NewMemoError> {
         if note.len() > GiftCodeSenderMemo::MEMO_DATA_LEN {
-            self.wrote_valid_note = false;
+            self.attempted_invalid_note = true;
             return Err(NewMemoError::BadInputs(
                 "Sender note cannot be longer than 64 bytes".into(),
             ));
         }
         self.note = note.into();
+        self.attempted_invalid_note = false;
         Ok(())
     }
     /// Clear the gift code sender note
     pub fn clear_sender_note(&mut self) {
+        self.attempted_invalid_note = false;
         self.note = "".into();
     }
     /// Enable change memos
@@ -106,7 +109,8 @@ impl MemoBuilder for GiftCodeSenderMemoBuilder {
         if self.wrote_change_memo {
             return Err(NewMemoError::MultipleChangeOutputs);
         };
-        if !self.wrote_valid_note {
+        // Prevent callers from writing memo if last note set attempt was a failure
+        if self.attempted_invalid_note {
             return Err(NewMemoError::BadInputs(
                 "Tried to set a note longer than 64 bytes".into(),
             ));
@@ -119,18 +123,7 @@ impl MemoBuilder for GiftCodeSenderMemoBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::build_change_memo_with_amount;
-
-    /// Get the sender note
-    fn get_sender_note(memo_data: &[u8; GiftCodeSenderMemo::MEMO_DATA_LEN]) -> &str {
-        let index = if let Some(terminator) = memo_data.iter().position(|b| b == &0u8) {
-            terminator
-        } else {
-            GiftCodeSenderMemo::MEMO_DATA_LEN
-        };
-
-        std::str::from_utf8(&memo_data[0..index]).unwrap()
-    }
+    use crate::test_utils::{build_change_memo_with_amount, MemoDecoder};
 
     #[test]
     fn test_gift_code_sender_memo_built_successfully_with_note() {
@@ -146,7 +139,7 @@ mod tests {
         let memo_payload = build_change_memo_with_amount(&mut builder, amount).unwrap();
 
         // Verify memo data
-        let derived_note = get_sender_note(memo_payload.get_memo_data());
+        let derived_note = MemoDecoder::decode_sender_note(memo_payload.get_memo_data());
         assert_eq!(note, derived_note);
     }
 
@@ -161,7 +154,7 @@ mod tests {
 
         // Verify memo data
         let blank_note = "";
-        let derived_note = get_sender_note(memo_payload.get_memo_data());
+        let derived_note = MemoDecoder::decode_sender_note(memo_payload.get_memo_data());
         assert_eq!(blank_note, derived_note);
     }
 
@@ -179,7 +172,7 @@ mod tests {
         let memo_payload = build_change_memo_with_amount(&mut builder, amount).unwrap();
 
         // Verify memo data works once
-        let derived_note = get_sender_note(memo_payload.get_memo_data());
+        let derived_note = MemoDecoder::decode_sender_note(memo_payload.get_memo_data());
         assert_eq!(note, derived_note);
 
         // Verify memo_data doesn't work more than once
@@ -206,7 +199,7 @@ mod tests {
 
         // Verify memo data
         let blank_note = "";
-        let derived_note = get_sender_note(memo_payload.get_memo_data());
+        let derived_note = MemoDecoder::decode_sender_note(memo_payload.get_memo_data());
         assert_eq!(blank_note, derived_note);
 
         // Create another memo builder
@@ -220,7 +213,7 @@ mod tests {
         // Build the memo payload and get the data
         let amount_2 = Amount::new(666, 0.into());
         let memo_payload_2 = build_change_memo_with_amount(&mut builder_2, amount_2).unwrap();
-        let derived_note_2 = get_sender_note(memo_payload_2.get_memo_data());
+        let derived_note_2 = MemoDecoder::decode_sender_note(memo_payload_2.get_memo_data());
         assert_eq!(note_2, derived_note_2);
     }
 
@@ -243,19 +236,41 @@ mod tests {
     }
 
     #[test]
-    fn test_gift_code_sender_builder_doesnt_allow_invalid_note_length() {
+    fn test_gift_code_sender_note_builder_fails_after_attempting_invalid_note() {
         // Create memo builder
         let mut builder = GiftCodeSenderMemoBuilder::default();
 
-        // Set an invalid note
+        // Attempt to set an invalid note
         let note_bytes = [b'6'; GiftCodeSenderMemo::MEMO_DATA_LEN + 1];
         let note = std::str::from_utf8(&note_bytes).unwrap();
         let result = builder.set_gift_code_sender_note(note);
         assert!(matches!(result, Err(NewMemoError::BadInputs(_))));
 
-        // Try to build after failing to set note
+        // Fail to build memo after failing to set valid note
         let amount = Amount::new(42, 0.into());
         let memo_payload = build_change_memo_with_amount(&mut builder, amount);
         assert!(matches!(memo_payload, Err(NewMemoError::BadInputs(_))));
+    }
+
+    #[test]
+    fn test_gift_code_sender_note_builder_succeeds_after_resetting_invalid_note_with_valid_note() {
+        // Create memo builder
+        let mut builder = GiftCodeSenderMemoBuilder::default();
+
+        // Attempt to set an invalid note
+        let note_bytes = [b'6'; GiftCodeSenderMemo::MEMO_DATA_LEN + 1];
+        let note = std::str::from_utf8(&note_bytes).unwrap();
+        let result = builder.set_gift_code_sender_note(note);
+        assert!(matches!(result, Err(NewMemoError::BadInputs(_))));
+
+        // Reset with valid note
+        let valid_note = "Im within the byte length, but validity is a subjective concept";
+        builder.set_gift_code_sender_note(valid_note).unwrap();
+        let amount = Amount::new(42, 0.into());
+        let memo_payload = build_change_memo_with_amount(&mut builder, amount).unwrap();
+
+        // Assert we can build the memo and get the correct output
+        let derived_note = MemoDecoder::decode_sender_note(memo_payload.get_memo_data());
+        assert_eq!(valid_note, derived_note);
     }
 }
