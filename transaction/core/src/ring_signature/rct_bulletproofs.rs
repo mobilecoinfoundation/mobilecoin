@@ -17,7 +17,6 @@ use curve25519_dalek::{
 };
 use mc_common::HashSet;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
-use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_util_serial::prost::Message;
 use mc_util_zip_exact::zip_exact;
 use rand_core::{CryptoRng, RngCore};
@@ -28,7 +27,8 @@ use crate::{
     constants::FEE_BLINDING,
     domain_separators::EXTENDED_MESSAGE_DOMAIN_TAG,
     range_proofs::{check_range_proofs, generate_range_proofs},
-    ring_signature::{mlsag::RingMLSAG, Error, GeneratorCache, KeyImage, Scalar},
+    ring_signature::{mlsag::RingMLSAG, Error, GeneratorCache, KeyImage, ReducedTxOut, Scalar},
+    signer::RingSigner,
     Amount, BlockVersion, Commitment, CompressedCommitment,
 };
 
@@ -39,7 +39,7 @@ pub struct SignableInputRing {
     /// member we have only:
     /// * The onetime-address (tx_out.target_key)
     /// * The compressed commitment (tx_out.amount.commitment)
-    pub members: Vec<(CompressedRistrettoPublic, CompressedCommitment)>,
+    pub members: Vec<ReducedTxOut>,
 
     /// The index of the real input among these ring members
     pub real_input_index: usize,
@@ -86,8 +86,8 @@ impl InputRing {
 #[derive(Clone, Debug, Zeroize)]
 #[zeroize(drop)]
 pub struct InputSecret {
-    /// The one-time private key for the output we are trying to spend
-    pub onetime_private_key: RistrettoPrivate,
+    /// The subaddress index for the output we are trying to spend
+    pub subaddress_index: u64,
     /// The amount of the output
     pub amount: Amount,
     /// The blinding factor of the output we are trying to spend
@@ -112,7 +112,7 @@ pub struct SignedInputRing {
     /// member we have only:
     /// * The onetime-address (tx_out.target_key)
     /// * The compressed commitment (tx_out.amount.commitment)
-    pub members: Vec<(CompressedRistrettoPublic, CompressedCommitment)>,
+    pub members: Vec<ReducedTxOut>,
 
     /// The digest that this signature is supposed to have signed.
     /// If omitted, then the entire extended message digest should have been
@@ -182,6 +182,7 @@ impl SignatureRctBulletproofs {
         input_rings: &[InputRing],
         output_secrets: &[OutputSecret],
         fee: Amount,
+        signer: &impl RingSigner,
         rng: &mut CSPRNG,
     ) -> Result<Self, Error> {
         sign_with_balance_check(
@@ -191,6 +192,7 @@ impl SignatureRctBulletproofs {
             output_secrets,
             fee,
             true,
+            signer,
             rng,
         )
     }
@@ -483,6 +485,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     output_secrets: &[OutputSecret],
     fee: Amount,
     check_value_is_preserved: bool,
+    signer: &impl RingSigner,
     rng: &mut CSPRNG,
 ) -> Result<SignatureRctBulletproofs, Error> {
     if !block_version.masked_token_id_feature_is_supported() && fee.token_id != 0 {
@@ -700,18 +703,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
             |(ring, pseudo_output_blinding)| -> Result<RingMLSAG, Error> {
                 Ok(match ring {
                     InputRing::Signable(ring) => {
-                        let generator = generator_cache.get(ring.input_secret.amount.token_id);
-                        RingMLSAG::sign(
-                            &extended_message_digest,
-                            &ring.members,
-                            ring.real_input_index,
-                            &ring.input_secret.onetime_private_key,
-                            ring.input_secret.amount.value,
-                            &ring.input_secret.blinding,
-                            &pseudo_output_blinding,
-                            generator,
-                            rng,
-                        )?
+                        signer.sign(&extended_message_digest, &ring, pseudo_output_blinding, rng)?
                     }
                     InputRing::Presigned(ring) => ring.mlsag.clone(),
                 })

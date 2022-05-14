@@ -1,5 +1,5 @@
 use crate::{
-    ring_signature::{Error, PedersenGens, Scalar},
+    ring_signature::{MLSAGError, PedersenGens, Scalar},
     CompressedCommitment,
 };
 use core::{convert::TryFrom, fmt};
@@ -37,10 +37,13 @@ impl Commitment {
 }
 
 impl TryFrom<&CompressedCommitment> for Commitment {
-    type Error = crate::ring_signature::Error;
+    type Error = crate::ring_signature::MLSAGError;
 
     fn try_from(src: &CompressedCommitment) -> Result<Self, Self::Error> {
-        let point = src.point.decompress().ok_or(Error::InvalidCurvePoint)?;
+        let point = src
+            .point
+            .decompress()
+            .ok_or(MLSAGError::InvalidCurvePoint)?;
         Ok(Self { point })
     }
 }
@@ -56,15 +59,15 @@ impl fmt::Debug for Commitment {
 }
 
 impl ReprBytes for Commitment {
-    type Error = Error;
+    type Error = MLSAGError;
     type Size = U32;
     fn to_bytes(&self) -> GenericArray<u8, U32> {
         self.point.compress().to_bytes().into()
     }
-    fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, Error> {
+    fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, Self::Error> {
         let point = CompressedRistretto::from_slice(src.as_slice())
             .decompress()
-            .ok_or(Error::InvalidCurvePoint)?;
+            .ok_or(MLSAGError::InvalidCurvePoint)?;
         Ok(Self { point })
     }
 }
