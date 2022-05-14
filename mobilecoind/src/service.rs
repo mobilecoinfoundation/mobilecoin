@@ -40,7 +40,7 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     TokenId,
 };
-use mc_transaction_std::{BurnRedemptionMemo, BurnRedemptionMemoBuilder, TxOutContext};
+use mc_transaction_std::{BurnRedemptionMemo, BurnRedemptionMemoBuilder};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result, AdminService,
@@ -2103,7 +2103,7 @@ mod test {
         tx::{Tx, TxOut},
         Amount, Block, BlockContents, BlockVersion, Token,
     };
-    use mc_transaction_std::{EmptyMemoBuilder, MemoType, TransactionBuilder};
+    use mc_transaction_std::{EmptyMemoBuilder, MemoType, TransactionBuilder, TxOutContext};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
