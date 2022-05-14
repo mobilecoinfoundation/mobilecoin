@@ -83,7 +83,7 @@ impl MemoBuilder for GiftCodeCancellationMemoBuilder {
     /// Build a memo for a gift code change output
     fn make_memo_for_change_output(
         &mut self,
-        _amount: Amount,
+        amount: Amount,
         _change_destination: &ReservedDestination,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
@@ -92,6 +92,16 @@ impl MemoBuilder for GiftCodeCancellationMemoBuilder {
         }
         if self.wrote_change_memo {
             return Err(NewMemoError::MultipleChangeOutputs);
+        }
+        if self.gift_code_tx_out_global_index.is_none() {
+            return Err(NewMemoError::MissingInput(
+                "Must specify gift code TxOut global index".into(),
+            ));
+        }
+        if amount.value > 0 {
+            return Err(NewMemoError::BadInputs(
+                "Cancellation memo TxOut should be zero valued".into(),
+            ));
         }
         self.wrote_change_memo = true;
         if let Some(tx_out_global_index) = self.gift_code_tx_out_global_index.take() {
@@ -104,10 +114,108 @@ impl MemoBuilder for GiftCodeCancellationMemoBuilder {
     }
 }
 
+#[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::test_utils::build_zero_value_change_memo;
+    use std::convert::TryInto;
 
     #[test]
-    fn test_gift_code() {
-        // Tests forthcoming
+    fn test_gift_code_cancellation_memo_built_successfully_with_index() {
+        // Create memo builder
+        let mut builder = GiftCodeCancellationMemoBuilder::default();
+
+        // Set the cancellation index
+        let index = 666;
+        builder.set_gift_code_tx_out_index(index);
+
+        // Build the memo payload and get the data
+        let memo_payload = build_zero_value_change_memo(&mut builder).unwrap();
+        let memo_data = memo_payload.get_memo_data();
+
+        // Verify memo data
+        let derived_index = u64::from_le_bytes(memo_data[0..8].try_into().unwrap());
+        assert_eq!(index, derived_index);
+    }
+
+    #[test]
+    fn test_gift_code_cancellation_memo_fails_without_index() {
+        // Instantiate memo builder
+        let mut builder = GiftCodeCancellationMemoBuilder::default();
+
+        // Build the memo payload
+        let memo_payload = build_zero_value_change_memo(&mut builder);
+
+        // Assert we've created the correct error
+        assert!(matches!(memo_payload, Err(NewMemoError::MissingInput(_))));
+    }
+
+    #[test]
+    fn test_gift_code_cancellation_memo_fails_for_more_than_one_change_memo() {
+        // Create memo builder
+        let mut builder = GiftCodeCancellationMemoBuilder::default();
+
+        // Set the cancellation index
+        let index = 666;
+        builder.set_gift_code_tx_out_index(index);
+
+        // Build the memo payload
+        build_zero_value_change_memo(&mut builder).unwrap();
+        let memo_payload = build_zero_value_change_memo(&mut builder);
+        assert!(matches!(
+            memo_payload,
+            Err(NewMemoError::MultipleChangeOutputs)
+        ));
+    }
+
+    #[test]
+    fn test_gift_code_cancellation_memo_fields_are_set_and_cleared_properly() {
+        // Create memo builder
+        let mut builder = GiftCodeCancellationMemoBuilder::default();
+
+        // Set the cancellation index, and then replace it
+        let index = 666;
+        builder.set_gift_code_tx_out_index(index);
+        let replacement_index = 420;
+        builder.set_gift_code_tx_out_index(replacement_index);
+
+        // Build the memo payload and get the data
+        let memo_payload = build_zero_value_change_memo(&mut builder).unwrap();
+        let memo_data = memo_payload.get_memo_data();
+
+        // Verify memo data
+        let derived_index = u64::from_le_bytes(memo_data[0..8].try_into().unwrap());
+        assert_eq!(replacement_index, derived_index);
+
+        // Create another memo builder
+        let mut builder_2 = GiftCodeCancellationMemoBuilder::default();
+
+        // Set the cancellation index and then clear it
+        let index_2 = 666;
+        builder_2.set_gift_code_tx_out_index(index_2);
+        builder_2.clear_gift_code_tx_out_index();
+
+        // Build the memo payload and get the data
+        let memo_payload_2 = build_zero_value_change_memo(&mut builder_2);
+        assert!(matches!(memo_payload_2, Err(NewMemoError::MissingInput(_))));
+    }
+
+    #[test]
+    fn test_gift_code_cancellation_memo_writes_unused_if_change_disabled() {
+        // Create memo builder
+        let mut builder = GiftCodeCancellationMemoBuilder::default();
+
+        // Set the cancellation index
+        let index = 666;
+        builder.set_gift_code_tx_out_index(index);
+
+        // Disable change outputs
+        builder.disable_gift_code_change_memo();
+
+        // Build the memo payload and get the data
+        let memo_payload = build_zero_value_change_memo(&mut builder).unwrap();
+
+        // Verify memo data is blank
+        assert_eq!(memo_payload.get_memo_data(), &[0u8; 64]);
     }
 }

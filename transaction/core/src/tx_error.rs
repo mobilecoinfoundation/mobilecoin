@@ -4,6 +4,7 @@
 
 use crate::{AmountError, MemoError};
 use alloc::{format, string::String};
+use core::str::Utf8Error;
 use displaydoc::Display;
 use mc_crypto_keys::KeyError;
 
@@ -96,5 +97,11 @@ impl From<MemoError> for NewMemoError {
                 byte_len
             )),
         }
+    }
+}
+
+impl From<Utf8Error> for NewMemoError {
+    fn from(_: Utf8Error) -> Self {
+        Self::Utf8Decoding
     }
 }

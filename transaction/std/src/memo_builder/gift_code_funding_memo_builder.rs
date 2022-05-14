@@ -119,7 +119,7 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
     /// Build a memo for a gift code change output
     fn make_memo_for_change_output(
         &mut self,
-        _amount: Amount,
+        amount: Amount,
         _change_destination: &ReservedDestination,
         memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
@@ -128,6 +128,11 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
         }
         if self.wrote_change_memo {
             return Err(NewMemoError::MultipleChangeOutputs);
+        }
+        if amount.value > 0 {
+            return Err(NewMemoError::BadInputs(
+                "Funding memo TxOut should be zero valued".into(),
+            ));
         }
         if self.gift_code_tx_out_public_key.as_ref() == Some(memo_context.tx_public_key) {
             return Err(NewMemoError::BadInputs("The public_key in the memo should be the TxOut at the gift code subaddress and not that of the memo TxOut".into()));
@@ -143,10 +148,36 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
     }
 }
 
+#[cfg(test)]
 mod tests {
 
     #[test]
-    fn test_gift_code() {
+    fn test_gift_code_funding_memo_built_successfully_with_note() {
+        // Tests forthcoming
+    }
+
+    #[test]
+    fn test_gift_code_funding_memo_built_successfully_without_note() {
+        // Tests forthcoming
+    }
+
+    #[test]
+    fn test_gift_code_funding_memo_fails_to_build_with_key_from_context() {
+        // Tests forthcoming
+    }
+
+    #[test]
+    fn test_gift_code_funding_memo_fails_for_more_than_one_change_memo() {
+        // Tests forthcoming
+    }
+
+    #[test]
+    fn test_gift_code_funding_memo_fields_are_cleared_properly() {
+        // Tests forthcoming
+    }
+
+    #[test]
+    fn test_gift_code_funding_memo_writes_unused_if_change_disabled() {
         // Tests forthcoming
     }
 }
