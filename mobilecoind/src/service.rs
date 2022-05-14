@@ -40,7 +40,7 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     TokenId,
 };
-use mc_transaction_std::{BurnRedemptionMemo, BurnRedemptionMemoBuilder};
+use mc_transaction_std::{BurnRedemptionMemo, BurnRedemptionMemoBuilder, TxOutContext};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result, AdminService,
