@@ -207,14 +207,14 @@ pub fn get_transaction<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver + Clone>
     transaction_builder.build(rng)
 }
 
-/// Build simulated test memo with zero amount
+/// Build simulated change memo with zero amount
 pub fn build_zero_value_change_memo(
     builder: &mut impl MemoBuilder,
 ) -> Result<MemoPayload, NewMemoError> {
     build_change_memo_with_amount(builder, Amount::new(0, 0.into()))
 }
 
-/// Build simulated test memo with amount
+/// Build simulated change memo with amount
 pub fn build_change_memo_with_amount(
     builder: &mut impl MemoBuilder,
     change_amount: Amount,
@@ -236,7 +236,7 @@ pub fn build_change_memo_with_amount(
 pub struct MemoDecoder;
 
 impl MemoDecoder {
-    /// Get the sender note
+    /// Decode a sender note from bytes
     pub fn decode_sender_note(memo_data: &[u8; GiftCodeSenderMemo::MEMO_DATA_LEN]) -> &str {
         let index = if let Some(terminator) = memo_data.iter().position(|b| b == &0u8) {
             terminator
@@ -247,7 +247,7 @@ impl MemoDecoder {
         std::str::from_utf8(&memo_data[0..index]).unwrap()
     }
 
-    /// Get funding note from memo
+    /// Decode a funding note from bytes
     pub fn decode_funding_note(memo_data: &[u8; GiftCodeFundingMemo::MEMO_DATA_LEN]) -> &str {
         let index = if let Some(terminator) = memo_data
             .iter()
@@ -262,7 +262,8 @@ impl MemoDecoder {
         std::str::from_utf8(&memo_data[GiftCodeFundingMemo::HASH_DATA_LEN..index]).unwrap()
     }
 
-    /// Get the first four bytes of a gift code TxOut public key
+    /// Get the first four bytes of the Blake2b hash of a gift code TxOut public
+    /// key
     pub fn tx_out_public_key_short_hash(
         tx_out_public_key: &RistrettoPublic,
     ) -> [u8; GiftCodeFundingMemo::HASH_DATA_LEN] {
