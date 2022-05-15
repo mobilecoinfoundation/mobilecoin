@@ -6,7 +6,7 @@ use mc_util_metrics::{IntGauge, OpMetrics};
 
 lazy_static::lazy_static! {
     /// Prometheus counters.
-    pub static ref OP_COUNTERS: OpMetrics = OpMetrics::new_and_registered("mc-mint-auditor");
+    pub static ref OP_COUNTERS: OpMetrics = OpMetrics::new_and_registered("mc_mint_auditor");
 
     /// Number of blocks synced.
     pub static ref NUM_BLOCKS_SYNCED: IntGauge = OP_COUNTERS.gauge("num_blocks_synced");
