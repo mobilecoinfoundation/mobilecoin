@@ -455,7 +455,7 @@ impl Client {
     /// funds to ourselves and paying fee.
     ///
     /// # Arguments
-    /// * `sci` - The swap request we are fulfilling fee.
+    /// * `sci` - The swap request we are fulfilling.
     /// * `fee` - The transaction fee to use
     /// * `rng` - Randomness.
     pub fn build_swap_transaction<T: RngCore + CryptoRng>(
