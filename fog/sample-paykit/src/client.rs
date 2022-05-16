@@ -488,7 +488,7 @@ impl Client {
             .fog_merkle_proof
             .get_outputs(sci.tx_out_global_indices.clone(), merkle_root_block)?
             .results
-            .iter()
+            .into_iter()
             .enumerate()
         {
             if result.index != sci.tx_out_global_indices[idx] {
