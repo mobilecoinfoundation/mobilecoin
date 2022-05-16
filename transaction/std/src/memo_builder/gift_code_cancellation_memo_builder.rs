@@ -19,7 +19,7 @@ use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
 /// This memo builder builds a gift code cancellation memo (0x0202). Gift code
 /// cancellation is defined as the sender sending the gift code TxOut at the
 /// gift code subaddress back to their default address prior to it being spent
-/// by the receiver. When that happens a zero valued TxOut is sent to the gift
+/// by the receiver. When that happens a change TxOut is sent to the gift
 /// code sender's change subaddress with a gift code cancellation memo that
 /// stores the index of the TxOut originally sent to the gift code subaddress
 /// when the gift code was funded.
@@ -69,21 +69,20 @@ impl MemoBuilder for GiftCodeCancellationMemoBuilder {
         Ok(())
     }
 
-    /// Gift code destination memos are not allowed - all gift code
-    /// memos accompany TxOuts sent to the change address
+    /// Gift code cancellation memos write blank memos to destination TxOut(s)
     fn make_memo_for_output(
         &mut self,
         _amount: Amount,
         _recipient: &PublicAddress,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
-        Err(NewMemoError::DestinationMemoNotAllowed)
+        Ok(UnusedMemo {}.into())
     }
 
     /// Build a memo for a gift code change output
     fn make_memo_for_change_output(
         &mut self,
-        amount: Amount,
+        _amount: Amount,
         _change_destination: &ReservedDestination,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
@@ -96,11 +95,6 @@ impl MemoBuilder for GiftCodeCancellationMemoBuilder {
         if self.gift_code_tx_out_global_index.is_none() {
             return Err(NewMemoError::MissingInput(
                 "Must specify gift code TxOut global index".into(),
-            ));
-        }
-        if amount.value > 0 {
-            return Err(NewMemoError::BadInputs(
-                "Cancellation memo TxOut should be zero valued".into(),
             ));
         }
         self.wrote_change_memo = true;
@@ -117,7 +111,7 @@ impl MemoBuilder for GiftCodeCancellationMemoBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{build_change_memo_with_amount, build_zero_value_change_memo};
+    use crate::test_utils::build_zero_value_change_memo;
     use std::convert::TryInto;
 
     #[test]
@@ -166,21 +160,6 @@ mod tests {
             memo_payload,
             Err(NewMemoError::MultipleChangeOutputs)
         ));
-    }
-
-    #[test]
-    fn test_gift_code_cancellation_memo_fails_for_nonzero_amount() {
-        // Create memo builder
-        let mut builder = GiftCodeCancellationMemoBuilder::default();
-
-        // Set the cancellation index
-        let index = 666;
-        builder.set_gift_code_tx_out_index(index);
-
-        // Build the memo payload
-        let amount = Amount::new(666, 0.into());
-        let memo_payload = build_change_memo_with_amount(&mut builder, amount);
-        assert!(matches!(memo_payload, Err(NewMemoError::BadInputs(_))));
     }
 
     #[test]

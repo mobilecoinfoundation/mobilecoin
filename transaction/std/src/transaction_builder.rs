@@ -152,7 +152,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     ///
     /// Note: Before adding a signed_contingent_input, you probably want to:
     /// * validate it (call .validate())
-    /// * check if key image appreared already (call .key_image())
+    /// * check if key image appeared already (call .key_image())
     /// * provide merkle proofs of membership for each ring member (see
     ///   .tx_out_global_indices)
     ///

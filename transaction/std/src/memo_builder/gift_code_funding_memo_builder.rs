@@ -19,13 +19,14 @@ use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
 /// |    0x0202       | Gift Code Cancellation Memo |
 /// This memo builder builds a gift code funding memo (0x0201). When a gift
 /// code is funded, the amount of the gift code is sent to a TxOut at the
-/// Sender's reserved gift code subaddress and a second zero valued TxOut
-/// is sent to the sender's reserved change subaddress with the gift code
-/// funding memo attached. The funding memo will include the first 4 bytes
-/// of the hash of the gift code TxOut sent to the sender's reserved gift
-/// code subaddress and 60 bytes for an optional utf-8 memo.
+/// Sender's reserved gift code subaddress and a second (potentially zero
+/// valued) change TxOut is sent to the sender's reserved change subaddress
+/// with the gift code funding memo attached. The funding memo will include
+/// the first 4 bytes of the hash of the gift code TxOut sent to the
+/// sender's reserved gift code subaddress and 60 bytes for an optional
+/// utf-8 memo.
 ///
-/// IMPORTANT NOTE: The public_key of the zero valued TxOut that the Gift Code
+/// IMPORTANT NOTE: The public_key of the change TxOut that the Gift Code
 /// Funding Memo is written to is NOT the public_key that should be passed into
 /// set_gift_code_tx_out_public_key(tx_out_public_key). Instead the public_key
 /// of the TxOut sent to the gift code subaddress is what should be passed into
@@ -40,6 +41,8 @@ pub struct GiftCodeFundingMemoBuilder {
     gift_code_change_memo_enabled: bool,
     // Whether we've already written the change memo
     wrote_change_memo: bool,
+    // Whether we've written an unused memo to the destination
+    wrote_destination_memo: bool,
     // Whether our last note setting attempt was invalid and the note hasn't
     // been reset with a valid note or cleared
     attempted_invalid_note: bool,
@@ -53,6 +56,7 @@ impl Default for GiftCodeFundingMemoBuilder {
             gift_code_tx_out_public_key: None,
             gift_code_change_memo_enabled: true,
             wrote_change_memo: false,
+            wrote_destination_memo: false,
             attempted_invalid_note: false,
         }
     }
@@ -82,8 +86,8 @@ impl GiftCodeFundingMemoBuilder {
     /// Set the TxOut public_key of the gift code TxOut sent to the
     /// reserved gift code subaddress.
     ///
-    /// IMPORTANT NOTE: Do NOT pass the public_key of the zero valued change
-    /// TxOut that the gift code memo is attached to as an argument. Doing
+    /// IMPORTANT NOTE: Do NOT pass the public_key of the change TxOut
+    /// that the gift code memo is attached to as an argument. Doing
     /// so will result in an error when attempting to build the memo.
     pub fn set_gift_code_tx_out_public_key(
         &mut self,
@@ -112,21 +116,26 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
         Ok(())
     }
 
-    /// Gift code destination memos are not allowed - all gift code
-    /// memos accompany TxOuts sent to the change address
+    /// Gift code destination memos applied to the gift code TxOut
+    /// are empty.
     fn make_memo_for_output(
         &mut self,
         _amount: Amount,
         _recipient: &PublicAddress,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
-        Err(NewMemoError::DestinationMemoNotAllowed)
+        // Only one gift code should be funded
+        if self.wrote_destination_memo {
+            return Err(NewMemoError::OutputsAfterChange);
+        }
+        self.wrote_destination_memo = true;
+        Ok(UnusedMemo {}.into())
     }
 
     /// Build a memo for a gift code change output
     fn make_memo_for_change_output(
         &mut self,
-        amount: Amount,
+        _amount: Amount,
         _change_destination: &ReservedDestination,
         memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
@@ -135,11 +144,6 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
         }
         if self.wrote_change_memo {
             return Err(NewMemoError::MultipleChangeOutputs);
-        }
-        if amount.value > 0 {
-            return Err(NewMemoError::BadInputs(
-                "Funding memo TxOut should be zero valued".into(),
-            ));
         }
         // Prevent callers from writing memo if last note set attempt was a failure
         if self.attempted_invalid_note {
@@ -164,9 +168,7 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{
-        build_change_memo_with_amount, build_zero_value_change_memo, MemoDecoder,
-    };
+    use crate::test_utils::{build_zero_value_change_memo, MemoDecoder};
     use mc_account_keys::AccountKey;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -252,26 +254,6 @@ mod tests {
             builder.make_memo_for_change_output(change_amount, &alice_address_book, memo_context);
 
         // Assert memo creation fails
-        assert!(matches!(memo_payload, Err(NewMemoError::BadInputs(_))));
-    }
-
-    #[test]
-    fn test_gift_code_funding_memo_fails_for_nonzero_amount() {
-        // Create memo builder
-        let mut builder = GiftCodeFundingMemoBuilder::default();
-
-        // Set the gift code TxOut public key and note
-        let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
-        let gift_code_public_key = RistrettoPublic::from_random(&mut rng);
-        let note = "It's MEMO TIME!!";
-        builder
-            .set_gift_code_tx_out_public_key(&gift_code_public_key)
-            .unwrap();
-        builder.set_funding_note(note).unwrap();
-
-        // Build the memo payload and get the data
-        let amount = Amount::new(666, 0.into());
-        let memo_payload = build_change_memo_with_amount(&mut builder, amount);
         assert!(matches!(memo_payload, Err(NewMemoError::BadInputs(_))));
     }
 
