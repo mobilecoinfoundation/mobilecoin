@@ -403,11 +403,11 @@ impl Client {
         let block_version = BlockVersion::try_from(self.tx_data.get_latest_block_version())?;
 
         // Make fog resolver
-        let fog_uris = (&[&self.account_key.change_subaddress()])
-            .iter()
-            .filter_map(|addr| addr.fog_report_url())
+        let fog_uris = self
+            .account_key
+            .fog_report_url()
             .map(FogUri::from_str)
-            .collect::<core::result::Result<Vec<_>, _>>()?;
+            .transpose()?;
         let fog_responses = self
             .fog_report_conn
             .fetch_fog_reports(fog_uris.into_iter())?;
@@ -569,11 +569,11 @@ impl Client {
         };
 
         // Make fog resolver
-        let fog_uris = (&[&self.account_key.change_subaddress()])
-            .iter()
-            .filter_map(|addr| addr.fog_report_url())
+        let fog_uris = self
+            .account_key
+            .fog_report_url()
             .map(FogUri::from_str)
-            .collect::<core::result::Result<Vec<_>, _>>()?;
+            .transpose()?;
         let fog_responses = self
             .fog_report_conn
             .fetch_fog_reports(fog_uris.into_iter())?;
