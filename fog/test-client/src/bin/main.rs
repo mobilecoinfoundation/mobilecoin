@@ -41,7 +41,7 @@ fn main() {
         tx_receive_deadline: config.consensus_wait,
         double_spend_wait: config.ledger_sync_wait,
         transfer_amount: config.transfer_amount,
-        token_id: config.token_id,
+        token_ids: config.token_ids(),
         ..Default::default()
     };
 

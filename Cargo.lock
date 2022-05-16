@@ -3981,6 +3981,7 @@ dependencies = [
  "grpcio",
  "hex_fmt",
  "lazy_static",
+ "maplit",
  "mc-account-keys",
  "mc-common",
  "mc-crypto-rand",

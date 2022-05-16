@@ -11,8 +11,11 @@ use mc_fog_ledger_connection::{Error as LedgerConnectionError, KeyImageQueryErro
 use mc_fog_report_connection::Error as FogResolutionError;
 use mc_fog_types::view::FogTxOutError;
 use mc_fog_view_protocol::TxOutPollingError;
-use mc_transaction_core::{validation::TransactionValidationError, AmountError, BlockVersionError};
-use mc_transaction_std::TxBuilderError;
+use mc_transaction_core::{
+    validation::TransactionValidationError, AmountError, BlockVersionError,
+    SignedContingentInputError,
+};
+use mc_transaction_std::{SignedContingentInputBuilderError, TxBuilderError};
 use mc_util_uri::UriParseError;
 use std::result::Result as StdResult;
 
@@ -114,6 +117,22 @@ pub enum Error {
 
     /// Block version error: {0}
     BlockVersion(BlockVersionError),
+
+    /// Signed contingent input is unprofitable
+    SciUnprofitable,
+
+    /// Signed contingent input is expired
+    SciExpired,
+
+    /// Signed contingent input global tx out index ({0}) didn't match to input
+    /// tx out
+    SciGlobalIndexTxOutMismatch(u64),
+
+    /// Signed Contingent Input: {0}
+    SignedContingentInput(SignedContingentInputError),
+
+    /// Signed Contingent Input Builder: {0}
+    SignedContingentInputBuilder(SignedContingentInputBuilderError),
 }
 
 impl From<ConnectionError> for Error {
@@ -158,6 +177,18 @@ impl From<TransactionValidationError> for Error {
 impl From<TxBuilderError> for Error {
     fn from(x: TxBuilderError) -> Error {
         Error::BuildTx(x)
+    }
+}
+
+impl From<SignedContingentInputBuilderError> for Error {
+    fn from(x: SignedContingentInputBuilderError) -> Error {
+        Error::SignedContingentInputBuilder(x)
+    }
+}
+
+impl From<SignedContingentInputError> for Error {
+    fn from(x: SignedContingentInputError) -> Error {
+        Error::SignedContingentInput(x)
     }
 }
 
