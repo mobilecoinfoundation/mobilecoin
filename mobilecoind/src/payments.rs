@@ -25,6 +25,7 @@ use mc_transaction_core::{
 };
 use mc_transaction_std::{
     ChangeDestination, EmptyMemoBuilder, InputCredentials, MemoBuilder, TransactionBuilder,
+    TxOutContext,
 };
 use mc_util_uri::FogUri;
 use rand::Rng;
@@ -970,12 +971,16 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let mut tx_out_to_outlay_index = HashMap::default();
         let mut outlay_confirmation_numbers = Vec::default();
         for (i, outlay) in destinations.iter().enumerate() {
-            let (tx_out, confirmation_number) = tx_builder
+            let TxOutContext {
+                tx_out,
+                confirmation,
+                ..
+            } = tx_builder
                 .add_output(outlay.value, &outlay.receiver, rng)
                 .map_err(|err| Error::TxBuild(format!("failed adding output: {}", err)))?;
 
             tx_out_to_outlay_index.insert(tx_out, i);
-            outlay_confirmation_numbers.push(confirmation_number);
+            outlay_confirmation_numbers.push(confirmation);
 
             total_value += outlay.value;
         }
