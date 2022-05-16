@@ -667,7 +667,7 @@ impl TestClient {
     ///
     /// The target client builds a signed contingent input, then the source
     /// client incorporates this into a Tx and submits it.
-    /// This only builds and submits the transaction, it does not confirm it
+    /// This only builds and submits the transaction, it does not confirm it.
     ///
     /// Returns:
     /// * TransferData: The Tx we submitted, the block count at which we
