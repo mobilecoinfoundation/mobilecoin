@@ -682,6 +682,7 @@ pub mod tests {
             let input_credentials =
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
+            let proofs = input_credentials.membership_proofs.clone();
             let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
 
             let mut builder = SignedContingentInputBuilder::new(
@@ -698,7 +699,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -727,6 +728,7 @@ pub mod tests {
             builder.add_input(input_credentials);
 
             // Bob adds the presigned input, which also adds the required outputs
+            sci.tx_in.proofs = proofs;
             builder.add_presigned_input(sci).unwrap();
 
             let bob_change_dest = ReservedDestination::from(&bob);
@@ -929,6 +931,7 @@ pub mod tests {
             let input_credentials =
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
+            let proofs = input_credentials.membership_proofs.clone();
             let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
 
             let mut builder = SignedContingentInputBuilder::new(
@@ -945,7 +948,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -974,6 +977,7 @@ pub mod tests {
             builder.add_input(input_credentials);
 
             // Bob adds the presigned input, which also adds the required outputs
+            sci.tx_in.proofs = proofs;
             builder.add_presigned_input(sci).unwrap();
 
             let bob_change_dest = ReservedDestination::from(&bob);
@@ -1148,6 +1152,8 @@ pub mod tests {
             let input_credentials =
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
+            let proofs = input_credentials.membership_proofs.clone();
+
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
@@ -1166,7 +1172,7 @@ pub mod tests {
                 )
                 .unwrap();
 
-            let sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -1180,6 +1186,8 @@ pub mod tests {
                 &fog_resolver,
                 &mut rng,
             );
+
+            let proofs2 = input_credentials.membership_proofs.clone();
 
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
@@ -1209,7 +1217,7 @@ pub mod tests {
                 )
                 .unwrap();
 
-            let sci2 = builder.build(&mut rng).unwrap();
+            let mut sci2 = builder.build(&mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci2.validate().unwrap();
@@ -1223,6 +1231,9 @@ pub mod tests {
             )
             .unwrap();
 
+            // Charlie add proofs, then adds the orders
+            sci.tx_in.proofs = proofs;
+            sci2.tx_in.proofs = proofs2;
             builder.add_presigned_input(sci).unwrap();
             builder.add_presigned_input(sci2).unwrap();
 
@@ -1449,6 +1460,7 @@ pub mod tests {
             let input_credentials =
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
+            let proofs = input_credentials.membership_proofs.clone();
             let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
 
             let mut builder = SignedContingentInputBuilder::new(
@@ -1465,7 +1477,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -1480,6 +1492,7 @@ pub mod tests {
             .unwrap();
 
             // Bob adds the presigned input (raw), without adding required outputs
+            sci.tx_in.proofs = proofs;
             builder.add_presigned_input_raw(sci);
 
             // Bob keeps the Mob that Alice supplies, less fees
@@ -1540,6 +1553,7 @@ pub mod tests {
             let input_credentials =
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
+            let proofs = input_credentials.membership_proofs.clone();
             let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
 
             let mut builder = SignedContingentInputBuilder::new(
@@ -1556,7 +1570,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -1571,6 +1585,7 @@ pub mod tests {
             .unwrap();
 
             // Bob adds the presigned input (raw), without adding required outputs
+            sci.tx_in.proofs = proofs;
             builder.add_presigned_input_raw(sci);
 
             // Bob adds a nominal amount of Meowblecoin, to avoid "all rings presigned"
@@ -1650,6 +1665,7 @@ pub mod tests {
             let input_credentials =
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
+            let proofs = input_credentials.membership_proofs.clone();
             let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
 
             let mut builder = SignedContingentInputBuilder::new(
@@ -1666,7 +1682,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -1685,6 +1701,7 @@ pub mod tests {
             .unwrap();
 
             // Bob adds the presigned input (raw), without adding required outputs
+            sci.tx_in.proofs = proofs;
             builder.add_presigned_input_raw(sci);
 
             builder.add_input(input_credentials);
@@ -1756,6 +1773,7 @@ pub mod tests {
             let input_credentials =
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
+            let proofs = input_credentials.membership_proofs.clone();
             let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
 
             let mut builder = SignedContingentInputBuilder::new(
@@ -1772,7 +1790,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -1787,6 +1805,7 @@ pub mod tests {
             .unwrap();
 
             // Bob adds the presigned input (raw), without adding required outputs
+            sci.tx_in.proofs = proofs;
             builder.add_presigned_input_raw(sci);
 
             // Bob adds the token id 2 amount that alice requests
@@ -1865,6 +1884,7 @@ pub mod tests {
             let input_credentials =
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
+            let proofs = input_credentials.membership_proofs.clone();
             let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
 
             let mut builder = SignedContingentInputBuilder::new(
@@ -1911,6 +1931,7 @@ pub mod tests {
             .unwrap();
 
             // Bob adds the presigned input (raw), without adding required outputs
+            sci.tx_in.proofs = proofs;
             builder.add_presigned_input_raw(sci);
 
             // Bob adds the token id 2 amount that alice requests
@@ -1989,6 +2010,7 @@ pub mod tests {
             let input_credentials =
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
+            let proofs = input_credentials.membership_proofs.clone();
             let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
 
             let mut builder = SignedContingentInputBuilder::new(
@@ -2030,6 +2052,7 @@ pub mod tests {
             .unwrap();
 
             // Bob adds the presigned input (raw), without adding required outputs
+            sci.tx_in.proofs = proofs;
             builder.add_presigned_input_raw(sci);
 
             // Bob adds the token id 2 amount that alice requests
@@ -2108,6 +2131,7 @@ pub mod tests {
             let input_credentials =
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
+            let proofs = input_credentials.membership_proofs.clone();
             let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
 
             let mut builder = SignedContingentInputBuilder::new(
@@ -2124,7 +2148,7 @@ pub mod tests {
                 .add_required_output(amount2, &alice.default_subaddress(), &mut rng)
                 .unwrap();
 
-            let sci = builder.build(&mut rng).unwrap();
+            let mut sci = builder.build(&mut rng).unwrap();
 
             // The contingent input should have a valid signature.
             sci.validate().unwrap();
@@ -2139,6 +2163,7 @@ pub mod tests {
             .unwrap();
 
             // Bob adds the presigned input (raw), without adding required outputs
+            sci.tx_in.proofs = proofs;
             builder.add_presigned_input_raw(sci);
 
             // Bob adds the token id 2 amount that alice requests
@@ -2218,6 +2243,7 @@ pub mod tests {
             let input_credentials =
                 get_input_credentials(block_version, amount, &alice, &fog_resolver, &mut rng);
 
+            let proofs = input_credentials.membership_proofs.clone();
             let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
 
             let mut builder = SignedContingentInputBuilder::new(
@@ -2263,6 +2289,7 @@ pub mod tests {
             .unwrap();
 
             // Bob adds the presigned input (raw), without adding required outputs
+            sci.tx_in.proofs = proofs;
             builder.add_presigned_input_raw(sci);
 
             // Bob adds the token id 2 amount that alice requests
