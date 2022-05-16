@@ -697,7 +697,7 @@ impl TestClient {
                 .check_balance()
                 .map_err(TestClientError::CheckBalance)
         })?;
-        tracer.in_span("pre_swap_balance_check", |_cx| {
+        tracer.in_span("pre_swap_dst_balance_check", |_cx| {
             target_client
                 .check_balance()
                 .map_err(TestClientError::CheckBalance)
