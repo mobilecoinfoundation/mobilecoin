@@ -386,6 +386,18 @@ impl Client {
         let (input, input_proof) = (&inputs[0]).clone();
         let ring = (&rings[0]).clone();
 
+        // Check amount found, calculate change
+        let input_amount = input.amount;
+        assert!(
+            offered.token_id == input_amount.token_id,
+            "get_transaction_inputs post condition failed"
+        );
+        assert!(
+            offered.value <= input_amount.value,
+            "get_transaction_inputs post condition failed"
+        );
+        let change = Amount::new(input_amount.value - offered.value, offered.token_id);
+
         let tombstone_block = self.compute_tombstone_block()?;
 
         let block_version = BlockVersion::try_from(self.tx_data.get_latest_block_version())?;
@@ -400,14 +412,6 @@ impl Client {
             .fog_report_conn
             .fetch_fog_reports(fog_uris.into_iter())?;
         let fog_resolver = FogResolver::new(fog_responses, &self.fog_verifier)?;
-
-        // Check amount found, calculate change
-        let input_amount = input.amount;
-        if offered.token_id != input_amount.token_id || offered.value > input_amount.value {
-            return Err(Error::InsufficientFunds);
-        }
-
-        let change = Amount::new(input_amount.value - offered.value, offered.token_id);
 
         let (ring, membership_proofs): (Vec<TxOut>, Vec<TxOutMembershipProof>) =
             ring.into_iter().unzip();
@@ -466,10 +470,15 @@ impl Client {
         sci.validate()?;
 
         // Check if its key image alreay landed
+        // Note: An actual fog wallet may not want to do this part, because it adds to
+        // latency, but if you have a local ledger copy you should definitely do this
         let res = self.fog_key_image.check_key_images(&[sci.key_image()])?;
         if res.results[0].key_image_result_code == KeyImageResultCode::Spent as u32 {
             return Err(Error::SciExpired);
         }
+        // Do tombstone block calculation using this key image query result rather than
+        // make another call using `self.compute_tombstone_block`.
+        let tombstone_block = res.num_blocks + self.new_tx_block_attempts as u64;
 
         let merkle_root_block = 0u64;
 
@@ -483,14 +492,22 @@ impl Client {
             .enumerate()
         {
             if result.index != sci.tx_out_global_indices[idx] {
-                panic!("unhandled: Server returned indices in an unexpected order");
+                return Err(Error::FogMerkleProof(
+                    "Server returned indices in an unexpected order".to_string(),
+                ));
             }
             match result.status() {
-                Err(err) => panic!(
-                    "unhandled: Server failed to compute a merkle proof: {}",
-                    err
-                ),
-                Ok(None) => panic!("unhandled: Server did not find one of the outputs we need"),
+                Err(err) => {
+                    return Err(Error::FogMerkleProof(format!(
+                        "Server failed to compute a merkle proof: {}",
+                        err
+                    )))
+                }
+                Ok(None) => {
+                    return Err(Error::FogMerkleProof(
+                        "Server did not find one of the outputs we need".to_string(),
+                    ))
+                }
                 Ok(Some((tx_out, proof))) => {
                     if sci.tx_in.ring[idx] != tx_out {
                         return Err(Error::SciGlobalIndexTxOutMismatch(
@@ -511,17 +528,43 @@ impl Client {
                 .or_default() += req_amount.value;
         }
 
-        // Compute the leftover from the signed input
+        // Compute the leftover from the signed input.
+        // For example, the signed input may provide some amount of token_id1,
+        // but it may also have required outputs in token_id1 (for example as change)
+        // If present that is the "matching outlay".
+        // The remainder of subtracting the matching output from the signed input
+        // value is the leftover, which is the incentive to us to fill the order.
+        //
+        // If the leftover would be negative, then this is returned as an error
+        // SciUnprofitable. To make this concrete, this means that an order e.g.
+        // offers an input worth 10 MOB, but requires an output worth 20 MOB, so
+        // net, they not offering you anything and just asking for MOB. We could
+        // implement support for filling such orders, but since it seems uninteresting
+        // we decided to skip this and write less code for ourselves to maintain,
+        // and just return an error instead.
         let leftover = {
             let token_id = TokenId::from(sci.pseudo_output_amount.token_id);
-            let sci_change = outlay.get(&token_id).cloned().unwrap_or(0);
-            if sci.pseudo_output_amount.value < sci_change {
+
+            // The matching outlay is how much required outlay there is in the
+            // token id of the signed input.
+            //
+            // We will use outlay list later to search our own wallet for required amounts,
+            // but we don't need to do that for this token id -- the "outlay" is
+            // actually negative taking into accoun the SCI input value, we have
+            // leftover value instead which we will add to ourselves as an
+            // output.
+            let matching_outlay = outlay.remove(&token_id).unwrap_or(0);
+
+            // If the offered amount is less than the matching outlay, then the
+            // leftover would be negative, and it is unprofitable to fill this
+            // order, since they aren't actually offering any value.
+            if sci.pseudo_output_amount.value < matching_outlay {
                 return Err(Error::SciUnprofitable);
             }
-            let value = sci.pseudo_output_amount.value - sci_change;
-            // We will use outlay to search our own wallet for required amounts, but
-            // we don't need to do that for this token id because it is supplied by the SCI
-            outlay.remove(&token_id);
+
+            // This is the amount that will be leftover which we can send to ourselves,
+            // and is our incentive to fill the order
+            let value = sci.pseudo_output_amount.value - matching_outlay;
             Amount::new(value, token_id)
         };
 
@@ -548,7 +591,7 @@ impl Client {
             fog_resolver,
             EmptyMemoBuilder::default(),
         )?;
-        tx_builder.set_tombstone_block(self.compute_tombstone_block()?);
+        tx_builder.set_tombstone_block(tombstone_block);
 
         // Add the presigned input
         tx_builder.add_presigned_input(sci)?;
@@ -556,7 +599,7 @@ impl Client {
         // Pay the leftover to ourselves
         tx_builder.add_change_output(leftover, &change_destination, rng)?;
 
-        // Contribute our own inputs that may be required
+        // Contribute our own inputs that may be required to fulfill the order
         for (token_id, value) in outlay {
             // Arbitrarily choose 3 as the maximum number of inputs
             // TODO: Should be based on fee scaling and fee choice
@@ -573,6 +616,7 @@ impl Client {
             let inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = self.get_proofs(&inputs)?;
             let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> = self.get_rings(&inputs, rng)?;
 
+            // Add the inputs we selected for this token id
             add_inputs_to_tx_builder(&mut tx_builder, inputs, rings, &self.account_key)?;
 
             // Pay change in this token id back to ourselves
@@ -620,7 +664,7 @@ impl Client {
             "Sending LedgerConnection:GetOutputs {:?}",
             indices
         );
-        let outputs_and_proofs: Vec<(TxOut, TxOutMembershipProof)> = self
+        let outputs_and_proofs = self
             .fog_merkle_proof
             .get_outputs(indices.clone(), merkle_root_block)?
             .results
@@ -629,18 +673,22 @@ impl Client {
             .enumerate()
             .map(|(idx, result)| {
                 if result.index != indices[idx] {
-                    panic!("unhandled: Server returned indices in an unexpected order");
+                    return Err(Error::FogMerkleProof(
+                        "Server returned indices in an unexpected order".to_string(),
+                    ));
                 }
                 match result.status() {
-                    Err(err) => panic!(
-                        "unhandled: Server failed to compute a merkle proof: {}",
+                    Err(err) => Err(Error::FogMerkleProof(format!(
+                        "Server failed to compute a merkle proof: {}",
                         err
-                    ),
-                    Ok(None) => panic!("unhandled: Server did not find one of the outputs we need"),
-                    Ok(Some(res)) => res,
+                    ))),
+                    Ok(None) => Err(Error::FogMerkleProof(
+                        "Server did not find one of the outputs we need".to_string(),
+                    )),
+                    Ok(Some(res)) => Ok(res),
                 }
             })
-            .collect();
+            .collect::<Result<Vec<(TxOut, TxOutMembershipProof)>>>()?;
 
         log::info!(self.logger, "Retrieved {} TXOs", outputs_and_proofs.len());
 
@@ -909,6 +957,9 @@ fn add_inputs_to_tx_builder<FPR: FogPubkeyResolver>(
     Ok(())
 }
 
+// Helper which builds `InputCredentials` given owned txo, and the results
+// of get_proofs, get_rings, and the account key which it uses to derive the
+// one-time private key.
 fn input_credentials_helper(
     input_txo: OwnedTxOut,
     input_proof: TxOutMembershipProof,

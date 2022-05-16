@@ -135,6 +135,7 @@ mod tests {
                 &fpr,
                 &mut rng,
             );
+            let proofs = input_credentials.membership_proofs.clone();
             let mut sci_builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
@@ -152,7 +153,10 @@ mod tests {
                 )
                 .unwrap();
 
-            let sci = sci_builder.build(&mut rng).unwrap();
+            let mut sci = sci_builder.build(&mut rng).unwrap();
+
+            // Alice adds proofs to the SCI
+            sci.tx_in.proofs = proofs;
 
             // Alice sends this token2 amount to Bob from Charlie, paying Charlie 1 MOB
             // as he desires, and returning .475 MOB as change to herself.

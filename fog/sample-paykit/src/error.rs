@@ -132,6 +132,9 @@ pub enum Error {
 
     /// Signed Contingent Input Builder: {0}
     SignedContingentInputBuilder(SignedContingentInputBuilderError),
+
+    /// Fog merkle proof: {0}
+    FogMerkleProof(String),
 }
 
 impl From<ConnectionError> for Error {

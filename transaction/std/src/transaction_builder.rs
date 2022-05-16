@@ -165,6 +165,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         // TODO: If there is a block version change that could cause an incompatibility,
         // we should check for it here, e.g. if sci.block_version differs from
         // self.block_version
+        // Check if the sci already has membership proofs, the caller is supposed to do
+        // that
+        if sci.tx_in.ring.len() != sci.tx_in.proofs.len() {
+            return Err(SignedContingentInputError::MissingProofs);
+        }
         if let Some(rules) = sci.tx_in.input_rules.as_ref() {
             // Enforce all rules so that our transaction will be valid
             if rules.required_outputs.len() != sci.required_output_amounts.len() {

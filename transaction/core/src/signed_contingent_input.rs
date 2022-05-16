@@ -75,6 +75,10 @@ impl SignedContingentInput {
     /// * The ring MLSAG actually signs the pseudo-output as claimed
     /// * The required output amounts actually correspond to the required
     ///   outputs
+    ///
+    /// Note: This does check any other rules like tombstone block, or
+    /// confirm proofs of membership, which are normally added only when this
+    /// is incorporated into a transaction
     pub fn validate(&self) -> Result<(), SignedContingentInputError> {
         if self.tx_out_global_indices.len() != self.tx_in.ring.len() {
             return Err(SignedContingentInputError::WrongNumberOfGlobalIndices);
@@ -174,6 +178,8 @@ pub enum SignedContingentInputError {
     RequiredOutputMismatch,
     /// Input rules are missing
     MissingRules,
+    /// Proofs of membership are missing
+    MissingProofs,
     /// Invalid Ring Signature: {0}
     RingSignature(RingSignatureError),
 }
