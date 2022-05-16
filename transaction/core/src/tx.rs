@@ -168,6 +168,7 @@ pub struct TxPrefix {
 
     /// Token id for the fee output of this transaction
     #[prost(fixed64, tag = "5")]
+    #[digestible(omit_when = 0)]
     pub fee_token_id: u64,
 }
 
