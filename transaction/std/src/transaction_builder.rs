@@ -811,7 +811,7 @@ pub mod transaction_builder_tests {
             .unwrap();
 
             transaction_builder.add_input(input_credentials);
-            let TxOutContext {confirmation, ..} = transaction_builder
+            let TxOutContext { confirmation, .. } = transaction_builder
                 .add_output(
                     value - Mob::MINIMUM_FEE,
                     &recipient.default_subaddress(),
@@ -894,7 +894,7 @@ pub mod transaction_builder_tests {
             .unwrap();
 
             transaction_builder.add_input(input_credentials);
-            let TxOutContext {confirmation, ..} = transaction_builder
+            let TxOutContext { confirmation, .. } = transaction_builder
                 .add_output(
                     value - Mob::MINIMUM_FEE,
                     &recipient.default_subaddress(),
@@ -2597,7 +2597,10 @@ pub mod transaction_builder_tests {
             );
             transaction_builder.add_input(input_credentials);
 
-            let TxOutContext {tx_out: burn_tx_out, ..} = transaction_builder
+            let TxOutContext {
+                tx_out: burn_tx_out,
+                ..
+            } = transaction_builder
                 .add_output(
                     value - change_value - Mob::MINIMUM_FEE,
                     &recipient,
@@ -2802,7 +2805,10 @@ pub mod transaction_builder_tests {
             );
             transaction_builder.add_input(input_credentials);
 
-            let TxOutContext {tx_out: burn_output, ..} = transaction_builder
+            let TxOutContext {
+                tx_out: burn_output,
+                ..
+            } = transaction_builder
                 .add_output(110, &burn_address(), &mut rng)
                 .unwrap();
 
@@ -2858,7 +2864,10 @@ pub mod transaction_builder_tests {
             );
             transaction_builder.add_input(input_credentials);
 
-            let TxOutContext {tx_out: burn_tx_out, ..} = transaction_builder
+            let TxOutContext {
+                tx_out: burn_tx_out,
+                ..
+            } = transaction_builder
                 .add_output(100, &burn_address(), &mut rng)
                 .unwrap();
 

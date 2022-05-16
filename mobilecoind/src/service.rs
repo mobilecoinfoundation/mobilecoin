@@ -3047,7 +3047,11 @@ mod test {
             EmptyMemoBuilder::default(),
         )
         .unwrap();
-        let TxOutContext {tx_out, confirmation, ..} = transaction_builder
+        let TxOutContext {
+            tx_out,
+            confirmation,
+            ..
+        } = transaction_builder
             .add_output(10, &receiver.subaddress(0), &mut rng)
             .unwrap();
 
@@ -5522,7 +5526,7 @@ mod test {
             EmptyMemoBuilder::default(),
         )
         .unwrap();
-        let TxOutContext {tx_out, ..} = transaction_builder
+        let TxOutContext { tx_out, .. } = transaction_builder
             .add_output(
                 10,
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
@@ -5636,7 +5640,7 @@ mod test {
             EmptyMemoBuilder::default(),
         )
         .unwrap();
-        let TxOutContext {tx_out, ..} = transaction_builder
+        let TxOutContext { tx_out, .. } = transaction_builder
             .add_output(
                 10,
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),

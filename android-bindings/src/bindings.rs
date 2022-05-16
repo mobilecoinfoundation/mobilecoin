@@ -1772,8 +1772,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1output(
                 env.get_rust_field(recipient, RUST_OBJ_FIELD)?;
 
             let mut rng = McRng::default();
-            let tx_out_context =
-                tx_builder.add_output(value as u64, &recipient, &mut rng)?;
+            let tx_out_context = tx_builder.add_output(value as u64, &recipient, &mut rng)?;
             let confirmation_number = &tx_out_context.confirmation;
             if !confirmation_number_out.is_null() {
                 let len = env.get_array_length(confirmation_number_out)?;
