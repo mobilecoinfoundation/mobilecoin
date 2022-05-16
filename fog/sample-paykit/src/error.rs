@@ -124,8 +124,7 @@ pub enum Error {
     /// Signed contingent input is expired
     SciExpired,
 
-    /// Signed contingent input global tx out index ({0}) didn't match to input
-    /// tx out
+    /// SCI's tx out index ({0}) didn't match to the claimed tx out
     SciGlobalIndexTxOutMismatch(u64),
 
     /// Signed Contingent Input: {0}
