@@ -692,7 +692,7 @@ impl TestClient {
 
         // First do a balance check to flush out any spent txos
         let tracer = tracer!();
-        tracer.in_span("pre_swap_balance_check", |_cx| {
+        tracer.in_span("pre_swap_src_balance_check", |_cx| {
             source_client
                 .check_balance()
                 .map_err(TestClientError::CheckBalance)
