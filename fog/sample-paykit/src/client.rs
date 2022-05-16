@@ -980,11 +980,11 @@ fn input_credentials_helper(
             if ring.is_empty() {
                 // Append the input and its proof of membership.
                 ring.push(input_txo.tx_out.clone());
-                membership_proofs.push(input_proof.clone());
+                membership_proofs.push(input_proof);
             } else {
                 // Replace the first element of the ring.
                 ring[0] = input_txo.tx_out.clone();
-                membership_proofs[0] = input_proof.clone();
+                membership_proofs[0] = input_proof;
             }
             // The real input is always the first element. This is safe because
             // TransactionBuilder sorts each ring.
@@ -1008,14 +1008,14 @@ fn input_credentials_helper(
     assert_eq!(key_image, input_txo.key_image);
 
     let ring_len = ring.len();
-    Ok(InputCredentials::new(
+    InputCredentials::new(
         ring,
         membership_proofs,
         real_key_index,
         onetime_private_key,
         *source_account_key.view_private_key(),
     )
-    .or(Err(Error::BrokenRing(ring_len, real_key_index)))?)
+    .or(Err(Error::BrokenRing(ring_len, real_key_index)))
 }
 
 #[cfg(test)]
