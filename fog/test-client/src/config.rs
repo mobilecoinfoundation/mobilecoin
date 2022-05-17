@@ -127,12 +127,8 @@ pub struct TestClientConfig {
     pub grpc_retry_config: GrpcRetryConfig,
 
     /// What token id to use for the test
-    #[clap(long, env = "MC_TOKEN_ID", default_value = "0")]
-    pub token_id: TokenId,
-
-    /// Additional token ids to use for the test
-    #[clap(long, env = "MC_EXTRA_TOKEN_IDS", use_value_delimiter = true)]
-    pub extra_token_ids: Vec<TokenId>,
+    #[clap(long, env = "MC_TOKEN_IDS", default_value = "0")]
+    pub token_ids: Vec<TokenId>,
 }
 
 impl TestClientConfig {
@@ -149,15 +145,6 @@ impl TestClientConfig {
             .into_iter()
             .take(self.num_clients)
             .collect::<_>()
-    }
-
-    /// Get the primary token id and any extra token ids
-    pub fn token_ids(&self) -> Vec<TokenId> {
-        (&[self.token_id])
-            .iter()
-            .chain(self.extra_token_ids.iter())
-            .cloned()
-            .collect()
     }
 }
 
