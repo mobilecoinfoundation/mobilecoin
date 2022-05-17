@@ -683,9 +683,10 @@ impl TestClient {
         let target_address = target_client.get_account_key().default_subaddress();
         log::debug!(
             self.logger,
-            "Attempting to swap ({} + fee) of {} and {} ({})",
+            "Attempting to swap ({} + fee) of {} and ({}) of {} ({})",
             self.policy.transfer_amount,
             token_id1,
+            self.policy.transfer_amount,
             token_id2,
             source_client.consensus_service_address()
         );
@@ -727,7 +728,7 @@ impl TestClient {
         let signed_input = target_client
             .build_swap_proposal(
                 Amount::new(self.policy.transfer_amount + fee_value, token_id1),
-                Amount::new(self.policy.transfer_amount + fee_value, token_id2),
+                Amount::new(self.policy.transfer_amount, token_id2),
                 &mut rng,
             )
             .map_err(TestClientError::BuildSwapProposal)?;
