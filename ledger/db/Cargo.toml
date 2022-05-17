@@ -23,7 +23,7 @@ mc-util-telemetry = { path = "../../util/telemetry" }
 displaydoc = { version = "0.2", default-features = false }
 lazy_static = "1.4"
 lmdb-rkv = "0.14.0"
-mockall = "0.11.0"
+mockall = "0.11.1"
 prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
 rand = { version = "0.8", optional = true }
 rand_core = "0.6"

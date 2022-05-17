@@ -20,5 +20,5 @@ mc-util-serial = { path = "../../../util/serial" }
 mc-util-uri = { path = "../../../util/uri" }
 
 displaydoc = { version = "0.2", default-features = false }
-mockall = { version = "0.11.0", optional = true }
+mockall = { version = "0.11.1", optional = true }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

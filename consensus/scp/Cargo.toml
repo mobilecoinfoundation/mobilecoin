@@ -19,7 +19,7 @@ mc-util-serial = { path = "../../util/serial", features = ["std"] }
 
 bigint = "4.4"
 maplit = "1.0.2"
-mockall = "0.11.0"
+mockall = "0.11.1"
 rand = "0.8"
 rand_hc = "0.3"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
