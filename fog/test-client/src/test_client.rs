@@ -565,6 +565,7 @@ impl TestClient {
             hashmap! { token_id => tgt_balance },
             hashmap! { token_id => tgt_balance + self.policy.transfer_amount },
             self.policy.clone(),
+            false, // dont skip rth memo tests if policy says to do them
             Some(src_address_hash),
             self.tx_info.clone(),
             self.health_tracker.clone(),
@@ -823,6 +824,7 @@ impl TestClient {
             tgt_balances,
             expected_tgt_balances,
             self.policy.clone(),
+            true, // skip rth memo tests even if policy says to do them
             None,
             self.tx_info.clone(),
             self.health_tracker.clone(),
@@ -1111,6 +1113,7 @@ impl ReceiveTxWorker {
         current_balances: HashMap<TokenId, u64>,
         expected_balances: HashMap<TokenId, u64>,
         policy: TestClientPolicy,
+        skip_memos: bool,
         expected_memo_contents: Option<ShortAddressHash>,
         tx_info: Arc<TxInfo>,
         health_tracker: Arc<HealthTracker>,
@@ -1122,6 +1125,8 @@ impl ReceiveTxWorker {
 
         let thread_bail = bail.clone();
         let thread_relay = tx_appeared_relay.clone();
+
+        let test_rth_memos = policy.test_rth_memos && !skip_memos;
 
         let join_handle = Some(std::thread::spawn(
             move || -> Result<(), TestClientError> {
@@ -1148,7 +1153,7 @@ impl ReceiveTxWorker {
                     if balance_match(&expected_balances, &new_balances) {
                         counters::TX_RECEIVED_TIME.observe(start.elapsed().as_secs_f64());
 
-                        if policy.test_rth_memos {
+                        if test_rth_memos {
                             let block_version =
                                 BlockVersion::try_from(client.get_latest_block_version())?;
                             if block_version.e_memo_feature_is_supported() {
