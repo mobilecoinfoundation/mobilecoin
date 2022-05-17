@@ -11,7 +11,7 @@ use mc_consensus_api::{
 };
 use mc_consensus_enclave_api::GovernorsSigner;
 use mc_consensus_mint_client::{printers, Commands, Config, TxFile};
-use mc_crypto_keys::Ed25519Pair;
+use mc_crypto_keys::{Ed25519Pair, Signer};
 use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::{
     constants::MAX_TOMBSTONE_BLOCKS,
@@ -40,6 +40,10 @@ fn main() {
                     last_block_info.index + MAX_TOMBSTONE_BLOCKS - 1
                 })
                 .expect("failed creating tx");
+
+            if tx.signature.signatures().is_empty() {
+                panic!("tx contains no signatures");
+            }
 
             let resp = client_api
                 .propose_mint_config_tx(&(&tx).into())
@@ -93,6 +97,9 @@ fn main() {
                 .collect::<Vec<_>>();
             signatures.sort();
             signatures.dedup();
+            if signatures.is_empty() {
+                panic!("tx contains no signatures");
+            }
 
             let merged_tx = MintConfigTx {
                 prefix: txs[0].prefix.clone(),
@@ -128,6 +135,11 @@ fn main() {
                     last_block_info.index + MAX_TOMBSTONE_BLOCKS - 1
                 })
                 .expect("failed creating tx");
+
+            if tx.signature.signatures().is_empty() {
+                panic!("tx contains no signatures");
+            }
+
             let resp = client_api
                 .propose_mint_tx(&(&tx).into())
                 .expect("propose tx");
@@ -179,6 +191,9 @@ fn main() {
                 .collect::<Vec<_>>();
             signatures.sort();
             signatures.dedup();
+            if signatures.is_empty() {
+                panic!("tx contains no signatures");
+            }
 
             let merged_tx = MintTx {
                 prefix: txs[0].prefix.clone(),
@@ -237,5 +252,59 @@ fn main() {
                 printers::print_mint_tx(&tx, 0);
             }
         },
+
+        Commands::Sign {
+            tx_file: tx_file_path,
+            signing_keys,
+            mut signatures,
+        } => {
+            let mut tx_file =
+                TxFile::from_json_file(&tx_file_path).expect("failed loading tx file");
+
+            // Append any existing signatures.
+            signatures.extend(match &tx_file {
+                TxFile::MintConfigTx(tx) => tx.signature.signatures().to_vec(),
+                TxFile::MintTx(tx) => tx.signature.signatures().to_vec(),
+            });
+
+            // The message we are signing.
+            let message = match &tx_file {
+                TxFile::MintConfigTx(tx) => tx.prefix.hash(),
+                TxFile::MintTx(tx) => tx.prefix.hash(),
+            };
+
+            // Append signatures using the keys provided.
+            signatures.extend(
+                signing_keys
+                    .into_iter()
+                    .map(|signer| {
+                        Ed25519Pair::from(signer)
+                            .try_sign(message.as_ref())
+                            .map_err(|e| format!("Failed to sign: {}", e))
+                    })
+                    .collect::<Result<Vec<_>, _>>()
+                    .expect("failed signing"),
+            );
+
+            // De-dupe.
+            signatures.sort();
+            signatures.dedup();
+
+            // Update the tx file signature.
+            let signature = MultiSig::new(signatures);
+            match &mut tx_file {
+                TxFile::MintConfigTx(ref mut tx) => {
+                    tx.signature = signature;
+                }
+                TxFile::MintTx(ref mut tx) => {
+                    tx.signature = signature;
+                }
+            }
+
+            // Write the file.
+            tx_file
+                .write_json(&tx_file_path)
+                .expect("failed writing tx file");
+        }
     }
 }

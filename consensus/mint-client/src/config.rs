@@ -88,7 +88,6 @@ pub struct MintConfigTxParams {
         long = "signing-key",
         use_value_delimiter = true,
         parse(try_from_str = load_key_from_pem),
-        required_unless_present = "signatures",
         env = "MC_MINTING_SIGNING_KEYS"
     )]
     signing_keys: Vec<Ed25519Private>,
@@ -97,7 +96,8 @@ pub struct MintConfigTxParams {
     #[clap(
         long = "signature",
         use_value_delimiter = true,
-        parse(try_from_str = load_or_parse_ed25519_signature), env = "MC_MINTING_SIGNATURES"
+        parse(try_from_str = load_or_parse_ed25519_signature),
+        env = "MC_MINTING_SIGNATURES"
     )]
     signatures: Vec<Ed25519Signature>,
 
@@ -182,7 +182,6 @@ pub struct MintTxParams {
         long = "signing-key",
         use_value_delimiter = true,
         parse(try_from_str = load_key_from_pem),
-        required_unless_present = "signatures",
         env = "MC_MINTING_SIGNING_KEYS"
     )]
     signing_keys: Vec<Ed25519Private>,
@@ -346,6 +345,32 @@ pub enum Commands {
         /// The file to load
         #[clap(long, parse(try_from_str = load_tx_file_from_path), env = "MC_MINTING_TX_FILE")]
         tx_file: TxFile,
+    },
+
+    /// Sign a transaction file produced by this tool, rewriting the file with
+    /// the appended signature(s).
+    Sign {
+        /// The file to sign
+        #[clap(long, env = "MC_MINTING_TX_FILE")]
+        tx_file: PathBuf,
+
+        /// The key(s) to sign the transaction with.
+        #[clap(
+            long = "signing-key",
+            required_unless_present = "signatures",
+            parse(try_from_str = load_key_from_pem),
+            env = "MC_MINTING_SIGNING_KEY"
+        )]
+        signing_keys: Vec<Ed25519Private>,
+
+        /// Pre-generated signature(s) to use, either in hex format or a PEM
+        /// file.
+        #[clap(
+            long = "signature",
+            use_value_delimiter = true,
+            parse(try_from_str = load_or_parse_ed25519_signature), env = "MC_MINTING_SIGNATURES"
+        )]
+        signatures: Vec<Ed25519Signature>,
     },
 }
 
