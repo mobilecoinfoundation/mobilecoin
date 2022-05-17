@@ -59,10 +59,10 @@ def parse_args() -> argparse.ArgumentParser:
                         type=int,
                         default=20,
                         help="Amount less than the balance that we attempt to send")
-    parser.add_argument("--max-accounts",
+    parser.add_argument("--num-src-accounts",
                         type=int,
                         default=-1,
-                        help="Number of accounts to pull from the account keys / destination accounts keys folders")
+                        help="Number of accounts to pull from the source account keys dir (note: we always pull all the destination keys)")
     parser.add_argument("--token-id",
                         type=int,
                         default=0,
@@ -141,20 +141,25 @@ if __name__ == '__main__':
         for b58 in dest_b58addresses
     ]
 
-    # Go through each account and have all their friends transact to them
-    for i, (src_account, dest) in enumerate(zip(source_accounts, dest_addresses)):
-        # If we have already done max_accounts many accounts, then stop
-        if i == args.max_accounts:
-            break;
+    # Go through each destination account and pay it once from a source account,
+    # going round-robin through the source accounts (only first args.num_src_accounts source accounts)
+    n = len(dest_addresses)
+    m = len(source_accounts) if args.num_src_accounts == -1 else args.num_src_accounts
+    for i, dest in enumerate(dest_addresses):
+        src_account = source_accounts[i % n]
 
         wait_for_accounts_sync(stub, [src_account.monitor_id], 3)
         # Get starting balance
         resp = stub.GetBalance(
             mobilecoind_api_pb2.GetBalanceRequest(monitor_id=src_account.monitor_id, token_id=args.token_id))
         balance = resp.balance
-        logging.info("Starting balance for account %s : %s", i, resp)
+        logging.info("Token-id %s balance for account %s : %s", args.token_id, i, resp)
 
-        amount = balance - args.fee
+        # This source account will be chosen for this many future iterations of the loop
+        num_payments_remaining = int((n - i) / m)
+        # Divide the remaining balance evenly across this payment and the remaining future payments
+        # but also subtract the fee we have to pay
+        amount = int(balance / (num_payments_remaining + 1)) - args.fee
 
         # Create a pool of transfers to all other accounts
         logging.info("Transferring %s to %s", amount, dest)
