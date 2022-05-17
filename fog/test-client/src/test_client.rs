@@ -811,7 +811,8 @@ impl TestClient {
 
         let expected_tgt_balances = {
             let mut result = tgt_balances.clone();
-            *result.entry(token_id1).or_default() -= self.policy.transfer_amount;
+            *result.entry(token_id1).or_default() -=
+                self.policy.transfer_amount + transfer_data.fee.value;
             *result.entry(token_id2).or_default() += self.policy.transfer_amount;
             result
         };
@@ -841,8 +842,7 @@ impl TestClient {
         let expected_src_balance = {
             let mut result = src_balances;
             *result.entry(token_id1).or_default() += self.policy.transfer_amount;
-            *result.entry(token_id2).or_default() -=
-                self.policy.transfer_amount - transfer_data.fee.value;
+            *result.entry(token_id2).or_default() -= self.policy.transfer_amount;
             result
         };
 
