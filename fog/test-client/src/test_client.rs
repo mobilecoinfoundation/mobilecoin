@@ -683,7 +683,7 @@ impl TestClient {
         let target_address = target_client.get_account_key().default_subaddress();
         log::debug!(
             self.logger,
-            "Attempting to swap {} of {} and {} ({})",
+            "Attempting to swap ({} + fee) of {} and {} ({})",
             self.policy.transfer_amount,
             token_id1,
             token_id2,
@@ -722,10 +722,12 @@ impl TestClient {
         let fee = Amount::new(fee_value, token_id1);
 
         // Build swap proposal
+        // Note: We are adding fee-value here to avoid "SCI Unprofitable" errors,
+        // when transfer_amount is very small
         let signed_input = target_client
             .build_swap_proposal(
-                Amount::new(self.policy.transfer_amount, token_id1),
-                Amount::new(self.policy.transfer_amount, token_id2),
+                Amount::new(self.policy.transfer_amount + fee_value, token_id1),
+                Amount::new(self.policy.transfer_amount + fee_value, token_id2),
                 &mut rng,
             )
             .map_err(TestClientError::BuildSwapProposal)?;
