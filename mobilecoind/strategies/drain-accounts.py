@@ -61,7 +61,7 @@ def parse_args() -> argparse.ArgumentParser:
                         help="Amount less than the balance that we attempt to send")
     parser.add_argument("--num-src-accounts",
                         type=int,
-                        default=-1,
+                        default=0,
                         help="Number of accounts to pull from the source account keys dir (note: we always pull all the destination keys)")
     parser.add_argument("--token-id",
                         type=int,
@@ -143,10 +143,10 @@ if __name__ == '__main__':
 
     # Go through each destination account and pay it once from a source account,
     # going round-robin through the source accounts (only first args.num_src_accounts source accounts)
-    n = len(dest_addresses)
-    m = len(source_accounts) if args.num_src_accounts == -1 else args.num_src_accounts
+    num_dest = len(dest_addresses)
+    num_src = args.num_src_accounts or len(source_accounts)
     for i, dest in enumerate(dest_addresses):
-        src_account = source_accounts[i % n]
+        src_account = source_accounts[i % num_src]
 
         wait_for_accounts_sync(stub, [src_account.monitor_id], 3)
         # Get starting balance
@@ -156,7 +156,7 @@ if __name__ == '__main__':
         logging.info("Token-id %s balance for account %s : %s", args.token_id, i, resp)
 
         # This source account will be chosen for this many future iterations of the loop
-        num_payments_remaining = int((n - i) / m)
+        num_payments_remaining = int((num_dest - i) / num_src)
         # Divide the remaining balance evenly across this payment and the remaining future payments
         # but also subtract the fee we have to pay
         amount = int(balance / (num_payments_remaining + 1)) - args.fee
