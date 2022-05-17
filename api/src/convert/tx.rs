@@ -139,7 +139,6 @@ mod tests {
             let mut sci_builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![59, 0, 7],
                 fpr.clone(),
                 EmptyMemoBuilder::default(),
             )

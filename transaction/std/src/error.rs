@@ -115,8 +115,8 @@ impl From<NewMemoError> for TxBuilderError {
 /// An error that can occur when creating a signed contingent input builder
 #[derive(Debug, Display)]
 pub enum SignedContingentInputBuilderError {
-    /// Incorrect number of global indices: {0} ring elements, {1} indices
-    IncorrectGlobalIndexCount(usize, usize),
+    /// Missing proofs: {0} ring elements, {1} proofs
+    MissingProofs(usize, usize),
     /// Memo: {0}
     Memo(NewMemoError),
 }

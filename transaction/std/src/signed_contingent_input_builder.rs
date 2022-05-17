@@ -32,8 +32,6 @@ pub struct SignedContingentInputBuilder<FPR: FogPubkeyResolver> {
     block_version: BlockVersion,
     /// The input which is being signed
     input_credentials: InputCredentials,
-    /// Global indices for the tx out's in the ring
-    tx_out_global_indices: Vec<u64>,
     /// The outputs required by the rules for this signed input, and associated
     /// secrets
     required_outputs_and_secrets: Vec<(TxOut, OutputSecret)>,
@@ -73,14 +71,12 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     pub fn new<MB: MemoBuilder + 'static + Send + Sync>(
         block_version: BlockVersion,
         input_credentials: InputCredentials,
-        tx_out_global_indices: Vec<u64>,
         fog_resolver: FPR,
         memo_builder: MB,
     ) -> Result<Self, SignedContingentInputBuilderError> {
         Self::new_with_box(
             block_version,
             input_credentials,
-            tx_out_global_indices,
             fog_resolver,
             Box::new(memo_builder),
         )
@@ -100,17 +96,14 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     pub fn new_with_box(
         block_version: BlockVersion,
         input_credentials: InputCredentials,
-        tx_out_global_indices: Vec<u64>,
         fog_resolver: FPR,
         mut memo_builder: Box<dyn MemoBuilder + Send + Sync>,
     ) -> Result<Self, SignedContingentInputBuilderError> {
-        if input_credentials.ring.len() != tx_out_global_indices.len() {
-            return Err(
-                SignedContingentInputBuilderError::IncorrectGlobalIndexCount(
-                    input_credentials.ring.len(),
-                    tx_out_global_indices.len(),
-                ),
-            );
+        if input_credentials.ring.len() != input_credentials.membership_proofs.len() {
+            return Err(SignedContingentInputBuilderError::MissingProofs(
+                input_credentials.ring.len(),
+                input_credentials.membership_proofs.len(),
+            ));
         }
         // The fee is paid by the party using the transaction builder, not the
         // party using the signed contingent input. So we say 0 for purpose of memos
@@ -119,7 +112,6 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
         Ok(Self {
             block_version,
             input_credentials,
-            tx_out_global_indices,
             required_outputs_and_secrets: Vec::new(),
             tombstone_block: u64::max_value(),
             fog_resolver,
@@ -338,6 +330,15 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             },
         };
 
+        // Get the tx out indices from the proofs in the input credentials,
+        // after sorting has happened
+        let tx_out_global_indices: Vec<u64> = self
+            .input_credentials
+            .membership_proofs
+            .iter()
+            .map(|proof| proof.index)
+            .collect();
+
         // Now we can create the mlsag
         let mut tx_in = TxIn::from(&self.input_credentials);
         tx_in.input_rules = Some(input_rules);
@@ -380,7 +381,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
             mlsag,
             pseudo_output_amount,
             required_output_amounts,
-            tx_out_global_indices: self.tx_out_global_indices,
+            tx_out_global_indices,
         })
     }
 }
@@ -452,7 +453,6 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3, 0, 9],
                 fog_resolver,
                 EmptyMemoBuilder::default(),
             )
@@ -576,7 +576,6 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3, 4, 5],
                 fog_resolver,
                 EmptyMemoBuilder::default(),
             )
@@ -688,7 +687,6 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3, 7, 6],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
             )
@@ -937,7 +935,6 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3, 2, 4],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
             )
@@ -1157,7 +1154,6 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3, 4, 5],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
             )
@@ -1192,7 +1188,6 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![4, 5, 6],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
             )
@@ -1466,7 +1461,6 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3, 1, 2],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
             )
@@ -1559,7 +1553,6 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3, 8, 9],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
             )
@@ -1671,7 +1664,6 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3, 9, 8],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
             )
@@ -1779,7 +1771,6 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3, 7, 8],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
             )
@@ -1890,7 +1881,6 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3, 1, 2],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
             )
@@ -2016,7 +2006,6 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3, 0, 7],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
             )
@@ -2137,7 +2126,6 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3, 0, 9],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
             )
@@ -2249,7 +2237,6 @@ pub mod tests {
             let mut builder = SignedContingentInputBuilder::new(
                 block_version,
                 input_credentials,
-                vec![3, 4, 5],
                 fog_resolver.clone(),
                 EmptyMemoBuilder::default(),
             )

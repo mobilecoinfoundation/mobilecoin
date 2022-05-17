@@ -415,7 +415,6 @@ impl Client {
 
         let (ring, membership_proofs): (Vec<TxOut>, Vec<TxOutMembershipProof>) =
             ring.into_iter().unzip();
-        let global_indices: Vec<u64> = membership_proofs.iter().map(|proof| proof.index).collect();
         let input_credentials = input_credentials_helper(
             input,
             input_proof,
@@ -428,7 +427,6 @@ impl Client {
         let mut sci_builder = SignedContingentInputBuilder::new(
             block_version,
             input_credentials,
-            global_indices,
             fog_resolver,
             EmptyMemoBuilder::default(),
         )?;
