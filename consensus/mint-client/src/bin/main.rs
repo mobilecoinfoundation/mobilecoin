@@ -10,7 +10,7 @@ use mc_consensus_api::{
     empty::Empty,
 };
 use mc_consensus_enclave_api::GovernorsSigner;
-use mc_consensus_mint_client::{Commands, Config};
+use mc_consensus_mint_client::{printers, Commands, Config, TxFile};
 use mc_crypto_keys::Ed25519Pair;
 use mc_crypto_multisig::MultiSig;
 use mc_transaction_core::{
@@ -19,8 +19,7 @@ use mc_transaction_core::{
 };
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use protobuf::ProtobufEnum;
-use serde::de::DeserializeOwned;
-use std::{fs, path::PathBuf, process::exit, sync::Arc};
+use std::{fs, process::exit, sync::Arc};
 
 fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
@@ -58,9 +57,9 @@ fn main() {
                 .try_into_mint_config_tx(|| panic!("missing tombstone block"))
                 .expect("failed creating tx");
 
-            let json = serde_json::to_string_pretty(&tx).expect("failed serializing tx");
-
-            fs::write(out, json).expect("failed writing output file");
+            TxFile::from(tx)
+                .write_json(&out)
+                .expect("failed writing output file");
         }
 
         Commands::HashMintConfigTx { params } => {
@@ -78,7 +77,8 @@ fn main() {
 
         Commands::SubmitMintConfigTx { node, tx_filenames } => {
             // Load all txs.
-            let txs: Vec<MintConfigTx> = load_json_files(&tx_filenames);
+            let txs =
+                TxFile::load_multiple::<MintConfigTx>(&tx_filenames).expect("failed loading txs");
 
             // All tx prefixes should be the same.
             if !txs.windows(2).all(|pair| pair[0].prefix == pair[1].prefix) {
@@ -144,9 +144,9 @@ fn main() {
                 .try_into_mint_tx(|| panic!("missing tombstone block"))
                 .expect("failed creating tx");
 
-            let json = serde_json::to_string_pretty(&tx).expect("failed serializing tx");
-
-            fs::write(out, json).expect("failed writing output file");
+            TxFile::from(tx)
+                .write_json(&out)
+                .expect("failed writing output file");
         }
 
         Commands::HashMintTx { params } => {
@@ -164,7 +164,7 @@ fn main() {
 
         Commands::SubmitMintTx { node, tx_filenames } => {
             // Load all txs.
-            let txs: Vec<MintTx> = load_json_files(&tx_filenames);
+            let txs = TxFile::load_multiple::<MintTx>(&tx_filenames).expect("failed loading txs");
 
             // All tx prefixes should be the same.
             if !txs.windows(2).all(|pair| pair[0].prefix == pair[1].prefix) {
@@ -228,17 +228,14 @@ fn main() {
                 fs::write(path, json_str).expect("failed writing output file");
             }
         }
-    }
-}
 
-fn load_json_files<T: DeserializeOwned>(filenames: &[PathBuf]) -> Vec<T> {
-    filenames
-        .iter()
-        .map(|filename| {
-            let json = fs::read_to_string(filename)
-                .unwrap_or_else(|err| panic!("Failed reading file {:?}: {}", filename, err));
-            serde_json::from_str(&json)
-                .unwrap_or_else(|err| panic!("Failed parsing tx from file {:?}: {}", filename, err))
-        })
-        .collect()
+        Commands::Dump { tx_file } => match tx_file {
+            TxFile::MintConfigTx(tx) => {
+                printers::print_mint_config_tx(&tx, 0);
+            }
+            TxFile::MintTx(tx) => {
+                printers::print_mint_tx(&tx, 0);
+            }
+        },
+    }
 }

@@ -2,6 +2,7 @@
 
 //! Command line configuration for the consensus mint client.
 
+use crate::TxFile;
 use clap::{Args, Parser, Subcommand};
 use hex::FromHex;
 use mc_account_keys::PublicAddress;
@@ -264,12 +265,12 @@ pub enum Commands {
         node: ConsensusClientUri,
 
         /// Paths for the JSON-formatted mint configuration tx files, each
-        /// containing a serde-serialized MintConfigTx object.
+        /// containing a serde-serialized TxFile holding a MintConfigTx object.
         #[clap(
-            long = "tx",
+            long = "tx-file",
             required = true,
             use_value_delimiter = true,
-            env = "MC_MINTING_CONFIG_TXS"
+            env = "MC_MINTING_CONFIG_TX_FILES"
         )]
         tx_filenames: Vec<PathBuf>,
     },
@@ -310,12 +311,12 @@ pub enum Commands {
         node: ConsensusClientUri,
 
         /// Paths for the JSON-formatted mint tx files, each containing a
-        /// serde-serialized MintTx object.
+        /// serde-serialized TxFile holding a MintTx object.
         #[clap(
-            long = "tx",
+            long = "tx-file",
             required = true,
             use_value_delimiter = true,
-            env = "MC_MINTING_TXS"
+            env = "MC_MINTING_TX_FILES"
         )]
         tx_filenames: Vec<PathBuf>,
     },
@@ -337,6 +338,14 @@ pub enum Commands {
         /// Optionally write a new tokens.json file containing the signature.
         #[clap(long, env = "MC_MINTING_OUTPUT_JSON")]
         output_json: Option<PathBuf>,
+    },
+
+    /// Load a previously-serialized file produced by this tool and print its
+    /// contents in a human-friendly way.
+    Dump {
+        /// The file to load
+        #[clap(long, parse(try_from_str = load_tx_file_from_path), env = "MC_MINTING_TX_FILE")]
+        tx_file: TxFile,
     },
 }
 
@@ -471,4 +480,8 @@ fn get_or_generate_nonce(nonce: Option<[u8; NONCE_LENGTH]>) -> Vec<u8> {
         rng.fill_bytes(&mut nonce);
         nonce
     })
+}
+
+fn load_tx_file_from_path(path: &str) -> Result<TxFile, String> {
+    TxFile::from_json_file(path).map_err(|e| format!("failed loading file {:?}: {}", path, e))
 }
