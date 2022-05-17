@@ -510,6 +510,12 @@ impl Client {
                 }
                 Ok(Some((tx_out, proof))) => {
                     if sci.tx_in.ring[idx] != tx_out {
+                        log::debug!(
+                            self.logger,
+                            "Expected: {:?}, Found: {:?}",
+                            sci.tx_in.ring[idx],
+                            tx_out
+                        );
                         return Err(Error::SciGlobalIndexTxOutMismatch(
                             sci.tx_out_global_indices[idx],
                         ));
