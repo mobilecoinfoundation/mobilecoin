@@ -18,7 +18,7 @@ use mc_util_uri::{ConnectionUri, ConsensusClientUri, FogUri};
 #[cfg(feature = "ip-check")]
 use reqwest::{
     blocking::Client,
-    header::{HeaderMap, HeaderValue, CONTENT_TYPE},
+    header::{HeaderMap, HeaderValue, InvalidHeaderValue, AUTHORIZATION, CONTENT_TYPE},
 };
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
@@ -98,6 +98,10 @@ pub struct Config {
     /// Automatically migrate the ledger db into the most recent version.
     #[clap(long, env = "MC_LEDGER_DB_MIGRATE")]
     pub ledger_db_migrate: bool,
+
+    /// An authorization token for the ipinfo.io service, if available
+    #[clap(long, env = "MC_IP_INFO_TOKEN", default_value = "")]
+    pub ip_info_token: String,
 }
 
 fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet<ResponderId>, String> {
@@ -125,6 +129,9 @@ pub enum ConfigError {
 
     /// Data missing in the response {0}
     DataMissing(String),
+
+    /// Invalid header: {0}
+    InvalidHeader(InvalidHeaderValue),
 }
 
 impl From<serde_json::Error> for ConfigError {
@@ -136,6 +143,12 @@ impl From<serde_json::Error> for ConfigError {
 impl From<reqwest::Error> for ConfigError {
     fn from(e: reqwest::Error) -> Self {
         Self::Reqwest(e)
+    }
+}
+
+impl From<InvalidHeaderValue> for ConfigError {
+    fn from(e: InvalidHeaderValue) -> Self {
+        Self::InvalidHeader(e)
     }
 }
 
@@ -219,6 +232,14 @@ impl Config {
         let client = Client::builder().gzip(true).use_rustls_tls().build()?;
         let mut json_headers = HeaderMap::new();
         json_headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+
+        if !self.ip_info_token.is_empty() {
+            json_headers.insert(
+                AUTHORIZATION,
+                HeaderValue::from_str(&format!("Bearer {}", self.ip_info_token))?,
+            );
+        }
+
         let response = client
             .get("https://ipinfo.io/json/")
             .headers(json_headers)
