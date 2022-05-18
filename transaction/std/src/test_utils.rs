@@ -54,31 +54,6 @@ pub fn create_output<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
     )
 }
 
-// Make fake outputs for a ring
-fn add_fake_outputs_to_ring<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
-    mut ring: Vec<TxOut>,
-    block_version: BlockVersion,
-    amount: Amount,
-    ring_size: usize,
-    fog_resolver: &FPR,
-    rng: &mut RNG,
-) -> Vec<TxOut> {
-    // Create fake mixins with assorted token ids
-    for idx in 0..ring_size - 1 {
-        let address = AccountKey::random(rng).default_subaddress();
-        let token_id = if block_version.masked_token_id_feature_is_supported() {
-            TokenId::from(idx as u64)
-        } else {
-            Mob::ID
-        };
-        let amount = Amount::new(amount.value, token_id);
-        let (tx_out, _) =
-            create_output(block_version, amount, &address, fog_resolver, rng).unwrap();
-        ring.push(tx_out);
-    }
-    ring
-}
-
 /// Creates a ring of of TxOuts.
 ///
 /// # Arguments
@@ -99,17 +74,23 @@ pub fn get_ring<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
     fog_resolver: &FPR,
     rng: &mut RNG,
 ) -> (Vec<TxOut>, usize) {
-    // Create ring_size - 1 mixins with assorted token ids
-    let mut ring: Vec<TxOut> = add_fake_outputs_to_ring(
-        Vec::new(),
-        block_version,
-        amount,
-        ring_size,
-        fog_resolver,
-        rng,
-    );
+    let mut ring: Vec<TxOut> = Vec::new();
 
-    // Insert the "real" element.
+    // Create ring_size - 1 mixins with assorted token ids
+    for idx in 0..ring_size - 1 {
+        let address = AccountKey::random(rng).default_subaddress();
+        let token_id = if block_version.masked_token_id_feature_is_supported() {
+            TokenId::from(idx as u64)
+        } else {
+            Mob::ID
+        };
+        let amount = Amount::new(amount.value, token_id);
+        let (tx_out, _) =
+            create_output(block_version, amount, &address, fog_resolver, rng).unwrap();
+        ring.push(tx_out);
+    }
+
+    // Insert the real element.
     let real_index = (rng.next_u64() % ring_size as u64) as usize;
     let (tx_out, _) = create_output(
         block_version,
@@ -120,44 +101,6 @@ pub fn get_ring<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
     )
     .unwrap();
     ring.insert(real_index, tx_out);
-    assert_eq!(ring.len(), ring_size);
-
-    (ring, real_index)
-}
-
-/// Get ring for existing TxOut
-///
-/// # Arguments
-/// * `tx_out` - The "real" TxOut to build the ring for
-/// * `block_version` - The block version for the TxOut's
-/// * `token_id` - The token id for the real element
-/// * `ring_size` - Number of elements in the ring.
-/// * `value` - Value of the real element.
-/// * `fog_resolver` - Fog public keys
-/// * `rng` - Randomness.
-///
-/// Returns (ring, real_index)
-pub fn get_ring_for_txout<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
-    tx_out: &TxOut,
-    block_version: BlockVersion,
-    amount: Amount,
-    ring_size: usize,
-    fog_resolver: &FPR,
-    rng: &mut RNG,
-) -> (Vec<TxOut>, usize) {
-    // Create ring_size - 1 mixins with assorted token ids
-    let mut ring: Vec<TxOut> = add_fake_outputs_to_ring(
-        Vec::new(),
-        block_version,
-        amount,
-        ring_size,
-        fog_resolver,
-        rng,
-    );
-
-    // Insert the TxOut
-    let real_index = (rng.next_u64() % ring_size as u64) as usize;
-    ring.insert(real_index, tx_out.clone());
     assert_eq!(ring.len(), ring_size);
 
     (ring, real_index)

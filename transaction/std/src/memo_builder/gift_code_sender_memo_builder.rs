@@ -19,7 +19,7 @@ use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
 /// from the sender's gift code subaddress to their own change subaddress.
 /// The sender memo is written into the TxOut the receiver sends to the
 /// change address and includes an optional Utf-8 note up to 64 bytes long
-/// the Receiver can  use to record any information they desire about the
+/// the Receiver can use to record any information they desire about the
 /// gift code.
 #[derive(Clone, Debug)]
 pub struct GiftCodeSenderMemoBuilder {
@@ -35,9 +35,10 @@ impl GiftCodeSenderMemoBuilder {
     /// note passed is longer than 64 bytes.
     pub fn new(note: &str) -> Result<Self, NewMemoError> {
         if note.len() > GiftCodeSenderMemo::MEMO_DATA_LEN {
-            return Err(NewMemoError::BadInputs(
-                "Sender note cannot be longer than 64 bytes".into(),
-            ));
+            return Err(NewMemoError::BadInputs(format!(
+                "Note memo cannot be greater than {} bytes",
+                GiftCodeSenderMemo::MEMO_DATA_LEN
+            )));
         }
         Ok(Self {
             note: note.into(),

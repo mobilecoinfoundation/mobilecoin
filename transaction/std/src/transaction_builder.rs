@@ -574,7 +574,6 @@ pub(crate) fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
     if !block_version.masked_token_id_feature_is_supported() {
         tx_out.masked_amount.masked_token_id.clear();
     }
-    //
     let shared_secret = create_shared_secret(recipient.view_public_key(), &private_key);
     Ok((tx_out, shared_secret))
 }
@@ -612,7 +611,7 @@ pub(crate) fn create_fog_hint<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
 pub mod transaction_builder_tests {
     use super::*;
     use crate::{
-        test_utils::{get_input_credentials, get_ring, get_ring_for_txout, get_transaction},
+        test_utils::{create_output, get_input_credentials, get_ring, get_transaction},
         BurnRedemptionMemoBuilder, EmptyMemoBuilder, GiftCodeCancellationMemoBuilder,
         GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder, MemoType, RTHMemoBuilder,
         SenderMemoCredential,
@@ -3189,17 +3188,6 @@ pub mod transaction_builder_tests {
             validate_tx_out(block_version, funding_output).unwrap();
             validate_tx_out(block_version, funding_change_output).unwrap();
 
-            assert!(
-                subaddress_matches_tx_out(&sender, GIFT_CODE_SUBADDRESS_INDEX, funding_output)
-                    .unwrap()
-            );
-            assert!(subaddress_matches_tx_out(
-                &sender,
-                CHANGE_SUBADDRESS_INDEX,
-                funding_change_output
-            )
-            .unwrap());
-
             // Ensure funding output & change memos are correct
             let funding_output_public_key =
                 &RistrettoPublic::try_from(&funding_output.public_key).unwrap();
@@ -3236,15 +3224,11 @@ pub mod transaction_builder_tests {
                     _ => {
                         panic!("unexpected memo type")
                     }
-                }
-                match MemoType::try_from(&funding_output_memo)
-                    .expect("Couldn't decrypt gift code funding_output memo")
-                {
-                    MemoType::Unused(_) => {}
-                    _ => {
-                        panic!("unexpected memo type")
-                    }
-                }
+                };
+                assert_matches!(
+                    MemoType::try_from(&funding_output_memo),
+                    Ok(MemoType::Unused(_))
+                );
             }
 
             // MCIP #32 specifies that the receiver will receive the TxOut index,
@@ -3274,17 +3258,27 @@ pub mod transaction_builder_tests {
             let (sending_input_amount, blinding) = masked_amount
                 .get_value(&tx_out_gift_code.shared_secret)
                 .unwrap();
-            println!("{:?}", sending_input_amount);
             let sending_output_amount = Amount::new(sending_input_amount.value - fee, token_id);
 
-            let (ring, real_index) = get_ring_for_txout(
-                funding_output,
-                block_version,
-                sending_input_amount,
-                3,
-                &fog_resolver,
-                &mut rng,
-            );
+            let ring_size = 3;
+            let mut ring: Vec<TxOut> = Vec::new();
+            for idx in 0..ring_size - 1 {
+                let address = AccountKey::random(&mut rng).default_subaddress();
+                let mixed_token_id = if block_version.masked_token_id_feature_is_supported() {
+                    TokenId::from(idx as u64)
+                } else {
+                    token_id
+                };
+                let amount = Amount::new(sending_output_amount.value, mixed_token_id);
+                let (tx_out, _) =
+                    create_output(block_version, amount, &address, &fog_resolver, &mut rng)
+                        .unwrap();
+                ring.push(tx_out);
+            }
+
+            let real_index = (rng.next_u64() % ring_size as u64) as usize;
+            ring.insert(real_index, funding_output.clone());
+            assert_eq!(ring.len(), ring_size);
 
             let membership_proofs: Vec<TxOutMembershipProof> = ring
                 .iter()
@@ -3341,8 +3335,6 @@ pub mod transaction_builder_tests {
                 .expect("Didn't find sender's output");
 
             validate_tx_out(block_version, change).unwrap();
-
-            assert!(subaddress_matches_tx_out(&receiver, CHANGE_SUBADDRESS_INDEX, change).unwrap());
 
             // Ensure change memo is correct
             let ss = get_tx_out_shared_secret(
@@ -3416,9 +3408,6 @@ pub mod transaction_builder_tests {
                 .expect("Didn't find sender's output");
 
             validate_tx_out(block_version, change).unwrap();
-
-            // Ensure it was sent to the change address
-            assert!(subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, change).unwrap());
 
             // Ensure change memo is correct
             let ss = get_tx_out_shared_secret(
@@ -3553,7 +3542,7 @@ pub mod transaction_builder_tests {
             assert_matches!(
                 output_after_change,
                 Err(TxBuilderError::NewTx(NewTxError::Memo(
-                    NewMemoError::MultipleOutputs
+                    NewMemoError::OutputsAfterChange
                 )))
             );
         }

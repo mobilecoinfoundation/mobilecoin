@@ -29,12 +29,11 @@ use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
 pub struct GiftCodeFundingMemoBuilder {
     // Utf-8 note within the memo that can be up to 60 bytes long
     note: String,
-    // TxOut Public Key of the gift code TxOut sent to the gift code subaddress
+    // TxOut Public Key of the gift code TxOut sent to the gift code subaddress.
+    // This is populated when the output is created
     gift_code_tx_out_public_key: Option<RistrettoPublic>,
     // Whether we've already written the change memo
     wrote_change_memo: bool,
-    // Whether we've already written the gift code TxOut
-    wrote_destination_memo: bool,
 }
 
 impl GiftCodeFundingMemoBuilder {
@@ -43,15 +42,15 @@ impl GiftCodeFundingMemoBuilder {
     /// note passed is longer than 60 bytes.
     pub fn new(note: &str) -> Result<Self, NewMemoError> {
         if note.len() > GiftCodeFundingMemo::NOTE_DATA_LEN {
-            return Err(NewMemoError::BadInputs(
-                "Note memo cannot be greater than 60 bytes".into(),
-            ));
+            return Err(NewMemoError::BadInputs(format!(
+                "Note memo cannot be greater than {} bytes",
+                GiftCodeFundingMemo::NOTE_DATA_LEN
+            )));
         }
         Ok(Self {
             note: note.into(),
             gift_code_tx_out_public_key: None,
             wrote_change_memo: false,
-            wrote_destination_memo: false,
         })
     }
 }
@@ -73,14 +72,13 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
         memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
         // Only one gift code should be funded
-        if self.wrote_destination_memo {
+        if self.gift_code_tx_out_public_key.is_some() {
             return Err(NewMemoError::MultipleOutputs);
         }
         if self.wrote_change_memo {
             return Err(NewMemoError::OutputsAfterChange);
         }
         self.gift_code_tx_out_public_key = Some(*memo_context.tx_public_key);
-        self.wrote_destination_memo = true;
         Ok(UnusedMemo {}.into())
     }
 
@@ -91,9 +89,6 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
         _change_destination: &ReservedDestination,
         memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
-        if !self.wrote_destination_memo {
-            return Err(NewMemoError::MissingOutput);
-        }
         if self.wrote_change_memo {
             return Err(NewMemoError::MultipleChangeOutputs);
         }
@@ -104,9 +99,7 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
             self.wrote_change_memo = true;
             Ok(GiftCodeFundingMemo::new(&tx_out_public_key, self.note.as_str())?.into())
         } else {
-            Err(NewMemoError::MissingInput(
-                "Missing gift code TxOut public key".into(),
-            ))
+            Err(NewMemoError::MissingOutput)
         }
     }
 }
