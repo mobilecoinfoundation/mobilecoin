@@ -824,7 +824,7 @@ async fn main() -> Result<(), rocket::Error> {
         .merge(("port", config.listen_port))
         .merge(("address", config.listen_host.clone()));
 
-    rocket::custom(figment)
+    let _rocket = rocket::custom(figment)
         .mount(
             "/",
             routes![
@@ -864,5 +864,6 @@ async fn main() -> Result<(), rocket::Error> {
             mobilecoind_api_client,
         })
         .launch()
-        .await
+        .await?;
+    Ok(())
 }

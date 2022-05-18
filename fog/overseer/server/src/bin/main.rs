@@ -42,5 +42,6 @@ async fn main() -> Result<(), rocket::Error> {
         .merge(("address", config.overseer_listen_host.clone()));
 
     let rocket = server::initialize_rocket_server(rocket_config, overseer_state);
-    rocket.launch().await
+    let _rocket = rocket.launch().await?;
+    Ok(())
 }
