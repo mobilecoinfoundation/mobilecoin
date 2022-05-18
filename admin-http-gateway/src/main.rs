@@ -46,8 +46,8 @@ struct State {
 }
 
 #[get("/")]
-fn index() -> content::Html<String> {
-    content::Html(include_str!("../templates/index.html").to_owned())
+fn index() -> content::RawHtml<String> {
+    content::RawHtml(include_str!("../templates/index.html").to_owned())
 }
 
 #[derive(Serialize)]
@@ -144,9 +144,11 @@ async fn main() -> Result<(), rocket::Error> {
         .merge(("port", config.listen_port))
         .merge(("address", config.listen_host.clone()));
 
-    rocket::custom(figment)
+    let _rocket = rocket::custom(figment)
         .mount("/", routes![index, info, set_rust_log, metrics])
         .manage(State { admin_api_client })
         .launch()
-        .await
+        .await?;
+
+    Ok(())
 }
