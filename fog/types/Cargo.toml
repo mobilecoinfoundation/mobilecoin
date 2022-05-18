@@ -15,7 +15,7 @@ mc-watcher-api = { path = "../../watcher/api" }
 mc-fog-kex-rng = { path = "../kex_rng" }
 
 # third-party
-crc = { version = "2.1.0", default-features = false }
+crc = { version = "3.0.0", default-features = false }
 displaydoc = { version = "0.2", default-features = false }
 prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }

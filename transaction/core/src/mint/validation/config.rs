@@ -23,13 +23,16 @@ use mc_crypto_multisig::SignerSet;
 /// # Arguments
 /// * `tx` - A pending transaction.
 /// * `current_block_index` - The index of the current block that is being
-///   built.
+///   built. This is used to enforce the tombstone block limit, and is optional.
+///   It is optional because we want to be able to validate MintConfigTxs that
+///   are already in the ledger (e.g. when we are validating new MintTxs and
+///   matching them against existing MintConfigTxs).
 /// * `block_version` - The version of the block that is being built.
 /// * `governors` - The set of signers that are allowed to sign MintConfigTx
 ///   transactions.
 pub fn validate_mint_config_tx(
     tx: &MintConfigTx,
-    current_block_index: u64,
+    current_block_index: Option<u64>,
     block_version: BlockVersion,
     governors: &SignerSet<Ed25519Public>,
 ) -> Result<(), Error> {
@@ -42,7 +45,9 @@ pub fn validate_mint_config_tx(
 
     validate_nonce(&tx.prefix.nonce)?;
 
-    validate_tombstone(current_block_index, tx.prefix.tombstone_block)?;
+    if let Some(current_block_index) = current_block_index {
+        validate_tombstone(current_block_index, tx.prefix.tombstone_block)?;
+    }
 
     validate_signature(tx, governors)?;
 

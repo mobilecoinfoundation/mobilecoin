@@ -72,6 +72,7 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
 
     /// Checks if a transaction is valid (see definition at top of this file).
     fn is_valid(&self, context: Arc<WellFormedTxContext>) -> TransactionValidationResult<()> {
+        // Get the index of the current block we will be building.
         let current_block_index = self
             .ledger
             .num_blocks()

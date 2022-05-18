@@ -14,5 +14,7 @@ path = "src/lib.rs"
 cfg-if = "1.0"
 displaydoc = "0.2"
 hostname = "0.3.1"
-opentelemetry = "0.17"
-opentelemetry-jaeger = { version = "0.16", features = ["collector_client", "isahc"], optional = true }
+
+# requires a fork due to a dependency upgrade on the `thrift` crate that has not yet been released
+opentelemetry = { git = "https://github.com/mobilecoinofficial/opentelemetry-rust.git", rev = "1817229c56340bbb4a6dca63c8dfb5154606e5bf" }
+opentelemetry-jaeger = { git = "https://github.com/mobilecoinofficial/opentelemetry-rust.git", rev = "1817229c56340bbb4a6dca63c8dfb5154606e5bf", features = ["collector_client", "isahc"], optional = true }
