@@ -94,6 +94,9 @@ lazy_static::lazy_static! {
     /// Number of times that the test failed because a build tx operation failed
     pub static ref BUILD_TX_ERROR_COUNT: IntCounter = OP_COUNTERS.counter("build_tx_error_count");
 
+    /// Number of times that the test failed because a build tx operation failed
+    pub static ref BUILD_SWAP_PROPOSAL_ERROR_COUNT: IntCounter = OP_COUNTERS.counter("build_swap_proposal_error_count");
+
     /// Number of times that the test failed because a submit tx operation failed
     pub static ref SUBMIT_TX_ERROR_COUNT: IntCounter = OP_COUNTERS.counter("submit_tx_error_count");
 
