@@ -13,13 +13,14 @@ use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
 /// | -->0x0002<--    | Gift Code Sender Memo       |
 /// |    0x0201       | Gift Code Funding Memo      |
 /// |    0x0202       | Gift Code Cancellation Memo |
-/// This memo builder builds a gift code sender memo (0x0002). A gift code
+/// This memo builder builds the gift code sender memo (0x0002). A gift code
 /// considered redeemed when the Receiver uses the TxOut spend private key
 /// of the gift code TxOut they received from the Sender to send the TxOut
 /// from the sender's gift code subaddress to their own change subaddress.
-/// The destination memo is written into that TxOut at the change address
-/// and includes an optional Utf-8 note up to 64 bytes long the Receiver
-/// can use to record any information they desire about the gift code.
+/// The sender memo is written into the TxOut the receiver sends to the
+/// change address and includes an optional Utf-8 note up to 64 bytes long
+/// the Receiver can  use to record any information they desire about the
+/// gift code.
 #[derive(Clone, Debug)]
 pub struct GiftCodeSenderMemoBuilder {
     // Utf-8 formatted note within the memo that can be up to 64 bytes long
@@ -29,10 +30,9 @@ pub struct GiftCodeSenderMemoBuilder {
 }
 
 impl GiftCodeSenderMemoBuilder {
-    /// Initialize memo builder with a utf-8 note (up to 64 bytes)
-    /// indicating what the gift code was for. This method will enforce
-    /// the 64 byte limit with a NewMemoErr if the &str passed is longer
-    /// than 64 bytes.
+    /// Initialize memo builder with a utf-8 note (up to 64 bytes), This
+    /// method will enforce the 64 byte limit with a NewMemoErr if the
+    /// note passed is longer than 64 bytes.
     pub fn new(note: &str) -> Result<Self, NewMemoError> {
         if note.len() > GiftCodeSenderMemo::MEMO_DATA_LEN {
             return Err(NewMemoError::BadInputs(
@@ -80,7 +80,6 @@ impl MemoBuilder for GiftCodeSenderMemoBuilder {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use crate::test_utils::build_change_memo_with_amount;
 

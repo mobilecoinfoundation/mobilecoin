@@ -3126,7 +3126,7 @@ pub mod transaction_builder_tests {
             let funding_memo_builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
             let funding_input_amount = Amount::new(funding_input_amt, token_id);
             let funding_output_amount = Amount::new(funding_output_amt, token_id);
-            let funding_change_amount =
+            let funding_change_output_amount =
                 Amount::new(funding_input_amt - funding_output_amt - fee, token_id);
             let mut funding_transaction_builder = TransactionBuilder::new(
                 block_version,
@@ -3146,7 +3146,7 @@ pub mod transaction_builder_tests {
             );
             funding_transaction_builder.add_input(funding_input_credentials);
 
-            // Fund gift code TxOut with blank memo
+            // Fund gift code TxOut
             funding_transaction_builder
                 .add_output(
                     funding_output_amount,
@@ -3155,10 +3155,9 @@ pub mod transaction_builder_tests {
                 )
                 .unwrap();
 
-            // Make change output with funding memo
             funding_transaction_builder
                 .add_change_output(
-                    funding_change_amount,
+                    funding_change_output_amount,
                     &sender_reserved_destinations,
                     &mut rng,
                 )
@@ -3176,57 +3175,62 @@ pub mod transaction_builder_tests {
                 .find(|tx_out| {
                     subaddress_matches_tx_out(&sender, GIFT_CODE_SUBADDRESS_INDEX, tx_out).unwrap()
                 })
-                .expect("Didn't find recipient's output");
+                .expect("Didn't find gift code funding output");
 
-            let funding_change = funding_tx
+            let funding_change_output = funding_tx
                 .prefix
                 .outputs
                 .iter()
                 .find(|tx_out| {
                     subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
                 })
-                .expect("Didn't find sender's output");
+                .expect("Didn't gift code funding change output");
 
             validate_tx_out(block_version, funding_output).unwrap();
-            validate_tx_out(block_version, funding_change).unwrap();
+            validate_tx_out(block_version, funding_change_output).unwrap();
 
             assert!(
                 subaddress_matches_tx_out(&sender, GIFT_CODE_SUBADDRESS_INDEX, funding_output)
                     .unwrap()
             );
-            assert!(
-                subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, funding_change)
-                    .unwrap()
-            );
+            assert!(subaddress_matches_tx_out(
+                &sender,
+                CHANGE_SUBADDRESS_INDEX,
+                funding_change_output
+            )
+            .unwrap());
 
             // Ensure funding output & change memos are correct
-            let gift_code_tx_out_public_key =
+            let funding_output_public_key =
                 &RistrettoPublic::try_from(&funding_output.public_key).unwrap();
-            let funding_change_tx_out_public_key =
-                &RistrettoPublic::try_from(&funding_change.public_key).unwrap();
-            let gift_code_ss =
-                get_tx_out_shared_secret(sender.view_private_key(), gift_code_tx_out_public_key);
-            let funding_change_ss = get_tx_out_shared_secret(
+            let funding_change_output_tx_out_public_key =
+                &RistrettoPublic::try_from(&funding_change_output.public_key).unwrap();
+            let funding_output_ss =
+                get_tx_out_shared_secret(sender.view_private_key(), funding_output_public_key);
+            let funding_change_output_ss = get_tx_out_shared_secret(
                 sender.view_private_key(),
-                funding_change_tx_out_public_key,
+                funding_change_output_tx_out_public_key,
             );
 
             let (funding_amount, _) = funding_output
                 .masked_amount
-                .get_value(&gift_code_ss)
+                .get_value(&funding_output_ss)
                 .unwrap();
             assert_eq!(funding_amount.value, funding_output_amount.value);
             assert_eq!(funding_amount.token_id, token_id);
 
             if block_version.e_memo_feature_is_supported() {
-                let funding_change_memo =
-                    funding_change.e_memo.unwrap().decrypt(&funding_change_ss);
-                let funding_output_memo = funding_output.e_memo.unwrap().decrypt(&gift_code_ss);
-                match MemoType::try_from(&funding_change_memo)
+                let funding_change_output_memo = funding_change_output
+                    .e_memo
+                    .unwrap()
+                    .decrypt(&funding_change_output_ss);
+                let funding_output_memo =
+                    funding_output.e_memo.unwrap().decrypt(&funding_output_ss);
+                match MemoType::try_from(&funding_change_output_memo)
                     .expect("Couldn't decrypt funding change memo")
                 {
                     MemoType::GiftCodeFunding(memo) => {
-                        assert!(memo.public_key_matches(gift_code_tx_out_public_key),);
+                        assert!(memo.public_key_matches(funding_output_public_key),);
                         assert_eq!(memo.funding_note().unwrap(), note,);
                     }
                     _ => {
@@ -3244,22 +3248,23 @@ pub mod transaction_builder_tests {
             }
 
             // MCIP #32 specifies that the receiver will receive the TxOut index,
-            // shared_secret and onetime_private_key. Send a gift code from a
-            // simulated sender to a simulated receiver in the manner specified
-            // in the MCIP, by using the data from gift code TxOut funded above
+            // shared_secret and onetime_private_key in a message. Below we
+            // simulate a receiver sending the gift code to themselves with the
+            // those 3 pieces of information from the gift code TxOut funded above
 
             // Get the data we're pretending sender sends to the receiver and
-            // construct TxOutGiftCode object from it
+            // construct TxOutGiftCode object from it. This data would
+            // normally be sent via a protobuf message
             let global_index = 42;
             let gift_code_tx_out_private_key = recover_onetime_private_key(
-                gift_code_tx_out_public_key,
+                funding_output_public_key,
                 sender.spend_private_key(),
                 &sender.gift_code_subaddress_spend_private(),
             );
             let tx_out_gift_code = TxOutGiftCode {
                 global_index,
                 onetime_private_key: gift_code_tx_out_private_key,
-                shared_secret: gift_code_ss,
+                shared_secret: funding_output_ss,
             };
 
             // Values we pretend we get from locating the TxOut using the global index
@@ -3481,7 +3486,7 @@ pub mod transaction_builder_tests {
             );
         }
 
-        // Ensure we can't fund after change
+        // Ensure we can't write change before funding or fund after change
         {
             let funding_memo_builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
 

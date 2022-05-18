@@ -15,8 +15,8 @@ use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
 /// | -->0x0202<--    | Gift Code Cancellation Memo |
 /// This memo builder builds a gift code cancellation memo (0x0202). Gift code
 /// cancellation is defined as the sender sending the gift code TxOut at the
-/// gift code subaddress back to their change address prior to it being spent
-/// by the receiver. When that happens a gift code cancellation memo is
+/// gift code subaddress to their change address prior to it being spent by
+/// the receiver. When that happens a gift code cancellation memo is
 /// written to the change TxOut that stores the index of the TxOut originally
 /// sent to the gift code subaddress when the gift code was funded.
 #[derive(Clone, Debug)]
@@ -54,8 +54,7 @@ impl MemoBuilder for GiftCodeCancellationMemoBuilder {
         Err(NewMemoError::DestinationMemoNotAllowed)
     }
 
-    /// Write the cancellation memo to the change output the gift code is
-    /// refunded to
+    /// Write the cancellation memo to the change output
     fn make_memo_for_change_output(
         &mut self,
         _amount: Amount,

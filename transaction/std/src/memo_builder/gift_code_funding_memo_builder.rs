@@ -38,10 +38,9 @@ pub struct GiftCodeFundingMemoBuilder {
 }
 
 impl GiftCodeFundingMemoBuilder {
-    /// Initialize memo builder with a utf-8 note (up to 60 bytes)
-    /// indicating what the gift code was for. This method will enforce
-    /// the 60 byte limit with a NewMemoErr if the &str passed is longer
-    /// than 60 bytes.
+    /// Initialize memo builder with a utf-8 note (up to 60 bytes), This
+    /// method will enforce the 60 byte limit with a NewMemoErr if the
+    /// note passed is longer than 60 bytes.
     pub fn new(note: &str) -> Result<Self, NewMemoError> {
         if note.len() > GiftCodeFundingMemo::NOTE_DATA_LEN {
             return Err(NewMemoError::BadInputs(
@@ -169,7 +168,7 @@ mod tests {
 
     #[test]
     fn test_gift_code_funding_memo_built_successfully_with_edge_case_notes() {
-        // Create memo builder with blank note
+        // Create blank notes and notes near max length
         let blank_note = "";
         let note_minus_one =
             std::str::from_utf8(&[b'6'; GiftCodeFundingMemo::NOTE_DATA_LEN - 1]).unwrap();
@@ -232,7 +231,7 @@ mod tests {
         let alice_address_book = ReservedDestination::from(&alice);
         let change_amount = Amount::new(666, 666.into());
 
-        // Erroneously set change TxOut public address to the funding TxOut
+        // Erroneously set funding TxOut pubkey to the change TxOut pubkey
         let change_tx_public_key = RistrettoPublic::from_random(&mut rng);
         builder
             .make_memo_for_output(
