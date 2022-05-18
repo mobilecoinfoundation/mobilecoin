@@ -468,8 +468,13 @@ impl Client {
         sci.validate()?;
 
         // Check if its key image alreay landed
+        //
         // Note: An actual fog wallet may not want to do this part, because it adds to
         // latency, but if you have a local ledger copy you should definitely do this
+        //
+        // Note: It is still a racy check though -- the sci may expire while you are
+        // still submitting an order that uses it. So this check doesn't guarantee that
+        // your submission will work.
         let res = self.fog_key_image.check_key_images(&[sci.key_image()])?;
         if res.results[0].key_image_result_code == KeyImageResultCode::Spent as u32 {
             return Err(Error::SciExpired);
@@ -478,10 +483,9 @@ impl Client {
         // make another call using `self.compute_tombstone_block`.
         let tombstone_block = res.num_blocks + self.new_tx_block_attempts as u64;
 
-        let merkle_root_block = 0u64;
-
         // Update sci's merkle proofs
         sci.tx_in.proofs.clear();
+        let merkle_root_block = 0u64;
         for (idx, result) in self
             .fog_merkle_proof
             .get_outputs(sci.tx_out_global_indices.clone(), merkle_root_block)?
