@@ -4,7 +4,10 @@
 //!
 //! See https://cryptonote.org/img/cryptonote_transaction.png
 
-use crate::{ChangeDestination, InputCredentials, MemoBuilder, TxBuilderError};
+use crate::{
+    input_materials::InputMaterials, InputCredentials, MemoBuilder, ReservedDestination,
+    TxBuilderError,
+};
 use core::{cmp::min, fmt::Debug};
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
@@ -13,11 +16,11 @@ use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::create_shared_secret,
-    ring_signature::{InputSecret, OutputSecret, SignatureRctBulletproofs},
+    ring_signature::{InputRing, OutputSecret, SignatureRctBulletproofs},
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
-    Amount, BlockVersion, CompressedCommitment, MemoContext, MemoPayload, NewMemoError, Token,
-    TokenId,
+    Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, SignedContingentInput,
+    SignedContingentInputError, Token, TokenId,
 };
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
@@ -50,10 +53,10 @@ impl TxOutputsOrdering for DefaultTxOutputsOrdering {
 pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
     /// The block version that we are targeting for this transaction
     block_version: BlockVersion,
-    /// The input credentials used to form the transaction
-    input_credentials: Vec<InputCredentials>,
-    /// The outputs created by the transaction, and associated shared secrets
-    outputs_and_shared_secrets: Vec<(TxOut, RistrettoPublic)>,
+    /// The input materials used to form the transaction.
+    input_materials: Vec<InputMaterials>,
+    /// The outputs created by the transaction, and associated output secrets.
+    outputs_and_secrets: Vec<(TxOut, OutputSecret)>,
     /// The tombstone_block value, a block index in which the transaction
     /// expires, and can no longer be added to the blockchain
     tombstone_block: u64,
@@ -123,8 +126,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         memo_builder.set_fee(fee)?;
         Ok(TransactionBuilder {
             block_version,
-            input_credentials: Vec::new(),
-            outputs_and_shared_secrets: Vec::new(),
+            input_materials: Vec::new(),
+            outputs_and_secrets: Vec::new(),
             tombstone_block: u64::max_value(),
             fee,
             fog_resolver,
@@ -139,7 +142,80 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// * `input_credentials` - Credentials required to construct a ring
     ///   signature for an input.
     pub fn add_input(&mut self, input_credentials: InputCredentials) {
-        self.input_credentials.push(input_credentials);
+        self.input_materials
+            .push(InputMaterials::Signable(input_credentials));
+    }
+
+    /// Add a pre-signed Input to the transaction, also fulfilling any
+    /// requirements imposed by the signed rules, so that our transaction
+    /// will be valid.
+    ///
+    /// Note: Before adding a signed_contingent_input, you probably want to:
+    /// * validate it (call .validate())
+    /// * check if key image appreared already (call .key_image())
+    /// * provide merkle proofs of membership for each ring member (see
+    ///   .tx_out_global_indices)
+    ///
+    /// # Arguments
+    /// * `signed_contingent_input` - The pre-signed input we are adding
+    pub fn add_presigned_input(
+        &mut self,
+        sci: SignedContingentInput,
+    ) -> Result<(), SignedContingentInputError> {
+        // TODO: If there is a block version change that could cause an incompatibility,
+        // we should check for it here, e.g. if sci.block_version differs from
+        // self.block_version
+        // Check if the sci already has membership proofs, the caller is supposed to do
+        // that
+        if sci.tx_in.ring.len() != sci.tx_in.proofs.len() {
+            return Err(SignedContingentInputError::MissingProofs);
+        }
+        if let Some(rules) = sci.tx_in.input_rules.as_ref() {
+            // Enforce all rules so that our transaction will be valid
+            if rules.required_outputs.len() != sci.required_output_amounts.len() {
+                return Err(SignedContingentInputError::WrongNumberOfRequiredOutputAmounts);
+            }
+            // 1. Required outputs
+            for (required_output, unmasked_amount) in rules
+                .required_outputs
+                .iter()
+                .zip(sci.required_output_amounts.iter())
+            {
+                // Check if the required output is already there
+                if !self
+                    .outputs_and_secrets
+                    .iter()
+                    .any(|(output, _sec)| output == required_output)
+                {
+                    // If not, add it
+                    self.outputs_and_secrets
+                        .push((required_output.clone(), unmasked_amount.clone().into()));
+                }
+            }
+            // 2. Max tombstone block
+            if rules.max_tombstone_block != 0 {
+                self.impose_tombstone_block_limit(rules.max_tombstone_block);
+            }
+        }
+
+        self.add_presigned_input_raw(sci);
+        Ok(())
+    }
+
+    /// Add a pre-signed Input to the transaction, without also fulfilling
+    /// any of its rules. You will have to add any required outputs, adjust
+    /// tombstone block, etc., for the transaction to be valid.
+    ///
+    /// Note: Before adding a signed_contingent_input, you probably want to:
+    /// * validate it (call .validate())
+    /// * check if key image appreared already (call .key_image())
+    /// * provide merkle proofs of membership for each ring member (see
+    ///   .tx_out_global_indices)
+    ///
+    /// # Arguments
+    /// * `signed_contingent_input` - The pre-signed input we are adding
+    pub fn add_presigned_input_raw(&mut self, sci: SignedContingentInput) {
+        self.input_materials.push(InputMaterials::Presigned(sci));
     }
 
     /// Add a non-change output to the transaction.
@@ -214,7 +290,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     pub fn add_change_output<RNG: CryptoRng + RngCore>(
         &mut self,
         amount: Amount,
-        change_destination: &ChangeDestination,
+        change_destination: &ReservedDestination,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
         // Taking self.memo_builder here means that we can call functions on &mut self,
@@ -284,10 +360,16 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         let (tx_out, shared_secret) =
             create_output_with_fog_hint(self.block_version, amount, recipient, hint, memo_fn, rng)?;
 
+        let (amount, blinding) = tx_out
+            .masked_amount
+            .get_value(&shared_secret)
+            .expect("TransactionBuilder created an invalid Amount");
+        let output_secret = OutputSecret { amount, blinding };
+
         self.impose_tombstone_block_limit(pubkey_expiry);
 
-        self.outputs_and_shared_secrets
-            .push((tx_out.clone(), shared_secret));
+        self.outputs_and_secrets
+            .push((tx_out.clone(), output_secret));
 
         let confirmation = TxOutConfirmationNumber::from(&shared_secret);
 
@@ -388,102 +470,77 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             ));
         }
 
-        if self.input_credentials.is_empty() {
+        if self.input_materials.is_empty() {
             return Err(TxBuilderError::NoInputs);
         }
 
         // All inputs must have rings of the same size.
         if self
-            .input_credentials
+            .input_materials
             .windows(2)
-            .any(|win| win[0].ring.len() != win[1].ring.len())
+            .any(|win| win[0].ring_size() != win[1].ring_size())
         {
             return Err(TxBuilderError::InvalidRingSize);
+        }
+
+        for input in self.input_materials.iter() {
+            if !self.block_version.mixed_transactions_are_supported()
+                && input.amount().token_id != self.fee.token_id
+            {
+                return Err(TxBuilderError::MixedTransactionsNotAllowed(
+                    self.fee.token_id,
+                    input.amount().token_id,
+                ));
+            }
+
+            match input {
+                InputMaterials::Presigned(input) => {
+                    if !self.block_version.signed_input_rules_are_supported() {
+                        return Err(TxBuilderError::SignedInputRulesNotAllowed);
+                    }
+                    // TODO: Also validate membership proofs?
+                    if input.tx_in.ring.len() != input.tx_in.proofs.len() {
+                        return Err(TxBuilderError::MissingMembershipProofs);
+                    }
+                }
+                InputMaterials::Signable(input) => {
+                    // TODO: Also validate membership proofs?
+                    if input.ring.len() != input.membership_proofs.len() {
+                        return Err(TxBuilderError::MissingMembershipProofs);
+                    }
+                }
+            }
         }
 
         // Construct a list of sorted inputs.
         // Inputs are sorted by the first ring element's public key. Note that each ring
         // is also sorted.
-        self.input_credentials
-            .sort_by(|a, b| a.ring[0].public_key.cmp(&b.ring[0].public_key));
+        self.input_materials
+            .sort_by(|a, b| a.sort_key().cmp(b.sort_key()));
 
-        let inputs: Vec<TxIn> = self
-            .input_credentials
-            .iter()
-            .map(|input_credential| TxIn {
-                ring: input_credential.ring.clone(),
-                proofs: input_credential.membership_proofs.clone(),
-            })
-            .collect();
+        let inputs: Vec<TxIn> = self.input_materials.iter().map(TxIn::from).collect();
 
-        self.outputs_and_shared_secrets
+        // Outputs are sorted according to the rule (but generally by public key)
+        self.outputs_and_secrets
             .sort_by(|(a, _), (b, _)| O::cmp(&a.public_key, &b.public_key));
 
-        let output_values_and_blindings: Vec<OutputSecret> = self
-            .outputs_and_shared_secrets
-            .iter()
-            .map(|(tx_out, shared_secret)| {
-                let masked_amount = &tx_out.masked_amount;
-                let (amount, blinding) = masked_amount
-                    .get_value(shared_secret)
-                    .expect("TransactionBuilder created an invalid Amount");
-                OutputSecret { amount, blinding }
-            })
-            .collect();
-
-        let (outputs, _shared_serets): (Vec<TxOut>, Vec<_>) =
-            self.outputs_and_shared_secrets.into_iter().unzip();
+        let (outputs, output_secrets): (Vec<TxOut>, Vec<_>) =
+            self.outputs_and_secrets.drain(..).unzip();
 
         let tx_prefix = TxPrefix::new(inputs, outputs, self.fee, self.tombstone_block);
 
-        let mut rings: Vec<Vec<(CompressedRistrettoPublic, CompressedCommitment)>> = Vec::new();
-        for input in &tx_prefix.inputs {
-            let ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)> = input
-                .ring
-                .iter()
-                .map(|tx_out| (tx_out.target_key, tx_out.masked_amount.commitment))
-                .collect();
-            rings.push(ring);
-        }
-
-        let real_input_indices: Vec<usize> = self
-            .input_credentials
-            .iter()
-            .map(|input_credential| input_credential.real_index)
-            .collect();
-
-        // One-time private key, amount value, and amount blinding for each real input.
-        let mut input_secrets: Vec<InputSecret> = Default::default();
-        for input_credential in &self.input_credentials {
-            let masked_amount = &input_credential.ring[input_credential.real_index].masked_amount;
-            let shared_secret = create_shared_secret(
-                &input_credential.real_output_public_key,
-                &input_credential.view_private_key,
-            );
-            let (amount, blinding) = masked_amount.get_value(&shared_secret)?;
-            if !self.block_version.mixed_transactions_are_supported()
-                && amount.token_id != self.fee.token_id
-            {
-                return Err(TxBuilderError::MixedTransactionsNotAllowed(
-                    self.fee.token_id,
-                    amount.token_id,
-                ));
-            }
-            input_secrets.push(InputSecret {
-                onetime_private_key: input_credential.onetime_private_key,
-                amount,
-                blinding,
-            });
-        }
+        let input_rings = self
+            .input_materials
+            .into_iter()
+            .map(Into::into)
+            .collect::<Vec<InputRing>>();
 
         let message = tx_prefix.hash().0;
         let signature = SignatureRctBulletproofs::sign(
             self.block_version,
             &message,
-            &rings,
-            &real_input_indices,
-            &input_secrets,
-            &output_values_and_blindings,
+            &input_rings,
+            &output_secrets,
             self.fee,
             rng,
         )?;
@@ -505,7 +562,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 /// * `fog_hint` - The encrypted fog hint to use
 /// * `memo_fn` - The memo function to use -- see TxOut::new_with_memo docu
 /// * `rng` -
-fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
+pub(crate) fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
     block_version: BlockVersion,
     amount: Amount,
     recipient: &PublicAddress,
@@ -538,7 +595,7 @@ fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
 /// * `encrypted_fog_hint` - The fog hint to use for a TxOut.
 /// * `pubkey_expiry` - The block at which this fog pubkey expires, or
 ///   u64::max_value() Imposes a limit on tombstone block for the transaction
-fn create_fog_hint<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
+pub(crate) fn create_fog_hint<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     recipient: &PublicAddress,
     fog_resolver: &FPR,
     rng: &mut RNG,
@@ -560,7 +617,9 @@ fn create_fog_hint<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
 pub mod transaction_builder_tests {
     use super::*;
     use crate::{
-        BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoType, RTHMemoBuilder, SenderMemoCredential,
+        test_utils::{get_input_credentials, get_ring, get_transaction},
+        BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoType, RTHMemoBuilder,
+        SenderMemoCredential,
     };
     use assert_matches::assert_matches;
     use maplit::btreemap;
@@ -581,197 +640,6 @@ pub mod transaction_builder_tests {
     };
     use rand::{rngs::StdRng, SeedableRng};
     use std::convert::TryFrom;
-
-    /// Creates a TxOut that sends `value` to `recipient`.
-    ///
-    /// Note: This is only used in test code
-    ///
-    /// # Arguments
-    /// * `value` - Value of the output, in picoMOB.
-    /// * `recipient` - Recipient's address.
-    /// * `fog_resolver` - Set of prefetched fog public keys to choose from
-    /// * `rng` - Entropy for the encryption.
-    ///
-    /// # Returns
-    /// * A transaction output, and the shared secret for this TxOut.
-    fn create_output<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
-        block_version: BlockVersion,
-        amount: Amount,
-        recipient: &PublicAddress,
-        fog_resolver: &FPR,
-        rng: &mut RNG,
-    ) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
-        let (hint, _pubkey_expiry) = create_fog_hint(recipient, fog_resolver, rng)?;
-        create_output_with_fog_hint(
-            block_version,
-            amount,
-            recipient,
-            hint,
-            |_| {
-                Ok(if block_version.e_memo_feature_is_supported() {
-                    Some(MemoPayload::default())
-                } else {
-                    None
-                })
-            },
-            rng,
-        )
-    }
-
-    /// Creates a ring of of TxOuts.
-    ///
-    /// # Arguments
-    /// * `block_version` - The block version for the TxOut's
-    /// * `token_id` - The token id for the real element
-    /// * `ring_size` - Number of elements in the ring.
-    /// * `account` - Owner of one of the ring elements.
-    /// * `value` - Value of the real element.
-    /// * `fog_resolver` - Fog public keys
-    /// * `rng` - Randomness.
-    ///
-    /// Returns (ring, real_index)
-    fn get_ring<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
-        block_version: BlockVersion,
-        amount: Amount,
-        ring_size: usize,
-        account: &AccountKey,
-        fog_resolver: &FPR,
-        rng: &mut RNG,
-    ) -> (Vec<TxOut>, usize) {
-        let mut ring: Vec<TxOut> = Vec::new();
-
-        // Create ring_size - 1 mixins with assorted token ids
-        for idx in 0..ring_size - 1 {
-            let address = AccountKey::random(rng).default_subaddress();
-            let token_id = if block_version.masked_token_id_feature_is_supported() {
-                TokenId::from(idx as u64)
-            } else {
-                Mob::ID
-            };
-            let amount = Amount {
-                value: amount.value,
-                token_id,
-            };
-            let (tx_out, _) =
-                create_output(block_version, amount, &address, fog_resolver, rng).unwrap();
-            ring.push(tx_out);
-        }
-
-        // Insert the real element.
-        let real_index = (rng.next_u64() % ring_size as u64) as usize;
-        let (tx_out, _) = create_output(
-            block_version,
-            amount,
-            &account.default_subaddress(),
-            fog_resolver,
-            rng,
-        )
-        .unwrap();
-        ring.insert(real_index, tx_out);
-        assert_eq!(ring.len(), ring_size);
-
-        (ring, real_index)
-    }
-
-    /// Creates an `InputCredentials` for an account.
-    ///
-    /// # Arguments
-    /// * `block_version` - Block version to use for the tx outs
-    /// * `token_id` - Token id for the real element
-    /// * `account` - Owner of one of the ring elements.
-    /// * `value` - Value of the real element.
-    /// * `fog_resolver` - Fog public keys
-    /// * `rng` - Randomness.
-    ///
-    /// Returns (input_credentials)
-    fn get_input_credentials<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
-        block_version: BlockVersion,
-        amount: Amount,
-        account: &AccountKey,
-        fog_resolver: &FPR,
-        rng: &mut RNG,
-    ) -> InputCredentials {
-        let (ring, real_index) = get_ring(block_version, amount, 3, account, fog_resolver, rng);
-        let real_output = ring[real_index].clone();
-
-        let onetime_private_key = recover_onetime_private_key(
-            &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
-            account.view_private_key(),
-            &account.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
-        );
-
-        let membership_proofs: Vec<TxOutMembershipProof> = ring
-            .iter()
-            .map(|_tx_out| {
-                // TransactionBuilder does not validate membership proofs, but does require one
-                // for each ring member.
-                TxOutMembershipProof::default()
-            })
-            .collect();
-
-        InputCredentials::new(
-            ring,
-            membership_proofs,
-            real_index,
-            onetime_private_key,
-            *account.view_private_key(),
-        )
-        .unwrap()
-    }
-
-    // Uses TransactionBuilder to build a transaction.
-    fn get_transaction<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver + Clone>(
-        block_version: BlockVersion,
-        token_id: TokenId,
-        num_inputs: usize,
-        num_outputs: usize,
-        sender: &AccountKey,
-        recipient: &AccountKey,
-        fog_resolver: FPR,
-        rng: &mut RNG,
-    ) -> Result<Tx, TxBuilderError> {
-        let mut transaction_builder = TransactionBuilder::new(
-            block_version,
-            Amount::new(Mob::MINIMUM_FEE, token_id),
-            fog_resolver.clone(),
-            EmptyMemoBuilder::default(),
-        )
-        .unwrap();
-        let input_value = 1000;
-        let output_value = 10;
-
-        // Inputs
-        for _i in 0..num_inputs {
-            let input_credentials = get_input_credentials(
-                block_version,
-                Amount {
-                    value: input_value,
-                    token_id,
-                },
-                sender,
-                &fog_resolver,
-                rng,
-            );
-            transaction_builder.add_input(input_credentials);
-        }
-
-        // Outputs
-        for _i in 0..num_outputs {
-            transaction_builder
-                .add_output(
-                    Amount::new(output_value, token_id),
-                    &recipient.default_subaddress(),
-                    rng,
-                )
-                .unwrap();
-        }
-
-        // Set the fee so that sum(inputs) = sum(outputs) + fee.
-        let fee = num_inputs as u64 * input_value - num_outputs as u64 * output_value;
-        transaction_builder.set_fee(fee).unwrap();
-
-        transaction_builder.build(rng)
-    }
 
     // Helper which produces a list of block_version, TokenId pairs to iterate over
     // in tests
@@ -802,7 +670,7 @@ pub mod transaction_builder_tests {
                 get_input_credentials(block_version, amount, &sender, &fpr, &mut rng);
 
             let membership_proofs = input_credentials.membership_proofs.clone();
-            let key_image = KeyImage::from(&input_credentials.onetime_private_key);
+            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
@@ -884,7 +752,7 @@ pub mod transaction_builder_tests {
                 get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
 
             let membership_proofs = input_credentials.membership_proofs.clone();
-            let key_image = KeyImage::from(&input_credentials.onetime_private_key);
+            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
@@ -1132,7 +1000,7 @@ pub mod transaction_builder_tests {
 
         for (block_version, token_id) in get_block_version_token_id_pairs() {
             let sender = AccountKey::random_with_fog(&mut rng);
-            let sender_change_dest = ChangeDestination::from(&sender);
+            let sender_change_dest = ReservedDestination::from(&sender);
             let recipient = AccountKey::random_with_fog(&mut rng);
             let recipient_address = recipient.default_subaddress();
             let ingest_private_key = RistrettoPrivate::from_random(&mut rng);
@@ -1308,7 +1176,7 @@ pub mod transaction_builder_tests {
         for (block_version, token_id) in get_block_version_token_id_pairs() {
             let sender = AccountKey::random_with_fog(&mut rng);
             let sender_addr = sender.default_subaddress();
-            let sender_change_dest = ChangeDestination::from(&sender);
+            let sender_change_dest = ReservedDestination::from(&sender);
             let recipient = AccountKey::random_with_fog(&mut rng);
             let recipient_address = recipient.default_subaddress();
             let ingest_private_key = RistrettoPrivate::from_random(&mut rng);
@@ -2116,7 +1984,7 @@ pub mod transaction_builder_tests {
 
         for (block_version, token_id) in get_block_version_token_id_pairs() {
             let alice = AccountKey::random_with_fog(&mut rng);
-            let alice_change_dest = ChangeDestination::from(&alice);
+            let alice_change_dest = ReservedDestination::from(&alice);
             let bob = AccountKey::random_with_fog(&mut rng);
             let bob_address = bob.default_subaddress();
             let charlie = AccountKey::random_with_fog(&mut rng);
@@ -2311,7 +2179,7 @@ pub mod transaction_builder_tests {
             }
 
             let sender = AccountKey::random_with_fog(&mut rng);
-            let sender_change_dest = ChangeDestination::from(&sender);
+            let sender_change_dest = ReservedDestination::from(&sender);
             let recipient = AccountKey::random_with_fog(&mut rng);
             let recipient_address = recipient.default_subaddress();
             let ingest_private_key = RistrettoPrivate::from_random(&mut rng);
@@ -2607,7 +2475,7 @@ pub mod transaction_builder_tests {
 
         let fog_resolver = MockFogResolver::default();
         let sender = AccountKey::random(&mut rng);
-        let sender_change_dest = ChangeDestination::from(&sender);
+        let sender_change_dest = ReservedDestination::from(&sender);
         let recipient = burn_address();
 
         let value = 1475 * MILLIMOB_TO_PICOMOB;
@@ -2706,7 +2574,7 @@ pub mod transaction_builder_tests {
         let token_id = TokenId::from(5);
         let fog_resolver = MockFogResolver::default();
         let sender = AccountKey::random(&mut rng);
-        let change_destination = ChangeDestination::from(&sender);
+        let change_destination = ReservedDestination::from(&sender);
 
         // Adding an output that is not to the burn address is not allowed.
         {
@@ -3043,7 +2911,7 @@ pub mod transaction_builder_tests {
 
         let fog_resolver = MockFogResolver::default();
         let sender = AccountKey::random(&mut rng);
-        let sender_change_dest = ChangeDestination::from(&sender);
+        let sender_change_dest = ReservedDestination::from(&sender);
         let recipient = AccountKey::random(&mut rng);
         let recipient_addr = recipient.default_subaddress();
 
@@ -3173,7 +3041,7 @@ pub mod transaction_builder_tests {
 
         let fog_resolver = MockFogResolver::default();
         let sender = AccountKey::random(&mut rng);
-        let sender_change_dest = ChangeDestination::from(&sender);
+        let sender_change_dest = ReservedDestination::from(&sender);
         let recipient = AccountKey::random(&mut rng);
         let recipient_addr = recipient.default_subaddress();
 

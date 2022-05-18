@@ -2,7 +2,7 @@
 name = "mc-consensus-scp"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 description = "Stellar Consensus Protocol"
 keywords = ["SCP", "Stellar Consensus Protocol", "Consensus", "Stellar", "Byzantine"]
 readme = "README.md"
@@ -18,7 +18,7 @@ mc-util-from-random = { path = "../../util/from-random" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 
 maplit = "1.0.2"
-mockall = "0.11.0"
+mockall = "0.11.1"
 primitive-types = "0.11.1"
 rand = "0.8"
 rand_hc = "0.3"

@@ -2,7 +2,7 @@
 name = "mc-consensus-enclave-impl"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 description = '''
 This crate contains the actual implementation of a mobilenode enclave.
 
@@ -58,7 +58,9 @@ rand = "0.8"
 rand_hc = "0.3"
 
 [build-dependencies]
+mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-util-build-script = { path = "../../../util/build/script" }
 
 cargo-emit = "0.2"
 hex = "0.4"
+pem = "1.0"

@@ -6,10 +6,22 @@ use core::{fmt, hash::Hash, num::ParseIntError, ops::Deref, str::FromStr};
 use mc_crypto_digestible::Digestible;
 use serde::{Deserialize, Serialize};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
+use zeroize::Zeroize;
 
 /// Token Id, used to identify different assets on on the blockchain.
 #[derive(
-    Clone, Copy, Debug, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Deserialize,
+    Digestible,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize,
+    Zeroize,
 )]
 pub struct TokenId(u64);
 

@@ -2,7 +2,7 @@
 name = "mc-fog-report-types"
 version = "1.3.0-pre0"
 authors = ["Mobilecoin"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 mc-attest-core = { path = "../../../attest/core", default-features = false }

@@ -30,10 +30,7 @@ use mc_watcher::watcher_db::WatcherDB;
 use std::{
     path::PathBuf,
     str::FromStr,
-    sync::{
-        atomic::{AtomicUsize, Ordering::SeqCst},
-        Arc, RwLock,
-    },
+    sync::{Arc, RwLock},
 };
 use tempdir::TempDir;
 
@@ -242,8 +239,7 @@ pub fn add_txos_to_ledger_db(
 }
 
 pub fn get_free_port() -> u16 {
-    static PORT_NR: AtomicUsize = AtomicUsize::new(0);
-    PORT_NR.fetch_add(1, SeqCst) as u16 + 30100
+    portpicker::pick_unused_port().expect("pick_unused_port")
 }
 
 pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(
@@ -260,13 +256,11 @@ pub fn setup_server<FPR: FogPubkeyResolver + Default + Send + Sync + 'static>(
     let peer1 = MockBlockchainConnection::new(test_client_uri(1), ledger_db.clone(), 0);
     let peer2 = MockBlockchainConnection::new(test_client_uri(2), ledger_db.clone(), 0);
 
-    let quorum_set = QuorumSet::new_with_node_ids(
-        2,
-        vec![
-            peer1.uri().responder_id().unwrap(),
-            peer2.uri().responder_id().unwrap(),
-        ],
-    );
+    let node_ids = vec![
+        peer1.uri().host_and_port_responder_id().unwrap(),
+        peer2.uri().host_and_port_responder_id().unwrap(),
+    ];
+    let quorum_set = QuorumSet::new_with_node_ids(2, node_ids);
 
     let conn_manager = ConnectionManager::new(vec![peer1, peer2], logger.clone());
 

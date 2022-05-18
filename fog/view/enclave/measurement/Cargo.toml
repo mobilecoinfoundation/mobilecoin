@@ -2,7 +2,7 @@
 name = "mc-fog-view-enclave-measurement"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 description = "MobileCoin Fog View Enclave - Application Code"
 links = "view_enclave_measurement"
 license = "GPL-3.0"

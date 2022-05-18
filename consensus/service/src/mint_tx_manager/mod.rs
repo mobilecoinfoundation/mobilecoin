@@ -83,13 +83,13 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
                 MintValidationError::NoGovernors(token_id),
             ))?;
 
-        // Get the current block index.
-        let current_block_index = self.ledger_db.num_blocks()? - 1;
+        // Get the index of the block currently being built.
+        let current_block_index = self.ledger_db.num_blocks()?;
 
         // Perform the actual validation.
         validate_mint_config_tx(
             mint_config_tx,
-            current_block_index,
+            Some(current_block_index),
             self.block_version,
             &governors,
         )?;
@@ -147,8 +147,8 @@ impl<L: Ledger> MintTxManager for MintTxManagerImpl<L> {
                 err => err.into(),
             })?;
 
-        // Get the current block index.
-        let current_block_index = self.ledger_db.num_blocks()? - 1;
+        // Get the index of the block currently being built.
+        let current_block_index = self.ledger_db.num_blocks()?;
 
         // Perform the actual validation.
         validate_mint_tx(
@@ -236,9 +236,9 @@ mod mint_config_tx_tests {
     use super::*;
     use mc_common::logger::test_with_logger;
     use mc_crypto_multisig::SignerSet;
-    use mc_transaction_core::{Block, BlockContents};
+    use mc_transaction_core::{ring_signature::KeyImage, Block, BlockContents};
     use mc_transaction_core_test_utils::{
-        create_ledger, create_mint_config_tx_and_signers, initialize_ledger,
+        create_ledger, create_mint_config_tx_and_signers, create_test_tx_out, initialize_ledger,
         mint_config_tx_to_validated as to_validated, AccountKey,
     };
     use rand::{rngs::StdRng, SeedableRng};
@@ -251,7 +251,7 @@ mod mint_config_tx_tests {
         let token_id_1 = TokenId::from(1);
 
         let mut ledger = create_ledger();
-        let n_blocks = 3;
+        let n_blocks = 1;
         let block_version = BlockVersion::MAX;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
@@ -281,7 +281,7 @@ mod mint_config_tx_tests {
         let token_id_3 = TokenId::from(3);
 
         let mut ledger = create_ledger();
-        let n_blocks = 3;
+        let n_blocks = 1;
         let block_version = BlockVersion::MAX;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
@@ -323,6 +323,72 @@ mod mint_config_tx_tests {
         );
     }
 
+    /// validate_mint_config_tx rejects a mint config tx with an exceeded
+    /// tombstone block.
+    #[test_with_logger]
+    fn validate_mint_config_tx_rejects_past_tombstone(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let token_id_1 = TokenId::from(1);
+
+        let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
+            token_id_1,
+            SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+        )])
+        .unwrap();
+
+        let mut ledger = create_ledger();
+        // tombstone_block specifies that the tx will get accepted at any block whose
+        // index is less than tombstone_block. n_blocks controls how many blocks
+        // we create, specifically it will result in blocks with indexes [0, n_blocks).
+        // setting n_blocks to tombstone_block - 1 means the transaction will be valid
+        // for exactly 1 block, but once that's written it will exceed it.
+        let n_blocks = mint_config_tx.prefix.tombstone_block - 1;
+        let block_version = BlockVersion::MAX;
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+        let mint_tx_manager = MintTxManagerImpl::new(
+            ledger.clone(),
+            BlockVersion::MAX,
+            token_id_to_governors,
+            logger,
+        );
+
+        // At first we should succeed since we have not yet exceeded the tombstone
+        // block.
+        assert_eq!(
+            mint_tx_manager.validate_mint_config_tx(&mint_config_tx),
+            Ok(())
+        );
+
+        // Append a block to the ledger.
+        let parent_block = ledger.get_block(n_blocks - 1).unwrap();
+
+        let block_contents = BlockContents {
+            outputs: vec![create_test_tx_out(&mut rng)],
+            key_images: vec![KeyImage::from(123)],
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        // Try again, we should fail.
+        assert_eq!(
+            mint_tx_manager.validate_mint_config_tx(&mint_config_tx),
+            Err(MintTxManagerError::MintValidation(
+                MintValidationError::TombstoneBlockExceeded
+            ))
+        );
+    }
+
     /// validate_mint_config_tx rejects a mint config tx with a nonce that
     /// already appears in the ledger.
     #[test_with_logger]
@@ -331,7 +397,7 @@ mod mint_config_tx_tests {
         let token_id_1 = TokenId::from(1);
 
         let mut ledger = create_ledger();
-        let n_blocks = 3;
+        let n_blocks = 1;
         let block_version = BlockVersion::MAX;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
@@ -422,7 +488,7 @@ mod mint_config_tx_tests {
         let token_id_1 = TokenId::from(1);
 
         let mut ledger = create_ledger();
-        let n_blocks = 3;
+        let n_blocks = 1;
         let block_version = BlockVersion::MAX;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
@@ -562,7 +628,7 @@ mod mint_tx_tests {
     use mc_common::logger::test_with_logger;
     use mc_crypto_keys::Ed25519Pair;
     use mc_crypto_multisig::SignerSet;
-    use mc_transaction_core::{Block, BlockContents};
+    use mc_transaction_core::{ring_signature::KeyImage, Block, BlockContents};
     use mc_transaction_core_test_utils::{
         create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_test_tx_out,
         initialize_ledger, mint_config_tx_to_validated as to_validated, AccountKey,
@@ -1081,6 +1147,174 @@ mod mint_tx_tests {
             mint_tx_manager.validate_mint_tx(&mint_tx),
             Err(MintTxManagerError::MintValidation(
                 MintValidationError::NoMatchingMintConfig
+            ))
+        );
+    }
+
+    /// validate_mint_tx rejects a tx with an exceeded tombstone block.
+    #[test_with_logger]
+    fn validate_mint_tx_rejects_past_tombstone(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let token_id_1 = TokenId::from(1);
+
+        let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
+        let mint_tx = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            1,
+            &mut rng,
+        );
+
+        let mut ledger = create_ledger();
+        // tombstone_block specifies that the tx will get accepted at any block whose
+        // index is less than tombstone_block. n_blocks controls how many blocks
+        // we create, specifically it will result in blocks with indexes [0, n_blocks).
+        // setting n_blocks to tombstone_block - 1 means the transaction will be valid
+        // for exactly 1 block, but once that's written it will exceed it. However, we
+        // subtract 2 since we also need to add a block for the mint config tx.
+        let n_blocks = mint_tx.prefix.tombstone_block - 2;
+        let block_version = BlockVersion::MAX;
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+        // Append the mint config to the ledger
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+        let block_contents = BlockContents {
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx)],
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        // Create MintTxManagerImpl
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
+            token_id_1,
+            SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+        )])
+        .unwrap();
+        let mint_tx_manager = MintTxManagerImpl::new(
+            ledger.clone(),
+            BlockVersion::MAX,
+            token_id_to_governors,
+            logger,
+        );
+
+        // At first we should succeed since we have not yet exceeded the tombstone
+        // block.
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
+
+        // Append a block to the ledger.
+        let parent_block = block;
+
+        let block_contents = BlockContents {
+            outputs: vec![create_test_tx_out(&mut rng)],
+            key_images: vec![KeyImage::from(123)],
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        // Try again, we should fail.
+        assert_eq!(
+            mint_tx_manager.validate_mint_tx(&mint_tx),
+            Err(MintTxManagerError::MintValidation(
+                MintValidationError::TombstoneBlockExceeded
+            ))
+        );
+    }
+
+    /// validate_mint_tx rejects duplicate nonce.
+    #[test_with_logger]
+    fn validate_mint_tx_rejects_duplicate_nonce(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let token_id_1 = TokenId::from(1);
+
+        let mut ledger = create_ledger();
+        let n_blocks = 3;
+        let block_version = BlockVersion::MAX;
+        let sender = AccountKey::random(&mut rng);
+        initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
+
+        // Create a mint configuration and append it to the ledger.
+        let (mint_config_tx, signers) = create_mint_config_tx_and_signers(token_id_1, &mut rng);
+
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+        let block_contents = BlockContents {
+            validated_mint_config_txs: vec![to_validated(&mint_config_tx)],
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        // Create MintTxManagerImpl
+        let token_id_to_governors = GovernorsMap::try_from_iter(vec![(
+            token_id_1,
+            SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
+        )])
+        .unwrap();
+        let mint_tx_manager = MintTxManagerImpl::new(
+            ledger.clone(),
+            BlockVersion::MAX,
+            token_id_to_governors,
+            logger,
+        );
+
+        // Create a valid MintTx signed by the governor.
+        let mint_tx = create_mint_tx(
+            token_id_1,
+            &[Ed25519Pair::from(signers[0].private_key())],
+            1,
+            &mut rng,
+        );
+
+        // At first we should succeed since the nonce is not yet in the ledger.
+        assert_eq!(mint_tx_manager.validate_mint_tx(&mint_tx), Ok(()));
+
+        // Append to the ledger.
+        let block_contents = BlockContents {
+            outputs: vec![create_test_tx_out(&mut rng)],
+            mint_txs: vec![mint_tx.clone()],
+            ..Default::default()
+        };
+
+        let parent_block = block;
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &parent_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger.append_block(&block, &block_contents, None).unwrap();
+
+        // Try again, we should fail.
+        assert_eq!(
+            mint_tx_manager.validate_mint_tx(&mint_tx),
+            Err(MintTxManagerError::MintValidation(
+                MintValidationError::NonceAlreadyUsed
             ))
         );
     }

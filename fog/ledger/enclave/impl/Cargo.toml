@@ -2,7 +2,7 @@
 name = "mc-fog-ledger-enclave-impl"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 description = '''
 This crate contains the actual implementation of a ledger enclave.
 '''

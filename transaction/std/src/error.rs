@@ -56,6 +56,12 @@ pub enum TxBuilderError {
 
     /// Feature is not supported at this block version ({0}): {1}
     FeatureNotSupportedAtBlockVersion(u32, &'static str),
+
+    /// Signed input rules not allowed at this block version
+    SignedInputRulesNotAllowed,
+
+    /// Missing membership proof
+    MissingMembershipProofs,
 }
 
 impl From<mc_util_serial::encode::Error> for TxBuilderError {
@@ -103,5 +109,20 @@ impl From<FogPubkeyError> for TxBuilderError {
 impl From<NewMemoError> for TxBuilderError {
     fn from(src: NewMemoError) -> Self {
         TxBuilderError::Memo(src)
+    }
+}
+
+/// An error that can occur when creating a signed contingent input builder
+#[derive(Debug, Display)]
+pub enum SignedContingentInputBuilderError {
+    /// Missing proofs: {0} ring elements, {1} proofs
+    MissingProofs(usize, usize),
+    /// Memo: {0}
+    Memo(NewMemoError),
+}
+
+impl From<NewMemoError> for SignedContingentInputBuilderError {
+    fn from(src: NewMemoError) -> Self {
+        SignedContingentInputBuilderError::Memo(src)
     }
 }

@@ -2,7 +2,7 @@
 name = "mc-consensus-enclave-mock"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 mc-account-keys = { path = "../../../account-keys" }
@@ -19,6 +19,6 @@ mc-transaction-core-test-utils = { path = "../../../transaction/core/test-utils"
 mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-serial = { path = "../../../util/serial" }
 
-mockall = "0.11.0"
+mockall = "0.11.1"
 rand_core = "0.6"
 rand_hc = "0.3"

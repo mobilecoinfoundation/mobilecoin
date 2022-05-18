@@ -5,6 +5,7 @@
 use crate::{range_proofs::error::Error as RangeProofError, TokenId};
 use alloc::string::{String, ToString};
 use displaydoc::Display;
+use mc_util_zip_exact::ZipExactError;
 use serde::{Deserialize, Serialize};
 
 /// An error which can occur in connection to a ring signature
@@ -84,6 +85,15 @@ pub enum Error {
 
     /// No commitments were found for {0}, this is a logic error
     NoCommitmentsForTokenId(TokenId),
+
+    /// All rings were presigned, but this is not allowed
+    AllRingsPresigned,
+
+    /// Signed input rules not allowed at this revision
+    SignedInputRulesNotAllowed,
+
+    /// Zip Exact: {0}
+    ZipExact(ZipExactError),
 }
 
 impl From<mc_util_repr_bytes::LengthMismatch> for Error {
@@ -95,5 +105,11 @@ impl From<mc_util_repr_bytes::LengthMismatch> for Error {
 impl From<RangeProofError> for Error {
     fn from(src: RangeProofError) -> Self {
         Error::RangeProof(src.to_string())
+    }
+}
+
+impl From<ZipExactError> for Error {
+    fn from(src: ZipExactError) -> Self {
+        Error::ZipExact(src)
     }
 }

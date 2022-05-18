@@ -78,7 +78,7 @@ fn ffi_boundary_impl<R>(f: impl (FnOnce() -> Result<R, LibMcError>)) -> Result<R
             // it, we know that no harm will come if we panic while trying to
             // process it.
             let panic_error = AssertUnwindSafe(panic_error);
-            catch_unwind(|| Err(LibMcError::Panic(format!("{:?}", panic_error.0))))
+            catch_unwind(|| Err(LibMcError::Panic(format!("{:?}", *panic_error))))
                 // If this also panics then we just abort because at this point it's likely
                 // something terrible has gone wrong and the situation is no longer tenable.
                 .unwrap_or_else(|_| abort())

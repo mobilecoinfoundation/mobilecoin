@@ -12,5 +12,6 @@ use std::collections::HashMap;
 /// an error message, rather than an ingest summary, is returned for that node.
 #[derive(Serialize)]
 pub struct GetIngestSummariesResponse {
+    /// The ingest summaries.
     pub ingest_summaries: HashMap<FogIngestUri, Result<IngestSummary, String>>,
 }

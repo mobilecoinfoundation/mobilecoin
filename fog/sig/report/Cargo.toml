@@ -2,7 +2,7 @@
 name = "mc-fog-sig-report"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 description = "Create and verify fog report signatures"
 
 [dependencies]

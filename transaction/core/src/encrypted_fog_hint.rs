@@ -24,6 +24,7 @@ use prost::{
 };
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 /// The length of the encrypted fog hint field in the ledger.
 /// Must be at least as large as mc_crypto_box::VersionedCryptoBox::FooterSize.
@@ -37,7 +38,17 @@ type Bytes = GenericArray<u8, EncryptedFogHintSize>;
 
 /// An encrypted fog hint payload in the ledger
 #[derive(
-    Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Serialize, Deserialize, Default, Digestible,
+    Clone,
+    Default,
+    Deserialize,
+    Digestible,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize,
+    Zeroize,
 )]
 #[digestible(transparent)]
 pub struct EncryptedFogHint {

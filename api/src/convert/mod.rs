@@ -44,6 +44,9 @@ mod verification_report;
 mod verification_signature;
 mod watcher;
 
+// printable
+mod tx_out_gift_code;
+
 pub use self::error::ConversionError;
 
 use std::path::PathBuf;
