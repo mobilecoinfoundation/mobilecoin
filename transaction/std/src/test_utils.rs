@@ -3,12 +3,11 @@
 //! Utilities that help with testing the transaction builder and related objects
 
 use crate::{
-    EmptyMemoBuilder, GiftCodeFundingMemo, GiftCodeSenderMemo, InputCredentials, MemoBuilder,
-    MemoPayload, ReservedDestination, TransactionBuilder, TxBuilderError,
+    EmptyMemoBuilder, InputCredentials, MemoBuilder, MemoPayload, ReservedDestination,
+    TransactionBuilder, TxBuilderError,
 };
-use core::convert::{TryFrom, TryInto};
+use core::convert::TryFrom;
 use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
-use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::RistrettoPublic;
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
@@ -55,6 +54,31 @@ pub fn create_output<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
     )
 }
 
+// Make fake outputs for the ring
+fn add_fake_outputs_to_ring<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
+    mut ring: Vec<TxOut>,
+    block_version: BlockVersion,
+    amount: Amount,
+    ring_size: usize,
+    fog_resolver: &FPR,
+    rng: &mut RNG,
+) -> Vec<TxOut> {
+    // Create ring_size - 1 mixins with assorted token ids
+    for idx in 0..ring_size - 1 {
+        let address = AccountKey::random(rng).default_subaddress();
+        let token_id = if block_version.masked_token_id_feature_is_supported() {
+            TokenId::from(idx as u64)
+        } else {
+            Mob::ID
+        };
+        let amount = Amount::new(amount.value, token_id);
+        let (tx_out, _) =
+            create_output(block_version, amount, &address, fog_resolver, rng).unwrap();
+        ring.push(tx_out);
+    }
+    ring
+}
+
 /// Creates a ring of of TxOuts.
 ///
 /// # Arguments
@@ -75,21 +99,15 @@ pub fn get_ring<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
     fog_resolver: &FPR,
     rng: &mut RNG,
 ) -> (Vec<TxOut>, usize) {
-    let mut ring: Vec<TxOut> = Vec::new();
-
     // Create ring_size - 1 mixins with assorted token ids
-    for idx in 0..ring_size - 1 {
-        let address = AccountKey::random(rng).default_subaddress();
-        let token_id = if block_version.masked_token_id_feature_is_supported() {
-            TokenId::from(idx as u64)
-        } else {
-            Mob::ID
-        };
-        let amount = Amount::new(amount.value, token_id);
-        let (tx_out, _) =
-            create_output(block_version, amount, &address, fog_resolver, rng).unwrap();
-        ring.push(tx_out);
-    }
+    let mut ring: Vec<TxOut> = add_fake_outputs_to_ring(
+        Vec::new(),
+        block_version,
+        amount,
+        ring_size,
+        fog_resolver,
+        rng,
+    );
 
     // Insert the real element.
     let real_index = (rng.next_u64() % ring_size as u64) as usize;
@@ -102,6 +120,42 @@ pub fn get_ring<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
     )
     .unwrap();
     ring.insert(real_index, tx_out);
+    assert_eq!(ring.len(), ring_size);
+
+    (ring, real_index)
+}
+
+/// Get ring for existing TxOut
+///
+/// # Arguments
+/// * `tx_out` - The "real" TxOut to build the ring for
+/// * `block_version` - The block version for the TxOut's
+/// * `token_id` - The token id for the real element
+/// * `ring_size` - Number of elements in the ring.
+/// * `value` - Value of the real element.
+/// * `fog_resolver` - Fog public keys
+/// * `rng` - Randomness.
+///
+/// Returns (ring, real_index)
+pub fn get_ring_for_txout<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
+    tx_out: &TxOut,
+    block_version: BlockVersion,
+    amount: Amount,
+    ring_size: usize,
+    fog_resolver: &FPR,
+    rng: &mut RNG,
+) -> (Vec<TxOut>, usize) {
+    // Create ring_size - 1 mixins with assorted token ids
+    let mut ring: Vec<TxOut> = add_fake_outputs_to_ring(
+        Vec::new(),
+        block_version,
+        amount,
+        ring_size,
+        fog_resolver,
+        rng,
+    );
+    let real_index = (rng.next_u64() % ring_size as u64) as usize;
+    ring.insert(real_index, tx_out.clone());
     assert_eq!(ring.len(), ring_size);
 
     (ring, real_index)
@@ -230,48 +284,4 @@ pub fn build_change_memo_with_amount(
 
     //Build memo
     builder.make_memo_for_change_output(change_amount, &alice_address_book, memo_context)
-}
-
-/// Utilities for decoding and verifying memo data
-pub struct MemoDecoder;
-
-impl MemoDecoder {
-    /// Decode a sender note from bytes
-    pub fn decode_sender_note(memo_data: &[u8; GiftCodeSenderMemo::MEMO_DATA_LEN]) -> &str {
-        let index = if let Some(terminator) = memo_data.iter().position(|b| b == &0u8) {
-            terminator
-        } else {
-            GiftCodeSenderMemo::MEMO_DATA_LEN
-        };
-
-        std::str::from_utf8(&memo_data[0..index]).unwrap()
-    }
-
-    /// Decode a funding note from bytes
-    pub fn decode_funding_note(memo_data: &[u8; GiftCodeFundingMemo::MEMO_DATA_LEN]) -> &str {
-        let index = if let Some(terminator) = memo_data
-            .iter()
-            .enumerate()
-            .position(|(i, b)| i >= GiftCodeFundingMemo::HASH_DATA_LEN && b == &0u8)
-        {
-            terminator
-        } else {
-            GiftCodeFundingMemo::MEMO_DATA_LEN
-        };
-
-        std::str::from_utf8(&memo_data[GiftCodeFundingMemo::HASH_DATA_LEN..index]).unwrap()
-    }
-
-    /// Get the first four bytes of the Blake2b hash of a gift code TxOut public
-    /// key
-    pub fn tx_out_public_key_short_hash(
-        tx_out_public_key: &RistrettoPublic,
-    ) -> [u8; GiftCodeFundingMemo::HASH_DATA_LEN] {
-        let mut hasher = Blake2b512::new();
-        hasher.update("mc-gift-funding-tx-pub-key");
-        hasher.update(tx_out_public_key.as_ref().compress().as_bytes());
-        hasher.finalize().as_slice()[0..GiftCodeFundingMemo::HASH_DATA_LEN]
-            .try_into()
-            .unwrap()
-    }
 }

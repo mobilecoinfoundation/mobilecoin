@@ -417,6 +417,11 @@ impl AccountKey {
         self.subaddress_spend_private(CHANGE_SUBADDRESS_INDEX)
     }
 
+    /// The private spend key for the gift code subaddress
+    pub fn gift_code_subaddress_spend_private(&self) -> RistrettoPrivate {
+        self.subaddress_spend_private(GIFT_CODE_SUBADDRESS_INDEX)
+    }
+
     /// The private spend key for the i^th subaddress.
     pub fn subaddress_spend_private(&self, index: u64) -> RistrettoPrivate {
         let a: &Scalar = self.view_private_key.as_ref();

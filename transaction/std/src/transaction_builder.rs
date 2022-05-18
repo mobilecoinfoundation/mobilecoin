@@ -574,7 +574,7 @@ pub(crate) fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
     if !block_version.masked_token_id_feature_is_supported() {
         tx_out.masked_amount.masked_token_id.clear();
     }
-
+    //
     let shared_secret = create_shared_secret(recipient.view_public_key(), &private_key);
     Ok((tx_out, shared_secret))
 }
@@ -612,26 +612,27 @@ pub(crate) fn create_fog_hint<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
 pub mod transaction_builder_tests {
     use super::*;
     use crate::{
-        test_utils::{get_input_credentials, get_ring, get_transaction},
-        BurnRedemptionMemoBuilder, EmptyMemoBuilder, MemoType, RTHMemoBuilder,
+        test_utils::{get_input_credentials, get_ring, get_ring_for_txout, get_transaction},
+        BurnRedemptionMemoBuilder, EmptyMemoBuilder, GiftCodeCancellationMemoBuilder,
+        GiftCodeFundingMemoBuilder, GiftCodeSenderMemoBuilder, MemoType, RTHMemoBuilder,
         SenderMemoCredential,
     };
     use assert_matches::assert_matches;
     use maplit::btreemap;
     use mc_account_keys::{
         burn_address, burn_address_view_private, AccountKey, ShortAddressHash,
-        CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
+        CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX, GIFT_CODE_SUBADDRESS_INDEX,
     };
     use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
     use mc_transaction_core::{
         constants::{MAX_INPUTS, MAX_OUTPUTS, MILLIMOB_TO_PICOMOB},
         get_tx_out_shared_secret,
         onetime_keys::*,
-        ring_signature::KeyImage,
+        ring_signature::{InputSecret, KeyImage},
         subaddress_matches_tx_out,
         tx::TxOutMembershipProof,
         validation::{validate_signature, validate_tx_out},
-        NewTxError, TokenId,
+        NewTxError, TokenId, TxOutGiftCode,
     };
     use rand::{rngs::StdRng, SeedableRng};
     use std::convert::TryFrom;
@@ -1377,7 +1378,7 @@ pub mod transaction_builder_tests {
                 );
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         Amount::new(value - change_value - 4 * Mob::MINIMUM_FEE, token_id),
                         &recipient_address,
@@ -3102,6 +3103,502 @@ pub mod transaction_builder_tests {
 
             tx_out1_wrong_amount.value -= 1;
             assert!(test_fn(block_version, tx_out1_wrong_amount).is_err());
+        }
+    }
+
+    #[test]
+    // Transaction builder with gift codes
+    fn test_gift_code_transactions() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let block_version = BlockVersion::MAX;
+        let token_id = TokenId::from(5);
+        let fog_resolver = MockFogResolver::default();
+        let sender = AccountKey::random(&mut rng);
+        let receiver = AccountKey::random(&mut rng);
+        let (funding_input_amt, funding_output_amt, fee) = (1000, 10, 1);
+        let sender_reserved_destinations = ReservedDestination::from(&sender);
+        let receiver_reserved_destinations = ReservedDestination::from(&receiver);
+        let note = "It's funding time";
+
+        // Test gift code funding and sending
+        {
+            // Initialize funding memo & transaction builders
+            let funding_memo_builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
+            let funding_input_amount = Amount::new(funding_input_amt, token_id);
+            let funding_output_amount = Amount::new(funding_output_amt, token_id);
+            let funding_change_amount =
+                Amount::new(funding_input_amt - funding_output_amt - fee, token_id);
+            let mut funding_transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(fee, token_id),
+                fog_resolver.clone(),
+                funding_memo_builder,
+            )
+            .unwrap();
+
+            // Make sample input supply
+            let funding_input_credentials = get_input_credentials(
+                block_version,
+                funding_input_amount,
+                &sender,
+                &fog_resolver,
+                &mut rng,
+            );
+            funding_transaction_builder.add_input(funding_input_credentials);
+
+            // Fund gift code TxOut with blank memo
+            funding_transaction_builder
+                .add_output(
+                    funding_output_amount,
+                    &sender_reserved_destinations.gift_code_subaddress,
+                    &mut rng,
+                )
+                .unwrap();
+
+            // Make change output with funding memo
+            funding_transaction_builder
+                .add_change_output(
+                    funding_change_amount,
+                    &sender_reserved_destinations,
+                    &mut rng,
+                )
+                .unwrap();
+
+            let funding_tx = funding_transaction_builder.build(&mut rng).unwrap();
+
+            // The transaction should have exactly 2 outputs
+            assert_eq!(funding_tx.prefix.outputs.len(), 2);
+
+            let funding_output = funding_tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&sender, GIFT_CODE_SUBADDRESS_INDEX, tx_out).unwrap()
+                })
+                .expect("Didn't find recipient's output");
+
+            let funding_change = funding_tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
+                })
+                .expect("Didn't find sender's output");
+
+            validate_tx_out(block_version, funding_output).unwrap();
+            validate_tx_out(block_version, funding_change).unwrap();
+
+            assert!(
+                subaddress_matches_tx_out(&sender, GIFT_CODE_SUBADDRESS_INDEX, funding_output)
+                    .unwrap()
+            );
+            assert!(
+                subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, funding_change)
+                    .unwrap()
+            );
+
+            // Ensure funding output & change memos are correct
+            let gift_code_tx_out_public_key =
+                &RistrettoPublic::try_from(&funding_output.public_key).unwrap();
+            let funding_change_tx_out_public_key =
+                &RistrettoPublic::try_from(&funding_change.public_key).unwrap();
+            let gift_code_ss =
+                get_tx_out_shared_secret(sender.view_private_key(), gift_code_tx_out_public_key);
+            let funding_change_ss = get_tx_out_shared_secret(
+                sender.view_private_key(),
+                funding_change_tx_out_public_key,
+            );
+
+            let (funding_amount, _) = funding_output
+                .masked_amount
+                .get_value(&gift_code_ss)
+                .unwrap();
+            assert_eq!(funding_amount.value, funding_output_amount.value);
+            assert_eq!(funding_amount.token_id, token_id);
+
+            if block_version.e_memo_feature_is_supported() {
+                let funding_change_memo =
+                    funding_change.e_memo.unwrap().decrypt(&funding_change_ss);
+                let funding_output_memo = funding_output.e_memo.unwrap().decrypt(&gift_code_ss);
+                match MemoType::try_from(&funding_change_memo)
+                    .expect("Couldn't decrypt funding change memo")
+                {
+                    MemoType::GiftCodeFunding(memo) => {
+                        assert!(memo.public_key_matches(gift_code_tx_out_public_key),);
+                        assert_eq!(memo.funding_note().unwrap(), note,);
+                    }
+                    _ => {
+                        panic!("unexpected memo type")
+                    }
+                }
+                match MemoType::try_from(&funding_output_memo)
+                    .expect("Couldn't decrypt gift code funding_output memo")
+                {
+                    MemoType::Unused(_) => {}
+                    _ => {
+                        panic!("unexpected memo type")
+                    }
+                }
+            }
+
+            // MCIP #32 specifies that the receiver will receive the TxOut index,
+            // shared_secret and onetime_private_key. Send a gift code from a
+            // simulated sender to a simulated receiver in the manner specified
+            // in the MCIP, by using the data from gift code TxOut funded above
+
+            // Get the data we're pretending sender sends to the receiver and
+            // construct TxOutGiftCode object from it
+            let global_index = 42;
+            let gift_code_tx_out_private_key = recover_onetime_private_key(
+                &gift_code_tx_out_public_key,
+                &sender.spend_private_key(),
+                &sender.gift_code_subaddress_spend_private(),
+            );
+            let tx_out_gift_code = TxOutGiftCode {
+                global_index,
+                onetime_private_key: gift_code_tx_out_private_key.clone(),
+                shared_secret: gift_code_ss,
+            };
+
+            // Values we pretend we get from locating the TxOut using the global index
+            let masked_amount = funding_output.masked_amount.clone();
+
+            // Construct the sender Tx from the combo of "located" and "sent" information
+            let (sending_input_amount, blinding) = masked_amount
+                .get_value(&tx_out_gift_code.shared_secret)
+                .unwrap();
+            println!("{:?}", sending_input_amount);
+            let sending_output_amount = Amount::new(sending_input_amount.value - fee, token_id);
+
+            let (ring, real_index) = get_ring_for_txout(
+                &funding_output,
+                block_version,
+                sending_input_amount,
+                3,
+                &fog_resolver,
+                &mut rng,
+            );
+
+            let membership_proofs: Vec<TxOutMembershipProof> = ring
+                .iter()
+                .map(|_tx_out| TxOutMembershipProof::default())
+                .collect();
+
+            // Construct our sending memo builder
+            let note = "It's sending time";
+            let sending_memo_builder = GiftCodeSenderMemoBuilder::new(note).unwrap();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(fee, token_id),
+                fog_resolver.clone(),
+                sending_memo_builder,
+            )
+            .unwrap();
+
+            // Create our inputs from reconstructed info
+            let input_credentials = InputCredentials {
+                ring,
+                membership_proofs,
+                real_index,
+                input_secret: InputSecret {
+                    onetime_private_key: gift_code_tx_out_private_key,
+                    amount: sending_input_amount,
+                    blinding: blinding,
+                },
+            };
+
+            transaction_builder.add_input(input_credentials);
+
+            // Add the output and build the transaction
+            transaction_builder
+                .add_change_output(
+                    sending_output_amount,
+                    &receiver_reserved_destinations,
+                    &mut rng,
+                )
+                .unwrap();
+
+            let tx = transaction_builder.build(&mut rng).unwrap();
+
+            // Verify the sender transaction was valid
+            assert_eq!(tx.prefix.outputs.len(), 1);
+
+            let change = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&receiver, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
+                })
+                .expect("Didn't find sender's output");
+
+            validate_tx_out(block_version, change).unwrap();
+
+            assert!(subaddress_matches_tx_out(&receiver, CHANGE_SUBADDRESS_INDEX, change).unwrap());
+
+            // Ensure change memo is correct
+            let ss = get_tx_out_shared_secret(
+                receiver.view_private_key(),
+                &RistrettoPublic::try_from(&change.public_key).unwrap(),
+            );
+            let (amount, _) = change.masked_amount.get_value(&ss).unwrap();
+            assert_eq!(amount.value, sending_output_amount.value);
+            assert_eq!(amount.token_id, token_id);
+
+            if block_version.e_memo_feature_is_supported() {
+                let memo = change.e_memo.unwrap().decrypt(&ss);
+                match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                    MemoType::GiftCodeSender(memo) => {
+                        assert_eq!(memo.sender_note().unwrap(), note,);
+                    }
+                    _ => {
+                        panic!("unexpected memo type")
+                    }
+                }
+            }
+        }
+
+        // Test gift code cancellation
+        {
+            let sample_index = 1;
+            let cancellation_memo_builder = GiftCodeCancellationMemoBuilder::new(sample_index);
+
+            let cancellation_input_amount = Amount::new(funding_output_amt, token_id);
+            let cancellation_output_amount = Amount::new(funding_output_amt - fee, token_id);
+
+            let mut transaction_builder = TransactionBuilder::new(
+                block_version,
+                Amount::new(fee, token_id),
+                fog_resolver.clone(),
+                cancellation_memo_builder,
+            )
+            .unwrap();
+
+            // Make sample input supply
+            let input_credentials = get_input_credentials(
+                block_version,
+                cancellation_input_amount,
+                &sender,
+                &fog_resolver,
+                &mut rng,
+            );
+            transaction_builder.add_input(input_credentials);
+
+            // Cancel gift code
+            transaction_builder
+                .add_change_output(
+                    cancellation_output_amount,
+                    &sender_reserved_destinations,
+                    &mut rng,
+                )
+                .unwrap();
+
+            let tx = transaction_builder.build(&mut rng).unwrap();
+
+            // The transaction should have exactly 1 output
+            assert_eq!(tx.prefix.outputs.len(), 1);
+
+            let change = tx
+                .prefix
+                .outputs
+                .iter()
+                .find(|tx_out| {
+                    subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, tx_out).unwrap()
+                })
+                .expect("Didn't find sender's output");
+
+            validate_tx_out(block_version, change).unwrap();
+
+            // Ensure it was sent to the change address
+            assert!(subaddress_matches_tx_out(&sender, CHANGE_SUBADDRESS_INDEX, change).unwrap());
+
+            // Ensure change memo is correct
+            let ss = get_tx_out_shared_secret(
+                sender.view_private_key(),
+                &RistrettoPublic::try_from(&change.public_key).unwrap(),
+            );
+            let (amount, _) = change.masked_amount.get_value(&ss).unwrap();
+            assert_eq!(amount.value, cancellation_output_amount.value);
+            assert_eq!(amount.token_id, token_id);
+
+            if block_version.e_memo_feature_is_supported() {
+                let memo = change.e_memo.unwrap().decrypt(&ss);
+                match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                    MemoType::GiftCodeCancellation(memo) => {
+                        assert_eq!(memo.cancelled_gift_code_index(), sample_index,);
+                    }
+                    _ => {
+                        panic!("unexpected memo type")
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    // Test errors in gift code building
+    fn test_gift_code_transaction_builder_errors() {
+        // Test funding multiple gift at once codes fails
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let sender = AccountKey::random(&mut rng);
+        let sender_reserved_destinations = ReservedDestination::from(&sender);
+        let token_id = TokenId::from(5);
+        let note = "I'm a note";
+
+        // Ensure we can't do more than one gift code TxOut output
+        {
+            let funding_memo_builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                BlockVersion::MAX,
+                Amount::new(1, token_id),
+                MockFogResolver::default(),
+                funding_memo_builder,
+            )
+            .unwrap();
+
+            transaction_builder
+                .add_output(
+                    Amount::new(100, token_id),
+                    &sender_reserved_destinations.gift_code_subaddress,
+                    &mut rng,
+                )
+                .unwrap();
+
+            let result = transaction_builder.add_output(
+                Amount::new(100, token_id),
+                &sender_reserved_destinations.gift_code_subaddress,
+                &mut rng,
+            );
+            assert_matches!(
+                result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::MultipleOutputs
+                )))
+            );
+        }
+
+        // Ensure we can't fund after change
+        {
+            let funding_memo_builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
+
+            let mut transaction_builder = TransactionBuilder::new(
+                BlockVersion::MAX,
+                Amount::new(1, token_id),
+                MockFogResolver::default(),
+                funding_memo_builder,
+            )
+            .unwrap();
+
+            // Try to write change before funding gift code and assert it errors
+            let result_change_before_output = transaction_builder.add_change_output(
+                Amount::new(100, token_id),
+                &sender_reserved_destinations,
+                &mut rng,
+            );
+
+            assert_matches!(
+                result_change_before_output,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::MissingOutput
+                )))
+            );
+
+            // Fund gift code & add change output in proper order
+            transaction_builder
+                .add_output(
+                    Amount::new(100, token_id),
+                    &sender_reserved_destinations.gift_code_subaddress,
+                    &mut rng,
+                )
+                .unwrap();
+
+            // Attempt to fund second gift code
+            let second_output = transaction_builder.add_output(
+                Amount::new(100, token_id),
+                &sender_reserved_destinations.gift_code_subaddress,
+                &mut rng,
+            );
+
+            assert_matches!(
+                second_output,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::MultipleOutputs
+                )))
+            );
+
+            transaction_builder
+                .add_change_output(
+                    Amount::new(100, token_id),
+                    &sender_reserved_destinations,
+                    &mut rng,
+                )
+                .unwrap();
+
+            // Attempt to write an output after change
+            let output_after_change = transaction_builder.add_output(
+                Amount::new(100, token_id),
+                &sender_reserved_destinations.gift_code_subaddress,
+                &mut rng,
+            );
+
+            assert_matches!(
+                output_after_change,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::MultipleOutputs
+                )))
+            );
+        }
+
+        // Ensure we can't write destination TxOuts for Cancellation & Sending
+        {
+            let sender_memo_builder = GiftCodeSenderMemoBuilder::new(note).unwrap();
+            let cancellation_memo_builder = GiftCodeCancellationMemoBuilder::new(50);
+
+            let mut sending_transaction_builder = TransactionBuilder::new(
+                BlockVersion::MAX,
+                Amount::new(1, token_id),
+                MockFogResolver::default(),
+                sender_memo_builder,
+            )
+            .unwrap();
+
+            let mut cancellation_transaction_builder = TransactionBuilder::new(
+                BlockVersion::MAX,
+                Amount::new(1, token_id),
+                MockFogResolver::default(),
+                cancellation_memo_builder,
+            )
+            .unwrap();
+
+            let sender_result = sending_transaction_builder.add_output(
+                Amount::new(100, token_id),
+                &sender_reserved_destinations.gift_code_subaddress,
+                &mut rng,
+            );
+
+            let cancellation_result = cancellation_transaction_builder.add_output(
+                Amount::new(100, token_id),
+                &sender_reserved_destinations.gift_code_subaddress,
+                &mut rng,
+            );
+
+            assert_matches!(
+                sender_result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::DestinationMemoNotAllowed
+                )))
+            );
+
+            assert_matches!(
+                cancellation_result,
+                Err(TxBuilderError::NewTx(NewTxError::Memo(
+                    NewMemoError::DestinationMemoNotAllowed
+                )))
+            );
         }
     }
 }
