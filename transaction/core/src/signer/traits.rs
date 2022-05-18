@@ -105,7 +105,7 @@ pub enum Error {
     TrueInputNotOwned,
     /// Connection failed: {0}
     ConnectionFailed(String),
-    /// Invalid Ristretto in TxOut: {0}
+    /// Invalid Ristretto key in TxOut: {0}
     Keys(KeyError),
     /// Real input index out of bounds
     RealInputIndexOutOfBounds,
