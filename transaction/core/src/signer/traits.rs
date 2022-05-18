@@ -74,7 +74,7 @@ pub trait RingSigner {
     ///   pseudo-output.
     /// * rng: This is needed to create randomness during signing. For the case
     ///   of a remote device, it should ignore this parameter, and on the other
-    ///   side of bridge supply its own rng.
+    ///   side of bridge supply its own RNG.
     ///
     /// Returns:
     /// * A signed RingMLSAG, or an error. RingMLSAG signing itself is
