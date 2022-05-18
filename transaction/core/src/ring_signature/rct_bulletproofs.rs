@@ -853,7 +853,7 @@ mod rct_bulletproofs_tests {
     use crate::{
         range_proofs::generate_range_proofs,
         ring_signature::{generators, Error, KeyImage, MLSAGError, PedersenGens, ReducedTxOut},
-        signer::{DummyRingSigner, InputSecret, OneTimeKeyOrAlternative, SignableInputRing},
+        signer::{InputSecret, NoKeysRingSigner, OneTimeKeyDeriveData, SignableInputRing},
         CompressedCommitment, TokenId,
     };
     use alloc::vec::Vec;
@@ -966,14 +966,13 @@ mod rct_bulletproofs_tests {
                 let real_input_index = rng.next_u64() as usize % (num_mixins + 1);
                 ring_members.insert(real_input_index, reduced_tx_out);
 
-                let onetime_key_or_alternative =
-                    OneTimeKeyOrAlternative::OneTimeKey(onetime_private_key);
+                let onetime_key_derive_data = OneTimeKeyDeriveData::OneTimeKey(onetime_private_key);
 
                 rings.push(SignableInputRing {
                     members: ring_members,
                     real_input_index,
                     input_secret: InputSecret {
-                        onetime_key_or_alternative,
+                        onetime_key_derive_data,
                         amount: Amount::new(value, token_id),
                         blinding,
                     },
@@ -1037,7 +1036,7 @@ mod rct_bulletproofs_tests {
                 &self.get_input_rings(),
                 &self.output_secrets,
                 Amount::new(fee, self.fee_token_id),
-                &DummyRingSigner {},
+                &NoKeysRingSigner {},
                 rng,
             )
         }
@@ -1054,7 +1053,7 @@ mod rct_bulletproofs_tests {
                 &self.output_secrets,
                 Amount::new(fee, self.fee_token_id),
                 false,
-                &DummyRingSigner {},
+                &NoKeysRingSigner {},
                 rng,
             )
         }

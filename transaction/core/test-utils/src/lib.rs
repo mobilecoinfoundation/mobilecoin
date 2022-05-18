@@ -8,7 +8,7 @@ pub use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
-    signer::DummyRingSigner,
+    signer::NoKeysRingSigner,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
     Amount, Block, BlockID, BlockIndex, BlockVersion, Token,
@@ -210,7 +210,7 @@ pub fn create_transaction_with_amount_and_comparer<
 
     // Build and return the transaction
     transaction_builder
-        .build_with_sorter::<R, O, DummyRingSigner>(&DummyRingSigner {}, rng)
+        .build_with_sorter::<_, O, _>(&NoKeysRingSigner {}, rng)
         .unwrap()
 }
 

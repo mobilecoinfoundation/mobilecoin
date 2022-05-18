@@ -29,9 +29,8 @@ pub struct SignableInputRing {
 #[derive(Clone, Debug, Zeroize)]
 #[zeroize(drop)]
 pub struct InputSecret {
-    /// Represents either the one-time private key, or an alternative route to
-    /// this
-    pub onetime_key_or_alternative: OneTimeKeyOrAlternative,
+    /// Represents either the one-time private key, or data to derive it
+    pub onetime_key_derive_data: OneTimeKeyDeriveData,
     /// The amount of the output
     pub amount: Amount,
     /// The blinding factor of the output we are trying to spend
@@ -51,7 +50,7 @@ pub struct InputSecret {
 /// This enum selects which path to the one-time private key is taken.
 #[derive(Clone, Debug, Zeroize)]
 #[zeroize(drop)]
-pub enum OneTimeKeyOrAlternative {
+pub enum OneTimeKeyDeriveData {
     /// The one-time private key for the output
     OneTimeKey(RistrettoPrivate),
     /// The subaddress index which owns the output

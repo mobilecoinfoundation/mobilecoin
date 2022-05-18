@@ -4,7 +4,7 @@ use crate::TxBuilderError;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_transaction_core::{
     onetime_keys::create_shared_secret,
-    signer::{InputSecret, OneTimeKeyOrAlternative, SignableInputRing},
+    signer::{InputSecret, OneTimeKeyDeriveData, SignableInputRing},
     tx::{TxIn, TxOut, TxOutMembershipProof},
 };
 use std::convert::TryFrom;
@@ -85,10 +85,10 @@ impl InputCredentials {
         let (amount, blinding) = masked_amount.get_value(&tx_out_shared_secret)?;
 
         // We always have the one-time key in this flow
-        let onetime_key_or_alternative = OneTimeKeyOrAlternative::OneTimeKey(onetime_private_key);
+        let onetime_key_derive_data = OneTimeKeyDeriveData::OneTimeKey(onetime_private_key);
 
         let input_secret = InputSecret {
-            onetime_key_or_alternative,
+            onetime_key_derive_data,
             amount,
             blinding,
         };

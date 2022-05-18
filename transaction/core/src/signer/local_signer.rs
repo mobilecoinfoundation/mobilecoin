@@ -1,4 +1,4 @@
-use super::{Error, OneTimeKeyOrAlternative, RingSigner, SignableInputRing};
+use super::{Error, OneTimeKeyDeriveData, RingSigner, SignableInputRing};
 use crate::{
     onetime_keys::recover_onetime_private_key,
     ring_signature::{generators, CryptoRngCore, RingMLSAG, Scalar},
@@ -6,7 +6,8 @@ use crate::{
 use mc_account_keys::AccountKey;
 use mc_crypto_keys::RistrettoPublic;
 
-/// An implementation of RingSigner that holds private keys
+/// An implementation of RingSigner that holds private keys and derives one-time
+/// private keys
 #[derive(Clone, Debug)]
 pub struct LocalRingSigner {
     key: AccountKey,
@@ -27,9 +28,9 @@ impl RingSigner for LocalRingSigner {
         let target_key = RistrettoPublic::try_from(&real_input.target_key)?;
 
         // First, compute the one-time private key
-        let onetime_private_key = match ring.input_secret.onetime_key_or_alternative {
-            OneTimeKeyOrAlternative::OneTimeKey(key) => key,
-            OneTimeKeyOrAlternative::SubaddressIndex(subaddress_index) => {
+        let onetime_private_key = match ring.input_secret.onetime_key_derive_data {
+            OneTimeKeyDeriveData::OneTimeKey(key) => key,
+            OneTimeKeyDeriveData::SubaddressIndex(subaddress_index) => {
                 let public_key = RistrettoPublic::try_from(&real_input.public_key)?;
 
                 recover_onetime_private_key(

@@ -1,8 +1,9 @@
-use super::{Error, OneTimeKeyOrAlternative, RingSigner, SignableInputRing};
+use super::{Error, OneTimeKeyDeriveData, RingSigner, SignableInputRing};
 use crate::ring_signature::{generators, CryptoRngCore, RingMLSAG, Scalar};
 use mc_crypto_keys::RistrettoPublic;
 
-/// An implementation of RingSigner that holds nothing
+/// An implementation of RingSigner that holds no keys, and doesn't do any
+/// non-trivial derivation of the one-time private key.
 ///
 /// This version only works if the input secret actually includes the one-time
 /// private key, and returns an error if only the alternative is supplied.
@@ -11,9 +12,9 @@ use mc_crypto_keys::RistrettoPublic;
 /// software like SDKs that would not benefit from migrating to the
 /// LocalRingSigner, at least for now
 #[derive(Clone, Debug)]
-pub struct DummyRingSigner {}
+pub struct NoKeysRingSigner {}
 
-impl RingSigner for DummyRingSigner {
+impl RingSigner for NoKeysRingSigner {
     fn sign(
         &self,
         message: &[u8],
@@ -28,9 +29,9 @@ impl RingSigner for DummyRingSigner {
         let target_key = RistrettoPublic::try_from(&real_input.target_key)?;
 
         // First, get the one-time private key
-        let onetime_private_key = match ring.input_secret.onetime_key_or_alternative {
-            OneTimeKeyOrAlternative::OneTimeKey(key) => key,
-            OneTimeKeyOrAlternative::SubaddressIndex(_) => {
+        let onetime_private_key = match ring.input_secret.onetime_key_derive_data {
+            OneTimeKeyDeriveData::OneTimeKey(key) => key,
+            OneTimeKeyDeriveData::SubaddressIndex(_) => {
                 return Err(Error::NoPathToSpendKey);
             }
         };
