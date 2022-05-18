@@ -3252,13 +3252,13 @@ pub mod transaction_builder_tests {
             // construct TxOutGiftCode object from it
             let global_index = 42;
             let gift_code_tx_out_private_key = recover_onetime_private_key(
-                &gift_code_tx_out_public_key,
-                &sender.spend_private_key(),
+                gift_code_tx_out_public_key,
+                sender.spend_private_key(),
                 &sender.gift_code_subaddress_spend_private(),
             );
             let tx_out_gift_code = TxOutGiftCode {
                 global_index,
-                onetime_private_key: gift_code_tx_out_private_key.clone(),
+                onetime_private_key: gift_code_tx_out_private_key,
                 shared_secret: gift_code_ss,
             };
 
@@ -3273,7 +3273,7 @@ pub mod transaction_builder_tests {
             let sending_output_amount = Amount::new(sending_input_amount.value - fee, token_id);
 
             let (ring, real_index) = get_ring_for_txout(
-                &funding_output,
+                funding_output,
                 block_version,
                 sending_input_amount,
                 3,
@@ -3306,7 +3306,7 @@ pub mod transaction_builder_tests {
                 input_secret: InputSecret {
                     onetime_private_key: gift_code_tx_out_private_key,
                     amount: sending_input_amount,
-                    blinding: blinding,
+                    blinding,
                 },
             };
 

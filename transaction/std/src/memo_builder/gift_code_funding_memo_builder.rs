@@ -131,7 +131,7 @@ mod tests {
         let change_amount = Amount::new(1, 0.into());
         let funding_amount = Amount::new(10, 0.into());
         let funding_context = MemoContext {
-            tx_public_key: &funding_tx_pubkey,
+            tx_public_key: funding_tx_pubkey,
         };
         let change_context = MemoContext {
             tx_public_key: &change_tx_pubkey,
