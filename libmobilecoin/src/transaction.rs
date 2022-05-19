@@ -17,9 +17,8 @@ use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
     ring_signature::KeyImage,
-    tokens::Mob,
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    Amount, BlockVersion, CompressedCommitment, EncryptedMemo, MaskedAmount, Token,
+    Amount, BlockVersion, CompressedCommitment, EncryptedMemo, MaskedAmount, TokenId,
 };
 
 use mc_transaction_std::{
@@ -372,6 +371,7 @@ impl_into_ffi!(Option<TransactionBuilder<FogResolver>>);
 #[no_mangle]
 pub extern "C" fn mc_transaction_builder_create(
     fee: u64,
+    token_id: u64,
     tombstone_block: u64,
     fog_resolver: FfiOptRefPtr<McFogResolver>,
     memo_builder: FfiMutPtr<McTxOutMemoBuilder>,
@@ -396,7 +396,7 @@ pub extern "C" fn mc_transaction_builder_create(
             .expect("McTxOutMemoBuilder has already been used to build a Tx");
 
         // TODO #1596: Support token id other than Mob (but not in this release)
-        let fee_amount = Amount::new(fee, Mob::ID);
+        let fee_amount = Amount::new(fee, TokenId::from(token_id));
 
         let mut transaction_builder = TransactionBuilder::new_with_box(
             block_version,
