@@ -147,5 +147,48 @@ else
 	printf "${SUCCESS}\n"
 fi
 
+# Similarly, check if copyright statements are missing and offer to add them if they are
+printf "${PREFIX} Checking copyright statements ... "
+COPYRIGHT_LINE="// Copyright (c) 2018-2022 The MobileCoin Foundation"
+diff=""
+for file in $(git diff --name-only --cached --diff-filter=d | egrep -v '^sgx/sgx_(tcrypto|urts|types)');
+do
+	if [[ ${file: -3} == ".rs" ]]; then
+		if !(head -n 1 ${file} | grep "^\${COPYRIGHT_LINE}")
+		then
+		    diff="$file\n$diff"
+		fi
+	fi
+done
+
+if [[ "${SKIP_RUSTFMT}" == 1 ]]; then
+	printf "${SKIPPED}\n"$?
+elif [[ -n "$diff" ]]; then
+	FAILED=1
+	printf "${FAILURE}\n"
+	echo -e "\033[33;1mFiles Needing Copyright:\033[0m"
+	echo -e "$diff" | sort -u
+	if [[ -n "$(which tty)" ]] && [[ -n "$(tty)" ]]; then
+		exec < /dev/tty
+		echo "Do you want to fix all these files automatically? (y/N) "
+		read YESNO
+		if [[ -n "$YESNO" ]] && [[ "$(echo "${YESNO:0:1}" | tr '[[:lower:]]' '[[:upper:]]')" = "Y" ]]; then
+			echo -e "$diff" | sort -u | while read file; do
+			    if [[ -n "$file" ]]; then
+					sed -i "1s;^;${COPYRIGHT_LINE}\n\n;" $file
+		        fi
+			done
+			echo "You should attempt this commit again to pick up these changes."
+		else
+			echo -e "Add copyright statements to the files."
+		fi
+		exec <&-
+	else
+        echo -e "Add copyright statements to the files."
+	fi
+else
+	printf "${SUCCESS}\n"
+fi
+
 popd >/dev/null 2>&1
 exit ${FAILED}
