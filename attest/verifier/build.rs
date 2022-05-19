@@ -140,7 +140,9 @@ fn main() {
     purge_expired_cert(&root_anchor_path);
     purge_expired_cert(&chain_path);
 
-    if !(root_anchor_path.exists() && signer_key_path.exists() && chain_path.exists()) {
+    if !(root_anchor_path.exists() && signer_key_path.exists() && chain_path.exists())
+        || env::var("MC_SEED").is_ok()
+    {
         const ROOT_SUBJECT: &str = "C=US,ST=CA,L=Santa Clara,O=Intel Corporation,CN=Simulation Intel SGX Attestation Report Signing CA\0";
         const SIGNER_SUBJECT: &str = "C=US,ST=CA,L=Santa Clara,O=Intel Corporation,CN=Simulation Intel SGX Attestation Report Signer\0";
 

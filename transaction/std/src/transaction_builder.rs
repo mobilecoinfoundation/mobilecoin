@@ -40,15 +40,17 @@ impl TxOutputsOrdering for DefaultTxOutputsOrdering {
 
 /// Transaction output context is produced by add_output method
 /// Used for receipt creation
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct TxOutContext {
-    /// TxOut that comes from a transaction builder add_output/add_change_output
+    /// TxOut that comes from a transaction builder
+    /// add_output/add_change_output
     pub tx_out: TxOut,
-    /// confirmation that comes from a transaction builder add_output/add_change_output
+    /// confirmation that comes from a transaction builder
+    /// add_output/add_change_output
     pub confirmation: TxOutConfirmationNumber,
-    /// Shared Secret that comes from a transaction builder add_output/add_change_output
-    pub shared_secret: RistrettoPublic
+    /// Shared Secret that comes from a transaction builder
+    /// add_output/add_change_output
+    pub shared_secret: RistrettoPublic,
 }
 
 /// Helper utility for building and signing a CryptoNote-style transaction,
@@ -155,26 +157,6 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         value: u64,
         recipient: &PublicAddress,
         rng: &mut RNG,
-    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
-        let context = self.add_output_with_context(value, recipient, rng)?;
-        Ok((context.tx_out, context.confirmation))
-    }
-
-    /// Add a non-change output to the transaction.
-    ///
-    /// If a sender memo credential has been set, this will create an
-    /// authenticated sender memo for the TxOut. Otherwise the memo will be
-    /// unused.
-    ///
-    /// # Arguments
-    /// * `value` - The value of this output, in picoMOB.
-    /// * `recipient` - The recipient's public address
-    /// * `rng` - RNG used to generate blinding for commitment
-    pub fn add_output_with_context<RNG: CryptoRng + RngCore>(
-        &mut self,
-        value: u64,
-        recipient: &PublicAddress,
-        rng: &mut RNG,
     ) -> Result<TxOutContext, TxBuilderError> {
         // Taking self.memo_builder here means that we can call functions on &mut self,
         // and pass them something that has captured the memo builder.
@@ -236,43 +218,6 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     ///   this API does not require the account key.
     /// * `rng` - RNG used to generate blinding for commitment
     pub fn add_change_output<RNG: CryptoRng + RngCore>(
-        &mut self,
-        value: u64,
-        change_destination: &ChangeDestination,
-        rng: &mut RNG,
-    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
-        let context = self.add_change_output_with_context(value, change_destination, rng)?;
-        Ok((context.tx_out, context.confirmation))
-    }
-
-    /// Add a standard change output to the transaction.
-    ///
-    /// The change output is meant to send any value in the inputs not already
-    /// sent via outputs or fee, back to the sender's address.
-    /// The caller should ensure that the math adds up, and that
-    /// change_value + total_outlays + fee = total_input_value
-    ///
-    /// (Here, outlay means a non-change output).
-    ///
-    /// A change output should be sent to the dedicated change subaddress of the
-    /// sender.
-    ///
-    /// If provided, a Destination memo is attached to this output, which allows
-    /// for recoverable transaction history.
-    ///
-    /// The use of dedicated change subaddress for change outputs allows to
-    /// authenticate the contents of destination memos, which are otherwise
-    /// unauthenticated.
-    ///
-    /// # Arguments
-    /// * `value` - The value of this change output.
-    /// * `change_destination` - An object including both a primary address and
-    ///   a change subaddress to use to create this change output. The primary
-    ///   address is used for the fog hint, the change subaddress owns the
-    ///   change output. These can both be obtained from an account key, but
-    ///   this API does not require the account key.
-    /// * `rng` - RNG used to generate blinding for commitment
-    pub fn add_change_output_with_context<RNG: CryptoRng + RngCore>(
         &mut self,
         value: u64,
         change_destination: &ChangeDestination,
@@ -351,7 +296,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
 
         let confirmation = TxOutConfirmationNumber::from(&shared_secret);
 
-        Ok(TxOutContext{tx_out, confirmation, shared_secret})
+        Ok(TxOutContext {
+            tx_out,
+            confirmation,
+            shared_secret,
+        })
     }
 
     /// Sets the tombstone block, clamping to smallest pubkey expiry value.
@@ -862,7 +811,7 @@ pub mod transaction_builder_tests {
             .unwrap();
 
             transaction_builder.add_input(input_credentials);
-            let (_txout, confirmation) = transaction_builder
+            let TxOutContext { confirmation, .. } = transaction_builder
                 .add_output(
                     value - Mob::MINIMUM_FEE,
                     &recipient.default_subaddress(),
@@ -945,7 +894,7 @@ pub mod transaction_builder_tests {
             .unwrap();
 
             transaction_builder.add_input(input_credentials);
-            let (_txout, confirmation) = transaction_builder
+            let TxOutContext { confirmation, .. } = transaction_builder
                 .add_output(
                     value - Mob::MINIMUM_FEE,
                     &recipient.default_subaddress(),
@@ -1040,7 +989,7 @@ pub mod transaction_builder_tests {
                 get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
             transaction_builder.add_input(input_credentials);
 
-            let (_txout, _confirmation) = transaction_builder
+            let _tx_out_context = transaction_builder
                 .add_output_with_fog_hint_address(
                     value - Mob::MINIMUM_FEE,
                     &recipient.default_subaddress(),
@@ -1119,7 +1068,7 @@ pub mod transaction_builder_tests {
                     get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(value - Mob::MINIMUM_FEE, &recipient_address, &mut rng)
                     .unwrap();
 
@@ -1151,7 +1100,7 @@ pub mod transaction_builder_tests {
                     get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(value - Mob::MINIMUM_FEE, &recipient_address, &mut rng)
                     .unwrap();
 
@@ -1217,7 +1166,7 @@ pub mod transaction_builder_tests {
                 );
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         value - change_value - Mob::MINIMUM_FEE,
                         &recipient_address,
@@ -1395,7 +1344,7 @@ pub mod transaction_builder_tests {
                 );
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         value - change_value - Mob::MINIMUM_FEE,
                         &recipient_address,
@@ -1554,7 +1503,7 @@ pub mod transaction_builder_tests {
                 );
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         value - change_value - Mob::MINIMUM_FEE * 4,
                         &recipient_address,
@@ -1713,7 +1662,7 @@ pub mod transaction_builder_tests {
                 );
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         value - change_value - Mob::MINIMUM_FEE,
                         &recipient_address,
@@ -1872,7 +1821,7 @@ pub mod transaction_builder_tests {
                 );
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         value - change_value - Mob::MINIMUM_FEE,
                         &recipient_address,
@@ -2019,7 +1968,7 @@ pub mod transaction_builder_tests {
                 );
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         value - change_value - Mob::MINIMUM_FEE,
                         &recipient_address,
@@ -2191,7 +2140,7 @@ pub mod transaction_builder_tests {
                 );
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         value - change_value - Mob::MINIMUM_FEE,
                         &bob_address,
@@ -2380,7 +2329,7 @@ pub mod transaction_builder_tests {
                 );
                 transaction_builder.add_input(input_credentials);
 
-                let (_txout, _confirmation) = transaction_builder
+                transaction_builder
                     .add_output(
                         value - change_value - Mob::MINIMUM_FEE,
                         &recipient_address,
@@ -2648,7 +2597,10 @@ pub mod transaction_builder_tests {
             );
             transaction_builder.add_input(input_credentials);
 
-            let (burn_tx_out, _confirmation) = transaction_builder
+            let TxOutContext {
+                tx_out: burn_tx_out,
+                ..
+            } = transaction_builder
                 .add_output(
                     value - change_value - Mob::MINIMUM_FEE,
                     &recipient,
@@ -2810,7 +2762,7 @@ pub mod transaction_builder_tests {
             );
             transaction_builder.add_input(input_credentials);
 
-            let (_burn_tx_out, _confirmation) = transaction_builder
+            transaction_builder
                 .add_output(100, &burn_address(), &mut rng)
                 .unwrap();
 
@@ -2853,7 +2805,10 @@ pub mod transaction_builder_tests {
             );
             transaction_builder.add_input(input_credentials);
 
-            let (burn_output, _confirmation) = transaction_builder
+            let TxOutContext {
+                tx_out: burn_output,
+                ..
+            } = transaction_builder
                 .add_output(110, &burn_address(), &mut rng)
                 .unwrap();
 
@@ -2909,7 +2864,10 @@ pub mod transaction_builder_tests {
             );
             transaction_builder.add_input(input_credentials);
 
-            let (burn_tx_out, _confirmation) = transaction_builder
+            let TxOutContext {
+                tx_out: burn_tx_out,
+                ..
+            } = transaction_builder
                 .add_output(100, &burn_address(), &mut rng)
                 .unwrap();
 

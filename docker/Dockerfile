@@ -48,7 +48,6 @@ RUN sed -ie 's|host    all             all             127.0.0.1/32            m
     su postgres -c "createuser --superuser root"
 
 # Export postgres database url's for build environment, for local testing and conformance tests
-ENV DATABASE_URL="postgres://localhost"
 ENV TEST_DATABASE_URL="postgres://localhost"
 
 # Export sgx sdk environment variables

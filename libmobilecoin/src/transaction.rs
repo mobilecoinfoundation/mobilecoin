@@ -514,22 +514,23 @@ pub extern "C" fn mc_transaction_builder_add_output(
         let recipient_address =
             PublicAddress::try_from_ffi(&recipient_address).expect("recipient_address is invalid");
         let mut rng = SdkRng::from_ffi(rng_callback);
+
         let out_tx_out_confirmation_number = out_tx_out_confirmation_number
             .into_mut()
             .as_slice_mut_of_len(TxOutConfirmationNumber::size())
             .expect("out_tx_out_confirmation_number length is insufficient");
-
-        let tx_out_context =
-            transaction_builder.add_output_with_context(amount, &recipient_address, &mut rng)?;
-
-        out_tx_out_confirmation_number.copy_from_slice(tx_out_context.confirmation.as_ref());
 
         let out_tx_out_shared_secret = out_tx_out_shared_secret
             .into_mut()
             .as_slice_mut_of_len(RistrettoPublic::size())
             .expect("out_tx_out_shared_secret length is insufficient");
 
+        let tx_out_context =
+            transaction_builder.add_output(amount, &recipient_address, &mut rng)?;
+
+        out_tx_out_confirmation_number.copy_from_slice(tx_out_context.confirmation.as_ref());
         out_tx_out_shared_secret.copy_from_slice(&tx_out_context.shared_secret.to_bytes());
+
         Ok(mc_util_serial::encode(&tx_out_context.tx_out))
     })
 }
@@ -565,23 +566,23 @@ pub extern "C" fn mc_transaction_builder_add_change_output(
             .expect("McTransactionBuilder instance has already been used to build a Tx");
         let change_destination = ChangeDestination::from(&account_key_obj);
         let mut rng = SdkRng::from_ffi(rng_callback);
+
         let out_tx_out_confirmation_number = out_tx_out_confirmation_number
             .into_mut()
             .as_slice_mut_of_len(TxOutConfirmationNumber::size())
             .expect("out_tx_out_confirmation_number length is insufficient");
-
-        let tx_out_context =
-            transaction_builder.add_change_output_with_context(amount, &change_destination, &mut rng)?;
-
-        out_tx_out_confirmation_number.copy_from_slice(tx_out_context.confirmation.as_ref());
-
 
         let out_tx_out_shared_secret = out_tx_out_shared_secret
             .into_mut()
             .as_slice_mut_of_len(RistrettoPublic::size())
             .expect("out_tx_out_shared_secret length is insufficient");
 
+        let tx_out_context =
+            transaction_builder.add_change_output(amount, &change_destination, &mut rng)?;
+
+        out_tx_out_confirmation_number.copy_from_slice(tx_out_context.confirmation.as_ref());
         out_tx_out_shared_secret.copy_from_slice(&tx_out_context.shared_secret.to_bytes());
+
         Ok(mc_util_serial::encode(&tx_out_context.tx_out))
     })
 }

@@ -111,7 +111,7 @@ impl From<ConsensusGrpcError> for RpcStatus {
                 "Temporarily not serving requests".into(),
             ),
             ConsensusGrpcError::Enclave(EnclaveError::Attest(err)) => {
-                global_log::error!("Permission denied: {}", err);
+                global_log::info!("Permission denied: {}", err);
                 RpcStatus::with_message(
                     RpcStatusCode::PERMISSION_DENIED,
                     "Permission Denied (attestation)".into(),
