@@ -103,7 +103,7 @@ pub fn print_multi_sig(multi_sig: &MultiSig<Ed25519Signature>, indent: usize) {
         multi_sig.signatures().len()
     );
     for sig in multi_sig.signatures() {
-        print_pem(sig, PEM_TAG_SIGNATURE, indent + 2);
+        print_pem(sig, PEM_TAG_SIGNATURE, indent + 1);
     }
 }
 

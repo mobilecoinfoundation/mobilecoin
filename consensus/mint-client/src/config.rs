@@ -359,7 +359,7 @@ pub enum Commands {
             long = "signing-key",
             required_unless_present = "signatures",
             parse(try_from_str = load_key_from_pem),
-            env = "MC_MINTING_SIGNING_KEY"
+            env = "MC_MINTING_SIGNING_KEYS"
         )]
         signing_keys: Vec<Ed25519Private>,
 
