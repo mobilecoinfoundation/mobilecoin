@@ -4,8 +4,8 @@
 
 use crate::{
     ring_signature::{
-        CurveScalar, Error as RingSignatureError, GeneratorCache, KeyImage, OutputSecret,
-        PresignedInputRing, RingMLSAG, SignedInputRing,
+        CurveScalar, GeneratorCache, KeyImage, MLSAGError, OutputSecret, PresignedInputRing,
+        RingMLSAG, SignedInputRing,
     },
     tx::TxIn,
     Amount, Commitment, CompressedCommitment, TokenId,
@@ -180,12 +180,12 @@ pub enum SignedContingentInputError {
     MissingRules,
     /// Proofs of membership are missing
     MissingProofs,
-    /// Invalid Ring Signature: {0}
-    RingSignature(RingSignatureError),
+    /// Invalid MLSAG: {0}
+    MLSAG(MLSAGError),
 }
 
-impl From<RingSignatureError> for SignedContingentInputError {
-    fn from(src: RingSignatureError) -> Self {
-        Self::RingSignature(src)
+impl From<MLSAGError> for SignedContingentInputError {
+    fn from(src: MLSAGError) -> Self {
+        Self::MLSAG(src)
     }
 }

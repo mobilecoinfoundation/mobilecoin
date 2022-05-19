@@ -25,7 +25,7 @@ use crate::{
     membership_proofs::Range,
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
-    ring_signature::{KeyImage, SignatureRctBulletproofs, SignedInputRing},
+    ring_signature::{KeyImage, ReducedTxOut, SignatureRctBulletproofs, SignedInputRing},
     CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
 };
 
@@ -275,11 +275,7 @@ impl TxIn {
 impl From<&TxIn> for SignedInputRing {
     fn from(src: &TxIn) -> SignedInputRing {
         SignedInputRing {
-            members: src
-                .ring
-                .iter()
-                .map(|tx_out| (tx_out.target_key, tx_out.masked_amount.commitment))
-                .collect(),
+            members: src.ring.iter().map(Into::into).collect(),
             signed_digest: src.signed_digest(),
         }
     }
@@ -444,6 +440,16 @@ impl TxOut {
             e_memo.decrypt(tx_out_shared_secret)
         } else {
             MemoPayload::default()
+        }
+    }
+}
+
+impl From<&TxOut> for ReducedTxOut {
+    fn from(src: &TxOut) -> Self {
+        Self {
+            public_key: src.public_key,
+            target_key: src.target_key,
+            commitment: src.masked_amount.commitment,
         }
     }
 }

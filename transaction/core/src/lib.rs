@@ -36,6 +36,7 @@ pub mod mint;
 pub mod onetime_keys;
 pub mod range_proofs;
 pub mod ring_signature;
+pub mod signer;
 pub mod tx;
 pub mod validation;
 

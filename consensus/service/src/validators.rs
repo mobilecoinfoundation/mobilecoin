@@ -494,6 +494,7 @@ mod combine_tests {
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_transaction_core::{
         onetime_keys::recover_onetime_private_key,
+        signer::NoKeysRingSigner,
         tokens::Mob,
         tx::{TxOut, TxOutMembershipProof},
         Amount, BlockVersion, Token,
@@ -591,7 +592,9 @@ mod combine_tests {
                 )
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).unwrap();
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .unwrap();
             let client_tx = WellFormedTxContext::from_tx(&tx, 0);
 
             // "Combining" a singleton set should return a vec containing the single
@@ -677,7 +680,9 @@ mod combine_tests {
                         )
                         .unwrap();
 
-                    let tx = transaction_builder.build(&mut rng).unwrap();
+                    let tx = transaction_builder
+                        .build(&NoKeysRingSigner {}, &mut rng)
+                        .unwrap();
                     WellFormedTxContext::from_tx(&tx, 0)
                 };
                 transaction_set.push(client_tx);
@@ -757,7 +762,9 @@ mod combine_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
                 WellFormedTxContext::from_tx(&tx, 0)
             };
 
@@ -799,7 +806,9 @@ mod combine_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
                 WellFormedTxContext::from_tx(&tx, 0)
             };
 
@@ -864,7 +873,9 @@ mod combine_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
                 WellFormedTxContext::from_tx(&tx, 0)
             };
 
@@ -956,7 +967,9 @@ mod combine_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
                 WellFormedTxContext::from_tx(&tx, 0)
             };
 
@@ -999,7 +1012,9 @@ mod combine_tests {
                     )
                     .unwrap();
 
-                let mut tx = transaction_builder.build(&mut rng).unwrap();
+                let mut tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
                 tx.prefix.outputs[0].public_key = first_client_tx.output_public_keys()[0];
                 WellFormedTxContext::from_tx(&tx, 0)
             };
@@ -1065,7 +1080,9 @@ mod combine_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
                 WellFormedTxContext::from_tx(&tx, 0)
             };
 

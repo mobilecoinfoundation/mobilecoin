@@ -15,8 +15,8 @@ use crate::{
 };
 use mc_api::ConversionError;
 use mc_transaction_core::{
-    mint::MintValidationError, ring_signature, validation::TransactionValidationError as Error,
-    BlockVersion, InputRuleError, TokenId,
+    mint::MintValidationError, ring_signature, ring_signature::MLSAGError,
+    validation::TransactionValidationError as Error, BlockVersion, InputRuleError, TokenId,
 };
 use std::convert::{From, TryFrom, TryInto};
 
@@ -84,7 +84,7 @@ impl TryInto<Error> for ProposeTxResult {
             Self::InsufficientInputSignatures => Ok(Error::InsufficientInputSignatures),
             Self::InvalidInputSignature => Ok(Error::InvalidInputSignature),
             Self::InvalidTransactionSignature => Ok(Error::InvalidTransactionSignature(
-                ring_signature::Error::InvalidSignature,
+                ring_signature::Error::MLSAG(MLSAGError::InvalidSignature),
             )),
             Self::InvalidRangeProof => Ok(Error::InvalidRangeProof),
             Self::InsufficientRingSize => Ok(Error::InsufficientRingSize),

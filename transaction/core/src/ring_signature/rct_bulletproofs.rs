@@ -17,7 +17,6 @@ use curve25519_dalek::{
 };
 use mc_common::HashSet;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
-use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_util_serial::prost::Message;
 use mc_util_zip_exact::zip_exact;
 use rand_core::{CryptoRng, RngCore};
@@ -28,25 +27,10 @@ use crate::{
     constants::FEE_BLINDING,
     domain_separators::EXTENDED_MESSAGE_DOMAIN_TAG,
     range_proofs::{check_range_proofs, generate_range_proofs},
-    ring_signature::{mlsag::RingMLSAG, Error, GeneratorCache, KeyImage, Scalar},
+    ring_signature::{mlsag::RingMLSAG, Error, GeneratorCache, KeyImage, ReducedTxOut, Scalar},
+    signer::{RingSigner, SignableInputRing},
     Amount, BlockVersion, Commitment, CompressedCommitment,
 };
-
-/// A representation of the part of the input ring needed to create an MLSAG
-#[derive(Clone, Debug)]
-pub struct SignableInputRing {
-    /// A reduced representation of the TxOut's in the ring. For each ring
-    /// member we have only:
-    /// * The onetime-address (tx_out.target_key)
-    /// * The compressed commitment (tx_out.amount.commitment)
-    pub members: Vec<(CompressedRistrettoPublic, CompressedCommitment)>,
-
-    /// The index of the real input among these ring members
-    pub real_input_index: usize,
-
-    /// The secrets needed to sign that input
-    pub input_secret: InputSecret,
-}
 
 /// A presigned RingMLSAG and ancillary data needed to incorporate it into a
 /// signature
@@ -81,19 +65,6 @@ impl InputRing {
     }
 }
 
-/// The secrets needed to create a signature that spends an existing output as
-/// an input
-#[derive(Clone, Debug, Zeroize)]
-#[zeroize(drop)]
-pub struct InputSecret {
-    /// The one-time private key for the output we are trying to spend
-    pub onetime_private_key: RistrettoPrivate,
-    /// The amount of the output
-    pub amount: Amount,
-    /// The blinding factor of the output we are trying to spend
-    pub blinding: Scalar,
-}
-
 /// The secrets corresponding to an output that we are trying to authorize
 /// creation of
 #[derive(Clone, Debug, Zeroize)]
@@ -112,7 +83,7 @@ pub struct SignedInputRing {
     /// member we have only:
     /// * The onetime-address (tx_out.target_key)
     /// * The compressed commitment (tx_out.amount.commitment)
-    pub members: Vec<(CompressedRistrettoPublic, CompressedCommitment)>,
+    pub members: Vec<ReducedTxOut>,
 
     /// The digest that this signature is supposed to have signed.
     /// If omitted, then the entire extended message digest should have been
@@ -176,12 +147,13 @@ impl SignatureRctBulletproofs {
     ///   amount commitment.
     /// * `fee` - Value of the implicit fee output.
     /// * `token id` - This determines the pedersen generator for commitments
-    pub fn sign<CSPRNG: RngCore + CryptoRng>(
+    pub fn sign<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
         block_version: BlockVersion,
         message: &[u8; 32],
         input_rings: &[InputRing],
         output_secrets: &[OutputSecret],
         fee: Amount,
+        signer: &S,
         rng: &mut CSPRNG,
     ) -> Result<Self, Error> {
         sign_with_balance_check(
@@ -191,6 +163,7 @@ impl SignatureRctBulletproofs {
             output_secrets,
             fee,
             true,
+            signer,
             rng,
         )
     }
@@ -476,13 +449,14 @@ impl SignatureRctBulletproofs {
 /// * `fee` - Amount of the implicit fee output.
 /// * `check_value_is_preserved` - If true, check that the value of inputs
 /// * `rng` - randomness
-fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
+fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
     block_version: BlockVersion,
     message: &[u8; 32],
     rings: &[InputRing],
     output_secrets: &[OutputSecret],
     fee: Amount,
     check_value_is_preserved: bool,
+    signer: &S,
     rng: &mut CSPRNG,
 ) -> Result<SignatureRctBulletproofs, Error> {
     if !block_version.masked_token_id_feature_is_supported() && fee.token_id != 0 {
@@ -700,18 +674,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
             |(ring, pseudo_output_blinding)| -> Result<RingMLSAG, Error> {
                 Ok(match ring {
                     InputRing::Signable(ring) => {
-                        let generator = generator_cache.get(ring.input_secret.amount.token_id);
-                        RingMLSAG::sign(
-                            &extended_message_digest,
-                            &ring.members,
-                            ring.real_input_index,
-                            &ring.input_secret.onetime_private_key,
-                            ring.input_secret.amount.value,
-                            &ring.input_secret.blinding,
-                            &pseudo_output_blinding,
-                            generator,
-                            rng,
-                        )?
+                        signer.sign(&extended_message_digest, ring, pseudo_output_blinding, rng)?
                     }
                     InputRing::Presigned(ring) => ring.mlsag.clone(),
                 })
@@ -889,7 +852,8 @@ mod rct_bulletproofs_tests {
     use super::*;
     use crate::{
         range_proofs::generate_range_proofs,
-        ring_signature::{generators, Error, KeyImage, PedersenGens},
+        ring_signature::{generators, Error, KeyImage, MLSAGError, PedersenGens, ReducedTxOut},
+        signer::{InputSecret, NoKeysRingSigner, OneTimeKeyDeriveData, SignableInputRing},
         CompressedCommitment, TokenId,
     };
     use alloc::vec::Vec;
@@ -963,24 +927,25 @@ mod rct_bulletproofs_tests {
             let mut rings = Vec::new();
 
             for i in 0..num_inputs {
-                let mut ring_members: Vec<(CompressedRistrettoPublic, CompressedCommitment)> =
-                    Vec::new();
+                let mut ring_members: Vec<ReducedTxOut> = Vec::new();
                 // Create random mixins.
                 for _i in 0..num_mixins {
+                    let public_key = CompressedRistrettoPublic::from_random(rng);
+                    let target_key = CompressedRistrettoPublic::from_random(rng);
                     let generator = generator_cache.get(fee_token_id);
-                    let address =
-                        CompressedRistrettoPublic::from(RistrettoPublic::from_random(rng));
                     let commitment = {
                         let value = rng.next_u64();
                         let blinding = Scalar::random(rng);
                         CompressedCommitment::new(value, blinding, generator)
                     };
-                    ring_members.push((address, commitment));
+                    ring_members.push(ReducedTxOut {
+                        public_key,
+                        target_key,
+                        commitment,
+                    });
                 }
                 // The real input.
                 let onetime_private_key = RistrettoPrivate::from_random(rng);
-                let onetime_public_key =
-                    CompressedRistrettoPublic::from(RistrettoPublic::from(&onetime_private_key));
 
                 let value = rng.next_u64();
                 let blinding = Scalar::random(rng);
@@ -990,14 +955,24 @@ mod rct_bulletproofs_tests {
 
                 let commitment = CompressedCommitment::new(value, blinding, generator);
 
+                let reduced_tx_out = ReducedTxOut {
+                    target_key: CompressedRistrettoPublic::from(RistrettoPublic::from(
+                        &onetime_private_key,
+                    )),
+                    public_key: CompressedRistrettoPublic::from_random(rng),
+                    commitment,
+                };
+
                 let real_input_index = rng.next_u64() as usize % (num_mixins + 1);
-                ring_members.insert(real_input_index, (onetime_public_key, commitment));
+                ring_members.insert(real_input_index, reduced_tx_out);
+
+                let onetime_key_derive_data = OneTimeKeyDeriveData::OneTimeKey(onetime_private_key);
 
                 rings.push(SignableInputRing {
                     members: ring_members,
                     real_input_index,
                     input_secret: InputSecret {
-                        onetime_private_key,
+                        onetime_key_derive_data,
                         amount: Amount::new(value, token_id),
                         blinding,
                     },
@@ -1061,6 +1036,7 @@ mod rct_bulletproofs_tests {
                 &self.get_input_rings(),
                 &self.output_secrets,
                 Amount::new(fee, self.fee_token_id),
+                &NoKeysRingSigner {},
                 rng,
             )
         }
@@ -1077,6 +1053,7 @@ mod rct_bulletproofs_tests {
                 &self.output_secrets,
                 Amount::new(fee, self.fee_token_id),
                 false,
+                &NoKeysRingSigner {},
                 rng,
             )
         }
@@ -1232,7 +1209,7 @@ mod rct_bulletproofs_tests {
                 &mut rng,
             );
 
-            assert_eq!(result, Err(Error::InvalidSignature));
+            assert_eq!(result, Err(Error::MLSAG(MLSAGError::InvalidSignature)));
         }
 
         #[test]

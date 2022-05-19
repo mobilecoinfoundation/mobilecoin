@@ -40,6 +40,7 @@ use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
+    signer::NoKeysRingSigner,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
@@ -825,7 +826,9 @@ fn build_tx(
     tx_builder.set_tombstone_block(tombstone_block);
 
     // Build and return tx.
-    tx_builder.build(&mut rng).expect("failed building tx")
+    tx_builder
+        .build(&NoKeysRingSigner {}, &mut rng)
+        .expect("failed building tx")
 }
 
 /// Get merkle proofs of membership from the ledger for several utxos
