@@ -162,7 +162,7 @@ do
 done
 
 if [[ "${SKIP_RUSTFMT}" == 1 ]]; then
-	printf "${SKIPPED}\n"$?
+	printf "${SKIPPED}\n"
 elif [[ -n "$diff" ]]; then
 	FAILED=1
 	printf "${FAILURE}\n"
