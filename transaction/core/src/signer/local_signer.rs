@@ -37,7 +37,7 @@ impl RingSigner for LocalRingSigner {
 
                 recover_onetime_private_key(
                     &public_key,
-                    &self.key.view_private_key(),
+                    self.key.view_private_key(),
                     &self.key.subaddress_spend_private(subaddress_index),
                 )
             }
@@ -53,7 +53,7 @@ impl RingSigner for LocalRingSigner {
 
         // Sign the MLSAG
         Ok(RingMLSAG::sign(
-            &message,
+            message,
             &ring.members,
             ring.real_input_index,
             &onetime_private_key,

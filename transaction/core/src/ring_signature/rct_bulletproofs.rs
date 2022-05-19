@@ -674,7 +674,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
             |(ring, pseudo_output_blinding)| -> Result<RingMLSAG, Error> {
                 Ok(match ring {
                     InputRing::Signable(ring) => {
-                        signer.sign(&extended_message_digest, &ring, pseudo_output_blinding, rng)?
+                        signer.sign(&extended_message_digest, ring, pseudo_output_blinding, rng)?
                     }
                     InputRing::Presigned(ring) => ring.mlsag.clone(),
                 })

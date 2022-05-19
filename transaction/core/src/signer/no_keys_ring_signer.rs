@@ -48,7 +48,7 @@ impl RingSigner for NoKeysRingSigner {
 
         // Sign the MLSAG
         Ok(RingMLSAG::sign(
-            &message,
+            message,
             &ring.members,
             ring.real_input_index,
             &onetime_private_key,
