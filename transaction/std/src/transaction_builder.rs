@@ -649,7 +649,7 @@ pub mod transaction_builder_tests {
         get_tx_out_shared_secret,
         onetime_keys::*,
         ring_signature::KeyImage,
-        signer::{NoKeysRingSigner, OneTimeKeyDeriveData, InputSecret},
+        signer::{InputSecret, NoKeysRingSigner, OneTimeKeyDeriveData},
         subaddress_matches_tx_out,
         tx::TxOutMembershipProof,
         validation::{validate_signature, validate_tx_out},
@@ -3202,6 +3202,10 @@ pub mod transaction_builder_tests {
             funding_transaction_builder.add_input(funding_input_credentials);
 
             // Fund gift code TxOut
+            // FIXME: This should be `.add_gift_code_output` or someting, so that
+            // it goes to the gift code subaddress, but the fog hint is using the
+            // default subaddress
+            // (or, make a special builder for gift code funding transactions?)
             funding_transaction_builder
                 .add_output(
                     funding_output_amount,
@@ -3218,7 +3222,9 @@ pub mod transaction_builder_tests {
                 )
                 .unwrap();
 
-            let funding_tx = funding_transaction_builder.build(&NoKeysRingSigner{}, &mut rng).unwrap();
+            let funding_tx = funding_transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .unwrap();
 
             // The transaction should have exactly 2 outputs
             assert_eq!(funding_tx.prefix.outputs.len(), 2);
@@ -3298,7 +3304,7 @@ pub mod transaction_builder_tests {
             let global_index = 42;
             let gift_code_tx_out_private_key = recover_onetime_private_key(
                 funding_output_public_key,
-                sender.spend_private_key(),
+                sender.view_private_key(),
                 &sender.gift_code_subaddress_spend_private(),
             );
             let tx_out_gift_code = TxOutGiftCode {
@@ -3376,7 +3382,9 @@ pub mod transaction_builder_tests {
                 )
                 .unwrap();
 
-            let tx = transaction_builder.build(&NoKeysRingSigner{}, &mut rng).unwrap();
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .unwrap();
 
             // Verify the sender transaction was valid
             assert_eq!(tx.prefix.outputs.len(), 1);
@@ -3449,7 +3457,9 @@ pub mod transaction_builder_tests {
                 )
                 .unwrap();
 
-            let tx = transaction_builder.build(&NoKeysRingSigner{}, &mut rng).unwrap();
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .unwrap();
 
             // The transaction should have exactly 1 output
             assert_eq!(tx.prefix.outputs.len(), 1);
