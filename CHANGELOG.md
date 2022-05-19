@@ -13,6 +13,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
     or passed as comma-separated values via environment or command-line args.
 
 ### Changed
+ - Updated SGX to 2.16
 
 ### Rust Dependencies
 * Updated `rust-toolchain` version to newer nightly
