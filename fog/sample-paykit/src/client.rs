@@ -32,7 +32,7 @@ use mc_transaction_core::{
     Amount, BlockIndex, BlockVersion, SignedContingentInput, TokenId,
 };
 use mc_transaction_std::{
-    EmptyMemoBuilder, InputCredentials, MemoType, RTHMemoBuilder, ReservedDestination,
+    EmptyMemoBuilder, InputCredentials, MemoType, RTHMemoBuilder, ReservedSubaddresses,
     SenderMemoCredential, SignedContingentInputBuilder, TransactionBuilder,
 };
 use mc_util_telemetry::{block_span_builder, telemetry_static_key, tracer, Key, Span};
@@ -435,7 +435,7 @@ impl Client {
             .add_required_output(requested, &self.account_key.default_subaddress(), rng)
             .map_err(Error::AddOutput)?;
 
-        let change_destination = ReservedDestination::from(&self.account_key);
+        let change_destination = ReservedSubaddresses::from(&self.account_key);
 
         sci_builder
             .add_required_change_output(change, &change_destination, rng)
@@ -589,7 +589,7 @@ impl Client {
 
         let block_version = BlockVersion::try_from(self.tx_data.get_latest_block_version())?;
 
-        let change_destination = ReservedDestination::from(&self.account_key);
+        let change_destination = ReservedSubaddresses::from(&self.account_key);
 
         // Make transaction builder
         // TODO: Use RTH memos
@@ -913,7 +913,7 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
         .map_err(Error::AddOutput)?;
 
     // Add change output
-    let change_destination = ReservedDestination::from(source_account_key);
+    let change_destination = ReservedSubaddresses::from(source_account_key);
     tx_builder
         .add_change_output(
             Amount::new(change, amount.token_id),

@@ -3,7 +3,7 @@
 //! Utilities that help with testing the transaction builder and related objects
 
 use crate::{
-    EmptyMemoBuilder, InputCredentials, MemoBuilder, MemoPayload, ReservedDestination,
+    EmptyMemoBuilder, InputCredentials, MemoBuilder, MemoPayload, ReservedSubaddresses,
     TransactionBuilder, TxBuilderError,
 };
 use core::convert::TryFrom;
@@ -221,7 +221,7 @@ pub fn build_change_memo_with_amount(
     // Create simulated context
     let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
     let alice = AccountKey::random_with_fog(&mut rng);
-    let alice_address_book = ReservedDestination::from(&alice);
+    let alice_address_book = ReservedSubaddresses::from(&alice);
     let change_tx_pubkey = RistrettoPublic::from_random(&mut rng);
     let memo_context = MemoContext {
         tx_public_key: &change_tx_pubkey,

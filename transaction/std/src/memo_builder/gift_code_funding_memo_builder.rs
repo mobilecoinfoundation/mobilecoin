@@ -5,7 +5,7 @@
 
 use crate::{
     memo::{GiftCodeFundingMemo, UnusedMemo},
-    MemoBuilder, ReservedDestination,
+    MemoBuilder, ReservedSubaddresses,
 };
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::RistrettoPublic;
@@ -86,7 +86,7 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
     fn make_memo_for_change_output(
         &mut self,
         _amount: Amount,
-        _change_destination: &ReservedDestination,
+        _change_destination: &ReservedSubaddresses,
         memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
         if self.wrote_change_memo {
@@ -118,7 +118,7 @@ mod tests {
         // Create simulated context
         let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
         let alice = AccountKey::random_with_fog(&mut rng);
-        let alice_address_book = ReservedDestination::from(&alice);
+        let alice_address_book = ReservedSubaddresses::from(&alice);
         let change_tx_pubkey = RistrettoPublic::from_random(&mut rng);
         let change_amount = Amount::new(1, 0.into());
         let funding_amount = Amount::new(10, 0.into());
@@ -221,7 +221,7 @@ mod tests {
 
         // Build a memo
         let alice = AccountKey::random_with_fog(&mut rng);
-        let alice_address_book = ReservedDestination::from(&alice);
+        let alice_address_book = ReservedSubaddresses::from(&alice);
         let change_amount = Amount::new(666, 666.into());
 
         // Erroneously set funding TxOut pubkey to the change TxOut pubkey
@@ -256,7 +256,7 @@ mod tests {
 
         // Build a memo
         let alice = AccountKey::random_with_fog(&mut rng);
-        let alice_address_book = ReservedDestination::from(&alice);
+        let alice_address_book = ReservedSubaddresses::from(&alice);
         let change_amount = Amount::new(666, 666.into());
 
         // Write 2 change outputs

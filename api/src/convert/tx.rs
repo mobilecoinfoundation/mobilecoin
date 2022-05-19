@@ -34,7 +34,7 @@ mod tests {
         constants::MILLIMOB_TO_PICOMOB, tokens::Mob, tx::Tx, Amount, BlockVersion, Token, TokenId,
     };
     use mc_transaction_std::{
-        test_utils::get_input_credentials, EmptyMemoBuilder, ReservedDestination,
+        test_utils::get_input_credentials, EmptyMemoBuilder, ReservedSubaddresses,
         SignedContingentInputBuilder, TransactionBuilder,
     };
     use protobuf::Message;
@@ -187,7 +187,7 @@ mod tests {
             transaction_builder
                 .add_change_output(
                     Amount::new(475 * MILLIMOB_TO_PICOMOB - Mob::MINIMUM_FEE, Mob::ID),
-                    &ReservedDestination::from(&alice),
+                    &ReservedSubaddresses::from(&alice),
                     &mut rng,
                 )
                 .unwrap();

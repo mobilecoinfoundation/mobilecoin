@@ -3,7 +3,7 @@
 //! Defines the Memo Builder for the gift code sender memo (0x0002)
 //! specified in MCIP #32
 
-use crate::{memo::GiftCodeSenderMemo, MemoBuilder, ReservedDestination};
+use crate::{memo::GiftCodeSenderMemo, MemoBuilder, ReservedSubaddresses};
 use mc_account_keys::PublicAddress;
 use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
 
@@ -68,7 +68,7 @@ impl MemoBuilder for GiftCodeSenderMemoBuilder {
     fn make_memo_for_change_output(
         &mut self,
         _amount: Amount,
-        _change_destination: &ReservedDestination,
+        _change_destination: &ReservedSubaddresses,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
         if self.wrote_change_memo {
