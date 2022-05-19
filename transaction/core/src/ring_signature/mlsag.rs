@@ -113,7 +113,7 @@ impl RingMLSAG {
     //
     // # Arguments
     // * `message` - Message to be signed.
-    // * `ring` - A ring of reduced TxOut's
+    // * `ring` - A ring of reduced TxOuts
     // * `real_index` - The index in the ring of the real input.
     // * `onetime_private_key` - The real input's private key.
     // * `value` - Value of the real input.
