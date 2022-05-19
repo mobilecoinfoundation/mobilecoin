@@ -43,6 +43,13 @@ pub struct McTxOutMaskedAmount<'a> {
     masked_token_id: FfiRefPtr<'a, McBuffer<'a>>,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct McTxOutAmount {
+    value: u64,
+    token_id: u64,
+}
+
 pub type McTxOutMemoBuilder = Option<Box<dyn MemoBuilder + Sync + Send>>;
 impl_into_ffi!(Option<Box<dyn MemoBuilder + Sync + Send>>);
 
@@ -182,6 +189,7 @@ pub extern "C" fn mc_tx_out_get_amount(
     tx_out_masked_amount: FfiRefPtr<McTxOutMaskedAmount>,
     tx_out_public_key: FfiRefPtr<McBuffer>,
     view_private_key: FfiRefPtr<McBuffer>,
+    out_amount: FfiMutPtr<McTxOutAmount>,
     out_value: FfiMutPtr<u64>,
     out_token_id: FfiMutPtr<u64>,
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
@@ -194,12 +202,48 @@ pub extern "C" fn mc_tx_out_get_amount(
         let (_masked_amount, amount) =
             MaskedAmount::reconstruct(tx_out_masked_amount.masked_value, &tx_out_masked_amount.masked_token_id, &shared_secret)?;
 
+        let mut amount_mut = McTxOutAmount {
+            value: amount.value,
+            token_id: *amount.token_id
+        }
+
         // FIXME #1596: This should also return the amount.token_id
+        //let mut_out_amount = out_amount.into_mut();
+        //mut_out_amount.value = amount.value;
+        //mut_out_amount.token_id = *amount.token_id;
+        *out_amount.into_mut() = *amount_mut;
         *out_value.into_mut() = amount.value;
         *out_token_id.into_mut() = *amount.token_id; // TODO - figure out how to convert TokenID to bytes
         Ok(())
     })
 }
+
+/// # Preconditions
+///
+/// * `shared_secret` - must be a valid 32-byte Ristretto-format
+///   scalar.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+/// * `LibMcError::TransactionCrypto`
+//#[no_mangle]
+//pub extern "C" fn mc_shared_secret_encrypt_blob(
+    //blob: FfiRefPtr<McBuffer>,
+    //shared_secret: FfiRefPtr<McBuffer>,
+    //out_encrypted_blob: FfiMutPtr<McMutableBuffer>,
+    //out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+//) -> bool {
+    //ffi_boundary_with_error(out_error, || {
+        //// ...
+        //let shared_secret =
+            //RistrettoPublic::try_from_ffi(&shared_secret)
+                //.expect("shared_secret is not a valid RistrettoPublic");
+
+        //// ... 
+        //Ok(())
+    //})
+//}
 
 /// # Preconditions
 ///
