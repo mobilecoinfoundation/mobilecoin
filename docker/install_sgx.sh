@@ -57,6 +57,8 @@ apt-get install -yq --no-install-recommends \
 	libsgx-uae-service \
 	sgx-aesm-service
 
+# Install *after* pkg-config so that they get registered correctly.
+# pkg-config gets pulled in transitively via build-essential
 chmod +x ./sgx_linux_x64_sdk_2.16.100.4.bin
 ./sgx_linux_x64_sdk_2.16.100.4.bin --prefix=/opt/intel
 

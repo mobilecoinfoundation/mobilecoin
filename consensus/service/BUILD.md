@@ -108,8 +108,8 @@ wget -O- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | \
 	gpg --dearmor > /etc/apt/trusted.gpg.d/intel-sgx-archive-keyring.gpg
 
 # Install the EPID/OOT kernel driver
-chmod +x ./sgx_linux_x64_driver_2.11.0_2d2b795.bin
-./sgx_linux_x64_driver_2.11.0_2d2b795.bin
+chmod +x ./sgx_linux_x64_driver_2.11.054c9c4c.bin
+./sgx_linux_x64_driver_2.11.054c9c4c.bin
 
 # Install the SDK to /opt/intel/sgxsdk
 chmod +x ./sgx_linux_x64_sdk_2.16.100.4.bin
