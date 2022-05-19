@@ -3202,7 +3202,7 @@ pub mod transaction_builder_tests {
             funding_transaction_builder.add_input(funding_input_credentials);
 
             // Fund gift code TxOut
-            // FIXME: This should be `.add_gift_code_output` or someting, so that
+            // FIXME #2003: This should be `.add_gift_code_output` or something, so that
             // it goes to the gift code subaddress, but the fog hint is using the
             // default subaddress
             // (or, make a special builder for gift code funding transactions?)
