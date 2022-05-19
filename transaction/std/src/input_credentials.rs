@@ -100,6 +100,16 @@ impl InputCredentials {
             input_secret,
         })
     }
+
+    // Get the one-time private key from the InputCredentials, panicking if
+    // it doesn't contain this. This makes many tests much shorter.
+    #[cfg(any(test, feature = "test-only"))]
+    pub fn assert_has_onetime_private_key(&self) -> &RistrettoPrivate {
+        match &self.input_secret.onetime_key_derive_data {
+            OneTimeKeyDeriveData::OneTimeKey(key) => &key,
+            OneTimeKeyDeriveData::SubaddressIndex(_) => panic!("missing one time private key"),
+        }
+    }
 }
 
 impl From<InputCredentials> for SignableInputRing {

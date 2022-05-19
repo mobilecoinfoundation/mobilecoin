@@ -644,7 +644,8 @@ pub mod transaction_builder_tests {
         constants::{MAX_INPUTS, MAX_OUTPUTS, MILLIMOB_TO_PICOMOB},
         get_tx_out_shared_secret,
         onetime_keys::*,
-        ring_signature::{InputSecret, KeyImage},
+        ring_signature::{KeyImage},
+        signer::{InputSecret, NoKeysRingSigner},
         subaddress_matches_tx_out,
         tx::TxOutMembershipProof,
         validation::{validate_signature, validate_tx_out},
@@ -682,7 +683,7 @@ pub mod transaction_builder_tests {
                 get_input_credentials(block_version, amount, &sender, &fpr, &mut rng);
 
             let membership_proofs = input_credentials.membership_proofs.clone();
-            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
@@ -701,7 +702,9 @@ pub mod transaction_builder_tests {
                 )
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).unwrap();
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .unwrap();
 
             // The transaction should have a single input.
             assert_eq!(tx.prefix.inputs.len(), 1);
@@ -764,7 +767,7 @@ pub mod transaction_builder_tests {
                 get_input_credentials(block_version, amount, &sender, &fog_resolver, &mut rng);
 
             let membership_proofs = input_credentials.membership_proofs.clone();
-            let key_image = KeyImage::from(&input_credentials.input_secret.onetime_private_key);
+            let key_image = KeyImage::from(input_credentials.assert_has_onetime_private_key());
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
@@ -783,7 +786,9 @@ pub mod transaction_builder_tests {
                 )
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).unwrap();
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .unwrap();
 
             // The transaction should have a single input.
             assert_eq!(tx.prefix.inputs.len(), 1);
@@ -879,7 +884,9 @@ pub mod transaction_builder_tests {
                 )
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).unwrap();
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .unwrap();
 
             // The transaction should have one output.
             assert_eq!(tx.prefix.outputs.len(), 1);
@@ -955,7 +962,9 @@ pub mod transaction_builder_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
 
                 // The transaction should have one output.
                 assert_eq!(tx.prefix.outputs.len(), 1);
@@ -990,7 +999,9 @@ pub mod transaction_builder_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
 
                 // The transaction should have one output.
                 assert_eq!(tx.prefix.outputs.len(), 1);
@@ -1067,7 +1078,9 @@ pub mod transaction_builder_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
 
                 // The transaction should have two output.
                 assert_eq!(tx.prefix.outputs.len(), 2);
@@ -1248,7 +1261,9 @@ pub mod transaction_builder_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
 
                 // The transaction should have two output.
                 assert_eq!(tx.prefix.outputs.len(), 2);
@@ -1410,7 +1425,9 @@ pub mod transaction_builder_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
 
                 // The transaction should have two output.
                 assert_eq!(tx.prefix.outputs.len(), 2);
@@ -1572,7 +1589,9 @@ pub mod transaction_builder_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
 
                 // The transaction should have two output.
                 assert_eq!(tx.prefix.outputs.len(), 2);
@@ -1734,7 +1753,9 @@ pub mod transaction_builder_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
 
                 // The transaction should have two output.
                 assert_eq!(tx.prefix.outputs.len(), 2);
@@ -1884,7 +1905,9 @@ pub mod transaction_builder_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
 
                 // The transaction should have two output.
                 assert_eq!(tx.prefix.outputs.len(), 2);
@@ -2059,7 +2082,9 @@ pub mod transaction_builder_tests {
                     )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
 
                 // The transaction should have two output.
                 assert_eq!(tx.prefix.outputs.len(), 2);
@@ -2278,7 +2303,9 @@ pub mod transaction_builder_tests {
                     "Adding a second change output should be rejected"
                 );
 
-                transaction_builder.build(&mut rng).unwrap();
+                transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
             }
         }
     }
@@ -2350,7 +2377,7 @@ pub mod transaction_builder_tests {
                 )
                 .unwrap();
 
-            let result = transaction_builder.build(&mut rng);
+            let result = transaction_builder.build(&NoKeysRingSigner {}, &mut rng);
             // Signing should fail if value is not conserved.
             match result {
                 Err(TxBuilderError::RingSignatureFailed(_)) => {} // Expected.
@@ -2533,7 +2560,9 @@ pub mod transaction_builder_tests {
                 )
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).unwrap();
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .unwrap();
 
             assert_eq!(tx.prefix.outputs.len(), 2);
             let idx = tx
@@ -2768,7 +2797,9 @@ pub mod transaction_builder_tests {
                 .add_output(Amount::new(110, token_id), &burn_address(), &mut rng)
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).expect("build tx");
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .expect("build tx");
 
             assert_eq!(tx.prefix.outputs.len(), 1);
             assert_eq!(burn_output, tx.prefix.outputs[0]);
@@ -2828,7 +2859,9 @@ pub mod transaction_builder_tests {
                 .add_change_output(Amount::new(10, token_id), &change_destination, &mut rng)
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).expect("build tx");
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .expect("build tx");
 
             assert_eq!(tx.prefix.outputs.len(), 2);
 
@@ -2968,7 +3001,9 @@ pub mod transaction_builder_tests {
                 .add_change_output(change_amount, &sender_change_dest, &mut rng)
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).unwrap();
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .unwrap();
 
             assert_eq!(tx.prefix.outputs.len(), 3);
             let idx1 = tx
@@ -3099,7 +3134,7 @@ pub mod transaction_builder_tests {
                 .add_change_output(change_amount, &sender_change_dest, &mut rng)
                 .unwrap();
 
-            transaction_builder.build(&mut rng)
+            transaction_builder.build(&NoKeysRingSigner {}, &mut rng)
         };
 
         for block_version in 3..=*BlockVersion::MAX {
@@ -3179,7 +3214,7 @@ pub mod transaction_builder_tests {
                 )
                 .unwrap();
 
-            let funding_tx = funding_transaction_builder.build(&mut rng).unwrap();
+            let funding_tx = funding_transaction_builder.build(&NoKeysRingSigner{}, &mut rng).unwrap();
 
             // The transaction should have exactly 2 outputs
             assert_eq!(funding_tx.prefix.outputs.len(), 2);
@@ -3320,7 +3355,7 @@ pub mod transaction_builder_tests {
                 membership_proofs,
                 real_index,
                 input_secret: InputSecret {
-                    onetime_private_key: gift_code_tx_out_private_key,
+                    onetime_key_derive_data: gift_code_tx_out_private_key.into(),
                     amount: sending_input_amount,
                     blinding,
                 },
@@ -3337,7 +3372,7 @@ pub mod transaction_builder_tests {
                 )
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).unwrap();
+            let tx = transaction_builder.build(&NoKeysRingSigner{}, &mut rng).unwrap();
 
             // Verify the sender transaction was valid
             assert_eq!(tx.prefix.outputs.len(), 1);
@@ -3410,7 +3445,7 @@ pub mod transaction_builder_tests {
                 )
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).unwrap();
+            let tx = transaction_builder.build(&NoKeysRingSigner{}, &mut rng).unwrap();
 
             // The transaction should have exactly 1 output
             assert_eq!(tx.prefix.outputs.len(), 1);
