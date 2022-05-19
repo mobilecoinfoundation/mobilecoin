@@ -10,6 +10,7 @@ use mc_transaction_core::mint::{MintConfigTx, MintTx};
 use serde::{Deserialize, Serialize};
 use serde_json::Error as JsonError;
 use std::{
+    compare::TryFrom,
     fs,
     io::Error as IoError,
     path::{Path, PathBuf},
