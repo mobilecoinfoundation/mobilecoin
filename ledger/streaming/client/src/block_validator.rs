@@ -39,7 +39,7 @@ impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, L: Ledger + 'static>
 impl<US: Streamer<Result<BlockData>, BlockIndex>, L: Ledger + Clone + 'static>
     Streamer<Result<BlockData>, BlockIndex> for BlockValidator<US, L>
 {
-    type Stream<'s> = impl Stream<Item = Result<BlockData>> + 's;
+    type Stream<'s> = impl Stream<Item = Result<BlockData>> + 's where US: 's;
 
     /// Get block stream that performs validation
     fn get_stream(&self, starting_height: BlockIndex) -> Result<Self::Stream<'_>> {
