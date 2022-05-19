@@ -57,6 +57,12 @@ pub enum OneTimeKeyDeriveData {
     SubaddressIndex(u64),
 }
 
+impl From<RistrettoPrivate> for OneTimeKeyDeriveData {
+    fn from(src: RistrettoPrivate) -> Self {
+        Self::OneTimeKey(src)
+    }
+}
+
 /// An abstraction over a set of private spend keys. This is intended to
 /// represent either "local" keys or keys living on a remote device.
 ///
@@ -95,6 +101,19 @@ pub trait RingSigner {
         output_blinding: Scalar,
         rng: &mut dyn CryptoRngCore,
     ) -> Result<RingMLSAG, Error>;
+}
+
+// Implement RingSigner for any &RingSigner
+impl<S: RingSigner> RingSigner for &S {
+    fn sign(
+        &self,
+        message: &[u8],
+        signable_ring: &SignableInputRing,
+        output_blinding: Scalar,
+        rng: &mut dyn CryptoRngCore,
+    ) -> Result<RingMLSAG, Error> {
+        (*self).sign(message, signable_ring, output_blinding, rng)
+    }
 }
 
 /// An error that can occur when using an abstract RingSigner

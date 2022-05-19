@@ -423,7 +423,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     }
 
     /// Consume the builder and return the transaction.
-    pub fn build<RNG: CryptoRng + RngCore, S: RingSigner>(
+    pub fn build<RNG: CryptoRng + RngCore, S: RingSigner + ?Sized>(
         self,
         ring_signer: &S,
         rng: &mut RNG,
@@ -434,7 +434,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// Consume the builder and return the transaction with a comparer.
     /// Used only in testing library.
     #[cfg(feature = "test-only")]
-    pub fn build_with_sorter<RNG: CryptoRng + RngCore, O: TxOutputsOrdering, S: RingSigner>(
+    pub fn build_with_sorter<
+        RNG: CryptoRng + RngCore,
+        O: TxOutputsOrdering,
+        S: RingSigner + ?Sized,
+    >(
         self,
         ring_signer: &S,
         rng: &mut RNG,
@@ -447,7 +451,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     fn build_with_comparer_internal<
         RNG: CryptoRng + RngCore,
         O: TxOutputsOrdering,
-        S: RingSigner,
+        S: RingSigner + ?Sized,
     >(
         mut self,
         ring_signer: &S,
@@ -644,8 +648,8 @@ pub mod transaction_builder_tests {
         constants::{MAX_INPUTS, MAX_OUTPUTS, MILLIMOB_TO_PICOMOB},
         get_tx_out_shared_secret,
         onetime_keys::*,
-        ring_signature::{KeyImage},
-        signer::{InputSecret, NoKeysRingSigner},
+        ring_signature::KeyImage,
+        signer::{NoKeysRingSigner, OneTimeKeyDeriveData, InputSecret},
         subaddress_matches_tx_out,
         tx::TxOutMembershipProof,
         validation::{validate_signature, validate_tx_out},
@@ -2354,7 +2358,7 @@ pub mod transaction_builder_tests {
                 ring,
                 membership_proofs,
                 real_index,
-                onetime_private_key,
+                OneTimeKeyDeriveData::OneTimeKey(onetime_private_key),
                 *alice.view_private_key(),
             )
             .unwrap();

@@ -42,7 +42,7 @@ impl InputCredentials {
         ring: Vec<TxOut>,
         membership_proofs: Vec<TxOutMembershipProof>,
         real_index: usize,
-        onetime_private_key: RistrettoPrivate,
+        onetime_key_derive_data: impl Into<OneTimeKeyDeriveData>,
         view_private_key: RistrettoPrivate,
     ) -> Result<Self, TxBuilderError> {
         debug_assert_eq!(ring.len(), membership_proofs.len());
@@ -84,9 +84,7 @@ impl InputCredentials {
         let masked_amount = &ring[real_index].masked_amount;
         let (amount, blinding) = masked_amount.get_value(&tx_out_shared_secret)?;
 
-        // We always have the one-time key in this flow
-        let onetime_key_derive_data = OneTimeKeyDeriveData::OneTimeKey(onetime_private_key);
-
+        let onetime_key_derive_data = onetime_key_derive_data.into();
         let input_secret = InputSecret {
             onetime_key_derive_data,
             amount,

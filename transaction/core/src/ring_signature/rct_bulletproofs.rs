@@ -147,13 +147,13 @@ impl SignatureRctBulletproofs {
     ///   amount commitment.
     /// * `fee` - Value of the implicit fee output.
     /// * `token id` - This determines the pedersen generator for commitments
-    pub fn sign<CSPRNG: RngCore + CryptoRng>(
+    pub fn sign<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
         block_version: BlockVersion,
         message: &[u8; 32],
         input_rings: &[InputRing],
         output_secrets: &[OutputSecret],
         fee: Amount,
-        signer: &impl RingSigner,
+        signer: &S,
         rng: &mut CSPRNG,
     ) -> Result<Self, Error> {
         sign_with_balance_check(
@@ -449,14 +449,14 @@ impl SignatureRctBulletproofs {
 /// * `fee` - Amount of the implicit fee output.
 /// * `check_value_is_preserved` - If true, check that the value of inputs
 /// * `rng` - randomness
-fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
+fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng, S: RingSigner + ?Sized>(
     block_version: BlockVersion,
     message: &[u8; 32],
     rings: &[InputRing],
     output_secrets: &[OutputSecret],
     fee: Amount,
     check_value_is_preserved: bool,
-    signer: &impl RingSigner,
+    signer: &S,
     rng: &mut CSPRNG,
 ) -> Result<SignatureRctBulletproofs, Error> {
     if !block_version.masked_token_id_feature_is_supported() && fee.token_id != 0 {
