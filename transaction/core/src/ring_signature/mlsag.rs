@@ -25,6 +25,9 @@ use crate::{
 ///
 /// This is needed because &mut (dyn RngCore + CryptoRng) is not valid in rust
 /// right now and we need this to make the ring signer trait work as desired
+//
+// Note: This trait can go away if it is upstreamed to rand-core:
+// https://github.com/rust-random/rand/pull/1230
 pub trait CryptoRngCore: RngCore + CryptoRng {}
 
 impl<T> CryptoRngCore for T where T: RngCore + CryptoRng {}
@@ -131,6 +134,8 @@ impl RingMLSAG {
         output_blinding: &Scalar,
         generator: &PedersenGens,
         check_value_is_preserved: bool,
+        // Note: this `mut rng` can just be `rng` if this is merged upstream:
+        // https://github.com/dalek-cryptography/curve25519-dalek/pull/394
         mut rng: &mut dyn CryptoRngCore,
     ) -> Result<Self, MLSAGError> {
         let ring_size = ring.len();
