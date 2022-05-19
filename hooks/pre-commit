@@ -184,7 +184,7 @@ elif [[ -n "$diff" ]]; then
 		fi
 		exec <&-
 	else
-        echo -e "Add copyright statements to the files."
+		echo -e "Add copyright statements to the files."
 	fi
 else
 	printf "${SUCCESS}\n"
