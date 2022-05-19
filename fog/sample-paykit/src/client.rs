@@ -1034,7 +1034,6 @@ mod test_build_transaction_helper {
     use mc_transaction_core::{
         constants::MILLIMOB_TO_PICOMOB,
         onetime_keys::recover_public_subaddress_spend_key,
-        signer::NoKeysRingSigner,
         tokens::Mob,
         tx::{TxOut, TxOutMembershipProof},
         Amount, Token,
@@ -1156,7 +1155,7 @@ mod test_build_transaction_helper {
                 &recipient_account_key.default_subaddress(),
                 super::BlockIndex::max_value(),
                 fake_acct_resolver,
-                &NoKeysRingSigner {},
+                &LocalRingSigner::from(&sender_account_key),
                 &mut rng,
                 &logger,
                 Mob::MINIMUM_FEE,
