@@ -413,6 +413,9 @@ mod tests {
                 ready(())
             })
             .await;
-        mock_requests.into_iter().for_each(|m| m.assert());
+
+        for m in mock_requests {
+            m.assert();
+        }
     }
 }
