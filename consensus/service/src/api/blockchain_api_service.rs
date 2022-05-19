@@ -189,17 +189,7 @@ mod tests {
     use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
     use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator};
     use rand::{rngs::StdRng, SeedableRng};
-    use std::{
-        collections::HashMap,
-        iter::FromIterator,
-        sync::atomic::{AtomicUsize, Ordering::SeqCst},
-        time::Duration,
-    };
-
-    fn get_free_port() -> u16 {
-        static PORT_NR: AtomicUsize = AtomicUsize::new(0);
-        PORT_NR.fetch_add(1, SeqCst) as u16 + 30200
-    }
+    use std::{collections::HashMap, iter::FromIterator, time::Duration};
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server<L: Ledger + Clone + 'static>(
@@ -209,7 +199,7 @@ mod tests {
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
-            .bind("127.0.0.1", get_free_port())
+            .bind("127.0.0.1", 0)
             .build()
             .unwrap();
         server.start();
@@ -223,7 +213,7 @@ mod tests {
     // `get_last_block_info` should returns the last block.
     fn test_get_last_block_info(logger: Logger) {
         let fee_map =
-            FeeMap::try_from_iter([(Mob::ID, 12345), (TokenId::from(60), 10203040)]).unwrap();
+            FeeMap::try_from_iter([(Mob::ID, 4000000000), (TokenId::from(60), 128000)]).unwrap();
 
         let mut ledger_db = create_ledger();
         let authenticator = Arc::new(AnonymousAuthenticator::default());
@@ -239,8 +229,8 @@ mod tests {
 
         let mut expected_response = LastBlockInfoResponse::new();
         expected_response.set_index(block_entities.last().unwrap().index);
-        expected_response.set_mob_minimum_fee(12345);
-        expected_response.set_minimum_fees(HashMap::from_iter(vec![(0, 12345), (60, 10203040)]));
+        expected_response.set_mob_minimum_fee(4000000000);
+        expected_response.set_minimum_fees(HashMap::from_iter(vec![(0, 4000000000), (60, 128000)]));
         expected_response.set_network_block_version(*BlockVersion::MAX);
         assert_eq!(
             block_entities.last().unwrap().index,

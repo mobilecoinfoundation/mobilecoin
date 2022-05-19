@@ -32,7 +32,7 @@ impl Streamer<Result<BlockData>, BlockIndex> for MockStream {
 
     fn get_stream(&self, starting_height: BlockIndex) -> Result<Self::Stream<'_>> {
         let start_index = starting_height as usize;
-        let items = self.items.iter().cloned().skip(start_index);
+        let items = self.items.iter().skip(start_index).cloned();
         Ok(futures::stream::iter(items))
     }
 }

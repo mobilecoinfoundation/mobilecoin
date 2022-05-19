@@ -2,12 +2,17 @@
 
 use crate::TxBuilderError;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
-use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
+use mc_transaction_core::{
+    onetime_keys::create_shared_secret,
+    ring_signature::{InputSecret, SignableInputRing},
+    tx::{TxIn, TxOut, TxOutMembershipProof},
+};
 use std::convert::TryFrom;
 use zeroize::Zeroize;
 
 /// Credentials required to construct a ring signature for an input.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Zeroize)]
+#[zeroize(drop)]
 pub struct InputCredentials {
     /// A "ring" containing "mixins" and the one "real" TxOut to be spent.
     pub ring: Vec<TxOut>,
@@ -18,15 +23,8 @@ pub struct InputCredentials {
     /// Index in `ring` of the "real" output being spent.
     pub real_index: usize,
 
-    /// Private key for the "real" output being spent.
-    pub onetime_private_key: RistrettoPrivate,
-
-    /// Public key of the transaction that created the "real" output being
-    /// spent.
-    pub real_output_public_key: RistrettoPublic,
-
-    /// View private key for the address this input was sent to
-    pub view_private_key: RistrettoPrivate,
+    /// Secrets needed to spend the real output
+    pub input_secret: InputSecret,
 }
 
 impl InputCredentials {
@@ -59,6 +57,11 @@ impl InputCredentials {
             .ok_or(TxBuilderError::NoInputs)?;
         let real_output_public_key = RistrettoPublic::try_from(&real_input.public_key)?;
 
+        // Note: The caller likely already has the shared secret if they already
+        // unmasked this TxOut and are now trying to spend it, so as an
+        // optimization we could avoid recomputing it.
+        let tx_out_shared_secret = create_shared_secret(&real_output_public_key, &view_private_key);
+
         // Sort the ring and the corresponding proofs. This ensures that the ordering
         // of mixins in the transaction does not depend on the user's implementation for
         // obtaining mixins.
@@ -78,26 +81,44 @@ impl InputCredentials {
             .position(|element| *element == real_input)
             .expect("Must still contain real input");
 
+        let masked_amount = &ring[real_index].masked_amount;
+        let (amount, blinding) = masked_amount.get_value(&tx_out_shared_secret)?;
+
+        let input_secret = InputSecret {
+            onetime_private_key,
+            amount,
+            blinding,
+        };
+
         Ok(InputCredentials {
             ring,
             membership_proofs,
             real_index,
-            onetime_private_key,
-            real_output_public_key,
-            view_private_key,
+            input_secret,
         })
     }
 }
 
-impl Zeroize for InputCredentials {
-    fn zeroize(&mut self) {
-        self.onetime_private_key.zeroize();
-        self.view_private_key.zeroize();
+impl From<InputCredentials> for SignableInputRing {
+    fn from(src: InputCredentials) -> SignableInputRing {
+        SignableInputRing {
+            members: src
+                .ring
+                .iter()
+                .map(|tx_out| (tx_out.target_key, tx_out.masked_amount.commitment))
+                .collect(),
+            real_input_index: src.real_index,
+            input_secret: src.input_secret.clone(),
+        }
     }
 }
 
-impl Drop for InputCredentials {
-    fn drop(&mut self) {
-        self.zeroize();
+impl From<&InputCredentials> for TxIn {
+    fn from(input_credential: &InputCredentials) -> TxIn {
+        TxIn {
+            ring: input_credential.ring.clone(),
+            proofs: input_credential.membership_proofs.clone(),
+            input_rules: None,
+        }
     }
 }

@@ -2,7 +2,7 @@
 name = "mc-account-keys-slip10"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 description = "MobileCoin BIP-39 Key Derivation"
 license = "GPL-3.0"

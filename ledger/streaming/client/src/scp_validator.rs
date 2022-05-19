@@ -249,10 +249,7 @@ impl<ID: GenericNodeId + Send + Clone> SCPValidationState<ID> {
 impl<US: Streamer<Result<BlockData>, BlockIndex> + 'static, ID: GenericNodeId + Send>
     Streamer<Result<BlockData>, BlockIndex> for SCPValidator<US, ID>
 {
-    type Stream<'s>
-    where
-        ID: 's,
-    = impl Stream<Item = Result<BlockData>> + 's;
+    type Stream<'s> = impl Stream<Item = Result<BlockData>> + 's where ID: 's;
 
     /// Get block stream that performs validation
     fn get_stream(&self, starting_height: BlockIndex) -> Result<Self::Stream<'_>> {

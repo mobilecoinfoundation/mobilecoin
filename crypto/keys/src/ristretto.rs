@@ -434,7 +434,7 @@ impl KexSecret for RistrettoSecret {}
 ///
 /// As a result, this does not implement the `PublicKey` interface, nor is it
 /// usable in a key-exchange.
-#[derive(Clone, Copy, Default, Eq, Digestible)]
+#[derive(Clone, Copy, Default, Eq, Digestible, Zeroize)]
 #[digestible(transparent)]
 pub struct CompressedRistrettoPublic(pub(crate) CompressedRistretto);
 

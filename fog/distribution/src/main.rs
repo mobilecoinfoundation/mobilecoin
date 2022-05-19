@@ -121,24 +121,18 @@ fn main() {
 
     let config = Config::parse();
 
-    // Read account root_entropies from disk
-    let src_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_root_entropies(
+    // Read account keys from disk
+    let src_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_mnemonics(
         config.sample_data_dir.join(Path::new("keys")),
     )
-    .expect("Could not read default root entropies from keys")
-    .iter()
-    .map(AccountKey::from)
-    .collect();
+    .expect("Could not read default mnemonics from keys");
 
-    let dest_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_root_entropies(
+    let dest_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_mnemonics(
         config
             .sample_data_dir
             .join(Path::new(&config.fog_keys_subdir)),
     )
-    .expect("Could not read fog keys")
-    .iter()
-    .map(AccountKey::from)
-    .collect();
+    .expect("Could not read fog keys");
 
     // Open the ledger_db to process the bootstrapped ledger
     log::info!(logger, "Loading ledger");
@@ -721,17 +715,18 @@ fn build_tx(
     // Use token id for first spendable tx out
     let token_id = spendable_txouts.first().unwrap().amount.token_id;
 
+    // FIXME: This needs to be the fee for the current token, not MOB.
+    // However, bootstrapping non MOB tokens is not supported right now.
+    let fee_amount = Amount::new(MOB_FEE.load(Ordering::SeqCst), token_id);
+
     // Create tx_builder.
     let mut tx_builder = TransactionBuilder::new(
         block_version,
-        token_id,
+        fee_amount,
         fog_resolver,
         EmptyMemoBuilder::default(),
-    );
-
-    // FIXME: This needs to be the fee for the current token, not MOB.
-    // However, bootstrapping non MOB tokens is not supported right now.
-    tx_builder.set_fee(MOB_FEE.load(Ordering::SeqCst)).unwrap();
+    )
+    .unwrap();
 
     // Unzip each vec of tuples into a tuple of vecs.
     let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
@@ -820,7 +815,7 @@ fn build_tx(
             let target_address = to_account.default_subaddress();
 
             tx_builder
-                .add_output(value, &target_address, &mut rng)
+                .add_output(Amount { value, token_id }, &target_address, &mut rng)
                 .expect("failed to add output");
         }
     }

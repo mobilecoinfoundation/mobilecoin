@@ -46,6 +46,7 @@ use std::{
 #[derive(Clone)]
 pub struct ConsensusServiceMockEnclave {
     pub signing_keypair: Arc<Ed25519Pair>,
+    pub minting_trust_root_keypair: Arc<Ed25519Pair>,
     pub blockchain_config: Arc<Mutex<BlockchainConfig>>,
 }
 
@@ -53,10 +54,12 @@ impl Default for ConsensusServiceMockEnclave {
     fn default() -> Self {
         let mut csprng = Hc128Rng::seed_from_u64(0);
         let signing_keypair = Arc::new(Ed25519Pair::from_random(&mut csprng));
+        let minting_trust_root_keypair = Arc::new(Ed25519Pair::from_random(&mut csprng));
         let blockchain_config = Arc::new(Mutex::new(BlockchainConfig::default()));
 
         Self {
             signing_keypair,
+            minting_trust_root_keypair,
             blockchain_config,
         }
     }
@@ -128,6 +131,10 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
 
     fn get_signer(&self) -> Result<Ed25519Public> {
         Ok(self.signing_keypair.public_key())
+    }
+
+    fn get_minting_trust_root(&self) -> Result<Ed25519Public> {
+        Ok(self.minting_trust_root_keypair.public_key())
     }
 
     // NOTE: We hardcode here because we don't need the mock enclave currently to be

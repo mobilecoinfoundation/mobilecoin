@@ -18,7 +18,7 @@ impl From<&tx::TxPrefix> for external::TxPrefix {
 
         tx_prefix.set_fee(source.fee);
 
-        tx_prefix.set_token_id(source.token_id);
+        tx_prefix.set_fee_token_id(source.fee_token_id);
 
         tx_prefix.set_tombstone_block(source.tombstone_block);
 
@@ -47,7 +47,7 @@ impl TryFrom<&external::TxPrefix> for tx::TxPrefix {
             inputs,
             outputs,
             fee: source.get_fee(),
-            token_id: source.get_token_id(),
+            fee_token_id: source.get_fee_token_id(),
             tombstone_block: source.get_tombstone_block(),
         };
         Ok(tx_prefix)

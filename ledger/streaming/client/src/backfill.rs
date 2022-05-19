@@ -40,10 +40,7 @@ impl<
         F: Fetcher<Result<BlockData>, BlockIndex, Range<BlockIndex>>,
     > Streamer<Result<BlockData>, BlockIndex> for BackfillingStream<S, F>
 {
-    type Stream<'s>
-    where
-        Self: 's,
-    = impl Stream<Item = Result<BlockData>> + 's;
+    type Stream<'s> = impl Stream<Item = Result<BlockData>> + 's where Self: 's;
 
     fn get_stream(&self, starting_height: BlockIndex) -> Result<Self::Stream<'_>> {
         self.upstream.get_stream(starting_height).map(|upstream| {

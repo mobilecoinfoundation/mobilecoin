@@ -9,8 +9,8 @@ use mc_transaction_core::{
 /// An error that can occur when using the TransactionBuilder
 #[derive(Debug, Display)]
 pub enum TxBuilderError {
-    /// Ring Signature construction failed
-    RingSignatureFailed,
+    /// Ring Signature construction failed: {0}
+    RingSignatureFailed(ring_signature::Error),
 
     /// Range proof construction failed
     RangeProofFailed,
@@ -24,8 +24,8 @@ pub enum TxBuilderError {
     /// Bad Amount: {0}
     BadAmount(AmountError),
 
-    /// Input had wrong token id: Expected {0}, Found {1}
-    WrongTokenType(TokenId, TokenId),
+    /// Mixed Transactions not allowed: Expected {0}, Found {1}
+    MixedTransactionsNotAllowed(TokenId, TokenId),
 
     /// New Tx: {0}
     NewTx(NewTxError),
@@ -56,6 +56,12 @@ pub enum TxBuilderError {
 
     /// Feature is not supported at this block version ({0}): {1}
     FeatureNotSupportedAtBlockVersion(u32, &'static str),
+
+    /// Signed input rules not allowed at this block version
+    SignedInputRulesNotAllowed,
+
+    /// Missing membership proof
+    MissingMembershipProofs,
 }
 
 impl From<mc_util_serial::encode::Error> for TxBuilderError {
@@ -89,8 +95,8 @@ impl From<mc_crypto_keys::KeyError> for TxBuilderError {
 }
 
 impl From<ring_signature::Error> for TxBuilderError {
-    fn from(_: Error) -> Self {
-        TxBuilderError::RingSignatureFailed
+    fn from(src: Error) -> Self {
+        TxBuilderError::RingSignatureFailed(src)
     }
 }
 
@@ -103,5 +109,20 @@ impl From<FogPubkeyError> for TxBuilderError {
 impl From<NewMemoError> for TxBuilderError {
     fn from(src: NewMemoError) -> Self {
         TxBuilderError::Memo(src)
+    }
+}
+
+/// An error that can occur when creating a signed contingent input builder
+#[derive(Debug, Display)]
+pub enum SignedContingentInputBuilderError {
+    /// Missing proofs: {0} ring elements, {1} proofs
+    MissingProofs(usize, usize),
+    /// Memo: {0}
+    Memo(NewMemoError),
+}
+
+impl From<NewMemoError> for SignedContingentInputBuilderError {
+    fn from(src: NewMemoError) -> Self {
+        SignedContingentInputBuilderError::Memo(src)
     }
 }

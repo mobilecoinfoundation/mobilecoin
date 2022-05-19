@@ -10,7 +10,7 @@
 version: 2.1
 
 defaults:
-  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_26
+  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_27
   android-bindings-builder: &android-bindings-builder gcr.io/mobilenode-211420/android-bindings-builder:1_4
   default-xcode-version: &default-xcode-version "12.0.0"
 
@@ -482,7 +482,7 @@ commands:
 
             sleep 20
 
-            ./target/release/sample-keys --num 4 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $FOG_AUTHORITY_ROOT
+            ./target/release/sample-keys --num 4 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $FOG_AUTHORITY_ROOT --fog-report-id ''
 
             ./target/release/fog-distribution \
                 --sample-data-dir . \

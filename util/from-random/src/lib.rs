@@ -13,3 +13,11 @@ pub trait FromRandom: Sized {
     /// Using a mutable RNG, take it's output to securely initialize the object
     fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self;
 }
+
+impl<const N: usize> FromRandom for [u8; N] {
+    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> [u8; N] {
+        let mut result = [0u8; N];
+        csprng.fill_bytes(&mut result);
+        result
+    }
+}

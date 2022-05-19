@@ -2,13 +2,14 @@
 
 //! Errors which can occur in connection to ring signatures
 
+use crate::{range_proofs::error::Error as RangeProofError, TokenId};
+use alloc::string::{String, ToString};
 use displaydoc::Display;
+use mc_util_zip_exact::ZipExactError;
 use serde::{Deserialize, Serialize};
 
 /// An error which can occur in connection to a ring signature
-#[derive(
-    Clone, Copy, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
-)]
+#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum Error {
     /// Incorrect length for array copy, provided `{0}`, required `{1}`.
     LengthMismatch(usize, usize),
@@ -49,15 +50,66 @@ pub enum Error {
      */
     ValueNotConserved,
 
-    /// Invalid RangeProof
-    RangeProofError,
+    /// Invalid RangeProof: {0}
+    RangeProof(String),
+
+    /// RangeProof Deserialization failed
+    RangeProofDeserialization,
 
     /// TokenId is not allowed at this block version
     TokenIdNotAllowed,
+
+    /// Missing pseudo-output token ids
+    MissingPseudoOutputTokenIds,
+
+    /// Missing output token ids
+    MissingOutputTokenIds,
+
+    /// Pseudo-output token ids not allowed at this block version
+    PseudoOutputTokenIdsNotAllowed,
+
+    /// Output token ids not allowed at this block version
+    OutputTokenIdsNotAllowed,
+
+    /// Mixed token ids in transactions not allowed at this block version
+    MixedTransactionsNotAllowed,
+
+    /// Too many range proofs for the block version
+    TooManyRangeProofs,
+
+    /// Unexpected range proof for the block version
+    UnexpectedRangeProof,
+
+    /// Missing expected range proofs (expected: {0}, found: {1})
+    MissingRangeProofs(usize, usize),
+
+    /// No commitments were found for {0}, this is a logic error
+    NoCommitmentsForTokenId(TokenId),
+
+    /// All rings were presigned, but this is not allowed
+    AllRingsPresigned,
+
+    /// Signed input rules not allowed at this revision
+    SignedInputRulesNotAllowed,
+
+    /// Zip Exact: {0}
+    ZipExact(ZipExactError),
 }
 
 impl From<mc_util_repr_bytes::LengthMismatch> for Error {
     fn from(src: mc_util_repr_bytes::LengthMismatch) -> Self {
         Error::LengthMismatch(src.found, src.expected)
+    }
+}
+
+impl From<RangeProofError> for Error {
+    fn from(src: RangeProofError) -> Self {
+        Error::RangeProof(src.to_string())
+    }
+}
+
+impl From<ZipExactError> for Error {
+    fn from(src: ZipExactError) -> Self {
+        Error::ZipExact(src)
     }
 }

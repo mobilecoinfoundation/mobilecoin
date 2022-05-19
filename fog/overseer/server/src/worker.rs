@@ -24,7 +24,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
-    thread::{Builder as ThreadBuilder, JoinHandle},
+    thread::{sleep, Builder as ThreadBuilder, JoinHandle},
     time::Duration,
 };
 
@@ -138,6 +138,7 @@ where
     /// error.
     const NUMBER_OF_TRIES: usize = 3;
 
+    /// Start this worker.
     pub fn start(
         ingest_clients: Arc<Vec<FogIngestGrpcClient>>,
         recovery_db: DB,
@@ -160,7 +161,7 @@ where
     fn run(mut self) {
         loop {
             log::trace!(self.logger, "Overseer worker start of thread.");
-            std::thread::sleep(Self::POLLING_FREQUENCY);
+            sleep(Self::POLLING_FREQUENCY);
 
             if self.stop_requested.load(Ordering::SeqCst) {
                 log::info!(self.logger, "Overseer worker thread stopping.");
@@ -178,7 +179,7 @@ where
                 Ok(ingest_summary_node_mappings) => ingest_summary_node_mappings,
                 Err(err) => {
                     log::error!(self.logger, "Encountered an error while retrieving ingest summaries: {}. Returning to beginning of overseer logic.", err);
-                    metrics::utils::increment_unresponsive_node_count(&self.logger);
+                    metrics::increment_unresponsive_node_count(&self.logger);
                     continue;
                 }
             };
@@ -187,7 +188,7 @@ where
                 .iter()
                 .map(|mapping| mapping.ingest_summary.clone())
                 .collect();
-            metrics::utils::set_metrics(&self.logger, ingest_summaries.as_slice());
+            metrics::set_metrics(&self.logger, ingest_summaries.as_slice());
 
             let active_ingest_summary_node_mappings: Vec<&IngestSummaryNodeMapping> =
                 ingest_summary_node_mappings
@@ -248,41 +249,46 @@ where
     fn retrieve_ingest_summary_node_mappings(
         &mut self,
     ) -> Result<Vec<IngestSummaryNodeMapping>, OverseerError> {
-        let mut ingest_summary_node_mappings: Vec<IngestSummaryNodeMapping> = Vec::new();
-        for (ingest_client_index, ingest_client) in self.ingest_clients.iter().enumerate() {
-            match ingest_client.get_status() {
-                Ok(ingest_summary) => {
-                    if self.unresponsive_node_urls.remove(ingest_client.get_uri()) {
-                        log::info!(
-                            self.logger,
-                            "Node {} was previously unresponsive, but just successfully responded!",
-                            ingest_client.get_uri(),
+        let logger = &self.logger;
+        let unresponsive_node_urls = &mut self.unresponsive_node_urls;
+        self.ingest_clients
+            .iter()
+            .enumerate()
+            .map(|(node_index, ingest_client)| {
+                let uri = ingest_client.get_uri();
+                match ingest_client.get_status() {
+                    Ok(ingest_summary) => {
+                        log::trace!(
+                            logger,
+                            "Ingest summary retrieved from '{}': {:?}",
+                            uri,
+                            ingest_summary
                         );
+                        if unresponsive_node_urls.remove(uri) {
+                            log::info!(
+                            logger,
+                            "Node {} was previously unresponsive, but just successfully responded!",
+                            uri,
+                        );
+                        }
+                        Ok(IngestSummaryNodeMapping {
+                            node_index,
+                            ingest_summary,
+                        })
                     }
-                    log::trace!(
-                        self.logger,
-                        "Ingest summary retrieved: {:?}",
-                        ingest_summary
-                    );
-                    ingest_summary_node_mappings.push(IngestSummaryNodeMapping {
-                        node_index: ingest_client_index,
-                        ingest_summary,
-                    });
-                }
-                Err(err) => {
-                    let error_message = format!(
-                        "Unable to retrieve ingest summary for node ({}): {}",
-                        ingest_client.get_uri(),
-                        err
-                    );
-                    self.unresponsive_node_urls
-                        .insert(ingest_client.get_uri().clone());
-                    return Err(OverseerError::UnresponsiveNodeError(error_message));
-                }
-            }
-        }
 
-        Ok(ingest_summary_node_mappings)
+                    Err(err) => {
+                        let error_message = format!(
+                            "Unable to retrieve ingest summary for node ({}): {}",
+                            uri, err
+                        );
+                        log::trace!(logger, "{}", error_message);
+                        unresponsive_node_urls.insert(uri.clone());
+                        Err(OverseerError::UnresponsiveNodeError(error_message))
+                    }
+                }
+            })
+            .collect()
     }
 
     /// Performs automatic failover, which means that we try to activate nodes

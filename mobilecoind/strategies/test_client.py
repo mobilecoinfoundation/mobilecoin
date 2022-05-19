@@ -39,7 +39,7 @@ def parse_args() -> argparse.ArgumentParser:
     parser.add_argument("--max-seconds",
                         type=int,
                         default=40,
-                        help="Number of seconds to wait for a tx to clearn")
+                        help="Number of seconds to wait for a tx to clear")
     return parser.parse_args()
 
 

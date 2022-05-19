@@ -377,8 +377,8 @@ mod tests {
             .fetch_multiple(0..10)
             .enumerate()
             .for_each_concurrent(None, move |(index, result)| {
-                let block_data =
-                    result.expect(&format!("unexpected error for item #{}", index + 1));
+                let block_data = result
+                    .unwrap_or_else(|e| panic!("unexpected error for item #{}: {}", index + 1, e));
                 assert_eq!(block_data, items[index]);
                 ready(())
             })
@@ -395,7 +395,7 @@ mod tests {
                 let index = block_data.block().index;
                 let bytes = ArchiveBlock::from(block_data)
                     .write_to_bytes()
-                    .expect(&format!("expected[{}].write_to_bytes", index));
+                    .unwrap_or_else(|e| panic!("expected[{}].write_to_bytes failed: {}", index, e));
                 let path = format!("/00/00/00/00/00/00/00/{:016x}.pb", index);
                 mock("GET", &*path).with_body(bytes).create()
             })
@@ -407,12 +407,15 @@ mod tests {
             .fetch_multiple(0..10)
             .enumerate()
             .for_each_concurrent(None, move |(index, result)| {
-                let block_data =
-                    result.expect(&format!("unexpected error for item #{}", index + 1));
+                let block_data = result
+                    .unwrap_or_else(|e| panic!("unexpected error for item #{}: {}", index + 1, e));
                 assert_eq!(block_data, items[index]);
                 ready(())
             })
             .await;
-        mock_requests.into_iter().for_each(|m| m.assert());
+
+        for m in mock_requests {
+            m.assert();
+        }
     }
 }

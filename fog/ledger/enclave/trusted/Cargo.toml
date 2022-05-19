@@ -2,8 +2,7 @@
 name = "mc-fog-ledger-enclave-trusted"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
-resolver = "2"
+edition = "2021"
 
 # Declare as an empty workspace to not confuse cargo.
 [workspace]

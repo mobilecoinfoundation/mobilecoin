@@ -75,6 +75,11 @@ pub enum EnclaveCall {
     /// Retrieves the fee recipient (FeePublicKey) for the enclave.
     GetFeeRecipient,
 
+    /// The [ConsensusEnclave::get_minting_trust_root()] method.
+    ///
+    /// Retrieves the minting trust root (Ed25519 public key) of an enclave.
+    GetMintingTrustRoot,
+
     /// The [ConsensusEnclave::new_ereport()] method.
     ///
     /// Creates a new report for the enclave with the provided target info.

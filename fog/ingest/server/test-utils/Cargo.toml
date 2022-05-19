@@ -1,0 +1,31 @@
+[package]
+name = "mc-fog-ingest-server-test-utils"
+version = "1.3.0-pre0"
+authors = ["MobileCoin"]
+edition = "2018"
+license = "GPL-3.0"
+
+[dependencies]
+# MC/root
+mc-attest-net = { path = "../../../../attest/net" }
+mc-common = { path = "../../../../common", features = ["loggers"] }
+mc-crypto-keys = { path = "../../../../crypto/keys", default-features = false }
+mc-ledger-db = { path = "../../../../ledger/db" }
+mc-transaction-core = { path = "../../../../transaction/core" }
+mc-util-from-random = { path = "../../../../util/from-random" }
+mc-watcher = { path = "../../../../watcher" }
+
+# fog
+mc-fog-ingest-enclave = { path = "../../enclave" }
+mc-fog-ingest-server = { path = ".." }
+mc-fog-recovery-db-iface = { path = "../../../recovery_db_iface" }
+mc-fog-sql-recovery-db = { path = "../../../sql_recovery_db" }
+mc-fog-test-infra = { path = "../../../test_infra" }
+mc-fog-types = { path = "../../../types" }
+mc-fog-uri = { path = "../../../uri" }
+
+# third-party
+rand_core = "0.6"
+rand_hc = "0.3"
+tempdir = "0.3"
+url = "2.2"

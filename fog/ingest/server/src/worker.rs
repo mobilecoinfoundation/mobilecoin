@@ -238,7 +238,7 @@ impl PeerCheckupWorker {
 
                     let now = Instant::now();
                     if now - last_refreshed_at > peer_checkup_period {
-                        log::info!(logger, "Checking up on peers...");
+                        log::debug!(logger, "Checking up on peers...");
                         controller.peer_checkup();
                         last_refreshed_at = now;
                     }
