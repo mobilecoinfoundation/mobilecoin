@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use super::{Error, OneTimeKeyDeriveData, RingSigner, SignableInputRing};
 use crate::ring_signature::{generators, CryptoRngCore, RingMLSAG, Scalar};
 use mc_crypto_keys::RistrettoPublic;

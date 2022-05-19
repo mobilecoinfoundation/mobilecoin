@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use super::{Error, OneTimeKeyDeriveData, RingSigner, SignableInputRing};
 use crate::{
     onetime_keys::recover_onetime_private_key,

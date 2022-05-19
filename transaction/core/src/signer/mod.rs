@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Interfaces for signing transactions
 
 mod no_keys_ring_signer;

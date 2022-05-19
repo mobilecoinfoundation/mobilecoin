@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use crate::{
     ring_signature::{CryptoRngCore, MLSAGError, ReducedTxOut, RingMLSAG, Scalar},
     Amount,
