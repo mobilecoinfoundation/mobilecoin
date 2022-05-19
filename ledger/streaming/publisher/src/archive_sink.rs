@@ -249,7 +249,7 @@ mod tests {
 
     impl ProtoWriter for MockWriter {
         fn upload<'up, M: protobuf::Message>(
-            self: &'up mut Self,
+            &'up mut self,
             proto: &'up M,
             dest: &'up Path,
         ) -> Self::Future<'up> {
