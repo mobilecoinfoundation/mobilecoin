@@ -2,7 +2,10 @@
 
 //! Utilities that help with testing the transaction builder and related objects
 
-use crate::{EmptyMemoBuilder, InputCredentials, MemoPayload, TransactionBuilder, TxBuilderError};
+use crate::{
+    EmptyMemoBuilder, InputCredentials, MemoBuilder, MemoPayload, ReservedDestination,
+    TransactionBuilder, TxBuilderError,
+};
 use core::convert::TryFrom;
 use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
 use mc_crypto_keys::RistrettoPublic;
@@ -11,9 +14,10 @@ use mc_transaction_core::{
     onetime_keys::*,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
-    Amount, BlockVersion, Token, TokenId,
+    Amount, BlockVersion, MemoContext, NewMemoError, Token, TokenId,
 };
-use rand::{CryptoRng, RngCore};
+use mc_util_from_random::FromRandom;
+use rand::{rngs::StdRng, CryptoRng, RngCore, SeedableRng};
 
 /// Creates a TxOut that sends `value` to `recipient`.
 ///
@@ -200,4 +204,29 @@ pub fn get_transaction<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver + Clone>
     transaction_builder.set_fee(fee).unwrap();
 
     transaction_builder.build(rng)
+}
+
+/// Build simulated change memo with zero amount
+pub fn build_zero_value_change_memo(
+    builder: &mut impl MemoBuilder,
+) -> Result<MemoPayload, NewMemoError> {
+    build_change_memo_with_amount(builder, Amount::new(0, 0.into()))
+}
+
+/// Build simulated change memo with amount
+pub fn build_change_memo_with_amount(
+    builder: &mut impl MemoBuilder,
+    change_amount: Amount,
+) -> Result<MemoPayload, NewMemoError> {
+    // Create simulated context
+    let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
+    let alice = AccountKey::random_with_fog(&mut rng);
+    let alice_address_book = ReservedDestination::from(&alice);
+    let change_tx_pubkey = RistrettoPublic::from_random(&mut rng);
+    let memo_context = MemoContext {
+        tx_public_key: &change_tx_pubkey,
+    };
+
+    //Build memo
+    builder.make_memo_for_change_output(change_amount, &alice_address_book, memo_context)
 }

@@ -18,7 +18,7 @@ mod identity;
 pub use crate::{
     account_keys::{
         AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
-        INVALID_SUBADDRESS_INDEX,
+        GIFT_CODE_SUBADDRESS_INDEX, INVALID_SUBADDRESS_INDEX,
     },
     address_hash::ShortAddressHash,
     burn_address::{burn_address, burn_address_view_private, BURN_ADDRESS_VIEW_PRIVATE},

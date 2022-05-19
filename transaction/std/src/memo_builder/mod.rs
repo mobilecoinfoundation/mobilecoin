@@ -10,9 +10,15 @@ use mc_account_keys::PublicAddress;
 use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
 
 mod burn_redemption_memo_builder;
+mod gift_code_cancellation_memo_builder;
+mod gift_code_funding_memo_builder;
+mod gift_code_sender_memo_builder;
 mod rth_memo_builder;
 
 pub use burn_redemption_memo_builder::BurnRedemptionMemoBuilder;
+pub use gift_code_cancellation_memo_builder::GiftCodeCancellationMemoBuilder;
+pub use gift_code_funding_memo_builder::GiftCodeFundingMemoBuilder;
+pub use gift_code_sender_memo_builder::GiftCodeSenderMemoBuilder;
 pub use rth_memo_builder::RTHMemoBuilder;
 
 /// The MemoBuilder trait defines the API that the transaction builder uses
