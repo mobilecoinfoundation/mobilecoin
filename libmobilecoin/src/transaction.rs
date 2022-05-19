@@ -202,16 +202,16 @@ pub extern "C" fn mc_tx_out_get_amount(
         let (_masked_amount, amount) =
             MaskedAmount::reconstruct(tx_out_masked_amount.masked_value, &tx_out_masked_amount.masked_token_id, &shared_secret)?;
 
-        let mut amount_mut = McTxOutAmount {
+        let amount_mut = McTxOutAmount {
             value: amount.value,
             token_id: *amount.token_id
-        }
+        };
 
         // FIXME #1596: This should also return the amount.token_id
         //let mut_out_amount = out_amount.into_mut();
         //mut_out_amount.value = amount.value;
         //mut_out_amount.token_id = *amount.token_id;
-        *out_amount.into_mut() = *amount_mut;
+        *out_amount.into_mut() = amount_mut;
         *out_value.into_mut() = amount.value;
         *out_token_id.into_mut() = *amount.token_id; // TODO - figure out how to convert TokenID to bytes
         Ok(())
