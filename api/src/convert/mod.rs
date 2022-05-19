@@ -45,6 +45,9 @@ mod verification_report;
 mod verification_signature;
 mod watcher;
 
+// printable
+mod tx_out_gift_code;
+
 mod error;
 pub use self::error::ConversionError;
 

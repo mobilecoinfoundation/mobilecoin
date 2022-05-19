@@ -57,7 +57,7 @@ impl FromStr for BlockVersion {
 impl BlockVersion {
     /// The maximum value of block_version that this build of
     /// mc-transaction-core has support for
-    pub const MAX: Self = Self(2);
+    pub const MAX: Self = Self(3);
 
     /// Refers to the block version number at network launch.
     pub const ZERO: Self = Self(0);
@@ -67,6 +67,9 @@ impl BlockVersion {
 
     /// Constant for block version two
     pub const TWO: Self = Self(2);
+
+    /// Constant for block version three
+    pub const THREE: Self = Self(3);
 
     /// Iterator over block versions from one up to max, inclusive. For use in
     /// tests.
@@ -95,6 +98,24 @@ impl BlockVersion {
     /// mint transactions are introduced in block version 2
     pub fn mint_transactions_are_supported(&self) -> bool {
         self.0 >= 2
+    }
+
+    /// The extended message digest is used when signing MLSAGs
+    /// in block version 2 and higher. This is described in MCIP #25.
+    pub fn mlsags_sign_extended_message_digest(&self) -> bool {
+        self.0 >= 2
+    }
+
+    /// Mixed transactions [MCIP #31](https://github.com/mobilecoinfoundation/mcips/pull/31)
+    /// are introduced in block version 3
+    pub fn mixed_transactions_are_supported(&self) -> bool {
+        self.0 >= 3
+    }
+
+    /// Signed input rules [MCIP #31](https://github.com/mobilecoinfoundation/mcips/pull/31)
+    /// are introduced in block version 3
+    pub fn signed_input_rules_are_supported(&self) -> bool {
+        self.0 >= 3
     }
 }
 

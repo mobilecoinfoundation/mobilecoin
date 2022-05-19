@@ -1,0 +1,72 @@
+// Copyright (c) 2022 The MobileCoin Foundation
+
+// Consensus service configuration data types.
+
+syntax = "proto3";
+import "blockchain.proto";
+import "external.proto";
+
+package consensus_config;
+
+option go_package = "mobilecoin/api";
+
+
+// A single active minting configuration.
+message ActiveMintConfig {
+    // The actual mint configuration.
+    external.MintConfig mint_config = 1;
+
+    // How many tokens have been minted using this configuration.
+    uint64 total_minted = 2;
+}
+
+// Active minting configurations for a single token.
+message ActiveMintConfigs {
+    /// Active configs
+    repeated ActiveMintConfig configs = 1;
+
+    // The original MintConfigTx that this configuration resulted from.
+    external.MintConfigTx mint_config_tx = 2;
+}
+
+// Token configuration (per-token configuration).
+message TokenConfig {
+    // The token id this configuration is for.
+    uint64 token_id = 1;
+
+    // The current minimum fee for this token.
+    uint64 minimum_fee = 2;
+
+    // Minting governors (optional, only when minting is configured).
+    external.Ed25519SignerSet governors = 3;
+
+    // Currently active mint configurations for this token (optional, only if a valid MintConfigTx has been previously issued).
+    ActiveMintConfigs active_mint_configs = 4;
+}
+
+// Consensus node configuration.
+message ConsensusNodeConfig {
+    // Minting trust root public key.
+    external.Ed25519Public minting_trust_root = 1;
+
+    // token id -> configuration map.
+    map<uint64, TokenConfig> token_config_map = 2;
+
+    // Governors signature.
+    external.Ed25519Signature governors_signature = 3;
+
+    // Peer responder id.
+    string peer_responder_id = 4;
+
+    // Client responser id.
+    string client_responder_id = 5;
+
+    // Block signing key.
+    external.Ed25519Public block_signing_key = 6;
+
+    // Currently configured block version.
+    uint32 block_version = 7;
+
+    // SCP message signing key.
+    external.Ed25519Public scp_message_signing_key = 8;
+}

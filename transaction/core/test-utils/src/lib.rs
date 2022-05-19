@@ -142,7 +142,7 @@ pub fn create_transaction_with_amount_and_comparer<
     tx_out: &TxOut,
     sender: &AccountKey,
     recipient: &PublicAddress,
-    amount: u64,
+    value: u64,
     fee: u64,
     tombstone_block: BlockIndex,
     rng: &mut R,
@@ -151,10 +151,11 @@ pub fn create_transaction_with_amount_and_comparer<
 
     let mut transaction_builder = TransactionBuilder::new(
         block_version,
-        sender_amount.token_id,
+        Amount::new(fee, sender_amount.token_id),
         MockFogResolver::default(),
         EmptyMemoBuilder::default(),
-    );
+    )
+    .unwrap();
 
     // The first transaction in the origin block should contain enough outputs to
     // use as mixins.
@@ -193,6 +194,11 @@ pub fn create_transaction_with_amount_and_comparer<
     .unwrap();
     transaction_builder.add_input(input_credentials);
 
+    let amount = Amount {
+        value,
+        token_id: sender_amount.token_id,
+    };
+
     // Output
     transaction_builder
         .add_output(amount, recipient, rng)
@@ -200,9 +206,6 @@ pub fn create_transaction_with_amount_and_comparer<
 
     // Tombstone block
     transaction_builder.set_tombstone_block(tombstone_block);
-
-    // Fee
-    transaction_builder.set_fee(fee).unwrap();
 
     // Build and return the transaction
     transaction_builder.build_with_sorter::<R, O>(rng).unwrap()

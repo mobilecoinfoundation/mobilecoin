@@ -1,7 +1,6 @@
 cargo-features = ["named-profiles"]
 
 [workspace]
-resolver = "2"
 members = [
     "account-keys",
     "account-keys/slip10",

@@ -23,6 +23,7 @@ use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::RistrettoPublic;
 use prost::Message;
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 mod commitment;
 mod compressed_commitment;
@@ -33,7 +34,7 @@ pub use compressed_commitment::CompressedCommitment;
 pub use error::AmountError;
 
 /// An amount of some token, in the "base" (u64) denomination.
-#[derive(Debug, Clone, Copy, Digestible, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Digestible, Eq, PartialEq, Zeroize)]
 pub struct Amount {
     /// The "raw" value of this amount as a u64
     pub value: u64,
@@ -41,10 +42,17 @@ pub struct Amount {
     pub token_id: TokenId,
 }
 
+impl Amount {
+    /// Create a new amount
+    pub fn new(value: u64, token_id: TokenId) -> Self {
+        Self { value, token_id }
+    }
+}
+
 /// A commitment to an amount of MobileCoin or a related token, as it appears on
 /// the blockchain. This is a "blinded" commitment, and only the sender and
 /// receiver know the value and token id.
-#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Message, Digestible)]
+#[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
 #[digestible(name = "Amount")]
 pub struct MaskedAmount {
     /// A Pedersen commitment `v*H + b*G` to a quantity `v` of MobileCoin or a

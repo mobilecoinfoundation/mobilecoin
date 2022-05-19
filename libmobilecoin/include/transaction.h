@@ -306,9 +306,9 @@ void mc_memo_builder_free(
 
 /// # Preconditions
 ///
-/// * `sender_memo_data` - must be 64 bytes 
+/// * `sender_memo_data` - must be 64 bytes
 /// * `sender_public_address` - must be a valid `PublicAddress`.
-/// * `receiving_subaddress_view_private_key` - must be a valid 
+/// * `receiving_subaddress_view_private_key` - must be a valid
 ///     32-byte Ristretto-format scalar.
 /// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
 ///
@@ -328,7 +328,7 @@ MC_ATTRIBUTE_NONNULL(1, 2, 3, 4, 5);
 /// # Preconditions
 ///
 /// * `sender_account_key` - must be a valid account key
-/// * `recipient_subaddress_view_public_key` - must be a valid 
+/// * `recipient_subaddress_view_public_key` - must be a valid
 ///     32-byte Ristretto-format scalar.
 /// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
 /// * `out_memo_data` - length must be >= 64.
@@ -381,7 +381,7 @@ bool mc_memo_destination_memo_create(
   McMutableBuffer* MC_NONNULL out_memo_data,
   McError* MC_NULLABLE * MC_NULLABLE out_error
 )
-MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
+MC_ATTRIBUTE_NONNULL(1, 5);
 
 /// # Preconditions
 ///
@@ -446,9 +446,9 @@ MC_ATTRIBUTE_NONNULL(1, 2);
 
 /// # Preconditions
 ///
-/// * `sender_with_payment_request_memo_data` - must be 64 bytes 
+/// * `sender_with_payment_request_memo_data` - must be 64 bytes
 /// * `sender_public_address` - must be a valid `PublicAddress`.
-/// * `receiving_subaddress_view_private_key` - must be a valid 
+/// * `receiving_subaddress_view_private_key` - must be a valid
 ///     32-byte Ristretto-format scalar.
 /// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
 ///
@@ -468,7 +468,7 @@ MC_ATTRIBUTE_NONNULL(1, 2, 3, 4, 5);
 /// # Preconditions
 ///
 /// * `sender_account_key` - must be a valid account key
-/// * `recipient_subaddress_view_public_key` - must be a valid 
+/// * `recipient_subaddress_view_public_key` - must be a valid
 ///     32-byte Ristretto-format scalar.
 /// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
 /// * `out_memo_data` - length must be >= 64.

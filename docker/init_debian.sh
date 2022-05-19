@@ -50,6 +50,7 @@ apt-get install --yes \
   patch \
   pkg-config \
   postgresql \
+  postgresql-client \
   prometheus \
   protobuf-c-compiler \
   protobuf-compiler \

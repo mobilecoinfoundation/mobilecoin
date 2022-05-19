@@ -8,6 +8,10 @@ if [[ ! -z "$1" ]]; then
     cd "$1"
 fi
 
+# We want to check with --all-targets since it checks test code, but that flag
+# leads to build errors in enclave workspaces, so check it here.
+cargo clippy --all --all-features --all-targets
+
 cargo install cargo-sort
 
 for toml in $(grep --exclude-dir cargo --exclude-dir rust-mbedtls --include=Cargo.toml -r . -e '\[workspace\]' | cut -d: -f1); do

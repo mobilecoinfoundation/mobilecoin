@@ -268,8 +268,11 @@ pub trait ConsensusEnclave: ReportableEnclave {
     /// Retrieve the block signing public key from the enclave.
     fn get_signer(&self) -> Result<Ed25519Public>;
 
-    /// Retrieve the fee public key from the enclave
+    /// Retrieve the fee public key from the enclave.
     fn get_fee_recipient(&self) -> Result<FeePublicKey>;
+
+    /// Retrieve the minting trust root public key from the enclave.
+    fn get_minting_trust_root(&self) -> Result<Ed25519Public>;
 
     // CLIENT-FACING METHODS
 

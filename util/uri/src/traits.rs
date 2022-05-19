@@ -95,6 +95,11 @@ pub trait ConnectionUri:
         Ok(ResponderId::from_str(&responder_id_string)?)
     }
 
+    /// Create a responder id from the ConnectionUri's host and port.
+    fn host_and_port_responder_id(&self) -> StdResult<ResponderId, UriConversionError> {
+        Ok(ResponderId::from_str(&self.addr())?)
+    }
+
     /// Retrieve the `NodeID` for this connection.
     fn node_id(&self) -> StdResult<NodeID, UriConversionError> {
         Ok(NodeID {

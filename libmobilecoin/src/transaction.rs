@@ -19,12 +19,12 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    BlockVersion, CompressedCommitment, EncryptedMemo, MaskedAmount, Token,
+    Amount, BlockVersion, CompressedCommitment, EncryptedMemo, MaskedAmount, Token,
 };
 
 use mc_transaction_std::{
-    AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, ChangeDestination,
-    DestinationMemo, InputCredentials, MemoBuilder, MemoPayload, RTHMemoBuilder,
+    AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
+    InputCredentials, MemoBuilder, MemoPayload, RTHMemoBuilder, ReservedDestination,
     SenderMemoCredential, TransactionBuilder,
 };
 
@@ -378,14 +378,12 @@ pub extern "C" fn mc_transaction_builder_create(
 
         let mut transaction_builder = TransactionBuilder::new_with_box(
             block_version,
-            token_id,
+            Amount::new(fee, token_id),
             fog_resolver,
             memo_builder_box,
-        );
+        )
+        .expect("Could not create transaction builder");
 
-        transaction_builder
-            .set_fee(fee)
-            .expect("failure not expected");
         transaction_builder.set_tombstone_block(tombstone_block);
         Some(transaction_builder)
     })
@@ -498,6 +496,13 @@ pub extern "C" fn mc_transaction_builder_add_output(
             .as_slice_mut_of_len(TxOutConfirmationNumber::size())
             .expect("out_tx_out_confirmation_number length is insufficient");
 
+        // TODO (GH #1867): If you want to support mixed transactions, use something
+        // other than fee_token_id here.
+        let amount = Amount {
+            value: amount,
+            token_id: transaction_builder.get_fee_token_id(),
+        };
+
         let (tx_out, confirmation) =
             transaction_builder.add_output(amount, &recipient_address, &mut rng)?;
 
@@ -534,12 +539,19 @@ pub extern "C" fn mc_transaction_builder_add_change_output(
             .into_mut()
             .as_mut()
             .expect("McTransactionBuilder instance has already been used to build a Tx");
-        let change_destination = ChangeDestination::from(&account_key_obj);
+        let change_destination = ReservedDestination::from(&account_key_obj);
         let mut rng = SdkRng::from_ffi(rng_callback);
         let out_tx_out_confirmation_number = out_tx_out_confirmation_number
             .into_mut()
             .as_slice_mut_of_len(TxOutConfirmationNumber::size())
             .expect("out_tx_out_confirmation_number length is insufficient");
+
+        // TODO (GH #1867): If you want to support mixed transactions, use something
+        // other than fee_token_id here.
+        let amount = Amount {
+            value: amount,
+            token_id: transaction_builder.get_fee_token_id(),
+        };
 
         let (tx_out, confirmation) =
             transaction_builder.add_change_output(amount, &change_destination, &mut rng)?;

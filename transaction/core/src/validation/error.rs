@@ -1,5 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+use crate::InputRuleError;
 use alloc::string::String;
 use displaydoc::Display;
 use mc_crypto_keys::KeyError;
@@ -140,10 +141,22 @@ pub enum TransactionValidationError {
 
     /// Outputs must be sorted by public key, ascending
     UnsortedOutputs,
+
+    /// Input rules not yet allowed
+    InputRulesNotAllowed,
+
+    /// Input rule: {0}
+    InputRule(InputRuleError),
 }
 
 impl From<mc_crypto_keys::KeyError> for TransactionValidationError {
     fn from(_src: KeyError) -> Self {
         Self::KeyError
+    }
+}
+
+impl From<InputRuleError> for TransactionValidationError {
+    fn from(src: InputRuleError) -> Self {
+        Self::InputRule(src)
     }
 }

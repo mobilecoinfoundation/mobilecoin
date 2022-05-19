@@ -16,7 +16,9 @@ use crate::{
 };
 use bip39::{Language, Mnemonic, MnemonicType};
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
-use mc_account_keys::{AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX};
+use mc_account_keys::{
+    burn_address, AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX,
+};
 use mc_account_keys_slip10::Slip10KeyGenerator;
 use mc_common::{
     logger::{log, Logger},
@@ -38,6 +40,7 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     TokenId,
 };
+use mc_transaction_std::{BurnRedemptionMemo, BurnRedemptionMemoBuilder};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result, AdminService,
@@ -46,7 +49,7 @@ use mc_util_grpc::{
 use mc_watcher::watcher_db::WatcherDB;
 use protobuf::{ProtobufEnum, RepeatedField};
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     sync::{Arc, Mutex, RwLock},
 };
 
@@ -880,6 +883,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &outlays,
                 request.fee,
                 request.tombstone,
+                None,
             )
             .map_err(|err| {
                 rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
@@ -972,6 +976,119 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             })?;
 
         let mut response = mc_mobilecoind_api::GenerateTxFromTxOutListResponse::new();
+        response.set_tx_proposal((&tx_proposal).into());
+        Ok(response)
+    }
+
+    fn generate_burn_redemption_tx_impl(
+        &mut self,
+        request: mc_mobilecoind_api::GenerateBurnRedemptionTxRequest,
+    ) -> Result<mc_mobilecoind_api::GenerateBurnRedemptionTxResponse, RpcStatus> {
+        // Get sender monitor id from request.
+        let sender_monitor_id = MonitorId::try_from(&request.sender_monitor_id)
+            .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
+
+        // Get monitor data for this monitor.
+        let sender_monitor_data = self
+            .mobilecoind_db
+            .get_monitor_data(&sender_monitor_id)
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.get_monitor_data", err, &self.logger)
+            })?;
+
+        // Check that change_subaddress is covered by this monitor.
+        if !sender_monitor_data
+            .subaddress_indexes()
+            .contains(&request.change_subaddress)
+        {
+            return Err(RpcStatus::with_message(
+                RpcStatusCode::INVALID_ARGUMENT,
+                "change_subaddress".into(),
+            ));
+        }
+
+        // Get the list of potential inputs passed to.
+        let input_list: Vec<UnspentTxOut> = request
+            .get_input_list()
+            .iter()
+            .enumerate()
+            .map(|(i, proto_utxo)| {
+                // Proto -> Rust struct conversion.
+                let utxo = UnspentTxOut::try_from(proto_utxo).map_err(|err| {
+                    rpc_internal_error(format!("unspent_tx_out[{}].try_from", i), err, &self.logger)
+                })?;
+
+                // Verify token id matches.
+                if utxo.token_id != request.token_id {
+                    return Err(RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        format!("input_list[{}].token_id", i),
+                    ));
+                }
+
+                // Verify this output belongs to the monitor.
+                let subaddress_id = self
+                    .mobilecoind_db
+                    .get_subaddress_id_by_utxo_id(&UtxoId::from(&utxo))
+                    .map_err(|err| {
+                        rpc_internal_error(
+                            "mobilecoind_db.get_subaddress_id_by_utxo_id",
+                            err,
+                            &self.logger,
+                        )
+                    })?;
+
+                if subaddress_id.monitor_id != sender_monitor_id {
+                    return Err(RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        format!("input_list[{}].monitor_id", i),
+                    ));
+                }
+
+                // Success.
+                Ok(utxo)
+            })
+            .collect::<Result<Vec<UnspentTxOut>, RpcStatus>>()?;
+
+        // Generate the list of outlays.
+        let outlays = vec![Outlay {
+            value: request.get_burn_amount(),
+            receiver: burn_address(),
+        }];
+
+        // Create memo builder.
+        let mut memo_data = request.get_redemption_memo().to_vec();
+        if memo_data.is_empty() {
+            memo_data.resize(BurnRedemptionMemo::MEMO_DATA_LEN, 0);
+        }
+        let memo_data_array = memo_data.try_into().map_err(|_err| {
+            RpcStatus::with_message(RpcStatusCode::INVALID_ARGUMENT, "redemption_memo".into())
+        })?;
+
+        let mut memo_builder = BurnRedemptionMemoBuilder::new(memo_data_array);
+        if request.enable_destination_memo {
+            memo_builder.enable_destination_memo();
+        }
+
+        // Attempt to construct a transaction.
+        let tx_proposal = self
+            .transactions_manager
+            .build_transaction(
+                &sender_monitor_id,
+                TokenId::from(request.token_id),
+                request.change_subaddress,
+                &input_list,
+                &outlays,
+                request.fee,
+                request.tombstone,
+                Some(Box::new(memo_builder)),
+            )
+            .map_err(|err| {
+                rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
+            })?;
+
+        // Success.
+        let mut response = mc_mobilecoind_api::GenerateBurnRedemptionTxResponse::new();
         response.set_tx_proposal((&tx_proposal).into());
         Ok(response)
     }
@@ -1735,6 +1852,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &outlays,
                 request.fee,
                 request.tombstone,
+                None,
             )
             .map_err(|err| {
                 rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
@@ -1928,6 +2046,7 @@ build_api! {
     generate_optimization_tx GenerateOptimizationTxRequest GenerateOptimizationTxResponse generate_optimization_tx_impl,
     generate_transfer_code_tx GenerateTransferCodeTxRequest GenerateTransferCodeTxResponse generate_transfer_code_tx_impl,
     generate_tx_from_tx_out_list GenerateTxFromTxOutListRequest GenerateTxFromTxOutListResponse generate_tx_from_tx_out_list_impl,
+    generate_burn_redemption_tx GenerateBurnRedemptionTxRequest GenerateBurnRedemptionTxResponse generate_burn_redemption_tx_impl,
     submit_tx SubmitTxRequest SubmitTxResponse submit_tx_impl,
 
     // Databases
@@ -1966,7 +2085,10 @@ mod test {
         utxo_store::UnspentTxOut,
     };
     use grpcio::Error as GrpcError;
-    use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
+    use mc_account_keys::{
+        burn_address_view_private, AccountKey, PublicAddress, ShortAddressHash,
+        DEFAULT_SUBADDRESS_INDEX,
+    };
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_keys::RistrettoPrivate;
     use mc_crypto_rand::RngCore;
@@ -1981,11 +2103,12 @@ mod test {
         tx::{Tx, TxOut},
         Amount, Block, BlockContents, BlockVersion, Token,
     };
-    use mc_transaction_std::{EmptyMemoBuilder, TransactionBuilder};
+    use mc_transaction_std::{EmptyMemoBuilder, MemoType, TransactionBuilder};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
     use std::{
+        assert_matches::assert_matches,
         convert::{TryFrom, TryInto},
         iter::FromIterator,
         str::FromStr,
@@ -2917,12 +3040,13 @@ mod test {
         let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
-            Mob::ID,
+            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let (tx_out, tx_confirmation) = transaction_builder
-            .add_output(10, &receiver.subaddress(0), &mut rng)
+            .add_output(Amount::new(10, Mob::ID), &receiver.subaddress(0), &mut rng)
             .unwrap();
 
         add_txos_to_ledger_db(BLOCK_VERSION, &mut ledger_db, &[tx_out.clone()], &mut rng);
@@ -3797,6 +3921,166 @@ mod test {
                     .collect(),
             ));
             assert!(client.generate_tx(&request).is_err());
+        }
+    }
+
+    #[test_with_logger]
+    fn test_generate_burn_redemption_tx(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+        let token_id2 = TokenId::from(2);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                BLOCK_VERSION,
+                3,
+                &[sender.default_subaddress()],
+                &[],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Add a block with a non-MOB token ID.
+        add_block_to_ledger_db(
+            BlockVersion::MAX,
+            &mut ledger_db,
+            &vec![
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                sender.default_subaddress(),
+            ],
+            Amount {
+                value: 1_000_000_000_000,
+                token_id: token_id2,
+            },
+            &[KeyImage::from(101)],
+            &mut rng,
+        );
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs that we want to burn
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, 0)
+            .unwrap()
+            .iter()
+            .filter(|utxo| utxo.token_id == token_id2)
+            .map(Into::into)
+            .collect::<RepeatedField<_>>();
+        assert!(!utxos.is_empty());
+
+        // Prepare request
+        let mut request = mc_mobilecoind_api::GenerateBurnRedemptionTxRequest::new();
+        request.set_sender_monitor_id(monitor_id.to_vec());
+        request.set_change_subaddress(0);
+        request.set_input_list(utxos);
+        request.set_burn_amount(100_000);
+        request.set_fee(200_000);
+        request.set_token_id(*token_id2);
+        request.set_redemption_memo(vec![5u8; BurnRedemptionMemo::MEMO_DATA_LEN]);
+        request.set_enable_destination_memo(true);
+
+        // Test the happy flow.
+        {
+            let response = client.generate_burn_redemption_tx(&request).unwrap();
+
+            // Sanity test the response.
+            let tx_proposal = response.get_tx_proposal();
+            let tx = Tx::try_from(tx_proposal.get_tx()).unwrap();
+
+            // Two outputs - change and burn
+            assert_eq!(tx.prefix.outputs.len(), 2);
+
+            // Validate the change output.
+            let (change_tx_out, change_amount) = tx
+                .prefix
+                .outputs
+                .iter()
+                .find_map(|tx_out| {
+                    tx_out
+                        .view_key_match(sender.view_private_key())
+                        .map(|(amount, _commitment)| (tx_out.clone(), amount))
+                        .ok()
+                })
+                .expect("Didn't find sender's change output");
+
+            assert_eq!(change_amount.value, 1_000_000_000_000 - 100_000 - 200_000);
+
+            let ss = get_tx_out_shared_secret(
+                sender.view_private_key(),
+                &RistrettoPublic::try_from(&change_tx_out.public_key).unwrap(),
+            );
+            let memo = change_tx_out.e_memo.unwrap().decrypt(&ss);
+            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                MemoType::Destination(memo) => {
+                    assert_eq!(
+                        memo.get_address_hash(),
+                        &ShortAddressHash::from(&burn_address()),
+                        "lookup based on address hash failed"
+                    );
+                    assert_eq!(memo.get_num_recipients(), 1);
+                    assert_eq!(memo.get_fee(), 200_000);
+                    assert_eq!(
+                        memo.get_total_outlay(),
+                        300_000,
+                        "outlay should be amount sent to recipient + fee"
+                    );
+                }
+                _ => {
+                    panic!("unexpected memo type")
+                }
+            }
+
+            // Validate the burn output.
+            let (burn_tx_out, burn_amount) = tx
+                .prefix
+                .outputs
+                .iter()
+                .find_map(|tx_out| {
+                    tx_out
+                        .view_key_match(&burn_address_view_private())
+                        .map(|(amount, _commitment)| (tx_out.clone(), amount))
+                        .ok()
+                })
+                .expect("Didn't find burn output");
+
+            assert_eq!(burn_amount.value, 100_000);
+
+            let ss = get_tx_out_shared_secret(
+                &burn_address_view_private(),
+                &RistrettoPublic::try_from(&burn_tx_out.public_key).unwrap(),
+            );
+            let memo = burn_tx_out.e_memo.unwrap().decrypt(&ss);
+            assert_matches!(MemoType::try_from(&memo).expect("Couldn't decrypt memo"), MemoType::BurnRedemption(memo) if memo.memo_data() == &[5u8; 64]);
+        }
+
+        // Invalid memo data length results in an error.
+        {
+            let mut request = request.clone();
+            request.set_redemption_memo(vec![5u8; BurnRedemptionMemo::MEMO_DATA_LEN + 1]);
+            assert!(client.generate_burn_redemption_tx(&request).is_err());
+        }
+
+        // Trying to burn more than we have results in an error.
+        {
+            let mut request = request.clone();
+            request.set_burn_amount(1_000_000_000_000 - request.get_fee() + 1);
+            assert!(client.generate_burn_redemption_tx(&request).is_err());
         }
     }
 
@@ -5230,13 +5514,14 @@ mod test {
 
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
-            Mob::ID,
+            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
-                10,
+                Amount::new(10, Mob::ID),
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
                 &mut rng,
             )
@@ -5342,13 +5627,14 @@ mod test {
 
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
-            Mob::ID,
+            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
-                10,
+                Amount::new(10, Mob::ID),
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
                 &mut rng,
             )

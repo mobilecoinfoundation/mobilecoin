@@ -1,4 +1,4 @@
-edition = "2018"
+edition = "2021"
 wrap_comments = true
 imports_granularity = "Crate"
 
