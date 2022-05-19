@@ -132,20 +132,18 @@ class FogNetwork(Network):
             f'activate',
         ])
         print(cmd)
-        result = subprocess.check_output(cmd, shell=True)
+        subprocess.check_output(cmd, shell=True)
 
     def stop(self):
-        if hasattr(self, "fog_ledger"):
-            self.fog_ledger.stop()
+        def stop_server(name):
+            server = getattr(self, name, None)
+            if server is not None:
+                server.stop()
 
-        if hasattr(self, "fog_report"):
-            self.fog_report.stop()
-
-        if hasattr(self, "fog_view"):
-            self.fog_view.stop()
-
-        if hasattr(self, "fog_ingest"):
-            self.fog_ingest.stop()
+        stop_server("fog_ledger")
+        stop_server("fog_report")
+        stop_server("fog_view")
+        stop_server("fog_ingest")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Local network tester')
