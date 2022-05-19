@@ -171,8 +171,8 @@ fn create_or_open_ledger_db(
 ) -> LedgerDB {
     let ledger_db_file = Path::new(&config.ledger_db).join("data.mdb");
 
-    // Attempt to run migrations, if requested.
-    if config.ledger_db_migrate {
+    // Attempt to run migrations, if requested and ledger is available.
+    if config.ledger_db_migrate && ledger_db_file.exists() {
         mc_ledger_migration::migrate(&config.ledger_db, logger);
     }
 
