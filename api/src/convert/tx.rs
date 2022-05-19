@@ -31,7 +31,8 @@ mod tests {
     use mc_account_keys::AccountKey;
     use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_transaction_core::{
-        constants::MILLIMOB_TO_PICOMOB, tokens::Mob, tx::Tx, Amount, BlockVersion, Token, TokenId,
+        constants::MILLIMOB_TO_PICOMOB, signer::NoKeysRingSigner, tokens::Mob, tx::Tx, Amount,
+        BlockVersion, Token, TokenId,
     };
     use mc_transaction_std::{
         test_utils::get_input_credentials, EmptyMemoBuilder, ReservedDestination,
@@ -76,7 +77,9 @@ mod tests {
                 )
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).unwrap();
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .unwrap();
 
             // decode(encode(tx)) should be the identity function.
             {
@@ -152,7 +155,7 @@ mod tests {
                 )
                 .unwrap();
 
-            let mut sci = sci_builder.build(&mut rng).unwrap();
+            let mut sci = sci_builder.build(&NoKeysRingSigner {}, &mut rng).unwrap();
 
             // Alice adds proofs to the SCI
             sci.tx_in.proofs = proofs;
@@ -192,7 +195,9 @@ mod tests {
                 )
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).unwrap();
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .unwrap();
 
             // decode(encode(tx)) should be the identity function.
             {

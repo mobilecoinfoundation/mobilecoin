@@ -5,7 +5,7 @@ use maplit::btreemap;
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use mc_api::external;
 use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
-use mc_transaction_core::{Amount, BlockVersion, SignedContingentInput};
+use mc_transaction_core::{signer::NoKeysRingSigner, Amount, BlockVersion, SignedContingentInput};
 use mc_transaction_std::{
     test_utils::get_input_credentials, EmptyMemoBuilder, ReservedDestination,
     SignedContingentInputBuilder,
@@ -84,7 +84,7 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
     builder
         .add_required_output(Amount::new(400, 0.into()), &recipient, rng)
         .unwrap();
-    result.push(builder.build(rng).unwrap());
+    result.push(builder.build(&NoKeysRingSigner {}, rng).unwrap());
 
     let input_credentials = get_input_credentials(
         block_version,
@@ -106,7 +106,7 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
     builder
         .add_required_output(Amount::new(600, 2.into()), &recipient2, rng)
         .unwrap();
-    result.push(builder.build(rng).unwrap());
+    result.push(builder.build(&NoKeysRingSigner {}, rng).unwrap());
 
     let input_credentials = get_input_credentials(
         block_version,
@@ -131,7 +131,7 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
     builder
         .add_required_change_output(Amount::new(100, 1.into()), &sender_change_dest, rng)
         .unwrap();
-    result.push(builder.build(rng).unwrap());
+    result.push(builder.build(&NoKeysRingSigner {}, rng).unwrap());
 
     result
 }

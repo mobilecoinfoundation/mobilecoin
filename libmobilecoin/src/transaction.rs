@@ -17,6 +17,7 @@ use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
     ring_signature::KeyImage,
+    signer::NoKeysRingSigner,
     tokens::Mob,
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     Amount, BlockVersion, CompressedCommitment, EncryptedMemo, MaskedAmount, Token,
@@ -612,7 +613,7 @@ pub extern "C" fn mc_transaction_builder_build(
         let mut rng = SdkRng::from_ffi(rng_callback);
 
         let tx = transaction_builder
-            .build(&mut rng)
+            .build(&NoKeysRingSigner {}, &mut rng)
             .map_err(|err| LibMcError::InvalidInput(format!("{:?}", err)))?;
         Ok(mc_util_serial::encode(&tx))
     })

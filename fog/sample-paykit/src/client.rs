@@ -28,6 +28,7 @@ use mc_fog_view_connection::FogViewGrpcClient;
 use mc_transaction_core::{
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
+    signer::NoKeysRingSigner,
     tx::{Tx, TxOut, TxOutMembershipProof},
     Amount, BlockIndex, BlockVersion, SignedContingentInput, TokenId,
 };
@@ -446,7 +447,7 @@ impl Client {
 
         sci_builder.set_tombstone_block(tombstone_block);
 
-        Ok(sci_builder.build(rng)?)
+        Ok(sci_builder.build(&NoKeysRingSigner {}, rng)?)
     }
 
     /// Builds a transaction that fulfills a swap request, sending all excess
@@ -635,7 +636,7 @@ impl Client {
             )?;
         }
 
-        Ok(tx_builder.build(rng)?)
+        Ok(tx_builder.build(&NoKeysRingSigner {}, rng)?)
     }
 
     /// Helper: Get merkle proofs corresponding to a given set of our inputs
@@ -928,7 +929,7 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     // Finalize
     tx_builder.set_tombstone_block(tombstone_block);
 
-    Ok(tx_builder.build(rng)?)
+    Ok(tx_builder.build(&NoKeysRingSigner {}, rng)?)
 }
 
 fn add_inputs_to_tx_builder<FPR: FogPubkeyResolver>(
