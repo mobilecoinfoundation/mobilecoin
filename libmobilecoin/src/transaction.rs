@@ -24,7 +24,7 @@ use mc_transaction_core::{
 
 use mc_transaction_std::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
-    InputCredentials, MemoBuilder, MemoPayload, RTHMemoBuilder, ReservedDestination,
+    InputCredentials, MemoBuilder, MemoPayload, RTHMemoBuilder, ReservedSubaddresses,
     SenderMemoCredential, TransactionBuilder,
 };
 
@@ -539,7 +539,7 @@ pub extern "C" fn mc_transaction_builder_add_change_output(
             .into_mut()
             .as_mut()
             .expect("McTransactionBuilder instance has already been used to build a Tx");
-        let change_destination = ReservedDestination::from(&account_key_obj);
+        let change_destination = ReservedSubaddresses::from(&account_key_obj);
         let mut rng = SdkRng::from_ffi(rng_callback);
         let out_tx_out_confirmation_number = out_tx_out_confirmation_number
             .into_mut()

@@ -53,7 +53,7 @@ use mc_transaction_core::{
 
 use mc_transaction_std::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
-    InputCredentials, MemoBuilder, MemoPayload, RTHMemoBuilder, ReservedDestination,
+    InputCredentials, MemoBuilder, MemoPayload, RTHMemoBuilder, ReservedSubaddresses,
     SenderMemoCredential, TransactionBuilder,
 };
 
@@ -1747,7 +1747,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1change_
                 env.get_rust_field(source_account_key, RUST_OBJ_FIELD)?;
 
             let value = jni_big_int_to_u64(env, value)?;
-            let change_destination = ReservedDestination::from(&*source_account_key);
+            let change_destination = ReservedSubaddresses::from(&*source_account_key);
             let mut rng = McRng::default();
 
             // TODO (GH #1867): If you want to do mixed transactions, use something other

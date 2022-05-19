@@ -4,7 +4,7 @@
 //! This plays a similar role to the transaction builder.
 
 use crate::{
-    InputCredentials, MemoBuilder, ReservedDestination, SignedContingentInputBuilderError,
+    InputCredentials, MemoBuilder, ReservedSubaddresses, SignedContingentInputBuilderError,
     TxBuilderError,
 };
 use core::cmp::min;
@@ -192,7 +192,7 @@ impl<FPR: FogPubkeyResolver> SignedContingentInputBuilder<FPR> {
     pub fn add_required_change_output<RNG: CryptoRng + RngCore>(
         &mut self,
         amount: Amount,
-        change_destination: &ReservedDestination,
+        change_destination: &ReservedSubaddresses,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
         // Taking self.memo_builder here means that we can call functions on &mut self,
@@ -729,7 +729,7 @@ pub mod tests {
             sci.tx_in.proofs = proofs;
             builder.add_presigned_input(sci).unwrap();
 
-            let bob_change_dest = ReservedDestination::from(&bob);
+            let bob_change_dest = ReservedSubaddresses::from(&bob);
 
             // Bob keeps the change from token id 2
             builder
@@ -977,7 +977,7 @@ pub mod tests {
             sci.tx_in.proofs = proofs;
             builder.add_presigned_input(sci).unwrap();
 
-            let bob_change_dest = ReservedDestination::from(&bob);
+            let bob_change_dest = ReservedSubaddresses::from(&bob);
 
             // Bob keeps the change from token id 2
             builder
@@ -1194,7 +1194,7 @@ pub mod tests {
             .unwrap();
 
             // Bob keeps the change from token id 2
-            let bob_change_dest = ReservedDestination::from(&bob);
+            let bob_change_dest = ReservedSubaddresses::from(&bob);
             builder
                 .add_required_change_output(
                     Amount::new(200_000, token2),
@@ -1242,7 +1242,7 @@ pub mod tests {
             ));
 
             // Charlie keeps 333 as change, leaving 666 for Bob
-            let charlie_change_dest = ReservedDestination::from(&charlie);
+            let charlie_change_dest = ReservedSubaddresses::from(&charlie);
             builder
                 .add_change_output(Amount::new(333, token3), &charlie_change_dest, &mut rng)
                 .unwrap();

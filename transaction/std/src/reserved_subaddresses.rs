@@ -15,7 +15,7 @@ use mc_account_keys::{AccountKey, PublicAddress};
 /// This object can be created from an AccountKey, but it can also be created
 /// offline and then serialized and sent to a different machine.
 #[derive(Clone, Debug)]
-pub struct ReservedDestination {
+pub struct ReservedSubaddresses {
     /// This is normally the default subaddress of an account. It is used to
     /// create the fog hint for the change output.
     pub primary_address: PublicAddress,
@@ -34,7 +34,7 @@ pub struct ReservedDestination {
     pub gift_code_subaddress: PublicAddress,
 }
 
-impl From<&AccountKey> for ReservedDestination {
+impl From<&AccountKey> for ReservedSubaddresses {
     fn from(src: &AccountKey) -> Self {
         Self {
             primary_address: src.default_subaddress(),
@@ -44,7 +44,7 @@ impl From<&AccountKey> for ReservedDestination {
     }
 }
 
-impl ReservedDestination {
+impl ReservedSubaddresses {
     /// Set alternate subaddresseses for reserved addresses. This is useful in
     /// some things like mobilecoind
     pub fn from_subaddress_index(
