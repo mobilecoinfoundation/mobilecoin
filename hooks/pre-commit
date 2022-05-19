@@ -154,7 +154,7 @@ diff=""
 for file in $(git diff --name-only --cached --diff-filter=d | egrep -v '^sgx/sgx_(tcrypto|urts|types)');
 do
 	if [[ ${file: -3} == ".rs" ]]; then
-		if !(head -n 1 ${file} | grep "^\${COPYRIGHT_LINE}")
+		if ! [[ $(head -n 1 ${file}) == "${COPYRIGHT_LINE}" ]]
 		then
 		    diff="$file\n$diff"
 		fi
