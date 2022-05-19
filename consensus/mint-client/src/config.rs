@@ -2,6 +2,7 @@
 
 //! Command line configuration for the consensus mint client.
 
+use crate::TxFile;
 use clap::{Args, Parser, Subcommand};
 use hex::FromHex;
 use mc_account_keys::PublicAddress;
@@ -87,7 +88,6 @@ pub struct MintConfigTxParams {
         long = "signing-key",
         use_value_delimiter = true,
         parse(try_from_str = load_key_from_pem),
-        required_unless_present = "signatures",
         env = "MC_MINTING_SIGNING_KEYS"
     )]
     signing_keys: Vec<Ed25519Private>,
@@ -96,7 +96,8 @@ pub struct MintConfigTxParams {
     #[clap(
         long = "signature",
         use_value_delimiter = true,
-        parse(try_from_str = load_or_parse_ed25519_signature), env = "MC_MINTING_SIGNATURES"
+        parse(try_from_str = load_or_parse_ed25519_signature),
+        env = "MC_MINTING_SIGNATURES"
     )]
     signatures: Vec<Ed25519Signature>,
 
@@ -181,7 +182,6 @@ pub struct MintTxParams {
         long = "signing-key",
         use_value_delimiter = true,
         parse(try_from_str = load_key_from_pem),
-        required_unless_present = "signatures",
         env = "MC_MINTING_SIGNING_KEYS"
     )]
     signing_keys: Vec<Ed25519Private>,
@@ -264,12 +264,12 @@ pub enum Commands {
         node: ConsensusClientUri,
 
         /// Paths for the JSON-formatted mint configuration tx files, each
-        /// containing a serde-serialized MintConfigTx object.
+        /// containing a serde-serialized TxFile holding a MintConfigTx object.
         #[clap(
-            long = "tx",
+            long = "tx-file",
             required = true,
             use_value_delimiter = true,
-            env = "MC_MINTING_CONFIG_TXS"
+            env = "MC_MINTING_CONFIG_TX_FILES"
         )]
         tx_filenames: Vec<PathBuf>,
     },
@@ -310,12 +310,12 @@ pub enum Commands {
         node: ConsensusClientUri,
 
         /// Paths for the JSON-formatted mint tx files, each containing a
-        /// serde-serialized MintTx object.
+        /// serde-serialized TxFile holding a MintTx object.
         #[clap(
-            long = "tx",
+            long = "tx-file",
             required = true,
             use_value_delimiter = true,
-            env = "MC_MINTING_TXS"
+            env = "MC_MINTING_TX_FILES"
         )]
         tx_filenames: Vec<PathBuf>,
     },
@@ -337,6 +337,40 @@ pub enum Commands {
         /// Optionally write a new tokens.json file containing the signature.
         #[clap(long, env = "MC_MINTING_OUTPUT_JSON")]
         output_json: Option<PathBuf>,
+    },
+
+    /// Load a previously-serialized file produced by this tool and print its
+    /// contents in a human-friendly way.
+    Dump {
+        /// The file to load
+        #[clap(long, parse(try_from_str = load_tx_file_from_path), env = "MC_MINTING_TX_FILE")]
+        tx_file: TxFile,
+    },
+
+    /// Sign a transaction file produced by this tool, rewriting the file with
+    /// the appended signature(s).
+    Sign {
+        /// The file to sign
+        #[clap(long, env = "MC_MINTING_TX_FILE")]
+        tx_file: PathBuf,
+
+        /// The key(s) to sign the transaction with.
+        #[clap(
+            long = "signing-key",
+            required_unless_present = "signatures",
+            parse(try_from_str = load_key_from_pem),
+            env = "MC_MINTING_SIGNING_KEYS"
+        )]
+        signing_keys: Vec<Ed25519Private>,
+
+        /// Pre-generated signature(s) to use, either in hex format or a PEM
+        /// file.
+        #[clap(
+            long = "signature",
+            use_value_delimiter = true,
+            parse(try_from_str = load_or_parse_ed25519_signature), env = "MC_MINTING_SIGNATURES"
+        )]
+        signatures: Vec<Ed25519Signature>,
     },
 }
 
@@ -471,4 +505,8 @@ fn get_or_generate_nonce(nonce: Option<[u8; NONCE_LENGTH]>) -> Vec<u8> {
         rng.fill_bytes(&mut nonce);
         nonce
     })
+}
+
+fn load_tx_file_from_path(path: &str) -> Result<TxFile, String> {
+    TxFile::from_json_file(path).map_err(|e| format!("failed loading file {:?}: {}", path, e))
 }
