@@ -38,9 +38,9 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 - Bump SGX versions to 2.15. ([#1101])
 - Fixed a problem with data authentication in the Fog OCALL Oram Storage interface
-  (Thanks to @AmbitionXiang for reporting!) ([#1576])
+  (Thanks to [@AmbitionXiang] for reporting!) ([#1576])
 - Fixed Fog services sometimes returning the wrong grpc error code for attestation failures
-- Added missing retries for connectivity issues with PostGRES database in Fog services
+- Added missing retries for connectivity issues with Postgres database in Fog services
 
 
 #### Python
