@@ -24,7 +24,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
   - Verifiable burning for any token ([mcips#35])
   - Standardized Addresses for common purposes ([mcips#36])
 - In Block Version 3 (will be enabled in a future release):
-  - Require TxOs to be sorted in TxProposal.
+  - Require TxOuts to be sorted in TxProposal.
 
 ### Changed
 
@@ -32,7 +32,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Enable `Bitcode` for `libmobilecoin`, reduce mobile artifact size by ~25% ([#1124])
 - Make fog ingest state file handling more resilient ([#1358])
 - Fee-accumulation in the enclave is now constant-time ([#1780])
-- mobilecoind will now exit on startup when a ledger migration is necessary
+- mobilecoind will now exit on startup when a ledger migration is necessary, unless the new `--ledger-db-migrate` command line argument is used, in which case it will migrate automatically
 
 ### Changes
 
