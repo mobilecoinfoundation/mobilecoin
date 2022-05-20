@@ -28,7 +28,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 ### Changed
 
-- Enable `Bitcode` for `libmobilecoin`, reduce mobile artifact size by ~25% ([#1124])
+- Enable `Bitcode` for `libmobilecoin`, reduce mobile artifact size by ~25% (#1124)
 - mobilecoind will now exit on startup when a ledger migration is necessary, unless the new `--ledger-db-migrate` command line argument is used, in which case it will migrate automatically
 - Bump SGX versions to 2.16. ([#1101], [#2018])
 
