@@ -27,6 +27,7 @@ mc-util-parse = { path = "../../util/parse" }
 mc-util-uri = { path = "../../util/uri" }
 
 clap = { version = "3.1", features = ["derive", "env"] }
+displaydoc = "0.2"
 grpcio = "0.10.2"
 hex = "0.4"
 pem = "1.0"
