@@ -16,7 +16,7 @@ use bip39::Mnemonic;
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use mc_api::printable::PrintableWrapper;
 use std::{
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     fs::File,
     io::{Read, Write},
     path::Path,
@@ -53,14 +53,36 @@ pub fn read_root_entropy_keyfile_data<R: Read>(buffer: R) -> Result<RootIdentity
     Ok(serde_json::from_reader::<R, RootIdentityJson>(buffer)?.into())
 }
 
-/// Read user root identity from disk
+/// Read user mnemonic from disk
+pub fn read_mnemonic_keyfile<P: AsRef<Path>>(path: P) -> Result<AccountKey, Error> {
+    read_mnemonic_keyfile_data(File::open(path)?)
+}
+
+/// Read user root identity from any implementor of `Read`
+pub fn read_mnemonic_keyfile_data<R: Read>(buffer: R) -> Result<AccountKey, Error> {
+    Ok(serde_json::from_reader::<R, UncheckedMnemonicAccount>(buffer)?.try_into()?)
+}
+
+/// Read an account either in the RootIdentity format or the mnemonic format
+/// from disk
 pub fn read_keyfile<P: AsRef<Path>>(path: P) -> Result<AccountKey, Error> {
     read_keyfile_data(File::open(path)?)
 }
 
-/// Read user root identity from any implementor of `Read`
+/// Read an account key file in either format
 pub fn read_keyfile_data<R: Read>(buffer: R) -> Result<AccountKey, Error> {
-    Ok(serde_json::from_reader::<R, UncheckedMnemonicAccount>(buffer)?.try_into()?)
+    let value = serde_json::from_reader::<R, serde_json::Value>(buffer)?;
+    let obj = value
+        .as_object()
+        .ok_or(Error::Json("Expected json object".to_string()))?;
+    if obj.contains_key("root_entropy") {
+        let root_identity_json: RootIdentityJson = serde_json::from_value(value)?;
+        let root_id = RootIdentity::from(root_identity_json);
+        Ok(AccountKey::from(&root_id))
+    } else {
+        let mnemonic_json: UncheckedMnemonicAccount = serde_json::from_value(value)?;
+        Ok(AccountKey::try_from(mnemonic_json)?)
+    }
 }
 
 /// Write user public address to disk
