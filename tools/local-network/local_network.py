@@ -11,7 +11,6 @@ import os
 import shutil
 import socketserver
 import subprocess
-import sys
 import threading
 import time
 from pprint import pformat
@@ -29,15 +28,19 @@ IAS_API_KEY = os.getenv('IAS_API_KEY', default='0'*64) # 32 bytes
 IAS_SPID = os.getenv('IAS_SPID', default='0'*32) # 16 bytes
 PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 MOB_RELEASE = os.getenv('MOB_RELEASE', '1')
-CARGO_FLAGS = '--release'
-TARGET_DIR = 'target/release'
-WORK_DIR =  os.path.join(PROJECT_DIR, TARGET_DIR, 'mc-local-network')
+if MOB_RELEASE == '1':
+    CARGO_FLAGS = '--release'
+    BUILD_TYPE = 'release'
+else:
+    CARGO_FLAGS = ''
+    BUILD_TYPE = 'debug'
+
+DEFAULT_TARGET_DIR = os.path.join(PROJECT_DIR, 'target')
+BASE_TARGET_DIR = os.path.abspath(os.getenv('CARGO_TARGET_DIR', DEFAULT_TARGET_DIR))
+TARGET_DIR = os.path.join(BASE_TARGET_DIR, BUILD_TYPE)
+WORK_DIR = os.path.join(TARGET_DIR, 'mc-local-network')
 MINTING_KEYS_DIR = os.path.join(WORK_DIR, 'minting-keys')
 CLI_PORT = 31337
-
-if MOB_RELEASE == '0':
-    CARGO_FLAGS = ''
-    TARGET_DIR = 'target/debug'
 
 # Sane default log configuration
 if 'MC_LOG' not in os.environ:

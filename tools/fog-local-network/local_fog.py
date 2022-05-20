@@ -33,7 +33,9 @@ IAS_SPID = os.getenv('IAS_SPID', default='0'*32) # 16 bytes
 FOG_SQL_DATABASE_NAME = 'fog_local'
 
 def target_dir(release):
-    return os.path.join(PROJECT_DIR, 'target', 'release' if release else 'debug')
+    default_target_dir = os.path.join(PROJECT_DIR, 'target')
+    base_target_dir = os.path.abspath(os.getenv('CARGO_TARGET_DIR', default_target_dir))
+    return os.path.join(base_target_dir, 'release' if release else 'debug')
 
 # Log a command and then call subprocess.run
 def log_and_run_shell(cmd, **kwargs):
