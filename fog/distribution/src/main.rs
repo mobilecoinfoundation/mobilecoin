@@ -123,12 +123,12 @@ fn main() {
     let config = Config::parse();
 
     // Read account keys from disk
-    let src_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_mnemonics(
+    let src_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_keyfiles(
         config.sample_data_dir.join(Path::new("keys")),
     )
     .expect("Could not read default mnemonics from keys");
 
-    let dest_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_mnemonics(
+    let dest_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_keyfiles(
         config
             .sample_data_dir
             .join(Path::new(&config.fog_keys_subdir)),
