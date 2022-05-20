@@ -10,7 +10,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 ### Added
 
 - Fog is now part of this repository
-- Fog ledger key image checks are now oblivious ([fog #101](https://github.com/mobilecoinfoundation/fog/pull/101))
+- Fog Ledger key image checks are now oblivious ([fog #101](https://github.com/mobilecoinfoundation/fog/pull/101))
 - Fog View OMAP size configurable via environment
 - Fog Overseer utility for monitoring Fog Ingest instances
 - Fog Ingest Client CLI now allows queries to the `get_ingress_key_record` API
@@ -20,7 +20,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
   - Recoverable Transaction History ([MCIP #4])
 - In Block Version 2 (to be enabled after network has been upgraded):
   - Confidential Multi-Token Support ([MCIP #25])
-  - Minting support for non-MOB tokens
+  - Minting support for non-MOB tokens ([MCIP #37])
   - Verifiable burning for any token ([MCIP #35])
   - Standardized Addresses for common purposes ([MCIP #36])
 - In Block Version 3 (will be enabled in a future release):
@@ -50,7 +50,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Unfork `aes-gcm` and update to 0.9.2, use forked `mc-oblivious-aes-gcm` crate in the Fog hint decryption routines
 - Unfork `cpuid-bool`, not used anymore
 - Unfork `grpcio` and bump from 0.6 to 0.10.3. ([#1592], [#1717], [#1814])
-- Unfork `prost` from bump from 0.8.0 to 0.10.3 ([#898], [#1109], [#1728], [#1809], [#1809], [#1806], [#1805], [#1808], [#1808], [#1807], [#1930], [#1927], [#1926], [#1929])
+- Unfork `prost` from bump from 0.8.0 to 0.10.3 ([#898], [#1109], [#1728], [#1805], [#1806], [#1807], [#1808], [#1809], [#1926], [#1927], [#1929], [#1930])
 - Update `cmake` fork to git-5f89f90ee5d7789832963bffdb2dcb5939e6199c
 - Update `curve25519-dalek` fork from 4.0.0-pre.0 to 4.0.0-pre.2
 - Update `ed25519-dalek` fork to support new rust nightlies
@@ -63,7 +63,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Bump `anyhow` from 1.0.39 to 1.0.57 ([#1013], [#1146], [#1265], [#1341], [#1529], [#1578], [#1837])
 - Bump `arrayvec` from 0.5.2 to 0.7.1 ([#980])
 - Bump `assert_cmd` from 2.0.2 to 2.0.4 ([#1314])
-- Bump `backtrace` from 0.3.55 to 0.3.65 ([#982], [#1143], [#1392], [#1817], [#1817])
+- Bump `backtrace` from 0.3.55 to 0.3.65 ([#982], [#1143], [#1392], [#1817])
 - Bump `base64` from 0.12.3 to 0.13.0
 - Bump `bincode` from 1.3.1 to 1.3.3 ([#1056])
 - Bump `bindgen` from 0.51.1 to 0.59.2
@@ -72,8 +72,8 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Bump `bs58` from 0.3.1 to 0.4.0 ([#948])
 - Bump `cargo-emit` from 0.1.1 to 0.2.1 ([#1045], [#990], [#1000], [#937], [#968])
 - Bump `cargo_metadata` from 0.9.1 to 0.14.2 ([#949], [#1135], [#1502])
-- Bump `cbindgen` from 0.14.3 to 0.23.0 ([#1020], [#1702], [#1824], [#1824], [#1836])
-- Bump `cc` from 1.0.66 to 1.0.73 ([#919], [#920], [#985], [#983], [#1099], [#1094], [#1097], [#1095], [#1096], [#1168], [#1165], [#1166], [#1164], [#1167], [#1501], [#1498], [#1497], [#1499], [#1500])
+- Bump `cbindgen` from 0.14.3 to 0.23.0 ([#1020], [#1702], [#1824], [#1836])
+- Bump `cc` from 1.0.66 to 1.0.73 ([#919], [#920], [#983], [#985], [#1094], [#1095], [#1096], [#1097], [#1099], [#1164], [#1165], [#1166], [#1167], [#1168], [#1497], [#1498], [#1499], [#1500], [#1501])
 - Bump `cfg-if` from 0.1.10 to 1.0.0
 - Bump `chrono` from 0.4.11 to 0.4.19 ([#959])
 - Bump `clap` from 3.1.6 to 3.1.18 ([#1762], [#1825], [#1847], [#1904], [#1957])
@@ -98,8 +98,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Bump `hostname` from 0.1.5 to 0.3.1
 - Bump `itertools` from 0.10.1 to 0.10.3 ([#1200])
 - Bump `jni` from 0.16.0 to 0.19.0 ([#1012])
-- Bump `libc` from 0.2.97 to 0.2.125 ([#1007], [#1070], [#1112], [#1134], [#1141], [#1159], [#1239], [#1348], [#1365], [#1391], [#1492], [#1525], [#1676], [#1782], [#1826], [#1826], [#1887])
-- Bump `libc` from 0.2.98 to 0.2.103
+- Bump `libc` from 0.2.97 to 0.2.125 ([#1007], [#1070], [#1112], [#1134], [#1141], [#1159], [#1239], [#1348], [#1365], [#1391], [#1492], [#1525], [#1676], [#1782], [#1826], [#1887])
 - Bump `libz-sys` from 1.1.4 to 1.1.6 ([#1591], [#1873])
 - Bump `link-cplusplus` from 1.0.5 to 1.0.6 ([#1171])
 - Bump `mockall` from 0.8.3 to 0.11.0 ([#956], [#1240])
@@ -109,7 +108,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Bump `once_cell` from 1.5.2 to 1.9.0 ([#998], [#1249])
 - Bump `packed_simd_2` from 0.3.4 to 0.3.7
 - Bump `pem` from 0.8.2 to 0.8.3 ([#957], [#1087], [#1131], [#1279])
-- Bump `pkg-config` from 0.3.17 to 0.3.25 ([#1033], [#915], [#967], [#925], [#965], [#1072], [#1067], [#1069], [#1066], [#1068], [#1133], [#1127], [#1128], [#1126], [#1125], [#1241], [#1238], [#1235], [#1237], [#1236], [#1755], [#1752], [#1750], [#1753], [#1751])
+- Bump `pkg-config` from 0.3.17 to 0.3.25 ([#915], [#925], [#965], [#967], [#1033], [#1072], [#1066], [#1067], [#1068], [#1069], [#1125], [#1126], [#1127], [#1128], [#1133], [#1235], [#1236], [#1237], [#1238], [#1241], [#1750], [#1751], [#1752], [#1753], [#1755])
 - Bump `polyval` from 0.5.1 to 0.5.3
 - Bump `predicates` from 1.0.5 to 2.1.1 ([#1142], [#1306])
 - Bump `proc-macro2` from 1.0.24 to 1.0.38 ([#1104], [#1130], [#1268], [#1777], [#1938])
@@ -118,9 +117,9 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Bump `protobuf` from 2.22.1 to 2.27.1 ([#1754])
 - Bump `quote` from 0.6.13 to 1.0.18 ([#1092], [#1355], [#1677], [#1716], [#1795])
 - Bump `rand_chacha` from 0.3.0 to 0.3.1 ([#1057])
-- Bump `rand_core` from 0.6.2 to 0.6.3 ([#1046], [#930], [#977], [#921], [#947])
-- Bump `rand_hc` from 0.3.0 to 0.3.1 ([#1019], [#972], [#916], [#988], [#976])
-- Bump `rand` from 0.8.3 to 0.8.5 ([#1041], [#911], [#928], [#914], [#999], [#1489], [#1484], [#1486], [#1485], [#1487])
+- Bump `rand_core` from 0.6.2 to 0.6.3 ([#921], [#930], [#947], [#977], [#1046])
+- Bump `rand_hc` from 0.3.0 to 0.3.1 ([#916], [#972], [#976], [#988], [#1019])
+- Bump `rand` from 0.8.3 to 0.8.5 ([#911], [#914], [#928], [#999], [#1041], [#1484], [#1485], [#1486], [#1487], [#1489])
 - Bump `rayon` from 1.3.0 to 1.5.2 ([#992], [#1050], [#1812], [#1812])
 - Bump `regex` from 1.3.7 to 1.5.5 ([#1432], [#1590])
 - Bump `reqwest` from 0.10.6 to 0.10.10 ([#1054], [#1622])
@@ -131,7 +130,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Bump `semver` from 0.11.0 to 1.0.9 ([#1459], [#1528], [#1715], [#1900])
 - Bump `sentry` from 0.24.3 to 0.25.0 ([#1563])
 - Bump `serde_json` from 1.0.60 to 1.0.81 ([#1023], [#1155], [#1170], [#1278], [#1322], [#1344], [#1488], [#1916])
-- Bump `serde` from 1.0.118 to 1.0.137 ([#996], [#991], [#939], [#940], [#941], [#1277], [#1273], [#1276], [#1274], [#1275], [#1351], [#1383], [#1363], [#1350], [#1386], [#1903], [#1897], [#1901], [#1894], [#1895])
+- Bump `serde` from 1.0.118 to 1.0.137 ([#939], [#940], [#941], [#991], [#996], [#1273], [#1274], [#1275], [#1276], [#1277], [#1350], [#1351], [#1363], [#1383], [#1386], [#1894], [#1895], [#1897], [#1901], [#1903])
 - Bump `serial_test_derive` from 0.5.0 to 0.5.1 ([#1001])
 - Bump `serial_test` from 0.5.0 to 0.5.1 ([#1044])
 - Bump `sha2` from 0.8.1 to 0.10.2 ([#1512], [#1509])
@@ -154,7 +153,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Bump `url` from 2.1.1 to 2.2.2 ([#951])
 - Bump `walkdir` from 2.3.1 to 2.3.2 ([#997], [#962], [#931], [#974], [#922])
 - Bump `yaml-rust` from 0.4.4 to 0.4.5 ([#993])
-- Bump `zeroize` from 1.2.0 to 1.5.5 ([#908], [#1028], [#1027], [#1029], [#1156], [#1366], [#1360], [#1656], [#1902], [#1898], [#1899], [#1896])
+- Bump `zeroize` from 1.2.0 to 1.5.5 ([#908], [#1027], [#1028], [#1029], [#1156], [#1360], [#1366], [#1656], [#1896], [#1898], [#1899], [#1902])
 
 ### Removed
 
