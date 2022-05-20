@@ -11,6 +11,8 @@ mod db;
 mod error;
 mod service;
 
+pub mod gnosis; // TODO not pub
+
 pub use crate::{
     db::{BlockAuditData, Counters, MintAuditorDb},
     error::Error,

@@ -69,12 +69,29 @@ pub struct Config {
     pub command: Command,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
-    let config = Config::parse();
     let (logger, _global_logger_guard) = mc_common::logger::create_app_logger(o!());
 
+    {
+        use mc_mint_auditor::gnosis::fetcher::GnosisSafeFetcher;
+        use std::str::FromStr;
+
+        let fetcher = GnosisSafeFetcher::new(
+            url::Url::from_str("https://safe-transaction.rinkeby.gnosis.io/").unwrap(),
+            logger.clone(),
+        )
+        .unwrap();
+        let x = fetcher
+            .get_transaction_data("0x90213de428E9Ce4C77dD4943755Aa69cb2F803b7")
+            .await
+            .unwrap();
+        println!("{}", std::str::from_utf8(&x).unwrap());
+    }
+
+    let config = Config::parse();
     match config.command {
         Command::ScanLedger {
             ledger_db,
