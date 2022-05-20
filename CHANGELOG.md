@@ -92,10 +92,10 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Bump `getrandom` from 0.1.13, 0.2.2 to 0.2.6 ([#986], [#1052], [#1031], [#1310], [#1387], [#1532], [#1531], [#1714], [#1712])
 - Bump `ghash` from 0.4.2 to 0.4.4
 - Bump `hashbrown` from 0.6.3 to 0.12.1 ([#899], [#1915])
-- Bump `hdkf` from 0.9.0 to 0.12.3
 - Bump `hex` from 0.4.2 to 0.4.3 ([#1006], [#923], [#909], [#975], [#913])
-- Bump `hmac` from 0.7.1 to 0.12.1
-- Bump `hostname` from 0.1.5 to 0.3.1
+- Bump `hdkf` from 0.9.0 to 0.12.3 (#1345)
+- Bump `hmac` from 0.7.1 to 0.12.1 (#660, #1345)
+- Bump `hostname` from 0.1.5 to 0.3.1 (#902) 
 - Bump `itertools` from 0.10.1 to 0.10.3 ([#1200])
 - Bump `jni` from 0.16.0 to 0.19.0 ([#1012])
 - Bump `libc` from 0.2.97 to 0.2.125 ([#1007], [#1070], [#1112], [#1134], [#1141], [#1159], [#1239], [#1348], [#1365], [#1391], [#1492], [#1525], [#1676], [#1782], [#1826], [#1887])
