@@ -74,7 +74,7 @@ pub fn read_keyfile_data<R: Read>(buffer: R) -> Result<AccountKey, Error> {
     let value = serde_json::from_reader::<R, serde_json::Value>(buffer)?;
     let obj = value
         .as_object()
-        .ok_or(Error::Json("Expected json object".to_string()))?;
+        .ok_or_else(|| Error::Json("Expected json object".to_string()))?;
     if obj.contains_key("root_entropy") {
         let root_identity_json: RootIdentityJson = serde_json::from_value(value)?;
         let root_id = RootIdentity::from(root_identity_json);
