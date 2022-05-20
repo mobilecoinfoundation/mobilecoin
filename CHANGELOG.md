@@ -5,7 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
-## [1.2.0] - TBD
+
+
+## [1.2.0-pre1] - 2022-05-20
 
 ### Added
 
@@ -93,9 +95,9 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Bump `ghash` from 0.4.2 to 0.4.4
 - Bump `hashbrown` from 0.6.3 to 0.12.1 ([#899], [#1915])
 - Bump `hex` from 0.4.2 to 0.4.3 ([#1006], [#923], [#909], [#975], [#913])
-- Bump `hdkf` from 0.9.0 to 0.12.3 (#1345)
-- Bump `hmac` from 0.7.1 to 0.12.1 (#660, #1345)
-- Bump `hostname` from 0.1.5 to 0.3.1 (#902) 
+- Bump `hkdf` from 0.9.0 to 0.12.3 ([#1345])
+- Bump `hmac` from 0.7.1 to 0.12.1 ([#660], [#1345])
+- Bump `hostname` from 0.1.5 to 0.3.1 ([#902])
 - Bump `itertools` from 0.10.1 to 0.10.3 ([#1200])
 - Bump `jni` from 0.16.0 to 0.19.0 ([#1012])
 - Bump `libc` from 0.2.97 to 0.2.125 ([#1007], [#1070], [#1112], [#1134], [#1141], [#1159], [#1239], [#1348], [#1365], [#1391], [#1492], [#1525], [#1676], [#1782], [#1826], [#1887])
@@ -178,8 +180,11 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [MCIP #34]: https://github.com/mobilecoinfoundation/mcips/blob/main/text/0034-sorted-transaction-outputs.md
 [MCIP #35]: https://github.com/mobilecoinfoundation/mcips/blob/main/text/0035-verifiable-burning.md
 [MCIP #36]: https://github.com/mobilecoinfoundation/mcips/blob/main/text/0036-reserved-subaddresses.md
+[MCIP #37]: https://github.com/mobilecoinfoundation/mcips/blob/main/text/0036-reserved-subaddresses.md
+[#660]: https://github.com/mobilecoinfoundation/mobilecoin/pull/660
 [#898]: https://github.com/mobilecoinfoundation/mobilecoin/pull/898
 [#899]: https://github.com/mobilecoinfoundation/mobilecoin/pull/899
+[#902]: https://github.com/mobilecoinfoundation/mobilecoin/pull/902
 [#908]: https://github.com/mobilecoinfoundation/mobilecoin/pull/908
 [#909]: https://github.com/mobilecoinfoundation/mobilecoin/pull/909
 [#911]: https://github.com/mobilecoinfoundation/mobilecoin/pull/911
@@ -370,6 +375,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 [#1341]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1341
 [#1343]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1343
 [#1344]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1344
+[#1345]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1345
 [#1348]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1348
 [#1350]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1350
 [#1351]: https://github.com/mobilecoinfoundation/mobilecoin/pull/1351
