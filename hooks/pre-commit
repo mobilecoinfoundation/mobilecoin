@@ -133,7 +133,9 @@ elif [[ -n "$diff" ]]; then
 		read YESNO
 		if [[ -n "$YESNO" ]] && [[ "$(echo "${YESNO:0:1}" | tr '[[:lower:]]' '[[:upper:]]')" = "Y" ]]; then
 			echo -e "$diff" | sort -u | while read file; do
-				$CARGOFMT $file
+				if [[ -n "$file" ]]; then
+					$CARGOFMT $file
+                fi
 			done
 			echo "You should attempt this commit again to pick up these changes."
 		else
