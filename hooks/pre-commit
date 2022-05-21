@@ -135,7 +135,7 @@ elif [[ -n "$diff" ]]; then
 			echo -e "$diff" | sort -u | while read file; do
 				if [[ -n "$file" ]]; then
 					$CARGOFMT $file
-                fi
+				fi
 			done
 			echo "You should attempt this commit again to pick up these changes."
 		else
