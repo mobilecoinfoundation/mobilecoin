@@ -132,11 +132,7 @@ elif [[ -n "$diff" ]]; then
 		echo "Do you want to fix all these files automatically? (y/N) "
 		read YESNO
 		if [[ -n "$YESNO" ]] && [[ "$(echo "${YESNO:0:1}" | tr '[[:lower:]]' '[[:upper:]]')" = "Y" ]]; then
-			echo -e "$diff" | sort -u | while read file; do
-				if [[ -n "$file" ]]; then
-					$CARGOFMT $file
-				fi
-			done
+			echo -e "$diff" | xargs -n 1 $CARGOFMT
 			echo "You should attempt this commit again to pick up these changes."
 		else
 			echo -e "Run ${BOLD}$CARGOFMT -- <file>${NC} to format the files you have staged."
@@ -175,11 +171,7 @@ elif [[ -n "$diff" ]]; then
 		echo "Do you want to fix all these files automatically? (y/N) "
 		read YESNO
 		if [[ -n "$YESNO" ]] && [[ "$(echo "${YESNO:0:1}" | tr '[[:lower:]]' '[[:upper:]]')" = "Y" ]]; then
-			echo -e "$diff" | sort -u | while read file; do
-				if [[ -n "$file" ]]; then
-					sed -i "1s;^;${COPYRIGHT_LINE}\n\n;" $file
-				fi
-			done
+			echo -e "$diff" | xargs -n 1 sed -i "1s;^;${COPYRIGHT_LINE}\n\n;"
 			echo "You should attempt this commit again to pick up these changes."
 		else
 			echo -e "Add copyright statements to the files."
