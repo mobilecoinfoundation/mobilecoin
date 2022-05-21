@@ -9,10 +9,10 @@ use crate::{
 use core::convert::TryFrom;
 use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
 use mc_crypto_keys::RistrettoPublic;
+use mc_crypto_ring_signature_signer::{NoKeysRingSigner, OneTimeKeyDeriveData};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
     onetime_keys::*,
-    signer::{NoKeysRingSigner, OneTimeKeyDeriveData},
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
     Amount, BlockVersion, MemoContext, NewMemoError, Token, TokenId,

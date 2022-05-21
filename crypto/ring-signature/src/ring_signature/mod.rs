@@ -4,7 +4,7 @@
 
 #![allow(non_snake_case)]
 
-pub use bulletproofs_og::{BulletproofGens, PedersenGens};
+use curve25519_dalek::traits::MultiscalarMul;
 pub use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
 
 use crate::domain_separators::HASH_TO_POINT_DOMAIN_TAG;
@@ -17,24 +17,34 @@ mod error;
 mod generator_cache;
 mod key_image;
 mod mlsag;
-mod rct_bulletproofs;
 
 pub use curve_scalar::*;
 pub use error::Error;
 pub use generator_cache::*;
 pub use key_image::*;
 pub use mlsag::*;
-pub use rct_bulletproofs::*;
 
 /// The base point for blinding factors used with all amount commitments
 pub const B_BLINDING: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;
 
-lazy_static! {
-    /// Generators (base points) for Bulletproofs.
-    /// The `party_capacity` is the maximum number of values in one proof. It should
-    /// be at least 2 * MAX_INPUTS + MAX_OUTPUTS, which allows for inputs, pseudo outputs, and outputs.
-    pub static ref BP_GENERATORS: BulletproofGens =
-        BulletproofGens::new(64, 64);
+/// This is a structure which contains a pair of orthogonal generators for
+/// Pedersen commitments.
+/// This tracks `bulletproofs::PedersenGens`, but we do not import it, to avoid
+/// creating a dependency on the `bulletproofs` crate.
+#[derive(Clone, Copy, Debug)]
+pub struct PedersenGens {
+    /// Base point corresponding to the value of a Pedersen commitment
+    pub B: RistrettoPoint,
+    /// Base point corresponding to the blinding factor of a Pedersen commitment
+    pub B_blinding: RistrettoPoint,
+}
+
+impl PedersenGens {
+    /// Creates a Pedersen commitment using the value scalar and a blinding
+    /// factor.
+    pub fn commit(&self, value: Scalar, blinding: Scalar) -> RistrettoPoint {
+        RistrettoPoint::multiscalar_mul(&[value, blinding], &[self.B, self.B_blinding])
+    }
 }
 
 /// Generators (base points) for Pedersen commitments to amounts.

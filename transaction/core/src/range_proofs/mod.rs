@@ -9,17 +9,23 @@
 
 extern crate alloc;
 use alloc::vec::Vec;
-use bulletproofs_og::RangeProof;
+use bulletproofs_og::{BulletproofGens, PedersenGens as BPPedersenGens, RangeProof};
 use curve25519_dalek::{ristretto::CompressedRistretto, scalar::Scalar};
+use mc_crypto_ring_signature::PedersenGens;
 use merlin::Transcript;
 use rand_core::{CryptoRng, RngCore};
 
 pub mod error;
-use crate::{
-    domain_separators::BULLETPROOF_DOMAIN_TAG,
-    ring_signature::{PedersenGens, BP_GENERATORS},
-};
+use crate::domain_separators::BULLETPROOF_DOMAIN_TAG;
 use error::Error;
+
+lazy_static! {
+    /// Generators (base points) for Bulletproofs.
+    /// The `party_capacity` is the maximum number of values in one proof. It should
+    /// be at least 2 * MAX_INPUTS + MAX_OUTPUTS, which allows for inputs, pseudo outputs, and outputs.
+    pub static ref BP_GENERATORS: BulletproofGens =
+        BulletproofGens::new(64, 64);
+}
 
 /// Create an aggregated 64-bit rangeproof for a set of values.
 ///
@@ -51,7 +57,7 @@ pub fn generate_range_proofs<T: RngCore + CryptoRng>(
     // Create a 64-bit RangeProof and corresponding commitments.
     RangeProof::prove_multiple_with_rng(
         &BP_GENERATORS,
-        pedersen_generators,
+        &convert_gens(pedersen_generators),
         &mut Transcript::new(BULLETPROOF_DOMAIN_TAG.as_ref()),
         &values_padded,
         &blindings_padded,
@@ -81,7 +87,7 @@ pub fn check_range_proofs<T: RngCore + CryptoRng>(
     range_proof
         .verify_multiple_with_rng(
             &BP_GENERATORS,
-            pedersen_generators,
+            &convert_gens(pedersen_generators),
             &mut Transcript::new(BULLETPROOF_DOMAIN_TAG.as_ref()),
             &resized_commitments,
             64,
@@ -109,6 +115,16 @@ fn resize_slice_to_pow2<T: Clone>(slice: &[T]) -> Result<Vec<T>, Error> {
     } else {
         // The next power of two would exceed the maximum value of usize.
         Err(Error::ResizeError)
+    }
+}
+
+/// Convert from the mc_crypto_ring_signature::PedersenGens to BPPedersenGens.
+/// These types are identical, but we need a version of it in the lower-level
+/// crate to break dependency on the bulletproofs crate.
+fn convert_gens(src: &PedersenGens) -> BPPedersenGens {
+    BPPedersenGens {
+        B: src.B,
+        B_blinding: src.B_blinding,
     }
 }
 

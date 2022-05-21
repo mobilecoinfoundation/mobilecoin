@@ -1,17 +1,19 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 // Copyright (c) 2022 The MobileCoin Foundation
 
 //! A signed contingent input as described in MCIP #31
 
 use crate::{
-    ring_signature::{
-        CurveScalar, GeneratorCache, KeyImage, MLSAGError, OutputSecret, PresignedInputRing,
-        RingMLSAG, SignedInputRing,
-    },
+    ring_ct::{OutputSecret, PresignedInputRing, SignedInputRing},
     tx::TxIn,
-    Amount, Commitment, CompressedCommitment, TokenId,
 };
 use alloc::vec::Vec;
 use displaydoc::Display;
+use mc_crypto_ring_signature::{
+    Amount, Commitment, CompressedCommitment, CurveScalar, Error as MLSAGError, GeneratorCache,
+    KeyImage, RingMLSAG, TokenId,
+};
 use prost::Message;
 
 /// The "unmasked" data of an amount commitment

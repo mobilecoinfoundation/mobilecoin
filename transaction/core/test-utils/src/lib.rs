@@ -3,12 +3,12 @@
 mod mint;
 
 pub use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
+use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 pub use mc_fog_report_validation_test_utils::MockFogResolver;
 pub use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
-    signer::NoKeysRingSigner,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
     Amount, Block, BlockID, BlockIndex, BlockVersion, Token,

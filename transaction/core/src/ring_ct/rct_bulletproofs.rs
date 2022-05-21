@@ -17,6 +17,8 @@ use curve25519_dalek::{
 };
 use mc_common::HashSet;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
+use mc_crypto_ring_signature::{GeneratorCache, KeyImage, ReducedTxOut, RingMLSAG, Scalar};
+use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing};
 use mc_util_serial::prost::Message;
 use mc_util_zip_exact::zip_exact;
 use rand_core::{CryptoRng, RngCore};
@@ -27,8 +29,7 @@ use crate::{
     constants::FEE_BLINDING,
     domain_separators::EXTENDED_MESSAGE_DOMAIN_TAG,
     range_proofs::{check_range_proofs, generate_range_proofs},
-    ring_signature::{mlsag::RingMLSAG, Error, GeneratorCache, KeyImage, ReducedTxOut, Scalar},
-    signer::{RingSigner, SignableInputRing},
+    ring_ct::Error,
     Amount, BlockVersion, Commitment, CompressedCommitment,
 };
 
@@ -852,8 +853,7 @@ mod rct_bulletproofs_tests {
     use super::*;
     use crate::{
         range_proofs::generate_range_proofs,
-        ring_signature::{generators, Error, KeyImage, MLSAGError, PedersenGens, ReducedTxOut},
-        signer::{InputSecret, NoKeysRingSigner, OneTimeKeyDeriveData, SignableInputRing},
+        ring_signature::{generators, Error as MLSAGError, KeyImage, PedersenGens, ReducedTxOut},
         CompressedCommitment, TokenId,
     };
     use alloc::vec::Vec;
@@ -861,6 +861,9 @@ mod rct_bulletproofs_tests {
     use core::convert::TryInto;
     use curve25519_dalek::scalar::Scalar;
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+    use mc_crypto_ring_signature_signer::{
+        InputSecret, NoKeysRingSigner, OneTimeKeyDeriveData, SignableInputRing,
+    };
     use mc_util_from_random::FromRandom;
     use proptest::prelude::*;
     use rand::{rngs::StdRng, CryptoRng, SeedableRng};

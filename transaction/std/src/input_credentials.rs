@@ -2,9 +2,9 @@
 
 use crate::TxBuilderError;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use mc_crypto_ring_signature_signer::{InputSecret, OneTimeKeyDeriveData, SignableInputRing};
 use mc_transaction_core::{
     onetime_keys::create_shared_secret,
-    signer::{InputSecret, OneTimeKeyDeriveData, SignableInputRing},
     tx::{TxIn, TxOut, TxOutMembershipProof},
 };
 use std::convert::TryFrom;

@@ -2,13 +2,13 @@
 
 use crate::{
     mint::{MintTx, ValidatedMintConfigTx},
-    ring_signature::KeyImage,
     tx::TxOut,
     ConvertError,
 };
 use alloc::{vec, vec::Vec};
 use core::{convert::TryFrom, fmt::Debug};
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
+use mc_crypto_ring_signature::KeyImage;
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{bytes, skip_field, DecodeContext, WireType},

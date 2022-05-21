@@ -9,6 +9,7 @@ use mc_common::Hash;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_hashes::{Blake2b256, Digest};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+use mc_crypto_ring_signature::{KeyImage, ReducedTxOut};
 use mc_util_repr_bytes::{
     derive_prost_message_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
 };
@@ -25,7 +26,7 @@ use crate::{
     membership_proofs::Range,
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
-    ring_signature::{KeyImage, ReducedTxOut, SignatureRctBulletproofs, SignedInputRing},
+    ring_ct::{SignatureRctBulletproofs, SignedInputRing},
     CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
 };
 
@@ -657,7 +658,7 @@ mod tests {
         encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
         get_tx_out_shared_secret,
         memo::MemoPayload,
-        ring_signature::SignatureRctBulletproofs,
+        ring_ct::SignatureRctBulletproofs,
         subaddress_matches_tx_out,
         tokens::Mob,
         tx::{Tx, TxIn, TxOut, TxPrefix},

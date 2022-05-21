@@ -1,8 +1,10 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from external::SignatureRctBulletproofs
 
 use crate::{convert::ConversionError, external};
 use mc_transaction_core::{
-    ring_signature::{RingMLSAG, SignatureRctBulletproofs},
+    ring_ct::{RingMLSAG, SignatureRctBulletproofs},
     CompressedCommitment,
 };
 use protobuf::RepeatedField;

@@ -18,6 +18,14 @@ extern crate lazy_static;
 use crate::onetime_keys::create_shared_secret;
 use mc_crypto_keys::{KeyError, RistrettoPrivate, RistrettoPublic};
 
+// TODO: Maybe don't do re-exports like this
+pub use mc_crypto_ring_signature::onetime_keys;
+
+/// TODO: Probably remove this later? This is compat for the crate split
+pub mod ring_signature {
+    pub use mc_crypto_ring_signature::*;
+}
+
 mod amount;
 mod blockchain;
 mod domain_separators;
@@ -33,10 +41,8 @@ pub mod encrypted_fog_hint;
 pub mod fog_hint;
 pub mod membership_proofs;
 pub mod mint;
-pub mod onetime_keys;
 pub mod range_proofs;
-pub mod ring_signature;
-pub mod signer;
+pub mod ring_ct;
 pub mod tx;
 pub mod validation;
 

@@ -1,5 +1,7 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use crate::{
-    ring_signature::{MLSAGError, PedersenGens, Scalar},
+    ring_signature::{Error, PedersenGens, Scalar},
     CompressedCommitment,
 };
 use core::{convert::TryFrom, fmt};
@@ -37,13 +39,10 @@ impl Commitment {
 }
 
 impl TryFrom<&CompressedCommitment> for Commitment {
-    type Error = crate::ring_signature::MLSAGError;
+    type Error = crate::ring_signature::Error;
 
     fn try_from(src: &CompressedCommitment) -> Result<Self, Self::Error> {
-        let point = src
-            .point
-            .decompress()
-            .ok_or(MLSAGError::InvalidCurvePoint)?;
+        let point = src.point.decompress().ok_or(Error::InvalidCurvePoint)?;
         Ok(Self { point })
     }
 }
@@ -59,7 +58,7 @@ impl fmt::Debug for Commitment {
 }
 
 impl ReprBytes for Commitment {
-    type Error = MLSAGError;
+    type Error = Error;
     type Size = U32;
     fn to_bytes(&self) -> GenericArray<u8, U32> {
         self.point.compress().to_bytes().into()
@@ -67,7 +66,7 @@ impl ReprBytes for Commitment {
     fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, Self::Error> {
         let point = CompressedRistretto::from_slice(src.as_slice())
             .decompress()
-            .ok_or(MLSAGError::InvalidCurvePoint)?;
+            .ok_or(Error::InvalidCurvePoint)?;
         Ok(Self { point })
     }
 }

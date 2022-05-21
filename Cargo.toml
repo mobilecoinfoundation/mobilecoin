@@ -39,6 +39,8 @@ members = [
     "crypto/multisig",
     "crypto/noise",
     "crypto/rand",
+    "crypto/ring-signature",
+    "crypto/ring-signature/signer",
     "crypto/x509/test-vectors",
     "crypto/x509/utils",
     "enclave-boundary",
