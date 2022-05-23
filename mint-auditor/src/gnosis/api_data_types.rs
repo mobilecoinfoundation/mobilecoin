@@ -63,5 +63,3 @@ pub enum Transaction {
     #[serde(rename = "MODULE_TRANSACTION")]
     Module(Value),
 }
-
-

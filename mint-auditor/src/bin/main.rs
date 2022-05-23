@@ -88,7 +88,12 @@ async fn main() {
             .get_transaction_data("0x90213de428E9Ce4C77dD4943755Aa69cb2F803b7")
             .await
             .unwrap();
-        println!("{:#?}", x);
+        for tx in x{
+            if tx.tx_hash().is_err() {
+                panic!("{:#?}", tx);
+            }
+            println!("{}", tx.tx_hash().unwrap());
+        }
     }
 
     let config = Config::parse();

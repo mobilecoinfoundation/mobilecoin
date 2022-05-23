@@ -2,30 +2,70 @@
 
 //! Gnosis Safe transaction fetcher, used to get the transaction data from a
 //! gnosis safe-transaction-service.
-//! 
+//!
 //! TODO
-//! - figure out what to return from get_all_transactions so that we capture both the full response, and optionally the decoded transaction data
+//! - figure out what to return from get_all_transactions so that we capture
+//!   both the full response, and optionally the decoded transaction data
 //! - need to include offsets
-//! - need to store in lmdb:
-//!     1) map of real tx hash -> data (used to lookup from mint nonce)
-//!     2) list of all hashes in chronological order? reverse chronological order? lmdb ordering is messsy
-//! - code that takes a MintTx and returns the matching DecodedGnosisTransaction, this needs to:
-//!     1) lookup by the nonce
-//!     2) compare the amount
-//! - code that takes DecodedGnosisTransaction and if it contains a burn (moving token out + burn memo multi-tx) try and locate
-//!   matching mc transaction (lookup by txout pub key)
-//! 
+//! - need to store in lmdb: 1) map of real tx hash -> data (used to lookup from
+//!   mint nonce) 2) list of all hashes in chronological order? reverse
+//!   chronological order? lmdb ordering is messsy
+//! - code that takes a MintTx and returns the matching
+//!   DecodedGnosisTransaction, this needs to: 1) lookup by the nonce 2) compare
+//!   the amount
+//! - code that takes DecodedGnosisTransaction and if it contains a burn (moving
+//!   token out + burn memo multi-tx) try and locate matching mc transaction
+//!   (lookup by txout pub key)
+//!
 //! two scanning modes:
-//! 1) everything 
+//! 1) everything
 //! 2) until reaching a known hash
 
-use super::error::Error;
-use super::api_data_types;
+use super::{api_data_types, error::Error};
+use futures::{FutureExt, Stream, StreamExt};
 use mc_common::logger::{log, o, Logger};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::str::FromStr;
 use url::Url;
+use std::fmt;
+
+pub const ETH_TX_HASH_LEN: usize = 32;
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct EthTxHash([u8; ETH_TX_HASH_LEN]);
+
+impl TryFrom<&[u8]> for EthTxHash {
+    type Error = Error;
+
+    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+        let bytes: [u8; ETH_TX_HASH_LEN] = src
+            .try_into()
+            .map_err(|_| Error::Other("EthTxHash: invalid length".to_string()))?;
+        Ok(Self(bytes))
+    }
+}
+
+impl FromStr for EthTxHash {
+    type Err = Error;
+
+    fn from_str(src: &str) -> Result<Self, Self::Err> {
+        let bytes = if src.starts_with("0x") {
+            hex::decode(&src[2..])
+        } else {
+            hex::decode(src)
+        }
+        .map_err(|_| Error::Other("EthTxHash: invalid hex".to_string()))?;
+        Self::try_from(&bytes[..])
+    }
+}
+
+impl fmt::Display for EthTxHash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", hex::encode(self.0))
+    }
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct GnosisTransaction {
@@ -35,6 +75,18 @@ pub struct GnosisTransaction {
 impl GnosisTransaction {
     pub fn decode(&self) -> Result<api_data_types::Transaction, Error> {
         Ok(serde_json::from_value(self.raw.clone())?)
+    }
+
+    pub fn tx_hash(&self) -> Result<EthTxHash, Error> {
+        let hash_str = self
+            .raw
+            .get("transactionHash")
+            .or_else(|| self.raw.get("txHash"))
+            .and_then(|val| val.as_str())
+            .ok_or(Error::Other(
+                "GnosisTransaction: missing transactionHash".to_string(),
+            ))?;
+        Ok(EthTxHash::from_str(hash_str)?)
     }
 }
 
@@ -63,6 +115,10 @@ impl GnosisSafeFetcher {
     /// The URL endpoint is expected to run the Gnosis safe-transaction-service
     /// (https://github.com/safe-global/safe-transaction-service/)
     pub fn new(mut base_url: Url, logger: Logger) -> Result<Self, Error> {
+        let x = EthTxHash::from_str(
+            "0x09ae7f9f06fff9a2bc14bb0595b335a4b2c175d01a347d30956f4b235258d2e1",
+        )
+        .unwrap();
         if !base_url.path().ends_with('/') {
             base_url = base_url.join(&format!("{}/", base_url.path()))?;
         }
@@ -82,7 +138,10 @@ impl GnosisSafeFetcher {
 
     /// Fetch transaction data.
     /// This returns only transactions that were executed and confirmed.
-    pub async fn get_transaction_data(&self, safe_address: &str) -> Result<Vec<GnosisTransaction>, Error> {
+    pub async fn get_transaction_data(
+        &self,
+        safe_address: &str,
+    ) -> Result<Vec<GnosisTransaction>, Error> {
         let url = self.base_url.join(&format!(
             "api/v1/safes/{}/all-transactions/?executed=true&queued=false&trusted=true",
             safe_address
@@ -107,7 +166,11 @@ impl GnosisSafeFetcher {
             .json::<api_data_types::AllTransactionsResponse>()
             .await
             .map_err(|err| Error::Other(format!("Failed parsing JSON from '{}': {}", url, err)))?;
-        
-        Ok(data.results.into_iter().map(GnosisTransaction::from).collect())
+
+        Ok(data
+            .results
+            .into_iter()
+            .map(GnosisTransaction::from)
+            .collect())
     }
 }
