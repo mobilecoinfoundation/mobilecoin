@@ -14,6 +14,7 @@ members = [
     "attest/trusted",
     "attest/untrusted",
     "attest/verifier",
+    "attest/verifier/types",
     "blockchain/types",
     "common",
     "connection",

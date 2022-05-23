@@ -2,12 +2,9 @@
 
 //! Nonce structures
 
-use alloc::vec;
-
 use crate::{error::NonceError, impl_sgx_newtype_for_bytestruct};
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
 use core::{
-    convert::{AsRef, Into, TryFrom, TryInto},
     fmt::{Display, Formatter, Result as FmtResult},
     write,
 };

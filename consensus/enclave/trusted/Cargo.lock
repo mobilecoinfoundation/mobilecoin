@@ -692,6 +692,7 @@ dependencies = [
  "displaydoc",
  "hex",
  "hex_fmt",
+ "mc-attest-verifier-types",
  "mc-common",
  "mc-crypto-digestible",
  "mc-crypto-rand",
@@ -755,6 +756,19 @@ dependencies = [
  "rand_hc",
  "serde",
  "sha2",
+]
+
+[[package]]
+name = "mc-attest-verifier-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "displaydoc",
+ "hex",
+ "hex_fmt",
+ "mc-crypto-digestible",
+ "mc-util-encodings",
+ "prost",
+ "serde",
 ]
 
 [[package]]

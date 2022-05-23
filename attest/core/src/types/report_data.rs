@@ -3,7 +3,6 @@
 //! The report data structure
 
 use crate::impl_sgx_newtype_for_bytestruct;
-use core::convert::TryFrom;
 use mc_sgx_types::{sgx_report_data_t, SGX_REPORT_DATA_SIZE};
 use mc_util_encodings::{Error as EncodingError, IntelLayout};
 use serde::{Deserialize, Serialize};

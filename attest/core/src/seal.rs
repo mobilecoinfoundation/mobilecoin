@@ -7,7 +7,7 @@
 
 use crate::SgxError;
 use alloc::vec::Vec;
-use core::{convert::TryFrom, fmt::Display as DisplayTrait};
+use core::fmt::Display as DisplayTrait;
 use displaydoc::Display;
 use mc_sgx_types::sgx_status_t;
 use prost::Message;
@@ -75,14 +75,14 @@ pub trait Sealed: AsRef<IntelSealed> + Into<IntelSealed> {
 #[macro_export]
 macro_rules! impl_sealed_traits {
     ($sealed:ty) => {
-        impl ::core::convert::TryFrom<&[u8]> for $sealed {
+        impl TryFrom<&[u8]> for $sealed {
             type Error = <Self as ::mc_attest_core::Sealed>::Error;
             fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
                 <Self as ::mc_attest_core::Sealed>::try_from_slice(src)
             }
         }
 
-        impl ::core::convert::TryFrom<alloc::vec::Vec<u8>> for $sealed {
+        impl TryFrom<alloc::vec::Vec<u8>> for $sealed {
             type Error = <Self as ::mc_attest_core::Sealed>::Error;
             fn try_from(src: ::alloc::vec::Vec<u8>) -> Result<Self, Self::Error> {
                 <Self as ::mc_attest_core::Sealed>::try_from_vec(src)

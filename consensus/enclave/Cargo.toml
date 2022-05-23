@@ -24,7 +24,8 @@ mc-transaction-core = { path = "../../transaction/core" }
 mc-util-serial = { path = "../../util/serial" }
 
 [build-dependencies]
-cargo-emit = "0.2.1"
 mc-util-build-script = { path = "../../util/build/script" }
 mc-util-build-sgx = { path = "../../util/build/sgx" }
+
+cargo-emit = "0.2.1"
 pkg-config = "0.3"
