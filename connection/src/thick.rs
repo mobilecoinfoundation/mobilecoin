@@ -186,7 +186,7 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
         // Make the actual RPC call.
         let result = func(self, self.call_option()?);
         if let Err(err) = &result {
-            self.reset_if_unauthenticated(err);
+            self.handle_rpc_error(err);
         }
 
         // Block on the call, and update cookies before passing on the response.
@@ -209,7 +209,7 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
             })
             .map_err(|err| {
                 let err = ThickClientAttestationError::from(err);
-                self.reset_if_unauthenticated(&err);
+                self.handle_rpc_error(&err);
                 err
             })
     }
@@ -246,7 +246,7 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
         Ok(CallOption::default().headers(metadata_builder.build()))
     }
 
-    fn reset_if_unauthenticated(&mut self, err: &(impl AuthenticationError + AttestationError)) {
+    fn handle_rpc_error(&mut self, err: &(impl AuthenticationError + AttestationError)) {
         // If the call failed due to authentication (credentials) error, reset creds so
         // that it gets re-created on the next call.
         if err.is_unauthenticated() {
