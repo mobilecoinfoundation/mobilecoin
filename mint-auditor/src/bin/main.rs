@@ -6,7 +6,11 @@ use clap::{Parser, Subcommand};
 use grpcio::{EnvBuilder, ServerBuilder};
 use mc_common::logger::{log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_mint_auditor::{counters, Error, MintAuditorDb, MintAuditorService};
+use mc_mint_auditor::{
+    counters,
+    gnosis::{FetcherThread, SafeId},
+    Error, MintAuditorDb, MintAuditorService,
+};
 use mc_mint_auditor_api::MintAuditorUri;
 use mc_util_grpc::{AdminServer, BuildInfoService, ConnectionUriGrpcioServer, HealthService};
 use mc_util_parse::parse_duration_in_seconds;
@@ -39,6 +43,14 @@ pub enum Command {
         /// Optional admin service listening URI.
         #[clap(long, env = "MC_ADMIN_LISTEN_URI")]
         admin_listen_uri: Option<AdminUri>,
+
+        /// Optional gnosis safe id to audit.
+        #[clap(long)]
+        gnosis_safe_id: Option<SafeId>,
+
+        /// Gnosis API url.
+        #[clap(long, default_value = "https://safe-transaction.rinkeby.gnosis.io/")]
+        gnosis_api_url: String,
     },
 
     /// Get the audit data for a specific block, optionally in JSON format
@@ -75,7 +87,7 @@ async fn main() {
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = mc_common::logger::create_app_logger(o!());
 
-    {
+    if false {
         use mc_mint_auditor::gnosis::fetcher::GnosisSafeFetcher;
         use std::str::FromStr;
 
@@ -88,7 +100,7 @@ async fn main() {
             .get_transaction_data("0x90213de428E9Ce4C77dD4943755Aa69cb2F803b7")
             .await
             .unwrap();
-        for tx in x{
+        for tx in x {
             if tx.tx_hash().is_err() {
                 panic!("{:#?}", tx);
             }
@@ -104,6 +116,8 @@ async fn main() {
             poll_interval,
             listen_uri,
             admin_listen_uri,
+            gnosis_safe_id,
+            gnosis_api_url,
         } => {
             cmd_scan_ledger(
                 ledger_db,
@@ -111,6 +125,8 @@ async fn main() {
                 poll_interval,
                 listen_uri,
                 admin_listen_uri,
+                gnosis_safe_id,
+                gnosis_api_url,
                 logger,
             );
         }
@@ -132,6 +148,8 @@ fn cmd_scan_ledger(
     poll_interval: Duration,
     listen_uri: Option<MintAuditorUri>,
     admin_listen_uri: Option<AdminUri>,
+    gnosis_safe_id: Option<SafeId>,
+    gnosis_api_url: String,
     logger: Logger,
 ) {
     let ledger_db = LedgerDB::open(&ledger_db_path).expect("Could not open ledger DB");
@@ -177,6 +195,18 @@ fn cmd_scan_ledger(
             logger.clone(),
         )
         .expect("Failed starting admin grpc server")
+    });
+
+    let _gnosis_safe_fetcher_thread = gnosis_safe_id.map(|safe_id| {
+        FetcherThread::start(
+            safe_id,
+            mint_auditor_db.clone(),
+            ledger_db.clone(),
+            poll_interval,
+            gnosis_api_url,
+            logger.clone(),
+        )
+        .expect("Failed starting gnosis safe fetcher thread")
     });
 
     loop {

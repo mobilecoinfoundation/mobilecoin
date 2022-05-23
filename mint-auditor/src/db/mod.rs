@@ -24,7 +24,7 @@ use gnosis_store::GnosisSafeStore;
 const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
 
 /// Number of LMDB databases.
-const NUM_LMDB_DATABASES: u32 = 6;
+const NUM_LMDB_DATABASES: u32 = 7;
 
 /// Metadata store settings that are used for version control.
 #[derive(Clone, Default, Debug)]
@@ -336,9 +336,9 @@ impl MintAuditorDb {
 
     /// Write a list of [GnosisSafeTransaction]s.
     pub fn write_safe_txs(&self, safe_txs: &[GnosisSafeTransaction]) -> Result<(), Error> {
-        let db_txn = self.env.begin_rw_txn()?;
+        let mut db_txn = self.env.begin_rw_txn()?;
         for safe_tx in safe_txs {
-            self.write_safe_tx_impl(safe_tx, &db_txn)?;
+            self.gnosis_safe_store.write_safe_tx(safe_tx, &mut db_txn)?;
         }
         db_txn.commit()?;
         Ok(())
@@ -347,7 +347,7 @@ impl MintAuditorDb {
     /// Get a gnosis safe transaction by hash.
     pub fn get_safe_tx_by_hash(&self, tx_hash: &EthTxHash) -> Result<GnosisSafeTransaction, Error> {
         let db_txn = self.env.begin_ro_txn()?;
-        self.get_safe_tx_by_hash_impl(tx_hash, &db_txn)
+        self.gnosis_safe_store.get_safe_tx_by_hash(tx_hash, &db_txn)
     }
 
     fn get_block_audit_data_impl(

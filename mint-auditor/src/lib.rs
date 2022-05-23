@@ -9,9 +9,9 @@ pub mod counters;
 mod convert;
 mod db;
 mod error;
-mod service;
+mod service; // TODO not pub
 
-pub mod gnosis; // TODO not pub
+pub mod gnosis;
 
 pub use crate::{
     db::{BlockAuditData, Counters, MintAuditorDb},

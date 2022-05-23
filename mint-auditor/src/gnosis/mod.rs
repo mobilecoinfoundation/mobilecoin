@@ -6,5 +6,8 @@ pub mod fetcher; // TODO not pub
 
 mod api_data_types;
 mod error;
+mod fetcher_thread;
 
 pub use error::Error;
+pub use fetcher_thread::FetcherThread;
+pub use fetcher::{EthTxHash, SafeId};

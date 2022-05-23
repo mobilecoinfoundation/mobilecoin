@@ -3,8 +3,8 @@
 //! Data type for Gnosis-related errors.
 
 use displaydoc::Display;
-use url::ParseError;
 use serde_json::Error as JsonError;
+use url::ParseError;
 
 /// Data type for Gnosis-related errors
 #[derive(Debug, Display)]
@@ -30,3 +30,6 @@ impl From<JsonError> for Error {
         Self::Json(err)
     }
 }
+
+// Required for clap.
+impl std::error::Error for Error {}

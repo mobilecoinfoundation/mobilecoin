@@ -31,9 +31,10 @@ use std::{fmt, str::FromStr};
 use url::Url;
 
 pub const ETH_TX_HASH_LEN: usize = 32;
+pub const SAFE_ID_LEN: usize = 20;
 
 // TODO move somewhere else
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct EthTxHash([u8; ETH_TX_HASH_LEN]);
 
 impl TryFrom<&[u8]> for EthTxHash {
@@ -68,6 +69,47 @@ impl fmt::Display for EthTxHash {
 }
 
 impl AsRef<[u8]> for EthTxHash {
+    fn as_ref(&self) -> &[u8] {
+        &self.0[..]
+    }
+}
+
+// TODO move somewhere else
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SafeId([u8; SAFE_ID_LEN]);
+
+impl TryFrom<&[u8]> for SafeId {
+    type Error = Error;
+
+    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+        let bytes: [u8; SAFE_ID_LEN] = src
+            .try_into()
+            .map_err(|_| Error::Other("SafeId: invalid length".to_string()))?;
+        Ok(Self(bytes))
+    }
+}
+
+impl FromStr for SafeId {
+    type Err = Error;
+
+    fn from_str(src: &str) -> Result<Self, Self::Err> {
+        let bytes = if src.starts_with("0x") {
+            hex::decode(&src[2..])
+        } else {
+            hex::decode(src)
+        }
+        .map_err(|_| Error::Other("SafeId: invalid hex".to_string()))?;
+        Self::try_from(&bytes[..])
+    }
+}
+
+impl fmt::Display for SafeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", hex::encode(self.0))
+    }
+}
+
+impl AsRef<[u8]> for SafeId {
     fn as_ref(&self) -> &[u8] {
         &self.0[..]
     }
