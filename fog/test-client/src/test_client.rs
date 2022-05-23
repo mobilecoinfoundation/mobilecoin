@@ -470,7 +470,7 @@ impl TestClient {
             Ok(_) => {
                 log::error!(
                     self.logger,
-                    "Double spend transaction went through. (This is bad.) Check whether the ledger is up-to-date"
+                    "Double spend transaction went through. This is bad! Check whether the ledger is up-to-date"
                 );
                 Err(TestClientError::DoubleSpend)
             }
