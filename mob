@@ -87,11 +87,11 @@ import subprocess
 import sys
 
 parser = argparse.ArgumentParser(prog="mob", description="Perform an action or get a prompt in docker build environment")
-parser.add_argument("action", choices=["prompt", "image", "default-tag", "check"], help="""
+parser.add_argument("action", choices=["prompt", "image", "default-tag", "cargo-check-json"], help="""
                     (prompt) Run bash in the build environment
                     (image) Only create the builder image, don't even run bash
                     (default-tag) Print on stdout the default image tag, to support automation
-                    (check) Run cargo check
+                    (cargo-check-json) Run cargo check
                     """)
 parser.add_argument("container_name", nargs='?', default=None, help="The name for the container, run with prompt")
 parser.add_argument("--hw", action="store_true", help="Set SGX_MODE=HW. Default is SGX_MODE=SW")
@@ -396,7 +396,7 @@ if args.action == "prompt":
     docker_run.extend(["-i"])
 
 # ports might be exposed to run clients or a local network
-if args.action == "prompt" or args.action == "check":
+if args.action == "prompt" or args.action == "cargo-check-json":
     docker_run.extend([
         "--expose", "8080",
         "--expose", "8081",
@@ -425,7 +425,7 @@ elif args.ssh_agent:
     docker_run.extend(["--volume", os.environ["SSH_AUTH_SOCK"] + ":" + "/tmp/ssh_auth_sock"])
 
 # debug options allow you to attach gdb when debugging failing tests
-if args.action == "prompt" or args.action == "check":
+if args.action == "prompt" or args.action == "cargo-check-json":
     docker_run.extend([
         "--cap-add", "SYS_PTRACE",
     ])
@@ -439,7 +439,7 @@ if args.container_name is not None:
 # Add image name and command
 docker_run.extend([tag])
 
-if args.action == "check":
+if args.action == "cargo-check-json":
     docker_run.extend(["/root/.cargo/bin/cargo", "check", "--workspace", "--message-format=json", "--all-targets"])
 else:
     docker_run.extend(["/bin/bash"])
@@ -450,7 +450,7 @@ except subprocess.CalledProcessError as exception:
     if args.action == 'prompt' and exception.returncode == 130:
         # This is normal exit of prompt
         sys.exit(0)
-    if args.action == "check" and exception.returncode == 101:
+    if args.action == "cargo-check-json" and exception.returncode == 101:
         # This indicates a failed compilation, but re-raising the exception
         # will make rust-analyzer sad
         sys.exit(101)
