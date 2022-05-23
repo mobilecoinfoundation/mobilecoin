@@ -114,7 +114,11 @@ impl AuthenticationError for ThickClientAttestationError {
     }
 }
 
-impl AttestationError for ThickClientAttestationError {}
+impl AttestationError for ThickClientAttestationError {
+    fn should_reattest(&self) -> bool {
+        matches!(self, Self::Grpc(_) | Self::Ake(_) | Self::Cipher(_))
+    }
+}
 
 /// A connection from a client to a consensus enclave.
 pub struct ThickClient<CP: CredentialsProvider> {
@@ -242,11 +246,17 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
         Ok(CallOption::default().headers(metadata_builder.build()))
     }
 
-    fn reset_if_unauthenticated(&mut self, err: &impl AuthenticationError) {
+    fn reset_if_unauthenticated(&mut self, err: &(impl AuthenticationError + AttestationError)) {
         // If the call failed due to authentication (credentials) error, reset creds so
         // that it gets re-created on the next call.
         if err.is_unauthenticated() {
             self.credentials_provider.clear();
+        }
+
+        // If the call failed due to attestation error, reset attestation so that we
+        // re-attest on the next call.
+        if err.should_reattest() {
+            self.deattest();
         }
     }
 }
