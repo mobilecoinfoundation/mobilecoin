@@ -7,8 +7,10 @@ edition = "2021"
 [dependencies]
 # MobileCoin dependencies
 mc-account-keys = { path = "../../account-keys" }
+mc-attest-verifier-types = { path = "../../attest/verifier/types" }
 mc-common = { path = "../../common", default-features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }
+mc-crypto-digestible-signature = { path = "../../crypto/digestible/signature" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-ring-signature = { path = "../../crypto/ring-signature", default-features = false }
 mc-transaction-core = { path = "../../transaction/core" }

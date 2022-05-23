@@ -2339,6 +2339,8 @@ dependencies = [
  "mc-account-keys",
  "mc-attest-verifier-types",
  "mc-blockchain-types",
+ "mc-common",
+ "mc-consensus-scp",
  "mc-crypto-keys",
  "mc-crypto-multisig",
  "mc-crypto-ring-signature-signer",
@@ -2542,8 +2544,10 @@ dependencies = [
  "displaydoc",
  "hex_fmt",
  "mc-account-keys",
+ "mc-attest-verifier-types",
  "mc-common",
  "mc-crypto-digestible",
+ "mc-crypto-digestible-signature",
  "mc-crypto-digestible-test-utils",
  "mc-crypto-keys",
  "mc-crypto-ring-signature",
@@ -5455,7 +5459,6 @@ dependencies = [
  "mc-account-keys",
  "mc-common",
  "rand 0.8.5",
- "rand_core 0.6.3",
  "rand_hc 0.3.1",
 ]
 

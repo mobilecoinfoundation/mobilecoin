@@ -37,7 +37,7 @@ fn main() {
         .append_block(
             block_data.block(),
             block_data.contents(),
-            block_data.signature().clone(),
+            block_data.signature().cloned(),
         )
         .expect("Could not append origin block to ledger");
 
@@ -64,7 +64,7 @@ fn main() {
                     .append_block(
                         block_data.block(),
                         block_data.contents(),
-                        block_data.signature().clone(),
+                        block_data.signature().cloned(),
                     )
                     .unwrap_or_else(|_| panic!("Could not append block {:?}", block_index))
             }

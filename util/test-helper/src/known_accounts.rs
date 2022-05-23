@@ -3,8 +3,7 @@
 //! This module provides a consistent set of AccountKeys for use in testing
 
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
-use rand::rngs::StdRng;
-use rand_core::SeedableRng;
+use rand::{rngs::StdRng, SeedableRng};
 use std::cmp;
 
 // The default accounts are the first NUMBER_OF_DEFAULT_ACCOUNTS that we

@@ -259,7 +259,8 @@ impl Ledger for LedgerDB {
             Err(err) => Err(err),
         }?;
 
-        Ok(BlockData::new(block, contents, signature))
+        // FIXME: Add metadata.
+        Ok(BlockData::new(block, contents, signature, None))
     }
 
     /// Gets block index by a TxOut global index.

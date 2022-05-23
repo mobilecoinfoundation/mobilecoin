@@ -18,6 +18,7 @@ fn main() {
             "blockchain.proto",
             "external.proto",
             "printable.proto",
+            "quorum_set.proto",
             "watcher.proto",
         ],
     );

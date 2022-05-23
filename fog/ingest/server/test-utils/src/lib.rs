@@ -398,7 +398,8 @@ pub fn add_test_block<T: RngCore + CryptoRng>(
         .append_block(&block, &block_contents, None)
         .expect("Could not append block");
 
-    let block_data = BlockData::new(block, block_contents, Some(block_sig.clone()));
+    // FIXME: Add metadata.
+    let block_data = BlockData::new(block, block_contents, block_sig.clone(), None);
 
     watcher
         .add_block_data(&tx_source_url, &block_data)

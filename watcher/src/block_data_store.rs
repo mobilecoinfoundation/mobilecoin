@@ -97,7 +97,7 @@ impl BlockDataStore {
         let stored_block_data = StoredBlockData {
             block_hash,
             block_contents_hash,
-            signature: block_data.signature().clone(),
+            signature: block_data.signature().cloned(),
         };
 
         let mut key_bytes = block_data.block().index.to_be_bytes().to_vec();
@@ -144,6 +144,7 @@ impl BlockDataStore {
             block,
             block_contents,
             stored_block_data.signature,
+            None,
         ))
     }
 
@@ -183,7 +184,7 @@ impl BlockDataStore {
 
             results.insert(
                 tx_source_url,
-                BlockData::new(block, block_contents, stored_block_data.signature),
+                BlockData::new(block, block_contents, stored_block_data.signature, None),
             );
         }
 
@@ -309,6 +310,7 @@ mod tests {
                         )
                         .unwrap(),
                     ),
+                    None,
                 )
             })
             .collect::<Vec<_>>();
