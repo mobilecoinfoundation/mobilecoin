@@ -2,6 +2,8 @@
 
 //! LMDB database abstraction.
 
+mod gnosis_store;
+
 use crate::Error;
 use lmdb::{
     Database, DatabaseFlags, Environment, EnvironmentFlags, RwTransaction, Transaction, WriteFlags,
@@ -14,6 +16,9 @@ use mc_util_lmdb::{MetadataStore, MetadataStoreSettings};
 use mc_util_serial::{decode, encode, Message};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::Path, sync::Arc};
+use crate::gnosis::fetcher::{GnosisSafeTransaction, EthTxHash};
+use gnosis_store::GnosisSafeStore;
+
 
 /// Max LMDB file size.
 const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
@@ -88,6 +93,9 @@ pub struct MintAuditorDb {
     /// Mint config store.
     mint_config_store: MintConfigStore,
 
+    /// Gnosis safe store.
+    gnosis_safe_store: GnosisSafeStore,
+
     /// Logger.
     logger: Logger,
 }
@@ -119,12 +127,14 @@ impl MintAuditorDb {
         let mint_audit_data_by_block_index =
             env.open_db(Some(MINT_AUDIT_DATA_BY_BLOCK_INDEX_DB_NAME))?;
         let mint_config_store = MintConfigStore::new(&env)?;
+        let gnosis_safe_store = GnosisSafeStore::new(&env)?;
 
         Ok(Self {
             env,
             key_val,
             mint_audit_data_by_block_index,
             mint_config_store,
+            gnosis_safe_store,
             logger,
         })
     }
@@ -148,6 +158,7 @@ impl MintAuditorDb {
             DatabaseFlags::DUP_SORT,
         )?;
         MintConfigStore::create(&env)?;
+        GnosisSafeStore::create(&env)?;
         Ok(())
     }
 
@@ -321,6 +332,22 @@ impl MintAuditorDb {
 
         // Success.
         Ok(block_audit_data)
+    }
+
+    /// Write a list of [GnosisSafeTransaction]s.
+    pub fn write_safe_txs(&self, safe_txs: &[GnosisSafeTransaction]) -> Result<(), Error> {
+        let db_txn = self.env.begin_rw_txn()?;
+        for safe_tx in safe_txs {
+            self.write_safe_tx_impl(safe_tx, &db_txn)?;
+        }
+        db_txn.commit()?;
+        Ok(())
+    }
+
+    /// Get a gnosis safe transaction by hash.
+    pub fn get_safe_tx_by_hash(&self, tx_hash: &EthTxHash) -> Result<GnosisSafeTransaction, Error> {
+        let db_txn = self.env.begin_ro_txn()?;
+        self.get_safe_tx_by_hash_impl(tx_hash, &db_txn)
     }
 
     fn get_block_audit_data_impl(

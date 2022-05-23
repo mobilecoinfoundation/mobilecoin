@@ -2,11 +2,12 @@
 
 //! Mint auditor error data type.
 
+use crate::gnosis::Error as GnosisError;
 use displaydoc::Display;
 use mc_ledger_db::Error as LedgerDbError;
 use mc_transaction_core::BlockIndex;
 use mc_util_lmdb::MetadataStoreError;
-use mc_util_serial::DecodeError;
+use mc_util_serial::{DecodeError, EncodeError};
 use std::io::Error as IoError;
 
 /// Mint auditor error data type.
@@ -30,8 +31,14 @@ pub enum Error {
     /// Decode: {0}
     Decode(DecodeError),
 
+    /// Encode: {0}
+    Encode(EncodeError),
+
     /// Unexpected block index {0} (was expecting {1})
     UnexpectedBlockIndex(BlockIndex, BlockIndex),
+
+    /// Gnosis: {0}
+    Gnosis(GnosisError),
 }
 
 impl From<lmdb::Error> for Error {
@@ -64,5 +71,17 @@ impl From<LedgerDbError> for Error {
 impl From<DecodeError> for Error {
     fn from(err: DecodeError) -> Self {
         Self::Decode(err)
+    }
+}
+
+impl From<EncodeError> for Error {
+    fn from(err: EncodeError) -> Self {
+        Self::Encode(err)
+    }
+}
+
+impl From<GnosisError> for Error {
+    fn from(err: GnosisError) -> Self {
+        Self::Gnosis(err)
     }
 }

@@ -11,11 +11,11 @@
 //!   mint nonce) 2) list of all hashes in chronological order? reverse
 //!   chronological order? lmdb ordering is messsy
 //! - code that takes a MintTx and returns the matching
-//!   DecodedGnosisTransaction, this needs to: 1) lookup by the nonce 2) compare
-//!   the amount
-//! - code that takes DecodedGnosisTransaction and if it contains a burn (moving
-//!   token out + burn memo multi-tx) try and locate matching mc transaction
-//!   (lookup by txout pub key)
+//!   DecodedGnosisSafeTransaction, this needs to: 1) lookup by the nonce 2)
+//!   compare the amount
+//! - code that takes DecodedGnosisSafeTransaction and if it contains a burn
+//!   (moving token out + burn memo multi-tx) try and locate matching mc
+//!   transaction (lookup by txout pub key)
 //!
 //! two scanning modes:
 //! 1) everything
@@ -27,12 +27,12 @@ use mc_common::logger::{log, o, Logger};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 use url::Url;
-use std::fmt;
 
 pub const ETH_TX_HASH_LEN: usize = 32;
 
+// TODO move somewhere else
 #[derive(Debug, Deserialize, Serialize)]
 pub struct EthTxHash([u8; ETH_TX_HASH_LEN]);
 
@@ -67,12 +67,19 @@ impl fmt::Display for EthTxHash {
     }
 }
 
+impl AsRef<[u8]> for EthTxHash {
+    fn as_ref(&self) -> &[u8] {
+        &self.0[..]
+    }
+}
+
+// TODO move somewhere else
 #[derive(Debug, Deserialize, Serialize)]
-pub struct GnosisTransaction {
+pub struct GnosisSafeTransaction {
     raw: Value,
 }
 
-impl GnosisTransaction {
+impl GnosisSafeTransaction {
     pub fn decode(&self) -> Result<api_data_types::Transaction, Error> {
         Ok(serde_json::from_value(self.raw.clone())?)
     }
@@ -84,13 +91,21 @@ impl GnosisTransaction {
             .or_else(|| self.raw.get("txHash"))
             .and_then(|val| val.as_str())
             .ok_or(Error::Other(
-                "GnosisTransaction: missing transactionHash".to_string(),
+                "GnosisSafeTransaction: missing transactionHash".to_string(),
             ))?;
         Ok(EthTxHash::from_str(hash_str)?)
     }
+
+    pub fn to_json_string(&self) -> String {
+        self.raw.to_string()
+    }
+
+    pub fn from_json_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        Ok(Self::from(serde_json::from_slice::<Value>(bytes)?))
+    }
 }
 
-impl From<Value> for GnosisTransaction {
+impl From<Value> for GnosisSafeTransaction {
     fn from(value: Value) -> Self {
         Self { raw: value }
     }
@@ -141,7 +156,7 @@ impl GnosisSafeFetcher {
     pub async fn get_transaction_data(
         &self,
         safe_address: &str,
-    ) -> Result<Vec<GnosisTransaction>, Error> {
+    ) -> Result<Vec<GnosisSafeTransaction>, Error> {
         let url = self.base_url.join(&format!(
             "api/v1/safes/{}/all-transactions/?executed=true&queued=false&trusted=true",
             safe_address
@@ -170,7 +185,7 @@ impl GnosisSafeFetcher {
         Ok(data
             .results
             .into_iter()
-            .map(GnosisTransaction::from)
+            .map(GnosisSafeTransaction::from)
             .collect())
     }
 }
