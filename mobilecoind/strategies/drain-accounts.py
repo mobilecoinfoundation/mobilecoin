@@ -129,11 +129,9 @@ def run_test(stub, amount, monitor_id, dest, max_seconds, token_id):
                     'receipt': tx_resp,
                 }
                 stats = poll(monitor_id, tx_stats, stub)
-                # FIXME: Subtract the fee from amount, so that we don't get insufficient
-                # funds in the next cycle (since it costs us money to defragment)
-                # However, currently we don't know the fee. So this has to be compensated
-                # for by setting the fee in the command line large enough to account
-                # for many possible defragmentation operations.
+                # Subtract fee from amount, so that we don't get an insufficient funds error
+                # in the next cycle (since it costs us a fee to defragment)
+                amount = amount - opt_tx.tx_proposal.fee
                 continue
 
 
