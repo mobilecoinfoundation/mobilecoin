@@ -2,8 +2,25 @@
 
 //! Gnosis Safe transaction fetcher, used to get the transaction data from a
 //! gnosis safe-transaction-service.
+//! 
+//! TODO
+//! - figure out what to return from get_all_transactions so that we capture both the full response, and optionally the decoded transaction data
+//! - need to include offsets
+//! - need to store in lmdb:
+//!     1) map of real tx hash -> data (used to lookup from mint nonce)
+//!     2) list of all hashes in chronological order? reverse chronological order? lmdb ordering is messsy
+//! - code that takes a MintTx and returns the matching DecodedGnosisTransaction, this needs to:
+//!     1) lookup by the nonce
+//!     2) compare the amount
+//! - code that takes DecodedGnosisTransaction and if it contains a burn (moving token out + burn memo multi-tx) try and locate
+//!   matching mc transaction (lookup by txout pub key)
+//! 
+//! two scanning modes:
+//! 1) everything 
+//! 2) until reaching a known hash
 
 use super::error::Error;
+use super::api_data_types;
 use mc_common::logger::{log, o, Logger};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -11,73 +28,20 @@ use serde_json::Value;
 use url::Url;
 
 #[derive(Debug, Deserialize, Serialize)]
-struct DataDecoded {
-    method: String,
-    parameters: Vec<DataDecodedParameter>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct DataDecodedParameter {
-    name: String,
-    // type: String,
-    value: String,
-
-    #[serde(rename = "valueDecoded")]
-    value_decoded: Option<Vec<ValueDecoded>>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct ValueDecoded {
-    operation: u64,
-    to: String,
-    value: String,
-    data: String,
-
-    #[serde(rename = "dataDecoded")]
-    data_decoded: Option<Box<DataDecoded>>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct MultiSigTransaction {
-    safe: String,
-    to: String,
-    value: String,
-    data: Option<String>,
-
-    #[serde(rename = "dataDecoded")]
-    data_decoded: Option<DataDecoded>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(tag = "txType")]
-enum DecodedGnosisTransaction {
-    #[serde(rename = "MULTISIG_TRANSACTION")]
-    MultiSig(MultiSigTransaction),
-
-    #[serde(rename = "ETHEREUM_TRANSACTION")]
-    Ethereum(Value),
-
-    #[serde(rename = "MODULE_TRANSACTION")]
-    Module(Value),
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct GnosisTransaction {
+pub struct GnosisTransaction {
     raw: Value,
 }
 
 impl GnosisTransaction {
-    pub fn decode(&self) -> Result<DecodedGnosisTransaction, Error> {
+    pub fn decode(&self) -> Result<api_data_types::Transaction, Error> {
         Ok(serde_json::from_value(self.raw.clone())?)
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct AllTransactionsResponse {
-    count: u64,
-    next: Option<String>,
-    previous: Option<String>,
-    results: Vec<Value>,
+impl From<Value> for GnosisTransaction {
+    fn from(value: Value) -> Self {
+        Self { raw: value }
+    }
 }
 
 /// Gnosis Safe transaction fetcher, used to get the transaction data from a
@@ -118,7 +82,7 @@ impl GnosisSafeFetcher {
 
     /// Fetch transaction data.
     /// This returns only transactions that were executed and confirmed.
-    pub async fn get_transaction_data(&self, safe_address: &str) -> Result<Vec<u8>, Error> {
+    pub async fn get_transaction_data(&self, safe_address: &str) -> Result<Vec<GnosisTransaction>, Error> {
         let url = self.base_url.join(&format!(
             "api/v1/safes/{}/all-transactions/?executed=true&queued=false&trusted=true",
             safe_address
@@ -140,10 +104,10 @@ impl GnosisSafeFetcher {
         }
 
         let data = response
-            .json::<AllTransactionsResponse>()
+            .json::<api_data_types::AllTransactionsResponse>()
             .await
             .map_err(|err| Error::Other(format!("Failed parsing JSON from '{}': {}", url, err)))?;
-        println!("AAA {:#?}", data);
-        Ok(Vec::default())
+        
+        Ok(data.results.into_iter().map(GnosisTransaction::from).collect())
     }
 }

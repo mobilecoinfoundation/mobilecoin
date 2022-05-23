@@ -88,7 +88,7 @@ async fn main() {
             .get_transaction_data("0x90213de428E9Ce4C77dD4943755Aa69cb2F803b7")
             .await
             .unwrap();
-        println!("{}", std::str::from_utf8(&x).unwrap());
+        println!("{:#?}", x);
     }
 
     let config = Config::parse();

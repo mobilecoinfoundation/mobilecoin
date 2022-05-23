@@ -4,6 +4,7 @@
 
 pub mod fetcher; // TODO not pub
 
+mod api_data_types;
 mod error;
 
 pub use error::Error;

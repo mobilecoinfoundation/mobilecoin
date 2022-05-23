@@ -2,7 +2,7 @@
 
 //! A utility for keeping track of token minting and burning.
 
-#![deny(missing_docs)]
+// TODO #![deny(missing_docs)]
 
 pub mod counters;
 
