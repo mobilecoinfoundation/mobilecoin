@@ -27,15 +27,11 @@ curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
 
-[dev-dependencies.proptest]
-version = "1.0" # Only works for 0.9.1 or newer
-default-features = false
-# Enable all default features not known to break code coverage builds
-features = ["default-code-coverage"]
-
 [dev-dependencies]
 mc-crypto-digestible-test-utils = { path = "../../digestible/test-utils" }
 mc-crypto-rand = { path = "../../rand" }
 rand = "0.8"
 rand_hc = "0.3"
+# Enable all default features not known to break code coverage builds
+proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"] }
 tempdir = "0.3"
