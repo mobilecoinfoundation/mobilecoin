@@ -2,7 +2,7 @@
 
 use super::{Error, OneTimeKeyDeriveData, RingSigner, SignableInputRing};
 use mc_crypto_keys::RistrettoPublic;
-use mc_crypto_ring_signature::ring_signature::{generators, CryptoRngCore, RingMLSAG, Scalar};
+use mc_crypto_ring_signature::{generators, CryptoRngCore, RingMLSAG, Scalar};
 
 /// An implementation of RingSigner that holds no keys, and doesn't do any
 /// non-trivial derivation of the one-time private key.
