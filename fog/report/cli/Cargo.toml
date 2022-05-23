@@ -24,6 +24,6 @@ mc-util-keyfile = { path = "../../../util/keyfile" }
 mc-util-uri = { path = "../../../util/uri" }
 
 base64 = "0.13"
-hex = "0.4"
 clap = { version = "3.1", features = ["derive", "env"] }
 grpcio = "0.10.2"
+hex = "0.4"
