@@ -460,7 +460,7 @@ impl TestClient {
         client: &mut Client,
         transaction: &Tx,
     ) -> Result<(), TestClientError> {
-        log::info!(self.logger, "Now attempting spent key image test");
+        log::info!(self.logger, "Now attempting double spend test");
         // NOTE: without the wait, the call to send_transaction would succeed.
         //       This test is a little ambiguous because it is testing that
         //       the transaction cannot even be sent, not just that it fails to
@@ -470,12 +470,16 @@ impl TestClient {
             Ok(_) => {
                 log::error!(
                     self.logger,
-                    "Double spend succeeded. Check whether the ledger is up-to-date"
+                    "Double spend transaction went through. (This is bad.) Check whether the ledger is up-to-date"
                 );
                 Err(TestClientError::DoubleSpend)
             }
             Err(e) => {
-                log::info!(self.logger, "Double spend failed with {:?}", e);
+                log::info!(
+                    self.logger,
+                    "Double spend successfully rejected with {:?}",
+                    e
+                );
                 Ok(())
             }
         }
