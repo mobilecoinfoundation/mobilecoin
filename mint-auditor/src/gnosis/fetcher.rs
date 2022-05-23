@@ -76,20 +76,20 @@ impl AsRef<[u8]> for EthTxHash {
 
 // TODO move somewhere else
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct SafeId([u8; SAFE_ID_LEN]);
+pub struct SafeAddr([u8; SAFE_ID_LEN]);
 
-impl TryFrom<&[u8]> for SafeId {
+impl TryFrom<&[u8]> for SafeAddr {
     type Error = Error;
 
     fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
         let bytes: [u8; SAFE_ID_LEN] = src
             .try_into()
-            .map_err(|_| Error::Other("SafeId: invalid length".to_string()))?;
+            .map_err(|_| Error::Other("SafeAddr: invalid length".to_string()))?;
         Ok(Self(bytes))
     }
 }
 
-impl FromStr for SafeId {
+impl FromStr for SafeAddr {
     type Err = Error;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
@@ -98,18 +98,18 @@ impl FromStr for SafeId {
         } else {
             hex::decode(src)
         }
-        .map_err(|_| Error::Other("SafeId: invalid hex".to_string()))?;
+        .map_err(|_| Error::Other("SafeAddr: invalid hex".to_string()))?;
         Self::try_from(&bytes[..])
     }
 }
 
-impl fmt::Display for SafeId {
+impl fmt::Display for SafeAddr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", hex::encode(self.0))
     }
 }
 
-impl AsRef<[u8]> for SafeId {
+impl AsRef<[u8]> for SafeAddr {
     fn as_ref(&self) -> &[u8] {
         &self.0[..]
     }
@@ -172,10 +172,6 @@ impl GnosisSafeFetcher {
     /// The URL endpoint is expected to run the Gnosis safe-transaction-service
     /// (https://github.com/safe-global/safe-transaction-service/)
     pub fn new(mut base_url: Url, logger: Logger) -> Result<Self, Error> {
-        let x = EthTxHash::from_str(
-            "0x09ae7f9f06fff9a2bc14bb0595b335a4b2c175d01a347d30956f4b235258d2e1",
-        )
-        .unwrap();
         if !base_url.path().ends_with('/') {
             base_url = base_url.join(&format!("{}/", base_url.path()))?;
         }
@@ -197,7 +193,7 @@ impl GnosisSafeFetcher {
     /// This returns only transactions that were executed and confirmed.
     pub async fn get_transaction_data(
         &self,
-        safe_address: &str,
+        safe_address: &SafeAddr,
     ) -> Result<Vec<GnosisSafeTransaction>, Error> {
         let url = self.base_url.join(&format!(
             "api/v1/safes/{}/all-transactions/?executed=true&queued=false&trusted=true",

@@ -9,5 +9,5 @@ mod error;
 mod fetcher_thread;
 
 pub use error::Error;
+pub use fetcher::{EthTxHash, SafeAddr};
 pub use fetcher_thread::FetcherThread;
-pub use fetcher::{EthTxHash, SafeId};
