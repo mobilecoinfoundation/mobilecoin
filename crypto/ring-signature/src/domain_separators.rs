@@ -4,7 +4,8 @@
 //! MLSAG protocols.
 //!
 //! Domain separation allows multiple distinct hash functions to be derived from
-//! a single base function:   Hash_1(X) = Hash("Hash_1" || X),
+//! a single base function:
+//!   Hash_1(X) = Hash("Hash_1" || X),
 //!   Hash_2(X) = Hash("Hash_2" || X),
 //!   etc.
 //!
