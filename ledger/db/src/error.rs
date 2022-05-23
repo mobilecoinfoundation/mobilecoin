@@ -84,6 +84,9 @@ pub enum Error {
 
     /// Duplicate MintConfigTx
     DuplicateMintConfigTx,
+
+    /// Block metadata is required at this block version
+    BlockMetadataRequired,
 }
 
 impl From<lmdb::Error> for Error {

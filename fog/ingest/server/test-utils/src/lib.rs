@@ -181,7 +181,7 @@ impl IngestServerTestHelper {
             ..Default::default()
         };
         self.ledger
-            .append_block(&origin_block, &origin_contents, None)
+            .append_block(&origin_block, &origin_contents, None, None)
             .expect("failed writing initial block");
     }
 
@@ -358,7 +358,6 @@ pub fn add_test_block<T: RngCore + CryptoRng>(
     // Make the new block and append to database
     let num_blocks = ledger.num_blocks().expect("Could not compute num_blocks");
     assert_ne!(0, num_blocks);
-    let tx_source_url = Url::from_str("https://localhost").unwrap();
 
     let last_block = ledger
         .get_block(num_blocks - 1)
@@ -396,13 +395,13 @@ pub fn add_test_block<T: RngCore + CryptoRng>(
     );
 
     let metadata = make_block_metadata(block.id.clone(), rng);
-
-    ledger
-        .append_block(&block, &block_contents, None)
-        .expect("Could not append block");
-
     let block_data = BlockData::new(block, block_contents, block_sig.clone(), metadata);
 
+    ledger
+        .append_block_data(&block_data)
+        .expect("Could not append block");
+
+    let tx_source_url = Url::from_str("https://localhost").unwrap();
     watcher
         .add_block_data(&tx_source_url, &block_data)
         .expect("Could not add block data to watcher");

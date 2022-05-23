@@ -65,6 +65,7 @@ mc-util-build-sgx = { path = "../../../util/build/sgx" }
 # mobilecoin
 mc-account-keys = { path = "../../../account-keys" }
 mc-api = { path = "../../../api" }
+mc-blockchain-test-utils = { path = "../../../blockchain/test-utils" }
 mc-common = { path = "../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-util-test-helper = { path = "../../../util/test-helper" }

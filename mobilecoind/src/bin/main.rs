@@ -238,12 +238,8 @@ fn create_or_open_ledger_db(
                 .get_origin_block_and_transactions()
                 .expect("Failed to download initial transactions");
             let mut db = LedgerDB::open(&config.ledger_db).expect("Could not open ledger_db");
-            db.append_block(
-                block_data.block(),
-                block_data.contents(),
-                block_data.signature().cloned(),
-            )
-            .expect("Failed to appened initial transactions");
+            db.append_block_data(&block_data)
+                .expect("Failed to appened initial transactions");
             log::info!(logger, "Bootstrapping completed!");
         }
     }

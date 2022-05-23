@@ -9,6 +9,7 @@ pub mod db_tests;
 pub mod mock_client;
 pub mod mock_users;
 
+use mc_blockchain_test_utils::make_block_metadata;
 use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
 use mc_crypto_keys::{Ed25519Pair, RistrettoPublic};
 use mc_fog_ingest_client::FogIngestGrpcClient;
@@ -165,8 +166,9 @@ pub fn test_block<T: RngCore + CryptoRng, C: FogViewConnection>(
         );
         (block, block_contents)
     };
+    let metadata = make_block_metadata(block.id.clone(), rng);
     ledger_db
-        .append_block(&block, &block_contents, None)
+        .append_block(&block, &block_contents, None, Some(&metadata))
         .unwrap_or_else(|err| panic!("failed appending block {:?}: {:?}", block, err));
 
     // Make the users poll for transactions, until their num blocks matches

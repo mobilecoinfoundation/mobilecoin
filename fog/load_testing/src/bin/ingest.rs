@@ -333,8 +333,9 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
                     .expect("Getting num blocks failed");
 
                 let start = Instant::now();
+                // FIXME: Add metadata, too.
                 ledger_db
-                    .append_block(block, block_contents, None)
+                    .append_block(block, block_contents, None, None)
                     .expect("Adding block failed");
 
                 // Add the timestamp information to watcher for this block index - note watcher

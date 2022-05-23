@@ -319,6 +319,7 @@ mod tests {
         tx_manager::{MockTxManager, TxManagerImpl},
         validators::DefaultTxManagerUntrustedInterfaces,
     };
+    use mc_blockchain_test_utils::make_block_metadata;
     use mc_blockchain_types::{Block, BlockContents, BlockVersion};
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
@@ -876,7 +877,10 @@ mod tests {
             &block_contents,
         );
 
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         // Mock peer_manager
         let mock_peer = MockPeerConnection::new(

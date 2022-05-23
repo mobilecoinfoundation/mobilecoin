@@ -580,7 +580,7 @@ impl<
 
         tracer.in_span("append_block", |_cx| {
             self.ledger
-                .append_block(block_data.block(), block_data.contents(), Some(signature))
+                .append_block_data(&block_data)
                 .expect("failed appending block");
         });
 
@@ -913,6 +913,7 @@ mod tests {
         validators::DefaultTxManagerUntrustedInterfaces,
     };
     use mc_account_keys::AccountKey;
+    use mc_blockchain_test_utils::make_block_metadata;
     use mc_blockchain_types::{Block, BlockContents, BlockVersion};
     use mc_common::{logger::test_with_logger, NodeID};
     use mc_consensus_enclave::GovernorsMap;
@@ -1660,7 +1661,10 @@ mod tests {
             &Default::default(),
             &block_contents,
         );
-        ledger.append_block(&block, &block_contents, None).unwrap();
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        ledger
+            .append_block(&block, &block_contents, None, Some(&metadata))
+            .unwrap();
 
         let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
         let governors_map = GovernorsMap::try_from_iter([(token_id1, signer_set1)]).unwrap();

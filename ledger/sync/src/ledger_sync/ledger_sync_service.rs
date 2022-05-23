@@ -208,7 +208,8 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
 
         for (block, contents) in blocks_and_contents {
             let append_block_start = SystemTime::now();
-            self.ledger.append_block(block, contents, None)?;
+            // FIXME: Add metadata, too.
+            self.ledger.append_block(block, contents, None, None)?;
             let append_block_end = SystemTime::now();
 
             // HACK: `append_block` reports a span but does not tie it to a specific
@@ -1040,12 +1041,7 @@ mod tests {
         for (block_index, contents_opt) in transactions_by_block {
             match contents_opt {
                 Some(block_contents) => {
-                    let expected_contents = mock_ledger
-                        .lock()
-                        .block_contents_by_block_number
-                        .get(&block_index)
-                        .unwrap()
-                        .clone();
+                    let expected_contents = mock_ledger.get_block_contents(block_index).unwrap();
                     // The transactions should be correct for each block.
                     assert_eq!(block_contents, expected_contents);
                 }
@@ -1121,12 +1117,7 @@ mod tests {
                 Some(block_contents) => {
                     assert_ne!(block_index, BAD_BLOCK_INDEX);
 
-                    let expected_contents = mock_ledger
-                        .lock()
-                        .block_contents_by_block_number
-                        .get(&block_index)
-                        .unwrap()
-                        .clone();
+                    let expected_contents = mock_ledger.get_block_contents(block_index).unwrap();
                     // The transactions should be correct for each block.
                     assert_eq!(block_contents, expected_contents);
                 }

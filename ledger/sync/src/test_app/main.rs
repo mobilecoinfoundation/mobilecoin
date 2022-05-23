@@ -43,7 +43,10 @@ fn _make_ledger_long(ledger: &mut LedgerDB) {
 
     for (block, block_contents) in &results {
         println!("block {} containing {:?}", block.index, block_contents);
-        ledger.append_block(block, block_contents, None).unwrap();
+        // FIXME: Add metadata, too.
+        ledger
+            .append_block(block, block_contents, None, None)
+            .expect("failed to append block");
         assert_eq!(block.cumulative_txo_count, ledger.num_txos().unwrap());
     }
 }

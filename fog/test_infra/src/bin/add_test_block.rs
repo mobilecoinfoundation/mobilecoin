@@ -124,8 +124,7 @@ fn main() {
     // Read seed, expand to 32 bytes and create an Rng
     let mut hasher = Blake2b256::new();
     hasher.update(config.seed.to_le_bytes());
-    let seed = <[u8; 32]>::from(hasher.finalize());
-    let mut rng: Hc128Rng = SeedableRng::from_seed(seed);
+    let mut rng: Hc128Rng = SeedableRng::from_seed(hasher.finalize().into());
 
     // Parse stdin, collecting "credits" and "key images"
     let input: ParsedBlockContents = serde_json::from_reader(std::io::stdin().lock()).unwrap();
@@ -223,12 +222,12 @@ fn main() {
                 .as_secs(),
         );
 
-        ledger
-            .append_block(&block, &block_contents, None)
-            .expect("Could not append block");
-
         let metadata = make_block_metadata(block.id.clone(), &mut rng);
         let block_data = BlockData::new(block, block_contents, block_sig.clone(), metadata);
+
+        ledger
+            .append_block_data(&block_data)
+            .expect("Could not append block");
 
         watcher
             .add_block_data(&tx_source_url, &block_data)

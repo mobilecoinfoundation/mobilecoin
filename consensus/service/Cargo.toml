@@ -63,6 +63,7 @@ mc-sgx-build = { path = "../../sgx/build" }
 
 [dev-dependencies]
 mc-account-keys = { path = "../../account-keys" }
+mc-blockchain-test-utils = { path = "../../blockchain/test-utils" }
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-consensus-enclave-mock = { path = "../../consensus/enclave/mock" }
 mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
