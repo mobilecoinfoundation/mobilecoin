@@ -26,9 +26,12 @@ pub trait Connection: Display + Eq + Hash + Ord + PartialEq + PartialOrd + Send 
     fn uri(&self) -> Self::Uri;
 }
 
-/// A marker trait used to encapsulate connection-impl-specific attestation
+/// A trait used to encapsulate connection-impl-specific attestation
 /// errors.
-pub trait AttestationError: Debug + Display + Send + Sync {}
+pub trait AttestationError: Debug + Display + Send + Sync {
+    /// Should the error result in re-attestation?
+    fn should_reattest(&self) -> bool;
+}
 
 pub trait AttestedConnection: Connection {
     type Error: AttestationError + From<GrpcError>;
