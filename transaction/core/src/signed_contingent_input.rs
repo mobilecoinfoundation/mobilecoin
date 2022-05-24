@@ -1,7 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-// Copyright (c) 2022 The MobileCoin Foundation
-
 //! A signed contingent input as described in MCIP #31
 
 use crate::{
