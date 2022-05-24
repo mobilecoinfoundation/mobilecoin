@@ -5,7 +5,7 @@
 
 use crate::{memo::GiftCodeSenderMemo, MemoBuilder, ReservedSubaddresses};
 use mc_account_keys::PublicAddress;
-use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
+use mc_transaction_core::{tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token};
 
 /// There are three possible gift code memo types specified in MCIP #32
 /// | Memo type bytes | Name                        |
@@ -27,6 +27,8 @@ pub struct GiftCodeSenderMemoBuilder {
     note: String,
     // Whether we've already written the change memo
     wrote_change_memo: bool,
+    // Fee paid to redeem gift code
+    fee: Amount,
 }
 
 impl GiftCodeSenderMemoBuilder {
@@ -34,22 +36,27 @@ impl GiftCodeSenderMemoBuilder {
     /// method will enforce the 64 byte limit with a NewMemoErr if the
     /// note passed is longer than 64 bytes.
     pub fn new(note: &str) -> Result<Self, NewMemoError> {
-        if note.len() > GiftCodeSenderMemo::MEMO_DATA_LEN {
+        if note.len() > GiftCodeSenderMemo::NOTE_DATA_LEN {
             return Err(NewMemoError::BadInputs(format!(
                 "Note memo cannot be greater than {} bytes",
-                GiftCodeSenderMemo::MEMO_DATA_LEN
+                GiftCodeSenderMemo::NOTE_DATA_LEN
             )));
         }
         Ok(Self {
             note: note.into(),
             wrote_change_memo: false,
+            fee: Amount::new(Mob::MINIMUM_FEE, Mob::ID),
         })
     }
 }
 
 impl MemoBuilder for GiftCodeSenderMemoBuilder {
     /// Set the fee
-    fn set_fee(&mut self, _fee: Amount) -> Result<(), NewMemoError> {
+    fn set_fee(&mut self, fee: Amount) -> Result<(), NewMemoError> {
+        if self.wrote_change_memo {
+            return Err(NewMemoError::FeeAfterChange);
+        }
+        self.fee = fee;
         Ok(())
     }
 
@@ -67,15 +74,19 @@ impl MemoBuilder for GiftCodeSenderMemoBuilder {
     /// address when the gift code is redeemed
     fn make_memo_for_change_output(
         &mut self,
-        _amount: Amount,
+        amount: Amount,
         _change_destination: &ReservedSubaddresses,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
         if self.wrote_change_memo {
             return Err(NewMemoError::MultipleChangeOutputs);
         };
+        // fee and change amount token id must match
+        if self.fee.token_id != amount.token_id {
+            return Err(NewMemoError::MixedTokenIds);
+        }
         self.wrote_change_memo = true;
-        Ok(GiftCodeSenderMemo::new(self.note.as_str())?.into())
+        Ok(GiftCodeSenderMemo::new(self.fee.value, self.note.as_str())?.into())
     }
 }
 
@@ -92,11 +103,15 @@ mod tests {
 
         // Build the memo payload and get the data
         let amount = Amount::new(42, 0.into());
+        let fee = Amount::new(10, 0.into());
+        builder.set_fee(fee).unwrap();
+
         let memo_payload = build_change_memo_with_amount(&mut builder, amount).unwrap();
 
         // Verify memo data
-        let derived_note = GiftCodeSenderMemo::from(memo_payload.get_memo_data());
-        assert_eq!(note, derived_note.sender_note().unwrap());
+        let derived_memo = GiftCodeSenderMemo::from(memo_payload.get_memo_data());
+        assert_eq!(note, derived_memo.sender_note().unwrap());
+        assert_eq!(fee.value, derived_memo.get_fee());
     }
 
     #[test]
@@ -104,45 +119,52 @@ mod tests {
     {
         // Create edge case notes
         let amount = Amount::new(42, 0.into());
+        let fee = Amount::new(10, 0.into());
         let blank_note = "";
         let note_minus_one =
-            std::str::from_utf8(&[b'6'; GiftCodeSenderMemo::MEMO_DATA_LEN - 1]).unwrap();
-        let note_exact = std::str::from_utf8(&[b'6'; GiftCodeSenderMemo::MEMO_DATA_LEN]).unwrap();
+            std::str::from_utf8(&[b'6'; GiftCodeSenderMemo::NOTE_DATA_LEN - 1]).unwrap();
+        let note_exact = std::str::from_utf8(&[b'6'; GiftCodeSenderMemo::NOTE_DATA_LEN]).unwrap();
 
         // Verify blank note is okay
         {
             let mut builder = GiftCodeSenderMemoBuilder::new(blank_note).unwrap();
+            builder.set_fee(fee).unwrap();
 
             // Build the memo payload and get the data
             let memo_payload = build_change_memo_with_amount(&mut builder, amount).unwrap();
 
             // Verify memo data
-            let derived_note = GiftCodeSenderMemo::from(memo_payload.get_memo_data());
-            assert_eq!(blank_note, derived_note.sender_note().unwrap());
+            let derived_memo = GiftCodeSenderMemo::from(memo_payload.get_memo_data());
+            assert_eq!(blank_note, derived_memo.sender_note().unwrap());
+            assert_eq!(fee.value, derived_memo.get_fee());
         }
 
         // Verify note with max length minus one is okay
         {
             let mut builder = GiftCodeSenderMemoBuilder::new(note_minus_one).unwrap();
+            builder.set_fee(fee).unwrap();
 
             // Build the memo payload and get the data
             let memo_payload = build_change_memo_with_amount(&mut builder, amount).unwrap();
 
             // Verify memo data
-            let derived_note = GiftCodeSenderMemo::from(memo_payload.get_memo_data());
-            assert_eq!(note_minus_one, derived_note.sender_note().unwrap());
+            let derived_memo = GiftCodeSenderMemo::from(memo_payload.get_memo_data());
+            assert_eq!(note_minus_one, derived_memo.sender_note().unwrap());
+            assert_eq!(fee.value, derived_memo.get_fee());
         }
 
         // Verify note with max length okay
         {
             let mut builder = GiftCodeSenderMemoBuilder::new(note_exact).unwrap();
+            builder.set_fee(fee).unwrap();
 
             // Build the memo payload and get the data
             let memo_payload = build_change_memo_with_amount(&mut builder, amount).unwrap();
 
             // Verify memo data
-            let derived_note = GiftCodeSenderMemo::from(memo_payload.get_memo_data());
-            assert_eq!(note_exact, derived_note.sender_note().unwrap());
+            let derived_memo = GiftCodeSenderMemo::from(memo_payload.get_memo_data());
+            assert_eq!(note_exact, derived_memo.sender_note().unwrap());
+            assert_eq!(fee.value, derived_memo.get_fee());
         }
     }
 
@@ -154,11 +176,15 @@ mod tests {
 
         // Build the memo payload and get the data
         let amount = Amount::new(42, 0.into());
+        let fee = Amount::new(10, 0.into());
+        builder.set_fee(fee).unwrap();
+
         let memo_payload = build_change_memo_with_amount(&mut builder, amount).unwrap();
 
         // Verify memo data can be verified after writing the first change memo
-        let derived_note = GiftCodeSenderMemo::from(memo_payload.get_memo_data());
-        assert_eq!(note, derived_note.sender_note().unwrap());
+        let derived_memo = GiftCodeSenderMemo::from(memo_payload.get_memo_data());
+        assert_eq!(note, derived_memo.sender_note().unwrap());
+        assert_eq!(fee.value, derived_memo.get_fee());
 
         // Verify attempting to write two change memos fail
         let memo_payload_2 = build_change_memo_with_amount(&mut builder, amount);
@@ -171,9 +197,26 @@ mod tests {
     #[test]
     fn test_gift_code_sender_note_builder_creation_fails_with_invalid_note() {
         // Create Memo Builder with an input longer than allowed
-        let note_bytes = [b'6'; GiftCodeSenderMemo::MEMO_DATA_LEN + 1];
+        let note_bytes = [b'6'; GiftCodeSenderMemo::NOTE_DATA_LEN + 1];
         let note = std::str::from_utf8(&note_bytes).unwrap();
         let builder = GiftCodeSenderMemoBuilder::new(note);
         assert!(matches!(builder, Err(NewMemoError::BadInputs(_))));
+    }
+
+    #[test]
+    fn test_gift_code_sender_memo_builder_fee_token_cannot_be_different_from_change_token() {
+        let note = "It's MEMO TIME!!";
+        let mut builder = GiftCodeSenderMemoBuilder::new(note).unwrap();
+        let amount = Amount::new(42, 0.into());
+        let fee = Amount::new(1, 9001.into());
+
+        // Set a fee with a different token id
+        builder.set_fee(fee).unwrap();
+
+        // Attempt to build the memo
+        let memo_payload = build_change_memo_with_amount(&mut builder, amount);
+
+        // Ensure memo creation fails
+        assert!(matches!(memo_payload, Err(NewMemoError::MixedTokenIds)))
     }
 }

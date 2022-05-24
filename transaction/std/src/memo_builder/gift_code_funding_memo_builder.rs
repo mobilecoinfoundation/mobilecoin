@@ -9,7 +9,7 @@ use crate::{
 };
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::RistrettoPublic;
-use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
+use mc_transaction_core::{tokens::Mob, Amount, MemoContext, MemoPayload, NewMemoError, Token};
 
 /// There are three possible gift code memo types specified in MCIP #32
 /// | Memo type bytes | Name                        |
@@ -21,25 +21,28 @@ use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
 /// code is funded, the amount of the gift code is sent to a TxOut at the
 /// Sender's reserved gift code subaddress and a second (potentially zero
 /// valued) change TxOut is sent to the sender's reserved change subaddress
-/// with the gift code funding memo attached. The funding memo will include
-/// the first 4 bytes of the hash of the gift code TxOut sent to the
-/// sender's reserved gift code subaddress and 60 bytes for an optional
-/// utf-8 memo.
+/// with the gift code funding memo attached. The funding memo has 4 bytes
+/// reserved for the first 4 bytes of the hash of the gift code TxOut sent
+/// to the sender's reserved gift code subaddress, 7 bytes for a 56 bit
+/// unsigned big endian integer representing the fee paid for the TxOut and
+/// 53 bytes for an optional utf-8 note.
 #[derive(Clone, Debug)]
 pub struct GiftCodeFundingMemoBuilder {
-    // Utf-8 note within the memo that can be up to 60 bytes long
-    note: String,
     // TxOut Public Key of the gift code TxOut sent to the gift code subaddress.
     // This is populated when the output is created
     gift_code_tx_out_public_key: Option<RistrettoPublic>,
+    // Fee paid for gift code funding transaction
+    fee: Amount,
+    // Utf-8 note within the memo that can be up to 53 bytes long
+    note: String,
     // Whether we've already written the change memo
     wrote_change_memo: bool,
 }
 
 impl GiftCodeFundingMemoBuilder {
-    /// Initialize memo builder with a utf-8 note (up to 60 bytes), This
-    /// method will enforce the 60 byte limit with a NewMemoErr if the
-    /// note passed is longer than 60 bytes.
+    /// Initialize memo builder with a utf-8 note (up to 53 bytes), This
+    /// method will enforce the 53 byte limit with a NewMemoErr if the
+    /// note passed is longer than 53 bytes.
     pub fn new(note: &str) -> Result<Self, NewMemoError> {
         if note.len() > GiftCodeFundingMemo::NOTE_DATA_LEN {
             return Err(NewMemoError::BadInputs(format!(
@@ -48,8 +51,9 @@ impl GiftCodeFundingMemoBuilder {
             )));
         }
         Ok(Self {
-            note: note.into(),
             gift_code_tx_out_public_key: None,
+            fee: Amount::new(Mob::MINIMUM_FEE, Mob::ID),
+            note: note.into(),
             wrote_change_memo: false,
         })
     }
@@ -57,7 +61,11 @@ impl GiftCodeFundingMemoBuilder {
 
 impl MemoBuilder for GiftCodeFundingMemoBuilder {
     /// Set the fee
-    fn set_fee(&mut self, _fee: Amount) -> Result<(), NewMemoError> {
+    fn set_fee(&mut self, fee: Amount) -> Result<(), NewMemoError> {
+        if self.wrote_change_memo {
+            return Err(NewMemoError::FeeAfterChange);
+        }
+        self.fee = fee;
         Ok(())
     }
 
@@ -85,7 +93,7 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
     /// Write the funding memo onto the change output of the gift code TxOut
     fn make_memo_for_change_output(
         &mut self,
-        _amount: Amount,
+        amount: Amount,
         _change_destination: &ReservedSubaddresses,
         memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
@@ -95,9 +103,16 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
         if self.gift_code_tx_out_public_key.as_ref() == Some(memo_context.tx_public_key) {
             return Err(NewMemoError::BadInputs("The public_key in the memo should be the TxOut at the gift code subaddress and not that of the memo TxOut".into()));
         }
+        // Fee must be the same token_id as the gift code token_id
+        if self.fee.token_id != amount.token_id {
+            return Err(NewMemoError::MixedTokenIds);
+        }
         if let Some(tx_out_public_key) = self.gift_code_tx_out_public_key.take() {
             self.wrote_change_memo = true;
-            Ok(GiftCodeFundingMemo::new(&tx_out_public_key, self.note.as_str())?.into())
+            Ok(
+                GiftCodeFundingMemo::new(&tx_out_public_key, self.fee.value, self.note.as_str())?
+                    .into(),
+            )
         } else {
             Err(NewMemoError::MissingOutput)
         }
@@ -114,6 +129,7 @@ mod tests {
     fn build_gift_code_memos(
         builder: &mut impl MemoBuilder,
         funding_tx_pubkey: &RistrettoPublic,
+        fee: Amount,
     ) -> Result<MemoPayload, NewMemoError> {
         // Create simulated context
         let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
@@ -129,6 +145,7 @@ mod tests {
             tx_public_key: &change_tx_pubkey,
         };
 
+        builder.set_fee(fee).unwrap();
         // Build blank output memo for TxOut at gift code address & funding memo to
         // change output
         builder
@@ -148,13 +165,17 @@ mod tests {
         let gift_code_public_key = RistrettoPublic::from_random(&mut rng);
         let note = "It's MEMO TIME!!";
         let mut builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
+        let fee = Amount::new(1, 0.into());
 
-        // Build the memo payload and get the data
-        let memo_payload = build_gift_code_memos(&mut builder, &gift_code_public_key).unwrap();
+        // Set fee and build the memo payload
+        builder.set_fee(fee).unwrap();
+        let memo_payload = build_gift_code_memos(&mut builder, &gift_code_public_key, fee).unwrap();
 
         // Verify memo data
         let memo = GiftCodeFundingMemo::from(memo_payload.get_memo_data());
         let derived_note = memo.funding_note().unwrap();
+        let derived_fee = memo.get_fee();
+        assert_eq!(fee.value, derived_fee);
         assert_eq!(note, derived_note);
         assert!(memo.public_key_matches(&gift_code_public_key));
     }
@@ -168,18 +189,22 @@ mod tests {
         let note_exact = std::str::from_utf8(&[b'6'; GiftCodeFundingMemo::NOTE_DATA_LEN]).unwrap();
         let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
         let gift_code_public_key = RistrettoPublic::from_random(&mut rng);
-
+        let fee = Amount::new(1, 0.into());
         // Test blank note is okay
         {
             let mut builder = GiftCodeFundingMemoBuilder::new(blank_note).unwrap();
 
-            // Build the memo payload and get the data
-            let memo_payload = build_gift_code_memos(&mut builder, &gift_code_public_key).unwrap();
+            // Set fee and build the memo payload
+            builder.set_fee(fee).unwrap();
+            let memo_payload =
+                build_gift_code_memos(&mut builder, &gift_code_public_key, fee).unwrap();
 
             // Verify memo data
             let memo = GiftCodeFundingMemo::from(memo_payload.get_memo_data());
             let derived_note = memo.funding_note().unwrap();
             assert_eq!(blank_note, derived_note);
+            let derived_fee = memo.get_fee();
+            assert_eq!(fee.value, derived_fee);
             assert!(memo.public_key_matches(&gift_code_public_key));
         }
 
@@ -187,13 +212,17 @@ mod tests {
         {
             let mut builder = GiftCodeFundingMemoBuilder::new(note_minus_one).unwrap();
 
-            // Build the memo payload and get the data
-            let memo_payload = build_gift_code_memos(&mut builder, &gift_code_public_key).unwrap();
+            // Set fee and build the memo payload
+            builder.set_fee(fee).unwrap();
+            let memo_payload =
+                build_gift_code_memos(&mut builder, &gift_code_public_key, fee).unwrap();
 
             // Verify memo data
             let memo = GiftCodeFundingMemo::from(memo_payload.get_memo_data());
             let derived_note = memo.funding_note().unwrap();
             assert_eq!(note_minus_one, derived_note);
+            let derived_fee = memo.get_fee();
+            assert_eq!(fee.value, derived_fee);
             assert!(memo.public_key_matches(&gift_code_public_key));
         }
 
@@ -201,13 +230,17 @@ mod tests {
         {
             let mut builder = GiftCodeFundingMemoBuilder::new(note_exact).unwrap();
 
-            // Build the memo payload and get the data
-            let memo_payload = build_gift_code_memos(&mut builder, &gift_code_public_key).unwrap();
+            // Set fee and build the memo payload
+            builder.set_fee(fee).unwrap();
+            let memo_payload =
+                build_gift_code_memos(&mut builder, &gift_code_public_key, fee).unwrap();
 
             // Verify memo data
             let memo = GiftCodeFundingMemo::from(memo_payload.get_memo_data());
             let derived_note = memo.funding_note().unwrap();
             assert_eq!(note_exact, derived_note);
+            let derived_fee = memo.get_fee();
+            assert_eq!(fee.value, derived_fee);
             assert!(memo.public_key_matches(&gift_code_public_key));
         }
     }
@@ -217,6 +250,7 @@ mod tests {
         // Create memo builder with note
         let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
         let note = "It's MEMO TIME!!";
+        let fee = Amount::new(1, 0.into());
         let mut builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
 
         // Build a memo
@@ -226,6 +260,7 @@ mod tests {
 
         // Erroneously set funding TxOut pubkey to the change TxOut pubkey
         let change_tx_public_key = RistrettoPublic::from_random(&mut rng);
+        builder.set_fee(fee).unwrap();
         builder
             .make_memo_for_output(
                 change_amount,
@@ -253,16 +288,18 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
         let note = "It's MEMO TIME!!";
         let mut builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
+        let fee = Amount::new(1, 0.into());
 
         // Build a memo
         let alice = AccountKey::random_with_fog(&mut rng);
         let alice_address_book = ReservedSubaddresses::from(&alice);
-        let change_amount = Amount::new(666, 666.into());
+        let change_amount = Amount::new(666, 0.into());
 
         // Write 2 change outputs
         let funding_tx_out_public_key = RistrettoPublic::from_random(&mut rng);
         let change_tx_public_key = RistrettoPublic::from_random(&mut rng);
         let change_tx_public_key_2 = RistrettoPublic::from_random(&mut rng);
+        builder.set_fee(fee).unwrap();
         builder
             .make_memo_for_output(
                 change_amount,
@@ -297,13 +334,31 @@ mod tests {
     }
 
     #[test]
-    fn test_gift_code_sender_note_builder_creation_fails_with_invalid_note() {
-        // Create Memo Builder with Bad Inputs
+    fn test_gift_code_funding_memo_builder_creation_fails_with_invalid_note() {
+        // Create Memo Builder with note length exceeding max length
         let note_bytes = [b'6'; GiftCodeFundingMemo::NOTE_DATA_LEN + 1];
         let note = std::str::from_utf8(&note_bytes).unwrap();
         let builder = GiftCodeFundingMemoBuilder::new(note);
 
         //Assert memo creation fails
         assert!(matches!(builder, Err(NewMemoError::BadInputs(_))));
+    }
+
+    #[test]
+    fn test_gift_code_funding_memo_builder_fee_token_cannot_be_different_from_change_token() {
+        let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
+        let gift_code_public_key = RistrettoPublic::from_random(&mut rng);
+        let note = "It's MEMO TIME!!";
+        let mut builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
+        let fee = Amount::new(1, 9001.into());
+
+        // Set a fee with a different token id
+        builder.set_fee(fee).unwrap();
+
+        // Attempt to build the memo
+        let memo_payload = build_gift_code_memos(&mut builder, &gift_code_public_key, fee);
+
+        // Ensure memo creation fails
+        assert!(matches!(memo_payload, Err(NewMemoError::MixedTokenIds)))
     }
 }
