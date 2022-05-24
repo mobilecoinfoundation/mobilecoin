@@ -53,11 +53,10 @@ impl From<Amount> for McTxOutAmount {
     fn from(amount: Amount) -> Self {
         return McTxOutAmount {
             value: amount.value,
-            token_id: *amount.token_id
+            token_id: *amount.token_id,
         };
     }
 }
-
 
 pub type McTxOutMemoBuilder = Option<Box<dyn MemoBuilder + Sync + Send>>;
 impl_into_ffi!(Option<Box<dyn MemoBuilder + Sync + Send>>);
@@ -80,8 +79,11 @@ pub extern "C" fn mc_tx_out_reconstruct_commitment(
 
         let shared_secret = get_tx_out_shared_secret(&view_private_key, &tx_out_public_key);
 
-        let (masked_amount, _) =
-            MaskedAmount::reconstruct(tx_out_masked_amount.masked_value, &tx_out_masked_amount.masked_token_id, &shared_secret)?;
+        let (masked_amount, _) = MaskedAmount::reconstruct(
+            tx_out_masked_amount.masked_value,
+            &tx_out_masked_amount.masked_token_id,
+            &shared_secret
+        )?;
 
         let out_tx_out_commitment = out_tx_out_commitment
             .into_mut()
@@ -204,8 +206,11 @@ pub extern "C" fn mc_tx_out_get_amount(
         let view_private_key = RistrettoPrivate::try_from_ffi(&view_private_key)?;
 
         let shared_secret = get_tx_out_shared_secret(&view_private_key, &tx_out_public_key);
-        let (_masked_amount, amount) =
-            MaskedAmount::reconstruct(tx_out_masked_amount.masked_value, &tx_out_masked_amount.masked_token_id, &shared_secret)?;
+        let (_masked_amount, amount) = MaskedAmount::reconstruct(
+            tx_out_masked_amount.masked_value,
+            &tx_out_masked_amount.masked_token_id,
+            &shared_secret
+        )?;
 
         *out_amount.into_mut() = McTxOutAmount::from(amount);
         Ok(())
