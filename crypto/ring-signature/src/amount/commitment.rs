@@ -1,8 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{
-    ring_signature::{Error, PedersenGens, Scalar},
-    CompressedCommitment,
+    CompressedCommitment, Error, PedersenGens, Scalar,
 };
 use core::{convert::TryFrom, fmt};
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
