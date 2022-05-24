@@ -104,6 +104,7 @@ async fn thread_entry_point(
             break;
         }
 
+        // TODO handle pagination (offset, limit)
         match fetcher.get_transaction_data(&safe_addr).await {
             Ok(transactions) => {
                 mint_auditor_db.write_safe_txs(&transactions).expect("failed writing gnosis safe txs");
