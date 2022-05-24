@@ -69,7 +69,7 @@ impl GiftCodeFundingMemo {
         let mut memo_data = [0u8; Self::MEMO_DATA_LEN];
 
         // Compute TxOut hash and put it into the memo data
-        memo_data[0..Self::HASH_DATA_LEN]
+        memo_data[..Self::HASH_DATA_LEN]
             .copy_from_slice(&tx_out_public_key_short_hash(tx_out_public_key));
 
         // Put fee into memo
@@ -85,7 +85,7 @@ impl GiftCodeFundingMemo {
 
     /// Check if a given public key matches the hash of the gift code TxOut
     pub fn public_key_matches(&self, tx_out_public_key: &RistrettoPublic) -> bool {
-        tx_out_public_key_short_hash(tx_out_public_key) == self.memo_data[0..Self::HASH_DATA_LEN]
+        tx_out_public_key_short_hash(tx_out_public_key) == self.memo_data[..Self::HASH_DATA_LEN]
     }
 
     /// Get fee amount paid to fund the gift code
@@ -120,7 +120,7 @@ fn tx_out_public_key_short_hash(
     let mut hasher = Blake2b512::new();
     hasher.update("mc-gift-funding-tx-pub-key");
     hasher.update(tx_out_public_key.as_ref().compress().as_bytes());
-    hasher.finalize().as_slice()[0..GiftCodeFundingMemo::HASH_DATA_LEN]
+    hasher.finalize().as_slice()[..GiftCodeFundingMemo::HASH_DATA_LEN]
         .try_into()
         .unwrap()
 }
@@ -198,9 +198,9 @@ mod tests {
 
         // Put only hash and fee bytes into memo_bytes, leaving note bytes empty
         let mut memo_bytes = [0u8; GiftCodeFundingMemo::MEMO_DATA_LEN];
-        memo_bytes[0..GiftCodeFundingMemo::HASH_DATA_LEN].copy_from_slice(&hash_bytes);
+        memo_bytes[..GiftCodeFundingMemo::HASH_DATA_LEN].copy_from_slice(&hash_bytes);
         memo_bytes[GiftCodeFundingMemo::HASH_DATA_LEN..GiftCodeFundingMemo::NOTE_OFFSET]
-            .copy_from_slice(&fee_bytes[1..(GiftCodeFundingMemo::FEE_DATA_LEN + 1)]);
+            .copy_from_slice(&fee_bytes[1..]);
 
         let memo = GiftCodeFundingMemo::from(&memo_bytes);
 
@@ -232,9 +232,9 @@ mod tests {
 
         // Create memo from hash, fee & note bytes
         let mut memo_bytes = [0u8; GiftCodeFundingMemo::MEMO_DATA_LEN];
-        memo_bytes[0..GiftCodeFundingMemo::HASH_DATA_LEN].copy_from_slice(&hash_bytes);
+        memo_bytes[..GiftCodeFundingMemo::HASH_DATA_LEN].copy_from_slice(&hash_bytes);
         memo_bytes[GiftCodeFundingMemo::HASH_DATA_LEN..GiftCodeFundingMemo::NOTE_OFFSET]
-            .copy_from_slice(&fee_bytes[1..(GiftCodeFundingMemo::FEE_DATA_LEN + 1)]);
+            .copy_from_slice(&fee_bytes[1..]);
         memo_bytes[GiftCodeFundingMemo::NOTE_OFFSET..(GiftCodeFundingMemo::NOTE_OFFSET + 8)]
             .copy_from_slice(&note_bytes);
         let memo = GiftCodeFundingMemo::from(&memo_bytes);
@@ -312,10 +312,10 @@ mod tests {
 
         // Purposely overlap public key, fee, and note bytes
         let mut memo_bytes = [0u8; GiftCodeFundingMemo::MEMO_DATA_LEN];
-        memo_bytes[0..GiftCodeFundingMemo::HASH_DATA_LEN].copy_from_slice(&hash_bytes);
+        memo_bytes[..GiftCodeFundingMemo::HASH_DATA_LEN].copy_from_slice(&hash_bytes);
         memo_bytes
             [(GiftCodeFundingMemo::HASH_DATA_LEN - 1)..(GiftCodeFundingMemo::NOTE_OFFSET - 1)]
-            .copy_from_slice(&fee_bytes[1..8]);
+            .copy_from_slice(&fee_bytes[1..]);
         memo_bytes
             [(GiftCodeFundingMemo::NOTE_OFFSET - 1)..(GiftCodeFundingMemo::MEMO_DATA_LEN - 1)]
             .copy_from_slice(&[b'6'; GiftCodeFundingMemo::NOTE_DATA_LEN]);
@@ -327,41 +327,6 @@ mod tests {
 
         // Check that fee isn't correct
         assert_ne!(fee, memo.get_fee());
-
-        // Check that the note isn't correct
-        assert_ne!(memo.funding_note().unwrap(), note);
-    }
-
-    #[test]
-    fn test_gift_code_funding_memo_created_with_corrupted_bytes_fail() {
-        // Initialize note and hash bytes
-        let fee: u64 = 666;
-        let fee_bytes = fee.to_be_bytes();
-        let note_bytes = [b'6'; GiftCodeFundingMemo::NOTE_DATA_LEN];
-        let note = str::from_utf8(&note_bytes).unwrap();
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let key = RistrettoPublic::from_random(&mut rng);
-        let hash_bytes = tx_out_public_key_short_hash(&key);
-
-        // Populate memo with hash and note bytes
-        let mut memo_bytes = [0u8; GiftCodeFundingMemo::MEMO_DATA_LEN];
-        memo_bytes[0..GiftCodeFundingMemo::HASH_DATA_LEN].copy_from_slice(&hash_bytes);
-        memo_bytes[GiftCodeFundingMemo::HASH_DATA_LEN..GiftCodeFundingMemo::NOTE_OFFSET]
-            .copy_from_slice(&fee_bytes[1..(GiftCodeFundingMemo::FEE_DATA_LEN + 1)]);
-        memo_bytes[GiftCodeFundingMemo::NOTE_OFFSET..GiftCodeFundingMemo::MEMO_DATA_LEN]
-            .copy_from_slice(&note_bytes);
-
-        // Corrupt bytes
-        memo_bytes[2] = 42;
-        memo_bytes[6] = 42;
-        memo_bytes[55] = 42;
-        let memo = GiftCodeFundingMemo::from(&memo_bytes);
-
-        // Check that the hash isn't correctly verified
-        assert!(!memo.public_key_matches(&key));
-
-        // Check that the fee isn't correct
-        assert_ne!(memo.get_fee(), fee);
 
         // Check that the note isn't correct
         assert_ne!(memo.funding_note().unwrap(), note);
@@ -413,9 +378,9 @@ mod tests {
 
         // Populate memo with hash and note bytes
         let mut memo_bytes = [0u8; GiftCodeFundingMemo::MEMO_DATA_LEN];
-        memo_bytes[0..GiftCodeFundingMemo::HASH_DATA_LEN].copy_from_slice(&hash_bytes);
+        memo_bytes[..GiftCodeFundingMemo::HASH_DATA_LEN].copy_from_slice(&hash_bytes);
         memo_bytes[GiftCodeFundingMemo::HASH_DATA_LEN..GiftCodeFundingMemo::NOTE_OFFSET]
-            .copy_from_slice(&fee_bytes[1..(GiftCodeFundingMemo::FEE_DATA_LEN + 1)]);
+            .copy_from_slice(&fee_bytes[1..]);
         memo_bytes[GiftCodeFundingMemo::NOTE_OFFSET..GiftCodeFundingMemo::MEMO_DATA_LEN]
             .copy_from_slice(&note_bytes);
         let memo = GiftCodeFundingMemo::from(&memo_bytes);

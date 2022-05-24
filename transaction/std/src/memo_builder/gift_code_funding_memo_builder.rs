@@ -65,6 +65,12 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
         if self.wrote_change_memo {
             return Err(NewMemoError::FeeAfterChange);
         }
+        if fee.value > GiftCodeFundingMemo::MAX_FEE {
+            return Err(NewMemoError::MaxFeeExceeded(
+                GiftCodeFundingMemo::MAX_FEE,
+                fee.value,
+            ));
+        }
         self.fee = fee;
         Ok(())
     }
@@ -167,8 +173,7 @@ mod tests {
         let mut builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
         let fee = Amount::new(1, 0.into());
 
-        // Set fee and build the memo payload
-        builder.set_fee(fee).unwrap();
+        // Build the memo payload
         let memo_payload = build_gift_code_memos(&mut builder, &gift_code_public_key, fee).unwrap();
 
         // Verify memo data
@@ -194,8 +199,7 @@ mod tests {
         {
             let mut builder = GiftCodeFundingMemoBuilder::new(blank_note).unwrap();
 
-            // Set fee and build the memo payload
-            builder.set_fee(fee).unwrap();
+            // Build the memo payload
             let memo_payload =
                 build_gift_code_memos(&mut builder, &gift_code_public_key, fee).unwrap();
 
@@ -212,8 +216,7 @@ mod tests {
         {
             let mut builder = GiftCodeFundingMemoBuilder::new(note_minus_one).unwrap();
 
-            // Set fee and build the memo payload
-            builder.set_fee(fee).unwrap();
+            // Build the memo payload
             let memo_payload =
                 build_gift_code_memos(&mut builder, &gift_code_public_key, fee).unwrap();
 
@@ -230,8 +233,7 @@ mod tests {
         {
             let mut builder = GiftCodeFundingMemoBuilder::new(note_exact).unwrap();
 
-            // Set fee and build the memo payload
-            builder.set_fee(fee).unwrap();
+            // Build the memo payload
             let memo_payload =
                 build_gift_code_memos(&mut builder, &gift_code_public_key, fee).unwrap();
 
@@ -252,6 +254,7 @@ mod tests {
         let note = "It's MEMO TIME!!";
         let fee = Amount::new(1, 0.into());
         let mut builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
+        builder.set_fee(fee).unwrap();
 
         // Build a memo
         let alice = AccountKey::random_with_fog(&mut rng);
@@ -260,7 +263,7 @@ mod tests {
 
         // Erroneously set funding TxOut pubkey to the change TxOut pubkey
         let change_tx_public_key = RistrettoPublic::from_random(&mut rng);
-        builder.set_fee(fee).unwrap();
+
         builder
             .make_memo_for_output(
                 change_amount,
@@ -289,6 +292,7 @@ mod tests {
         let note = "It's MEMO TIME!!";
         let mut builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
         let fee = Amount::new(1, 0.into());
+        builder.set_fee(fee).unwrap();
 
         // Build a memo
         let alice = AccountKey::random_with_fog(&mut rng);
@@ -299,7 +303,7 @@ mod tests {
         let funding_tx_out_public_key = RistrettoPublic::from_random(&mut rng);
         let change_tx_public_key = RistrettoPublic::from_random(&mut rng);
         let change_tx_public_key_2 = RistrettoPublic::from_random(&mut rng);
-        builder.set_fee(fee).unwrap();
+
         builder
             .make_memo_for_output(
                 change_amount,
@@ -360,5 +364,22 @@ mod tests {
 
         // Ensure memo creation fails
         assert!(matches!(memo_payload, Err(NewMemoError::MixedTokenIds)))
+    }
+
+    #[test]
+    fn test_gift_code_funding_memo_builder_set_fee_fails_when_exceeding_max_fee() {
+        let note = "It's MEMO TIME!!";
+        let mut builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
+        let fee = Amount::new(u64::MAX, 0.into());
+
+        // Try to set a fee above max allowed
+        let result = builder.set_fee(fee);
+        assert_eq!(
+            result,
+            Err(NewMemoError::MaxFeeExceeded(
+                GiftCodeFundingMemo::MAX_FEE,
+                fee.value
+            ))
+        );
     }
 }

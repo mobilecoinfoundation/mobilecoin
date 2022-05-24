@@ -32,9 +32,9 @@ pub struct GiftCodeSenderMemoBuilder {
 }
 
 impl GiftCodeSenderMemoBuilder {
-    /// Initialize memo builder with a utf-8 note (up to 64 bytes), This
-    /// method will enforce the 64 byte limit with a NewMemoErr if the
-    /// note passed is longer than 64 bytes.
+    /// Initialize memo builder with a utf-8 note (up to 57 bytes). This
+    /// method will enforce the 57 byte limit with a NewMemoErr if the
+    /// note passed is longer than 57 bytes.
     pub fn new(note: &str) -> Result<Self, NewMemoError> {
         if note.len() > GiftCodeSenderMemo::NOTE_DATA_LEN {
             return Err(NewMemoError::BadInputs(format!(
@@ -55,6 +55,12 @@ impl MemoBuilder for GiftCodeSenderMemoBuilder {
     fn set_fee(&mut self, fee: Amount) -> Result<(), NewMemoError> {
         if self.wrote_change_memo {
             return Err(NewMemoError::FeeAfterChange);
+        }
+        if fee.value > GiftCodeSenderMemo::MAX_FEE {
+            return Err(NewMemoError::MaxFeeExceeded(
+                GiftCodeSenderMemo::MAX_FEE,
+                fee.value,
+            ));
         }
         self.fee = fee;
         Ok(())
@@ -218,5 +224,22 @@ mod tests {
 
         // Ensure memo creation fails
         assert!(matches!(memo_payload, Err(NewMemoError::MixedTokenIds)))
+    }
+
+    #[test]
+    fn test_gift_code_sender_memo_builder_set_fee_fails_when_exceeding_max_fee() {
+        let note = "It's MEMO TIME!!";
+        let mut builder = GiftCodeSenderMemoBuilder::new(note).unwrap();
+        let fee = Amount::new(u64::MAX, 0.into());
+
+        // Try to set a fee above max allowed
+        let result = builder.set_fee(fee);
+        assert_eq!(
+            result,
+            Err(NewMemoError::MaxFeeExceeded(
+                GiftCodeSenderMemo::MAX_FEE,
+                fee.value
+            ))
+        );
     }
 }

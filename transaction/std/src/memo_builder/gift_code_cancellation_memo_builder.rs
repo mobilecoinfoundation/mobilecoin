@@ -50,6 +50,12 @@ impl MemoBuilder for GiftCodeCancellationMemoBuilder {
         if self.wrote_change_memo {
             return Err(NewMemoError::FeeAfterChange);
         }
+        if fee.value > GiftCodeCancellationMemo::MAX_FEE {
+            return Err(NewMemoError::MaxFeeExceeded(
+                GiftCodeCancellationMemo::MAX_FEE,
+                fee.value,
+            ));
+        }
         self.fee = fee;
         Ok(())
     }
@@ -154,5 +160,22 @@ mod tests {
 
         // Ensure memo creation fails
         assert!(matches!(memo_payload, Err(NewMemoError::MixedTokenIds)))
+    }
+
+    #[test]
+    fn test_gift_code_cancellation_memo_builder_set_fee_fails_when_exceeding_max_fee() {
+        let index = 666;
+        let mut builder = GiftCodeCancellationMemoBuilder::new(index);
+        let fee = Amount::new(u64::MAX, 0.into());
+
+        // Try to set a fee above max allowed
+        let result = builder.set_fee(fee);
+        assert_eq!(
+            result,
+            Err(NewMemoError::MaxFeeExceeded(
+                GiftCodeCancellationMemo::MAX_FEE,
+                fee.value
+            ))
+        );
     }
 }

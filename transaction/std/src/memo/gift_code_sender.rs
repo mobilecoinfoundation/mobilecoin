@@ -55,8 +55,7 @@ impl GiftCodeSenderMemo {
         let mut memo_data = [0u8; Self::MEMO_DATA_LEN];
 
         // Put fee into memo
-        memo_data[0..Self::FEE_DATA_LEN]
-            .copy_from_slice(&fee.to_be_bytes()[1..(Self::FEE_DATA_LEN + 1)]);
+        memo_data[0..Self::FEE_DATA_LEN].copy_from_slice(&fee.to_be_bytes()[1..]);
 
         // Put note into memo
         memo_data[Self::FEE_DATA_LEN..(Self::FEE_DATA_LEN + note.len())]
@@ -84,8 +83,7 @@ impl GiftCodeSenderMemo {
     /// Get fee amount paid
     pub fn get_fee(&self) -> u64 {
         let mut fee_bytes = [0u8; 8];
-        fee_bytes[1..(GiftCodeSenderMemo::FEE_DATA_LEN + 1)]
-            .copy_from_slice(&self.memo_data[..Self::FEE_DATA_LEN]);
+        fee_bytes[1..].copy_from_slice(&self.memo_data[..Self::FEE_DATA_LEN]);
         u64::from_be_bytes(fee_bytes)
     }
 }
@@ -204,30 +202,6 @@ mod tests {
     }
 
     #[test]
-    fn test_gift_code_sender_memo_with_corrupted_bytes_fails() {
-        // Create note bytes and corrupt them
-        let fee = 0;
-        let mut note_bytes = [b'6'; GiftCodeSenderMemo::NOTE_DATA_LEN - 1];
-        let note = str::from_utf8(&[b'6'; GiftCodeSenderMemo::NOTE_DATA_LEN - 1]).unwrap();
-        note_bytes[42] = 42;
-        note_bytes[2] = 42;
-
-        // Create memo from corrupted bytes
-        let mut memo_bytes = [0u8; GiftCodeSenderMemo::MEMO_DATA_LEN];
-        memo_bytes[2] = 42;
-        memo_bytes[GiftCodeSenderMemo::FEE_DATA_LEN
-            ..(GiftCodeSenderMemo::FEE_DATA_LEN + GiftCodeSenderMemo::NOTE_DATA_LEN - 1)]
-            .copy_from_slice(&note_bytes);
-        let memo = GiftCodeSenderMemo::from(&memo_bytes);
-
-        // Check that the note is incorrect
-        assert_ne!(memo.sender_note().unwrap(), note);
-
-        // Check that the fee is incorrect
-        assert_ne!(memo.get_fee(), fee);
-    }
-
-    #[test]
     fn test_gift_code_sender_memo_from_valid_bytes_is_okay() {
         // Create note from bytes
         let note_bytes = [b'6'; GiftCodeSenderMemo::NOTE_DATA_LEN - 1];
@@ -237,8 +211,7 @@ mod tests {
 
         // Create memo from note bytes
         let mut memo_bytes = [0u8; GiftCodeSenderMemo::MEMO_DATA_LEN];
-        memo_bytes[..GiftCodeSenderMemo::FEE_DATA_LEN]
-            .copy_from_slice(&fee_bytes[1..(GiftCodeSenderMemo::FEE_DATA_LEN + 1)]);
+        memo_bytes[..GiftCodeSenderMemo::FEE_DATA_LEN].copy_from_slice(&fee_bytes[1..]);
         memo_bytes[GiftCodeSenderMemo::FEE_DATA_LEN
             ..(GiftCodeSenderMemo::FEE_DATA_LEN + GiftCodeSenderMemo::NOTE_DATA_LEN - 1)]
             .copy_from_slice(&note_bytes);
@@ -267,10 +240,10 @@ mod tests {
         // Check fees reconstruct correctly or cause error
         assert_eq!(memo_max_fee_minus_one.get_fee(), MAX_FEE_MINUS_ONE);
         assert_eq!(memo_max_fee.get_fee(), MAX_FEE);
-        assert!(matches!(
+        assert_eq!(
             memo_max_fee_plus_one,
             Err(MemoError::MaxFeeExceeded(MAX_FEE, MAX_FEE_PLUS_ONE))
-        ));
+        );
 
         // Check notes match for successful memos
         assert_eq!(memo_max_fee.sender_note().unwrap(), note);
