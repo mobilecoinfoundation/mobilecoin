@@ -106,7 +106,7 @@ def run_test(stub, amount, monitor_id, dest, max_seconds, token_id):
                     token_id=token_id,
                 ))
             break
-         except grpc.RpcError as e:
+        except grpc.RpcError as e:
             if "insufficient funds due to utxo fragmentation" in e.details.lower():
                 logging.info("Got defragmentation error, building an optimization transaction")
                 opt_tx = stub.GenerateOptimizationTx(
