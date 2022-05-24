@@ -53,6 +53,7 @@ curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features
 [dev-dependencies]
 assert_matches = "1.5"
 proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"] }
+rand = "0.8"
 tempdir = "0.3"
 
 mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }

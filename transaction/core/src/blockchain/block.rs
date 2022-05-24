@@ -216,6 +216,7 @@ mod block_tests {
     use mc_crypto_keys::RistrettoPrivate;
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
+    use rand::rngs::StdRng;
 
     // This is block version 1 to avoid messing with test vectors
     const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
@@ -390,7 +391,11 @@ mod block_tests {
     /// we add/change Block/BlockContents and accidentally break id
     /// calculation of old blocks.
     fn test_hashing_is_consistent_block_version_one() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        // FIXME (#2042): This shouuld not use StdRng, because the rust standard library
+        // sometimes updates what RNG algorithm this point to. We should
+        // rerun this with Hc128 RNG (from mc_util_test_helper) and update the
+        // test vectors.
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         //Check hash with memo
         let block = get_block(&mut rng);
