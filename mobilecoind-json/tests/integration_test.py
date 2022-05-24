@@ -68,7 +68,7 @@ class MobilecoindJsonClient:
         elif "root_entropy" in obj:
             # Take the integer array in obj["root_entropy"], convert it to builtin bytes, then
             # get hex string of that.
-            return self.request("entropy/{}".format(bytes(obj["root_entropy"]).hex()), {})
+            return self.request("entropy/{}".format(bytes(obj["root_entropy"]).hex()))
         else:
             raise Exception("unknown key format", obj)
 
