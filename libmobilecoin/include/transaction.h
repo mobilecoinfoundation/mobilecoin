@@ -105,11 +105,9 @@ bool mc_tx_out_get_amount(
   const McBuffer* MC_NONNULL tx_out_public_key,
   const McBuffer* MC_NONNULL view_private_key,
   McTxOutAmount* MC_NONNULL out_amount,
-  uint64_t* MC_NONNULL out_value,
-  uint64_t* MC_NONNULL out_token_id,
   McError* MC_NULLABLE * MC_NULLABLE out_error
 )
-MC_ATTRIBUTE_NONNULL(1, 2, 3, 4, 5, 6);
+MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
 
 /// # Preconditions
 ///
