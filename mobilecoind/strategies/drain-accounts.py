@@ -113,7 +113,7 @@ def run_test(stub, amount, monitor_id, dest, max_seconds, token_id):
                     mobilecoind_api_pb2.GenerateOptimizationTxRequest(
                         monitor_id=monitor_id,
                         subaddress=0,
-                        fee=0
+                        fee=0,
                         token_id=token_id,
                     ))
                 tx_resp = stub.SubmitTx(
