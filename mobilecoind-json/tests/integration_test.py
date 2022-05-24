@@ -65,8 +65,10 @@ class MobilecoindJsonClient:
     def account_key_from_json(self, obj):
         if "mnemonic" in obj:
             return self.request("account-key-from-mnemonic", {"mnemonic": obj["mnemonic"]})
-        else
-            return self.request("entropy/{}".format(obj["root_entropy"]), {})
+        else:
+            # Take the integer array in obj["root_entropy"], convert it to builtin bytes, then
+            # get hex string of that.
+            return self.request("entropy/{}".format(bytes(obj["root_entropy"]).hex()), {})
 
     def get_public_address(self, monitor_id, subaddress_index=0):
         return self.request(f"monitors/{monitor_id}/subaddresses/{subaddress_index}/public-address")
