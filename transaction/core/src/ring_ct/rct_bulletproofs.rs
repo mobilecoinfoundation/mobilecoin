@@ -867,9 +867,8 @@ mod rct_bulletproofs_tests {
         InputSecret, NoKeysRingSigner, OneTimeKeyDeriveData, SignableInputRing,
     };
     use mc_util_from_random::FromRandom;
+    use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
     use proptest::prelude::*;
-    use rand::{rngs::StdRng, CryptoRng, SeedableRng};
-    use rand_core::RngCore;
 
     extern crate std;
 
@@ -1076,7 +1075,7 @@ mod rct_bulletproofs_tests {
             block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let mut params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
             params.rings = Vec::new();
 
@@ -1098,7 +1097,7 @@ mod rct_bulletproofs_tests {
             block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let mut params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
             params.rings[0].members = Vec::new();
 
@@ -1119,7 +1118,7 @@ mod rct_bulletproofs_tests {
             block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
             let signature = params.sign(0, &mut rng).unwrap();
 
@@ -1144,7 +1143,7 @@ mod rct_bulletproofs_tests {
             block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
             let fee = 0;
             let signature = params.sign(fee, &mut rng).unwrap();
@@ -1170,7 +1169,7 @@ mod rct_bulletproofs_tests {
             block_version in 3..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random_mixed(block_version, num_inputs, num_mixins, num_token_ids, &mut rng);
             let fee = 0;
             let signature = params.sign(fee, &mut rng).unwrap();
@@ -1195,7 +1194,7 @@ mod rct_bulletproofs_tests {
             block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
             let fee = 0;
 
@@ -1226,7 +1225,7 @@ mod rct_bulletproofs_tests {
             block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let mut params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
             let fee = 0;
             // Modify an output value
@@ -1259,7 +1258,7 @@ mod rct_bulletproofs_tests {
             block_version in 1..=2u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
             let fee = 0;
             let mut signature = params.sign(fee, &mut rng).unwrap();
@@ -1299,7 +1298,7 @@ mod rct_bulletproofs_tests {
             block_version in 3..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
             let fee = 0;
             let mut signature = params.sign(fee, &mut rng).unwrap();
@@ -1340,7 +1339,7 @@ mod rct_bulletproofs_tests {
             block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let mut params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
             let fee = 0;
 
@@ -1372,7 +1371,7 @@ mod rct_bulletproofs_tests {
             block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
             let fee = 0;
             let signature = params.sign(fee, &mut rng).unwrap();
@@ -1397,7 +1396,7 @@ mod rct_bulletproofs_tests {
             block_version in 1..=3u32,
         ) {
             let block_version: BlockVersion = block_version.try_into().unwrap();
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let mut params = SignatureParams::random(block_version, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let popped_secret = params.output_secrets.pop().unwrap();
@@ -1440,7 +1439,7 @@ mod rct_bulletproofs_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let mut params = SignatureParams::random(BlockVersion::ONE, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let popped_secret = params.output_secrets.pop().unwrap();
@@ -1466,7 +1465,7 @@ mod rct_bulletproofs_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let mut params = SignatureParams::random(BlockVersion::TWO, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let popped_secret = params.output_secrets.pop().unwrap();
@@ -1492,7 +1491,7 @@ mod rct_bulletproofs_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let mut params = SignatureParams::random(BlockVersion::TWO, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let popped_secret = params.output_secrets.pop().unwrap();
@@ -1529,7 +1528,7 @@ mod rct_bulletproofs_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let mut params = SignatureParams::random(BlockVersion::ONE, num_inputs, num_mixins, &mut rng);
             // Remove one of the outputs, and use its value as the fee. This conserves value.
             let popped_secret = params.output_secrets.pop().unwrap();
@@ -1550,7 +1549,7 @@ mod rct_bulletproofs_tests {
             block_version in 3..=3u32,
         ) {
             let block_version = BlockVersion::try_from(block_version).unwrap();
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random_mixed(block_version, num_inputs, num_mixins,num_token_ids, &mut rng);
 
             let fee = 0;
@@ -1589,7 +1588,7 @@ mod rct_bulletproofs_tests {
             block_version in 3..=3u32,
         ) {
             let block_version = BlockVersion::try_from(block_version).unwrap();
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let params = SignatureParams::random_mixed(block_version, num_inputs, num_mixins, num_token_ids, &mut rng);
 
             let fee = 0;

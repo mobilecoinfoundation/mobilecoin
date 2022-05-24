@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{tx::Tx, BlockVersion};
 use mc_transaction_core_test_utils::{
@@ -5,10 +7,10 @@ use mc_transaction_core_test_utils::{
     initialize_ledger, AccountKey,
 };
 use mc_transaction_std::{DefaultTxOutputsOrdering, TxOutputsOrdering};
-use rand::{rngs::StdRng, SeedableRng};
+use mc_util_test_helper::{RngType, SeedableRng};
 
 pub fn create_test_tx(block_version: BlockVersion) -> (Tx, LedgerDB) {
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+    let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
     let sender = AccountKey::random(&mut rng);
     let mut ledger = create_ledger();
     let n_blocks = 1;
@@ -47,7 +49,7 @@ pub fn create_test_tx_with_amount_and_comparer<O: TxOutputsOrdering>(
     amount: u64,
     fee: u64,
 ) -> (Tx, LedgerDB) {
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+    let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
     let sender = AccountKey::random(&mut rng);
     let mut ledger = create_ledger();
     let n_blocks = 1;

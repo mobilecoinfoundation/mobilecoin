@@ -14,18 +14,16 @@ use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 mod amount;
 mod domain_separators;
 mod ring_signature;
-mod token;
 
 pub mod onetime_keys;
 #[cfg(any(test, feature = "proptest"))]
 pub mod proptest_fixtures;
 
-pub use amount::{Amount, Commitment, CompressedCommitment};
+pub use amount::{Commitment, CompressedCommitment};
 pub use ring_signature::{
     generators, CryptoRngCore, CurveScalar, Error, GeneratorCache, KeyImage, PedersenGens,
     ReducedTxOut, RingMLSAG, Scalar,
 };
-pub use token::TokenId;
 
 /// Get the shared secret for a transaction output.
 ///

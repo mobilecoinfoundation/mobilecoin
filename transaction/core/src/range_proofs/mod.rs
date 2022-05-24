@@ -133,11 +133,10 @@ pub mod tests {
     use super::*;
     use crate::ring_signature::generators;
     use curve25519_dalek::ristretto::RistrettoPoint;
-    use rand::{rngs::StdRng, SeedableRng};
-    use rand_core::RngCore;
+    use mc_util_test_helper::{RngCore, RngType, SeedableRng};
 
     fn generate_and_check(values: Vec<u64>, blindings: Vec<Scalar>) {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
         let (proof, commitments) =
             generate_range_proofs(&values, &blindings, &generators(0), &mut rng).unwrap();
 
@@ -149,7 +148,7 @@ pub mod tests {
 
     #[test]
     fn test_pow2_number_of_inputs() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
         let vals: Vec<u64> = (0..2).map(|_| rng.next_u64()).collect();
         let blindings: Vec<Scalar> = vals.iter().map(|_| Scalar::random(&mut rng)).collect();
         generate_and_check(vals, blindings);
@@ -157,7 +156,7 @@ pub mod tests {
 
     #[test]
     fn test_not_pow2_number_of_inputs() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
         let vals: Vec<u64> = (0..9).map(|_| rng.next_u64()).collect();
         let blindings: Vec<Scalar> = vals.iter().map(|_| Scalar::random(&mut rng)).collect();
         generate_and_check(vals, blindings);
@@ -167,7 +166,7 @@ pub mod tests {
     // `check_range_proofs` should return an error if the commitments do not agree
     // with the proof.
     fn test_check_range_proofs_rejects_wrong_commitments() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
 
         let num_values: usize = 4;
         let values: Vec<u64> = (0..num_values).map(|_| rng.next_u64()).collect();

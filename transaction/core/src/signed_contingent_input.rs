@@ -7,12 +7,13 @@
 use crate::{
     ring_ct::{OutputSecret, PresignedInputRing, SignedInputRing},
     tx::TxIn,
+    Amount, TokenId,
 };
 use alloc::vec::Vec;
 use displaydoc::Display;
 use mc_crypto_ring_signature::{
-    Amount, Commitment, CompressedCommitment, CurveScalar, Error as RingSignatureError,
-    GeneratorCache, KeyImage, RingMLSAG, TokenId,
+    Commitment, CompressedCommitment, CurveScalar, Error as RingSignatureError, GeneratorCache,
+    KeyImage, RingMLSAG,
 };
 use prost::Message;
 

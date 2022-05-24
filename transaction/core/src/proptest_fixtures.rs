@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-pub use mc_crypto_ring_signature::{proptest_fixtures::*, Amount, CurveScalar, Scalar};
+pub use mc_crypto_ring_signature::{proptest_fixtures::*, CurveScalar, Scalar};
+pub use mc_transaction_types::Amount;
 
 use crate::{tokens::Mob, MaskedAmount, Token};
 use mc_crypto_keys::RistrettoPublic;

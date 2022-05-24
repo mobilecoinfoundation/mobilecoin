@@ -2,10 +2,10 @@
 
 //! Errors which can occur in connection to ring_ct signatures
 
-use crate::range_proofs::error::Error as RangeProofError;
+use crate::{range_proofs::error::Error as RangeProofError, TokenId};
 use alloc::string::{String, ToString};
 use displaydoc::Display;
-use mc_crypto_ring_signature::{Error as RingSignatureError, TokenId};
+use mc_crypto_ring_signature::Error as RingSignatureError;
 use mc_crypto_ring_signature_signer::Error as SignerError;
 use mc_util_zip_exact::ZipExactError;
 use serde::{Deserialize, Serialize};

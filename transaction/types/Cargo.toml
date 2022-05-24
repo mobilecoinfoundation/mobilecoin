@@ -1,0 +1,15 @@
+[package]
+name = "mc-transaction-types"
+version = "1.3.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+readme = "README.md"
+
+[dependencies]
+# External dependencies
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
+zeroize = { version = "1", default-features = false }
+
+# MobileCoin dependencies
+mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }

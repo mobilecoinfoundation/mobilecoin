@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 // Copyright (c) 2022 The MobileCoin Foundation
 
 //! This module is meant to unit test all of the functionality in the validation
@@ -19,7 +21,7 @@ use mc_transaction_core::{
     BlockVersion, InputRules, Token,
 };
 use mc_transaction_core_test_utils::{InverseTxOutputsOrdering, INITIALIZE_LEDGER_AMOUNT};
-use rand::{rngs::StdRng, SeedableRng};
+use mc_util_test_helper::{RngType, SeedableRng};
 use util::*;
 
 #[test]
@@ -502,7 +504,7 @@ fn test_validate_output_public_keys_are_unique_ok() {
 #[test]
 // `validate_signature` return OK for a valid transaction.
 fn test_validate_signature_ok() {
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+    let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
 
     for block_version in BlockVersion::iterator() {
         let (tx, _ledger) = create_test_tx(block_version);
@@ -518,7 +520,7 @@ fn test_validate_signature_ok() {
 #[test]
 // Should return InvalidTransactionSignature if an input is modified.
 fn test_transaction_signature_err_modified_input() {
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+    let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
 
     for block_version in BlockVersion::iterator() {
         let (mut tx, _ledger) = create_test_tx(block_version);
@@ -539,7 +541,7 @@ fn test_transaction_signature_err_modified_input() {
 #[test]
 // Should return InvalidTransactionSignature if an output is modified.
 fn test_transaction_signature_err_modified_output() {
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+    let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
 
     for block_version in BlockVersion::iterator() {
         let (mut tx, _ledger) = create_test_tx(block_version);
@@ -561,7 +563,7 @@ fn test_transaction_signature_err_modified_output() {
 #[test]
 // Should return InvalidTransactionSignature if the fee is modified.
 fn test_transaction_signature_err_modified_fee() {
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+    let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
 
     for block_version in BlockVersion::iterator() {
         let (mut tx, _ledger) = create_test_tx(block_version);
@@ -581,7 +583,7 @@ fn test_transaction_signature_err_modified_fee() {
 #[test]
 // Should return InvalidTransactionSignature if the token_id is modified
 fn test_transaction_signature_err_modified_token_id() {
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+    let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
 
     for _ in 0..3 {
         let (mut tx, _ledger) = create_test_tx(BlockVersion::TWO);
@@ -601,7 +603,7 @@ fn test_transaction_signature_err_modified_token_id() {
 #[test]
 // Should return InvalidTransactionSignature if block v 1 is validated as 2
 fn test_transaction_signature_err_version_one_as_two() {
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+    let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
 
     for _ in 0..3 {
         let (tx, _ledger) = create_test_tx(BlockVersion::ONE);
@@ -619,7 +621,7 @@ fn test_transaction_signature_err_version_one_as_two() {
 #[test]
 // Should return InvalidTransactionSignature if block v 2 is validated as 1
 fn test_transaction_signature_err_version_two_as_one() {
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+    let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
 
     for _ in 0..3 {
         let (tx, _ledger) = create_test_tx(BlockVersion::TWO);
@@ -752,7 +754,7 @@ fn test_validate_tombstone_tombstone_block_too_far() {
 #[test]
 #[ignore]
 fn test_global_validate_for_blocks_with_sorted_outputs() {
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+    let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
     let fee = Mob::MINIMUM_FEE + 1;
     for block_version in BlockVersion::iterator() {
         // for block version < 3 it doesn't matter

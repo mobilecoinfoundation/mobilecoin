@@ -20,7 +20,6 @@ pub use mint::{
 
 use core::convert::TryFrom;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
-use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{constants::RING_SIZE, membership_proofs::Range, BlockContents};
 use mc_transaction_std::{
@@ -28,7 +27,7 @@ use mc_transaction_std::{
     TxOutputsOrdering,
 };
 use mc_util_from_random::FromRandom;
-use rand::{seq::SliceRandom, Rng};
+use rand::{seq::SliceRandom, CryptoRng, Rng, RngCore};
 use std::cmp::Ordering;
 use tempdir::TempDir;
 

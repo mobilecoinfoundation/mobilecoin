@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 use crate::{
-    amount::{Amount, AmountError, MaskedAmount},
+    amount::{AmountError, MaskedAmount},
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
@@ -27,7 +27,7 @@ use crate::{
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
     ring_ct::{SignatureRctBulletproofs, SignedInputRing},
-    CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
+    Amount, CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
 };
 
 /// Transaction hash length, in bytes.
@@ -669,13 +669,13 @@ mod tests {
     use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
+    use mc_util_test_helper::{RngType, SeedableRng};
     use prost::Message;
-    use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
     // `serialize_tx` should create a Tx, encode/decode it, and compare
     fn test_serialize_tx_no_memo() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
         let tx_out = {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
@@ -739,7 +739,7 @@ mod tests {
     #[test]
     // `serialize_tx` should create a Tx, encode/decode it, and compare
     fn test_serialize_tx_with_memo() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
         let tx_out = {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
@@ -803,7 +803,7 @@ mod tests {
     // round trip memos from `TxOut` constructors through `decrypt_memo()`
     #[test]
     fn test_decrypt_memo() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
 
         let bob = AccountKey::new(
             &RistrettoPrivate::from_random(&mut rng),

@@ -7,8 +7,11 @@
 
 #![cfg_attr(test, allow(clippy::unnecessary_operation))]
 
-use crate::domain_separators::{
-    AMOUNT_BLINDING_DOMAIN_TAG, AMOUNT_TOKEN_ID_DOMAIN_TAG, AMOUNT_VALUE_DOMAIN_TAG,
+use crate::{
+    domain_separators::{
+        AMOUNT_BLINDING_DOMAIN_TAG, AMOUNT_TOKEN_ID_DOMAIN_TAG, AMOUNT_VALUE_DOMAIN_TAG,
+    },
+    Amount, TokenId,
 };
 use alloc::vec::Vec;
 use core::convert::TryInto;
@@ -21,7 +24,8 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
-pub use mc_crypto_ring_signature::{generators, Amount, Commitment, CompressedCommitment, TokenId};
+// TODO: Maybe don't re-export this
+pub use mc_crypto_ring_signature::{generators, Commitment, CompressedCommitment};
 
 mod error;
 pub use error::AmountError;

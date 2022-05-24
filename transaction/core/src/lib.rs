@@ -49,17 +49,20 @@ pub mod validation;
 #[cfg(test)]
 pub mod proptest_fixtures;
 
-pub use amount::{Amount, AmountError, Commitment, CompressedCommitment, MaskedAmount};
+pub use amount::{AmountError, Commitment, CompressedCommitment, MaskedAmount};
 pub use blockchain::*;
 pub use input_rules::{InputRuleError, InputRules};
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
 pub use signed_contingent_input::{
     SignedContingentInput, SignedContingentInputError, UnmaskedAmount,
 };
-pub use token::{tokens, Token, TokenId};
+pub use token::{tokens, Token};
 pub use tx::MemoContext;
 pub use tx_error::{NewMemoError, NewTxError, ViewKeyMatchError};
 pub use tx_out_gift_code::TxOutGiftCode;
+
+// Re-export Amount and TokenId from transaction-types
+pub use mc_transaction_types::{Amount, TokenId};
 
 use core::convert::TryFrom;
 use mc_account_keys::AccountKey;
