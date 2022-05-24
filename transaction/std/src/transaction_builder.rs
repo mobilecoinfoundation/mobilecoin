@@ -167,7 +167,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .expect("memo builder is missing, this is a logic error");
         let block_version = self.block_version;
         let token_id = self.fee.token_id;
-        let result = self.add_output_with_fog_hint_address_with_context(
+        let result = self.add_output_with_fog_hint_address(
             value,
             recipient,
             recipient,
@@ -232,7 +232,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .expect("memo builder is missing, this is a logic error");
         let block_version = self.block_version;
         let token_id = self.fee.token_id;
-        let result = self.add_output_with_fog_hint_address_with_context(
+        let result = self.add_output_with_fog_hint_address(
             value,
             &change_destination.change_subaddress,
             &change_destination.primary_address,
@@ -273,7 +273,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// * `fog_hint_address` - The public address used to create the fog hint
     /// * `memo_fn` - The memo function to use (see TxOut::new_with_memo)
     /// * `rng` - RNG used to generate blinding for commitment
-    fn add_output_with_fog_hint_address_with_context<RNG: CryptoRng + RngCore>(
+    fn add_output_with_fog_hint_address<RNG: CryptoRng + RngCore>(
         &mut self,
         value: u64,
         recipient: &PublicAddress,
