@@ -1,7 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-// Copyright (c) 2022 The MobileCoin Foundation
-
 //! This module is meant to unit test all of the functionality in the validation
 //! module in mc-transaction-core.
 
