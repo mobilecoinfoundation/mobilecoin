@@ -80,8 +80,6 @@ pub extern "C" fn mc_tx_out_reconstruct_commitment(
 
         let shared_secret = get_tx_out_shared_secret(&view_private_key, &tx_out_public_key);
 
-        // FIXME #1596: McTxOutMaskedAmount should include the masked_token_id bytes, which
-        // are 0 or 4 bytes For now zero to avoid breaking changes to FFI
         let (masked_amount, _) =
             MaskedAmount::reconstruct(tx_out_masked_amount.masked_value, &tx_out_masked_amount.masked_token_id, &shared_secret)?;
 
@@ -213,33 +211,6 @@ pub extern "C" fn mc_tx_out_get_amount(
         Ok(())
     })
 }
-
-/// # Preconditions
-///
-/// * `shared_secret` - must be a valid 32-byte Ristretto-format
-///   scalar.
-///
-/// # Errors
-///
-/// * `LibMcError::InvalidInput`
-/// * `LibMcError::TransactionCrypto`
-//#[no_mangle]
-//pub extern "C" fn mc_shared_secret_encrypt_blob(
-    //blob: FfiRefPtr<McBuffer>,
-    //shared_secret: FfiRefPtr<McBuffer>,
-    //out_encrypted_blob: FfiMutPtr<McMutableBuffer>,
-    //out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
-//) -> bool {
-    //ffi_boundary_with_error(out_error, || {
-        //// ...
-        //let shared_secret =
-            //RistrettoPublic::try_from_ffi(&shared_secret)
-                //.expect("shared_secret is not a valid RistrettoPublic");
-
-        //// ... 
-        //Ok(())
-    //})
-//}
 
 /// # Preconditions
 ///
@@ -392,7 +363,6 @@ pub extern "C" fn mc_transaction_builder_create(
             .take()
             .expect("McTxOutMemoBuilder has already been used to build a Tx");
 
-        // TODO #1596: Support token id other than Mob (but not in this release)
         let fee_amount = Amount::new(fee, TokenId::from(token_id));
 
         let mut transaction_builder = TransactionBuilder::new_with_box(
