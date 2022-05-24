@@ -1,11 +1,11 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! Errors which can occur in connection to ring signatures
+//! Errors which can occur in connection to ring_ct signatures
 
 use crate::range_proofs::error::Error as RangeProofError;
 use alloc::string::{String, ToString};
 use displaydoc::Display;
-use mc_crypto_ring_signature::{Error as MLSAGError, TokenId};
+use mc_crypto_ring_signature::{Error as RingSignatureError, TokenId};
 use mc_crypto_ring_signature_signer::Error as SignerError;
 use mc_util_zip_exact::ZipExactError;
 use serde::{Deserialize, Serialize};
@@ -82,8 +82,8 @@ pub enum Error {
     /// Zip Exact: {0}
     ZipExact(ZipExactError),
 
-    /// MLSAG: {0}
-    MLSAG(MLSAGError),
+    /// Ring signature: {0}
+    RingSignature(RingSignatureError),
 
     /// Signer: {0}
     Signer(SignerError),
@@ -107,9 +107,9 @@ impl From<ZipExactError> for Error {
     }
 }
 
-impl From<MLSAGError> for Error {
-    fn from(src: MLSAGError) -> Self {
-        Self::MLSAG(src)
+impl From<RingSignatureError> for Error {
+    fn from(src: RingSignatureError) -> Self {
+        Self::RingSignature(src)
     }
 }
 impl From<SignerError> for Error {

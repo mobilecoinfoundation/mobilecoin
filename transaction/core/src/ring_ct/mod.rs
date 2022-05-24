@@ -14,5 +14,5 @@ pub use rct_bulletproofs::*;
 
 // TODO: Maybe don't do these re-exports
 pub use mc_crypto_ring_signature::{
-    CurveScalar, Error as MLSAGError, GeneratorCache, KeyImage, RingMLSAG,
+    CurveScalar, Error as RingSignatureError, GeneratorCache, KeyImage, RingMLSAG,
 };

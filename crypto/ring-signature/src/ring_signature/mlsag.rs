@@ -369,13 +369,8 @@ fn decompress_ring(ring: &[ReducedTxOut]) -> Result<Vec<(RistrettoPublic, Commit
 
 #[cfg(test)]
 mod mlsag_tests {
-    use crate::{
-        ring_signature::{
-            generators, mlsag::RingMLSAG, CurveScalar, Error, KeyImage, PedersenGens, ReducedTxOut,
-            Scalar,
-        },
-        CompressedCommitment,
-    };
+    use super::*;
+    use crate::generators;
     use alloc::vec::Vec;
     use curve25519_dalek::ristretto::CompressedRistretto;
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};

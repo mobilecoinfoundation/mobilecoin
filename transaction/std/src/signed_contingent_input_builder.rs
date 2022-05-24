@@ -1903,7 +1903,10 @@ pub mod tests {
 
             // (Sanity check: the sci fails its own validation now, because the signature is
             // invalid)
-            assert_matches!(sci.validate(), Err(SignedContingentInputError::MLSAG(_)));
+            assert_matches!(
+                sci.validate(),
+                Err(SignedContingentInputError::RingSignature(_))
+            );
 
             let mut builder = TransactionBuilder::new(
                 block_version,
@@ -2255,7 +2258,10 @@ pub mod tests {
 
             // (Sanity check: the sci fails its own validation now, because the signature is
             // invalid)
-            assert_matches!(sci.validate(), Err(SignedContingentInputError::MLSAG(_)));
+            assert_matches!(
+                sci.validate(),
+                Err(SignedContingentInputError::RingSignature(_))
+            );
 
             let mut builder = TransactionBuilder::new(
                 block_version,

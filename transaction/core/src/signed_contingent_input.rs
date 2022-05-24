@@ -11,8 +11,8 @@ use crate::{
 use alloc::vec::Vec;
 use displaydoc::Display;
 use mc_crypto_ring_signature::{
-    Amount, Commitment, CompressedCommitment, CurveScalar, Error as MLSAGError, GeneratorCache,
-    KeyImage, RingMLSAG, TokenId,
+    Amount, Commitment, CompressedCommitment, CurveScalar, Error as RingSignatureError,
+    GeneratorCache, KeyImage, RingMLSAG, TokenId,
 };
 use prost::Message;
 
@@ -182,12 +182,12 @@ pub enum SignedContingentInputError {
     MissingRules,
     /// Proofs of membership are missing
     MissingProofs,
-    /// Invalid MLSAG: {0}
-    MLSAG(MLSAGError),
+    /// Invalid Ring signature: {0}
+    RingSignature(RingSignatureError),
 }
 
-impl From<MLSAGError> for SignedContingentInputError {
-    fn from(src: MLSAGError) -> Self {
-        Self::MLSAG(src)
+impl From<RingSignatureError> for SignedContingentInputError {
+    fn from(src: RingSignatureError) -> Self {
+        Self::RingSignature(src)
     }
 }

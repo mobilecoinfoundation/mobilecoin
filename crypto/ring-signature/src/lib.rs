@@ -22,8 +22,8 @@ pub mod ring_signature;
 
 pub use amount::{Amount, Commitment, CompressedCommitment};
 pub use ring_signature::{
-    generators, CurveScalar, Error, GeneratorCache, KeyImage, PedersenGens, ReducedTxOut,
-    RingMLSAG, Scalar,
+    generators, CryptoRngCore, CurveScalar, Error, GeneratorCache, KeyImage, PedersenGens,
+    ReducedTxOut, RingMLSAG, Scalar,
 };
 pub use token::TokenId;
 

@@ -853,7 +853,9 @@ mod rct_bulletproofs_tests {
     use super::*;
     use crate::{
         range_proofs::generate_range_proofs,
-        ring_signature::{generators, Error as MLSAGError, KeyImage, PedersenGens, ReducedTxOut},
+        ring_signature::{
+            generators, Error as RingSignatureError, KeyImage, PedersenGens, ReducedTxOut,
+        },
         CompressedCommitment, TokenId,
     };
     use alloc::vec::Vec;
@@ -1212,7 +1214,7 @@ mod rct_bulletproofs_tests {
                 &mut rng,
             );
 
-            assert_eq!(result, Err(Error::MLSAG(MLSAGError::InvalidSignature)));
+            assert_eq!(result, Err(Error::RingSignature(RingSignatureError::InvalidSignature)));
         }
 
         #[test]
