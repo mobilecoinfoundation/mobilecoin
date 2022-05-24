@@ -57,8 +57,16 @@ class MobilecoindJsonClient:
     def get_ledger_local(self):
         return self.request(f"ledger/local")
 
-    def account_key_from_mnemonic(self, mnemonic):
-        return self.request("account-key-from-mnemonic", {"mnemonic": mnemonic})
+    # Takes the json loaded from a private key file, tests if it is mnemnonic or root entropy
+    #
+    # If it is mnemonic, we pass the mnemonic to `account-key-from-mnemonic` route
+    # Otherwise, we hit the `entropy/{root_entropy}` route.
+    # Both return Json account key response.
+    def account_key_from_json(self, obj):
+        if "mnemonic" in obj:
+            return self.request("account-key-from-mnemonic", {"mnemonic": obj["mnemonic"]})
+        else
+            return self.request("entropy/{}".format(obj["root_entropy"]), {})
 
     def get_public_address(self, monitor_id, subaddress_index=0):
         return self.request(f"monitors/{monitor_id}/subaddresses/{subaddress_index}/public-address")
@@ -113,7 +121,7 @@ def run_test(mobilecoind_json_url, keys_dir, max_seconds):
     # Add two monitors and wait for them to sync
     monitor_ids = []
     for i in range(2):
-        account_key = client.account_key_from_mnemonic(keys[i]["mnemonic"])
+        account_key = client.account_key_from_json(keys[i])
         monitor = client.create_monitor(account_key)
         logging.info(f"{i}: Monitor created: {monitor}, waiting to sync...")
         monitor_id = monitor["monitor_id"]
