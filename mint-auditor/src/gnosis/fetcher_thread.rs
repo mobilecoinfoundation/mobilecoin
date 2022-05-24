@@ -14,11 +14,19 @@ use std::{
     time::Duration,
 };
 use tokio::task::{spawn, JoinHandle};
+use tokio::time::sleep;
 use url::Url;
+use tokio::runtime::Runtime;
+use tokio::sync::mpsc::{channel, Sender, Receiver};
+
+// TODO document stopping mechanism (https://tokio.rs/tokio/topics/shutdown)
 
 pub struct FetcherThread {
     stop_requested: Arc<AtomicBool>,
-    join_handle: Option<JoinHandle<()>>,
+    //join_handle: JoinHandle<()>,
+    runtime: Runtime,
+    stop_receiver: Receiver<()>,
+    logger: Logger,
 }
 
 impl FetcherThread {
@@ -31,6 +39,7 @@ impl FetcherThread {
         logger: Logger,
     ) -> Result<Self, Error> {
         let fetcher = GnosisSafeFetcher::new(gnosis_api_url, logger.clone())?;
+        let (stop_sender, stop_receiver) = channel(1);
 
         // TODO document this, remove unwrap.
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -39,33 +48,36 @@ impl FetcherThread {
             .unwrap();
 
         let stop_requested = Arc::new(AtomicBool::new(false));
-        let thread_stop_requested = stop_requested.clone();
 
-
+        runtime.block_on(async {
         let join_handle = spawn(
-            move || async {
                 thread_entry_point(
-                    thread_stop_requested,
+                    stop_requested.clone(),
+                    stop_sender,
                     safe_addr,
                     mint_auditor_db,
                     ledger_db,
                     poll_interval,
                     fetcher,
-                    logger,
-                );
-            },
-        )?);
+                    logger.clone(),
+                )
+            );
+        });
 
         Ok(Self {
+            runtime,
             stop_requested,
-            join_handle,
+            stop_receiver,
+            logger,
+          //  join_handle,
         })
     }
     pub fn stop(&mut self) {
+        log::info!(self.logger, "Stopping fetcher thread...");
         self.stop_requested.store(true, Ordering::Relaxed);
-        if let Some(join_handle) = self.join_handle.take() {
-            join_handle.join().unwrap();
-        }
+        self.runtime.block_on(async {
+            let _ = self.stop_receiver.recv().await;
+        });
     }
 }
 
@@ -77,6 +89,7 @@ impl Drop for FetcherThread {
 
 async fn thread_entry_point(
     stop_requested: Arc<AtomicBool>,
+    _stop_sender: Sender<()>,
     safe_addr: SafeAddr,
     mint_auditor_db: MintAuditorDb,
     ledger_db: LedgerDB,
@@ -87,19 +100,19 @@ async fn thread_entry_point(
     log::info!(logger, "GnosisFetcher thread started");
     loop {
         if stop_requested.load(Ordering::Relaxed) {
-            log::info!(logger, "GnosisFetcher thread stopped");
+            log::info!(logger, "GnosisFetcher thread stop trigger received");
             break;
         }
 
-        match await fetcher.get_transaction_data(safe_addr) {
+        match fetcher.get_transaction_data(&safe_addr).await {
             Ok(transactions) => {
-                println!("{:?}", transactions);
+                mint_auditor_db.write_safe_txs(&transactions).expect("failed writing gnosis safe txs");
             }
             Err(err) => {
                 log::error!(logger, "Failed to fetch Gnosis transactions: {}", err);
             }
         }
 
-        sleep(poll_interval);
+        sleep(poll_interval).await;
     }
 }

@@ -39,6 +39,9 @@ pub enum Error {
 
     /// Gnosis: {0}
     Gnosis(GnosisError),
+
+    /// Gnosis tx hash already in database and data differs
+    TxHashConflict(String),
 }
 
 impl From<lmdb::Error> for Error {

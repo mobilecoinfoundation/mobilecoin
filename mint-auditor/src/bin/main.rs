@@ -83,7 +83,7 @@ pub struct Config {
 }
 
 //#[tokio::main]
-async fn main() {
+fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = mc_common::logger::create_app_logger(o!());
@@ -209,6 +209,9 @@ fn cmd_scan_ledger(
         )
         .expect("Failed starting gnosis safe fetcher thread")
     });
+
+    sleep(Duration::from_secs(3));
+    return;
 
     loop {
         sync_loop(&mint_auditor_db, &ledger_db, &logger).expect("sync_loop failed");

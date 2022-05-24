@@ -127,7 +127,7 @@ impl MintAuditorDb {
         let mint_audit_data_by_block_index =
             env.open_db(Some(MINT_AUDIT_DATA_BY_BLOCK_INDEX_DB_NAME))?;
         let mint_config_store = MintConfigStore::new(&env)?;
-        let gnosis_safe_store = GnosisSafeStore::new(&env)?;
+        let gnosis_safe_store = GnosisSafeStore::new(&env, logger.clone())?;
 
         Ok(Self {
             env,
@@ -337,9 +337,7 @@ impl MintAuditorDb {
     /// Write a list of [GnosisSafeTransaction]s.
     pub fn write_safe_txs(&self, safe_txs: &[GnosisSafeTransaction]) -> Result<(), Error> {
         let mut db_txn = self.env.begin_rw_txn()?;
-        for safe_tx in safe_txs {
-            self.gnosis_safe_store.write_safe_tx(safe_tx, &mut db_txn)?;
-        }
+        self.gnosis_safe_store.write_safe_txs(safe_txs, &mut db_txn)?;
         db_txn.commit()?;
         Ok(())
     }

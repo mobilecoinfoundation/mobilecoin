@@ -7,6 +7,7 @@ use lmdb::{Database, Environment, DatabaseFlags, RwTransaction, WriteFlags, Tran
 use crate::error::Error;
 use crate::gnosis::fetcher::{GnosisSafeTransaction, EthTxHash};
 use mc_util_serial::{encode, decode, Message};
+use mc_common::logger::{Logger, log};
 
 /// LMDB database names.
 pub const HASH_TO_SAFE_TX_DB_NAME: &str = "gnosis_store:hash_to_safe_tx";
@@ -21,14 +22,17 @@ struct StoredGnosisSafeTransaction {
 pub struct GnosisSafeStore {
     /// [EthTxHash] -> [StoredGnosisSafeTransaction]
     hash_to_safe_tx: Database,
+
+    /// Logger.
+    logger: Logger,
 }
 
 impl GnosisSafeStore {
     /// Open an existing [GnosisSafeStore].
-    pub fn new(env: &Environment) -> Result<Self, Error> {
+    pub fn new(env: &Environment, logger: Logger) -> Result<Self, Error> {
         let hash_to_safe_tx = env.open_db(Some(HASH_TO_SAFE_TX_DB_NAME))?;
 
-        Ok(Self { hash_to_safe_tx })
+        Ok(Self { hash_to_safe_tx, logger })
     }
 
     /// Create a fresh [GnosisSafeStore].
@@ -37,10 +41,28 @@ impl GnosisSafeStore {
         Ok(())
     }
 
-    /// Store a single safe transaction.
-    pub fn write_safe_tx(&self, safe_tx: &GnosisSafeTransaction, db_txn: &mut RwTransaction) -> Result<(), Error> {
-        let tx_hash = safe_tx.tx_hash()?;
-        db_txn.put(self.hash_to_safe_tx, &tx_hash, &safe_tx.to_json_string(), WriteFlags::NO_OVERWRITE)?;
+    /// Store safe transactions.
+    pub fn write_safe_txs(&self, safe_txs: &[GnosisSafeTransaction], db_txn: &mut RwTransaction) -> Result<(), Error> {
+        for safe_tx in safe_txs {
+            let tx_hash = safe_tx.tx_hash()?;
+            let json_tx = safe_tx.to_json_string();
+
+            match db_txn.put(self.hash_to_safe_tx, &tx_hash, &json_tx, WriteFlags::NO_OVERWRITE) {
+                Ok(_) => {
+                },
+                Err(lmdb::Error::KeyExist) => {
+                    let existing_tx = db_txn.get(self.hash_to_safe_tx, &tx_hash)?;
+                    if existing_tx != json_tx.as_bytes() {
+                        log::error!(self.logger, "Encountered duplicate gnosis tx hash {} and data mismatch", tx_hash);
+                        log::error!(self.logger, "Existing tx: {}", String::from_utf8_lossy(&existing_tx));
+                        log::error!(self.logger, "New tx: {}", json_tx);
+                        return Err(Error::TxHashConflict(tx_hash));
+                    }
+                    log::trace!(self.logger, "Encountered duplicate gnosis tx hash {} but data is identical", tx_hash);
+                }
+                Err(err) => return Err(err.into()),
+            }
+        }
         Ok(())
     }
 

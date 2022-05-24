@@ -30,90 +30,93 @@ use serde_json::Value;
 use std::{fmt, str::FromStr};
 use url::Url;
 
-pub const ETH_TX_HASH_LEN: usize = 32;
-pub const SAFE_ID_LEN: usize = 20;
+// pub const ETH_TX_HASH_LEN: usize = 32;
+// pub const SAFE_ID_LEN: usize = 20;
+
+// // TODO move somewhere else
+// #[derive(Clone, Debug, Deserialize, Serialize)]
+// pub struct EthTxHash([u8; ETH_TX_HASH_LEN]);
+
+// impl TryFrom<&[u8]> for EthTxHash {
+//     type Error = Error;
+
+//     fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+//         let bytes: [u8; ETH_TX_HASH_LEN] = src
+//             .try_into()
+//             .map_err(|_| Error::Other("EthTxHash: invalid length".to_string()))?;
+//         Ok(Self(bytes))
+//     }
+// }
+
+// impl FromStr for EthTxHash {
+//     type Err = Error;
+
+//     fn from_str(src: &str) -> Result<Self, Self::Err> {
+//         let bytes = if src.starts_with("0x") {
+//             hex::decode(&src[2..])
+//         } else {
+//             hex::decode(src)
+//         }
+//         .map_err(|_| Error::Other("EthTxHash: invalid hex".to_string()))?;
+//         Self::try_from(&bytes[..])
+//     }
+// }
+
+// impl fmt::Display for EthTxHash {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         write!(f, "{}", hex::encode(self.0))
+//     }
+// }
+
+// impl AsRef<[u8]> for EthTxHash {
+//     fn as_ref(&self) -> &[u8] {
+//         &self.0[..]
+//     }
+// }
+
+pub type SafeAddr = String;
+pub type EthTxHash = String;
 
 // TODO move somewhere else
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct EthTxHash([u8; ETH_TX_HASH_LEN]);
+// #[derive(Clone, Debug, Deserialize, Serialize)]
+// pub struct SafeAddr([u8; SAFE_ID_LEN]);
 
-impl TryFrom<&[u8]> for EthTxHash {
-    type Error = Error;
+// impl TryFrom<&[u8]> for SafeAddr {
+//     type Error = Error;
 
-    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
-        let bytes: [u8; ETH_TX_HASH_LEN] = src
-            .try_into()
-            .map_err(|_| Error::Other("EthTxHash: invalid length".to_string()))?;
-        Ok(Self(bytes))
-    }
-}
+//     fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+//         let bytes: [u8; SAFE_ID_LEN] = src
+//             .try_into()
+//             .map_err(|_| Error::Other("SafeAddr: invalid length".to_string()))?;
+//         Ok(Self(bytes))
+//     }
+// }
 
-impl FromStr for EthTxHash {
-    type Err = Error;
+// impl FromStr for SafeAddr {
+//     type Err = Error;
 
-    fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let bytes = if src.starts_with("0x") {
-            hex::decode(&src[2..])
-        } else {
-            hex::decode(src)
-        }
-        .map_err(|_| Error::Other("EthTxHash: invalid hex".to_string()))?;
-        Self::try_from(&bytes[..])
-    }
-}
+//     fn from_str(src: &str) -> Result<Self, Self::Err> {
+//         let bytes = if src.starts_with("0x") {
+//             hex::decode(&src[2..])
+//         } else {
+//             hex::decode(src)
+//         }
+//         .map_err(|_| Error::Other("SafeAddr: invalid hex".to_string()))?;
+//         Self::try_from(&bytes[..])
+//     }
+// }
 
-impl fmt::Display for EthTxHash {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", hex::encode(self.0))
-    }
-}
+// impl fmt::Display for SafeAddr {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         write!(f, "{}", hex::encode(self.0))
+//     }
+// }
 
-impl AsRef<[u8]> for EthTxHash {
-    fn as_ref(&self) -> &[u8] {
-        &self.0[..]
-    }
-}
-
-// TODO move somewhere else
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct SafeAddr([u8; SAFE_ID_LEN]);
-
-impl TryFrom<&[u8]> for SafeAddr {
-    type Error = Error;
-
-    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
-        let bytes: [u8; SAFE_ID_LEN] = src
-            .try_into()
-            .map_err(|_| Error::Other("SafeAddr: invalid length".to_string()))?;
-        Ok(Self(bytes))
-    }
-}
-
-impl FromStr for SafeAddr {
-    type Err = Error;
-
-    fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let bytes = if src.starts_with("0x") {
-            hex::decode(&src[2..])
-        } else {
-            hex::decode(src)
-        }
-        .map_err(|_| Error::Other("SafeAddr: invalid hex".to_string()))?;
-        Self::try_from(&bytes[..])
-    }
-}
-
-impl fmt::Display for SafeAddr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", hex::encode(self.0))
-    }
-}
-
-impl AsRef<[u8]> for SafeAddr {
-    fn as_ref(&self) -> &[u8] {
-        &self.0[..]
-    }
-}
+// impl AsRef<[u8]> for SafeAddr {
+//     fn as_ref(&self) -> &[u8] {
+//         &self.0[..]
+//     }
+// }
 
 // TODO move somewhere else
 #[derive(Debug, Deserialize, Serialize)]
@@ -135,7 +138,7 @@ impl GnosisSafeTransaction {
             .ok_or(Error::Other(
                 "GnosisSafeTransaction: missing transactionHash".to_string(),
             ))?;
-        Ok(EthTxHash::from_str(hash_str)?)
+        EthTxHash::from_str(hash_str).map_err(|err| Error::Other(format!("Failed parsing tx hash '{}': {}", hash_str, err)))
     }
 
     pub fn to_json_string(&self) -> String {
