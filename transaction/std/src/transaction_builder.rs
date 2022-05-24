@@ -3282,6 +3282,7 @@ pub mod transaction_builder_tests {
                     MemoType::GiftCodeFunding(memo) => {
                         assert!(memo.public_key_matches(funding_output_public_key),);
                         assert_eq!(memo.funding_note().unwrap(), note,);
+                        assert_eq!(memo.get_fee(), fee);
                     }
                     _ => {
                         panic!("unexpected memo type")
@@ -3413,7 +3414,8 @@ pub mod transaction_builder_tests {
                 let memo = change.e_memo.unwrap().decrypt(&ss);
                 match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                     MemoType::GiftCodeSender(memo) => {
-                        assert_eq!(memo.sender_note().unwrap(), note,);
+                        assert_eq!(memo.sender_note().unwrap(), note);
+                        assert_eq!(memo.get_fee(), fee);
                     }
                     _ => {
                         panic!("unexpected memo type")
@@ -3488,7 +3490,8 @@ pub mod transaction_builder_tests {
                 let memo = change.e_memo.unwrap().decrypt(&ss);
                 match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
                     MemoType::GiftCodeCancellation(memo) => {
-                        assert_eq!(memo.cancelled_gift_code_index(), sample_index,);
+                        assert_eq!(memo.cancelled_gift_code_index(), sample_index);
+                        assert_eq!(memo.get_fee(), fee);
                     }
                     _ => {
                         panic!("unexpected memo type")
