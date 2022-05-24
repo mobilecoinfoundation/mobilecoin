@@ -7,7 +7,6 @@ edition = "2021"
 [dependencies]
 # External dependencies
 displaydoc = { version = "0.2", default-features = false }
-generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
 hex_fmt = "0.3"
 # Enable all default features not known to break code coverage builds
 proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"], optional = true }
@@ -32,11 +31,8 @@ curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend", "serde"] }
 
 [dev-dependencies]
-rand = "0.8"
-rand_hc = "0.3"
 tempdir = "0.3"
 
 mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }
-mc-crypto-rand = { path = "../../crypto/rand" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 mc-util-test-helper = { path = "../../util/test-helper" }

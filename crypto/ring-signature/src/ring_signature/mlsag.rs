@@ -375,9 +375,8 @@ mod mlsag_tests {
     use curve25519_dalek::ristretto::CompressedRistretto;
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
+    use mc_util_test_helper::{RngCore, RngType, SeedableRng};
     use proptest::prelude::*;
-    use rand::{rngs::StdRng, CryptoRng, SeedableRng};
-    use rand_core::RngCore;
 
     extern crate std;
 
@@ -493,7 +492,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
 
             let params =
@@ -516,7 +515,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -532,7 +531,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let mut params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
             let wrong_value = rng.next_u64();
@@ -551,7 +550,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let mut params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
             // The ring contains num_mixins + 1 elements, with indices 0..num_mixins.
@@ -574,7 +573,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -593,7 +592,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let mut params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
             let wrong_onetime_private_key = RistrettoPrivate::from_random(&mut rng);
@@ -615,7 +614,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -666,7 +665,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -696,7 +695,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -720,7 +719,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -746,7 +745,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let mut params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -789,7 +788,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-           let mut rng: StdRng = SeedableRng::from_seed(seed);
+           let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -812,7 +811,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
 
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
@@ -856,7 +855,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 

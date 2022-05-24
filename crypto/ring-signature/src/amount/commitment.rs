@@ -1,8 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::{
-    CompressedCommitment, Error, PedersenGens, Scalar,
-};
+use crate::{CompressedCommitment, Error, PedersenGens, Scalar};
 use core::{convert::TryFrom, fmt};
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use mc_crypto_digestible::Digestible;
@@ -81,24 +79,26 @@ mod commitment_tests {
         Commitment,
     };
     use curve25519_dalek::ristretto::RistrettoPoint;
-    use rand::{rngs::StdRng, RngCore, SeedableRng};
+    use mc_util_test_helper::run_with_several_seeds;
+    use rand_core::RngCore;
 
     #[test]
     // Commitment::new should create the correct RistrettoPoint.
     fn test_new() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let value = rng.next_u64();
-        let blinding = Scalar::random(&mut rng);
-        let gens = generators(rng.next_u64());
+        run_with_several_seeds(|mut rng| {
+            let value = rng.next_u64();
+            let blinding = Scalar::random(&mut rng);
+            let gens = generators(rng.next_u64());
 
-        let commitment = Commitment::new(value, blinding, &gens);
+            let commitment = Commitment::new(value, blinding, &gens);
 
-        let expected_point: RistrettoPoint = {
-            let H = gens.B;
-            let G = B_BLINDING;
-            Scalar::from(value) * H + blinding * G
-        };
+            let expected_point: RistrettoPoint = {
+                let H = gens.B;
+                let G = B_BLINDING;
+                Scalar::from(value) * H + blinding * G
+            };
 
-        assert_eq!(commitment.point, expected_point);
+            assert_eq!(commitment.point, expected_point);
+        })
     }
 }

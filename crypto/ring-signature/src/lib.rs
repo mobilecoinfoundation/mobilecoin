@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! MobileCoin transaction data types, transaction construction and validation
-//! routines
+//! MobileCoin implementation of amount commitments and MLSAG ring signatures,
+//! as well as some related functions (see one-time keys module)
 
 #![no_std]
 #![deny(missing_docs)]
@@ -13,12 +13,12 @@ use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
 mod amount;
 mod domain_separators;
+mod ring_signature;
 mod token;
 
 pub mod onetime_keys;
 #[cfg(any(test, feature = "proptest"))]
 pub mod proptest_fixtures;
-pub mod ring_signature;
 
 pub use amount::{Amount, Commitment, CompressedCommitment};
 pub use ring_signature::{

@@ -21,9 +21,7 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
-pub use mc_crypto_ring_signature::{
-    ring_signature::generators, Amount, Commitment, CompressedCommitment, TokenId,
-};
+pub use mc_crypto_ring_signature::{generators, Amount, Commitment, CompressedCommitment, TokenId};
 
 mod error;
 pub use error::AmountError;
