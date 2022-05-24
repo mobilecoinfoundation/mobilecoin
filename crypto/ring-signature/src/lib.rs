@@ -16,10 +16,9 @@ mod domain_separators;
 mod token;
 
 pub mod onetime_keys;
-pub mod ring_signature;
-
 #[cfg(any(test, feature = "proptest"))]
 pub mod proptest_fixtures;
+pub mod ring_signature;
 
 pub use amount::{Amount, Commitment, CompressedCommitment};
 pub use ring_signature::{
