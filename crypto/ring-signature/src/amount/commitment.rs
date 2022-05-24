@@ -39,7 +39,7 @@ impl Commitment {
 }
 
 impl TryFrom<&CompressedCommitment> for Commitment {
-    type Error = crate::ring_signature::Error;
+    type Error = Error;
 
     fn try_from(src: &CompressedCommitment) -> Result<Self, Self::Error> {
         let point = src.point.decompress().ok_or(Error::InvalidCurvePoint)?;
