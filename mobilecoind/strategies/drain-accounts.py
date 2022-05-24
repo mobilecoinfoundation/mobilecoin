@@ -132,7 +132,6 @@ def run_test(stub, amount, monitor_id, dest, max_seconds, token_id):
                 # Subtract fee from amount, so that we don't get an insufficient funds error
                 # in the next cycle (since it costs us a fee to defragment)
                 amount = amount - opt_tx.tx_proposal.fee
-                continue
             else:
                 logging.error("RPC Error encountered")
                 raise
