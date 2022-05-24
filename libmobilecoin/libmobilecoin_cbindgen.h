@@ -151,6 +151,11 @@ typedef struct McTxOutMaskedAmount {
   FfiRefPtr<McBuffer> masked_token_id;
 } McTxOutMaskedAmount;
 
+typedef struct McTxOutAmount {
+  uint64_t value;
+  uint64_t token_id;
+} McTxOutAmount;
+
 typedef struct Option_TransactionBuilder_FogResolver McTransactionBuilder;
 
 void mc_data_free(FfiOptOwnedPtr<McData> data);
@@ -684,8 +689,7 @@ bool mc_tx_out_get_subaddress_spend_public_key(FfiRefPtr<McBuffer> tx_out_target
 bool mc_tx_out_get_amount(FfiRefPtr<McTxOutMaskedAmount> tx_out_masked_amount,
                           FfiRefPtr<McBuffer> tx_out_public_key,
                           FfiRefPtr<McBuffer> view_private_key,
-                          FfiMutPtr<uint64_t> out_value,
-                          FfiMutPtr<uint64_t> out_token_id,
+                          FfiMutPtr<McTxOutAmount> out_amount,
                           FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 /**
@@ -735,6 +739,7 @@ bool mc_transaction_builder_ring_add_element(FfiMutPtr<McTransactionBuilderRing>
                                              FfiRefPtr<McBuffer> membership_proof_proto_bytes);
 
 FfiOptOwnedPtr<McTransactionBuilder> mc_transaction_builder_create(uint64_t fee,
+                                                                   uint64_t token_id,
                                                                    uint64_t tombstone_block,
                                                                    FfiOptRefPtr<McFogResolver> fog_resolver,
                                                                    FfiMutPtr<McTxOutMemoBuilder> memo_builder,
