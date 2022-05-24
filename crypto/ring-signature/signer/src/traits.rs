@@ -4,8 +4,7 @@ use alloc::{string::String, vec::Vec};
 use displaydoc::Display;
 use mc_crypto_keys::{KeyError, RistrettoPrivate};
 use mc_crypto_ring_signature::{
-    ring_signature::{CryptoRngCore, ReducedTxOut, RingMLSAG, Scalar},
-    Amount, Error as MLSAGError,
+    Amount, CryptoRngCore, Error as MLSAGError, ReducedTxOut, RingMLSAG, Scalar,
 };
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
