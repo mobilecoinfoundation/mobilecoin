@@ -11,10 +11,9 @@ use crate::{
     constants::*,
     membership_proofs::{derive_proof_at_index, is_membership_proof_valid},
     tx::{Tx, TxOut, TxOutMembershipProof, TxPrefix},
-    Amount, BlockVersion, CompressedCommitment, TokenId,
+    Amount, BlockVersion, TokenId,
 };
 use mc_common::HashSet;
-use mc_crypto_keys::CompressedRistrettoPublic;
 use rand_core::{CryptoRng, RngCore};
 
 /// Determines if the transaction is valid, with respect to the provided
@@ -86,6 +85,12 @@ pub fn validate<R: RngCore + CryptoRng>(
         validate_outputs_are_sorted(&tx.prefix)?;
     }
 
+    if block_version.signed_input_rules_are_supported() {
+        validate_all_input_rules(block_version, tx)?;
+    } else {
+        validate_that_no_input_rules_exist(tx)?;
+    }
+
     Ok(())
 }
 
@@ -99,7 +104,7 @@ pub fn validate_tx_out(
     if block_version.e_memo_feature_is_supported() {
         validate_memo_exists(tx_out)?;
     } else {
-        validate_no_memo_exists(tx_out)?;
+        validate_that_no_memo_exists(tx_out)?;
     }
 
     // If masked token id is supported, then all outputs must have masked_token_id
@@ -111,7 +116,7 @@ pub fn validate_tx_out(
     if block_version.masked_token_id_feature_is_supported() {
         validate_masked_token_id_exists(tx_out)?;
     } else {
-        validate_no_masked_token_id_exists(tx_out)?;
+        validate_that_no_masked_token_id_exists(tx_out)?;
     }
 
     Ok(())
@@ -216,7 +221,7 @@ pub fn validate_inputs_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidation
     )
 }
 
-/// Outputs must be sorted by the public key
+/// Outputs must be sorted by the tx public key
 pub fn validate_outputs_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidationResult<()> {
     check_sorted(
         &tx_prefix.outputs,
@@ -242,7 +247,7 @@ pub fn validate_outputs_public_keys_are_unique(tx: &Tx) -> TransactionValidation
 }
 
 /// All outputs have no memo (new-style TxOuts (Post MCIP #3) are rejected)
-pub fn validate_no_memo_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
+pub fn validate_that_no_memo_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
     if tx_out.e_memo.is_some() {
         return Err(TransactionValidationError::MemosNotAllowed);
     }
@@ -259,7 +264,7 @@ pub fn validate_memo_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
 
 /// All outputs have no masked token id (new-style TxOuts (Post MCIP #25) are
 /// rejected)
-pub fn validate_no_masked_token_id_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
+pub fn validate_that_no_masked_token_id_exists(tx_out: &TxOut) -> TransactionValidationResult<()> {
     if !tx_out.masked_amount.masked_token_id.is_empty() {
         return Err(TransactionValidationError::MaskedTokenIdNotAllowed);
     }
@@ -289,18 +294,7 @@ pub fn validate_signature<R: RngCore + CryptoRng>(
     tx: &Tx,
     rng: &mut R,
 ) -> TransactionValidationResult<()> {
-    let rings: Vec<Vec<(CompressedRistrettoPublic, CompressedCommitment)>> = tx
-        .prefix
-        .inputs
-        .iter()
-        .map(|input| {
-            input
-                .ring
-                .iter()
-                .map(|tx_out| (tx_out.target_key, tx_out.masked_amount.commitment))
-                .collect()
-        })
-        .collect();
+    let rings = tx.prefix.get_input_rings();
 
     let output_commitments = tx.prefix.output_commitments();
 
@@ -458,6 +452,29 @@ pub fn validate_tombstone(
         return Err(TransactionValidationError::TombstoneBlockTooFar);
     }
 
+    Ok(())
+}
+
+/// Any input rules imposed on the Tx must satisfied
+pub fn validate_all_input_rules(
+    block_version: BlockVersion,
+    tx: &Tx,
+) -> TransactionValidationResult<()> {
+    for input in tx.prefix.inputs.iter() {
+        if let Some(rules) = input.input_rules.as_ref() {
+            rules.verify(block_version, tx)?;
+        }
+    }
+    Ok(())
+}
+
+/// Validate that no input have input rules
+pub fn validate_that_no_input_rules_exist(tx: &Tx) -> TransactionValidationResult<()> {
+    for input in tx.prefix.inputs.iter() {
+        if input.input_rules.is_some() {
+            return Err(TransactionValidationError::InputRulesNotAllowed);
+        }
+    }
     Ok(())
 }
 

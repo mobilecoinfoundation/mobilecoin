@@ -2,9 +2,8 @@
 name = "mc-fog-view-enclave-trusted"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 description = "The MobileCoin Fog user-facing server's enclave entry point."
-resolver = "2"
 license = "GPL-3.0"
 
 [workspace]
@@ -83,8 +82,8 @@ curve25519-dalek = { git = "https://github.com/mobilecoinfoundation/curve25519-d
 ed25519-dalek = { git = "https://github.com/mobilecoinfoundation/ed25519-dalek.git", rev = "4194e36abc75722e6fba7d552e719448fc38c51f" }
 
 # Our patches for newer bindgen, no-std
-mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "49a293a5f4b1ef571c71174e3fa1f301925f3915" }
-mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", rev = "49a293a5f4b1ef571c71174e3fa1f301925f3915" }
+mbedtls = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "ac6ee17a31e37311ce7f4fa0649c340e5d85258d" }
+mbedtls-sys-auto = { git = "https://github.com/mobilecoinfoundation/rust-mbedtls.git", rev = "ac6ee17a31e37311ce7f4fa0649c340e5d85258d" }
 
 # Fork and rename to use "OG" dalek-cryptography.
 schnorrkel-og = { git = "https://github.com/mobilecoinfoundation/schnorrkel.git", rev = "5c98ae068ee4652d6df6463b549fbf2d5d132faa" }

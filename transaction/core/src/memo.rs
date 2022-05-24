@@ -34,7 +34,10 @@ use aes::{
     cipher::{FromBlockCipher, StreamCipher},
     Aes256, Aes256Ctr, NewBlockCipher,
 };
-use core::convert::{TryFrom, TryInto};
+use core::{
+    convert::{TryFrom, TryInto},
+    str::Utf8Error,
+};
 use displaydoc::Display;
 use generic_array::{
     sequence::Split,
@@ -49,9 +52,12 @@ use mc_util_repr_bytes::{
     derive_repr_bytes_from_as_ref_and_try_from, derive_serde_from_repr_bytes,
 };
 use sha2::Sha512;
+use zeroize::Zeroize;
 
 /// An encrypted memo, which can be decrypted by the recipient of a TxOut.
-#[derive(Clone, Copy, Default, Debug, Eq, Hash, Digestible, Ord, PartialEq, PartialOrd)]
+#[derive(
+    Clone, Copy, Debug, Default, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Zeroize,
+)]
 pub struct EncryptedMemo(GenericArray<u8, U66>);
 
 impl AsRef<[u8]> for EncryptedMemo {
@@ -217,10 +223,19 @@ derive_serde_from_repr_bytes!(MemoPayload);
 derive_prost_message_from_repr_bytes!(MemoPayload);
 
 /// An error which can occur when handling memos
-#[derive(Display, Debug)]
+#[derive(Debug, Display, Eq, PartialEq)]
 pub enum MemoError {
     /// Wrong length for memo payload: {0}
     BadLength(usize),
+
+    /// Utf-8 did not properly decode
+    Utf8Decoding,
+}
+
+impl From<Utf8Error> for MemoError {
+    fn from(_: Utf8Error) -> Self {
+        Self::Utf8Decoding
+    }
 }
 
 #[cfg(test)]

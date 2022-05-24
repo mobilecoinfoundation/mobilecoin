@@ -35,7 +35,8 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
-    thread, time,
+    thread::sleep,
+    time::Duration,
 };
 use tempdir::TempDir;
 use url::Url;
@@ -225,7 +226,7 @@ fn fog_ledger_merkle_proofs_test(logger: Logger) {
         // in the meantime we can just sleep after grpcio env and all related
         // objects have been destroyed, and hope that those 6 threads see the
         // shutdown requests within 1 second.
-        std::thread::sleep(std::time::Duration::from_millis(1000));
+        sleep(Duration::from_millis(1000));
     }
 }
 
@@ -377,7 +378,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
                     .check_key_images(&[keys[0], keys[1], keys[3], keys[7], keys[19]])
                     .expect("check_key_images failed");
 
-                thread::sleep(time::Duration::from_secs(10));
+                sleep(Duration::from_secs(10));
                 // panic on the 20th time
                 n += 1; //
                 if n > 20 {
@@ -436,7 +437,7 @@ fn fog_ledger_key_images_test(logger: Logger) {
         // in the meantime we can just sleep after grpcio env and all related
         // objects have been destroyed, and hope that those 6 threads see the
         // shutdown requests within 1 second.
-        std::thread::sleep(std::time::Duration::from_millis(1000));
+        sleep(Duration::from_millis(1000));
     }
 }
 
@@ -598,7 +599,7 @@ fn fog_ledger_blocks_api_test(logger: Logger) {
     // in the meantime we can just sleep after grpcio env and all related
     // objects have been destroyed, and hope that those 6 threads see the
     // shutdown requests within 1 second.
-    std::thread::sleep(std::time::Duration::from_millis(1000));
+    sleep(Duration::from_millis(1000));
 }
 
 // Test that a fog ledger connection is able to check key images by hitting
@@ -749,7 +750,7 @@ fn fog_ledger_untrusted_tx_out_api_test(logger: Logger) {
     // in the meantime we can just sleep after grpcio env and all related
     // objects have been destroyed, and hope that those 6 threads see the
     // shutdown requests within 1 second.
-    std::thread::sleep(std::time::Duration::from_millis(1000));
+    sleep(Duration::from_millis(1000));
 }
 
 // Infra

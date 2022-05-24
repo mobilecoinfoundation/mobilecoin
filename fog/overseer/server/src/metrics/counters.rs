@@ -5,6 +5,7 @@
 use mc_util_metrics::{IntCounter, IntGauge, OpMetrics};
 
 lazy_static::lazy_static! {
+    /// Metrics tracker.
     pub static ref OP_COUNTERS: OpMetrics = OpMetrics::new_and_registered("fog_overseer");
 
     /// Number of unique ingress keys currently held by the Fog Ingest nodes

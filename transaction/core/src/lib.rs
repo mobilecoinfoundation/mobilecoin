@@ -21,7 +21,9 @@ use mc_crypto_keys::{KeyError, RistrettoPrivate, RistrettoPublic};
 mod amount;
 mod blockchain;
 mod domain_separators;
+mod input_rules;
 mod memo;
+mod signed_contingent_input;
 mod token;
 mod tx_error;
 mod tx_out_gift_code;
@@ -34,6 +36,7 @@ pub mod mint;
 pub mod onetime_keys;
 pub mod range_proofs;
 pub mod ring_signature;
+pub mod signer;
 pub mod tx;
 pub mod validation;
 
@@ -42,7 +45,11 @@ pub mod proptest_fixtures;
 
 pub use amount::{Amount, AmountError, Commitment, CompressedCommitment, MaskedAmount};
 pub use blockchain::*;
+pub use input_rules::{InputRuleError, InputRules};
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
+pub use signed_contingent_input::{
+    SignedContingentInput, SignedContingentInputError, UnmaskedAmount,
+};
 pub use token::{tokens, Token, TokenId};
 pub use tx::MemoContext;
 pub use tx_error::{NewMemoError, NewTxError, ViewKeyMatchError};

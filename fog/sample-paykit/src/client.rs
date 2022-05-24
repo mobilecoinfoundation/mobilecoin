@@ -14,7 +14,7 @@ use mc_common::logger::{log, Logger};
 use mc_connection::{
     BlockchainConnection, Connection, HardcodedCredentialsProvider, ThickClient, UserTxConnection,
 };
-use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
+use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_fog_api::ledger::TxOutResultCode;
 use mc_fog_ledger_connection::{
@@ -23,17 +23,16 @@ use mc_fog_ledger_connection::{
 };
 use mc_fog_report_connection::GrpcFogReportConnection;
 use mc_fog_report_validation::{FogPubkeyResolver, FogResolver};
-use mc_fog_types::BlockCount;
+use mc_fog_types::{ledger::KeyImageResultCode, BlockCount};
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_transaction_core::{
-    onetime_keys::recover_onetime_private_key,
-    ring_signature::KeyImage,
+    signer::{LocalRingSigner, OneTimeKeyDeriveData, RingSigner},
     tx::{Tx, TxOut, TxOutMembershipProof},
-    Amount, BlockIndex, BlockVersion, TokenId,
+    Amount, BlockIndex, BlockVersion, SignedContingentInput, TokenId,
 };
 use mc_transaction_std::{
-    InputCredentials, MemoType, RTHMemoBuilder, ReservedDestination, SenderMemoCredential,
-    TransactionBuilder,
+    EmptyMemoBuilder, InputCredentials, MemoType, RTHMemoBuilder, ReservedSubaddresses,
+    SenderMemoCredential, SignedContingentInputBuilder, TransactionBuilder,
 };
 use mc_util_telemetry::{block_span_builder, telemetry_static_key, tracer, Key, Span};
 use mc_util_uri::{ConnectionUri, FogUri};
@@ -335,9 +334,7 @@ impl Client {
         let block_version = BlockVersion::try_from(self.tx_data.get_latest_block_version())?;
 
         // Make fog resolver
-        // TODO: This should be the change subaddress, not the default subaddress, for
-        // self.account_key
-        let fog_uris = (&[&self.account_key.default_subaddress(), target_address])
+        let fog_uris = (&[&self.account_key.change_subaddress(), target_address])
             .iter()
             .filter_map(|addr| addr.fog_report_url())
             .map(FogUri::from_str)
@@ -346,6 +343,8 @@ impl Client {
             .fog_report_conn
             .fetch_fog_reports(fog_uris.into_iter())?;
         let fog_resolver = FogResolver::new(fog_responses, &self.fog_verifier)?;
+
+        let ring_signer = LocalRingSigner::from(&self.account_key);
 
         build_transaction_helper(
             block_version,
@@ -356,10 +355,291 @@ impl Client {
             target_address,
             tombstone_block,
             fog_resolver,
+            &ring_signer,
             rng,
             &self.logger,
             fee,
         )
+    }
+
+    /// Builds a signed contingent input that offers to trade "this" amount
+    /// for "that" amount.
+    ///
+    /// # Arguments
+    /// * `offered` - The amount that we are offering
+    /// * `requested` - The amount that we want in return
+    /// * `rng` - Randomness.
+    pub fn build_swap_proposal<T: RngCore + CryptoRng>(
+        &mut self,
+        offered: Amount,
+        requested: Amount,
+        rng: &mut T,
+    ) -> Result<SignedContingentInput> {
+        mc_common::trace_time!(self.logger, "MobileCoinClient.build_swap_proposal");
+
+        // Only one input can be used, otherwise defragmentation is required
+        let inputs = self.tx_data.get_transaction_inputs(offered, 1)?;
+        let inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = self.get_proofs(&inputs)?;
+        let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> = self.get_rings(&inputs, rng)?;
+
+        assert_eq!(inputs.len(), 1);
+        assert_eq!(rings.len(), 1);
+
+        let (input, input_proof) = (&inputs[0]).clone();
+        let ring = (&rings[0]).clone();
+
+        // Check amount found, calculate change
+        let input_amount = input.amount;
+        assert!(
+            offered.token_id == input_amount.token_id,
+            "get_transaction_inputs post condition failed"
+        );
+        assert!(
+            offered.value <= input_amount.value,
+            "get_transaction_inputs post condition failed"
+        );
+        let change = Amount::new(input_amount.value - offered.value, offered.token_id);
+
+        let tombstone_block = self.compute_tombstone_block()?;
+
+        let block_version = BlockVersion::try_from(self.tx_data.get_latest_block_version())?;
+
+        // Make fog resolver
+        let fog_uris = self
+            .account_key
+            .fog_report_url()
+            .map(FogUri::from_str)
+            .transpose()?;
+        let fog_responses = self
+            .fog_report_conn
+            .fetch_fog_reports(fog_uris.into_iter())?;
+        let fog_resolver = FogResolver::new(fog_responses, &self.fog_verifier)?;
+
+        let (ring, membership_proofs): (Vec<TxOut>, Vec<TxOutMembershipProof>) =
+            ring.into_iter().unzip();
+        let input_credentials = input_credentials_helper(
+            input,
+            input_proof,
+            ring,
+            membership_proofs,
+            &self.account_key,
+        )?;
+
+        // TODO: Use the RTHMemoBuilder?
+        let mut sci_builder = SignedContingentInputBuilder::new(
+            block_version,
+            input_credentials,
+            fog_resolver,
+            EmptyMemoBuilder::default(),
+        )?;
+
+        sci_builder
+            .add_required_output(requested, &self.account_key.default_subaddress(), rng)
+            .map_err(Error::AddOutput)?;
+
+        let change_destination = ReservedSubaddresses::from(&self.account_key);
+
+        sci_builder
+            .add_required_change_output(change, &change_destination, rng)
+            .map_err(|err| {
+                log::error!(self.logger, "Could not add change due to {:?}", err);
+                Error::AddOutput(err)
+            })?;
+
+        sci_builder.set_tombstone_block(tombstone_block);
+
+        let ring_signer = LocalRingSigner::from(&self.account_key);
+        Ok(sci_builder.build(&ring_signer, rng)?)
+    }
+
+    /// Builds a transaction that fulfills a swap request, sending all excess
+    /// funds to ourselves and paying fee.
+    ///
+    /// # Arguments
+    /// * `sci` - The swap request we are fulfilling.
+    /// * `fee` - The transaction fee to use.
+    /// * `rng` - Randomness.
+    pub fn build_swap_transaction<T: RngCore + CryptoRng>(
+        &mut self,
+        mut sci: SignedContingentInput,
+        fee: Amount,
+        rng: &mut T,
+    ) -> Result<Tx> {
+        mc_common::trace_time!(self.logger, "MobileCoinClient.build_swap_transaction");
+
+        // Validate the sci
+        sci.validate()?;
+
+        // Check if its key image alreay landed
+        //
+        // Note: An actual fog wallet may not want to do this part, because it adds to
+        // latency, but if you have a local ledger copy you should definitely do this
+        //
+        // Note: It is still a racy check though -- the sci may expire while you are
+        // still submitting an order that uses it. So this check doesn't guarantee that
+        // your submission will work.
+        let res = self.fog_key_image.check_key_images(&[sci.key_image()])?;
+        if res.results[0].key_image_result_code == KeyImageResultCode::Spent as u32 {
+            return Err(Error::SciExpired);
+        }
+        // Do tombstone block calculation using this key image query result rather than
+        // make another call using `self.compute_tombstone_block`.
+        let tombstone_block = res.num_blocks + self.new_tx_block_attempts as u64;
+
+        // Update sci's merkle proofs
+        sci.tx_in.proofs.clear();
+        let merkle_root_block = 0u64;
+        for (idx, result) in self
+            .fog_merkle_proof
+            .get_outputs(sci.tx_out_global_indices.clone(), merkle_root_block)?
+            .results
+            .into_iter()
+            .enumerate()
+        {
+            if result.index != sci.tx_out_global_indices[idx] {
+                return Err(Error::FogMerkleProof(
+                    "Server returned indices in an unexpected order".to_string(),
+                ));
+            }
+            match result.status() {
+                Err(err) => {
+                    return Err(Error::FogMerkleProof(format!(
+                        "Server failed to compute a merkle proof: {}",
+                        err
+                    )))
+                }
+                Ok(None) => {
+                    return Err(Error::FogMerkleProof(
+                        "Server did not find one of the outputs we need".to_string(),
+                    ))
+                }
+                Ok(Some((tx_out, proof))) => {
+                    if sci.tx_in.ring[idx] != tx_out {
+                        log::debug!(
+                            self.logger,
+                            "Expected: {:?}, Found: {:?}",
+                            sci.tx_in.ring[idx],
+                            tx_out
+                        );
+                        return Err(Error::SciGlobalIndexTxOutMismatch(
+                            sci.tx_out_global_indices[idx],
+                        ));
+                    }
+                    sci.tx_in.proofs.push(proof);
+                }
+            }
+        }
+
+        // Aggregate total required outlay
+        let mut outlay: HashMap<TokenId, u64> = Default::default();
+        outlay.insert(fee.token_id, fee.value);
+        for req_amount in sci.required_output_amounts.iter() {
+            *outlay
+                .entry(TokenId::from(req_amount.token_id))
+                .or_default() += req_amount.value;
+        }
+
+        // Compute the leftover from the signed input.
+        // For example, the signed input may provide some amount of token_id1,
+        // but it may also have required outputs in token_id1 (for example as change)
+        // If present that is the "matching outlay".
+        // The remainder of subtracting the matching output from the signed input
+        // value is the leftover, which is the incentive to us to fill the order.
+        //
+        // If the leftover would be negative, then this is returned as an error
+        // SciUnprofitable. To make this concrete, this means that an order e.g.
+        // offers an input worth 10 MOB, but requires an output worth 20 MOB, so
+        // net, they not offering you anything and just asking for MOB. We could
+        // implement support for filling such orders, but since it seems uninteresting
+        // we decided to skip this and write less code for ourselves to maintain,
+        // and just return an error instead.
+        let leftover = {
+            let token_id = TokenId::from(sci.pseudo_output_amount.token_id);
+
+            // The matching outlay is how much required outlay there is in the
+            // token id of the signed input.
+            //
+            // We will use outlay list later to search our own wallet for required amounts,
+            // but we don't need to do that for this token id -- the "outlay" is
+            // actually negative taking into accoun the SCI input value, we have
+            // leftover value instead which we will add to ourselves as an
+            // output.
+            let matching_outlay = outlay.remove(&token_id).unwrap_or(0);
+
+            // If the offered amount is less than the matching outlay, then the
+            // leftover would be negative, and it is unprofitable to fill this
+            // order, since they aren't actually offering any value.
+            if sci.pseudo_output_amount.value < matching_outlay {
+                return Err(Error::SciUnprofitable);
+            }
+
+            // This is the amount that will be leftover which we can send to ourselves,
+            // and is our incentive to fill the order
+            let value = sci.pseudo_output_amount.value - matching_outlay;
+            Amount::new(value, token_id)
+        };
+
+        // Make fog resolver
+        let fog_uris = self
+            .account_key
+            .fog_report_url()
+            .map(FogUri::from_str)
+            .transpose()?;
+        let fog_responses = self
+            .fog_report_conn
+            .fetch_fog_reports(fog_uris.into_iter())?;
+        let fog_resolver = FogResolver::new(fog_responses, &self.fog_verifier)?;
+
+        let block_version = BlockVersion::try_from(self.tx_data.get_latest_block_version())?;
+
+        let change_destination = ReservedSubaddresses::from(&self.account_key);
+
+        // Make transaction builder
+        // TODO: Use RTH memos
+        let mut tx_builder = TransactionBuilder::new(
+            block_version,
+            fee,
+            fog_resolver,
+            EmptyMemoBuilder::default(),
+        )?;
+        tx_builder.set_tombstone_block(tombstone_block);
+
+        // Add the presigned input
+        tx_builder.add_presigned_input(sci)?;
+
+        // Pay the leftover to ourselves
+        tx_builder.add_change_output(leftover, &change_destination, rng)?;
+
+        // Contribute our own inputs that may be required to fulfill the order
+        for (token_id, value) in outlay {
+            // Arbitrarily choose 3 as the maximum number of inputs
+            // TODO: Should be based on fee scaling and fee choice
+            const TARGET_NUM_INPUTS: usize = 3;
+            let inputs = self
+                .tx_data
+                .get_transaction_inputs(Amount::new(value, token_id), TARGET_NUM_INPUTS)?;
+
+            let total_input_value: u64 = inputs
+                .iter()
+                .map(|owned_tx_out| owned_tx_out.amount.value)
+                .sum();
+
+            let inputs: Vec<(OwnedTxOut, TxOutMembershipProof)> = self.get_proofs(&inputs)?;
+            let rings: Vec<Vec<(TxOut, TxOutMembershipProof)>> = self.get_rings(&inputs, rng)?;
+
+            // Add the inputs we selected for this token id
+            add_inputs_to_tx_builder(&mut tx_builder, inputs, rings, &self.account_key)?;
+
+            // Pay change in this token id back to ourselves
+            tx_builder.add_change_output(
+                Amount::new(total_input_value - value, token_id),
+                &change_destination,
+                rng,
+            )?;
+        }
+
+        let ring_signer = LocalRingSigner::from(&self.account_key);
+        Ok(tx_builder.build(&ring_signer, rng)?)
     }
 
     /// Helper: Get merkle proofs corresponding to a given set of our inputs
@@ -396,7 +676,7 @@ impl Client {
             "Sending LedgerConnection:GetOutputs {:?}",
             indices
         );
-        let outputs_and_proofs: Vec<(TxOut, TxOutMembershipProof)> = self
+        let outputs_and_proofs = self
             .fog_merkle_proof
             .get_outputs(indices.clone(), merkle_root_block)?
             .results
@@ -405,18 +685,22 @@ impl Client {
             .enumerate()
             .map(|(idx, result)| {
                 if result.index != indices[idx] {
-                    panic!("unhandled: Server returned indices in an unexpected order");
+                    return Err(Error::FogMerkleProof(
+                        "Server returned indices in an unexpected order".to_string(),
+                    ));
                 }
                 match result.status() {
-                    Err(err) => panic!(
-                        "unhandled: Server failed to compute a merkle proof: {}",
+                    Err(err) => Err(Error::FogMerkleProof(format!(
+                        "Server failed to compute a merkle proof: {}",
                         err
-                    ),
-                    Ok(None) => panic!("unhandled: Server did not find one of the outputs we need"),
-                    Ok(Some(res)) => res,
+                    ))),
+                    Ok(None) => Err(Error::FogMerkleProof(
+                        "Server did not find one of the outputs we need".to_string(),
+                    )),
+                    Ok(Some(res)) => Ok(res),
                 }
             })
-            .collect();
+            .collect::<Result<Vec<(TxOut, TxOutMembershipProof)>>>()?;
 
         log::info!(self.logger, "Retrieved {} TXOs", outputs_and_proofs.len());
 
@@ -576,7 +860,7 @@ impl Client {
 /// * `tombstone_block` - The block index after which this transaction is no
 ///   longer valid.
 /// * `rng` -
-fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
+fn build_transaction_helper<T: RngCore + CryptoRng>(
     block_version: BlockVersion,
     inputs: Vec<(OwnedTxOut, TxOutMembershipProof)>,
     rings: Vec<Vec<(TxOut, TxOutMembershipProof)>>,
@@ -584,7 +868,8 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     source_account_key: &AccountKey,
     target_address: &PublicAddress,
     tombstone_block: BlockIndex,
-    fog_resolver: FPR,
+    fog_resolver: impl FogPubkeyResolver,
+    ring_signer: &impl RingSigner,
     rng: &mut T,
     logger: &Logger,
     fee: u64,
@@ -614,6 +899,7 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
         )?
     };
 
+    // Check amount found, calculate change
     let input_amount = inputs
         .iter()
         .fold(0, |acc, (txo, _)| acc + txo.amount.value);
@@ -623,92 +909,16 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     }
     let change = input_amount - (amount.value + fee);
 
-    // Unzip each vec of tuples into a tuple of vecs.
-    let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
-        .into_iter()
-        .map(|tuples| tuples.into_iter().unzip())
-        .collect();
+    // Add inputs
+    add_inputs_to_tx_builder(&mut tx_builder, inputs, rings, source_account_key)?;
 
-    for (input_txo, input_proof) in inputs {
-        let (mut ring, mut membership_proofs) = rings_and_proofs
-            .pop()
-            .expect("Consistency failure converting vec of tuple into tuple of vecs");
-        assert_eq!(
-            ring.len(),
-            membership_proofs.len(),
-            "Each ring element must have a corresponding membership proof."
-        );
-
-        // Add the input to the ring.
-        let position_opt = ring.iter().position(|tx_out| *tx_out == input_txo.tx_out);
-        let real_key_index = match position_opt {
-            Some(position) => {
-                // The input is already present in the ring.
-                // This could happen if ring elements are sampled randomly from the ledger.
-                position
-            }
-            None => {
-                // The input is not already in the ring.
-                if ring.is_empty() {
-                    // Append the input and its proof of membership.
-                    ring.push(input_txo.tx_out.clone());
-                    membership_proofs.push(input_proof.clone());
-                } else {
-                    // Replace the first element of the ring.
-                    ring[0] = input_txo.tx_out.clone();
-                    membership_proofs[0] = input_proof.clone();
-                }
-                // The real input is always the first element. This is safe because
-                // TransactionBuilder sorts each ring.
-                0
-            }
-        };
-
-        assert_eq!(
-            ring.len(),
-            membership_proofs.len(),
-            "Each ring element must have a corresponding membership proof."
-        );
-
-        let onetime_private_key = recover_onetime_private_key(
-            &RistrettoPublic::try_from(&input_txo.tx_out.public_key)?,
-            source_account_key.view_private_key(),
-            &source_account_key.subaddress_spend_private(input_txo.subaddress_index),
-        );
-
-        let key_image = KeyImage::from(&onetime_private_key);
-        assert_eq!(key_image, input_txo.key_image);
-        log::trace!(
-            logger,
-            "Adding input: ring {:?}, utxo index {:?}, key image {:?}, pubkey {:?}, subaddress index {}",
-            ring,
-            real_key_index,
-            key_image,
-            input_txo.tx_out.public_key,
-            input_txo.subaddress_index,
-        );
-
-        let ring_len = ring.len();
-        tx_builder.add_input(
-            InputCredentials::new(
-                ring,
-                membership_proofs,
-                real_key_index,
-                onetime_private_key,
-                *source_account_key.view_private_key(),
-            )
-            .or(Err(Error::BrokenRing(ring_len, real_key_index)))?,
-        );
-    }
-
-    // Resolve account server key if the receiver specifies an account service in
-    // their public address
+    // Add output
     tx_builder
         .add_output(amount, target_address, rng)
         .map_err(Error::AddOutput)?;
 
-    let change_destination = ReservedDestination::from(source_account_key);
-
+    // Add change output
+    let change_destination = ReservedSubaddresses::from(source_account_key);
     tx_builder
         .add_change_output(
             Amount::new(change, amount.token_id),
@@ -720,9 +930,96 @@ fn build_transaction_helper<T: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
             Error::AddOutput(err)
         })?;
 
+    // Finalize
     tx_builder.set_tombstone_block(tombstone_block);
 
-    Ok(tx_builder.build(rng)?)
+    Ok(tx_builder.build(ring_signer, rng)?)
+}
+
+fn add_inputs_to_tx_builder<FPR: FogPubkeyResolver>(
+    tx_builder: &mut TransactionBuilder<FPR>,
+    inputs: Vec<(OwnedTxOut, TxOutMembershipProof)>,
+    rings: Vec<Vec<(TxOut, TxOutMembershipProof)>>,
+    source_account_key: &AccountKey,
+) -> Result<()> {
+    // Unzip each vec of tuples into a tuple of vecs.
+    let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
+        .into_iter()
+        .map(|tuples| tuples.into_iter().unzip())
+        .collect();
+
+    for (input_txo, input_proof) in inputs {
+        let (ring, membership_proofs) = rings_and_proofs
+            .pop()
+            .expect("Consistency failure converting vec of tuple into tuple of vecs");
+        assert_eq!(
+            ring.len(),
+            membership_proofs.len(),
+            "Each ring element must have a corresponding membership proof."
+        );
+
+        tx_builder.add_input(input_credentials_helper(
+            input_txo,
+            input_proof,
+            ring,
+            membership_proofs,
+            source_account_key,
+        )?);
+    }
+
+    Ok(())
+}
+
+// Helper which builds `InputCredentials` given owned txo, and the results
+// of get_proofs, get_rings, and the account key which it uses to derive the
+// one-time private key.
+fn input_credentials_helper(
+    input_txo: OwnedTxOut,
+    input_proof: TxOutMembershipProof,
+    mut ring: Vec<TxOut>,
+    mut membership_proofs: Vec<TxOutMembershipProof>,
+    source_account_key: &AccountKey,
+) -> Result<InputCredentials> {
+    // Add the input to the ring.
+    let position_opt = ring.iter().position(|tx_out| *tx_out == input_txo.tx_out);
+    let real_key_index = match position_opt {
+        Some(position) => {
+            // The input is already present in the ring.
+            // This could happen if ring elements are sampled randomly from the ledger.
+            position
+        }
+        None => {
+            // The input is not already in the ring.
+            if ring.is_empty() {
+                // Append the input and its proof of membership.
+                ring.push(input_txo.tx_out.clone());
+                membership_proofs.push(input_proof);
+            } else {
+                // Replace the first element of the ring.
+                ring[0] = input_txo.tx_out.clone();
+                membership_proofs[0] = input_proof;
+            }
+            // The real input is always the first element. This is safe because
+            // TransactionBuilder sorts each ring.
+            0
+        }
+    };
+
+    assert_eq!(
+        ring.len(),
+        membership_proofs.len(),
+        "Each ring element must have a corresponding membership proof."
+    );
+
+    let ring_len = ring.len();
+    InputCredentials::new(
+        ring,
+        membership_proofs,
+        real_key_index,
+        OneTimeKeyDeriveData::SubaddressIndex(input_txo.subaddress_index),
+        *source_account_key.view_private_key(),
+    )
+    .or(Err(Error::BrokenRing(ring_len, real_key_index)))
 }
 
 #[cfg(test)]
@@ -731,6 +1028,7 @@ mod test_build_transaction_helper {
     use core::result::Result as StdResult;
     use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
     use mc_common::logger::{test_with_logger, Logger};
+    use mc_crypto_keys::RistrettoPublic;
     use mc_fog_report_validation::{FogPubkeyError, FullyValidatedFogPubkey};
     use mc_fog_types::view::{FogTxOut, FogTxOutMetadata, TxOutRecord};
     use mc_transaction_core::{
@@ -857,6 +1155,7 @@ mod test_build_transaction_helper {
                 &recipient_account_key.default_subaddress(),
                 super::BlockIndex::max_value(),
                 fake_acct_resolver,
+                &LocalRingSigner::from(&sender_account_key),
                 &mut rng,
                 &logger,
                 Mob::MINIMUM_FEE,

@@ -17,6 +17,7 @@ use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
     ring_signature::KeyImage,
+    signer::NoKeysRingSigner,
     tokens::Mob,
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     Amount, BlockVersion, CompressedCommitment, EncryptedMemo, MaskedAmount, Token,
@@ -24,7 +25,7 @@ use mc_transaction_core::{
 
 use mc_transaction_std::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
-    InputCredentials, MemoBuilder, MemoPayload, RTHMemoBuilder, ReservedDestination,
+    InputCredentials, MemoBuilder, MemoPayload, RTHMemoBuilder, ReservedSubaddresses,
     SenderMemoCredential, TransactionBuilder,
 };
 
@@ -539,7 +540,7 @@ pub extern "C" fn mc_transaction_builder_add_change_output(
             .into_mut()
             .as_mut()
             .expect("McTransactionBuilder instance has already been used to build a Tx");
-        let change_destination = ReservedDestination::from(&account_key_obj);
+        let change_destination = ReservedSubaddresses::from(&account_key_obj);
         let mut rng = SdkRng::from_ffi(rng_callback);
         let out_tx_out_confirmation_number = out_tx_out_confirmation_number
             .into_mut()
@@ -612,7 +613,7 @@ pub extern "C" fn mc_transaction_builder_build(
         let mut rng = SdkRng::from_ffi(rng_callback);
 
         let tx = transaction_builder
-            .build(&mut rng)
+            .build(&NoKeysRingSigner {}, &mut rng)
             .map_err(|err| LibMcError::InvalidInput(format!("{:?}", err)))?;
         Ok(mc_util_serial::encode(&tx))
     })

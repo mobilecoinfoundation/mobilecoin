@@ -226,6 +226,20 @@ message TxIn {
 
     // Proof that each TxOut in `ring` is in the ledger.
     repeated TxOutMembershipProof proofs = 2;
+
+    // Any rules specified by the signed input
+    InputRules input_rules = 3;
+}
+
+// Rules enforced on a transaction by a signed input within it (MCIP #31)
+message InputRules {
+    // Outputs required to appear in the TxPrefix for the Tx to be valid
+    repeated TxOut required_outputs = 1;
+
+    // A maximum value which the tombstone block for the Tx cannot exceed
+    //
+    // A value of zero here means no limit is enforced
+    fixed64 max_tombstone_block = 2;
 }
 
 // A transaction that a client submits to consensus
@@ -415,4 +429,38 @@ message MintConfigTx {
 message ValidatedMintConfigTx {
     MintConfigTx mint_config_tx = 1;
     Ed25519SignerSet signer_set = 2;
+}
+
+// The amount and blinding factor of a TxOut
+message UnmaskedAmount {
+    // The value of the amount commitment
+    fixed64 value = 1;
+
+    // The token_id of the amount commitment
+    fixed64 token_id = 2;
+
+    // The blinding factor of the amount commitment
+    CurveScalar blinding = 3;
+}
+
+// A pre-signed transaction input with associated rules, as described in MCIP #31
+message SignedContingentInput {
+    // The block version rules used when making this signature
+    uint32 block_version = 1;
+
+    // The tx_in which was signed
+    TxIn tx_in = 2;
+
+    // The Ring MLSAG signature, conferring spending authority
+    RingMLSAG mlsag = 3;
+
+    // The amount and blinding of the pseudo-output of the MLSAG
+    UnmaskedAmount pseudo_output_amount = 4;
+
+    /// The amount and blinding of any TxOut required by the input rules
+    repeated UnmaskedAmount required_output_amounts = 5;
+
+    /// The tx_out global index of each ring member
+    /// This helps the recipient of this payload construct proofs of membership for the ring
+    repeated fixed64 tx_out_global_indices = 6;
 }

@@ -3,7 +3,8 @@
 use displaydoc::Display;
 use mc_fog_report_validation::FogPubkeyError;
 use mc_transaction_core::{
-    ring_signature, ring_signature::Error, AmountError, NewMemoError, NewTxError, TokenId,
+    ring_signature, ring_signature::Error, signer::Error as SignerError, AmountError, NewMemoError,
+    NewTxError, TokenId,
 };
 
 /// An error that can occur when using the TransactionBuilder
@@ -56,6 +57,15 @@ pub enum TxBuilderError {
 
     /// Feature is not supported at this block version ({0}): {1}
     FeatureNotSupportedAtBlockVersion(u32, &'static str),
+
+    /// Signed input rules not allowed at this block version
+    SignedInputRulesNotAllowed,
+
+    /// Missing membership proof
+    MissingMembershipProofs,
+
+    /// Signer: {0}
+    Signer(SignerError),
 }
 
 impl From<mc_util_serial::encode::Error> for TxBuilderError {
@@ -94,6 +104,12 @@ impl From<ring_signature::Error> for TxBuilderError {
     }
 }
 
+impl From<SignerError> for TxBuilderError {
+    fn from(src: SignerError) -> Self {
+        TxBuilderError::Signer(src)
+    }
+}
+
 impl From<FogPubkeyError> for TxBuilderError {
     fn from(src: FogPubkeyError) -> Self {
         TxBuilderError::FogPublicKey(src)
@@ -103,5 +119,20 @@ impl From<FogPubkeyError> for TxBuilderError {
 impl From<NewMemoError> for TxBuilderError {
     fn from(src: NewMemoError) -> Self {
         TxBuilderError::Memo(src)
+    }
+}
+
+/// An error that can occur when creating a signed contingent input builder
+#[derive(Debug, Display)]
+pub enum SignedContingentInputBuilderError {
+    /// Missing proofs: {0} ring elements, {1} proofs
+    MissingProofs(usize, usize),
+    /// Memo: {0}
+    Memo(NewMemoError),
+}
+
+impl From<NewMemoError> for SignedContingentInputBuilderError {
+    fn from(src: NewMemoError) -> Self {
+        SignedContingentInputBuilderError::Memo(src)
     }
 }

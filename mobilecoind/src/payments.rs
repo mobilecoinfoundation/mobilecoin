@@ -20,11 +20,12 @@ use mc_transaction_core::{
     constants::{MAX_INPUTS, MILLIMOB_TO_PICOMOB, RING_SIZE},
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
+    signer::NoKeysRingSigner,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     Amount, BlockIndex, BlockVersion, TokenId,
 };
 use mc_transaction_std::{
-    EmptyMemoBuilder, InputCredentials, MemoBuilder, ReservedDestination, TransactionBuilder,
+    EmptyMemoBuilder, InputCredentials, MemoBuilder, ReservedSubaddresses, TransactionBuilder,
 };
 use mc_util_uri::FogUri;
 use rand::Rng;
@@ -1006,7 +1007,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 token_id,
             };
 
-            let change_dest = ReservedDestination::from_subaddress_index(
+            let change_dest = ReservedSubaddresses::from_subaddress_index(
                 from_account_key,
                 Some(change_subaddress),
                 None,
@@ -1022,7 +1023,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Build tx.
         let tx = tx_builder
-            .build(rng)
+            .build(&NoKeysRingSigner {}, rng)
             .map_err(|err| Error::TxBuild(format!("build tx failed: {}", err)))?;
 
         // Map each TxOut in the constructed transaction to its respective outlay.

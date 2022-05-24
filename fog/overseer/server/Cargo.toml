@@ -2,7 +2,7 @@
 name = "mc-fog-overseer-server"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 license = "GPL-3.0"
 
 [[bin]]
@@ -15,9 +15,9 @@ clap = { version = "3.1", features = ["derive", "env"] }
 displaydoc = { version = "0.2", default-features = false }
 grpcio = "0.10.2"
 lazy_static = "1.4"
-prometheus = "0.13.0"
+prometheus = "0.13.1"
 retry = "1.3"
-rocket = { version = "0.5.0-rc.1", features = ["json"] }
+rocket = { version = "0.5.0-rc.2", features = ["json"] }
 serde = "1"
 
 # mc
@@ -53,4 +53,5 @@ mc-watcher = { path = "../../../watcher" }
 # fog
 mc-fog-ingest-enclave = { path = "../../ingest/enclave" }
 mc-fog-ingest-server = { path = "../../ingest/server" }
+mc-fog-ingest-server-test-utils = { path = "../../ingest/server/test-utils" }
 mc-fog-test-infra = { path = "../../test_infra" }

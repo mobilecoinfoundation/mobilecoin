@@ -29,7 +29,6 @@ async fn main() -> Result<(), rocket::Error> {
 
     let mut overseer_service =
         OverseerService::new(config.ingest_cluster_uris, recovery_db, logger.clone());
-
     overseer_service
         .start()
         .expect("OverseerService failed to start");
@@ -42,5 +41,6 @@ async fn main() -> Result<(), rocket::Error> {
         .merge(("address", config.overseer_listen_host.clone()));
 
     let rocket = server::initialize_rocket_server(rocket_config, overseer_state);
-    rocket.launch().await
+    let _rocket = rocket.launch().await?;
+    Ok(())
 }

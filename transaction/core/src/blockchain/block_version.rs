@@ -111,6 +111,12 @@ impl BlockVersion {
     pub fn mixed_transactions_are_supported(&self) -> bool {
         self.0 >= 3
     }
+
+    /// Signed input rules [MCIP #31](https://github.com/mobilecoinfoundation/mcips/pull/31)
+    /// are introduced in block version 3
+    pub fn signed_input_rules_are_supported(&self) -> bool {
+        self.0 >= 3
+    }
 }
 
 impl Deref for BlockVersion {

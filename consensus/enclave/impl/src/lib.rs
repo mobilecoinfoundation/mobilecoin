@@ -45,7 +45,7 @@ use mc_common::{
     ResponderId,
 };
 use mc_consensus_enclave_api::{
-    BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeePublicKey,
+    BlockchainConfig, BlockchainConfigWithDigest, ConsensusEnclave, Error, FeeMap, FeePublicKey,
     FormBlockInputs, GovernorsVerifier, LocallyEncryptedTx, Result, SealedBlockSigningKey,
     TxContext, WellFormedEncryptedTx, WellFormedTxContext, SMALLEST_MINIMUM_FEE_LOG2,
 };
@@ -325,10 +325,18 @@ impl SgxConsensusEnclave {
     }
 
     /// Validate a list of MintConfigTxs.
+    ///
+    /// # Arguments
+    /// * `mint_config_txs` - The [MintConfigTx] objects to validate.
+    /// * `current_block_index` - The index of the current block that is being
+    ///   built. See documentation of
+    ///   [mc_transaction_core::mint::validate_mint_config_tx] for more details
+    ///   on why this is optional.
+    /// * `config` - The current blockchain configuration.
     fn validate_mint_config_txs(
         &self,
         mint_config_txs: Vec<MintConfigTx>,
-        current_block_index: u64,
+        current_block_index: Option<u64>,
         config: &BlockchainConfig,
     ) -> Result<Vec<ValidatedMintConfigTx>> {
         let mut seen_nonces = BTreeSet::default();
@@ -401,7 +409,11 @@ impl SgxConsensusEnclave {
             }
 
             // The associated MintConfigTx should be valid.
-            self.validate_mint_config_txs(vec![mint_config_tx], current_block_index, config)?;
+            // No block index is passed since the MintConfigTx is already assumed to be in
+            // the ledger, so doing the tombstone check is pointless (and could
+            // fail if enough blocks have passed since the MintConfigTx got
+            // accepted).
+            self.validate_mint_config_txs(vec![mint_config_tx], None, config)?;
 
             // The MintTx should be valid.
             validate_mint_tx(
@@ -446,6 +458,9 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         sealed_key: &Option<SealedBlockSigningKey>,
         blockchain_config: BlockchainConfig,
     ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
+        // Check that fee map is actually well formed
+        FeeMap::is_valid_map(blockchain_config.fee_map.as_ref()).map_err(Error::FeeMap)?;
+
         // Validate governors signature.
         if !blockchain_config.governors_map.is_empty() {
             let signature = blockchain_config
@@ -908,8 +923,11 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         key_images.sort();
 
         // Get the list of MintConfigTxs included in the block.
-        let validated_mint_config_txs =
-            self.validate_mint_config_txs(inputs.mint_config_txs, parent_block.index + 1, config)?;
+        let validated_mint_config_txs = self.validate_mint_config_txs(
+            inputs.mint_config_txs,
+            Some(parent_block.index + 1),
+            config,
+        )?;
 
         // We purposefully do not ..Default::default() here so that new block fields
         // show up as a compilation error until addressed.
@@ -1478,9 +1496,9 @@ mod tests {
             let blockchain_config = BlockchainConfig {
                 block_version,
                 fee_map: FeeMap::try_from_iter([
-                    (Mob::ID, 1000000),
-                    (token_id1, 1000),
-                    (token_id2, 1000),
+                    (Mob::ID, 2_000_000),
+                    (token_id1, 1024),
+                    (token_id2, 1024),
                 ])
                 .unwrap(),
                 ..Default::default()
@@ -2256,7 +2274,12 @@ mod tests {
             // Initialize a ledger.
             let sender = AccountKey::random(&mut rng);
             let mut ledger = create_ledger();
-            let n_blocks = 3;
+
+            // We want the next block that getts appended to the ledger to exceed the
+            // tombstone limit of the mint config tx, since we want to make sure
+            // that minting that relies on an old MintConfigTx (one that is past
+            // its tombstone block) still validate and mint successfully.
+            let n_blocks = mint_config_tx1.prefix.tombstone_block;
             initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
             // Form block
@@ -2547,7 +2570,7 @@ mod tests {
             // Initialize a ledger.
             let sender = AccountKey::random(&mut rng);
             let mut ledger = create_ledger();
-            let n_blocks = 3;
+            let n_blocks = mint_config_tx1.prefix.tombstone_block - 1; // Don't want to exceed the tombstone block
             initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
             // Form block
@@ -2706,7 +2729,7 @@ mod tests {
             // Initialize a ledger.
             let sender = AccountKey::random(&mut rng);
             let mut ledger = create_ledger();
-            let n_blocks = 3;
+            let n_blocks = mint_config_tx1.prefix.tombstone_block - 1; // Don't want to exceed the tombstone block
             initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
             // Form block
@@ -2767,7 +2790,7 @@ mod tests {
             // Initialize a ledger.
             let sender = AccountKey::random(&mut rng);
             let mut ledger = create_ledger();
-            let n_blocks = 3;
+            let n_blocks = mint_config_tx1.prefix.tombstone_block - 1; // Don't want to exceed the tombstone block
             initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
             // Form block

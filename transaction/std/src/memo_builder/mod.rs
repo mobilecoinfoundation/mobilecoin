@@ -4,15 +4,21 @@
 //! The memo builder for recoverable transaction history is defined in a
 //! submodule.
 
-use super::{memo, ReservedDestination};
+use super::{memo, ReservedSubaddresses};
 use core::fmt::Debug;
 use mc_account_keys::PublicAddress;
 use mc_transaction_core::{Amount, MemoContext, MemoPayload, NewMemoError};
 
 mod burn_redemption_memo_builder;
+mod gift_code_cancellation_memo_builder;
+mod gift_code_funding_memo_builder;
+mod gift_code_sender_memo_builder;
 mod rth_memo_builder;
 
 pub use burn_redemption_memo_builder::BurnRedemptionMemoBuilder;
+pub use gift_code_cancellation_memo_builder::GiftCodeCancellationMemoBuilder;
+pub use gift_code_funding_memo_builder::GiftCodeFundingMemoBuilder;
+pub use gift_code_sender_memo_builder::GiftCodeSenderMemoBuilder;
 pub use rth_memo_builder::RTHMemoBuilder;
 
 /// The MemoBuilder trait defines the API that the transaction builder uses
@@ -47,7 +53,7 @@ pub trait MemoBuilder: Debug {
     fn make_memo_for_change_output(
         &mut self,
         amount: Amount,
-        change_destination: &ReservedDestination,
+        change_destination: &ReservedSubaddresses,
         memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError>;
 }
@@ -74,7 +80,7 @@ impl MemoBuilder for EmptyMemoBuilder {
     fn make_memo_for_change_output(
         &mut self,
         _value: Amount,
-        _change_destination: &ReservedDestination,
+        _change_destination: &ReservedSubaddresses,
         _memo_context: MemoContext,
     ) -> Result<MemoPayload, NewMemoError> {
         Ok(memo::UnusedMemo {}.into())

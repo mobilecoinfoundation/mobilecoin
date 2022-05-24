@@ -2,7 +2,7 @@
 name = "mc-transaction-core"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 # External dependencies
@@ -32,6 +32,7 @@ mc-crypto-multisig = { path = "../../crypto/multisig", default-features = false 
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 mc-util-serial = { path = "../../util/serial" }
+mc-util-zip-exact = { path = "../../util/zip-exact" }
 
 [target.'cfg(target_feature = "avx2")'.dependencies]
 bulletproofs-og = { version = "3.0.0-pre.1", default-features = false, features = ["avx2_backend"] }

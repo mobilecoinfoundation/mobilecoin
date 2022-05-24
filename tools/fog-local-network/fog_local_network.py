@@ -36,7 +36,7 @@ class FogNetwork(Network):
         cmd = ' && '.join([
             f'dropdb --if-exists {FOG_SQL_DATABASE_NAME}',
             f'createdb {FOG_SQL_DATABASE_NAME}',
-            f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME} {PROJECT_DIR}/{TARGET_DIR}/fog-sql-recovery-db-migrations',
+            f'DATABASE_URL=postgres://localhost/{FOG_SQL_DATABASE_NAME} {TARGET_DIR}/fog-sql-recovery-db-migrations',
         ])
         print(f'Creating postgres database: {cmd}')
         subprocess.check_output(cmd, shell=True)
@@ -60,11 +60,11 @@ class FogNetwork(Network):
             pass
 
         # Get chain and key
-        root = subprocess.check_output(f"{PROJECT_DIR}/{TARGET_DIR}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head",
+        root = subprocess.check_output(f"{TARGET_DIR}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_head",
                                    encoding='utf8', shell=True).strip()
-        chain = subprocess.check_output(f"{PROJECT_DIR}/{TARGET_DIR}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_chain_25519_leaf",
+        chain = subprocess.check_output(f"{TARGET_DIR}/mc-crypto-x509-test-vectors --type=chain --test-name=ok_rsa_chain_25519_leaf",
                                    encoding='utf8', shell=True).strip()
-        key = subprocess.check_output(f"{PROJECT_DIR}/{TARGET_DIR}/mc-crypto-x509-test-vectors --type=key --test-name=ok_rsa_chain_25519_leaf",
+        key = subprocess.check_output(f"{TARGET_DIR}/mc-crypto-x509-test-vectors --type=key --test-name=ok_rsa_chain_25519_leaf",
                                  encoding='utf8', shell=True).strip()
         print(f"chain path = {chain}, key path = {key}")
 
@@ -127,7 +127,7 @@ class FogNetwork(Network):
         # Tell the ingest server to activate, giving it a little time for RPC to wakeup
         time.sleep(15)
         cmd = ' '.join([
-            f'exec {PROJECT_DIR}/{TARGET_DIR}/fog_ingest_client',
+            f'exec {TARGET_DIR}/fog_ingest_client',
             f'--uri insecure-fog-ingest://localhost:{BASE_INGEST_CLIENT_PORT}',
             f'activate',
         ])

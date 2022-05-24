@@ -10,9 +10,10 @@ use mc_util_repr_bytes::{
     derive_try_from_slice_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
 };
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 /// A Pedersen commitment in compressed Ristretto format.
-#[derive(Copy, Clone, Default, Eq, Serialize, Deserialize, Digestible)]
+#[derive(Copy, Clone, Default, Deserialize, Digestible, Eq, Serialize, Zeroize)]
 #[digestible(transparent)]
 pub struct CompressedCommitment {
     /// A Pedersen commitment `v*H + b*G` to a quantity `v` with blinding `b`,

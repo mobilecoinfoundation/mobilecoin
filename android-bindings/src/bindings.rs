@@ -46,6 +46,7 @@ use mc_transaction_core::{
         create_shared_secret, recover_onetime_private_key, recover_public_subaddress_spend_key,
     },
     ring_signature::KeyImage,
+    signer::NoKeysRingSigner,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     Amount, BlockVersion, CompressedCommitment, MaskedAmount, Token,
@@ -53,7 +54,7 @@ use mc_transaction_core::{
 
 use mc_transaction_std::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
-    InputCredentials, MemoBuilder, MemoPayload, RTHMemoBuilder, ReservedDestination,
+    InputCredentials, MemoBuilder, MemoPayload, RTHMemoBuilder, ReservedSubaddresses,
     SenderMemoCredential, TransactionBuilder,
 };
 
@@ -1747,7 +1748,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_add_1change_
                 env.get_rust_field(source_account_key, RUST_OBJ_FIELD)?;
 
             let value = jni_big_int_to_u64(env, value)?;
-            let change_destination = ReservedDestination::from(&*source_account_key);
+            let change_destination = ReservedSubaddresses::from(&*source_account_key);
             let mut rng = McRng::default();
 
             // TODO (GH #1867): If you want to do mixed transactions, use something other
@@ -1827,7 +1828,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_build_1tx(
                 env.take_rust_field(obj, RUST_OBJ_FIELD)?;
 
             let mut rng = McRng::default();
-            let tx = tx_builder.build(&mut rng)?;
+            let tx = tx_builder.build(&NoKeysRingSigner {}, &mut rng)?;
 
             let mbox = Box::new(Mutex::new(tx));
             let ptr: *mut Mutex<Tx> = Box::into_raw(mbox);

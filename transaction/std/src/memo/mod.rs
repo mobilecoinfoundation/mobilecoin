@@ -36,9 +36,12 @@
 //! | -----------     | -----------                                       |
 //! | 0x0000          | Unused                                            |
 //! | 0x0001          | Burn Redemption Memo                              |
+//! | 0x0002          | Gift Code Sender Memo                             |
 //! | 0x0100          | Authenticated Sender Memo                         |
 //! | 0x0101          | Authenticated Sender With Payment Request Id Memo |
 //! | 0x0200          | Destination Memo                                  |
+//! | 0x0201          | Gift Code Funding Memo                            |
+//! | 0x0202          | Gift Code Cancellation Memo                       |
 
 use crate::impl_memo_enum;
 use core::{convert::TryFrom, fmt::Debug};
@@ -50,6 +53,9 @@ mod authenticated_sender_with_payment_request_id;
 mod burn_redemption;
 mod credential;
 mod destination;
+mod gift_code_cancellation;
+mod gift_code_funding;
+mod gift_code_sender;
 mod macros;
 mod unused;
 
@@ -59,6 +65,9 @@ pub use authenticated_sender_with_payment_request_id::AuthenticatedSenderWithPay
 pub use burn_redemption::BurnRedemptionMemo;
 pub use credential::SenderMemoCredential;
 pub use destination::{DestinationMemo, DestinationMemoError};
+pub use gift_code_cancellation::GiftCodeCancellationMemo;
+pub use gift_code_funding::GiftCodeFundingMemo;
+pub use gift_code_sender::GiftCodeSenderMemo;
 pub use unused::UnusedMemo;
 
 /// A trait that all registered memo types should implement.
@@ -83,11 +92,14 @@ pub enum MemoDecodingError {
 }
 
 impl_memo_enum! { MemoType,
-    Unused(UnusedMemo),
-    BurnRedemption(BurnRedemptionMemo),
     AuthenticatedSender(AuthenticatedSenderMemo),
     AuthenticatedSenderWithPaymentRequestId(AuthenticatedSenderWithPaymentRequestIdMemo),
+    BurnRedemption(BurnRedemptionMemo),
     Destination(DestinationMemo),
+    GiftCodeCancellation(GiftCodeCancellationMemo),
+    GiftCodeFunding(GiftCodeFundingMemo),
+    GiftCodeSender(GiftCodeSenderMemo),
+    Unused(UnusedMemo),
 }
 
 #[cfg(test)]

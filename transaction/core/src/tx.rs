@@ -14,16 +14,18 @@ use mc_util_repr_bytes::{
 };
 use prost::Message;
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 use crate::{
     amount::{Amount, AmountError, MaskedAmount},
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
+    input_rules::InputRules,
     membership_proofs::Range,
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
-    ring_signature::{KeyImage, SignatureRctBulletproofs},
+    ring_signature::{KeyImage, ReducedTxOut, SignatureRctBulletproofs, SignedInputRing},
     CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
 };
 
@@ -166,6 +168,7 @@ pub struct TxPrefix {
 
     /// Token id for the fee output of this transaction
     #[prost(fixed64, tag = "5")]
+    #[digestible(omit_when = 0)]
     pub fee_token_id: u64,
 }
 
@@ -221,6 +224,11 @@ impl TxPrefix {
             .map(|output| output.masked_amount.commitment)
             .collect()
     }
+
+    /// Get all input rings.
+    pub fn get_input_rings(&self) -> Vec<SignedInputRing> {
+        self.inputs.iter().map(SignedInputRing::from).collect()
+    }
 }
 
 /// An "input" to a transaction.
@@ -237,10 +245,44 @@ pub struct TxIn {
     /// Prost only works with Vec.
     #[prost(message, repeated, tag = "2")]
     pub proofs: Vec<TxOutMembershipProof>,
+
+    /// Any rules associated to this input, per MCIP #31
+    #[prost(message, tag = "3")]
+    pub input_rules: Option<InputRules>,
+}
+
+impl TxIn {
+    /// This is the digest of the TxIn which is signed per MCIP #31 if there
+    /// are input rules present.
+    ///
+    /// See MCIP #31 for rationale -- by not signing the whole TxPrefix, we
+    /// allow that someone can create this signature who does not have the
+    /// whole TxPrefix.
+    ///
+    /// The membership proofs are not signed, because it is useful to allow that
+    /// someone later may update those proofs. See MCIP #31 for discussion.
+    pub fn signed_digest(&self) -> Option<[u8; 32]> {
+        if self.input_rules.is_some() {
+            let mut this = self.clone();
+            this.proofs.clear();
+            Some(this.digest32::<MerlinTranscript>(b"mc-input-rules-digest"))
+        } else {
+            None
+        }
+    }
+}
+
+impl From<&TxIn> for SignedInputRing {
+    fn from(src: &TxIn) -> SignedInputRing {
+        SignedInputRing {
+            members: src.ring.iter().map(Into::into).collect(),
+            signed_digest: src.signed_digest(),
+        }
+    }
 }
 
 /// An output created by a transaction.
-#[derive(Clone, Deserialize, Eq, Hash, PartialEq, Serialize, Message, Digestible)]
+#[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
 pub struct TxOut {
     /// The amount being sent.
     #[prost(message, required, tag = "1")]
@@ -402,6 +444,16 @@ impl TxOut {
     }
 }
 
+impl From<&TxOut> for ReducedTxOut {
+    fn from(src: &TxOut) -> Self {
+        Self {
+            public_key: src.public_key,
+            target_key: src.target_key,
+            commitment: src.masked_amount.commitment,
+        }
+    }
+}
+
 /// A Merkle proof-of-membership for the TxOut at the given index contains a set
 /// of hashes: it includes each hash between the leaf and the root, as well as
 /// each "other" child hash. It is assumed that the proof accompanies the leaf
@@ -413,7 +465,7 @@ impl TxOut {
 ///
 /// # References
 /// * [How Log Proofs Work](http://www.certificate-transparency.org/log-proofs-work)
-#[derive(Clone, Deserialize, Eq, PartialEq, Serialize, Message, Digestible)]
+#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize, Zeroize)]
 pub struct TxOutMembershipProof {
     /// Index of the TxOut that this proof refers to.
     #[prost(uint64, tag = "1")]
@@ -449,9 +501,11 @@ impl TxOutMembershipProof {
     }
 }
 
-#[derive(Clone, Deserialize, Eq, PartialOrd, Ord, PartialEq, Serialize, Message, Digestible)]
 /// An element of a TxOut membership proof, denoting an internal hash node in a
 /// Merkle tree.
+#[derive(
+    Clone, Deserialize, Digestible, Eq, Message, Ord, PartialEq, PartialOrd, Serialize, Zeroize,
+)]
 pub struct TxOutMembershipElement {
     /// The range of leaf nodes "under" this internal hash.
     #[prost(message, required, tag = "1")]
@@ -472,11 +526,21 @@ impl TxOutMembershipElement {
     }
 }
 
+/// A hash in a TxOut membership proof.
 #[derive(
-    Clone, Deserialize, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Debug, Digestible,
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    Digestible,
+    Eq,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize,
+    Zeroize,
 )]
 #[digestible(transparent)]
-/// A hash in a TxOut membership proof.
 pub struct TxOutMembershipHash(pub [u8; 32]);
 
 impl TxOutMembershipHash {
@@ -637,6 +701,7 @@ mod tests {
         let tx_in = TxIn {
             ring: vec![tx_out.clone()],
             proofs: vec![],
+            input_rules: None,
         };
 
         // TxIn = decode(encode(TxIn))
@@ -700,6 +765,7 @@ mod tests {
         let tx_in = TxIn {
             ring: vec![tx_out.clone()],
             proofs: vec![],
+            input_rules: None,
         };
 
         // TxIn = decode(encode(TxIn))
