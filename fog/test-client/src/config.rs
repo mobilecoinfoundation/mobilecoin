@@ -140,7 +140,7 @@ impl TestClientConfig {
 
         // Load the key files
         log::info!(logger, "Loading account keys from {:?}", key_dir);
-        mc_util_keyfile::keygen::read_default_mnemonics(&key_dir)
+        mc_util_keyfile::keygen::read_default_keyfiles(&key_dir)
             .unwrap()
             .into_iter()
             .take(self.num_clients)

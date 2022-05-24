@@ -1,6 +1,6 @@
 [package]
 name = "mc-util-repr-bytes"
-version = "1.3.0-pre0"
+version = "1.2.0-pre0"
 authors = ["MobileCoin"]
 edition = "2018"
 readme = "README.md"
