@@ -51,10 +51,10 @@ pub struct McTxOutAmount {
 
 impl From<Amount> for McTxOutAmount {
     fn from(amount: Amount) -> Self {
-        return McTxOutAmount {
+        McTxOutAmount {
             value: amount.value,
             token_id: *amount.token_id,
-        };
+        }
     }
 }
 
