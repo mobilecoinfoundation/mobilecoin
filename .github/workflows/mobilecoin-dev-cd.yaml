@@ -422,7 +422,8 @@ jobs:
             "ingest_color": "blue",
             "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
             "version": "${{ needs.generate-metadata.outputs.previous_release }}",
-            "client_auth_enabled": "false"
+            "client_auth_enabled": "false",
+            "use_static_wallet_seeds": "true"
           }
 
   previous-release-test:
@@ -479,7 +480,8 @@ jobs:
             "ingest_color": "green",
             "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
             "version": "${{ needs.generate-metadata.outputs.tag }}",
-            "client_auth_enabled": "false"
+            "client_auth_enabled": "false",
+            "use_static_wallet_seeds": "true"
           }
 
   current-release-v0-test:

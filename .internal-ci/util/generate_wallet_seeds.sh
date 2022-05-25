@@ -8,71 +8,88 @@
 
 set -e
 
-BASE_PATH="${BASE_PATH:-.tmp/seeds}"
+gen_seed()
+{
+    openssl rand -hex 32
+}
 
+BASE_PATH="${BASE_PATH:-.tmp/seeds}"
 mkdir -p "${BASE_PATH}"
 
-if [[ ! -f "${BASE_PATH}/initial_keys_seed" ]] && [[ ! -s "${BASE_PATH}/initial_keys_seed" ]]
+# if INITIAL_KEYS_SEED is set then use that.
+if [[ -n "${INITIAL_KEYS_SEED}" ]]
 then
-    echo "--- Create initial keys seed ---"
-    INITIAL_KEYS_SEED=$(openssl rand -hex 32)
-    echo "::add-mask::${INITIAL_KEYS_SEED}"
-    echo -n "${INITIAL_KEYS_SEED}" > "${BASE_PATH}/initial_keys_seed"
-else
-    echo "--- initial keys seed already exists ---"
-    INITIAL_KEYS_SEED=$(cat "${BASE_PATH}/initial_keys_seed")
-fi
-
-if [[ ! -f "${BASE_PATH}/fog_keys_seed" ]] && [[ ! -s "${BASE_PATH}/fog_keys_seed" ]]
+    echo "-- Using INITIAL_KEYS_SEED variable"
+elif [[ ! -f "${BASE_PATH}/INITIAL_KEYS_SEED" ]] && [[ ! -s "${BASE_PATH}/INITIAL_KEYS_SEED" ]]
 then
-    echo "--- Create fog keys seed ---"
-    FOG_KEYS_SEED=$(openssl rand -hex 32)
-    echo "::add-mask::${FOG_KEYS_SEED}"
-    echo -n "${FOG_KEYS_SEED}" > "${BASE_PATH}/fog_keys_seed"
+        # we didn't find the seed value or existing files - so create them
+    echo "-- Create initial keys seed at ${BASE_PATH}/INITIAL_KEYS_SEED"
+    INITIAL_KEYS_SEED=$(gen_seed)
 else
-    echo "--- fog keys seed already exists ---"
-    FOG_KEYS_SEED=$(cat "${BASE_PATH}/fog_keys_seed")
+    echo "-- Initial ${BASE_PATH}/INITIAL_KEYS_SEED already exists"
+    INITIAL_KEYS_SEED=$(cat "${BASE_PATH}/INITIAL_KEYS_SEED")
 fi
+# Write key
+echo -n "${INITIAL_KEYS_SEED}" > "${BASE_PATH}/INITIAL_KEYS_SEED"
 
-if [[ ! -f "${BASE_PATH}/mnemonic_keys_seed" ]] && [[ ! -s "${BASE_PATH}/mnemonic_keys_seed" ]]
+
+# if FOG_KEYS_SEED is set then use that.
+if [[ -n "${FOG_KEYS_SEED}" ]]
 then
-    echo "--- Create mnemonic keys seed ---"
-    MNEMONIC_KEYS_SEED=$(openssl rand -hex 32)
-    echo "::add-mask::${MNEMONIC_KEYS_SEED}"
-    echo -n "${MNEMONIC_KEYS_SEED}" > "${BASE_PATH}/mnemonic_keys_seed"
-else
-    echo "--- mnemonic keys seed already exists ---"
-    MNEMONIC_KEYS_SEED=$(cat "${BASE_PATH}/mnemonic_keys_seed")
-fi
-
-if [[ ! -f "${BASE_PATH}/mnemonic_fog_keys_seed" ]] && [[ ! -s "${BASE_PATH}/mnemonic_fog_keys_seed" ]]
+    echo "-- Using FOG_KEYS_SEED variable"
+elif [[ ! -f "${BASE_PATH}/FOG_KEYS_SEED" ]] && [[ ! -s "${BASE_PATH}/FOG_KEYS_SEED" ]]
 then
-    echo "--- Create mnemonic fog keys seed ---"
-    MNEMONIC_FOG_KEYS_SEED=$(openssl rand -hex 32)
-    echo "::add-mask::${MNEMONIC_FOG_KEYS_SEED}"
-    echo -n "${MNEMONIC_FOG_KEYS_SEED}" > "${BASE_PATH}/mnemonic_fog_keys_seed"
+    # we didn't find the seed value or existing files - so create them
+    echo "-- Create initial keys seed at ${BASE_PATH}/FOG_KEYS_SEED"
+    FOG_KEYS_SEED=$(gen_seed)
 else
-    echo "--- mnemonic fog keys seed already exists ---"
-    MNEMONIC_FOG_KEYS_SEED=$(cat "${BASE_PATH}/mnemonic_fog_keys_seed")
+    echo "-- Initial ${BASE_PATH}/FOG_KEYS_SEED already exists"
+    FOG_KEYS_SEED=$(cat "${BASE_PATH}/FOG_KEYS_SEED")
 fi
+# Write key
+echo -n "${FOG_KEYS_SEED}" > "${BASE_PATH}/FOG_KEYS_SEED"
 
+# if MNEMONIC_KEYS_SEED is set then use that.
+if [[ -n "${MNEMONIC_KEYS_SEED}" ]]
+then
+    echo "-- Using MNEMONIC_KEYS_SEED variable"
+elif [[ ! -f "${BASE_PATH}/MNEMONIC_KEYS_SEED" ]] && [[ ! -s "${BASE_PATH}/MNEMONIC_KEYS_SEED" ]]
+then
+    # we didn't find the seed value or existing files - so create them
+    echo "-- Create initial keys seed at ${BASE_PATH}/MNEMONIC_KEYS_SEED"
+    MNEMONIC_KEYS_SEED=$(gen_seed)
+else
+    echo "-- Initial ${BASE_PATH}/MNEMONIC_KEYS_SEED already exists"
+    MNEMONIC_KEYS_SEED=$(cat "${BASE_PATH}/MNEMONIC_KEYS_SEED")
+fi
+# Write key
+echo -n "${MNEMONIC_KEYS_SEED}" > "${BASE_PATH}/MNEMONIC_KEYS_SEED"
 
-echo "::add-mask::${INITIAL_KEYS_SEED}"
-echo "::set-output name=initial_keys_seed::${INITIAL_KEYS_SEED}"
+# if MNEMONIC_FOG_KEYS_SEED is set then use that.
+if [[ -n "${MNEMONIC_FOG_KEYS_SEED}" ]]
+then
+    echo "-- Using MNEMONIC_FOG_KEYS_SEED variable"
+elif [[ ! -f "${BASE_PATH}/MNEMONIC_FOG_KEYS_SEED" ]] && [[ ! -s "${BASE_PATH}/MNEMONIC_FOG_KEYS_SEED" ]]
+then
+    # we didn't find the seed value or existing files - so create them
+    echo "-- Create initial keys seed at ${BASE_PATH}/MNEMONIC_FOG_KEYS_SEED"
+    MNEMONIC_FOG_KEYS_SEED=$(gen_seed)
+else
+    echo "-- Initial ${BASE_PATH}/MNEMONIC_FOG_KEYS_SEED already exists"
+    MNEMONIC_FOG_KEYS_SEED=$(cat "${BASE_PATH}/MNEMONIC_FOG_KEYS_SEED")
+fi
+# Write key
+echo -n "${MNEMONIC_FOG_KEYS_SEED}" > "${BASE_PATH}/MNEMONIC_FOG_KEYS_SEED"
+
+# Echo checksum
 echo "--- initial_keys_seed sha256 ---"
-sha256sum "${BASE_PATH}/initial_keys_seed"
+sha256sum "${BASE_PATH}/INITIAL_KEYS_SEED"
 
-echo "::add-mask::${FOG_KEYS_SEED}"
-echo "::set-output name=fog_keys_seed::${FOG_KEYS_SEED}"
 echo "--- fog_keys_seed sha256 ---"
-sha256sum "${BASE_PATH}/fog_keys_seed"
+sha256sum "${BASE_PATH}/FOG_KEYS_SEED"
 
-echo "::add-mask::${MNEMONIC_KEYS_SEED}"
-echo "::set-output name=mnemonic_keys_seed::${MNEMONIC_KEYS_SEED}"
 echo "--- mnemonic_keys_seed sha256 ---"
-sha256sum "${BASE_PATH}/mnemonic_keys_seed"
+sha256sum "${BASE_PATH}/MNEMONIC_KEYS_SEED"
 
-echo "::add-mask::${MNEMONIC_FOG_KEYS_SEED}"
-echo "::set-output name=mnemonic_fog_keys_seed::${MNEMONIC_FOG_KEYS_SEED}"
 echo "--- mnemonic_fog_keys_seed sha256 ---"
-sha256sum "${BASE_PATH}/mnemonic_fog_keys_seed"
+sha256sum "${BASE_PATH}/MNEMONIC_FOG_KEYS_SEED"

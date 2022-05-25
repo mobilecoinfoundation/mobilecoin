@@ -87,6 +87,18 @@ on:
       CACHE_BUSTER:
         description: "string to make cache unique"
         required: false
+      INITIAL_KEYS_SEED:
+        description: "static wallet seed"
+        required: false
+      FOG_KEYS_SEED:
+        description: "static wallet seed"
+        required: false
+      MNEMONIC_KEYS_SEED:
+        description: "static wallet seed"
+        required: false
+      MNEMONIC_FOG_KEYS_SEED:
+        description: "static wallet seed"
+        required: false
 
 jobs:
   list-values:
@@ -133,26 +145,24 @@ jobs:
       with:
         cache_buster: ${{ secrets.CACHE_BUSTER }}
 
+    # use static keys if provided.
     - name: Generate Wallet Seed
-      id: seed
+      env:
+        INITIAL_KEYS_SEED: ${{ secrets.INITIAL_KEYS_SEED }}
+        FOG_KEYS_SEED: ${{ secrets.FOG_KEYS_SEED }}
+        MNEMONIC_KEYS_SEED: ${{ secrets.MNEMONIC_KEYS_SEED }}
+        MNEMONIC_FOG_KEYS_SEED: ${{ secrets.MNEMONIC_FOG_KEYS_SEED }}
       run: |
         .internal-ci/util/generate_wallet_seeds.sh
 
-    - name: Write wallet seed values
+    # write this to the seeds dir and set the path that toolbox will find it at.
+    - name: Write fog-report signing CA cert
       env:
         FOG_REPORT_SIGNING_CA_CERT: ${{ secrets.FOG_REPORT_SIGNING_CA_CERT }}
-        INITIAL_KEYS_SEED: ${{ steps.seed.outputs.initial_keys_seed }}
-        FOG_KEYS_SEED: ${{ steps.seed.outputs.fog_keys_seed }}
-        MNEMONIC_KEYS_SEED: ${{ steps.seed.outputs.mnemonic_keys_seed }}
-        MNEMONIC_FOG_KEYS_SEED: ${{ steps.seed.outputs.mnemonic_fog_keys_seed }}
       run: |
-        mkdir -p .tmp/seed_values
-        echo -n "${FOG_REPORT_SIGNING_CA_CERT}" > .tmp/seed_values/FOG_REPORT_SIGNING_CA_CERT
-        echo -n "/wallet-seeds/FOG_REPORT_SIGNING_CA_CERT" > .tmp/seed_values/FOG_REPORT_SIGNING_CA_CERT_PATH
-        echo -n "${INITIAL_KEYS_SEED}" > .tmp/seed_values/INITIAL_KEYS_SEED
-        echo -n "${FOG_KEYS_SEED}" > .tmp/seed_values/FOG_KEYS_SEED
-        echo -n "${MNEMONIC_KEYS_SEED}" > .tmp/seed_values/MNEMONIC_KEYS_SEED
-        echo -n "${MNEMONIC_FOG_KEYS_SEED}" > .tmp/seed_values/MNEMONIC_FOG_KEYS_SEED
+        mkdir -p .tmp/seeds
+        echo -n "${FOG_REPORT_SIGNING_CA_CERT}" > .tmp/seeds/FOG_REPORT_SIGNING_CA_CERT
+        echo -n "/wallet-seeds/FOG_REPORT_SIGNING_CA_CERT" > .tmp/seeds/FOG_REPORT_SIGNING_CA_CERT_PATH
 
     - name: Create wallet key secrets
       uses: mobilecoinofficial/gha-k8s-toolbox@v1
@@ -163,7 +173,7 @@ jobs:
         rancher_url: ${{ secrets.RANCHER_URL }}
         rancher_token: ${{ secrets.RANCHER_TOKEN }}
         object_name: sample-keys-seeds
-        src: .tmp/seed_values
+        src: .tmp/seeds
 
     - name: Create minting keys
       if: inputs.minting_config_enabled == 'true'

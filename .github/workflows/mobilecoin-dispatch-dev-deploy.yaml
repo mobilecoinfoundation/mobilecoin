@@ -36,11 +36,16 @@ on:
         required: true
         default: false
       block_version:
-        description: "consensus block_version"
+        description: "Consensus block_version"
         type: string
         required: true
       client_auth_enabled:
-        description: "additional shared token for client auth"
+        description: "Additional shared token for client auth"
+        type: boolean
+        required: true
+        default: false
+      use_static_wallet_seeds:
+        description: "true: use GHA secret values, false: generate random seeds"
         type: boolean
         required: true
         default: false
@@ -73,3 +78,7 @@ jobs:
       IP_INFO_TOKEN: ${{ secrets.DEV_IP_INFO_TOKEN }}
       CLIENT_AUTH_TOKEN: ${{  github.event.inputs.client_auth_enabled == 'true' && secrets.DEV_CLIENT_AUTH_TOKEN || '' }}
       CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}
+      INITIAL_KEYS_SEED: ${{ github.event.inputs.use_static_wallet_seeds == 'true' && secrets.DEV_INITIAL_KEYS_SEED || '' }}
+      FOG_KEYS_SEED: ${{ github.event.inputs.use_static_wallet_seeds == 'true' && secrets.DEV_FOG_KEYS_SEED || '' }}
+      MNEMONIC_KEYS_SEED: ${{ github.event.inputs.use_static_wallet_seeds == 'true' && secrets.DEV_MNEMONIC_KEYS_SEED || '' }}
+      MNEMONIC_FOG_KEYS_SEED: ${{ github.event.inputs.use_static_wallet_seeds == 'true' && secrets.DEV_MNEMONIC_FOG_KEYS_SEED || '' }}
