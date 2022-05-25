@@ -82,7 +82,7 @@ pub extern "C" fn mc_tx_out_reconstruct_commitment(
         let (masked_amount, _) = MaskedAmount::reconstruct(
             tx_out_masked_amount.masked_value,
             &tx_out_masked_amount.masked_token_id,
-            &shared_secret
+            &shared_secret,
         )?;
 
         let out_tx_out_commitment = out_tx_out_commitment
@@ -209,7 +209,7 @@ pub extern "C" fn mc_tx_out_get_amount(
         let (_masked_amount, amount) = MaskedAmount::reconstruct(
             tx_out_masked_amount.masked_value,
             &tx_out_masked_amount.masked_token_id,
-            &shared_secret
+            &shared_secret,
         )?;
 
         *out_amount.into_mut() = McTxOutAmount::from(amount);
