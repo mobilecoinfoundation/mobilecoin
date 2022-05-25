@@ -83,7 +83,7 @@ impl GiftCodeSenderMemo {
     /// Get fee amount paid
     pub fn get_fee(&self) -> u64 {
         let mut fee_bytes = [0u8; 8];
-        // Copy the 7 fee bytes into a u64 array, leaving the most significant bit 0
+        // Copy the 7 fee bytes into a u64 array, leaving the most significant byte 0
         fee_bytes[1..].copy_from_slice(&self.memo_data[..Self::FEE_DATA_LEN]);
         u64::from_be_bytes(fee_bytes)
     }

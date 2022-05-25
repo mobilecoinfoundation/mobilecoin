@@ -91,7 +91,7 @@ impl GiftCodeFundingMemo {
     /// Get fee amount paid to fund the gift code
     pub fn get_fee(&self) -> u64 {
         let mut fee_bytes = [0u8; 8];
-        // Copy the 7 fee bytes into a u64 array, leaving the most significant bit 0
+        // Copy the 7 fee bytes into a u64 array, leaving the most significant byte 0
         fee_bytes[1..=GiftCodeFundingMemo::FEE_DATA_LEN]
             .copy_from_slice(&self.memo_data[Self::HASH_DATA_LEN..Self::NOTE_OFFSET]);
         u64::from_be_bytes(fee_bytes)

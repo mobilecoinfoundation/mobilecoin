@@ -368,15 +368,21 @@ mod tests {
     fn test_gift_code_funding_memo_builder_set_fee_fails_when_exceeding_max_fee() {
         let note = "It's MEMO TIME!!";
         let mut builder = GiftCodeFundingMemoBuilder::new(note).unwrap();
-        let fee = Amount::new(u64::MAX, 0.into());
+        let fee_max_minus_one = Amount::new(GiftCodeFundingMemo::MAX_FEE - 1, 0.into());
+        let fee_max = Amount::new(GiftCodeFundingMemo::MAX_FEE, 0.into());
+        let fee_max_plus_one = Amount::new(GiftCodeFundingMemo::MAX_FEE + 1, 0.into());
 
-        // Try to set a fee above max allowed
-        let result = builder.set_fee(fee);
+        // Try to set fees near the maximum
+        builder.set_fee(fee_max_minus_one).unwrap();
+        builder.set_fee(fee_max).unwrap();
+        let result = builder.set_fee(fee_max_plus_one);
+
+        // Ensure amount above max fee fails
         assert_eq!(
             result,
             Err(NewMemoError::MaxFeeExceeded(
                 GiftCodeFundingMemo::MAX_FEE,
-                fee.value
+                fee_max_plus_one.value
             ))
         );
     }
