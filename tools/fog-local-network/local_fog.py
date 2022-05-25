@@ -45,7 +45,11 @@ def log_and_run_shell(cmd, **kwargs):
 # Log a command and then call subprocess.Popen
 def log_and_popen_shell(cmd, **kwargs):
     print(cmd)
-    return subprocess.Popen(cmd, shell=True, **kwargs)
+    process = subprocess.Popen(cmd, shell=True, **kwargs)
+    ret = process.poll()
+    if ret is not None:
+        raise Exception(f'popen {cmd} returned {ret}')
+    return process
 
 def start_admin_http_gateway(gateway_port, admin_port, target_dir):
     cmd = ' '.join([
