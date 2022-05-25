@@ -1,6 +1,4 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
-### Set fullnameOverride to match the consensus-node release name. 
-#   example consensus-node-1
 fullnameOverride: ''
 
 fogRecoveryDatabase:
