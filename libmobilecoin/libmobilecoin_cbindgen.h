@@ -138,11 +138,22 @@ typedef struct McAccountKey {
   FfiOptRefPtr<McAccountKeyFogInfo> fog_info;
 } McAccountKey;
 
-typedef struct McTxOutAmount {
+typedef struct McTxOutMaskedAmount {
   /**
    * 32-byte `CompressedCommitment`
    */
   uint64_t masked_value;
+  /**
+   * `masked_token_id = token_id XOR_8 Blake2B(token_id_mask |
+   * shared_secret)` 8 bytes long when used, 0 bytes for older amounts
+   * that don't have this.
+   */
+  FfiRefPtr<McBuffer> masked_token_id;
+} McTxOutMaskedAmount;
+
+typedef struct McTxOutAmount {
+  uint64_t value;
+  uint64_t token_id;
 } McTxOutAmount;
 
 typedef struct Option_TransactionBuilder_FogResolver McTransactionBuilder;
@@ -617,7 +628,7 @@ bool mc_slip10_account_private_keys_from_mnemonic(FfiStr mnemonic,
  *
  * * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
  */
-bool mc_tx_out_reconstruct_commitment(FfiRefPtr<McTxOutAmount> tx_out_amount,
+bool mc_tx_out_reconstruct_commitment(FfiRefPtr<McTxOutMaskedAmount> tx_out_masked_amount,
                                       FfiRefPtr<McBuffer> tx_out_public_key,
                                       FfiRefPtr<McBuffer> view_private_key,
                                       FfiMutPtr<McMutableBuffer> out_tx_out_commitment,
@@ -635,16 +646,6 @@ bool mc_tx_out_reconstruct_commitment(FfiRefPtr<McTxOutAmount> tx_out_amount,
 bool mc_tx_out_commitment_crc32(FfiRefPtr<McBuffer> tx_out_commitment,
                                 FfiMutPtr<uint32_t> out_crc32,
                                 FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
-
-/**
- * # Preconditions
- *
- * * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
- */
-bool mc_tx_out_matches_any_subaddress(FfiRefPtr<McTxOutAmount> _tx_out_amount,
-                                      FfiRefPtr<McBuffer> tx_out_public_key,
-                                      FfiRefPtr<McBuffer> view_private_key,
-                                      FfiMutPtr<bool> out_matches);
 
 /**
  * # Preconditions
@@ -685,11 +686,11 @@ bool mc_tx_out_get_subaddress_spend_public_key(FfiRefPtr<McBuffer> tx_out_target
  * * `LibMcError::InvalidInput`
  * * `LibMcError::TransactionCrypto`
  */
-bool mc_tx_out_get_value(FfiRefPtr<McTxOutAmount> tx_out_amount,
-                         FfiRefPtr<McBuffer> tx_out_public_key,
-                         FfiRefPtr<McBuffer> view_private_key,
-                         FfiMutPtr<uint64_t> out_value,
-                         FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+bool mc_tx_out_get_amount(FfiRefPtr<McTxOutMaskedAmount> tx_out_masked_amount,
+                          FfiRefPtr<McBuffer> tx_out_public_key,
+                          FfiRefPtr<McBuffer> view_private_key,
+                          FfiMutPtr<McTxOutAmount> out_amount,
+                          FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 /**
  * # Preconditions
@@ -738,6 +739,7 @@ bool mc_transaction_builder_ring_add_element(FfiMutPtr<McTransactionBuilderRing>
                                              FfiRefPtr<McBuffer> membership_proof_proto_bytes);
 
 FfiOptOwnedPtr<McTransactionBuilder> mc_transaction_builder_create(uint64_t fee,
+                                                                   uint64_t token_id,
                                                                    uint64_t tombstone_block,
                                                                    FfiOptRefPtr<McFogResolver> fog_resolver,
                                                                    FfiMutPtr<McTxOutMemoBuilder> memo_builder,
@@ -809,28 +811,6 @@ FfiOptOwnedPtr<McData> mc_transaction_builder_add_change_output(FfiRefPtr<McAcco
                                                                 FfiMutPtr<McMutableBuffer> out_tx_out_confirmation_number,
                                                                 FfiMutPtr<McMutableBuffer> out_tx_out_shared_secret,
                                                                 FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
-
-/**
- * # Preconditions
- *
- * * `transaction_builder` - must not have been previously consumed by a call
- *   to `build`.
- * * `recipient_address` - must be a valid `PublicAddress`.
- * * `fog_hint_address` - must be a valid `PublicAddress` with `fog_info`.
- * * `out_tx_out_confirmation_number` - length must be >= 32.
- *
- * # Errors
- *
- * * `LibMcError::AttestationVerification`
- * * `LibMcError::InvalidInput`
- */
-FfiOptOwnedPtr<McData> mc_transaction_builder_add_output_with_fog_hint_address(FfiMutPtr<McTransactionBuilder> _transaction_builder,
-                                                                               uint64_t _amount,
-                                                                               FfiRefPtr<McPublicAddress> _recipient_address,
-                                                                               FfiRefPtr<McPublicAddress> _fog_hint_address,
-                                                                               FfiOptMutPtr<McRngCallback> _rng_callback,
-                                                                               FfiMutPtr<McMutableBuffer> _out_tx_out_confirmation_number,
-                                                                               FfiOptMutPtr<FfiOptOwnedPtr<McError>> _out_error);
 
 /**
  * # Preconditions
