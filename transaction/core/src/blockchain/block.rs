@@ -312,7 +312,7 @@ mod block_tests {
     #[test]
     /// The block returned by `get_block` should have a valid BlockID.
     fn test_get_block_has_valid_id() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let block = get_block(&mut rng);
         assert!(block.is_block_id_valid());
     }
@@ -320,7 +320,7 @@ mod block_tests {
     #[test]
     /// The block ID should depend on the block version.
     fn test_block_id_includes_version() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let mut block = get_block(&mut rng);
         block.version += 1;
         assert!(!block.is_block_id_valid());
@@ -329,7 +329,7 @@ mod block_tests {
     #[test]
     /// The block ID should depend on the parent_id.
     fn test_block_id_includes_parent_id() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let mut block = get_block(&mut rng);
 
         let mut bytes = [0u8; 32];
@@ -343,7 +343,7 @@ mod block_tests {
     #[test]
     /// The block ID should depend on the block's index.
     fn test_block_id_includes_block_index() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let mut block = get_block(&mut rng);
         block.index += 1;
         assert!(!block.is_block_id_valid());
@@ -352,7 +352,7 @@ mod block_tests {
     #[test]
     /// The block ID should depend on the root element.
     fn test_block_id_includes_root_element() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let mut block = get_block(&mut rng);
 
         let wrong_root_element = TxOutMembershipElement {
@@ -366,7 +366,7 @@ mod block_tests {
     #[test]
     /// The block ID should depend on the content_hash.
     fn test_block_id_includes_content_hash() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let mut block = get_block(&mut rng);
 
         let mut bytes = [0u8; 32];

@@ -55,7 +55,7 @@ pub use tx_out_gift_code::TxOutGiftCode;
 pub use mc_crypto_ring_signature::{Commitment, CompressedCommitment};
 pub use mc_transaction_types::{Amount, TokenId};
 
-// Re-export all of mc-crypto-ring-signature
+/// Re-export all of mc-crypto-ring-signature
 pub mod ring_signature {
     pub use mc_crypto_ring_signature::*;
 }

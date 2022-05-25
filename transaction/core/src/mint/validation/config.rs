@@ -102,11 +102,11 @@ mod tests {
     use mc_crypto_keys::{Ed25519Pair, Signer};
     use mc_crypto_multisig::MultiSig;
     use mc_util_from_random::FromRandom;
-    use mc_util_test_helper::{RngType, SeedableRng};
+    use mc_util_test_helper::get_seeded_rng;
 
     #[test]
     fn validate_configs_accepts_valid_mint_configs() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let token_id = TokenId::from(123);
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let signer_2 = Ed25519Pair::from_random(&mut rng);
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn validate_configs_rejects_mismatching_token_ids() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let signer_2 = Ed25519Pair::from_random(&mut rng);
 
@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn validate_configs_rejects_invalid_signer_sets() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let token_id = TokenId::from(123);
 
@@ -207,7 +207,7 @@ mod tests {
 
     #[test]
     fn validate_signature_accepts_valid_signature() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let signer_2 = Ed25519Pair::from_random(&mut rng);
         let token_id = TokenId::from(123);
@@ -323,7 +323,7 @@ mod tests {
 
     #[test]
     fn validate_signature_rejects_tampered_messages() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
 
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let signer_2 = Ed25519Pair::from_random(&mut rng);
@@ -398,7 +398,7 @@ mod tests {
 
     #[test]
     fn validate_signature_rejects_signers_mismatch() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
 
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let signer_2 = Ed25519Pair::from_random(&mut rng);
@@ -481,7 +481,7 @@ mod tests {
 
     #[test]
     fn validate_signature_rejects_duplicate_signer() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
 
         let signer_1 = Ed25519Pair::from_random(&mut rng);
         let signer_2 = Ed25519Pair::from_random(&mut rng);

@@ -669,13 +669,13 @@ mod tests {
     use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
-    use mc_util_test_helper::{RngType, SeedableRng};
+    use mc_util_test_helper::{get_seeded_rng, SeedableRng};
     use prost::Message;
 
     #[test]
     // `serialize_tx` should create a Tx, encode/decode it, and compare
     fn test_serialize_tx_no_memo() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let tx_out = {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
@@ -739,7 +739,7 @@ mod tests {
     #[test]
     // `serialize_tx` should create a Tx, encode/decode it, and compare
     fn test_serialize_tx_with_memo() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let tx_out = {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
@@ -803,7 +803,7 @@ mod tests {
     // round trip memos from `TxOut` constructors through `decrypt_memo()`
     #[test]
     fn test_decrypt_memo() {
-        let mut rng: RngType = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
 
         let bob = AccountKey::new(
             &RistrettoPrivate::from_random(&mut rng),
