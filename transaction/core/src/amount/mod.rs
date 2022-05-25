@@ -16,16 +16,13 @@ use crate::{
 use alloc::vec::Vec;
 use core::convert::TryInto;
 use crc::Crc;
-use curve25519_dalek::scalar::Scalar;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::RistrettoPublic;
+use mc_crypto_ring_signature::{generators, CompressedCommitment, Scalar};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
-
-// TODO: Maybe don't re-export this
-pub use mc_crypto_ring_signature::{generators, Commitment, CompressedCommitment};
 
 mod error;
 pub use error::AmountError;

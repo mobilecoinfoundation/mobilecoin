@@ -12,7 +12,8 @@ use mc_account_keys::PublicAddress;
 use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
-    ring_ct::{OutputSecret, Scalar},
+    ring_ct::OutputSecret,
+    ring_signature::Scalar,
     tx::{TxIn, TxOut, TxOutConfirmationNumber},
     Amount, BlockVersion, InputRules, MemoContext, MemoPayload, NewMemoError,
     SignedContingentInput, TokenId, UnmaskedAmount,

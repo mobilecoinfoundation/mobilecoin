@@ -4,8 +4,7 @@
 
 use crate::{convert::ConversionError, external};
 use mc_transaction_core::{
-    ring_ct::{RingMLSAG, SignatureRctBulletproofs},
-    CompressedCommitment,
+    ring_ct::SignatureRctBulletproofs, ring_signature::RingMLSAG, CompressedCommitment,
 };
 use protobuf::RepeatedField;
 use std::convert::TryFrom;

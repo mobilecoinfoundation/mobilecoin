@@ -49,7 +49,7 @@ pub mod validation;
 #[cfg(test)]
 pub mod proptest_fixtures;
 
-pub use amount::{AmountError, Commitment, CompressedCommitment, MaskedAmount};
+pub use amount::{AmountError, MaskedAmount};
 pub use blockchain::*;
 pub use input_rules::{InputRuleError, InputRules};
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
@@ -61,7 +61,9 @@ pub use tx::MemoContext;
 pub use tx_error::{NewMemoError, NewTxError, ViewKeyMatchError};
 pub use tx_out_gift_code::TxOutGiftCode;
 
-// Re-export Amount and TokenId from transaction-types
+// Re-export Amount and TokenId from transaction-types, and certain types from
+// RingSignature crate
+pub use mc_crypto_ring_signature::{Commitment, CompressedCommitment};
 pub use mc_transaction_types::{Amount, TokenId};
 
 use core::convert::TryFrom;
