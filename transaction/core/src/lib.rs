@@ -15,17 +15,6 @@ extern crate std;
 #[macro_use]
 extern crate lazy_static;
 
-use crate::onetime_keys::create_shared_secret;
-use mc_crypto_keys::{KeyError, RistrettoPrivate, RistrettoPublic};
-
-// TODO: Maybe don't do re-exports like this
-pub use mc_crypto_ring_signature::onetime_keys;
-
-/// TODO: Probably remove this later? This is compat for the crate split
-pub mod ring_signature {
-    pub use mc_crypto_ring_signature::*;
-}
-
 mod amount;
 mod blockchain;
 mod domain_separators;
@@ -66,9 +55,18 @@ pub use tx_out_gift_code::TxOutGiftCode;
 pub use mc_crypto_ring_signature::{Commitment, CompressedCommitment};
 pub use mc_transaction_types::{Amount, TokenId};
 
+// Re-export all of mc-crypto-ring-signature
+pub mod ring_signature {
+    pub use mc_crypto_ring_signature::*;
+}
+
+// Re-export the one-time keys module which historically lived in this crate
+pub use mc_crypto_ring_signature::onetime_keys;
+
 use core::convert::TryFrom;
 use mc_account_keys::AccountKey;
-use onetime_keys::recover_public_subaddress_spend_key;
+use mc_crypto_keys::{KeyError, RistrettoPrivate, RistrettoPublic};
+use onetime_keys::{create_shared_secret, recover_public_subaddress_spend_key};
 use tx::TxOut;
 
 /// Get the shared secret for a transaction output.

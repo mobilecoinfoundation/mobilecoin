@@ -2,7 +2,7 @@
 
 //! A registry of tokens
 
-pub use mc_transaction_types::TokenId;
+use mc_transaction_types::TokenId;
 
 /// A generic representation of a token.
 pub trait Token {
