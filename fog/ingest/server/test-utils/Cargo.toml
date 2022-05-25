@@ -9,6 +9,7 @@ license = "GPL-3.0"
 # MC/root
 mc-attest-net = { path = "../../../../attest/net" }
 mc-blockchain-types = { path = "../../../../blockchain/types" }
+mc-blockchain-test-utils = { path = "../../../../blockchain/test-utils" }
 mc-common = { path = "../../../../common", features = ["loggers"] }
 mc-crypto-keys = { path = "../../../../crypto/keys", default-features = false }
 mc-ledger-db = { path = "../../../../ledger/db" }
@@ -22,7 +23,6 @@ mc-fog-ingest-server = { path = ".." }
 mc-fog-recovery-db-iface = { path = "../../../recovery_db_iface" }
 mc-fog-sql-recovery-db = { path = "../../../sql_recovery_db" }
 mc-fog-test-infra = { path = "../../../test_infra" }
-mc-fog-types = { path = "../../../types" }
 mc-fog-uri = { path = "../../../uri" }
 
 # third-party

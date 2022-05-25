@@ -27,6 +27,7 @@
 
 use clap::Parser;
 use mc_account_keys::DEFAULT_SUBADDRESS_INDEX;
+use mc_blockchain_test_utils::make_block_metadata;
 use mc_blockchain_types::{Block, BlockContents, BlockData, BlockSignature, BlockVersion};
 use mc_common::logger::create_root_logger;
 use mc_crypto_hashes::{Blake2b256, Digest};
@@ -226,8 +227,8 @@ fn main() {
             .append_block(&block, &block_contents, None)
             .expect("Could not append block");
 
-        // FIXME: Add metadata.
-        let block_data = BlockData::new(block, block_contents, block_sig.clone(), None);
+        let metadata = make_block_metadata(block.id.clone(), &mut rng);
+        let block_data = BlockData::new(block, block_contents, block_sig.clone(), metadata);
 
         watcher
             .add_block_data(&tx_source_url, &block_data)

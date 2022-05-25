@@ -47,9 +47,16 @@ pub fn get_seeded_rng() -> RngType {
     RngType::from_seed([7u8; 32])
 }
 
-pub fn random_str(rng: &mut RngType, len: usize) -> String {
+pub fn random_bytes_vec(num_bytes: usize, csprng: &mut (impl CryptoRng + RngCore)) -> Vec<u8> {
+    let mut result = Vec::with_capacity(num_bytes);
+    csprng.fill_bytes(&mut result);
+    result
+}
+
+pub fn random_str(len: usize, csprng: &mut (impl CryptoRng + RngCore)) -> String {
     use rand::distributions::Alphanumeric;
-    rng.sample_iter(&Alphanumeric)
+    csprng
+        .sample_iter(&Alphanumeric)
         .take(len)
         .map(char::from)
         .collect()

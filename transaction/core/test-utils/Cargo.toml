@@ -20,3 +20,4 @@ mc-ledger-db = { path = "../../../ledger/db" }
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-transaction-std = { path = "../../../transaction/std", features = ["test-only"] }
 mc-util-from-random = { path = "../../../util/from-random" }
+mc-util-serial = { path = "../../../util/serial", features = ["std", "test_utils"] }

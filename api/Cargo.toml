@@ -10,7 +10,7 @@ links = "mc-api"
 mc-account-keys = { path = "../account-keys" }
 mc-attest-verifier-types = { path = "../attest/verifier/types" }
 mc-blockchain-types = { path = "../blockchain/types" }
-mc-common = { path = "../common", default-features= false }
+mc-common = { path = "../common", default-features = false }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-multisig = { path = "../crypto/multisig" }
 mc-transaction-core = { path = "../transaction/core" }
@@ -36,13 +36,14 @@ mc-util-build-script = { path = "../util/build/script" }
 cargo-emit = "0.2.1"
 
 [dev-dependencies]
-mc-consensus-scp = { path = "../consensus/scp", features = ["test_utils"] }
+mc-blockchain-test-utils = { path = "../blockchain/test-utils" }
 mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer" }
 mc-crypto-x509-test-vectors = { path = "../crypto/x509/test-vectors" }
 mc-fog-report-validation-test-utils = { path = "../fog/report/validation/test-utils" }
 mc-test-vectors-b58-encodings = { path = "../test-vectors/b58-encodings" }
 mc-transaction-std = { path = "../transaction/std", features = ["test-only"] }
 mc-util-from-random = { path = "../util/from-random" }
+mc-util-serial = { path = "../util/serial", features = ["test_utils"] }
 mc-util-test-helper = { path = "../util/test-helper" }
 mc-util-test-vector = { path = "../util/test-vector" }
 mc-util-test-with-data = { path = "../util/test-with-data" }

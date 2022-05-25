@@ -70,19 +70,11 @@ where
 }
 
 pub fn encode<T: Message>(value: &T) -> Vec<u8> {
-    let mut buf = Vec::with_capacity(value.encoded_len());
-    value
-        .encode(&mut buf)
-        .expect("prost::encode with an unbounded buffer is no fail");
-    buf
+    value.encode_to_vec()
 }
 
-pub fn decode<T: Message>(buf: &[u8]) -> Result<T, DecodeError>
-where
-    T: core::default::Default,
-{
-    let value = T::decode(buf)?;
-    Ok(value)
+pub fn decode<T: Message + Default>(buf: &[u8]) -> Result<T, DecodeError> {
+    T::decode(buf)
 }
 
 #[cfg(feature = "serde_with")]
@@ -130,6 +122,27 @@ mod json_u64 {
 /// depends on relies on std, so it must be optional.
 #[cfg(feature = "serde_with")]
 pub use json_u64::JsonU64;
+
+/// Take a prost type and try to roundtrip it through a protobuf type
+#[cfg(feature = "test_utils")]
+pub fn round_trip_message<SRC: Message + Eq + Default, DEST: protobuf::Message>(prost_val: &SRC) {
+    let prost_bytes = encode(prost_val);
+
+    let dest_val =
+        DEST::parse_from_bytes(&prost_bytes).expect("Parsing protobuf from prost bytes failed");
+
+    let protobuf_bytes = dest_val
+        .write_to_bytes()
+        .expect("Writing protobuf to bytes failed");
+
+    let final_val: SRC = decode(&protobuf_bytes).expect("Parsing prost from protobuf bytes failed");
+
+    assert_eq!(
+        *prost_val, final_val,
+        "Round-trip check failed!\nprost: {:?}\nprotobuf: {:?}",
+        prost_val, final_val
+    );
+}
 
 #[cfg(test)]
 mod test {
