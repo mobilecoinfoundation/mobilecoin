@@ -85,20 +85,56 @@ def run_test(stub, amount, monitor_id, dest, max_seconds, token_id):
         mobilecoind_api_pb2.GetBalanceRequest(monitor_id=monitor_id, token_id=token_id))
     starting_balance = resp.balance
     logging.info("Starting balance prior to transfer: %s", starting_balance)
-    tx_resp = stub.SendPayment(
-        mobilecoind_api_pb2.SendPaymentRequest(
-            sender_monitor_id=monitor_id,
-            sender_subaddress=0,
-            outlay_list=[
-                mobilecoind_api_pb2.Outlay(
-                    value=amount,
-                    receiver=dest,
-                )
-            ],
-            fee=0,
-            tombstone=0,
-            token_id=token_id,
-        ))
+
+    # Try building a payment that sends all of our balance
+    # We may get a defragmentation error -- if we do, then submit optimization Tx outs
+    # until we don't get that error anymore
+    while True:
+        try:
+            tx_resp = stub.SendPayment(
+                mobilecoind_api_pb2.SendPaymentRequest(
+                    sender_monitor_id=monitor_id,
+                    sender_subaddress=0,
+                    outlay_list=[
+                        mobilecoind_api_pb2.Outlay(
+                            value=amount,
+                            receiver=dest,
+                        )
+                    ],
+                    fee=0,
+                    tombstone=0,
+                    token_id=token_id,
+                ))
+            break
+        except grpc.RpcError as e:
+            if "insufficient funds due to utxo fragmentation" in e.details.lower():
+                logging.info("Got defragmentation error, building an optimization transaction")
+                opt_tx = stub.GenerateOptimizationTx(
+                    mobilecoind_api_pb2.GenerateOptimizationTxRequest(
+                        monitor_id=monitor_id,
+                        subaddress=0,
+                        fee=0,
+                        token_id=token_id,
+                    ))
+                tx_resp = stub.SubmitTx(
+                    mobilecoind_api_pb2.SubmitTxRequest(
+                        tx_proposal=opt_tx.tx_proposal
+                    ))
+                tx_stats[0] = {
+                    'start': time.time(),
+                    'time_delta': None,
+                    'tombstone': tx_resp.sender_tx_receipt.tombstone,
+                    'block_delta': None,
+                    'status': TransferStatus.pending,
+                    'receipt': tx_resp,
+                }
+                stats = poll(monitor_id, tx_stats, stub)
+                # Subtract fee from amount, so that we don't get an insufficient funds error
+                # in the next cycle (since it costs us a fee to defragment)
+                amount = amount - opt_tx.tx_proposal.fee
+            else:
+                logging.error("RPC Error encountered")
+                raise
 
     tx_stats[0] = {
         'start': time.time(),
