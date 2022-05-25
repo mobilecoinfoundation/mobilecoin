@@ -2,18 +2,25 @@
 
 //! Mint auditor GRPC service implementation.
 
-use crate::{Error, MintAuditorDb};
+use crate::{
+    db::{
+        BlockAuditData, BlockAuditDataModel, BlockBalance, BlockBalanceModel, Counters,
+        CountersModel, MintAuditorDb,
+    },
+    Error,
+};
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, Service, UnarySink};
 use mc_common::logger::Logger;
 use mc_mint_auditor_api::{
     empty::Empty,
     mint_auditor::{
-        Counters, GetBlockAuditDataRequest, GetBlockAuditDataResponse,
+        Counters as GrpcCounters, GetBlockAuditDataRequest, GetBlockAuditDataResponse,
         GetLastBlockAuditDataResponse,
     },
     mint_auditor_grpc::{create_mint_auditor_api, MintAuditorApi},
 };
 use mc_util_grpc::{rpc_logger, send_result};
+use std::collections::HashMap;
 
 /// Mint auditor GRPC service implementation.
 #[derive(Clone)]
@@ -37,6 +44,76 @@ impl MintAuditorService {
     pub fn into_service(self) -> Service {
         create_mint_auditor_api(self)
     }
+
+    fn get_block_audit_data_impl(
+        &self,
+        req: &GetBlockAuditDataRequest,
+    ) -> Result<GetBlockAuditDataResponse, RpcStatus> {
+        let conn = self
+            .mint_auditor_db
+            .get_conn()
+            .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()))?;
+
+        let block_audit_data =
+            BlockAuditData::get(&conn, req.block_index).map_err(|err| match err {
+                Error::NotFound => RpcStatus::with_message(
+                    RpcStatusCode::NOT_FOUND,
+                    format!(
+                        "Block audit data not found for block index {}",
+                        req.get_block_index()
+                    ),
+                ),
+                _ => RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()),
+            })?;
+
+        let balance_map =
+            BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index as u64)
+                .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()))?;
+
+        let mut resp = GetBlockAuditDataResponse::new();
+        resp.set_block_audit_data((&block_audit_data).into());
+        resp.set_balance_map(HashMap::from_iter(
+            balance_map
+                .into_iter()
+                .map(|(token_id, balance)| (*token_id, balance)),
+        ));
+        Ok(resp)
+    }
+
+    fn get_last_block_audit_data_impl(&self) -> Result<GetLastBlockAuditDataResponse, RpcStatus> {
+        let conn = self
+            .mint_auditor_db
+            .get_conn()
+            .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()))?;
+
+        let block_audit_data = BlockAuditData::last_block_audit_data(&conn)
+            .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()))?
+            .ok_or(RpcStatus::with_message(
+                RpcStatusCode::NOT_FOUND,
+                "No last synced block index".to_string(),
+            ))?;
+
+        let balance_map =
+            BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index as u64)
+                .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()))?;
+
+        let mut resp = GetLastBlockAuditDataResponse::new();
+        resp.set_block_audit_data((&block_audit_data).into());
+        resp.set_balance_map(HashMap::from_iter(
+            balance_map
+                .into_iter()
+                .map(|(token_id, balance)| (*token_id, balance)),
+        ));
+        Ok(resp)
+    }
+
+    fn get_counters_impl(&self) -> Result<GrpcCounters, RpcStatus> {
+        self.mint_auditor_db
+            .get_conn()
+            .and_then(|conn| Counters::get(&conn))
+            .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()))
+            .map(|counters| GrpcCounters::from(&counters))
+    }
 }
 
 impl MintAuditorApi for MintAuditorService {
@@ -47,27 +124,7 @@ impl MintAuditorApi for MintAuditorService {
         sink: UnarySink<GetBlockAuditDataResponse>,
     ) {
         let logger = rpc_logger(&ctx, &self.logger);
-
-        let result = self
-            .mint_auditor_db
-            .get_block_audit_data(req.get_block_index())
-            .map_err(|err| match err {
-                Error::NotFound => RpcStatus::with_message(
-                    RpcStatusCode::NOT_FOUND,
-                    format!(
-                        "Block audit data not found for block index {}",
-                        req.get_block_index()
-                    ),
-                ),
-                err => RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()),
-            })
-            .map(|block_audit_data| {
-                let mut resp = GetBlockAuditDataResponse::new();
-                resp.set_block_audit_data((&block_audit_data).into());
-                resp
-            });
-
-        send_result(ctx, sink, result, &logger);
+        send_result(ctx, sink, self.get_block_audit_data_impl(&req), &logger)
     }
 
     fn get_last_block_audit_data(
@@ -77,86 +134,32 @@ impl MintAuditorApi for MintAuditorService {
         sink: UnarySink<GetLastBlockAuditDataResponse>,
     ) {
         let logger = rpc_logger(&ctx, &self.logger);
-
-        let last_synced_block_index = match self.mint_auditor_db.last_synced_block_index() {
-            Ok(Some(block_index)) => block_index,
-            Ok(None) => {
-                return send_result(
-                    ctx,
-                    sink,
-                    Err(RpcStatus::with_message(
-                        RpcStatusCode::NOT_FOUND,
-                        "No last synced block index".to_string(),
-                    )),
-                    &logger,
-                );
-            }
-            Err(err) => {
-                return send_result(
-                    ctx,
-                    sink,
-                    Err(RpcStatus::with_message(
-                        RpcStatusCode::INTERNAL,
-                        err.to_string(),
-                    )),
-                    &logger,
-                );
-            }
-        };
-
-        let result = self
-            .mint_auditor_db
-            .get_block_audit_data(last_synced_block_index)
-            .map_err(|err| match err {
-                Error::NotFound => RpcStatus::with_message(
-                    RpcStatusCode::NOT_FOUND,
-                    format!(
-                        "Block audit data not found for block index {}",
-                        last_synced_block_index
-                    ),
-                ),
-                err => RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()),
-            })
-            .map(|block_audit_data| {
-                let mut resp = GetLastBlockAuditDataResponse::new();
-                resp.set_block_audit_data((&block_audit_data).into());
-                resp.set_block_index(last_synced_block_index);
-                resp
-            });
-
-        send_result(ctx, sink, result, &logger);
+        send_result(ctx, sink, self.get_last_block_audit_data_impl(), &logger)
     }
 
-    fn get_counters(&mut self, ctx: RpcContext, _req: Empty, sink: UnarySink<Counters>) {
+    fn get_counters(&mut self, ctx: RpcContext, _req: Empty, sink: UnarySink<GrpcCounters>) {
         let logger = rpc_logger(&ctx, &self.logger);
-
-        let result = self
-            .mint_auditor_db
-            .get_counters()
-            .map(|counters| Counters::from(&counters))
-            .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()));
-
-        send_result(ctx, sink, result, &logger);
+        send_result(ctx, sink, self.get_counters_impl(), &logger)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::db::test_utils::TestDbContext;
     use grpcio::{ChannelBuilder, Environment, Server, ServerBuilder};
     use mc_account_keys::AccountKey;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_ledger_db::Ledger;
-    use mc_mint_auditor_api::{mint_auditor_grpc::MintAuditorApiClient, BlockAuditData};
+    use mc_mint_auditor_api::mint_auditor_grpc::MintAuditorApiClient;
     use mc_transaction_core::{Block, BlockContents, BlockVersion, TokenId};
     use mc_transaction_core_test_utils::{
         create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_test_tx_out,
-        initialize_ledger,
+        initialize_ledger, mint_config_tx_to_validated as to_validated,
     };
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
-    use std::{collections::HashMap, iter::FromIterator, sync::Arc};
-    use tempfile::tempdir;
+    use std::sync::Arc;
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server(
@@ -179,14 +182,13 @@ mod tests {
     }
 
     /// Create a test database with some data in it.
-    fn get_test_db(logger: &Logger) -> MintAuditorDb {
+    fn get_test_db(logger: &Logger) -> (MintAuditorDb, TestDbContext) {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
         let token_id1 = TokenId::from(1);
         let token_id2 = TokenId::from(22);
 
-        let mint_audit_db_path = tempdir().unwrap();
-        let mint_audit_db =
-            MintAuditorDb::create_or_open(&mint_audit_db_path, logger.clone()).unwrap();
+        let test_db_context = TestDbContext::default();
+        let mint_audit_db = test_db_context.get_db_instance(logger.clone());
 
         let mut ledger_db = create_ledger();
         let account_key = AccountKey::random(&mut rng);
@@ -203,21 +205,19 @@ mod tests {
             let block_data = ledger_db.get_block_data(block_index).unwrap();
 
             mint_audit_db
-                .sync_block(block_data.block(), block_data.contents())
+                .sync_block(block_data.block(), block_data.contents(), &ledger_db)
                 .unwrap();
         }
 
-        // Sync a block that contains a few mint transactions.
-        let (_mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
-        let (_mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
-
-        let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
-        let mint_tx2 = create_mint_tx(token_id2, &signers2, 2, &mut rng);
-        let mint_tx3 = create_mint_tx(token_id1, &signers1, 100, &mut rng);
+        // Sync a block that contains a few mint config transactions.
+        let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
+        let (mint_config_tx2, signers2) = create_mint_config_tx_and_signers(token_id2, &mut rng);
 
         let block_contents = BlockContents {
-            mint_txs: vec![mint_tx1, mint_tx2, mint_tx3],
-            outputs: (0..3).map(|_i| create_test_tx_out(&mut rng)).collect(),
+            validated_mint_config_txs: vec![
+                to_validated(&mint_config_tx1),
+                to_validated(&mint_config_tx2),
+            ],
             ..Default::default()
         };
 
@@ -231,69 +231,90 @@ mod tests {
             &block_contents,
         );
 
-        mint_audit_db.sync_block(&block, &block_contents).unwrap();
+        ledger_db
+            .append_block(&block, &block_contents, None)
+            .unwrap();
         mint_audit_db
+            .sync_block(&block, &block_contents, &ledger_db)
+            .unwrap();
+        // Sync a block that contains a few mint transactions.
+        let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
+        let mint_tx2 = create_mint_tx(token_id2, &signers2, 2, &mut rng);
+        let mint_tx3 = create_mint_tx(token_id1, &signers1, 100, &mut rng);
+
+        let block_contents = BlockContents {
+            mint_txs: vec![mint_tx1, mint_tx2, mint_tx3],
+            outputs: (0..3).map(|_i| create_test_tx_out(&mut rng)).collect(),
+            ..Default::default()
+        };
+
+        let block = Block::new_with_parent(
+            BlockVersion::MAX,
+            &block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger_db
+            .append_block(&block, &block_contents, None)
+            .unwrap();
+        mint_audit_db
+            .sync_block(&block, &block_contents, &ledger_db)
+            .unwrap();
+        (mint_audit_db, test_db_context)
     }
 
     #[test_with_logger]
     fn test_get_block_audit_data(logger: Logger) {
-        let mint_audit_db = get_test_db(&logger);
+        let (mint_audit_db, _test_db_context) = get_test_db(&logger);
         let (client, _server) = get_client_server(&mint_audit_db, &logger);
 
         let request = GetBlockAuditDataRequest {
-            block_index: 1,
+            block_index: 2,
             ..Default::default()
         };
 
         let response = client.get_block_audit_data(&request).unwrap();
 
         assert_eq!(
-            response,
-            GetBlockAuditDataResponse {
-                block_audit_data: Some(BlockAuditData {
-                    balance_map: HashMap::from_iter([(1, 101), (22, 2)]),
-                    ..Default::default()
-                })
-                .into(),
-                ..Default::default()
-            }
+            BlockAuditData::try_from(response.get_block_audit_data()).unwrap(),
+            BlockAuditData { block_index: 2 },
+        );
+        assert_eq!(
+            response.get_balance_map(),
+            &HashMap::from_iter([(1, 101), (22, 2)])
         );
     }
 
     #[test_with_logger]
     fn test_get_last_block_audit_data(logger: Logger) {
-        let mint_audit_db = get_test_db(&logger);
+        let (mint_audit_db, _test_db_context) = get_test_db(&logger);
         let (client, _server) = get_client_server(&mint_audit_db, &logger);
 
         let response = client.get_last_block_audit_data(&Empty::default()).unwrap();
-
         assert_eq!(
-            response,
-            GetLastBlockAuditDataResponse {
-                block_audit_data: Some(BlockAuditData {
-                    balance_map: HashMap::from_iter([(1, 101), (22, 2)]),
-                    ..Default::default()
-                })
-                .into(),
-                block_index: 1,
-                ..Default::default()
-            }
+            BlockAuditData::try_from(response.get_block_audit_data()).unwrap(),
+            BlockAuditData { block_index: 2 },
+        );
+        assert_eq!(
+            response.get_balance_map(),
+            &HashMap::from_iter([(1, 101), (22, 2)])
         );
     }
 
     #[test_with_logger]
     fn test_get_counters(logger: Logger) {
-        let mint_audit_db = get_test_db(&logger);
+        let (mint_audit_db, _test_db_context) = get_test_db(&logger);
         let (client, _server) = get_client_server(&mint_audit_db, &logger);
 
         let response = client.get_counters(&Empty::default()).unwrap();
 
         assert_eq!(
-            response,
+            Counters::try_from(&response).unwrap(),
             // This depends on what database [get_test_db] generates.
             Counters {
-                num_blocks_synced: 2,
-                num_mint_txs_without_matching_mint_config: 3,
+                num_blocks_synced: 3,
+                num_mint_txs_without_matching_mint_config: 0,
                 ..Default::default()
             }
         );

@@ -6,7 +6,13 @@ use clap::{Parser, Subcommand};
 use grpcio::{EnvBuilder, ServerBuilder};
 use mc_common::logger::{log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_mint_auditor::{counters, Error, MintAuditorDb, MintAuditorService};
+use mc_mint_auditor::{
+    counters,
+    db::{
+        transaction, BlockAuditData, BlockAuditDataModel, Counters, CountersModel, MintAuditorDb,
+    },
+    Error, MintAuditorService,
+};
 use mc_mint_auditor_api::MintAuditorUri;
 use mc_util_grpc::{AdminServer, BuildInfoService, ConnectionUriGrpcioServer, HealthService};
 use mc_util_parse::parse_duration_in_seconds;
@@ -113,8 +119,12 @@ fn cmd_scan_ledger(
     logger: Logger,
 ) {
     let ledger_db = LedgerDB::open(&ledger_db_path).expect("Could not open ledger DB");
-    let mint_auditor_db = MintAuditorDb::create_or_open(&mint_auditor_db_path, logger.clone())
-        .expect("Could not open mint auditor DB");
+    let mint_auditor_db = MintAuditorDb::new_from_url(
+        &mint_auditor_db_path.into_os_string().into_string().unwrap(),
+        10,
+        logger.clone(),
+    ) // TODO 10 const
+    .expect("Could not open mint auditor DB");
 
     let _api_server = listen_uri.map(|listen_uri| {
         // Create RPC services.
@@ -170,32 +180,45 @@ fn cmd_get_block_audit_data(
     json: bool,
     logger: Logger,
 ) {
-    let mint_auditor_db = MintAuditorDb::open(&mint_auditor_db_path, logger.clone())
-        .expect("Could not open mint auditor DB");
+    let mint_auditor_db = MintAuditorDb::new_from_url(
+        &mint_auditor_db_path.into_os_string().into_string().unwrap(),
+        10,
+        logger.clone(),
+    ) // TODO 10 const
+    .expect("Could not open mint auditor DB");
 
-    let block_index = block_index
-        .or_else(|| {
-            mint_auditor_db
-                .last_synced_block_index()
-                .expect("Could not get last synced block index")
-        })
-        .expect("No blocks synced");
+    let conn = mint_auditor_db
+        .get_conn()
+        .expect("Could not get db connection");
 
-    let audit_data = mint_auditor_db
-        .get_block_audit_data(block_index)
-        .expect("Could not get audit data for block");
+    transaction(&conn, |conn| -> Result<(), Error> {
+        let block_index = block_index
+            .or_else(|| {
+                BlockAuditData::last_synced_block_index(&conn)
+                    .expect("Could not get last synced block index")
+            })
+            .expect("No blocks synced");
 
-    if json {
-        println!(
-            "{}",
-            serde_json::to_string(&audit_data).expect("failed serializing json")
-        );
-    } else {
-        println!("Block index: {}", block_index);
-        for (token_id, balance) in audit_data.balance_map.iter() {
-            println!("Token {}: {}", token_id, balance);
+        let audit_data =
+            BlockAuditData::get(&conn, block_index).expect("Could not get audit data for block");
+
+        // TODO add balance map
+
+        if json {
+            println!(
+                "{}",
+                serde_json::to_string(&audit_data).expect("failed serializing json")
+            );
+        } else {
+            println!("Block index: {}", block_index);
+            // for (token_id, balance) in audit_data.balance_map.iter() {
+            //     println!("Token {}: {}", token_id, balance);
+            // }
         }
-    }
+
+        Ok(())
+    })
+    .expect("db transaction failed");
 }
 
 /// Synchronizes the mint auditor database with the ledger database.
@@ -205,10 +228,11 @@ fn sync_loop(
     ledger_db: &LedgerDB,
     logger: &Logger,
 ) -> Result<(), Error> {
+    let conn = mint_auditor_db.get_conn()?;
     loop {
         let num_blocks_in_ledger = ledger_db.num_blocks()?;
 
-        let last_synced_block_index = mint_auditor_db.last_synced_block_index()?;
+        let last_synced_block_index = BlockAuditData::last_synced_block_index(&conn)?;
         let num_blocks_synced = last_synced_block_index
             .map(|block_index| block_index + 1)
             .unwrap_or(0);
@@ -226,8 +250,13 @@ fn sync_loop(
             Ordering::Less => {
                 // Sync the next block.
                 let block_data = ledger_db.get_block_data(num_blocks_synced)?;
-                mint_auditor_db.sync_block(block_data.block(), block_data.contents())?;
-                update_counters(mint_auditor_db)?;
+                mint_auditor_db.sync_block_with_conn(
+                    &conn,
+                    block_data.block(),
+                    block_data.contents(),
+                    ledger_db,
+                )?;
+                update_counters(&Counters::get(&conn)?);
             }
         };
     }
@@ -236,13 +265,9 @@ fn sync_loop(
 }
 
 // Update prometheus counters.
-fn update_counters(mint_auditor_db: &MintAuditorDb) -> Result<(), Error> {
-    let counters = mint_auditor_db.get_counters()?;
-
+fn update_counters(counters: &Counters) {
     counters::NUM_BLOCKS_SYNCED.set(counters.num_blocks_synced as i64);
     counters::NUM_BURNS_EXCEEDING_BALANCE.set(counters.num_burns_exceeding_balance as i64);
     counters::NUM_MINT_TXS_WITHOUT_MATCHING_MINT_CONFIG
         .set(counters.num_mint_txs_without_matching_mint_config as i64);
-
-    Ok(())
 }

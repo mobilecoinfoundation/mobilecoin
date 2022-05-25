@@ -20,9 +20,10 @@ service MintAuditorApi {
 }
 
 message BlockAuditData {
-    // Current balance in circulation (excluding MOB).
-    map<uint64, uint64> balance_map = 1;
+    // The block index this audit data is for.
+    uint64 block_index = 1;
 }
+
 
 /// Statistics we keep track of.
 message Counters {
@@ -44,12 +45,15 @@ message GetBlockAuditDataRequest {
 message GetBlockAuditDataResponse {
     // Audit data for the requested block
     BlockAuditData block_audit_data = 1;
+
+    // Current balance in circulation (excluding MOB).
+    map<uint64, uint64> balance_map = 2;
 }
 
 message GetLastBlockAuditDataResponse {
     // Audit data for the last block
     BlockAuditData block_audit_data = 1;
 
-    // The last block index in the audit db
-    uint64 block_index = 2;
+    // Current balance in circulation (excluding MOB).
+    map<uint64, uint64> balance_map = 2;
 }
