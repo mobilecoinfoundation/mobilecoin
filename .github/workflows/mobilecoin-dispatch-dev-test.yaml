@@ -1,3 +1,7 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Dispatch (manual) Job - Run integration tests in a development namespace.
+
 name: mobilecoin-dispatch-dev-test
 
 on:
@@ -7,11 +11,39 @@ on:
         description: "Target Namespace"
         type: string
         required: true
+      ingest_color:
+        description: "Fog Ingest blue/green"
+        type: string
+        required: true
+        default: blue
+      fog_distribution:
+        description: "Run fog-distribution test"
+        type: boolean
+        required: false
+        default: true
+      testing_1_1:
+        description: "Run v1.1.x tests (block_version 0)"
+        type: boolean
+        required: false
+        default: true
+      testing_1_2:
+        description: "Run v1.2.x tests (block_version 0/2"
+        type: boolean
+        required: false
+        default: true
 
 jobs:
-  list-values:
-    runs-on: [self-hosted, small, Linux]
-    steps:
-    - name: values
-      run: |
-        echo namespace ${{ github.event.inputs.namespace }}
+  test:
+    uses: ./.github/workflows/mobilecoin-workflow-dev-test.yaml
+    with:
+      namespace: ${{ github.event.inputs.namespace }}
+      ingest_color: ${{ github.event.inputs.ingest_color }}
+      fog_distribution: ${{ github.event.inputs.fog_distribution == 'true' && 'true' || 'false' }}
+      testing_1_1 : ${{ github.event.inputs.testing_1_1 == 'true' && 'true' || 'false' }}
+      testing_1_2: ${{ github.event.inputs.testing_1_2 == 'true' && 'true' || 'false' }}
+    secrets:
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      FOG_REPORT_SIGNING_CA_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CA_CERT }}
+      CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}

@@ -1,0 +1,9 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: fog-ledger
+  labels:
+    {{- include "fogServicesConfig.labels" . | nindent 4 }}
+data:
+  {{- toYaml .Values.fogLedger.configMap | nindent 2 }}

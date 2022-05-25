@@ -1,0 +1,177 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Reusable Workflow - update consensus nodes in a development namespace.
+
+name: mobilecoin-workflow-dev-update-consensus
+
+on:
+  workflow_call:
+    inputs:
+      namespace:
+        description: "Target Namespace"
+        type: string
+        required: true
+      version:
+        description: "release version"
+        type: string
+        required: true
+      docker_image_org:
+        description: "Docker Image Org"
+        type: string
+        required: true
+        default: docker.io/mobilecoin
+      chart_repo:
+        description: "Chart Repo URL"
+        type: string
+        required: true
+        default: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
+      minting_config_enabled:
+        description: "Enable minting config"
+        type: string
+        required: true
+      block_version:
+        description: "block_version"
+        type: string
+        required: true
+
+    secrets:
+      RANCHER_CLUSTER:
+        description: "Rancher cluster name"
+        required: true
+      RANCHER_URL:
+        description: "Rancher server URL"
+        required: true
+      RANCHER_TOKEN:
+        description: "Rancher access token"
+        required: true
+      LEDGER_AWS_ACCESS_KEY_ID:
+        description: "Ledger AWS S3 access"
+        required: true
+      LEDGER_AWS_SECRET_ACCESS_KEY:
+        description: "Ledger AWS S3 access"
+        required: true
+      IAS_KEY:
+        description: "IAS"
+        required: true
+      IAS_SPID:
+        description: "IAS"
+        required: true
+      FOG_REPORT_SIGNING_CERT:
+        description: "Fog Report signing cert pem"
+        required: true
+      FOG_REPORT_SIGNING_CERT_KEY:
+        description: "Fog Report signing cert key"
+        required: true
+      MINTING_TRUST_ROOT_PRIVATE:
+        description: "Root private key for singing the tokens config"
+        required: false
+      DOCKERHUB_TOKEN:
+        description: "Docker hub creds"
+        required: false
+      DOCKERHUB_USERNAME:
+        description: "Docker hub creds"
+        required: false
+      IP_INFO_TOKEN:
+        description: "ipinfo.io token for authenticated access"
+        required: true
+      CLIENT_AUTH_TOKEN:
+        description: "shared token for client auth"
+        required: false
+
+jobs:
+  setup-environment:
+    runs-on: [self-hosted, Linux, small]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Create minting keys
+      if: inputs.minting_config_enabled == 'true'
+      env:
+        MINTING_TRUST_ROOT_PRIVATE: ${{ secrets.MINTING_TRUST_ROOT_PRIVATE }}
+      run: |
+        .internal-ci/util/generate_minting_keys.sh
+
+    - name: Login to DockerHub
+      if: inputs.minting_config_enabled == 'true'
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    # CBB: create a minimal image with just mc-consensus-mint-client binary.
+    - name: Generate and sign tokens config
+      if: inputs.minting_config_enabled == 'true'
+      id: tokens_config
+      run: |
+        docker run \
+          -v ${{ github.workspace }}:/workspace \
+          --network none \
+          --workdir /workspace \
+          ${{ inputs.docker_image_org }}/bootstrap-tools:${{ inputs.version }} \
+          .internal-ci/util/generate_tokens_config.sh
+
+    - name: Create minting key secrets
+      if: inputs.minting_config_enabled == 'true'
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: secrets-create-from-file
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+        object_name: consensus-minting-secrets
+        src: .tmp/seeds/minting
+
+    - name: Generate environment values file
+      env:
+        IAS_KEY: ${{ secrets.IAS_KEY }}
+        IAS_SPID: ${{ secrets.IAS_SPID }}
+        LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.LEDGER_AWS_ACCESS_KEY_ID }}
+        LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.LEDGER_AWS_SECRET_ACCESS_KEY }}
+        FOG_REPORT_SIGNING_CERT: ${{ secrets.FOG_REPORT_SIGNING_CERT }}
+        FOG_REPORT_SIGNING_CERT_KEY: ${{ secrets.FOG_REPORT_SIGNING_CERT_KEY }}
+        IP_INFO_TOKEN: ${{ secrets.IP_INFO_TOKEN }}
+        CLIENT_AUTH_TOKEN: ${{ secrets.CLIENT_AUTH_TOKEN }}
+      run: |
+        mkdir -p .tmp/values/
+        .internal-ci/util/generate_dev_values.sh > .tmp/values/mc-core-dev-env-values.yaml
+
+    - name: Deploy environment setup with block_version
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: helm-deploy
+        chart_repo: ${{ inputs.chart_repo }}
+        chart_name: mc-core-dev-env-setup
+        chart_version: ${{ inputs.version }}
+        chart_values: .tmp/values/mc-core-dev-env-values.yaml
+        chart_set: |
+          --set=global.node.nodeConfig.blockVersion=${{ inputs.block_version }}
+        release_name: mc-core-dev-env-setup
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}
+
+  consensus-restart:
+    needs:
+    - setup-environment
+    runs-on: [self-hosted, Linux, small]
+    strategy:
+      matrix:
+        object_name:
+        - deployment.app/consensus-node-1
+        - deployment.app/consensus-node-2
+        - deployment.app/consensus-node-3
+        - deployment.app/consensus-node-4
+        - deployment.app/consensus-node-5
+    steps:
+    - name: Restart Consensus Nodes
+      uses: mobilecoinofficial/gha-k8s-toolbox@v1
+      with:
+        action: pod-restart
+        object_name: ${{ matrix.object_name }}
+        namespace: ${{ inputs.namespace }}
+        rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
+        rancher_url: ${{ secrets.RANCHER_URL }}
+        rancher_token: ${{ secrets.RANCHER_TOKEN }}

@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mobilecoind.fullname" . }}-supervisord-mint-auditor
+  labels:
+    {{- include "mobilecoind.labels" . | nindent 4 }}
+data:
+  mint-auditor.conf: |
+    [program:mint-auditor]
+    command=/usr/bin/mc-mint-auditor
+      scan-ledger
+      --ledger-db /data/ledger
+      --mint-auditor-db /data/mint-auditor
+      --listen-uri insecure-mint-auditor://0.0.0.0:7774/
+
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+    autorestart=true

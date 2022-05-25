@@ -1,0 +1,31 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "consensusNode.fullname" . }}-supervisor-consensus
+  labels:
+    {{- include "consensusNode.labels" . | nindent 4 }}
+data:
+  consensus-service-node.conf: |
+    [program:consensus-service]
+    priority=100
+    environment=MC_SENTRY_DSN="%(ENV_CONSENSUS_SERVICE_SENTRY_DSN)s"
+    command=/usr/bin/consensus-service
+      --client-responder-id "%(ENV_CLIENT_RESPONDER_ID)s:443"
+      --peer-responder-id "%(ENV_LOCAL_NODE_ID)s:443"
+      --peer-listen-uri=insecure-mcp://0.0.0.0:8443/
+      --admin-listen-uri=insecure-mca://127.0.0.1:8001/
+      --network /config/network.toml
+      --tokens /config/tokens.signed.json
+      --ledger-path /ledger
+      --ias-spid "%(ENV_IAS_SPID)s"
+      --ias-api-key "%(ENV_IAS_API_KEY)s"
+      --msg-signer-key "%(ENV_NODE_SIGNER_KEY)s"
+      --sealed-block-signing-key "%(ENV_SEALED_BLOCK_SIGNING_KEY)s"
+      --scp-debug-dump /scp-debug-dump
+
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+    autorestart=true

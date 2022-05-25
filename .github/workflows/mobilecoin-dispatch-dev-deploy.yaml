@@ -1,3 +1,7 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+#
+# MobileCoin Core projects - Dispatch (manual) Job - Deploy core apps to the development namespace.
+
 name: mobilecoin-dispatch-dev-deploy
 
 on:
@@ -7,11 +11,65 @@ on:
         description: "Target Namespace"
         type: string
         required: true
+      version:
+        description: "Chart Version"
+        type: string
+        required: true
+      chart_repo:
+        description: "Chart Repo URL"
+        type: string
+        required: true
+        default: https://harbor.mobilecoin.com/chartrepo/mobilecoinfoundation-public
+      docker_image_org:
+        description: "Docker Image Org"
+        type: string
+        required: true
+        default: docker.io/mobilecoin
+      ingest_color:
+        description: "Fog Ingest blue/green"
+        type: string
+        required: true
+        default: blue
+      minting_config_enabled:
+        description: "Enable minting config"
+        type: boolean
+        required: true
+        default: false
+      block_version:
+        description: "consensus block_version"
+        type: string
+        required: true
+      client_auth_enabled:
+        description: "additional shared token for client auth"
+        type: boolean
+        required: true
+        default: false
 
 jobs:
-  list-values:
-    runs-on: [self-hosted, small, Linux]
-    steps:
-    - name: values
-      run: |
-        echo namespace ${{ github.event.inputs.namespace }}
+  deploy:
+    uses: ./.github/workflows/mobilecoin-workflow-dev-deploy.yaml
+    with:
+      namespace: ${{ github.event.inputs.namespace }}
+      version: ${{ github.event.inputs.version }}
+      docker_image_org: ${{ github.event.inputs.docker_image_org }}
+      chart_repo: ${{ github.event.inputs.chart_repo }}
+      ingest_color: ${{ github.event.inputs.ingest_color }}
+      minting_config_enabled: ${{ github.event.inputs.minting_config_enabled }}
+      block_version: ${{ github.event.inputs.block_version }}
+    secrets:
+      RANCHER_CLUSTER: ${{ secrets.RANCHER_CLUSTER }}
+      RANCHER_URL: ${{ secrets.RANCHER_URL }}
+      RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
+      LEDGER_AWS_ACCESS_KEY_ID: ${{ secrets.DEV_LEDGER_AWS_ACCESS_KEY_ID }}
+      LEDGER_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_LEDGER_AWS_SECRET_ACCESS_KEY }}
+      IAS_KEY: ${{ secrets.DEV_IAS_KEY }}
+      IAS_SPID: ${{ secrets.DEV_IAS_SPID }}
+      FOG_REPORT_SIGNING_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CERT }}
+      FOG_REPORT_SIGNING_CERT_KEY: ${{ secrets.DEV_FOG_REPORT_SIGNING_CERT_KEY }}
+      FOG_REPORT_SIGNING_CA_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CA_CERT }}
+      MINTING_TRUST_ROOT_PRIVATE: ${{ secrets.DEV_MINTING_TRUST_ROOT_PRIVATE }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      IP_INFO_TOKEN: ${{ secrets.DEV_IP_INFO_TOKEN }}
+      CLIENT_AUTH_TOKEN: ${{  github.event.inputs.client_auth_enabled == 'true' && secrets.DEV_CLIENT_AUTH_TOKEN || '' }}
+      CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}
