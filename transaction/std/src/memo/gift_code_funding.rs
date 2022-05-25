@@ -74,7 +74,7 @@ impl GiftCodeFundingMemo {
 
         // Put fee into memo
         memo_data[Self::HASH_DATA_LEN..Self::NOTE_OFFSET]
-            .copy_from_slice(&fee.to_be_bytes()[1..(Self::FEE_DATA_LEN + 1)]);
+            .copy_from_slice(&fee.to_be_bytes()[1..=Self::FEE_DATA_LEN]);
 
         // Put note into memo
         memo_data[Self::NOTE_OFFSET..(Self::NOTE_OFFSET + note.len())]
@@ -91,7 +91,8 @@ impl GiftCodeFundingMemo {
     /// Get fee amount paid to fund the gift code
     pub fn get_fee(&self) -> u64 {
         let mut fee_bytes = [0u8; 8];
-        fee_bytes[1..(GiftCodeFundingMemo::FEE_DATA_LEN + 1)]
+        // Copy the 7 fee bytes into a u64 array, leaving the most significant bit 0
+        fee_bytes[1..=GiftCodeFundingMemo::FEE_DATA_LEN]
             .copy_from_slice(&self.memo_data[Self::HASH_DATA_LEN..Self::NOTE_OFFSET]);
         u64::from_be_bytes(fee_bytes)
     }
@@ -286,10 +287,10 @@ mod tests {
             note_len_minus_one
         );
         assert_eq!(memo_len_exact.funding_note().unwrap(), note_len_exact);
-        assert!(matches!(
+        assert_eq!(
             memo_len_plus_one,
             Err(MemoError::BadLength(LEN_PLUS_ONE))
-        ));
+        );
 
         // Check fees are correct for successful memos
         assert_eq!(memo_len_minus_one.get_fee(), fee);
@@ -351,10 +352,10 @@ mod tests {
         // Check fees reconstruct correctly or cause error
         assert_eq!(memo_max_fee_minus_one.get_fee(), MAX_FEE_MINUS_ONE);
         assert_eq!(memo_max_fee.get_fee(), MAX_FEE);
-        assert!(matches!(
+        assert_eq!(
             memo_max_fee_plus_one,
             Err(MemoError::MaxFeeExceeded(MAX_FEE, MAX_FEE_PLUS_ONE))
-        ));
+        );
 
         // Check notes are correct for successful memos
         assert_eq!(memo_max_fee.funding_note().unwrap(), note);

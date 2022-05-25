@@ -139,10 +139,10 @@ mod tests {
         assert_eq!(fee.value, memo.get_fee());
 
         // Assert failure for the second attempted change output
-        assert!(matches!(
+        assert_eq!(
             memo_payload_2,
             Err(NewMemoError::MultipleChangeOutputs)
-        ));
+        );
     }
 
     #[test]
@@ -159,7 +159,7 @@ mod tests {
         let memo_payload = build_change_memo_with_amount(&mut builder, amount);
 
         // Ensure memo creation fails
-        assert!(matches!(memo_payload, Err(NewMemoError::MixedTokenIds)))
+        assert_eq!(memo_payload, Err(NewMemoError::MixedTokenIds));
     }
 
     #[test]

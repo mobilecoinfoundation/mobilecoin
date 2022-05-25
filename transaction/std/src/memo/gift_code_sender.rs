@@ -83,6 +83,7 @@ impl GiftCodeSenderMemo {
     /// Get fee amount paid
     pub fn get_fee(&self) -> u64 {
         let mut fee_bytes = [0u8; 8];
+        // Copy the 7 fee bytes into a u64 array, leaving the most significant bit 0
         fee_bytes[1..].copy_from_slice(&self.memo_data[..Self::FEE_DATA_LEN]);
         u64::from_be_bytes(fee_bytes)
     }
@@ -191,10 +192,10 @@ mod tests {
             note_len_minus_one
         );
         assert_eq!(memo_len_exact.sender_note().unwrap(), note_len_exact);
-        assert!(matches!(
+        assert_eq!(
             memo_len_plus_one,
             Err(MemoError::BadLength(LEN_PLUS_ONE))
-        ));
+        );
 
         // Assert derived fees match for successful memos
         assert_eq!(memo_len_minus_one.get_fee(), fee);

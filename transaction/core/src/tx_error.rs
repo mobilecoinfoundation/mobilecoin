@@ -84,7 +84,7 @@ pub enum NewMemoError {
     Creation(MemoError),
     /// Utf-8 did not properly decode
     Utf8Decoding,
-    /// Max fee of {0} exceeded. Attempted to set fee amount: {1}
+    /// Attempted value: {1} > Max Value: {0}
     MaxFeeExceeded(u64, u64),
     /// Other: {0}
     Other(String),

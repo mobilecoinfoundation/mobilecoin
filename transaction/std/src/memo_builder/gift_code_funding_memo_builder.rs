@@ -127,6 +127,7 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
 
 #[cfg(test)]
 mod tests {
+    use assert_matches::assert_matches;
     use super::*;
     use mc_account_keys::AccountKey;
     use mc_util_from_random::FromRandom;
@@ -282,7 +283,7 @@ mod tests {
         );
 
         // Assert memo creation fails
-        assert!(matches!(memo_payload, Err(NewMemoError::BadInputs(_))));
+        assert_matches!(memo_payload, Err(NewMemoError::BadInputs(_)));
     }
 
     #[test]
@@ -331,10 +332,10 @@ mod tests {
         );
 
         // Assert memo creation fails for second change output
-        assert!(matches!(
+        assert_eq!(
             memo_payload,
             Err(NewMemoError::MultipleChangeOutputs)
-        ));
+        );
     }
 
     #[test]
@@ -345,7 +346,7 @@ mod tests {
         let builder = GiftCodeFundingMemoBuilder::new(note);
 
         //Assert memo creation fails
-        assert!(matches!(builder, Err(NewMemoError::BadInputs(_))));
+        assert_matches!(builder, Err(NewMemoError::BadInputs(_)));
     }
 
     #[test]
@@ -363,7 +364,7 @@ mod tests {
         let memo_payload = build_gift_code_memos(&mut builder, &gift_code_public_key, fee);
 
         // Ensure memo creation fails
-        assert!(matches!(memo_payload, Err(NewMemoError::MixedTokenIds)))
+        assert_eq!(memo_payload, Err(NewMemoError::MixedTokenIds));
     }
 
     #[test]

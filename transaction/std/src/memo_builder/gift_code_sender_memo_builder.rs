@@ -98,6 +98,7 @@ impl MemoBuilder for GiftCodeSenderMemoBuilder {
 
 #[cfg(test)]
 mod tests {
+    use assert_matches::assert_matches;
     use super::*;
     use crate::test_utils::build_change_memo_with_amount;
 
@@ -194,10 +195,10 @@ mod tests {
 
         // Verify attempting to write two change memos fail
         let memo_payload_2 = build_change_memo_with_amount(&mut builder, amount);
-        assert!(matches!(
+        assert_eq!(
             memo_payload_2,
             Err(NewMemoError::MultipleChangeOutputs)
-        ));
+        );
     }
 
     #[test]
@@ -206,7 +207,7 @@ mod tests {
         let note_bytes = [b'6'; GiftCodeSenderMemo::NOTE_DATA_LEN + 1];
         let note = std::str::from_utf8(&note_bytes).unwrap();
         let builder = GiftCodeSenderMemoBuilder::new(note);
-        assert!(matches!(builder, Err(NewMemoError::BadInputs(_))));
+        assert_matches!(builder, Err(NewMemoError::BadInputs(_)));
     }
 
     #[test]
@@ -223,7 +224,7 @@ mod tests {
         let memo_payload = build_change_memo_with_amount(&mut builder, amount);
 
         // Ensure memo creation fails
-        assert!(matches!(memo_payload, Err(NewMemoError::MixedTokenIds)))
+        assert_eq!(memo_payload, Err(NewMemoError::MixedTokenIds))
     }
 
     #[test]
