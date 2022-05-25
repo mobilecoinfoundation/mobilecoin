@@ -12,3 +12,13 @@ This crate implements a few fundamental parts of MobileCoin transactions:
   single MobileCoin transaction. The entire assembly is defined in the `ring_ct` module in
   `mc-transaction-core`.
 * Definitions for "one-time keys" and their connection to transaction outputs and subaddresses.
+
+This crate implicitly defines relationships between a bunch of key components:
+* One-time private keys and TxOut's
+* One-time private keys and Key Images
+* One-time private keys of TxOut's and subaddresses
+* Subaddreses and Ring signatures
+
+However, most things having to do with the TxOut Public key and the TxOut shared secret
+live in the `mc-transaction-core` crate, one level higher. Most of the actual blockchain
+data structures are defined there.
