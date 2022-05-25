@@ -2944,6 +2944,7 @@ dependencies = [
  "mc-peers",
  "mc-peers-test-utils",
  "mc-sgx-build",
+ "mc-sgx-report-cache-api",
  "mc-sgx-report-cache-untrusted",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
