@@ -98,9 +98,9 @@ impl MemoBuilder for GiftCodeSenderMemoBuilder {
 
 #[cfg(test)]
 mod tests {
-    use assert_matches::assert_matches;
     use super::*;
     use crate::test_utils::build_change_memo_with_amount;
+    use assert_matches::assert_matches;
 
     #[test]
     fn test_gift_code_sender_memo_built_successfully_with_note() {
@@ -195,10 +195,7 @@ mod tests {
 
         // Verify attempting to write two change memos fail
         let memo_payload_2 = build_change_memo_with_amount(&mut builder, amount);
-        assert_eq!(
-            memo_payload_2,
-            Err(NewMemoError::MultipleChangeOutputs)
-        );
+        assert_eq!(memo_payload_2, Err(NewMemoError::MultipleChangeOutputs));
     }
 
     #[test]

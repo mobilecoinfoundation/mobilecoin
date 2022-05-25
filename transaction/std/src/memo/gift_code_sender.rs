@@ -192,10 +192,7 @@ mod tests {
             note_len_minus_one
         );
         assert_eq!(memo_len_exact.sender_note().unwrap(), note_len_exact);
-        assert_eq!(
-            memo_len_plus_one,
-            Err(MemoError::BadLength(LEN_PLUS_ONE))
-        );
+        assert_eq!(memo_len_plus_one, Err(MemoError::BadLength(LEN_PLUS_ONE)));
 
         // Assert derived fees match for successful memos
         assert_eq!(memo_len_minus_one.get_fee(), fee);

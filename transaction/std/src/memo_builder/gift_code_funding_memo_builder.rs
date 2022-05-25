@@ -127,8 +127,8 @@ impl MemoBuilder for GiftCodeFundingMemoBuilder {
 
 #[cfg(test)]
 mod tests {
-    use assert_matches::assert_matches;
     use super::*;
+    use assert_matches::assert_matches;
     use mc_account_keys::AccountKey;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -332,10 +332,7 @@ mod tests {
         );
 
         // Assert memo creation fails for second change output
-        assert_eq!(
-            memo_payload,
-            Err(NewMemoError::MultipleChangeOutputs)
-        );
+        assert_eq!(memo_payload, Err(NewMemoError::MultipleChangeOutputs));
     }
 
     #[test]

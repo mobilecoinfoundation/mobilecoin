@@ -139,10 +139,7 @@ mod tests {
         assert_eq!(fee.value, memo.get_fee());
 
         // Assert failure for the second attempted change output
-        assert_eq!(
-            memo_payload_2,
-            Err(NewMemoError::MultipleChangeOutputs)
-        );
+        assert_eq!(memo_payload_2, Err(NewMemoError::MultipleChangeOutputs));
     }
 
     #[test]

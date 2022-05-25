@@ -287,10 +287,7 @@ mod tests {
             note_len_minus_one
         );
         assert_eq!(memo_len_exact.funding_note().unwrap(), note_len_exact);
-        assert_eq!(
-            memo_len_plus_one,
-            Err(MemoError::BadLength(LEN_PLUS_ONE))
-        );
+        assert_eq!(memo_len_plus_one, Err(MemoError::BadLength(LEN_PLUS_ONE)));
 
         // Check fees are correct for successful memos
         assert_eq!(memo_len_minus_one.get_fee(), fee);
