@@ -133,7 +133,7 @@ pub mod tests {
     use super::*;
     use crate::ring_signature::generators;
     use curve25519_dalek::ristretto::RistrettoPoint;
-    use mc_util_test_helper::{get_seeded_rng, RngCore, SeedableRng};
+    use mc_util_test_helper::{get_seeded_rng, RngCore};
 
     fn generate_and_check(values: Vec<u64>, blindings: Vec<Scalar>) {
         let mut rng = get_seeded_rng();

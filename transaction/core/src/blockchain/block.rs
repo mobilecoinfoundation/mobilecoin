@@ -215,7 +215,7 @@ mod block_tests {
     use mc_account_keys::AccountKey;
     use mc_crypto_keys::RistrettoPrivate;
     use mc_util_from_random::FromRandom;
-    use mc_util_test_helper::{CryptoRng, RngCore, RngType, SeedableRng};
+    use mc_util_test_helper::{get_seeded_rng, CryptoRng, RngCore, SeedableRng};
     use rand::rngs::StdRng;
 
     // This is block version 1 to avoid messing with test vectors

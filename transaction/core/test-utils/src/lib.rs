@@ -3,7 +3,7 @@
 mod mint;
 
 pub use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
-use mc_crypto_ring_signature_signer::NoKeysRingSigner;
+pub use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 pub use mc_fog_report_validation_test_utils::MockFogResolver;
 pub use mc_transaction_core::{
     get_tx_out_shared_secret,

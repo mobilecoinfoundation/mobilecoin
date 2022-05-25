@@ -669,7 +669,7 @@ mod tests {
     use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
-    use mc_util_test_helper::{get_seeded_rng, SeedableRng};
+    use mc_util_test_helper::get_seeded_rng;
     use prost::Message;
 
     #[test]
