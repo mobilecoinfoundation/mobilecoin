@@ -12,17 +12,16 @@ use crc::Crc;
 use generic_array::{typenum::U66, GenericArray};
 use mc_account_keys::{AccountKey, PublicAddress, ShortAddressHash};
 use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes, RistrettoPrivate, RistrettoPublic};
+use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_report_validation::FogResolver;
 use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
     ring_signature::KeyImage,
-    signer::NoKeysRingSigner,
     tokens::Mob,
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     Amount, BlockVersion, CompressedCommitment, EncryptedMemo, MaskedAmount, Token,
 };
-
 use mc_transaction_std::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
     InputCredentials, MemoBuilder, MemoPayload, RTHMemoBuilder, ReservedSubaddresses,

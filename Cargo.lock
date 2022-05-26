@@ -2076,6 +2076,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-crypto-noise",
  "mc-crypto-rand",
+ "mc-crypto-ring-signature-signer",
  "mc-crypto-sig",
  "mc-fog-kex-rng",
  "mc-fog-report-validation",
@@ -2315,6 +2316,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-crypto-noise",
  "mc-crypto-rand",
+ "mc-crypto-ring-signature-signer",
  "mc-fog-kex-rng",
  "mc-fog-report-types",
  "mc-fog-report-validation",
@@ -2347,6 +2349,7 @@ dependencies = [
  "mc-attest-core",
  "mc-crypto-keys",
  "mc-crypto-multisig",
+ "mc-crypto-ring-signature-signer",
  "mc-crypto-x509-test-vectors",
  "mc-fog-report-validation-test-utils",
  "mc-test-vectors-b58-encodings",
@@ -2840,6 +2843,7 @@ dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-multisig",
+ "mc-crypto-ring-signature-signer",
  "mc-ledger-db",
  "mc-ledger-sync",
  "mc-peers",
@@ -3084,6 +3088,58 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-ring-signature"
+version = "1.3.0-pre0"
+dependencies = [
+ "curve25519-dalek",
+ "displaydoc",
+ "hex_fmt",
+ "mc-account-keys",
+ "mc-crypto-digestible",
+ "mc-crypto-digestible-test-utils",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-transaction-types",
+ "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "proptest",
+ "prost",
+ "rand_core 0.6.3",
+ "serde",
+ "subtle",
+ "tempdir",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-crypto-ring-signature-signer"
+version = "1.3.0-pre0"
+dependencies = [
+ "curve25519-dalek",
+ "displaydoc",
+ "generic-array",
+ "hex_fmt",
+ "mc-account-keys",
+ "mc-crypto-digestible-test-utils",
+ "mc-crypto-keys",
+ "mc-crypto-rand",
+ "mc-crypto-ring-signature",
+ "mc-transaction-types",
+ "mc-util-serial",
+ "proptest",
+ "prost",
+ "rand 0.8.5",
+ "rand_core 0.6.3",
+ "rand_hc 0.3.1",
+ "serde",
+ "subtle",
+ "tempdir",
+ "zeroize",
+]
+
+[[package]]
 name = "mc-crypto-sig"
 version = "1.3.0-pre0"
 dependencies = [
@@ -3178,6 +3234,7 @@ dependencies = [
  "mc-connection",
  "mc-consensus-enclave-measurement",
  "mc-crypto-keys",
+ "mc-crypto-ring-signature-signer",
  "mc-fog-ingest-enclave-measurement",
  "mc-fog-report-connection",
  "mc-fog-report-validation",
@@ -3926,6 +3983,8 @@ dependencies = [
  "mc-consensus-enclave-measurement",
  "mc-crypto-keys",
  "mc-crypto-rand",
+ "mc-crypto-ring-signature",
+ "mc-crypto-ring-signature-signer",
  "mc-fog-api",
  "mc-fog-enclave-connection",
  "mc-fog-ingest-enclave-measurement",
@@ -4511,6 +4570,7 @@ dependencies = [
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-rand",
+ "mc-crypto-ring-signature-signer",
  "mc-fog-report-connection",
  "mc-fog-report-validation",
  "mc-fog-report-validation-test-utils",
@@ -4904,10 +4964,12 @@ dependencies = [
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-multisig",
- "mc-crypto-rand",
+ "mc-crypto-ring-signature",
+ "mc-crypto-ring-signature-signer",
  "mc-ledger-db",
  "mc-transaction-core-test-utils",
  "mc-transaction-std",
+ "mc-transaction-types",
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "mc-util-serial",
@@ -4918,7 +4980,6 @@ dependencies = [
  "prost",
  "rand 0.8.5",
  "rand_core 0.6.3",
- "rand_hc 0.3.1",
  "serde",
  "sha2 0.10.2",
  "subtle",
@@ -4934,6 +4995,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-crypto-multisig",
  "mc-crypto-rand",
+ "mc-crypto-ring-signature-signer",
  "mc-fog-report-validation-test-utils",
  "mc-ledger-db",
  "mc-transaction-core",
@@ -4956,6 +5018,7 @@ dependencies = [
  "mc-account-keys",
  "mc-crypto-hashes",
  "mc-crypto-keys",
+ "mc-crypto-ring-signature-signer",
  "mc-fog-report-validation",
  "mc-fog-report-validation-test-utils",
  "mc-transaction-core",
@@ -4968,6 +5031,16 @@ dependencies = [
  "sha2 0.10.2",
  "subtle",
  "yaml-rust",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-transaction-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "mc-crypto-digestible",
+ "serde",
+ "subtle",
  "zeroize",
 ]
 

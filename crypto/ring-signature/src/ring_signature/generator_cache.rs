@@ -3,8 +3,8 @@
 //! A simple generator cache
 
 use super::{generators, PedersenGens};
-use crate::TokenId;
 use alloc::collections::BTreeMap;
+use mc_transaction_types::TokenId;
 
 /// GeneratorCache is a simple object which caches computations of
 /// generator: TokenId -> PedersenGens

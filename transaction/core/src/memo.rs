@@ -230,6 +230,9 @@ pub enum MemoError {
 
     /// Utf-8 did not properly decode
     Utf8Decoding,
+
+    /// Max fee of {0} exceeded. Attempted to set fee amount: {1}
+    MaxFeeExceeded(u64, u64),
 }
 
 impl From<Utf8Error> for MemoError {
@@ -242,12 +245,11 @@ impl From<Utf8Error> for MemoError {
 mod tests {
     use super::*;
     use mc_util_from_random::FromRandom;
-    use rand_core::SeedableRng;
-    use rand_hc::Hc128Rng;
+    use mc_util_test_helper::{RngType, SeedableRng};
 
     #[test]
     fn test_memo_payload_round_trip() {
-        let mut rng = Hc128Rng::seed_from_u64(37);
+        let mut rng = RngType::seed_from_u64(37);
 
         let key1 = RistrettoPublic::from_random(&mut rng);
         let key2 = RistrettoPublic::from_random(&mut rng);

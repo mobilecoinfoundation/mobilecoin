@@ -3,12 +3,12 @@
 mod mint;
 
 pub use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
+pub use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 pub use mc_fog_report_validation_test_utils::MockFogResolver;
 pub use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
-    signer::NoKeysRingSigner,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
     Amount, Block, BlockID, BlockIndex, BlockVersion, Token,
@@ -20,7 +20,6 @@ pub use mint::{
 
 use core::convert::TryFrom;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
-use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{constants::RING_SIZE, membership_proofs::Range, BlockContents};
 use mc_transaction_std::{
@@ -28,7 +27,7 @@ use mc_transaction_std::{
     TxOutputsOrdering,
 };
 use mc_util_from_random::FromRandom;
-use rand::{seq::SliceRandom, Rng};
+use rand::{seq::SliceRandom, CryptoRng, Rng, RngCore};
 use std::cmp::Ordering;
 use tempdir::TempDir;
 

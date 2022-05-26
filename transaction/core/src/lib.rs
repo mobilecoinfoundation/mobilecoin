@@ -15,9 +15,6 @@ extern crate std;
 #[macro_use]
 extern crate lazy_static;
 
-use crate::onetime_keys::create_shared_secret;
-use mc_crypto_keys::{KeyError, RistrettoPrivate, RistrettoPublic};
-
 mod amount;
 mod blockchain;
 mod domain_separators;
@@ -33,31 +30,43 @@ pub mod encrypted_fog_hint;
 pub mod fog_hint;
 pub mod membership_proofs;
 pub mod mint;
-pub mod onetime_keys;
 pub mod range_proofs;
-pub mod ring_signature;
-pub mod signer;
+pub mod ring_ct;
 pub mod tx;
 pub mod validation;
 
 #[cfg(test)]
 pub mod proptest_fixtures;
 
-pub use amount::{Amount, AmountError, Commitment, CompressedCommitment, MaskedAmount};
+pub use amount::{AmountError, MaskedAmount};
 pub use blockchain::*;
 pub use input_rules::{InputRuleError, InputRules};
 pub use memo::{EncryptedMemo, MemoError, MemoPayload};
 pub use signed_contingent_input::{
     SignedContingentInput, SignedContingentInputError, UnmaskedAmount,
 };
-pub use token::{tokens, Token, TokenId};
+pub use token::{tokens, Token};
 pub use tx::MemoContext;
 pub use tx_error::{NewMemoError, NewTxError, ViewKeyMatchError};
 pub use tx_out_gift_code::TxOutGiftCode;
 
+// Re-export Amount and TokenId from transaction-types, and certain types from
+// RingSignature crate
+pub use mc_crypto_ring_signature::{Commitment, CompressedCommitment};
+pub use mc_transaction_types::{Amount, TokenId};
+
+/// Re-export all of mc-crypto-ring-signature
+pub mod ring_signature {
+    pub use mc_crypto_ring_signature::*;
+}
+
+// Re-export the one-time keys module which historically lived in this crate
+pub use mc_crypto_ring_signature::onetime_keys;
+
 use core::convert::TryFrom;
 use mc_account_keys::AccountKey;
-use onetime_keys::recover_public_subaddress_spend_key;
+use mc_crypto_keys::{KeyError, RistrettoPrivate, RistrettoPublic};
+use onetime_keys::{create_shared_secret, recover_public_subaddress_spend_key};
 use tx::TxOut;
 
 /// Get the shared secret for a transaction output.

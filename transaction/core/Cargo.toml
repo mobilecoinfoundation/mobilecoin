@@ -3,6 +3,7 @@ name = "mc-transaction-core"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
+readme = "README.md"
 
 [dependencies]
 # External dependencies
@@ -29,6 +30,9 @@ mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", 
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-multisig = { path = "../../crypto/multisig", default-features = false }
+mc-crypto-ring-signature = { path = "../../crypto/ring-signature", default-features = false }
+mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer", default-features = false }
+mc-transaction-types = { path = "../types" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 mc-util-serial = { path = "../../util/serial" }
@@ -43,23 +47,17 @@ bulletproofs-og = { version = "3.0.0-pre.1", default-features = false }
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
 
-[dev-dependencies.proptest]
-version = "1.0" # Only works for 0.9.1 or newer
-default-features = false
-# Enable all default features not known to break code coverage builds
-features = ["default-code-coverage"]
-
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
 curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
 
 [dev-dependencies]
 assert_matches = "1.5"
+proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"] }
 rand = "0.8"
-rand_hc = "0.3"
 tempdir = "0.3"
 
 mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }
-mc-crypto-rand = { path = "../../crypto/rand" }
+mc-crypto-ring-signature = { path = "../../crypto/ring-signature", features = ["proptest"] }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-transaction-std = { path = "../../transaction/std", features = ["test-only"] }

@@ -17,6 +17,7 @@ mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
 mc-crypto-keys = { path = "../../crypto/keys" }
+mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
 mc-fog-ingest-enclave-measurement = { path = "../ingest/enclave/measurement" }
 mc-fog-report-connection = { path = "../../fog/report/connection" }
 mc-fog-report-validation = { path = "../../fog/report/validation" }

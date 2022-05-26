@@ -11,43 +11,21 @@ use crate::{
     domain_separators::{
         AMOUNT_BLINDING_DOMAIN_TAG, AMOUNT_TOKEN_ID_DOMAIN_TAG, AMOUNT_VALUE_DOMAIN_TAG,
     },
-    ring_signature::generators,
-    token::TokenId,
+    Amount, TokenId,
 };
 use alloc::vec::Vec;
 use core::convert::TryInto;
 use crc::Crc;
-use curve25519_dalek::scalar::Scalar;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::RistrettoPublic;
+use mc_crypto_ring_signature::{generators, CompressedCommitment, Scalar};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
-mod commitment;
-mod compressed_commitment;
 mod error;
-
-pub use commitment::Commitment;
-pub use compressed_commitment::CompressedCommitment;
 pub use error::AmountError;
-
-/// An amount of some token, in the "base" (u64) denomination.
-#[derive(Clone, Copy, Debug, Digestible, Eq, PartialEq, Zeroize)]
-pub struct Amount {
-    /// The "raw" value of this amount as a u64
-    pub value: u64,
-    /// The token-id which is the denomination of this amount
-    pub token_id: TokenId,
-}
-
-impl Amount {
-    /// Create a new amount
-    pub fn new(value: u64, token_id: TokenId) -> Self {
-        Self { value, token_id }
-    }
-}
 
 /// A commitment to an amount of MobileCoin or a related token, as it appears on
 /// the blockchain. This is a "blinded" commitment, and only the sender and

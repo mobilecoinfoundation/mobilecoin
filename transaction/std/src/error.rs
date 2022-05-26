@@ -1,17 +1,17 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use displaydoc::Display;
+use mc_crypto_ring_signature_signer::Error as SignerError;
 use mc_fog_report_validation::FogPubkeyError;
 use mc_transaction_core::{
-    ring_signature, ring_signature::Error, signer::Error as SignerError, AmountError, NewMemoError,
-    NewTxError, TokenId,
+    ring_ct::Error as RingCtError, AmountError, NewMemoError, NewTxError, TokenId,
 };
 
 /// An error that can occur when using the TransactionBuilder
 #[derive(Debug, Display)]
 pub enum TxBuilderError {
     /// Ring Signature construction failed: {0}
-    RingSignatureFailed(ring_signature::Error),
+    RingSignatureFailed(RingCtError),
 
     /// Range proof construction failed
     RangeProofFailed,
@@ -98,8 +98,8 @@ impl From<mc_crypto_keys::KeyError> for TxBuilderError {
     }
 }
 
-impl From<ring_signature::Error> for TxBuilderError {
-    fn from(src: Error) -> Self {
+impl From<RingCtError> for TxBuilderError {
+    fn from(src: RingCtError) -> Self {
         TxBuilderError::RingSignatureFailed(src)
     }
 }

@@ -9,10 +9,10 @@ use crate::{
 use core::convert::TryFrom;
 use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
 use mc_crypto_keys::RistrettoPublic;
+use mc_crypto_ring_signature_signer::{NoKeysRingSigner, OneTimeKeyDeriveData};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
     onetime_keys::*,
-    signer::{NoKeysRingSigner, OneTimeKeyDeriveData},
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
     Amount, BlockVersion, MemoContext, NewMemoError, Token, TokenId,
@@ -206,13 +206,6 @@ pub fn get_transaction<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver + Clone>
     transaction_builder.set_fee(fee).unwrap();
 
     transaction_builder.build(&NoKeysRingSigner {}, rng)
-}
-
-/// Build simulated change memo with zero amount
-pub fn build_zero_value_change_memo(
-    builder: &mut impl MemoBuilder,
-) -> Result<MemoPayload, NewMemoError> {
-    build_change_memo_with_amount(builder, Amount::new(0, 0.into()))
 }
 
 /// Build simulated change memo with amount

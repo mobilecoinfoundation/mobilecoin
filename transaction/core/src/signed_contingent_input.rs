@@ -1,17 +1,18 @@
-// Copyright (c) 2022 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A signed contingent input as described in MCIP #31
 
 use crate::{
-    ring_signature::{
-        CurveScalar, GeneratorCache, KeyImage, MLSAGError, OutputSecret, PresignedInputRing,
-        RingMLSAG, SignedInputRing,
-    },
+    ring_ct::{OutputSecret, PresignedInputRing, SignedInputRing},
     tx::TxIn,
-    Amount, Commitment, CompressedCommitment, TokenId,
+    Amount, TokenId,
 };
 use alloc::vec::Vec;
 use displaydoc::Display;
+use mc_crypto_ring_signature::{
+    Commitment, CompressedCommitment, CurveScalar, Error as RingSignatureError, GeneratorCache,
+    KeyImage, RingMLSAG,
+};
 use prost::Message;
 
 /// The "unmasked" data of an amount commitment
@@ -180,12 +181,12 @@ pub enum SignedContingentInputError {
     MissingRules,
     /// Proofs of membership are missing
     MissingProofs,
-    /// Invalid MLSAG: {0}
-    MLSAG(MLSAGError),
+    /// Invalid Ring signature: {0}
+    RingSignature(RingSignatureError),
 }
 
-impl From<MLSAGError> for SignedContingentInputError {
-    fn from(src: MLSAGError) -> Self {
-        Self::MLSAG(src)
+impl From<RingSignatureError> for SignedContingentInputError {
+    fn from(src: RingSignatureError) -> Self {
+        Self::RingSignature(src)
     }
 }
