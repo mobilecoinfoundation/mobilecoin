@@ -27,12 +27,12 @@ on:
         required: false
         default: true
       testing_1_2:
-        description: "Run v1.2.x tests (block_version 0/2"
+        description: "Run v1.2.x tests (block_version 0/2)"
         type: boolean
         required: false
         default: true
       client_auth_enabled:
-        description: "Run v1.2.x tests (block_version 0/2"
+        description: "Is client auth enabled?"
         type: boolean
         required: false
         default: false
