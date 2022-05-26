@@ -325,13 +325,15 @@ mod tests {
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
     use mc_consensus_scp::{ballot::Ballot, msg::*, SlotIndex};
     use mc_crypto_keys::{DistinguishedEncoding, Ed25519Private};
-    use mc_ledger_db::Ledger;
+    use mc_ledger_db::{
+        test_utils::{create_ledger, create_transaction, initialize_ledger},
+        Ledger,
+    };
     use mc_peers::{MockBroadcast, ThreadedBroadcaster};
     use mc_peers_test_utils::{test_peer_uri_with_key, MockPeerConnection};
     use mc_transaction_core::TokenId;
     use mc_transaction_core_test_utils::{
-        create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_transaction,
-        initialize_ledger, mint_config_tx_to_validated, AccountKey,
+        create_mint_config_tx_and_signers, create_mint_tx, mint_config_tx_to_validated, AccountKey,
     };
     use mc_util_from_random::FromRandom;
     use mc_util_uri::{ConnectionUri, ConsensusPeerUri};

@@ -174,13 +174,15 @@ impl TryFrom<&api::TxProposal> for TxProposal {
 mod test {
     use super::*;
     use mc_crypto_keys::RistrettoPublic;
-    use mc_ledger_db::Ledger;
+    use mc_ledger_db::{
+        test_utils::{create_ledger, create_transaction, initialize_ledger},
+        Ledger,
+    };
     use mc_transaction_core::{
-        encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, tokens::Mob, Amount, MaskedAmount, Token,
+        encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, tokens::Mob, Amount, BlockVersion,
+        MaskedAmount, Token,
     };
-    use mc_transaction_core_test_utils::{
-        create_ledger, create_transaction, initialize_ledger, AccountKey, BlockVersion,
-    };
+    use mc_transaction_core_test_utils::AccountKey;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 

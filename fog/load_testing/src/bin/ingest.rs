@@ -24,7 +24,7 @@ use mc_fog_load_testing::get_bin_path;
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_sql_recovery_db::test_utils::SqlRecoveryDbTestContext;
 use mc_fog_uri::{ConnectionUri, FogIngestUri, IngestPeerUri};
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_db::{test_utils::initialize_ledger, Ledger, LedgerDB};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{admin_grpc::AdminApiClient, ConnectionUriGrpcioChannel, Empty};
 use mc_util_uri::AdminUri;
@@ -206,7 +206,7 @@ fn load_test(ingest_server_binary: &Path, test_params: TestParams, logger: Logge
 
         let block_version = BlockVersion::ZERO;
 
-        mc_transaction_core_test_utils::initialize_ledger(
+        initialize_ledger(
             block_version,
             &mut ledger_db,
             1u64,

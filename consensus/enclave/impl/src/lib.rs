@@ -1037,7 +1037,10 @@ mod tests {
     use mc_consensus_enclave_api::{FeeMap, GovernorsMap, GovernorsSigner};
     use mc_crypto_keys::{Ed25519Private, Ed25519Signature};
     use mc_crypto_multisig::SignerSet;
-    use mc_ledger_db::Ledger;
+    use mc_ledger_db::{
+        test_utils::{create_ledger, create_transaction, initialize_ledger},
+        Ledger,
+    };
     use mc_transaction_core::{
         tokens::Mob,
         tx::TxOutMembershipHash,
@@ -1045,8 +1048,7 @@ mod tests {
         BlockVersion, Token,
     };
     use mc_transaction_core_test_utils::{
-        create_ledger, create_mint_config_tx_and_signers, create_mint_tx_to_recipient,
-        create_transaction, initialize_ledger, AccountKey,
+        create_mint_config_tx_and_signers, create_mint_tx_to_recipient, AccountKey,
     };
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;

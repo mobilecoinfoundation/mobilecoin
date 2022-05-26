@@ -17,8 +17,7 @@ use mc_transaction_core::{
     Amount, Token, TokenId,
 };
 use mc_util_from_random::FromRandom;
-use rand::{rngs::StdRng, SeedableRng};
-use rand_core::RngCore;
+use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 #[derive(Default)]

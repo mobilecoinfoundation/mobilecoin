@@ -238,9 +238,10 @@ mod mint_config_tx_tests {
     use mc_blockchain_types::{Block, BlockContents};
     use mc_common::logger::test_with_logger;
     use mc_crypto_multisig::SignerSet;
+    use mc_ledger_db::test_utils::{create_ledger, initialize_ledger};
     use mc_transaction_core::ring_signature::KeyImage;
     use mc_transaction_core_test_utils::{
-        create_ledger, create_mint_config_tx_and_signers, create_test_tx_out, initialize_ledger,
+        create_mint_config_tx_and_signers, create_test_tx_out,
         mint_config_tx_to_validated as to_validated, AccountKey,
     };
     use rand::{rngs::StdRng, SeedableRng};
@@ -632,10 +633,11 @@ mod mint_tx_tests {
     use mc_common::logger::test_with_logger;
     use mc_crypto_keys::Ed25519Pair;
     use mc_crypto_multisig::SignerSet;
+    use mc_ledger_db::test_utils::{create_ledger, initialize_ledger};
     use mc_transaction_core::ring_signature::KeyImage;
     use mc_transaction_core_test_utils::{
-        create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_test_tx_out,
-        initialize_ledger, mint_config_tx_to_validated as to_validated, AccountKey,
+        create_mint_config_tx_and_signers, create_mint_tx, create_test_tx_out,
+        mint_config_tx_to_validated as to_validated, AccountKey,
     };
     use rand::{rngs::StdRng, SeedableRng};
 
