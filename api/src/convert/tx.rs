@@ -1,7 +1,9 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from external::Tx.
 
 use crate::{convert::ConversionError, external};
-use mc_transaction_core::{ring_signature::SignatureRctBulletproofs, tx};
+use mc_transaction_core::{ring_ct::SignatureRctBulletproofs, tx};
 use std::convert::TryFrom;
 
 /// Convert mc_transaction_core::tx::Tx --> external::Tx.
@@ -29,10 +31,10 @@ impl TryFrom<&external::Tx> for tx::Tx {
 mod tests {
     use super::*;
     use mc_account_keys::AccountKey;
+    use mc_crypto_ring_signature_signer::NoKeysRingSigner;
     use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_transaction_core::{
-        constants::MILLIMOB_TO_PICOMOB, signer::NoKeysRingSigner, tokens::Mob, tx::Tx, Amount,
-        BlockVersion, Token, TokenId,
+        constants::MILLIMOB_TO_PICOMOB, tokens::Mob, tx::Tx, Amount, BlockVersion, Token, TokenId,
     };
     use mc_transaction_std::{
         test_utils::get_input_credentials, EmptyMemoBuilder, ReservedSubaddresses,

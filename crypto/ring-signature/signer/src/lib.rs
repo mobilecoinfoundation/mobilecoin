@@ -2,6 +2,11 @@
 
 //! Interfaces for signing transactions
 
+#![no_std]
+#![deny(missing_docs)]
+
+extern crate alloc;
+
 mod no_keys_ring_signer;
 pub use no_keys_ring_signer::NoKeysRingSigner;
 

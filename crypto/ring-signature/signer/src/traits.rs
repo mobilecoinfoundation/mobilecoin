@@ -1,12 +1,12 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::{
-    ring_signature::{CryptoRngCore, MLSAGError, ReducedTxOut, RingMLSAG, Scalar},
-    Amount,
-};
 use alloc::{string::String, vec::Vec};
 use displaydoc::Display;
 use mc_crypto_keys::{KeyError, RistrettoPrivate};
+use mc_crypto_ring_signature::{
+    CryptoRngCore, Error as RingSignatureError, ReducedTxOut, RingMLSAG, Scalar,
+};
+use mc_transaction_types::Amount;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
@@ -129,8 +129,8 @@ pub enum Error {
     Keys(KeyError),
     /// Real input index out of bounds
     RealInputIndexOutOfBounds,
-    /// MLSAG: {0}
-    MLSAG(MLSAGError),
+    /// Ring Signature: {0}
+    RingSignature(RingSignatureError),
     /// No path to spend key (logic error)
     NoPathToSpendKey,
 }
@@ -141,8 +141,8 @@ impl From<KeyError> for Error {
     }
 }
 
-impl From<MLSAGError> for Error {
-    fn from(src: MLSAGError) -> Self {
-        Self::MLSAG(src)
+impl From<RingSignatureError> for Error {
+    fn from(src: RingSignatureError) -> Self {
+        Self::RingSignature(src)
     }
 }

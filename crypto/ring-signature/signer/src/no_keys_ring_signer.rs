@@ -1,8 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use super::{Error, OneTimeKeyDeriveData, RingSigner, SignableInputRing};
-use crate::ring_signature::{generators, CryptoRngCore, RingMLSAG, Scalar};
 use mc_crypto_keys::RistrettoPublic;
+use mc_crypto_ring_signature::{generators, CryptoRngCore, RingMLSAG, Scalar};
 
 /// An implementation of RingSigner that holds no keys, and doesn't do any
 /// non-trivial derivation of the one-time private key.

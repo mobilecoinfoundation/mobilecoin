@@ -25,6 +25,8 @@ mc-consensus-api = { path = "../../consensus/api" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-rand = { path = "../../crypto/rand" }
+mc-crypto-ring-signature = { path = "../../crypto/ring-signature" }
+mc-crypto-ring-signature-signer = { path = "../../crypto/ring-signature/signer" }
 mc-sgx-css = { path = "../../sgx/css" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-std = { path = "../../transaction/std" }

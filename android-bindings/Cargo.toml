@@ -25,6 +25,7 @@ mc-crypto-box = { path = "../crypto/box" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-noise = { path = "../crypto/noise" }
 mc-crypto-rand = { path = "../crypto/rand", features = ["std"] }
+mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer", default-features = false }
 mc-fog-report-types = { path = "../fog/report/types" }
 mc-fog-report-validation = { path = "../fog/report/validation" }
 mc-transaction-core = { path = "../transaction/core" }

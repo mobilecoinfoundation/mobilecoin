@@ -1,4 +1,4 @@
-//// Copyright (c) 2022 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A builder object for signed contingent inputs (see MCIP #31)
 //! This plays a similar role to the transaction builder.
@@ -9,10 +9,11 @@ use crate::{
 };
 use core::cmp::min;
 use mc_account_keys::PublicAddress;
+use mc_crypto_ring_signature_signer::{RingSigner, SignableInputRing};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
-    ring_signature::{OutputSecret, Scalar},
-    signer::{RingSigner, SignableInputRing},
+    ring_ct::OutputSecret,
+    ring_signature::Scalar,
     tx::{TxIn, TxOut, TxOutConfirmationNumber},
     Amount, BlockVersion, InputRules, MemoContext, MemoPayload, NewMemoError,
     SignedContingentInput, TokenId, UnmaskedAmount,
@@ -392,13 +393,14 @@ pub mod tests {
     use core::convert::TryFrom;
     use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+    use mc_crypto_ring_signature_signer::NoKeysRingSigner;
     use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
     use mc_transaction_core::{
         constants::MILLIMOB_TO_PICOMOB,
         fog_hint::FogHint,
         get_tx_out_shared_secret,
-        ring_signature::{Error as RingSignatureError, KeyImage},
-        signer::NoKeysRingSigner,
+        ring_ct::Error as RingCtError,
+        ring_signature::KeyImage,
         subaddress_matches_tx_out,
         tokens::Mob,
         validation::{
@@ -1499,7 +1501,7 @@ pub mod tests {
             assert_matches!(
                 builder.build(&NoKeysRingSigner {}, &mut rng),
                 Err(TxBuilderError::RingSignatureFailed(
-                    RingSignatureError::AllRingsPresigned
+                    RingCtError::AllRingsPresigned
                 ))
             );
         }
@@ -1902,7 +1904,10 @@ pub mod tests {
 
             // (Sanity check: the sci fails its own validation now, because the signature is
             // invalid)
-            assert_matches!(sci.validate(), Err(SignedContingentInputError::MLSAG(_)));
+            assert_matches!(
+                sci.validate(),
+                Err(SignedContingentInputError::RingSignature(_))
+            );
 
             let mut builder = TransactionBuilder::new(
                 block_version,
@@ -2254,7 +2259,10 @@ pub mod tests {
 
             // (Sanity check: the sci fails its own validation now, because the signature is
             // invalid)
-            assert_matches!(sci.validate(), Err(SignedContingentInputError::MLSAG(_)));
+            assert_matches!(
+                sci.validate(),
+                Err(SignedContingentInputError::RingSignature(_))
+            );
 
             let mut builder = TransactionBuilder::new(
                 block_version,

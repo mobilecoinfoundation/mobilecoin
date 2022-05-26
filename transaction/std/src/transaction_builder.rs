@@ -11,13 +11,13 @@ use crate::{
 use core::{cmp::min, fmt::Debug};
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+use mc_crypto_ring_signature_signer::RingSigner;
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_transaction_core::{
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::create_shared_secret,
-    ring_signature::{InputRing, OutputSecret, SignatureRctBulletproofs},
-    signer::RingSigner,
+    ring_ct::{InputRing, OutputSecret, SignatureRctBulletproofs},
     tokens::Mob,
     tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
     Amount, BlockVersion, MemoContext, MemoPayload, NewMemoError, SignedContingentInput,
@@ -643,13 +643,13 @@ pub mod transaction_builder_tests {
         burn_address, burn_address_view_private, AccountKey, ShortAddressHash,
         CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX, GIFT_CODE_SUBADDRESS_INDEX,
     };
+    use mc_crypto_ring_signature_signer::{InputSecret, NoKeysRingSigner, OneTimeKeyDeriveData};
     use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
     use mc_transaction_core::{
         constants::{MAX_INPUTS, MAX_OUTPUTS, MILLIMOB_TO_PICOMOB},
         get_tx_out_shared_secret,
         onetime_keys::*,
         ring_signature::KeyImage,
-        signer::{InputSecret, NoKeysRingSigner, OneTimeKeyDeriveData},
         subaddress_matches_tx_out,
         tx::TxOutMembershipProof,
         validation::{validate_signature, validate_tx_out},

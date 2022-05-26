@@ -942,6 +942,48 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-ring-signature"
+version = "1.3.0-pre0"
+dependencies = [
+ "curve25519-dalek",
+ "displaydoc",
+ "hex_fmt",
+ "mc-account-keys",
+ "mc-crypto-digestible",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-transaction-types",
+ "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "mc-util-serial",
+ "prost",
+ "rand_core",
+ "serde",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-crypto-ring-signature-signer"
+version = "1.3.0-pre0"
+dependencies = [
+ "curve25519-dalek",
+ "displaydoc",
+ "generic-array",
+ "hex_fmt",
+ "mc-account-keys",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "mc-transaction-types",
+ "mc-util-serial",
+ "prost",
+ "rand_core",
+ "serde",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
 name = "mc-enclave-boundary"
 version = "1.3.0-pre0"
 dependencies = [
@@ -1295,6 +1337,9 @@ dependencies = [
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-multisig",
+ "mc-crypto-ring-signature",
+ "mc-crypto-ring-signature-signer",
+ "mc-transaction-types",
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "mc-util-serial",
@@ -1304,6 +1349,16 @@ dependencies = [
  "rand_core",
  "serde",
  "sha2",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "mc-transaction-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "mc-crypto-digestible",
+ "serde",
  "subtle",
  "zeroize",
 ]

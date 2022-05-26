@@ -1,7 +1,6 @@
-use crate::{
-    ring_signature::{MLSAGError, PedersenGens, Scalar},
-    CompressedCommitment,
-};
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+use crate::{CompressedCommitment, Error, PedersenGens, Scalar};
 use core::{convert::TryFrom, fmt};
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use mc_crypto_digestible::Digestible;
@@ -37,13 +36,10 @@ impl Commitment {
 }
 
 impl TryFrom<&CompressedCommitment> for Commitment {
-    type Error = crate::ring_signature::MLSAGError;
+    type Error = Error;
 
     fn try_from(src: &CompressedCommitment) -> Result<Self, Self::Error> {
-        let point = src
-            .point
-            .decompress()
-            .ok_or(MLSAGError::InvalidCurvePoint)?;
+        let point = src.point.decompress().ok_or(Error::InvalidCurvePoint)?;
         Ok(Self { point })
     }
 }
@@ -59,7 +55,7 @@ impl fmt::Debug for Commitment {
 }
 
 impl ReprBytes for Commitment {
-    type Error = MLSAGError;
+    type Error = Error;
     type Size = U32;
     fn to_bytes(&self) -> GenericArray<u8, U32> {
         self.point.compress().to_bytes().into()
@@ -67,7 +63,7 @@ impl ReprBytes for Commitment {
     fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, Self::Error> {
         let point = CompressedRistretto::from_slice(src.as_slice())
             .decompress()
-            .ok_or(MLSAGError::InvalidCurvePoint)?;
+            .ok_or(Error::InvalidCurvePoint)?;
         Ok(Self { point })
     }
 }
@@ -83,24 +79,26 @@ mod commitment_tests {
         Commitment,
     };
     use curve25519_dalek::ristretto::RistrettoPoint;
-    use rand::{rngs::StdRng, RngCore, SeedableRng};
+    use mc_util_test_helper::run_with_several_seeds;
+    use rand_core::RngCore;
 
     #[test]
     // Commitment::new should create the correct RistrettoPoint.
     fn test_new() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let value = rng.next_u64();
-        let blinding = Scalar::random(&mut rng);
-        let gens = generators(rng.next_u64());
+        run_with_several_seeds(|mut rng| {
+            let value = rng.next_u64();
+            let blinding = Scalar::random(&mut rng);
+            let gens = generators(rng.next_u64());
 
-        let commitment = Commitment::new(value, blinding, &gens);
+            let commitment = Commitment::new(value, blinding, &gens);
 
-        let expected_point: RistrettoPoint = {
-            let H = gens.B;
-            let G = B_BLINDING;
-            Scalar::from(value) * H + blinding * G
-        };
+            let expected_point: RistrettoPoint = {
+                let H = gens.B;
+                let G = B_BLINDING;
+                Scalar::from(value) * H + blinding * G
+            };
 
-        assert_eq!(commitment.point, expected_point);
+            assert_eq!(commitment.point, expected_point);
+        })
     }
 }

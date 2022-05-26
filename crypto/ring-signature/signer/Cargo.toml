@@ -1,0 +1,39 @@
+[package]
+name = "mc-crypto-ring-signature-signer"
+version = "1.3.0-pre0"
+authors = ["MobileCoin"]
+edition = "2021"
+readme = "README.md"
+
+[dependencies]
+# External dependencies
+displaydoc = { version = "0.2", default-features = false }
+generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
+hex_fmt = "0.3"
+prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
+rand_core = { version = "0.6", default-features = false }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+subtle = { version = "2.4.1", default-features = false, features = ["i128"] }
+zeroize = { version = "1", default-features = false }
+
+# MobileCoin dependencies
+mc-account-keys = { path = "../../../account-keys", default-features = false }
+mc-crypto-keys = { path = "../../keys", default-features = false }
+mc-crypto-ring-signature = { path = "..", default-features = false }
+mc-transaction-types = { path = "../../../transaction/types" }
+mc-util-serial = { path = "../../../util/serial" }
+
+[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["simd_backend", "nightly"] }
+
+[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
+curve25519-dalek = { version = "4.0.0-pre.2", default-features = false, features = ["nightly", "u64_backend"] }
+
+[dev-dependencies]
+mc-crypto-digestible-test-utils = { path = "../../digestible/test-utils" }
+mc-crypto-rand = { path = "../../rand" }
+# Enable all default features not known to break code coverage builds
+proptest = { version = "1.0", default-features = false, features = ["default-code-coverage"] }
+rand = "0.8"
+rand_hc = "0.3"
+tempdir = "0.3"

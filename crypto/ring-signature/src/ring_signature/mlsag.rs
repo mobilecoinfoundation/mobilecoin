@@ -6,7 +6,6 @@ use alloc::{vec, vec::Vec};
 use core::convert::TryFrom;
 
 use curve25519_dalek::ristretto::RistrettoPoint;
-use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::{Blake2b512, Digest};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
@@ -17,7 +16,9 @@ use zeroize::Zeroizing;
 
 use crate::{
     domain_separators::RING_MLSAG_CHALLENGE_DOMAIN_TAG,
-    ring_signature::{hash_to_point, CurveScalar, KeyImage, PedersenGens, Scalar, B_BLINDING},
+    ring_signature::{
+        hash_to_point, CurveScalar, Error, KeyImage, PedersenGens, Scalar, B_BLINDING,
+    },
     Commitment, CompressedCommitment,
 };
 
@@ -90,7 +91,7 @@ impl RingMLSAG {
         output_blinding: &Scalar,
         generator: &PedersenGens,
         rng: &mut dyn CryptoRngCore,
-    ) -> Result<Self, MLSAGError> {
+    ) -> Result<Self, Error> {
         RingMLSAG::sign_with_balance_check(
             message,
             ring,
@@ -137,11 +138,11 @@ impl RingMLSAG {
         // Note: this `mut rng` can just be `rng` if this is merged upstream:
         // https://github.com/dalek-cryptography/curve25519-dalek/pull/394
         mut rng: &mut dyn CryptoRngCore,
-    ) -> Result<Self, MLSAGError> {
+    ) -> Result<Self, Error> {
         let ring_size = ring.len();
 
         if real_index >= ring_size {
-            return Err(MLSAGError::IndexOutOfBounds);
+            return Err(Error::IndexOutOfBounds);
         }
 
         let G = B_BLINDING;
@@ -153,10 +154,7 @@ impl RingMLSAG {
         let key_image = KeyImage::from(onetime_private_key);
 
         // The uncompressed key_image.
-        let I: RistrettoPoint = key_image
-            .point
-            .decompress()
-            .ok_or(MLSAGError::InvalidKeyImage)?;
+        let I: RistrettoPoint = key_image.point.decompress().ok_or(Error::InvalidKeyImage)?;
 
         // Uncompressed output commitment.
         // This ensures that each address and commitment encodes a valid Ristretto
@@ -236,7 +234,7 @@ impl RingMLSAG {
             let (_, input_commitment) = decompressed_ring[real_index];
             let difference: RistrettoPoint = output_commitment.point - input_commitment.point;
             if difference != (z * G) {
-                return Err(MLSAGError::ValueNotConserved);
+                return Err(Error::ValueNotConserved);
             }
         }
 
@@ -260,14 +258,11 @@ impl RingMLSAG {
         message: &[u8],
         ring: &[ReducedTxOut],
         output_commitment: &CompressedCommitment,
-    ) -> Result<(), MLSAGError> {
+    ) -> Result<(), Error> {
         let ring_size = ring.len();
         // `responses` must contain `2 * ring_size` elements.
         if self.responses.len() != 2 * ring_size {
-            return Err(MLSAGError::LengthMismatch(
-                2 * ring_size,
-                self.responses.len(),
-            ));
+            return Err(Error::LengthMismatch(2 * ring_size, self.responses.len()));
         }
 
         let G = B_BLINDING;
@@ -278,7 +273,7 @@ impl RingMLSAG {
             .key_image
             .point
             .decompress()
-            .ok_or(MLSAGError::InvalidKeyImage)?;
+            .ok_or(Error::InvalidKeyImage)?;
 
         let r: Vec<Scalar> = self
             .responses
@@ -296,13 +291,13 @@ impl RingMLSAG {
 
         // Scalars must be canonical.
         if !self.c_zero.scalar.is_canonical() {
-            return Err(MLSAGError::InvalidCurveScalar);
+            return Err(Error::InvalidCurveScalar);
         }
 
         // Scalars must be canonical.
         for response in &self.responses {
             if !response.scalar.is_canonical() {
-                return Err(MLSAGError::InvalidCurveScalar);
+                return Err(Error::InvalidCurveScalar);
             }
         }
 
@@ -337,7 +332,7 @@ impl RingMLSAG {
         if self.c_zero.scalar == recomputed_c[0] {
             Ok(())
         } else {
-            Err(MLSAGError::InvalidSignature)
+            Err(Error::InvalidSignature)
         }
     }
 }
@@ -360,67 +355,28 @@ fn challenge(
     Scalar::from_hash(hasher)
 }
 
-fn decompress_ring(
-    ring: &[ReducedTxOut],
-) -> Result<Vec<(RistrettoPublic, Commitment)>, MLSAGError> {
+fn decompress_ring(ring: &[ReducedTxOut]) -> Result<Vec<(RistrettoPublic, Commitment)>, Error> {
     // Ring must decompress.
     let mut decompressed_ring: Vec<(RistrettoPublic, Commitment)> = Vec::new();
     for tx_out in ring {
-        let ristretto_public = RistrettoPublic::try_from(&tx_out.target_key)
-            .map_err(|_e| MLSAGError::InvalidCurvePoint)?;
+        let ristretto_public =
+            RistrettoPublic::try_from(&tx_out.target_key).map_err(|_e| Error::InvalidCurvePoint)?;
         let commitment = Commitment::try_from(&tx_out.commitment)?;
         decompressed_ring.push((ristretto_public, commitment));
     }
     Ok(decompressed_ring)
 }
 
-/// An error which can occur when signing or verifying
-#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub enum MLSAGError {
-    /// Incorrect length for array copy, provided `{0}`, required `{1}`.
-    LengthMismatch(usize, usize),
-
-    /// Index out of bounds
-    IndexOutOfBounds,
-
-    /// Invalid curve point
-    InvalidCurvePoint,
-
-    /// Invalid curve scalar
-    InvalidCurveScalar,
-
-    /// The signature was not able to be validated
-    InvalidSignature,
-
-    /// Failed to compress/decompress a KeyImage
-    InvalidKeyImage,
-
-    /// Value not conserved
-    ValueNotConserved,
-}
-
-impl From<mc_util_repr_bytes::LengthMismatch> for MLSAGError {
-    fn from(src: mc_util_repr_bytes::LengthMismatch) -> Self {
-        Self::LengthMismatch(src.found, src.expected)
-    }
-}
-
 #[cfg(test)]
 mod mlsag_tests {
-    use crate::{
-        ring_signature::{
-            generators, mlsag::RingMLSAG, CurveScalar, KeyImage, MLSAGError as Error, PedersenGens,
-            ReducedTxOut, Scalar,
-        },
-        CompressedCommitment,
-    };
+    use super::*;
+    use crate::generators;
     use alloc::vec::Vec;
     use curve25519_dalek::ristretto::CompressedRistretto;
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
+    use mc_util_test_helper::{RngCore, RngType, SeedableRng};
     use proptest::prelude::*;
-    use rand::{rngs::StdRng, CryptoRng, SeedableRng};
-    use rand_core::RngCore;
 
     extern crate std;
 
@@ -536,7 +492,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
 
             let params =
@@ -559,7 +515,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -575,7 +531,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let mut params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
             let wrong_value = rng.next_u64();
@@ -594,7 +550,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let mut params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
             // The ring contains num_mixins + 1 elements, with indices 0..num_mixins.
@@ -617,7 +573,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -636,7 +592,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let mut params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
             let wrong_onetime_private_key = RistrettoPrivate::from_random(&mut rng);
@@ -658,7 +614,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -709,7 +665,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -739,7 +695,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -763,7 +719,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -789,7 +745,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let mut params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -832,7 +788,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-           let mut rng: StdRng = SeedableRng::from_seed(seed);
+           let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 
@@ -855,7 +811,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
 
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
@@ -899,7 +855,7 @@ mod mlsag_tests {
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
-            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut rng: RngType = SeedableRng::from_seed(seed);
             let pseudo_output_blinding = Scalar::random(&mut rng);
             let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
 

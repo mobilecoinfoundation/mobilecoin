@@ -199,8 +199,8 @@ pub fn create_shared_secret(
 mod tests {
     use super::*;
     use mc_account_keys::AccountKey;
-    use mc_crypto_rand::McRng;
     use mc_util_from_random::FromRandom;
+    use mc_util_test_helper::run_with_several_seeds;
 
     // Returns (tx_target_key, tx_public_key)
     fn get_output_public_keys(
@@ -235,188 +235,200 @@ mod tests {
     // `create_target_key` should produce a public key that agrees with the
     // recipient's view key.
     fn test_create_target_key() {
-        let mut rng = McRng::default();
-        let account: AccountKey = AccountKey::random(&mut rng);
-        let recipient = account.default_subaddress();
+        run_with_several_seeds(|mut rng| {
+            let account: AccountKey = AccountKey::random(&mut rng);
+            let recipient = account.default_subaddress();
 
-        let tx_private_key = RistrettoPrivate::from_random(&mut rng);
-        let (tx_target_key, tx_public_key) = get_output_public_keys(&tx_private_key, &recipient);
+            let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+            let (tx_target_key, tx_public_key) =
+                get_output_public_keys(&tx_private_key, &recipient);
 
-        assert_eq!(
-            recipient.spend_public_key(),
-            &recover_public_subaddress_spend_key(
-                account.view_private_key(), // (a, D_0)
-                &tx_target_key,
-                &tx_public_key
-            )
-        );
+            assert_eq!(
+                recipient.spend_public_key(),
+                &recover_public_subaddress_spend_key(
+                    account.view_private_key(), // (a, D_0)
+                    &tx_target_key,
+                    &tx_public_key
+                )
+            );
 
-        let other_account = AccountKey::random(&mut rng);
-        assert_ne!(
-            other_account.default_subaddress().spend_public_key(),
-            &recover_public_subaddress_spend_key(
-                other_account.view_private_key(),
-                &tx_target_key,
-                &tx_public_key
-            ),
-            "The one-time public key should not match other view keys."
-        );
+            let other_account = AccountKey::random(&mut rng);
+            assert_ne!(
+                other_account.default_subaddress().spend_public_key(),
+                &recover_public_subaddress_spend_key(
+                    other_account.view_private_key(),
+                    &tx_target_key,
+                    &tx_public_key
+                ),
+                "The one-time public key should not match other view keys."
+            );
+        })
     }
 
     #[test]
     // Should return `r * D`.
     fn test_create_tx_public_key() {
-        let mut rng = McRng::default();
-        let r = Scalar::random(&mut rng);
-        let D = RistrettoPoint::random(&mut rng);
+        run_with_several_seeds(|mut rng| {
+            let r = Scalar::random(&mut rng);
+            let D = RistrettoPoint::random(&mut rng);
 
-        let expected = RistrettoPublic::from(r * D);
+            let expected = RistrettoPublic::from(r * D);
 
-        let tx_private_key = RistrettoPrivate::from(r);
-        let recipient_spend_key = RistrettoPublic::from(D);
-        assert_eq!(
-            expected,
-            create_tx_out_public_key(&tx_private_key, &recipient_spend_key)
-        );
+            let tx_private_key = RistrettoPrivate::from(r);
+            let recipient_spend_key = RistrettoPublic::from(D);
+            assert_eq!(
+                expected,
+                create_tx_out_public_key(&tx_private_key, &recipient_spend_key)
+            );
+        })
     }
 
     #[test]
     // Should recover the correct public subaddress spend key D_i when the output
     // belongs to the recipient.
     fn test_recover_public_subaddress_spend_key_ok() {
-        let mut rng = McRng::default();
-        let account: AccountKey = AccountKey::random(&mut rng);
-        let (_c, _d, recipient) = get_subaddress(&account, 7);
+        run_with_several_seeds(|mut rng| {
+            let account: AccountKey = AccountKey::random(&mut rng);
+            let (_c, _d, recipient) = get_subaddress(&account, 7);
 
-        let tx_private_key = RistrettoPrivate::from_random(&mut rng);
-        let (tx_target_key, tx_public_key) = get_output_public_keys(&tx_private_key, &recipient);
+            let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+            let (tx_target_key, tx_public_key) =
+                get_output_public_keys(&tx_private_key, &recipient);
 
-        let D_prime = recover_public_subaddress_spend_key(
-            account.view_private_key(),
-            &tx_target_key,
-            &tx_public_key,
-        );
-
-        assert_eq!(D_prime, *recipient.spend_public_key()); // D_7
-
-        assert_eq!(
-            recipient.spend_public_key(),
-            &recover_public_subaddress_spend_key(
+            let D_prime = recover_public_subaddress_spend_key(
                 account.view_private_key(),
                 &tx_target_key,
-                &tx_public_key
-            )
-        );
+                &tx_public_key,
+            );
+
+            assert_eq!(D_prime, *recipient.spend_public_key()); // D_7
+
+            assert_eq!(
+                recipient.spend_public_key(),
+                &recover_public_subaddress_spend_key(
+                    account.view_private_key(),
+                    &tx_target_key,
+                    &tx_public_key
+                )
+            );
+        })
     }
 
     #[test]
     // Should not panic if the output contains the wrong tx_target_key.
     fn test_recover_public_subaddress_spend_key_wrong_tx_target_key() {
-        let mut rng = McRng::default();
-        let account: AccountKey = AccountKey::random(&mut rng);
-        let (_c, _d, recipient) = get_subaddress(&account, 7);
+        run_with_several_seeds(|mut rng| {
+            let account: AccountKey = AccountKey::random(&mut rng);
+            let (_c, _d, recipient) = get_subaddress(&account, 7);
 
-        let tx_private_key = RistrettoPrivate::from_random(&mut rng);
-        let (_, tx_public_key) = get_output_public_keys(&tx_private_key, &recipient);
-        let wrong_tx_target_key = RistrettoPublic::from_random(&mut rng);
+            let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+            let (_, tx_public_key) = get_output_public_keys(&tx_private_key, &recipient);
+            let wrong_tx_target_key = RistrettoPublic::from_random(&mut rng);
 
-        // Should not panic.
-        let D_prime = recover_public_subaddress_spend_key(
-            account.view_private_key(),
-            &wrong_tx_target_key,
-            &tx_public_key,
-        );
+            // Should not panic.
+            let D_prime = recover_public_subaddress_spend_key(
+                account.view_private_key(),
+                &wrong_tx_target_key,
+                &tx_public_key,
+            );
 
-        // Returns meaningless public key.
-        assert!(D_prime != *recipient.spend_public_key());
+            // Returns meaningless public key.
+            assert!(D_prime != *recipient.spend_public_key());
+        })
     }
 
     #[test]
     // Should not panic if the output contains the wrong tx_public_key.
     fn test_recover_public_subaddress_spend_key_wrong_tx_public_key() {
-        let mut rng = McRng::default();
-        let account: AccountKey = AccountKey::random(&mut rng);
-        let (_c, _d, recipient) = get_subaddress(&account, 7);
+        run_with_several_seeds(|mut rng| {
+            let account: AccountKey = AccountKey::random(&mut rng);
+            let (_c, _d, recipient) = get_subaddress(&account, 7);
 
-        let tx_private_key = RistrettoPrivate::from_random(&mut rng);
-        let (tx_target_key, _) = get_output_public_keys(&tx_private_key, &recipient);
-        let wrong_tx_public_key = RistrettoPublic::from_random(&mut rng);
+            let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+            let (tx_target_key, _) = get_output_public_keys(&tx_private_key, &recipient);
+            let wrong_tx_public_key = RistrettoPublic::from_random(&mut rng);
 
-        // Should not panic.
-        let D_prime = recover_public_subaddress_spend_key(
-            account.view_private_key(),
-            &tx_target_key,
-            &wrong_tx_public_key,
-        );
+            // Should not panic.
+            let D_prime = recover_public_subaddress_spend_key(
+                account.view_private_key(),
+                &tx_target_key,
+                &wrong_tx_public_key,
+            );
 
-        // Returns meaningless public key.
-        assert!(D_prime != *recipient.spend_public_key());
+            // Returns meaningless public key.
+            assert!(D_prime != *recipient.spend_public_key());
+        })
     }
 
     #[test]
     // Returns the private key corresponding to `tx_target_key`.
     fn test_recover_onetime_private_key_valid_keypair() {
-        let mut rng = McRng::default();
-        let account = AccountKey::random(&mut rng);
-        let (_c, d, recipient) = get_subaddress(&account, 787);
+        run_with_several_seeds(|mut rng| {
+            let account = AccountKey::random(&mut rng);
+            let (_c, d, recipient) = get_subaddress(&account, 787);
 
-        let tx_private_key = RistrettoPrivate::from_random(&mut rng);
-        let (tx_target_key, tx_public_key) = get_output_public_keys(&tx_private_key, &recipient);
+            let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+            let (tx_target_key, tx_public_key) =
+                get_output_public_keys(&tx_private_key, &recipient);
 
-        let onetime_private_key =
-            recover_onetime_private_key(&tx_public_key, account.view_private_key(), &d);
-        assert_eq!(tx_target_key, RistrettoPublic::from(&onetime_private_key));
+            let onetime_private_key =
+                recover_onetime_private_key(&tx_public_key, account.view_private_key(), &d);
+            assert_eq!(tx_target_key, RistrettoPublic::from(&onetime_private_key));
+        })
     }
 
     #[test]
     // Returns meaningless data if the output contains the wrong tx_target_key.
     fn test_recover_onetime_private_key_wrong_tx_target_key() {
-        let mut rng = McRng::default();
-        let account = AccountKey::random(&mut rng);
-        let (_c, d, recipient) = get_subaddress(&account, 787);
+        run_with_several_seeds(|mut rng| {
+            let account = AccountKey::random(&mut rng);
+            let (_c, d, recipient) = get_subaddress(&account, 787);
 
-        let tx_private_key = RistrettoPrivate::from_random(&mut rng);
-        let (_, tx_public_key) = get_output_public_keys(&tx_private_key, &recipient);
+            let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+            let (_, tx_public_key) = get_output_public_keys(&tx_private_key, &recipient);
 
-        let wrong_tx_target_key = RistrettoPublic::from_random(&mut rng);
+            let wrong_tx_target_key = RistrettoPublic::from_random(&mut rng);
 
-        let onetime_private_key =
-            recover_onetime_private_key(&tx_public_key, account.view_private_key(), &d);
+            let onetime_private_key =
+                recover_onetime_private_key(&tx_public_key, account.view_private_key(), &d);
 
-        assert!(wrong_tx_target_key != RistrettoPublic::from(&onetime_private_key));
+            assert!(wrong_tx_target_key != RistrettoPublic::from(&onetime_private_key));
+        })
     }
 
     #[test]
     // Returns meaningless data if the output contains the wrong tx_public_key.
     fn test_recover_onetime_private_key_wrong_tx_public_key() {
-        let mut rng = McRng::default();
-        let account = AccountKey::random(&mut rng);
-        let (_c, d, recipient) = get_subaddress(&account, 787);
+        run_with_several_seeds(|mut rng| {
+            let account = AccountKey::random(&mut rng);
+            let (_c, d, recipient) = get_subaddress(&account, 787);
 
-        let tx_private_key = RistrettoPrivate::from_random(&mut rng);
-        let (tx_target_key, _) = get_output_public_keys(&tx_private_key, &recipient);
+            let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+            let (tx_target_key, _) = get_output_public_keys(&tx_private_key, &recipient);
 
-        let wrong_tx_public_key = RistrettoPublic::from_random(&mut rng);
+            let wrong_tx_public_key = RistrettoPublic::from_random(&mut rng);
 
-        let onetime_private_key =
-            recover_onetime_private_key(&wrong_tx_public_key, account.view_private_key(), &d);
+            let onetime_private_key =
+                recover_onetime_private_key(&wrong_tx_public_key, account.view_private_key(), &d);
 
-        assert!(tx_target_key != RistrettoPublic::from(&onetime_private_key));
+            assert!(tx_target_key != RistrettoPublic::from(&onetime_private_key));
+        })
     }
 
     #[test]
     // shared_secret(a,B) should equal shared_secret(b,A)
     fn test_create_shared_secret_is_symmetric() {
-        let mut rng = McRng::default();
-        let a = RistrettoPrivate::from_random(&mut rng);
-        let A = RistrettoPublic::from(&a);
+        run_with_several_seeds(|mut rng| {
+            let a = RistrettoPrivate::from_random(&mut rng);
+            let A = RistrettoPublic::from(&a);
 
-        let b = RistrettoPrivate::from_random(&mut rng);
-        let B = RistrettoPublic::from(&b);
+            let b = RistrettoPrivate::from_random(&mut rng);
+            let B = RistrettoPublic::from(&b);
 
-        let aB = create_shared_secret(&B, &a);
-        let bA = create_shared_secret(&A, &b);
+            let aB = create_shared_secret(&B, &a);
+            let bA = create_shared_secret(&A, &b);
 
-        assert_eq!(aB, bA);
+            assert_eq!(aB, bA);
+        })
     }
 }

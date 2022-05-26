@@ -34,6 +34,7 @@ mc-util-build-script = { path = "../util/build/script" }
 cargo-emit = "0.2.1"
 
 [dev-dependencies]
+mc-crypto-ring-signature-signer = { path = "../crypto/ring-signature/signer" }
 mc-crypto-x509-test-vectors = { path = "../crypto/x509/test-vectors" }
 mc-fog-report-validation-test-utils = { path = "../fog/report/validation/test-utils" }
 mc-test-vectors-b58-encodings = { path = "../test-vectors/b58-encodings" }

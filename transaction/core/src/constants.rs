@@ -2,7 +2,7 @@
 
 //! MobileCoin Transaction Constants.
 
-use crate::ring_signature::Scalar;
+use mc_crypto_ring_signature::Scalar;
 
 /// Maximum number of transactions that may be included in a Block.
 pub const MAX_TRANSACTIONS_PER_BLOCK: usize = 5000;

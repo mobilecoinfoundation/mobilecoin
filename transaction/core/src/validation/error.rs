@@ -32,7 +32,7 @@ pub enum TransactionValidationError {
     InvalidInputSignature,
 
     /// Invalid RingCT signature: `{0}`
-    InvalidTransactionSignature(crate::ring_signature::Error),
+    InvalidTransactionSignature(crate::ring_ct::Error),
 
     /// All Range Proofs in the transaction must be valid.
     InvalidRangeProof,

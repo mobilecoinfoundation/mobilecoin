@@ -37,6 +37,7 @@ use mc_common::ResponderId;
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic, X25519};
 use mc_crypto_rand::McRng;
+use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_kex_rng::{BufferedRng, KexRngPubkey, NewFromKex, StoredRng, VersionedKexRng};
 use mc_fog_report_types::{Report, ReportResponse};
 use mc_fog_report_validation::{FogReportResponses, FogResolver};
@@ -46,12 +47,10 @@ use mc_transaction_core::{
         create_shared_secret, recover_onetime_private_key, recover_public_subaddress_spend_key,
     },
     ring_signature::KeyImage,
-    signer::NoKeysRingSigner,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     Amount, BlockVersion, CompressedCommitment, MaskedAmount, Token,
 };
-
 use mc_transaction_std::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
     InputCredentials, MemoBuilder, MemoPayload, RTHMemoBuilder, ReservedSubaddresses,

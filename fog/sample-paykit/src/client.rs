@@ -16,6 +16,7 @@ use mc_connection::{
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_crypto_rand::{CryptoRng, RngCore};
+use mc_crypto_ring_signature_signer::{LocalRingSigner, OneTimeKeyDeriveData, RingSigner};
 use mc_fog_api::ledger::TxOutResultCode;
 use mc_fog_ledger_connection::{
     FogBlockGrpcClient, FogKeyImageGrpcClient, FogMerkleProofGrpcClient,
@@ -26,7 +27,6 @@ use mc_fog_report_validation::{FogPubkeyResolver, FogResolver};
 use mc_fog_types::{ledger::KeyImageResultCode, BlockCount};
 use mc_fog_view_connection::FogViewGrpcClient;
 use mc_transaction_core::{
-    signer::{LocalRingSigner, OneTimeKeyDeriveData, RingSigner},
     tx::{Tx, TxOut, TxOutMembershipProof},
     Amount, BlockIndex, BlockVersion, SignedContingentInput, TokenId,
 };
