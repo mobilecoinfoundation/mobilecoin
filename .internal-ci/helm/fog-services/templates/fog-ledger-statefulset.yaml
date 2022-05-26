@@ -1,0 +1,189 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "fogServices.fullname" . }}-fog-ledger
+  labels:
+    {{- include "fogServices.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.fogLedger.replicaCount }}
+  selector:
+    matchLabels:
+      app: fog-ledger
+      {{- include "fogServices.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "fogServices.fullname" . }}-fog-ledger
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.fogLedger.podAnnotations | nindent 8 }}
+      labels:
+        app: fog-ledger
+        {{- include "fogServices.labels" . | nindent 8 }}
+    spec:
+      imagePullSecrets:
+      {{- toYaml .Values.imagePullSecrets | nindent 6 }}
+      terminationGracePeriodSeconds: 30
+      dnsConfig:
+        options:
+        - name: ndots
+          value: "1"
+      initContainers:
+      {{- tpl (toYaml .Values.fogLedger.initContainers) . | nindent 6 }}
+      containers:
+      - name: fog-ledger
+        image: "{{ .Values.fogLedger.image.org | default .Values.image.org }}/{{ .Values.fogLedger.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.fogLedger.image.pullPolicy }}
+        command: [ "/usr/bin/supervisord" ]
+        ports:
+        - name: ledger
+          containerPort: 3228
+        - name: mgmt
+          containerPort: 8000
+        envFrom:
+        - secretRef:
+            name: ias
+        - configMapRef:
+            name: fog-ledger
+        - secretRef:
+            name: ipinfo
+            optional: true
+        env:
+        - name: RUST_BACKTRACE
+          value: {{ .Values.fogLedger.rust.backtrace | quote }}
+        - name: RUST_LOG
+          value: {{ .Values.fogLedger.rust.log | quote }}
+        - name: FOG_LEDGER_SENTRY_DSN
+          valueFrom:
+            configMapKeyRef:
+              name: sentry
+              key: fog-ledger-sentry-dsn
+        # Maps to Sentry Environment
+        - name: MC_BRANCH
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CLIENT_AUTH_TOKEN_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: client-auth-token
+              key: token
+              optional: true
+        - name: CLIENT_RESPONDER_ID
+          value: "{{ include "fogServices.fogPublicFQDN" . }}:443"
+        # Hold liveness and readiness until this probe passes.
+        startupProbe:
+          exec:
+            command:
+            - "/usr/local/bin/grpc_health_probe"
+            - "-addr=:3228"
+          failureThreshold: 30
+          periodSeconds: 10
+        # Will wait for startup probe to succeed. When this passes k8s won't kill the service.
+        livenessProbe:
+          exec:
+            command:
+            - "/usr/local/bin/grpc_health_probe"
+            - "-addr=:3228"
+          failureThreshold: 5
+          periodSeconds: 30
+        # Will wait for startup probe to succeed. When this passes services/ingress will pass traffic
+        readinessProbe:
+          exec:
+            command:
+            - "/usr/local/bin/grpc_health_probe"
+            - "-addr=:3228"
+          failureThreshold: 2
+          periodSeconds: 10
+        volumeMounts:
+        - name: aesm-socket-dir
+          mountPath: /var/run/aesmd
+        - name: fog-data
+          mountPath: /fog-data
+        - name: supervisor-conf
+          mountPath: /etc/supervisor/conf.d
+          readOnly: true
+        resources:
+          {{- toYaml .Values.fogLedger.resources | nindent 10 }}
+      - name: grpc-gateway
+        image: "{{ .Values.grpcGateway.image.org | default .Values.image.org }}/{{ .Values.grpcGateway.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: Always
+        command:
+        - /usr/bin/go-grpc-gateway
+        - -grpc-server-endpoint=127.0.0.1:3228
+        - -grpc-insecure
+        - -http-server-listen=:8228
+        - -logtostderr
+        ports:
+          - name: ledger-http
+            containerPort: 8228
+        resources:
+          {{- toYaml .Values.grpcGateway.resources | nindent 10 }}
+{{- if eq .Values.jaegerTracing.enabled true }}
+      - name: jaeger-agent
+        image: jaegertracing/jaeger-agent:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 5775
+            name: zk-compact-trft
+            protocol: UDP
+          - containerPort: 5778
+            name: config-rest
+            protocol: TCP
+          - containerPort: 6831
+            name: jg-compact-trft
+            protocol: UDP
+          - containerPort: 6832
+            name: jg-binary-trft
+            protocol: UDP
+          - containerPort: 14271
+            name: admin-http
+            protocol: TCP
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+        args:
+          - --reporter.grpc.host-port={{ .Values.jaegerTracing.collector }}
+          - --reporter.type=grpc
+          - --agent.tags=cluster=undefined,container.name=fog-ledger,deployment.name={{ include "fogServices.fullname" . }},host.ip=${HOST_IP:},pod.name=${POD_NAME:},pod.namespace={{ .Release.Namespace }}
+{{- end }}
+      nodeSelector:
+        {{- toYaml .Values.fogLedger.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.fogLedger.tolerations | nindent 8 }}
+      affinity:
+        {{- toYaml .Values.fogLedger.affinity | nindent 8 }}
+      volumes:
+      {{- if eq .Values.fogLedger.persistence.enabled false }}
+      - name: fog-data
+        emptyDir: {}
+      {{- end }}
+      - name: aesm-socket-dir
+        emptyDir: {}
+      - name: supervisor-conf
+        projected:
+          sources:
+          - configMap:
+              name: {{ include "fogServices.fullname" . }}-supervisord-sgx
+          - configMap:
+              name: {{ include "fogServices.fullname" . }}-supervisord-daemon
+          - configMap:
+              name: fog-supervisord-mobilecoind
+          - configMap:
+              name: {{ include "fogServices.fullname" . }}-supervisord-fog-ledger
+          - configMap:
+              name: {{ include "fogServices.fullname" . }}-supervisord-admin
+  {{- if .Values.fogLedger.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: fog-data
+    spec:
+      {{- toYaml .Values.fogLedger.persistence.spec | nindent 6 }}
+  {{- end }}

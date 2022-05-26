@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mobilecoind.fullname" . }}-supervisord-mobilecoind-json
+  labels:
+    {{- include "mobilecoind.labels" . | nindent 4 }}
+data:
+  mobilecoind-json.conf: |
+    [program:mobilecoind-json]
+    command=/usr/bin/mobilecoind-json
+      --listen-host 0.0.0.0
+      --mobilecoind-uri insecure-mobilecoind://localhost:3229
+
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+    autorestart=true

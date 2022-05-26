@@ -1,0 +1,37 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+images:
+  tag: ""
+
+consensusPeers: []
+  # - peerHostname: peer1.test.example.com
+  #   clientHostname: client1.test.example.com
+  #   peerPort: 443
+  #   clientPort: 443
+  #   signerPublicKey: public-key
+  #   ledgerArchiveLocation: https://s3-location-hostname/ledger/peer1.test.example.com
+
+imagePullSecrets: []
+  # - name: "credentials"
+
+watcher:
+  backupEnabled: false
+  persistenceEnabled: false
+  storageClass: ""
+  instances: []
+    # - watchername: watcher1
+    #   s3Bucket: bucket-name
+    #   awsAccessKeyId: access-key-id-string
+    #   awsSecretAccessKey: secret-access-key-string
+    #   s3Region: eu-central-1
+    #   s3EndpointUrl: "http://your-s3-server:5555"
+    #   watcherRegionId: aws-eu-central-1
+    # - watchername: watcher2
+    #   s3Bucket: bucket-name
+    #   awsAccessKeyId: access-key-id-string
+    #   awsSecretAccessKey: secret-access-key-string
+    #   s3Region: eu-central-1
+    #   watcherRegionId: aws-eu-central-1
+  podAnnotations:
+    fluentbit.io/include: 'true' # collect logs with fluentbit
+
+watcherNodeSelector: {}

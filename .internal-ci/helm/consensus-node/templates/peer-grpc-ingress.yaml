@@ -1,0 +1,53 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "consensusNode.fullname" . }}-peer-grpc
+  annotations:
+    {{- toYaml .Values.node.peer.ingress.annotations | nindent 4 }}
+  labels:
+    {{- include "consensusNode.labels" . | nindent 4 }}
+spec:
+  tls:
+  - hosts:
+    - {{ include "consensusNode.peerHostname" . }}
+    secretName: {{ include "consensusNode.fullname" . }}-peer-tls
+  rules:
+  - host: {{ include "consensusNode.peerHostname" . }}
+    http:
+      paths:
+      - path: /attest.AttestedApi
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "consensusNode.fullname" . }}
+            port:
+              number: 8443
+      - path: /build_info
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "consensusNode.fullname" . }}
+            port:
+              number: 8443
+      - path: /consensus_common.BlockchainAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "consensusNode.fullname" . }}
+            port:
+              number: 8443
+      - path: /consensus_peer.ConsensusPeerAPI
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "consensusNode.fullname" . }}
+            port:
+              number: 8443
+      - path: /grpc.health.v1.Health
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "consensusNode.fullname" . }}
+            port:
+              number: 8443

@@ -1,0 +1,11 @@
+# Copyright (c) 2018-2022 The MobileCoin Foundation
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "consensusNodeConfig.fullname" . }}-consensus-node
+  labels:
+    {{- include "consensusNodeConfig.labels" . | nindent 4 }}
+data:
+  clientHostname: {{ include "consensusNodeConfig.clientHostname" . | squote }}
+  peerHostname: {{ include "consensusNodeConfig.peerHostname" . | squote }}
+  blockVersion: {{ .Values.global.node.nodeConfig.blockVersion | squote }}
