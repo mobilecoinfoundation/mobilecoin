@@ -180,7 +180,7 @@ jobs:
             --consensus-wait 300 \
             --transfer-amount 20 \
             --fog-view fog-view://${{ secrets.CLIENT_AUTH_USER_VALUE }}fog.${{ inputs.namespace }}.development.mobilecoin.com:443 \
-            --fog-ledger fog-ledger:${{ secrets.CLIENT_AUTH_USER_VALUE }}//fog.${{ inputs.namespace }}.development.mobilecoin.com:443
+            --fog-ledger fog-ledger://${{ secrets.CLIENT_AUTH_USER_VALUE }}fog.${{ inputs.namespace }}.development.mobilecoin.com:443
 
 
     - name: Test - mobilecoind-grpc (previously Wallet Integration)
