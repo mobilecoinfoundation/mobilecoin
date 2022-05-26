@@ -27,7 +27,6 @@ mc-watcher = { path = "../../../watcher" }
 
 # third party
 assert_cmd = "2.0.4"
-maplit = "1"
 predicates = "2"
 rand = "0.8"
 tempdir = "0.3"

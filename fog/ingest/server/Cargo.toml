@@ -62,11 +62,11 @@ mc-fog-uri = { path = "../../uri" }
 [dev-dependencies]
 mc-fog-ingest-server-test-utils = { path = "test-utils" }
 mc-fog-test-infra = { path = "../../test_infra" }
+mc-transaction-core-test-utils = { path = "../../../transaction/core/test-utils" }
 mc-util-build-info = { path = "../../../util/build/info" }
 mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-test-helper = { path = "../../../util/test-helper" }
 
-maplit = "1"
 rand_core = "0.6"
 rand_hc = "0.3"
 tempdir = "0.3"

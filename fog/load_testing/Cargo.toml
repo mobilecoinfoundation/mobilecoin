@@ -13,7 +13,6 @@ path = "src/bin/ingest.rs"
 # third party
 clap = { version = "3.2", features = ["derive", "env"] }
 grpcio = "0.10.2"
-rand = "0.8"
 retry = "1.3"
 tempdir = "0.3"
 

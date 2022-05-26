@@ -7,8 +7,21 @@ fn test_cumulative_txo_counts() {
     run_with_several_seeds(|mut rng| {
         for block_version in BlockVersion::iterator() {
             let origin = Block::new_origin_block(&[]);
-
-            let results = get_blocks(block_version, 10, 20, 1, 50, 50, origin.clone(), &mut rng);
+            let num_tokens = if block_version.mixed_transactions_are_supported() {
+                2
+            } else {
+                1
+            };
+            let results = get_blocks(
+                block_version,
+                5,
+                2,
+                num_tokens,
+                2,
+                42,
+                origin.clone(),
+                &mut rng,
+            );
 
             let mut parent = origin;
             for block_data in results {

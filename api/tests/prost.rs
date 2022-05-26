@@ -3,7 +3,6 @@
 //! Tests that prost-versions of structures round-trip with the versions
 //! generated from external.proto
 
-use maplit::btreemap;
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use mc_api::{blockchain, external, quorum_set};
 use mc_blockchain_test_utils::{
@@ -46,17 +45,16 @@ fn signed_contingent_input_examples<T: RngCore + CryptoRng>(
     let recipient2 = AccountKey::random_with_fog(rng).default_subaddress();
     let sender_change_dest = ReservedSubaddresses::from(&sender);
 
-    let fpr = MockFogResolver(btreemap! {
-                        recipient2
-                .fog_report_url()
-                .unwrap()
-                .to_string()
-        =>
+    let fpr = MockFogResolver(
+        [(
+            recipient2.fog_report_url().unwrap().to_string(),
             FullyValidatedFogPubkey {
                 pubkey: FromRandom::from_random(rng),
                 pubkey_expiry: 1000,
             },
-    });
+        )]
+        .into(),
+    );
 
     let input_credentials = get_input_credentials(
         block_version,

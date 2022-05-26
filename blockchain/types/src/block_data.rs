@@ -8,16 +8,20 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Deserialize, Eq, Message, PartialEq, Serialize)]
 pub struct BlockData {
     #[prost(message, required, tag = 1)]
-    block: Block,
+    /// The block header.
+    pub block: Block,
 
+    /// The block contents.
     #[prost(message, required, tag = 2)]
-    contents: BlockContents,
+    pub contents: BlockContents,
 
+    /// A signature over the [Block].
     #[prost(message, optional, tag = 3)]
-    signature: Option<BlockSignature>,
+    pub signature: Option<BlockSignature>,
 
+    /// Block metadata.
     #[prost(message, optional, tag = 4)]
-    metadata: Option<BlockMetadata>,
+    pub metadata: Option<BlockMetadata>,
 }
 
 impl BlockData {

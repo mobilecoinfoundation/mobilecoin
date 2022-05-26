@@ -927,6 +927,7 @@ mod ledger_db_test {
         create_test_tx_out, mint_config_tx_to_validated as to_validated,
     };
     use mc_util_from_random::FromRandom;
+    use mc_util_test_helper::get_seeded_rng;
     use rand::{rngs::StdRng, RngCore, SeedableRng};
     use tempdir::TempDir;
     use test::Bencher;
@@ -951,72 +952,34 @@ mod ledger_db_test {
     /// * `n_txs_per_block` - number of transactions per block.
     fn populate_db(
         db: &mut LedgerDB,
-        num_blocks: u64,
-        num_outputs_per_block: u64,
-    ) -> (Vec<Block>, Vec<BlockContents>) {
-        let initial_amount: u64 = 5_000 * 1_000_000_000_000;
-
+        num_blocks: usize,
+        num_outputs_per_block: usize,
+    ) -> Vec<BlockData> {
         // Generate 1 public / private addresses and create transactions.
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let account_key = AccountKey::random(&mut rng);
-
-        let mut parent_block: Option<Block> = None;
-        let mut blocks: Vec<Block> = Vec::new();
-        let mut blocks_contents: Vec<BlockContents> = Vec::new();
-
-        for block_index in 0..num_blocks {
-            let outputs: Vec<TxOut> = (0..num_outputs_per_block)
-                .map(|_i| {
-                    TxOut::new(
-                        BLOCK_VERSION,
-                        Amount {
-                            value: initial_amount,
-                            token_id: Mob::ID,
-                        },
-                        &account_key.default_subaddress(),
-                        &RistrettoPrivate::from_random(&mut rng),
-                        Default::default(),
-                    )
-                    .unwrap()
-                })
-                .collect();
-
-            // Non-origin blocks must have at least one key image.
-            let key_images: Vec<KeyImage> = if block_index > 0 {
-                vec![KeyImage::from(block_index)]
-            } else {
-                vec![]
-            };
-
-            let block_contents = BlockContents {
-                key_images,
-                outputs: outputs.clone(),
-                ..Default::default()
-            };
-
-            let block = match parent_block {
-                None => Block::new_origin_block(&outputs),
-                Some(parent) => Block::new_with_parent(
-                    BLOCK_VERSION,
-                    &parent,
-                    &Default::default(),
-                    &block_contents,
-                ),
-            };
-            assert_eq!(block_index, block.index);
-
-            // FIXME: Add metadata, too.
-            db.append_block(&block, &block_contents, None, None)
-                .expect("failed writing initial transactions");
-            blocks.push(block.clone());
-            blocks_contents.push(block_contents);
-            parent_block = Some(block);
+        let blocks = get_blocks(
+            BLOCK_VERSION,
+            num_blocks,
+            1,
+            1,
+            num_outputs_per_block,
+            1 << 20,
+            None,
+            &mut get_seeded_rng(),
+        );
+        for block_data in &blocks {
+            db.append_block_data(block_data).unwrap_or_else(|err| {
+                panic!(
+                    "failed writing block with index {}: {}",
+                    block_data.block().index,
+                    err
+                );
+            });
         }
 
         // Verify that db now contains n transactions.
         assert_eq!(db.num_blocks().unwrap(), num_blocks as u64);
 
-        (blocks, blocks_contents)
+        blocks
     }
 
     #[test]
@@ -2495,9 +2458,9 @@ mod ledger_db_test {
     fn test_num_blocks() {
         let mut ledger_db = create_db();
         assert_eq!(ledger_db.num_blocks().unwrap(), 0);
-        let n_blocks: u64 = 7;
+        let n_blocks = 7;
         populate_db(&mut ledger_db, n_blocks, 1);
-        assert_eq!(ledger_db.num_blocks().unwrap(), n_blocks);
+        assert_eq!(ledger_db.num_blocks().unwrap(), n_blocks as u64);
     }
 
     #[test]
@@ -2505,15 +2468,14 @@ mod ledger_db_test {
     fn test_get_block_by_index() {
         let mut ledger_db = create_db();
         let n_blocks = 43;
-        let (expected_blocks, _) = populate_db(&mut ledger_db, n_blocks, 1);
+        let expected_blocks = populate_db(&mut ledger_db, n_blocks, 1);
 
         for block_index in 0..n_blocks {
             let block = ledger_db
                 .get_block(block_index as u64)
                 .unwrap_or_else(|_| panic!("Could not get block {:?}", block_index));
 
-            let expected_block: Block = expected_blocks.get(block_index as usize).unwrap().clone();
-            assert_eq!(block, expected_block);
+            assert_eq!(&block, expected_blocks[block_index as usize].block());
         }
     }
 
@@ -2523,25 +2485,22 @@ mod ledger_db_test {
     fn test_get_block_contents_by_index() {
         let mut ledger_db = create_db();
         let n_blocks = 43;
-        let (_, expected_block_contents) = populate_db(&mut ledger_db, n_blocks, 1);
+        let expected_blocks = populate_db(&mut ledger_db, n_blocks, 1);
 
         for block_index in 0..n_blocks {
             let block_contents = ledger_db
                 .get_block_contents(block_index as u64)
                 .unwrap_or_else(|_| panic!("Could not get block contents {:?}", block_index));
 
-            let expected_block_contents = expected_block_contents
-                .get(block_index as usize)
-                .unwrap()
-                .clone();
-            assert_eq!(block_contents, expected_block_contents);
+            let expected_block_contents = expected_blocks[block_index as usize].contents();
+            assert_eq!(&block_contents, expected_block_contents);
         }
     }
 
     #[test]
     // Getting a block by its index should return an error if the block doesn't
     // exist.
-    fn test_get_block_by_index_doesnt_exist() {
+    fn get_block_by_index_doesnt_exist() {
         let mut ledger_db = create_db();
         let n_blocks = 43;
         populate_db(&mut ledger_db, n_blocks, 1);
@@ -2563,9 +2522,10 @@ mod ledger_db_test {
     fn test_get_block_index_by_tx_out_index() {
         let mut ledger_db = create_db();
         let n_blocks = 43;
-        let (_expected_blocks, expected_block_contents) = populate_db(&mut ledger_db, n_blocks, 1);
+        let blocks = populate_db(&mut ledger_db, n_blocks, 1);
+        let expected = blocks.iter().map(BlockData::contents);
 
-        for (block_index, block_contents) in expected_block_contents.iter().enumerate() {
+        for (block_index, block_contents) in expected.enumerate() {
             for tx_out in block_contents.outputs.iter() {
                 let tx_out_index = ledger_db
                     .get_tx_out_index_by_public_key(&tx_out.public_key)
@@ -2582,7 +2542,7 @@ mod ledger_db_test {
     #[test]
     // Getting a block index by a tx out index return an error if the tx out index
     // doesn't exist.
-    fn test_get_block_index_by_tx_out_index_doesnt_exist() {
+    fn get_block_index_by_tx_out_index_doesnt_exist() {
         let mut ledger_db = create_db();
         let n_blocks = 43;
         populate_db(&mut ledger_db, n_blocks, 1);
@@ -2647,42 +2607,19 @@ mod ledger_db_test {
     // `get_key_images_by_block` should return the correct set of key images used in
     // a single block.
     fn test_get_key_images_by_block() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
+        let blocks = populate_db(&mut ledger_db, 3, 2);
+        let expected_key_images = blocks[1].contents().key_images.clone();
 
-        // Populate the ledger with some initial blocks.
-        let n_blocks = 3;
-        populate_db(&mut ledger_db, n_blocks, 2);
-
-        // Append a new block to the ledger.
-        let num_key_images = 3;
-        let key_images: Vec<KeyImage> = (0..num_key_images)
-            .map(|_i| KeyImage::from(rng.next_u64()))
-            .collect();
-
-        let tx_out = create_test_tx_out(BLOCK_VERSION, &mut rng);
-        let outputs = vec![tx_out];
-
-        let block_contents = BlockContents {
-            key_images: key_images.clone(),
-            outputs,
-            ..Default::default()
-        };
-        let parent = ledger_db.get_block(n_blocks - 1).unwrap();
-        let block =
-            Block::new_with_parent(BLOCK_VERSION, &parent, &Default::default(), &block_contents);
-
-        ledger_db
-            .append_block(&block, &block_contents, None, None)
-            .unwrap();
-
-        let returned_key_images = ledger_db.get_key_images_by_block(block.index).unwrap();
-        assert_eq!(key_images, returned_key_images);
+        assert_eq!(
+            expected_key_images,
+            ledger_db.get_key_images_by_block(1).unwrap()
+        );
     }
 
     #[test]
     /// Attempting to append an empty block should return Error::NoOutputs.
-    fn test_append_empty_block() {
+    fn append_empty_block() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
 
@@ -2858,8 +2795,9 @@ mod ledger_db_test {
 
         // initialize a ledger with 3 blocks.
         let n_blocks = 3;
-        let (blocks, _) = populate_db(&mut ledger_db, n_blocks, 2);
-        assert_eq!(ledger_db.num_blocks().unwrap(), n_blocks);
+        let blocks = populate_db(&mut ledger_db, n_blocks, 2);
+        let origin = blocks[0].block();
+        assert_eq!(ledger_db.num_blocks().unwrap(), n_blocks as u64);
 
         let key_images = vec![KeyImage::from(rng.next_u64())];
 
@@ -2875,20 +2813,19 @@ mod ledger_db_test {
         // Appending a block to a previously written location should fail.
         let mut new_block = Block::new(
             BLOCK_VERSION,
-            &blocks[0].id,
+            &origin.id,
             1,
-            blocks[0].cumulative_txo_count,
+            origin.cumulative_txo_count,
             &Default::default(),
             &block_contents,
         );
-
         assert_eq!(
             ledger_db.append_block(&new_block, &block_contents, None, None),
             Err(Error::InvalidBlockIndex(new_block.index))
         );
 
         // Appending a non-contiguous location should fail.
-        new_block.index = 3 * n_blocks;
+        new_block.index += n_blocks as u64;
         assert_eq!(
             ledger_db.append_block(&new_block, &block_contents, None, None),
             Err(Error::InvalidBlockIndex(new_block.index))
@@ -3109,16 +3046,8 @@ mod ledger_db_test {
     // ledger_db.get_root_tx_out_membership_element returns the correct element
     fn get_root_tx_out_membership_element_returns_correct_element() {
         let mut ledger_db = create_db();
-
-        // Get some random blocks
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let results = get_blocks(BLOCK_VERSION, 20, 20, 1, 2, 42, None, &mut rng);
-
-        for block_data in results {
-            ledger_db
-                .append_block_data(&block_data)
-                .expect("failed to write block");
-        }
+        // Add some random blocks
+        populate_db(&mut ledger_db, 42, 3);
 
         // The root element should be the same for all TxOuts in the ledger.
         let root_element = ledger_db.get_root_tx_out_membership_element().unwrap();
@@ -3143,7 +3072,7 @@ mod ledger_db_test {
         let mut ledger_db = create_db();
         let n_blocks = 150;
         let n_txs_per_block = 1;
-        let _ = populate_db(&mut ledger_db, n_blocks, n_txs_per_block);
+        populate_db(&mut ledger_db, n_blocks, n_txs_per_block);
 
         b.iter(|| ledger_db.num_blocks().unwrap())
     }
@@ -3154,9 +3083,13 @@ mod ledger_db_test {
         let mut ledger_db = create_db();
         let n_blocks = 30;
         let n_txs_per_block = 1000;
-        let _ = populate_db(&mut ledger_db, n_blocks, n_txs_per_block);
+        populate_db(&mut ledger_db, n_blocks, n_txs_per_block);
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        b.iter(|| ledger_db.get_block(rng.next_u64() % n_blocks).unwrap())
+        b.iter(|| {
+            ledger_db
+                .get_block(rng.next_u64() % n_blocks as u64)
+                .unwrap()
+        })
     }
 }

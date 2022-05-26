@@ -191,32 +191,23 @@ fn origin_block_digestible_ast() {
 }
 
 fn test_blockchain(block_version: BlockVersion) -> Vec<[u8; 32]> {
-    let origin_tx_outs = test_origin_tx_outs();
-    let origin = Block::new_origin_block(&origin_tx_outs[..]);
-    let accounts = test_accounts();
-    let recipient_pub_keys = accounts
+    let origin = Block::new_origin_block(&test_origin_tx_outs());
+
+    let recipients = test_accounts()
         .iter()
         .map(|account| account.default_subaddress())
         .collect::<Vec<_>>();
 
     let mut rng = FixedRng::from_seed([10u8; 32]);
-    get_blocks_with_recipients(
-        block_version,
-        3,
-        &recipient_pub_keys[..],
-        1,
-        50,
-        50,
-        origin,
-        &mut rng,
-    )
-    .into_iter()
-    .map(|block_data| {
-        let hash = &block_data.block().contents_hash;
-        assert_eq!(hash, &block_data.contents().hash());
-        hash.0
-    })
-    .collect()
+    get_blocks_with_recipients(block_version, 3, &recipients, 1, 5, 50, origin, &mut rng)
+        .into_iter()
+        .map(|block_data| {
+            let hash = &block_data.block().contents_hash;
+            // Sanity check
+            assert_eq!(hash, &block_data.contents().hash());
+            hash.0
+        })
+        .collect()
 }
 
 // Test digest of block contents at versions 0 and 1.

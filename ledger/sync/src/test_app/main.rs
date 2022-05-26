@@ -23,7 +23,7 @@ fn _make_ledger_long(ledger: &mut LedgerDB) {
     let last_block = ledger.get_block(num_blocks - 1).unwrap();
     assert_eq!(last_block.cumulative_txo_count, ledger.num_txos().unwrap());
 
-    let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+    let mut rng = StdRng::from_seed([1u8; 32]);
 
     let results = get_blocks(
         BlockVersion::ZERO,
