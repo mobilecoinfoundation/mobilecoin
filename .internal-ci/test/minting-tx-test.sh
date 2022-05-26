@@ -73,4 +73,6 @@ do
         --recipient "$(cat "${k}")" \
         --token-id "${token_id}" \
         --amount 1000000
+
+    sleep 10
 done
