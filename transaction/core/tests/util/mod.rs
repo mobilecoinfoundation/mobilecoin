@@ -1,5 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+#![allow(unused)]
+
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{tx::Tx, BlockVersion};
 use mc_transaction_core_test_utils::{
@@ -34,7 +36,6 @@ pub fn create_test_tx(block_version: BlockVersion) -> (Tx, LedgerDB) {
     (tx, ledger)
 }
 
-#[allow(unused)]
 pub fn create_test_tx_with_amount(
     block_version: BlockVersion,
     amount: u64,
@@ -43,7 +44,6 @@ pub fn create_test_tx_with_amount(
     create_test_tx_with_amount_and_comparer::<DefaultTxOutputsOrdering>(block_version, amount, fee)
 }
 
-#[allow(unused)]
 pub fn create_test_tx_with_amount_and_comparer<O: TxOutputsOrdering>(
     block_version: BlockVersion,
     amount: u64,

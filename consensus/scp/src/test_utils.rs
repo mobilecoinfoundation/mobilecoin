@@ -1,6 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Utilities for Stellar Consensus Protocol tests.
+#![allow(unused)]
+
 use crate::{core_types::Value, slot::Slot, QuorumSet, SlotIndex};
 use mc_common::{logger::Logger, NodeID, ResponderId};
 use mc_crypto_keys::Ed25519Pair;
@@ -32,7 +34,7 @@ pub fn trivial_combine_fn<V: Value>(values: &[V]) -> Result<Vec<V>, TransactionV
 }
 
 /// Returns at most the first `n` values.
-#[allow(unused)]
+
 pub fn get_bounded_combine_fn<V: Value>(
     max_elements: usize,
 ) -> impl Fn(&[V]) -> Result<Vec<V>, TransactionValidationError> {

@@ -4,7 +4,7 @@
 
 // We allow dead code because not all integration tests use all of the common
 // code. https://github.com/rust-lang/rust/issues/46379
-#![allow(dead_code)]
+#![allow(unused)]
 
 use mc_common::{
     logger::{log, Logger},
