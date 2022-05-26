@@ -31,6 +31,11 @@ on:
         type: boolean
         required: false
         default: true
+      client_auth_enabled:
+        description: "Run v1.2.x tests (block_version 0/2"
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   test:
@@ -47,3 +52,4 @@ jobs:
       RANCHER_TOKEN: ${{ secrets.RANCHER_TOKEN }}
       FOG_REPORT_SIGNING_CA_CERT: ${{ secrets.DEV_FOG_REPORT_SIGNING_CA_CERT }}
       CACHE_BUSTER: ${{ secrets.CACHE_BUSTER }}
+      CLIENT_AUTH_USER_VALUE:  ${{ github.event.inputs.client_auth_enabled == 'true' && secrets.DEV_CLIENT_AUTH_USER_VALUE || '' }}

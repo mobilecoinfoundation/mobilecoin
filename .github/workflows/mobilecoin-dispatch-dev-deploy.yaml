@@ -40,12 +40,13 @@ on:
         type: string
         required: true
       client_auth_enabled:
-        description: "Additional shared token for client auth"
+        description: "Enable client token auth"
         type: boolean
         required: true
         default: false
+      # true: use GHA secret values, false: generate random seeds
       use_static_wallet_seeds:
-        description: "true: use GHA secret values, false: generate random seeds"
+        description: "Use static wallet seeds"
         type: boolean
         required: true
         default: false

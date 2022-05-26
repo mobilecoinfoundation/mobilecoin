@@ -83,6 +83,9 @@ on:
       CACHE_BUSTER:
         description: "string to make cache unique"
         required: true
+      CLIENT_AUTH_USER_VALUE:
+        description: "client auth rendered value"
+        required: false
 
 jobs:
   list-values:
@@ -176,8 +179,9 @@ jobs:
             --num-transactions 32 \
             --consensus-wait 300 \
             --transfer-amount 20 \
-            --fog-view fog-view://fog.${{ inputs.namespace }}.development.mobilecoin.com:443 \
-            --fog-ledger fog-ledger://fog.${{ inputs.namespace }}.development.mobilecoin.com:443
+            --fog-view fog-view://${{ secrets.CLIENT_AUTH_USER_VALUE }}fog.${{ inputs.namespace }}.development.mobilecoin.com:443 \
+            --fog-ledger fog-ledger:${{ secrets.CLIENT_AUTH_USER_VALUE }}//fog.${{ inputs.namespace }}.development.mobilecoin.com:443
+
 
     - name: Test - mobilecoind-grpc (previously Wallet Integration)
       if: inputs.testing_1_1 == 'true'

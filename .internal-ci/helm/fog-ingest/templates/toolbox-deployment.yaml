@@ -64,6 +64,12 @@ spec:
               fieldPath: metadata.namespace
         - name: RUST_LOG
           value: error
+        - name: CLIENT_AUTH_TOKEN_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: client-auth-token
+              key: token
+              optional: true
         volumeMounts:
         - name: minting-keys
           mountPath: /minting-keys

@@ -51,6 +51,13 @@ is_set key_dir
 is_set token_id
 is_set NAMESPACE
 
+if [ -n "${CLIENT_AUTH_TOKEN_SECRET}" ]
+then
+    echo "Generating Client Auth Creds"
+    pw=$(mc-util-grpc-token-generator --shared-secret "${CLIENT_AUTH_TOKEN_SECRET}" --username user1 | grep Password: | awk '{print $2}')
+    user="user1:${pw}@"
+fi
+
 test_client \
     --key-dir "${key_dir}" \
     --consensus "mc://node1.${NAMESPACE}.development.mobilecoin.com/" \
@@ -61,5 +68,5 @@ test_client \
     --num-transactions 32 \
     --consensus-wait 300 \
     --transfer-amount 20 \
-    --fog-view "fog-view://fog.${NAMESPACE}.development.mobilecoin.com:443" \
-    --fog-ledger "fog-ledger://fog.${NAMESPACE}.development.mobilecoin.com:443"
+    --fog-view "fog-view://${user}fog.${NAMESPACE}.development.mobilecoin.com:443" \
+    --fog-ledger "fog-ledger://${user}fog.${NAMESPACE}.development.mobilecoin.com:443"
