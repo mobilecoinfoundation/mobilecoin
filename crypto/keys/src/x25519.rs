@@ -7,10 +7,7 @@ use alloc::vec;
 
 // Dependencies
 use crate::{traits::*, B64_CONFIG};
-use alloc::{
-    string::ToString,
-    vec::Vec,
-};
+use alloc::{string::ToString, vec::Vec};
 use core::{
     convert::{AsRef, TryFrom},
     fmt::{Debug, Error as FmtError, Formatter, Result as FmtResult},

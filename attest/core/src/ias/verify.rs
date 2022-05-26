@@ -15,7 +15,8 @@ use crate::{
     types::{
         epid_group_id::EpidGroupId, measurement::Measurement, pib::PlatformInfoBlob,
         report_data::ReportDataMask,
-    }, B64_CONFIG,
+    },
+    B64_CONFIG,
 };
 use alloc::{
     string::{String, ToString},
@@ -106,10 +107,7 @@ impl ToBase64 for EpidPseudonym {
             let mut inbuf = Vec::with_capacity(self.b.len() + self.k.len());
             inbuf.extend_from_slice(&self.b);
             inbuf.extend_from_slice(&self.k);
-            Ok( 
-                base64::encode_config_slice(&inbuf, B64_CONFIG, dest)
-            )
-
+            Ok(base64::encode_config_slice(&inbuf, B64_CONFIG, dest))
         }
     }
 }
@@ -408,7 +406,7 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
                 let value: String = v.try_into()?;
                 Some(
                     hex::decode(value.as_bytes())
-                        .map_err(|e| PseManifestHashError::Parse(e.into()))?
+                        .map_err(|e| PseManifestHashError::Parse(e.into()))?,
                 )
             }
             None => None,

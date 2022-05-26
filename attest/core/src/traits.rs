@@ -2,18 +2,15 @@
 
 //! Trait definitions for rust structures with an FFI analogue
 
-pub(crate) use alloc::format as _alloc_format;
-pub(crate) use alloc::vec::Vec;
-pub(crate) use base64::decode_config_slice as b64_decode;
-pub(crate) use base64::encode_config_slice as b64_encode;
+pub(crate) use alloc::{format as _alloc_format, vec::Vec};
+pub(crate) use base64::{decode_config_slice as b64_decode, encode_config_slice as b64_encode};
 pub(crate) use core::{
     cmp::{Ord, Ordering},
     convert::TryFrom,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-pub(crate) use hex::encode_to_slice as hex_encode;
-pub(crate) use hex::decode_to_slice as hex_decode;
+pub(crate) use hex::{decode_to_slice as hex_decode, encode_to_slice as hex_encode};
 pub(crate) use hex_fmt::HexFmt;
 pub(crate) use mc_util_encodings::{
     base64_buffer_size, base64_size, Error as EncodingError, FromBase64, FromHex, IntelLayout,
@@ -366,8 +363,8 @@ macro_rules! impl_base64str_for_bytestruct {
                 if dest.len() < required_buffer_len {
                     Err(required_buffer_len)
                 } else {
-                    Ok( 
-                        $crate::traits::b64_encode(&(self.0).$fieldname[..], $crate::B64_CONFIG, dest) 
+                    Ok(
+                        $crate::traits::b64_encode(&(self.0).$fieldname[..], $crate::B64_CONFIG, dest)
                     )
                 }
             }

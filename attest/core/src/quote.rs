@@ -12,8 +12,7 @@ use crate::{
         basename::Basename, epid_group_id::EpidGroupId, measurement::Measurement,
         report_body::ReportBody, report_data::ReportDataMask,
     },
-    ProductId, SecurityVersion,
-    B64_CONFIG,
+    ProductId, SecurityVersion, B64_CONFIG,
 };
 use alloc::vec::Vec;
 use core::{
@@ -421,9 +420,7 @@ impl ToBase64 for Quote {
         if dest.len() < required_len {
             Err(required_len)
         } else {
-            Ok(
-                base64::encode_config_slice(&self.0[..], B64_CONFIG, dest)
-            )
+            Ok(base64::encode_config_slice(&self.0[..], B64_CONFIG, dest))
         }
     }
 }

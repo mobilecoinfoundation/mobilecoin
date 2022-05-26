@@ -69,21 +69,22 @@ impl<T: PublicKey + DistinguishedEncoding> Fingerprintable for T {
         let hash = D::digest(&self.to_der());
         // Get the hex string of the hash as bytes
         let output_size = D::OutputSize::to_usize();
-        
+
         let hex_out = hex::encode(&hash);
-        
+
         // Add byte separators (i.e. make it "50:55:55:55..."
         let mut return_val = String::with_capacity(output_size * 3 + 1);
         return_val.push_str(
-            core::str::from_utf8(&hex_out.as_bytes()[..2]).map_err(|_e| KeyError::InvalidPublicKey)?,
+            core::str::from_utf8(&hex_out.as_bytes()[..2])
+                .map_err(|_e| KeyError::InvalidPublicKey)?,
         );
         for ch in hex_out.as_bytes()[2..].chunks(2) {
             return_val.push(':');
             // We should never run into an error here in practice so long
-            // as hex::encode_upper() produces normal valid hexadecimal, 
+            // as hex::encode_upper() produces normal valid hexadecimal,
             // because every character should be english alphanumeric,
             // which means every character fits in ASCII, which means
-            // every character fits in one byte. 
+            // every character fits in one byte.
             return_val.push_str(core::str::from_utf8(ch).map_err(|_e| KeyError::InvalidPublicKey)?);
         }
 

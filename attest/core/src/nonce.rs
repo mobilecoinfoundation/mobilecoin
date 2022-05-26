@@ -148,7 +148,7 @@ impl ToHex for IasNonce {
         let bytes = self.as_ref();
         match hex::encode_to_slice(bytes, dest) {
             // Return the number of bytes used, per ToHex spec.
-            Ok(()) => Ok(bytes.len()*2),
+            Ok(()) => Ok(bytes.len() * 2),
             Err(_e) => Err(IAS_NONCE_STR_LENGTH),
         }
     }
