@@ -448,7 +448,8 @@ jobs:
             "namespace": "${{ needs.generate-metadata.outputs.namespace }}",
             "fog_distribution": "true",
             "testing_1_1": "true",
-            "testing_1_2": "false"
+            "testing_1_2": "false",
+            "client_auth_enabled": "false"
           }
 
 ###############################################
@@ -506,7 +507,8 @@ jobs:
             "ingest_color": "green",
             "fog_distribution": "false",
             "testing_1_1": "true",
-            "testing_1_2": "false"
+            "testing_1_2": "false",
+            "client_auth_enabled": "false"
           }
 
 #################################################
@@ -561,5 +563,6 @@ jobs:
             "ingest_color": "green",
             "fog_distribution": "false",
             "testing_1_1": "true",
-            "testing_1_2": "true"
+            "testing_1_2": "true",
+            "client_auth_enabled": "false"
           }
