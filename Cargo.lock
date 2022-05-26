@@ -4628,6 +4628,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-mobilecoind-dev-faucet"
+version = "1.3.0-pre0"
+dependencies = [
+ "clap 3.1.18",
+ "grpcio",
+ "hex",
+ "mc-api",
+ "mc-common",
+ "mc-mobilecoind-api",
+ "mc-transaction-types",
+ "mc-util-grpc",
+ "mc-util-keyfile",
+ "protobuf",
+ "rocket",
+ "serde",
+ "serde_derive",
+ "serde_with",
+]
+
+[[package]]
 name = "mc-mobilecoind-json"
 version = "1.3.0-pre0"
 dependencies = [
