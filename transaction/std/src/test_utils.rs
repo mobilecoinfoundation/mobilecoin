@@ -208,13 +208,6 @@ pub fn get_transaction<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver + Clone>
     transaction_builder.build(&NoKeysRingSigner {}, rng)
 }
 
-/// Build simulated change memo with zero amount
-pub fn build_zero_value_change_memo(
-    builder: &mut impl MemoBuilder,
-) -> Result<MemoPayload, NewMemoError> {
-    build_change_memo_with_amount(builder, Amount::new(0, 0.into()))
-}
-
 /// Build simulated change memo with amount
 pub fn build_change_memo_with_amount(
     builder: &mut impl MemoBuilder,

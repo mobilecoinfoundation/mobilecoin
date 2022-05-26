@@ -84,6 +84,8 @@ pub enum NewMemoError {
     Creation(MemoError),
     /// Utf-8 did not properly decode
     Utf8Decoding,
+    /// Attempted value: {1} > Max Value: {0}
+    MaxFeeExceeded(u64, u64),
     /// Other: {0}
     Other(String),
 }
@@ -96,6 +98,9 @@ impl From<MemoError> for NewMemoError {
                 "Input of length: {} exceeded max byte length",
                 byte_len
             )),
+            MemoError::MaxFeeExceeded(max_fee, attempted_fee) => {
+                Self::MaxFeeExceeded(max_fee, attempted_fee)
+            }
         }
     }
 }

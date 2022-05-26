@@ -230,6 +230,9 @@ pub enum MemoError {
 
     /// Utf-8 did not properly decode
     Utf8Decoding,
+
+    /// Max fee of {0} exceeded. Attempted to set fee amount: {1}
+    MaxFeeExceeded(u64, u64),
 }
 
 impl From<Utf8Error> for MemoError {
