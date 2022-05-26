@@ -825,6 +825,12 @@ message GetNetworkStatusResponse {
 
     // Whether we are behind.
     bool is_behind = 4;
+
+    // A map of token id -> minimum fee
+    map<uint64, uint64> minimum_fees = 5;
+
+    // Current block version of the network
+    uint32 network_block_version = 6;
 }
 
 //

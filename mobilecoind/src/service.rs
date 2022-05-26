@@ -1927,6 +1927,17 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
         let local_block_index = num_blocks - 1;
 
+        // Get LastBlockInfo from our peers
+        let block_infos = self.transactions_manager.get_last_block_infos();
+        // get_last_block_infos uses filter map, if all requests fail we get an empty
+        // vector
+        if block_infos.is_empty() {
+            return Err(RpcStatus::with_message(
+                RpcStatusCode::INTERNAL,
+                "no peers reachable".to_owned(),
+            ));
+        }
+
         let mut response = mc_mobilecoind_api::GetNetworkStatusResponse::new();
 
         response.set_network_highest_block_index(
@@ -1941,6 +1952,17 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         );
         response.set_local_block_index(local_block_index);
         response.set_is_behind(network_state.is_behind(local_block_index));
+
+        // Simply assume that the first reached peer is correct, since if they don't
+        // agree they can't attest anyways
+        response.set_network_block_version(block_infos[0].network_block_version);
+        response.set_minimum_fees(
+            block_infos[0]
+                .minimum_fees
+                .iter()
+                .map(|(k, v)| (**k, *v))
+                .collect(),
+        );
 
         Ok(response)
     }

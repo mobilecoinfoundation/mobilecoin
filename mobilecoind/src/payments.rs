@@ -131,16 +131,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     }
 }
 
-fn get_block_infos<T: BlockchainConnection + UserTxConnection + 'static>(
-    peer_manager: &ConnectionManager<T>,
-) -> Vec<BlockInfo> {
-    peer_manager
-        .conns()
-        .par_iter()
-        .filter_map(|conn| conn.fetch_block_info(empty()).ok())
-        .collect()
-}
-
 fn get_network_block_version(block_infos: &[BlockInfo]) -> u32 {
     block_infos
         .iter()
@@ -187,6 +177,15 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
     }
 
+    /// Get BlockInfo objects from all of our peers and return them
+    pub fn get_last_block_infos(&self) -> Vec<BlockInfo> {
+        self.peer_manager
+            .conns()
+            .par_iter()
+            .filter_map(|conn| conn.fetch_block_info(empty()).ok())
+            .collect()
+    }
+
     // Gets the network fee and block_version, unless opt_fee is nonzero.
     // If opt fee is nonzero then we use local ledger block version and this fee,
     // and don't make a network call
@@ -201,7 +200,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         Ok(if opt_fee != 0 {
             (opt_fee, candidate_block_version)
         } else {
-            let block_infos = get_block_infos(&self.peer_manager);
+            let block_infos = self.get_last_block_infos();
             let fee = get_fee(&block_infos, token_id, opt_fee);
             let block_version = max(
                 candidate_block_version,
