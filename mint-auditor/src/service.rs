@@ -88,10 +88,12 @@ impl MintAuditorService {
 
         let block_audit_data = BlockAuditData::last_block_audit_data(&conn)
             .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()))?
-            .ok_or(RpcStatus::with_message(
-                RpcStatusCode::NOT_FOUND,
-                "No last synced block index".to_string(),
-            ))?;
+            .ok_or_else(|| {
+                RpcStatus::with_message(
+                    RpcStatusCode::NOT_FOUND,
+                    "No last synced block index".to_string(),
+                )
+            })?;
 
         let balance_map =
             BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index as u64)

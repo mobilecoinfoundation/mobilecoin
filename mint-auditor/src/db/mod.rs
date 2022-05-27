@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! LMDB database abstraction.
+//! Mint auditor database.
 
 mod block_audit_data;
 mod block_balance;
@@ -33,11 +33,17 @@ pub use counters::{Counters, CountersModel};
 
 embed_migrations!("migrations/");
 
+/// A type alias for a pooled SQLite connection.
 pub type Conn = PooledConnection<ConnectionManager<SqliteConnection>>;
 
+/// Database connection options.
 #[derive(Debug)]
 pub struct ConnectionOptions {
+    /// Whether to enable the SQLite  WAL.
+    /// See https://sqlite.org/wal.html for details.
     pub enable_wal: bool,
+
+    /// Time to wait while table is locked.
     pub busy_timeout: Option<Duration>,
 }
 
@@ -65,6 +71,7 @@ impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error>
     }
 }
 
+/// Mint Auditor Database.
 #[derive(Clone)]
 pub struct MintAuditorDb {
     pool: Pool<ConnectionManager<SqliteConnection>>,
@@ -72,16 +79,18 @@ pub struct MintAuditorDb {
 }
 
 impl MintAuditorDb {
+    /// Instantiate a new database using an existing connection pool.
     pub fn new(pool: Pool<ConnectionManager<SqliteConnection>>, logger: Logger) -> Self {
         Self { pool, logger }
     }
 
-    pub fn new_from_url(
-        database_url: &str,
+    /// Instantiate a new database from a path that points at a database file.
+    pub fn new_from_path(
+        db_file_path: &str,
         db_connections: u32,
         logger: Logger,
     ) -> Result<Self, Error> {
-        let manager = ConnectionManager::<SqliteConnection>::new(database_url);
+        let manager = ConnectionManager::<SqliteConnection>::new(db_file_path);
         let pool = Pool::builder()
             .max_size(db_connections)
             .connection_customizer(Box::new(ConnectionOptions {
@@ -97,10 +106,12 @@ impl MintAuditorDb {
         Ok(Self::new(pool, logger))
     }
 
+    /// Get a connection from the pool.
     pub fn get_conn(&self) -> Result<Conn, Error> {
         Ok(self.pool.get()?)
     }
 
+    /// Sync mint audit data of a single block.
     pub fn sync_block(
         &self,
         block: &Block,
@@ -117,6 +128,7 @@ impl MintAuditorDb {
         self.sync_block_with_conn(&conn, block, block_contents, ledger_db)
     }
 
+    /// Sync mint audit data of a single block using a pre-existing connection.
     pub fn sync_block_with_conn(
         &self,
         conn: &Conn,
@@ -130,7 +142,7 @@ impl MintAuditorDb {
         ),
         Error,
     > {
-        transaction(&conn, |conn| {
+        transaction(conn, |conn| {
             let block_index = block.index;
             log::info!(self.logger, "Syncing block {}", block_index);
 
@@ -147,7 +159,7 @@ impl MintAuditorDb {
             let mut balance_map = if block_index == 0 {
                 Default::default()
             } else {
-                BlockBalance::get_balances_for_block(&conn, block_index - 1)?
+                BlockBalance::get_balances_for_block(conn, block_index - 1)?
             };
 
             // Count mints.
@@ -229,52 +241,12 @@ impl MintAuditorDb {
             };
             block_audit_data.set(conn)?;
 
-            BlockBalance::set_balances_for_block(&conn, block_index, &balance_map)?;
+            BlockBalance::set_balances_for_block(conn, block_index, &balance_map)?;
 
             // Success.
             Ok((block_audit_data, balance_map))
         })
     }
-
-    // /// Get the last synced block index, or None if no blocks were synced.
-    // pub fn last_synced_block_index(&self) -> Result<Option<u64>, Error> {
-    //     match self.get_counters()?.num_blocks_synced {
-    //         0 => Ok(None),
-    //         val => Ok(Some(val - 1)),
-    //     }
-    // }
-
-    // /// Get the audit data for a given block index.
-    // pub fn get_block_audit_data(&self, block_index: BlockIndex) ->
-    // Result<BlockAuditData, Error> {     let db_txn =
-    // self.env.begin_ro_txn()?;     self.get_block_audit_data_impl(block_index,
-    // &db_txn) }
-
-    // /// Sync mint data from a given block.
-    // pub fn sync_block(
-    //     &self,
-    //     block: &Block,
-    //     block_contents: &BlockContents,
-    // ) -> Result<BlockAuditData, Error> {
-
-    // pub fn run_migrations(conn: &SqliteConnection) {
-    //     // Our migrations sometimes violate foreign keys, so disable foreign key
-    // checks     // while we apply them.
-    //     // This has to happen outside the scope of a transaction. Quoting
-    //     // https://www.sqlite.org/pragma.html,
-    //     // "This pragma is a no-op within a transaction; foreign key constraint
-    //     // enforcement may only be enabled or disabled when there is no pending
-    //     // BEGIN or SAVEPOINT."
-    //     // Check foreign key constraints after the migration. If they fail,
-    //     // we will abort until the user resolves it.
-    //     conn.batch_execute("PRAGMA foreign_keys = OFF;")
-    //         .expect("failed disabling foreign keys");
-    //     embedded_migrations::run_with_output(conn, &mut std::io::stdout())
-    //         .expect("failed running migrations");
-    //     WalletDb::validate_foreign_keys(conn);
-    //     conn.batch_execute("PRAGMA foreign_keys = ON;")
-    //         .expect("failed enabling foreign keys");
-    // }
 }
 
 /// Create a SQLite transaction with retry.
@@ -963,10 +935,9 @@ mod tests {
                     }
                 );
 
-                return Err(Error::NotFound); // Chose arbitrarily, we just need
-                                             // to
-                                             // return an error to ensure the
-                                             // transaction gets rolled back.
+                // Chosen arbitrarily, we just need to return an error to ensure the transaction
+                // gets rolled back.
+                Err(Error::NotFound)
             });
         }
 
@@ -1016,7 +987,7 @@ mod tests {
                     .unwrap();
 
                 assert_eq!(
-                    Counters::get(&conn).unwrap(),
+                    Counters::get(conn).unwrap(),
                     Counters {
                         id: 0,
                         num_blocks_synced: block.index as i64 + 1,
@@ -1024,10 +995,10 @@ mod tests {
                         num_mint_txs_without_matching_mint_config: 1,
                     }
                 );
-                return Err(Error::NotFound); // Chose arbitrarily, we just need
-                                             // to
-                                             // return an error to ensure the
-                                             // transaction gets rolled back.
+
+                // Chosen arbitrarily, we just need to return an error to ensure the transaction
+                // gets rolled back.
+                Err(Error::NotFound)
             });
         }
 

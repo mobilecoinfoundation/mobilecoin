@@ -9,6 +9,8 @@ use std::ops::Deref;
 
 pub use super::models::BlockBalance;
 
+/// Trait for providing convenience functions for interacting with the
+/// [BlockBalance] model/table.
 pub trait BlockBalanceModel {
     /// Get a map of TokenId -> balance for a given block id.
     fn get_balances_for_block(

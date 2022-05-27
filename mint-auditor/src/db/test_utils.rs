@@ -26,7 +26,7 @@ impl Default for TestDbContext {
 
 impl TestDbContext {
     pub fn get_db_instance(&self, logger: Logger) -> MintAuditorDb {
-        MintAuditorDb::new_from_url(&self.db_path, 7, logger)
+        MintAuditorDb::new_from_path(&self.db_path, 7, logger)
             .expect("failed creating new MintAuditorDb")
     }
 }

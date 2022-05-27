@@ -119,7 +119,7 @@ fn cmd_scan_ledger(
     logger: Logger,
 ) {
     let ledger_db = LedgerDB::open(&ledger_db_path).expect("Could not open ledger DB");
-    let mint_auditor_db = MintAuditorDb::new_from_url(
+    let mint_auditor_db = MintAuditorDb::new_from_path(
         &mint_auditor_db_path.into_os_string().into_string().unwrap(),
         10,
         logger.clone(),
@@ -180,7 +180,7 @@ fn cmd_get_block_audit_data(
     json: bool,
     logger: Logger,
 ) {
-    let mint_auditor_db = MintAuditorDb::new_from_url(
+    let mint_auditor_db = MintAuditorDb::new_from_path(
         &mint_auditor_db_path.into_os_string().into_string().unwrap(),
         10,
         logger.clone(),
@@ -194,13 +194,13 @@ fn cmd_get_block_audit_data(
     transaction(&conn, |conn| -> Result<(), Error> {
         let block_index = block_index
             .or_else(|| {
-                BlockAuditData::last_synced_block_index(&conn)
+                BlockAuditData::last_synced_block_index(conn)
                     .expect("Could not get last synced block index")
             })
             .expect("No blocks synced");
 
         let audit_data =
-            BlockAuditData::get(&conn, block_index).expect("Could not get audit data for block");
+            BlockAuditData::get(conn, block_index).expect("Could not get audit data for block");
 
         // TODO add balance map
 

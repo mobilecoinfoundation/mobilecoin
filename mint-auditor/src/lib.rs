@@ -3,7 +3,7 @@
 //! A utility for keeping track of token minting and burning.
 
 #![feature(proc_macro_hygiene, decl_macro)]
-// tODO #![deny(missing_docs)]
+#![deny(missing_docs)]
 
 pub mod counters;
 pub mod db;

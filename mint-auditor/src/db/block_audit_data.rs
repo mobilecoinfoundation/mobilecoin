@@ -5,6 +5,8 @@ use mc_transaction_core::BlockIndex;
 
 pub use super::models::BlockAuditData;
 
+/// Trait for providing convenience functions for interacting with the
+/// [BlockAuditData] model/table.
 pub trait BlockAuditDataModel {
     /// Get block audit data for a given block index.
     fn get(conn: &Conn, block_index: BlockIndex) -> Result<BlockAuditData, Error>;

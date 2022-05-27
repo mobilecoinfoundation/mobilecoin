@@ -4,6 +4,8 @@ use diesel::prelude::*;
 
 pub use super::models::Counters;
 
+/// Trait for providing convenience functions for interacting with the
+/// [Counters] model/table.
 pub trait CountersModel {
     /// Get all counters.
     fn get(conn: &Conn) -> Result<Counters, Error>;
