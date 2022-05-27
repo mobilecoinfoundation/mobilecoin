@@ -147,6 +147,44 @@ pub fn create_transaction_with_amount_and_comparer<
     tombstone_block: BlockIndex,
     rng: &mut R,
 ) -> Tx {
+    create_transaction_with_amount_and_comparer_and_recipients::<L, R, O>(
+        block_version,
+        ledger,
+        tx_out,
+        sender,
+        &[recipient],
+        value,
+        fee,
+        tombstone_block,
+        rng
+    )
+}
+
+/// Creates a transaction that sends an arbitrary amount to a single recipient.
+///
+/// # Arguments:
+/// * `ledger` - A ledger containing `tx_out`.
+/// * `tx_out` - The TxOut that will be spent.
+/// * `sender` - The owner of `tx_out`.
+/// * `recipient` - The recipient of the new transaction.
+/// * `amount` - Amount to send.
+/// * `tombstone_block` - The tombstone block for the new transaction.
+/// * `rng` - The randomness used by this function
+pub fn create_transaction_with_amount_and_comparer_and_recipients<
+    L: Ledger,
+    R: RngCore + CryptoRng,
+    O: TxOutputsOrdering,
+>(
+    block_version: BlockVersion,
+    ledger: &mut L,
+    tx_out: &TxOut,
+    sender: &AccountKey,
+    recipients: &[&PublicAddress],
+    value: u64,
+    fee: u64,
+    tombstone_block: BlockIndex,
+    rng: &mut R,
+) -> Tx {
     let (sender_amount, _) = tx_out.view_key_match(sender.view_private_key()).unwrap();
 
     let mut transaction_builder = TransactionBuilder::new(
@@ -195,14 +233,27 @@ pub fn create_transaction_with_amount_and_comparer<
     transaction_builder.add_input(input_credentials);
 
     let amount = Amount {
-        value,
+        value: value / recipients.len() as u64,
         token_id: sender_amount.token_id,
     };
 
+    let rest = value % recipients.len() as u64;
+
     // Output
-    transaction_builder
-        .add_output(amount, recipient, rng)
-        .unwrap();
+    for (idx, recipient) in recipients.iter().enumerate() {
+        if idx == 0 && rest != 0 {
+            let mut dup_amount = amount.clone();
+            dup_amount.value += rest;
+            transaction_builder
+              .add_output(dup_amount, recipient, rng)
+              .unwrap();
+            continue;
+        }
+
+        transaction_builder
+          .add_output(amount, recipient, rng)
+          .unwrap();
+    }
 
     // Tombstone block
     transaction_builder.set_tombstone_block(tombstone_block);
