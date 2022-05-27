@@ -24,7 +24,7 @@ use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
-use mc_connection::{BlockchainConnection, UserTxConnection};
+use mc_connection::{BlockInfo, BlockchainConnection, UserTxConnection};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
@@ -210,6 +210,18 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             start_sync_thread,
             logger,
         }
+    }
+
+    // Get last block info objects from network state for our peers
+    // Make a copy to avoid holding RW lock
+    fn get_last_block_infos(&self) -> Vec<BlockInfo> {
+        self.network_state
+            .read()
+            .expect("lock poisoned")
+            .peer_to_block_info()
+            .values()
+            .cloned()
+            .collect()
     }
 
     fn add_monitor_impl(
@@ -881,6 +893,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 request.change_subaddress,
                 &input_list,
                 &outlays,
+                &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
                 None,
@@ -910,6 +923,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &monitor_id,
                 request.subaddress,
                 TokenId::from(request.token_id),
+                &self.get_last_block_infos(),
                 request.fee,
             )
             .map_err(|err| {
@@ -966,7 +980,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let tx_proposal = self
             .transactions_manager
-            .generate_tx_from_tx_list(&account_key, token_id, &input_list, &receiver, request.fee)
+            .generate_tx_from_tx_list(
+                &account_key,
+                token_id,
+                &input_list,
+                &receiver,
+                &self.get_last_block_infos(),
+                request.fee,
+            )
             .map_err(|err| {
                 rpc_internal_error(
                     "transactions_manager.generate_tx_from_tx_list",
@@ -1079,6 +1100,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 request.change_subaddress,
                 &input_list,
                 &outlays,
+                &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
                 Some(Box::new(memo_builder)),
@@ -1850,6 +1872,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 change_subaddress,
                 &utxos,
                 &outlays,
+                &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
                 None,
@@ -1928,7 +1951,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let local_block_index = num_blocks - 1;
 
         // Get LastBlockInfo from our peers
-        let block_infos = self.transactions_manager.get_last_block_infos();
+        let block_infos = self.get_last_block_infos();
         // get_last_block_infos uses filter map, if all requests fail we get an empty
         // vector
         if block_infos.is_empty() {
@@ -1954,7 +1977,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         response.set_is_behind(network_state.is_behind(local_block_index));
 
         // Simply assume that the first reached peer is correct, since if they don't
-        // agree they can't attest anyways
+        // agree on block version or network fees, they can't attest anyways
         response.set_network_block_version(block_infos[0].network_block_version);
         response.set_minimum_fees(
             block_infos[0]
