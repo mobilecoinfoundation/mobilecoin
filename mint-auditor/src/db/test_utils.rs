@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use super::MintAuditorDb;
 use mc_common::logger::Logger;
 use tempfile::{tempdir, TempDir};

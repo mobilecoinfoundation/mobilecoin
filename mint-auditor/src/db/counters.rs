@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use super::Conn;
 use crate::error::Error;
 use diesel::prelude::*;

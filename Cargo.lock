@@ -4472,7 +4472,6 @@ dependencies = [
  "mc-util-uri",
  "prost",
  "protobuf",
- "rand 0.8.5",
  "rand_core 0.6.3",
  "rand_hc 0.3.1",
  "serde",
