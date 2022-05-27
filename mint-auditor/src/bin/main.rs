@@ -9,7 +9,8 @@ use mc_ledger_db::{Ledger, LedgerDB};
 use mc_mint_auditor::{
     counters,
     db::{
-        transaction, BlockAuditData, BlockAuditDataModel, Counters, CountersModel, MintAuditorDb,
+        transaction, BlockAuditData, BlockAuditDataModel, BlockBalance, BlockBalanceModel,
+        Counters, CountersModel, MintAuditorDb,
     },
     Error, MintAuditorService,
 };
@@ -17,6 +18,7 @@ use mc_mint_auditor_api::MintAuditorUri;
 use mc_util_grpc::{AdminServer, BuildInfoService, ConnectionUriGrpcioServer, HealthService};
 use mc_util_parse::parse_duration_in_seconds;
 use mc_util_uri::AdminUri;
+use serde_json::json;
 use std::{cmp::Ordering, path::PathBuf, sync::Arc, thread::sleep, time::Duration};
 
 /// Clap configuration for each subcommand this program supports.
@@ -201,19 +203,23 @@ fn cmd_get_block_audit_data(
 
         let audit_data =
             BlockAuditData::get(conn, block_index).expect("Could not get audit data for block");
-
-        // TODO add balance map
+        let balance_map = BlockBalance::get_balances_for_block(conn, block_index)
+            .expect("Could not get balances for block");
 
         if json {
+            let obj = json!({
+                "block_audit_data": audit_data,
+                "balances": balance_map,
+            });
             println!(
                 "{}",
-                serde_json::to_string(&audit_data).expect("failed serializing json")
+                serde_json::to_string(&obj).expect("failed serializing json")
             );
         } else {
             println!("Block index: {}", block_index);
-            // for (token_id, balance) in audit_data.balance_map.iter() {
-            //     println!("Token {}: {}", token_id, balance);
-            // }
+            for (token_id, balance) in balance_map.iter() {
+                println!("Token {}: {}", token_id, balance);
+            }
         }
 
         Ok(())
