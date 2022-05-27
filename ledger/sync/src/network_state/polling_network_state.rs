@@ -5,6 +5,7 @@
 //! and utilizing SCPNetworkState.
 
 use crate::{NetworkState, SCPNetworkState};
+use mc_blockchain_types::BlockIndex;
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
@@ -15,7 +16,6 @@ use mc_connection::{
 use mc_consensus_scp::{
     core_types::Ballot, msg::ExternalizePayload, Msg, QuorumSet, SlotIndex, Topic,
 };
-use mc_transaction_core::BlockIndex;
 use mc_util_uri::ConnectionUri;
 use retry::delay::{jitter, Fibonacci};
 use std::{

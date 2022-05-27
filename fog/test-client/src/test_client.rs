@@ -10,14 +10,13 @@ use crate::{counters, error::TestClientError};
 use hex_fmt::HexList;
 use maplit::hashmap;
 use mc_account_keys::ShortAddressHash;
+use mc_blockchain_types::{BlockIndex, BlockVersion};
 use mc_common::logger::{log, Logger};
 use mc_crypto_rand::McRng;
 use mc_fog_sample_paykit::{AccountKey, Client, ClientBuilder, TokenId, TransactionStatus, Tx};
 use mc_fog_uri::{FogLedgerUri, FogViewUri};
 use mc_sgx_css::Signature;
-use mc_transaction_core::{
-    constants::RING_SIZE, tokens::Mob, Amount, BlockIndex, BlockVersion, Token,
-};
+use mc_transaction_core::{constants::RING_SIZE, tokens::Mob, Amount, Token};
 use mc_transaction_std::MemoType;
 use mc_util_grpc::GrpcRetryConfig;
 use mc_util_telemetry::{

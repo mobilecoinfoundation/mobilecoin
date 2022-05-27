@@ -25,6 +25,7 @@ use diesel::{
     r2d2::{ConnectionManager, Pool},
 };
 use mc_attest_core::VerificationReport;
+use mc_blockchain_types::Block;
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -41,7 +42,6 @@ use mc_fog_types::{
     view::{TxOutSearchResult, TxOutSearchResultCode},
     ETxOutRecord,
 };
-use mc_transaction_core::Block;
 use mc_util_parse::parse_duration_in_seconds;
 use prost::Message;
 use proto_types::ProtoIngestedBlockData;

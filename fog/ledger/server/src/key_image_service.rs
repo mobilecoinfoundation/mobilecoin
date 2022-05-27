@@ -5,11 +5,12 @@ use mc_attest_api::{
     attest,
     attest::{AuthMessage, Message},
 };
+use mc_blockchain_types::MAX_BLOCK_VERSION;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::ledger_grpc::FogKeyImageApi;
 use mc_fog_ledger_enclave::LedgerEnclaveProxy;
 use mc_fog_ledger_enclave_api::{Error as EnclaveError, UntrustedKeyImageQueryResponse};
-use mc_ledger_db::{self, Ledger};
+use mc_ledger_db::Ledger;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, rpc_permissions_error, send_result,
     Authenticator,
@@ -89,10 +90,7 @@ impl<L: Ledger + Clone, E: LedgerEnclaveProxy> KeyImageService<L, E> {
             highest_processed_block_count,
             last_known_block_cumulative_txo_count,
             latest_block_version,
-            max_block_version: core::cmp::max(
-                latest_block_version,
-                *mc_transaction_core::MAX_BLOCK_VERSION,
-            ),
+            max_block_version: latest_block_version.max(*MAX_BLOCK_VERSION),
         };
 
         let result_blob = self

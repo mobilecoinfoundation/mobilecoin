@@ -8,10 +8,10 @@ use crate::{
     watcher_db::WatcherDB,
 };
 use mc_api::block_num_to_s3block_path;
+use mc_blockchain_types::{BlockData, BlockIndex};
 use mc_common::logger::{log, Logger};
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::ReqwestTransactionsFetcher;
-use mc_transaction_core::{BlockData, BlockIndex};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     collections::HashMap,

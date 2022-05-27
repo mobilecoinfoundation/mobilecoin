@@ -8,6 +8,9 @@ use lmdb::{
     Database, DatabaseFlags, Environment, EnvironmentFlags, RoTransaction, RwTransaction,
     Transaction, WriteFlags,
 };
+use mc_blockchain_types::{
+    Block, BlockContents, BlockData, BlockID, BlockIndex, BlockSignature, MAX_BLOCK_VERSION,
+};
 use mc_common::{logger::global_log, HashMap};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
@@ -15,8 +18,7 @@ use mc_transaction_core::{
     mint::MintTx,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockID, BlockIndex, BlockSignature, TokenId,
-    MAX_BLOCK_VERSION,
+    TokenId,
 };
 use mc_util_serial::{decode, encode, Message};
 use mc_util_telemetry::{
@@ -869,13 +871,12 @@ pub fn key_bytes_to_u64(bytes: &[u8]) -> u64 {
 #[cfg(test)]
 mod ledger_db_test {
     use super::*;
-
     use core::convert::TryFrom;
     use mc_account_keys::AccountKey;
+    use mc_blockchain_types::{compute_block_id, BlockVersion};
     use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate};
     use mc_transaction_core::{
-        compute_block_id, membership_proofs::compute_implied_merkle_root, tokens::Mob, Amount,
-        BlockVersion, Token,
+        membership_proofs::compute_implied_merkle_root, tokens::Mob, Amount, Token,
     };
     use mc_transaction_core_test_utils::{
         create_mint_config_tx, create_mint_config_tx_and_signers, create_mint_tx,

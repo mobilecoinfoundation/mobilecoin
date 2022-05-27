@@ -7,6 +7,7 @@ pub use retry::Error as RetryError;
 use crate::traits::AttestationError;
 use displaydoc::Display;
 use grpcio::Error as GrpcError;
+use mc_blockchain_types::ConvertError;
 use mc_consensus_api::{consensus_common::ProposeTxResult, ConversionError};
 use mc_crypto_noise::CipherError;
 use mc_transaction_core::validation::TransactionValidationError;
@@ -92,8 +93,8 @@ impl From<ProposeTxResult> for Error {
     }
 }
 
-impl From<mc_transaction_core::ConvertError> for Error {
-    fn from(_src: mc_transaction_core::ConvertError) -> Self {
+impl From<ConvertError> for Error {
+    fn from(_src: ConvertError) -> Self {
         ConversionError::ArrayCastError.into()
     }
 }

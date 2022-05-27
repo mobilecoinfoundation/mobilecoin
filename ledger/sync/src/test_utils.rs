@@ -1,9 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{TransactionFetcherError, TransactionsFetcher};
+use mc_blockchain_types::{Block, BlockData};
 use mc_common::ResponderId;
 use mc_ledger_db::Ledger;
-use mc_transaction_core::{Block, BlockData};
 
 impl TransactionFetcherError for String {}
 

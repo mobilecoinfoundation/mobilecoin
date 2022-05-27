@@ -10,6 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 mc-api = { path = "../../api" }
+mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }

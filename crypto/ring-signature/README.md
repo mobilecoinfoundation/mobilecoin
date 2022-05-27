@@ -21,4 +21,4 @@ This crate implicitly defines relationships between a bunch of key components:
 
 However, most things having to do with the TxOut Public key and the TxOut shared secret
 live in the `mc-transaction-core` crate, one level higher. Most of the actual blockchain
-data structures are defined there.
+data structures are defined in `mc-blockchain-types`.

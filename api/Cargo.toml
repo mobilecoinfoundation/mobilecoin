@@ -9,6 +9,7 @@ links = "mc-api"
 [dependencies]
 mc-account-keys = { path = "../account-keys" }
 mc-attest-core = { path = "../attest/core" }
+mc-blockchain-types = { path = "../blockchain/types" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-multisig = { path = "../crypto/multisig" }
 mc-transaction-core = { path = "../transaction/core" }
@@ -43,6 +44,7 @@ mc-util-from-random = { path = "../util/from-random" }
 mc-util-test-helper = { path = "../util/test-helper" }
 mc-util-test-vector = { path = "../util/test-vector" }
 mc-util-test-with-data = { path = "../util/test-with-data" }
+mc-util-zip-exact = { path = "../util/zip-exact" }
 
 generic-array = "0.14"
 maplit = "1.0"

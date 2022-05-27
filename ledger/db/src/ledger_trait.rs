@@ -1,13 +1,14 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{ActiveMintConfig, ActiveMintConfigs, Error};
+use mc_blockchain_types::{Block, BlockContents, BlockData, BlockIndex, BlockSignature};
 use mc_common::{Hash, HashMap};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     mint::MintTx,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockIndex, BlockSignature, TokenId,
+    TokenId,
 };
 use mockall::*;
 

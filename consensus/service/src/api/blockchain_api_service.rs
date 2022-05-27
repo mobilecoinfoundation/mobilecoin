@@ -95,7 +95,7 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
         let end_index = offset + cmp::min(limit, self.max_page_size as u32) as u64;
 
         // Get "persistence type" blocks.
-        let mut block_entities: Vec<mc_transaction_core::Block> = vec![];
+        let mut block_entities: Vec<mc_blockchain_types::Block> = vec![];
         for block_index in start_index..end_index {
             match self.ledger.get_block(block_index as u64) {
                 Ok(block) => block_entities.push(block),

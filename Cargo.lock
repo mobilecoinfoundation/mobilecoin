@@ -2318,6 +2318,7 @@ dependencies = [
  "maplit",
  "mc-account-keys",
  "mc-attest-core",
+ "mc-blockchain-types",
  "mc-crypto-keys",
  "mc-crypto-multisig",
  "mc-crypto-ring-signature-signer",
@@ -2334,6 +2335,7 @@ dependencies = [
  "mc-util-test-helper",
  "mc-util-test-vector",
  "mc-util-test-with-data",
+ "mc-util-zip-exact",
  "mc-watcher-api",
  "pem",
  "prost",
@@ -2498,6 +2500,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-blockchain-types"
+version = "1.3.0-pre0"
+dependencies = [
+ "displaydoc",
+ "hex_fmt",
+ "mc-account-keys",
+ "mc-common",
+ "mc-crypto-digestible",
+ "mc-crypto-digestible-test-utils",
+ "mc-crypto-keys",
+ "mc-crypto-ring-signature",
+ "mc-transaction-core",
+ "mc-transaction-core-test-utils",
+ "mc-transaction-types",
+ "mc-util-from-random",
+ "mc-util-test-helper",
+ "prost",
+ "rand 0.8.5",
+ "serde",
+ "zeroize",
+]
+
+[[package]]
 name = "mc-common"
 version = "1.3.0-pre0"
 dependencies = [
@@ -2546,6 +2571,7 @@ dependencies = [
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-blockchain-types",
  "mc-common",
  "mc-consensus-api",
  "mc-crypto-keys",
@@ -2567,6 +2593,7 @@ dependencies = [
 name = "mc-connection-test-utils"
 version = "1.3.0-pre0"
 dependencies = [
+ "mc-blockchain-types",
  "mc-connection",
  "mc-consensus-enclave-api",
  "mc-ledger-db",
@@ -2603,6 +2630,7 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-verifier",
+ "mc-blockchain-types",
  "mc-common",
  "mc-consensus-enclave-api",
  "mc-consensus-enclave-edl",
@@ -2629,6 +2657,7 @@ dependencies = [
  "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-enclave-api",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-digestible",
  "mc-crypto-keys",
@@ -2660,6 +2689,7 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-trusted",
+ "mc-blockchain-types",
  "mc-common",
  "mc-consensus-enclave-api",
  "mc-crypto-ake-enclave",
@@ -2705,6 +2735,7 @@ dependencies = [
  "mc-account-keys",
  "mc-attest-core",
  "mc-attest-enclave-api",
+ "mc-blockchain-types",
  "mc-common",
  "mc-consensus-enclave-api",
  "mc-crypto-keys",
@@ -2804,6 +2835,7 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-attest-net",
  "mc-attest-verifier",
+ "mc-blockchain-types",
  "mc-common",
  "mc-connection",
  "mc-consensus-api",
@@ -2856,6 +2888,7 @@ dependencies = [
  "displaydoc",
  "hex",
  "mc-attest-core",
+ "mc-blockchain-types",
  "mc-common",
  "mc-consensus-enclave-api",
  "mc-consensus-scp",
@@ -3410,6 +3443,7 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-net",
+ "mc-blockchain-types",
  "mc-common",
  "mc-connection",
  "mc-crypto-keys",
@@ -3455,6 +3489,7 @@ name = "mc-fog-ingest-server-test-utils"
 version = "1.3.0-pre0"
 dependencies = [
  "mc-attest-net",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-ingest-enclave",
@@ -3498,6 +3533,7 @@ dependencies = [
  "grpcio",
  "mc-api",
  "mc-attest-verifier",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-api",
@@ -3619,6 +3655,7 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-attest-net",
  "mc-attest-verifier",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-api",
@@ -3661,6 +3698,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-ledger-enclave",
@@ -3678,6 +3716,7 @@ dependencies = [
  "clap 3.1.18",
  "grpcio",
  "mc-account-keys",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-crypto-rand",
@@ -3788,6 +3827,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "displaydoc",
  "mc-attest-core",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-fog-kex-rng",
@@ -3948,6 +3988,7 @@ dependencies = [
  "mc-account-keys",
  "mc-api",
  "mc-attest-verifier",
+ "mc-blockchain-types",
  "mc-common",
  "mc-connection",
  "mc-consensus-api",
@@ -4041,6 +4082,7 @@ dependencies = [
  "diesel_migrations",
  "displaydoc",
  "mc-attest-core",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-crypto-x509-test-vectors",
@@ -4074,6 +4116,7 @@ dependencies = [
  "lazy_static",
  "maplit",
  "mc-account-keys",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-rand",
  "mc-fog-sample-paykit",
@@ -4103,6 +4146,7 @@ dependencies = [
  "digest 0.10.3",
  "hex",
  "mc-account-keys",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-hashes",
  "mc-crypto-keys",
@@ -4326,6 +4370,7 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-net",
  "mc-attest-verifier",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-crypto-x509-test-vectors",
@@ -4371,6 +4416,7 @@ dependencies = [
  "lazy_static",
  "lmdb-rkv",
  "mc-account-keys",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-crypto-multisig",
@@ -4397,6 +4443,7 @@ dependencies = [
  "dirs",
  "displaydoc",
  "mc-api",
+ "mc-blockchain-types",
  "mc-common",
  "mc-ledger-db",
  "mc-transaction-core",
@@ -4445,6 +4492,7 @@ dependencies = [
  "mc-account-keys",
  "mc-api",
  "mc-attest-verifier",
+ "mc-blockchain-types",
  "mc-common",
  "mc-connection",
  "mc-connection-test-utils",
@@ -4478,6 +4526,7 @@ dependencies = [
  "hostname",
  "lazy_static",
  "mc-account-keys",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-ledger-db",
@@ -4531,6 +4580,7 @@ dependencies = [
  "mc-api",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-blockchain-types",
  "mc-common",
  "mc-connection",
  "mc-connection-test-utils",
@@ -4706,6 +4756,7 @@ dependencies = [
  "mc-attest-api",
  "mc-attest-core",
  "mc-attest-enclave-api",
+ "mc-blockchain-types",
  "mc-common",
  "mc-connection",
  "mc-connection-test-utils",
@@ -4734,6 +4785,7 @@ version = "1.3.0-pre0"
 dependencies = [
  "grpcio",
  "hex",
+ "mc-blockchain-types",
  "mc-common",
  "mc-connection",
  "mc-consensus-api",
@@ -4986,6 +5038,7 @@ name = "mc-transaction-core-test-utils"
 version = "1.3.0-pre0"
 dependencies = [
  "mc-account-keys",
+ "mc-blockchain-types",
  "mc-crypto-keys",
  "mc-crypto-multisig",
  "mc-crypto-rand",
@@ -5032,6 +5085,7 @@ dependencies = [
 name = "mc-transaction-types"
 version = "1.3.0-pre0"
 dependencies = [
+ "displaydoc",
  "mc-crypto-digestible",
  "serde",
  "subtle",
@@ -5138,6 +5192,7 @@ dependencies = [
  "clap 3.1.18",
  "hex",
  "mc-account-keys",
+ "mc-blockchain-types",
  "mc-common",
  "mc-crypto-keys",
  "mc-ledger-db",
@@ -5401,6 +5456,7 @@ dependencies = [
  "mc-api",
  "mc-attest-core",
  "mc-attest-verifier",
+ "mc-blockchain-types",
  "mc-common",
  "mc-connection",
  "mc-crypto-digestible",

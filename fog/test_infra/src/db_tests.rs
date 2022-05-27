@@ -2,6 +2,7 @@
 
 //! Fog database test helpers
 
+use mc_blockchain_types::{Block, BlockID, BlockVersion};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_recovery_db_iface::{
@@ -9,7 +10,6 @@ use mc_fog_recovery_db_iface::{
     ReportDb,
 };
 use mc_fog_types::view::{RngRecord, TxOutSearchResultCode};
-use mc_transaction_core::{Block, BlockID, BlockVersion};
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 

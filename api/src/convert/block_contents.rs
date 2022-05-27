@@ -1,16 +1,16 @@
 //! Convert to/from blockchain::BlockContents
 
-use crate::{blockchain, convert::ConversionError, external};
+use crate::{blockchain, external, ConversionError};
+use mc_blockchain_types::BlockContents;
 use mc_transaction_core::{
     mint::{MintTx, ValidatedMintConfigTx},
     ring_signature::KeyImage,
     tx::TxOut,
-    BlockContents,
 };
 use std::convert::TryFrom;
 
-impl From<&mc_transaction_core::BlockContents> for blockchain::BlockContents {
-    fn from(source: &mc_transaction_core::BlockContents) -> Self {
+impl From<&BlockContents> for blockchain::BlockContents {
+    fn from(source: &BlockContents) -> Self {
         let mut block_contents = blockchain::BlockContents::new();
 
         let key_images = source
@@ -37,7 +37,7 @@ impl From<&mc_transaction_core::BlockContents> for blockchain::BlockContents {
     }
 }
 
-impl TryFrom<&blockchain::BlockContents> for mc_transaction_core::BlockContents {
+impl TryFrom<&blockchain::BlockContents> for BlockContents {
     type Error = ConversionError;
 
     fn try_from(source: &blockchain::BlockContents) -> Result<Self, Self::Error> {

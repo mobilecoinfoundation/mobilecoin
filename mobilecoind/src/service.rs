@@ -2124,6 +2124,7 @@ mod test {
         burn_address_view_private, AccountKey, PublicAddress, ShortAddressHash,
         DEFAULT_SUBADDRESS_INDEX,
     };
+    use mc_blockchain_types::{Block, BlockContents, BlockVersion};
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_keys::RistrettoPrivate;
     use mc_crypto_rand::RngCore;
@@ -2136,7 +2137,7 @@ mod test {
         onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
         tokens::Mob,
         tx::{Tx, TxOut},
-        Amount, Block, BlockContents, BlockVersion, Token,
+        Amount, Token,
     };
     use mc_transaction_std::{EmptyMemoBuilder, MemoType, TransactionBuilder};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};

@@ -1,11 +1,11 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use super::Conn;
-use crate::error::Error;
-use diesel::{dsl::max, prelude::*};
-use mc_transaction_core::BlockIndex;
-
 pub use super::models::BlockAuditData;
+
+use super::Conn;
+use crate::Error;
+use diesel::{dsl::max, prelude::*};
+use mc_blockchain_types::BlockIndex;
 
 /// Trait for providing convenience functions for interacting with the
 /// [BlockAuditData] model/table.

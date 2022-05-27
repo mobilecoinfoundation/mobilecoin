@@ -9,6 +9,7 @@ use crate::{
     mint_tx_manager::MintTxManager,
     tx_manager::TxManager,
 };
+use mc_blockchain_types::BlockData;
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
@@ -26,7 +27,7 @@ use mc_peers::{
     Broadcast, ConsensusConnection, ConsensusMsg, ConsensusValue, Error as PeerError,
     RetryableConsensusConnection, VerifiedConsensusMsg,
 };
-use mc_transaction_core::{tx::TxHash, BlockData};
+use mc_transaction_core::tx::TxHash;
 use mc_util_metered_channel::Receiver;
 use mc_util_telemetry::{mark_span_as_active, start_block_span, tracer, Tracer};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -892,6 +893,7 @@ mod tests {
         validators::DefaultTxManagerUntrustedInterfaces,
     };
     use mc_account_keys::AccountKey;
+    use mc_blockchain_types::{Block, BlockContents, BlockVersion};
     use mc_common::{
         logger::{test_with_logger, Logger},
         NodeID, ResponderId,
@@ -913,7 +915,7 @@ mod tests {
     use mc_transaction_core::{
         tx::{Tx, TxHash},
         validation::TransactionValidationError,
-        Block, BlockContents, BlockVersion, TokenId,
+        TokenId,
     };
     use mc_transaction_core_test_utils::{
         create_ledger, create_mint_config_tx_and_signers, create_mint_tx_to_recipient,

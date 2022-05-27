@@ -8,7 +8,11 @@
 #![deny(missing_docs)]
 
 mod amount;
+mod block_version;
 mod token;
 
-pub use amount::Amount;
-pub use token::TokenId;
+pub use crate::{
+    amount::Amount,
+    block_version::{BlockVersion, BlockVersionError, BlockVersionIterator},
+    token::TokenId,
+};

@@ -10,6 +10,7 @@ use crate::{
 };
 use grpcio::{ChannelBuilder, EnvBuilder};
 use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
+use mc_blockchain_types::{Block, BlockContents};
 use mc_common::logger::{log, Logger};
 use mc_connection::{Connection, ConnectionManager};
 use mc_connection_test_utils::{test_client_uri, MockBlockchainConnection};
@@ -20,9 +21,7 @@ use mc_fog_report_validation_test_utils::{FogPubkeyResolver, MockFogResolver};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::PollingNetworkState;
 use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
-use mc_transaction_core::{
-    ring_signature::KeyImage, tokens::Mob, tx::TxOut, Amount, Block, BlockContents, Token,
-};
+use mc_transaction_core::{ring_signature::KeyImage, tokens::Mob, tx::TxOut, Amount, Token};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::{ConnectionUri, FogUri};
@@ -34,7 +33,7 @@ use std::{
 };
 use tempdir::TempDir;
 
-pub use mc_transaction_core::BlockVersion;
+pub use mc_blockchain_types::BlockVersion;
 
 /// The amount each recipient gets in the test ledger.
 pub const DEFAULT_PER_RECIPIENT_AMOUNT: u64 = 5_000 * 1_000_000_000_000;

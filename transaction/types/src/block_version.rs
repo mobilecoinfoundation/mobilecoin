@@ -162,6 +162,8 @@ pub enum BlockVersionError {
 
 #[cfg(test)]
 mod tests {
+    extern crate alloc;
+
     use super::*;
     use alloc::vec::Vec;
 

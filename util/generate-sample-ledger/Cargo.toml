@@ -10,6 +10,7 @@ path = "src/bin/generate_sample_ledger.rs"
 
 [dependencies]
 mc-account-keys = { path = "../../account-keys" }
+mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log", "loggers"] }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-ledger-db = { path = "../../ledger/db" }

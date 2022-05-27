@@ -12,6 +12,7 @@ use mc_account_keys::{
     AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
     INVALID_SUBADDRESS_INDEX,
 };
+use mc_blockchain_types::BlockIndex;
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::RistrettoPublic;
 use mc_fog_api::{fog_common, ledger};
@@ -31,7 +32,7 @@ use mc_transaction_core::{
     onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
     ring_signature::KeyImage,
     tx::TxOut,
-    Amount, BlockIndex, TokenId,
+    Amount, TokenId,
 };
 use mc_transaction_std::MemoType;
 use mc_util_telemetry::{telemetry_static_key, tracer, Key, TraceContextExt, Tracer};

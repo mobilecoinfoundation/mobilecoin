@@ -1,10 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::{
-    tx::{TxOut, TxOutMembershipElement},
-    BlockContents, BlockContentsHash, BlockID, BlockVersion,
-};
+use crate::{BlockContents, BlockContentsHash, BlockID, BlockVersion};
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
+use mc_transaction_core::tx::{TxOut, TxOutMembershipElement};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
@@ -202,21 +200,17 @@ pub fn compute_block_id(
 
 #[cfg(test)]
 mod block_tests {
-    use crate::{
-        encrypted_fog_hint::EncryptedFogHint,
-        membership_proofs::Range,
-        ring_signature::KeyImage,
-        tokens::Mob,
-        tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-        Amount, Block, BlockContents, BlockContentsHash, BlockID, BlockVersion, Token,
-    };
-    use alloc::vec::Vec;
+    use super::*;
+    use alloc::{vec, vec::Vec};
     use core::convert::TryFrom;
     use mc_account_keys::AccountKey;
     use mc_crypto_keys::RistrettoPrivate;
+    use mc_transaction_core::{
+        encrypted_fog_hint::EncryptedFogHint, membership_proofs::Range, ring_signature::KeyImage,
+        tokens::Mob, tx::TxOutMembershipHash, Amount, Token,
+    };
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::{get_seeded_rng, CryptoRng, RngCore, SeedableRng};
-    use rand::rngs::StdRng;
 
     // This is block version 1 to avoid messing with test vectors
     const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
@@ -394,7 +388,9 @@ mod block_tests {
         // sometimes updates what RNG algorithm this point to. We should
         // rerun this with Hc128 RNG (from mc_util_test_helper) and update the
         // test vectors.
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        use rand::rngs::StdRng;
+
+        let mut rng = StdRng::from_seed([1u8; 32]);
 
         //Check hash with memo
         let block = get_block(&mut rng);

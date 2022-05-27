@@ -13,6 +13,7 @@ path = "src/bin/main.rs"
 [dependencies]
 # mobilecoin
 mc-account-keys = { path = "../../account-keys" }
+mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-crypto-rand = { path = "../../crypto/rand" }
 mc-sgx-css = { path = "../../sgx/css" }

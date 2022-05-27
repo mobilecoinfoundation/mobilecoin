@@ -24,6 +24,7 @@ use mc_attest_ake::{
 use mc_attest_api::{attest::Message, attest_grpc::AttestedApiClient};
 use mc_attest_core::VerificationReport;
 use mc_attest_verifier::Verifier;
+use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, o, Logger},
     trace_time,
@@ -37,7 +38,7 @@ use mc_consensus_api::{
 use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
 use mc_crypto_rand::McRng;
-use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
+use mc_transaction_core::tx::Tx;
 use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcCookieStore};
 use mc_util_serial::encode;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri as ClientUri, UriConversionError};

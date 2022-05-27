@@ -367,10 +367,10 @@ mod tests {
     use super::*;
     use crate::watcher_db::tests::{setup_blocks, setup_watcher_db};
     use mc_attest_core::VerificationSignature;
+    use mc_blockchain_types::BlockSignature;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_crypto_digestible::{Digestible, MerlinTranscript};
     use mc_crypto_keys::{Ed25519Pair, Ed25519Private};
-    use mc_transaction_core::BlockSignature;
     use serial_test::serial;
     use std::{iter::FromIterator, str::FromStr, sync::Mutex, thread::sleep};
 

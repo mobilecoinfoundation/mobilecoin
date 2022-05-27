@@ -9,6 +9,7 @@ use crate::{
     ledger_sync::LedgerSync, transactions_fetcher_trait::TransactionsFetcher, LedgerSyncError,
     NetworkState,
 };
+use mc_blockchain_types::{compute_block_id, Block, BlockContents, BlockID, BlockIndex};
 use mc_common::{
     logger::{log, Logger},
     trace_time, ResponderId,
@@ -17,9 +18,7 @@ use mc_connection::{
     BlockchainConnection, Connection, ConnectionManager, RetryableBlockchainConnection,
 };
 use mc_ledger_db::Ledger;
-use mc_transaction_core::{
-    compute_block_id, ring_signature::KeyImage, Block, BlockContents, BlockID, BlockIndex,
-};
+use mc_transaction_core::ring_signature::KeyImage;
 use mc_util_telemetry::{
     block_span_builder, telemetry_static_key, tracer, Context, Key, Span, TraceContextExt, Tracer,
 };

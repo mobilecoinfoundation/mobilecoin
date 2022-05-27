@@ -17,10 +17,11 @@
 
 use crate::{key_bytes_to_u64, u64_to_key_bytes, Error};
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
+use mc_blockchain_types::BlockIndex;
 use mc_common::HashMap;
 use mc_transaction_core::{
     mint::{MintConfig, MintConfigTx, MintTx, ValidatedMintConfigTx},
-    BlockIndex, TokenId,
+    TokenId,
 };
 use mc_util_serial::{decode, encode, Message};
 

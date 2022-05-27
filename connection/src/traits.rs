@@ -5,8 +5,9 @@
 use crate::error::{Result, RetryResult};
 use grpcio::Error as GrpcError;
 use mc_attest_core::VerificationReport;
+use mc_blockchain_types::{Block, BlockID, BlockIndex};
 use mc_consensus_api::consensus_common::LastBlockInfoResponse;
-use mc_transaction_core::{tokens::Mob, tx::Tx, Block, BlockID, BlockIndex, Token, TokenId};
+use mc_transaction_core::{tokens::Mob, tx::Tx, Token, TokenId};
 use mc_util_serial::prost::alloc::fmt::Formatter;
 use mc_util_uri::ConnectionUri;
 use std::{

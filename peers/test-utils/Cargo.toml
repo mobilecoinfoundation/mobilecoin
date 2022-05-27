@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2021"
 
 [dependencies]
+mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common" }
 mc-connection = { path = "../../connection" }
 mc-consensus-api = { path = "../../consensus/api" }

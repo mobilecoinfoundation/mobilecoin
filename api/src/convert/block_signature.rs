@@ -1,8 +1,8 @@
 //! Convert to/from blockchain::BlockSignature
 
 use crate::{blockchain, convert::ConversionError, external};
+use mc_blockchain_types::BlockSignature;
 use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
-use mc_transaction_core::BlockSignature;
 use std::convert::TryFrom;
 
 /// Convert BlockSignature --> blockchain::BlockSignature.
@@ -31,18 +31,18 @@ impl TryFrom<&blockchain::BlockSignature> for BlockSignature {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_crypto_keys::{Ed25519Private, Ed25519Signature};
+    use mc_crypto_keys::Ed25519Private;
     use mc_util_from_random::FromRandom;
     use mc_util_repr_bytes::ReprBytes;
     use protobuf::Message;
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
-    // mc_transaction_core::BlockSignature --> blockchain::BlockSignature
+    // BlockSignature --> blockchain::BlockSignature
     fn test_block_signature_from() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let source_block_signature = mc_transaction_core::BlockSignature::new(
+        let source_block_signature = BlockSignature::new(
             Ed25519Signature::new([1; 64]),
             (&Ed25519Private::from_random(&mut rng)).into(),
             31337,
@@ -64,11 +64,11 @@ mod tests {
     }
 
     #[test]
-    // blockchain::BlockSignature -> mc_transaction_core::BlockSignature
+    // blockchain::BlockSignature -> BlockSignature
     fn test_block_signature_try_from() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let expected_block_signature = mc_transaction_core::BlockSignature::new(
+        let expected_block_signature = BlockSignature::new(
             Ed25519Signature::new([1; 64]),
             (&Ed25519Private::from_random(&mut rng)).into(),
             31337,
@@ -86,8 +86,7 @@ mod tests {
 
         source_block_signature.set_signed_at(31337);
 
-        let block_signature =
-            mc_transaction_core::BlockSignature::try_from(&source_block_signature).unwrap();
+        let block_signature = BlockSignature::try_from(&source_block_signature).unwrap();
         assert_eq!(block_signature, expected_block_signature);
     }
 
@@ -98,7 +97,7 @@ mod tests {
     fn test_blockchain_block_signature_matches_prost() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let source_block_signature = mc_transaction_core::BlockSignature::new(
+        let source_block_signature = BlockSignature::new(
             Ed25519Signature::new([1; 64]),
             (&Ed25519Private::from_random(&mut rng)).into(),
             31337,
@@ -111,7 +110,7 @@ mod tests {
             let blockchain_block_signature_bytes =
                 blockchain_block_signature.write_to_bytes().unwrap();
 
-            let block_signature_from_prost: mc_transaction_core::BlockSignature =
+            let block_signature_from_prost: BlockSignature =
                 mc_util_serial::decode(&blockchain_block_signature_bytes).expect("failed decoding");
             assert_eq!(source_block_signature, block_signature_from_prost);
         }

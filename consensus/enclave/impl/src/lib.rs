@@ -40,6 +40,7 @@ use mc_attest_enclave_api::{
     Error as AttestEnclaveError, PeerAuthRequest, PeerAuthResponse, PeerSession,
 };
 use mc_attest_trusted::SealAlgo;
+use mc_blockchain_types::{Block, BlockContents, BlockSignature, BlockVersion};
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
@@ -66,7 +67,7 @@ use mc_transaction_core::{
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Amount, Block, BlockContents, BlockSignature, BlockVersion, Token, TokenId,
+    Amount, Token, TokenId,
 };
 // Race here refers to, this is thread-safe, first-one-wins behavior, without
 // blocking

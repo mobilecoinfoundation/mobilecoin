@@ -2,11 +2,11 @@
 
 use super::Error;
 use grpcio::{ChannelBuilder, Environment};
+use mc_blockchain_types::BlockIndex;
 use mc_common::logger::Logger;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_fog_api::{fog_common::BlockRange, ledger, ledger_grpc};
 use mc_fog_uri::FogLedgerUri;
-use mc_transaction_core::BlockIndex;
 use mc_util_grpc::{BasicCredentials, ConnectionUriGrpcioChannel, GrpcRetryConfig};
 use mc_util_uri::ConnectionUri;
 use std::{ops::Range, sync::Arc};
