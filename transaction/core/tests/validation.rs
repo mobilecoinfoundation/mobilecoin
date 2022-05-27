@@ -8,6 +8,11 @@ extern crate alloc;
 mod util;
 
 mod tests {
+    use crate::util::{
+        create_test_tx,
+        create_test_tx_with_amount,
+        create_test_tx_with_amount_and_comparer_and_recipients,
+    };
     use alloc::vec::Vec;
     use mc_account_keys::AccountKey;
     use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes};
@@ -22,14 +27,9 @@ mod tests {
     };
     use mc_transaction_core_test_utils::{InverseTxOutputsOrdering, INITIALIZE_LEDGER_AMOUNT};
     use mc_util_test_helper::get_seeded_rng;
-    use crate::util::{
-        create_test_tx,
-        create_test_tx_with_amount,
-        create_test_tx_with_amount_and_comparer_and_recipients
-    };
 
     #[test]
-// Should return MissingMemo when memos are missing in an output
+    // Should return MissingMemo when memos are missing in an output
     fn test_validate_memo_exists() {
         let (tx, _) = create_test_tx(BlockVersion::ZERO);
         let tx_out = tx.prefix.outputs.first().unwrap();
@@ -48,7 +48,7 @@ mod tests {
     }
 
     #[test]
-// Should return MemosNotAllowed when memos are present in an output
+    // Should return MemosNotAllowed when memos are present in an output
     fn test_validate_that_no_memo_exists() {
         let (tx, _) = create_test_tx(BlockVersion::ZERO);
         let tx_out = tx.prefix.outputs.first().unwrap();
@@ -67,8 +67,8 @@ mod tests {
     }
 
     #[test]
-// Should return MissingMaskedTokenId when masked_token_id are missing in an
-// output
+    // Should return MissingMaskedTokenId when masked_token_id are missing in an
+    // output
     fn test_validate_masked_token_id_exists() {
         let (tx, _) = create_test_tx(BlockVersion::ONE);
         let tx_out = tx.prefix.outputs.first().unwrap();
@@ -87,7 +87,7 @@ mod tests {
     }
 
     #[test]
-// Should return MemosNotAllowed when memos are present in an output
+    // Should return MemosNotAllowed when memos are present in an output
     fn test_validate_no_masked_token_id_exists() {
         let (tx, _) = create_test_tx(BlockVersion::ONE);
         let tx_out = tx.prefix.outputs.first().unwrap();
@@ -106,16 +106,16 @@ mod tests {
     }
 
     #[test]
-// Should return Ok(()) when the Tx's membership proofs are correct and agree
-// with ledger.
+    // Should return Ok(()) when the Tx's membership proofs are correct and agree
+    // with ledger.
     fn test_validate_membership_proofs() {
         for block_version in BlockVersion::iterator() {
             let (tx, ledger) = create_test_tx(block_version);
 
             let highest_indices = tx.get_membership_proof_highest_indices();
             let root_proofs: Vec<TxOutMembershipProof> = ledger
-              .get_tx_out_proof_of_memberships(&highest_indices)
-              .expect("failed getting proofs");
+                .get_tx_out_proof_of_memberships(&highest_indices)
+                .expect("failed getting proofs");
 
             // Validate the transaction prefix without providing the correct ledger context.
             {
@@ -131,24 +131,24 @@ mod tests {
             {
                 let highest_indices = tx.get_membership_proof_highest_indices();
                 let root_proofs: Vec<TxOutMembershipProof> = ledger
-                  .get_tx_out_proof_of_memberships(&highest_indices)
-                  .expect("failed getting proofs");
+                    .get_tx_out_proof_of_memberships(&highest_indices)
+                    .expect("failed getting proofs");
                 assert_eq!(validate_membership_proofs(&tx.prefix, &root_proofs), Ok(()));
             }
         }
     }
 
     #[test]
-// Should return InvalidRangeProof if a membership proof containing an invalid
-// Range.
+    // Should return InvalidRangeProof if a membership proof containing an invalid
+    // Range.
     fn test_validate_membership_proofs_invalid_range_in_tx() {
         for block_version in BlockVersion::iterator() {
             let (mut tx, ledger) = create_test_tx(block_version);
 
             let highest_indices = tx.get_membership_proof_highest_indices();
             let root_proofs: Vec<TxOutMembershipProof> = ledger
-              .get_tx_out_proof_of_memberships(&highest_indices)
-              .expect("failed getting proofs");
+                .get_tx_out_proof_of_memberships(&highest_indices)
+                .expect("failed getting proofs");
 
             // Modify tx to include an invalid Range.
             let mut proof = tx.prefix.inputs[0].proofs[0].clone();
@@ -165,15 +165,15 @@ mod tests {
     }
 
     #[test]
-// Should return InvalidRangeProof if a root proof containing an invalid Range.
+    // Should return InvalidRangeProof if a root proof containing an invalid Range.
     fn test_validate_membership_proofs_invalid_range_in_root_proof() {
         for block_version in BlockVersion::iterator() {
             let (tx, ledger) = create_test_tx(block_version);
 
             let highest_indices = tx.get_membership_proof_highest_indices();
             let mut root_proofs: Vec<TxOutMembershipProof> = ledger
-              .get_tx_out_proof_of_memberships(&highest_indices)
-              .expect("failed getting proofs");
+                .get_tx_out_proof_of_memberships(&highest_indices)
+                .expect("failed getting proofs");
 
             // Modify a root proof to include an invalid Range.
             let mut proof = root_proofs[0].clone();
@@ -190,7 +190,7 @@ mod tests {
     }
 
     #[test]
-// Test that validate_number_of_inputs is working as expected
+    // Test that validate_number_of_inputs is working as expected
     fn test_validate_number_of_inputs() {
         for block_version in BlockVersion::iterator() {
             let (orig_tx, _ledger) = create_test_tx(block_version);
@@ -220,7 +220,7 @@ mod tests {
     }
 
     #[test]
-// Test that validate_number_of_outputs is working as expected
+    // Test that validate_number_of_outputs is working as expected
     fn test_validate_number_of_outputs() {
         for block_version in BlockVersion::iterator() {
             let (orig_tx, _ledger) = create_test_tx(block_version);
@@ -250,7 +250,7 @@ mod tests {
     }
 
     #[test]
-// Test that validate_ring_sizes is working as expected
+    // Test that validate_ring_sizes is working as expected
     fn test_validate_ring_sizes() {
         for block_version in BlockVersion::iterator() {
             let (tx, _ledger) = create_test_tx(block_version);
@@ -319,7 +319,7 @@ mod tests {
     }
 
     #[test]
-// Test that validate_ring_elements_are_unique is working as expected
+    // Test that validate_ring_elements_are_unique is working as expected
     fn test_validate_ring_elements_are_unique() {
         for block_version in BlockVersion::iterator() {
             let (tx, _ledger) = create_test_tx(block_version);
@@ -332,8 +332,8 @@ mod tests {
             {
                 let mut tx_prefix = tx.prefix.clone();
                 tx_prefix.inputs[0]
-                  .ring
-                  .push(tx.prefix.inputs[0].ring[0].clone());
+                    .ring
+                    .push(tx.prefix.inputs[0].ring[0].clone());
 
                 assert_eq!(
                     validate_ring_elements_are_unique(&tx_prefix),
@@ -506,7 +506,7 @@ mod tests {
     }
 
     #[test]
-// `validate_signature` return OK for a valid transaction.
+    // `validate_signature` return OK for a valid transaction.
     fn test_validate_signature_ok() {
         let mut rng = get_seeded_rng();
 
@@ -522,7 +522,7 @@ mod tests {
     }
 
     #[test]
-// Should return InvalidTransactionSignature if an input is modified.
+    // Should return InvalidTransactionSignature if an input is modified.
     fn test_transaction_signature_err_modified_input() {
         let mut rng = get_seeded_rng();
 
@@ -543,7 +543,7 @@ mod tests {
     }
 
     #[test]
-// Should return InvalidTransactionSignature if an output is modified.
+    // Should return InvalidTransactionSignature if an output is modified.
     fn test_transaction_signature_err_modified_output() {
         let mut rng = get_seeded_rng();
 
@@ -565,7 +565,7 @@ mod tests {
     }
 
     #[test]
-// Should return InvalidTransactionSignature if the fee is modified.
+    // Should return InvalidTransactionSignature if the fee is modified.
     fn test_transaction_signature_err_modified_fee() {
         let mut rng = get_seeded_rng();
 
@@ -585,7 +585,7 @@ mod tests {
     }
 
     #[test]
-// Should return InvalidTransactionSignature if the token_id is modified
+    // Should return InvalidTransactionSignature if the token_id is modified
     fn test_transaction_signature_err_modified_token_id() {
         let mut rng = get_seeded_rng();
 
@@ -605,7 +605,7 @@ mod tests {
     }
 
     #[test]
-// Should return InvalidTransactionSignature if block v 1 is validated as 2
+    // Should return InvalidTransactionSignature if block v 1 is validated as 2
     fn test_transaction_signature_err_version_one_as_two() {
         let mut rng = get_seeded_rng();
 
@@ -623,7 +623,7 @@ mod tests {
     }
 
     #[test]
-// Should return InvalidTransactionSignature if block v 2 is validated as 1
+    // Should return InvalidTransactionSignature if block v 2 is validated as 1
     fn test_transaction_signature_err_version_two_as_one() {
         let mut rng = get_seeded_rng();
 
@@ -646,7 +646,7 @@ mod tests {
             {
                 // Zero fees gets rejected
                 let (tx, _ledger) =
-                  create_test_tx_with_amount(block_version, INITIALIZE_LEDGER_AMOUNT, 0);
+                    create_test_tx_with_amount(block_version, INITIALIZE_LEDGER_AMOUNT, 0);
                 assert_eq!(
                     validate_transaction_fee(&tx, 1000),
                     Err(TransactionValidationError::TxFeeError)
@@ -657,7 +657,7 @@ mod tests {
                 // Off by one fee gets rejected
                 let fee = Mob::MINIMUM_FEE - 1;
                 let (tx, _ledger) =
-                  create_test_tx_with_amount(block_version, INITIALIZE_LEDGER_AMOUNT - fee, fee);
+                    create_test_tx_with_amount(block_version, INITIALIZE_LEDGER_AMOUNT - fee, fee);
                 assert_eq!(
                     validate_transaction_fee(&tx, Mob::MINIMUM_FEE),
                     Err(TransactionValidationError::TxFeeError)
@@ -678,7 +678,7 @@ mod tests {
                 // Overpaying fees is okay
                 let fee = Mob::MINIMUM_FEE + 1;
                 let (tx, _ledger) =
-                  create_test_tx_with_amount(block_version, INITIALIZE_LEDGER_AMOUNT - fee, fee);
+                    create_test_tx_with_amount(block_version, INITIALIZE_LEDGER_AMOUNT - fee, fee);
                 assert_eq!(validate_transaction_fee(&tx, Mob::MINIMUM_FEE), Ok(()));
             }
         }
@@ -753,7 +753,7 @@ mod tests {
         }
     }
 
-// sense
+    // sense
     #[test]
     fn test_global_validate_for_blocks_with_sorted_outputs() {
         let mut rng = get_seeded_rng();
@@ -775,13 +775,13 @@ mod tests {
                 block_version,
                 INITIALIZE_LEDGER_AMOUNT - fee,
                 fee,
-                &recipients_refs
+                &recipients_refs,
             );
 
             let highest_indices = tx.get_membership_proof_highest_indices();
             let root_proofs: Vec<TxOutMembershipProof> = ledger
-              .get_tx_out_proof_of_memberships(&highest_indices)
-              .expect("failed getting proofs");
+                .get_tx_out_proof_of_memberships(&highest_indices)
+                .expect("failed getting proofs");
 
             let result = validate(
                 &tx,
