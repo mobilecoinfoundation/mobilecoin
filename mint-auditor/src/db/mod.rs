@@ -4,6 +4,7 @@
 
 mod block_audit_data;
 mod block_balance;
+mod conn;
 mod counters;
 mod models;
 mod schema;
@@ -12,9 +13,8 @@ pub mod test_utils;
 
 use crate::Error;
 use diesel::{
-    connection::SimpleConnection,
     prelude::*,
-    r2d2::{ConnectionManager, Pool, PooledConnection},
+    r2d2::{ConnectionManager, Pool},
     SqliteConnection,
 };
 use diesel_migrations::embed_migrations;
@@ -29,47 +29,10 @@ use std::{thread::sleep, time::Duration};
 
 pub use block_audit_data::{BlockAuditData, BlockAuditDataModel};
 pub use block_balance::{BlockBalance, BlockBalanceModel};
+pub use conn::{Conn, ConnectionOptions};
 pub use counters::{Counters, CountersModel};
 
 embed_migrations!("migrations/");
-
-/// A type alias for a pooled SQLite connection.
-pub type Conn = PooledConnection<ConnectionManager<SqliteConnection>>;
-
-/// Database connection options.
-#[derive(Debug)]
-pub struct ConnectionOptions {
-    /// Whether to enable the SQLite  WAL.
-    /// See https://sqlite.org/wal.html for details.
-    pub enable_wal: bool,
-
-    /// Time to wait while table is locked.
-    pub busy_timeout: Option<Duration>,
-}
-
-impl diesel::r2d2::CustomizeConnection<SqliteConnection, diesel::r2d2::Error>
-    for ConnectionOptions
-{
-    fn on_acquire(&self, conn: &mut SqliteConnection) -> Result<(), diesel::r2d2::Error> {
-        (|| {
-            if let Some(d) = self.busy_timeout {
-                conn.batch_execute(&format!("PRAGMA busy_timeout = {};", d.as_millis()))?;
-            }
-            if self.enable_wal {
-                conn.batch_execute("
-                    PRAGMA journal_mode = WAL;          -- better write-concurrency
-                    PRAGMA synchronous = NORMAL;        -- fsync only in critical moments
-                    PRAGMA wal_autocheckpoint = 1000;   -- write WAL changes back every 1000 pages, for an in average 1MB WAL file. May affect readers if number is increased
-                    PRAGMA wal_checkpoint(TRUNCATE);    -- free some space by truncating possibly massive WAL files from the last run.
-                ")?;
-            }
-            conn.batch_execute("PRAGMA foreign_keys = ON;")?;
-
-            Ok(())
-        })()
-        .map_err(diesel::r2d2::Error::QueryError)
-    }
-}
 
 /// Mint Auditor Database.
 #[derive(Clone)]
