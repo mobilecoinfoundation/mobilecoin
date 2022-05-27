@@ -7,7 +7,9 @@ use displaydoc::Display;
 use mc_ledger_db::Error as LedgerDbError;
 use mc_transaction_core::BlockIndex;
 use mc_util_serial::DecodeError;
+use crate::db::DbRetriableError;
 use std::io::Error as IoError;
+use diesel::result::Error as DieselError;
 
 /// Mint auditor error data type.
 #[derive(Debug, Display)]
@@ -28,7 +30,7 @@ pub enum Error {
     UnexpectedBlockIndex(BlockIndex, BlockIndex),
 
     /// Diesel: {0}
-    Diesel(diesel::result::Error),
+    Diesel(DieselError),
 
     /// Diesel migrations: {0}
     DieselMigrations(RunMigrationsError),
@@ -55,10 +57,10 @@ impl From<DecodeError> for Error {
     }
 }
 
-impl From<diesel::result::Error> for Error {
-    fn from(err: diesel::result::Error) -> Self {
+impl From<DieselError> for Error {
+    fn from(err: DieselError) -> Self {
         match err {
-            diesel::result::Error::NotFound => Self::NotFound,
+            DieselError::NotFound => Self::NotFound,
             err => Self::Diesel(err),
         }
     }
@@ -73,5 +75,15 @@ impl From<RunMigrationsError> for Error {
 impl From<diesel::r2d2::PoolError> for Error {
     fn from(err: diesel::r2d2::PoolError) -> Self {
         Self::R2d2Pool(err)
+    }
+}
+
+impl DbRetriableError for Error {
+    fn should_retry(&self) -> bool {
+        match self {
+            Self::Diesel(DieselError::DatabaseError(_, _)) => true,
+            Self::R2d2Pool(_) => true,
+            _ => false,
+        }
     }
 }

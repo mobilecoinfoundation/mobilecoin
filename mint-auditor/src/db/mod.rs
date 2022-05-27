@@ -249,25 +249,38 @@ impl MintAuditorDb {
     }
 }
 
-/// Create a SQLite transaction with retry.
+/// A trait for providing insight on whether an error that happened during a
+/// transaction should result in retrying.
+pub trait DbRetriableError {
+    /// Should we retry?
+    fn should_retry(&self) -> bool;
+}
+
+const BASE_DELAY_MS: u32 = 10;
+const NUM_RETRIES: u32 = 5;
+
+/// Create a SQLite transaction with exponential retry.
 pub fn transaction<T, E, F>(conn: &Conn, f: F) -> Result<T, E>
 where
     F: Clone + FnOnce(&Conn) -> Result<T, E>,
-    E: From<diesel::result::Error>,
+    E: From<diesel::result::Error> + DbRetriableError,
 {
     for i in 0..NUM_RETRIES {
         let f = f.clone();
         let r = conn.transaction::<T, E, _>(|| f(conn));
-        // TODO need to only retry in certain conditions!
-        if r.is_ok() || i == (NUM_RETRIES - 1) {
-            return r;
+        match r {
+            Ok(r) => return Ok(r),
+            Err(e) => {
+                if !e.should_retry() || i == (NUM_RETRIES - 1) {
+                    return Err(e);
+                }
+            }
         }
+
         sleep(Duration::from_millis((BASE_DELAY_MS * 2_u32.pow(i)) as u64));
     }
     panic!("Should never reach this point.");
 }
-const BASE_DELAY_MS: u32 = 10;
-const NUM_RETRIES: u32 = 5;
 
 #[cfg(test)]
 mod tests {
