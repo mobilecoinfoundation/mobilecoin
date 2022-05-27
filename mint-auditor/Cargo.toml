@@ -22,7 +22,6 @@ mc-util-uri = { path = "../util/uri" }
 
 clap = { version = "3.1", features = ["derive", "env"] }
 diesel = { version = "1.4.8", features = ["sqlite", "r2d2"] }
-#diesel-derive-enum = { version = "1", features = ["sqlite"] }
 diesel_migrations = { version = "1.4.0", features = ["sqlite"] }
 displaydoc = "0.2"
 grpcio = "0.10.2"
