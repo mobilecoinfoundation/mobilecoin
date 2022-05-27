@@ -1,6 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Utilities for Stellar Consensus Protocol tests.
+
+// Not all integration tests use all of the common code. https://github.com/rust-lang/rust/issues/46379
 #![allow(unused)]
 
 use crate::{core_types::Value, slot::Slot, QuorumSet, SlotIndex};
