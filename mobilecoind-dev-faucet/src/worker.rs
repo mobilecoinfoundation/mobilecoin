@@ -26,9 +26,9 @@ use mc_mobilecoind_api::{
 use mc_transaction_core::{constants::MAX_OUTPUTS, ring_signature::KeyImage, TokenId};
 use protobuf::RepeatedField;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap, HashSet},
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, Mutex,
     },
     time::Duration,
@@ -66,7 +66,7 @@ impl UtxoTracker {
         };
 
         let tracker = Self {
-            utxo: utxo.clone(),
+            utxo,
             receiver,
             received: None,
         };
@@ -93,6 +93,40 @@ impl UtxoTracker {
     }
 }
 
+/// TokenStateReceiver holds the queue of Utxo records for a particular token
+/// id, as well as other shared flags that indicate if we are out of funds etc.
+pub struct TokenStateReceiver {
+    receiver: Mutex<UnboundedReceiver<UtxoRecord>>,
+    funds_depleted_flag: Arc<AtomicBool>,
+    queue_depth: Arc<AtomicUsize>,
+}
+
+impl TokenStateReceiver {
+    /// Get a utxo from the queue, or a string explaining why we can't
+    pub fn get_utxo(&self) -> Result<UtxoRecord, String> {
+        let mut receiver = self.receiver.lock().expect("mutex poisoned");
+        match receiver.try_recv() {
+            Ok(result) => {
+                self.queue_depth.fetch_sub(1, Ordering::SeqCst);
+                Ok(result)
+            }
+            Err(mpsc::error::TryRecvError::Empty) => {
+                if self.funds_depleted_flag.load(Ordering::SeqCst) {
+                    Err("faucet is depleted".to_string())
+                } else {
+                    Err("faucet is busy".to_string())
+                }
+            }
+            Err(mpsc::error::TryRecvError::Disconnected) => Err("internal error".to_string()),
+        }
+    }
+
+    /// Get the current depth of the queue
+    pub fn get_queue_depth(&self) -> usize {
+        self.queue_depth.load(Ordering::SeqCst)
+    }
+}
+
 /// The worker is responsible for pre-splitting the faucet's balance so that it
 /// can handle multiple faucet requests concurrently.
 ///
@@ -111,7 +145,7 @@ impl UtxoTracker {
 pub struct Worker {
     /// The reciever queues, and flags indicating if we are out of funds, for
     /// each token id
-    receivers: HashMap<TokenId, (Mutex<mpsc::UnboundedReceiver<UtxoRecord>>, Arc<AtomicBool>)>,
+    receivers: HashMap<TokenId, TokenStateReceiver>,
 
     /// The worker thread handle
     join_handle: Option<std::thread::JoinHandle<()>>,
@@ -130,30 +164,6 @@ impl Worker {
 
     // Determines frequency with which the worker thread polls for updates
     const WORKER_POLL_PERIOD: Duration = Duration::from_millis(100);
-
-    /// Get a utxo with the target value, for a given token id.
-    /// This pulls a utxo from the queue, and the recipient has responsbility
-    /// to either successfully send the TxOut and use its oneshot::Sender to
-    /// report the result from consensus, or, to drop the oneshot::Sender,
-    /// reporting an error using the TxOut.
-    pub fn get_utxo(&self, token_id: TokenId) -> Result<UtxoRecord, String> {
-        if let Some((receiver, depleted_flag)) = self.receivers.get(&token_id) {
-            let mut receiver = receiver.lock().expect("mutex poisoned");
-            match receiver.try_recv() {
-                Ok(result) => Ok(result),
-                Err(mpsc::error::TryRecvError::Empty) => {
-                    if depleted_flag.load(Ordering::SeqCst) {
-                        Err("faucet is depleted".to_string())
-                    } else {
-                        Err("faucet is busy".to_string())
-                    }
-                }
-                Err(mpsc::error::TryRecvError::Disconnected) => Err("internal error".to_string()),
-            }
-        } else {
-            Err(format!("Unknown token id: {}", token_id))
-        }
-    }
 
     /// Make a new worker object given mobilecoind connection and config info,
     /// and starts the worker thread.
@@ -176,13 +186,12 @@ impl Worker {
         logger: Logger,
     ) -> Worker {
         let mut worker_token_states = Vec::<WorkerTokenState>::default();
-        let mut receivers =
-            HashMap::<TokenId, (Mutex<UnboundedReceiver<UtxoRecord>>, Arc<AtomicBool>)>::default();
+        let mut receivers = HashMap::<TokenId, TokenStateReceiver>::default();
 
         for (token_id, value) in faucet_amounts.iter() {
-            let (state, receiver, depleted_flag) = WorkerTokenState::new(*token_id, *value);
+            let (state, receiver) = WorkerTokenState::new(*token_id, *value);
             worker_token_states.push(state);
-            receivers.insert(*token_id, (Mutex::new(receiver), depleted_flag));
+            receivers.insert(*token_id, receiver);
         }
 
         let stop_requested = Arc::new(AtomicBool::default());
@@ -210,6 +219,27 @@ impl Worker {
             join_handle,
             stop_requested,
         }
+    }
+
+    /// Get a utxo with the target value, for a given token id.
+    /// This pulls a utxo from the queue, and the recipient has responsbility
+    /// to either successfully send the TxOut and use its oneshot::Sender to
+    /// report the result from consensus, or, to drop the oneshot::Sender,
+    /// reporting an error using the TxOut.
+    pub fn get_utxo(&self, token_id: TokenId) -> Result<UtxoRecord, String> {
+        if let Some(receiver) = self.receivers.get(&token_id) {
+            receiver.get_utxo()
+        } else {
+            Err(format!("Unknown token id: {}", token_id))
+        }
+    }
+
+    /// Get the depths of all of the queues
+    pub fn get_queue_depths(&self) -> HashMap<TokenId, usize> {
+        self.receivers
+            .iter()
+            .map(|(token_id, receiver)| (*token_id, receiver.get_queue_depth()))
+            .collect()
     }
 }
 
@@ -241,24 +271,22 @@ struct WorkerTokenState {
     in_flight_split_tx_state: Option<SubmitTxResponse>,
     // A shared flag we use to signal if have insufficient funds for this token id
     funds_depleted: Arc<AtomicBool>,
+    // A shared counter used to indicate roughly how many items are in the queue
+    queue_depth: Arc<AtomicUsize>,
 }
 
 impl WorkerTokenState {
     // Create a new worker token state, with a given token id and target value.
     // Returns the channels to be passed to other thread, including the receiver
     // for new UtxoRecords, and the "funds depleted" flag
-    fn new(
-        token_id: TokenId,
-        target_value: u64,
-    ) -> (
-        WorkerTokenState,
-        UnboundedReceiver<UtxoRecord>,
-        Arc<AtomicBool>,
-    ) {
+    fn new(token_id: TokenId, target_value: u64) -> (WorkerTokenState, TokenStateReceiver) {
         let (sender, receiver) = mpsc::unbounded_channel::<UtxoRecord>();
 
         let funds_depleted_flag = Arc::new(AtomicBool::default());
         let funds_depleted = funds_depleted_flag.clone();
+
+        let queue_depth = Arc::new(AtomicUsize::default());
+        let queue_depth_counter = queue_depth.clone();
 
         (
             Self {
@@ -268,9 +296,13 @@ impl WorkerTokenState {
                 sender,
                 in_flight_split_tx_state: None,
                 funds_depleted,
+                queue_depth,
             },
-            receiver,
-            funds_depleted_flag,
+            TokenStateReceiver {
+                receiver: Mutex::new(receiver),
+                funds_depleted_flag,
+                queue_depth: queue_depth_counter,
+            },
         )
     }
 
@@ -311,7 +343,6 @@ impl WorkerTokenState {
         // Now, check all the reported utxos.
         // If they have the target value, increment queue depth.
         // If they are new since last time, report to the sender queue.
-        let mut queue_depth = 0;
         let mut output_list_key_images = HashSet::<KeyImage>::default();
 
         for utxo in resp.output_list.iter() {
@@ -324,17 +355,17 @@ impl WorkerTokenState {
                 continue;
             }
 
-            queue_depth += 1;
             let key_image: KeyImage = utxo
                 .get_key_image()
                 .try_into()
                 .map_err(|err| format!("invalid key image: {}", err))?;
-            if !self.known_utxos.contains_key(&key_image) {
-                // We found a utxo that isn't in the cache, let's queue it and add it to the
-                // cache
+            if let Entry::Vacant(e) = self.known_utxos.entry(key_image) {
+                // We found a utxo not in the cache, let's queue and add to cache
                 let (tracker, record) = UtxoTracker::new(utxo.clone());
+                // Add to queue depth before push, because we subtract after pop
+                self.queue_depth.fetch_add(1, Ordering::SeqCst);
                 let _ = self.sender.send(record);
-                self.known_utxos.insert(key_image, tracker);
+                e.insert(tracker);
             }
 
             // Add the key image of this utxo to a set, this helps us purge the cache
@@ -372,7 +403,7 @@ impl WorkerTokenState {
         });
 
         // Check the queue depth, and decide if we should make a split tx
-        if queue_depth < Worker::THRESHOLD_QUEUE_DEPTH {
+        if self.queue_depth.load(Ordering::SeqCst) < Worker::THRESHOLD_QUEUE_DEPTH {
             // Check if we already tried to fix this in the last iteration
             if let Some(prev_tx) = self.in_flight_split_tx_state.as_ref() {
                 if is_tx_still_in_flight(client, prev_tx, "Split", logger) {
@@ -480,12 +511,12 @@ fn is_tx_still_in_flight(
                 );
             }
             // Whether successful or an error, the Tx has resolved now
-            return false;
+            false
         }
         Err(err) => {
             log::error!(logger, "Failed getting {} Tx status: {}", context, err);
             // We still don't know the status, so it may still be in-flight
-            return true;
+            true
         }
     }
 }

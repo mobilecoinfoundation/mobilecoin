@@ -52,6 +52,7 @@ pub struct JsonFaucetStatus {
     pub b58_address: String,
     pub faucet_amounts: HashMap<JsonU64, JsonU64>,
     pub balances: HashMap<JsonU64, JsonU64>,
+    pub queue_depths: HashMap<JsonU64, JsonU64>,
 }
 
 #[derive(Deserialize, Serialize, Default, Debug)]

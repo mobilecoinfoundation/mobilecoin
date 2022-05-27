@@ -228,6 +228,8 @@ fn status(state: &rocket::State<State>) -> Result<Json<JsonFaucetStatus>, String
         balances.insert(*token_id, resp.balance);
     }
 
+    let queue_depths = state.worker.get_queue_depths();
+
     Ok(Json(JsonFaucetStatus {
         b58_address: state.monitor_b58_address.clone(),
         faucet_amounts: state
@@ -236,6 +238,10 @@ fn status(state: &rocket::State<State>) -> Result<Json<JsonFaucetStatus>, String
             .map(convert_balance_pair)
             .collect(),
         balances: balances.iter().map(convert_balance_pair).collect(),
+        queue_depths: queue_depths
+            .into_iter()
+            .map(|(token_id, depth)| (JsonU64(*token_id), JsonU64(depth as u64)))
+            .collect(),
     }))
 }
 
