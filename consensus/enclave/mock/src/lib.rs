@@ -33,7 +33,7 @@ use mc_transaction_core::{
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Token, TokenId,
+    Amount, Token, TokenId,
 };
 use mc_transaction_core_test_utils::get_outputs;
 use mc_util_from_random::FromRandom;
@@ -291,7 +291,8 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
                         &mint_tx.prefix.spend_public_key,
                         &mint_tx.prefix.view_public_key,
                     );
-                    (recipient, mint_tx.prefix.amount)
+                    let amount = Amount::new(mint_tx.prefix.amount, mint_tx.prefix.token_id.into());
+                    (recipient, amount)
                 })
                 .collect::<Vec<_>>(),
             &mut rng,

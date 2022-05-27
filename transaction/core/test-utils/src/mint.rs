@@ -4,6 +4,7 @@
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{Ed25519Pair, RistrettoPublic, Signer};
 use mc_crypto_multisig::{MultiSig, SignerSet};
+use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_transaction_core::{
     mint::{
         constants::NONCE_LENGTH, MintConfig, MintConfigTx, MintConfigTxPrefix, MintTx,
@@ -12,7 +13,6 @@ use mc_transaction_core::{
     TokenId,
 };
 use mc_util_from_random::FromRandom;
-use rand::{CryptoRng, RngCore};
 
 /// Generate a valid MintConfigTx and return it together with the set of signing
 /// keys that are allowed to sign it.

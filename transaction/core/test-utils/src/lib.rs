@@ -3,18 +3,16 @@
 mod mint;
 
 pub use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
-pub use mc_blockchain_types::{
-    Block, BlockContents, BlockID, BlockIndex, BlockMetadata, BlockSignature, BlockVersion,
-};
 pub use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 pub use mc_fog_report_validation_test_utils::MockFogResolver;
 pub use mc_transaction_core::{
+    encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Amount, Token,
+    Amount, BlockVersion, Token,
 };
 pub use mc_util_serial::round_trip_message;
 pub use mint::{
@@ -23,83 +21,24 @@ pub use mint::{
 };
 
 use mc_crypto_keys::RistrettoPrivate;
-use mc_transaction_core::membership_proofs::Range;
+use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_util_from_random::FromRandom;
-use rand::{seq::SliceRandom, CryptoRng, Rng, RngCore};
-
-/// Generate a list of blocks, each with a random number of transactions.
-// FIXME: Change to return Vec<BlockData> with metadata.
-pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
-    block_version: BlockVersion,
-    recipients: &[PublicAddress],
-    n_blocks: usize,
-    min_txs_per_block: usize,
-    max_txs_per_block: usize,
-    initial_block: &Block,
-    rng: &mut T,
-) -> Vec<(Block, BlockContents)> {
-    assert!(!recipients.is_empty());
-    assert!(max_txs_per_block >= min_txs_per_block);
-
-    let mut results = Vec::<(Block, BlockContents)>::new();
-    let mut last_block = initial_block.clone();
-
-    for block_index in 0..n_blocks {
-        let n_txs = rng.gen_range(min_txs_per_block..=max_txs_per_block);
-        let recipient_and_amount: Vec<(PublicAddress, u64)> = (0..n_txs)
-            .map(|_| {
-                (
-                    recipients.choose(rng).unwrap().clone(),
-                    rng.gen_range(1..10_000_000_000),
-                )
-            })
-            .collect();
-        let outputs = get_outputs(block_version, &recipient_and_amount, rng);
-
-        // Non-origin blocks must have at least one key image.
-        let key_images = vec![KeyImage::from(block_index as u64)];
-
-        let block_contents = BlockContents {
-            key_images,
-            outputs,
-            ..Default::default()
-        };
-
-        // Fake proofs
-        let root_element = TxOutMembershipElement {
-            range: Range::new(0, block_index as u64).unwrap(),
-            hash: TxOutMembershipHash::from([0u8; 32]),
-        };
-
-        let block =
-            Block::new_with_parent(block_version, &last_block, &root_element, &block_contents);
-
-        last_block = block.clone();
-
-        results.push((block, block_contents));
-    }
-
-    results
-}
 
 /// Generate a set of outputs that "mint" coins for each recipient.
 pub fn get_outputs<T: RngCore + CryptoRng>(
     block_version: BlockVersion,
-    recipient_and_amount: &[(PublicAddress, u64)],
+    recipient_and_amount: &[(PublicAddress, Amount)],
     rng: &mut T,
 ) -> Vec<TxOut> {
     recipient_and_amount
         .iter()
-        .map(|(recipient, value)| {
+        .map(|(recipient, amount)| {
             TxOut::new(
                 block_version,
-                Amount {
-                    value: *value,
-                    token_id: Mob::ID,
-                },
+                *amount,
                 recipient,
                 &RistrettoPrivate::from_random(rng),
-                Default::default(),
+                EncryptedFogHint::fake_onetime_hint(rng),
             )
             .unwrap()
         })
@@ -114,10 +53,7 @@ pub fn create_test_tx_out(
     let account_key = AccountKey::random(rng);
     TxOut::new(
         block_version,
-        Amount {
-            value: rng.next_u64(),
-            token_id: Mob::ID,
-        },
+        Amount::new(rng.next_u64(), Mob::ID),
         &account_key.default_subaddress(),
         &RistrettoPrivate::from_random(rng),
         Default::default(),

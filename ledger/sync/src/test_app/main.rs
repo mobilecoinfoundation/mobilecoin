@@ -2,9 +2,9 @@
 
 //! Ledger Sync test app
 
-use mc_account_keys::AccountKey;
 use mc_attest_verifier::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
-use mc_blockchain_types::{Block, BlockContents, BlockVersion};
+use mc_blockchain_test_utils::get_blocks;
+use mc_blockchain_types::BlockVersion;
 use mc_common::{logger::log, ResponderId};
 use mc_connection::{ConnectionManager, HardcodedCredentialsProvider, ThickClient};
 use mc_consensus_scp::{test_utils::test_node_id, QuorumSet};
@@ -25,27 +25,22 @@ fn _make_ledger_long(ledger: &mut LedgerDB) {
 
     let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-    let accounts: Vec<AccountKey> = (0..20).map(|_i| AccountKey::random(&mut rng)).collect();
-    let recipient_pub_keys = accounts
-        .iter()
-        .map(|account| account.default_subaddress())
-        .collect::<Vec<_>>();
-
-    let results: Vec<(Block, BlockContents)> = mc_transaction_core_test_utils::get_blocks(
+    let results = get_blocks(
         BlockVersion::ZERO,
-        &recipient_pub_keys[..],
+        20,
         1,
+        2,
         1000,
         1000,
-        &last_block,
+        last_block,
         &mut rng,
     );
 
-    for (block, block_contents) in &results {
-        println!("block {} containing {:?}", block.index, block_contents);
-        // FIXME: Add metadata, too.
+    for block_data in results {
+        let block = block_data.block();
+        println!("block with index {} and ID {}", block.index, block.id);
         ledger
-            .append_block(block, block_contents, None, None)
+            .append_block_data(&block_data)
             .expect("failed to append block");
         assert_eq!(block.cumulative_txo_count, ledger.num_txos().unwrap());
     }

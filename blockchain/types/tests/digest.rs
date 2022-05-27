@@ -1,7 +1,8 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use mc_account_keys::AccountKey;
-use mc_blockchain_types::{Block, BlockContents, BlockVersion};
+use mc_blockchain_test_utils::get_blocks_with_recipients;
+use mc_blockchain_types::{Block, BlockVersion};
 use mc_crypto_digestible_test_utils::*;
 use mc_crypto_keys::RistrettoPrivate;
 use mc_transaction_core::{
@@ -36,28 +37,6 @@ fn test_origin_tx_outs() -> Vec<TxOut> {
             .expect("Could not create TxOut")
         })
         .collect()
-}
-
-fn test_blockchain(block_version: BlockVersion) -> Vec<(Block, BlockContents)> {
-    let mut rng: FixedRng = SeedableRng::from_seed([10u8; 32]);
-
-    let origin_tx_outs = test_origin_tx_outs();
-    let origin = Block::new_origin_block(&origin_tx_outs[..]);
-    let accounts = test_accounts();
-    let recipient_pub_keys = accounts
-        .iter()
-        .map(|account| account.default_subaddress())
-        .collect::<Vec<_>>();
-
-    mc_transaction_core_test_utils::get_blocks(
-        block_version,
-        &recipient_pub_keys[..],
-        3,
-        50,
-        50,
-        &origin,
-        &mut rng,
-    )
 }
 
 #[test]
@@ -125,8 +104,7 @@ fn tx_out_digestible_ast() {
 
 #[test]
 fn origin_block_digestible_ast() {
-    let origin_tx_outs = test_origin_tx_outs();
-    let origin = Block::new_origin_block(&origin_tx_outs[..]);
+    let origin = Block::new_origin_block(&test_origin_tx_outs());
 
     let root_element_ast = ASTNode::from(ASTAggregate {
         context: b"root_element",
@@ -212,55 +190,74 @@ fn origin_block_digestible_ast() {
     digestible_test_case_ast("test", &origin, expected_ast);
 }
 
+fn test_blockchain(block_version: BlockVersion) -> Vec<[u8; 32]> {
+    let origin_tx_outs = test_origin_tx_outs();
+    let origin = Block::new_origin_block(&origin_tx_outs[..]);
+    let accounts = test_accounts();
+    let recipient_pub_keys = accounts
+        .iter()
+        .map(|account| account.default_subaddress())
+        .collect::<Vec<_>>();
+
+    let mut rng = FixedRng::from_seed([10u8; 32]);
+    get_blocks_with_recipients(
+        block_version,
+        3,
+        &recipient_pub_keys[..],
+        1,
+        50,
+        50,
+        origin,
+        &mut rng,
+    )
+    .into_iter()
+    .map(|block_data| {
+        let hash = &block_data.block().contents_hash;
+        assert_eq!(hash, &block_data.contents().hash());
+        hash.0
+    })
+    .collect()
+}
+
+// Test digest of block contents at versions 0 and 1.
 #[test]
-fn block_contents_digestible_test_vectors() {
-    let results = test_blockchain(BlockVersion::ONE);
+fn block_contents_digestible_v0() {
+    assert_eq!(
+        test_blockchain(BlockVersion::ZERO),
+        [
+            [
+                203, 245, 7, 219, 1, 210, 70, 210, 93, 109, 135, 251, 188, 10, 120, 155, 108, 240,
+                18, 0, 89, 156, 18, 143, 136, 8, 169, 97, 25, 150, 178, 46
+            ],
+            [
+                54, 192, 31, 97, 184, 133, 252, 77, 58, 179, 228, 251, 171, 126, 158, 75, 32, 84,
+                82, 114, 115, 15, 162, 111, 252, 166, 179, 7, 181, 119, 177, 187
+            ],
+            [
+                236, 60, 128, 45, 199, 115, 208, 199, 32, 82, 230, 193, 18, 127, 139, 221, 112,
+                165, 191, 116, 8, 223, 88, 6, 247, 77, 238, 242, 185, 28, 59, 105
+            ]
+        ]
+    );
+}
 
-    // Test digest of block contents
+#[test]
+fn block_contents_digestible_v1() {
     assert_eq!(
-        results[0].1.hash().0,
+        test_blockchain(BlockVersion::ONE),
         [
-            141, 3, 218, 9, 245, 129, 12, 99, 192, 12, 107, 216, 4, 191, 254, 93, 247, 103, 110,
-            204, 77, 126, 154, 187, 198, 139, 58, 24, 191, 179, 59, 125
-        ]
-    );
-    assert_eq!(
-        results[1].1.hash().0,
-        [
-            254, 230, 153, 200, 129, 98, 221, 154, 120, 76, 165, 230, 183, 128, 60, 26, 202, 64,
-            171, 237, 164, 209, 9, 170, 109, 54, 133, 143, 110, 215, 199, 69
-        ]
-    );
-    assert_eq!(
-        results[2].1.hash().0,
-        [
-            215, 120, 30, 77, 126, 121, 230, 151, 225, 205, 247, 66, 101, 113, 221, 32, 122, 41,
-            29, 53, 98, 48, 72, 183, 219, 255, 228, 161, 47, 46, 245, 221
-        ]
-    );
-
-    let results = test_blockchain(BlockVersion::ZERO);
-
-    // Test digest of block contents
-    assert_eq!(
-        results[0].1.hash().0,
-        [
-            127, 243, 87, 10, 229, 29, 137, 126, 255, 243, 163, 147, 39, 214, 116, 139, 171, 229,
-            167, 113, 37, 54, 91, 191, 40, 244, 194, 114, 234, 189, 209, 239
-        ]
-    );
-    assert_eq!(
-        results[1].1.hash().0,
-        [
-            62, 59, 155, 219, 6, 106, 54, 48, 148, 22, 117, 39, 251, 161, 22, 50, 158, 7, 5, 104,
-            182, 182, 7, 2, 156, 24, 0, 200, 68, 170, 76, 242
-        ]
-    );
-    assert_eq!(
-        results[2].1.hash().0,
-        [
-            53, 232, 155, 149, 47, 46, 234, 121, 250, 246, 126, 205, 173, 120, 62, 205, 224, 123,
-            184, 44, 121, 7, 178, 128, 119, 190, 55, 127, 48, 69, 78, 77
+            [
+                126, 82, 1, 40, 59, 4, 198, 138, 175, 164, 245, 37, 61, 87, 228, 167, 179, 164, 13,
+                151, 165, 219, 177, 188, 30, 66, 116, 242, 46, 216, 148, 181
+            ],
+            [
+                175, 203, 59, 69, 47, 106, 110, 92, 255, 130, 32, 232, 192, 153, 202, 46, 113, 186,
+                181, 248, 84, 31, 233, 133, 162, 237, 83, 10, 23, 26, 218, 32
+            ],
+            [
+                166, 180, 148, 136, 166, 248, 232, 243, 179, 83, 228, 35, 173, 193, 126, 139, 26,
+                80, 174, 81, 115, 88, 40, 52, 124, 98, 184, 251, 71, 253, 152, 116
+            ]
         ]
     );
 }

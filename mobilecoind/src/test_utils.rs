@@ -16,14 +16,13 @@ use mc_common::logger::{log, Logger};
 use mc_connection::{Connection, ConnectionManager};
 use mc_connection_test_utils::{test_client_uri, MockBlockchainConnection};
 use mc_consensus_scp::QuorumSet;
-use mc_crypto_keys::RistrettoPrivate;
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_fog_report_validation_test_utils::{FogPubkeyResolver, MockFogResolver};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::PollingNetworkState;
 use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
 use mc_transaction_core::{ring_signature::KeyImage, tokens::Mob, tx::TxOut, Amount, Token};
-use mc_util_from_random::FromRandom;
+use mc_transaction_core_test_utils::get_outputs;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::{ConnectionUri, FogUri};
 use mc_watcher::watcher_db::WatcherDB;
@@ -158,46 +157,13 @@ pub fn add_block_to_ledger_db(
     key_images: &[KeyImage],
     rng: &mut (impl CryptoRng + RngCore),
 ) -> u64 {
-    let num_blocks = ledger_db.num_blocks().expect("failed to get block height");
-
-    let outputs: Vec<_> = recipients
+    let recipient_and_amount = recipients
         .iter()
-        .map(|recipient| {
-            TxOut::new(
-                block_version,
-                // TODO: allow for subaddress index!
-                output_amount,
-                recipient,
-                &RistrettoPrivate::from_random(rng),
-                Default::default(),
-            )
-            .expect("Could not create TxOut")
-        })
-        .collect();
+        .map(|recipient| (recipient.clone(), output_amount))
+        .collect::<Vec<_>>();
+    let outputs = get_outputs(block_version, &recipient_and_amount, rng);
 
-    let block_contents = BlockContents {
-        key_images: key_images.to_vec(),
-        outputs: outputs.clone(),
-        ..Default::default()
-    };
-
-    let new_block = if num_blocks > 0 {
-        let parent = ledger_db
-            .get_block(num_blocks - 1)
-            .expect("failed to get parent block");
-
-        Block::new_with_parent(block_version, &parent, &Default::default(), &block_contents)
-    } else {
-        Block::new_origin_block(&outputs)
-    };
-
-    let metadata = make_block_metadata(new_block.id.clone(), rng);
-
-    ledger_db
-        .append_block(&new_block, &block_contents, None, Some(&metadata))
-        .expect("failed writing initial transactions");
-
-    ledger_db.num_blocks().expect("failed to get block height")
+    add_txos_and_key_images_to_ledger_db(block_version, ledger_db, &outputs, key_images)
 }
 
 /// Adds a block containing the given TXOs.
@@ -211,14 +177,23 @@ pub fn add_txos_to_ledger_db(
     outputs: &[TxOut],
     rng: &mut (impl CryptoRng + RngCore),
 ) -> u64 {
+    let key_images = vec![KeyImage::from(rng.next_u64())];
+    add_txos_and_key_images_to_ledger_db(block_version, ledger_db, outputs, &key_images)
+}
+
+pub fn add_txos_and_key_images_to_ledger_db(
+    block_version: BlockVersion,
+    ledger_db: &mut LedgerDB,
+    outputs: &[TxOut],
+    key_images: &[KeyImage],
+) -> u64 {
     let block_contents = BlockContents {
-        key_images: vec![KeyImage::from(rng.next_u64())],
-        outputs: outputs.to_owned(),
+        key_images: key_images.to_vec(),
+        outputs: outputs.to_vec(),
         ..Default::default()
     };
 
     let num_blocks = ledger_db.num_blocks().expect("failed to get block height");
-
     let new_block = if num_blocks > 0 {
         let parent = ledger_db
             .get_block(num_blocks - 1)
@@ -226,7 +201,7 @@ pub fn add_txos_to_ledger_db(
 
         Block::new_with_parent(block_version, &parent, &Default::default(), &block_contents)
     } else {
-        Block::new_origin_block(outputs)
+        Block::new_origin_block(&block_contents.outputs)
     };
     let metadata = make_block_metadata(new_block.id.clone(), rng);
 

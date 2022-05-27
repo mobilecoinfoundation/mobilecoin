@@ -62,6 +62,7 @@ serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
+mc-util-test-helper = { path = "../../util/test-helper" }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../util/build/grpc" }

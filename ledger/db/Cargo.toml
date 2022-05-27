@@ -15,8 +15,8 @@ test_utils = [
 
 [dependencies]
 mc-account-keys = { path = "../../account-keys" }
-mc-blockchain-types = { path = "../../blockchain/types" }
 mc-blockchain-test-utils = { path = "../../blockchain/test-utils", optional = true }
+mc-blockchain-types = { path = "../../blockchain/types" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-transaction-core = { path = "../../transaction/core" }

@@ -916,8 +916,8 @@ pub fn key_bytes_to_u64(bytes: &[u8]) -> u64 {
 mod ledger_db_test {
     use super::*;
     use mc_account_keys::AccountKey;
-    use mc_blockchain_test_utils::make_block_metadata;
-    use mc_blockchain_types::{compute_block_id, BlockVersion};
+    use mc_blockchain_test_utils::get_blocks;
+    use mc_blockchain_types::compute_block_id;
     use mc_crypto_keys::{Ed25519Pair, RistrettoPrivate};
     use mc_transaction_core::{
         membership_proofs::compute_implied_merkle_root, tokens::Mob, Amount, Token,
@@ -3088,78 +3088,36 @@ mod ledger_db_test {
     #[test]
     // ledger.num_txos agrees with the computed block header values
     fn double_check_num_txos() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
 
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None, None)
-            .unwrap();
-
-        // Make random recipients
-        let accounts: Vec<AccountKey> = (0..20).map(|_i| AccountKey::random(&mut rng)).collect();
-        let recipient_pub_keys = accounts
-            .iter()
-            .map(|account| account.default_subaddress())
-            .collect::<Vec<_>>();
-
         // Get some random blocks
-        let results: Vec<(Block, BlockContents)> = mc_transaction_core_test_utils::get_blocks(
-            BLOCK_VERSION,
-            &recipient_pub_keys[..],
-            20,
-            20,
-            35,
-            &origin_block,
-            &mut rng,
-        );
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let results = get_blocks(BLOCK_VERSION, 20, 20, 1, 20, 35, None, &mut rng);
 
-        for (block, block_contents) in &results {
-            println!("block {} containing {:?}", block.index, block_contents);
+        for block_data in results {
             ledger_db
-                .append_block(block, block_contents, None, None)
-                .unwrap();
-            assert_eq!(block.cumulative_txo_count, ledger_db.num_txos().unwrap());
+                .append_block_data(&block_data)
+                .expect("failed to write block data");
+            assert_eq!(
+                block_data.block().cumulative_txo_count,
+                ledger_db.num_txos().unwrap()
+            );
         }
     }
 
     #[test]
     // ledger_db.get_root_tx_out_membership_element returns the correct element
     fn get_root_tx_out_membership_element_returns_correct_element() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
 
-        let origin_account_key = AccountKey::random(&mut rng);
-        let (origin_block, origin_block_contents) =
-            get_origin_block_and_contents(&origin_account_key);
-        ledger_db
-            .append_block(&origin_block, &origin_block_contents, None, None)
-            .unwrap();
-
-        // Make random recipients
-        let accounts: Vec<AccountKey> = (0..20).map(|_i| AccountKey::random(&mut rng)).collect();
-        let recipient_pub_keys = accounts
-            .iter()
-            .map(|account| account.default_subaddress())
-            .collect::<Vec<_>>();
-
         // Get some random blocks
-        let results: Vec<(Block, BlockContents)> = mc_transaction_core_test_utils::get_blocks(
-            BLOCK_VERSION,
-            &recipient_pub_keys[..],
-            20,
-            20,
-            35,
-            &origin_block,
-            &mut rng,
-        );
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let results = get_blocks(BLOCK_VERSION, 20, 20, 1, 2, 42, None, &mut rng);
 
-        for (block, block_contents) in &results {
+        for block_data in results {
             ledger_db
-                .append_block(block, block_contents, None, None)
-                .unwrap();
+                .append_block_data(&block_data)
+                .expect("failed to write block");
         }
 
         // The root element should be the same for all TxOuts in the ledger.

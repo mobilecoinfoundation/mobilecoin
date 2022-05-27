@@ -512,7 +512,7 @@ mod tests {
         // Add a block signature for signer1, this should get the background thread to
         // get the VerificationReport from node1 and put it into the database.
         let signed_block_a1 =
-            BlockSignature::from_block_and_keypair(&blocks[0].0, &signer1).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[0].block(), &signer1).unwrap();
         watcher_db
             .add_block_signature(&tx_src_url1, 1, signed_block_a1, filename.clone())
             .unwrap();
@@ -540,7 +540,7 @@ mod tests {
         // Add a block signature for signer2, while the returned report is still
         // signer1.
         let signed_block_a2 =
-            BlockSignature::from_block_and_keypair(&blocks[1].0, &signer2).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[1].block(), &signer2).unwrap();
         watcher_db
             .add_block_signature(&tx_src_url1, 1, signed_block_a2, filename.clone())
             .unwrap();
@@ -587,7 +587,7 @@ mod tests {
         );
 
         let signed_block_a3 =
-            BlockSignature::from_block_and_keypair(&blocks[2].0, &updated_signer1).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[2].block(), &updated_signer1).unwrap();
         watcher_db
             .add_block_signature(&tx_src_url1, 3, signed_block_a3, filename.clone())
             .unwrap();
@@ -620,13 +620,13 @@ mod tests {
         // Add two more blocks, one for node2 (that we can reach) and one for node3
         // (that we can't reach)
         let signed_block_b1 =
-            BlockSignature::from_block_and_keypair(&blocks[0].0, &signer2).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[0].block(), &signer2).unwrap();
         watcher_db
             .add_block_signature(&tx_src_url2, 1, signed_block_b1, filename.clone())
             .unwrap();
 
         let signed_block_c1 =
-            BlockSignature::from_block_and_keypair(&blocks[0].0, &signer3).unwrap();
+            BlockSignature::from_block_and_keypair(blocks[0].block(), &signer3).unwrap();
         watcher_db
             .add_block_signature(&tx_src_url3, 1, signed_block_c1, filename)
             .unwrap();

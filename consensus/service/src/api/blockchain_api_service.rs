@@ -95,10 +95,10 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
         let end_index = offset + cmp::min(limit, self.max_page_size as u32) as u64;
 
         // Get "persistence type" blocks.
-        let mut block_entities: Vec<mc_blockchain_types::Block> = vec![];
+        let mut blocks: Vec<mc_blockchain_types::Block> = Vec::new();
         for block_index in start_index..end_index {
             match self.ledger.get_block(block_index as u64) {
-                Ok(block) => block_entities.push(block),
+                Ok(block) => blocks.push(block),
                 Err(mc_ledger_db::Error::NotFound) => {
                     // This is okay - it means we have reached the last block in the ledger in the
                     // previous loop iteration.
@@ -117,7 +117,7 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
         }
 
         // Convert to "API type" blocks.
-        let blocks: Vec<blockchain::Block> = block_entities
+        let blocks: Vec<blockchain::Block> = blocks
             .into_iter()
             .map(|block| blockchain::Block::from(&block))
             .collect();
@@ -220,19 +220,19 @@ mod tests {
         let authenticator = Arc::new(AnonymousAuthenticator::default());
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
-        let block_entities = initialize_ledger(
+        let blocks_data = initialize_ledger(
             BlockVersion::MAX,
             &mut ledger_db,
             10,
             &account_key,
             &mut rng,
         );
-        let last_index = block_entities.last().unwrap().block().index;
+        let last_index = blocks_data.last().unwrap().block().index;
 
         let mut expected_response = LastBlockInfoResponse::new();
         expected_response.set_index(last_index);
         expected_response.set_mob_minimum_fee(4000000000);
-        expected_response.set_minimum_fees(HashMap::from_iter(vec![(0, 4000000000), (60, 128000)]));
+        expected_response.set_minimum_fees(HashMap::from_iter([(0, 4000000000), (60, 128000)]));
         expected_response.set_network_block_version(*BlockVersion::MAX);
         assert_eq!(last_index + 1, ledger_db.num_blocks().unwrap());
 
