@@ -80,10 +80,9 @@ impl From<diesel::r2d2::PoolError> for Error {
 
 impl TransactionRetriableError for Error {
     fn should_retry(&self) -> bool {
-        match self {
-            Self::Diesel(DieselError::DatabaseError(_, _)) => true,
-            Self::R2d2Pool(_) => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Self::Diesel(DieselError::DatabaseError(_, _)) | Self::R2d2Pool(_)
+        )
     }
 }
