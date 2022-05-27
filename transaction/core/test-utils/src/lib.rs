@@ -465,5 +465,5 @@ pub fn create_test_tx_out(rng: &mut (impl RngCore + CryptoRng)) -> TxOut {
         &RistrettoPrivate::from_random(rng),
         Default::default(),
     )
-        .unwrap()
+    .unwrap()
 }
