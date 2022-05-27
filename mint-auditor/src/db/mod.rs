@@ -902,8 +902,10 @@ mod tests {
         // Sync a block that contains a mint transaction with incorrect signers.
         // Normally we would append the block to the ledger and test as usual, but since
         // it contains an invalid MintTx append_block would actually fail. As
-        // such we do this inside a transaction and then roll back. TODO explain
-        // more
+        // such we do this inside a transaction and then roll back.
+        // We need to roll the transaction back otherwise the ledger db block count and
+        // the mint auditor db number of blocks synced gets out of sync and we will
+        // start seeing UnexpectedBlockIndex errors.
         {
             let mint_tx1 = create_mint_tx(token_id1, &signers2, 1, &mut rng);
 
