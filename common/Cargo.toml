@@ -47,11 +47,11 @@ mc-util-logger-macros = { path = "../util/logger-macros", optional = true }
 mc-util-serial = { path = "../util/serial", default-features = false }
 
 backtrace = { version = "0.3", optional = true }
-binascii = "0.1.4"
 cfg-if = "1.0"
 chrono = { version = "0.4", optional = true }
 displaydoc = { version = "0.2", default-features = false }
 hashbrown = { version = "0.12.1", default-features = false, features = ["serde", "nightly"] }
+hex = { version = "0.4", default-features = false}
 hex_fmt = "0.3"
 hostname = { version = "0.3.1", optional = true }
 lazy_static = { version = "1.4", optional = true }

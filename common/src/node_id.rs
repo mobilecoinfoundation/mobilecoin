@@ -3,7 +3,6 @@
 //! The Node ID type
 
 use crate::responder_id::ResponderId;
-use binascii::ConvertError as BinConvertError;
 use core::{
     cmp::Ordering,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
@@ -29,16 +28,6 @@ pub enum NodeIDError {
     InvalidInput,
     /// Could not parse public key for NodeID
     KeyParseError,
-}
-
-impl From<BinConvertError> for NodeIDError {
-    fn from(src: BinConvertError) -> Self {
-        match src {
-            BinConvertError::InvalidInputLength => NodeIDError::InvalidInputLength,
-            BinConvertError::InvalidOutputLength => NodeIDError::InvalidOutputLength,
-            BinConvertError::InvalidInput => NodeIDError::InvalidInput,
-        }
-    }
 }
 
 impl From<KeyError> for NodeIDError {

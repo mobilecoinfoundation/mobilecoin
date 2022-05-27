@@ -2419,7 +2419,7 @@ dependencies = [
 name = "mc-attest-core"
 version = "1.3.0-pre0"
 dependencies = [
- "binascii",
+ "base64",
  "bincode",
  "bitflags",
  "cargo-emit",
@@ -2531,11 +2531,11 @@ name = "mc-common"
 version = "1.3.0-pre0"
 dependencies = [
  "backtrace",
- "binascii",
  "cfg-if 1.0.0",
  "chrono",
  "displaydoc",
  "hashbrown 0.12.1",
+ "hex",
  "hex_fmt",
  "hostname",
  "lazy_static",
@@ -2997,12 +2997,13 @@ dependencies = [
 name = "mc-crypto-keys"
 version = "1.3.0-pre0"
 dependencies = [
- "binascii",
+ "base64",
  "curve25519-dalek",
  "digest 0.10.3",
  "displaydoc",
  "ed25519",
  "ed25519-dalek",
+ "hex",
  "hex_fmt",
  "mc-crypto-digestible",
  "mc-crypto-digestible-signature",
@@ -3857,9 +3858,9 @@ name = "mc-fog-report-cli"
 version = "1.3.0-pre0"
 dependencies = [
  "base64",
- "binascii",
  "clap 3.1.18",
  "grpcio",
+ "hex",
  "mc-account-keys",
  "mc-attest-core",
  "mc-attest-verifier",
@@ -5119,7 +5120,6 @@ name = "mc-util-encodings"
 version = "1.3.0-pre0"
 dependencies = [
  "base64",
- "binascii",
  "displaydoc",
  "hex",
  "mc-util-repr-bytes",
