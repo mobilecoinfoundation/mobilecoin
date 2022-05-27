@@ -129,13 +129,13 @@ impl State {
                 .map_err(|err| format!("Failed getting network status: {}", err))?;
 
             for (k, v) in resp.minimum_fees.iter() {
-                result.insert(k.into(), *v);
+                result.insert(k.into(), config.amount_factor * v);
             }
 
             result
         };
 
-        let inflight_tx_state = Mutex::new(Default::default());
+        let inflight_tx_state = Mutex::new(None);
 
         Ok(State {
             mobilecoind_api_client,
