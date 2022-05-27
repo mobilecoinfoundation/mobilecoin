@@ -9,14 +9,21 @@ use clap::Parser;
 use grpcio::ChannelBuilder;
 use mc_api::printable::PrintableWrapper;
 use mc_common::logger::{create_app_logger, log, o, Logger};
-use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
+use mc_mobilecoind_api::{
+    mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri, SubmitTxResponse, TxStatus,
+};
 use mc_mobilecoind_dev_faucet::data_types::*;
 use mc_transaction_types::TokenId;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_keyfile::read_keyfile;
 use protobuf::RepeatedField;
 use rocket::{get, post, routes, serde::json::Json};
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    sync::{Arc, Mutex, MutexGuard},
+    time::Duration,
+};
 
 /// Command line config, set with defaults that will work with
 /// a standard mobilecoind instance
@@ -143,15 +150,15 @@ impl State {
     fn lock_and_check_inflight_tx_state(
         &self,
     ) -> Result<MutexGuard<Option<SubmitTxResponse>>, String> {
-        let guard = self.inflight_tx_state.lock().expect("mutex poisoned");
+        let mut guard = self.inflight_tx_state.lock().expect("mutex poisoned");
         if let Some(prev_tx) = guard.as_mut() {
             let mut tries = 10;
             loop {
                 let resp = self
                     .mobilecoind_api_client
-                    .get_network_status(&prev_tx)
+                    .get_tx_status_as_sender(&prev_tx)
                     .map_err(|err| format!("Failed getting network status: {}", err))?;
-                if resp.status == TxStatus.Unknown {
+                if resp.status == TxStatus::Unknown {
                     std::thread::sleep(Duration::from_millis(10));
                     tries -= 1;
                     if tries == 0 {
@@ -194,7 +201,7 @@ fn post(
         token_id
     ))?;
 
-    let lock = state.lock_and_check_inflight_tx_state()?;
+    let mut lock = state.lock_and_check_inflight_tx_state()?;
 
     // Generate an outlay
     let mut outlay = mc_mobilecoind_api::Outlay::new();
@@ -213,9 +220,16 @@ fn post(
         .send_payment(&req)
         .map_err(|err| format!("Failed to send payment: {}", err))?;
 
+    // Convert from SendPaymentResponse to SubmitTxResponse,
+    // this is needed to check the status of an in-flight payment
+    let mut submit_tx_response = SubmitTxResponse::new();
+    submit_tx_response.set_sender_tx_receipt(resp.get_sender_tx_receipt().clone());
+    submit_tx_response
+        .set_receiver_tx_receipt_list(RepeatedField::from(resp.get_receiver_tx_receipt_list()));
+
     // This lets us keep tabs on when this payment has resolved, so that we can
     // avoid sending another payment until it does
-    *lock = Some(resp);
+    *lock = Some(submit_tx_response);
 
     // The receipt from the payment request can be used by the status check below
     Ok(Json(JsonSendPaymentResponse::from(&resp)))
