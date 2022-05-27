@@ -10,7 +10,7 @@ use mc_transaction_core::{tokens::Mob, tx::Tx, Block, BlockID, BlockIndex, Token
 use mc_util_serial::prost::alloc::fmt::Formatter;
 use mc_util_uri::ConnectionUri;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     fmt::{Debug, Display, Result as FmtResult},
     hash::Hash,
     iter::FromIterator,
@@ -113,6 +113,20 @@ impl From<LastBlockInfoResponse> for BlockInfo {
             minimum_fees,
             network_block_version: src.network_block_version,
         }
+    }
+}
+
+impl From<BlockInfo> for LastBlockInfoResponse {
+    fn from(src: BlockInfo) -> Self {
+        let mut result = LastBlockInfoResponse::new();
+        result.index = src.block_index;
+        result.network_block_version = src.network_block_version;
+        result.set_minimum_fees(HashMap::from_iter(
+            src.minimum_fees
+                .iter()
+                .map(|(token_id, fee)| (**token_id, *fee)),
+        ));
+        result
     }
 }
 

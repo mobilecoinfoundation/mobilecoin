@@ -1952,14 +1952,23 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Get LastBlockInfo from our peers
         let block_infos = self.get_last_block_infos();
-        // get_last_block_infos uses filter map, if all requests fail we get an empty
-        // vector
-        if block_infos.is_empty() {
+        // choose the block info which is latest in terms of block index (we may be
+        // isolated from some of the nodes)
+        let last_block_info = if let Some(latest) =
+            block_infos.into_iter().reduce(|a, b| -> BlockInfo {
+                if a.block_index >= b.block_index {
+                    a
+                } else {
+                    b
+                }
+            }) {
+            latest
+        } else {
             return Err(RpcStatus::with_message(
                 RpcStatusCode::INTERNAL,
                 "no peers reachable".to_owned(),
             ));
-        }
+        };
 
         let mut response = mc_mobilecoind_api::GetNetworkStatusResponse::new();
 
@@ -1975,17 +1984,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         );
         response.set_local_block_index(local_block_index);
         response.set_is_behind(network_state.is_behind(local_block_index));
-
-        // Simply assume that the first reached peer is correct, since if they don't
-        // agree on block version or network fees, they can't attest anyways
-        response.set_network_block_version(block_infos[0].network_block_version);
-        response.set_minimum_fees(
-            block_infos[0]
-                .minimum_fees
-                .iter()
-                .map(|(k, v)| (**k, *v))
-                .collect(),
-        );
+        response.set_last_block_info(last_block_info.into());
 
         Ok(response)
     }
