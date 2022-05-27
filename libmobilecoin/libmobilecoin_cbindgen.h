@@ -557,6 +557,17 @@ bool mc_fog_rng_advance(FfiMutPtr<McFogRng> fog_rng, FfiOptMutPtr<McMutableBuffe
 /**
  * # Preconditions
  *
+ * * `root_entropy` - must be 32 bytes in length.
+ * * `out_view_private_key` - length must be >= 32.
+ * * `out_spend_private_key` - length must be >= 32.
+ */
+bool mc_account_private_keys_from_root_entropy(FfiRefPtr<McBuffer> root_entropy,
+                                               FfiMutPtr<McMutableBuffer> out_view_private_key,
+                                               FfiMutPtr<McMutableBuffer> out_spend_private_key);
+
+/**
+ * # Preconditions
+ *
  * * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
  * * `spend_private_key` - must be a valid 32-byte Ristretto-format scalar.
  * * `out_subaddress_view_private_key` - length must be >= 32.
