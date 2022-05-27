@@ -58,7 +58,7 @@ $ curl -s localhost:9090/ -d '{"b58_address": "c7f04fcd40d093ca6578b13d790df0790
 ```
 
 ```
-$ curl -s localhost:9090/ -d '{"b58_address": "c7f04fcd40d093ca6578b13d790df0790c96e94a77815e5052993af1b9d12923", token_id = "1"}' -X POST -H 'Content-type: application/json'
+$ curl -s localhost:9090/ -d '{"b58_address": "c7f04fcd40d093ca6578b13d790df0790c96e94a77815e5052993af1b9d12923", "token_id": "1"}' -X POST -H 'Content-type: application/json'
 {"success":true}
 ```
 
