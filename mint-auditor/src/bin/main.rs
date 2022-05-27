@@ -21,6 +21,9 @@ use mc_util_uri::AdminUri;
 use serde_json::json;
 use std::{cmp::Ordering, path::PathBuf, sync::Arc, thread::sleep, time::Duration};
 
+/// Maximum number of concurrent connections in the database pool.
+const DB_POOL_SIZE: u32 = 10;
+
 /// Clap configuration for each subcommand this program supports.
 #[derive(Clone, Subcommand)]
 pub enum Command {
@@ -123,9 +126,9 @@ fn cmd_scan_ledger(
     let ledger_db = LedgerDB::open(&ledger_db_path).expect("Could not open ledger DB");
     let mint_auditor_db = MintAuditorDb::new_from_path(
         &mint_auditor_db_path.into_os_string().into_string().unwrap(),
-        10,
+        DB_POOL_SIZE,
         logger.clone(),
-    ) // TODO 10 const
+    )
     .expect("Could not open mint auditor DB");
 
     let _api_server = listen_uri.map(|listen_uri| {
@@ -184,9 +187,9 @@ fn cmd_get_block_audit_data(
 ) {
     let mint_auditor_db = MintAuditorDb::new_from_path(
         &mint_auditor_db_path.into_os_string().into_string().unwrap(),
-        10,
+        DB_POOL_SIZE,
         logger.clone(),
-    ) // TODO 10 const
+    )
     .expect("Could not open mint auditor DB");
 
     let conn = mint_auditor_db
