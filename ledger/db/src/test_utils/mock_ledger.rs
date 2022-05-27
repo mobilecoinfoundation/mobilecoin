@@ -3,8 +3,7 @@
 use crate::{ActiveMintConfig, ActiveMintConfigs, Error, Ledger};
 use mc_blockchain_test_utils::get_blocks;
 use mc_blockchain_types::{
-    Block, BlockContents, BlockData, BlockID, BlockIndex, BlockMetadata, BlockSignature,
-    BlockVersion,
+    Block, BlockContents, BlockData, BlockIndex, BlockMetadata, BlockSignature, BlockVersion,
 };
 use mc_common::{HashMap, HashSet};
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -19,13 +18,10 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 #[derive(Default)]
 pub struct MockLedgerInner {
-    pub blocks_by_block_number: HashMap<u64, Block>,
-    pub blocks_by_block_id: HashMap<BlockID, Block>,
-    pub block_contents_by_block_number: HashMap<u64, BlockContents>,
-    pub block_number_by_tx_out_index: HashMap<u64, u64>,
+    pub block_data_by_index: HashMap<BlockIndex, BlockData>,
+    pub block_index_by_tx_out_index: HashMap<u64, BlockIndex>,
     pub tx_outs: HashSet<TxOut>,
-    pub membership_proofs: HashMap<u64, TxOutMembershipProof>,
-    pub key_images_by_block_number: HashMap<u64, Vec<KeyImage>>,
+    pub tx_outs_by_index: HashMap<u64, TxOut>,
     pub key_images: HashMap<KeyImage, u64>,
 }
 
@@ -50,36 +46,34 @@ impl MockLedger {
     /// Writes a given index of the blockchain.
     ///
     /// # Arguments
-    /// * `block` - Block to write.
-    /// * `block_contents` - Contents of the block.
-    pub fn set_block(&mut self, block: &Block, block_contents: &BlockContents) {
+    /// * `block_data` - Block data to write.
+    pub fn set_block_data(&mut self, block_data: BlockData) {
         let mut inner = self.lock();
+        let block = block_data.block();
+        let contents = block_data.contents();
 
-        inner
-            .blocks_by_block_number
-            .insert(block.index, block.clone());
-        inner
-            .blocks_by_block_id
-            .insert(block.id.clone(), block.clone());
-
-        inner
-            .block_contents_by_block_number
-            .insert(block.index, block_contents.clone());
-
-        for tx_out in &block_contents.outputs {
+        for tx_out in &contents.outputs {
             let tx_out_index = inner.tx_outs.len() as u64;
-            inner.tx_outs.insert(tx_out.clone());
+            assert!(
+                inner.tx_outs.insert(tx_out.clone()),
+                "duplicate TxOut: {:?}",
+                &tx_out
+            );
+            inner.tx_outs_by_index.insert(tx_out_index, tx_out.clone());
             inner
-                .block_number_by_tx_out_index
+                .block_index_by_tx_out_index
                 .insert(tx_out_index, block.index);
         }
 
-        let key_images = block_contents.key_images.clone();
-        inner.key_images = key_images.iter().map(|ki| (*ki, block.index)).collect();
+        for ki in &contents.key_images {
+            assert!(
+                inner.key_images.insert(*ki, block.index).is_none(),
+                "duplicate key image: {:?}",
+                ki
+            );
+        }
 
-        inner
-            .key_images_by_block_number
-            .insert(block.index, key_images);
+        inner.block_data_by_index.insert(block.index, block_data);
     }
 }
 
@@ -88,112 +82,124 @@ impl Ledger for MockLedger {
         &mut self,
         block: &'b Block,
         block_contents: &'b BlockContents,
-        _signature: Option<&'b BlockSignature>,
-        _metadata: Option<&'b BlockMetadata>,
+        signature: Option<&'b BlockSignature>,
+        metadata: Option<&'b BlockMetadata>,
     ) -> Result<(), Error> {
         assert_eq!(block.index, self.num_blocks().unwrap());
-        self.set_block(block, block_contents);
+        self.set_block_data(BlockData::new(
+            block.clone(),
+            block_contents.clone(),
+            signature.cloned(),
+            metadata.cloned(),
+        ));
+        Ok(())
+    }
+
+    fn append_block_data(&mut self, block_data: &BlockData) -> Result<(), Error> {
+        assert_eq!(block_data.block().index, self.num_blocks().unwrap());
+        self.set_block_data(block_data.clone());
         Ok(())
     }
 
     fn num_blocks(&self) -> Result<u64, Error> {
-        Ok(self.lock().blocks_by_block_number.len() as u64)
+        Ok(self.lock().block_data_by_index.len() as u64)
+    }
+
+    fn get_block(&self, block_index: BlockIndex) -> Result<Block, Error> {
+        self.get_block_data(block_index).map(|bd| bd.block)
+    }
+
+    fn get_block_contents(&self, block_index: BlockIndex) -> Result<BlockContents, Error> {
+        self.get_block_data(block_index).map(|bd| bd.contents)
+    }
+
+    fn get_block_signature(&self, block_index: BlockIndex) -> Result<BlockSignature, Error> {
+        self.get_block_data(block_index)
+            .map(|bd| bd.signature.ok_or(Error::NotFound))
+            .and_then(|res| res)
+    }
+
+    fn get_block_metadata(&self, block_index: BlockIndex) -> Result<BlockMetadata, Error> {
+        self.get_block_data(block_index)
+            .map(|bd| bd.metadata.ok_or(Error::NotFound))
+            .and_then(|res| res)
+    }
+
+    fn get_block_data(&self, block_index: BlockIndex) -> Result<BlockData, Error> {
+        self.lock()
+            .block_data_by_index
+            .get(&block_index)
+            .cloned()
+            .ok_or(Error::NotFound)
+    }
+
+    /// Gets block index by a TxOut global index.
+    fn get_block_index_by_tx_out_index(&self, tx_out_index: u64) -> Result<BlockIndex, Error> {
+        self.lock()
+            .block_index_by_tx_out_index
+            .get(&tx_out_index)
+            .cloned()
+            .ok_or(Error::NotFound)
     }
 
     fn num_txos(&self) -> Result<u64, Error> {
         Ok(self.lock().tx_outs.len() as u64)
     }
 
-    fn get_block(&self, block_number: u64) -> Result<Block, Error> {
+    fn get_tx_out_index_by_hash(&self, tx_out_hash: &[u8; 32]) -> Result<u64, Error> {
         self.lock()
-            .blocks_by_block_number
-            .get(&block_number)
-            .cloned()
+            .tx_outs_by_index
+            .iter()
+            .find(|(_index, tx_out)| tx_out_hash == &tx_out.hash())
+            .map(|(index, _)| *index)
             .ok_or(Error::NotFound)
     }
 
-    fn get_block_contents(&self, block_number: u64) -> Result<BlockContents, Error> {
+    fn get_tx_out_index_by_public_key(
+        &self,
+        public_key: &CompressedRistrettoPublic,
+    ) -> Result<u64, Error> {
         self.lock()
-            .block_contents_by_block_number
-            .get(&block_number)
-            .cloned()
+            .tx_outs_by_index
+            .iter()
+            .find(|(_index, tx_out)| public_key == &tx_out.public_key)
+            .map(|(index, _)| *index)
             .ok_or(Error::NotFound)
     }
 
-    fn get_block_signature(&self, _block_number: u64) -> Result<BlockSignature, Error> {
-        Err(Error::NotFound)
-    }
-
-    fn get_block_metadata(&self, _block_number: u64) -> Result<BlockMetadata, Error> {
-        Err(Error::NotFound)
-    }
-
-    fn get_block_data(&self, block_number: u64) -> Result<BlockData, Error> {
-        let block = self.get_block(block_number)?;
-        let contents = self.get_block_contents(block_number)?;
-        let signature = self.get_block_signature(block_number).ok();
-        let metadata = self.get_block_metadata(block_number).ok();
-        Ok(BlockData::new(block, contents, signature, metadata))
-    }
-
-    /// Gets block index by a TxOut global index.
-    fn get_block_index_by_tx_out_index(&self, tx_out_index: u64) -> Result<u64, Error> {
+    fn get_tx_out_by_index(&self, tx_out_index: u64) -> Result<TxOut, Error> {
         self.lock()
-            .block_number_by_tx_out_index
+            .tx_outs_by_index
             .get(&tx_out_index)
             .cloned()
             .ok_or(Error::NotFound)
     }
 
-    fn get_tx_out_index_by_hash(&self, _tx_out_hash: &[u8; 32]) -> Result<u64, Error> {
-        // Unused for these tests.
-        unimplemented!()
-    }
-
-    fn get_tx_out_by_index(&self, _: u64) -> Result<TxOut, Error> {
-        // Unused for these tests.
-        unimplemented!()
-    }
-
-    fn get_tx_out_index_by_public_key(
+    fn get_tx_out_proof_of_memberships(
         &self,
-        _tx_out_public_key: &CompressedRistrettoPublic,
-    ) -> Result<u64, Error> {
-        unimplemented!();
+        _indexes: &[u64],
+    ) -> Result<Vec<TxOutMembershipProof>, Error> {
+        unimplemented!()
     }
 
     fn contains_tx_out_public_key(
         &self,
-        _public_key: &CompressedRistrettoPublic,
+        public_key: &CompressedRistrettoPublic,
     ) -> Result<bool, Error> {
-        unimplemented!();
+        Ok(self
+            .lock()
+            .tx_outs
+            .iter()
+            .any(|tx_out| public_key == &tx_out.public_key))
     }
 
     fn check_key_image(&self, key_image: &KeyImage) -> Result<Option<u64>, Error> {
-        // Unused for these tests.
         Ok(self.lock().key_images.get(key_image).cloned())
     }
 
-    fn get_key_images_by_block(&self, _block_number: u64) -> Result<Vec<KeyImage>, Error> {
-        // Unused for these tests.
-        unimplemented!()
-    }
-
-    fn get_tx_out_proof_of_memberships(
-        &self,
-        indexes: &[u64],
-    ) -> Result<Vec<TxOutMembershipProof>, Error> {
-        let inner = self.lock();
-        indexes
-            .iter()
-            .map(|index| {
-                inner
-                    .membership_proofs
-                    .get(index)
-                    .cloned()
-                    .ok_or(Error::NotFound)
-            })
-            .collect()
+    fn get_key_images_by_block(&self, block_index: BlockIndex) -> Result<Vec<KeyImage>, Error> {
+        self.get_block_data(block_index)
+            .map(|bd| bd.contents.key_images)
     }
 
     fn get_root_tx_out_membership_element(&self) -> Result<TxOutMembershipElement, Error> {
@@ -229,13 +235,18 @@ impl Ledger for MockLedger {
 
 /// Creates a MockLedger and populates it with blocks and transactions.
 pub fn get_mock_ledger(n_blocks: usize) -> MockLedger {
+    get_mock_ledger_and_blocks(n_blocks).0
+}
+
+pub fn get_mock_ledger_and_blocks(n_blocks: usize) -> (MockLedger, Vec<BlockData>) {
+    let blocks = get_test_ledger_blocks(n_blocks);
     let mut mock_ledger = MockLedger::default();
-    for block_data in get_test_ledger_blocks(n_blocks) {
+    for block_data in &blocks {
         mock_ledger
-            .append_block_data(&block_data)
+            .append_block_data(block_data)
             .expect("failed to initialize MockLedger");
     }
-    mock_ledger
+    (mock_ledger, blocks)
 }
 
 /// Creates a sequence of [BlockData] for testing.
@@ -250,4 +261,147 @@ pub fn get_test_ledger_blocks(num_blocks: usize) -> Vec<BlockData> {
         None,
         &mut get_seeded_rng(),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn append_block() {
+        let blocks: [BlockData; 2] = get_test_ledger_blocks(2).try_into().unwrap();
+        let [origin, block_data] = blocks;
+
+        let mut ledger = MockLedger::default();
+        ledger.append_block_data(&origin).unwrap();
+
+        assert_eq!(1, ledger.num_blocks().unwrap());
+        assert_eq!(origin, ledger.get_block_data(0).unwrap());
+
+        assert_eq!(2, ledger.num_txos().unwrap());
+        let origin_tx_out = origin.contents.outputs[0].clone();
+        assert_eq!(origin_tx_out, ledger.get_tx_out_by_index(0).unwrap());
+
+        assert_eq!(ledger.get_key_images_by_block(0).unwrap(), vec![]);
+
+        let block_index = ledger.get_block_index_by_tx_out_index(0).unwrap();
+        assert_eq!(block_index, 0);
+
+        // === Create and append a non-origin block. ===
+        ledger.append_block_data(&block_data).unwrap();
+
+        assert_eq!(2, ledger.num_blocks().unwrap());
+
+        // The origin block should still be in the ledger:
+        assert_eq!(origin.block, ledger.get_block(0).unwrap());
+        // The origin's TxOut should still be in the ledger:
+        assert_eq!(origin_tx_out, ledger.get_tx_out_by_index(0).unwrap());
+
+        // The new block should be in the ledger:
+        assert_eq!(block_data.block, ledger.get_block(1).unwrap());
+        assert_eq!(4, ledger.num_txos().unwrap());
+
+        // Each TxOut from the current block should be in the ledger.
+        for tx_out in block_data.contents.outputs {
+            let index = ledger
+                .get_tx_out_index_by_public_key(&tx_out.public_key)
+                .unwrap();
+            assert_eq!(
+                index,
+                ledger.get_tx_out_index_by_hash(&tx_out.hash()).unwrap()
+            );
+
+            assert_eq!(ledger.get_tx_out_by_index(index).unwrap(), tx_out);
+
+            assert_eq!(
+                block_data.block.index,
+                ledger.get_block_index_by_tx_out_index(index).unwrap()
+            );
+        }
+
+        let key_images = block_data.contents.key_images;
+        assert!(ledger.contains_key_image(&key_images[0]).unwrap());
+        assert_eq!(key_images, ledger.get_key_images_by_block(1).unwrap());
+    }
+
+    #[test]
+    // Getting a block by index should return the correct block, if it exists.
+    fn get_block_by_index() {
+        let (ledger, blocks) = get_mock_ledger_and_blocks(5);
+
+        for block_data in blocks {
+            let block_index = block_data.block.index;
+            let block = ledger.get_block(block_index).unwrap();
+            assert_eq!(block, block_data.block);
+        }
+        assert_eq!(ledger.get_block(42), Err(Error::NotFound));
+    }
+
+    #[test]
+    // Getting block contents by index should return the correct block contents, if
+    // that exists.
+    fn get_block_contents_by_index() {
+        let (ledger, blocks) = get_mock_ledger_and_blocks(5);
+
+        for block_data in blocks {
+            let block_index = block_data.block.index;
+            let block_contents = ledger.get_block_contents(block_index).unwrap();
+            assert_eq!(block_contents, block_data.contents);
+        }
+        assert_eq!(ledger.get_block_contents(42), Err(Error::NotFound));
+    }
+
+    #[test]
+    // Getting a block number by tx out index should return the correct block
+    // number, if it exists.
+    fn get_block_index_by_tx_out_index() {
+        let (ledger, blocks) = get_mock_ledger_and_blocks(5);
+
+        for block_data in blocks {
+            let block_index = block_data.block.index;
+            for tx_out in &block_data.contents.outputs {
+                let tx_out_index = ledger
+                    .get_tx_out_index_by_public_key(&tx_out.public_key)
+                    .expect("Failed getting tx out index");
+
+                let block_index_by_tx_out = ledger
+                    .get_block_index_by_tx_out_index(tx_out_index)
+                    .expect("Failed getting block index by tx out index");
+                assert_eq!(block_index_by_tx_out, block_index);
+            }
+        }
+
+        assert_eq!(
+            ledger.get_block_index_by_tx_out_index(42),
+            Err(Error::NotFound)
+        );
+    }
+
+    #[test]
+    // `Ledger::contains_key_image` should find key images that exist.
+    fn contains_key_image() {
+        let (ledger, blocks) = get_mock_ledger_and_blocks(5);
+
+        for block_data in blocks {
+            // The ledger should each key image.
+            for key_image in &block_data.contents.key_images {
+                assert!(ledger.contains_key_image(key_image).unwrap());
+            }
+        }
+    }
+
+    #[test]
+    // `get_key_images_by_block` should return the correct set of key images used in
+    // a single block.
+    fn get_key_images_by_block() {
+        let (ledger, blocks) = get_mock_ledger_and_blocks(5);
+
+        for block_data in blocks {
+            let block_index = block_data.block.index;
+            assert_eq!(
+                block_data.contents.key_images,
+                ledger.get_key_images_by_block(block_index).unwrap()
+            );
+        }
+    }
 }
