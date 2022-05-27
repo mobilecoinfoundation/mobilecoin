@@ -3,3 +3,4 @@
 //! JSON wrapper for the mobilecoind API.
 
 pub mod data_types;
+pub mod worker;

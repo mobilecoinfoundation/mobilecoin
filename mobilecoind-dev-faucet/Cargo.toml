@@ -9,10 +9,11 @@ name = "mobilecoind-dev-faucet"
 path = "src/bin/main.rs"
 
 [dependencies]
+mc-account-keys = { path = "../account-keys" }
 mc-api = { path = "../api" }
 mc-common = { path = "../common", features = ["loggers"] }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
-mc-transaction-types = { path = "../transaction/types" }
+mc-transaction-core = { path = "../transaction/core" }
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-keyfile = { path = "../util/keyfile" }
 
@@ -24,3 +25,4 @@ rocket = { version = "0.5.0-rc.2", features = ["json"] }
 serde = "1.0"
 serde_derive = "1.0"
 serde_with = "1.13"
+tokio = "1"

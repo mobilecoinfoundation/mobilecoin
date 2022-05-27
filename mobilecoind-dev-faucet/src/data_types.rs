@@ -106,12 +106,12 @@ impl From<&PublicAddress> for JsonPublicAddress {
 }
 
 #[derive(Deserialize, Serialize, Default, Debug)]
-pub struct JsonSendPaymentResponse {
+pub struct JsonSubmitTxResponse {
     pub receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
 }
 
-impl From<&mc_mobilecoind_api::SendPaymentResponse> for JsonSendPaymentResponse {
-    fn from(src: &mc_mobilecoind_api::SendPaymentResponse) -> Self {
+impl From<&mc_mobilecoind_api::SubmitTxResponse> for JsonSubmitTxResponse {
+    fn from(src: &mc_mobilecoind_api::SubmitTxResponse) -> Self {
         Self {
             receiver_tx_receipt_list: src
                 .get_receiver_tx_receipt_list()
