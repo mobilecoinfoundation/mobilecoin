@@ -9,8 +9,7 @@ mod util;
 
 mod tests {
     use crate::util::{
-        create_test_tx,
-        create_test_tx_with_amount,
+        create_test_tx, create_test_tx_with_amount,
         create_test_tx_with_amount_and_comparer_and_recipients,
     };
     use alloc::vec::Vec;
@@ -474,7 +473,7 @@ mod tests {
     fn test_validate_key_images_are_unique_ok() {
         for block_version in BlockVersion::iterator() {
             let (tx, _ledger) = create_test_tx(block_version);
-            assert_eq!(validate_key_images_are_unique(&tx), Ok(()), );
+            assert_eq!(validate_key_images_are_unique(&tx), Ok(()),);
         }
     }
 
@@ -501,7 +500,7 @@ mod tests {
     fn test_validate_output_public_keys_are_unique_ok() {
         for block_version in BlockVersion::iterator() {
             let (tx, _ledger) = create_test_tx(block_version);
-            assert_eq!(validate_outputs_public_keys_are_unique(&tx), Ok(()), );
+            assert_eq!(validate_outputs_public_keys_are_unique(&tx), Ok(()),);
         }
     }
 
@@ -771,12 +770,13 @@ mod tests {
         for block_version in BlockVersion::iterator() {
             // for block version < 3 it doesn't matter
             // for >= 3 it shall return an error about unsorted outputs
-            let (tx, ledger) = create_test_tx_with_amount_and_comparer_and_recipients::<InverseTxOutputsOrdering>(
-                block_version,
-                INITIALIZE_LEDGER_AMOUNT - fee,
-                fee,
-                &recipients_refs,
-            );
+            let (tx, ledger) =
+                create_test_tx_with_amount_and_comparer_and_recipients::<InverseTxOutputsOrdering>(
+                    block_version,
+                    INITIALIZE_LEDGER_AMOUNT - fee,
+                    fee,
+                    &recipients_refs,
+                );
 
             let highest_indices = tx.get_membership_proof_highest_indices();
             let root_proofs: Vec<TxOutMembershipProof> = ledger

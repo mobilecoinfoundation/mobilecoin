@@ -193,7 +193,7 @@ pub fn create_transaction_with_amount_and_comparer_and_recipients<
         MockFogResolver::default(),
         EmptyMemoBuilder::default(),
     )
-        .unwrap();
+    .unwrap();
 
     // The first transaction in the origin block should contain enough outputs to
     // use as mixins.
@@ -229,7 +229,7 @@ pub fn create_transaction_with_amount_and_comparer_and_recipients<
         onetime_private_key,
         *sender.view_private_key(),
     )
-        .unwrap();
+    .unwrap();
     transaction_builder.add_input(input_credentials);
 
     let amount = Amount {
@@ -339,7 +339,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                             &RistrettoPrivate::from_random(rng),
                             Default::default(),
                         )
-                            .expect("Could not create origin block TxOut");
+                        .expect("Could not create origin block TxOut");
                         // The origin block did not historically have memo fields
                         tx_out.e_memo = None;
                         tx_out
@@ -443,7 +443,7 @@ pub fn get_outputs<T: RngCore + CryptoRng>(
                 &RistrettoPrivate::from_random(rng),
                 Default::default(),
             )
-                .unwrap();
+            .unwrap();
             if !block_version.e_memo_feature_is_supported() {
                 result.e_memo = None;
             }
