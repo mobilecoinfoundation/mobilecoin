@@ -3,11 +3,11 @@
 //! Database connection utilities.
 
 use diesel::{
+    connection::SimpleConnection,
     r2d2,
     r2d2::{ConnectionManager, PooledConnection},
     SqliteConnection,
 };
-use diesel::connection::SimpleConnection;
 use std::time::Duration;
 
 /// A type alias for a pooled SQLite connection.

@@ -10,10 +10,10 @@ mod models;
 mod schema;
 #[cfg(test)]
 pub mod test_utils;
+mod transaction;
 
 use crate::Error;
 use diesel::{
-    prelude::*,
     r2d2::{ConnectionManager, Pool},
     SqliteConnection,
 };
@@ -25,12 +25,13 @@ use mc_common::{
 };
 use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
 use mc_transaction_core::{Block, BlockContents, BlockIndex, TokenId};
-use std::{thread::sleep, time::Duration};
+use std::time::Duration;
 
 pub use block_audit_data::{BlockAuditData, BlockAuditDataModel};
 pub use block_balance::{BlockBalance, BlockBalanceModel};
 pub use conn::{Conn, ConnectionOptions};
 pub use counters::{Counters, CountersModel};
+pub use transaction::{transaction, TransactionRetriableError};
 
 embed_migrations!("migrations/");
 
@@ -210,39 +211,6 @@ impl MintAuditorDb {
             Ok((block_audit_data, balance_map))
         })
     }
-}
-
-/// A trait for providing insight on whether an error that happened during a
-/// transaction should result in retrying.
-pub trait DbRetriableError {
-    /// Should we retry?
-    fn should_retry(&self) -> bool;
-}
-
-const BASE_DELAY_MS: u32 = 10;
-const NUM_RETRIES: u32 = 5;
-
-/// Create a SQLite transaction with exponential retry.
-pub fn transaction<T, E, F>(conn: &Conn, f: F) -> Result<T, E>
-where
-    F: Clone + FnOnce(&Conn) -> Result<T, E>,
-    E: From<diesel::result::Error> + DbRetriableError,
-{
-    for i in 0..NUM_RETRIES {
-        let f = f.clone();
-        let r = conn.transaction::<T, E, _>(|| f(conn));
-        match r {
-            Ok(r) => return Ok(r),
-            Err(e) => {
-                if !e.should_retry() || i == (NUM_RETRIES - 1) {
-                    return Err(e);
-                }
-            }
-        }
-
-        sleep(Duration::from_millis((BASE_DELAY_MS * 2_u32.pow(i)) as u64));
-    }
-    panic!("Should never reach this point.");
 }
 
 #[cfg(test)]

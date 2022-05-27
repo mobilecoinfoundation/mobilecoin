@@ -2,14 +2,14 @@
 
 //! Mint auditor error data type.
 
+use crate::db::TransactionRetriableError;
+use diesel::result::Error as DieselError;
 use diesel_migrations::RunMigrationsError;
 use displaydoc::Display;
 use mc_ledger_db::Error as LedgerDbError;
 use mc_transaction_core::BlockIndex;
 use mc_util_serial::DecodeError;
-use crate::db::DbRetriableError;
 use std::io::Error as IoError;
-use diesel::result::Error as DieselError;
 
 /// Mint auditor error data type.
 #[derive(Debug, Display)]
@@ -78,7 +78,7 @@ impl From<diesel::r2d2::PoolError> for Error {
     }
 }
 
-impl DbRetriableError for Error {
+impl TransactionRetriableError for Error {
     fn should_retry(&self) -> bool {
         match self {
             Self::Diesel(DieselError::DatabaseError(_, _)) => true,
