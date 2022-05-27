@@ -242,7 +242,7 @@ pub fn create_transaction_with_amount_and_comparer_and_recipients<
     // Output
     for (idx, recipient) in recipients.iter().enumerate() {
         if idx == 0 && rest != 0 {
-            let mut dup_amount = amount.clone();
+            let mut dup_amount = amount;
             dup_amount.value += rest;
             transaction_builder
               .add_output(dup_amount, recipient, rng)
