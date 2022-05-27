@@ -90,7 +90,7 @@ impl State {
         let ch = ChannelBuilder::new(grpc_env.clone())
             .max_receive_message_len(std::i32::MAX)
             .max_send_message_len(std::i32::MAX)
-            .connect_to_uri(&config.mobilecoind_uri, &logger);
+            .connect_to_uri(&config.mobilecoind_uri, logger);
 
         let mobilecoind_api_client = MobilecoindApiClient::new(ch);
 
@@ -156,7 +156,7 @@ impl State {
             loop {
                 let resp = self
                     .mobilecoind_api_client
-                    .get_tx_status_as_sender(&prev_tx)
+                    .get_tx_status_as_sender(prev_tx)
                     .map_err(|err| format!("Failed getting network status: {}", err))?;
                 if resp.status == TxStatus::Unknown {
                     std::thread::sleep(Duration::from_millis(10));
@@ -194,7 +194,7 @@ fn post(
         ));
     };
 
-    let token_id = TokenId::from(req.token_id.unwrap_or_else(Default::default).as_ref());
+    let token_id = TokenId::from(req.token_id.unwrap_or_default().as_ref());
 
     let value = *state.faucet_amounts.get(&token_id).ok_or(format!(
         "token_id: '{}' is not supported by the network",
