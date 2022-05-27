@@ -126,7 +126,7 @@ spec:
         imagePullPolicy: Always
         command:
         - /usr/bin/go-grpc-gateway
-        - -grpc-server-endpoint=127.0.0.1:3228
+        - -grpc-server-endpoint=127.0.0.1:3222
         - -grpc-insecure
         - -http-server-listen=:8222
         - -logtostderr
