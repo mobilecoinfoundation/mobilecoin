@@ -46,9 +46,8 @@ use mc_transaction_core::{
         create_shared_secret, recover_onetime_private_key, recover_public_subaddress_spend_key,
     },
     ring_signature::KeyImage,
-    tokens::Mob,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
-    Amount, BlockVersion, CompressedCommitment, MaskedAmount, Token,
+    Amount, BlockVersion, CompressedCommitment, MaskedAmount, TokenId,
 };
 
 use mc_transaction_std::{
@@ -315,16 +314,16 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_init_1jni(
     obj: JObject,
     commitment: jbyteArray,
     masked_value: jlong,
+    masked_token_id: jbyteArray,
 ) {
     jni_ffi_call(&env, |env| {
         let commitment_bytes = env.convert_byte_array(commitment)?;
+        let masked_token_id_bytes = env.convert_byte_array(masked_token_id)?;
 
-        // FIXME #1595: We should get a masked token id also, here we default to
-        // 0 bytes, which is backwards compatible
         let masked_amount = MaskedAmount {
             commitment: CompressedCommitment::try_from(&commitment_bytes[..])?,
             masked_value: masked_value as u64,
-            masked_token_id: Default::default(),
+            masked_token_id: masked_token_id_bytes,
         };
         Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, masked_amount)?)
     })
@@ -336,14 +335,17 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_MaskedAmount_init_1jni_1with_1s
     obj: JObject,
     tx_out_shared_secret: JObject,
     masked_value: jlong,
+    masked_token_id: jbyteArray,
 ) {
     jni_ffi_call(&env, |env| {
         let tx_out_shared_secret: MutexGuard<RistrettoPublic> =
             env.get_rust_field(tx_out_shared_secret, RUST_OBJ_FIELD)?;
-        // FIXME #1595: the masked token id should be 0 or 4 bytes.
-        // To avoid breaking changes, it is hard coded to 0 bytes here
-        let masked_amount =
-            MaskedAmount::reconstruct(masked_value as u64, &[], &tx_out_shared_secret)?;
+        let masked_token_id_bytes = env.convert_byte_array(masked_token_id)?;
+        let masked_amount = MaskedAmount::reconstruct(
+            masked_value as u64,
+            &masked_token_id_bytes,
+            &tx_out_shared_secret,
+        )?;
 
         Ok(env.set_rust_field(obj, RUST_OBJ_FIELD, masked_amount)?)
     })
@@ -1666,19 +1668,17 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_init_1jni(
     fog_resolver: JObject,
     memo_builder_box: JObject,
     block_version: jint,
+    token_id: jlong,
+    minimum_fee: jlong,
 ) {
     jni_ffi_call(&env, |env| {
         let fog_resolver: MutexGuard<FogResolver> =
             env.get_rust_field(fog_resolver, RUST_OBJ_FIELD)?;
         let block_version = BlockVersion::try_from(block_version as u32).unwrap();
-        // Note: RTHMemoBuilder can be selected here, but we will only actually
-        // write memos if block_version is large enough that memos are supported.
-        // If block version is < 2, then transaction builder will filter out memos.
         let memo_builder_box: Box<dyn MemoBuilder + Send + Sync> =
             env.take_rust_field(memo_builder_box, RUST_OBJ_FIELD)?;
-        // FIXME #1595: The token id should be a parameter and not hard coded to Mob
-        // here
-        let fee_amount = Amount::new(Mob::MINIMUM_FEE, Mob::ID);
+        let token_id = TokenId::from(token_id as u64);
+        let fee_amount = Amount::new(minimum_fee as u64, token_id);
         let tx_builder = TransactionBuilder::new_with_box(
             block_version,
             fee_amount,
