@@ -186,7 +186,7 @@ McTransactionBuilder* MC_NULLABLE mc_transaction_builder_create(
   const McFogResolver* MC_NULLABLE fog_resolver,
   McTxOutMemoBuilder* MC_NONNULL memo_builder,
   uint32_t block_version
-);
+)
 MC_ATTRIBUTE_NONNULL(5);
 
 void mc_transaction_builder_free(
