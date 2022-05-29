@@ -1677,7 +1677,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_TransactionBuilder_init_1jni(
         let block_version = BlockVersion::try_from(block_version as u32).unwrap();
         let memo_builder_box: Box<dyn MemoBuilder + Send + Sync> =
             env.take_rust_field(memo_builder_box, RUST_OBJ_FIELD)?;
-        let token_id = TokenId::try_from(token_id as u64).unwrap();
+        let token_id = TokenId::from(token_id as u64);
         let fee_amount = Amount::new(minimum_fee as u64, token_id);
         let tx_builder = TransactionBuilder::new_with_box(
             block_version,
