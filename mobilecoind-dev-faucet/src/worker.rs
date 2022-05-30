@@ -171,15 +171,6 @@ pub struct Worker {
 }
 
 impl Worker {
-    // If we have fewer than this many outstanding UTXOs of the target value,
-    // then we start trying to split our balance into more UTXOs.
-    //
-    // Note: This could be a config parameter perhaps
-    const THRESHOLD_QUEUE_DEPTH: usize = 20;
-
-    // Determines frequency with which the worker thread polls for updates
-    const WORKER_POLL_PERIOD: Duration = Duration::from_millis(2000);
-
     /// Make a new worker object given mobilecoind connection and config info,
     /// and starts the worker thread.
     ///
@@ -190,6 +181,9 @@ impl Worker {
     ///   self-payments
     /// * faucet_amounts: The target value for UTXOs of each token we are
     ///   interested in
+    /// * target_queue_depth: The target depth of the queue for each token id If
+    ///   a queue falls below this number the worker attempts a split Tx.
+    /// * worker_poll_period: A lower bound on how often the worker should poll
     /// * logger
     ///
     /// Returns the worker handle.
@@ -198,6 +192,8 @@ impl Worker {
         monitor_id: Vec<u8>,
         public_address: PublicAddress,
         faucet_amounts: HashMap<TokenId, u64>,
+        target_queue_depth: usize,
+        worker_poll_period: Duration,
         logger: &Logger,
     ) -> Worker {
         let mut worker_token_states = Vec::<WorkerTokenState>::default();
@@ -224,7 +220,7 @@ impl Worker {
                         log::error!(logger, "Could not get ledger info: {:?}", err);
                     }
                 }
-                std::thread::sleep(Self::WORKER_POLL_PERIOD);
+                std::thread::sleep(worker_poll_period);
             };
             log::info!(logger, "Ledger is at block_count = {}", block_count);
 
@@ -234,7 +230,13 @@ impl Worker {
                 req.set_monitor_id(monitor_id.clone());
                 match client.get_monitor_status(&req) {
                     Ok(resp) => {
-                        if resp.get_status().next_block >= block_count {
+                        let monitor_block_count = resp.get_status().next_block;
+                        if monitor_block_count >= block_count {
+                            log::info!(
+                                logger,
+                                "Monitor has synced to block count {}",
+                                monitor_block_count
+                            );
                             break;
                         }
                     }
@@ -242,9 +244,8 @@ impl Worker {
                         log::error!(logger, "Could not get monitor status: {:?}", err);
                     }
                 }
-                std::thread::sleep(Self::WORKER_POLL_PERIOD);
+                std::thread::sleep(worker_poll_period);
             }
-            log::info!(logger, "Monitor has synced");
 
             // Poll all token ids looking for activity, then sleep for a bit
             loop {
@@ -253,13 +254,18 @@ impl Worker {
                     break;
                 }
                 for state in worker_token_states.iter_mut() {
-                    if let Err(err_str) = state.poll(&client, &monitor_id, &public_address, &logger)
-                    {
+                    if let Err(err_str) = state.poll(
+                        &client,
+                        &monitor_id,
+                        &public_address,
+                        target_queue_depth,
+                        &logger,
+                    ) {
                         log::error!(logger, "{}", err_str);
                     }
                 }
                 log::trace!(logger, "Worker sleeping");
-                std::thread::sleep(Self::WORKER_POLL_PERIOD);
+                std::thread::sleep(worker_poll_period);
             }
         }));
 
@@ -373,6 +379,7 @@ impl WorkerTokenState {
         client: &MobilecoindApiClient,
         monitor_id: &[u8],
         public_address: &PublicAddress,
+        target_queue_depth: usize,
         logger: &Logger,
     ) -> Result<(), String> {
         // First, get the unspent tx out list associated to this token
@@ -458,7 +465,7 @@ impl WorkerTokenState {
         });
 
         // Check the queue depth, and decide if we should make a split tx
-        if self.queue_depth.load(Ordering::SeqCst) < Worker::THRESHOLD_QUEUE_DEPTH {
+        if self.queue_depth.load(Ordering::SeqCst) < target_queue_depth {
             // Check if we already tried to fix this in the last iteration
             if let Some(prev_tx) = self.in_flight_split_tx_state.as_ref() {
                 if is_tx_still_in_flight(client, prev_tx, "Split", logger) {

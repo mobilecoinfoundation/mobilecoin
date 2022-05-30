@@ -17,14 +17,14 @@ use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_keyfile::read_keyfile;
 use protobuf::RepeatedField;
 use rocket::{get, post, routes, serde::json::Json};
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
 /// Command line config, set with defaults that will work with
 /// a standard mobilecoind instance
 #[derive(Clone, Debug, Parser)]
 #[clap(
     name = "mobilecoind-dev-faucet",
-    about = "An HTTP faucet server, backed by mobilecoind"
+    about = "A stateless HTTP faucet server, backed by mobilecoind"
 )]
 pub struct Config {
     /// Path to json-formatted key file, containing mnemonic or root entropy.
@@ -51,6 +51,16 @@ pub struct Config {
         env = "MC_MOBILECOIND_URI"
     )]
     pub mobilecoind_uri: MobilecoindUri,
+
+    /// Target Queue Depth. When the queue for a token id is less than this in
+    /// depth, the worker attempts to make a split Tx to produce more TxOuts
+    /// for the queue.
+    #[clap(long, default_value = "20", env = "MC_TARGET_QUEUE_DEPTH")]
+    pub target_queue_depth: usize,
+
+    /// Worker poll period in milliseconds.
+    #[clap(long, default_value = "100", env = "MC_WORKER_POLL_PERIOD_MS")]
+    pub worker_poll_period_ms: u64,
 }
 
 /// Connection to the mobilecoind client
@@ -144,6 +154,8 @@ impl State {
             monitor_id.clone(),
             monitor_public_address.clone(),
             faucet_amounts.clone(),
+            config.target_queue_depth,
+            Duration::from_millis(config.worker_poll_period_ms),
             logger,
         );
 

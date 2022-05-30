@@ -43,13 +43,17 @@ You may GET to `/status`, and the faucet will respond with a json object:
 
 The faucet should be started using a keyfile (which is json containing a mnemonic string or a root entropy).
 
-Options are:
+Required options are:
 
-- `--keyfile` - path to the keyfile. this account holds the faucet funds
+- `--keyfile` - path to the keyfile. This account holds the faucet funds.
+
+Other options are:
 - `--amount-factor` - An integer `X`. The amount we send when people hit the faucet is `minimum_fee * X`. Default is `X = 20`.
 - `--listen-host` - hostname for webserver, default `127.0.0.1`
 - `--listen-port` - port for webserver, default `9090`
 - `--mobilecoind-uri` - URI for connecting to mobilecoind gRPC, default `insecure-mobilecoind://127.0.0.1:4444/`
+- `--target-queue-depth` - The number of pre-split transactions the faucet attempts to maintain in its queue. Default is 20.
+- `--worker-poll-period-ms` - A lower bound on how often the worker thread wakes up to check in with `mobilecoind`. Default is `100` milliseconds.
 
 ### Usage with cURL
 
