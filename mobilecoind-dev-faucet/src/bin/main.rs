@@ -12,7 +12,7 @@ use mc_api::printable::PrintableWrapper;
 use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
 use mc_mobilecoind_dev_faucet::{data_types::*, worker::Worker};
-use mc_transaction_core::TokenId;
+use mc_transaction_core::{ring_signature::KeyImage, TokenId};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_keyfile::read_keyfile;
 use protobuf::RepeatedField;
@@ -73,6 +73,8 @@ struct State {
     /// The submit tx response for our previous Tx if any. This lets us check
     /// if we have an in-flight tx still.
     pub worker: Worker,
+    /// Logger
+    pub logger: Logger,
 }
 
 impl State {
@@ -142,8 +144,10 @@ impl State {
             monitor_id.clone(),
             monitor_public_address.clone(),
             faucet_amounts.clone(),
-            logger.clone(),
+            &logger,
         );
+
+        let logger = logger.new(o!("thread" => "http"));
 
         Ok(State {
             mobilecoind_api_client,
@@ -153,6 +157,7 @@ impl State {
             faucet_amounts,
             grpc_env,
             worker,
+            logger,
         })
     }
 }
@@ -178,6 +183,12 @@ fn post(
     let token_id = TokenId::from(req.token_id.unwrap_or_default().as_ref());
 
     let utxo_record = state.worker.get_utxo(token_id)?;
+    log::trace!(
+        state.logger,
+        "Got a UTXO: key_image = {:?}, value = {}",
+        KeyImage::try_from(utxo_record.utxo.get_key_image()).unwrap(),
+        utxo_record.utxo.value
+    );
 
     // Generate a Tx sending this specific TxOut, less fees
     let mut req = mc_mobilecoind_api::GenerateTxFromTxOutListRequest::new();

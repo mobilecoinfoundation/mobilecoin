@@ -18,7 +18,7 @@
 //! The worker does not require to be launched from the context of a tokio
 //! runtime.
 
-use mc_common::logger::{log, Logger};
+use mc_common::logger::{log, o, Logger};
 use mc_mobilecoind_api::{
     external::PublicAddress, mobilecoind_api_grpc::MobilecoindApiClient, SubmitTxResponse,
     TxStatus, UnspentTxOut,
@@ -105,19 +105,34 @@ impl TokenStateReceiver {
     /// Get a utxo from the queue, or a string explaining why we can't
     pub fn get_utxo(&self) -> Result<UtxoRecord, String> {
         let mut receiver = self.receiver.lock().expect("mutex poisoned");
-        match receiver.try_recv() {
-            Ok(result) => {
-                self.queue_depth.fetch_sub(1, Ordering::SeqCst);
-                Ok(result)
-            }
-            Err(mpsc::error::TryRecvError::Empty) => {
-                if self.funds_depleted_flag.load(Ordering::SeqCst) {
-                    Err("faucet is depleted".to_string())
-                } else {
-                    Err("faucet is busy".to_string())
+        loop {
+            match receiver.try_recv() {
+                Ok(utxo_record) => {
+                    self.queue_depth.fetch_sub(1, Ordering::SeqCst);
+                    // Check if the one-shot sender has already been closed.
+                    // If it has, this means the worker dropped the tracker.
+                    // This only happens if the worker decided this txo isn't unspent anymore
+                    // when it polled mobilecoind.
+                    // (We did not send the worker status yet.) So we should skip it and pull
+                    // the next thing from the queue, since obviously a race has happened.
+                    // (The worker will not spend utxos that it puts in the queue,
+                    // but possibly another wallet with the same account key did.)
+                    if !utxo_record.sender.is_closed() {
+                        return Ok(utxo_record);
+                    }
+                    // Intentional fall-through to loop
+                }
+                Err(mpsc::error::TryRecvError::Empty) => {
+                    return if self.funds_depleted_flag.load(Ordering::SeqCst) {
+                        Err("faucet is depleted".to_string())
+                    } else {
+                        Err("faucet is busy".to_string())
+                    };
+                }
+                Err(mpsc::error::TryRecvError::Disconnected) => {
+                    return Err("internal error".to_string());
                 }
             }
-            Err(mpsc::error::TryRecvError::Disconnected) => Err("internal error".to_string()),
         }
     }
 
@@ -163,7 +178,7 @@ impl Worker {
     const THRESHOLD_QUEUE_DEPTH: usize = 20;
 
     // Determines frequency with which the worker thread polls for updates
-    const WORKER_POLL_PERIOD: Duration = Duration::from_millis(100);
+    const WORKER_POLL_PERIOD: Duration = Duration::from_millis(2000);
 
     /// Make a new worker object given mobilecoind connection and config info,
     /// and starts the worker thread.
@@ -183,7 +198,7 @@ impl Worker {
         monitor_id: Vec<u8>,
         public_address: PublicAddress,
         faucet_amounts: HashMap<TokenId, u64>,
-        logger: Logger,
+        logger: &Logger,
     ) -> Worker {
         let mut worker_token_states = Vec::<WorkerTokenState>::default();
         let mut receivers = HashMap::<TokenId, TokenStateReceiver>::default();
@@ -197,7 +212,40 @@ impl Worker {
         let stop_requested = Arc::new(AtomicBool::default());
         let thread_stop_requested = stop_requested.clone();
 
+        let logger = logger.new(o!("thread" => "worker"));
+
         let join_handle = Some(std::thread::spawn(move || {
+            // First wait for account to sync
+            // Get the "initial" ledger block count
+            let block_count = loop {
+                match client.get_ledger_info(&Default::default()) {
+                    Ok(resp) => break resp.block_count,
+                    Err(err) => {
+                        log::error!(logger, "Could not get ledger info: {:?}", err);
+                    }
+                }
+                std::thread::sleep(Self::WORKER_POLL_PERIOD);
+            };
+            log::info!(logger, "Ledger is at block_count = {}", block_count);
+
+            // Now wait for monitor state to at least pass this point
+            loop {
+                let mut req = mc_mobilecoind_api::GetMonitorStatusRequest::new();
+                req.set_monitor_id(monitor_id.clone());
+                match client.get_monitor_status(&req) {
+                    Ok(resp) => {
+                        if resp.get_status().next_block >= block_count {
+                            break;
+                        }
+                    }
+                    Err(err) => {
+                        log::error!(logger, "Could not get monitor status: {:?}", err);
+                    }
+                }
+                std::thread::sleep(Self::WORKER_POLL_PERIOD);
+            }
+            log::info!(logger, "Monitor has synced");
+
             // Poll all token ids looking for activity, then sleep for a bit
             loop {
                 if thread_stop_requested.load(Ordering::SeqCst) {
@@ -210,6 +258,7 @@ impl Worker {
                         log::error!(logger, "{}", err_str);
                     }
                 }
+                log::trace!(logger, "Worker sleeping");
                 std::thread::sleep(Self::WORKER_POLL_PERIOD);
             }
         }));
@@ -327,7 +376,7 @@ impl WorkerTokenState {
         logger: &Logger,
     ) -> Result<(), String> {
         // First, get the unspent tx out list associated to this token
-        let resp = {
+        let mut resp = {
             let mut req = mc_mobilecoind_api::GetUnspentTxOutListRequest::new();
             req.token_id = *self.token_id;
             req.monitor_id = monitor_id.to_vec();
@@ -361,6 +410,12 @@ impl WorkerTokenState {
                 .map_err(|err| format!("invalid key image: {}", err))?;
             if let Entry::Vacant(e) = self.known_utxos.entry(key_image) {
                 // We found a utxo not in the cache, let's queue and add to cache
+                log::trace!(
+                    logger,
+                    "Queueing a utxo: key_image = {:?}, value = {}",
+                    key_image,
+                    utxo.value
+                );
                 let (tracker, record) = UtxoTracker::new(utxo.clone());
                 // Add to queue depth before push, because we subtract after pop
                 self.queue_depth.fetch_add(1, Ordering::SeqCst);
@@ -411,65 +466,64 @@ impl WorkerTokenState {
                     return Ok(());
                 }
             }
+            log::trace!(logger, "Attempting to split on token id {}", self.token_id);
             // At this point, the previous in-flight tx resolved somehow and if it was an
             // error we logged it
             self.in_flight_split_tx_state = None;
 
-            // We will now attempt to build and submit a split Tx
+            // We will now attempt to build and submit a split Tx that prooduces TxOuts of
+            // target value from those that aren't
+            let non_target_value_utxos: Vec<_> = resp
+                .take_output_list()
+                .into_iter()
+                .filter(|utxo| utxo.token_id == self.token_id && utxo.value != self.target_value)
+                .collect();
+
             // First make sure we have enough funds for what we want to do, so we don't spam
             // errors when we are depleted, and so that faucet users can know
-            // that retries won't help
-            let value = self.target_value * (MAX_OUTPUTS - 1);
-            let usable_sum: u64 = self
-                .known_utxos
+            // that retries won't help.
+            if non_target_value_utxos
                 .iter()
-                .filter_map(|(_key_image, tracker)| {
-                    if tracker.utxo.value > self.target_value {
-                        Some(tracker.utxo.value)
-                    } else {
-                        None
-                    }
-                })
-                .sum();
-            if usable_sum < value {
+                .map(|utxo| utxo.value)
+                .sum::<u64>()
+                < self.target_value * (MAX_OUTPUTS - 1)
+            {
                 self.funds_depleted.store(true, Ordering::SeqCst);
+                log::trace!(logger, "Funds depleted on {}", self.token_id);
                 return Ok(());
             } else {
-                self.funds_depleted.store(false, Ordering::SeqCst);
+                if self.funds_depleted.swap(false, Ordering::SeqCst) {
+                    log::info!(logger, "Funds no longer depleted on {}", self.token_id);
+                }
             }
 
             // Generate an outlay
+            // We will repeat this outlay MAX_OUTPUTS - 1 times
+            // (-1 is for a change output)
             let mut outlay = mc_mobilecoind_api::Outlay::new();
             outlay.set_receiver(public_address.clone());
             outlay.set_value(self.target_value);
 
-            // Send the split payment request
-            // Note: In principle it's possible that we will select utxos of the target
-            // value or less, because nothing promised by the API is preventing
-            // that. But we know we have enough other larger utxos, and so we
-            // just hope that won't happen. If it happens then some faucet
-            // payments may race with this one.
-            let mut req = mc_mobilecoind_api::SendPaymentRequest::new();
+            // Generate a Tx
+            let mut req = mc_mobilecoind_api::GenerateTxRequest::new();
             req.set_sender_monitor_id(monitor_id.to_vec());
             req.set_token_id(*self.token_id);
-            // This multiplies the split outlay by MAX_OUTPUTS - 1
-            // (-1 is for a change output)
+            req.set_input_list(RepeatedField::from_vec(non_target_value_utxos));
             req.set_outlay_list(RepeatedField::from_vec(vec![
                 outlay;
                 MAX_OUTPUTS as usize - 1
             ]));
 
-            let resp = client
-                .send_payment(&req)
-                .map_err(|err| format!("Failed to send payment: {}", err))?;
+            let mut resp = client
+                .generate_tx(&req)
+                .map_err(|err| format!("Failed to generate split tx: {}", err))?;
 
-            // Convert from SendPaymentResponse to SubmitTxResponse,
-            // this is needed to check the status of an in-flight payment
-            let mut submit_tx_response = SubmitTxResponse::new();
-            submit_tx_response.set_sender_tx_receipt(resp.get_sender_tx_receipt().clone());
-            submit_tx_response.set_receiver_tx_receipt_list(RepeatedField::from(
-                resp.get_receiver_tx_receipt_list(),
-            ));
+            // Submit the Tx
+            let mut req = mc_mobilecoind_api::SubmitTxRequest::new();
+            req.set_tx_proposal(resp.take_tx_proposal());
+            let submit_tx_response = client
+                .submit_tx(&req)
+                .map_err(|err| format!("Failed to submit split tx: {}", err))?;
 
             // This lets us keep tabs on when this split payment has resolved, so that we
             // can avoid sending another payment until it does
