@@ -4643,6 +4643,7 @@ dependencies = [
  "rocket",
  "serde",
  "serde_derive",
+ "serde_json",
  "serde_with",
  "tokio",
 ]

@@ -167,17 +167,14 @@ impl State {
 fn post(
     state: &rocket::State<State>,
     req: Json<JsonFaucetRequest>,
-) -> Result<Json<JsonSubmitTxResponse>, String> {
+) -> Result<Json<JsonSubmitTxResponse>, JsonSubmitTxResponse> {
     let printable_wrapper = PrintableWrapper::b58_decode(req.b58_address.clone())
         .map_err(|err| format!("Could not decode b58 address: {}", err))?;
 
     let public_address = if printable_wrapper.has_public_address() {
         printable_wrapper.get_public_address()
     } else {
-        return Err(format!(
-            "b58 address '{}' is not a public address",
-            req.b58_address
-        ));
+        return Err(format!("b58 address '{}' is not a public address", req.b58_address).into());
     };
 
     let token_id = TokenId::from(req.token_id.unwrap_or_default().as_ref());

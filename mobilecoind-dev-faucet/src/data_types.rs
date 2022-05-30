@@ -3,6 +3,11 @@
 //! Serializeable data types that wrap the mobilecoind API.
 
 use mc_api::external::PublicAddress;
+use rocket::{
+    http::Status,
+    response::{self, content, Responder},
+    Request,
+};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -108,17 +113,43 @@ impl From<&PublicAddress> for JsonPublicAddress {
 
 #[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonSubmitTxResponse {
+    pub success: bool,
+    pub err_str: Option<String>,
     pub receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
 }
 
 impl From<&mc_mobilecoind_api::SubmitTxResponse> for JsonSubmitTxResponse {
     fn from(src: &mc_mobilecoind_api::SubmitTxResponse) -> Self {
         Self {
+            success: true,
+            err_str: None,
             receiver_tx_receipt_list: src
                 .get_receiver_tx_receipt_list()
                 .iter()
                 .map(JsonReceiverTxReceipt::from)
                 .collect(),
         }
+    }
+}
+
+impl From<String> for JsonSubmitTxResponse {
+    fn from(src: String) -> Self {
+        Self {
+            success: false,
+            err_str: Some(src),
+            receiver_tx_receipt_list: Default::default(),
+        }
+    }
+}
+
+// Implement rocket::Responder for JsonSubmitTxResponse
+// If we don't do this then it is very difficult to respond to errors with
+// a Json object, because we cannot implement conversions on the
+// rocket::Json<...> object.
+impl<'r> Responder<'r, 'static> for JsonSubmitTxResponse {
+    fn respond_to(self, req: &'r Request) -> response::Result<'static> {
+        let string = serde_json::to_string(&self).map_err(|_e| Status::InternalServerError)?;
+
+        content::RawJson(string).respond_to(req)
     }
 }
