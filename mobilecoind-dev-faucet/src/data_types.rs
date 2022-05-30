@@ -114,7 +114,9 @@ impl From<&PublicAddress> for JsonPublicAddress {
 #[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonSubmitTxResponse {
     pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub err_str: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
 }
 

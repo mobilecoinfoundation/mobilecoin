@@ -63,11 +63,11 @@ Requesting payment:
 
 ```
 $ curl -s localhost:9090/ -d '{"b58_address": "c7f04fcd40d093ca6578b13d790df0790c96e94a77815e5052993af1b9d12923"}' -X POST -H 'Content-type: application/json'
-{"success":true,"err_str":null,"receiver_tx_receipt_list":[{"recipient":{"view_public_key":"86280244d51afed4217ee3dc6288650c27cacc6e4bfb558159f0f8caa38ae542","spend_public_key":"803958b71de5fa7a58d257a0411506e59f77eaff33ee7b7905ac4f9ef68e3c2a","fog_report_url":"","fog_authority_sig":"","fog_report_id":""},"tx_public_key":"880d56bc36411507131098dd404878fb083b6dd5b805c37f736dcfa94d31027d","tx_out_hash":"0fbe90326c255e08b3ee6cbdf626d244ac29bbdab8810163d09513fa1919664f","tombstone":56,"confirmation_number":"027c506b81ad5bd8142382c75f6148f6e5627ad45d2a09110ee9e4ff5a789398"}]}```
+{"success":true,"receiver_tx_receipt_list":[{"recipient":{"view_public_key":"86280244d51afed4217ee3dc6288650c27cacc6e4bfb558159f0f8caa38ae542","spend_public_key":"803958b71de5fa7a58d257a0411506e59f77eaff33ee7b7905ac4f9ef68e3c2a","fog_report_url":"","fog_authority_sig":"","fog_report_id":""},"tx_public_key":"880d56bc36411507131098dd404878fb083b6dd5b805c37f736dcfa94d31027d","tx_out_hash":"0fbe90326c255e08b3ee6cbdf626d244ac29bbdab8810163d09513fa1919664f","tombstone":56,"confirmation_number":"027c506b81ad5bd8142382c75f6148f6e5627ad45d2a09110ee9e4ff5a789398"}]}```
 
 ```
 $ curl -s localhost:9090/ -d '{"b58_address": "c7f04fcd40d093ca6578b13d790df0790c96e94a77815e5052993af1b9d12923", "token_id": "1"}' -X POST -H 'Content-type: application/json'
-{"success":false,"err_str":"faucet is depleted","receiver_tx_receipt_list":[]}
+{"success":false,"err_str":"faucet is depleted"}
 ```
 
 Getting status:
