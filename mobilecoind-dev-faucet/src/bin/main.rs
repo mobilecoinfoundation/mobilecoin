@@ -144,7 +144,7 @@ impl State {
             monitor_id.clone(),
             monitor_public_address.clone(),
             faucet_amounts.clone(),
-            &logger,
+            logger,
         );
 
         let logger = logger.new(o!("thread" => "http"));

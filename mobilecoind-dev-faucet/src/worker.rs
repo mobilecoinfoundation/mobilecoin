@@ -492,7 +492,8 @@ impl WorkerTokenState {
                 log::trace!(logger, "Funds depleted on {}", self.token_id);
                 return Ok(());
             } else {
-                if self.funds_depleted.swap(false, Ordering::SeqCst) {
+                let prev_value = self.funds_depleted.swap(false, Ordering::SeqCst);
+                if prev_value {
                     log::info!(logger, "Funds no longer depleted on {}", self.token_id);
                 }
             }
