@@ -382,7 +382,31 @@ impl WorkerTokenState {
         target_queue_depth: usize,
         logger: &Logger,
     ) -> Result<(), String> {
-        // First, get the unspent tx out list associated to this token
+        // First, for each known utxo already queued, check if it was sent in a
+        // transaction and if so what the status is
+        self.known_utxos.retain(|_key_image, tracker| {
+            if let Some(status) = tracker.poll() {
+                // If poll returned Some, then we either got a SubmitTxResponse or an error
+                if let Ok(resp) = status {
+                    // It was successfully submitted to the network, let's ask mobilecoind what's
+                    // happened. If it's still in-flight we should retain it, if it has resolved,
+                    // we should drop it from our records.
+                    is_tx_still_in_flight(client, &resp, "Faucet", logger)
+                } else {
+                    // The oneshot receiver resolved in an error, this means, the other side dropped
+                    // this channel, without reporting a SubmitTxResponse. This
+                    // means there was an error building or submitting the Tx,
+                    // and the other side has now dropped this UnspentTxOut. We should requeue it
+                    // so that it can be eventually be spent, and for now we should just purge it.
+                    false
+                }
+            } else {
+                // Still in the queue as far as we know
+                true
+            }
+        });
+
+        // Now, get a fresh unspent tx out list associated to this token
         let mut resp = {
             let mut req = mc_mobilecoind_api::GetUnspentTxOutListRequest::new();
             req.token_id = *self.token_id;
@@ -397,8 +421,7 @@ impl WorkerTokenState {
         };
 
         // Now, check all the reported utxos.
-        // If they have the target value, increment queue depth.
-        // If they are new since last time, report to the sender queue.
+        // If it is new and has the target value, then queue it
         let mut output_list_key_images = HashSet::<KeyImage>::default();
 
         for utxo in resp.output_list.iter() {
@@ -436,33 +459,11 @@ impl WorkerTokenState {
 
         // Remove any known utxos that no longer exist in the response list
         // That is, remove any utxo whose key image wasn't added to
-        // output_list_key_images
+        // output_list_key_images before. (This also drops the one-shot receiver,
+        // and so can tell the other side not to bother sending this utxo if they get
+        // it from the queue.)
         self.known_utxos
             .retain(|key_image, _tracker| output_list_key_images.contains(key_image));
-
-        // Now, for each remaining utxo, check if it was sent in a transaction and if so
-        // what the status is
-        self.known_utxos.retain(|_key_image, tracker| {
-            if let Some(status) = tracker.poll() {
-                // If poll returned Some, then we either got a SubmitTxResponse or an error
-                if let Ok(resp) = status {
-                    // It was successfully submitted to the network, let's ask mobilecoind what's
-                    // happened. If it's still in-flight we should retain it, if it has resolved,
-                    // we should drop it from our records.
-                    is_tx_still_in_flight(client, &resp, "Faucet", logger)
-                } else {
-                    // The oneshot receiver resolved in an error, this means, the other side dropped
-                    // this channel, without reporting a SubmitTxResponse. This
-                    // means there was an error building or submitting the Tx,
-                    // and the other side has now dropped this UnspentTxOut. We should requeue it
-                    // so that it can be eventually be spent, and for now we should purge it.
-                    false
-                }
-            } else {
-                // Still in the queue as far as we know
-                true
-            }
-        });
 
         // Check the queue depth, and decide if we should make a split tx
         if self.queue_depth.load(Ordering::SeqCst) < target_queue_depth {
