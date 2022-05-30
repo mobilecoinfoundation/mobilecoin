@@ -164,7 +164,7 @@ impl State {
 
 /// Request payment from the faucet
 #[post("/", format = "json", data = "<req>")]
-fn post(
+async fn post(
     state: &rocket::State<State>,
     req: Json<JsonFaucetRequest>,
 ) -> Result<Json<JsonSubmitTxResponse>, JsonSubmitTxResponse> {
@@ -205,8 +205,10 @@ fn post(
 
     let resp = state
         .mobilecoind_api_client
-        .submit_tx(&req)
-        .map_err(|err| format!("Failed to submit Tx: {}", err))?;
+        .submit_tx_async(&req)
+        .map_err(|err| format!("Failed to submit Tx: {}", err))?
+        .await
+        .map_err(|err| format!("Submit Tx ended in error: {}", err))?;
 
     // Tell the worker that this utxo was submitted, so that it can track and
     // recycle the utxo if this payment fails
@@ -216,7 +218,7 @@ fn post(
 
 /// Request status of the faucet
 #[get("/status")]
-fn status(state: &rocket::State<State>) -> Result<Json<JsonFaucetStatus>, String> {
+async fn status(state: &rocket::State<State>) -> Result<Json<JsonFaucetStatus>, String> {
     // Get up-to-date balances for all the tokens we are tracking
     let mut balances: HashMap<TokenId, u64> = Default::default();
     for (token_id, _) in state.faucet_amounts.iter() {
@@ -226,10 +228,17 @@ fn status(state: &rocket::State<State>) -> Result<Json<JsonFaucetStatus>, String
 
         let resp = state
             .mobilecoind_api_client
-            .get_balance(&req)
+            .get_balance_async(&req)
             .map_err(|err| {
                 format!(
                     "Failed to check balance for token id '{}': {}",
+                    token_id, err
+                )
+            })?
+            .await
+            .map_err(|err| {
+                format!(
+                    "Balance check request for token id '{}' ended in error: {}",
                     token_id, err
                 )
             })?;
