@@ -3,6 +3,7 @@ name = "mc-mobilecoind-dev-faucet"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
 edition = "2021"
+readme = "README.md"
 
 [[bin]]
 name = "mobilecoind-dev-faucet"
