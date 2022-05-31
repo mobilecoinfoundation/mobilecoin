@@ -73,7 +73,6 @@ pub extern "C" fn mc_account_private_keys_from_root_entropy(
     })
 }
 
-
 /// # Preconditions
 ///
 /// * `view_private_key` - must be a valid 32-byte Ristretto-format scalar.
