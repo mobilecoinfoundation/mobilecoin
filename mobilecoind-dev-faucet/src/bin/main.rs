@@ -141,7 +141,7 @@ impl State {
                 .get_network_status(&Default::default())
                 .map_err(|err| format!("Failed getting network status: {}", err))?;
 
-            for (k, v) in resp.minimum_fees.iter() {
+            for (k, v) in resp.get_last_block_info().minimum_fees.iter() {
                 result.insert(k.into(), config.amount_factor * v);
             }
 
