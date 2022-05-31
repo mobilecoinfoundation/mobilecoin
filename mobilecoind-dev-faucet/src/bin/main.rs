@@ -208,8 +208,10 @@ async fn post(
 
     let resp = state
         .mobilecoind_api_client
-        .generate_tx_from_tx_out_list(&req)
-        .map_err(|err| format!("Failed to build Tx: {}", err))?;
+        .generate_tx_from_tx_out_list_async(&req)
+        .map_err(|err| format!("Failed to build Tx: {}", err))?
+        .await
+        .map_err(|err| format!("Build Tx ended in error: {}", err))?;
 
     // Submit the tx proposal
     let mut req = mc_mobilecoind_api::SubmitTxRequest::new();
