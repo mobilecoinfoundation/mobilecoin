@@ -13,6 +13,7 @@ mc-api = { path = "../api" }
 mc-common = { path = "../common", features = ["loggers"] }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
 mc-util-grpc = { path = "../util/grpc" }
+mc-util-serial = { path = "../util/serial", features = ["std"] }
 
 clap = { version = "3.1", features = ["derive", "env"] }
 grpcio = "0.10.2"
@@ -28,6 +29,6 @@ mc-ledger-db = { path = "../ledger/db" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-util-from-random = { path = "../util/from-random" }
-mc-util-serial = { path = "../util/serial" }
+mc-util-serial = { path = "../util/serial", features = ["std"] }
 
 rand = "0.8"

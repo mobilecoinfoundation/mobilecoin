@@ -85,40 +85,51 @@ where
     Ok(value)
 }
 
-/// Represents u64 using string, when serializing to Json
-/// Javascript integers are not 64 bit, and so it is not really proper json.
-/// Using string avoids issues with some json parsers not handling large numbers
-/// well.
-///
-/// This does not rely on the serde-json arbitrary precision feature, which
-/// (we fear) might break other things (e.g. https://github.com/serde-rs/json/issues/505)
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Hash, Serialize)]
-#[serde(transparent)]
-pub struct JsonU64(#[serde(with = "serde_with::rust::display_fromstr")] pub u64);
+#[cfg(feature = "serde_with")]
+mod json_u64 {
 
-impl From<&u64> for JsonU64 {
-    fn from(src: &u64) -> Self {
-        Self(*src)
+    use super::*;
+
+    /// Represents u64 using string, when serializing to Json
+    /// Javascript integers are not 64 bit, and so it is not really proper json.
+    /// Using string avoids issues with some json parsers not handling large
+    /// numbers well.
+    ///
+    /// This does not rely on the serde-json arbitrary precision feature, which
+    /// (we fear) might break other things (e.g. https://github.com/serde-rs/json/issues/505)
+    #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Hash, Serialize)]
+    #[serde(transparent)]
+    pub struct JsonU64(#[serde(with = "serde_with::rust::display_fromstr")] pub u64);
+
+    impl From<&u64> for JsonU64 {
+        fn from(src: &u64) -> Self {
+            Self(*src)
+        }
+    }
+
+    impl From<&JsonU64> for u64 {
+        fn from(src: &JsonU64) -> u64 {
+            src.0
+        }
+    }
+
+    impl From<JsonU64> for u64 {
+        fn from(src: JsonU64) -> u64 {
+            src.0
+        }
+    }
+
+    impl AsRef<u64> for JsonU64 {
+        fn as_ref(&self) -> &u64 {
+            &self.0
+        }
     }
 }
 
-impl From<&JsonU64> for u64 {
-    fn from(src: &JsonU64) -> u64 {
-        src.0
-    }
-}
-
-impl From<JsonU64> for u64 {
-    fn from(src: JsonU64) -> u64 {
-        src.0
-    }
-}
-
-impl AsRef<u64> for JsonU64 {
-    fn as_ref(&self) -> &u64 {
-        &self.0
-    }
-}
+/// JsonU64 is exported if it is available -- the serde_with crate which it
+/// depends on relies on std, so it must be optional.
+#[cfg(feature = "serde_with")]
+pub use json_u64::JsonU64;
 
 #[cfg(test)]
 mod test {

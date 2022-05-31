@@ -17,7 +17,7 @@ mc-mobilecoind-api = { path = "../mobilecoind/api" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-keyfile = { path = "../util/keyfile" }
-mc-util-serial = { path = "../util/serial" }
+mc-util-serial = { path = "../util/serial", features = ["std"] }
 
 clap = { version = "3.1", features = ["derive", "env"] }
 grpcio = "0.10.2"
