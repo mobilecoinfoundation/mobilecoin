@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-//! JSON wrapper for the mobilecoind API.
+//! HTTP faucet service backed by mobilecoind
 
 pub mod data_types;
 pub mod worker;

@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 #![deny(missing_docs)]
 
-//! JSON wrapper for the mobilecoind API.
+//! HTTP faucet service backed by mobilecoind
 
 #![feature(proc_macro_hygiene, decl_macro)]
 
@@ -15,7 +15,7 @@ use mc_mobilecoind_dev_faucet::{data_types::*, worker::Worker};
 use mc_transaction_core::{ring_signature::KeyImage, TokenId};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_keyfile::read_keyfile;
-use protobuf::RepeatedField;
+use mc_util_serial::JsonU64;
 use rocket::{get, post, routes, serde::json::Json};
 use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
@@ -80,8 +80,7 @@ struct State {
     /// The grpcio thread pool
     #[allow(unused)]
     pub grpc_env: Arc<grpcio::Environment>,
-    /// The submit tx response for our previous Tx if any. This lets us check
-    /// if we have an in-flight tx still.
+    /// Handle to worker thread, which pre-splits TxOut's in the background
     pub worker: Worker,
     /// Logger
     pub logger: Logger,
@@ -202,7 +201,7 @@ async fn post(
     // Generate a Tx sending this specific TxOut, less fees
     let mut req = mc_mobilecoind_api::GenerateTxFromTxOutListRequest::new();
     req.set_account_key((&state.account_key).into());
-    req.set_input_list(RepeatedField::from_vec(vec![utxo_record.utxo]));
+    req.set_input_list(vec![utxo_record.utxo].into());
     req.set_receiver(public_address.clone());
     req.set_token_id(*token_id);
 

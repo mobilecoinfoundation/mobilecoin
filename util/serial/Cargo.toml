@@ -15,3 +15,4 @@ std = ["serde/std", "serde_cbor/std"]
 prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_cbor = { version = "0.11.1", default-features = false, features = ["alloc"] }
+serde_with = { version = "1.14", default-features = false }

@@ -24,7 +24,6 @@ use mc_mobilecoind_api::{
     TxStatus, UnspentTxOut,
 };
 use mc_transaction_core::{constants::MAX_OUTPUTS, ring_signature::KeyImage, TokenId};
-use protobuf::RepeatedField;
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     sync::{
@@ -517,11 +516,8 @@ impl WorkerTokenState {
             let mut req = mc_mobilecoind_api::GenerateTxRequest::new();
             req.set_sender_monitor_id(monitor_id.to_vec());
             req.set_token_id(*self.token_id);
-            req.set_input_list(RepeatedField::from_vec(non_target_value_utxos));
-            req.set_outlay_list(RepeatedField::from_vec(vec![
-                outlay;
-                MAX_OUTPUTS as usize - 1
-            ]));
+            req.set_input_list(non_target_value_utxos.into());
+            req.set_outlay_list(vec![outlay; MAX_OUTPUTS as usize - 1].into());
 
             let mut resp = client
                 .generate_tx(&req)

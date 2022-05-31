@@ -3,6 +3,7 @@
 //! Serializeable data types that wrap the mobilecoind API.
 
 use mc_api::external::PublicAddress;
+use mc_util_serial::JsonU64;
 use rocket::{
     http::Status,
     response::{self, content, Responder},
@@ -10,41 +11,6 @@ use rocket::{
 };
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-// Represents u64 using string, when serializing to Json
-// Javascript integers are not 64 bit, and so it is not really proper json.
-// Using string avoids issues with some json parsers not handling large numbers
-// well.
-//
-// This does not rely on the serde-json arbitrary precision feature, which
-// (we fear) might break other things (e.g. https://github.com/serde-rs/json/issues/505)
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Hash, Serialize)]
-#[serde(transparent)]
-pub struct JsonU64(#[serde(with = "serde_with::rust::display_fromstr")] pub u64);
-
-impl From<&u64> for JsonU64 {
-    fn from(src: &u64) -> Self {
-        Self(*src)
-    }
-}
-
-impl From<&JsonU64> for u64 {
-    fn from(src: &JsonU64) -> u64 {
-        src.0
-    }
-}
-
-impl From<JsonU64> for u64 {
-    fn from(src: JsonU64) -> u64 {
-        src.0
-    }
-}
-
-impl AsRef<u64> for JsonU64 {
-    fn as_ref(&self) -> &u64 {
-        &self.0
-    }
-}
 
 #[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonFaucetRequest {
@@ -111,6 +77,14 @@ impl From<&PublicAddress> for JsonPublicAddress {
     }
 }
 
+/// Related to (but not the same as) mobilecoind_api::SubmitTxResponse
+///
+/// This json includes a "success" field and an "err_str" field, so it is
+/// effectively like an enum over `SubmitTxResponse` and `String`.
+///
+/// The `From` conversions set `success` to true or false appropriately.
+/// In the success case, we only include the receiver tx receipt list, because
+/// the faucet user cannot make use of the sender tx receipt.
 #[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonSubmitTxResponse {
     pub success: bool,

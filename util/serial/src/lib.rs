@@ -8,6 +8,7 @@ use alloc::vec::Vec;
 pub extern crate prost;
 
 pub use prost::{DecodeError, EncodeError, Message};
+use serde::{Deserialize, Serialize};
 
 // We put a new-type around serde_cbor::Error in `mod decode` and `mod encode`,
 // because this keeps us compatible with how rmp-serde was exporting its errors,
@@ -53,15 +54,17 @@ pub mod encode {
 /// fail.
 pub fn serialize<T: ?Sized>(value: &T) -> Result<Vec<u8>, encode::Error>
 where
-    T: serde::ser::Serialize + Sized,
+    T: Serialize + Sized,
 {
     Ok(serde_cbor::to_vec(value)?)
 }
 
-// Forward mc_util_serial::deserialize to bincode::deserialize
+/// Deserialize the given bytes to a data structure.
+///
+/// Forward mc_util_serial::deserialize to bincode::deserialize
 pub fn deserialize<'a, T>(bytes: &'a [u8]) -> Result<T, decode::Error>
 where
-    T: serde::de::Deserialize<'a>,
+    T: Deserialize<'a>,
 {
     Ok(serde_cbor::from_slice(bytes)?)
 }
@@ -80,6 +83,41 @@ where
 {
     let value = T::decode(buf)?;
     Ok(value)
+}
+
+/// Represents u64 using string, when serializing to Json
+/// Javascript integers are not 64 bit, and so it is not really proper json.
+/// Using string avoids issues with some json parsers not handling large numbers
+/// well.
+///
+/// This does not rely on the serde-json arbitrary precision feature, which
+/// (we fear) might break other things (e.g. https://github.com/serde-rs/json/issues/505)
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Hash, Serialize)]
+#[serde(transparent)]
+pub struct JsonU64(#[serde(with = "serde_with::rust::display_fromstr")] pub u64);
+
+impl From<&u64> for JsonU64 {
+    fn from(src: &u64) -> Self {
+        Self(*src)
+    }
+}
+
+impl From<&JsonU64> for u64 {
+    fn from(src: &JsonU64) -> u64 {
+        src.0
+    }
+}
+
+impl From<JsonU64> for u64 {
+    fn from(src: JsonU64) -> u64 {
+        src.0
+    }
+}
+
+impl AsRef<u64> for JsonU64 {
+    fn as_ref(&self) -> &u64 {
+        &self.0
+    }
 }
 
 #[cfg(test)]
