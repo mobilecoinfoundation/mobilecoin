@@ -10,6 +10,32 @@ import "external.proto";
 import "kex_rng.proto";
 import "fog_common.proto";
 
+/// A single Duplex streaming API that allows clients to authorize with Fog View and
+/// query it for TxOuts.
+service FogViewRouterAPI {
+    rpc request(stream FogViewRouterRequest) returns (stream FogViewRouterResponse) {}
+}
+
+message FogViewRouterRequest {
+    oneof request_data {
+        /// This is called to perform IX key exchange
+        /// with the enclave before making a query call.
+        attest.AuthMessage auth = 1;
+        /// Input should be an encrypted QueryRequest
+        attest.Message query = 2;
+    }
+}
+
+message FogViewRouterResponse {
+    oneof response_data {
+        /// Returned for an auth request.
+        attest.AuthMessage auth = 1;
+        /// Returned for an auth request.
+        /// The data is an encrypted QueryResponse.
+        attest.Message query = 2;
+    }
+}
+
 service FogViewAPI {
     /// This is called to perform IX key exchange with the enclave before calling GetOutputs.
     rpc Auth(attest.AuthMessage) returns (attest.AuthMessage) {}
