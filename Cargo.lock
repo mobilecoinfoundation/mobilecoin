@@ -4634,17 +4634,20 @@ dependencies = [
  "clap 3.1.18",
  "grpcio",
  "hex",
+ "mc-account-keys",
  "mc-api",
  "mc-common",
  "mc-mobilecoind-api",
- "mc-transaction-types",
+ "mc-transaction-core",
  "mc-util-grpc",
  "mc-util-keyfile",
  "protobuf",
  "rocket",
  "serde",
  "serde_derive",
+ "serde_json",
  "serde_with",
+ "tokio",
 ]
 
 [[package]]

@@ -7,30 +7,24 @@
 
 use clap::Parser;
 use grpcio::ChannelBuilder;
+use mc_account_keys::AccountKey;
 use mc_api::printable::PrintableWrapper;
 use mc_common::logger::{create_app_logger, log, o, Logger};
-use mc_mobilecoind_api::{
-    mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri, SubmitTxResponse, TxStatus,
-};
-use mc_mobilecoind_dev_faucet::data_types::*;
-use mc_transaction_types::TokenId;
+use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
+use mc_mobilecoind_dev_faucet::{data_types::*, worker::Worker};
+use mc_transaction_core::{ring_signature::KeyImage, TokenId};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_keyfile::read_keyfile;
 use protobuf::RepeatedField;
 use rocket::{get, post, routes, serde::json::Json};
-use std::{
-    collections::HashMap,
-    path::PathBuf,
-    sync::{Arc, Mutex, MutexGuard},
-    time::Duration,
-};
+use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
 /// Command line config, set with defaults that will work with
 /// a standard mobilecoind instance
 #[derive(Clone, Debug, Parser)]
 #[clap(
     name = "mobilecoind-dev-faucet",
-    about = "An HTTP faucet server, backed by mobilecoind"
+    about = "A stateless HTTP faucet server, backed by mobilecoind"
 )]
 pub struct Config {
     /// Path to json-formatted key file, containing mnemonic or root entropy.
@@ -57,12 +51,24 @@ pub struct Config {
         env = "MC_MOBILECOIND_URI"
     )]
     pub mobilecoind_uri: MobilecoindUri,
+
+    /// Target Queue Depth. When the queue for a token id is less than this in
+    /// depth, the worker attempts to make a split Tx to produce more TxOuts
+    /// for the queue.
+    #[clap(long, default_value = "20", env = "MC_TARGET_QUEUE_DEPTH")]
+    pub target_queue_depth: usize,
+
+    /// Worker poll period in milliseconds.
+    #[clap(long, default_value = "100", env = "MC_WORKER_POLL_PERIOD_MS")]
+    pub worker_poll_period_ms: u64,
 }
 
 /// Connection to the mobilecoind client
 struct State {
     /// The connection to mobilecoind
     pub mobilecoind_api_client: MobilecoindApiClient,
+    /// The account key holding our funds
+    pub account_key: AccountKey,
     /// The bytes of our monitor id, which holds the faucet's funds
     pub monitor_id: Vec<u8>,
     /// The public address of the faucet, which someone can use to replenish the
@@ -76,7 +82,9 @@ struct State {
     pub grpc_env: Arc<grpcio::Environment>,
     /// The submit tx response for our previous Tx if any. This lets us check
     /// if we have an in-flight tx still.
-    pub inflight_tx_state: Mutex<Option<SubmitTxResponse>>,
+    pub worker: Worker,
+    /// Logger
+    pub logger: Logger,
 }
 
 impl State {
@@ -120,6 +128,11 @@ impl State {
             resp.b58_code
         };
 
+        let monitor_printable_wrapper = PrintableWrapper::b58_decode(monitor_b58_address.clone())
+            .expect("Could not decode b58 address");
+        assert!(monitor_printable_wrapper.has_public_address());
+        let monitor_public_address = monitor_printable_wrapper.get_public_address();
+
         // Get the network minimum fees and compute faucet amounts
         let faucet_amounts = {
             let mut result = HashMap::<TokenId, u64>::default();
@@ -135,109 +148,89 @@ impl State {
             result
         };
 
-        let inflight_tx_state = Mutex::new(None);
+        // Start background worker, which splits txouts in advance
+        let worker = Worker::new(
+            mobilecoind_api_client.clone(),
+            monitor_id.clone(),
+            monitor_public_address.clone(),
+            faucet_amounts.clone(),
+            config.target_queue_depth,
+            Duration::from_millis(config.worker_poll_period_ms),
+            logger,
+        );
+
+        let logger = logger.new(o!("thread" => "http"));
 
         Ok(State {
             mobilecoind_api_client,
+            account_key,
             monitor_id,
             monitor_b58_address,
             faucet_amounts,
             grpc_env,
-            inflight_tx_state,
+            worker,
+            logger,
         })
-    }
-
-    fn lock_and_check_inflight_tx_state(
-        &self,
-    ) -> Result<MutexGuard<Option<SubmitTxResponse>>, String> {
-        let mut guard = self.inflight_tx_state.lock().expect("mutex poisoned");
-        if let Some(prev_tx) = guard.as_mut() {
-            let mut tries = 10;
-            loop {
-                let resp = self
-                    .mobilecoind_api_client
-                    .get_tx_status_as_sender(prev_tx)
-                    .map_err(|err| format!("Failed getting network status: {}", err))?;
-                if resp.status == TxStatus::Unknown {
-                    std::thread::sleep(Duration::from_millis(10));
-                    tries -= 1;
-                    if tries == 0 {
-                        return Err("faucet is busy".to_string());
-                    }
-                } else {
-                    break;
-                }
-            }
-        }
-
-        *guard = None;
-
-        Ok(guard)
     }
 }
 
 /// Request payment from the faucet
 #[post("/", format = "json", data = "<req>")]
-fn post(
+async fn post(
     state: &rocket::State<State>,
     req: Json<JsonFaucetRequest>,
-) -> Result<Json<JsonSendPaymentResponse>, String> {
+) -> Result<Json<JsonSubmitTxResponse>, JsonSubmitTxResponse> {
     let printable_wrapper = PrintableWrapper::b58_decode(req.b58_address.clone())
         .map_err(|err| format!("Could not decode b58 address: {}", err))?;
 
     let public_address = if printable_wrapper.has_public_address() {
         printable_wrapper.get_public_address()
     } else {
-        return Err(format!(
-            "b58 address '{}' is not a public address",
-            req.b58_address
-        ));
+        return Err(format!("b58 address '{}' is not a public address", req.b58_address).into());
     };
 
     let token_id = TokenId::from(req.token_id.unwrap_or_default().as_ref());
 
-    let value = *state.faucet_amounts.get(&token_id).ok_or(format!(
-        "token_id: '{}' is not supported by the network",
-        token_id
-    ))?;
+    let utxo_record = state.worker.get_utxo(token_id)?;
+    log::trace!(
+        state.logger,
+        "Got a UTXO: key_image = {:?}, value = {}",
+        KeyImage::try_from(utxo_record.utxo.get_key_image()).unwrap(),
+        utxo_record.utxo.value
+    );
 
-    let mut lock = state.lock_and_check_inflight_tx_state()?;
-
-    // Generate an outlay
-    let mut outlay = mc_mobilecoind_api::Outlay::new();
-    outlay.set_receiver(public_address.clone());
-    outlay.set_value(value);
-
-    // Send the payment request
-    let mut req = mc_mobilecoind_api::SendPaymentRequest::new();
-    req.set_sender_monitor_id(state.monitor_id.clone());
-    req.set_sender_subaddress(0);
+    // Generate a Tx sending this specific TxOut, less fees
+    let mut req = mc_mobilecoind_api::GenerateTxFromTxOutListRequest::new();
+    req.set_account_key((&state.account_key).into());
+    req.set_input_list(RepeatedField::from_vec(vec![utxo_record.utxo]));
+    req.set_receiver(public_address.clone());
     req.set_token_id(*token_id);
-    req.set_outlay_list(RepeatedField::from_vec(vec![outlay]));
 
     let resp = state
         .mobilecoind_api_client
-        .send_payment(&req)
-        .map_err(|err| format!("Failed to send payment: {}", err))?;
+        .generate_tx_from_tx_out_list(&req)
+        .map_err(|err| format!("Failed to build Tx: {}", err))?;
 
-    // Convert from SendPaymentResponse to SubmitTxResponse,
-    // this is needed to check the status of an in-flight payment
-    let mut submit_tx_response = SubmitTxResponse::new();
-    submit_tx_response.set_sender_tx_receipt(resp.get_sender_tx_receipt().clone());
-    submit_tx_response
-        .set_receiver_tx_receipt_list(RepeatedField::from(resp.get_receiver_tx_receipt_list()));
+    // Submit the tx proposal
+    let mut req = mc_mobilecoind_api::SubmitTxRequest::new();
+    req.set_tx_proposal(resp.get_tx_proposal().clone());
 
-    // This lets us keep tabs on when this payment has resolved, so that we can
-    // avoid sending another payment until it does
-    *lock = Some(submit_tx_response);
+    let resp = state
+        .mobilecoind_api_client
+        .submit_tx_async(&req)
+        .map_err(|err| format!("Failed to submit Tx: {}", err))?
+        .await
+        .map_err(|err| format!("Submit Tx ended in error: {}", err))?;
 
-    // The receipt from the payment request can be used by the status check below
-    Ok(Json(JsonSendPaymentResponse::from(&resp)))
+    // Tell the worker that this utxo was submitted, so that it can track and
+    // recycle the utxo if this payment fails
+    let _ = utxo_record.sender.send(resp.clone());
+    Ok(Json(JsonSubmitTxResponse::from(&resp)))
 }
 
 /// Request status of the faucet
 #[get("/status")]
-fn status(state: &rocket::State<State>) -> Result<Json<JsonFaucetStatus>, String> {
+async fn status(state: &rocket::State<State>) -> Result<Json<JsonFaucetStatus>, String> {
     // Get up-to-date balances for all the tokens we are tracking
     let mut balances: HashMap<TokenId, u64> = Default::default();
     for (token_id, _) in state.faucet_amounts.iter() {
@@ -247,15 +240,24 @@ fn status(state: &rocket::State<State>) -> Result<Json<JsonFaucetStatus>, String
 
         let resp = state
             .mobilecoind_api_client
-            .get_balance(&req)
+            .get_balance_async(&req)
             .map_err(|err| {
                 format!(
                     "Failed to check balance for token id '{}': {}",
                     token_id, err
                 )
+            })?
+            .await
+            .map_err(|err| {
+                format!(
+                    "Balance check request for token id '{}' ended in error: {}",
+                    token_id, err
+                )
             })?;
         balances.insert(*token_id, resp.balance);
     }
+
+    let queue_depths = state.worker.get_queue_depths();
 
     Ok(Json(JsonFaucetStatus {
         b58_address: state.monitor_b58_address.clone(),
@@ -265,6 +267,10 @@ fn status(state: &rocket::State<State>) -> Result<Json<JsonFaucetStatus>, String
             .map(convert_balance_pair)
             .collect(),
         balances: balances.iter().map(convert_balance_pair).collect(),
+        queue_depths: queue_depths
+            .into_iter()
+            .map(|(token_id, depth)| (JsonU64(*token_id), JsonU64(depth as u64)))
+            .collect(),
     }))
 }
 
