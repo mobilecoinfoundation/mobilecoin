@@ -49,7 +49,7 @@ impl From<&mc_mobilecoind_api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug, Clone)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct JsonPublicAddress {
     /// Hex encoded compressed ristretto bytes
     pub view_public_key: String,
