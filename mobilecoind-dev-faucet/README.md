@@ -48,7 +48,7 @@ mnemonic string or a root entropy for a MobileCoin account.
 
 Required options are:
 
-- `--keyfile` - path to the keyfile. This account holds the faucet funds.
+- `--keyfile` - path to the keyfile with the account mnemonic or entropy. This account holds the faucet funds.
 
 Other options are:
 - `--amount-factor` - An integer `X`. The amount we send when people hit the faucet is `minimum_fee * X`. Default is `X = 20`.
