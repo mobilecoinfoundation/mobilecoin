@@ -77,5 +77,5 @@ Getting status:
 
 ```
 $ curl -s localhost:9090/status
-{"b58_address":"5KBMnd8cs5zPsytGgZrjmQ8z9VJYThuh1B39pKzDERTfzm3sVGQxnZPC8JEWP69togpSPRz3e6pBsLzwnMjrXTbDqoRTQ8VF98sQu7LqjL5","faucet_amounts":{"2":"20480","1":"20480","0":"8000000000"},"balances":{"2":"0","1":"0","0":"12499999997600000000"},"queue_depths":{"1":"0","0":"26","2":"0"}}
+{"b58_address":"5KBMnd8cs5zPsytGgZrjmQ8z9VJYThuh1B39pKzDERTfzm3sVGQxnZPC8JEWP69togpSPRz3e6pBsLzwnMjrXTbDqoRTQ8VF98sQu7LqjL5","faucet_payout_amounts":{"2":"20480","1":"20480","0":"8000000000"},"balances":{"2":"0","1":"0","0":"12499999997600000000"},"queue_depths":{"1":"0","0":"26","2":"0"}}
 ```
