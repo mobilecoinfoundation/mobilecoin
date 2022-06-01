@@ -628,7 +628,7 @@ mod helpers {
     // Test version of UntrustedAllocation (see Untrusted crate)
     #[derive(Default)]
     struct Allocation {
-        #[allow(unused)]
+        #[allow(dead_code)]
         count: u64,
         data_size: u64,
         meta_size: u64,

@@ -152,7 +152,7 @@ where
     ///
     /// MobileCoin does not currently utilize pre-shared keys anywhere, so
     /// this is unused,
-    #[allow(unused)]
+    #[allow(dead_code)]
     pub fn mix_key_and_hash(
         &mut self,
         input_key_material: KexAlgo::Secret,

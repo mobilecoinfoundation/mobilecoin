@@ -18,7 +18,7 @@ pub struct FogUntrustedLedgerGrpcClient {
     tx_out_client: ledger_grpc::FogUntrustedTxOutApiClient,
     creds: BasicCredentials,
     grpc_retry_config: GrpcRetryConfig,
-    #[allow(unused)]
+    #[allow(dead_code)]
     logger: Logger,
 }
 
