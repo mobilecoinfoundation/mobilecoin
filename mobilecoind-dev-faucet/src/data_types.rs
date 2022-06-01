@@ -28,7 +28,7 @@ pub struct JsonFaucetStatus {
     pub queue_depths: HashMap<JsonU64, JsonU64>,
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct JsonReceiverTxReceipt {
     pub recipient: JsonPublicAddress,
     pub tx_public_key: String,
