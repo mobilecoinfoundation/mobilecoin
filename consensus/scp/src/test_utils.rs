@@ -2,8 +2,9 @@
 
 //! Utilities for Stellar Consensus Protocol tests.
 
-// Not all integration tests use all of the common code. https://github.com/rust-lang/rust/issues/46379
-#![allow(unused)]
+// We allow dead code because not all integration tests use all of the common
+// code. https://github.com/rust-lang/rust/issues/46379
+#![allow(dead_code)]
 
 use crate::{core_types::Value, slot::Slot, QuorumSet, SlotIndex};
 use mc_common::{logger::Logger, NodeID, ResponderId};
