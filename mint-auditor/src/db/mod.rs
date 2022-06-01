@@ -736,10 +736,7 @@ mod tests {
 
         // Over burn once again, see that counter increases.
         let tx_out1 = TxOut::new(
-            Amount {
-                value: 50000,
-                token_id: token_id1,
-            },
+            Amount::new(50000, token_id1),
             &burn_recipient,
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
@@ -747,10 +744,7 @@ mod tests {
         .unwrap();
 
         let tx_out2 = TxOut::new(
-            Amount {
-                value: 2,
-                token_id: token_id2,
-            },
+            Amount::new(2, token_id2),
             &burn_recipient,
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
