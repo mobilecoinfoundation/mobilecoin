@@ -3,8 +3,8 @@
 This is a standalone http server which provides faucet functionality.
 * Backed by [mobilecoind](../mobilecoind) -- similar to [mobilecoind-json](../mobilecoind-json), it relays requests to a separate mobilecoind instance, and is itself stateless
 * No captcha or rate limiting. This is appropriate for developers running automated tests in a dev cluster.
-* TODO: We could make it require an HTTP Authorization header
-* Developers can request any token id for testing
+* Any token id can be requested for testing
+* TODO: HTTP Authorization headers may be added in the future
 
 ### Routes
 
