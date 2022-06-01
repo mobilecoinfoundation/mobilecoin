@@ -1954,21 +1954,15 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let block_infos = self.get_last_block_infos();
         // choose the block info which is latest in terms of block index (we may be
         // isolated from some of the nodes)
-        let last_block_info = if let Some(latest) =
-            block_infos.into_iter().reduce(|a, b| -> BlockInfo {
-                if a.block_index >= b.block_index {
-                    a
-                } else {
-                    b
-                }
-            }) {
-            latest
-        } else {
-            return Err(RpcStatus::with_message(
-                RpcStatusCode::INTERNAL,
-                "no peers reachable".to_owned(),
-            ));
-        };
+        let last_block_info =
+            if let Some(latest) = block_infos.into_iter().max_by_key(|info| info.block_index) {
+                latest
+            } else {
+                return Err(RpcStatus::with_message(
+                    RpcStatusCode::INTERNAL,
+                    "no peers reachable".to_owned(),
+                ));
+            };
 
         let mut response = mc_mobilecoind_api::GetNetworkStatusResponse::new();
 

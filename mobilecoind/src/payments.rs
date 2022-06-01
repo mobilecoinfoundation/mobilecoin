@@ -209,7 +209,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `inputs` - UTXOs that will be spent by the transaction.
     /// * `outlays` - Output amounts and recipients.
     /// * `last_block_infos` - Last block info responses from the network, for
-    ///   determining fees This should normally come from polling_network_state
+    ///   determining fees. This should normally come from polling_network_state
     /// * `opt_fee` - Transaction fee in picoMOB. If zero, defaults to MIN_FEE.
     /// * `opt_tombstone` - Tombstone block. If zero, sets to default.
     /// * `opt_memo_builder` - Optional memo builder to use instead of the
@@ -337,6 +337,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `monitor_id` - Monitor ID of the inputs to spend.
     /// * `subaddress_index` - Subaddress of the inputs to spend.
     /// * `token_id` - Token id to transact in.
+    /// * `last_block_infos` - Last block info responses from the network, for
+    ///   determining fees. This should normally come from polling_network_state
     /// * `opt_fee` - Optional fee to use. If zero, we will attempt to query the
     ///   network for fee information.
     pub fn generate_optimization_tx(
@@ -466,6 +468,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `token_id` - The token id to transact in.
     /// * `inputs` - UTXOs that will be spent by the transaction.
     /// * `receiver` - The single receiver of the transaction's outputs.
+    /// * `last_block_infos` - Last block info responses from the network, for
+    ///   determining fees. This should normally come from polling_network_state
     /// * `opt_fee` - Transaction fee. If zero, defaults to the highest fee set
     ///   by configured consensus nodes, or the hard-coded FALLBACK_FEE.
     pub fn generate_tx_from_tx_list(
