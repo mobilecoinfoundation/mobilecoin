@@ -4,9 +4,8 @@
 
 use alloc::vec;
 
-use crate::{error::NonceError, impl_sgx_newtype_for_bytestruct, traits::bin2hex};
+use crate::{error::NonceError, impl_sgx_newtype_for_bytestruct};
 use alloc::vec::Vec;
-use binascii::hex2bin;
 use core::{
     convert::{AsRef, Into, TryFrom, TryInto},
     fmt::{Display, Formatter, Result as FmtResult},
@@ -139,15 +138,17 @@ impl FromHex for IasNonce {
             return Err(EncodingError::InvalidInputLength);
         }
         let mut retval = Self::default();
-        hex2bin(s.as_bytes(), &mut retval.0[..])?;
+        hex::decode_to_slice(s, &mut retval.0[..])?;
         Ok(retval)
     }
 }
 
 impl ToHex for IasNonce {
     fn to_hex(&self, dest: &mut [u8]) -> Result<usize, usize> {
-        match bin2hex(self.as_ref(), dest) {
-            Ok(buffer) => Ok(buffer.len()),
+        let bytes = self.as_ref();
+        match hex::encode_to_slice(bytes, dest) {
+            // Return the number of bytes used, per ToHex spec.
+            Ok(()) => Ok(bytes.len() * 2),
             Err(_e) => Err(IAS_NONCE_STR_LENGTH),
         }
     }

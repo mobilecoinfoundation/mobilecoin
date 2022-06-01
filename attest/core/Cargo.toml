@@ -29,11 +29,12 @@ mc-sgx-css = { path = "../../sgx/css" }
 mc-sgx-types = { path = "../../sgx/types" }
 mc-util-encodings = { path = "../../util/encodings" }
 
-binascii = "0.1.2"
+base64 = { version = "0.13", default-features = false, features = ["alloc"] }
 bitflags = "1.2"
 chrono = { version = "0.4.19", default-features = false, features = ["alloc"] }
 digest = "0.10"
 displaydoc = { version = "0.2", default-features = false }
+hex = { version = "0.4", default-features = false, features = ["alloc"]  }
 hex_fmt = "0.3"
 prost = { version = "0.10", default-features = false }
 rjson = "0.3.1"

@@ -61,3 +61,6 @@ pub use crate::{
     traits::*,
     x25519::*,
 };
+
+// Expected format for base64 strings
+pub(crate) const B64_CONFIG: base64::Config = base64::STANDARD;

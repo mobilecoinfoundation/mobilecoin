@@ -14,7 +14,6 @@
 //! code changes in the GrpcFogPubkeyResolver object. It might make this a more
 //! useful diagnostic tool.
 
-use binascii::bin2hex;
 use grpcio::EnvBuilder;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
@@ -271,13 +270,7 @@ fn main() {
         (result.pubkey, result.pubkey_expiry)
     };
 
-    let mut hex_buf = [0u8; 64];
-    bin2hex(
-        CompressedRistrettoPublic::from(&pubkey).as_ref(),
-        &mut hex_buf[..],
-    )
-    .expect("Failed converting to hex");
-    let hex_str = std::str::from_utf8(&hex_buf).unwrap();
+    let hex_str = hex::encode(CompressedRistrettoPublic::from(&pubkey).as_bytes());
 
     // if show-expiry is selected, we show key and expiry, formatted as json
     // else just print the hex bytes of key

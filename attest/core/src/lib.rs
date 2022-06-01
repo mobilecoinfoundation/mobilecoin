@@ -56,3 +56,6 @@ pub use crate::{
 
 /// The IAS version we support
 pub const IAS_VERSION: f64 = 4.0;
+
+// Expected format for base64 strings
+pub(crate) const B64_CONFIG: base64::Config = base64::STANDARD;
