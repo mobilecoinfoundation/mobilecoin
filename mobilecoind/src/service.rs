@@ -24,7 +24,7 @@ use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
-use mc_connection::{BlockchainConnection, UserTxConnection};
+use mc_connection::{BlockInfo, BlockchainConnection, UserTxConnection};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
@@ -210,6 +210,18 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             start_sync_thread,
             logger,
         }
+    }
+
+    // Get last block info objects from network state for our peers
+    // Make a copy to avoid holding RW lock
+    fn get_last_block_infos(&self) -> Vec<BlockInfo> {
+        self.network_state
+            .read()
+            .expect("lock poisoned")
+            .peer_to_block_info()
+            .values()
+            .cloned()
+            .collect()
     }
 
     fn add_monitor_impl(
@@ -881,6 +893,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 request.change_subaddress,
                 &input_list,
                 &outlays,
+                &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
                 None,
@@ -910,6 +923,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 &monitor_id,
                 request.subaddress,
                 TokenId::from(request.token_id),
+                &self.get_last_block_infos(),
                 request.fee,
             )
             .map_err(|err| {
@@ -966,7 +980,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let tx_proposal = self
             .transactions_manager
-            .generate_tx_from_tx_list(&account_key, token_id, &input_list, &receiver, request.fee)
+            .generate_tx_from_tx_list(
+                &account_key,
+                token_id,
+                &input_list,
+                &receiver,
+                &self.get_last_block_infos(),
+                request.fee,
+            )
             .map_err(|err| {
                 rpc_internal_error(
                     "transactions_manager.generate_tx_from_tx_list",
@@ -1079,6 +1100,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 request.change_subaddress,
                 &input_list,
                 &outlays,
+                &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
                 Some(Box::new(memo_builder)),
@@ -1850,6 +1872,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 change_subaddress,
                 &utxos,
                 &outlays,
+                &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
                 None,
@@ -1927,6 +1950,20 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
         let local_block_index = num_blocks - 1;
 
+        // Get LastBlockInfo from our peers
+        let block_infos = self.get_last_block_infos();
+        // choose the block info which is latest in terms of block index (we may be
+        // isolated from some of the nodes)
+        let last_block_info =
+            if let Some(latest) = block_infos.into_iter().max_by_key(|info| info.block_index) {
+                latest
+            } else {
+                return Err(RpcStatus::with_message(
+                    RpcStatusCode::INTERNAL,
+                    "no peers reachable".to_owned(),
+                ));
+            };
+
         let mut response = mc_mobilecoind_api::GetNetworkStatusResponse::new();
 
         response.set_network_highest_block_index(
@@ -1941,6 +1978,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         );
         response.set_local_block_index(local_block_index);
         response.set_is_behind(network_state.is_behind(local_block_index));
+        response.set_last_block_info(last_block_info.into());
 
         Ok(response)
     }

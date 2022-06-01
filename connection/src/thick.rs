@@ -367,7 +367,7 @@ impl<CP: CredentialsProvider> BlockchainConnection for ThickClient<CP> {
     }
 
     fn fetch_block_info(&mut self) -> Result<BlockInfo> {
-        trace_time!(self.logger, "ThickClient::fetch_block_height");
+        trace_time!(self.logger, "ThickClient::fetch_block_info");
 
         let block_info = self.authenticated_attested_call(|this, call_option| {
             this.blockchain_api_client

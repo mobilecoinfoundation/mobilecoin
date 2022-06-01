@@ -9,8 +9,7 @@ use mc_common::{
     HashMap, HashSet,
 };
 use mc_connection::{
-    BlockInfo, BlockchainConnection, ConnectionManager, RetryableBlockchainConnection,
-    RetryableUserTxConnection, UserTxConnection,
+    BlockInfo, BlockchainConnection, ConnectionManager, RetryableUserTxConnection, UserTxConnection,
 };
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_rand::{CryptoRng, RngCore};
@@ -29,7 +28,6 @@ use mc_transaction_std::{
 };
 use mc_util_uri::FogUri;
 use rand::Rng;
-use rayon::prelude::*;
 use std::{
     cmp::{max, Reverse},
     convert::TryFrom,
@@ -131,16 +129,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     }
 }
 
-fn get_block_infos<T: BlockchainConnection + UserTxConnection + 'static>(
-    peer_manager: &ConnectionManager<T>,
-) -> Vec<BlockInfo> {
-    peer_manager
-        .conns()
-        .par_iter()
-        .filter_map(|conn| conn.fetch_block_info(empty()).ok())
-        .collect()
-}
-
 fn get_network_block_version(block_infos: &[BlockInfo]) -> u32 {
     block_infos
         .iter()
@@ -194,6 +182,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         &self,
         token_id: TokenId,
         opt_fee: u64,
+        block_infos: &[BlockInfo],
     ) -> Result<(u64, u32), Error> {
         // Figure out the block_version and fee (involves network round-trips to
         // consensus, unless opt_fee is non-zero
@@ -201,11 +190,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         Ok(if opt_fee != 0 {
             (opt_fee, candidate_block_version)
         } else {
-            let block_infos = get_block_infos(&self.peer_manager);
-            let fee = get_fee(&block_infos, token_id, opt_fee);
+            let fee = get_fee(block_infos, token_id, opt_fee);
             let block_version = max(
                 candidate_block_version,
-                get_network_block_version(&block_infos),
+                get_network_block_version(block_infos),
             );
             (fee, block_version)
         })
@@ -220,6 +208,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `change_subaddress` - Recipient of any change.
     /// * `inputs` - UTXOs that will be spent by the transaction.
     /// * `outlays` - Output amounts and recipients.
+    /// * `last_block_infos` - Last block info responses from the network, for
+    ///   determining fees. This should normally come from polling_network_state
     /// * `opt_fee` - Transaction fee in picoMOB. If zero, defaults to MIN_FEE.
     /// * `opt_tombstone` - Tombstone block. If zero, sets to default.
     /// * `opt_memo_builder` - Optional memo builder to use instead of the
@@ -231,6 +221,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         change_subaddress: u64,
         inputs: &[UnspentTxOut],
         outlays: &[Outlay],
+        last_block_infos: &[BlockInfo],
         opt_fee: u64,
         opt_tombstone: u64,
         opt_memo_builder: Option<Box<dyn MemoBuilder + 'static + Send + Sync>>,
@@ -264,7 +255,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Figure out the block_version and fee (involves network round-trips to
         // consensus, unless opt_fee is non-zero)
-        let (fee, block_version) = self.get_network_fee_and_block_version(token_id, opt_fee)?;
+        let (fee, block_version) =
+            self.get_network_fee_and_block_version(token_id, opt_fee, last_block_infos)?;
 
         // Confirm that we understand this block version
         let block_version =
@@ -345,6 +337,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `monitor_id` - Monitor ID of the inputs to spend.
     /// * `subaddress_index` - Subaddress of the inputs to spend.
     /// * `token_id` - Token id to transact in.
+    /// * `last_block_infos` - Last block info responses from the network, for
+    ///   determining fees. This should normally come from polling_network_state
     /// * `opt_fee` - Optional fee to use. If zero, we will attempt to query the
     ///   network for fee information.
     pub fn generate_optimization_tx(
@@ -352,6 +346,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         monitor_id: &MonitorId,
         subaddress_index: u64,
         token_id: TokenId,
+        last_block_infos: &[BlockInfo],
         opt_fee: u64,
     ) -> Result<TxProposal, Error> {
         let logger = self.logger.new(
@@ -366,7 +361,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Figure out the block_version and fee (involves network round-trips to
         // consensus, unless fee arg is non-zero)
-        let (fee, block_version) = self.get_network_fee_and_block_version(token_id, opt_fee)?;
+        let (fee, block_version) =
+            self.get_network_fee_and_block_version(token_id, opt_fee, last_block_infos)?;
 
         // Make sure we understand this block version
         let block_version =
@@ -472,15 +468,18 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     /// * `token_id` - The token id to transact in.
     /// * `inputs` - UTXOs that will be spent by the transaction.
     /// * `receiver` - The single receiver of the transaction's outputs.
-    /// * `fee` - Transaction fee. If zero, defaults to the highest fee set by
-    ///   configured consensus nodes, or the hard-coded FALLBACK_FEE.
+    /// * `last_block_infos` - Last block info responses from the network, for
+    ///   determining fees. This should normally come from polling_network_state
+    /// * `opt_fee` - Transaction fee. If zero, defaults to the highest fee set
+    ///   by configured consensus nodes, or the hard-coded FALLBACK_FEE.
     pub fn generate_tx_from_tx_list(
         &self,
         account_key: &AccountKey,
         token_id: TokenId,
         inputs: &[UnspentTxOut],
         receiver: &PublicAddress,
-        fee: u64,
+        last_block_infos: &[BlockInfo],
+        opt_fee: u64,
     ) -> Result<TxProposal, Error> {
         let logger = self.logger.new(o!("receiver" => receiver.to_string()));
         log::trace!(logger, "Generating txo list transaction...");
@@ -495,7 +494,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Figure out the block_version and fee (involves network round-trips to
         // consensus, unless fee arg is non-zero)
-        let (fee, block_version) = self.get_network_fee_and_block_version(token_id, fee)?;
+        let (fee, block_version) =
+            self.get_network_fee_and_block_version(token_id, opt_fee, last_block_infos)?;
 
         // Make sure we understand this block version
         let block_version =
