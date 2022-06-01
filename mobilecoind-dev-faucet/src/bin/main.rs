@@ -133,7 +133,7 @@ impl State {
         let monitor_public_address = monitor_printable_wrapper.get_public_address();
 
         // Get the network minimum fees and compute faucet amounts
-        let faucet_amounts = {
+        let minimum_fees = {
             let mut result = HashMap::<TokenId, u64>::default();
 
             let resp = mobilecoind_api_client
@@ -141,17 +141,24 @@ impl State {
                 .map_err(|err| format!("Failed getting network status: {}", err))?;
 
             for (k, v) in resp.get_last_block_info().minimum_fees.iter() {
-                result.insert(k.into(), config.amount_factor * v);
+                result.insert(k.into(), *v);
             }
 
             result
         };
+
+        // The faucet amount for each token id is minimum_fee * config.amount_factor
+        let faucet_amounts: HashMap<TokenId, u64> = minimum_fees
+            .iter()
+            .map(|(token_id, fee)| (*token_id, config.amount_factor * fee))
+            .collect();
 
         // Start background worker, which splits txouts in advance
         let worker = Worker::new(
             mobilecoind_api_client.clone(),
             monitor_id.clone(),
             monitor_public_address.clone(),
+            minimum_fees,
             faucet_amounts.clone(),
             config.target_queue_depth,
             Duration::from_millis(config.worker_poll_period_ms),

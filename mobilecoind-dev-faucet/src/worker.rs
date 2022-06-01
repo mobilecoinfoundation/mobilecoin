@@ -129,6 +129,7 @@ impl TokenStateReceiver {
                     };
                 }
                 Err(mpsc::error::TryRecvError::Disconnected) => {
+                    // This most likely means the worker thread has died
                     return Err("internal error".to_string());
                 }
             }
@@ -178,6 +179,7 @@ impl Worker {
     /// * monitor_id: The monitor id for the account we are using
     /// * public_address: The public address of our monitor id, used for
     ///   self-payments
+    /// * minimum_fees: The minimum fees for each token we are interested in
     /// * faucet_amounts: The target value for UTXOs of each token we are
     ///   interested in
     /// * target_queue_depth: The target depth of the queue for each token id If
@@ -190,6 +192,7 @@ impl Worker {
         client: MobilecoindApiClient,
         monitor_id: Vec<u8>,
         public_address: PublicAddress,
+        minimum_fees: HashMap<TokenId, u64>,
         faucet_amounts: HashMap<TokenId, u64>,
         target_queue_depth: usize,
         worker_poll_period: Duration,
@@ -199,7 +202,10 @@ impl Worker {
         let mut receivers = HashMap::<TokenId, TokenStateReceiver>::default();
 
         for (token_id, value) in faucet_amounts.iter() {
-            let (state, receiver) = WorkerTokenState::new(*token_id, *value);
+            let minimum_fee_value = minimum_fees
+                .get(token_id)
+                .unwrap_or_else(|| panic!("Missing minimum fee for {}", token_id));
+            let (state, receiver) = WorkerTokenState::new(*token_id, *minimum_fee_value, *value);
             worker_token_states.push(state);
             receivers.insert(*token_id, receiver);
         }
@@ -309,6 +315,8 @@ impl Drop for Worker {
 struct WorkerTokenState {
     // The token id being tracked
     token_id: TokenId,
+    // the minimum fee value for this token id
+    minimum_fee_value: u64,
     // The target value of UTXOS for this token id
     target_value: u64,
     // The most recently known set of UTXOS for this token id
@@ -330,10 +338,22 @@ struct WorkerTokenState {
 }
 
 impl WorkerTokenState {
-    // Create a new worker token state, with a given token id and target value.
-    // Returns the channels to be passed to other thread, including the receiver
-    // for new UtxoRecords, and the "funds depleted" flag
-    fn new(token_id: TokenId, target_value: u64) -> (WorkerTokenState, TokenStateReceiver) {
+    // Create a new WorkerTokenState and matching TokenStateReceiver.
+    //
+    // Arguments:
+    // * token_id: The token id this state is tracking
+    // * minimum_fee_value: The minimum fee for this token id
+    // * target_value: The target value of faucet utxos for this token id
+    //
+    // Returns:
+    // * WorkerTokenState, which is held by the worker which calls poll periodically
+    // * TokenStateReceiver, which is held by the worker thread handle, which can
+    //   get the output stream of the worker, for this token id.
+    fn new(
+        token_id: TokenId,
+        minimum_fee_value: u64,
+        target_value: u64,
+    ) -> (WorkerTokenState, TokenStateReceiver) {
         let (sender, receiver) = mpsc::unbounded_channel::<UtxoRecord>();
 
         let funds_depleted_flag = Arc::new(AtomicBool::default());
@@ -345,6 +365,7 @@ impl WorkerTokenState {
         (
             Self {
                 token_id,
+                minimum_fee_value,
                 target_value,
                 known_utxos: Default::default(),
                 sender,
@@ -362,12 +383,12 @@ impl WorkerTokenState {
 
     // Poll a given token for activity.
     //
-    // (1) Get the UTXO list for this token, checks it for new UTXOs, and
-    // sends things to the channel if we do find new things.
-    // (2) Check up on old things, checking if they were eventually submitted
+    // (1) Check up on old utxos, checking if they were eventually submitted
     // or not, and if those submissions were successful. If their submissions
     // resolve, it purges them from its cache so that they can be found again
     // and resubmitted if necessary.
+    // (2) Get the UTXO list for this token, checks it for new UTXOs, and
+    // sends things to the channel if we do find new things.
     // (3) Check if we have enough pre-split Txos, and if we don't, check
     // if we already have an in-flight Tx to try to fix this. If not then it builds
     // and submits a new splitting Tx.
@@ -493,7 +514,7 @@ impl WorkerTokenState {
                 .iter()
                 .map(|utxo| utxo.value)
                 .sum::<u64>()
-                < self.target_value * (MAX_OUTPUTS - 1)
+                < self.target_value * (MAX_OUTPUTS - 1) + self.minimum_fee_value
             {
                 self.funds_depleted.store(true, Ordering::SeqCst);
                 log::trace!(logger, "Funds depleted on {}", self.token_id);
