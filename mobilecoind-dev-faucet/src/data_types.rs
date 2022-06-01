@@ -4,11 +4,6 @@
 
 use mc_api::external::PublicAddress;
 use mc_util_serial::JsonU64;
-use rocket::{
-    http::Status,
-    response::{self, content, Responder},
-    Request,
-};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -20,9 +15,16 @@ pub struct JsonFaucetRequest {
 
 #[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonFaucetStatus {
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub err_str: Option<String>,
+    #[serde(skip_serializing_if = "String::is_empty")]
     pub b58_address: String,
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub faucet_amounts: HashMap<JsonU64, JsonU64>,
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub balances: HashMap<JsonU64, JsonU64>,
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub queue_depths: HashMap<JsonU64, JsonU64>,
 }
 
@@ -94,38 +96,16 @@ pub struct JsonSubmitTxResponse {
     pub receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
 }
 
-impl From<&mc_mobilecoind_api::SubmitTxResponse> for JsonSubmitTxResponse {
-    fn from(src: &mc_mobilecoind_api::SubmitTxResponse) -> Self {
+impl From<mc_mobilecoind_api::SubmitTxResponse> for JsonSubmitTxResponse {
+    fn from(mut src: mc_mobilecoind_api::SubmitTxResponse) -> Self {
         Self {
             success: true,
             err_str: None,
             receiver_tx_receipt_list: src
-                .get_receiver_tx_receipt_list()
+                .take_receiver_tx_receipt_list()
                 .iter()
                 .map(JsonReceiverTxReceipt::from)
                 .collect(),
         }
-    }
-}
-
-impl From<String> for JsonSubmitTxResponse {
-    fn from(src: String) -> Self {
-        Self {
-            success: false,
-            err_str: Some(src),
-            receiver_tx_receipt_list: Default::default(),
-        }
-    }
-}
-
-// Implement rocket::Responder for JsonSubmitTxResponse
-// If we don't do this then it is very difficult to respond to errors with
-// a Json object, because we cannot implement conversions on the
-// rocket::Json<...> object.
-impl<'r> Responder<'r, 'static> for JsonSubmitTxResponse {
-    fn respond_to(self, req: &'r Request) -> response::Result<'static> {
-        let string = serde_json::to_string(&self).map_err(|_e| Status::InternalServerError)?;
-
-        content::RawJson(string).respond_to(req)
     }
 }

@@ -178,108 +178,144 @@ impl State {
             logger,
         })
     }
+
+    // Handle a "post" to the faucet, which requests a payment from the faucet.
+    // Returns either the mobilecoind success response or an error string.
+    async fn handle_post(
+        &self,
+        req: &JsonFaucetRequest,
+    ) -> Result<mc_mobilecoind_api::SubmitTxResponse, String> {
+        let printable_wrapper = PrintableWrapper::b58_decode(req.b58_address.clone())
+            .map_err(|err| format!("Could not decode b58 address: {}", err))?;
+
+        let public_address = if printable_wrapper.has_public_address() {
+            printable_wrapper.get_public_address()
+        } else {
+            return Err(format!(
+                "b58 address '{}' is not a public address",
+                req.b58_address
+            ));
+        };
+
+        let token_id = TokenId::from(req.token_id.unwrap_or_default().as_ref());
+
+        let utxo_record = self.worker.get_utxo(token_id)?;
+        log::trace!(
+            self.logger,
+            "Got a UTXO: key_image = {:?}, value = {}",
+            KeyImage::try_from(utxo_record.utxo.get_key_image()).unwrap(),
+            utxo_record.utxo.value
+        );
+
+        // Generate a Tx sending this specific TxOut, less fees
+        let mut req = mc_mobilecoind_api::GenerateTxFromTxOutListRequest::new();
+        req.set_account_key((&self.account_key).into());
+        req.set_input_list(vec![utxo_record.utxo].into());
+        req.set_receiver(public_address.clone());
+        req.set_token_id(*token_id);
+
+        let resp = self
+            .mobilecoind_api_client
+            .generate_tx_from_tx_out_list_async(&req)
+            .map_err(|err| format!("Failed to build Tx: {}", err))?
+            .await
+            .map_err(|err| format!("Build Tx ended in error: {}", err))?;
+
+        // Submit the tx proposal
+        let mut req = mc_mobilecoind_api::SubmitTxRequest::new();
+        req.set_tx_proposal(resp.get_tx_proposal().clone());
+
+        let resp = self
+            .mobilecoind_api_client
+            .submit_tx_async(&req)
+            .map_err(|err| format!("Failed to submit Tx: {}", err))?
+            .await
+            .map_err(|err| format!("Submit Tx ended in error: {}", err))?;
+
+        // Tell the worker that this utxo was submitted, so that it can track and
+        // recycle the utxo if this payment fails
+        let _ = utxo_record.sender.send(resp.clone());
+        Ok(resp)
+    }
+
+    // Handle a "get status" request to the faucet.
+    // Returns either the status or an error string.
+    async fn handle_status(&self) -> Result<JsonFaucetStatus, String> {
+        // Get up-to-date balances for all the tokens we are tracking
+        let mut balances: HashMap<TokenId, u64> = Default::default();
+        for (token_id, _) in self.faucet_amounts.iter() {
+            let mut req = mc_mobilecoind_api::GetBalanceRequest::new();
+            req.set_monitor_id(self.monitor_id.clone());
+            req.set_token_id(**token_id);
+
+            let resp = self
+                .mobilecoind_api_client
+                .get_balance_async(&req)
+                .map_err(|err| {
+                    format!(
+                        "Failed to check balance for token id '{}': {}",
+                        token_id, err
+                    )
+                })?
+                .await
+                .map_err(|err| {
+                    format!(
+                        "Balance check request for token id '{}' ended in error: {}",
+                        token_id, err
+                    )
+                })?;
+            balances.insert(*token_id, resp.balance);
+        }
+
+        let queue_depths = self.worker.get_queue_depths();
+
+        Ok(JsonFaucetStatus {
+            success: true,
+            err_str: None,
+            b58_address: self.monitor_b58_address.clone(),
+            faucet_amounts: self
+                .faucet_amounts
+                .iter()
+                .map(convert_balance_pair)
+                .collect(),
+            balances: balances.iter().map(convert_balance_pair).collect(),
+            queue_depths: queue_depths
+                .into_iter()
+                .map(|(token_id, depth)| (JsonU64(*token_id), JsonU64(depth as u64)))
+                .collect(),
+        })
+    }
 }
 
-/// Request payment from the faucet
+/// Request payment from the faucet, and map the rust result onto json for
+/// rocket appropriately
 #[post("/", format = "json", data = "<req>")]
 async fn post(
     state: &rocket::State<State>,
     req: Json<JsonFaucetRequest>,
-) -> Result<Json<JsonSubmitTxResponse>, JsonSubmitTxResponse> {
-    let printable_wrapper = PrintableWrapper::b58_decode(req.b58_address.clone())
-        .map_err(|err| format!("Could not decode b58 address: {}", err))?;
-
-    let public_address = if printable_wrapper.has_public_address() {
-        printable_wrapper.get_public_address()
-    } else {
-        return Err(format!("b58 address '{}' is not a public address", req.b58_address).into());
-    };
-
-    let token_id = TokenId::from(req.token_id.unwrap_or_default().as_ref());
-
-    let utxo_record = state.worker.get_utxo(token_id)?;
-    log::trace!(
-        state.logger,
-        "Got a UTXO: key_image = {:?}, value = {}",
-        KeyImage::try_from(utxo_record.utxo.get_key_image()).unwrap(),
-        utxo_record.utxo.value
-    );
-
-    // Generate a Tx sending this specific TxOut, less fees
-    let mut req = mc_mobilecoind_api::GenerateTxFromTxOutListRequest::new();
-    req.set_account_key((&state.account_key).into());
-    req.set_input_list(vec![utxo_record.utxo].into());
-    req.set_receiver(public_address.clone());
-    req.set_token_id(*token_id);
-
-    let resp = state
-        .mobilecoind_api_client
-        .generate_tx_from_tx_out_list_async(&req)
-        .map_err(|err| format!("Failed to build Tx: {}", err))?
-        .await
-        .map_err(|err| format!("Build Tx ended in error: {}", err))?;
-
-    // Submit the tx proposal
-    let mut req = mc_mobilecoind_api::SubmitTxRequest::new();
-    req.set_tx_proposal(resp.get_tx_proposal().clone());
-
-    let resp = state
-        .mobilecoind_api_client
-        .submit_tx_async(&req)
-        .map_err(|err| format!("Failed to submit Tx: {}", err))?
-        .await
-        .map_err(|err| format!("Submit Tx ended in error: {}", err))?;
-
-    // Tell the worker that this utxo was submitted, so that it can track and
-    // recycle the utxo if this payment fails
-    let _ = utxo_record.sender.send(resp.clone());
-    Ok(Json(JsonSubmitTxResponse::from(&resp)))
+) -> Json<JsonSubmitTxResponse> {
+    Json(match state.handle_post(&req).await {
+        Ok(resp) => resp.into(),
+        Err(err_str) => JsonSubmitTxResponse {
+            success: false,
+            err_str: Some(err_str),
+            ..Default::default()
+        },
+    })
 }
 
-/// Request status of the faucet
+/// Request status of the faucet, and map the rust result onto json for rocket
+/// apporpriately
 #[get("/status")]
-async fn status(state: &rocket::State<State>) -> Result<Json<JsonFaucetStatus>, String> {
-    // Get up-to-date balances for all the tokens we are tracking
-    let mut balances: HashMap<TokenId, u64> = Default::default();
-    for (token_id, _) in state.faucet_amounts.iter() {
-        let mut req = mc_mobilecoind_api::GetBalanceRequest::new();
-        req.set_monitor_id(state.monitor_id.clone());
-        req.set_token_id(**token_id);
-
-        let resp = state
-            .mobilecoind_api_client
-            .get_balance_async(&req)
-            .map_err(|err| {
-                format!(
-                    "Failed to check balance for token id '{}': {}",
-                    token_id, err
-                )
-            })?
-            .await
-            .map_err(|err| {
-                format!(
-                    "Balance check request for token id '{}' ended in error: {}",
-                    token_id, err
-                )
-            })?;
-        balances.insert(*token_id, resp.balance);
-    }
-
-    let queue_depths = state.worker.get_queue_depths();
-
-    Ok(Json(JsonFaucetStatus {
-        b58_address: state.monitor_b58_address.clone(),
-        faucet_amounts: state
-            .faucet_amounts
-            .iter()
-            .map(convert_balance_pair)
-            .collect(),
-        balances: balances.iter().map(convert_balance_pair).collect(),
-        queue_depths: queue_depths
-            .into_iter()
-            .map(|(token_id, depth)| (JsonU64(*token_id), JsonU64(depth as u64)))
-            .collect(),
-    }))
+async fn status(state: &rocket::State<State>) -> Json<JsonFaucetStatus> {
+    Json(match state.handle_status().await {
+        Ok(resp) => resp,
+        Err(err_str) => JsonFaucetStatus {
+            success: false,
+            err_str: Some(err_str),
+            ..Default::default()
+        },
+    })
 }
 
 fn convert_balance_pair(pair: (&TokenId, &u64)) -> (JsonU64, JsonU64) {
