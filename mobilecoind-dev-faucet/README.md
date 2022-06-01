@@ -24,7 +24,8 @@ JSON object, `success` will be `true` if it managed to submit a payment, and the
 be mobilecoind "Receiver Tx receipt" for the submitted transaction. If `success` is `false`
 then `err_str` will describe the problem.
 
-You may GET to `/status`, and the faucet will respond with a json object:
+GET requests to `/status`, will respond with a json object with the
+following information:
 
 ```
 {
