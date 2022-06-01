@@ -197,17 +197,13 @@ fn cmd_get_block_audit_data(
         .expect("Could not get db connection");
 
     transaction(&conn, |conn| -> Result<(), Error> {
+        let last_synced_block_index = BlockAuditData::last_synced_block_index(conn)?;
         let block_index = block_index
-            .or_else(|| {
-                BlockAuditData::last_synced_block_index(conn)
-                    .expect("Could not get last synced block index")
-            })
-            .expect("No blocks synced");
+            .or(last_synced_block_index)
+            .ok_or_else(|| Error::Other("Failed figuring out the last block index".into()))?;
 
-        let audit_data =
-            BlockAuditData::get(conn, block_index).expect("Could not get audit data for block");
-        let balance_map = BlockBalance::get_balances_for_block(conn, block_index)
-            .expect("Could not get balances for block");
+        let audit_data = BlockAuditData::get(conn, block_index)?;
+        let balance_map = BlockBalance::get_balances_for_block(conn, block_index)?;
 
         if json {
             let obj = json!({
@@ -216,7 +212,8 @@ fn cmd_get_block_audit_data(
             });
             println!(
                 "{}",
-                serde_json::to_string(&obj).expect("failed serializing json")
+                serde_json::to_string(&obj)
+                    .map_err(|err| Error::Other(format!("failed serializing json: {}", err)))?
             );
         } else {
             println!("Block index: {}", block_index);

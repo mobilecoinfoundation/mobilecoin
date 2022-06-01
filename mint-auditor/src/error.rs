@@ -37,6 +37,9 @@ pub enum Error {
 
     /// R2d2 pool: {0}
     R2d2Pool(diesel::r2d2::PoolError),
+
+    /// Other: {0}
+    Other(String),
 }
 
 impl From<IoError> for Error {
