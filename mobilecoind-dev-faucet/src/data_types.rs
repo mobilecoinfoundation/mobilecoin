@@ -13,7 +13,7 @@ pub struct JsonFaucetRequest {
     pub token_id: Option<JsonU64>,
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct JsonFaucetStatus {
     pub success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
