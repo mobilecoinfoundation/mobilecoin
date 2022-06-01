@@ -1,5 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+// We allow dead code because not all integration tests use all of the common
+// code. https://github.com/rust-lang/rust/issues/46379
+#![allow(dead_code)]
+
 use mc_account_keys::PublicAddress;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{tx::Tx, BlockVersion};
@@ -35,7 +39,6 @@ pub fn create_test_tx(block_version: BlockVersion) -> (Tx, LedgerDB) {
     (tx, ledger)
 }
 
-#[allow(unused)]
 pub fn create_test_tx_with_amount(
     block_version: BlockVersion,
     amount: u64,
@@ -44,7 +47,6 @@ pub fn create_test_tx_with_amount(
     create_test_tx_with_amount_and_comparer::<DefaultTxOutputsOrdering>(block_version, amount, fee)
 }
 
-#[allow(unused)]
 pub fn create_test_tx_with_amount_and_comparer<O: TxOutputsOrdering>(
     block_version: BlockVersion,
     amount: u64,

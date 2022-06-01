@@ -52,7 +52,7 @@ pub struct RngStore<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> {
     /// Desired capacity for the oblivious map
     desired_capacity: u64,
     /// Logger object
-    #[allow(unused)]
+    #[allow(dead_code)]
     logger: Logger,
 }
 

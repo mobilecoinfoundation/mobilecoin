@@ -15,7 +15,7 @@ pub struct FogBlockGrpcClient {
     blocks_client: FogBlockApiClient,
     creds: BasicCredentials,
     grpc_retry_config: GrpcRetryConfig,
-    #[allow(unused)]
+    #[allow(dead_code)]
     logger: Logger,
 }
 

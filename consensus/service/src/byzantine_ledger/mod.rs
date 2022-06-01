@@ -326,42 +326,26 @@ mod tests {
     use mc_crypto_keys::{DistinguishedEncoding, Ed25519Private};
     use mc_ledger_db::Ledger;
     use mc_peers::{MockBroadcast, ThreadedBroadcaster};
-    use mc_peers_test_utils::MockPeerConnection;
+    use mc_peers_test_utils::{test_peer_uri_with_key, MockPeerConnection};
     use mc_transaction_core::{Block, BlockContents, BlockVersion, TokenId};
     use mc_transaction_core_test_utils::{
         create_ledger, create_mint_config_tx_and_signers, create_mint_tx, create_transaction,
         initialize_ledger, mint_config_tx_to_validated, AccountKey,
     };
     use mc_util_from_random::FromRandom;
-    use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri, ConsensusPeerUri};
+    use mc_util_uri::{ConnectionUri, ConsensusPeerUri};
     use rand::{rngs::StdRng, SeedableRng};
     use serial_test::serial;
     use std::{
         collections::BTreeSet,
         convert::TryInto,
         iter::FromIterator,
-        str::FromStr,
         sync::{Arc, Mutex},
         time::Instant,
     };
 
     // Run these tests with a particular block version
     const BLOCK_VERSION: BlockVersion = BlockVersion::ZERO;
-
-    fn test_peer_uri(node_id: u32, pubkey: String) -> PeerUri {
-        PeerUri::from_str(&format!(
-            "mcp://node{}.test.mobilecoin.com/?consensus-msg-key={}",
-            node_id, pubkey,
-        ))
-        .expect("Could not construct uri")
-    }
-
-    fn test_node_id(uri: PeerUri, msg_signer_key: &Ed25519Pair) -> NodeID {
-        NodeID {
-            responder_id: uri.responder_id().unwrap(),
-            public_key: msg_signer_key.public_key(),
-        }
-    }
 
     // Get the local node's NodeID and message signer key.
     pub fn get_local_node_config(node_id: u32) -> (NodeID, ConsensusPeerUri, Arc<Ed25519Pair>) {
@@ -372,7 +356,7 @@ mod tests {
         )
         .unwrap();
         let signer_key = Ed25519Pair::from(secret_key);
-        let node_uri = test_peer_uri(node_id, hex::encode(&signer_key.public_key()));
+        let node_uri = test_peer_uri_with_key(node_id, &signer_key.public_key());
         let node_id = node_uri.node_id().unwrap();
 
         (node_id, node_uri, Arc::new(signer_key))
@@ -408,8 +392,11 @@ mod tests {
             .iter()
             .map(|peer_id| {
                 let signer_key = Ed25519Pair::from_random(rng);
-                let uri = test_peer_uri(*peer_id, hex::encode(&signer_key.public_key()));
-                let node_id = test_node_id(uri.clone(), &signer_key);
+                let uri = test_peer_uri_with_key(*peer_id, &signer_key.public_key());
+                let node_id = NodeID {
+                    responder_id: uri.responder_id().unwrap(),
+                    public_key: signer_key.public_key(),
+                };
                 let quorum_set = QuorumSet::empty();
                 PeerConfig::new(node_id, uri, quorum_set, signer_key)
             })
