@@ -2271,6 +2271,7 @@ dependencies = [
  "curve25519-dalek",
  "displaydoc",
  "hex",
+ "hex_fmt",
  "hkdf",
  "mc-account-keys",
  "mc-crypto-keys",
