@@ -2,7 +2,7 @@
 CREATE TABLE block_audit_data (
     -- Diesel requires having a primary key and sqlite doesn't allow 64 bit primay keys, so even though
     -- we would've wanted to use the block_index for that we can't.
-    id INT PRIMARY KEY,
+    id INT NOT NULL PRIMARY KEY,
     block_index UNSIGNED BIGINT NOT NULL
     -- Future revision would add gnosis safe data here
 );
@@ -12,7 +12,7 @@ CREATE UNIQUE INDEX idx__block_audit_data__block_index ON block_audit_data(block
 CREATE TABLE block_balance (
     -- Diesel requires having a primary key and sqlite doesn't allow 64 bit primay keys, so even though
     -- we would've wanted to use the block_index for that we can't.
-    id INT PRIMARY KEY,
+    id INT NOT NULL PRIMARY KEY,
     block_index UNSIGNED BIGINT NOT NULL,
     token_id UNSIGNED BIGINT NOT NULL,
     balance UNSIGNED BIGINT NOT NULL,

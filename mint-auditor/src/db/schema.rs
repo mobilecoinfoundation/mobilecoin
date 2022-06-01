@@ -1,13 +1,13 @@
 table! {
     block_audit_data (id) {
-        id -> Nullable<Integer>,
+        id -> Integer,
         block_index -> BigInt,
     }
 }
 
 table! {
     block_balance (id) {
-        id -> Nullable<Integer>,
+        id -> Integer,
         block_index -> BigInt,
         token_id -> BigInt,
         balance -> BigInt,
