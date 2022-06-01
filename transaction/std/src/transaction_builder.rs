@@ -280,6 +280,19 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// authenticate the contents of destination memos, which are otherwise
     /// unauthenticated.
     ///
+    /// CHANGE OUTPUTS FOR GIFT CODES:
+    /// -------------------------------
+    /// Change outputs can track info about funding, redeeming or cancelling
+    /// gift codes via memos which can are documented in transaction/std/memo
+    ///
+    /// A gift code is funded with add_gift_code_output. Any value remaining +
+    /// the optional GiftCodeFundingMemo is written to the change output
+    ///
+    /// For gift code redemption & cancellation, the amount of the gift code is
+    /// sent to the change address of the caller. In these cases the amount
+    /// passed to this method should be: amount = gift_code_amount - fee.
+    /// -------------------------------
+    ///
     /// # Arguments
     /// * `amount` - The amount of this change output.
     /// * `change_destination` - An object including both a primary address and
@@ -310,6 +323,64 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
                 if block_version.e_memo_feature_is_supported() {
                     Some(mb.make_memo_for_change_output(amount, change_destination, memo_ctxt))
                         .transpose()
+                } else {
+                    Ok(None)
+                }
+            },
+            rng,
+        );
+        // Put the memo builder back
+        self.memo_builder = Some(mb);
+        result
+    }
+
+    /// Add an output to the reserved subaddress for gift codes
+    ///
+    /// The gift code subaddress is meant for reserving TxOuts for usage
+    /// at a later time. This method creates outputs to that address in
+    /// a way that Fog can track by creating a Fog hint for the primary
+    /// account. This allows Fog users who send TxOuts to this address to
+    /// track reserved TxOuts and if they desire, let other Fog users find
+    /// these TxOuts and spend them at a later time. This enables
+    /// functionality like sending "gift codes" to individuals who may not
+    /// have a MobileCoin account and "red envelopes".
+    ///
+    /// The caller should ensure that the math adds up, and that
+    /// change_value + gift_code_amount + fee = total_input_value
+    ///
+    /// # Arguments
+    /// * `amount` - The amount of the "gift code"
+    /// * `reserved_subaddreses` - A ReservedSubaddresses object which
+    /// provides all standard reserved addresses for the caller. This is
+    /// used to set the caller's primary address as the Fog hint address
+    /// and set their gift code subaddresses as the TxOut recipient.
+    /// * `rng` - RNG used to generate blinding for commitment
+    pub fn add_gift_code_output<RNG: CryptoRng + RngCore>(
+        &mut self,
+        amount: Amount,
+        reserved_subaddresses: &ReservedSubaddresses,
+        rng: &mut RNG,
+    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+        // Taking self.memo_builder here means that we can call functions on &mut self,
+        // and pass them something that has captured the memo builder.
+        // Calling take() on Option<Box> is just moving a pointer.
+        let mut mb = self
+            .memo_builder
+            .take()
+            .expect("memo builder is missing, this is a logic error");
+        let block_version = self.block_version;
+        let result = self.add_output_with_fog_hint_address(
+            amount,
+            &reserved_subaddresses.gift_code_subaddress,
+            &reserved_subaddresses.primary_address,
+            |memo_ctxt| {
+                if block_version.e_memo_feature_is_supported() {
+                    Some(mb.make_memo_for_output(
+                        amount,
+                        &reserved_subaddresses.gift_code_subaddress,
+                        memo_ctxt,
+                    ))
+                    .transpose()
                 } else {
                     Ok(None)
                 }
@@ -3202,14 +3273,10 @@ pub mod transaction_builder_tests {
             funding_transaction_builder.add_input(funding_input_credentials);
 
             // Fund gift code TxOut
-            // FIXME #2003: This should be `.add_gift_code_output` or something, so that
-            // it goes to the gift code subaddress, but the fog hint is using the
-            // default subaddress
-            // (or, make a special builder for gift code funding transactions?)
             funding_transaction_builder
-                .add_output(
+                .add_gift_code_output(
                     funding_output_amount,
-                    &sender_reserved_destinations.gift_code_subaddress,
+                    &sender_reserved_destinations,
                     &mut rng,
                 )
                 .unwrap();
