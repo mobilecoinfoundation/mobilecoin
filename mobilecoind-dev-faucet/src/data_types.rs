@@ -7,7 +7,7 @@ use mc_util_serial::JsonU64;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct JsonFaucetRequest {
     pub b58_address: String,
     pub token_id: Option<JsonU64>,
