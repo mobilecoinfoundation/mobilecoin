@@ -180,7 +180,7 @@ impl Worker {
     /// * public_address: The public address of our monitor id, used for
     ///   self-payments
     /// * minimum_fees: The minimum fees for each token we are interested in
-    /// * faucet_amounts: The target value for UTXOs of each token we are
+    /// * target_amounts: The target value for UTXOs of each token we are
     ///   interested in
     /// * target_queue_depth: The target depth of the queue for each token id If
     ///   a queue falls below this number the worker attempts a split Tx.
@@ -193,7 +193,7 @@ impl Worker {
         monitor_id: Vec<u8>,
         public_address: PublicAddress,
         minimum_fees: HashMap<TokenId, u64>,
-        faucet_amounts: HashMap<TokenId, u64>,
+        target_amounts: HashMap<TokenId, u64>,
         target_queue_depth: usize,
         worker_poll_period: Duration,
         logger: &Logger,
@@ -201,7 +201,7 @@ impl Worker {
         let mut worker_token_states = Vec::<WorkerTokenState>::default();
         let mut receivers = HashMap::<TokenId, TokenStateReceiver>::default();
 
-        for (token_id, value) in faucet_amounts.iter() {
+        for (token_id, value) in target_amounts.iter() {
             let minimum_fee_value = minimum_fees
                 .get(token_id)
                 .unwrap_or_else(|| panic!("Missing minimum fee for {}", token_id));

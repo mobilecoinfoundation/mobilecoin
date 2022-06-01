@@ -76,7 +76,7 @@ struct State {
     pub monitor_b58_address: String,
     /// The amounts the faucet attempts to pay for each token id
     /// This is initialized to network fee * amount factor at startup
-    pub faucet_amounts: HashMap<TokenId, u64>,
+    pub faucet_payout_amounts: HashMap<TokenId, u64>,
     /// The grpcio thread pool
     #[allow(unused)]
     pub grpc_env: Arc<grpcio::Environment>,
@@ -147,8 +147,8 @@ impl State {
             result
         };
 
-        // The faucet amount for each token id is minimum_fee * config.amount_factor
-        let faucet_amounts: HashMap<TokenId, u64> = minimum_fees
+        // The payout amount for each token id is minimum_fee * config.amount_factor
+        let faucet_payout_amounts: HashMap<TokenId, u64> = minimum_fees
             .iter()
             .map(|(token_id, fee)| (*token_id, config.amount_factor * fee))
             .collect();
@@ -159,7 +159,7 @@ impl State {
             monitor_id.clone(),
             monitor_public_address.clone(),
             minimum_fees,
-            faucet_amounts.clone(),
+            faucet_payout_amounts.clone(),
             config.target_queue_depth,
             Duration::from_millis(config.worker_poll_period_ms),
             logger,
@@ -172,7 +172,7 @@ impl State {
             account_key,
             monitor_id,
             monitor_b58_address,
-            faucet_amounts,
+            faucet_payout_amounts,
             grpc_env,
             worker,
             logger,
@@ -243,7 +243,7 @@ impl State {
     async fn handle_status(&self) -> Result<JsonFaucetStatus, String> {
         // Get up-to-date balances for all the tokens we are tracking
         let mut balances: HashMap<TokenId, u64> = Default::default();
-        for (token_id, _) in self.faucet_amounts.iter() {
+        for (token_id, _) in self.faucet_payout_amounts.iter() {
             let mut req = mc_mobilecoind_api::GetBalanceRequest::new();
             req.set_monitor_id(self.monitor_id.clone());
             req.set_token_id(**token_id);
@@ -273,8 +273,8 @@ impl State {
             success: true,
             err_str: None,
             b58_address: self.monitor_b58_address.clone(),
-            faucet_amounts: self
-                .faucet_amounts
+            faucet_payout_amounts: self
+                .faucet_payout_amounts
                 .iter()
                 .map(convert_balance_pair)
                 .collect(),

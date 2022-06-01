@@ -21,7 +21,7 @@ pub struct JsonFaucetStatus {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub b58_address: String,
     #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub faucet_amounts: HashMap<JsonU64, JsonU64>,
+    pub faucet_payout_amounts: HashMap<JsonU64, JsonU64>,
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub balances: HashMap<JsonU64, JsonU64>,
     #[serde(skip_serializing_if = "HashMap::is_empty")]
