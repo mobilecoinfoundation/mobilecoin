@@ -7,7 +7,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 
 
 
-## [1.2.0-pre1] - 2022-05-20
+## [1.2.0] - 2022-06-03
 
 ### Added
 
@@ -33,6 +33,7 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 - Enable `Bitcode` for `libmobilecoin`, reduce mobile artifact size by ~25% ([#1124])
 - mobilecoind will now exit on startup when a ledger migration is necessary, unless the new `--ledger-db-migrate` command line argument is used, in which case it will migrate automatically. This flag does not do anything if the Ledger DB does not exist.
 - Bump SGX versions to 2.16. ([#1101], [#2018])
+- Increase the maximum tombstone block for transactions to `20,160` from `100`.
 
 #### Python
 
