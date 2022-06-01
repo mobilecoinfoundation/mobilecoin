@@ -17,11 +17,12 @@ You may POST to `/`, attaching a json object as the HTTP body:
 }
 ```
 
-and the faucet will attempt to send a nominal amount of this token to this address,
-or return errors if it cannot. The nominal amount is by default twenty times the minimum
-fee for that token. The response will contain a JSON object, `success` will be `true` if
-it managed to submit a payment, and there will be mobilecoind "Receiver Tx receipt" for the
-submitted transaction. If `success` is `false` then `err_str` will describe the problem.
+Any tokenid can be requested and the faucet will attempt to send a nominal amount of
+that token to the address specified, or return errors if it cannot. The nominal amount is
+by default twenty times the minimum fee for that token. The response will contain a
+JSON object, `success` will be `true` if it managed to submit a payment, and there will
+be mobilecoind "Receiver Tx receipt" for the submitted transaction. If `success` is `false`
+then `err_str` will describe the problem.
 
 You may GET to `/status`, and the faucet will respond with a json object:
 
