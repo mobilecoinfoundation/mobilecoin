@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use super::schema::*;
+use mc_transaction_core::TokenId;
 use serde::{Deserialize, Serialize};
 
 /// Diesel model for the `block_audit_data` table.
@@ -10,6 +11,13 @@ use serde::{Deserialize, Serialize};
 pub struct BlockAuditData {
     /// Block index.
     pub block_index: i64,
+}
+
+impl BlockAuditData {
+    /// Get block index.
+    pub fn block_index(&self) -> u64 {
+        self.block_index as u64
+    }
 }
 
 /// Diesel model for the `block_balance` table.
@@ -25,6 +33,23 @@ pub struct BlockBalance {
 
     /// Balanace.
     pub balance: i64,
+}
+
+impl BlockBalance {
+    /// Get block index.
+    pub fn block_index(&self) -> u64 {
+        self.block_index as u64
+    }
+
+    /// Get token id.
+    pub fn token_id(&self) -> TokenId {
+        TokenId::from(self.token_id as u64)
+    }
+
+    /// Get balance.
+    pub fn balance(&self) -> u64 {
+        self.balance as u64
+    }
 }
 
 /// Diesel model for the `counters` table.
@@ -45,4 +70,22 @@ pub struct Counters {
     /// The number of mint transactions that did not match an active mint
     /// configuration.
     pub num_mint_txs_without_matching_mint_config: i64,
+}
+
+impl Counters {
+    /// Get the number of blocks synced so far.
+    pub fn num_blocks_synced(&self) -> u64 {
+        self.num_blocks_synced as u64
+    }
+
+    /// Get the number of burn transactions that exceeded the minted amount.
+    pub fn num_burns_exceeding_balance(&self) -> u64 {
+        self.num_burns_exceeding_balance as u64
+    }
+
+    /// Get the number of mint transactions that did not match an active mint
+    /// configuration.
+    pub fn num_mint_txs_without_matching_mint_config(&self) -> u64 {
+        self.num_mint_txs_without_matching_mint_config as u64
+    }
 }

@@ -8,10 +8,10 @@ use crate::db::Counters;
 impl From<&Counters> for mc_mint_auditor_api::Counters {
     fn from(src: &Counters) -> Self {
         let mut dst = mc_mint_auditor_api::Counters::new();
-        dst.set_num_blocks_synced(src.num_blocks_synced as u64);
-        dst.set_num_burns_exceeding_balance(src.num_burns_exceeding_balance as u64);
+        dst.set_num_blocks_synced(src.num_blocks_synced());
+        dst.set_num_burns_exceeding_balance(src.num_burns_exceeding_balance());
         dst.set_num_mint_txs_without_matching_mint_config(
-            src.num_mint_txs_without_matching_mint_config as u64,
+            src.num_mint_txs_without_matching_mint_config(),
         );
         dst
     }

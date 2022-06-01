@@ -67,7 +67,7 @@ impl MintAuditorService {
             })?;
 
         let balance_map =
-            BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index as u64)
+            BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index())
                 .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()))?;
 
         let mut resp = GetBlockAuditDataResponse::new();
@@ -96,7 +96,7 @@ impl MintAuditorService {
             })?;
 
         let balance_map =
-            BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index as u64)
+            BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index())
                 .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()))?;
 
         let mut resp = GetLastBlockAuditDataResponse::new();

@@ -8,7 +8,7 @@ use crate::db::BlockAuditData;
 impl From<&BlockAuditData> for mc_mint_auditor_api::BlockAuditData {
     fn from(src: &BlockAuditData) -> Self {
         let mut dst = mc_mint_auditor_api::BlockAuditData::new();
-        dst.set_block_index(src.block_index as u64);
+        dst.set_block_index(src.block_index());
         dst
     }
 }
