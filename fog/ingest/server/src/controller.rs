@@ -488,10 +488,11 @@ where
                                 block.index,
                                 err
                             );
-                            std::thread::sleep(std::time::Duration::from_secs(retry_seconds));
-                            retry_seconds = std::cmp::min(retry_seconds + 1, 30);
                         }
                     }
+
+                    std::thread::sleep(std::time::Duration::from_secs(retry_seconds));
+                    retry_seconds = std::cmp::min(retry_seconds + 1, 30);
                 }
             }
 
