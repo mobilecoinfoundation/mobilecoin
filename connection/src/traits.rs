@@ -123,8 +123,8 @@ impl From<BlockInfo> for LastBlockInfoResponse {
         result.network_block_version = src.network_block_version;
         result.set_minimum_fees(HashMap::from_iter(
             src.minimum_fees
-                .iter()
-                .map(|(token_id, fee)| (**token_id, *fee)),
+                .into_iter()
+                .map(|(token_id, fee)| (*token_id, fee)),
         ));
         result
     }
