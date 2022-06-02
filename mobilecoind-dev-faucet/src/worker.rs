@@ -214,70 +214,95 @@ impl Worker {
         let thread_stop_requested = stop_requested.clone();
 
         let logger = logger.new(o!("thread" => "worker"));
-
         let join_handle = Some(std::thread::spawn(move || {
-            // First wait for account to sync
-            // Get the "initial" ledger block count
-            let block_count = loop {
-                match client.get_ledger_info(&Default::default()) {
-                    Ok(resp) => break resp.block_count,
-                    Err(err) => {
-                        log::error!(logger, "Could not get ledger info: {:?}", err);
-                    }
-                }
-                std::thread::sleep(worker_poll_period);
-            };
-            log::info!(logger, "Ledger is at block_count = {}", block_count);
-
-            // Now wait for monitor state to at least pass this point
-            loop {
-                let mut req = mc_mobilecoind_api::GetMonitorStatusRequest::new();
-                req.set_monitor_id(monitor_id.clone());
-                match client.get_monitor_status(&req) {
-                    Ok(resp) => {
-                        let monitor_block_count = resp.get_status().next_block;
-                        if monitor_block_count >= block_count {
-                            log::info!(
-                                logger,
-                                "Monitor has synced to block count {}",
-                                monitor_block_count
-                            );
-                            break;
-                        }
-                    }
-                    Err(err) => {
-                        log::error!(logger, "Could not get monitor status: {:?}", err);
-                    }
-                }
-                std::thread::sleep(worker_poll_period);
-            }
-
-            // Poll all token ids looking for activity, then sleep for a bit
-            loop {
-                if thread_stop_requested.load(Ordering::SeqCst) {
-                    log::info!(logger, "Worker: stop was requested");
-                    break;
-                }
-                for state in worker_token_states.iter_mut() {
-                    if let Err(err_str) = state.poll(
-                        &client,
-                        &monitor_id,
-                        &public_address,
-                        target_queue_depth,
-                        &logger,
-                    ) {
-                        log::error!(logger, "{}", err_str);
-                    }
-                }
-                log::trace!(logger, "Worker sleeping");
-                std::thread::sleep(worker_poll_period);
-            }
+            Self::worker_thread_entry_point(
+                worker_token_states,
+                thread_stop_requested,
+                client,
+                monitor_id,
+                public_address,
+                target_queue_depth,
+                worker_poll_period,
+                logger,
+            )
         }));
 
         Worker {
             receivers,
             join_handle,
             stop_requested,
+        }
+    }
+
+    /// The entrypoint for the worker thread.
+    /// First, wait for account to sync in mobilecoind.
+    /// Then enter a loop where we check stop_requested, poll each token id for
+    /// activity, and sleep for a bit.
+    fn worker_thread_entry_point(
+        mut worker_token_states: Vec<WorkerTokenState>,
+        stop_requested: Arc<AtomicBool>,
+        client: MobilecoindApiClient,
+        monitor_id: Vec<u8>,
+        public_address: PublicAddress,
+        target_queue_depth: usize,
+        worker_poll_period: Duration,
+        logger: Logger,
+    ) {
+        // First wait for account to sync
+        // Get the "initial" ledger block count
+        let block_count = loop {
+            match client.get_ledger_info(&Default::default()) {
+                Ok(resp) => break resp.block_count,
+                Err(err) => {
+                    log::error!(logger, "Could not get ledger info: {:?}", err);
+                }
+            }
+            std::thread::sleep(worker_poll_period);
+        };
+        log::info!(logger, "Ledger is at block_count = {}", block_count);
+
+        // Now wait for monitor state to at least pass this point
+        loop {
+            let mut req = mc_mobilecoind_api::GetMonitorStatusRequest::new();
+            req.set_monitor_id(monitor_id.clone());
+            match client.get_monitor_status(&req) {
+                Ok(resp) => {
+                    let monitor_block_count = resp.get_status().next_block;
+                    if monitor_block_count >= block_count {
+                        log::info!(
+                            logger,
+                            "Monitor has synced to block count {}",
+                            monitor_block_count
+                        );
+                        break;
+                    }
+                }
+                Err(err) => {
+                    log::error!(logger, "Could not get monitor status: {:?}", err);
+                }
+            }
+            std::thread::sleep(worker_poll_period);
+        }
+
+        // Poll all token ids looking for activity, then sleep for a bit
+        loop {
+            if stop_requested.load(Ordering::SeqCst) {
+                log::info!(logger, "Worker: stop was requested");
+                break;
+            }
+            for state in worker_token_states.iter_mut() {
+                if let Err(err_str) = state.poll(
+                    &client,
+                    &monitor_id,
+                    &public_address,
+                    target_queue_depth,
+                    &logger,
+                ) {
+                    log::error!(logger, "{}", err_str);
+                }
+            }
+            log::trace!(logger, "Worker sleeping");
+            std::thread::sleep(worker_poll_period);
         }
     }
 
