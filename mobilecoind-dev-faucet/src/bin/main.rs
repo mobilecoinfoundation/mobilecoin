@@ -77,9 +77,6 @@ struct State {
     /// The amounts the faucet attempts to pay for each token id
     /// This is initialized to network fee * amount factor at startup
     pub faucet_payout_amounts: HashMap<TokenId, u64>,
-    /// The grpcio thread pool
-    #[allow(unused)]
-    pub grpc_env: Arc<grpcio::Environment>,
     /// Handle to worker thread, which pre-splits TxOut's in the background
     pub worker: Worker,
     /// Logger
@@ -93,8 +90,9 @@ impl State {
         let account_key = read_keyfile(config.keyfile.clone()).expect("Could not load keyfile");
 
         // Set up the gRPC connection to the mobilecoind client
-        let grpc_env = Arc::new(grpcio::EnvBuilder::new().cq_count(1).build());
-        let ch = ChannelBuilder::new(grpc_env.clone())
+        // Note: choice of 2 completion queues here is not very deliberate
+        let grpc_env = Arc::new(grpcio::EnvBuilder::new().cq_count(2).build());
+        let ch = ChannelBuilder::new(grpc_env)
             .max_receive_message_len(std::i32::MAX)
             .max_send_message_len(std::i32::MAX)
             .connect_to_uri(&config.mobilecoind_uri, logger);
