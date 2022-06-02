@@ -146,9 +146,9 @@ impl TokenStateReceiver {
 /// can handle multiple faucet requests concurrently.
 ///
 /// It periodically calls `get_unspent_tx_out_list` for each token of interest.
-/// If there are fewer than THRESHOLD TxOuts whose value is exactly "faucet
-/// amount", then it attempts to make a self-payment which creates THRESHOLD
-/// more pre-split TxOuts.
+/// If there are fewer than target_queue_depth TxOuts whose value is exactly
+/// "target amount", then it attempts to make a self-payment which creates
+/// MAX_OUTPUTS - 1 more pre-split TxOuts.
 ///
 /// To ensure concurrent faucet requests don't try to use the same unspent
 /// TxOut's as eachother, the worker puts the unspent TxOut's in a queue as they
@@ -187,7 +187,8 @@ impl Worker {
     /// * worker_poll_period: A lower bound on how often the worker should poll
     /// * logger
     ///
-    /// Returns the worker handle.
+    /// Returns the Worker handle object, which contains the thread handle, and
+    /// receives the output of the worker thread.
     pub fn new(
         client: MobilecoindApiClient,
         monitor_id: Vec<u8>,
