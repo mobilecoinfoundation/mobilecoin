@@ -476,6 +476,10 @@ impl WorkerTokenState {
                 continue;
             }
 
+            // Only utxos of exactly the target value are elligible to go in the queue.
+            // The others are "non-target-value utxos" which are candidates to be used
+            // (later) in split transactions that produce more target-value utxos,
+            // if the queue is getting empty.
             if utxo.value != self.target_value {
                 continue;
             }
