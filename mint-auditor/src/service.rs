@@ -226,7 +226,7 @@ mod tests {
             ..Default::default()
         };
 
-        append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+        append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         // Sync a block that contains a few mint transactions.
         let mint_tx1 = create_mint_tx(token_id1, &signers1, 1, &mut rng);
@@ -241,7 +241,7 @@ mod tests {
             ..Default::default()
         };
 
-        append_and_sync(&block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
+        append_and_sync(block_contents, &mut ledger_db, &mint_auditor_db, &mut rng).unwrap();
 
         (mint_auditor_db, test_db_context)
     }

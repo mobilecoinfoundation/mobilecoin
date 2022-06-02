@@ -8,9 +8,8 @@ mod config;
 use clap::Parser;
 use config::LedgerFromArchiveConfig;
 use mc_common::logger::{create_app_logger, log, o};
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_db::{create_ledger_in, Ledger};
 use mc_ledger_sync::ReqwestTransactionsFetcher;
-use std::fs;
 
 fn main() {
     mc_common::setup_panic_handler();
@@ -22,11 +21,12 @@ fn main() {
         ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
             .expect("Failed creating ReqwestTransactionsFetcher");
 
-    log::info!(logger, "Creating local ledger at {:?}", config.ledger_db);
-    // Open LedgerDB
-    let _ = fs::create_dir_all(&config.ledger_db);
-    LedgerDB::create(&config.ledger_db).expect("Could not create ledger_db");
-    let mut local_ledger = LedgerDB::open(&config.ledger_db).expect("Failed creating LedgerDB");
+    log::info!(
+        logger,
+        "Creating local ledger at {}",
+        config.ledger_db.display()
+    );
+    let mut local_ledger = create_ledger_in(&config.ledger_db);
 
     // Sync Origin Block
     log::info!(logger, "Getting origin block");

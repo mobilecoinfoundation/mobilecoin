@@ -4706,7 +4706,6 @@ dependencies = [
  "mc-mobilecoind-api",
  "mc-sgx-css",
  "mc-transaction-core",
- "mc-transaction-core-test-utils",
  "mc-transaction-std",
  "mc-util-from-random",
  "mc-util-grpc",

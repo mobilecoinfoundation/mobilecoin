@@ -319,14 +319,15 @@ mod tests {
         tx_manager::{MockTxManager, TxManagerImpl},
         validators::DefaultTxManagerUntrustedInterfaces,
     };
-    use mc_blockchain_test_utils::make_block_metadata;
-    use mc_blockchain_types::{Block, BlockContents, BlockVersion};
+    use mc_blockchain_types::{BlockContents, BlockVersion};
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
     use mc_consensus_scp::{ballot::Ballot, msg::*, SlotIndex};
     use mc_crypto_keys::{DistinguishedEncoding, Ed25519Private};
     use mc_ledger_db::{
-        test_utils::{create_ledger, create_transaction, initialize_ledger},
+        test_utils::{
+            add_block_contents_to_ledger, create_ledger, create_transaction, initialize_ledger,
+        },
         Ledger,
     };
     use mc_peers::{MockBroadcast, ThreadedBroadcaster};
@@ -866,22 +867,11 @@ mod tests {
         let token_id1 = TokenId::from(1);
         let (mint_config_tx1, signers1) = create_mint_config_tx_and_signers(token_id1, &mut rng);
 
-        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
-
         let block_contents = BlockContents {
             validated_mint_config_txs: vec![mint_config_tx_to_validated(&mint_config_tx1)],
             ..Default::default()
         };
-        let block = Block::new_with_parent(
-            BlockVersion::MAX,
-            &parent_block,
-            &Default::default(),
-            &block_contents,
-        );
-
-        let metadata = make_block_metadata(block.id.clone(), &mut rng);
-        ledger
-            .append_block(&block, &block_contents, None, Some(&metadata))
+        add_block_contents_to_ledger(&mut ledger, BlockVersion::MAX, block_contents, &mut rng)
             .unwrap();
 
         // Mock peer_manager

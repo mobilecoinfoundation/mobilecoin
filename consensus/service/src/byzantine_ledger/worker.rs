@@ -913,7 +913,6 @@ mod tests {
         validators::DefaultTxManagerUntrustedInterfaces,
     };
     use mc_account_keys::AccountKey;
-    use mc_blockchain_test_utils::make_block_metadata;
     use mc_blockchain_types::{Block, BlockContents, BlockVersion};
     use mc_common::{logger::test_with_logger, NodeID};
     use mc_consensus_enclave::GovernorsMap;
@@ -925,7 +924,9 @@ mod tests {
     };
     use mc_crypto_multisig::SignerSet;
     use mc_ledger_db::{
-        test_utils::{create_ledger, create_transaction, initialize_ledger},
+        test_utils::{
+            add_block_contents_to_ledger, create_ledger, create_transaction, initialize_ledger,
+        },
         MockLedger,
     };
     use mc_ledger_sync::{LedgerSyncError, MockLedgerSync, SCPNetworkState};
@@ -1652,21 +1653,11 @@ mod tests {
 
         // Put MintConfigTx into the ledger so that MintTxManager::mint_txs_with_config
         // can resolve it.
-        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
         let block_contents = BlockContents {
             validated_mint_config_txs: vec![mint_config_tx_to_validated(&mint_config_tx1)],
             ..Default::default()
         };
-        let block = Block::new_with_parent(
-            block_version,
-            &parent_block,
-            &Default::default(),
-            &block_contents,
-        );
-        let metadata = make_block_metadata(block.id.clone(), &mut rng);
-        ledger
-            .append_block(&block, &block_contents, None, Some(&metadata))
-            .unwrap();
+        add_block_contents_to_ledger(&mut ledger, block_version, block_contents, &mut rng).unwrap();
 
         let signer_set1 = SignerSet::new(signers1.iter().map(|s| s.public_key()).collect(), 1);
         let governors_map = GovernorsMap::try_from_iter([(token_id1, signer_set1)]).unwrap();

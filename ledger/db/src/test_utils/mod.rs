@@ -3,146 +3,31 @@
 pub mod mock_ledger;
 pub use mock_ledger::{get_mock_ledger, get_test_ledger_blocks, MockLedger};
 
-use crate::{Ledger, LedgerDB};
+use crate::{create_ledger_in, Error, Ledger, LedgerDB};
 use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
-use mc_blockchain_test_utils::make_block_metadata;
+use mc_blockchain_test_utils::{make_block_metadata, make_block_signature};
 use mc_blockchain_types::{Block, BlockContents, BlockData, BlockIndex, BlockVersion};
-use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_transaction_core::{
     constants::RING_SIZE,
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
+    ring_signature::KeyImage,
     tokens::Mob,
     tx::{Tx, TxOut},
     Amount, Token,
 };
-use mc_transaction_core_test_utils::{MockFogResolver, NoKeysRingSigner};
+use mc_transaction_core_test_utils::{get_outputs, MockFogResolver, NoKeysRingSigner};
 use mc_transaction_std::{
     DefaultTxOutputsOrdering, EmptyMemoBuilder, InputCredentials, TransactionBuilder,
     TxOutputsOrdering,
 };
-use mc_util_from_random::FromRandom;
-use rand::{CryptoRng, RngCore};
-use std::cmp::Ordering;
+use mc_util_test_helper::{CryptoRng, RngCore};
+use std::{cmp::Ordering, path::Path};
 use tempdir::TempDir;
 
 /// The amount minted by `initialize_ledger`, 1 million milliMOB.
 pub const INITIALIZE_LEDGER_AMOUNT: u64 = 1_000_000 * 1_000_000_000;
-
-/// Creates a LedgerDB instance.
-pub fn create_ledger() -> LedgerDB {
-    let temp_dir = TempDir::new("ledger").unwrap();
-    let path = temp_dir.path();
-    LedgerDB::create(path).unwrap();
-    LedgerDB::open(path).unwrap()
-}
-
-/// Populates the LedgerDB with initial data.
-///
-/// Creates a number of blocks, each of which contains a single transaction.
-/// The first contains RING_SIZE txos so we can create more valid transactions.
-/// The rest have a single TxOut.
-///
-/// The first block "mints" coins, and each subsequent block spends the TxOut
-/// produced by the previous block.
-///
-/// # Arguments
-/// * `ledger` -
-/// * `n_blocks` - The number of blocks of transactions to write to `db`.
-/// * `account_key` - The recipient of all TxOuts generated.
-/// * `rng` -
-///
-/// Returns the blocks that were created.
-pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
-    block_version: BlockVersion,
-    ledger: &mut L,
-    n_blocks: u64,
-    account_key: &AccountKey,
-    rng: &mut R,
-) -> Vec<BlockData> {
-    let value: u64 = INITIALIZE_LEDGER_AMOUNT;
-    let token_id = Mob::ID;
-
-    // TxOut from the previous block
-    let mut to_spend: Option<TxOut> = None;
-    let mut parent: Option<Block> = None;
-
-    let mut results = Vec::with_capacity(n_blocks.try_into().unwrap());
-    for block_index in 0..n_blocks {
-        let (block, block_contents) = match to_spend {
-            Some(tx_out) => {
-                let tx = create_transaction(
-                    block_version,
-                    ledger,
-                    &tx_out,
-                    account_key,
-                    &account_key.default_subaddress(),
-                    block_index + 1,
-                    rng,
-                );
-
-                let key_images = tx.key_images();
-                let outputs = tx.prefix.outputs.clone();
-
-                let block_contents = BlockContents {
-                    key_images,
-                    outputs,
-                    ..Default::default()
-                };
-
-                let block = Block::new(
-                    block_version,
-                    &parent.as_ref().unwrap().id,
-                    block_index,
-                    parent.as_ref().unwrap().cumulative_txo_count,
-                    &Default::default(),
-                    &block_contents,
-                );
-
-                (block, block_contents)
-            }
-            None => {
-                // Create an origin block.
-                let outputs: Vec<TxOut> = (0..RING_SIZE)
-                    .map(|_i| {
-                        TxOut::new(
-                            BlockVersion::ZERO,
-                            Amount { value, token_id },
-                            &account_key.default_subaddress(),
-                            &RistrettoPrivate::from_random(rng),
-                            Default::default(),
-                        )
-                        .expect("Could not create origin block TxOut")
-                    })
-                    .collect();
-
-                let block = Block::new_origin_block(&outputs);
-                let block_contents = BlockContents {
-                    outputs,
-                    ..Default::default()
-                };
-                (block, block_contents)
-            }
-        };
-
-        parent = Some(block.clone());
-        to_spend = Some(block_contents.outputs[0].clone());
-
-        let metadata = make_block_metadata(block.id.clone(), rng);
-        let block_data = BlockData::new(block, block_contents, None, metadata);
-
-        ledger
-            .append_block_data(&block_data)
-            .expect("failed writing initial blocks");
-
-        results.push(block_data)
-    }
-
-    // Verify that db now contains n transactions.
-    assert_eq!(ledger.num_blocks().unwrap(), n_blocks as u64);
-
-    results
-}
 
 pub struct InverseTxOutputsOrdering;
 
@@ -364,4 +249,195 @@ pub fn create_transaction_with_amount_and_comparer_and_recipients<
     transaction_builder
         .build_with_sorter::<_, O, _>(&NoKeysRingSigner {}, rng)
         .unwrap()
+}
+
+/// Creates a LedgerDB instance in a new temporary directory.
+pub fn create_ledger() -> LedgerDB {
+    let temp_dir = TempDir::new("ledger_db").unwrap();
+    create_ledger_in(temp_dir.path())
+}
+
+/// Recreates an empty LedgerDB at the given path. If such a file exists,
+/// it will be replaced.
+pub fn recreate_ledger_db(path: &Path) -> LedgerDB {
+    // DELETE the old database if it already exists.
+    let _ = std::fs::remove_file(path.join("data.mdb"));
+    create_ledger_in(path)
+}
+
+/// Populates the LedgerDB with initial data.
+///
+/// Creates a number of blocks, each of which contains a single transaction.
+/// The first contains RING_SIZE txos so we can create more valid transactions.
+/// The rest have a single TxOut.
+///
+/// The first block "mints" coins, and each subsequent block spends the TxOut
+/// produced by the previous block.
+///
+/// # Arguments
+/// * `ledger` -
+/// * `n_blocks` - The number of blocks of transactions to write to `db`.
+/// * `account_key` - The recipient of all TxOuts generated.
+/// * `rng` -
+///
+/// Returns the blocks that were created.
+pub fn initialize_ledger(
+    block_version: BlockVersion,
+    ledger: &mut LedgerDB,
+    n_blocks: u64,
+    account_key: &AccountKey,
+    rng: &mut (impl CryptoRng + RngCore),
+) -> Vec<BlockData> {
+    let value: u64 = INITIALIZE_LEDGER_AMOUNT;
+    let token_id = Mob::ID;
+
+    // TxOut from the previous block
+    let mut to_spend: Option<TxOut> = None;
+
+    let mut results = Vec::with_capacity(n_blocks as usize);
+    for block_index in 0..n_blocks {
+        let (outputs, key_images) = match to_spend {
+            Some(tx_out) => {
+                let tx = create_transaction(
+                    block_version,
+                    ledger,
+                    &tx_out,
+                    account_key,
+                    &account_key.default_subaddress(),
+                    block_index + 1,
+                    rng,
+                );
+
+                let key_images = tx.key_images();
+                (tx.prefix.outputs, key_images)
+            }
+            None => {
+                // Create an origin block.
+                let recipient_and_amount = (0..RING_SIZE)
+                    .map(|_| (account_key.default_subaddress(), Amount { value, token_id }))
+                    .collect::<Vec<_>>();
+                //  The origin block is always V0.
+                let outputs = get_outputs(BlockVersion::ZERO, &recipient_and_amount, rng);
+                (outputs, vec![])
+            }
+        };
+
+        let block_data =
+            add_txos_and_key_images_to_ledger(ledger, block_version, outputs, key_images, rng)
+                .unwrap_or_else(|err| {
+                    panic!("failed to append block with index {}: {}", block_index, err)
+                });
+
+        to_spend = Some(block_data.contents().outputs[0].clone());
+
+        results.push(block_data);
+    }
+
+    // Verify that db now contains n transactions.
+    assert_eq!(ledger.num_blocks().unwrap(), n_blocks as u64);
+
+    results
+}
+
+/// Adds a block containing one txo for each provided recipient and returns the
+/// new block.
+///
+/// # Arguments
+/// * `ledger_db` - Ledger database instance.
+/// * `block_version` - The block version to use.
+/// * `recipients` - Recipients of outputs.
+/// * `output_amount` - The amount each recipient will get.
+/// * `key_images` - Key images to include in the block.
+/// * `rng` - Random number generator.
+pub fn add_block_to_ledger(
+    ledger_db: &mut LedgerDB,
+    block_version: BlockVersion,
+    recipients: &[PublicAddress],
+    output_amount: Amount,
+    key_images: &[KeyImage],
+    rng: &mut (impl CryptoRng + RngCore),
+) -> Result<BlockData, Error> {
+    let recipient_and_amount = recipients
+        .iter()
+        .map(|recipient| (recipient.clone(), output_amount))
+        .collect::<Vec<_>>();
+    let outputs = get_outputs(block_version, &recipient_and_amount, rng);
+
+    add_txos_and_key_images_to_ledger(ledger_db, block_version, outputs, key_images.to_vec(), rng)
+}
+
+/// Adds a block containing the given TXOs and returns the new block.
+///
+/// # Arguments
+/// * `ledger_db` - Ledger database instance.
+/// * `block_version` - The block version to use.
+/// * `outputs` - TXOs to add to ledger.
+/// * `rng` - Random number generator.
+pub fn add_txos_to_ledger(
+    ledger_db: &mut LedgerDB,
+    block_version: BlockVersion,
+    outputs: &[TxOut],
+    rng: &mut (impl CryptoRng + RngCore),
+) -> Result<BlockData, Error> {
+    add_txos_and_key_images_to_ledger(
+        ledger_db,
+        block_version,
+        outputs.to_vec(),
+        vec![KeyImage::from(rng.next_u64())],
+        rng,
+    )
+}
+
+/// Adds a block containing the given TxOuts and returns the new block.
+///
+/// # Arguments
+/// * `ledger_db` - Ledger database instance.
+/// * `block_version` - The block version to use.
+/// * `outputs` - TXOs to add to ledger.
+/// * `key_images` - Key images to include in the block.
+/// * `rng` - Random number generator.
+pub fn add_txos_and_key_images_to_ledger(
+    ledger_db: &mut LedgerDB,
+    block_version: BlockVersion,
+    outputs: Vec<TxOut>,
+    key_images: Vec<KeyImage>,
+    rng: &mut (impl CryptoRng + RngCore),
+) -> Result<BlockData, Error> {
+    let block_contents = BlockContents {
+        key_images,
+        outputs,
+        ..Default::default()
+    };
+    add_block_contents_to_ledger(ledger_db, block_version, block_contents, rng)
+}
+
+/// Adds a block containing the given BlockContents and returns the new block.
+///
+/// # Arguments
+/// * `ledger_db` - Ledger database instance.
+/// * `block_version` - The block version to use.
+/// * `block_contents` - The block contents.
+/// * `rng` - Random number generator.
+pub fn add_block_contents_to_ledger(
+    ledger_db: &mut LedgerDB,
+    block_version: BlockVersion,
+    block_contents: BlockContents,
+    rng: &mut (impl CryptoRng + RngCore),
+) -> Result<BlockData, Error> {
+    let num_blocks = ledger_db.num_blocks()?;
+    let new_block = if num_blocks > 0 {
+        let parent = ledger_db.get_block(num_blocks - 1)?;
+
+        Block::new_with_parent(block_version, &parent, &Default::default(), &block_contents)
+    } else {
+        Block::new_origin_block(&block_contents.outputs)
+    };
+
+    let signature = make_block_signature(&new_block, rng);
+    let metadata = make_block_metadata(new_block.id.clone(), rng);
+    let block_data = BlockData::new(new_block, block_contents, signature, metadata);
+
+    ledger_db.append_block_data(&block_data)?;
+
+    Ok(block_data)
 }
