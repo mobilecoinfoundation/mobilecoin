@@ -190,8 +190,8 @@ impl Watcher {
                     Ok(block_data) => {
                         log::info!(
                             self.logger,
-                            "Archive block retrieved for {:?} {:?}",
-                            src_url.as_str(),
+                            "Archive block retrieved for {} {}",
+                            src_url,
                             block_index
                         );
                         if self.store_block_data {
