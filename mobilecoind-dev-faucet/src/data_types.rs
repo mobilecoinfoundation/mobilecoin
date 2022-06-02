@@ -87,7 +87,7 @@ impl From<&PublicAddress> for JsonPublicAddress {
 /// The `From` conversions set `success` to true or false appropriately.
 /// In the success case, we only include the receiver tx receipt list, because
 /// the faucet user cannot make use of the sender tx receipt.
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct JsonSubmitTxResponse {
     pub success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
