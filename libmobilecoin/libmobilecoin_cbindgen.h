@@ -1143,7 +1143,7 @@ FfiOptOwnedPtr<McTxOutMemoBuilder> mc_memo_builder_gift_code_cancellation_create
  */
 bool mc_memo_gift_code_funding_memo_create(FfiRefPtr<McBuffer> tx_out_public_key,
                                            uint64_t fee,
-                                           gift_code_funding_note FfiStr,
+                                           FfiStr gift_code_funding_note,
                                            FfiMutPtr<McMutableBuffer> out_memo_data,
                                            FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
@@ -1248,7 +1248,7 @@ bool mc_memo_gift_code_cancellation_memo_create(uint64_t fee,
  *
  * * `LibMcError::InvalidInput`
  */
-bool mc_memo_get_gift_code_cancellation_fee(FfiRefPtr<McBuffer> gift_code_cancellation_memo_data,
+bool mc_memo_get_cancelled_gift_code_tx_out_index(FfiRefPtr<McBuffer> gift_code_cancellation_memo_data,
                                             FfiMutPtr<uint64_t> out_index,
                                             FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 

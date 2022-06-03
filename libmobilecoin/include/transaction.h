@@ -538,6 +538,199 @@ bool mc_memo_decrypt_e_memo_payload(
 )
 MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
 
+/* ==== Gift Code Memo Builders ==== */
+
+/// # Preconditions
+///
+/// * `gift_code_funding_note` - must be a null-terminated C string containing
+/// up to 54 valid UTF-8 bytes. The actual note stored on chain is up to 53 null
+/// terminated UTF-8 bytes unless the note is exactly 53 utf-8 bytes long,
+/// in which case, no null bytes are stored. If the C string passed here is
+/// exactly 54 bytes, the last byte MUST be null and that byte will be
+/// removed prior to storage on chain.
+McTxOutMemoBuilder* MC_NULLABLE mc_memo_builder_gift_code_funding_create(
+  const char* MC_NONNULL gift_code_funding_note
+)
+MC_ATTRIBUTE_NONNULL(1);
+
+/// # Preconditions
+///
+/// * `gift_code_sender_note` - must be a null-terminated C string containing up
+/// to 58 valid UTF-8 bytes. The actual note stored on chain is up to 57 null
+/// terminated UTF-8 bytes unless the note is exactly 57 utf-8 bytes long,
+/// in which case, no null bytes are stored. If the C string passed here is
+/// exactly 58 bytes, the last byte MUST be null and that byte will be
+/// removed prior to storage on chain.
+McTxOutMemoBuilder* MC_NULLABLE mc_memo_builder_gift_code_sender_create(
+  const char* MC_NONNULL gift_code_sender_note
+)
+MC_ATTRIBUTE_NONNULL(1);
+
+/// # Preconditions
+///
+/// * `global_index` - must be the global TxOut index of the originally funded
+/// gift code TxOut
+McTxOutMemoBuilder* MC_NULLABLE mc_memo_builder_gift_code_sender_create(
+  uint64_t global_index
+);
+
+/* ==== GiftCodeFundingMemo ==== */
+
+/// # Preconditions
+///
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+/// * `fee` - must be an integer less than or equal to 2^56
+/// * `gift_code_funding_note` - must be a null-terminated C string containing
+/// up to 54 valid UTF-8 bytes. The actual note stored on chain is up to 53 null
+/// terminated UTF-8 bytes unless the note is exactly 53 utf-8 bytes long,
+/// in which case, no null bytes are stored. If the C string passed here is
+/// exactly 54 bytes, the last byte MUST be null and that byte will be
+/// removed prior to storage on chain.
+/// * `out_memo_data` - length must be >= 64.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+bool mc_memo_gift_code_funding_memo_create(
+        const McBuffer* MC_NONNULL tx_out_public_key,
+        uint64_t fee,
+        const char* MC_NONNULL gift_code_funding_note
+        McMutableBuffer* MC_NONNULL out_memo_data,
+        McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 3, 4);
+
+/// # Preconditions
+///
+/// * `gift_code_funding_memo_data` - must be 64 bytes
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+bool mc_memo_validate_gift_code_funding_tx_out(
+        const McBuffer* MC_NONNULL gift_code_funding_memo_data,
+        const McBuffer* MC_NONNULL tx_out_public_key,
+        bool* MC_NONNULL out_valid,
+        McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2, 3);
+
+
+/// # Preconditions
+///
+/// * `gift_code_funding_memo_data` - must be 64 bytes
+char* MC_NULLABLE mc_memo_get_gift_code_funding_note(
+        const McBuffer* MC_NONNULL gift_code_funding_memo_data
+)
+MC_ATTRIBUTE_NONNULL(1);
+
+/// # Preconditions
+///
+/// * `gift_code_funding_memo_data` - must be 64 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+bool mc_memo_get_gift_code_funding_fee(
+        const McBuffer* MC_NONNULL gift_code_funding_memo_data,
+        uint64_t* MC_NONNULL out_fee,
+        McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2);
+
+/* ==== GiftCodeSenderMemo ==== */
+
+/// # Preconditions
+///
+/// * `fee` - must be an integer less than or equal to 2^56
+/// * `gift_code_sender_note` - must be a null-terminated C string containing up
+/// to 58 valid UTF-8 bytes. The actual note stored on chain is up to 57 null
+/// terminated UTF-8 bytes unless the note is exactly 57 utf-8 bytes long,
+/// in which case, no null bytes are stored. If the C string passed here is
+/// exactly 58 bytes, the last byte MUST be null and that byte will be
+/// removed prior to storage on chain.
+/// * `out_memo_data` - length must be >= 64.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+bool mc_memo_gift_code_sender_memo_create(
+        uint64_t fee,
+        const char* MC_NONNULL gift_code_sender_note,
+        McMutableBuffer* MC_NONNULL out_memo_data,
+        McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(2, 3);
+
+/// # Preconditions
+///
+/// * `gift_code_sender_memo_data` - must be 64 bytes
+char* MC_NULLABLE mc_memo_get_gift_code_sender_note(
+        const McBuffer* MC_NONNULL gift_code_sender_memo_data
+)
+MC_ATTRIBUTE_NONNULL(1);
+
+/// # Preconditions
+///
+/// * `gift_code_sender_memo_data` - must be 64 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+bool mc_memo_get_gift_code_sender_fee(
+        const McBuffer* MC_NONNULL gift_code_sender_memo_data,
+        uint64_t* MC_NONNULL out_fee,
+        McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2);
+
+/* ==== GiftCodeCancellationMemo ==== */
+
+/// # Preconditions
+///
+/// * `fee` - must be an integer less than or equal to 2^56
+/// * `global_index` - must be the global TxOut index of the originally funded gift code TxOut
+/// * `out_memo_data` - length must be >= 64.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+bool mc_memo_gift_code_cancellation_memo_create(
+        uint64_t fee,
+        uint64_t global_index,
+        McMutableBuffer* MC_NONNULL out_memo_data,
+        McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(3);
+
+/// # Preconditions
+///
+/// * `gift_code_cancellation_memo_data` - must be 64 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+bool mc_memo_get_cancelled_gift_code_tx_out_index(
+        const McBuffer* MC_NONNULL gift_code_cancellation_memo_data,
+        uint64_t* MC_NONNULL out_index,
+        McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2);
+
+/// # Preconditions
+///
+/// * `gift_code_cancellation_memo_data` - must be 64 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+bool mc_memo_get_gift_code_cancellation_fee(
+        const McBuffer* MC_NONNULL gift_code_cancellation_memo_data,
+        uint64_t* MC_NONNULL out_fee,
+        McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2);
 
 #ifdef __cplusplus
 }
