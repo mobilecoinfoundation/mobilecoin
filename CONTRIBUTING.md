@@ -53,7 +53,7 @@ Part of submitting a PR to the MobileCoin Foundation is ensuring that the format
 The easiest part of ensuring the style guide is followed is running the following utilities, which are checked for every PR:
 
  * `rustfmt`: Reformats the code according to the top-level `rustfmt.toml`. If the repo is "dirty" after this has been run, the PR cannot be merged.
- * `cargo clippy`: An in-depth checking utility that will look for code which the authors (The Rust Foundation) think are not ideomatic rust. In practice this is a lot like PEP-8
+ * `cargo clippy`: An in-depth checking utility that will look for code which the authors (The Rust Foundation) think are not idiomatic rust. In practice this is a lot like PEP-8
 
 ## Rust's Style Guide
 
