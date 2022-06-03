@@ -7,6 +7,7 @@ license = "GPL-3.0"
 
 [dependencies]
 # mobilecoin
+mc-attest-api = { path = "../../../attest/api" }
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-verifier = { path = "../../../attest/verifier" }
 mc-common = { path = "../../../common", features = ["log"] }
@@ -23,5 +24,6 @@ mc-fog-uri = { path = "../../uri" }
 mc-fog-view-protocol = { path = "../protocol" }
 
 # third-party
+futures = "0.3"
 grpcio = "0.10.2"
 retry = "1.3"

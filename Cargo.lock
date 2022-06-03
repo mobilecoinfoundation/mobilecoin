@@ -4186,7 +4186,9 @@ dependencies = [
 name = "mc-fog-view-connection"
 version = "1.3.0-pre0"
 dependencies = [
+ "futures",
  "grpcio",
+ "mc-attest-api",
  "mc-attest-core",
  "mc-attest-verifier",
  "mc-common",
