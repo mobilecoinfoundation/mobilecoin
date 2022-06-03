@@ -24,8 +24,10 @@ use mc_transaction_core::{
 };
 use mc_transaction_std::{
     AuthenticatedSenderMemo, AuthenticatedSenderWithPaymentRequestIdMemo, DestinationMemo,
-    InputCredentials, MemoBuilder, MemoPayload, RTHMemoBuilder, ReservedSubaddresses,
-    SenderMemoCredential, TransactionBuilder,
+    GiftCodeCancellationMemo, GiftCodeCancellationMemoBuilder, GiftCodeFundingMemo,
+    GiftCodeFundingMemoBuilder, GiftCodeSenderMemo, GiftCodeSenderMemoBuilder, InputCredentials,
+    MemoBuilder, MemoPayload, RTHMemoBuilder, ReservedSubaddresses, SenderMemoCredential,
+    TransactionBuilder,
 };
 
 use mc_util_ffi::*;
@@ -555,6 +557,57 @@ pub extern "C" fn mc_transaction_builder_add_change_output(
 
         let (tx_out, confirmation) =
             transaction_builder.add_change_output(amount, &change_destination, &mut rng)?;
+
+        out_tx_out_confirmation_number.copy_from_slice(confirmation.as_ref());
+        Ok(mc_util_serial::encode(&tx_out))
+    })
+}
+
+/// # Preconditions
+///
+/// * `account_key` - must be a valid account key as the gift code subaddress is
+///   computed from the account key
+/// * `transaction_builder` - must not have been previously consumed by a call
+///   to `build`.
+/// * `out_tx_out_confirmation_number` - length must be >= 32.
+///
+/// # Errors
+///
+/// * `LibMcError::AttestationVerification`
+/// * `LibMcError::InvalidInput`
+#[no_mangle]
+pub extern "C" fn mc_transaction_builder_fund_gift_code_output(
+    account_key: FfiRefPtr<McAccountKey>,
+    transaction_builder: FfiMutPtr<McTransactionBuilder>,
+    amount: u64,
+    rng_callback: FfiOptMutPtr<McRngCallback>,
+    out_tx_out_confirmation_number: FfiMutPtr<McMutableBuffer>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+) -> FfiOptOwnedPtr<McData> {
+    ffi_boundary_with_error(out_error, || {
+        let account_key_obj =
+            AccountKey::try_from_ffi(&account_key).expect("account_key is invalid");
+        let transaction_builder = transaction_builder
+            .into_mut()
+            .as_mut()
+            .expect("McTransactionBuilder instance has already been used to build a Tx");
+        let reserved_subaddresses = ReservedSubaddresses::from(&account_key_obj);
+        let mut rng = SdkRng::from_ffi(rng_callback);
+        let out_tx_out_confirmation_number = out_tx_out_confirmation_number
+            .into_mut()
+            .as_slice_mut_of_len(TxOutConfirmationNumber::size())
+            .expect("out_tx_out_confirmation_number length is insufficient");
+
+        // TODO (GH #1867): If you want to support mixed transactions, use something
+        // other than fee_token_id here. A token_id arg will probably become necessary
+        // prior to release 1.3.0.
+        let amount = Amount {
+            value: amount,
+            token_id: transaction_builder.get_fee_token_id(),
+        };
+
+        let (tx_out, confirmation) =
+            transaction_builder.add_gift_code_output(amount, &reserved_subaddresses, &mut rng)?;
 
         out_tx_out_confirmation_number.copy_from_slice(confirmation.as_ref());
         Ok(mc_util_serial::encode(&tx_out))
@@ -1134,6 +1187,353 @@ pub extern "C" fn mc_memo_sender_with_payment_request_memo_get_payment_request_i
         let payment_request_id: u64 = sender_with_payment_request_memo.payment_request_id();
 
         *out_payment_request_id.into_mut() = payment_request_id;
+
+        Ok(())
+    })
+}
+
+/* ==== GiftCodeMemoBuilders ==== */
+
+/// # Preconditions
+///
+/// * `gift_code_funding_note` - must be a null-terminated C string containing
+/// up to 54 valid UTF-8 bytes. The actual note stored on chain is up to 53 null
+/// terminated UTF-8 bytes unless the note is exactly 53 utf-8 bytes long,
+/// in which case, no null bytes are stored. If the C string passed here is
+/// exactly 54 bytes, the last byte MUST be null and that byte will be
+/// removed prior to storage on chain.
+#[no_mangle]
+pub extern "C" fn mc_memo_builder_gift_code_funding_create(
+    gift_code_funding_note: FfiStr,
+) -> FfiOptOwnedPtr<McTxOutMemoBuilder> {
+    ffi_boundary(|| {
+        let note = <&str>::try_from_ffi(gift_code_funding_note)
+            .expect("Failed to decode gift code funding note");
+        let gift_code_funding_memo_builder = GiftCodeFundingMemoBuilder::new(note)
+            .expect("Gift code funding note had invalid utf-8 or was more than 53 bytes long");
+
+        let memo_builder_box: Box<dyn MemoBuilder + Sync + Send> =
+            Box::new(gift_code_funding_memo_builder);
+
+        Some(memo_builder_box)
+    })
+}
+
+/// # Preconditions
+///
+/// * `gift_code_sender_note` - must be a null-terminated C string containing up
+/// to 58 valid UTF-8 bytes. The actual note stored on chain is up to 57 null
+/// terminated UTF-8 bytes unless the note is exactly 57 utf-8 bytes long,
+/// in which case, no null bytes are stored. If the C string passed here is
+/// exactly 58 bytes, the last byte MUST be null and that byte will be
+/// removed prior to storage on chain.
+#[no_mangle]
+pub extern "C" fn mc_memo_builder_gift_code_sender_create(
+    gift_code_sender_note: FfiStr,
+) -> FfiOptOwnedPtr<McTxOutMemoBuilder> {
+    ffi_boundary(|| {
+        let note = <&str>::try_from_ffi(gift_code_sender_note)
+            .expect("Failed to decode gift_code_sender note");
+        let gift_code_sender_memo_builder = GiftCodeSenderMemoBuilder::new(note)
+            .expect("Gift code sender note had invalid utf-8 or was more than 57 bytes long");
+
+        let memo_builder_box: Box<dyn MemoBuilder + Sync + Send> =
+            Box::new(gift_code_sender_memo_builder);
+
+        Some(memo_builder_box)
+    })
+}
+
+/// # Preconditions
+///
+/// * `global_index` - must be the global TxOut index of the originally funded
+///   gift code TxOut
+/// gift code TxOut
+#[no_mangle]
+pub extern "C" fn mc_memo_builder_gift_code_cancellation_create(
+    global_index: u64,
+) -> FfiOptOwnedPtr<McTxOutMemoBuilder> {
+    ffi_boundary(|| {
+        let gift_code_cancellation_memo_builder =
+            GiftCodeCancellationMemoBuilder::new(global_index);
+
+        let memo_builder_box: Box<dyn MemoBuilder + Sync + Send> =
+            Box::new(gift_code_cancellation_memo_builder);
+
+        Some(memo_builder_box)
+    })
+}
+
+/* ==== GiftCodeFundingMemo ==== */
+
+/// # Preconditions
+///
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+/// * `fee` - must be an integer less than or equal to 2^56
+/// * `gift_code_funding_note` - must be a null-terminated C string containing
+/// up to 54 valid UTF-8 bytes. The actual note stored on chain is up to 53 null
+/// terminated UTF-8 bytes unless the note is exactly 53 utf-8 bytes long,
+/// in which case, no null bytes are stored. If the C string passed here is
+/// exactly 54 bytes, the last byte MUST be null and that byte will be
+/// removed prior to storage on chain.
+/// * `out_memo_data` - length must be >= 64.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+#[no_mangle]
+pub extern "C" fn mc_memo_gift_code_funding_memo_create(
+    tx_out_public_key: FfiRefPtr<McBuffer>,
+    fee: u64,
+    gift_code_funding_note: FfiStr,
+    out_memo_data: FfiMutPtr<McMutableBuffer>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+) -> bool {
+    ffi_boundary_with_error(out_error, || {
+        let note = <&str>::try_from_ffi(gift_code_funding_note)
+            .expect("Failed to decode gift code funding note");
+        let key = RistrettoPublic::try_from_ffi(&tx_out_public_key)?;
+        let memo = GiftCodeFundingMemo::new(&key, fee, note).unwrap();
+        let memo_bytes: [u8; 64] = memo.into();
+
+        let out_memo_data = out_memo_data
+            .into_mut()
+            .as_slice_mut_of_len(core::mem::size_of_val(&memo_bytes))
+            .expect("out_memo_data length is insufficient");
+        out_memo_data.copy_from_slice(&memo_bytes);
+
+        Ok(())
+    })
+}
+
+/// # Preconditions
+///
+/// * `gift_code_funding_memo_data` - must be 64 bytes
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+#[no_mangle]
+pub extern "C" fn mc_memo_validate_gift_code_funding_tx_out(
+    gift_code_funding_memo_data: FfiRefPtr<McBuffer>,
+    tx_out_public_key: FfiRefPtr<McBuffer>,
+    out_valid: FfiMutPtr<bool>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+) -> bool {
+    ffi_boundary_with_error(out_error, || {
+        let memo_data = <[u8; 64]>::try_from_ffi(&gift_code_funding_memo_data)
+            .expect("gift_code_funding_memo_data invalid length");
+        let memo = GiftCodeFundingMemo::from(&memo_data);
+        let key = RistrettoPublic::try_from_ffi(&tx_out_public_key)?;
+
+        let matches = memo.public_key_matches(&key);
+        *out_valid.into_mut() = matches;
+
+        Ok(())
+    })
+}
+
+/// # Preconditions
+///
+/// * `gift_code_funding_memo_data` - must be 64 bytes
+#[no_mangle]
+pub extern "C" fn mc_memo_get_gift_code_funding_note(
+    gift_code_funding_memo_data: FfiRefPtr<McBuffer>,
+) -> FfiOptOwnedStr {
+    ffi_boundary(|| {
+        let memo_data = <[u8; 64]>::try_from_ffi(&gift_code_funding_memo_data)
+            .expect("gift_code_funding_memo_data invalid length");
+        let memo = GiftCodeFundingMemo::from(&memo_data);
+        let note = memo
+            .funding_note()
+            .expect("Could not get gift code funding note");
+
+        FfiOwnedStr::ffi_try_from(note)
+            .expect("Gift code funding note could not be converted a C string")
+    })
+}
+
+/// # Preconditions
+///
+/// * `gift_code_funding_memo_data` - must be 64 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+#[no_mangle]
+pub extern "C" fn mc_memo_get_gift_code_funding_fee(
+    gift_code_funding_memo_data: FfiRefPtr<McBuffer>,
+    out_fee: FfiMutPtr<u64>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+) -> bool {
+    ffi_boundary_with_error(out_error, || {
+        let memo_data = <[u8; 64]>::try_from_ffi(&gift_code_funding_memo_data)
+            .expect("gift_code_funding_memo_data has invalid length");
+        let memo = GiftCodeFundingMemo::from(&memo_data);
+        *out_fee.into_mut() = memo.get_fee();
+
+        Ok(())
+    })
+}
+
+/* ==== GiftCodeSenderMemo ==== */
+
+/// # Preconditions
+///
+/// * `fee` - must be an integer less than or equal to 2^56
+/// * `gift_code_sender_note` - must be a null-terminated C string containing up
+/// to 58 valid UTF-8 bytes. The actual note stored on chain is up to 57 null
+/// terminated UTF-8 bytes unless the note is exactly 57 utf-8 bytes long,
+/// in which case, no null bytes are stored. If the C string passed here is
+/// exactly 58 bytes, the last byte MUST be null and that byte will be
+/// removed prior to storage on chain.
+/// * `out_memo_data` - length must be >= 64.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+#[no_mangle]
+pub extern "C" fn mc_memo_gift_code_sender_memo_create(
+    fee: u64,
+    gift_code_sender_note: FfiStr,
+    out_memo_data: FfiMutPtr<McMutableBuffer>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+) -> bool {
+    ffi_boundary_with_error(out_error, || {
+        let note = <&str>::try_from_ffi(gift_code_sender_note)
+            .expect("Failed to decode gift code sender note");
+        let memo = GiftCodeSenderMemo::new(fee, note).unwrap();
+        let memo_bytes: [u8; 64] = memo.into();
+
+        let out_memo_data = out_memo_data
+            .into_mut()
+            .as_slice_mut_of_len(core::mem::size_of_val(&memo_bytes))
+            .expect("out_memo_data length is insufficient");
+        out_memo_data.copy_from_slice(&memo_bytes);
+
+        Ok(())
+    })
+}
+
+/// # Preconditions
+///
+/// * `gift_code_sender_memo_data` - must be 64 bytes
+#[no_mangle]
+pub extern "C" fn mc_memo_get_gift_code_sender_note(
+    gift_code_sender_memo_data: FfiRefPtr<McBuffer>,
+) -> FfiOptOwnedStr {
+    ffi_boundary(|| {
+        let memo_data = <[u8; 64]>::try_from_ffi(&gift_code_sender_memo_data)
+            .expect("gift_code_sender_memo_data invalid length");
+        let memo = GiftCodeSenderMemo::from(&memo_data);
+        let note = memo
+            .sender_note()
+            .expect("Could not get gift code sender note");
+
+        FfiOwnedStr::ffi_try_from(note)
+            .expect("Gift code sender note could not be converted a C string")
+    })
+}
+
+/// # Preconditions
+///
+/// * `gift_code_sender_memo_data` - must be 64 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+#[no_mangle]
+pub extern "C" fn mc_memo_get_gift_code_sender_fee(
+    gift_code_sender_memo_data: FfiRefPtr<McBuffer>,
+    out_fee: FfiMutPtr<u64>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+) -> bool {
+    ffi_boundary_with_error(out_error, || {
+        let memo_data = <[u8; 64]>::try_from_ffi(&gift_code_sender_memo_data)
+            .expect("gift_code_sender_memo_data has invalid length");
+        let memo = GiftCodeSenderMemo::from(&memo_data);
+        *out_fee.into_mut() = memo.get_fee();
+
+        Ok(())
+    })
+}
+
+/* ==== GiftCodeCancellationMemo ==== */
+
+/// # Preconditions
+///
+/// * `fee` - must be an integer less than or equal to 2^56
+/// * `global_index` - must be the global TxOut index of the originally funded
+///   gift code TxOut
+/// * `out_memo_data` - length must be >= 64.
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+#[no_mangle]
+pub extern "C" fn mc_memo_gift_code_cancellation_memo_create(
+    fee: u64,
+    global_index: u64,
+    out_memo_data: FfiMutPtr<McMutableBuffer>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+) -> bool {
+    ffi_boundary_with_error(out_error, || {
+        let memo =
+            GiftCodeCancellationMemo::new(global_index, fee).expect("fee was larger than 2^56");
+        let memo_bytes: [u8; 64] = memo.into();
+
+        let out_memo_data = out_memo_data
+            .into_mut()
+            .as_slice_mut_of_len(core::mem::size_of_val(&memo_bytes))
+            .expect("out_memo_data length is insufficient");
+        out_memo_data.copy_from_slice(&memo_bytes);
+
+        Ok(())
+    })
+}
+
+/// # Preconditions
+///
+/// * `gift_code_cancellation_memo_data` - must be 64 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+#[no_mangle]
+pub extern "C" fn mc_memo_get_cancelled_gift_code_tx_out_index(
+    gift_code_cancellation_memo_data: FfiRefPtr<McBuffer>,
+    out_index: FfiMutPtr<u64>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+) -> bool {
+    ffi_boundary_with_error(out_error, || {
+        let memo_data = <[u8; 64]>::try_from_ffi(&gift_code_cancellation_memo_data)
+            .expect("gift_code_cancellation_memo_data invalid length");
+        let memo = GiftCodeCancellationMemo::from(&memo_data);
+        *out_index.into_mut() = memo.cancelled_gift_code_index();
+
+        Ok(())
+    })
+}
+
+/// # Preconditions
+///
+/// * `gift_code_cancellation_memo_data` - must be 64 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+#[no_mangle]
+pub extern "C" fn mc_memo_get_gift_code_cancellation_fee(
+    gift_code_cancellation_memo_data: FfiRefPtr<McBuffer>,
+    out_fee: FfiMutPtr<u64>,
+    out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
+) -> bool {
+    ffi_boundary_with_error(out_error, || {
+        let memo_data = <[u8; 64]>::try_from_ffi(&gift_code_cancellation_memo_data)
+            .expect("gift_code_cancellation_memo_data invalid length");
+        let memo = GiftCodeCancellationMemo::from(&memo_data);
+        *out_fee.into_mut() = memo.get_fee();
 
         Ok(())
     })
