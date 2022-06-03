@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // Blockchain-related data types.
 
@@ -50,6 +50,12 @@ message BlockContents {
 
     // Outputs created in this block.
     repeated external.TxOut outputs = 2;
+
+    /// mint-config transactions in this block coupled with data used to validate them.
+    repeated external.ValidatedMintConfigTx validated_mint_config_txs = 3;
+
+    /// Mint transactions in this block.
+    repeated external.MintTx mint_txs = 4;
 }
 
 message BlockSignature {
@@ -65,6 +71,7 @@ message BlockSignature {
 }
 
 // Version 1 of an archived block.
+// Note: The block.version field within the block may or may not be equal to 1.
 message ArchiveBlockV1 {
     // Block
     Block block = 1;

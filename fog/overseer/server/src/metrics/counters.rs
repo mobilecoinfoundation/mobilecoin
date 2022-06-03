@@ -1,10 +1,11 @@
-// Copyright (c) 2018-2022 MobileCoin Inc.
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Defines Prometheus metrics that Fog Overseer emits.
 
-use mc_util_metrics::{IntGauge, OpMetrics};
+use mc_util_metrics::{IntCounter, IntGauge, OpMetrics};
 
 lazy_static::lazy_static! {
+    /// Metrics tracker.
     pub static ref OP_COUNTERS: OpMetrics = OpMetrics::new_and_registered("fog_overseer");
 
     /// Number of unique ingress keys currently held by the Fog Ingest nodes
@@ -20,4 +21,7 @@ lazy_static::lazy_static! {
 
     /// Number of idle Fog Ingest nodes.
     pub static ref IDLE_NODE_COUNT: IntGauge = OP_COUNTERS.gauge("idle_node_count");
+
+    /// Number of idle Fog Ingest nodes.
+    pub static ref UNRESPONSIVE_NODE_COUNT: IntCounter = OP_COUNTERS.counter("unresponsive_node_count");
 }

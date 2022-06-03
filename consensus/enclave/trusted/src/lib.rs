@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Mobilenode Consensus Enclave
 
@@ -54,10 +54,12 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         EnclaveCall::ClientAccept(auth_msg) => serialize(&ENCLAVE.client_accept(auth_msg)),
         EnclaveCall::ClientClose(channel_id) => serialize(&ENCLAVE.client_close(channel_id)),
         EnclaveCall::ClientDiscardMessage(msg) => serialize(&ENCLAVE.client_discard_message(msg)),
-        // Report Caching
+        // Keys
         EnclaveCall::GetIdentity => serialize(&ENCLAVE.get_identity()),
         EnclaveCall::GetSigner => serialize(&ENCLAVE.get_signer()),
         EnclaveCall::GetFeeRecipient => serialize(&ENCLAVE.get_fee_recipient()),
+        EnclaveCall::GetMintingTrustRoot => serialize(&ENCLAVE.get_minting_trust_root()),
+        // Report Caching
         EnclaveCall::NewEreport(qe_info) => serialize(&ENCLAVE.new_ereport(qe_info)),
         EnclaveCall::VerifyQuote(quote, qe_report) => {
             serialize(&ENCLAVE.verify_quote(quote, qe_report))

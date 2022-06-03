@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A thin wrapper around Dalek libraries for key handling.
 //!
@@ -61,3 +61,6 @@ pub use crate::{
     traits::*,
     x25519::*,
 };
+
+// Expected format for base64 strings
+pub(crate) const B64_CONFIG: base64::Config = base64::STANDARD;

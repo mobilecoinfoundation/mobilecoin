@@ -154,9 +154,6 @@ pub struct WatcherDB {
     /// Were we opened in write mode?
     write_allowed: bool,
 
-    /// Metadata store.
-    metadata_store: MetadataStore<WatcherDbMetadataStoreSettings>,
-
     /// Logger.
     logger: Logger,
 }
@@ -204,7 +201,6 @@ impl WatcherDB {
             last_synced,
             config,
             write_allowed: false,
-            metadata_store,
             logger,
         })
     }
@@ -1132,7 +1128,7 @@ pub mod tests {
             .map(|account| account.default_subaddress())
             .collect::<Vec<_>>();
         get_blocks(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &recipient_pub_keys,
             10,
             1,
@@ -1807,7 +1803,7 @@ pub mod tests {
 
             // Unless it is added to a url we have not encountered before.
             watcher_db
-                .add_block_signature(&url3, 2, signed_block_b2, filename.clone())
+                .add_block_signature(&url3, 2, signed_block_b2, filename)
                 .unwrap();
 
             assert_eq!(
@@ -1854,7 +1850,7 @@ pub mod tests {
 
             assert_eq!(
                 watcher_db.get_verification_report_poll_queue().unwrap(),
-                HashMap::from_iter(vec![(url3.clone(), vec![signing_key_b.public_key()]),])
+                HashMap::from_iter(vec![(url3, vec![signing_key_b.public_key()]),])
             );
         })
     }
@@ -2023,11 +2019,8 @@ pub mod tests {
             assert_eq!(
                 last_synced,
                 HashMap::from_iter(vec![
-                    (url1.clone(), None),
-                    (
-                        url2.clone(),
-                        Some(block_datas.last().unwrap().block().index)
-                    ),
+                    (url1, None),
+                    (url2, Some(block_datas.last().unwrap().block().index)),
                 ])
             );
         })

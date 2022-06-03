@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 /// Protos to be used for displaying encoded strings to users
 
@@ -20,6 +20,9 @@ message PaymentRequest {
 
     /// Any additional text explaining the request
     string memo = 3;
+
+    /// Token id to transact in.
+    uint64 token_id = 4;
 }
 
 /// Message encoding a private key and a UTXO, for the purpose of
@@ -42,6 +45,21 @@ message TransferPayload {
     bytes bip39_entropy = 4;
 }
 
+/// Message encoding information required to locate a TxOut,
+/// un-blind the amount, and spend the TxOut. This can be used to give
+/// MobileCoin to both FOG & non-FOG users who may not yet have
+// a MobileCoin account enabled
+message TxOutGiftCode {
+  // The global index of the TxOut that has been gifted. This allows
+  // the receiver to find & uniquely identify the TxOut
+  uint64 global_index = 1;
+  // The one-time private key which can be used to spend the TxOut
+  external.RistrettoPrivate onetime_private_key = 2;
+  // The shared secret used to un-blind the amount of the TxOut
+  external.CompressedRistretto shared_secret = 3;
+
+}
+
 /// This wraps all of the above messages using "oneof", allowing us to
 /// have a single encoding scheme and extend as necessary simply by adding
 /// new messages without breaking backwards compatibility
@@ -49,4 +67,5 @@ message PrintableWrapper { oneof wrapper {
     external.PublicAddress public_address = 1;
     PaymentRequest payment_request = 2;
     TransferPayload transfer_payload = 3;
+    TxOutGiftCode tx_out_gift_code = 4;
 }}

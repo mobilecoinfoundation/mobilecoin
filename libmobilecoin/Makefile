@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2021 The MobileCoin Foundation
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 
 ####################################
 ######### Public Variables #########
@@ -90,6 +90,8 @@ bitcode-init:
 
 .PHONY: setup
 setup:
+	$(info "Checking selected Xcode is version 12")
+	xcodebuild -version | grep 'Xcode 12'
 	mkdir -p rust-bitcode
 	cd rust-bitcode && \
 	git init && \

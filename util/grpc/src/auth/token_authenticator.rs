@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! GRPC authenticator that relies on a shared secret for generating and
 //! verifying tokens.
@@ -92,7 +92,7 @@ impl<TP: TimeProvider> TokenAuthenticator<TP> {
         );
         let our_time = self
             .time_provider
-            .from_epoch()
+            .since_epoch()
             .map_err(|_| AuthenticatorError::ExpiredAuthorizationToken)?;
         let distance: Duration = our_time
             .checked_sub(token_time)
@@ -151,7 +151,7 @@ impl<TP: TimeProvider> TokenBasicCredentialsGenerator<TP> {
     ) -> Result<BasicCredentials, TokenBasicCredentialsGeneratorError> {
         let current_time_seconds = self
             .time_provider
-            .from_epoch()
+            .since_epoch()
             .map_err(|_| TokenBasicCredentialsGeneratorError::TimeProvider)?
             .as_secs();
         let prefix = format!("{}:{}", user_id, current_time_seconds);
@@ -248,14 +248,14 @@ mod tests {
             TokenAuthenticator::new([4; 32], TOKEN_MAX_LIFETIME, time_provider.clone());
 
         // Initially, we should be valid.
-        let now_in_seconds = time_provider.from_epoch().unwrap().as_secs();
+        let now_in_seconds = time_provider.since_epoch().unwrap().as_secs();
         assert!(authenticator
             .is_valid_time(&now_in_seconds.to_string())
             .unwrap());
 
         // Set the time such that we are no longer considered vald.
-        let expired = time_provider.from_epoch().unwrap() + TOKEN_MAX_LIFETIME;
-        time_provider.set_cur_from_epoch(expired);
+        let expired = time_provider.since_epoch().unwrap() + TOKEN_MAX_LIFETIME;
+        time_provider.set_cur_since_epoch(expired);
 
         assert!(!authenticator
             .is_valid_time(&now_in_seconds.to_string())

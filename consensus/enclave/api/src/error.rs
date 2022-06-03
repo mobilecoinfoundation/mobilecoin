@@ -1,16 +1,16 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Enclave API Errors
 
 use crate::FeeMapError;
 use alloc::string::String;
 use displaydoc::Display;
-use mc_attest_core::SgxError;
+use mc_attest_core::{IntelSealingError, ParseSealedError, SgxError};
 use mc_attest_enclave_api::Error as AttestEnclaveError;
-use mc_crypto_keys::SignatureError;
+use mc_crypto_keys::{KeyError, SignatureError};
 use mc_crypto_message_cipher::CipherError as MessageCipherError;
 use mc_sgx_compat::sync::PoisonError;
-use mc_transaction_core::validation::TransactionValidationError;
+use mc_transaction_core::{mint::MintValidationError, validation::TransactionValidationError};
 use mc_util_serial::{
     decode::Error as RmpDecodeError, encode::Error as RmpEncodeError,
     DecodeError as ProstDecodeError, EncodeError as ProstEncodeError,
@@ -38,6 +38,9 @@ pub enum Error {
     /// Malformed transaction: {0}
     MalformedTx(TransactionValidationError),
 
+    /// Malformed minting transaction: {0}
+    MalformedMintingTx(MintValidationError),
+
     /// Invalid membership proof provided by local system
     InvalidLocalMembershipProof,
 
@@ -61,6 +64,30 @@ pub enum Error {
 
     /// Block Version Error: {0}
     BlockVersion(String),
+
+    /// Sealing Error: {0}
+    IntelSealing(IntelSealingError),
+
+    /// Missing governors signature
+    MissingGovernorsSignature,
+
+    /// Invalid governors signature
+    InvalidGovernorsSignature,
+
+    /// Failed parsing minting trust root public key
+    ParseMintingTrustRootPublicKey(KeyError),
+}
+
+impl From<ParseSealedError> for Error {
+    fn from(src: ParseSealedError) -> Self {
+        Error::IntelSealing(src.into())
+    }
+}
+
+impl From<IntelSealingError> for Error {
+    fn from(src: IntelSealingError) -> Self {
+        Error::IntelSealing(src)
+    }
 }
 
 impl From<MessageCipherError> for Error {
@@ -108,6 +135,12 @@ impl From<ProstDecodeError> for Error {
 impl From<TransactionValidationError> for Error {
     fn from(src: TransactionValidationError) -> Error {
         Error::MalformedTx(src)
+    }
+}
+
+impl From<MintValidationError> for Error {
+    fn from(src: MintValidationError) -> Error {
+        Error::MalformedMintingTx(src)
     }
 }
 

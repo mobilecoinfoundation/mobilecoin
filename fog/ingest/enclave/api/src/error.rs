@@ -1,10 +1,11 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Enclave API Errors
 
 use displaydoc::Display;
 use mc_attest_core::{
-    NonceError, ParseSealedError, QuoteError, SgxError, SignatureError, VerifyError,
+    IntelSealingError, NonceError, ParseSealedError, QuoteError, SgxError, SignatureError,
+    VerifyError,
 };
 use mc_attest_enclave_api::Error as AttestEnclaveError;
 use mc_crypto_keys::KeyError;
@@ -122,6 +123,12 @@ impl From<AttestEnclaveError> for Error {
 impl From<NonceError> for Error {
     fn from(src: NonceError) -> Error {
         Error::Nonce(src)
+    }
+}
+
+impl From<IntelSealingError> for Error {
+    fn from(src: IntelSealingError) -> Error {
+        src.into()
     }
 }
 

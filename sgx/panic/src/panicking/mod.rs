@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module defines a `panic_handler` lang item and defines a function
 //! `log_and_panic` which does logging as appropriate before calling to
@@ -29,7 +29,6 @@ pub fn thread_panicking() -> bool {
 
 /// Entry point of panic from the libcore crate.
 #[panic_handler]
-#[unwind(allowed)]
 fn rust_begin_panic(info: &PanicInfo) -> ! {
     log_and_panic(info)
 }
@@ -152,6 +151,5 @@ extern "C" {
         data_ptr: *mut usize,
         vtable_ptr: *mut usize,
     ) -> u32;
-    #[unwind(allowed)]
     fn __rust_start_panic(data: usize, vtable: usize) -> u32;
 }

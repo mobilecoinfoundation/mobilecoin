@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use mc_util_build_script::Environment;
 
@@ -30,6 +30,7 @@ fn main() {
         &[
             "consensus_client.proto",
             "consensus_common.proto",
+            "consensus_config.proto",
             "consensus_peer.proto",
         ],
     );

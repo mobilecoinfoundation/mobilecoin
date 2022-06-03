@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Domain separation tags for hash functions used in the MobileCoin transaction
 //! protocol.
@@ -26,12 +26,6 @@ pub const AMOUNT_BLINDING_DOMAIN_TAG: &str = "mc_amount_blinding";
 /// Domain separator for Bulletproof transcript.
 pub const BULLETPROOF_DOMAIN_TAG: &str = "mc_bulletproof_transcript";
 
-/// Domain separator for onetime key "hash_to_point" function.
-pub const HASH_TO_POINT_DOMAIN_TAG: &str = "mc_onetime_key_hash_to_point";
-
-/// Domain separator for onetime key "hash_to_scalar" function.
-pub const HASH_TO_SCALAR_DOMAIN_TAG: &str = "mc_onetime_key_hash_to_scalar";
-
 /// Domain separator for hashing a TxOut leaf node in a Merkle tree.
 pub const TXOUT_MERKLE_LEAF_DOMAIN_TAG: &str = "mc_tx_out_merkle_leaf";
 
@@ -41,11 +35,14 @@ pub const TXOUT_MERKLE_NODE_DOMAIN_TAG: &str = "mc_tx_out_merkle_node";
 /// Domain separator for hashing the "nil" value in a Merkle tree.
 pub const TXOUT_MERKLE_NIL_DOMAIN_TAG: &str = "mc_tx_out_merkle_nil";
 
-/// Domain separator for RingMLSAG's challenges.
-pub const RING_MLSAG_CHALLENGE_DOMAIN_TAG: &str = "mc_ring_mlsag_challenge";
-
 /// Domain separator for hashing the confirmation number
 pub const TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG: &str = "mc_tx_out_confirmation_number";
 
 /// Domain separator for computing the extended message digest
 pub const EXTENDED_MESSAGE_DOMAIN_TAG: &str = "mc_extended_message";
+
+// Domain separator for hashing MintConfigTxPrefixs
+pub const MINT_CONFIG_TX_PREFIX_DOMAIN_TAG: &str = "mc_mint_config_tx_prefix";
+
+/// Domain separator for hashing MintTxPrefixs
+pub const MINT_TX_PREFIX_DOMAIN_TAG: &str = "mc_mint_tx_prefix";

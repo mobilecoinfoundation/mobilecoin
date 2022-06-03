@@ -173,7 +173,7 @@ SGX_MODE=HW IAS_MODE=DEV \
 Alternatively, if the binary has already been built, you can run:
 
 ```
-./target/release/consensus-service --client-responder-id \
+${CARGO_TARGET_DIR:-./target}/release/consensus-service --client-responder-id \
     (omitted)
 ```
 

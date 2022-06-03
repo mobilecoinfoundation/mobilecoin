@@ -392,7 +392,7 @@ mod tests {
 
         pub fn current_expected_report(node_url: &ConsensusClientUri) -> VerificationReport {
             let report_version_map = REPORT_VERSION.lock().unwrap();
-            let report_version = report_version_map.get(&node_url).map(|v| *v).unwrap_or(1);
+            let report_version = report_version_map.get(node_url).copied().unwrap_or(1);
 
             VerificationReport {
                 sig: VerificationSignature::from(vec![report_version; 32]),
@@ -629,14 +629,14 @@ mod tests {
         let signed_block_c1 =
             BlockSignature::from_block_and_keypair(&blocks[0].0, &signer3).unwrap();
         watcher_db
-            .add_block_signature(&tx_src_url3, 1, signed_block_c1, filename.clone())
+            .add_block_signature(&tx_src_url3, 1, signed_block_c1, filename)
             .unwrap();
 
         let mut tries = 30;
         let expected_reports_signer2 = HashMap::from_iter(vec![
-            (tx_src_url1.clone(), vec![None]),
+            (tx_src_url1, vec![None]),
             (
-                tx_src_url2.clone(),
+                tx_src_url2,
                 vec![Some(TestNodeClient::current_expected_report(&node2_url))],
             ),
         ]);

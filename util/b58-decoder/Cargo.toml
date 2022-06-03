@@ -2,7 +2,7 @@
 name = "mc-util-b58-decoder"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 
 [[bin]]
 name = "mc-util-b58-decoder"
@@ -11,5 +11,5 @@ path = "src/bin/main.rs"
 [dependencies]
 mc-api = { path = "../../api" }
 
+clap = { version = "3.1", features = ["derive", "env"] }
 hex = "0.4"
-structopt = "0.3"

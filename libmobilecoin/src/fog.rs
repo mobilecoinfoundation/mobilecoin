@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{attest::McVerifier, common::*, keys::McPublicAddress, LibMcError};
 use core::convert::TryFrom;

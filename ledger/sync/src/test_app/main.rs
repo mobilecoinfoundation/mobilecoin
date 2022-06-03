@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Ledger Sync test app
 
@@ -32,7 +32,7 @@ fn _make_ledger_long(ledger: &mut LedgerDB) {
         .collect::<Vec<_>>();
 
     let results: Vec<(Block, BlockContents)> = mc_transaction_core_test_utils::get_blocks(
-        BlockVersion::ONE,
+        BlockVersion::ZERO,
         &recipient_pub_keys[..],
         1,
         1000,
@@ -75,7 +75,7 @@ fn main() {
     }
 
     std::fs::copy(
-        "../../target/sample_data/ledger/data.mdb".to_string(),
+        "../../target/sample_data/ledger/data.mdb",
         format!("{}/data.mdb", ledger_path_str),
     )
     .expect("failed copying ledger");

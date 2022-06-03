@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Range proofs are used to prove that a set of committed values are all
 //! in a well-defined range, without revealing the values.
@@ -9,17 +9,23 @@
 
 extern crate alloc;
 use alloc::vec::Vec;
-use bulletproofs_og::RangeProof;
+use bulletproofs_og::{BulletproofGens, PedersenGens as BPPedersenGens, RangeProof};
 use curve25519_dalek::{ristretto::CompressedRistretto, scalar::Scalar};
+use mc_crypto_ring_signature::PedersenGens;
 use merlin::Transcript;
 use rand_core::{CryptoRng, RngCore};
 
 pub mod error;
-use crate::{
-    domain_separators::BULLETPROOF_DOMAIN_TAG,
-    ring_signature::{PedersenGens, BP_GENERATORS},
-};
+use crate::domain_separators::BULLETPROOF_DOMAIN_TAG;
 use error::Error;
+
+lazy_static! {
+    /// Generators (base points) for Bulletproofs.
+    /// The `party_capacity` is the maximum number of values in one proof. It should
+    /// be at least 2 * MAX_INPUTS + MAX_OUTPUTS, which allows for inputs, pseudo outputs, and outputs.
+    pub static ref BP_GENERATORS: BulletproofGens =
+        BulletproofGens::new(64, 64);
+}
 
 /// Create an aggregated 64-bit rangeproof for a set of values.
 ///
@@ -51,7 +57,7 @@ pub fn generate_range_proofs<T: RngCore + CryptoRng>(
     // Create a 64-bit RangeProof and corresponding commitments.
     RangeProof::prove_multiple_with_rng(
         &BP_GENERATORS,
-        pedersen_generators,
+        &convert_gens(pedersen_generators),
         &mut Transcript::new(BULLETPROOF_DOMAIN_TAG.as_ref()),
         &values_padded,
         &blindings_padded,
@@ -81,7 +87,7 @@ pub fn check_range_proofs<T: RngCore + CryptoRng>(
     range_proof
         .verify_multiple_with_rng(
             &BP_GENERATORS,
-            pedersen_generators,
+            &convert_gens(pedersen_generators),
             &mut Transcript::new(BULLETPROOF_DOMAIN_TAG.as_ref()),
             &resized_commitments,
             64,
@@ -112,16 +118,25 @@ fn resize_slice_to_pow2<T: Clone>(slice: &[T]) -> Result<Vec<T>, Error> {
     }
 }
 
+/// Convert from the mc_crypto_ring_signature::PedersenGens to BPPedersenGens.
+/// These types are identical, but we need a version of it in the lower-level
+/// crate to break dependency on the bulletproofs crate.
+fn convert_gens(src: &PedersenGens) -> BPPedersenGens {
+    BPPedersenGens {
+        B: src.B,
+        B_blinding: src.B_blinding,
+    }
+}
+
 #[cfg(test)]
 pub mod tests {
     use super::*;
     use crate::ring_signature::generators;
     use curve25519_dalek::ristretto::RistrettoPoint;
-    use rand::{rngs::StdRng, SeedableRng};
-    use rand_core::RngCore;
+    use mc_util_test_helper::{get_seeded_rng, RngCore};
 
     fn generate_and_check(values: Vec<u64>, blindings: Vec<Scalar>) {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let (proof, commitments) =
             generate_range_proofs(&values, &blindings, &generators(0), &mut rng).unwrap();
 
@@ -133,7 +148,7 @@ pub mod tests {
 
     #[test]
     fn test_pow2_number_of_inputs() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let vals: Vec<u64> = (0..2).map(|_| rng.next_u64()).collect();
         let blindings: Vec<Scalar> = vals.iter().map(|_| Scalar::random(&mut rng)).collect();
         generate_and_check(vals, blindings);
@@ -141,7 +156,7 @@ pub mod tests {
 
     #[test]
     fn test_not_pow2_number_of_inputs() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let vals: Vec<u64> = (0..9).map(|_| rng.next_u64()).collect();
         let blindings: Vec<Scalar> = vals.iter().map(|_| Scalar::random(&mut rng)).collect();
         generate_and_check(vals, blindings);
@@ -151,7 +166,7 @@ pub mod tests {
     // `check_range_proofs` should return an error if the commitments do not agree
     // with the proof.
     fn test_check_range_proofs_rejects_wrong_commitments() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
 
         let num_values: usize = 4;
         let values: Vec<u64> = (0..num_values).map(|_| rng.next_u64()).collect();
@@ -160,7 +175,7 @@ pub mod tests {
             generate_range_proofs(&values, &blindings, &generators(0), &mut rng).unwrap();
 
         // Modify a commitment.
-        let mut wrong_commitments = commitments.clone();
+        let mut wrong_commitments = commitments;
         wrong_commitments[0] = RistrettoPoint::random(&mut rng).compress();
 
         match check_range_proofs(&proof, &wrong_commitments, &generators(0), &mut rng) {

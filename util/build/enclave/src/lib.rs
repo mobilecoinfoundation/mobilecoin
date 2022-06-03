@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 #![doc = include_str!("../README.md")]
 
@@ -659,9 +659,7 @@ impl Builder {
 
         // "target/name/<profile>/libmc_foo_enclave_trusted.a" -- not xplatform, but
         // neither is our use of SGX, so meh.
-        let mut static_archive_name = "lib".to_owned();
-        // libnames are not kebab, crate names are
-        static_archive_name.push_str(&staticlib_crate_name.replace("-", "_"));
+        let static_archive_name = format!("lib{}", staticlib_crate_name.replace('-', "_"));
 
         let mut static_archive = staticlib_target_dir.join(ENCLAVE_TARGET_TRIPLE);
         static_archive.push(&self.profile);

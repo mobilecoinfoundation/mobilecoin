@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The mobilecoind Service
 //! * provides a GRPC server
@@ -16,13 +16,15 @@ use crate::{
 };
 use bip39::{Language, Mnemonic, MnemonicType};
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
-use mc_account_keys::{AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX};
+use mc_account_keys::{
+    burn_address, AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX,
+};
 use mc_account_keys_slip10::Slip10KeyGenerator;
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
-use mc_connection::{BlockchainConnection, UserTxConnection};
+use mc_connection::{BlockInfo, BlockchainConnection, UserTxConnection};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
@@ -38,6 +40,7 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     TokenId,
 };
+use mc_transaction_std::{BurnRedemptionMemo, BurnRedemptionMemoBuilder};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result, AdminService,
@@ -46,7 +49,7 @@ use mc_util_grpc::{
 use mc_watcher::watcher_db::WatcherDB;
 use protobuf::{ProtobufEnum, RepeatedField};
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     sync::{Arc, Mutex, RwLock},
 };
 
@@ -70,7 +73,6 @@ impl Service {
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
         listen_uri: &MobilecoindUri,
         num_workers: Option<usize>,
-        token_id: TokenId,
         logger: Logger,
     ) -> Self {
         let sync_thread = if mobilecoind_db.is_db_encrypted() {
@@ -111,7 +113,6 @@ impl Service {
             watcher_db,
             network_state,
             start_sync_thread,
-            token_id,
             logger.clone(),
         );
 
@@ -169,7 +170,6 @@ pub struct ServiceApi<
     watcher_db: Option<WatcherDB>,
     network_state: Arc<RwLock<PollingNetworkState<T>>>,
     start_sync_thread: Arc<dyn Fn() + Send + Sync>,
-    token_id: TokenId,
     logger: Logger,
 }
 
@@ -184,7 +184,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             watcher_db: self.watcher_db.clone(),
             network_state: self.network_state.clone(),
             start_sync_thread: self.start_sync_thread.clone(),
-            token_id: self.token_id,
             logger: self.logger.clone(),
         }
     }
@@ -200,7 +199,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         watcher_db: Option<WatcherDB>,
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
         start_sync_thread: Arc<dyn Fn() + Send + Sync>,
-        token_id: TokenId,
         logger: Logger,
     ) -> Self {
         Self {
@@ -210,9 +208,20 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             watcher_db,
             network_state,
             start_sync_thread,
-            token_id,
             logger,
         }
+    }
+
+    // Get last block info objects from network state for our peers
+    // Make a copy to avoid holding RW lock
+    fn get_last_block_infos(&self) -> Vec<BlockInfo> {
+        self.network_state
+            .read()
+            .expect("lock poisoned")
+            .peer_to_block_info()
+            .values()
+            .cloned()
+            .collect()
     }
 
     fn add_monitor_impl(
@@ -329,12 +338,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 rpc_internal_error("mobilecoind_db.get_utxos_for_subaddress", err, &self.logger)
             })?;
 
-        // Filter out those that don't have the right token id
-        // Note: This is meant to avoid breaking changes for users who are using
-        // mobilecoind with just one token id
+        // Filter out those that don't have the requested token id
         let utxos: Vec<_> = utxos
             .into_iter()
-            .filter(|utxo| utxo.token_id == self.token_id)
+            .filter(|utxo| utxo.token_id == request.token_id)
             .collect();
 
         // Convert to protos.
@@ -471,6 +478,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             response.set_receiver(payment_request.get_public_address().clone());
             response.set_value(payment_request.get_value());
             response.set_memo(payment_request.get_memo().to_string());
+            response.set_token_id(payment_request.get_token_id());
             Ok(response)
         } else if wrapper.has_public_address() {
             let public_address = wrapper.get_public_address();
@@ -498,6 +506,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         payment_request.set_public_address((&receiver).into());
         payment_request.set_value(request.get_value());
         payment_request.set_memo(request.get_memo().to_string());
+        payment_request.set_token_id(request.get_token_id());
 
         let mut wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
         wrapper.set_payment_request(payment_request);
@@ -833,6 +842,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                     rpc_internal_error("unspent_tx_out.try_from", err, &self.logger)
                 })?;
 
+                // Verify token id matches.
+                if utxo.token_id != request.token_id {
+                    return Err(RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        format!("input_list[{}].token_id", i),
+                    ));
+                }
+
                 // Verify this output belongs to the monitor.
                 let subaddress_id = self
                     .mobilecoind_db
@@ -872,11 +889,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .transactions_manager
             .build_transaction(
                 &sender_monitor_id,
+                TokenId::from(request.token_id),
                 request.change_subaddress,
                 &input_list,
                 &outlays,
+                &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
+                None,
             )
             .map_err(|err| {
                 rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
@@ -899,7 +919,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         // Generate optimization tx.
         let tx_proposal = self
             .transactions_manager
-            .generate_optimization_tx(&monitor_id, request.subaddress, request.fee)
+            .generate_optimization_tx(
+                &monitor_id,
+                request.subaddress,
+                TokenId::from(request.token_id),
+                &self.get_last_block_infos(),
+                request.fee,
+            )
             .map_err(|err| {
                 rpc_internal_error(
                     "transactions_manager.generate_optimization_tx",
@@ -925,13 +951,27 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let account_key = AccountKey::try_from(proto_account_key)
             .map_err(|err| rpc_internal_error("account_key.try_from", err, &self.logger))?;
 
+        let token_id = TokenId::from(request.token_id);
+
         let input_list: Vec<UnspentTxOut> = request
             .get_input_list()
             .iter()
-            .map(|proto_utxo| {
+            .enumerate()
+            .map(|(i, proto_utxo)| {
                 // Proto -> Rust struct conversion.
-                UnspentTxOut::try_from(proto_utxo)
-                    .map_err(|err| rpc_internal_error("unspent_tx_out.try_from", err, &self.logger))
+                let utxo = UnspentTxOut::try_from(proto_utxo).map_err(|err| {
+                    rpc_internal_error("unspent_tx_out.try_from", err, &self.logger)
+                })?;
+
+                // Ensure token id matches.
+                if utxo.token_id != *token_id {
+                    return Err(RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        format!("input_list[{}].token_id", i),
+                    ));
+                }
+
+                Ok(utxo)
             })
             .collect::<Result<Vec<UnspentTxOut>, RpcStatus>>()?;
 
@@ -940,7 +980,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         let tx_proposal = self
             .transactions_manager
-            .generate_tx_from_tx_list(&account_key, &input_list, &receiver, request.fee)
+            .generate_tx_from_tx_list(
+                &account_key,
+                token_id,
+                &input_list,
+                &receiver,
+                &self.get_last_block_infos(),
+                request.fee,
+            )
             .map_err(|err| {
                 rpc_internal_error(
                     "transactions_manager.generate_tx_from_tx_list",
@@ -950,6 +997,120 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             })?;
 
         let mut response = mc_mobilecoind_api::GenerateTxFromTxOutListResponse::new();
+        response.set_tx_proposal((&tx_proposal).into());
+        Ok(response)
+    }
+
+    fn generate_burn_redemption_tx_impl(
+        &mut self,
+        request: mc_mobilecoind_api::GenerateBurnRedemptionTxRequest,
+    ) -> Result<mc_mobilecoind_api::GenerateBurnRedemptionTxResponse, RpcStatus> {
+        // Get sender monitor id from request.
+        let sender_monitor_id = MonitorId::try_from(&request.sender_monitor_id)
+            .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
+
+        // Get monitor data for this monitor.
+        let sender_monitor_data = self
+            .mobilecoind_db
+            .get_monitor_data(&sender_monitor_id)
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.get_monitor_data", err, &self.logger)
+            })?;
+
+        // Check that change_subaddress is covered by this monitor.
+        if !sender_monitor_data
+            .subaddress_indexes()
+            .contains(&request.change_subaddress)
+        {
+            return Err(RpcStatus::with_message(
+                RpcStatusCode::INVALID_ARGUMENT,
+                "change_subaddress".into(),
+            ));
+        }
+
+        // Get the list of potential inputs passed to.
+        let input_list: Vec<UnspentTxOut> = request
+            .get_input_list()
+            .iter()
+            .enumerate()
+            .map(|(i, proto_utxo)| {
+                // Proto -> Rust struct conversion.
+                let utxo = UnspentTxOut::try_from(proto_utxo).map_err(|err| {
+                    rpc_internal_error(format!("unspent_tx_out[{}].try_from", i), err, &self.logger)
+                })?;
+
+                // Verify token id matches.
+                if utxo.token_id != request.token_id {
+                    return Err(RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        format!("input_list[{}].token_id", i),
+                    ));
+                }
+
+                // Verify this output belongs to the monitor.
+                let subaddress_id = self
+                    .mobilecoind_db
+                    .get_subaddress_id_by_utxo_id(&UtxoId::from(&utxo))
+                    .map_err(|err| {
+                        rpc_internal_error(
+                            "mobilecoind_db.get_subaddress_id_by_utxo_id",
+                            err,
+                            &self.logger,
+                        )
+                    })?;
+
+                if subaddress_id.monitor_id != sender_monitor_id {
+                    return Err(RpcStatus::with_message(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        format!("input_list[{}].monitor_id", i),
+                    ));
+                }
+
+                // Success.
+                Ok(utxo)
+            })
+            .collect::<Result<Vec<UnspentTxOut>, RpcStatus>>()?;
+
+        // Generate the list of outlays.
+        let outlays = vec![Outlay {
+            value: request.get_burn_amount(),
+            receiver: burn_address(),
+        }];
+
+        // Create memo builder.
+        let mut memo_data = request.get_redemption_memo().to_vec();
+        if memo_data.is_empty() {
+            memo_data.resize(BurnRedemptionMemo::MEMO_DATA_LEN, 0);
+        }
+        let memo_data_array = memo_data.try_into().map_err(|_err| {
+            RpcStatus::with_message(RpcStatusCode::INVALID_ARGUMENT, "redemption_memo".into())
+        })?;
+
+        let mut memo_builder = BurnRedemptionMemoBuilder::new(memo_data_array);
+        if request.enable_destination_memo {
+            memo_builder.enable_destination_memo();
+        }
+
+        // Attempt to construct a transaction.
+        let tx_proposal = self
+            .transactions_manager
+            .build_transaction(
+                &sender_monitor_id,
+                TokenId::from(request.token_id),
+                request.change_subaddress,
+                &input_list,
+                &outlays,
+                &self.get_last_block_infos(),
+                request.fee,
+                request.tombstone,
+                Some(Box::new(memo_builder)),
+            )
+            .map_err(|err| {
+                rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
+            })?;
+
+        // Success.
+        let mut response = mc_mobilecoind_api::GenerateBurnRedemptionTxResponse::new();
         response.set_tx_proposal((&tx_proposal).into());
         Ok(response)
     }
@@ -985,6 +1146,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         generate_tx_request.set_outlay_list(RepeatedField::from_vec(vec![(&outlay).into()]));
         generate_tx_request.set_fee(request.fee);
         generate_tx_request.set_tombstone(request.tombstone);
+        generate_tx_request.set_token_id(request.token_id);
 
         let mut generate_tx_response = self.generate_tx_impl(generate_tx_request)?;
         let tx_proposal = generate_tx_response.take_tx_proposal();
@@ -1572,6 +1734,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                     .b58_encode()
                     .map_err(|err| rpc_internal_error("wrapper.b58_encode", err, &self.logger))?;
                 dst.set_address_code(encoded);
+                dst.set_token_id(src.token_id);
                 Ok(dst)
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -1635,7 +1798,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             })?;
 
         // Sum them up.
-        let balance = utxos.iter().map(|utxo| utxo.value as u128).sum::<u128>();
+        let balance = utxos
+            .iter()
+            // Filter only to the requested token id.
+            .filter(|utxo| utxo.token_id == request.token_id)
+            .map(|utxo| utxo.value as u128)
+            .sum::<u128>();
 
         // It's possible the balance does not fit into a u64.
         if balance > u64::max_value().into() {
@@ -1675,6 +1843,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             utxos.retain(|utxo| utxo.value <= request.max_input_utxo_value);
         }
 
+        // Filter for requested token id.
+        utxos.retain(|utxo| utxo.token_id == request.token_id);
+
         // Get the list of outlays.
         let outlays: Vec<Outlay> = request
             .get_outlay_list()
@@ -1697,11 +1868,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .transactions_manager
             .build_transaction(
                 &sender_monitor_id,
+                TokenId::from(request.token_id),
                 change_subaddress,
                 &utxos,
                 &outlays,
+                &self.get_last_block_infos(),
                 request.fee,
                 request.tombstone,
+                None,
             )
             .map_err(|err| {
                 rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
@@ -1754,6 +1928,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         send_payment_request.set_max_input_utxo_value(request.get_max_input_utxo_value());
         send_payment_request.set_override_change_subaddress(request.override_change_subaddress);
         send_payment_request.set_change_subaddress(request.change_subaddress);
+        send_payment_request.set_token_id(request.token_id);
 
         self.send_payment_impl(send_payment_request)
     }
@@ -1775,6 +1950,17 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
         let local_block_index = num_blocks - 1;
 
+        // Get LastBlockInfo from our peers
+        let block_infos = self.get_last_block_infos();
+        // choose the block info which is latest in terms of block index (we may be
+        // isolated from some of the nodes)
+        let last_block_info = block_infos
+            .into_iter()
+            .max_by_key(|info| info.block_index)
+            .ok_or_else(|| {
+                RpcStatus::with_message(RpcStatusCode::INTERNAL, "no peers reachable".to_owned())
+            })?;
+
         let mut response = mc_mobilecoind_api::GetNetworkStatusResponse::new();
 
         response.set_network_highest_block_index(
@@ -1789,6 +1975,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         );
         response.set_local_block_index(local_block_index);
         response.set_is_behind(network_state.is_behind(local_block_index));
+        response.set_last_block_info(last_block_info.into());
 
         Ok(response)
     }
@@ -1894,6 +2081,7 @@ build_api! {
     generate_optimization_tx GenerateOptimizationTxRequest GenerateOptimizationTxResponse generate_optimization_tx_impl,
     generate_transfer_code_tx GenerateTransferCodeTxRequest GenerateTransferCodeTxResponse generate_transfer_code_tx_impl,
     generate_tx_from_tx_out_list GenerateTxFromTxOutListRequest GenerateTxFromTxOutListResponse generate_tx_from_tx_out_list_impl,
+    generate_burn_redemption_tx GenerateBurnRedemptionTxRequest GenerateBurnRedemptionTxResponse generate_burn_redemption_tx_impl,
     submit_tx SubmitTxRequest SubmitTxResponse submit_tx_impl,
 
     // Databases
@@ -1919,6 +2107,7 @@ build_api! {
 }
 
 #[cfg(test)]
+#[allow(clippy::needless_collect)]
 mod test {
     use super::*;
     use crate::{
@@ -1931,7 +2120,10 @@ mod test {
         utxo_store::UnspentTxOut,
     };
     use grpcio::Error as GrpcError;
-    use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
+    use mc_account_keys::{
+        burn_address_view_private, AccountKey, PublicAddress, ShortAddressHash,
+        DEFAULT_SUBADDRESS_INDEX,
+    };
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_keys::RistrettoPrivate;
     use mc_crypto_rand::RngCore;
@@ -1944,20 +2136,21 @@ mod test {
         onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
         tokens::Mob,
         tx::{Tx, TxOut},
-        Block, BlockContents, BlockVersion, Token,
+        Amount, Block, BlockContents, BlockVersion, Token,
     };
-    use mc_transaction_std::{EmptyMemoBuilder, TransactionBuilder};
+    use mc_transaction_std::{EmptyMemoBuilder, MemoType, TransactionBuilder};
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
     use std::{
+        assert_matches::assert_matches,
         convert::{TryFrom, TryInto},
         iter::FromIterator,
         str::FromStr,
     };
 
     // None of these tests really depend on any of the new features
-    const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
+    const BLOCK_VERSION: BlockVersion = BlockVersion::ZERO;
 
     #[test_with_logger]
     fn test_add_monitor_impl(logger: Logger) {
@@ -1965,7 +2158,7 @@ mod test {
 
         // Three random recipients and no monitors.
         let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         // Create request for adding a new monitor.
         let data = MonitorData::new(
@@ -2018,14 +2211,7 @@ mod test {
 
         // 10 random recipients and no monitors.
         let (_ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(
-                BLOCK_VERSION,
-                10,
-                &vec![],
-                &vec![],
-                logger.clone(),
-                &mut rng,
-            );
+            get_testing_environment(BLOCK_VERSION, 10, &[], &[], logger.clone(), &mut rng);
 
         let monitors_map = mobilecoind_db.get_monitor_map().unwrap();
         assert_eq!(0, monitors_map.len());
@@ -2069,14 +2255,7 @@ mod test {
 
         // 10 random recipients and no monitors.
         let (_ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(
-                BLOCK_VERSION,
-                10,
-                &vec![],
-                &vec![],
-                logger.clone(),
-                &mut rng,
-            );
+            get_testing_environment(BLOCK_VERSION, 10, &[], &[], logger.clone(), &mut rng);
 
         // Add some new monitors directly to the database.
         let monitors_to_add = 10;
@@ -2128,14 +2307,7 @@ mod test {
 
         // 10 random recipients and no monitors.
         let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(
-                BLOCK_VERSION,
-                10,
-                &vec![],
-                &vec![],
-                logger.clone(),
-                &mut rng,
-            );
+            get_testing_environment(BLOCK_VERSION, 10, &[], &[], logger.clone(), &mut rng);
 
         let data = MonitorData::new(
             AccountKey::random(&mut rng),
@@ -2202,15 +2374,33 @@ mod test {
         .unwrap();
 
         // 1 known recipient, 3 random recipients and no monitors.
-        let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
-                &vec![account_key.default_subaddress()],
-                &vec![],
+                &[account_key.default_subaddress()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
+
+        // Add a block with a non-MOB token ID.
+        add_block_to_ledger_db(
+            BLOCK_VERSION,
+            &mut ledger_db,
+            &vec![
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                account_key.default_subaddress(),
+            ],
+            Amount {
+                value: 1000,
+                token_id: TokenId::from(2),
+            },
+            &[KeyImage::from(101)],
+            &mut rng,
+        );
 
         // Insert into database.
         let id = mobilecoind_db.add_monitor(&data).unwrap();
@@ -2262,6 +2452,10 @@ mod test {
         let expected_utxos: Vec<UnspentTxOut> = account_tx_outs
             .iter()
             .map(|tx_out| {
+                let (amount, _) = tx_out
+                    .view_key_match(account_key.view_private_key())
+                    .unwrap();
+
                 // Calculate the key image for this tx out.
                 let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
                 let onetime_private_key = recover_onetime_private_key(
@@ -2276,19 +2470,44 @@ mod test {
                     tx_out: tx_out.clone(),
                     subaddress_index: 0,
                     key_image,
-                    value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT,
-                    token_id: *Mob::ID,
+                    value: amount.value,
+                    token_id: *amount.token_id,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
                 }
             })
             .collect();
 
-        // Compare
-        assert_eq!(utxos.len(), num_blocks as usize);
+        // Compare - we should have one less utxo than number of blocks, since the last
+        // one we added is a different token id.
+        assert_eq!(utxos.len(), num_blocks as usize - 1);
         assert_eq!(
-            HashSet::from_iter(utxos),
-            HashSet::from_iter(expected_utxos)
+            HashSet::from_iter(utxos.iter()),
+            HashSet::from_iter(
+                expected_utxos
+                    .iter()
+                    .filter(|utxo| utxo.token_id == *Mob::ID)
+            )
+        );
+
+        // Try with the non-MOB token id.
+        request.set_token_id(2);
+        let response = client
+            .get_unspent_tx_out_list(&request)
+            .expect("failed to get unspent tx out list");
+
+        let utxos: Vec<UnspentTxOut> = response
+            .output_list
+            .iter()
+            .map(|proto_utxo| {
+                UnspentTxOut::try_from(proto_utxo).expect("failed converting proto utxo")
+            })
+            .collect();
+
+        assert_eq!(utxos.len(), 1);
+        assert_eq!(
+            HashSet::from_iter(utxos.iter()),
+            HashSet::from_iter(expected_utxos.iter().filter(|utxo| utxo.token_id == 2))
         );
     }
 
@@ -2298,7 +2517,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         // call get entropy
         let response = client
@@ -2315,7 +2534,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         // call get entropy
         let response = client
@@ -2338,7 +2557,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         // Use mnemonic to construct AccountKey.
         let mnemonic_str =
@@ -2376,7 +2595,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         // Use root entropy to construct AccountKey.
         let root_entropy = [123u8; 32];
@@ -2418,7 +2637,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (_ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         // Insert into database.
         let id = mobilecoind_db.add_monitor(&data).unwrap();
@@ -2466,7 +2685,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         // Call get ledger info.
         let response = client
@@ -2482,7 +2701,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         // Call get block info for a valid block.
         let mut request = mc_mobilecoind_api::GetBlockInfoRequest::new();
@@ -2505,7 +2724,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         // Call get block info for a valid block.
         let mut request = mc_mobilecoind_api::GetBlockRequest::new();
@@ -2528,7 +2747,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (mut ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         // Insert a block with some key images in it.
         let recipient = AccountKey::random(&mut rng).default_subaddress();
@@ -2536,7 +2755,10 @@ mod test {
             BLOCK_VERSION,
             &mut ledger_db,
             &[recipient.clone()],
-            DEFAULT_PER_RECIPIENT_AMOUNT,
+            Amount {
+                value: DEFAULT_PER_RECIPIENT_AMOUNT,
+                token_id: Mob::ID,
+            },
             &[KeyImage::from(1), KeyImage::from(2), KeyImage::from(3)],
             &mut rng,
         );
@@ -2660,7 +2882,10 @@ mod test {
             BLOCK_VERSION,
             &mut ledger_db,
             &[recipient.clone()],
-            DEFAULT_PER_RECIPIENT_AMOUNT,
+            Amount {
+                value: DEFAULT_PER_RECIPIENT_AMOUNT,
+                token_id: Mob::ID,
+            },
             &[KeyImage::from(4), KeyImage::from(5), KeyImage::from(6)],
             &mut rng,
         );
@@ -2768,7 +2993,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         // A call with an invalid hash should fail
         {
@@ -2850,20 +3075,16 @@ mod test {
         let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
-            Mob::ID,
+            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let (tx_out, tx_confirmation) = transaction_builder
-            .add_output(10, &receiver.subaddress(0), &mut rng)
+            .add_output(Amount::new(10, Mob::ID), &receiver.subaddress(0), &mut rng)
             .unwrap();
 
-        add_txos_to_ledger_db(
-            BLOCK_VERSION,
-            &mut ledger_db,
-            &vec![tx_out.clone()],
-            &mut rng,
-        );
+        add_txos_to_ledger_db(BLOCK_VERSION, &mut ledger_db, &[tx_out.clone()], &mut rng);
 
         // A request with a valid confirmation number and monitor ID should return
         // Verified
@@ -2935,8 +3156,8 @@ mod test {
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
-                &vec![account_key.default_subaddress()],
-                &vec![],
+                &[account_key.default_subaddress()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
@@ -3031,6 +3252,8 @@ mod test {
             let b58_code = response.get_b58_code();
 
             assert_eq!(tx_out.get_address_code(), b58_code);
+
+            assert_eq!(tx_out.token_id, *Mob::ID);
         }
 
         // Add a block with a key images that spend the first two utxos and see that we
@@ -3041,7 +3264,10 @@ mod test {
                 BLOCK_VERSION,
                 &mut ledger_db,
                 &[recipient],
-                DEFAULT_PER_RECIPIENT_AMOUNT,
+                Amount {
+                    value: DEFAULT_PER_RECIPIENT_AMOUNT,
+                    token_id: Mob::ID,
+                },
                 &[
                     expected_utxos[monitor_data.first_block as usize].key_image,
                     expected_utxos[monitor_data.first_block as usize + 1].key_image,
@@ -3096,6 +3322,44 @@ mod test {
             }
         }
 
+        // Add a block with a non-MOB token id and see that it gets picked up
+        // correctly.
+        {
+            add_block_to_ledger_db(
+                BLOCK_VERSION,
+                &mut ledger_db,
+                &vec![account_key.subaddress(5)],
+                Amount {
+                    value: 102030,
+                    token_id: TokenId::from(2),
+                },
+                &[KeyImage::from(101)],
+                &mut rng,
+            );
+
+            wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+            let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
+            request.set_monitor_id(monitor_id.to_vec());
+            request.set_block(num_blocks + 1);
+
+            let response = client
+                .get_processed_block(&request)
+                .expect("failed to get processed block");
+
+            let tx_outs = response.get_tx_outs();
+            assert_eq!(tx_outs.len(), 1);
+
+            let tx_out = &tx_outs[0];
+            assert_eq!(tx_out.get_monitor_id().to_vec(), monitor_id.to_vec());
+            assert_eq!(tx_out.get_value(), 102030);
+            assert_eq!(
+                tx_out.get_direction(),
+                mc_mobilecoind_api::ProcessedTxOutDirection::Received
+            );
+            assert_eq!(tx_out.get_token_id(), 2);
+        }
+
         // Query a block that will never get processed since its before the monitor's
         // first block.
         let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
@@ -3107,7 +3371,7 @@ mod test {
         // Query a block that hasn't been processed yet.
         let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
         request.set_monitor_id(monitor_id.to_vec());
-        request.set_block(num_blocks + 1);
+        request.set_block(num_blocks + 2);
 
         assert!(client.get_processed_block(&request).is_err());
 
@@ -3131,8 +3395,8 @@ mod test {
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
-                &vec![sender.default_subaddress()],
-                &vec![],
+                &[sender.default_subaddress()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
@@ -3185,8 +3449,8 @@ mod test {
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
-                &vec![sender.default_subaddress()],
-                &vec![],
+                &[sender.default_subaddress()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
@@ -3196,8 +3460,7 @@ mod test {
         // A list of outputs to exclude.
         let to_exclude: Vec<TxOut> = {
             let data = MonitorData::new(
-                sender.clone(),
-                0,  // first_subaddress
+                sender, 0,  // first_subaddress
                 20, // num_subaddresses
                 0,  // first_block
                 "", // name
@@ -3260,8 +3523,8 @@ mod test {
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
-                &vec![sender.default_subaddress()],
-                &vec![],
+                &[sender.default_subaddress()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
@@ -3311,8 +3574,8 @@ mod test {
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
-                &vec![sender.default_subaddress()],
-                &vec![],
+                &[sender.default_subaddress()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
@@ -3384,15 +3647,33 @@ mod test {
         .unwrap();
 
         // 1 known recipient, 3 random recipients and no monitors.
-        let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
-                &vec![sender.default_subaddress()],
-                &vec![],
+                &[sender.default_subaddress()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
+
+        // Add a block with a non-MOB token ID.
+        add_block_to_ledger_db(
+            BlockVersion::MAX,
+            &mut ledger_db,
+            &vec![
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                sender.default_subaddress(),
+            ],
+            Amount {
+                value: 1_000_000_000_000,
+                token_id: TokenId::from(2),
+            },
+            &[KeyImage::from(101)],
+            &mut rng,
+        );
 
         // Insert into database.
         let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
@@ -3428,6 +3709,7 @@ mod test {
         request.set_input_list(RepeatedField::from_vec(
             utxos
                 .iter()
+                .filter(|utxo| utxo.token_id == *Mob::ID)
                 .map(mc_mobilecoind_api::UnspentTxOut::from)
                 .collect(),
         ));
@@ -3438,7 +3720,7 @@ mod test {
                 .collect(),
         ));
 
-        // Test the happy flow.
+        // Test the happy flow for MOB.
         {
             let response = client.generate_tx(&request).unwrap();
 
@@ -3515,6 +3797,94 @@ mod test {
             );
         }
 
+        // Test the happy flow for TokenId(2)
+        {
+            let mut request = mc_mobilecoind_api::GenerateTxRequest::new();
+            request.set_sender_monitor_id(monitor_id.to_vec());
+            request.set_change_subaddress(0);
+            request.set_input_list(RepeatedField::from_vec(
+                utxos
+                    .iter()
+                    .filter(|utxo| utxo.token_id == 2)
+                    .map(mc_mobilecoind_api::UnspentTxOut::from)
+                    .collect(),
+            ));
+            request.set_outlay_list(RepeatedField::from_vec(
+                outlays
+                    .iter()
+                    .map(mc_mobilecoind_api::Outlay::from)
+                    .collect(),
+            ));
+            request.set_token_id(2);
+
+            let fee = 10_000;
+            request.set_fee(fee);
+
+            let response = client.generate_tx(&request).unwrap();
+
+            // Sanity test the response.
+            let tx_proposal = response.get_tx_proposal();
+
+            assert_eq!(tx_proposal.get_input_list().len(), 1,);
+            assert_eq!(tx_proposal.get_tx().get_prefix().get_inputs().len(), 1,);
+            assert_eq!(tx_proposal.get_outlay_list(), request.get_outlay_list());
+            assert_eq!(
+                tx_proposal.get_tx().get_prefix().get_outputs().len(),
+                outlays.len() + 1
+            ); // Extra output for change.
+
+            let tx = Tx::try_from(tx_proposal.get_tx()).unwrap();
+
+            // The transaction should contain an output for each outlay, and one for change.
+            assert_eq!(tx.prefix.outputs.len(), outlays.len() + 1);
+
+            // The transaction should have a confirmation code for each outlay
+            assert_eq!(
+                outlays.len(),
+                tx_proposal.get_outlay_confirmation_numbers().len()
+            );
+
+            let change_value =
+                1_000_000_000_000 - outlays.iter().map(|outlay| outlay.value).sum::<u64>() - fee;
+
+            for (account_key, expected_value) in &[
+                (&receiver1, outlays[0].value),
+                (&receiver2, outlays[1].value),
+                (&sender, change_value),
+            ] {
+                // Find the first output belonging to the account, and get its value.
+                // This assumes that each output is sent to a different account key.
+                let (amount, _blinding) = tx
+                    .prefix
+                    .outputs
+                    .iter()
+                    .find_map(|tx_out| {
+                        let output_public_key =
+                            RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+                        let shared_secret = get_tx_out_shared_secret(
+                            account_key.view_private_key(),
+                            &output_public_key,
+                        );
+                        tx_out.masked_amount.get_value(&shared_secret).ok()
+                    })
+                    .expect("There should be an output belonging to the account key.");
+
+                assert_eq!(amount.token_id, TokenId::from(2));
+                assert_eq!(amount.value, *expected_value);
+            }
+
+            // Santity test fee
+            assert_eq!(tx_proposal.get_fee(), fee);
+            assert_eq!(tx_proposal.get_tx().get_prefix().fee, fee);
+
+            // Sanity test tombstone block
+            let num_blocks = ledger_db.num_blocks().unwrap();
+            assert_eq!(
+                tx_proposal.get_tx().get_prefix().tombstone_block,
+                num_blocks + DEFAULT_NEW_TX_BLOCK_ATTEMPTS
+            );
+        }
+
         // Invalid input scenarios should result in an error.
         {
             // No monitor id
@@ -3527,8 +3897,7 @@ mod test {
             // Unrecognized monitor id
             let sender = AccountKey::random(&mut rng);
             let data = MonitorData::new(
-                sender.clone(),
-                0,  // first_subaddress
+                sender, 0,  // first_subaddress
                 20, // num_subaddresses
                 0,  // first_block
                 "", // name
@@ -3568,6 +3937,186 @@ mod test {
             ]));
             assert!(client.generate_tx(&request).is_err());
         }
+
+        {
+            // Mixing input tokens (utxos has both Mob and TokenId(2))
+            let mut request = mc_mobilecoind_api::GenerateTxRequest::new();
+            request.set_sender_monitor_id(monitor_id.to_vec());
+            request.set_change_subaddress(0);
+            request.set_input_list(RepeatedField::from_vec(
+                utxos
+                    .iter()
+                    .map(mc_mobilecoind_api::UnspentTxOut::from)
+                    .collect(),
+            ));
+            request.set_outlay_list(RepeatedField::from_vec(
+                outlays
+                    .iter()
+                    .map(mc_mobilecoind_api::Outlay::from)
+                    .collect(),
+            ));
+            assert!(client.generate_tx(&request).is_err());
+        }
+    }
+
+    #[test_with_logger]
+    fn test_generate_burn_redemption_tx(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+        let token_id2 = TokenId::from(2);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                BLOCK_VERSION,
+                3,
+                &[sender.default_subaddress()],
+                &[],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Add a block with a non-MOB token ID.
+        add_block_to_ledger_db(
+            BlockVersion::MAX,
+            &mut ledger_db,
+            &vec![
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                AccountKey::random(&mut rng).default_subaddress(),
+                sender.default_subaddress(),
+            ],
+            Amount {
+                value: 1_000_000_000_000,
+                token_id: token_id2,
+            },
+            &[KeyImage::from(101)],
+            &mut rng,
+        );
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs that we want to burn
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, 0)
+            .unwrap()
+            .iter()
+            .filter(|utxo| utxo.token_id == token_id2)
+            .map(Into::into)
+            .collect::<RepeatedField<_>>();
+        assert!(!utxos.is_empty());
+
+        // Prepare request
+        let mut request = mc_mobilecoind_api::GenerateBurnRedemptionTxRequest::new();
+        request.set_sender_monitor_id(monitor_id.to_vec());
+        request.set_change_subaddress(0);
+        request.set_input_list(utxos);
+        request.set_burn_amount(100_000);
+        request.set_fee(200_000);
+        request.set_token_id(*token_id2);
+        request.set_redemption_memo(vec![5u8; BurnRedemptionMemo::MEMO_DATA_LEN]);
+        request.set_enable_destination_memo(true);
+
+        // Test the happy flow.
+        {
+            let response = client.generate_burn_redemption_tx(&request).unwrap();
+
+            // Sanity test the response.
+            let tx_proposal = response.get_tx_proposal();
+            let tx = Tx::try_from(tx_proposal.get_tx()).unwrap();
+
+            // Two outputs - change and burn
+            assert_eq!(tx.prefix.outputs.len(), 2);
+
+            // Validate the change output.
+            let (change_tx_out, change_amount) = tx
+                .prefix
+                .outputs
+                .iter()
+                .find_map(|tx_out| {
+                    tx_out
+                        .view_key_match(sender.view_private_key())
+                        .map(|(amount, _commitment)| (tx_out.clone(), amount))
+                        .ok()
+                })
+                .expect("Didn't find sender's change output");
+
+            assert_eq!(change_amount.value, 1_000_000_000_000 - 100_000 - 200_000);
+
+            let ss = get_tx_out_shared_secret(
+                sender.view_private_key(),
+                &RistrettoPublic::try_from(&change_tx_out.public_key).unwrap(),
+            );
+            let memo = change_tx_out.e_memo.unwrap().decrypt(&ss);
+            match MemoType::try_from(&memo).expect("Couldn't decrypt memo") {
+                MemoType::Destination(memo) => {
+                    assert_eq!(
+                        memo.get_address_hash(),
+                        &ShortAddressHash::from(&burn_address()),
+                        "lookup based on address hash failed"
+                    );
+                    assert_eq!(memo.get_num_recipients(), 1);
+                    assert_eq!(memo.get_fee(), 200_000);
+                    assert_eq!(
+                        memo.get_total_outlay(),
+                        300_000,
+                        "outlay should be amount sent to recipient + fee"
+                    );
+                }
+                _ => {
+                    panic!("unexpected memo type")
+                }
+            }
+
+            // Validate the burn output.
+            let (burn_tx_out, burn_amount) = tx
+                .prefix
+                .outputs
+                .iter()
+                .find_map(|tx_out| {
+                    tx_out
+                        .view_key_match(&burn_address_view_private())
+                        .map(|(amount, _commitment)| (tx_out.clone(), amount))
+                        .ok()
+                })
+                .expect("Didn't find burn output");
+
+            assert_eq!(burn_amount.value, 100_000);
+
+            let ss = get_tx_out_shared_secret(
+                &burn_address_view_private(),
+                &RistrettoPublic::try_from(&burn_tx_out.public_key).unwrap(),
+            );
+            let memo = burn_tx_out.e_memo.unwrap().decrypt(&ss);
+            assert_matches!(MemoType::try_from(&memo).expect("Couldn't decrypt memo"), MemoType::BurnRedemption(memo) if memo.memo_data() == &[5u8; 64]);
+        }
+
+        // Invalid memo data length results in an error.
+        {
+            let mut request = request.clone();
+            request.set_redemption_memo(vec![5u8; BurnRedemptionMemo::MEMO_DATA_LEN + 1]);
+            assert!(client.generate_burn_redemption_tx(&request).is_err());
+        }
+
+        // Trying to burn more than we have results in an error.
+        {
+            let mut request = request.clone();
+            request.set_burn_amount(1_000_000_000_000 - request.get_fee() + 1);
+            assert!(client.generate_burn_redemption_tx(&request).is_err());
+        }
     }
 
     #[test_with_logger]
@@ -3576,7 +4125,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         // Grab the first TxOut of each block in the database and verify its index.
         for block_index in 0..test_utils::GET_TESTING_ENVIRONMENT_NUM_BLOCKS as u64 {
@@ -3612,8 +4161,8 @@ mod test {
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
-                &vec![sender.default_subaddress()],
-                &vec![],
+                &[sender.default_subaddress()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
@@ -3648,8 +4197,12 @@ mod test {
         {
             let tx_proposal = TxProposal::try_from(response.get_tx_proposal()).unwrap();
             let key_images = tx_proposal.tx.key_images();
-            let outputs = tx_proposal.tx.prefix.outputs.clone();
-            let block_contents = BlockContents::new(key_images, outputs);
+            let outputs = tx_proposal.tx.prefix.outputs;
+            let block_contents = BlockContents {
+                key_images,
+                outputs,
+                ..Default::default()
+            };
 
             // Append to ledger.
             let num_blocks = ledger_db.num_blocks().unwrap();
@@ -3710,8 +4263,7 @@ mod test {
         let sender = AccountKey::random(&mut rng);
         let sender_default_subaddress = sender.default_subaddress();
         let data = MonitorData::new(
-            sender.clone(),
-            0,  // first_subaddress
+            sender, 0,  // first_subaddress
             20, // num_subaddresses
             0,  // first_block
             "", // name
@@ -3726,8 +4278,8 @@ mod test {
             get_testing_environment(
                 BLOCK_VERSION,
                 num_random_recipients as u32,
-                &vec![sender_default_subaddress.clone()],
-                &vec![],
+                &[sender_default_subaddress.clone()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
@@ -3738,7 +4290,10 @@ mod test {
                 BLOCK_VERSION,
                 &mut ledger_db,
                 &[sender_default_subaddress.clone()],
-                DEFAULT_PER_RECIPIENT_AMOUNT,
+                Amount {
+                    value: DEFAULT_PER_RECIPIENT_AMOUNT,
+                    token_id: Mob::ID,
+                },
                 &[KeyImage::from(rng.next_u64())],
                 &mut rng,
             );
@@ -3826,8 +4381,8 @@ mod test {
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
-                &vec![sender.default_subaddress()],
-                &vec![],
+                &[sender.default_subaddress()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
@@ -3894,8 +4449,8 @@ mod test {
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
-                &vec![sender.default_subaddress()],
-                &vec![],
+                &[sender.default_subaddress()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
@@ -4043,7 +4598,7 @@ mod test {
 
                 let public_key =
                     GenericArray::<u8, U32>::from_slice(receipt.get_tx_public_key().get_data());
-                assert!(tx_out_public_keys.contains(&public_key));
+                assert!(tx_out_public_keys.contains(public_key));
             }
 
             // Check that attempted_spend_height got updated for the relevant utxos.
@@ -4084,8 +4639,8 @@ mod test {
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
-                &vec![account_key.default_subaddress()],
-                &vec![],
+                &[account_key.default_subaddress()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
@@ -4152,8 +4707,8 @@ mod test {
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
-                &vec![sender.default_subaddress()],
-                &vec![],
+                &[sender.default_subaddress()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
@@ -4286,7 +4841,7 @@ mod test {
 
             let public_key =
                 GenericArray::<u8, U32>::from_slice(receipt.get_tx_public_key().get_data());
-            assert!(tx_out_public_keys.contains(&public_key));
+            assert!(tx_out_public_keys.contains(public_key));
         }
 
         // Check that attempted_spend_height got updated for the relevant utxos.
@@ -4325,14 +4880,7 @@ mod test {
 
         // 1 known recipient, 3 random recipients and no monitors.
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(
-                BLOCK_VERSION,
-                10,
-                &vec![],
-                &vec![],
-                logger.clone(),
-                &mut rng,
-            );
+            get_testing_environment(BLOCK_VERSION, 10, &[], &[], logger.clone(), &mut rng);
 
         // Add a few utxos to our recipient, such that all of them are required to
         // create the test transaction.
@@ -4341,7 +4889,10 @@ mod test {
                 BLOCK_VERSION,
                 &mut ledger_db,
                 &[sender.default_subaddress()],
-                *amount,
+                Amount {
+                    value: *amount,
+                    token_id: Mob::ID,
+                },
                 &[KeyImage::from(rng.next_u64())],
                 &mut rng,
             );
@@ -4361,7 +4912,7 @@ mod test {
 
         let utxos_by_keyimage: HashMap<KeyImage, UnspentTxOut> = utxos
             .iter()
-            .map(|utxo| (utxo.key_image.clone(), utxo.clone()))
+            .map(|utxo| (utxo.key_image, utxo.clone()))
             .collect();
 
         // Generate two random recipients.
@@ -4477,7 +5028,7 @@ mod test {
         let (ledger_db, mobilecoind_db) = test_utils::get_test_databases(
             BLOCK_VERSION,
             3,
-            &vec![sender.default_subaddress()],
+            &[sender.default_subaddress()],
             test_utils::GET_TESTING_ENVIRONMENT_NUM_BLOCKS,
             logger.clone(),
             &mut rng,
@@ -4620,8 +5171,8 @@ mod test {
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
-                &vec![sender.default_subaddress()],
-                &vec![],
+                &[sender.default_subaddress()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
@@ -4687,8 +5238,8 @@ mod test {
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
-                &vec![sender.default_subaddress()],
-                &vec![],
+                &[sender.default_subaddress()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
@@ -4752,8 +5303,8 @@ mod test {
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
-                &vec![sender.default_subaddress()],
-                &vec![],
+                &[sender.default_subaddress()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
@@ -4828,7 +5379,7 @@ mod test {
             let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
 
             let subaddress_spk = SubaddressSPKId::from(&recover_public_subaddress_spend_key(
-                &sender.view_private_key(),
+                sender.view_private_key(),
                 &tx_out_target_key,
                 &tx_public_key,
             ));
@@ -4866,7 +5417,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         // Random receiver address.
         let receiver = AccountKey::random(&mut rng).default_subaddress();
@@ -4944,6 +5495,32 @@ mod test {
             assert_eq!(response.get_memo(), "hello there");
         }
 
+        // Try with receiver, value and token id.
+        {
+            // Generate a request code
+            let mut request = mc_mobilecoind_api::CreateRequestCodeRequest::new();
+            request.set_receiver(mc_api::external::PublicAddress::from(&receiver));
+            request.set_value(1234567890);
+            request.set_token_id(123);
+
+            let response = client.create_request_code(&request).unwrap();
+            let b58_code = response.get_b58_code();
+
+            // Attempt to decode it.
+            let mut request = mc_mobilecoind_api::ParseRequestCodeRequest::new();
+            request.set_b58_code(b58_code.to_string());
+
+            let response = client.parse_request_code(&request).unwrap();
+
+            // Check that input equals output.
+            assert_eq!(
+                PublicAddress::try_from(response.get_receiver()).unwrap(),
+                receiver
+            );
+            assert_eq!(response.value, 1234567890);
+            assert_eq!(response.get_token_id(), 123);
+        }
+
         // Attempting to decode junk data should fail
         {
             let mut request = mc_mobilecoind_api::ParseRequestCodeRequest::new();
@@ -4959,7 +5536,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         // a valid transfer code must reference a tx_public_key that appears in the
         // ledger that is controlled by the root_entropy included in the code
@@ -4972,24 +5549,20 @@ mod test {
 
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
-            Mob::ID,
+            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
-                10,
+                Amount::new(10, Mob::ID),
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
                 &mut rng,
             )
             .unwrap();
 
-        add_txos_to_ledger_db(
-            BLOCK_VERSION,
-            &mut ledger_db,
-            &vec![tx_out.clone()],
-            &mut rng,
-        );
+        add_txos_to_ledger_db(BLOCK_VERSION, &mut ledger_db, &[tx_out.clone()], &mut rng);
 
         let tx_public_key = tx_out.public_key;
 
@@ -5076,7 +5649,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         // a valid transfer code must reference a tx_public_key that appears in the
         // ledger that is controlled by the bip39_entropy included in the code
@@ -5089,24 +5662,20 @@ mod test {
 
         let mut transaction_builder = TransactionBuilder::new(
             BLOCK_VERSION,
-            Mob::ID,
+            Amount::new(Mob::MINIMUM_FEE, Mob::ID),
             MockFogResolver::default(),
             EmptyMemoBuilder::default(),
-        );
+        )
+        .unwrap();
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
-                10,
+                Amount::new(10, Mob::ID),
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
                 &mut rng,
             )
             .unwrap();
 
-        add_txos_to_ledger_db(
-            BLOCK_VERSION,
-            &mut ledger_db,
-            &vec![tx_out.clone()],
-            &mut rng,
-        );
+        add_txos_to_ledger_db(BLOCK_VERSION, &mut ledger_db, &[tx_out.clone()], &mut rng);
 
         let tx_public_key = tx_out.public_key;
 
@@ -5187,7 +5756,7 @@ mod test {
 
         // no known recipient, 3 random recipients and no monitors.
         let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         {
             // Random receiver address.
@@ -5254,7 +5823,7 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
         let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(BLOCK_VERSION, 3, &vec![], &vec![], logger.clone(), &mut rng);
+            get_testing_environment(BLOCK_VERSION, 3, &[], &[], logger.clone(), &mut rng);
 
         let network_status = client
             .get_network_status(&mc_mobilecoind_api::Empty::new())
@@ -5290,8 +5859,8 @@ mod test {
             get_testing_environment(
                 BLOCK_VERSION,
                 3,
-                &vec![sender.default_subaddress()],
-                &vec![],
+                &[sender.default_subaddress()],
+                &[],
                 logger.clone(),
                 &mut rng,
             );
@@ -5340,7 +5909,10 @@ mod test {
             BLOCK_VERSION,
             &mut ledger_db,
             &[recipient],
-            DEFAULT_PER_RECIPIENT_AMOUNT,
+            Amount {
+                value: DEFAULT_PER_RECIPIENT_AMOUNT,
+                token_id: Mob::ID,
+            },
             &[first_key_image],
             &mut rng,
         );

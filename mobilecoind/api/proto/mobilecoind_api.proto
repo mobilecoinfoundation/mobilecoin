@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // MUST BE KEPT IN SYNC WITH RUST CODE!
 
@@ -8,6 +8,7 @@ syntax = "proto3";
 import "google/protobuf/empty.proto";
 import "external.proto";
 import "blockchain.proto";
+import "consensus_common.proto";
 
 package mobilecoind_api;
 
@@ -44,6 +45,7 @@ service MobilecoindAPI {
     rpc GenerateOptimizationTx (GenerateOptimizationTxRequest) returns (GenerateOptimizationTxResponse) {}
     rpc GenerateTransferCodeTx (GenerateTransferCodeTxRequest) returns (GenerateTransferCodeTxResponse) {}
     rpc GenerateTxFromTxOutList (GenerateTxFromTxOutListRequest) returns (GenerateTxFromTxOutListResponse) {}
+    rpc GenerateBurnRedemptionTx (GenerateBurnRedemptionTxRequest) returns (GenerateBurnRedemptionTxResponse) {}
     rpc SubmitTx (SubmitTxRequest) returns (SubmitTxResponse) {}
 
     // Databases
@@ -127,7 +129,7 @@ message UnspentTxOut {
     uint64 attempted_spend_tombstone = 6;
 
     // The token id of the TxOut
-    uint32 token_id = 7;
+    uint64 token_id = 7;
 
     // The monitor id this UnspentTxOut belongs to.
     // Note that this field is not included in the Rust `utxo_store::UnspentTxOut` struct.
@@ -248,6 +250,9 @@ message ProcessedTxOut {
 
     // The b58-encoded Address Code for the subaddress that owns the TxOut.
     string address_code = 7;
+
+    // The token id of the TxOut.
+    uint64 token_id = 8;
 }
 
 //*********************************
@@ -302,10 +307,12 @@ message GetMonitorStatusResponse {
     MonitorStatus status = 1;
 }
 
-// Get a list of UnspentTxOuts for a given monitor and subadddress index.
+// Get a list of UnspentTxOuts for a given monitor and subadddress index,
+// filtered to a specific token id.
 message GetUnspentTxOutListRequest {
     bytes monitor_id = 1;
     uint64 subaddress_index = 2;
+    uint64 token_id = 3;
 }
 message GetUnspentTxOutListResponse {
     repeated UnspentTxOut output_list = 1;
@@ -336,6 +343,7 @@ message GenerateMnemonicResponse {
 message GetAccountKeyFromRootEntropyRequest {
     bytes root_entropy = 1;
 }
+
 // Generate an AccountKey from a mnemonic.
 message GetAccountKeyFromMnemonicRequest {
     string mnemonic = 1;
@@ -367,6 +375,7 @@ message ParseRequestCodeResponse {
     external.PublicAddress receiver = 1;
     uint64 value = 2;
     string memo = 3;
+    uint64 token_id = 4;
 }
 
 // Encode receiver's public address, value, and memo into a base-58 "MobileCoin Request Code".
@@ -374,6 +383,7 @@ message CreateRequestCodeRequest {
     external.PublicAddress receiver = 1;
     uint64 value = 2;
     string memo = 3;
+    uint64 token_id = 4;
 }
 message CreateRequestCodeResponse {
     string b58_code = 1;
@@ -474,6 +484,9 @@ message GenerateTxRequest {
     // Tombstone block (setting to 0 causes mobilecoind to choose a value).
     // The value used can be checked (but not changed) in tx_proposal.tx.prefix.tombstone_block
     uint64 tombstone = 6;
+
+    // Token id to use for the transaction.
+    uint64 token_id = 7;
 }
 message GenerateTxResponse {
     TxProposal tx_proposal = 1;
@@ -489,6 +502,9 @@ message GenerateOptimizationTxRequest {
 
     // Add an optional fee
     uint64 fee = 3;
+
+    // Token id to use for the transaction.
+    uint64 token_id = 4;
 }
 message GenerateOptimizationTxResponse {
     TxProposal tx_proposal = 1;
@@ -503,6 +519,7 @@ message GenerateTransferCodeTxRequest {
     uint64 fee = 5;
     uint64 tombstone = 6;
     string memo = 7;
+    uint64 token_id = 8;
 }
 message GenerateTransferCodeTxResponse {
     // The tx proposal to submit to the network.
@@ -526,6 +543,7 @@ message GenerateTransferCodeTxResponse {
 // Generate a transaction without a monitor, requires an account key and
 // a list of UnspentTxOuts. All coins (minus the fee) are transferred to
 // a single recipient. Used for temporary accounts like gift codes.
+// All inputs must be of the same token id.
 message GenerateTxFromTxOutListRequest {
     // Account key that owns the transactions
     external.AccountKey account_key = 1;
@@ -538,9 +556,55 @@ message GenerateTxFromTxOutListRequest {
 
     // Fee
     uint64 fee = 4;
+
+    // Token id
+    uint64 token_id = 5;
 }
 
 message GenerateTxFromTxOutListResponse {
+    TxProposal tx_proposal = 1;
+}
+
+// Generate a burn redemption transaction proposal object.
+// Notes:
+// - Sum of inputs needs to be greater than or equal to the burn amount and fee.
+// - The set of inputs to use would be chosen automatically by mobilecoind.
+// - The fee field could be set to zero, in which case mobilecoind would try and choose a fee.
+message GenerateBurnRedemptionTxRequest {
+    // Monitor id sending the funds.
+    bytes sender_monitor_id = 1;
+
+    // Subaddress to return change to.
+    uint64 change_subaddress = 2;
+
+    // List of UnspentTxOuts to be spent by the transaction.
+    // All UnspentTxOuts must belong to the same sender_monitor_id.
+    // mobilecoind would choose a subset of these inputs to construct the transaction.
+    // Total input amount must be >= burn amount + fee.
+    repeated UnspentTxOut input_list = 3;
+
+    // Amount to be burnt. This excludes change and fee.
+    uint64 burn_amount = 4;
+
+    // Fee (setting to 0 causes mobilecoind to choose a value).
+    // The value used can be checked (but not changed) in tx_proposal.tx.prefix.fee
+    uint64 fee = 5;
+
+    // Tombstone block (setting to 0 causes mobilecoind to choose a value).
+    // The value used can be checked (but not changed) in tx_proposal.tx.prefix.tombstone_block
+    uint64 tombstone = 6;
+
+    // Token id to use for the transaction.
+    uint64 token_id = 7;
+
+    // Optional 64 bytes of data to include in the burn redemption memo that is attached to the burn TxOut.
+    // If not provided zeros will be used.
+    bytes redemption_memo = 8;
+
+    // Enable RTH destination memo.
+    bool enable_destination_memo = 9;
+}
+message GenerateBurnRedemptionTxResponse {
     TxProposal tx_proposal = 1;
 }
 
@@ -651,16 +715,19 @@ message GetBlockIndexByTxPubKeyResponse {
 // Convenience calls
 ///
 
-// Get the balance for a given monitor and subadddress index, in picoMOB.
+// Get the balance for a given monitor, subadddress index and a specific token id.
 message GetBalanceRequest {
     // Monitor id to query balance for.
     bytes monitor_id = 1;
 
     // Subaddress to query balance for.
     uint64 subaddress_index = 2;
+
+    // Token id to filter for.
+    uint64 token_id = 3;
 }
 message GetBalanceResponse {
-    // Sum of all utxos associated with the requested monitor_id/subaddress_index.
+    // Sum of all utxos associated with the requested monitor_id/subaddress_index/token_id.
     uint64 balance = 1;
 }
 
@@ -675,7 +742,7 @@ message SendPaymentRequest {
     // Outputs to be generated by the transaction. This excludes change and fee.
     repeated Outlay outlay_list = 3;
 
-    // Fee in picoMOB (setting to 0 causes mobilecoind to choose a value).
+    // Fee (setting to 0 causes mobilecoind to choose a value).
     // The value used can be checked (but not changed) in tx_proposal.tx.prefix.fee
     uint64 fee = 4;
 
@@ -690,6 +757,9 @@ message SendPaymentRequest {
     // Optional: Return change to a different subaddress than the sender
     bool override_change_subaddress = 7;
     uint64 change_subaddress = 8;
+
+    // Token id to transact in.
+    uint64 token_id = 9;
 }
 message SendPaymentResponse {
     // Information the sender can use to check if the transaction landed in the ledger.
@@ -717,7 +787,7 @@ message PayAddressCodeRequest {
     // Amount to pay
     uint64 amount = 4;
 
-    // Fee in picoMOB (setting to 0 causes mobilecoind to choose a value).
+    // Fee (setting to 0 causes mobilecoind to choose a value).
     // The value used can be checked (but not changed) in tx_proposal.tx.prefix.fee
     uint64 fee = 5;
 
@@ -732,6 +802,9 @@ message PayAddressCodeRequest {
     // Optional: Return change to a different subaddress than the sender
     bool override_change_subaddress = 8;
     uint64 change_subaddress = 9;
+
+    // Token id to transact in.
+    uint64 token_id = 10;
 }
 
 //
@@ -753,6 +826,9 @@ message GetNetworkStatusResponse {
 
     // Whether we are behind.
     bool is_behind = 4;
+
+    // The latest block info reported by a consensus node
+    consensus_common.LastBlockInfoResponse last_block_info = 5;
 }
 
 //

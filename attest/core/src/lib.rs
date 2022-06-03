@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Attestation verification code and data structures shared between the
 //! SDK, node, and enclave
@@ -31,7 +31,7 @@ pub use crate::{
     nonce::{IasNonce, Nonce, QuoteNonce},
     quote::{Quote, QuoteSignType},
     report::Report,
-    seal::{IntelSealed, ParseSealedError, Sealed},
+    seal::{IntelSealed, IntelSealingError, ParseSealedError, Sealed},
     sigrl::SigRL,
     types::{
         attributes::Attributes,
@@ -56,3 +56,6 @@ pub use crate::{
 
 /// The IAS version we support
 pub const IAS_VERSION: f64 = 4.0;
+
+// Expected format for base64 strings
+pub(crate) const B64_CONFIG: base64::Config = base64::STANDARD;

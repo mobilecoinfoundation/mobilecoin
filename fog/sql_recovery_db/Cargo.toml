@@ -2,7 +2,7 @@
 name = "mc-fog-sql-recovery-db"
 version = "1.3.0-pre0"
 authors = ["Mobilecoin"]
-edition = "2018"
+edition = "2021"
 license = "GPL-3.0"
 
 [lib]
@@ -31,17 +31,17 @@ mc-fog-recovery-db-iface = { path = "../recovery_db_iface" }
 mc-fog-types = { path = "../types" }
 
 chrono = "0.4"
+clap = { version = "3.1", features = ["derive", "env"] }
 diesel = { version = "1.4.8", features = ["chrono", "postgres", "r2d2"] }
 diesel-derive-enum = { version = "1", features = ["postgres"] }
 diesel_migrations = { version = "1.4.0", features = ["postgres"] }
 displaydoc = { version = "0.2", default-features = false }
-prost = "0.9"
+prost = "0.10"
 r2d2 = "0.8.9"
 rand = "0.8"
 rand_core = "0.6"
 retry = "1.3"
 serde = { version = "1.0", features = ["derive"] }
-structopt = "0.3"
 
 # needed for fog-sql-recovery-db-write-bench
 mc-fog-test-infra = { path = "../test_infra" }

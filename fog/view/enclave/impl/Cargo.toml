@@ -2,7 +2,7 @@
 name = "mc-fog-view-enclave-impl"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 license = "GPL-3.0"
 
 [dependencies]
@@ -18,10 +18,10 @@ mc-sgx-report-cache-api = { path = "../../../../sgx/report-cache/api" }
 mc-util-serial = { path = "../../../../util/serial", default-features = false }
 
 # mc-oblivious
-aligned-cmov = "2.0"
-mc-oblivious-map = "2.0"
-mc-oblivious-ram = "2.0"
-mc-oblivious-traits = "2.0"
+aligned-cmov = "2.2"
+mc-oblivious-map = "2.2"
+mc-oblivious-ram = "2.2"
+mc-oblivious-traits = "2.2"
 
 # fog
 mc-fog-recovery-db-iface = { path = "../../../recovery_db_iface" }

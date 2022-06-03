@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Definition of memo payload type
 //!
@@ -34,7 +34,10 @@ use aes::{
     cipher::{FromBlockCipher, StreamCipher},
     Aes256, Aes256Ctr, NewBlockCipher,
 };
-use core::convert::{TryFrom, TryInto};
+use core::{
+    convert::{TryFrom, TryInto},
+    str::Utf8Error,
+};
 use displaydoc::Display;
 use generic_array::{
     sequence::Split,
@@ -49,9 +52,12 @@ use mc_util_repr_bytes::{
     derive_repr_bytes_from_as_ref_and_try_from, derive_serde_from_repr_bytes,
 };
 use sha2::Sha512;
+use zeroize::Zeroize;
 
 /// An encrypted memo, which can be decrypted by the recipient of a TxOut.
-#[derive(Clone, Copy, Default, Debug, Eq, Hash, Digestible, Ord, PartialEq, PartialOrd)]
+#[derive(
+    Clone, Copy, Debug, Default, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Zeroize,
+)]
 pub struct EncryptedMemo(GenericArray<u8, U66>);
 
 impl AsRef<[u8]> for EncryptedMemo {
@@ -217,36 +223,47 @@ derive_serde_from_repr_bytes!(MemoPayload);
 derive_prost_message_from_repr_bytes!(MemoPayload);
 
 /// An error which can occur when handling memos
-#[derive(Display, Debug)]
+#[derive(Debug, Display, Eq, PartialEq)]
 pub enum MemoError {
     /// Wrong length for memo payload: {0}
     BadLength(usize),
+
+    /// Utf-8 did not properly decode
+    Utf8Decoding,
+
+    /// Max fee of {0} exceeded. Attempted to set fee amount: {1}
+    MaxFeeExceeded(u64, u64),
+}
+
+impl From<Utf8Error> for MemoError {
+    fn from(_: Utf8Error) -> Self {
+        Self::Utf8Decoding
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use mc_util_from_random::FromRandom;
-    use rand_core::SeedableRng;
-    use rand_hc::Hc128Rng;
+    use mc_util_test_helper::{RngType, SeedableRng};
 
     #[test]
     fn test_memo_payload_round_trip() {
-        let mut rng = Hc128Rng::seed_from_u64(37);
+        let mut rng = RngType::seed_from_u64(37);
 
         let key1 = RistrettoPublic::from_random(&mut rng);
         let key2 = RistrettoPublic::from_random(&mut rng);
 
         let memo1 = MemoPayload::default();
-        let e_memo1 = memo1.clone().encrypt(&key1);
+        let e_memo1 = memo1.encrypt(&key1);
         assert_eq!(memo1, e_memo1.decrypt(&key1), "roundtrip failed");
 
         let memo2 = MemoPayload::new([1u8, 2u8], [47u8; 64]);
-        let e_memo2 = memo2.clone().encrypt(&key1);
+        let e_memo2 = memo2.encrypt(&key1);
         assert_eq!(memo2, e_memo2.decrypt(&key1), "roundtrip failed");
 
         let memo1 = MemoPayload::default();
-        let e_memo1 = memo1.clone().encrypt(&key1);
+        let e_memo1 = memo1.encrypt(&key1);
         assert_ne!(
             memo1,
             e_memo1.decrypt(&key2),
@@ -254,7 +271,7 @@ mod tests {
         );
 
         let memo2 = MemoPayload::new([1u8, 2u8], [47u8; 64]);
-        let e_memo2 = memo2.clone().encrypt(&key2);
+        let e_memo2 = memo2.encrypt(&key2);
         assert_ne!(
             memo2,
             e_memo2.decrypt(&key1),

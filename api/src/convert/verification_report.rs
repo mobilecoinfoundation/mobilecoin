@@ -1,4 +1,4 @@
-// Copyright 2018-2020 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Convert to/from external::VerificationReport
 

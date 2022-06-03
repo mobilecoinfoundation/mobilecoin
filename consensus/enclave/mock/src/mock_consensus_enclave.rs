@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Mocks the ConsensusEnclave for testing.
 
@@ -43,6 +43,8 @@ mock! {
         fn get_signer(&self) -> ConsensusEnclaveResult<Ed25519Public>;
 
         fn get_fee_recipient(&self) -> ConsensusEnclaveResult<FeePublicKey>;
+
+        fn get_minting_trust_root(&self) -> ConsensusEnclaveResult<Ed25519Public>;
 
         fn client_accept(&self, req: ClientAuthRequest) -> ConsensusEnclaveResult<(ClientAuthResponse, ClientSession)>;
 

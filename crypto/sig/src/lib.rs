@@ -243,7 +243,7 @@ mod tests {
 
             let sig = sign(b"test", &seckey2, b"foobar");
             let result = verify(b"test", &pubkey, b"foobar", &sig);
-            assert!(!result.is_ok());
+            assert!(result.is_err());
         })
     }
     // Expected failure when message is different
@@ -255,7 +255,7 @@ mod tests {
 
             let sig = sign(b"test", &seckey, b"foobar");
             let result = verify(b"test", &pubkey, b"foobarbaz", &sig);
-            assert!(!result.is_ok());
+            assert!(result.is_err());
         })
     }
 
@@ -268,7 +268,7 @@ mod tests {
 
             let sig = sign(b"test", &seckey, b"foobar");
             let result = verify(b"prod", &pubkey, b"foobar", &sig);
-            assert!(!result.is_ok());
+            assert!(result.is_err());
         })
     }
 }

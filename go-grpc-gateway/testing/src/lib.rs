@@ -1,4 +1,8 @@
-// Copyright 2018-2021 MobileCoin, Inc.
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Testing helpers
+
+#![deny(missing_docs)]
 
 mod config;
 mod server;

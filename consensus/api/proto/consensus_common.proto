@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // Consensus service data types used by both client-facing and peer-facing APIs.
 
@@ -25,7 +25,15 @@ message LastBlockInfoResponse {
     uint64 mob_minimum_fee = 2 [deprecated = true];
 
     // A map of token id -> minimum fee
-    map<uint32, uint64> minimum_fees = 3;
+    map<uint64, uint64> minimum_fees = 3;
+
+    // Current network_block version, appropriate for new transactions.
+    //
+    // Note that if the server was just reconfigured, this may be HIGHER than
+    // the highest block version in the ledger, so for clients this is a better
+    // source of truth than the local ledger, if the client might possibly be
+    // creating the first transaction after a reconfigure / redeploy.
+    uint32 network_block_version = 4;
 }
 
 // Requests a range [offset, offset+limit) of Blocks.
@@ -81,6 +89,9 @@ enum ProposeTxResult {
     MissingMaskedTokenId = 43;
     MaskedTokenIdNotAllowed = 44;
     UnsortedOutputs = 45;
+    InputRulesNotAllowed = 46;
+    InputRuleMissingRequiredOutput = 47;
+    InputRuleMaxTombstoneBlockExceeded = 48;
 }
 
 /// Response from TxPropose RPC call.
@@ -90,4 +101,7 @@ message ProposeTxResponse {
 
     /// The number of blocks in the ledger at the time the request was received.
     uint64 block_count = 2;
+
+    /// The block version which is in effect right now
+    uint32 block_version = 3;
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2021 The MobileCoin Foundation
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 """
 A helper tool for getting the dockerized build environment
 
@@ -339,6 +339,9 @@ docker_run = ["docker",
               "run",
               # container doesn't know mount_point so we have to set this
               "--env", "CARGO_HOME=" + mount_point + "/cargo",
+              # Give docker its own subdirectory under target so it doesn't trash
+              # the host target directory, but will still be cleaned up with it.
+              "--env", "CARGO_TARGET_DIR=" + mount_point + "/target/docker",
               "--volume", mount_from + ":" + mount_point,
               "--workdir", workdir]
 

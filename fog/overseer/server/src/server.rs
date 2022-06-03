@@ -10,27 +10,26 @@ use crate::{
 };
 use mc_fog_recovery_db_iface::RecoveryDb;
 use mc_fog_sql_recovery_db::SqlRecoveryDb;
-use rocket::{get, post, routes};
-use rocket_contrib::json::Json;
+use rocket::{get, post, routes, serde::json::Json};
 
 #[post("/enable")]
-fn enable(state: rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<String, String> {
+fn enable(state: &rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<String, String> {
     state.overseer_service.enable()
 }
 
 #[post("/disable")]
-fn disable(state: rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<String, String> {
+fn disable(state: &rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<String, String> {
     state.overseer_service.disable()
 }
 
 #[get("/status")]
-fn get_status(state: rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<String, String> {
+fn get_status(state: &rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<String, String> {
     state.overseer_service.get_status()
 }
 
 #[get("/ingest_summaries")]
 fn get_ingest_summaries(
-    state: rocket::State<OverseerState<SqlRecoveryDb>>,
+    state: &rocket::State<OverseerState<SqlRecoveryDb>>,
 ) -> Result<Json<GetIngestSummariesResponse>, String> {
     state.overseer_service.get_ingest_summaries().map(Json)
 }
@@ -39,7 +38,7 @@ fn get_ingest_summaries(
 ///
 /// Meant to be called only by the Prometheus pull mechanism.
 #[get("/metrics")]
-fn get_metrics(state: rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<String, String> {
+fn get_metrics(state: &rocket::State<OverseerState<SqlRecoveryDb>>) -> Result<String, String> {
     state.overseer_service.get_metrics()
 }
 
@@ -56,20 +55,18 @@ where
 
 /// Returns an instance of a Rocket server.
 #[must_use = "Use with a Client or call launch"]
-pub fn initialize_rocket_server(
-    rocket_config: rocket::Config,
+pub fn initialize_rocket_server<T: rocket::figment::Provider>(
+    rocket_config: T,
     state: OverseerState<SqlRecoveryDb>,
-) -> rocket::Rocket {
-    rocket::custom(rocket_config)
-        .mount(
-            "/",
-            routes![
-                enable,
-                disable,
-                get_status,
-                get_metrics,
-                get_ingest_summaries
-            ],
-        )
-        .manage(state)
+) -> rocket::Rocket<rocket::Build> {
+    rocket::custom(rocket_config).manage(state).mount(
+        "/",
+        routes![
+            enable,
+            disable,
+            get_status,
+            get_metrics,
+            get_ingest_summaries
+        ],
+    )
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Database storage for discovered outputs.
 //! * Manages the mapping of (monitor id, subaddress index) -> [UnspentTxOut]s.
@@ -58,8 +58,8 @@ pub struct UnspentTxOut {
     pub attempted_spend_tombstone: u64,
 
     /// The token id of this TxOut
-    #[prost(uint32, tag = "7")]
-    pub token_id: u32,
+    #[prost(uint64, tag = "7")]
+    pub token_id: u64,
 }
 
 /// Type used as the key in the utxo_id_to_utxo  database.
@@ -69,20 +69,21 @@ impl From<&UnspentTxOut> for UtxoId {
     fn from(src: &UnspentTxOut) -> Self {
         // The key image uniquely identifies a TxOut, which uniquely identifies an
         // UnspentTxOut.
-        Self::from(&src.key_image)
+        (&src.key_image).into()
     }
 }
 
 impl From<&KeyImage> for UtxoId {
     fn from(src: &KeyImage) -> Self {
-        Self::from(src.as_bytes())
+        src.as_bytes().into()
     }
 }
 
 /// The outputs database.
 #[derive(Clone)]
 pub struct UtxoStore {
-    env: Arc<Environment>,
+    /// Retain a reference to the Environment so the Database handles are valid.
+    _env: Arc<Environment>,
 
     /// Mapping of SubaddressId -> [UtxoId].
     /// This holds the list of UtxoIds associated with a (monitor id, subaddress
@@ -122,7 +123,7 @@ impl UtxoStore {
         )?;
 
         Ok(Self {
-            env,
+            _env: env,
             subaddress_id_to_utxo_id,
             key_image_to_subaddress_id,
             utxo_id_to_utxo,
@@ -438,10 +439,10 @@ mod test {
     fn setup_test_utxo_store(
         mut rng: &mut (impl CryptoRng + RngCore),
         logger: &Logger,
-    ) -> (LedgerDB, UtxoStore, Vec<UnspentTxOut>) {
+    ) -> (Arc<Environment>, LedgerDB, UtxoStore, Vec<UnspentTxOut>) {
         // Set up a db with 3 random recipients and 10 blocks.
         let (ledger_db, _mobilecoind_db) =
-            get_test_databases(BlockVersion::ONE, 3, &vec![], 10, logger.clone(), &mut rng);
+            get_test_databases(BlockVersion::ZERO, 3, &[], 10, logger.clone(), &mut rng);
 
         // Get a few TxOuts to play with, and use them to construct UnspentTxOuts.
         let utxos: Vec<UnspentTxOut> = (0..5)
@@ -475,17 +476,17 @@ mod test {
                 .unwrap(),
         );
 
-        let utxo_store = UtxoStore::new(env, logger.clone()).unwrap();
+        let utxo_store = UtxoStore::new(env.clone(), logger.clone()).unwrap();
 
         // Return
-        (ledger_db, utxo_store, utxos)
+        (env, ledger_db, utxo_store, utxos)
     }
 
     // UtxoStore basic functionality tests
     #[test_with_logger]
     fn test_utxo_store(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-        let (_ledger_db, utxo_store, utxos) = setup_test_utxo_store(&mut rng, &logger);
+        let (env, _ledger_db, utxo_store, utxos) = setup_test_utxo_store(&mut rng, &logger);
         let utxo_ids: Vec<UtxoId> = utxos.iter().map(UtxoId::from).collect();
 
         // Some random monitor ids to play with
@@ -503,7 +504,7 @@ mod test {
         for _ in 0..3 {
             // Initially we should have no utxo ids in our database.
             {
-                let db_txn = utxo_store.env.begin_ro_txn().unwrap();
+                let db_txn = env.begin_ro_txn().unwrap();
 
                 for subaddress in &[
                     &subaddress0_0,
@@ -520,7 +521,7 @@ mod test {
 
             // Append two outputs to the subaddress0_0
             {
-                let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+                let mut db_txn = env.begin_rw_txn().unwrap();
 
                 utxo_store
                     .append_utxo(&mut db_txn, &monitor_id0, 0, &utxos[0])
@@ -567,7 +568,7 @@ mod test {
             // Appending an output that is already in the database should fail, regardless
             // of the monitor/subaddress it is being appended to.
             {
-                let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+                let mut db_txn = env.begin_rw_txn().unwrap();
 
                 for subaddress in &[
                     &subaddress0_0,
@@ -594,7 +595,7 @@ mod test {
             // Appending new utxos to a different monitor/index should succeed, and not get
             // mixed with the previously addded ones.
             {
-                let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+                let mut db_txn = env.begin_rw_txn().unwrap();
 
                 let mut utxo = utxos[2].clone();
                 utxo.subaddress_index = subaddress1_1.index;
@@ -635,7 +636,7 @@ mod test {
 
             // Remove all utxos for subaddress0_0 and check only it got affected.
             {
-                let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+                let mut db_txn = env.begin_rw_txn().unwrap();
 
                 utxo_store
                     .remove_utxos(&mut db_txn, &subaddress0_0.monitor_id, subaddress0_0.index)
@@ -669,7 +670,7 @@ mod test {
             // Remove the remaining utxo, and by that restore the database into its empty
             // state.
             {
-                let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+                let mut db_txn = env.begin_rw_txn().unwrap();
 
                 utxo_store
                     .remove_utxos(&mut db_txn, &subaddress1_1.monitor_id, subaddress1_1.index)
@@ -693,7 +694,7 @@ mod test {
 
             // Removing utxos when none exist should not error.
             {
-                let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+                let mut db_txn = env.begin_rw_txn().unwrap();
 
                 utxo_store
                     .remove_utxos(&mut db_txn, &subaddress1_1.monitor_id, subaddress0_0.index)
@@ -706,8 +707,8 @@ mod test {
     #[test_with_logger]
     fn test_remove_utxos_by_key_images(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-        let (_ledger_db, utxo_store, mut utxos) = setup_test_utxo_store(&mut rng, &logger);
-        let key_images: Vec<KeyImage> = utxos.iter().map(|utxo| utxo.key_image.clone()).collect();
+        let (env, _ledger_db, utxo_store, mut utxos) = setup_test_utxo_store(&mut rng, &logger);
+        let key_images: Vec<KeyImage> = utxos.iter().map(|utxo| utxo.key_image).collect();
 
         // Some random monitor ids to play with
         let (_monitor_data, monitor_id0) = get_test_monitor_data_and_id(&mut rng);
@@ -715,7 +716,7 @@ mod test {
 
         // Removing nonexistent key images should return success and remove nothing.
         {
-            let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
 
             let removed_utxos = utxo_store
                 .remove_utxos_by_key_images(&mut db_txn, &monitor_id0, &[])
@@ -730,7 +731,7 @@ mod test {
 
         // Add a few utxos to monitor_id0.
         {
-            let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
 
             // Three for monitor_id0
             utxos[0].subaddress_index = 123;
@@ -790,7 +791,7 @@ mod test {
         // Attempting to remove the utxos from a different monitor should not remove
         // them.
         {
-            let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
 
             // The first key images are associated with monitor_id0.
             let removed_utxos = utxo_store
@@ -803,7 +804,7 @@ mod test {
 
         // Nothing should've been removed
         {
-            let db_txn = utxo_store.env.begin_ro_txn().unwrap();
+            let db_txn = env.begin_ro_txn().unwrap();
 
             assert_eq!(
                 HashSet::from_iter(utxo_store.get_utxos(&db_txn, &monitor_id0, 123).unwrap()),
@@ -828,18 +829,14 @@ mod test {
 
         // Remove with the correct parameters.
         {
-            let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
 
             let removed_utxos = utxo_store
                 .remove_utxos_by_key_images(&mut db_txn, &monitor_id0, &key_images)
                 .unwrap();
             assert_eq!(
-                HashSet::from_iter(removed_utxos.iter().map(|utxo| utxo.key_image.clone())),
-                HashSet::from_iter(vec![
-                    key_images[0].clone(),
-                    key_images[1].clone(),
-                    key_images[2].clone()
-                ])
+                HashSet::from_iter(removed_utxos.iter().map(|utxo| utxo.key_image)),
+                HashSet::from_iter(vec![key_images[0], key_images[1], key_images[2]])
             );
 
             assert_eq!(
@@ -872,7 +869,7 @@ mod test {
 
         // Removing again should do nothing.
         {
-            let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
 
             let removed_utxos = utxo_store
                 .remove_utxos_by_key_images(&mut db_txn, &monitor_id0, &key_images)
@@ -906,12 +903,12 @@ mod test {
     #[test_with_logger]
     fn test_update_attempted_spend(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-        let (_ledger_db, utxo_store, utxos) = setup_test_utxo_store(&mut rng, &logger);
+        let (env, _ledger_db, utxo_store, utxos) = setup_test_utxo_store(&mut rng, &logger);
         let (_monitor_data, monitor_id) = get_test_monitor_data_and_id(&mut rng);
 
         // Append utxos to database
         {
-            let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
 
             assert!(!utxos.is_empty());
             for utxo in utxos.iter() {
@@ -926,7 +923,7 @@ mod test {
         // We should have the original attempted_spend_height/attempted_spend_tombstone
         // in the database.
         {
-            let db_txn = utxo_store.env.begin_ro_txn().unwrap();
+            let db_txn = env.begin_ro_txn().unwrap();
 
             for utxo in utxos.iter() {
                 let utxo2 = utxo_store
@@ -942,7 +939,7 @@ mod test {
 
         // Update some of our utxos and one that doesn't exist.
         {
-            let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
+            let mut db_txn = env.begin_rw_txn().unwrap();
             utxo_store
                 .update_attempted_spend(
                     &mut db_txn,
@@ -960,7 +957,7 @@ mod test {
 
         // Verify that utxos 0 and 1 got updated as expected.
         {
-            let db_txn = utxo_store.env.begin_ro_txn().unwrap();
+            let db_txn = env.begin_ro_txn().unwrap();
 
             for (i, orig_utxo) in utxos.iter().enumerate() {
                 let utxo = utxo_store

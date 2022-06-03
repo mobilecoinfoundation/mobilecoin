@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use super::Error;
 use grpcio::{ChannelBuilder, Environment};
@@ -18,7 +18,7 @@ pub struct FogUntrustedLedgerGrpcClient {
     tx_out_client: ledger_grpc::FogUntrustedTxOutApiClient,
     creds: BasicCredentials,
     grpc_retry_config: GrpcRetryConfig,
-    #[allow(unused)]
+    #[allow(dead_code)]
     logger: Logger,
 }
 

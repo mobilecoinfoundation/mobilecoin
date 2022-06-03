@@ -1,0 +1,17 @@
+name: mobilecoin-dispatch-dev-deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      namespace:
+        description: "Target Namespace"
+        type: string
+        required: true
+
+jobs:
+  list-values:
+    runs-on: [self-hosted, small, Linux]
+    steps:
+    - name: values
+      run: |
+        echo namespace ${{ github.event.inputs.namespace }}

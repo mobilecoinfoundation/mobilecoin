@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use aligned_cmov::{
     typenum::{U1024, U16, U32, U4096, U64, U8},
@@ -52,7 +52,7 @@ pub struct RngStore<OSC: ORAMStorageCreator<StorageDataSize, StorageMetaSize>> {
     /// Desired capacity for the oblivious map
     desired_capacity: u64,
     /// Logger object
-    #[allow(unused)]
+    #[allow(dead_code)]
     logger: Logger,
 }
 

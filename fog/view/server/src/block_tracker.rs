@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -326,7 +326,7 @@ mod tests {
         // Now, we have scanned everything we have promised to scan, next blocks should
         // return empty.
         let expected_state = HashMap::from_iter(vec![]);
-        assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+        assert_eq!(block_tracker.next_blocks(&[rec]), expected_state);
     }
 
     // Single ingestable range (decommissioned, scanned some blocks)
@@ -396,7 +396,7 @@ mod tests {
         // last-scanned block
         let expected_state = HashMap::from_iter(vec![]);
 
-        assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+        assert_eq!(block_tracker.next_blocks(&[rec]), expected_state);
     }
 
     // Single key (lost, but scanned some blocks)
@@ -445,7 +445,7 @@ mod tests {
         block_tracker.block_processed(rec.key, rec.status.start_block + 20);
 
         let expected_state = HashMap::from_iter(vec![]);
-        assert_eq!(block_tracker.next_blocks(&[rec.clone()]), expected_state);
+        assert_eq!(block_tracker.next_blocks(&[rec]), expected_state);
     }
 
     // Two ingestable ranges should advance independently of eachother
@@ -503,10 +503,7 @@ mod tests {
             (rec2.key, rec2.status.start_block),
         ]);
 
-        assert_eq!(
-            block_tracker.next_blocks(&[rec1.clone(), rec2.clone()]),
-            expected_state
-        );
+        assert_eq!(block_tracker.next_blocks(&[rec1, rec2]), expected_state);
     }
 
     // highest_fully_processed_block_count behaves as expected
@@ -537,7 +534,7 @@ mod tests {
         };
 
         assert_eq!(
-            block_tracker.highest_fully_processed_block_count(&[rec.clone()]),
+            block_tracker.highest_fully_processed_block_count(&[rec]),
             (0, None),
         );
     }
@@ -652,7 +649,7 @@ mod tests {
         // The highest processed block is still 15, but the reason we are blocked is now
         // None, and not the record, because the record was marked lost.
         assert_eq!(
-            block_tracker.highest_fully_processed_block_count(&[rec.clone()]),
+            block_tracker.highest_fully_processed_block_count(&[rec]),
             (15, None)
         );
         // When the reason is None, that is supposed to mean that highest fully
@@ -753,7 +750,7 @@ mod tests {
         rec1.status.lost = true;
         let expected = (40, None);
         assert_eq!(
-            block_tracker.highest_fully_processed_block_count(&[rec1.clone(), rec2.clone()]),
+            block_tracker.highest_fully_processed_block_count(&[rec1, rec2]),
             expected,
         );
     }
@@ -870,7 +867,7 @@ mod tests {
         // progress all the way to rec2
         let expected = (40, None);
         assert_eq!(
-            block_tracker.highest_fully_processed_block_count(&[rec1.clone(), rec2.clone()]),
+            block_tracker.highest_fully_processed_block_count(&[rec1, rec2]),
             expected,
         );
     }

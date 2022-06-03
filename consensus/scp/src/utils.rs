@@ -1,8 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::core_types::SlotIndex;
-use bigint::U256;
 use mc_common::fast_hash;
+use primitive_types::U256;
 
 /// A "salted" Keccak hash function, parametrized by slot, round, and an extra
 /// value.

@@ -1,19 +1,22 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Mock Fog client
 
 use mc_fog_recovery_db_iface::{FogUserEvent, RecoveryDb};
 use mc_fog_types::view::QueryResponse;
 use mc_fog_view_protocol::FogViewConnection;
 
-// A structure that wraps recovery db reader and implements FogViewConnection,
-// bypassing view node grpc and view enclave entirely.
-// This is useful for integration tests.
-// This allows to validate acct_crypto::polling module against fog ingest
-// directly.
+/// A structure that wraps recovery db reader and implements FogViewConnection,
+/// bypassing view node grpc and view enclave entirely.
+/// This is useful for integration tests.
+/// This allows to validate acct_crypto::polling module against fog ingest
+/// directly.
 pub struct PassThroughViewClient<R: RecoveryDb> {
     db: R,
 }
 
 impl<R: RecoveryDb> PassThroughViewClient<R> {
+    /// Instantiate a pass-through view client
     pub fn new(db: R) -> Self {
         Self { db }
     }

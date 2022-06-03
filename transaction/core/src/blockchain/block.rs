@@ -1,10 +1,9 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{
     tx::{TxOut, TxOutMembershipElement},
     BlockContents, BlockContentsHash, BlockID, BlockVersion,
 };
-use alloc::vec::Vec;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use prost::Message;
 use serde::{Deserialize, Serialize};
@@ -61,9 +60,13 @@ impl Block {
         let index: BlockIndex = 0;
         let cumulative_txo_count = outputs.len() as u64;
         let root_element = TxOutMembershipElement::default();
-        // The origin block does not contain any key images.
-        let key_images = Vec::new();
-        let block_contents = BlockContents::new(key_images, outputs.to_vec());
+
+        // The origin block does not contain anything but TxOuts.
+        let block_contents = BlockContents {
+            outputs: outputs.to_vec(),
+            ..Default::default()
+        };
+
         let contents_hash = block_contents.hash();
         let id = compute_block_id(
             version,
@@ -212,13 +215,19 @@ mod block_tests {
     use mc_account_keys::AccountKey;
     use mc_crypto_keys::RistrettoPrivate;
     use mc_util_from_random::FromRandom;
-    use rand::{rngs::StdRng, CryptoRng, RngCore, SeedableRng};
+    use mc_util_test_helper::{get_seeded_rng, CryptoRng, RngCore, SeedableRng};
+    use rand::rngs::StdRng;
 
+    // This is block version 1 to avoid messing with test vectors
     const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
 
     fn get_block_contents<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> BlockContents {
         let (key_images, outputs) = get_key_images_and_outputs(rng);
-        BlockContents::new(key_images, outputs)
+        BlockContents {
+            key_images,
+            outputs,
+            ..Default::default()
+        }
     }
 
     fn get_key_images_and_outputs<RNG: CryptoRng + RngCore>(
@@ -285,7 +294,11 @@ mod block_tests {
             output.e_memo = None;
         }
 
-        let block_contents = BlockContents::new(key_images, outputs);
+        let block_contents = BlockContents {
+            key_images,
+            outputs,
+            ..Default::default()
+        };
         Block::new(
             BLOCK_VERSION,
             &parent_id,
@@ -299,7 +312,7 @@ mod block_tests {
     #[test]
     /// The block returned by `get_block` should have a valid BlockID.
     fn test_get_block_has_valid_id() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let block = get_block(&mut rng);
         assert!(block.is_block_id_valid());
     }
@@ -307,7 +320,7 @@ mod block_tests {
     #[test]
     /// The block ID should depend on the block version.
     fn test_block_id_includes_version() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let mut block = get_block(&mut rng);
         block.version += 1;
         assert!(!block.is_block_id_valid());
@@ -316,7 +329,7 @@ mod block_tests {
     #[test]
     /// The block ID should depend on the parent_id.
     fn test_block_id_includes_parent_id() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let mut block = get_block(&mut rng);
 
         let mut bytes = [0u8; 32];
@@ -330,7 +343,7 @@ mod block_tests {
     #[test]
     /// The block ID should depend on the block's index.
     fn test_block_id_includes_block_index() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let mut block = get_block(&mut rng);
         block.index += 1;
         assert!(!block.is_block_id_valid());
@@ -339,7 +352,7 @@ mod block_tests {
     #[test]
     /// The block ID should depend on the root element.
     fn test_block_id_includes_root_element() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let mut block = get_block(&mut rng);
 
         let wrong_root_element = TxOutMembershipElement {
@@ -353,7 +366,7 @@ mod block_tests {
     #[test]
     /// The block ID should depend on the content_hash.
     fn test_block_id_includes_content_hash() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let mut block = get_block(&mut rng);
 
         let mut bytes = [0u8; 32];
@@ -377,7 +390,11 @@ mod block_tests {
     /// actual block id into the test. This should hopefully catches cases where
     /// we add/change Block/BlockContents and accidentally break id
     /// calculation of old blocks.
-    fn test_hashing_is_consistent() {
+    fn test_hashing_is_consistent_block_version_one() {
+        // FIXME (#2042): This shouuld not use StdRng, because the rust standard library
+        // sometimes updates what RNG algorithm this point to. We should
+        // rerun this with Hc128 RNG (from mc_util_test_helper) and update the
+        // test vectors.
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         //Check hash with memo

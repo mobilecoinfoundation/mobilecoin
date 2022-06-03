@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! View Enclave Application-side Proxy object.
 
@@ -35,7 +35,6 @@ pub const ENCLAVE_FILE: &str = "libview-enclave.signed.so";
 #[derive(Clone)]
 pub struct SgxViewEnclave {
     enclave: Arc<SgxEnclave>,
-    logger: Logger,
 }
 
 impl SgxViewEnclave {
@@ -56,7 +55,7 @@ impl SgxViewEnclave {
         enclave_path: path::PathBuf,
         client_responder_id: ResponderId,
         desired_capacity: u64,
-        logger: Logger,
+        _logger: Logger,
     ) -> Self {
         let mut launch_token: sgx_launch_token_t = [0; 1024];
         let mut launch_token_updated: i32 = 0;
@@ -82,7 +81,6 @@ impl SgxViewEnclave {
                     )
                 }),
             ),
-            logger: logger.clone(),
         };
 
         // Do sgx_enclave id and ake init

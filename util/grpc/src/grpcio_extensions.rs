@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Extension traits that make it easier to start GRPC servers and connect to
 //! them using URIs.
@@ -18,7 +18,7 @@ pub trait ConnectionUriGrpcioChannel {
     fn default_channel_builder(env: Arc<Environment>) -> ChannelBuilder {
         ChannelBuilder::new(env)
             .keepalive_permit_without_calls(true)
-            .keepalive_time(Duration::from_secs(1))
+            .keepalive_time(Duration::from_secs(10))
             .keepalive_timeout(Duration::from_secs(20))
             .max_reconnect_backoff(Duration::from_millis(2000))
             .initial_reconnect_backoff(Duration::from_millis(1000))
@@ -59,7 +59,21 @@ impl ConnectionUriGrpcioChannel for ChannelBuilder {
 pub trait ConnectionUriGrpcioServer {
     /// Bind a ServerBuilder using information from a URI and enable support for
     /// hot-reloading certificates when TLS is used.
+    #[must_use]
     fn bind_using_uri(self, uri: &impl ConnectionUri, logger: Logger) -> Self;
+
+    /// Create the default channel settings for server
+    fn default_channel_builder(env: Arc<Environment>) -> ChannelBuilder {
+        ChannelBuilder::new(env)
+            .keepalive_permit_without_calls(true)
+            .keepalive_time(Duration::from_secs(10))
+            .keepalive_timeout(Duration::from_secs(20))
+            .http2_min_recv_ping_interval_without_data(Duration::from_secs(5))
+    }
+
+    /// Set the channel args to our defaults.
+    #[must_use]
+    fn set_default_channel_args(self, env: Arc<Environment>) -> Self;
 }
 
 impl ConnectionUriGrpcioServer for ServerBuilder {
@@ -84,5 +98,10 @@ impl ConnectionUriGrpcioServer for ServerBuilder {
         } else {
             self.bind(uri.host(), uri.port())
         }
+    }
+
+    /// Set the channel args to our defaults.
+    fn set_default_channel_args(self, env: Arc<Environment>) -> Self {
+        self.channel_args(Self::default_channel_builder(env).build_args())
     }
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 #![no_std]
 // This crate provides a panic handler lang item and defines a panic handler
@@ -11,7 +11,6 @@
 // and rethrowing them, because in Rust those APIs use the Box type.
 #![feature(lang_items)] // for eh_personality
 #![feature(thread_local)]
-#![feature(unwind_attributes)]
 // Enable "untagged unions" when we have alloc feature, used in panicking::try
 #![cfg_attr(feature = "alloc", feature(untagged_unions))]
 

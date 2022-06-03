@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use crate::{controller::IngestController, error::IngestServiceError};
 use mc_attest_net::RaClient;
@@ -238,7 +238,7 @@ impl PeerCheckupWorker {
 
                     let now = Instant::now();
                     if now - last_refreshed_at > peer_checkup_period {
-                        log::info!(logger, "Checking up on peers...");
+                        log::debug!(logger, "Checking up on peers...");
                         controller.peer_checkup();
                         last_refreshed_at = now;
                     }

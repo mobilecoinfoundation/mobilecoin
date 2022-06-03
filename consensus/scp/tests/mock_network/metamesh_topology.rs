@@ -1,6 +1,6 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
-// "Metamesh" network topologies.
+//! "Metamesh" network topologies.
 
 // A metamesh consists of a set of (n) "organizations", each comprising (m)
 // servers. Quorum is configured with hierarchy, such that each node requires
@@ -15,10 +15,6 @@
 // 2/2]]) The quorum set for node "1/2" is:
 // ([k_n], ([k_m], 0/0, 0/1, 0/2]), ([k_m - 1], 1/0, 1/1]), ([k_m], 2/0, 2/1,
 // 2/2]])
-
-// We allow dead code because not all integration tests use all of the common
-// code. https://github.com/rust-lang/rust/issues/46379
-#![allow(dead_code)]
 
 use crate::mock_network;
 use mc_common::NodeID;
@@ -77,8 +73,7 @@ pub fn metamesh(
                 .cloned()
                 .collect::<Vec<QuorumSet>>();
 
-            let mut inner_quorum_sets = Vec::<QuorumSet>::new();
-            inner_quorum_sets.push(inner_quorum_set_for_this_org);
+            let mut inner_quorum_sets = vec![inner_quorum_set_for_this_org];
             inner_quorum_sets.append(&mut inner_quorum_sets_for_other_orgs);
 
             // connect this node to all other nodes

@@ -166,7 +166,7 @@ fn digest_aggregate_append_bytes() {
     let seq3 = ASTNode::from(ASTAggregate {
         context: b"stuff3",
         name: b"blob".to_vec(),
-        elems: vec![prim1.clone(), prim2.clone()],
+        elems: vec![prim1, prim2],
         is_completed: true,
     });
 

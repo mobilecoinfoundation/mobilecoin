@@ -1,4 +1,5 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
 //! A CLI tool that resolves FogPubkey requests
 //!
@@ -13,7 +14,6 @@
 //! code changes in the GrpcFogPubkeyResolver object. It might make this a more
 //! useful diagnostic tool.
 
-use binascii::bin2hex;
 use grpcio::EnvBuilder;
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
@@ -24,6 +24,7 @@ use mc_fog_report_connection::{Error, GrpcFogReportConnection};
 use mc_fog_report_validation::{
     FogPubkeyResolver, FogReportResponses, FogResolver, FullyValidatedFogPubkey,
 };
+use mc_util_cli::ParserWithBuildInfo;
 use mc_util_uri::FogUri;
 use std::{
     convert::TryFrom,
@@ -33,7 +34,6 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use structopt::StructOpt;
 
 /// A command line utility to reach out to the fog report server and fetch the
 /// ingest report, and optionally validate it.
@@ -50,43 +50,44 @@ use structopt::StructOpt;
 ///   would be performed for a fog user with these values in their address.
 /// - Supply only a fog-url. This can only be used with the "no-validate"
 ///   option.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, clap::Parser)]
+#[clap(version)]
 struct Config {
     /// Path to mobilecoin public address. Fog url and spki will be extracted,
     /// and fog signature will be checked, unless no-validate is passed.
-    #[structopt(long = "public-address", short = "p")]
+    #[clap(long, short, env = "MC_PUBLIC_ADDRESS")]
     pub public_address: Option<PathBuf>,
 
     /// The fog url to hit.
     /// If a public address is supplied, this cannot be supplied.
-    #[structopt(long = "fog-url", short = "u")]
+    #[clap(long, short = 'u', env = "MC_FOG_URL")]
     pub fog_url: Option<String>,
 
     /// The fog report id to find.
     /// This is optional and almost always defaulted to "".
     /// If a public address is supplied, this cannot be supplied.
-    #[structopt(long = "fog-report-id", short = "i")]
+    #[clap(long, short = 'i', env = "MC_FOG_REPORT_ID")]
     pub fog_report_id: Option<String>,
 
     /// The fog authority spki, in base 64
     /// If omitted, then NO verification of any kind (IAS, MRSIGNER, cert
     /// chains) will be performed.
     /// If a public address is supplied, this cannot be supplied.
-    #[structopt(long = "fog-spki", short = "s")]
+    #[clap(long, short = 's', env = "MC_FOG_SPKI")]
     pub fog_spki: Option<String>,
 
     /// How long to retry if NoReports, this is useful for tests
-    #[structopt(long = "retry-seconds", short = "r", default_value = "10")]
+    #[clap(long, short, default_value = "10", env = "MC_RETRY_SECONDS")]
     pub retry_seconds: u64,
 
     /// Outputs json containing the hex bytes of fog ingress pubkey,
     /// and the pubkey expiry value
-    #[structopt(long = "show-expiry", short = "v")]
+    #[clap(long, short = 'v', env = "MC_SHOW_EXPIRY")]
     pub show_expiry: bool,
 
     /// Skip all validation of the fog response, including IAS, cert checking,
     /// and fog authority signature.
-    #[structopt(long = "no-validate", short = "n")]
+    #[clap(long, short, env = "MC_NO_VALIDATE")]
     pub no_validate: bool,
 }
 
@@ -171,7 +172,7 @@ fn get_unvalidated_pubkey(
 fn main() {
     // Logging must go to stderr to not interfere with STDOUT
     std::env::set_var("MC_LOG_STDERR", "1");
-    let config = Config::from_args();
+    let config = Config::parse();
     let logger = create_root_logger();
 
     // Get public address either from a file, or synthesize from BOTH fog-url and
@@ -269,13 +270,7 @@ fn main() {
         (result.pubkey, result.pubkey_expiry)
     };
 
-    let mut hex_buf = [0u8; 64];
-    bin2hex(
-        CompressedRistrettoPublic::from(&pubkey).as_ref(),
-        &mut hex_buf[..],
-    )
-    .expect("Failed converting to hex");
-    let hex_str = std::str::from_utf8(&hex_buf).unwrap();
+    let hex_str = hex::encode(CompressedRistrettoPublic::from(&pubkey).as_bytes());
 
     // if show-expiry is selected, we show key and expiry, formatted as json
     // else just print the hex bytes of key

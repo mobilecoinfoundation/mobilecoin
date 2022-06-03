@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Validates that a transaction or list of transactions are safe to append to
 //! the ledger.
@@ -28,7 +28,7 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{
     ring_signature::KeyImage,
-    tx::{TxHash, TxOutMembershipElement, TxOutMembershipProof},
+    tx::{TxHash, TxOutMembershipProof},
     validation::{validate_tombstone, TransactionValidationError, TransactionValidationResult},
 };
 use std::{collections::HashSet, iter::FromIterator, sync::Arc};
@@ -72,6 +72,7 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
 
     /// Checks if a transaction is valid (see definition at top of this file).
     fn is_valid(&self, context: Arc<WellFormedTxContext>) -> TransactionValidationResult<()> {
+        // Get the index of the current block we will be building.
         let current_block_index = self
             .ledger
             .num_blocks()
@@ -169,14 +170,6 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
             .get_tx_out_proof_of_memberships(indexes)
             .map_err(|e| TransactionValidationError::Ledger(e.to_string()))
     }
-
-    fn get_root_tx_out_membership_element(
-        &self,
-    ) -> TransactionValidationResult<TxOutMembershipElement> {
-        self.ledger
-            .get_root_tx_out_membership_element()
-            .map_err(|e| TransactionValidationError::Ledger(e.to_string()))
-    }
 }
 
 #[cfg(test)]
@@ -242,8 +235,10 @@ pub mod well_formed_tests {
 
         // This tx_context contains highest_indices that exceed the number of TxOuts in
         // the ledger.
-        let mut tx_context = TxContext::default();
-        tx_context.highest_indices = vec![99, 10002, 445];
+        let tx_context = TxContext {
+            highest_indices: vec![99, 10002, 445],
+            ..Default::default()
+        };
 
         match untrusted.well_formed_check(&tx_context) {
             Ok((_cur_block_index, _membership_proofs)) => {
@@ -496,6 +491,7 @@ mod is_valid_tests {
 mod combine_tests {
     use super::*;
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+    use mc_crypto_ring_signature_signer::NoKeysRingSigner;
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_transaction_core::{
         onetime_keys::recover_onetime_private_key,
@@ -542,10 +538,7 @@ mod combine_tests {
             let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
             let tx_out = TxOut::new(
-                Amount {
-                    value: 123,
-                    token_id: Mob::ID,
-                },
+                Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &tx_secret_key_for_txo,
                 Default::default(),
@@ -584,18 +577,25 @@ mod combine_tests {
 
             let mut transaction_builder = TransactionBuilder::new(
                 block_version,
-                Mob::ID,
+                Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                 MockFogResolver::default(),
                 EmptyMemoBuilder::default(),
-            );
+            )
+            .unwrap();
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0).unwrap();
             transaction_builder
-                .add_output(123, &bob.default_subaddress(), &mut rng)
+                .add_output(
+                    Amount::new(123, Mob::ID),
+                    &bob.default_subaddress(),
+                    &mut rng,
+                )
                 .unwrap();
 
-            let tx = transaction_builder.build(&mut rng).unwrap();
-            let client_tx = WellFormedTxContext::from(&tx);
+            let tx = transaction_builder
+                .build(&NoKeysRingSigner {}, &mut rng)
+                .unwrap();
+            let client_tx = WellFormedTxContext::from_tx(&tx, 0);
 
             // "Combining" a singleton set should return a vec containing the single
             // element.
@@ -624,10 +624,7 @@ mod combine_tests {
                     let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
                     let tx_out = TxOut::new(
-                        Amount {
-                            value: 88,
-                            token_id: Mob::ID,
-                        },
+                        Amount::new(88, Mob::ID),
                         &alice.default_subaddress(),
                         &tx_secret_key_for_txo,
                         Default::default(),
@@ -642,10 +639,11 @@ mod combine_tests {
 
                     let mut transaction_builder = TransactionBuilder::new(
                         block_version,
-                        Mob::ID,
+                        Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                         MockFogResolver::default(),
                         EmptyMemoBuilder::default(),
-                    );
+                    )
+                    .unwrap();
 
                     // Create InputCredentials to spend the TxOut.
                     let onetime_private_key = recover_onetime_private_key(
@@ -675,11 +673,17 @@ mod combine_tests {
                     transaction_builder.add_input(input_credentials);
                     transaction_builder.set_fee(0).unwrap();
                     transaction_builder
-                        .add_output(88, &bob.default_subaddress(), &mut rng)
+                        .add_output(
+                            Amount::new(88, Mob::ID),
+                            &bob.default_subaddress(),
+                            &mut rng,
+                        )
                         .unwrap();
 
-                    let tx = transaction_builder.build(&mut rng).unwrap();
-                    WellFormedTxContext::from(&tx)
+                    let tx = transaction_builder
+                        .build(&NoKeysRingSigner {}, &mut rng)
+                        .unwrap();
+                    WellFormedTxContext::from_tx(&tx, 0)
                 };
                 transaction_set.push(client_tx);
             }
@@ -743,18 +747,25 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &bob.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount::new(123, Mob::ID),
+                        &bob.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
-                WellFormedTxContext::from(&tx)
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // Create another transaction that attempts to spend `tx_out`.
@@ -780,18 +791,25 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount::new(123, Mob::ID),
+                        &recipient_account.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
-                WellFormedTxContext::from(&tx)
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // This transaction spends a different TxOut, unrelated to `first_client_tx` and
@@ -802,10 +820,7 @@ mod combine_tests {
                 // The transaction keys.
                 let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
                 let tx_out = TxOut::new(
-                    Amount {
-                        value: 123,
-                        token_id: Mob::ID,
-                    },
+                    Amount::new(123, Mob::ID),
                     &alice.default_subaddress(),
                     &tx_secret_key_for_txo,
                     Default::default(),
@@ -843,18 +858,25 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount::new(123, Mob::ID),
+                        &recipient_account.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
-                WellFormedTxContext::from(&tx)
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // `combine` the set of transactions.
@@ -880,10 +902,7 @@ mod combine_tests {
 
             // Create two TxOuts that were sent to Alice.
             let tx_out1 = TxOut::new(
-                Amount {
-                    value: 123,
-                    token_id: Mob::ID,
-                },
+                Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -891,10 +910,7 @@ mod combine_tests {
             .unwrap();
 
             let tx_out2 = TxOut::new(
-                Amount {
-                    value: 123,
-                    token_id: Mob::ID,
-                },
+                Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
@@ -936,18 +952,25 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &bob.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount::new(123, Mob::ID),
+                        &bob.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
-                WellFormedTxContext::from(&tx)
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // Create another transaction that attempts to spend `tx_out2` but has the same
@@ -974,19 +997,26 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount::new(123, Mob::ID),
+                        &recipient_account.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
-                let mut tx = transaction_builder.build(&mut rng).unwrap();
-                tx.prefix.outputs[0].public_key = first_client_tx.output_public_keys()[0].clone();
-                WellFormedTxContext::from(&tx)
+                let mut tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
+                tx.prefix.outputs[0].public_key = first_client_tx.output_public_keys()[0];
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // This transaction spends a different TxOut, unrelated to `first_client_tx` and
@@ -997,10 +1027,7 @@ mod combine_tests {
                 // The transaction keys.
                 let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
                 let tx_out = TxOut::new(
-                    Amount {
-                        value: 123,
-                        token_id: Mob::ID,
-                    },
+                    Amount::new(123, Mob::ID),
                     &alice.default_subaddress(),
                     &tx_secret_key_for_txo,
                     Default::default(),
@@ -1038,18 +1065,25 @@ mod combine_tests {
 
                 let mut transaction_builder = TransactionBuilder::new(
                     block_version,
-                    Mob::ID,
+                    Amount::new(Mob::MINIMUM_FEE, Mob::ID),
                     MockFogResolver::default(),
                     EmptyMemoBuilder::default(),
-                );
+                )
+                .unwrap();
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0).unwrap();
                 transaction_builder
-                    .add_output(123, &recipient_account.default_subaddress(), &mut rng)
+                    .add_output(
+                        Amount::new(123, Mob::ID),
+                        &recipient_account.default_subaddress(),
+                        &mut rng,
+                    )
                     .unwrap();
 
-                let tx = transaction_builder.build(&mut rng).unwrap();
-                WellFormedTxContext::from(&tx)
+                let tx = transaction_builder
+                    .build(&NoKeysRingSigner {}, &mut rng)
+                    .unwrap();
+                WellFormedTxContext::from_tx(&tx, 0)
             };
 
             // `combine` the set of transactions.

@@ -8,13 +8,21 @@ The crates in this repository do not adhere to [Semantic Versioning](https://sem
 ## Unreleased
 
 ### Added
+- Support env overrides for ~all command-line flags.
+  - Flags that take multiple values can be repeated on the command line,
+    or passed as comma-separated values via environment or command-line args.
 
 ### Changed
+ - Updated SGX to 2.16
 
 ### Rust Dependencies
+* Updated `rust-toolchain` version to newer nightly
+  * enables use of [Generic Associated Types](https://github.com/rust-lang/rust/issues/44265) and [static async fn in traits](https://github.com/rust-lang/rust/issues/91611)
+* Replaced `datatest` with a custom `test_with_data` macro.
+* Replace `structopt` with `clap`.
 * Updated grpcio from 0.9 to 0.10.
 
-## [1.2.0] 2022-02-22
+## [1.2.0]
 
 ### Added
 

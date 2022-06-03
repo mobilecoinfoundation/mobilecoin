@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Fog Ingest client
 
@@ -10,9 +10,9 @@ use mc_fog_ingest_client::{
     ClientResult, FogIngestGrpcClient,
 };
 use mc_fog_uri::FogIngestUri;
+use mc_util_cli::ParserWithBuildInfo;
 use serde_json::{json, to_string_pretty};
 use std::{str::FromStr, sync::Arc};
-use structopt::StructOpt;
 
 fn main() -> ClientResult<()> {
     // Logging must go to stderr to not interfere with STDOUT
@@ -20,7 +20,7 @@ fn main() -> ClientResult<()> {
 
     let logger = create_root_logger();
 
-    let config = IngestConfig::from_args();
+    let config = IngestConfig::parse();
 
     let grpcio_env = Arc::new(grpcio::EnvBuilder::new().build());
 

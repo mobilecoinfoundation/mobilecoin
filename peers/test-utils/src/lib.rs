@@ -1,6 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Mock Peer test utilities
+
+pub use mc_consensus_scp::test_utils::{test_node_id, test_node_id_and_signer};
 
 use mc_common::{NodeID, ResponderId};
 use mc_connection::{
@@ -14,16 +16,13 @@ use mc_consensus_scp::{
     quorum_set::QuorumSet,
     SlotIndex, Topic,
 };
-use mc_crypto_keys::Ed25519Pair;
+use mc_crypto_keys::{Ed25519Pair, Ed25519Public};
 use mc_ledger_db::{test_utils::mock_ledger::MockLedger, Ledger};
 use mc_peers::{
     ConsensusConnection, ConsensusMsg, ConsensusValue, Error as PeerError, Result as PeerResult,
 };
 use mc_transaction_core::{tx::TxHash, Block, BlockID, BlockIndex};
-use mc_util_from_random::FromRandom;
 use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
-use rand::SeedableRng;
-use rand_hc::Hc128Rng as FixedRng;
 use sha2::{Digest, Sha512_256};
 use std::{
     cmp::{min, Ordering},
@@ -245,34 +244,16 @@ pub fn create_consensus_msg(
         .expect("Could not create consensus message")
 }
 
-pub fn test_node_id(node_id: u32) -> NodeID {
-    let (node_id, _signer) = test_node_id_and_signer(node_id);
-    node_id
+pub fn test_peer_uri(node_id: u32) -> PeerUri {
+    let (_node_id, signer) = test_node_id_and_signer(node_id);
+    test_peer_uri_with_key(node_id, &signer.public_key())
 }
 
-pub fn test_node_id_and_signer(node_id: u32) -> (NodeID, Ed25519Pair) {
-    let mut seed_bytes = [0u8; 32];
-    let node_id_bytes = node_id.to_be_bytes();
-    seed_bytes[..node_id_bytes.len()].copy_from_slice(&node_id_bytes[..]);
-
-    let mut seeded_rng: FixedRng = SeedableRng::from_seed(seed_bytes);
-    let signer_keypair = Ed25519Pair::from_random(&mut seeded_rng);
-    (
-        NodeID {
-            responder_id: ResponderId::from_str(&format!("node{}.test.com:8443", node_id)).unwrap(),
-            public_key: signer_keypair.public_key(),
-        },
-        signer_keypair,
-    )
-}
-
-pub fn test_peer_uri(node_id_int: u32) -> PeerUri {
-    let (_node_id, signer_keypair) = test_node_id_and_signer(node_id_int);
-
+pub fn test_peer_uri_with_key(node_id: u32, public_key: &Ed25519Public) -> PeerUri {
     PeerUri::from_str(&format!(
         "mcp://node{}.test.com?consensus-msg-key={}",
-        node_id_int,
-        hex::encode(signer_keypair.public_key()),
+        node_id,
+        hex::encode(public_key),
     ))
     .expect("Could not construct peer URI from string")
 }
@@ -284,6 +265,9 @@ mod peer_manager_tests {
     use mc_connection::ConnectionManager;
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_peers::RetryableConsensusConnection;
+    use mc_util_from_random::FromRandom;
+    use rand::SeedableRng;
+    use rand_hc::Hc128Rng as FixedRng;
     use retry::delay::Fibonacci;
 
     #[test]
@@ -408,6 +392,9 @@ mod threaded_broadcaster_tests {
         ThreadedBroadcasterFibonacciRetryPolicy as FibonacciRetryPolicy,
         DEFAULT_RETRY_MAX_ATTEMPTS,
     };
+    use mc_util_from_random::FromRandom;
+    use rand::SeedableRng;
+    use rand_hc::Hc128Rng as FixedRng;
 
     #[test_with_logger]
     // A message from a local node (who is not in the peers list) should be
@@ -453,9 +440,9 @@ mod threaded_broadcaster_tests {
                 &local_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -478,9 +465,9 @@ mod threaded_broadcaster_tests {
                 &local_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -544,9 +531,9 @@ mod threaded_broadcaster_tests {
                 &node2_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -564,9 +551,9 @@ mod threaded_broadcaster_tests {
             let msg2 =
                 create_consensus_msg(&ledger, node2, quorum_set, 1, "msg2", &node2_signer_key);
 
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -629,9 +616,9 @@ mod threaded_broadcaster_tests {
                 &local_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, msg1.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -663,9 +650,9 @@ mod threaded_broadcaster_tests {
                 &local_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
-            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, msg2.issuer_responder_id());
 
             broadcaster.barrier();
 

@@ -1,4 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Validated URIs with custom schemes.
+
+#![deny(missing_docs)]
 
 use mc_common::NodeID;
 
@@ -12,10 +16,15 @@ pub use uri::{Uri, UriParseError};
 // Mobile-coin specific uri schemes and objects associated to them
 //
 
+/// A URI with the Admin scheme ([insecure-]mca://)
 pub type AdminUri = Uri<AdminScheme>;
+/// A URI with the Consensus Client scheme ([insecure-]mc://)
 pub type ConsensusClientUri = Uri<ConsensusClientScheme>;
+/// A URI with the Consensus Peer scheme ([insecure-]mcp://)
 pub type ConsensusPeerUri = Uri<ConsensusPeerScheme>;
+/// A URI with the Fog scheme ([insecure-]fog://)
 pub type FogUri = Uri<FogScheme>;
+/// A URI with the Watcher scheme ([insecure-]watcher://)
 pub type WatcherUri = Uri<WatcherScheme>;
 
 // Conversions
@@ -32,12 +41,12 @@ impl From<&ConsensusPeerUri> for NodeID {
     }
 }
 
-// Extra ConsensusPeerUri api
+/// Extend ConsensusPeerUri API
 pub trait ConsensusPeerUriApi {
+    /// Whether we should relay incoming txs from this peer.
     fn consensus_relay_incoming_txs(&self) -> bool;
 }
 impl ConsensusPeerUriApi for ConsensusPeerUri {
-    /// Whether we should relay incoming txs from this peer.
     fn consensus_relay_incoming_txs(&self) -> bool {
         self.get_bool_param("consensus-relay-incoming-txs")
     }
@@ -126,7 +135,7 @@ mod consensus_client_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("127.0.0.1:443").unwrap()
         );
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
         assert_eq!(uri.username(), "");
         assert_eq!(uri.password(), "");
 
@@ -136,7 +145,7 @@ mod consensus_client_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:443").unwrap()
         );
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
         assert_eq!(uri.username(), "");
         assert_eq!(uri.password(), "");
 
@@ -146,7 +155,7 @@ mod consensus_client_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
         );
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
         assert_eq!(uri.username(), "");
         assert_eq!(uri.password(), "");
 
@@ -156,7 +165,7 @@ mod consensus_client_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("127.0.0.1:3223").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
         assert_eq!(uri.username(), "");
         assert_eq!(uri.password(), "");
 
@@ -166,7 +175,7 @@ mod consensus_client_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("localhost:3223").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
         assert_eq!(uri.username(), "");
         assert_eq!(uri.password(), "");
 
@@ -176,7 +185,7 @@ mod consensus_client_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("localhost:3223").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
         assert_eq!(uri.username(), "");
         assert_eq!(uri.password(), "");
 
@@ -186,7 +195,7 @@ mod consensus_client_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:3223").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
         assert_eq!(uri.username(), "");
         assert_eq!(uri.password(), "");
 
@@ -196,7 +205,7 @@ mod consensus_client_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
         assert_eq!(uri.username(), "");
         assert_eq!(uri.password(), "");
 
@@ -207,7 +216,7 @@ mod consensus_client_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
         assert_eq!(uri.username(), "coiner");
         assert_eq!(uri.password(), "");
 
@@ -218,7 +227,7 @@ mod consensus_client_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
         assert_eq!(uri.username(), "");
         assert_eq!(uri.password(), "passw0rd");
 
@@ -229,7 +238,7 @@ mod consensus_client_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
         assert_eq!(uri.username(), "abc");
         assert_eq!(uri.password(), "def");
 
@@ -240,7 +249,7 @@ mod consensus_client_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
         assert_eq!(uri.username(), "abc");
         assert_eq!(uri.password(), "def:1:2:3");
     }
@@ -304,23 +313,23 @@ mod consensus_peer_uri_tests {
     fn test_valid_peer_uris() {
         let uri = PeerUri::from_str("mcp://127.0.0.1/").unwrap();
         assert_eq!(uri.addr(), "127.0.0.1:8443");
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
 
         let uri = PeerUri::from_str("mcp://node1.test.mobilecoin.com/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:8443");
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
 
         let uri = PeerUri::from_str("mcp://node1.test.mobilecoin.com:666/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:666");
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
 
         let uri = PeerUri::from_str("insecure-mcp://127.0.0.1/").unwrap();
         assert_eq!(uri.addr(), "127.0.0.1:8080");
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
 
         let uri = PeerUri::from_str("insecure-mcp://node1.test.mobilecoin.com/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:8080");
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
 
         let uri = PeerUri::from_str("insecure-mcp://node1.test.mobilecoin.com:666/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:666");
@@ -340,7 +349,7 @@ mod consensus_peer_uri_tests {
                 public_key: signer_key.public_key(),
             }
         );
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
 
         // Base64 encoded with '+' -> '-', '/' -> '_'
         let uri = PeerUri::from_str(
@@ -360,7 +369,7 @@ mod consensus_peer_uri_tests {
                 .unwrap(),
             }
         );
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
     }
 
     #[test]
@@ -388,7 +397,7 @@ mod fog_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("127.0.0.1:443").unwrap()
         );
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
 
         let uri = FogUri::from_str("fog://node1.test.mobilecoin.com/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:443");
@@ -396,7 +405,7 @@ mod fog_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:443").unwrap()
         );
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
 
         let uri = FogUri::from_str("fog://node1.test.mobilecoin.com:666/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:666");
@@ -404,7 +413,7 @@ mod fog_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
         );
-        assert_eq!(uri.use_tls(), true);
+        assert!(uri.use_tls());
 
         let uri = FogUri::from_str("insecure-fog://127.0.0.1/").unwrap();
         assert_eq!(uri.addr(), "127.0.0.1:3225");
@@ -412,7 +421,7 @@ mod fog_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("127.0.0.1:3225").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
 
         let uri = FogUri::from_str("insecure-fog://node1.test.mobilecoin.com/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:3225");
@@ -420,7 +429,7 @@ mod fog_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:3225").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
 
         let uri = FogUri::from_str("insecure-fog://node1.test.mobilecoin.com:666/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:666");
@@ -428,7 +437,7 @@ mod fog_uri_tests {
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
         );
-        assert_eq!(uri.use_tls(), false);
+        assert!(!uri.use_tls());
     }
 
     #[test]

@@ -1,4 +1,6 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Fog database test helpers
 
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_kex_rng::KexRngPubkey;
@@ -11,7 +13,7 @@ use mc_transaction_core::{Block, BlockID, BlockVersion};
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 
-// Helper: Get num blocks processed or panic
+/// Helper: Get num blocks processed or panic
 pub fn get_num_blocks(db: &impl RecoveryDb) -> u64 {
     db.get_highest_known_block_index()
         .unwrap()
@@ -19,11 +21,11 @@ pub fn get_num_blocks(db: &impl RecoveryDb) -> u64 {
         .unwrap_or(0)
 }
 
-// Exercise new recovery db apis and check the results
-// - Add random blocks and get tx's using new get txs API, check for NotFound
-//   result with junk queries
-// - Also add random rng records for a random user, check that they see the new
-//   rng records as expected depending on cursor value
+/// Exercise new recovery db apis and check the results
+/// - Add random blocks and get tx's using new get txs API, check for NotFound
+///   result with junk queries
+/// - Also add random rng records for a random user, check that they see the new
+///   rng records as expected depending on cursor value
 pub fn recovery_db_smoke_tests_new_apis<DB: RecoveryDb>(
     rng: &mut (impl RngCore + CryptoRng),
     db: &DB,
@@ -155,7 +157,7 @@ pub fn recovery_db_smoke_tests_new_apis<DB: RecoveryDb>(
     );
 }
 
-// Basic tests that missed blocks reporting works as expected
+/// Basic tests that missed blocks reporting works as expected
 pub fn recovery_db_missed_blocks_reporting(
     rng: &mut (impl RngCore + CryptoRng),
     db: &(impl RecoveryDb + ReportDb),
@@ -229,7 +231,7 @@ pub fn recovery_db_missed_blocks_reporting(
     );
 }
 
-// Basic tests that rng records decommissioning works as expected
+/// Basic tests that rng records decommissioning works as expected
 pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
     rng: &mut (impl RngCore + CryptoRng),
     db: &DB,
@@ -485,8 +487,8 @@ pub fn recovery_db_rng_records_decommissioning<DB: RecoveryDb>(
     assert_eq!(12, decommissioned_invocs[1].last_ingested_block);
 }
 
-// Basic tests that creating, checking on, and retiring ingress keys works as
-// expected
+/// Basic tests that creating, checking on, and retiring ingress keys works as
+/// expected
 pub fn test_recovery_db_ingress_keys<DB: RecoveryDb>(
     mut rng: &mut (impl RngCore + CryptoRng),
     db: &DB,
@@ -654,14 +656,14 @@ fn assert_rng_record_rows_were_recovered(
     }
 }
 
-// Helpers for sampling random structures
+/// Helper for sampling a random block
 pub fn random_block(
     rng: &mut impl RngCore,
     block_index: u64,
     num_txs: usize,
 ) -> (Block, Vec<ETxOutRecord>) {
     let block = Block::new(
-        BlockVersion::ONE,
+        BlockVersion::ZERO,
         &BlockID::default(),
         block_index,
         0,
@@ -672,6 +674,7 @@ pub fn random_block(
     (block, test_rows)
 }
 
+/// Helper for sampling a random ETxOutRecord
 pub fn random_tx_row(rng: &mut impl RngCore) -> ETxOutRecord {
     let mut result: ETxOutRecord = Default::default();
     result.search_key.resize(16, 0);
@@ -681,6 +684,7 @@ pub fn random_tx_row(rng: &mut impl RngCore) -> ETxOutRecord {
     result
 }
 
+/// Helper for sampling a random KexRngPubkey
 pub fn random_kex_rng_pubkey(rng: &mut impl RngCore) -> KexRngPubkey {
     KexRngPubkey {
         public_key: random_32_bytes(rng).to_vec(),
@@ -688,6 +692,7 @@ pub fn random_kex_rng_pubkey(rng: &mut impl RngCore) -> KexRngPubkey {
     }
 }
 
+/// Helper for sampling a random 32 bytes
 pub fn random_32_bytes(rng: &mut impl RngCore) -> [u8; 32] {
     let mut temp = [0u8; 32];
     rng.fill_bytes(&mut temp);

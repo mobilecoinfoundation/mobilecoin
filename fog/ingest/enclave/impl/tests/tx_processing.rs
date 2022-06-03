@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use mc_account_keys::AccountKey;
 use mc_common::{
@@ -88,7 +88,7 @@ fn test_ingest_enclave(logger: Logger) {
         assert_eq!(tx_rows.len(), 10);
 
         // Check that the tx row ciphertexts have the right size
-        const EXPECTED_PAYLOAD_SIZE: usize = 233; // The observed tx_row.payload size
+        const EXPECTED_PAYLOAD_SIZE: usize = 237; // The observed tx_row.payload size
         for tx_row in tx_rows.iter() {
             assert_eq!(
                 tx_row.payload.len(), EXPECTED_PAYLOAD_SIZE,
@@ -143,8 +143,10 @@ fn test_ingest_enclave(logger: Logger) {
 
         // Check that Alice cannot decrypt the payloads for each tx row
         let alice_fog_credential = UserPrivate::from(&alice_account);
-        for idx in 0..10 {
-            if let Ok(_) = alice_fog_credential.decrypt_tx_out_result(tx_rows[idx].payload.clone())
+        for tx_row in tx_rows.iter().take(10) {
+            if alice_fog_credential
+                .decrypt_tx_out_result(tx_row.payload.clone())
+                .is_ok()
             {
                 panic!("Alice should not have been able to decrypt the tx row!");
             }
@@ -157,10 +159,10 @@ fn make_malformed_fog_hint<T: RngCore + CryptoRng>(
     ingress_pubkey: &RistrettoPublic,
     rng: &mut T,
 ) -> EncryptedFogHint {
-    let mut plaintext = PlaintextArray::default();
+    let plaintext = PlaintextArray::default();
 
     let bytes = VersionedCryptoBox::default()
-        .encrypt_fixed_length(rng, ingress_pubkey, &mut plaintext)
+        .encrypt_fixed_length(rng, ingress_pubkey, &plaintext)
         .expect("cryptobox encryption failed unexpectedly");
     EncryptedFogHint::from(bytes)
 }
@@ -181,7 +183,7 @@ fn make_malformed_fog_hint2<T: RngCore + CryptoRng>(
     }
 
     let bytes = VersionedCryptoBox::default()
-        .encrypt_fixed_length(rng, ingress_pubkey, &mut plaintext)
+        .encrypt_fixed_length(rng, ingress_pubkey, &plaintext)
         .expect("cryptobox encryption failed unexpectedly");
     EncryptedFogHint::from(bytes)
 }
@@ -461,7 +463,7 @@ fn test_ingest_enclave_overflow(logger: Logger) {
             .iter()
             .map(|kex_rng_pubkey| {
                 VersionedKexRng::try_from_kex_pubkey(
-                    &kex_rng_pubkey,
+                    kex_rng_pubkey,
                     alice_fog_credential.get_view_key(),
                 )
                 .expect("Could not form kex rng")
@@ -472,7 +474,7 @@ fn test_ingest_enclave_overflow(logger: Logger) {
             .iter()
             .map(|kex_rng_pubkey| {
                 VersionedKexRng::try_from_kex_pubkey(
-                    &kex_rng_pubkey,
+                    kex_rng_pubkey,
                     bob_fog_credential.get_view_key(),
                 )
                 .expect("Could not form kex rng")

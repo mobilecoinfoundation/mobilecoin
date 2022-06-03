@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 MobileCoin Inc.
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Build script for the ingest_enclave_measurement crate.
 
@@ -10,7 +10,7 @@ use std::{env::var, path::PathBuf};
 
 // Changing this version is a breaking change, you must update the crate version
 // if you do.
-const SGX_VERSION: &str = "2.15.100.3";
+const SGX_VERSION: &str = "2.16.100.4";
 
 const INGEST_ENCLAVE_PRODUCT_ID: u16 = 4;
 const INGEST_ENCLAVE_SECURITY_VERSION: u16 = 2;

@@ -2,7 +2,7 @@
 name = "mc-crypto-x509-test-vectors"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 description = "Utilities for generating certificates and chains for unit tests"
 readme = "README.md"
 
@@ -20,6 +20,6 @@ mc-util-build-script = { path = "../../../util/build/script" }
 [dependencies]
 mc-crypto-keys = { path = "../../keys" }
 
+clap = { version = "3.1", features = ["derive", "env"] }
 pem = "1.0"
-structopt = "0.3"
 x509-signature = "0.5"

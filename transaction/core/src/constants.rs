@@ -1,8 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! MobileCoin Transaction Constants.
 
-use crate::ring_signature::Scalar;
+use mc_crypto_ring_signature::Scalar;
 
 /// Maximum number of transactions that may be included in a Block.
 pub const MAX_TRANSACTIONS_PER_BLOCK: usize = 5000;
@@ -18,7 +18,21 @@ pub const MAX_OUTPUTS: u64 = 16;
 
 /// Maximum number of blocks in the future a transaction's tombstone block can
 /// be set to.
-pub const MAX_TOMBSTONE_BLOCKS: u64 = 100;
+///
+/// This is the limit enforced in the enclave as part of transaction
+/// validation rules. However, untrusted may decide to evict pending
+/// transactions from the queue before this point, so this is only a maximum on
+/// how long a Tx can actually be pending.
+///
+/// Note that clients are still in charge of setting the actual tombstone value.
+/// For normal transactions, clients at time of writing are defaulting to
+/// something like current block height + 100, so that they can know quickly if
+/// a Tx succeeded or failed.
+///
+/// Rationale for this number is, at a rate of 2 blocks / minute, this is 7
+/// days, which eases operations for minting agents which must perform a
+/// multi-sig.
+pub const MAX_TOMBSTONE_BLOCKS: u64 = 20160;
 
 /// The MobileCoin network will contain a fixed supply of 250 million
 /// mobilecoins (MOB).

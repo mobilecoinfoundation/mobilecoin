@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 MobileCoin Inc.
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A Peer-to-Peer networking error.
 
@@ -114,4 +114,8 @@ impl From<EnclaveError> for PeerAttestationError {
     }
 }
 
-impl AttestationError for PeerAttestationError {}
+impl AttestationError for PeerAttestationError {
+    fn should_reattest(&self) -> bool {
+        true
+    }
+}

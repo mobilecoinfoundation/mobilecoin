@@ -1,16 +1,14 @@
 #!/bin/bash
 
-# Copyright (c) 2018-2021 The MobileCoin Foundation
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 
 set -e
 trap 'pkill -P $$' SIGINT SIGTERM
 
 if [ "$MOB_RELEASE" = "0" ]; then
     CARGO_FLAGS=""
-    TARGET_DIR="target/debug"
 else
     CARGO_FLAGS="--release"
-    TARGET_DIR="target/release"
 fi
 
 if [[ -z "$MC_LOG" ]]; then

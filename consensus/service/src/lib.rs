@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The MobileCoin consensus node.
 
@@ -7,8 +7,8 @@
 #[cfg(test)]
 extern crate test;
 
-pub mod config;
 pub mod consensus_service;
+pub mod mint_tx_manager;
 pub mod tx_manager;
 pub mod validators; // Public so that it can be benchmarked by the `benchmarks` crate.
 

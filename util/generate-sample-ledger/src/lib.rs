@@ -21,7 +21,7 @@ use rand_hc::Hc128Rng as FixedRng;
 use std::{path::Path, vec::Vec};
 
 // This is historically the version created by bootstrap
-const BLOCK_VERSION: BlockVersion = BlockVersion::ONE;
+const BLOCK_VERSION: BlockVersion = BlockVersion::ZERO;
 
 /// Deterministically populates a testnet ledger.
 ///
@@ -50,7 +50,7 @@ pub fn bootstrap_ledger(
     key_images_per_block: usize,
     seed: Option<[u8; 32]>,
     hint_text: Option<&str>,
-    max_token_id: u32,
+    max_token_id: u64,
     logger: Logger,
 ) {
     // Create the DB
@@ -80,7 +80,7 @@ pub fn bootstrap_ledger(
     let mut rng: FixedRng = SeedableRng::from_seed(seed.unwrap_or([33u8; 32]));
 
     let block_version = if max_token_id > 0 {
-        BlockVersion::THREE
+        BlockVersion::TWO
     } else {
         BLOCK_VERSION
     };
@@ -113,7 +113,11 @@ pub fn bootstrap_ledger(
             Default::default()
         };
 
-        let block_contents = BlockContents::new(key_images, outputs.clone());
+        let block_contents = BlockContents {
+            key_images,
+            outputs: outputs.clone(),
+            ..Default::default()
+        };
 
         let block = match previous_block {
             Some(parent) => {
@@ -193,7 +197,7 @@ mod tests {
         let hint_slice = "Vaccine 90% effective";
         let output = create_output(
             &account_key.subaddress(0),
-            amount.clone(),
+            amount,
             &mut fixed_rng,
             Some(hint_slice),
             &logger,
@@ -206,7 +210,7 @@ mod tests {
         let hint_slice = "Covid-19 Vaccine 90% Up to 90% Effective in Late-Stage Trials - LONDON — the University of Oxford added their vaccine candidate to a growing list of shots showing promising effectiveness against Covid-19 — setting in motion disparate regulatory and distribution tracks that executives and researchers hope will result in the start of widespread vaccinations by the end of the year.";
         let output = create_output(
             &account_key.subaddress(0),
-            amount.clone(),
+            amount,
             &mut fixed_rng,
             Some(hint_slice),
             &logger,

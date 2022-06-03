@@ -1,6 +1,9 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Common types and methods. no_std-compatible crate.
 
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
+#![deny(missing_docs)]
 #![warn(unused_extern_crates)]
 
 extern crate alloc;
@@ -19,11 +22,17 @@ pub mod time;
 pub use node_id::NodeID;
 pub use responder_id::{ResponderId, ResponderIdParseError};
 
-// A HashMap that replaces the default hasher with an implementation that relies
-// on mcrand for randomess.
+/// A HashMap that replaces the default hasher with an implementation that
+/// relies on mcrand for randomess.
+/// See [hashbrown::HashMap] and [hasher_builder::HasherBuilder]
 pub type HashMap<K, V> = hashbrown::HashMap<K, V, hasher_builder::HasherBuilder>;
+
+/// A HashSet that replaces the default hasher with an implementation that
+/// relies on mcrand for randomess.
+/// See [hashbrown::HashSet] and [hasher_builder::HasherBuilder]
 pub type HashSet<K> = hashbrown::HashSet<K, hasher_builder::HasherBuilder>;
 
+/// Hash type
 pub type Hash = [u8; 32];
 
 /// Note: This is only used by servers, for logging (maybe to anonymize logs?)

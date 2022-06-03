@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module contains a cargo invoker
 
@@ -129,8 +129,6 @@ pub struct CargoBuilder {
 
     profile: String,
     locked: bool,
-
-    emit_rerun_if_changed: bool,
 }
 
 impl CargoBuilder {
@@ -176,7 +174,6 @@ impl CargoBuilder {
             term_color: None,
             profile,
             locked: env.locked(),
-            emit_rerun_if_changed: true,
         }
     }
 

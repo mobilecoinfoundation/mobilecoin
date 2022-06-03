@@ -1,8 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A utility object for keeping track of pending transaction hashes.
 
-use crate::tx_manager::TxManager;
+use crate::{mint_tx_manager::MintTxManager, tx_manager::TxManager};
 use mc_peers::ConsensusValue;
 use std::{
     collections::{hash_map::Entry::Vacant, HashMap},
@@ -13,9 +13,12 @@ use std::{
 /// A list of transactions that this node will attempt to submit to consensus.
 /// Invariant: each pending transaction is well-formed.
 /// Invariant: each pending transaction is valid w.r.t he current ledger.
-pub struct PendingValues<TXM: TxManager> {
+pub struct PendingValues<TXM: TxManager, MTXM: MintTxManager> {
     // Transaction manager instance, used for validating values.
     tx_manager: Arc<TXM>,
+
+    // Mint transaction manager instance, used for validating mint transactions.
+    mint_tx_manager: Arc<MTXM>,
 
     /// We need to store pending values vec so we can process values
     /// on a first-come first-served basis. However, we want to be able to:
@@ -35,11 +38,12 @@ pub struct PendingValues<TXM: TxManager> {
     pending_values_map: HashMap<ConsensusValue, Option<Instant>>,
 }
 
-impl<TXM: TxManager> PendingValues<TXM> {
+impl<TXM: TxManager, MTXM: MintTxManager> PendingValues<TXM, MTXM> {
     /// Create a new instance of `PendingValues`.
-    pub fn new(tx_manager: Arc<TXM>) -> Self {
+    pub fn new(tx_manager: Arc<TXM>, mint_tx_manager: Arc<MTXM>) -> Self {
         Self {
             tx_manager,
+            mint_tx_manager,
             pending_values: Vec::new(),
             pending_values_map: HashMap::new(),
         }
@@ -70,6 +74,32 @@ impl<TXM: TxManager> PendingValues<TXM> {
                 ConsensusValue::TxHash(tx_hash) => {
                     // A new transaction.
                     if self.tx_manager.validate(&tx_hash).is_ok() {
+                        // The transaction is well-formed and valid.
+                        entry.insert(timestamp);
+                        self.pending_values.push(value);
+                        true
+                    } else {
+                        false
+                    }
+                }
+
+                ConsensusValue::MintConfigTx(ref mint_config_tx) => {
+                    if self
+                        .mint_tx_manager
+                        .validate_mint_config_tx(mint_config_tx)
+                        .is_ok()
+                    {
+                        // The transaction is well-formed and valid.
+                        entry.insert(timestamp);
+                        self.pending_values.push(value);
+                        true
+                    } else {
+                        false
+                    }
+                }
+
+                ConsensusValue::MintTx(ref mint_tx) => {
+                    if self.mint_tx_manager.validate_mint_tx(mint_tx).is_ok() {
                         // The transaction is well-formed and valid.
                         entry.insert(timestamp);
                         self.pending_values.push(value);
@@ -114,8 +144,15 @@ impl<TXM: TxManager> PendingValues<TXM> {
     /// Clear any pending values that are no longer valid.
     pub fn clear_invalid_values(&mut self) {
         let tx_manager = self.tx_manager.clone();
+        let mint_tx_manager = self.mint_tx_manager.clone();
         self.retain(|value| match value {
             ConsensusValue::TxHash(tx_hash) => tx_manager.validate(tx_hash).is_ok(),
+            ConsensusValue::MintConfigTx(ref mint_config_tx) => mint_tx_manager
+                .validate_mint_config_tx(mint_config_tx)
+                .is_ok(),
+            ConsensusValue::MintTx(ref mint_tx) => {
+                mint_tx_manager.validate_mint_tx(mint_tx).is_ok()
+            }
         });
     }
 }
@@ -123,7 +160,10 @@ impl<TXM: TxManager> PendingValues<TXM> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tx_manager::{MockTxManager, TxManagerError};
+    use crate::{
+        mint_tx_manager::MockMintTxManager,
+        tx_manager::{MockTxManager, TxManagerError},
+    };
     use mc_transaction_core::{tx::TxHash, validation::TransactionValidationError};
     use mockall::predicate::eq;
     use std::{collections::HashSet, iter::FromIterator};
@@ -132,6 +172,7 @@ mod tests {
     /// Should only allow valid values to be pushed.
     fn test_push_skips_invalid_values() {
         let mut tx_manager = MockTxManager::new();
+        let mint_tx_manager = MockMintTxManager::new();
 
         // A few test values.
         let values = vec![TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
@@ -139,35 +180,33 @@ mod tests {
         // `validate` should be called one for each pending value.
         tx_manager
             .expect_validate()
-            .with(eq(values[0].clone()))
+            .with(eq(values[0]))
             .return_const(Ok(()));
         // This transaction has expired.
         tx_manager
             .expect_validate()
-            .with(eq(values[1].clone()))
+            .with(eq(values[1]))
             .return_const(Err(TxManagerError::TransactionValidation(
                 TransactionValidationError::TombstoneBlockExceeded,
             )));
         tx_manager
             .expect_validate()
-            .with(eq(values[2].clone()))
+            .with(eq(values[2]))
             .return_const(Ok(()));
 
-        let mut pending_values = PendingValues::new(Arc::new(tx_manager));
-        assert!(pending_values.push(values[0].clone().into(), None));
-        assert!(!pending_values.push(values[1].clone().into(), None));
-        assert!(pending_values.push(values[2].clone().into(), None));
+        let mut pending_values =
+            PendingValues::new(Arc::new(tx_manager), Arc::new(mint_tx_manager));
+        assert!(pending_values.push(values[0].into(), None));
+        assert!(!pending_values.push(values[1].into(), None));
+        assert!(pending_values.push(values[2].into(), None));
 
         assert_eq!(
             pending_values.pending_values,
-            vec![values[0].clone().into(), values[2].clone().into()]
+            vec![values[0].into(), values[2].into()]
         );
         assert_eq!(
             pending_values.pending_values_map,
-            HashMap::from_iter(vec![
-                (values[0].clone().into(), None),
-                (values[2].clone().into(), None)
-            ])
+            HashMap::from_iter(vec![(values[0].into(), None), (values[2].into(), None)])
         );
     }
 
@@ -175,6 +214,7 @@ mod tests {
     /// Should only allow a single instance of each value
     fn test_push_skips_already_present_values() {
         let mut tx_manager = MockTxManager::new();
+        let mint_tx_manager = MockMintTxManager::new();
 
         // A few test values.
         let values: Vec<ConsensusValue> = vec![
@@ -186,7 +226,8 @@ mod tests {
         // All values are considered valid for this test.
         tx_manager.expect_validate().return_const(Ok(()));
 
-        let mut pending_values = PendingValues::new(Arc::new(tx_manager));
+        let mut pending_values =
+            PendingValues::new(Arc::new(tx_manager), Arc::new(mint_tx_manager));
         assert!(pending_values.push(values[0].clone(), None));
         assert!(pending_values.push(values[1].clone(), None));
         assert!(pending_values.push(values[2].clone(), None));
@@ -210,6 +251,7 @@ mod tests {
     /// Should discard values that are no longer valid.
     fn test_clear_invalid_values_discards_invalid_values() {
         let mut tx_manager = MockTxManager::new();
+        let mint_tx_manager = MockMintTxManager::new();
 
         // A few test values.
         let tx_hashes = vec![TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
@@ -223,23 +265,24 @@ mod tests {
         // `validate` should be called one for each pending value.
         tx_manager
             .expect_validate()
-            .with(eq(tx_hashes[0].clone()))
+            .with(eq(tx_hashes[0]))
             .return_const(Ok(()));
         // This transaction has expired.
         tx_manager
             .expect_validate()
-            .with(eq(tx_hashes[1].clone()))
+            .with(eq(tx_hashes[1]))
             .return_const(Err(TxManagerError::TransactionValidation(
                 TransactionValidationError::TombstoneBlockExceeded,
             )));
         tx_manager
             .expect_validate()
-            .with(eq(tx_hashes[2].clone()))
+            .with(eq(tx_hashes[2]))
             .return_const(Ok(()));
 
         // Create new PendingValues and forcefully shove the pending tx_hashes into it
         // in order to skip the validation call done by `push()`.
-        let mut pending_values = PendingValues::new(Arc::new(tx_manager));
+        let mut pending_values =
+            PendingValues::new(Arc::new(tx_manager), Arc::new(mint_tx_manager));
 
         pending_values.pending_values = values.clone();
         pending_values.pending_values_map = values

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! APIs for MobileCoin Consensus Node Enclaves
 
@@ -10,12 +10,19 @@ extern crate alloc;
 mod config;
 mod error;
 mod fee_map;
+mod governors_map;
+mod governors_sig;
 mod messages;
 
 pub use crate::{
     config::{BlockchainConfig, BlockchainConfigWithDigest},
     error::Error,
-    fee_map::{Error as FeeMapError, FeeMap},
+    fee_map::{Error as FeeMapError, FeeMap, SMALLEST_MINIMUM_FEE_LOG2},
+    governors_map::{Error as GovernorsMapError, GovernorsMap},
+    governors_sig::{
+        context as governors_signing_context, Signer as GovernorsSigner,
+        Verifier as GovernorsVerifier,
+    },
     messages::EnclaveCall,
 };
 
@@ -30,6 +37,7 @@ use mc_common::ResponderId;
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, RistrettoPublic, X25519Public};
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_transaction_core::{
+    mint::{MintConfig, MintConfigTx, MintTx},
     ring_signature::KeyImage,
     tx::{Tx, TxHash, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockSignature, TokenId,
@@ -51,8 +59,8 @@ pub struct WellFormedEncryptedTx(pub Vec<u8>);
 /// Tx data we wish to expose to untrusted from well-formed Txs.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct WellFormedTxContext {
-    /// Fee included in the tx.
-    fee: u64,
+    /// Priority assigned to this tx, based on the fee.
+    priority: u64,
 
     /// Tx hash.
     tx_hash: TxHash,
@@ -73,7 +81,7 @@ pub struct WellFormedTxContext {
 impl WellFormedTxContext {
     /// Create a new WellFormedTxContext.
     pub fn new(
-        fee: u64,
+        priority: u64,
         tx_hash: TxHash,
         tombstone_block: u64,
         key_images: Vec<KeyImage>,
@@ -81,7 +89,7 @@ impl WellFormedTxContext {
         output_public_keys: Vec<CompressedRistrettoPublic>,
     ) -> Self {
         Self {
-            fee,
+            priority,
             tx_hash,
             tombstone_block,
             key_images,
@@ -90,14 +98,26 @@ impl WellFormedTxContext {
         }
     }
 
+    /// Create a new WellFormedTxContext, from a Tx and its priority.
+    pub fn from_tx(tx: &Tx, priority: u64) -> Self {
+        Self {
+            priority,
+            tx_hash: tx.tx_hash(),
+            tombstone_block: tx.prefix.tombstone_block,
+            key_images: tx.key_images(),
+            highest_indices: tx.get_membership_proof_highest_indices(),
+            output_public_keys: tx.output_public_keys(),
+        }
+    }
+
     /// Get the tx_hash
     pub fn tx_hash(&self) -> &TxHash {
         &self.tx_hash
     }
 
-    /// Get the fee
-    pub fn fee(&self) -> u64 {
-        self.fee
+    /// Get the priority
+    pub fn priority(&self) -> u64 {
+        self.priority
     }
 
     /// Get the tombstone block
@@ -121,27 +141,16 @@ impl WellFormedTxContext {
     }
 }
 
-impl From<&Tx> for WellFormedTxContext {
-    fn from(tx: &Tx) -> Self {
-        Self {
-            fee: tx.prefix.fee,
-            tx_hash: tx.tx_hash(),
-            tombstone_block: tx.prefix.tombstone_block,
-            key_images: tx.key_images(),
-            highest_indices: tx.get_membership_proof_highest_indices(),
-            output_public_keys: tx.output_public_keys(),
-        }
-    }
-}
-
 /// Defines a sort order for transactions in a block.
-/// Transactions are sorted by fee (high to low), then by transaction hash and
-/// any other fields.
+/// Transactions are sorted by priority(high to low), then by transaction hash
+/// and any other fields.
+///
+/// Priority is a proxy for fee which is normalized across token ids.
 impl Ord for WellFormedTxContext {
     fn cmp(&self, other: &Self) -> Ordering {
-        if self.fee != other.fee {
-            // Sort by fee, descending.
-            other.fee.cmp(&self.fee)
+        if self.priority != other.priority {
+            // Sort by priority, descending.
+            other.priority.cmp(&self.priority)
         } else {
             // Sort by remaining fields in lexicographic order.
             (
@@ -174,7 +183,7 @@ mod well_formed_tx_context_tests {
     use alloc::{vec, vec::Vec};
 
     #[test]
-    /// WellFormedTxContext should be sorted by fee, descending.
+    /// WellFormedTxContext should be sorted by priority, descending.
     fn test_ordering() {
         let a = WellFormedTxContext::new(100, Default::default(), 0, vec![], vec![], vec![]);
         let b = WellFormedTxContext::new(557, Default::default(), 0, vec![], vec![], vec![]);
@@ -183,9 +192,9 @@ mod well_formed_tx_context_tests {
         let mut contexts = vec![a, b, c];
         contexts.sort();
 
-        let fees: Vec<_> = contexts.iter().map(|context| context.fee).collect();
+        let priorities: Vec<_> = contexts.iter().map(|context| context.priority).collect();
         let expected = vec![557, 100, 88];
-        assert_eq!(fees, expected);
+        assert_eq!(priorities, expected);
     }
 }
 
@@ -228,6 +237,12 @@ pub struct FormBlockInputs {
     /// The original transactions (the ones that are used to move tokens)
     pub well_formed_encrypted_txs_with_proofs:
         Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>,
+
+    /// Updating minting configuration transactions
+    pub mint_config_txs: Vec<MintConfigTx>,
+
+    /// Minting transactions coupled with configuration information.
+    pub mint_txs_with_config: Vec<(MintTx, MintConfigTx, MintConfig)>,
 }
 
 /// The API for interacting with a consensus node's enclave.
@@ -253,8 +268,11 @@ pub trait ConsensusEnclave: ReportableEnclave {
     /// Retrieve the block signing public key from the enclave.
     fn get_signer(&self) -> Result<Ed25519Public>;
 
-    /// Retrieve the fee public key from the enclave
+    /// Retrieve the fee public key from the enclave.
     fn get_fee_recipient(&self) -> Result<FeePublicKey>;
+
+    /// Retrieve the minting trust root public key from the enclave.
+    fn get_minting_trust_root(&self) -> Result<Ed25519Public>;
 
     // CLIENT-FACING METHODS
 

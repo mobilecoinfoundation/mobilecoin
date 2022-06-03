@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use mc_account_keys::AccountKey;
 use mc_crypto_digestible_test_utils::*;
 use mc_crypto_keys::RistrettoPrivate;
@@ -6,8 +8,7 @@ use mc_transaction_core::{
     BlockVersion, Token,
 };
 use mc_util_from_random::FromRandom;
-use rand_core::{RngCore, SeedableRng};
-use rand_hc::Hc128Rng as FixedRng;
+use mc_util_test_helper::{RngCore, RngType as FixedRng, SeedableRng};
 
 fn test_accounts() -> Vec<AccountKey> {
     let mut rng: FixedRng = SeedableRng::from_seed([12u8; 32]);
@@ -220,7 +221,7 @@ fn origin_block_digestible_ast() {
 
 #[test]
 fn block_contents_digestible_test_vectors() {
-    let results = test_blockchain(BlockVersion::TWO);
+    let results = test_blockchain(BlockVersion::ONE);
 
     // Test digest of block contents
     assert_eq!(
@@ -245,8 +246,7 @@ fn block_contents_digestible_test_vectors() {
         ]
     );
 
-    // Now set block version 1 and run the old test vectors
-    let results = test_blockchain(BlockVersion::ONE);
+    let results = test_blockchain(BlockVersion::ZERO);
 
     // Test digest of block contents
     assert_eq!(

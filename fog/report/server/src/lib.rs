@@ -1,4 +1,8 @@
-// Copyright 2018-2021 MobileCoin, Inc.
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Server for ingest reports.
+
+#![deny(missing_docs)]
 
 mod config;
 mod server;

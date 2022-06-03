@@ -1,10 +1,12 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 //! Convert to/from external::SignatureRctBulletproofs
 
 use crate::{convert::ConversionError, external};
 use mc_transaction_core::{
-    ring_signature::{RingMLSAG, SignatureRctBulletproofs},
-    CompressedCommitment,
+    ring_ct::SignatureRctBulletproofs, ring_signature::RingMLSAG, CompressedCommitment,
 };
+use protobuf::RepeatedField;
 use std::convert::TryFrom;
 
 impl From<&SignatureRctBulletproofs> for external::SignatureRctBulletproofs {
@@ -25,7 +27,10 @@ impl From<&SignatureRctBulletproofs> for external::SignatureRctBulletproofs {
             .collect();
         signature.set_pseudo_output_commitments(pseudo_output_commitments.into());
 
-        signature.set_range_proofs(source.range_proof_bytes.clone());
+        signature.set_range_proof_bytes(source.range_proof_bytes.clone());
+        signature.set_range_proofs(RepeatedField::from_vec(source.range_proofs.clone()));
+        signature.set_pseudo_output_token_ids(source.pseudo_output_token_ids.clone());
+        signature.set_output_token_ids(source.output_token_ids.clone());
 
         signature
     }
@@ -46,12 +51,18 @@ impl TryFrom<&external::SignatureRctBulletproofs> for SignatureRctBulletproofs {
                 .push(CompressedCommitment::try_from(pseudo_output_commitment)?);
         }
 
-        let range_proof_bytes = source.get_range_proofs().to_vec();
+        let range_proof_bytes = source.get_range_proof_bytes().to_vec();
+        let range_proofs = source.get_range_proofs().to_vec();
+        let pseudo_output_token_ids = source.get_pseudo_output_token_ids().to_vec();
+        let output_token_ids = source.get_output_token_ids().to_vec();
 
         Ok(SignatureRctBulletproofs {
             ring_signatures,
             pseudo_output_commitments,
             range_proof_bytes,
+            range_proofs,
+            pseudo_output_token_ids,
+            output_token_ids,
         })
     }
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Builder wrapper around SgxSign.
 
@@ -31,18 +31,21 @@ impl SgxSign {
 
     /// Relocations are generally forbidden in the enclave shared object, this
     /// tells the `sgx_sign` utility to ignore those errors.
+    #[must_use]
     pub fn allow_relocations(mut self, allow: bool) -> Self {
         self.ignore_rel_error = allow;
         self
     }
 
     /// Whether or not to allow .init sections in the enclave.
+    #[must_use]
     pub fn allow_init_sections(mut self, allow: bool) -> Self {
         self.ignore_init_sec_error = allow;
         self
     }
 
     /// Whether to re-sign a previously signed enclave (default: false)
+    #[must_use]
     pub fn allow_resign(mut self, allow: bool) -> Self {
         self.resign = allow;
         self

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 // This integration-level test mocks out consensus and tries to show
 // that the users are able to recover their transactions.
@@ -19,7 +19,10 @@ use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_kex_rng::KexRngPubkey;
 use mc_fog_recovery_db_iface::{RecoveryDb, ReportData, ReportDb};
 use mc_fog_sql_recovery_db::{test_utils::SqlRecoveryDbTestContext, SqlRecoveryDb};
-use mc_fog_test_infra::{db_tests::random_kex_rng_pubkey, get_enclave_path};
+use mc_fog_test_infra::{
+    db_tests::{random_block, random_kex_rng_pubkey},
+    get_enclave_path,
+};
 use mc_fog_types::{
     common::BlockRange,
     view::{TxOutSearchResult, TxOutSearchResultCode},
@@ -34,16 +37,7 @@ use mc_transaction_core::{Block, BlockID, BlockVersion};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::GrpcRetryConfig;
 use rand::{rngs::StdRng, SeedableRng};
-use std::{
-    str::FromStr,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
-    },
-    time::Duration,
-};
-
-static PORT_NR: AtomicUsize = AtomicUsize::new(40100);
+use std::{str::FromStr, sync::Arc, thread::sleep, time::Duration};
 
 const GRPC_RETRY_CONFIG: GrpcRetryConfig = GrpcRetryConfig {
     grpc_retry_count: 3,
@@ -61,8 +55,7 @@ fn get_test_environment(
     let db_test_context = SqlRecoveryDbTestContext::new(logger.clone());
     let db = db_test_context.get_db_instance();
 
-    let port = PORT_NR.fetch_add(1, Ordering::SeqCst) as u16;
-
+    let port = portpicker::pick_unused_port().expect("pick_unused_port");
     let uri = FogViewUri::from_str(&format!("insecure-fog-view://127.0.0.1:{}", port)).unwrap();
 
     let server = {
@@ -91,7 +84,7 @@ fn get_test_environment(
         let mut server = ViewServer::new(
             config,
             enclave,
-            db.clone(),
+            db,
             ra_client,
             SystemTimeProvider::default(),
             logger.clone(),
@@ -109,7 +102,7 @@ fn get_test_environment(
         let mut verifier = Verifier::default();
         verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
-        FogViewGrpcClient::new(uri, GRPC_RETRY_CONFIG, verifier, grpcio_env.clone(), logger)
+        FogViewGrpcClient::new(uri, GRPC_RETRY_CONFIG, verifier, grpcio_env, logger)
     };
 
     (db_test_context, server, client)
@@ -146,7 +139,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id1,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             0,
             2,
@@ -161,7 +154,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id1,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             1,
             6,
@@ -184,7 +177,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id2,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             2,
             12,
@@ -219,7 +212,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id2,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             3,
             12,
@@ -234,7 +227,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id2,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             4,
             16,
@@ -251,7 +244,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
     db.add_block_data(
         &invoc_id2,
         &Block::new(
-            BlockVersion::ONE,
+            BlockVersion::ZERO,
             &BlockID::default(),
             5,
             20,
@@ -292,7 +285,7 @@ fn test_view_integration(view_omap_capacity: u64, logger: Logger) {
             panic!("Server did not catch up to database!");
         }
         allowed_tries -= 1;
-        std::thread::sleep(Duration::from_millis(1000));
+        sleep(Duration::from_millis(1000));
     }
 
     // Now make some requests against view_client
@@ -430,7 +423,7 @@ fn test_view_sql_512(logger: Logger) {
     test_view_integration(512, logger);
 
     // Sleep before exiting to give view server threads time to join
-    std::thread::sleep(std::time::Duration::from_millis(1000));
+    sleep(Duration::from_millis(1000));
 }
 
 #[test_with_logger]
@@ -438,7 +431,7 @@ fn test_view_sql_1mil(logger: Logger) {
     test_view_integration(1024 * 1024, logger);
 
     // Sleep before exiting to give view server threads time to join
-    std::thread::sleep(std::time::Duration::from_millis(1000));
+    sleep(Duration::from_millis(1000));
 }
 
 /// Ensure that all provided ETxOutRecords are in the enclave, and that
@@ -486,7 +479,7 @@ fn assert_e_tx_out_records_sanity(
             panic!("Server did not catch up to database!");
         }
         allowed_tries -= 1;
-        std::thread::sleep(Duration::from_millis(1000));
+        sleep(Duration::from_millis(1000));
     }
 }
 
@@ -519,11 +512,11 @@ fn test_overlapping_ingest_ranges(logger: Logger) {
     // see blocks 0-4 for now.
     let mut expected_records = Vec::new();
     for i in 0..5 {
-        let (block, records) = mc_fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+        let (block, records) = random_block(&mut rng, i, 5); // 5 outputs per block
         db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
         expected_records.extend(records);
 
-        let (block, records) = mc_fog_test_infra::db_tests::random_block(&mut rng, i + 10, 5); // start block is 10
+        let (block, records) = random_block(&mut rng, i + 10, 5); // start block is 10
         db.add_block_data(&invoc_id2, &block, 0, &records).unwrap();
         expected_records.extend(records);
     }
@@ -543,7 +536,7 @@ fn test_overlapping_ingest_ranges(logger: Logger) {
             panic!("Server did not catch up to database!");
         }
         allowed_tries -= 1;
-        std::thread::sleep(Duration::from_millis(1000));
+        sleep(Duration::from_millis(1000));
     }
 
     assert_eq!(server.highest_processed_block_count(), 5);
@@ -551,7 +544,7 @@ fn test_overlapping_ingest_ranges(logger: Logger) {
     assert_e_tx_out_records_sanity(&mut view_client, &expected_records, &logger);
 
     // Give server time to process some more blocks, although it shouldn't.
-    std::thread::sleep(Duration::from_millis(1000));
+    sleep(Duration::from_millis(1000));
     assert_eq!(server.highest_processed_block_count(), 5);
 
     // See that we get a sane client response.
@@ -562,7 +555,7 @@ fn test_overlapping_ingest_ranges(logger: Logger) {
     // Add blocks 5-19 to invoc_id1. This will allow us to query blocks 0-14, since
     // invoc_id2 only has blocks 10-14.
     for i in 5..20 {
-        let (block, records) = mc_fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+        let (block, records) = random_block(&mut rng, i, 5); // 5 outputs per block
         db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
 
         expected_records.extend(records);
@@ -583,7 +576,7 @@ fn test_overlapping_ingest_ranges(logger: Logger) {
             panic!("Server did not catch up to database!");
         }
         allowed_tries -= 1;
-        std::thread::sleep(Duration::from_millis(1000));
+        sleep(Duration::from_millis(1000));
     }
 
     assert_eq!(server.highest_processed_block_count(), 15);
@@ -591,7 +584,7 @@ fn test_overlapping_ingest_ranges(logger: Logger) {
     // Give server time to process some more blocks, although it shouldn't.
     let mut allowed_tries = 60usize;
     while allowed_tries > 0 {
-        std::thread::sleep(Duration::from_millis(1000));
+        sleep(Duration::from_millis(1000));
         allowed_tries -= 1;
 
         if server.highest_processed_block_count() != 15 {
@@ -615,7 +608,7 @@ fn test_overlapping_ingest_ranges(logger: Logger) {
 
     // Add blocks 15-30 to invoc_id2, this should bring us to block 20.
     for i in 15..30 {
-        let (block, records) = mc_fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+        let (block, records) = random_block(&mut rng, i, 5); // 5 outputs per block
         db.add_block_data(&invoc_id2, &block, 0, &records).unwrap();
         expected_records.extend(records);
     }
@@ -635,13 +628,13 @@ fn test_overlapping_ingest_ranges(logger: Logger) {
             panic!("Server did not catch up to database!");
         }
         allowed_tries -= 1;
-        std::thread::sleep(Duration::from_millis(1000));
+        sleep(Duration::from_millis(1000));
     }
 
     assert_eq!(server.highest_processed_block_count(), 20);
 
     // Give server time to process some more blocks, although it shouldn't.
-    std::thread::sleep(Duration::from_millis(1000));
+    sleep(Duration::from_millis(1000));
     assert_eq!(server.highest_processed_block_count(), 20);
 
     // See that we get a sane client response.
@@ -656,7 +649,7 @@ fn test_overlapping_ingest_ranges(logger: Logger) {
             panic!("Server did not catch up to database! highest_processed_block_count = {}, last_known_block_count = {}", result.highest_processed_block_count, result.last_known_block_count);
         }
         allowed_tries -= 1;
-        std::thread::sleep(Duration::from_millis(1000));
+        sleep(Duration::from_millis(1000));
     }
 
     // Ensure all ETxOutRecords are searchable
@@ -682,13 +675,13 @@ fn test_start_with_missing_range(logger: Logger) {
     // Add 5 blocks to invoc_id1.
     let mut expected_records = Vec::new();
     for i in 10..15 {
-        let (block, records) = mc_fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+        let (block, records) = random_block(&mut rng, i, 5); // 5 outputs per block
         db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
         expected_records.extend(records);
     }
 
     // Give server time to process some more blocks, although it shouldn't.
-    std::thread::sleep(Duration::from_millis(1000));
+    sleep(Duration::from_millis(1000));
     assert_eq!(server.highest_processed_block_count(), 0);
 
     // See that we get a sane client response.
@@ -703,12 +696,12 @@ fn test_start_with_missing_range(logger: Logger) {
             panic!("Server did not catch up to database! highest_processed_block_count = {}, last_known_block_count = {}", result.highest_processed_block_count, result.last_known_block_count);
         }
         allowed_tries -= 1;
-        std::thread::sleep(Duration::from_millis(1000));
+        sleep(Duration::from_millis(1000));
     }
 
     // Adding the first 5 blocks that were the gap
     for i in 5..10 {
-        let (block, records) = mc_fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+        let (block, records) = random_block(&mut rng, i, 5); // 5 outputs per block
         db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
         expected_records.extend(records);
     }
@@ -724,7 +717,7 @@ fn test_start_with_missing_range(logger: Logger) {
             panic!("Server did not catch up to database! highest_processed_block_count = {}, last_known_block_count = {}", result.highest_processed_block_count, result.last_known_block_count);
         }
         allowed_tries -= 1;
-        std::thread::sleep(Duration::from_millis(1000));
+        sleep(Duration::from_millis(1000));
     }
     assert_eq!(server.highest_processed_block_count(), 15);
 
@@ -763,7 +756,7 @@ fn test_middle_missing_range_with_decommission(logger: Logger) {
     // Add 5 blocks to invoc_id1.
     let mut expected_records = Vec::new();
     for i in 0..5 {
-        let (block, records) = mc_fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+        let (block, records) = random_block(&mut rng, i, 5); // 5 outputs per block
         db.add_block_data(&invoc_id1, &block, 0, &records).unwrap();
         expected_records.extend(records);
     }
@@ -782,7 +775,7 @@ fn test_middle_missing_range_with_decommission(logger: Logger) {
             panic!("Server did not catch up to database! highest_processed_block_count = {}, last_known_block_count = {}", result.highest_processed_block_count, result.last_known_block_count);
         }
         allowed_tries -= 1;
-        std::thread::sleep(Duration::from_millis(1000));
+        sleep(Duration::from_millis(1000));
     }
     assert_eq!(server.highest_processed_block_count(), 5);
 
@@ -803,7 +796,7 @@ fn test_middle_missing_range_with_decommission(logger: Logger) {
 
     // Add 5 blocks to invoc_id2.
     for i in 10..15 {
-        let (block, records) = mc_fog_test_infra::db_tests::random_block(&mut rng, i, 5); // 5 outputs per block
+        let (block, records) = random_block(&mut rng, i, 5); // 5 outputs per block
         db.add_block_data(&invoc_id2, &block, 0, &records).unwrap();
         expected_records.extend(records);
     }
@@ -821,7 +814,7 @@ fn test_middle_missing_range_with_decommission(logger: Logger) {
             panic!("Server did not catch up to database! highest_processed_block_count = {}, last_known_block_count = {}", result.highest_processed_block_count, result.last_known_block_count);
         }
         allowed_tries -= 1;
-        std::thread::sleep(Duration::from_millis(1000));
+        sleep(Duration::from_millis(1000));
     }
     assert_eq!(server.highest_processed_block_count(), 15);
 
@@ -840,7 +833,7 @@ fn test_middle_missing_range_with_decommission(logger: Logger) {
             panic!("Server did not catch up to database! highest_processed_block_count = {}, last_known_block_count = {}", result.highest_processed_block_count, result.last_known_block_count);
         }
         allowed_tries -= 1;
-        std::thread::sleep(Duration::from_millis(1000));
+        sleep(Duration::from_millis(1000));
     }
     assert_eq!(server.highest_processed_block_count(), 15);
 

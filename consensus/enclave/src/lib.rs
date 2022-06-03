@@ -1,11 +1,11 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The Consensus Service SGX Enclave Proxy
 
 pub use mc_consensus_enclave_api::{
     BlockchainConfig, ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeeMap,
-    FeeMapError, FeePublicKey, FormBlockInputs, LocallyEncryptedTx, Result, TxContext,
-    WellFormedEncryptedTx, WellFormedTxContext,
+    FeeMapError, FeePublicKey, FormBlockInputs, GovernorsMap, LocallyEncryptedTx, Result,
+    TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 
 use mc_attest_core::{
@@ -156,6 +156,12 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
 
     fn get_fee_recipient(&self) -> Result<FeePublicKey> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::GetFeeRecipient)?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn get_minting_trust_root(&self) -> Result<Ed25519Public> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetMintingTrustRoot)?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }

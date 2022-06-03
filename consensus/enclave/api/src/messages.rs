@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The message types used by the consensus_enclave_api.
 
@@ -74,6 +74,11 @@ pub enum EnclaveCall {
     ///
     /// Retrieves the fee recipient (FeePublicKey) for the enclave.
     GetFeeRecipient,
+
+    /// The [ConsensusEnclave::get_minting_trust_root()] method.
+    ///
+    /// Retrieves the minting trust root (Ed25519 public key) of an enclave.
+    GetMintingTrustRoot,
 
     /// The [ConsensusEnclave::new_ereport()] method.
     ///

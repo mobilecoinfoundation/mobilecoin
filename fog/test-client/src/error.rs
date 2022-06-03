@@ -1,10 +1,11 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Test client error type
 
 use displaydoc::Display;
 use mc_fog_sample_paykit::Error as SamplePaykitError;
-use mc_transaction_core::BlockVersionError;
+use mc_transaction_core::{BlockVersionError, TokenId};
+use std::collections::HashMap;
 
 /// Error that can occur when running a test transfer
 #[derive(Display, Debug)]
@@ -17,8 +18,8 @@ pub enum TestClientError {
     SubmittedTxTimeout,
     /// A Tx was not recieved within the deadline
     TxTimeout,
-    /// A bad balance was observed: expected {0}, found {1}
-    BadBalance(u64, u64),
+    /// A bad balance was observed: expected {0:?}, found {1:?}
+    BadBalance(HashMap<TokenId, u64>, HashMap<TokenId, u64>),
     /// A double spend was not rejected by consensus as expected
     DoubleSpend,
     /// An unexpected memo was received
@@ -35,6 +36,12 @@ pub enum TestClientError {
     ConfirmTx(SamplePaykitError),
     /// Block version error: {0}
     BlockVersion(BlockVersionError),
+    /// Client error while getting a fee: {0}
+    GetFee(SamplePaykitError),
+    /// TokenId is not configured in consensus (no fee is available): {0}
+    TokenNotConfigured(TokenId),
+    /// Build swap proposal: {0}
+    BuildSwapProposal(SamplePaykitError),
 }
 
 impl From<BlockVersionError> for TestClientError {

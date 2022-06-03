@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use displaydoc::Display;
 
@@ -29,7 +29,11 @@ impl Error {
     }
 }
 
-impl AttestationError for Error {}
+impl AttestationError for Error {
+    fn should_reattest(&self) -> bool {
+        matches!(self, Self::Rpc(_) | Self::Ake(_) | Self::Cipher(_))
+    }
+}
 
 impl From<grpcio::Error> for Error {
     fn from(err: grpcio::Error) -> Self {

@@ -2,7 +2,7 @@
 name = "mc-util-test-helper"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 
 [[bin]]
 name = "generate-account-keys"
@@ -13,11 +13,11 @@ path = "src/bin/generate_account_keys.rs"
 mc-account-keys = { path = "../../account-keys" }
 
 # External dependencies
+clap = { version = "3.1", features = ["derive", "env"] }
 lazy_static = "1.4"
 rand = "0.8"
 rand_core = "0.6"
 rand_hc = "0.3"
-structopt = "0.3"
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The Noise Framework's SymmetricState object.
 
@@ -152,7 +152,7 @@ where
     ///
     /// MobileCoin does not currently utilize pre-shared keys anywhere, so
     /// this is unused,
-    #[allow(unused)]
+    #[allow(dead_code)]
     pub fn mix_key_and_hash(
         &mut self,
         input_key_material: KexAlgo::Secret,

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! dalek-cryptography based keys implementations
 
@@ -6,12 +6,8 @@
 use alloc::vec;
 
 // Dependencies
-use crate::traits::*;
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
-};
-use binascii::b64encode;
+use crate::{traits::*, B64_CONFIG};
+use alloc::{string::ToString, vec::Vec};
 use core::{
     convert::{AsRef, TryFrom},
     fmt::{Debug, Error as FmtError, Formatter, Result as FmtResult},
@@ -56,17 +52,13 @@ impl Debug for X25519Secret {
         let mut hasher = Sha256::new();
         hasher.update(self.as_ref());
         let hash_results = hasher.finalize();
-        let mut hash_strbuf: Vec<u8> = Vec::with_capacity(hash_results.len() * 2);
-        let hash_len = {
-            let hash_strslice =
-                binascii::bin2hex(&hash_results, &mut hash_strbuf).map_err(|_e| FmtError)?;
-            hash_strslice.len()
-        };
-        hash_strbuf.truncate(hash_len);
+
+        let output = hex::decode(&hash_results).map_err(|_e| FmtError)?;
+
         write!(
             f,
             "X25519Secret SHA-256: {}",
-            from_utf8(&hash_strbuf).map_err(|_e| FmtError)?
+            from_utf8(&output).map_err(|_e| FmtError)?
         )
     }
 }
@@ -250,29 +242,11 @@ impl Debug for X25519Public {
     /// ```
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         let der = self.to_der();
-        let mut b64_output = vec![0u8; der.len() * 4 / 3 + 4];
-        let final_len = loop {
-            match b64encode(&der, &mut b64_output) {
-                Ok(val) => break val.len(),
-                Err(e) => match e {
-                    binascii::ConvertError::InvalidOutputLength => {
-                        let target_len = b64_output.len() * 2;
-                        b64_output.resize(target_len, 0u8);
-                    }
-                    binascii::ConvertError::InvalidInputLength => {
-                        return Err(FmtError);
-                    }
-                    binascii::ConvertError::InvalidInput => {
-                        return Err(FmtError);
-                    }
-                },
-            }
-        };
-        b64_output.truncate(final_len);
+        let encoded = base64::encode_config(&der, B64_CONFIG);
         write!(
             f,
             "-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n",
-            String::from_utf8(b64_output).map_err(|_e| FmtError)?
+            encoded
         )
     }
 }

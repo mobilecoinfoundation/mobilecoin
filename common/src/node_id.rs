@@ -1,9 +1,8 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! The Node ID type
 
 use crate::responder_id::ResponderId;
-use binascii::ConvertError as BinConvertError;
 use core::{
     cmp::Ordering,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
@@ -31,16 +30,6 @@ pub enum NodeIDError {
     KeyParseError,
 }
 
-impl From<BinConvertError> for NodeIDError {
-    fn from(src: BinConvertError) -> Self {
-        match src {
-            BinConvertError::InvalidInputLength => NodeIDError::InvalidInputLength,
-            BinConvertError::InvalidOutputLength => NodeIDError::InvalidOutputLength,
-            BinConvertError::InvalidInput => NodeIDError::InvalidInput,
-        }
-    }
-}
-
 impl From<KeyError> for NodeIDError {
     fn from(_src: KeyError) -> Self {
         NodeIDError::KeyParseError
@@ -51,7 +40,9 @@ impl From<KeyError> for NodeIDError {
 /// key
 #[derive(Clone, Serialize, Deserialize, Digestible)]
 pub struct NodeID {
+    /// The Responder ID for this node
     pub responder_id: ResponderId,
+    /// The public message-signing key for this node
     pub public_key: Ed25519Public,
 }
 

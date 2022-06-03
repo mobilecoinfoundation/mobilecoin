@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Defines an object for each known high-level memo type,
 //! and an enum to allow matching recovered memos to one of these types.
@@ -30,6 +30,18 @@
 //! implement a new `MemoBuilder`. See the `memo_builder` module for examples.
 //! Or, if you don't want to use the `TransactionBuilder`, you can call
 //! `TxOut::new_with_memo` directly.
+//!
+//! The following memo types are natively supported by this module:
+//! | Memo type bytes | Name                                              |
+//! | -----------     | -----------                                       |
+//! | 0x0000          | Unused                                            |
+//! | 0x0001          | Burn Redemption Memo                              |
+//! | 0x0002          | Gift Code Sender Memo                             |
+//! | 0x0100          | Authenticated Sender Memo                         |
+//! | 0x0101          | Authenticated Sender With Payment Request Id Memo |
+//! | 0x0200          | Destination Memo                                  |
+//! | 0x0201          | Gift Code Funding Memo                            |
+//! | 0x0202          | Gift Code Cancellation Memo                       |
 
 use crate::impl_memo_enum;
 use core::{convert::TryFrom, fmt::Debug};
@@ -38,16 +50,24 @@ use displaydoc::Display;
 mod authenticated_common;
 mod authenticated_sender;
 mod authenticated_sender_with_payment_request_id;
+mod burn_redemption;
 mod credential;
 mod destination;
+mod gift_code_cancellation;
+mod gift_code_funding;
+mod gift_code_sender;
 mod macros;
 mod unused;
 
 pub use authenticated_common::compute_category1_hmac;
 pub use authenticated_sender::AuthenticatedSenderMemo;
 pub use authenticated_sender_with_payment_request_id::AuthenticatedSenderWithPaymentRequestIdMemo;
+pub use burn_redemption::BurnRedemptionMemo;
 pub use credential::SenderMemoCredential;
 pub use destination::{DestinationMemo, DestinationMemoError};
+pub use gift_code_cancellation::GiftCodeCancellationMemo;
+pub use gift_code_funding::GiftCodeFundingMemo;
+pub use gift_code_sender::GiftCodeSenderMemo;
 pub use unused::UnusedMemo;
 
 /// A trait that all registered memo types should implement.
@@ -72,10 +92,14 @@ pub enum MemoDecodingError {
 }
 
 impl_memo_enum! { MemoType,
-    Unused(UnusedMemo),
     AuthenticatedSender(AuthenticatedSenderMemo),
     AuthenticatedSenderWithPaymentRequestId(AuthenticatedSenderWithPaymentRequestIdMemo),
+    BurnRedemption(BurnRedemptionMemo),
     Destination(DestinationMemo),
+    GiftCodeCancellation(GiftCodeCancellationMemo),
+    GiftCodeFunding(GiftCodeFundingMemo),
+    GiftCodeSender(GiftCodeSenderMemo),
+    Unused(UnusedMemo),
 }
 
 #[cfg(test)]
@@ -159,6 +183,16 @@ mod tests {
                     assert_eq!(code, [7u8, 8u8], "unexpected memo type bytes");
                 }
             },
+        }
+
+        let memo6 = BurnRedemptionMemo::new([2; 64]);
+        match MemoType::try_from(&MemoPayload::from(memo6.clone())).unwrap() {
+            MemoType::BurnRedemption(memo) => {
+                assert_eq!(memo6, memo);
+            }
+            _ => {
+                panic!("unexpected deserialization");
+            }
         }
     }
 

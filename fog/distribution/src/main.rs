@@ -1,4 +1,6 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Entry point for the fog distribution utility
 
 //! Fog distribution is a transfer script which moves funds from a set of
 //! accounts funded by a ledger bootstrap, to another set of accounts (which may
@@ -17,7 +19,7 @@
 
 #![deny(missing_docs)]
 
-use core::{cell::RefCell, convert::TryFrom};
+use core::{cell::RefCell, cmp::max, convert::TryFrom};
 use lazy_static::lazy_static;
 use mc_account_keys::AccountKey;
 use mc_attest_verifier::{Verifier, DEBUG_ENCLAVE};
@@ -30,6 +32,7 @@ use mc_connection::{
     RetryableBlockchainConnection, RetryableUserTxConnection, SyncConnection, ThickClient,
 };
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
+use mc_crypto_ring_signature_signer::NoKeysRingSigner;
 use mc_fog_distribution::Config;
 use mc_fog_report_connection::{Error as ReportConnError, GrpcFogReportConnection};
 use mc_fog_report_validation::FogResolver;
@@ -41,9 +44,10 @@ use mc_transaction_core::{
     tokens::Mob,
     tx::{Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Amount, BlockVersion, Token,
+    Amount, BlockVersion, Token, TokenId,
 };
 use mc_transaction_std::{EmptyMemoBuilder, InputCredentials, TransactionBuilder};
+use mc_util_cli::ParserWithBuildInfo;
 use mc_util_uri::FogUri;
 use rand::{seq::SliceRandom, thread_rng, Rng};
 use rayon::prelude::*;
@@ -61,17 +65,16 @@ use std::{
     thread,
     time::Duration,
 };
-use structopt::StructOpt;
 use tempfile::tempdir;
 
 thread_local! {
     /// global variable storing connections to the consensus network
-    pub static CONNS: RefCell<Option<Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>>>> = RefCell::new(None);
+    static CONNS: RefCell<Option<Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>>>> = RefCell::new(None);
 }
 
 fn set_conns(config: &Config, logger: &Logger) {
     let conns = config.get_connections(logger).unwrap();
-    CONNS.with(|c| *c.borrow_mut() = Some(conns));
+    CONNS.with(|c| c.replace(Some(conns)));
 }
 
 fn get_conns(
@@ -95,8 +98,8 @@ lazy_static! {
     /// Keeps track of block version we are targetting
     pub static ref BLOCK_VERSION: AtomicU32 = AtomicU32::new(1);
 
-    /// Keeps track of the current fee value
-    pub static ref FEE: AtomicU64 = AtomicU64::default();
+    /// Keeps track of the current MOB fee value
+    pub static ref MOB_FEE: AtomicU64 = AtomicU64::default();
 
     /// A map of tx pub keys to account index. This is used in conjunction with ledger syncing to
     /// identify which new txs belong to which accounts without having to do any slow crypto.
@@ -105,8 +108,7 @@ lazy_static! {
 
 /// A TxOut found from the bootstrapped ledger that we can spend
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SpendableTxOut {
-    /// The tx out that is spendable
+struct SpendableTxOut {
     pub tx_out: TxOut,
     /// The amount of the tx out
     pub amount: Amount,
@@ -118,26 +120,20 @@ fn main() {
     mc_common::setup_panic_handler();
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
-    let config = Config::from_args();
+    let config = Config::parse();
 
-    // Read account root_entropies from disk
-    let src_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_root_entropies(
+    // Read account keys from disk
+    let src_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_keyfiles(
         config.sample_data_dir.join(Path::new("keys")),
     )
-    .expect("Could not read default root entropies from keys")
-    .iter()
-    .map(AccountKey::from)
-    .collect();
+    .expect("Could not read default mnemonics from keys");
 
-    let dest_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_root_entropies(
+    let dest_accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_keyfiles(
         config
             .sample_data_dir
             .join(Path::new(&config.fog_keys_subdir)),
     )
-    .expect("Could not read fog keys")
-    .iter()
-    .map(AccountKey::from)
-    .collect();
+    .expect("Could not read fog keys");
 
     // Open the ledger_db to process the bootstrapped ledger
     log::info!(logger, "Loading ledger");
@@ -151,21 +147,31 @@ fn main() {
 
     let ledger_db = LedgerDB::open(ledger_dir.path()).expect("Could not open ledger_db");
 
-    let block_version = config
-        .block_version
-        .unwrap_or_else(|| ledger_db.get_latest_block().unwrap().version);
-
     BLOCK_HEIGHT.store(ledger_db.num_blocks().unwrap(), Ordering::SeqCst);
-    BLOCK_VERSION.store(block_version, Ordering::SeqCst);
 
-    // Use the maximum fee of all configured consensus nodes
-    FEE.store(
-        get_conns(&config, &logger)
-            .par_iter()
-            .filter_map(|conn| conn.fetch_block_info(empty()).ok())
+    // Get the block info of all configured consensus nodes
+    let block_infos: Vec<_> = get_conns(&config, &logger)
+        .par_iter()
+        .filter_map(|conn| conn.fetch_block_info(empty()).ok())
+        .collect();
+
+    MOB_FEE.store(
+        block_infos
+            .iter()
             .filter_map(|block_info| block_info.minimum_fee_or_none(&Mob::ID))
             .max()
             .unwrap_or(Mob::MINIMUM_FEE),
+        Ordering::SeqCst,
+    );
+    BLOCK_VERSION.store(
+        max(
+            ledger_db.get_latest_block().unwrap().version,
+            block_infos
+                .iter()
+                .map(|block_info| block_info.network_block_version)
+                .max()
+                .unwrap_or(0),
+        ),
         Ordering::SeqCst,
     );
 
@@ -174,9 +180,9 @@ fn main() {
 
     // Count how many of each token type
     {
-        let mut token_count: BTreeMap<u32, usize> = Default::default();
+        let mut token_count: BTreeMap<TokenId, usize> = Default::default();
         for tx_out in &spendable_tx_outs {
-            *token_count.entry(*tx_out.amount.token_id).or_default() += 1;
+            *token_count.entry(tx_out.amount.token_id).or_default() += 1;
         }
 
         log::info!(
@@ -185,7 +191,7 @@ fn main() {
             spendable_tx_outs.len()
         );
         for (token_id, count) in token_count {
-            log::info!(logger, "TokenId({}): {} tx outs", token_id, count);
+            log::info!(logger, "{}: {} tx outs", token_id, count);
         }
     }
 
@@ -710,15 +716,18 @@ fn build_tx(
     // Use token id for first spendable tx out
     let token_id = spendable_txouts.first().unwrap().amount.token_id;
 
+    // FIXME: This needs to be the fee for the current token, not MOB.
+    // However, bootstrapping non MOB tokens is not supported right now.
+    let fee_amount = Amount::new(MOB_FEE.load(Ordering::SeqCst), token_id);
+
     // Create tx_builder.
     let mut tx_builder = TransactionBuilder::new(
         block_version,
-        token_id,
+        fee_amount,
         fog_resolver,
         EmptyMemoBuilder::default(),
-    );
-
-    tx_builder.set_fee(FEE.load(Ordering::SeqCst)).unwrap();
+    )
+    .unwrap();
 
     // Unzip each vec of tuples into a tuple of vecs.
     let mut rings_and_proofs: Vec<(Vec<TxOut>, Vec<TxOutMembershipProof>)> = rings
@@ -801,13 +810,13 @@ fn build_tx(
             let mut value = utxo.amount.value;
             // Use the first input to pay for the fee.
             if i == 0 {
-                value -= FEE.load(Ordering::SeqCst);
+                value -= MOB_FEE.load(Ordering::SeqCst);
             }
 
             let target_address = to_account.default_subaddress();
 
             tx_builder
-                .add_output(value, &target_address, &mut rng)
+                .add_output(Amount { value, token_id }, &target_address, &mut rng)
                 .expect("failed to add output");
         }
     }
@@ -817,7 +826,9 @@ fn build_tx(
     tx_builder.set_tombstone_block(tombstone_block);
 
     // Build and return tx.
-    tx_builder.build(&mut rng).expect("failed building tx")
+    tx_builder
+        .build(&NoKeysRingSigner {}, &mut rng)
+        .expect("failed building tx")
 }
 
 /// Get merkle proofs of membership from the ledger for several utxos

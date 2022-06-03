@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! This module contains the wrapper type for an sgx_mac_t
 
@@ -20,7 +20,7 @@ const EPID_GROUP_ID_SIZE: usize = 4;
 /// This type exists because of the lack of non-type polymorphism, and
 /// should be removed once https://github.com/rust-lang/rust/issues/44580
 /// has been completed.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 #[repr(transparent)]
 pub struct EpidGroupId(sgx_epid_group_id_t);
 
@@ -37,12 +37,6 @@ impl AsRef<[u8]> for EpidGroupId {
 impl AsMut<[u8]> for EpidGroupId {
     fn as_mut(&mut self) -> &mut [u8] {
         &mut self.0[..]
-    }
-}
-
-impl Default for EpidGroupId {
-    fn default() -> Self {
-        Self([0u8; 4])
     }
 }
 

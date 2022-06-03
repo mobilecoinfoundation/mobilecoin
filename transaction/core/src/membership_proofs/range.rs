@@ -1,10 +1,11 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 use core::cmp::Ordering;
 use mc_crypto_digestible::Digestible;
 use prost::Message;
 // These require the serde "derive" feature to be enabled.
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 /// An error which occurs in connection to a membership proof range
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -17,7 +18,9 @@ impl core::fmt::Display for RangeError {
 }
 
 /// A range [from,to] of indices.
-#[derive(Clone, Copy, Deserialize, Eq, Hash, PartialEq, Serialize, Message, Digestible)]
+#[derive(
+    Clone, Copy, Deserialize, Eq, Hash, PartialEq, Serialize, Message, Digestible, Zeroize,
+)]
 pub struct Range {
     /// The left endpoint of the range
     #[prost(uint64, tag = "1")]

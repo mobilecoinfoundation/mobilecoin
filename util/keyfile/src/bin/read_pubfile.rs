@@ -1,20 +1,29 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+#![deny(missing_docs)]
 
-use mc_util_keyfile::read_pubfile;
+//! Utility to read .pub files.
+//! Optionally, can transcribe them to the b58 format
+
+use clap::Parser;
+use mc_util_keyfile::{read_pubfile, write_b58pubfile};
 use std::path::PathBuf;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Config {
     /// Path to pubfile
-    #[structopt(long)]
+    #[clap(long, env = "MC_PUBFILE")]
     pub pubfile: PathBuf,
+
+    /// Optionally, a path at which to output b58 encoding of this public
+    /// address
+    #[clap(long, env = "MC_OUT_B58")]
+    pub out_b58: Option<PathBuf>,
 }
 
 fn main() {
-    let config = Config::from_args();
+    let config = Config::parse();
 
-    let pubaddress = read_pubfile(config.pubfile.clone()).expect("Could not read pubfile");
+    let pubaddress = read_pubfile(&config.pubfile).expect("Could not read pubfile");
 
     println!(
         "Public address for {:?}: \n\t {:?}",
@@ -40,4 +49,8 @@ fn main() {
         "Spend Public Bytes (hex): {:?}",
         hex::encode(pubaddress.spend_public_key().to_bytes())
     );
+
+    if let Some(out) = config.out_b58.as_ref() {
+        write_b58pubfile(out, &pubaddress).expect("Could not write out-b58 file");
+    }
 }

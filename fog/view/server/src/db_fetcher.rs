@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! An object for managing background data fetches from the recovery database.
 
@@ -403,7 +403,7 @@ mod tests {
             assert_eq!(
                 ingress_keys,
                 vec![IngressPublicKeyRecord {
-                    key: ingress_key.clone(),
+                    key: ingress_key,
                     status: IngressPublicKeyStatus {
                         start_block: 10,
                         pubkey_expiry: 0,
@@ -462,7 +462,7 @@ mod tests {
         assert_eq!(
             ingress_keys,
             vec![IngressPublicKeyRecord {
-                key: ingress_key.clone(),
+                key: ingress_key,
                 status: IngressPublicKeyStatus {
                     start_block: 10,
                     pubkey_expiry: 0,
@@ -508,7 +508,7 @@ mod tests {
         assert_eq!(
             ingress_keys,
             vec![IngressPublicKeyRecord {
-                key: ingress_key.clone(),
+                key: ingress_key,
                 status: IngressPublicKeyStatus {
                     start_block: 10,
                     pubkey_expiry: 0,
@@ -540,7 +540,7 @@ mod tests {
         assert_eq!(
             ingress_keys,
             vec![IngressPublicKeyRecord {
-                key: ingress_key.clone(),
+                key: ingress_key,
                 status: IngressPublicKeyStatus {
                     start_block: 10,
                     pubkey_expiry: 0,
@@ -653,7 +653,7 @@ mod tests {
         // Sort to make comparing easier
         fetched_records.sort_by_key(|fr| (fr.ingress_key, fr.block_index));
         blocks_and_records
-            .sort_by_key(|(ingress_key, block, _records)| (ingress_key.clone(), block.index));
+            .sort_by_key(|(ingress_key, block, _records)| (*ingress_key, block.index));
 
         for (i, fetched_record) in fetched_records.iter().enumerate() {
             assert_eq!(fetched_record.ingress_key, blocks_and_records[i].0);
@@ -717,7 +717,7 @@ mod tests {
         // Sort to make comparing easier
         fetched_records.sort_by_key(|fr| (fr.ingress_key, fr.block_index));
         blocks_and_records
-            .sort_by_key(|(ingress_key, block, _records)| (ingress_key.clone(), block.index));
+            .sort_by_key(|(ingress_key, block, _records)| (*ingress_key, block.index));
 
         for (i, fetched_record) in fetched_records.iter().enumerate() {
             assert_eq!(fetched_record.ingress_key, blocks_and_records[i].0);

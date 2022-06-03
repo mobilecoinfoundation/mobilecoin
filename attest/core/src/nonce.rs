@@ -1,12 +1,11 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Nonce structures
 
 use alloc::vec;
 
-use crate::{error::NonceError, impl_sgx_newtype_for_bytestruct, traits::bin2hex};
+use crate::{error::NonceError, impl_sgx_newtype_for_bytestruct};
 use alloc::vec::Vec;
-use binascii::hex2bin;
 use core::{
     convert::{AsRef, Into, TryFrom, TryInto},
     fmt::{Display, Formatter, Result as FmtResult},
@@ -139,15 +138,17 @@ impl FromHex for IasNonce {
             return Err(EncodingError::InvalidInputLength);
         }
         let mut retval = Self::default();
-        hex2bin(s.as_bytes(), &mut retval.0[..])?;
+        hex::decode_to_slice(s, &mut retval.0[..])?;
         Ok(retval)
     }
 }
 
 impl ToHex for IasNonce {
     fn to_hex(&self, dest: &mut [u8]) -> Result<usize, usize> {
-        match bin2hex(self.as_ref(), dest) {
-            Ok(buffer) => Ok(buffer.len()),
+        let bytes = self.as_ref();
+        match hex::encode_to_slice(bytes, dest) {
+            // Return the number of bytes used, per ToHex spec.
+            Ok(()) => Ok(bytes.len() * 2),
             Err(_e) => Err(IAS_NONCE_STR_LENGTH),
         }
     }
@@ -229,7 +230,7 @@ mod test {
     /// Test that our hex decoding matches hex::decode
     fn test_string_from_and_hex_decoding() {
         let s = "029a2f3945a8f6bb1fb5b11a54283a40";
-        let ias_nonce = IasNonce::from_hex(&s).unwrap();
+        let ias_nonce = IasNonce::from_hex(s).unwrap();
         assert_eq!(
             [2, 154, 47, 57, 69, 168, 246, 187, 31, 181, 177, 26, 84, 40, 58, 64],
             ias_nonce.0

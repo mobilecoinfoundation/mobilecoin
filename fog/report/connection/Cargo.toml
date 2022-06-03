@@ -2,7 +2,7 @@
 name = "mc-fog-report-connection"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 mc-account-keys = { path = "../../../account-keys" }
@@ -16,4 +16,4 @@ mc-util-serial = { path = "../../../util/serial" }
 mc-util-uri = { path = "../../../util/uri" }
 
 displaydoc = "0.2"
-grpcio = "0.10.0"
+grpcio = "0.10.2"

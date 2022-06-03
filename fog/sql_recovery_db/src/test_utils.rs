@@ -1,4 +1,6 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
+//! Utilities for testing.
 
 use crate::{SqlRecoveryDb, SqlRecoveryDbConnectionConfig};
 use diesel::{prelude::*, PgConnection};
@@ -8,6 +10,7 @@ use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 embed_migrations!("migrations/");
 
+/// Context for tests.
 pub struct SqlRecoveryDbTestContext {
     base_url: String,
     db_name: String,
@@ -15,6 +18,7 @@ pub struct SqlRecoveryDbTestContext {
 }
 
 impl SqlRecoveryDbTestContext {
+    /// Intantiate a context.
     pub fn new(logger: Logger) -> Self {
         let db_name: String = format!(
             "fog_test_{}",
@@ -53,14 +57,17 @@ impl SqlRecoveryDbTestContext {
         }
     }
 
+    /// Get DB name.
     pub fn db_name(&self) -> &str {
         &self.db_name
     }
 
+    /// Get DB URL.
     pub fn db_url(&self) -> String {
         format!("{}/{}", self.base_url, self.db_name)
     }
 
+    /// Get DB instance.
     pub fn get_db_instance(&self) -> SqlRecoveryDb {
         SqlRecoveryDb::new_from_url(
             &self.db_url(),
@@ -70,6 +77,7 @@ impl SqlRecoveryDbTestContext {
         .expect("failed creating new SqlRecoveryDb")
     }
 
+    /// Establish a connection.
     pub fn new_conn(&self) -> PgConnection {
         PgConnection::establish(&self.db_url()).expect("cannot connect to database")
     }

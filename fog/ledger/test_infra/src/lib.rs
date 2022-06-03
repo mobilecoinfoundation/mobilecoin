@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Functionality for mocking and testing components in the ledger server
 
@@ -10,12 +10,13 @@ use mc_fog_ledger_enclave::{
     GetOutputsResponse, LedgerEnclave, OutputContext, Result as EnclaveResult,
 };
 use mc_fog_ledger_enclave_api::{KeyImageData, UntrustedKeyImageQueryResponse};
-use mc_ledger_db::{Error, Ledger};
+use mc_ledger_db::{ActiveMintConfig, ActiveMintConfigs, Error, Ledger};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
+    mint::MintTx,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockSignature,
+    Block, BlockContents, BlockData, BlockIndex, BlockSignature, TokenId,
 };
 
 #[derive(Default, Clone)]
@@ -185,6 +186,32 @@ impl Ledger for MockLedger {
     }
 
     fn get_root_tx_out_membership_element(&self) -> Result<TxOutMembershipElement, Error> {
+        unimplemented!()
+    }
+
+    fn get_active_mint_configs(
+        &self,
+        _token_id: TokenId,
+    ) -> Result<Option<ActiveMintConfigs>, Error> {
+        unimplemented!()
+    }
+
+    fn get_active_mint_configs_map(&self) -> Result<HashMap<TokenId, ActiveMintConfigs>, Error> {
+        unimplemented!()
+    }
+
+    fn check_mint_config_tx_nonce(&self, _nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
+        unimplemented!()
+    }
+
+    fn check_mint_tx_nonce(&self, _nonce: &[u8]) -> Result<Option<BlockIndex>, Error> {
+        unimplemented!()
+    }
+
+    fn get_active_mint_config_for_mint_tx(
+        &self,
+        _mint_tx: &MintTx,
+    ) -> Result<ActiveMintConfig, Error> {
         unimplemented!()
     }
 }

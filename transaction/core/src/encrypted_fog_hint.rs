@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Define DiscoveryHint buffer size, and serialization defs for it
 //! Also define `fake_onetime_hint` which samples the distribution that
@@ -24,6 +24,7 @@ use prost::{
 };
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 /// The length of the encrypted fog hint field in the ledger.
 /// Must be at least as large as mc_crypto_box::VersionedCryptoBox::FooterSize.
@@ -37,7 +38,17 @@ type Bytes = GenericArray<u8, EncryptedFogHintSize>;
 
 /// An encrypted fog hint payload in the ledger
 #[derive(
-    Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Serialize, Deserialize, Default, Digestible,
+    Clone,
+    Default,
+    Deserialize,
+    Digestible,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize,
+    Zeroize,
 )]
 #[digestible(transparent)]
 pub struct EncryptedFogHint {

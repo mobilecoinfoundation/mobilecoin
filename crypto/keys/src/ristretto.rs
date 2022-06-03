@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 #![allow(non_snake_case)]
 
@@ -32,7 +32,7 @@ use schnorrkel_og::{
     Signature as SchnorrkelSignature, SignatureError as SchnorrkelError, SIGNATURE_LENGTH,
 };
 use serde::{Deserialize, Serialize};
-use signature::{Error as SignatureError, Error};
+use signature::Error as SignatureError;
 use subtle::{Choice, ConstantTimeEq};
 use zeroize::Zeroize;
 
@@ -149,7 +149,7 @@ impl<T: Digestible> DigestibleSigner<RistrettoSignature, T> for RistrettoPrivate
         &self,
         context: &'static [u8],
         message: &T,
-    ) -> Result<RistrettoSignature, Error> {
+    ) -> Result<RistrettoSignature, SignatureError> {
         Ok(self.sign_digestible(context, message))
     }
 }
@@ -434,7 +434,7 @@ impl KexSecret for RistrettoSecret {}
 ///
 /// As a result, this does not implement the `PublicKey` interface, nor is it
 /// usable in a key-exchange.
-#[derive(Clone, Copy, Default, Eq, Digestible)]
+#[derive(Clone, Copy, Default, Eq, Digestible, Zeroize)]
 #[digestible(transparent)]
 pub struct CompressedRistrettoPublic(pub(crate) CompressedRistretto);
 

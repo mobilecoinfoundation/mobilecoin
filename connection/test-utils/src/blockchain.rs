@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Connection mock and test utilities
 
@@ -8,7 +8,7 @@ use mc_connection::{
 };
 use mc_consensus_enclave_api::FeeMap;
 use mc_ledger_db::Ledger;
-use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
+use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex, BlockVersion};
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{
     cmp::{min, Ordering},
@@ -118,6 +118,7 @@ impl<L: Ledger + Sync> BlockchainConnection for MockBlockchainConnection<L> {
         Ok(BlockInfo {
             block_index: self.ledger.num_blocks().unwrap() - 1,
             minimum_fees: FeeMap::default_map(),
+            network_block_version: *BlockVersion::MAX,
         })
     }
 }

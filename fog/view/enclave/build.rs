@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 MobileCoin Inc.
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Build script for fog view enclave
 
@@ -12,7 +12,7 @@ const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_urts_sim", "libsgx_epid_sim"];
 
 // Changing this version is a breaking change, you must update the crate version
 // if you do.
-const SGX_VERSION: &str = "2.15.100.3";
+const SGX_VERSION: &str = "2.16.100.4";
 
 fn main() {
     let env = Environment::default();

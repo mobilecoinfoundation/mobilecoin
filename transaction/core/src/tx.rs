@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Definition of a MobileCoin transaction and a MobileCoin TxOut
 
@@ -9,22 +9,25 @@ use mc_common::Hash;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_hashes::{Blake2b256, Digest};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+use mc_crypto_ring_signature::{KeyImage, ReducedTxOut};
 use mc_util_repr_bytes::{
     derive_prost_message_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
 };
 use prost::Message;
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 use crate::{
-    amount::{Amount, AmountError, MaskedAmount},
+    amount::{AmountError, MaskedAmount},
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
+    input_rules::InputRules,
     membership_proofs::Range,
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
-    ring_signature::{KeyImage, SignatureRctBulletproofs},
-    CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
+    ring_ct::{SignatureRctBulletproofs, SignedInputRing},
+    Amount, CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
 };
 
 /// Transaction hash length, in bytes.
@@ -164,9 +167,10 @@ pub struct TxPrefix {
     #[prost(uint64, tag = "4")]
     pub tombstone_block: u64,
 
-    /// Token id for this transaction
-    #[prost(fixed32, tag = "5")]
-    pub token_id: u32,
+    /// Token id for the fee output of this transaction
+    #[prost(fixed64, tag = "5")]
+    #[digestible(omit_when = 0)]
+    pub fee_token_id: u64,
 }
 
 impl TxPrefix {
@@ -181,15 +185,14 @@ impl TxPrefix {
     pub fn new(
         inputs: Vec<TxIn>,
         outputs: Vec<TxOut>,
-        fee: u64,
-        token_id: u32,
+        fee: Amount,
         tombstone_block: u64,
     ) -> TxPrefix {
         TxPrefix {
             inputs,
             outputs,
-            fee,
-            token_id,
+            fee: fee.value,
+            fee_token_id: *fee.token_id,
             tombstone_block,
         }
     }
@@ -222,6 +225,11 @@ impl TxPrefix {
             .map(|output| output.masked_amount.commitment)
             .collect()
     }
+
+    /// Get all input rings.
+    pub fn get_input_rings(&self) -> Vec<SignedInputRing> {
+        self.inputs.iter().map(SignedInputRing::from).collect()
+    }
 }
 
 /// An "input" to a transaction.
@@ -238,10 +246,44 @@ pub struct TxIn {
     /// Prost only works with Vec.
     #[prost(message, repeated, tag = "2")]
     pub proofs: Vec<TxOutMembershipProof>,
+
+    /// Any rules associated to this input, per MCIP #31
+    #[prost(message, tag = "3")]
+    pub input_rules: Option<InputRules>,
+}
+
+impl TxIn {
+    /// This is the digest of the TxIn which is signed per MCIP #31 if there
+    /// are input rules present.
+    ///
+    /// See MCIP #31 for rationale -- by not signing the whole TxPrefix, we
+    /// allow that someone can create this signature who does not have the
+    /// whole TxPrefix.
+    ///
+    /// The membership proofs are not signed, because it is useful to allow that
+    /// someone later may update those proofs. See MCIP #31 for discussion.
+    pub fn signed_digest(&self) -> Option<[u8; 32]> {
+        if self.input_rules.is_some() {
+            let mut this = self.clone();
+            this.proofs.clear();
+            Some(this.digest32::<MerlinTranscript>(b"mc-input-rules-digest"))
+        } else {
+            None
+        }
+    }
+}
+
+impl From<&TxIn> for SignedInputRing {
+    fn from(src: &TxIn) -> SignedInputRing {
+        SignedInputRing {
+            members: src.ring.iter().map(Into::into).collect(),
+            signed_digest: src.signed_digest(),
+        }
+    }
 }
 
 /// An output created by a transaction.
-#[derive(Clone, Deserialize, Eq, Hash, PartialEq, Serialize, Message, Digestible)]
+#[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
 pub struct TxOut {
     /// The amount being sent.
     #[prost(message, required, tag = "1")]
@@ -403,6 +445,16 @@ impl TxOut {
     }
 }
 
+impl From<&TxOut> for ReducedTxOut {
+    fn from(src: &TxOut) -> Self {
+        Self {
+            public_key: src.public_key,
+            target_key: src.target_key,
+            commitment: src.masked_amount.commitment,
+        }
+    }
+}
+
 /// A Merkle proof-of-membership for the TxOut at the given index contains a set
 /// of hashes: it includes each hash between the leaf and the root, as well as
 /// each "other" child hash. It is assumed that the proof accompanies the leaf
@@ -414,7 +466,7 @@ impl TxOut {
 ///
 /// # References
 /// * [How Log Proofs Work](http://www.certificate-transparency.org/log-proofs-work)
-#[derive(Clone, Deserialize, Eq, PartialEq, Serialize, Message, Digestible)]
+#[derive(Clone, Deserialize, Digestible, Eq, Message, PartialEq, Serialize, Zeroize)]
 pub struct TxOutMembershipProof {
     /// Index of the TxOut that this proof refers to.
     #[prost(uint64, tag = "1")]
@@ -450,9 +502,11 @@ impl TxOutMembershipProof {
     }
 }
 
-#[derive(Clone, Deserialize, Eq, PartialOrd, Ord, PartialEq, Serialize, Message, Digestible)]
 /// An element of a TxOut membership proof, denoting an internal hash node in a
 /// Merkle tree.
+#[derive(
+    Clone, Deserialize, Digestible, Eq, Message, Ord, PartialEq, PartialOrd, Serialize, Zeroize,
+)]
 pub struct TxOutMembershipElement {
     /// The range of leaf nodes "under" this internal hash.
     #[prost(message, required, tag = "1")]
@@ -473,11 +527,21 @@ impl TxOutMembershipElement {
     }
 }
 
+/// A hash in a TxOut membership proof.
 #[derive(
-    Clone, Deserialize, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Debug, Digestible,
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    Digestible,
+    Eq,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize,
+    Zeroize,
 )]
 #[digestible(transparent)]
-/// A hash in a TxOut membership proof.
 pub struct TxOutMembershipHash(pub [u8; 32]);
 
 impl TxOutMembershipHash {
@@ -594,7 +658,7 @@ mod tests {
         encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
         get_tx_out_shared_secret,
         memo::MemoPayload,
-        ring_signature::SignatureRctBulletproofs,
+        ring_ct::SignatureRctBulletproofs,
         subaddress_matches_tx_out,
         tokens::Mob,
         tx::{Tx, TxIn, TxOut, TxPrefix},
@@ -605,13 +669,13 @@ mod tests {
     use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
+    use mc_util_test_helper::get_seeded_rng;
     use prost::Message;
-    use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
     // `serialize_tx` should create a Tx, encode/decode it, and compare
     fn test_serialize_tx_no_memo() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let tx_out = {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
@@ -638,6 +702,7 @@ mod tests {
         let tx_in = TxIn {
             ring: vec![tx_out.clone()],
             proofs: vec![],
+            input_rules: None,
         };
 
         // TxIn = decode(encode(TxIn))
@@ -649,7 +714,7 @@ mod tests {
             inputs: vec![tx_in],
             outputs: vec![tx_out],
             fee: Mob::MINIMUM_FEE,
-            token_id: *Mob::ID,
+            fee_token_id: *Mob::ID,
             tombstone_block: 23,
         };
 
@@ -674,7 +739,7 @@ mod tests {
     #[test]
     // `serialize_tx` should create a Tx, encode/decode it, and compare
     fn test_serialize_tx_with_memo() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
         let tx_out = {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
@@ -701,6 +766,7 @@ mod tests {
         let tx_in = TxIn {
             ring: vec![tx_out.clone()],
             proofs: vec![],
+            input_rules: None,
         };
 
         // TxIn = decode(encode(TxIn))
@@ -712,7 +778,7 @@ mod tests {
             inputs: vec![tx_in],
             outputs: vec![tx_out],
             fee: Mob::MINIMUM_FEE,
-            token_id: *Mob::ID,
+            fee_token_id: *Mob::ID,
             tombstone_block: 23,
         };
 
@@ -737,7 +803,7 @@ mod tests {
     // round trip memos from `TxOut` constructors through `decrypt_memo()`
     #[test]
     fn test_decrypt_memo() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut rng = get_seeded_rng();
 
         let bob = AccountKey::new(
             &RistrettoPrivate::from_random(&mut rng),
@@ -799,7 +865,7 @@ mod tests {
                 &bob_addr,
                 &tx_private_key,
                 Default::default(),
-                |_| Ok(Some(memo_val.clone())),
+                |_| Ok(Some(memo_val)),
             )
             .unwrap();
 
@@ -835,7 +901,7 @@ mod tests {
                 &bob.change_subaddress(),
                 &tx_private_key,
                 Default::default(),
-                |_| Ok(Some(memo_val.clone())),
+                |_| Ok(Some(memo_val)),
             )
             .unwrap();
 

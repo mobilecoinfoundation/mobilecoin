@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Traits which connection implementations can implement.
 
@@ -10,7 +10,7 @@ use mc_transaction_core::{tokens::Mob, tx::Tx, Block, BlockID, BlockIndex, Token
 use mc_util_serial::prost::alloc::fmt::Formatter;
 use mc_util_uri::ConnectionUri;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     fmt::{Debug, Display, Result as FmtResult},
     hash::Hash,
     iter::FromIterator,
@@ -26,9 +26,12 @@ pub trait Connection: Display + Eq + Hash + Ord + PartialEq + PartialOrd + Send 
     fn uri(&self) -> Self::Uri;
 }
 
-/// A marker trait used to encapsulate connection-impl-specific attestation
+/// A trait used to encapsulate connection-impl-specific attestation
 /// errors.
-pub trait AttestationError: Debug + Display + Send + Sync {}
+pub trait AttestationError: Debug + Display + Send + Sync {
+    /// Should the error result in re-attestation?
+    fn should_reattest(&self) -> bool;
+}
 
 pub trait AttestedConnection: Connection {
     type Error: AttestationError + From<GrpcError>;
@@ -65,6 +68,10 @@ pub struct BlockInfo {
 
     /// Minimum fee for each token id supported by the node
     pub minimum_fees: BTreeMap<TokenId, u64>,
+
+    /// Block version reported by the network.
+    /// This is the configured block version on the node.
+    pub network_block_version: u32,
 }
 
 impl BlockInfo {
@@ -104,7 +111,22 @@ impl From<LastBlockInfoResponse> for BlockInfo {
         BlockInfo {
             block_index: src.index,
             minimum_fees,
+            network_block_version: src.network_block_version,
         }
+    }
+}
+
+impl From<BlockInfo> for LastBlockInfoResponse {
+    fn from(src: BlockInfo) -> Self {
+        let mut result = LastBlockInfoResponse::new();
+        result.index = src.block_index;
+        result.network_block_version = src.network_block_version;
+        result.set_minimum_fees(HashMap::from_iter(
+            src.minimum_fees
+                .into_iter()
+                .map(|(token_id, fee)| (*token_id, fee)),
+        ));
+        result
     }
 }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Build script for attest_trusted, optionally links to libsgx_tservice.a when
 //! built on Linux, with the "sgx" feature enabled.

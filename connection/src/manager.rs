@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Common connection manager implementation
 
@@ -40,12 +40,16 @@ impl<C: Connection> ConnectionManager<C> {
                     .into_iter()
                     .map(|conn| {
                         let name = conn.to_string();
-                        let responder_id = conn.uri().responder_id().unwrap_or_else(|_| {
-                            panic!(
-                                "Could not create responder_id from {:?}",
-                                conn.uri().to_string()
-                            )
-                        });
+                        let responder_id =
+                            conn.uri()
+                                .host_and_port_responder_id()
+                                .unwrap_or_else(|err| {
+                                    panic!(
+                                        "Could not create responder_id from {:?}: {}",
+                                        conn.uri().to_string(),
+                                        err
+                                    )
+                                });
                         let sync_conn =
                             SyncConnection::new(conn, logger.new(o!("mc.peers.peer_name" => name)));
                         (responder_id, sync_conn)

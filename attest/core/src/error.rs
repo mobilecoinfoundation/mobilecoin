@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Errors which can occur during the attestation process
 
@@ -12,7 +12,7 @@ use crate::{
     },
 };
 use alloc::{string::String, vec::Vec};
-use binascii::ConvertError;
+use base64::DecodeError;
 use bitflags::bitflags;
 use core::{
     fmt::{Display, Error as FmtError, Formatter, Result as FmtResult},
@@ -34,8 +34,8 @@ pub enum EpidPseudonymError {
     SizeMismatch,
 }
 
-impl From<ConvertError> for EpidPseudonymError {
-    fn from(src: ConvertError) -> Self {
+impl From<DecodeError> for EpidPseudonymError {
+    fn from(src: DecodeError) -> Self {
         EpidPseudonymError::Decode(src.into())
     }
 }
@@ -156,8 +156,8 @@ pub enum PibError {
     Convert(EncodingError),
 }
 
-impl From<ConvertError> for PibError {
-    fn from(src: ConvertError) -> PibError {
+impl From<DecodeError> for PibError {
+    fn from(src: DecodeError) -> PibError {
         PibError::Convert(src.into())
     }
 }
@@ -239,8 +239,8 @@ pub enum QuoteError {
     InvalidUtf8,
 }
 
-impl From<ConvertError> for QuoteError {
-    fn from(src: ConvertError) -> Self {
+impl From<base64::DecodeError> for QuoteError {
+    fn from(src: base64::DecodeError) -> Self {
         QuoteError::Encoding(src.into())
     }
 }
@@ -322,8 +322,8 @@ pub enum QuoteVerifyError {
     QuotedReportMismatch,
 }
 
-impl From<ConvertError> for QuoteVerifyError {
-    fn from(src: ConvertError) -> Self {
+impl From<DecodeError> for QuoteVerifyError {
+    fn from(src: DecodeError) -> Self {
         QuoteVerifyError::Decode(src.into())
     }
 }
@@ -616,8 +616,8 @@ pub enum TargetInfoError {
     Convert(EncodingError),
 }
 
-impl From<ConvertError> for TargetInfoError {
-    fn from(src: ConvertError) -> Self {
+impl From<DecodeError> for TargetInfoError {
+    fn from(src: DecodeError) -> Self {
         TargetInfoError::Convert(src.into())
     }
 }

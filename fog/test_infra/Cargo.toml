@@ -2,7 +2,7 @@
 name = "mc-fog-test-infra"
 version = "1.3.0-pre0"
 authors = ["MobileCoin"]
-edition = "2018"
+edition = "2021"
 license = "GPL-3.0"
 
 # This is used by fog-conformance-testing
@@ -38,11 +38,11 @@ mc-fog-types = { path = "../types" }
 mc-fog-view-protocol = { path = "../view/protocol" }
 
 # third party
+clap = { version = "3.1", features = ["derive", "env"] }
 digest = "0.10"
 hex = "0.4"
 rand_core = "0.6"
 rand_hc = "0.3"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_json = "1.0"
-structopt = "0.3"
 url = "2.2"

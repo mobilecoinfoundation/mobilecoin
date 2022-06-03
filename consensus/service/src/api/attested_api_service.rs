@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! Serves node-to-node attested gRPC requests.
 
@@ -133,15 +133,7 @@ mod peer_tests {
     use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_util_grpc::TokenAuthenticator;
-    use std::{
-        sync::atomic::{AtomicUsize, Ordering::SeqCst},
-        time::Duration,
-    };
-
-    fn get_free_port() -> u16 {
-        static PORT_NR: AtomicUsize = AtomicUsize::new(0);
-        PORT_NR.fetch_add(1, SeqCst) as u16 + 30300
-    }
+    use std::time::Duration;
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server(instance: AttestedApiService<PeerSession>) -> (AttestedApiClient, Server) {
@@ -149,7 +141,7 @@ mod peer_tests {
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
-            .bind("127.0.0.1", get_free_port())
+            .bind("127.0.0.1", 0)
             .build()
             .unwrap();
         server.start();
@@ -182,7 +174,7 @@ mod peer_tests {
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
-            Err(err @ _) => {
+            Err(err) => {
                 panic!("Unexpected error {:?}", err);
             }
         }
@@ -199,15 +191,7 @@ mod client_tests {
     use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_util_grpc::TokenAuthenticator;
-    use std::{
-        sync::atomic::{AtomicUsize, Ordering::SeqCst},
-        time::Duration,
-    };
-
-    fn get_free_port() -> u16 {
-        static PORT_NR: AtomicUsize = AtomicUsize::new(0);
-        PORT_NR.fetch_add(1, SeqCst) as u16 + 30350
-    }
+    use std::time::Duration;
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server(
@@ -217,7 +201,7 @@ mod client_tests {
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
-            .bind("127.0.0.1", get_free_port())
+            .bind("127.0.0.1", 0)
             .build()
             .unwrap();
         server.start();
@@ -250,7 +234,7 @@ mod client_tests {
             Err(GrpcError::RpcFailure(rpc_status)) => {
                 assert_eq!(rpc_status.code(), RpcStatusCode::UNAUTHENTICATED);
             }
-            Err(err @ _) => {
+            Err(err) => {
                 panic!("Unexpected error {:?}", err);
             }
         }

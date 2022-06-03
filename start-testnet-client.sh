@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2018-2021 The MobileCoin Foundation
+# Copyright (c) 2018-2022 The MobileCoin Foundation
 #
 # Launches a local `mc-mobilecoind` instance that syncs the ledger from two nodes in the
 # test network and hosts a wallet service running on port 4444, then launches a local
@@ -19,7 +19,7 @@ echo "Pulling down TestNet consensus validator signature material"
 SIGSTRUCT_URI=$(curl -s https://enclave-distribution.test.mobilecoin.com/production.json | grep sigstruct | awk '{print $2}' | tr -d \")
 curl -O https://enclave-distribution.test.mobilecoin.com/${SIGSTRUCT_URI}
 
-TARGETDIR=./target/release
+TARGETDIR=${CARGO_TARGET_DIR:-./target}/release
 
 echo "Building mobilecoind and mc-mobilecoind-json. This will take a few moments."
 SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \

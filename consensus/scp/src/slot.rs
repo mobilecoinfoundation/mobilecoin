@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 The MobileCoin Foundation
+// Copyright (c) 2018-2022 The MobileCoin Foundation
 
 //! A unit of time during which the nodes agree on transactions.
 //!
@@ -22,9 +22,11 @@ use mc_common::{
 };
 #[cfg(test)]
 use mockall::*;
+use primitive_types::{U256, U512};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
+    convert::TryFrom,
     fmt::Display,
     sync::Arc,
     time::{Duration, Instant},
@@ -308,7 +310,7 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
         // Omit any invalid values.
         let valid_values: Vec<V> = values
             .iter()
-            .filter(|value| self.is_valid(value).is_ok())
+            .filter(|value| self.validate(value).is_ok())
             .cloned()
             .collect();
 
@@ -366,7 +368,7 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
                     // because this node no longer changes its ballot values.
                     if self.phase != Phase::Externalize {
                         for value in msg.values() {
-                            if self.is_valid(&value).is_err() {
+                            if self.validate(&value).is_err() {
                                 // Ignore this msg because it contains an invalid value.
                                 continue 'msg_loop;
                             }
@@ -447,7 +449,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         slot
     }
 
-    fn is_valid(&mut self, value: &V) -> Result<(), String> {
+    fn validate(&mut self, value: &V) -> Result<(), String> {
         if self.valid_values.contains(value) {
             return Ok(());
         }
@@ -494,10 +496,11 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             // weight256 is the node's weight, scaled to 0..<max uint256>
             // (weight256 = <max uint256> * <num> / <denom>)
             let (num, denom) = self.weight(node_id);
-            let mut tmp = bigint::U512::from(bigint::U256::max_value());
-            tmp = tmp.saturating_mul(bigint::U512::from(num));
-            tmp = tmp.overflowing_div(bigint::U512::from(denom)).0;
-            let weight256 = bigint::U256::from(tmp);
+            let mut tmp = U512::from(U256::max_value());
+            tmp = tmp.saturating_mul(U512::from(num));
+            tmp /= U512::from(denom);
+            let weight256 = U256::try_from(tmp)
+                .expect("failure calculating weight (max_u256 * k -> 2^512) / n");
 
             let gi_one = utils::slot_round_salted_keccak(
                 slot_index,
@@ -518,7 +521,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
     fn find_max_priority_peer(&self, round: u32) -> NodeID {
         let neighbors = self.neighbors(self.slot_index, round);
         let mut result = self.node_id.clone();
-        let mut max_priority = bigint::U256::zero();
+        let mut max_priority = U256::zero();
 
         for node_id in neighbors.iter() {
             // NOTE: this deviates from the spec. Without doing this we may have nomination
@@ -2388,8 +2391,8 @@ mod nominate_protocol_tests {
                 .expect("No message emitted");
 
             let expected = Msg::new(
-                local_node.0.clone(),
-                local_node.1.clone(),
+                local_node.0,
+                local_node.1,
                 slot_index,
                 Topic::Nominate(NominatePayload {
                     X: btreeset! { 777, 1000, 2000, 4242},
@@ -2437,11 +2440,11 @@ mod ballot_protocol_tests {
             .expect("No message emitted.");
 
         let expected = Msg::new(
-            local_node.0.clone(),
-            local_node.1.clone(),
+            local_node.0,
+            local_node.1,
             slot_index,
             Topic::Externalize(ExternalizePayload {
-                C: Ballot::new(1, &vec![1234, 1337, 1338, 5678]),
+                C: Ballot::new(1, &[1234, 1337, 1338, 5678]),
                 HN: 1,
             }),
         );
@@ -3433,7 +3436,7 @@ mod ballot_protocol_tests {
 
         // Not quorum; the local node emits its initial statement.
         for msg in msgs.iter().take(3) {
-            let emitted_msg = slot.handle_message(&msg);
+            let emitted_msg = slot.handle_message(msg);
             assert!(emitted_msg.unwrap().is_none());
         }
 
