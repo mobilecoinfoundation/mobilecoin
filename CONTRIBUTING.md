@@ -32,7 +32,7 @@ $ git checkout -b issue-1234
 ```bash
 $ git commit -am "Fixes #1234"
 ```
-* Push your chnages to your repository
+* Push your changes to your repository
 ```bash
 $ git push
 ```
