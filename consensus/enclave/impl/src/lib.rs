@@ -826,9 +826,18 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         //
         // Note: The "take" here only makes sense because sort_zeros_to_end was called.
         // This ensures that everything we are ignoring via take has zero value.
+        let num_fee_outputs = if config.block_version.masked_token_id_feature_is_supported() {
+            min(total_fees.len(), transactions.len())
+        } else {
+            // Before token ids are supported, 0 is the only valid token id.
+            // We must not attempt to create any other fee outputs or mint_output
+            // will return an error.
+            1
+        };
+
         let fee_outputs = total_fees
             .iter()
-            .take(min(total_fees.len(), transactions.len()))
+            .take(num_fee_outputs)
             .flat_map(|(token_id, total_fee)| {
                 // While unlikely, it is technically possible for the accumulated
                 // fee value to overflow a u64, particularly for custom tokens.
