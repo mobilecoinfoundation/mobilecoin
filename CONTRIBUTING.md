@@ -38,7 +38,7 @@ $ git push
 ```
 * Create a pull request:
 ```bash
-$ gh pr create --project "Blockchain Core"
+$ gh pr create
 ```
 * Nobody likes CLAs, but you will need to sign [our CLA](./CLA.md) before your pull request can be merged. Please email [cla@mobilecoin.com](mailto://cla@mobilecoin.com) and we will send you a copy.
 
