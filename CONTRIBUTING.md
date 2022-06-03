@@ -67,11 +67,7 @@ The Rust Foundation has a [WIP style guide](https://doc.rust-lang.org/1.0.0/styl
 
 In addition (and sometimes overrulling) the Rust Style Guide, we have our own rules:
 
-### Re-export Types You Return
-
-
-
-### Sort Your Inputs
+### Sort your inputs
 
 The Rust Style Guide asks developers to [sort their inputs](https://doc.rust-lang.org/1.0.0/style/style/imports.html), but in this situation the sorting is considered sub-optimal. We would prefer to sort our inputs in a similar, but distinct manner:
 
@@ -95,7 +91,45 @@ pub use dependency::TypeWereUsing;
 
 mod module;
 
-use dependency::SomeTypeWeUseButDontReturn;
+use dependency::SomeTypeWeUseOurselves;
+```
+
+### Re-export types when necessary
+
+Before re-exporting types, consider is whether there is an advantage to be gained by creating a newtype wrapper, e.g.:
+
+```rust
+/// This is meant to restrict the types of math which can performed on a block
+/// height (to eliminate off-by-one errors).
+pub struct BlockHeight(NotZero64);
+
+/// A way to implement serde on ExternalNonSerdeThing for others
+pub struct SerdeThing(ExternalNonSerdeThing);
+
+impl Serialize for SerdeThing { /* ... */ }
+impl DeserializeOwned for SerdeThing { /* ... */ }
+```
+
+If there _is_ such an advantage, then it's usually better to wrap the types. If there isn't an advantage, then you should re-export any types you're using (or expecting your users to use).
+
+Don't:
+
+```rust
+use other_crate::ExternalThing;
+
+pub fn my_function(thing: ExternalThing) -> bool {
+    /* ... */
+}
+```
+
+Do:
+
+```rust
+pub use other_crate::ExternalThing;
+
+pub fn my_function(thing: ExternalThing) -> bool {
+    /* ... */
+}
 ```
 
 ### Export types at the crate level
@@ -105,15 +139,103 @@ The Rust Style Guide contains the admonition to [Reexport the most important typ
 Don't:
 
 ```rust
+pub use crate::module::SomeType;
 
+mod module {
+    pub struct SomeType;
+
+    // Users will have to access this using `thecrate::module::Error`?
+    pub enum Error {
+        Error1,
+        Error2,
+    }
+
+    enum Strategy {
+        Strat1(SomeType),
+        Strat2,
+    }
+}
 ```
 
 Do:
 
 ```rust
+pub use crate::module::{SomeType, Error as SomeError};
 
+mod module {
+    pub struct SomeType;
+    pub enum Error {
+        Error1,
+        Error2,
+    }
+
+    enum Strategy {
+        Strat1(SomeType),
+        Strat2,
+    }
+}
+```
+
+### Use public modules to group functions
+
+This is the flip side of the Rust style guide's admonition to [prefer fully importing types/traits while module-qualifying functions](https://doc.rust-lang.org/1.0.0/style/style/imports.html#prefer-fully-importing-types/traits-while-module-qualifying-functions.) and our own admonition to [export types at the crate level](#export-types-at-the-crate-level).
+
+Types should only be exported at the top level, but if you have lots of related bare functions, consider grouping them into modules exposed via a `pub mod`.
+
+Don't:
+
+```rust
+pub struct SomeType;
+
+pub fn foonary_frobnicate() -> bool {
+    /* ... */
+}
+
+pub fn foonary_widgify() -> SomeType {
+    /* ... */
+}
+```
+
+Don't:
+
+```rust
+mod foonary {
+    pub struct SomeType;
+
+    pub fn frobnicate() -> SomeType {
+        /* ... */
+    }
+
+    pub fn widgify() -> SomeType {
+        /* ... */
+    }
+}
+
+pub use crate::foonary::{
+    SomeType,
+    frobnicate as foonary_frobnicate,
+    widgify as foonary_widgify,
+};
+```
+
+Do:
+
+```rust
+pub use crate::foonary::SomeType;
+
+pub mod foonary {
+    pub(crate) struct SomeType;
+
+    pub fn frobnicate() -> SomeType {
+        /* ... */
+    }
+
+    pub fn widgify() -> SomeType {
+        /* ... */
+    }
+}
 ```
 
 ### Avoid Manual Drops
 
-In general, you should try to avoid the `core::drop()` message.
+Don't use `core::drop()`. There are exceptions to every rule, but you should always look to use an inner scope instead of `core::drop()`.
