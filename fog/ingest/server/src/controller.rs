@@ -469,17 +469,30 @@ where
                             }
                             break;
                         }
+                        Err(Error::PublishReport) => {
+                            // This is already logged adequately within
+                            // self.publish_report
+                            //
+                            // Failing to publish a report is not fatal, because
+                            // we attempt to publish
+                            // on every block, and even if it only succeeds half
+                            // the time, it wont make much difference in the
+                            // pubkey expiry window.
+                        }
                         Err(err) => {
+                            // If the error is something other than PublishReport then we should log
+                            // it at a high severity level
                             log::error!(
                                 self.logger,
                                 "Could not publish ingest report at block index {}, will retry: {}",
                                 block.index,
                                 err
                             );
-                            std::thread::sleep(std::time::Duration::from_secs(retry_seconds));
-                            retry_seconds = std::cmp::min(retry_seconds + 1, 30);
                         }
                     }
+
+                    std::thread::sleep(std::time::Duration::from_secs(retry_seconds));
+                    retry_seconds = std::cmp::min(retry_seconds + 1, 30);
                 }
             }
 
@@ -1236,6 +1249,7 @@ where
         };
         let report_id = self.config.fog_report_id.as_ref();
 
+        log::info!(self.logger, "publishing report to DB");
         self.recovery_db
             .set_report(ingress_public_key, report_id, &report_data)
             .map(|x| {
@@ -1243,9 +1257,12 @@ where
                 x
             })
             .map_err(|err| {
-                log::error!(
+                // This is a warning because transient report DB write errors are not a cause
+                // for action, as long as this write succeeds eventually it's
+                // fine.
+                log::warn!(
                     self.logger,
-                    "Could not publish report and check on ingress key status: {}",
+                    "Could not publish report to DB and check on ingress key status: {}",
                     err
                 );
                 // Note: At this revision, we don't have generic constraints for converting
