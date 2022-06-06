@@ -238,4 +238,28 @@ pub mod foonary {
 
 ### Avoid Manual Drops
 
-Don't use `core::drop()`. There are exceptions to every rule, but you should always look to use an inner scope instead of `core::drop()`.
+Earlier there is a reference to the Rust style guide item "[Always separately bind RAII (lock) guards](https://doc.rust-lang.org/1.0.0/style/features/let.html#always-separately-bind-raii-guards.-[fixme:-needs-rfc])." This rule should be modified slightly to indicate the use of scoping for the critical section, and expanded to be a general admonition against the use of `core::drop()` in favor of `{}`-braced scopes.
+
+Don't:
+
+```rust
+fn use_mutex(m: sync::mutex::Mutex<int>) {
+    let guard = m.lock();
+    do_work(guard);
+    drop(guard); // unlock the lock
+    // do other work
+}
+```
+
+Do:
+
+
+```rust
+fn use_mutex(m: sync::mutex::Mutex<int>) {
+    {
+        let guard = m.lock();
+        do_work(guard);
+    } // unlocking will happen automatically when the lock falls out of scope
+    // do other work
+}
+```
