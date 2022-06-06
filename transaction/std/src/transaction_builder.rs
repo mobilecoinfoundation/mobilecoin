@@ -242,18 +242,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .memo_builder
             .take()
             .expect("memo builder is missing, this is a logic error");
-        let block_version = self.block_version;
         let result = self.add_output_with_fog_hint_address(
             amount,
             recipient,
             recipient,
-            |memo_ctxt| {
-                if block_version.e_memo_feature_is_supported() {
-                    Some(mb.make_memo_for_output(amount, recipient, memo_ctxt)).transpose()
-                } else {
-                    Ok(None)
-                }
-            },
+            |memo_ctxt| mb.make_memo_for_output(amount, recipient, memo_ctxt),
             rng,
         );
         // Put the memo builder back
@@ -314,19 +307,11 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .memo_builder
             .take()
             .expect("memo builder is missing, this is a logic error");
-        let block_version = self.block_version;
         let result = self.add_output_with_fog_hint_address(
             amount,
             &change_destination.change_subaddress,
             &change_destination.primary_address,
-            |memo_ctxt| {
-                if block_version.e_memo_feature_is_supported() {
-                    Some(mb.make_memo_for_change_output(amount, change_destination, memo_ctxt))
-                        .transpose()
-                } else {
-                    Ok(None)
-                }
-            },
+            |memo_ctxt| mb.make_memo_for_change_output(amount, change_destination, memo_ctxt),
             rng,
         );
         // Put the memo builder back
@@ -368,22 +353,16 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
             .memo_builder
             .take()
             .expect("memo builder is missing, this is a logic error");
-        let block_version = self.block_version;
         let result = self.add_output_with_fog_hint_address(
             amount,
             &reserved_subaddresses.gift_code_subaddress,
             &reserved_subaddresses.primary_address,
             |memo_ctxt| {
-                if block_version.e_memo_feature_is_supported() {
-                    Some(mb.make_memo_for_output(
-                        amount,
-                        &reserved_subaddresses.gift_code_subaddress,
-                        memo_ctxt,
-                    ))
-                    .transpose()
-                } else {
-                    Ok(None)
-                }
+                mb.make_memo_for_output(
+                    amount,
+                    &reserved_subaddresses.gift_code_subaddress,
+                    memo_ctxt,
+                )
             },
             rng,
         );
@@ -415,7 +394,7 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         amount: Amount,
         recipient: &PublicAddress,
         fog_hint_address: &PublicAddress,
-        memo_fn: impl FnOnce(MemoContext) -> Result<Option<MemoPayload>, NewMemoError>,
+        memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
         let (hint, pubkey_expiry) = create_fog_hint(fog_hint_address, &self.fog_resolver, rng)?;
@@ -654,18 +633,19 @@ pub(crate) fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
     amount: Amount,
     recipient: &PublicAddress,
     fog_hint: EncryptedFogHint,
-    memo_fn: impl FnOnce(MemoContext) -> Result<Option<MemoPayload>, NewMemoError>,
+    memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
     rng: &mut RNG,
 ) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
     let private_key = RistrettoPrivate::from_random(rng);
-    let mut tx_out = TxOut::new_with_memo(amount, recipient, &private_key, fog_hint, memo_fn)?;
+    let tx_out = TxOut::new_with_memo(
+        block_version,
+        amount,
+        recipient,
+        &private_key,
+        fog_hint,
+        memo_fn,
+    )?;
 
-    if !block_version.e_memo_feature_is_supported() {
-        tx_out.e_memo = None;
-    }
-    if !block_version.masked_token_id_feature_is_supported() {
-        tx_out.masked_amount.masked_token_id.clear();
-    }
     let shared_secret = create_shared_secret(recipient.view_public_key(), &private_key);
     Ok((tx_out, shared_secret))
 }

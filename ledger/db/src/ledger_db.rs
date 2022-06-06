@@ -923,7 +923,8 @@ mod ledger_db_test {
         for block_index in 0..num_blocks {
             let outputs: Vec<TxOut> = (0..num_outputs_per_block)
                 .map(|_i| {
-                    let mut result = TxOut::new(
+                    TxOut::new(
+                        BLOCK_VERSION,
                         Amount {
                             value: initial_amount,
                             token_id: Mob::ID,
@@ -932,12 +933,7 @@ mod ledger_db_test {
                         &RistrettoPrivate::from_random(&mut rng),
                         Default::default(),
                     )
-                    .unwrap();
-                    // Origin block doesn't have memos
-                    if block_index == 0 {
-                        result.e_memo = None
-                    };
-                    result
+                    .unwrap()
                 })
                 .collect();
 
@@ -989,7 +985,8 @@ mod ledger_db_test {
     fn get_origin_block_and_contents(account_key: &AccountKey) -> (Block, BlockContents) {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let mut output = TxOut::new(
+        let output = TxOut::new(
+            BlockVersion::ZERO,
             Amount {
                 value: 1000,
                 token_id: Mob::ID,
@@ -999,8 +996,6 @@ mod ledger_db_test {
             Default::default(),
         )
         .unwrap();
-        // Origin block transactions dont' have memos
-        output.e_memo = None;
 
         let outputs = vec![output];
         let block = Block::new_origin_block(&outputs);
@@ -1051,7 +1046,9 @@ mod ledger_db_test {
 
         // === Create and append a non-origin block. ===
 
-        let outputs: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
+        let outputs: Vec<TxOut> = (0..4)
+            .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+            .collect();
 
         let key_images: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
 
@@ -1381,7 +1378,7 @@ mod ledger_db_test {
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1.clone()],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
@@ -1446,7 +1443,7 @@ mod ledger_db_test {
 
         let block_contents3 = BlockContents {
             mint_txs: vec![mint_tx2.clone()],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
@@ -1510,7 +1507,7 @@ mod ledger_db_test {
 
         let block_contents4 = BlockContents {
             mint_txs: vec![mint_tx3.clone()],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
@@ -1583,7 +1580,10 @@ mod ledger_db_test {
 
         let block_contents5 = BlockContents {
             mint_txs: vec![mint_tx4.clone(), mint_tx5.clone()],
-            outputs: vec![create_test_tx_out(&mut rng), create_test_tx_out(&mut rng)],
+            outputs: vec![
+                create_test_tx_out(BLOCK_VERSION, &mut rng),
+                create_test_tx_out(BLOCK_VERSION, &mut rng),
+            ],
             ..Default::default()
         };
 
@@ -1660,7 +1660,10 @@ mod ledger_db_test {
 
         let block_contents6 = BlockContents {
             mint_txs: vec![mint_tx6.clone(), mint_tx7.clone()],
-            outputs: vec![create_test_tx_out(&mut rng), create_test_tx_out(&mut rng)],
+            outputs: vec![
+                create_test_tx_out(BLOCK_VERSION, &mut rng),
+                create_test_tx_out(BLOCK_VERSION, &mut rng),
+            ],
             ..Default::default()
         };
 
@@ -1745,7 +1748,9 @@ mod ledger_db_test {
             .unwrap();
 
         // === Create and append a non-origin block. ===
-        let outputs1: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
+        let outputs1: Vec<TxOut> = (0..4)
+            .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+            .collect();
 
         let key_images1: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
         let mint_config_tx1 = create_mint_config_tx(token_id1, &mut rng);
@@ -1853,7 +1858,9 @@ mod ledger_db_test {
 
         //  === Write another block - this one has a MintTx in addition to all
         // the other txs.
-        let outputs2: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
+        let outputs2: Vec<TxOut> = (0..4)
+            .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+            .collect();
 
         let key_images2: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
         let mint_config_tx3 = create_mint_config_tx(token_id1, &mut rng);
@@ -2007,7 +2014,7 @@ mod ledger_db_test {
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1, mint_tx2],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
@@ -2070,7 +2077,7 @@ mod ledger_db_test {
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1.clone()],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
@@ -2098,7 +2105,10 @@ mod ledger_db_test {
 
         let block_contents3 = BlockContents {
             mint_txs: vec![mint_tx2, mint_tx1],
-            outputs: vec![create_test_tx_out(&mut rng), create_test_tx_out(&mut rng)],
+            outputs: vec![
+                create_test_tx_out(BLOCK_VERSION, &mut rng),
+                create_test_tx_out(BLOCK_VERSION, &mut rng),
+            ],
             ..Default::default()
         };
 
@@ -2166,7 +2176,7 @@ mod ledger_db_test {
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
@@ -2237,7 +2247,7 @@ mod ledger_db_test {
 
         let block_contents2 = BlockContents {
             mint_txs: vec![mint_tx1.clone()],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
@@ -2263,7 +2273,7 @@ mod ledger_db_test {
 
         let block_contents3 = BlockContents {
             mint_txs: vec![mint_tx2],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
@@ -2312,7 +2322,7 @@ mod ledger_db_test {
 
         let block_contents3 = BlockContents {
             mint_txs: vec![mint_tx3],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
@@ -2407,7 +2417,9 @@ mod ledger_db_test {
             .unwrap();
 
         // === Attempt to append a block without key images ===
-        let outputs: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
+        let outputs: Vec<TxOut> = (0..4)
+            .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+            .collect();
 
         let block_contents = BlockContents {
             outputs,
@@ -2561,7 +2573,7 @@ mod ledger_db_test {
             .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
-        let tx_out = create_test_tx_out(&mut rng);
+        let tx_out = create_test_tx_out(BLOCK_VERSION, &mut rng);
         let outputs = vec![tx_out];
 
         let block_contents = BlockContents {
@@ -2603,7 +2615,7 @@ mod ledger_db_test {
             .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
-        let tx_out = create_test_tx_out(&mut rng);
+        let tx_out = create_test_tx_out(BLOCK_VERSION, &mut rng);
         let outputs = vec![tx_out];
 
         let block_contents = BlockContents {
@@ -2712,7 +2724,9 @@ mod ledger_db_test {
         for block_version in BlockVersion::iterator() {
             // In each iteration we add a few blocks with the same version.
             for _ in 0..3 {
-                let outputs: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
+                let outputs: Vec<TxOut> = (0..4)
+                    .map(|_i| create_test_tx_out(block_version, &mut rng))
+                    .collect();
 
                 let key_images: Vec<KeyImage> =
                     (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
@@ -2749,7 +2763,9 @@ mod ledger_db_test {
 
         // Appending a block with version < previous block version should fail.
         {
-            let outputs: Vec<TxOut> = (0..4).map(|_i| create_test_tx_out(&mut rng)).collect();
+            let outputs: Vec<TxOut> = (0..4)
+                .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+                .collect();
 
             let key_images: Vec<KeyImage> =
                 (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
@@ -2801,7 +2817,7 @@ mod ledger_db_test {
 
         let key_images = vec![KeyImage::from(rng.next_u64())];
 
-        let tx_out = create_test_tx_out(&mut rng);
+        let tx_out = create_test_tx_out(BLOCK_VERSION, &mut rng);
 
         let outputs = vec![tx_out];
         let block_contents = BlockContents {
@@ -2855,7 +2871,7 @@ mod ledger_db_test {
             .collect();
 
         let block_one_contents = {
-            let tx_out = create_test_tx_out(&mut rng);
+            let tx_out = create_test_tx_out(BLOCK_VERSION, &mut rng);
             let outputs = vec![tx_out];
             BlockContents {
                 key_images: block_one_key_images.clone(),
@@ -2877,7 +2893,7 @@ mod ledger_db_test {
 
         // The next block reuses a key image.
         let block_two_contents = {
-            let tx_out = create_test_tx_out(&mut rng);
+            let tx_out = create_test_tx_out(BLOCK_VERSION, &mut rng);
             let outputs = vec![tx_out];
             BlockContents {
                 key_images: block_one_key_images,
@@ -2918,7 +2934,7 @@ mod ledger_db_test {
         let existing_tx_out = ledger_db.get_tx_out_by_index(0).unwrap();
 
         let block_one_contents = {
-            let mut tx_out = create_test_tx_out(&mut rng);
+            let mut tx_out = create_test_tx_out(BLOCK_VERSION, &mut rng);
             tx_out.public_key = existing_tx_out.public_key;
             let outputs = vec![tx_out];
             let key_images = vec![KeyImage::from(rng.next_u64())];
@@ -2978,7 +2994,7 @@ mod ledger_db_test {
 
         // append_block rejects a block with non-existent parent.
         {
-            let tx_out = create_test_tx_out(&mut rng);
+            let tx_out = create_test_tx_out(BLOCK_VERSION, &mut rng);
 
             let key_images = vec![KeyImage::from(rng.next_u64())];
             let outputs = vec![tx_out];

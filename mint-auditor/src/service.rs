@@ -250,7 +250,9 @@ mod tests {
 
         let block_contents = BlockContents {
             mint_txs: vec![mint_tx1, mint_tx2, mint_tx3],
-            outputs: (0..3).map(|_i| create_test_tx_out(&mut rng)).collect(),
+            outputs: (0..3)
+                .map(|_i| create_test_tx_out(BlockVersion::MAX, &mut rng))
+                .collect(),
             ..Default::default()
         };
 

@@ -164,6 +164,7 @@ pub fn add_block_to_ledger_db(
         .iter()
         .map(|recipient| {
             let mut result = TxOut::new(
+                block_version,
                 // TODO: allow for subaddress index!
                 output_amount,
                 recipient,

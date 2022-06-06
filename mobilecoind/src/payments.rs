@@ -1097,6 +1097,7 @@ mod test {
         let token_id = Mob::ID;
 
         let tx_out = TxOut::new(
+            BlockVersion::MAX,
             Amount { value: 1, token_id },
             &alice.default_subaddress(),
             &tx_secret_key_for_txo,

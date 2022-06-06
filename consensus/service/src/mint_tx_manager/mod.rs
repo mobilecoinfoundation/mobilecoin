@@ -366,7 +366,7 @@ mod mint_config_tx_tests {
         let parent_block = ledger.get_block(n_blocks - 1).unwrap();
 
         let block_contents = BlockContents {
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BlockVersion::MAX, &mut rng)],
             key_images: vec![KeyImage::from(123)],
             ..Default::default()
         };
@@ -937,7 +937,7 @@ mod mint_tx_tests {
 
         let block_contents = BlockContents {
             mint_txs: vec![mint_tx],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BlockVersion::MAX, &mut rng)],
             ..Default::default()
         };
 
@@ -1052,7 +1052,7 @@ mod mint_tx_tests {
 
         let block_contents = BlockContents {
             mint_txs: vec![mint_tx],
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BlockVersion::MAX, &mut rng)],
             ..Default::default()
         };
 
@@ -1215,7 +1215,7 @@ mod mint_tx_tests {
         let parent_block = block;
 
         let block_contents = BlockContents {
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BlockVersion::MAX, &mut rng)],
             key_images: vec![KeyImage::from(123)],
             ..Default::default()
         };
@@ -1295,7 +1295,7 @@ mod mint_tx_tests {
 
         // Append to the ledger.
         let block_contents = BlockContents {
-            outputs: vec![create_test_tx_out(&mut rng)],
+            outputs: vec![create_test_tx_out(BlockVersion::MAX, &mut rng)],
             mint_txs: vec![mint_tx.clone()],
             ..Default::default()
         };

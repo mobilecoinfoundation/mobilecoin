@@ -538,6 +538,7 @@ mod combine_tests {
             let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
             let tx_out = TxOut::new(
+                block_version,
                 Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &tx_secret_key_for_txo,
@@ -624,6 +625,7 @@ mod combine_tests {
                     let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
 
                     let tx_out = TxOut::new(
+                        block_version,
                         Amount::new(88, Mob::ID),
                         &alice.default_subaddress(),
                         &tx_secret_key_for_txo,
@@ -708,6 +710,7 @@ mod combine_tests {
 
             // Create a TxOut that was sent to Alice.
             let tx_out = TxOut::new(
+                block_version,
                 Amount {
                     value: 123,
                     token_id: Mob::ID,
@@ -820,6 +823,7 @@ mod combine_tests {
                 // The transaction keys.
                 let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
                 let tx_out = TxOut::new(
+                    block_version,
                     Amount::new(123, Mob::ID),
                     &alice.default_subaddress(),
                     &tx_secret_key_for_txo,
@@ -902,6 +906,7 @@ mod combine_tests {
 
             // Create two TxOuts that were sent to Alice.
             let tx_out1 = TxOut::new(
+                block_version,
                 Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
@@ -910,6 +915,7 @@ mod combine_tests {
             .unwrap();
 
             let tx_out2 = TxOut::new(
+                block_version,
                 Amount::new(123, Mob::ID),
                 &alice.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
@@ -1027,6 +1033,7 @@ mod combine_tests {
                 // The transaction keys.
                 let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
                 let tx_out = TxOut::new(
+                    block_version,
                     Amount::new(123, Mob::ID),
                     &alice.default_subaddress(),
                     &tx_secret_key_for_txo,

@@ -15,6 +15,8 @@ pub enum NewTxError {
     Amount(AmountError),
     /// Memo: {0}
     Memo(NewMemoError),
+    /// Token Id not allowed at this block version
+    TokenIdNotAllowed,
 }
 
 impl From<AmountError> for NewTxError {

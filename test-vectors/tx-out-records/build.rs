@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use mc_account_keys::AccountKey;
 use mc_common::ResponderId;
 use mc_crypto_keys::RistrettoPrivate;
@@ -12,7 +14,7 @@ use mc_oblivious_traits::HeapORAMStorageCreator;
 use mc_test_vectors_definitions::tx_out_records::{
     CorrectTxOutRecordData, IncorrectTxOutRecordData,
 };
-use mc_transaction_core::{fog_hint::FogHint, tokens::Mob, tx::TxOut, Amount, Token};
+use mc_transaction_core::{fog_hint::FogHint, tokens::Mob, tx::TxOut, Amount, BlockVersion, Token};
 use mc_util_from_random::FromRandom;
 use mc_util_test_vector::write_jsonl;
 use rand::{rngs::StdRng, SeedableRng};
@@ -100,6 +102,7 @@ fn generate_tx_out_record_data() -> TxOutRecordData {
             let e_fog_hint =
                 FogHint::from(&recipient_public_address).encrypt(&fog_pubkey, &mut rng);
             TxOut::new(
+                BlockVersion::TWO,
                 Amount {
                     value: 10,
                     token_id,

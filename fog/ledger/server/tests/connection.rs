@@ -788,6 +788,7 @@ fn add_block_to_ledger_db(
         .iter()
         .map(|recipient| {
             TxOut::new(
+                block_version,
                 // TODO: allow for subaddress index!
                 Amount {
                     value,

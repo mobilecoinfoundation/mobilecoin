@@ -23,7 +23,8 @@ fn test_origin_tx_outs() -> Vec<TxOut> {
     accounts
         .iter()
         .map(|acct| {
-            let mut tx_out = TxOut::new(
+            TxOut::new(
+                BlockVersion::ZERO,
                 Amount {
                     value: rng.next_u32() as u64,
                     token_id: Mob::ID,
@@ -32,12 +33,7 @@ fn test_origin_tx_outs() -> Vec<TxOut> {
                 &RistrettoPrivate::from_random(&mut rng),
                 EncryptedFogHint::fake_onetime_hint(&mut rng),
             )
-            .expect("Could not create TxOut");
-            // Origin TxOuts do not have encrypted memo fields.
-            tx_out.e_memo = None;
-            // Origin TxOuts do not have masked token id
-            tx_out.masked_amount.masked_token_id = Default::default();
-            tx_out
+            .expect("Could not create TxOut")
         })
         .collect()
 }
