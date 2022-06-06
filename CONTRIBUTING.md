@@ -42,7 +42,7 @@ $ gh pr create
 ```
 * Nobody likes CLAs, but you will need to sign [our CLA](./CLA.md) before your pull request can be merged. Please email [cla@mobilecoin.com](mailto://cla@mobilecoin.com) and we will send you a copy.
 
-If you'd prefer to run build natively on Ubuntu LTS, you can use the `init_debian.sh` and `install_sgx.sh` scripts to setup your environment, but please be aware that CI will run on the docker image, so it's worth keeping it around to test.
+If you'd prefer to run build natively on Ubuntu LTS, you can use the [init_debian.sh](docker/init_debian.sh) and [install_sgx.sh](docker/install_sgx.sh) scripts to setup your environment, but please be aware that CI will run on the docker image, so it's worth keeping it around to test.
 
 # Coding Style
 
@@ -52,7 +52,7 @@ Part of submitting a PR to the MobileCoin Foundation is ensuring that the format
 
 The easiest part of ensuring the style guide is followed is running the following utilities, which are checked for every PR:
 
- * `rustfmt`: Reformats the code according to the top-level `rustfmt.toml`. If the repo is "dirty" after this has been run, the PR cannot be merged.
+ * `rustfmt`: Reformats the code according to the top-level [rustfmt.toml](rustfmt.toml). If the repo is "dirty" after this has been run, the PR cannot be merged.
  * `cargo clippy`: An in-depth checking utility that will look for code which the authors (The Rust Foundation) think are not idiomatic rust. In practice this is a lot like PEP-8
 
 ## Rust's Style Guide
