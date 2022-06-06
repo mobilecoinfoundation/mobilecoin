@@ -1,6 +1,6 @@
 [package]
 name = "mc-mint-auditor-api"
-version = "1.2.0"
+version = "1.2.1"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2018"

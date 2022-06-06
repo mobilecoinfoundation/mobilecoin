@@ -1,6 +1,6 @@
 [package]
 name = "mc-test-vectors-b58-encodings"
-version = "1.2.0"
+version = "1.2.1"
 authors = ["MobileCoin"]
 edition = "2018"
 

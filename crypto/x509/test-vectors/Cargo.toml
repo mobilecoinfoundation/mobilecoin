@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-x509-test-vectors"
-version = "1.2.0"
+version = "1.2.1"
 authors = ["MobileCoin"]
 edition = "2018"
 description = "Utilities for generating certificates and chains for unit tests"
