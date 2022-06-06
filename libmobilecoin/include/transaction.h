@@ -243,6 +243,28 @@ MC_ATTRIBUTE_NONNULL(1, 2, 4, 6);
 
 /// # Preconditions
 ///
+/// * `account_key` - must be a valid account key as the gift code subaddress
+///   is computed from the account key
+/// * `transaction_builder` - must not have been previously consumed by a call
+///   to `build`.
+/// * `out_tx_out_confirmation_number` - length must be >= 32.
+///
+/// # Errors
+///
+/// * `LibMcError::AttestationVerification`
+/// * `LibMcError::InvalidInput`
+McData* MC_NULLABLE mc_transaction_builder_fund_gift_code_output(
+        const McAccountKey* MC_NONNULL account_key,
+        McTransactionBuilder* MC_NONNULL transaction_builder,
+        uint64_t amount,
+        McRngCallback* MC_NULLABLE rng_callback,
+        McMutableBuffer* MC_NONNULL out_tx_out_confirmation_number,
+        McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2, 4, 6);
+
+/// # Preconditions
+///
 /// * `transaction_builder` - must not have been previously consumed by a call to `build`.
 /// * `recipient_address` - must be a valid `PublicAddress`.
 /// * `fog_hint_address` - must be a valid `PublicAddress` with `fog_info`.
@@ -515,29 +537,6 @@ bool mc_memo_sender_with_payment_request_memo_get_payment_request_id(
 )
 MC_ATTRIBUTE_NONNULL(1, 2);
 
-
-/* ==== Decrypt Memo Payload ==== */
-
-
-/// # Preconditions
-///
-/// * `encrypted_memo` - must be 66 bytes
-/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
-/// * `account_key` - must be a valid account key
-/// * `out_memo_payload` - length must be >= 16 bytes
-///
-/// # Errors
-///
-/// * `LibMcError::InvalidInput`
-bool mc_memo_decrypt_e_memo_payload(
-  const McBuffer* MC_NONNULL encrypted_memo,
-  const McBuffer* MC_NONNULL tx_out_public_key,
-  const McAccountKey* MC_NONNULL account_key,
-  McMutableBuffer* MC_NONNULL out_memo_data,
-  McError* MC_NULLABLE * MC_NULLABLE out_error
-)
-MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
-
 /* ==== Gift Code Memo Builders ==== */
 
 /// # Preconditions
@@ -549,7 +548,7 @@ MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
 /// exactly 54 bytes, the last byte MUST be null and that byte will be
 /// removed prior to storage on chain.
 McTxOutMemoBuilder* MC_NULLABLE mc_memo_builder_gift_code_funding_create(
-  const char* MC_NONNULL gift_code_funding_note
+        const char* MC_NONNULL gift_code_funding_note
 )
 MC_ATTRIBUTE_NONNULL(1);
 
@@ -562,16 +561,16 @@ MC_ATTRIBUTE_NONNULL(1);
 /// exactly 58 bytes, the last byte MUST be null and that byte will be
 /// removed prior to storage on chain.
 McTxOutMemoBuilder* MC_NULLABLE mc_memo_builder_gift_code_sender_create(
-  const char* MC_NONNULL gift_code_sender_note
+        const char* MC_NONNULL gift_code_sender_note
 )
 MC_ATTRIBUTE_NONNULL(1);
 
 /// # Preconditions
 ///
 /// * `global_index` - must be the global TxOut index of the originally funded
-/// gift code TxOut
+///   gift code TxOut
 McTxOutMemoBuilder* MC_NULLABLE mc_memo_builder_gift_code_sender_create(
-  uint64_t global_index
+        uint64_t global_index
 );
 
 /* ==== GiftCodeFundingMemo ==== */
@@ -690,7 +689,8 @@ MC_ATTRIBUTE_NONNULL(1, 2);
 /// # Preconditions
 ///
 /// * `fee` - must be an integer less than or equal to 2^56
-/// * `global_index` - must be the global TxOut index of the originally funded gift code TxOut
+/// * `global_index` - must be the global TxOut index of the originally funded
+///   gift code TxOut
 /// * `out_memo_data` - length must be >= 64.
 ///
 /// # Errors
@@ -731,6 +731,27 @@ bool mc_memo_get_gift_code_cancellation_fee(
         McError* MC_NULLABLE * MC_NULLABLE out_error
 )
 MC_ATTRIBUTE_NONNULL(1, 2);
+
+/* ==== Decrypt Memo Payload ==== */
+
+/// # Preconditions
+///
+/// * `encrypted_memo` - must be 66 bytes
+/// * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+/// * `account_key` - must be a valid account key
+/// * `out_memo_payload` - length must be >= 16 bytes
+///
+/// # Errors
+///
+/// * `LibMcError::InvalidInput`
+bool mc_memo_decrypt_e_memo_payload(
+  const McBuffer* MC_NONNULL encrypted_memo,
+  const McBuffer* MC_NONNULL tx_out_public_key,
+  const McAccountKey* MC_NONNULL account_key,
+  McMutableBuffer* MC_NONNULL out_memo_data,
+  McError* MC_NULLABLE * MC_NULLABLE out_error
+)
+MC_ATTRIBUTE_NONNULL(1, 2, 3, 4);
 
 #ifdef __cplusplus
 }

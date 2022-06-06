@@ -1248,7 +1248,6 @@ pub extern "C" fn mc_memo_builder_gift_code_sender_create(
 ///
 /// * `global_index` - must be the global TxOut index of the originally funded
 ///   gift code TxOut
-/// gift code TxOut
 #[no_mangle]
 pub extern "C" fn mc_memo_builder_gift_code_cancellation_create(
     global_index: u64,
