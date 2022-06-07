@@ -1072,6 +1072,7 @@ dependencies = [
  "byteorder",
  "chrono",
  "diesel_derives",
+ "libsqlite3-sys",
  "pq-sys",
  "r2d2",
 ]
@@ -2091,6 +2092,16 @@ dependencies = [
  "slip10_ed25519",
  "tiny-bip39",
  "zeroize",
+]
+
+[[package]]
+name = "libsqlite3-sys"
+version = "0.22.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "290b64917f8b0cb885d9de0f9959fe1f775d7fa12f1da2db9001c1c8ab60f89d"
+dependencies = [
+ "pkg-config",
+ "vcpkg",
 ]
 
 [[package]]
@@ -4501,11 +4512,12 @@ name = "mc-mint-auditor"
 version = "1.3.0-pre0"
 dependencies = [
  "clap 3.1.18",
+ "diesel",
+ "diesel_migrations",
  "displaydoc",
  "grpcio",
  "hostname",
  "lazy_static",
- "lmdb-rkv",
  "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",
@@ -4515,7 +4527,6 @@ dependencies = [
  "mc-transaction-core-test-utils",
  "mc-util-from-random",
  "mc-util-grpc",
- "mc-util-lmdb",
  "mc-util-metrics",
  "mc-util-parse",
  "mc-util-serial",
