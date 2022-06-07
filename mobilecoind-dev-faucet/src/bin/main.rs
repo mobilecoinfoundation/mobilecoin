@@ -1,9 +1,9 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-#![deny(missing_docs)]
 
 //! HTTP faucet service backed by mobilecoind
 
+#![deny(missing_docs)]
 #![feature(proc_macro_hygiene, decl_macro)]
 
 use clap::Parser;
