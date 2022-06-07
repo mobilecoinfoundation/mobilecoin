@@ -4,6 +4,8 @@
 
 pub mod config;
 pub mod error;
+pub mod fog_view_router_server;
+pub mod fog_view_router_service;
 pub mod fog_view_service;
 pub mod server;
 
