@@ -8,7 +8,9 @@ use mc_crypto_box::Error as CryptoBoxError;
 use mc_crypto_keys::KeyError;
 use mc_crypto_noise::CipherError;
 use mc_fog_kex_rng::Error as KexRngError;
-use mc_transaction_core::{ring_signature::Error as RingSignatureError, AmountError};
+use mc_transaction_core::{
+    ring_signature::Error as RingSignatureError, AmountError, MemoError, NewMemoError,
+};
 use mc_transaction_std::TxBuilderError;
 use mc_util_encodings::Error as EncodingsError;
 use mc_util_serial::{
@@ -90,6 +92,12 @@ pub enum McError {
 
     /// Downcast from Anyhow Error failed: {0}
     DowncastAnyFailed(anyhow::Error),
+
+    /// MemoBuilder initialization failed: {0}
+    MemoBuilder(NewMemoError),
+
+    /// Retrieving memo data failed: {0}
+    MemoData(MemoError),
 }
 
 impl From<FromUtf8Error> for McError {
@@ -218,6 +226,18 @@ impl From<anyhow::Error> for McError {
             Ok(error_kind) => error_kind.into(),
             Err(e) => Self::DowncastAnyFailed(e),
         }
+    }
+}
+
+impl From<NewMemoError> for McError {
+    fn from(src: NewMemoError) -> Self {
+        Self::MemoBuilder(src)
+    }
+}
+
+impl From<MemoError> for McError {
+    fn from(src: MemoError) -> Self {
+        Self::MemoData(src)
     }
 }
 
