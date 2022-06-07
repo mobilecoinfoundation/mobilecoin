@@ -103,6 +103,7 @@ parser.add_argument("--ssh-dir", action='store_true', help='Mount $HOME/.ssh dir
 parser.add_argument("--ssh-agent", action='store_true', help='Use ssh-agent on host machine for ssh authentication. Also controlled by SSH_AUTH_SOCK env variable')
 parser.add_argument("--expose", nargs='+', default=None, help="Any additional ports to expose")
 parser.add_argument("--publish", nargs='+', default=None, help="Any additional ports to publish, e.g. if running wallet locally.")
+parser.add_argument("--cmd", nargs=argparse.REMAINDER, default=None, help="Run this command inside the bash shell instead of an interactive prompt")
 
 args = parser.parse_args()
 
@@ -440,12 +441,19 @@ docker_run.extend([tag])
 
 docker_run.extend(["/bin/bash"])
 
+if args.cmd is not None:
+    docker_run.extend(["-c"])
+    docker_run.extend([" ".join(args.cmd)])
+
 try:
     maybe_run(docker_run)
 except subprocess.CalledProcessError as exception:
     if args.action == 'prompt' and exception.returncode == 130:
         # This is normal exit of prompt
         sys.exit(0)
+    if args.action == 'prompt' and args.cmd is not None:
+        # Make sure custom commands have their expected return codes
+        sys.exit(exception.returncode)
     raise  # rethrow
 finally:
     # cleanup named container on exit
