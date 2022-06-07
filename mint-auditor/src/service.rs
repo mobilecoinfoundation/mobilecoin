@@ -14,8 +14,8 @@ use mc_common::logger::Logger;
 use mc_mint_auditor_api::{
     empty::Empty,
     mint_auditor::{
-        Counters as GrpcCounters, GetBlockAuditDataRequest, GetBlockAuditDataResponse,
-        GetLastBlockAuditDataResponse,
+        BlockAuditData as GrpcBlockAuditData, Counters as GrpcCounters, GetBlockAuditDataRequest,
+        GetBlockAuditDataResponse, GetLastBlockAuditDataResponse,
     },
     mint_auditor_grpc::{create_mint_auditor_api, MintAuditorApi},
 };
@@ -66,17 +66,19 @@ impl MintAuditorService {
                 _ => RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()),
             })?;
 
-        let balance_map =
-            BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index())
-                .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()))?;
+        let balances = BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index())
+            .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()))?;
 
-        let mut resp = GetBlockAuditDataResponse::new();
-        resp.set_block_audit_data((&block_audit_data).into());
-        resp.set_balance_map(HashMap::from_iter(
-            balance_map
+        let mut grpc_block_audit_data = GrpcBlockAuditData::new();
+        grpc_block_audit_data.set_block_index(block_audit_data.block_index());
+        grpc_block_audit_data.set_balances(HashMap::from_iter(
+            balances
                 .into_iter()
                 .map(|(token_id, balance)| (*token_id, balance)),
         ));
+
+        let mut resp = GetBlockAuditDataResponse::new();
+        resp.set_block_audit_data(grpc_block_audit_data);
         Ok(resp)
     }
 
@@ -95,17 +97,19 @@ impl MintAuditorService {
                 )
             })?;
 
-        let balance_map =
-            BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index())
-                .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()))?;
+        let balances = BlockBalance::get_balances_for_block(&conn, block_audit_data.block_index())
+            .map_err(|err| RpcStatus::with_message(RpcStatusCode::INTERNAL, err.to_string()))?;
 
-        let mut resp = GetLastBlockAuditDataResponse::new();
-        resp.set_block_audit_data((&block_audit_data).into());
-        resp.set_balance_map(HashMap::from_iter(
-            balance_map
+        let mut grpc_block_audit_data = GrpcBlockAuditData::new();
+        grpc_block_audit_data.set_block_index(block_audit_data.block_index());
+        grpc_block_audit_data.set_balances(HashMap::from_iter(
+            balances
                 .into_iter()
                 .map(|(token_id, balance)| (*token_id, balance)),
         ));
+
+        let mut resp = GetLastBlockAuditDataResponse::new();
+        resp.set_block_audit_data(grpc_block_audit_data);
         Ok(resp)
     }
 
@@ -278,12 +282,9 @@ mod tests {
 
         let response = client.get_block_audit_data(&request).unwrap();
 
+        assert_eq!(response.get_block_audit_data().block_index, 2,);
         assert_eq!(
-            BlockAuditData::try_from(response.get_block_audit_data()).unwrap(),
-            BlockAuditData { block_index: 2 },
-        );
-        assert_eq!(
-            response.get_balance_map(),
+            response.get_block_audit_data().get_balances(),
             &HashMap::from_iter([(1, 101), (22, 2)])
         );
     }
@@ -294,12 +295,9 @@ mod tests {
         let (client, _server) = get_client_server(&mint_audit_db, &logger);
 
         let response = client.get_last_block_audit_data(&Empty::default()).unwrap();
+        assert_eq!(response.get_block_audit_data().block_index, 2,);
         assert_eq!(
-            BlockAuditData::try_from(response.get_block_audit_data()).unwrap(),
-            BlockAuditData { block_index: 2 },
-        );
-        assert_eq!(
-            response.get_balance_map(),
+            response.get_block_audit_data().get_balances(),
             &HashMap::from_iter([(1, 101), (22, 2)])
         );
     }
