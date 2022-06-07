@@ -61,7 +61,7 @@ where
 
 /// Deserialize the given bytes to a data structure.
 ///
-/// Forward mc_util_serial::deserialize to bincode::deserialize
+/// Forward mc_util_serial::deserialize to serde_cbor::from_slice
 pub fn deserialize<'a, T>(bytes: &'a [u8]) -> Result<T, decode::Error>
 where
     T: Deserialize<'a>,
