@@ -410,39 +410,7 @@ impl<T: DigestibleAsBytes> Digestible for T {
 }
 
 // Built-in byte arrays
-// FIXME: When const-generics are stable, replace this
-impl DigestibleAsBytes for [u8; 1] {}
-impl DigestibleAsBytes for [u8; 2] {}
-impl DigestibleAsBytes for [u8; 3] {}
-impl DigestibleAsBytes for [u8; 4] {}
-impl DigestibleAsBytes for [u8; 5] {}
-impl DigestibleAsBytes for [u8; 6] {}
-impl DigestibleAsBytes for [u8; 7] {}
-impl DigestibleAsBytes for [u8; 8] {}
-impl DigestibleAsBytes for [u8; 9] {}
-impl DigestibleAsBytes for [u8; 10] {}
-impl DigestibleAsBytes for [u8; 11] {}
-impl DigestibleAsBytes for [u8; 12] {}
-impl DigestibleAsBytes for [u8; 13] {}
-impl DigestibleAsBytes for [u8; 14] {}
-impl DigestibleAsBytes for [u8; 15] {}
-impl DigestibleAsBytes for [u8; 16] {}
-impl DigestibleAsBytes for [u8; 17] {}
-impl DigestibleAsBytes for [u8; 18] {}
-impl DigestibleAsBytes for [u8; 19] {}
-impl DigestibleAsBytes for [u8; 20] {}
-impl DigestibleAsBytes for [u8; 21] {}
-impl DigestibleAsBytes for [u8; 22] {}
-impl DigestibleAsBytes for [u8; 23] {}
-impl DigestibleAsBytes for [u8; 24] {}
-impl DigestibleAsBytes for [u8; 25] {}
-impl DigestibleAsBytes for [u8; 26] {}
-impl DigestibleAsBytes for [u8; 27] {}
-impl DigestibleAsBytes for [u8; 28] {}
-impl DigestibleAsBytes for [u8; 29] {}
-impl DigestibleAsBytes for [u8; 30] {}
-impl DigestibleAsBytes for [u8; 31] {}
-impl DigestibleAsBytes for [u8; 32] {}
+impl<const N: usize> DigestibleAsBytes for [u8; N] {}
 
 impl<Length: ArrayLength<u8>> DigestibleAsBytes for GenericArray<u8, Length> {}
 
