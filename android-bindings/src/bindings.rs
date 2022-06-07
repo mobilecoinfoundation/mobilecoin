@@ -1465,7 +1465,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeSenderMemo_get_1fee(
         || Ok(0),
         &env,
         |env| {
-            let memo: MutexGuard<GiftCodeFundingMemo> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
+            let memo: MutexGuard<GiftCodeSenderMemo> = env.get_rust_field(obj, RUST_OBJ_FIELD)?;
 
             Ok(memo.get_fee() as jlong)
         },
@@ -1774,7 +1774,7 @@ pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeFundingMemoBuiler_init(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeSendingMemoBuiler_init(
+pub unsafe extern "C" fn Java_com_mobilecoin_lib_GiftCodeSenderMemoBuiler_init(
     env: JNIEnv,
     obj: JObject,
     note: JString,
