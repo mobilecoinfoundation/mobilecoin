@@ -2149,8 +2149,7 @@ mod test {
         str::FromStr,
     };
 
-    // None of these tests really depend on any of the new features
-    const BLOCK_VERSION: BlockVersion = BlockVersion::ZERO;
+    const BLOCK_VERSION: BlockVersion = BlockVersion::MAX;
 
     #[test_with_logger]
     fn test_add_monitor_impl(logger: Logger) {

@@ -86,10 +86,10 @@ pub fn get_test_databases(
     let mut ledger_db = generate_ledger_db(ledger_db_path);
 
     for block_index in 0..num_blocks {
-        let key_images = if block_index == 0 {
-            vec![]
+        let (block_version, key_images) = if block_index == 0 {
+            (BlockVersion::ZERO, vec![])
         } else {
-            vec![KeyImage::from(rng.next_u64())]
+            (block_version, vec![KeyImage::from(rng.next_u64())])
         };
         let _new_block_height = add_block_to_ledger_db(
             block_version,
@@ -163,7 +163,7 @@ pub fn add_block_to_ledger_db(
     let outputs: Vec<_> = recipients
         .iter()
         .map(|recipient| {
-            let mut result = TxOut::new(
+            TxOut::new(
                 block_version,
                 // TODO: allow for subaddress index!
                 output_amount,
@@ -171,12 +171,7 @@ pub fn add_block_to_ledger_db(
                 &RistrettoPrivate::from_random(rng),
                 Default::default(),
             )
-            .expect("Could not create TxOut");
-            // The origin block does not have memos
-            if num_blocks == 0 {
-                result.e_memo = None;
-            }
-            result
+            .expect("Could not create TxOut")
         })
         .collect();
 
