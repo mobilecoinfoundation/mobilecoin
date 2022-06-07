@@ -4,6 +4,34 @@ use mc_util_uri::{Uri, UriScheme};
 
 pub use mc_util_uri::{ConnectionUri, FogUri, UriParseError};
 
+/// Fog View Shard Scheme
+#[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
+pub struct FogViewRouterScheme {}
+
+impl UriScheme for FogViewRouterScheme {
+    /// The part before the '://' of a URL.
+    const SCHEME_SECURE: &'static str = "fog-view-router";
+    const SCHEME_INSECURE: &'static str = "insecure-fog-view-router";
+
+    /// Default port numbers
+    const DEFAULT_SECURE_PORT: u16 = 443;
+    const DEFAULT_INSECURE_PORT: u16 = 3225;
+}
+
+/// Fog View Store Scheme
+#[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
+pub struct FogViewStoreScheme {}
+
+impl UriScheme for FogViewStoreScheme {
+    /// The part before the '://' of a URL.
+    const SCHEME_SECURE: &'static str = "fog-view-store";
+    const SCHEME_INSECURE: &'static str = "insecure-fog-view-store";
+
+    /// Default port numbers
+    const DEFAULT_SECURE_PORT: u16 = 443;
+    const DEFAULT_INSECURE_PORT: u16 = 3225;
+}
+
 /// Fog View Uri Scheme
 #[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub struct FogViewScheme {}
@@ -70,11 +98,15 @@ pub type FogLedgerUri = Uri<FogLedgerScheme>;
 pub type FogIngestUri = Uri<FogIngestScheme>;
 /// Usi used when talking to fog-ingest-peer service.
 pub type IngestPeerUri = Uri<IngestPeerScheme>;
+/// Uri used when talking to fog view router service.
+pub type FogViewRouterUri = Uri<FogViewRouterScheme>;
+/// Uri used when talking to fog view store service.
+pub type FogViewStoreUri = Uri<FogViewStoreScheme>;
 
 #[cfg(test)]
 mod tests {
     use super::{FogLedgerUri, FogViewUri};
-    use crate::ConnectionUri;
+    use crate::{ConnectionUri, FogViewRouterUri, FogViewStoreUri};
     use core::str::FromStr;
     use mc_common::ResponderId;
 
@@ -127,6 +159,24 @@ mod tests {
         assert_eq!(
             uri.responder_id().unwrap(),
             ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
+        );
+        assert!(!uri.use_tls());
+
+        let uri =
+            FogViewRouterUri::from_str("fog-view-router://node1.test.mobilecoin.com:443/").unwrap();
+        assert_eq!(uri.addr(), "node1.test.mobilecoin.com:443");
+        assert_eq!(
+            uri.responder_id().unwrap(),
+            ResponderId::from_str("node1.test.mobilecoin.com:443").unwrap()
+        );
+        assert!(!uri.use_tls());
+
+        let uri =
+            FogViewStoreUri::from_str("fog-view-store://node1.test.mobilecoin.com:443/").unwrap();
+        assert_eq!(uri.addr(), "node1.test.mobilecoin.com:443");
+        assert_eq!(
+            uri.responder_id().unwrap(),
+            ResponderId::from_str("node1.test.mobilecoin.com:443").unwrap()
         );
         assert!(!uri.use_tls());
     }
