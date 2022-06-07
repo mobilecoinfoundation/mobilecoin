@@ -27,7 +27,7 @@ impl FogViewRouterGrpcClient {
     /// * env: A grpc environment (thread pool) to use for this connection
     /// * logger: For logging
     pub fn new(uri: FogViewRouterUri, env: Arc<Environment>, logger: Logger) -> Self {
-        let logger = logger.new(o!("mc.fog.view.router.cxn" => uri.to_string()));
+        let logger = logger.new(o!("mc.fog.view.router.uri" => uri.to_string()));
 
         let ch = ChannelBuilder::default_channel_builder(env).connect_to_uri(&uri, &logger);
 
@@ -64,7 +64,6 @@ impl FogViewRouterGrpcClient {
             Ok(())
         };
         let (sr, rr) = futures::join!(send, receive);
-        sr.and(rr)?;
-        Ok(())
+        sr.and(rr)
     }
 }

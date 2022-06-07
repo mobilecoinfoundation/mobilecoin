@@ -97,16 +97,15 @@ pub type FogLedgerUri = Uri<FogLedgerScheme>;
 /// and scheme.
 pub type FogIngestUri = Uri<FogIngestScheme>;
 /// Usi used when talking to fog-ingest-peer service.
-pub type IngestPeerUri = Uri<IngestPeerScheme>;
 /// Uri used when talking to fog view router service.
 pub type FogViewRouterUri = Uri<FogViewRouterScheme>;
 /// Uri used when talking to fog view store service.
 pub type FogViewStoreUri = Uri<FogViewStoreScheme>;
+pub type IngestPeerUri = Uri<IngestPeerScheme>;
 
 #[cfg(test)]
 mod tests {
-    use super::{FogLedgerUri, FogViewUri};
-    use crate::{ConnectionUri, FogViewRouterUri, FogViewStoreUri};
+    use super::*;
     use core::str::FromStr;
     use mc_common::ResponderId;
 

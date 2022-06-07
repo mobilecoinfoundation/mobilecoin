@@ -2,7 +2,6 @@
 
 use futures::{future::try_join_all, FutureExt, SinkExt, TryFutureExt, TryStreamExt};
 use grpcio::{DuplexSink, RequestStream, RpcContext, WriteFlags};
-use mc_attest_api::attest;
 use mc_common::logger::{log, Logger};
 use mc_fog_api::{
     view::{FogViewRouterRequest, FogViewRouterResponse},
@@ -25,14 +24,10 @@ impl<E: ViewEnclaveProxy> FogViewRouterService<E> {
     /// Creates a new FogViewRouterService that can be used by a gRPC server to
     /// fulfill gRPC requests.
     pub fn new(enclave: E, shards: Vec<FogViewStoreUri>, logger: Logger) -> Self {
-        let mut shard_arcs: Vec<Arc<FogViewStoreUri>> = Vec::new();
-        for shard in shards {
-            let shard_arc = Arc::new(shard);
-            shard_arcs.push(shard_arc);
-        }
+        let shards = shards.into_iter().map(Arc::new).collect();
         Self {
             enclave,
-            shards: shard_arcs,
+            shards,
             logger,
         }
     }
@@ -79,11 +74,8 @@ async fn handle_request<E: ViewEnclaveProxy>(
         if request.has_auth() {
             match enclave.client_accept(request.take_auth().into()) {
                 Ok((enclave_response, _)) => {
-                    let mut auth_message = attest::AuthMessage::new();
-                    auth_message.set_data(enclave_response.into());
-
                     let mut response = FogViewRouterResponse::new();
-                    response.set_auth(auth_message);
+                    response.mut_auth().set_data(enclave_response.into());
                     responses
                         .send((response.clone(), WriteFlags::default()))
                         .await?;

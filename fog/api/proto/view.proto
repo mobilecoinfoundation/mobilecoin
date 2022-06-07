@@ -30,7 +30,7 @@ message FogViewRouterResponse {
     oneof response_data {
         /// Returned for an auth request.
         attest.AuthMessage auth = 1;
-        /// Returned for an auth request.
+        /// Returned for a query request.
         /// The data is an encrypted QueryResponse.
         attest.Message query = 2;
     }

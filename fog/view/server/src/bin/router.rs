@@ -44,12 +44,7 @@ fn main() {
         shard_uris.push(shard_uri);
     }
 
-    let mut router_server = FogViewRouterServer::new(
-        config.clone(),
-        sgx_enclave.clone(),
-        shard_uris.clone(),
-        logger.clone(),
-    );
+    let mut router_server = FogViewRouterServer::new(config, sgx_enclave, shard_uris, logger);
     router_server.start();
 
     loop {

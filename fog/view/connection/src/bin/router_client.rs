@@ -7,13 +7,10 @@ use mc_fog_uri::FogViewRouterUri;
 use mc_fog_view_connection::fog_view_router_client::FogViewRouterGrpcClient;
 use std::{str::FromStr, sync::Arc};
 
-fn main() {
-    futures::executor::block_on(async_main()).unwrap();
-}
-
-async fn async_main() -> Result<(), grpcio::Error> {
+#[tokio::main(flavor = "multi_thread")]
+async fn main() -> Result<(), grpcio::Error> {
     let fog_view_router_uri = FogViewRouterUri::from_str("insecure-fog-view-router://127.0.0.1/")
-        .expect("wrong fog view router uri");
+        .expect("failed to connect to fog view router uri");
     let env = Arc::new(
         grpcio::EnvBuilder::new()
             .name_prefix("Main-RPC".to_string())
