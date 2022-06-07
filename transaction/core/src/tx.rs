@@ -383,12 +383,11 @@ impl TxOut {
 
         let mut masked_amount = MaskedAmount::new(amount, &shared_secret)?;
 
-        let memo_ctxt = MemoContext {
-            tx_public_key: &public_key,
-        };
-
         // Only build a memo if memos are supported
         let e_memo = if block_version.e_memo_feature_is_supported() {
+            let memo_ctxt = MemoContext {
+                tx_public_key: &public_key,
+            };
             let memo = memo_fn(memo_ctxt).map_err(NewTxError::Memo)?;
             Some(memo.encrypt(&shared_secret))
         } else {
