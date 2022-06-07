@@ -155,6 +155,7 @@ members = [
     "util/telemetry",
     "util/test-helper",
     "util/test-vector",
+    "util/test-utils",
     "util/uri",
     "watcher",
     "watcher/api",
