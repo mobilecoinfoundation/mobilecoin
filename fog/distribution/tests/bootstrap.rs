@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2022 The MobileCoin Foundation
+
 use std::{
     env::{args, set_current_dir},
     path::PathBuf,
@@ -31,7 +33,7 @@ fn test_find_spendable_tx_outs() {
         .success());
 
     assert!(Command::new(bin.join("generate-sample-ledger"))
-        .args(["--txs", "10", "--max-token-id", "1"])
+        .args(["--txs", "10"])
         .status()
         .unwrap()
         .success());
