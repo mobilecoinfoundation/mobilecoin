@@ -182,7 +182,7 @@ impl Worker {
     /// * minimum_fees: The minimum fees for each token we are interested in
     /// * target_amounts: The target value for UTXOs of each token we are
     ///   interested in
-    /// * target_queue_depth: The target depth of the queue for each token id If
+    /// * target_queue_depth: The target depth of the queue for each token ID. If
     ///   a queue falls below this number the worker attempts a split Tx.
     /// * worker_poll_period: A lower bound on how often the worker should poll
     /// * logger
