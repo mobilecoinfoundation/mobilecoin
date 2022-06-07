@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-use crate::InputRuleError;
+use crate::{InputRuleError, TxOutConversionError};
 use alloc::string::String;
 use displaydoc::Display;
 use mc_crypto_keys::KeyError;
@@ -147,6 +147,9 @@ pub enum TransactionValidationError {
 
     /// Input rule: {0}
     InputRule(InputRuleError),
+
+    /// Unknown Masked Amount version
+    UnknownMaskedAmountVersion,
 }
 
 impl From<mc_crypto_keys::KeyError> for TransactionValidationError {
@@ -158,5 +161,13 @@ impl From<mc_crypto_keys::KeyError> for TransactionValidationError {
 impl From<InputRuleError> for TransactionValidationError {
     fn from(src: InputRuleError) -> Self {
         Self::InputRule(src)
+    }
+}
+
+impl From<TxOutConversionError> for TransactionValidationError {
+    fn from(src: TxOutConversionError) -> Self {
+        match src {
+            TxOutConversionError::UnknownMaskedAmountVersion => Self::UnknownMaskedAmountVersion,
+        }
     }
 }

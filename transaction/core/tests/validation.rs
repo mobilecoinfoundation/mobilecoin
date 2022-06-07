@@ -73,7 +73,11 @@ fn test_validate_masked_token_id_exists() {
     let (tx, _) = create_test_tx(BlockVersion::ONE);
     let tx_out = tx.prefix.outputs.first().unwrap();
 
-    assert!(tx_out.masked_amount.masked_token_id.is_empty());
+    assert!(tx_out
+        .get_masked_amount()
+        .unwrap()
+        .masked_token_id()
+        .is_empty());
     assert_eq!(
         validate_masked_token_id_exists(tx_out),
         Err(TransactionValidationError::MissingMaskedTokenId)
@@ -82,7 +86,11 @@ fn test_validate_masked_token_id_exists() {
     let (tx, _) = create_test_tx(BlockVersion::TWO);
     let tx_out = tx.prefix.outputs.first().unwrap();
 
-    assert!(!tx_out.masked_amount.masked_token_id.is_empty());
+    assert!(!tx_out
+        .get_masked_amount()
+        .unwrap()
+        .masked_token_id()
+        .is_empty());
     assert_eq!(validate_memo_exists(tx_out), Ok(()));
 }
 
@@ -92,13 +100,21 @@ fn test_validate_no_masked_token_id_exists() {
     let (tx, _) = create_test_tx(BlockVersion::ONE);
     let tx_out = tx.prefix.outputs.first().unwrap();
 
-    assert!(tx_out.masked_amount.masked_token_id.is_empty());
+    assert!(tx_out
+        .get_masked_amount()
+        .unwrap()
+        .masked_token_id()
+        .is_empty());
     assert_eq!(validate_that_no_masked_token_id_exists(tx_out), Ok(()));
 
     let (tx, _) = create_test_tx(BlockVersion::TWO);
     let tx_out = tx.prefix.outputs.first().unwrap();
 
-    assert!(!tx_out.masked_amount.masked_token_id.is_empty());
+    assert!(!tx_out
+        .get_masked_amount()
+        .unwrap()
+        .masked_token_id()
+        .is_empty());
     assert_eq!(
         validate_that_no_masked_token_id_exists(tx_out),
         Err(TransactionValidationError::MaskedTokenIdNotAllowed)
@@ -828,13 +844,19 @@ fn test_input_rules_validation() {
 
     // Modify the input rules to refer to a non-existent tx out
     let rules = tx.prefix.inputs[0].input_rules.as_mut().unwrap();
-    rules.required_outputs[0].masked_amount.masked_value += 1;
+    *rules.required_outputs[0]
+        .get_masked_amount_mut()
+        .unwrap()
+        .get_masked_value_mut() += 1;
 
     assert!(validate_all_input_rules(block_version, &tx).is_err());
 
     // Set masked value back, now modify tombstone block
     let rules = tx.prefix.inputs[0].input_rules.as_mut().unwrap();
-    rules.required_outputs[0].masked_amount.masked_value -= 1;
+    *rules.required_outputs[0]
+        .get_masked_amount_mut()
+        .unwrap()
+        .get_masked_value_mut() -= 1;
     rules.max_tombstone_block = tx.prefix.tombstone_block - 1;
 
     assert!(validate_all_input_rules(block_version, &tx).is_err());

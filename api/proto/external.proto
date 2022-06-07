@@ -202,8 +202,14 @@ message EncryptedMemo {
 
 // A Transaction Output.
 message TxOut {
-    // Amount.
-    MaskedAmount masked_amount = 1;
+    // Masked Amount.
+    // The versioning indicates which shared secret derivation we are using.
+    // For v1, the TxOut shared secret is used directly.
+    // For v2, an intermediate secret called amount shared secret is used.
+    oneof masked_amount {
+        MaskedAmount v1 = 1;
+        MaskedAmount v2 = 6;
+    };
 
     // Public key.
     CompressedRistretto target_key = 2;

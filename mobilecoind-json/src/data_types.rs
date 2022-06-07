@@ -491,21 +491,63 @@ pub struct JsonMaskedAmount {
     pub commitment: String,
     pub masked_value: JsonU64,
     pub masked_token_id: String,
+    pub version: Option<u32>,
 }
 
-impl From<&MaskedAmount> for JsonMaskedAmount {
-    fn from(src: &MaskedAmount) -> Self {
-        Self {
-            commitment: hex::encode(src.get_commitment().get_data()),
-            masked_value: JsonU64(src.get_masked_value()),
-            masked_token_id: hex::encode(src.get_masked_token_id()),
+impl From<&mc_api::external::TxOut_oneof_masked_amount> for JsonMaskedAmount {
+    fn from(src: &mc_api::external::TxOut_oneof_masked_amount) -> Self {
+        match src {
+            mc_api::external::TxOut_oneof_masked_amount::v1(src) => Self {
+                commitment: hex::encode(src.get_commitment().get_data()),
+                masked_value: JsonU64(src.get_masked_value()),
+                masked_token_id: hex::encode(src.get_masked_token_id()),
+                version: None,
+            },
+            mc_api::external::TxOut_oneof_masked_amount::v2(src) => Self {
+                commitment: hex::encode(src.get_commitment().get_data()),
+                masked_value: JsonU64(src.get_masked_value()),
+                masked_token_id: hex::encode(src.get_masked_token_id()),
+                version: Some(2),
+            },
+        }
+    }
+}
+
+// Helper conversion between json and protobuf
+impl TryFrom<&JsonMaskedAmount> for mc_api::external::TxOut_oneof_masked_amount {
+    type Error = String;
+
+    fn try_from(
+        src: &JsonMaskedAmount,
+    ) -> Result<mc_api::external::TxOut_oneof_masked_amount, String> {
+        let mut commitment = CompressedRistretto::new();
+        commitment.set_data(
+            hex::decode(&src.commitment)
+                .map_err(|err| format!("Failed to decode commitment hex: {}", err))?,
+        );
+        let mut masked_amount = MaskedAmount::new();
+        masked_amount.set_commitment(commitment);
+        masked_amount.set_masked_value(src.masked_value.into());
+        masked_amount.set_masked_token_id(
+            hex::decode(&src.masked_token_id)
+                .map_err(|err| format!("Failed to decode masked token id hex: {}", err))?,
+        );
+
+        match src.version {
+            None | Some(1) => Ok(mc_api::external::TxOut_oneof_masked_amount::v1(
+                masked_amount,
+            )),
+            Some(2) => Ok(mc_api::external::TxOut_oneof_masked_amount::v2(
+                masked_amount,
+            )),
+            Some(other) => Err(format!("Unknown masked amount version: {}", other)),
         }
     }
 }
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonTxOut {
-    pub masked_amount: JsonMaskedAmount,
+    pub masked_amount: Option<JsonMaskedAmount>,
     pub target_key: String,
     pub public_key: String,
     pub e_fog_hint: String,
@@ -515,7 +557,7 @@ pub struct JsonTxOut {
 impl From<&mc_api::external::TxOut> for JsonTxOut {
     fn from(src: &mc_api::external::TxOut) -> Self {
         Self {
-            masked_amount: src.get_masked_amount().into(),
+            masked_amount: src.masked_amount.as_ref().map(Into::into),
             target_key: hex::encode(src.get_target_key().get_data()),
             public_key: hex::encode(src.get_public_key().get_data()),
             e_fog_hint: hex::encode(src.get_e_fog_hint().get_data()),
@@ -529,18 +571,6 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
     type Error = String;
 
     fn try_from(src: &JsonTxOut) -> Result<mc_api::external::TxOut, String> {
-        let mut commitment = CompressedRistretto::new();
-        commitment.set_data(
-            hex::decode(&src.masked_amount.commitment)
-                .map_err(|err| format!("Failed to decode commitment hex: {}", err))?,
-        );
-        let mut masked_amount = MaskedAmount::new();
-        masked_amount.set_commitment(commitment);
-        masked_amount.set_masked_value(src.masked_amount.masked_value.into());
-        masked_amount.set_masked_token_id(
-            hex::decode(&src.masked_amount.masked_token_id)
-                .map_err(|err| format!("Failed to decode masked token id hex: {}", err))?,
-        );
         let mut target_key = CompressedRistretto::new();
         target_key.set_data(
             hex::decode(&src.target_key)
@@ -563,7 +593,11 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
         );
 
         let mut txo = mc_api::external::TxOut::new();
-        txo.set_masked_amount(masked_amount);
+        txo.masked_amount = src
+            .masked_amount
+            .as_ref()
+            .map(TryInto::try_into)
+            .transpose()?;
         txo.set_target_key(target_key);
         txo.set_public_key(public_key);
         txo.set_e_fog_hint(e_fog_hint);
@@ -1348,15 +1382,12 @@ impl From<&api::MobilecoindVersionResponse> for JsonMobilecoindVersionResponse {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mc_crypto_keys::RistrettoPublic;
+    use mc_crypto_keys::RistrettoPrivate;
     use mc_ledger_db::{
         test_utils::{create_ledger, create_transaction, initialize_ledger},
         Ledger,
     };
-    use mc_transaction_core::{
-        encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, tokens::Mob, Amount, BlockVersion,
-        MaskedAmount, Token,
-    };
+    use mc_transaction_core::{tokens::Mob, tx::TxOut, Amount, BlockVersion, PublicAddress, Token};
     use mc_transaction_core_test_utils::AccountKey;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -1393,14 +1424,14 @@ mod test {
                 value: 1u64 << 13,
                 token_id: Mob::ID,
             };
-            let tx_out = mc_transaction_core::tx::TxOut {
-                masked_amount: MaskedAmount::new(amount, &RistrettoPublic::from_random(&mut rng))
-                    .unwrap(),
-                target_key: RistrettoPublic::from_random(&mut rng).into(),
-                public_key: RistrettoPublic::from_random(&mut rng).into(),
-                e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
-                e_memo: Some(Default::default()),
-            };
+            let tx_out = TxOut::new(
+                BlockVersion::MAX,
+                amount,
+                &PublicAddress::from_random(&mut rng),
+                &RistrettoPrivate::from_random(&mut rng),
+                Default::default(),
+            )
+            .unwrap();
 
             let subaddress_index = 123;
             let key_image = mc_transaction_core::ring_signature::KeyImage::from(456);

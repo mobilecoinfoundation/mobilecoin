@@ -595,42 +595,52 @@ impl CachedTxData {
                 block_data.global_txo_count - number_of_tx_outs_in_block;
 
             for (i, external_tx_out) in block_data.outputs.iter().enumerate() {
-                match TxOut::try_from(external_tx_out) {
-                    Ok(tx_out) => {
-                        let fog_tx_out: FogTxOut = FogTxOut::from(&tx_out);
-
-                        let fog_tx_out_metadata: FogTxOutMetadata = FogTxOutMetadata {
-                            global_index: first_tx_out_global_index + i as u64,
-                            block_index: block_data.index,
-                            timestamp: block_data.timestamp,
-                        };
-
-                        let tx_out_record: TxOutRecord =
-                            TxOutRecord::new(fog_tx_out, fog_tx_out_metadata);
-                        // Try to create an OwnedTxOut. If this fails, and it
-                        // will fail for the majority of TxOutRecords from these
-                        // missed blocks, then view key scanning failed, which
-                        // means that the user doesn't own this TxOut. Do this
-                        // here before adding it to the returned TxOutRecord
-                        // vector to prevent unnecssary logs to be emitted when
-                        // the TxOutRecords are consumed.
-                        if OwnedTxOut::new(
-                            tx_out_record.clone(),
-                            &self.account_key,
-                            &self.spsk_to_index,
-                        )
-                        .is_ok()
-                        {
-                            tx_out_records.push(tx_out_record);
-                        }
-                    }
+                let tx_out = match TxOut::try_from(external_tx_out) {
+                    Ok(tx_out) => tx_out,
                     Err(error) => {
                         log::warn!(
                             self.logger,
                             "TxOut could not be created from external.TxOut: {}",
                             error
                         );
+                        continue;
                     }
+                };
+
+                let fog_tx_out = match FogTxOut::try_from(&tx_out) {
+                    Ok(fog_tx_out) => fog_tx_out,
+                    Err(error) => {
+                        log::warn!(
+                            self.logger,
+                            "FogTxOut could not be created from TxOut: {}",
+                            error
+                        );
+                        continue;
+                    }
+                };
+
+                let fog_tx_out_metadata: FogTxOutMetadata = FogTxOutMetadata {
+                    global_index: first_tx_out_global_index + i as u64,
+                    block_index: block_data.index,
+                    timestamp: block_data.timestamp,
+                };
+
+                let tx_out_record = TxOutRecord::new(fog_tx_out, fog_tx_out_metadata);
+                // Try to create an OwnedTxOut. If this fails, and it
+                // will fail for the majority of TxOutRecords from these
+                // missed blocks, then view key scanning failed, which
+                // means that the user doesn't own this TxOut. Do this
+                // here before adding it to the returned TxOutRecord
+                // vector to prevent unnecssary logs to be emitted when
+                // the TxOutRecords are consumed.
+                if OwnedTxOut::new(
+                    tx_out_record.clone(),
+                    &self.account_key,
+                    &self.spsk_to_index,
+                )
+                .is_ok()
+                {
+                    tx_out_records.push(tx_out_record);
                 }
             }
         }
@@ -905,7 +915,7 @@ impl OwnedTxOut {
         let decompressed_tx_pub = RistrettoPublic::try_from(&tx_out.public_key)?;
         let shared_secret =
             get_tx_out_shared_secret(account_key.view_private_key(), &decompressed_tx_pub);
-        let (amount, _blinding) = tx_out.masked_amount.get_value(&shared_secret)?;
+        let (amount, _blinding) = tx_out.get_masked_amount()?.get_value(&shared_secret)?;
 
         // Calculate the subaddress spend public key for tx_out.
         let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key)?;

@@ -207,6 +207,15 @@ impl AuthorityVerifier for PublicAddress {
     }
 }
 
+impl FromRandom for PublicAddress {
+    fn from_random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+        PublicAddress::new(
+            &RistrettoPublic::from_random(rng),
+            &RistrettoPublic::from_random(rng),
+        )
+    }
+}
+
 /// Complete AccountKey, containing the pair of secret keys, which can be used
 /// for spending, and optionally some fog-related info,
 /// can be used for spending. This should only ever be present in client code.

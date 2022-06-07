@@ -28,7 +28,8 @@ use crate::{
     memo::{EncryptedMemo, MemoPayload},
     onetime_keys::{create_shared_secret, create_tx_out_public_key, create_tx_out_target_key},
     ring_ct::{SignatureRctBulletproofs, SignedInputRing},
-    Amount, CompressedCommitment, NewMemoError, NewTxError, ViewKeyMatchError,
+    Amount, CompressedCommitment, NewMemoError, NewTxError, TxOutConversionError,
+    ViewKeyMatchError,
 };
 
 /// Transaction hash length, in bytes.
@@ -220,16 +221,16 @@ impl TxPrefix {
     }
 
     /// Get all output commitments.
-    pub fn output_commitments(&self) -> Vec<CompressedCommitment> {
+    pub fn output_commitments(&self) -> Result<Vec<&CompressedCommitment>, TxOutConversionError> {
         self.outputs
             .iter()
-            .map(|output| output.masked_amount.commitment)
+            .map(|output| output.get_masked_amount().map(|ma| ma.commitment()))
             .collect()
     }
 
     /// Get all input rings.
-    pub fn get_input_rings(&self) -> Vec<SignedInputRing> {
-        self.inputs.iter().map(SignedInputRing::from).collect()
+    pub fn get_input_rings(&self) -> Result<Vec<SignedInputRing>, TxOutConversionError> {
+        self.inputs.iter().map(SignedInputRing::try_from).collect()
     }
 }
 
@@ -274,12 +275,17 @@ impl TxIn {
     }
 }
 
-impl From<&TxIn> for SignedInputRing {
-    fn from(src: &TxIn) -> SignedInputRing {
-        SignedInputRing {
-            members: src.ring.iter().map(Into::into).collect(),
+impl TryFrom<&TxIn> for SignedInputRing {
+    type Error = TxOutConversionError;
+    fn try_from(src: &TxIn) -> Result<SignedInputRing, Self::Error> {
+        Ok(SignedInputRing {
+            members: src
+                .ring
+                .iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<_>, Self::Error>>()?,
             signed_digest: src.signed_digest(),
-        }
+        })
     }
 }
 
@@ -287,9 +293,9 @@ impl From<&TxIn> for SignedInputRing {
 #[derive(Clone, Deserialize, Digestible, Eq, Hash, Message, PartialEq, Serialize, Zeroize)]
 pub struct TxOut {
     /// The amount being sent.
-    #[prost(message, required, tag = "1")]
+    #[prost(oneof = "MaskedAmount", tags = "1, 6")]
     #[digestible(name = "amount")]
-    pub masked_amount: MaskedAmount,
+    pub masked_amount: Option<MaskedAmount>,
 
     /// The one-time public address of this output.
     #[prost(message, required, tag = "2")]
@@ -381,7 +387,7 @@ impl TxOut {
 
         let shared_secret = create_shared_secret(recipient.view_public_key(), tx_private_key);
 
-        let mut masked_amount = MaskedAmount::new(amount, &shared_secret)?;
+        let masked_amount = Some(MaskedAmount::new(block_version, amount, &shared_secret)?);
 
         // Only build a memo if memos are supported
         let e_memo = if block_version.e_memo_feature_is_supported() {
@@ -393,14 +399,6 @@ impl TxOut {
         } else {
             None
         };
-
-        // Conform to block version rules
-        if !block_version.masked_token_id_feature_is_supported() {
-            masked_amount.masked_token_id.clear();
-            if amount.token_id != 0 {
-                return Err(NewTxError::TokenIdNotAllowedAtBlockVersion(block_version));
-            }
-        }
 
         Ok(TxOut {
             masked_amount,
@@ -436,7 +434,11 @@ impl TxOut {
 
         let tx_out_shared_secret = get_tx_out_shared_secret(view_private_key, &public_key);
 
-        let (amount, _scalar) = self.masked_amount.get_value(&tx_out_shared_secret)?;
+        let (amount, _scalar) = self
+            .masked_amount
+            .as_ref()
+            .ok_or(ViewKeyMatchError::UnknownMaskedAmountVersion)?
+            .get_value(&tx_out_shared_secret)?;
 
         Ok((amount, tx_out_shared_secret))
     }
@@ -461,15 +463,34 @@ impl TxOut {
             MemoPayload::default()
         }
     }
+
+    /// Get the masked amount field, which is expected to be present in some
+    /// version. Maps to a conversion error if the masked amount field is
+    /// missing
+    pub fn get_masked_amount(&self) -> Result<&MaskedAmount, TxOutConversionError> {
+        self.masked_amount
+            .as_ref()
+            .ok_or(TxOutConversionError::UnknownMaskedAmountVersion)
+    }
+
+    /// Get the masked amount field, which is expected to be present in some
+    /// version. Maps to a conversion error if the masked amount field is
+    /// missing
+    pub fn get_masked_amount_mut(&mut self) -> Result<&mut MaskedAmount, TxOutConversionError> {
+        self.masked_amount
+            .as_mut()
+            .ok_or(TxOutConversionError::UnknownMaskedAmountVersion)
+    }
 }
 
-impl From<&TxOut> for ReducedTxOut {
-    fn from(src: &TxOut) -> Self {
-        Self {
+impl TryFrom<&TxOut> for ReducedTxOut {
+    type Error = TxOutConversionError;
+    fn try_from(src: &TxOut) -> Result<Self, Self::Error> {
+        Ok(Self {
             public_key: src.public_key,
             target_key: src.target_key,
-            commitment: src.masked_amount.commitment,
-        }
+            commitment: *src.get_masked_amount()?.commitment(),
+        })
     }
 }
 
@@ -673,149 +694,73 @@ derive_prost_message_from_repr_bytes!(TxOutConfirmationNumber);
 #[cfg(test)]
 mod tests {
     use crate::{
-        encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
         get_tx_out_shared_secret,
         memo::MemoPayload,
         ring_ct::SignatureRctBulletproofs,
         subaddress_matches_tx_out,
         tokens::Mob,
         tx::{Tx, TxIn, TxOut, TxPrefix},
-        Amount, BlockVersion, MaskedAmount, Token,
+        Amount, BlockVersion, Token,
     };
-    use alloc::vec::Vec;
-    use core::convert::TryFrom;
-    use mc_account_keys::{AccountKey, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX};
+    use mc_account_keys::{
+        AccountKey, PublicAddress, CHANGE_SUBADDRESS_INDEX, DEFAULT_SUBADDRESS_INDEX,
+    };
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::get_seeded_rng;
     use prost::Message;
 
     #[test]
-    // `serialize_tx` should create a Tx, encode/decode it, and compare
-    fn test_serialize_tx_no_memo() {
+    // Create a Tx, encode/decode it, and compare
+    fn test_serialize_tx() {
         let mut rng = get_seeded_rng();
-        let tx_out = {
-            let shared_secret = RistrettoPublic::from_random(&mut rng);
-            let target_key = RistrettoPublic::from_random(&mut rng).into();
-            let public_key = RistrettoPublic::from_random(&mut rng).into();
-            let amount = Amount {
-                value: 23u64,
-                token_id: Mob::ID,
+        for block_version in BlockVersion::iterator() {
+            let recipient = PublicAddress::from_random(&mut rng);
+            let amount = Amount::new(23, Mob::ID);
+            let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+            let tx_out = TxOut::new(
+                block_version,
+                amount,
+                &recipient,
+                &tx_private_key,
+                Default::default(),
+            )
+            .unwrap();
+
+            // TxOut = decode(encode(TxOut))
+            assert_eq!(tx_out, TxOut::decode(&tx_out.encode_to_vec()[..]).unwrap());
+            assert_eq!(tx_out.encode_to_vec().len(), 207);
+
+            let tx_in = TxIn {
+                ring: vec![tx_out.clone()],
+                proofs: vec![],
+                input_rules: None,
             };
-            let masked_amount = MaskedAmount::new(amount, &shared_secret).unwrap();
-            TxOut {
-                masked_amount,
-                target_key,
-                public_key,
-                e_fog_hint: EncryptedFogHint::from(&[1u8; ENCRYPTED_FOG_HINT_LEN]),
-                e_memo: Default::default(),
-            }
-        };
 
-        // TxOut = decode(encode(TxOut))
-        let mut buf = Vec::new();
-        tx_out.encode(&mut buf).expect("failed to serialize TxOut");
-        assert_eq!(tx_out, TxOut::decode(&buf[..]).unwrap());
+            // TxIn = decode(encode(TxIn))
+            assert_eq!(tx_in, TxIn::decode(&tx_in.encode_to_vec()[..]).unwrap());
 
-        let tx_in = TxIn {
-            ring: vec![tx_out.clone()],
-            proofs: vec![],
-            input_rules: None,
-        };
-
-        // TxIn = decode(encode(TxIn))
-        let mut buf = Vec::new();
-        tx_in.encode(&mut buf).expect("failed to serialize TxIn");
-        assert_eq!(tx_in, TxIn::decode(&buf[..]).unwrap());
-
-        let prefix = TxPrefix {
-            inputs: vec![tx_in],
-            outputs: vec![tx_out],
-            fee: Mob::MINIMUM_FEE,
-            fee_token_id: *Mob::ID,
-            tombstone_block: 23,
-        };
-
-        let mut buf = Vec::new();
-        prefix
-            .encode(&mut buf)
-            .expect("failed to serialize into slice");
-
-        assert_eq!(prefix, TxPrefix::decode(&buf[..]).unwrap());
-
-        // TODO: use a meaningful signature.
-        let signature = SignatureRctBulletproofs::default();
-
-        let tx = Tx { prefix, signature };
-
-        let mut buf = Vec::new();
-        tx.encode(&mut buf).expect("failed to serialize into slice");
-        let recovered_tx: Tx = Tx::decode(&buf[..]).unwrap();
-        assert_eq!(tx, recovered_tx);
-    }
-
-    #[test]
-    // `serialize_tx` should create a Tx, encode/decode it, and compare
-    fn test_serialize_tx_with_memo() {
-        let mut rng = get_seeded_rng();
-        let tx_out = {
-            let shared_secret = RistrettoPublic::from_random(&mut rng);
-            let target_key = RistrettoPublic::from_random(&mut rng).into();
-            let public_key = RistrettoPublic::from_random(&mut rng).into();
-            let amount = Amount {
-                value: 23,
-                token_id: Mob::ID,
+            let prefix = TxPrefix {
+                inputs: vec![tx_in],
+                outputs: vec![tx_out],
+                fee: Mob::MINIMUM_FEE,
+                fee_token_id: *Mob::ID,
+                tombstone_block: 23,
             };
-            let masked_amount = MaskedAmount::new(amount, &shared_secret).unwrap();
-            TxOut {
-                masked_amount,
-                target_key,
-                public_key,
-                e_fog_hint: EncryptedFogHint::from(&[1u8; ENCRYPTED_FOG_HINT_LEN]),
-                e_memo: Some(MemoPayload::default().encrypt(&shared_secret)),
-            }
-        };
 
-        // TxOut = decode(encode(TxOut))
-        let mut buf = Vec::new();
-        tx_out.encode(&mut buf).expect("failed to serialize TxOut");
-        assert_eq!(tx_out, TxOut::decode(&buf[..]).unwrap());
+            assert_eq!(
+                prefix,
+                TxPrefix::decode(&prefix.encode_to_vec()[..]).unwrap()
+            );
 
-        let tx_in = TxIn {
-            ring: vec![tx_out.clone()],
-            proofs: vec![],
-            input_rules: None,
-        };
+            // TODO: use a meaningful signature.
+            let signature = SignatureRctBulletproofs::default();
 
-        // TxIn = decode(encode(TxIn))
-        let mut buf = Vec::new();
-        tx_in.encode(&mut buf).expect("failed to serialize TxIn");
-        assert_eq!(tx_in, TxIn::decode(&buf[..]).unwrap());
+            let tx = Tx { prefix, signature };
 
-        let prefix = TxPrefix {
-            inputs: vec![tx_in],
-            outputs: vec![tx_out],
-            fee: Mob::MINIMUM_FEE,
-            fee_token_id: *Mob::ID,
-            tombstone_block: 23,
-        };
-
-        let mut buf = Vec::new();
-        prefix
-            .encode(&mut buf)
-            .expect("failed to serialize into slice");
-
-        assert_eq!(prefix, TxPrefix::decode(&buf[..]).unwrap());
-
-        // TODO: use a meaningful signature.
-        let signature = SignatureRctBulletproofs::default();
-
-        let tx = Tx { prefix, signature };
-
-        let mut buf = Vec::new();
-        tx.encode(&mut buf).expect("failed to serialize into slice");
-        let recovered_tx: Tx = Tx::decode(&buf[..]).unwrap();
-        assert_eq!(tx, recovered_tx);
+            let recovered_tx: Tx = Tx::decode(&tx.encode_to_vec()[..]).unwrap();
+            assert_eq!(tx, recovered_tx);
+        }
     }
 
     // round trip memos from `TxOut` constructors through `decrypt_memo()`
