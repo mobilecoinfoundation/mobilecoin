@@ -543,9 +543,9 @@ checksum = "a2698f953def977c68f935bb0dfa959375ad4638570e969e2f1e9f433cbf1af6"
 
 [[package]]
 name = "cbindgen"
-version = "0.23.0"
+version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b6d248e3ca02f3fbfabcb9284464c596baec223a26d91bbf44a5a62ddb0d900"
+checksum = "a3724dad393a4911605a4b2a8959a3a878d7bbcd571664199cd820f64273f20e"
 dependencies = [
  "clap 3.1.18",
  "heck",
@@ -5586,9 +5586,9 @@ dependencies = [
 
 [[package]]
 name = "more-asserts"
-version = "0.2.2"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7843ec2de400bcbc6a6328c958dc38e5359da6e93e72e37bc5246bf1ae776389"
+checksum = "5474f8732dc7e0635ae9df6595bcd39cd30e3cfe8479850d4fa3e69306c19712"
 
 [[package]]
 name = "multer"
