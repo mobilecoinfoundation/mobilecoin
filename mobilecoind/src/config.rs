@@ -18,7 +18,7 @@ use mc_util_uri::{ConnectionUri, ConsensusClientUri, FogUri};
 #[cfg(feature = "ip-check")]
 use reqwest::{
     blocking::Client,
-    header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, InvalidHeaderValue},
+    header::{HeaderMap, HeaderValue, InvalidHeaderValue, AUTHORIZATION, CONTENT_TYPE},
 };
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
