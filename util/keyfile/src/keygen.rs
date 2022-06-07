@@ -165,6 +165,8 @@ fn compare_keyfile_names(a: &Path, b: &Path) -> Ordering {
 mod test {
     use super::*;
     use crate::mnemonic_acct::UncheckedMnemonicAccount;
+    use mc_util_test_utils::tempdir;
+    use std::convert::TryFrom;
 
     /// A default seed for [write_default_keyfiles()] calls.
     const DEFAULT_SEED: [u8; 32] = [1u8; 32];
@@ -209,8 +211,8 @@ mod test {
     /// with fog details.
     #[test]
     fn default_generation_roundtrip_with_fog() {
-        let dir1 = tempfile::tempdir().expect("Could not create temporary dir1");
-        let dir2 = tempfile::tempdir().expect("Could not create temporary dir2");
+        let dir1 = tempdir();
+        let dir2 = tempdir();
 
         let der_bytes = pem::parse(mc_crypto_x509_test_vectors::ok_rsa_head())
             .expect("Could not parse DER bytes from PEM certificate file")
@@ -248,8 +250,8 @@ mod test {
     /// without fog.
     #[test]
     fn default_generation_no_fog() {
-        let dir1 = tempfile::tempdir().expect("Could not create temporary dir1");
-        let dir2 = tempfile::tempdir().expect("Could not create temporary dir2");
+        let dir1 = tempdir();
+        let dir2 = tempdir();
 
         write_default_keyfiles(&dir1, 10, None, "", None, DEFAULT_SEED)
             .expect("Could not write keyfiles to dir1");
@@ -274,7 +276,7 @@ mod test {
             .expect("Could not parse backwards_compatibility.json");
         expected.sort();
 
-        let dir1 = tempfile::tempdir().expect("Could not create temporary dir1");
+        let dir1 = tempdir();
 
         write_default_keyfiles(&dir1, 10, None, "", None, DEFAULT_SEED)
             .expect("Could not write example keyfiles");

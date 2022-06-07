@@ -154,12 +154,13 @@ mod testing {
     use bip39::{Language, MnemonicType};
     use mc_account_keys::AccountKey;
     use mc_account_keys_slip10::{Slip10Key, Slip10KeyGenerator};
+    use mc_util_test_utils::tempdir;
 
     /// Test that round-tripping through a keyfile without fog gets the same
     /// result as creating the key directly.
     #[test]
     fn keyfile_roundtrip_no_fog() {
-        let dir = tempfile::tempdir().expect("Could not create temp dir");
+        let dir = tempdir();
         let mnemonic = Mnemonic::new(MnemonicType::Words24, Language::English);
         let path = dir.path().join("no_fog");
         write_keyfile(&path, &mnemonic, 0, None, "", None).expect("Could not write keyfile");
@@ -182,7 +183,7 @@ mod testing {
             .subject_public_key_info()
             .spki();
 
-        let dir = tempfile::tempdir().expect("Could not create temp dir");
+        let dir = tempdir();
         let mnemonic = Mnemonic::new(MnemonicType::Words24, Language::English);
 
         let path = dir.path().join("with_fog");
@@ -214,7 +215,7 @@ mod testing {
         )))
         .default_subaddress();
 
-        let dir = tempfile::tempdir().expect("Could not create temporary directory");
+        let dir = tempdir();
         let path = dir.path().join("pubfile_no_fog");
         write_pubfile(&path, &expected).expect("Could not write pubfile");
         let actual = read_pubfile(&path).expect("Could not read back pubfile");
@@ -239,7 +240,7 @@ mod testing {
             .expect("Could not create expected account key")
             .default_subaddress();
 
-        let dir = tempfile::tempdir().expect("Could not create temporary directory");
+        let dir = tempdir();
         let path = dir.path().join("pubfile_with_fog");
         write_pubfile(&path, &expected).expect("Could not write fog pubfile");
         let actual = read_pubfile(&path).expect("Could not read back fog pubfile");

@@ -5392,6 +5392,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-serial",
  "mc-util-test-helper",
+ "mc-util-test-utils",
  "pem",
  "prost",
  "rand 0.8.5",
@@ -5509,6 +5510,13 @@ dependencies = [
  "mc-common",
  "rand 0.8.5",
  "rand_hc 0.3.1",
+]
+
+[[package]]
+name = "mc-util-test-utils"
+version = "1.3.0-pre0"
+dependencies = [
+ "tempfile",
 ]
 
 [[package]]

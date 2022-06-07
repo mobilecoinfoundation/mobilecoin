@@ -1,5 +1,6 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
+use mc_util_test_utils::tempdir;
 use std::{env, io::Write, process::Command};
 use tempfile::NamedTempFile;
 
@@ -33,13 +34,13 @@ fn sample_keys_determinism() {
         .to_str()
         .expect("Authority pemfile is not valid UTF-8");
 
-    let tempdir = tempfile::tempdir().expect("Could not create tempdir");
-    let tempdir_path = tempdir.path().to_str().expect("tempdir was not UTF-8");
+    let dir = tempdir();
+    let dir_path = dir.path().to_str().expect("tempdir was not UTF-8");
 
     assert!(Command::new(sample_keys_bin.clone())
         .args(&[
             "--output-dir",
-            tempdir_path,
+            dir_path,
             "--num",
             "10",
             "--fog-report-url",
@@ -53,12 +54,12 @@ fn sample_keys_determinism() {
         .expect("sample_keys failed")
         .success());
 
-    let tempdir2 = tempfile::tempdir().expect("Could not create tempdir2");
-    let tempdir2_path = tempdir2.path().to_str().expect("tempdir2 was not UTF-8");
+    let dir2 = tempdir();
+    let dir2_path = dir2.path().to_str().expect("tempdir2 was not UTF-8");
     assert!(Command::new(sample_keys_bin)
         .args(&[
             "--output-dir",
-            tempdir2_path,
+            dir2_path,
             "--num",
             "10",
             "--fog-report-url",
@@ -73,7 +74,7 @@ fn sample_keys_determinism() {
         .success());
 
     assert!(Command::new("diff")
-        .args(&["-rq", tempdir_path, tempdir2_path])
+        .args(&["-rq", dir_path, dir2_path])
         .status()
         .expect("Diff reported unexpected differences, this indicates nondeterminism")
         .success());
@@ -100,13 +101,13 @@ fn sample_keys_determinism2() {
         .to_str()
         .expect("Authority pemfile is not valid UTF-8");
 
-    let tempdir = tempfile::tempdir().expect("Could not create tempdir");
-    let tempdir_path = tempdir.path().to_str().expect("tempdir was not UTF-8");
+    let dir = tempdir();
+    let dir_path = dir.path().to_str().expect("tempdir was not UTF-8");
 
     assert!(Command::new(sample_keys_bin.clone())
         .args(&[
             "--output-dir",
-            tempdir_path,
+            dir_path,
             "--num",
             "10",
             "--fog-report-url",
@@ -120,12 +121,12 @@ fn sample_keys_determinism2() {
         .expect("sample_keys failed")
         .success());
 
-    let tempdir2 = tempfile::tempdir().expect("Could not create tempdir2");
-    let tempdir2_path = tempdir2.path().to_str().expect("tempdir2 was not UTF-8");
+    let dir2 = tempdir();
+    let dir2_path = dir2.path().to_str().expect("tempdir2 was not UTF-8");
     assert!(Command::new(sample_keys_bin)
         .args(&[
             "--output-dir",
-            tempdir2_path,
+            dir2_path,
             "--num",
             "20",
             "--fog-report-url",
@@ -140,12 +141,7 @@ fn sample_keys_determinism2() {
         .success());
     // exclude 1, any character, ., in order to exclude numbers 10 - 19
     assert!(Command::new("diff")
-        .args(&[
-            "-rq",
-            "--exclude=*1[0123456789].*",
-            tempdir_path,
-            tempdir2_path
-        ])
+        .args(&["-rq", "--exclude=*1[0123456789].*", dir_path, dir2_path])
         .status()
         .expect("Diff reported unexpected differences, this indicates nondeterminism")
         .success());
