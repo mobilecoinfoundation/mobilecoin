@@ -93,8 +93,8 @@ impl From<&PublicAddress> for JsonPublicAddress {
         Self {
             view_public_key: hex::encode(&src.get_view_public_key().get_data()),
             spend_public_key: hex::encode(&src.get_spend_public_key().get_data()),
-            fog_report_url: String::from(src.get_fog_report_url()),
-            fog_report_id: String::from(src.get_fog_report_id()),
+            fog_report_url: src.get_fog_report_url().into(),
+            fog_report_id: src.get_fog_report_id().into(),
             fog_authority_sig: hex::encode(&src.get_fog_authority_sig()),
         }
     }
