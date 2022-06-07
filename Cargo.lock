@@ -5337,6 +5337,7 @@ dependencies = [
  "mc-util-build-info",
  "mc-util-metrics",
  "mc-util-serial",
+ "mc-util-test-utils",
  "mc-util-uri",
  "prometheus",
  "protobuf",
@@ -5346,7 +5347,6 @@ dependencies = [
  "sha2 0.10.2",
  "signal-hook",
  "subtle",
- "tempfile",
  "zeroize",
 ]
 

@@ -146,6 +146,7 @@ mod tests {
     use grpcio::{ChannelBuilder, ChannelCredentialsBuilder, EnvBuilder, Server, ServerBuilder};
     use mc_common::logger::test_with_logger;
     use mc_crypto_x509_test_vectors::{ok_self_signed_1, ok_self_signed_2};
+    use mc_util_test_utils::tempdir;
     use mc_util_uri::ConsensusClientUri;
     use std::{str::FromStr, thread, time::Duration};
 
@@ -188,7 +189,7 @@ mod tests {
 
     #[test_with_logger]
     fn test_cert_reloading(logger: Logger) {
-        let temp_dir = tempfile::TempDir::new().unwrap();
+        let temp_dir = tempdir();
         let cert_file = temp_dir.path().join("server.crt");
         let key_file = temp_dir.path().join("server.key");
 
@@ -266,7 +267,7 @@ mod tests {
 
     #[test_with_logger]
     fn test_reload_invalid_data(logger: Logger) {
-        let temp_dir = tempfile::TempDir::new().unwrap();
+        let temp_dir = tempdir();
         let cert_file = temp_dir.path().join("server.crt");
         let key_file = temp_dir.path().join("server.key");
 
@@ -308,7 +309,7 @@ mod tests {
 
     #[test_with_logger]
     fn test_multiple_servers(logger: Logger) {
-        let temp_dir = tempfile::TempDir::new().unwrap();
+        let temp_dir = tempdir();
         let cert_file = temp_dir.path().join("server.crt");
         let key_file = temp_dir.path().join("server.key");
 
@@ -365,7 +366,7 @@ mod tests {
 
     #[test_with_logger]
     fn test_bind_using_uri(logger: Logger) {
-        let temp_dir = tempfile::TempDir::new().unwrap();
+        let temp_dir = tempdir();
         let cert_file = temp_dir.path().join("server.crt");
         let key_file = temp_dir.path().join("server.key");
 
