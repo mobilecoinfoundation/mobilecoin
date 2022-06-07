@@ -30,7 +30,7 @@ the image and doesn't run it or give you a prompt. `--dry-run` just
 shows you the shell commands without executing them. `--no-pull` means you don't
 pull a docker image at all.
 
-`mob` tool attemps to mount the `/dev/isgx` device correctly if it is available
+`mob` tool attempts to mount the `/dev/isgx` device correctly if it is available
 and you selected `--hw` mode, so that you can run tests in hardware mode.
 
 usage notes (ssh)
@@ -74,7 +74,7 @@ it is an error if it can't find one.
 
 [image]
 dockerfile = path to dockerfile. build context is the dir of dockerfile
-target = layer in dockerfile that is targetted
+target = layer in dockerfile that is targeted
 repository = storage for remote images from farm e.g. gcr.io/mobilenode-211420 (optional)
 """
 
