@@ -18,7 +18,7 @@ use mc_util_uri::{ConnectionUri, ConsensusClientUri, FogUri};
 #[cfg(feature = "ip-check")]
 use reqwest::{
     blocking::Client,
-    header::{HeaderMap, HeaderValue, InvalidHeaderValue, AUTHORIZATION, CONTENT_TYPE},
+    header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, InvalidHeaderValue},
 };
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
@@ -132,6 +132,7 @@ pub enum ConfigError {
     DataMissing(String),
 
     /// Invalid header: {0}
+    #[cfg(feature = "ip-check")]
     InvalidHeader(InvalidHeaderValue),
 }
 
@@ -147,6 +148,7 @@ impl From<reqwest::Error> for ConfigError {
     }
 }
 
+#[cfg(feature = "ip-check")]
 impl From<InvalidHeaderValue> for ConfigError {
     fn from(e: InvalidHeaderValue) -> Self {
         Self::InvalidHeader(e)
