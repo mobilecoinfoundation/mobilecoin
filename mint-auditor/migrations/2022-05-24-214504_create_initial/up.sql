@@ -2,6 +2,7 @@
 CREATE TABLE block_audit_data (
     -- Diesel requires having a primary key and sqlite doesn't allow 64 bit primay keys, so even though
     -- we would've wanted to use the block_index for that we can't.
+    -- Must be nullable for auto-increment: https://www.sqlite.org/autoinc.html
     id INT PRIMARY KEY,
     block_index UNSIGNED BIGINT NOT NULL
     -- Future revision would add gnosis safe data here
@@ -12,6 +13,7 @@ CREATE UNIQUE INDEX idx__block_audit_data__block_index ON block_audit_data(block
 CREATE TABLE block_balance (
     -- Diesel requires having a primary key and sqlite doesn't allow 64 bit primay keys, so even though
     -- we would've wanted to use the block_index for that we can't.
+    -- Must be nullable for auto-increment: https://www.sqlite.org/autoinc.html
     id INT PRIMARY KEY,
     block_index UNSIGNED BIGINT NOT NULL,
     token_id UNSIGNED BIGINT NOT NULL,
@@ -23,6 +25,7 @@ CREATE UNIQUE INDEX idx__block_balance__block_index__token_id ON block_balance(b
 -- Counters - this table is expected to only ever have a single row.
 CREATE TABLE counters (
     -- Diesel only supports tables with primary keys, so we need one.
+    -- Not nullable because we only have a single row in this table and the code that inserts to it hard-codes the id to 0.
     id INTEGER NOT NULL PRIMARY KEY,
 
     -- Number of blocks we've synced so far.
