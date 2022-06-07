@@ -170,7 +170,7 @@ impl State {
             logger,
         );
 
-        let logger = logger.new(o!("thread" => "http"));
+        let logger = logger.new(o!("thread" => "req-handler"));
 
         Ok(State {
             mobilecoind_api_client,
