@@ -155,7 +155,7 @@ class MintAuditorTest:
 
             # Get the network block height and wait for the mint auditor to catch up
             response = self.wait_for_mint_auditor_to_sync()
-            previous_minted_amount = dict(response.balance_map).get(token_id) or 0
+            previous_minted_amount = dict(response.block_audit_data.balances).get(token_id) or 0
 
             # Mint tokens that go into the new wallet we generated
             logging.info(f"Minting {mint_amount} tokens of token_id {token_id}")
@@ -175,7 +175,7 @@ class MintAuditorTest:
 
             response = self.wait_for_mint_auditor_to_sync()
 
-            current_minted_amount = dict(response.balance_map).get(token_id)
+            current_minted_amount = dict(response.block_audit_data.balances).get(token_id)
             assert current_minted_amount == previous_minted_amount + mint_amount, (current_minted_amount, previous_minted_amount, mint_amount)
 
             # Burn 300 tokens
@@ -200,7 +200,7 @@ class MintAuditorTest:
             response = self.wait_for_mint_auditor_to_sync()
 
             previous_minted_amount = current_minted_amount
-            current_minted_amount = dict(response.balance_map).get(token_id)
+            current_minted_amount = dict(response.block_audit_data.balances).get(token_id)
             assert current_minted_amount == previous_minted_amount - burn_amount, (current_minted_amount, previous_minted_amount, burn_amount)
 
             # Sanity check the counters
