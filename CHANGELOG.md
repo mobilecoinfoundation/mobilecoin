@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 The crates in this repository do not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) at this time.
 
 
+## [1.2.1] - 2022-06-06
+
+### Changed
+
+- Expose the ability to get a TX shared secret to iOS SDK
+- Restore the ability to derive an account from legacy root entropy to iOS SDK
+- Improve the construction of `Amount` objects from Android SDK
+
+### Fixed
+
+- Fix panic when consensus service is configured for multiple tokens but still running in MOB-only block-version 0 mode.
+
 
 ## [1.2.0] - 2022-06-03
 
