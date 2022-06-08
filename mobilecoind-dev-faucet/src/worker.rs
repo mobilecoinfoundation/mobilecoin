@@ -499,7 +499,7 @@ impl WorkerTokenState {
                 let (tracker, record) = UtxoTracker::new(utxo.clone());
                 // Add to queue depth before push, because we subtract after pop
                 self.queue_depth.fetch_add(1, Ordering::SeqCst);
-                if let Err(_) = self.sender.send(record) {
+                if self.sender.send(record).is_err() {
                     panic!("Queue was closed before worker thread was joined, this is an unexpected program state");
                 }
                 e.insert(tracker);

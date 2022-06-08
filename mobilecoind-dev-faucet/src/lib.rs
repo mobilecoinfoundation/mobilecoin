@@ -124,7 +124,7 @@ impl State {
         let worker = Worker::new(
             mobilecoind_api_client.clone(),
             monitor_id.clone(),
-            monitor_public_address.clone(),
+            monitor_public_address,
             minimum_fees,
             faucet_payout_amounts.clone(),
             config.target_queue_depth,
@@ -271,7 +271,7 @@ impl State {
 
         // Tell the worker that this utxo was submitted, so that it can track and
         // recycle the utxo if this payment fails
-        if let Err(_) = utxo_record.sender.send(resp.clone()) {
+        if utxo_record.sender.send(resp.clone()).is_err() {
             log::error!(
                 self.logger,
                 "Could not send SubmitTxResponse to worker thread"

@@ -65,7 +65,7 @@ impl From<Result<FaucetStatus, String>> for JsonFaucetStatus {
             }) => JsonFaucetStatus {
                 success: true,
                 err_str: None,
-                b58_address: b58_address,
+                b58_address,
                 faucet_payout_amounts: faucet_payout_amounts
                     .into_iter()
                     .map(convert_balance_pair)
