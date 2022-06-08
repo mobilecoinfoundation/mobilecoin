@@ -21,6 +21,9 @@ image:
   org: mobilecoin
   tag: '' # Overrides the image tag whose default is the chart appVersion.
 
+global:
+  certManagerClusterIssuer: letsencrypt-production-http
+
 ### Fog Report Service
 fogReport:
   replicaCount: 2
@@ -42,7 +45,6 @@ fogReport:
   ingress:
     grpc:
       annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-production-http
         haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
         haproxy.org/server-ssl: "false"             # The backend (server) is http
         haproxy.org/timeout-client: 239s            # 4 min timeout on azure
@@ -54,7 +56,6 @@ fogReport:
 
     http:
       annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-production-http
         haproxy.org/server-ssl: "false"             # The backend (server) is http
         haproxy.org/timeout-client: 239s            # 4 min timeout on azure
         haproxy.org/timeout-server: 239s
@@ -100,7 +101,6 @@ fogView:
   ingress:
     grpc:
       annotations: |-
-        cert-manager.io/cluster-issuer: letsencrypt-production-http
         haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
         haproxy.org/server-ssl: "false"             # The backend (server) is http
         haproxy.org/timeout-client: 239s            # 4 min timeout on azure
@@ -113,7 +113,6 @@ fogView:
           cookie VIEW insert indirect nocache dynamic
     http:
       annotations: |-
-        cert-manager.io/cluster-issuer: letsencrypt-production-http
         haproxy.org/server-ssl: "false"             # The backend (server) is http
         haproxy.org/timeout-client: 239s            # 4 min timeout on azure
         haproxy.org/timeout-server: 239s
@@ -187,7 +186,6 @@ fogLedger:
   ingress:
     grpc:
       annotations: |-
-        cert-manager.io/cluster-issuer: letsencrypt-production-http
         haproxy.org/server-proto: "h2"              # Force GRPC/H2 mode
         haproxy.org/server-ssl: "false"             # The backend (server) is http
         # haproxy.org/cookie-persistence: "fog-ledger"
@@ -202,7 +200,6 @@ fogLedger:
 
     http:
       annotations: |-
-        cert-manager.io/cluster-issuer: letsencrypt-production-http
         haproxy.org/server-ssl: "false"             # The backend (server) is http
         haproxy.org/timeout-client: 239s            # 4 min timeout on azure
         haproxy.org/timeout-server: 239s

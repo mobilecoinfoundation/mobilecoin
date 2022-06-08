@@ -265,6 +265,7 @@ jobs:
         chart_version: ${{ inputs.version }}
         chart_set: |
           --set=image.org=${{ inputs.docker_image_org }}
+          --set=global.certManagerClusterIssuer=zerossl-prod-http
         chart_wait_timeout: 10m
         release_name: ${{ matrix.release_name }}
         namespace: ${{ inputs.namespace }}
@@ -376,6 +377,7 @@ jobs:
         chart_wait_timeout: 10m
         chart_set: |
           --set=image.org=${{ inputs.docker_image_org }}
+          --set=global.certManagerClusterIssuer=zerossl-prod-http
         release_name: fog-services
         namespace: ${{ inputs.namespace }}
         rancher_cluster: ${{ secrets.RANCHER_CLUSTER }}
