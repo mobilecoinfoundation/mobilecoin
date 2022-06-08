@@ -448,12 +448,12 @@ if args.cmd is not None:
 try:
     maybe_run(docker_run)
 except subprocess.CalledProcessError as exception:
-    if args.action == 'prompt' and exception.returncode == 130:
-        # This is normal exit of prompt
-        sys.exit(0)
     if args.action == 'prompt' and args.cmd is not None:
         # Make sure custom commands have their expected return codes
         sys.exit(exception.returncode)
+    if args.action == 'prompt' and exception.returncode == 130:
+        # This is a normal exit of prompt
+        sys.exit(0)
     raise  # rethrow
 finally:
     # cleanup named container on exit
