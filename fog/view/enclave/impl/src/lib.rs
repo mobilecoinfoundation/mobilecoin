@@ -184,4 +184,13 @@ where
         }
         Ok(())
     }
+
+    /// Takes in a client's query request and returns a list of query requests
+    /// to be sent off to each Fog View Store shard.
+    fn create_multi_view_store_query(
+        &self,
+        _client_query: EnclaveMessage<ClientSession>,
+    ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
+        todo!()
+    }
 }
