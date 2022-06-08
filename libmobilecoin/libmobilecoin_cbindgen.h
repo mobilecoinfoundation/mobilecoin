@@ -1141,17 +1141,17 @@ bool mc_memo_gift_code_funding_memo_create(FfiRefPtr<McBuffer> tx_out_public_key
  *
  * * `LibMcError::InvalidInput`
  */
-bool mc_memo_validate_gift_code_funding_tx_out(FfiRefPtr<McBuffer> gift_code_funding_memo_data,
-                                               FfiRefPtr<McBuffer> tx_out_public_key,
-                                               FfiMutPtr<bool> out_valid,
-                                               FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+bool mc_memo_gift_code_funding_memo_validate_tx_out(FfiRefPtr<McBuffer> gift_code_funding_memo_data,
+                                                    FfiRefPtr<McBuffer> tx_out_public_key,
+                                                    FfiMutPtr<bool> out_valid,
+                                                    FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 /**
  * # Preconditions
  *
  * * `gift_code_funding_memo_data` - must be 64 bytes
  */
-FfiOptOwnedStr mc_memo_get_gift_code_funding_note(FfiRefPtr<McBuffer> gift_code_funding_memo_data);
+FfiOptOwnedStr mc_memo_gift_code_funding_memo_get_note(FfiRefPtr<McBuffer> gift_code_funding_memo_data);
 
 /**
  * # Preconditions
@@ -1162,9 +1162,9 @@ FfiOptOwnedStr mc_memo_get_gift_code_funding_note(FfiRefPtr<McBuffer> gift_code_
  *
  * * `LibMcError::InvalidInput`
  */
-bool mc_memo_get_gift_code_funding_fee(FfiRefPtr<McBuffer> gift_code_funding_memo_data,
-                                       FfiMutPtr<uint64_t> out_fee,
-                                       FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+bool mc_memo_gift_code_funding_memo_get_fee(FfiRefPtr<McBuffer> gift_code_funding_memo_data,
+                                            FfiMutPtr<uint64_t> out_fee,
+                                            FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 /**
  * # Preconditions
@@ -1192,7 +1192,7 @@ bool mc_memo_gift_code_sender_memo_create(uint64_t fee,
  *
  * * `gift_code_sender_memo_data` - must be 64 bytes
  */
-FfiOptOwnedStr mc_memo_get_gift_code_sender_note(FfiRefPtr<McBuffer> gift_code_sender_memo_data);
+FfiOptOwnedStr mc_memo_gift_code_sender_memo_get_note(FfiRefPtr<McBuffer> gift_code_sender_memo_data);
 
 /**
  * # Preconditions
@@ -1203,9 +1203,9 @@ FfiOptOwnedStr mc_memo_get_gift_code_sender_note(FfiRefPtr<McBuffer> gift_code_s
  *
  * * `LibMcError::InvalidInput`
  */
-bool mc_memo_get_gift_code_sender_fee(FfiRefPtr<McBuffer> gift_code_sender_memo_data,
-                                      FfiMutPtr<uint64_t> out_fee,
-                                      FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+bool mc_memo_gift_code_sender_memo_get_fee(FfiRefPtr<McBuffer> gift_code_sender_memo_data,
+                                           FfiMutPtr<uint64_t> out_fee,
+                                           FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 /**
  * # Preconditions
@@ -1233,9 +1233,9 @@ bool mc_memo_gift_code_cancellation_memo_create(uint64_t fee,
  *
  * * `LibMcError::InvalidInput`
  */
-bool mc_memo_get_cancelled_gift_code_tx_out_index(FfiRefPtr<McBuffer> gift_code_cancellation_memo_data,
-                                                  FfiMutPtr<uint64_t> out_index,
-                                                  FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+bool mc_memo_gift_code_cancellation_memo_get_gift_code_tx_out_index(FfiRefPtr<McBuffer> gift_code_cancellation_memo_data,
+                                                                    FfiMutPtr<uint64_t> out_index,
+                                                                    FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 /**
  * # Preconditions
@@ -1246,9 +1246,9 @@ bool mc_memo_get_cancelled_gift_code_tx_out_index(FfiRefPtr<McBuffer> gift_code_
  *
  * * `LibMcError::InvalidInput`
  */
-bool mc_memo_get_gift_code_cancellation_fee(FfiRefPtr<McBuffer> gift_code_cancellation_memo_data,
-                                            FfiMutPtr<uint64_t> out_fee,
-                                            FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+bool mc_memo_gift_code_cancellation_memo_get_fee(FfiRefPtr<McBuffer> gift_code_cancellation_memo_data,
+                                                 FfiMutPtr<uint64_t> out_fee,
+                                                 FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 /**
  * # Preconditions

@@ -261,7 +261,7 @@ McData* MC_NULLABLE mc_transaction_builder_fund_gift_code_output(
         McMutableBuffer* MC_NONNULL out_tx_out_confirmation_number,
         McError* MC_NULLABLE * MC_NULLABLE out_error
 )
-MC_ATTRIBUTE_NONNULL(1, 2, 4, 6);
+MC_ATTRIBUTE_NONNULL(1, 2, 5);
 
 /// # Preconditions
 ///
@@ -569,7 +569,7 @@ MC_ATTRIBUTE_NONNULL(1);
 ///
 /// * `global_index` - must be the global TxOut index of the originally funded
 ///   gift code TxOut
-McTxOutMemoBuilder* MC_NULLABLE mc_memo_builder_gift_code_sender_create(
+McTxOutMemoBuilder* MC_NULLABLE mc_memo_builder_gift_code_cancellation_create(
         uint64_t global_index
 );
 
@@ -607,7 +607,7 @@ MC_ATTRIBUTE_NONNULL(1, 3, 4);
 /// # Errors
 ///
 /// * `LibMcError::InvalidInput`
-bool mc_memo_validate_gift_code_funding_tx_out(
+bool mc_memo_gift_code_funding_memo_validate_tx_out(
         const McBuffer* MC_NONNULL gift_code_funding_memo_data,
         const McBuffer* MC_NONNULL tx_out_public_key,
         bool* MC_NONNULL out_valid,
@@ -619,7 +619,7 @@ MC_ATTRIBUTE_NONNULL(1, 2, 3);
 /// # Preconditions
 ///
 /// * `gift_code_funding_memo_data` - must be 64 bytes
-char* MC_NULLABLE mc_memo_get_gift_code_funding_note(
+char* MC_NULLABLE mc_memo_gift_code_funding_memo_get_note(
         const McBuffer* MC_NONNULL gift_code_funding_memo_data
 )
 MC_ATTRIBUTE_NONNULL(1);
@@ -631,7 +631,7 @@ MC_ATTRIBUTE_NONNULL(1);
 /// # Errors
 ///
 /// * `LibMcError::InvalidInput`
-bool mc_memo_get_gift_code_funding_fee(
+bool mc_memo_gift_code_funding_memo_get_fee(
         const McBuffer* MC_NONNULL gift_code_funding_memo_data,
         uint64_t* MC_NONNULL out_fee,
         McError* MC_NULLABLE * MC_NULLABLE out_error
@@ -665,7 +665,7 @@ MC_ATTRIBUTE_NONNULL(2, 3);
 /// # Preconditions
 ///
 /// * `gift_code_sender_memo_data` - must be 64 bytes
-char* MC_NULLABLE mc_memo_get_gift_code_sender_note(
+char* MC_NULLABLE mc_memo_gift_code_sender_memo_get_note(
         const McBuffer* MC_NONNULL gift_code_sender_memo_data
 )
 MC_ATTRIBUTE_NONNULL(1);
@@ -677,7 +677,7 @@ MC_ATTRIBUTE_NONNULL(1);
 /// # Errors
 ///
 /// * `LibMcError::InvalidInput`
-bool mc_memo_get_gift_code_sender_fee(
+bool mc_memo_get_gift_code_sender_memo_get_fee(
         const McBuffer* MC_NONNULL gift_code_sender_memo_data,
         uint64_t* MC_NONNULL out_fee,
         McError* MC_NULLABLE * MC_NULLABLE out_error
@@ -711,7 +711,7 @@ MC_ATTRIBUTE_NONNULL(3);
 /// # Errors
 ///
 /// * `LibMcError::InvalidInput`
-bool mc_memo_get_cancelled_gift_code_tx_out_index(
+bool mc_memo_gift_code_cancellation_memo_get_gift_code_tx_out_index(
         const McBuffer* MC_NONNULL gift_code_cancellation_memo_data,
         uint64_t* MC_NONNULL out_index,
         McError* MC_NULLABLE * MC_NULLABLE out_error
@@ -725,7 +725,7 @@ MC_ATTRIBUTE_NONNULL(1, 2);
 /// # Errors
 ///
 /// * `LibMcError::InvalidInput`
-bool mc_memo_get_gift_code_cancellation_fee(
+bool mc_memo_gift_code_cancellation_memo_get_fee(
         const McBuffer* MC_NONNULL gift_code_cancellation_memo_data,
         uint64_t* MC_NONNULL out_fee,
         McError* MC_NULLABLE * MC_NULLABLE out_error

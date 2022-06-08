@@ -1210,7 +1210,7 @@ pub extern "C" fn mc_memo_builder_gift_code_funding_create(
         let note = <&str>::try_from_ffi(gift_code_funding_note)
             .expect("Failed to decode gift code funding note");
         let gift_code_funding_memo_builder = GiftCodeFundingMemoBuilder::new(note)
-            .expect("Gift code funding note had invalid utf-8 or was more than 53 bytes long");
+            .expect("Gift code funding note was more than 53 bytes long");
 
         let memo_builder_box: Box<dyn MemoBuilder + Sync + Send> =
             Box::new(gift_code_funding_memo_builder);
@@ -1235,7 +1235,7 @@ pub extern "C" fn mc_memo_builder_gift_code_sender_create(
         let note = <&str>::try_from_ffi(gift_code_sender_note)
             .expect("Failed to decode gift_code_sender note");
         let gift_code_sender_memo_builder = GiftCodeSenderMemoBuilder::new(note)
-            .expect("Gift code sender note had invalid utf-8 or was more than 57 bytes long");
+            .expect("Gift code sender note was more than 57 bytes long");
 
         let memo_builder_box: Box<dyn MemoBuilder + Sync + Send> =
             Box::new(gift_code_sender_memo_builder);
@@ -1314,7 +1314,7 @@ pub extern "C" fn mc_memo_gift_code_funding_memo_create(
 ///
 /// * `LibMcError::InvalidInput`
 #[no_mangle]
-pub extern "C" fn mc_memo_validate_gift_code_funding_tx_out(
+pub extern "C" fn mc_memo_gift_code_funding_memo_validate_tx_out(
     gift_code_funding_memo_data: FfiRefPtr<McBuffer>,
     tx_out_public_key: FfiRefPtr<McBuffer>,
     out_valid: FfiMutPtr<bool>,
@@ -1337,7 +1337,7 @@ pub extern "C" fn mc_memo_validate_gift_code_funding_tx_out(
 ///
 /// * `gift_code_funding_memo_data` - must be 64 bytes
 #[no_mangle]
-pub extern "C" fn mc_memo_get_gift_code_funding_note(
+pub extern "C" fn mc_memo_gift_code_funding_memo_get_note(
     gift_code_funding_memo_data: FfiRefPtr<McBuffer>,
 ) -> FfiOptOwnedStr {
     ffi_boundary(|| {
@@ -1361,7 +1361,7 @@ pub extern "C" fn mc_memo_get_gift_code_funding_note(
 ///
 /// * `LibMcError::InvalidInput`
 #[no_mangle]
-pub extern "C" fn mc_memo_get_gift_code_funding_fee(
+pub extern "C" fn mc_memo_gift_code_funding_memo_get_fee(
     gift_code_funding_memo_data: FfiRefPtr<McBuffer>,
     out_fee: FfiMutPtr<u64>,
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
@@ -1419,7 +1419,7 @@ pub extern "C" fn mc_memo_gift_code_sender_memo_create(
 ///
 /// * `gift_code_sender_memo_data` - must be 64 bytes
 #[no_mangle]
-pub extern "C" fn mc_memo_get_gift_code_sender_note(
+pub extern "C" fn mc_memo_gift_code_sender_memo_get_note(
     gift_code_sender_memo_data: FfiRefPtr<McBuffer>,
 ) -> FfiOptOwnedStr {
     ffi_boundary(|| {
@@ -1443,7 +1443,7 @@ pub extern "C" fn mc_memo_get_gift_code_sender_note(
 ///
 /// * `LibMcError::InvalidInput`
 #[no_mangle]
-pub extern "C" fn mc_memo_get_gift_code_sender_fee(
+pub extern "C" fn mc_memo_gift_code_sender_memo_get_fee(
     gift_code_sender_memo_data: FfiRefPtr<McBuffer>,
     out_fee: FfiMutPtr<u64>,
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
@@ -1500,7 +1500,7 @@ pub extern "C" fn mc_memo_gift_code_cancellation_memo_create(
 ///
 /// * `LibMcError::InvalidInput`
 #[no_mangle]
-pub extern "C" fn mc_memo_get_cancelled_gift_code_tx_out_index(
+pub extern "C" fn mc_memo_gift_code_cancellation_memo_get_gift_code_tx_out_index(
     gift_code_cancellation_memo_data: FfiRefPtr<McBuffer>,
     out_index: FfiMutPtr<u64>,
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
@@ -1523,7 +1523,7 @@ pub extern "C" fn mc_memo_get_cancelled_gift_code_tx_out_index(
 ///
 /// * `LibMcError::InvalidInput`
 #[no_mangle]
-pub extern "C" fn mc_memo_get_gift_code_cancellation_fee(
+pub extern "C" fn mc_memo_gift_code_cancellation_memo_get_fee(
     gift_code_cancellation_memo_data: FfiRefPtr<McBuffer>,
     out_fee: FfiMutPtr<u64>,
     out_error: FfiOptMutPtr<FfiOptOwnedPtr<McError>>,
