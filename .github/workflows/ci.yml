@@ -19,7 +19,7 @@ permissions:
 jobs:
   mc-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/rust-sgx-base:latest
+    container: gcr.io/mobilenode-211420/builder-install:1_28
 
     strategy:
       matrix:
@@ -58,7 +58,7 @@ jobs:
 
   consensus-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/rust-sgx-base:latest
+    container: gcr.io/mobilenode-211420/builder-install:1_28
 
     strategy:
       matrix:
@@ -91,7 +91,7 @@ jobs:
 
   fog-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/rust-sgx-base:latest
+    container: gcr.io/mobilenode-211420/builder-install:1_28
 
     strategy:
       matrix:
@@ -151,7 +151,7 @@ jobs:
 
   fog-ingest-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/rust-sgx-base:latest
+    container: gcr.io/mobilenode-211420/builder-install:1_28
 
     steps:
       - name: Check out code
@@ -187,7 +187,7 @@ jobs:
 
   fog-conformance-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/rust-sgx-base:latest
+    container: gcr.io/mobilenode-211420/builder-install:1_28
 
     env:
       # DATABASE_URL points to a specific database.
@@ -216,10 +216,6 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
           ./build.sh
-
-          # Install nginx and PG client bins, used by fog_conformance_tests.py
-          apt-get update
-          apt-get install -y postgresql-client nginx
       - name: fog_conformance_tests.py
         working-directory: tools/fog-local-network
         run: |
@@ -255,7 +251,7 @@ jobs:
 
   fog-local-network-tests:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/rust-sgx-base:latest
+    container: gcr.io/mobilenode-211420/builder-install:1_28
 
     env:
       # DATABASE_URL points to a specific database.
@@ -319,10 +315,6 @@ jobs:
 
           # Generate sample Fog keys.
           "$BIN_DIR/sample-keys" --num 4 --output-dir fog_keys --fog-report-url 'insecure-fog://localhost:6200' --fog-authority-root $FOG_AUTHORITY_ROOT
-
-          # Install nginx and PG client bins, used by fog_local_network.py
-          apt-get update
-          apt-get install -y postgresql-client nginx
       - name: Run local network
         run: |
           BIN_DIR="$PWD/target/release"

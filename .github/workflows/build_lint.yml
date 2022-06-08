@@ -19,7 +19,7 @@ permissions:
 jobs:
   build-dev:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/rust-sgx-base:latest
+    container: gcr.io/mobilenode-211420/builder-install:1_28
 
     steps:
       - name: Check out code
@@ -30,13 +30,14 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --locked
+          # This build dies with linker OOM, so limit the number of concurrent jobs.
+          args: --locked -j 4
       - name: Check dirty git
         uses: ./.github/actions/check-dirty-git
 
   build-prod:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/rust-sgx-base:latest
+    container: gcr.io/mobilenode-211420/builder-install:1_28
 
     steps:
       - name: Check out code
@@ -91,7 +92,7 @@ jobs:
 
   lint-rust:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/rust-sgx-base:latest
+    container: gcr.io/mobilenode-211420/builder-install:1_28
 
     steps:
       - name: Check out code
@@ -132,7 +133,7 @@ jobs:
 
   cbindgen:
     runs-on: [self-hosted, Linux, small]
-    container: mobilecoin/rust-sgx-base:latest
+    container: gcr.io/mobilenode-211420/builder-install:1_28
 
     steps:
       - name: Check out code
@@ -141,14 +142,6 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           sccache: false
-      - name: Install cbindgen
-        # `cargo install` builds from source, which takes upwards of a minute.
-        # Download the latest release binary instead.
-        run: |
-          cd ${RUNNER_TEMP:-/tmp}
-          curl -LO https://github.com/eqrion/cbindgen/releases/latest/download/cbindgen
-          chmod a+x cbindgen
-          mv cbindgen ${CARGO_HOME:-~/.cargo}/bin/
       - run: make cbindgen
         working-directory: libmobilecoin
       - name: Check dirty git
@@ -156,7 +149,7 @@ jobs:
 
   docs:
     runs-on: [self-hosted, Linux, large]
-    container: mobilecoin/rust-sgx-base:latest
+    container: gcr.io/mobilenode-211420/builder-install:1_28
 
     steps:
       - name: Check out code
