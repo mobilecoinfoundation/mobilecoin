@@ -5,7 +5,7 @@ use mc_util_uri::{Uri, UriScheme};
 pub use mc_util_uri::{ConnectionUri, FogUri, UriParseError};
 
 /// Fog View Shard Scheme
-#[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct FogViewRouterScheme {}
 
 impl UriScheme for FogViewRouterScheme {
@@ -87,20 +87,20 @@ impl UriScheme for IngestPeerScheme {
     const DEFAULT_INSECURE_PORT: u16 = 8090;
 }
 
-/// Uri used when talking to fog-view service, with the right default ports and
-/// scheme.
-pub type FogViewUri = Uri<FogViewScheme>;
-/// Uri used when talking to fog-ledger service, with the right default ports
-/// and scheme.
-pub type FogLedgerUri = Uri<FogLedgerScheme>;
 /// Uri used when talking to fog-ingest service, with the right default ports
 /// and scheme.
 pub type FogIngestUri = Uri<FogIngestScheme>;
-/// Usi used when talking to fog-ingest-peer service.
+/// Uri used when talking to fog-ledger service, with the right default ports
+/// and scheme.
+pub type FogLedgerUri = Uri<FogLedgerScheme>;
 /// Uri used when talking to fog view router service.
 pub type FogViewRouterUri = Uri<FogViewRouterScheme>;
 /// Uri used when talking to fog view store service.
 pub type FogViewStoreUri = Uri<FogViewStoreScheme>;
+/// Uri used when talking to fog-view service, with the right default ports and
+/// scheme.
+pub type FogViewUri = Uri<FogViewScheme>;
+/// Uri used when talking to fog-ingest-peer service.
 pub type IngestPeerUri = Uri<IngestPeerScheme>;
 
 #[cfg(test)]
