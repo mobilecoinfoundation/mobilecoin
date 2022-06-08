@@ -132,6 +132,7 @@ pub enum ConfigError {
     DataMissing(String),
 
     /// Invalid header: {0}
+    #[cfg(feature = "ip-check")]
     InvalidHeader(InvalidHeaderValue),
 }
 
@@ -147,6 +148,7 @@ impl From<reqwest::Error> for ConfigError {
     }
 }
 
+#[cfg(feature = "ip-check")]
 impl From<InvalidHeaderValue> for ConfigError {
     fn from(e: InvalidHeaderValue) -> Self {
         Self::InvalidHeader(e)
