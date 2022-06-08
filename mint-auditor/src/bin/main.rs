@@ -9,7 +9,7 @@ use mc_ledger_db::{Ledger, LedgerDB};
 use mc_mint_auditor::{
     counters,
     db::{transaction, BlockAuditData, BlockBalance, Counters, MintAuditorDb},
-    gnosis::GnosisSafeConfig,
+    gnosis::{GnosisSafeConfig, GnosisSyncThread},
     Error, MintAuditorService,
 };
 use mc_mint_auditor_api::MintAuditorUri;
@@ -96,7 +96,7 @@ fn main() {
             poll_interval,
             listen_uri,
             admin_listen_uri,
-            gnosis_safe_config: _gnosis_safe_config,
+            gnosis_safe_config,
         } => {
             cmd_scan_ledger(
                 ledger_db,
@@ -104,6 +104,7 @@ fn main() {
                 poll_interval,
                 listen_uri,
                 admin_listen_uri,
+                gnosis_safe_config,
                 logger,
             );
         }
@@ -125,6 +126,7 @@ fn cmd_scan_ledger(
     poll_interval: Duration,
     listen_uri: Option<MintAuditorUri>,
     admin_listen_uri: Option<AdminUri>,
+    gnosis_safe_config: Option<GnosisSafeConfig>,
     logger: Logger,
 ) {
     let ledger_db = LedgerDB::open(&ledger_db_path).expect("Could not open ledger DB");
@@ -174,6 +176,22 @@ fn cmd_scan_ledger(
             logger.clone(),
         )
         .expect("Failed starting admin grpc server")
+    });
+
+    let _gnosis_safe_fetcher_threads = gnosis_safe_config.map(|gnosis_safe_config| {
+        gnosis_safe_config
+            .safes
+            .iter()
+            .map(|safe_config| {
+                GnosisSyncThread::start(
+                    safe_config,
+                    mint_auditor_db.clone(),
+                    poll_interval,
+                    logger.clone(),
+                )
+                .expect("Failed starting gnosis safe fetcher thread")
+            })
+            .collect::<Vec<_>>()
     });
 
     loop {
@@ -238,8 +256,8 @@ fn sync_loop(
     ledger_db: &LedgerDB,
     logger: &Logger,
 ) -> Result<(), Error> {
-    let conn = mint_auditor_db.get_conn()?;
     loop {
+        let conn = mint_auditor_db.get_conn()?;
         let num_blocks_in_ledger = ledger_db.num_blocks()?;
 
         let last_synced_block_index = BlockAuditData::last_synced_block_index(&conn)?;
@@ -260,11 +278,16 @@ fn sync_loop(
             Ordering::Less => {
                 // Sync the next block.
                 let block_data = ledger_db.get_block_data(num_blocks_synced)?;
-                mint_auditor_db.sync_block_with_conn(
-                    &conn,
-                    block_data.block(),
-                    block_data.contents(),
-                )?;
+
+                // SQLite3 does not like concurrent writes. Since we are going to be writing to
+                // the database, ensure we are the only writers.
+                conn.exclusive_transaction(|| {
+                    mint_auditor_db.sync_block_with_conn(
+                        &conn,
+                        block_data.block(),
+                        block_data.contents(),
+                    )
+                })?;
                 update_counters(&Counters::get(&conn)?);
             }
         };

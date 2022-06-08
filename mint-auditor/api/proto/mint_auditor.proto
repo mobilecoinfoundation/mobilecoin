@@ -6,6 +6,7 @@
 
 syntax = "proto3";
 import "google/protobuf/empty.proto";
+import "external.proto";
 
 package mint_auditor;
 
@@ -19,6 +20,34 @@ service MintAuditorApi {
     rpc GetCounters(google.protobuf.Empty) returns (Counters) {}
 }
 
+/// A Gnosis Safe transaction.
+message GnosisSafeTransaction {
+    /// The raw JSON transaction, as received from the Gnosis API service.
+    string raw_json = 1;
+
+    /// The Ethererum transaction hash.
+    string tx_hash = 2;
+}
+
+/// A Gnosis Safe deposit (transfer into the safe).
+message GnosisSafeDeposit {
+    /// The value being transferred.
+    uint64 value = 1;
+
+    /// The token address.
+    string token_addr = 2;
+}
+
+/// Audit data for a single mint transaction.
+message AuditedMintTx {
+    /// The actual MintTx.
+    external.MintTx mint_tx = 1;
+
+    /// Matching Gnosis Safe transaction.
+    GnosisSafeTransaction gnosis_safe_tx = 2;
+}
+
+/// Audit data for a single block.
 message BlockAuditData {
     // The block index this audit data is for.
     uint64 block_index = 1;

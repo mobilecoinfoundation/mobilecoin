@@ -7,6 +7,7 @@ edition = "2021"
 links = "mc-mint-auditor-api"
 
 [dependencies]
+mc-api = { path = "../../api" }
 mc-util-serial = { path = "../../util/serial" }
 mc-util-uri = { path = "../../util/uri" }
 

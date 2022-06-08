@@ -7,12 +7,17 @@ pub mod test_utils;
 
 mod conn;
 mod models;
-mod schema;
 mod transaction;
+
+/// Db schema (made public for anyone wanting to do custom queries).
+pub mod schema;
 
 pub use self::{
     conn::{Conn, ConnectionOptions},
-    models::{BlockAuditData, BlockBalance, Counters, MintConfig, MintConfigTx, MintTx},
+    models::{
+        BlockAuditData, BlockBalance, Counters, GnosisSafeDeposit, GnosisSafeTx,
+        GnosisSafeWithdrawal, MintConfig, MintConfigTx, MintTx,
+    },
     transaction::{transaction, TransactionRetriableError},
 };
 
@@ -29,6 +34,7 @@ use mc_common::{
     HashMap,
 };
 use mc_transaction_core::TokenId;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Duration;
 
 embed_migrations!("migrations/");
@@ -122,6 +128,7 @@ impl MintAuditorDb {
             };
 
             // Process mints.
+            log::trace!(self.logger, "Processing mints");
             for mint_tx in &block_contents.mint_txs {
                 // Balance accounting.
                 let balance = balance_map
@@ -163,47 +170,70 @@ impl MintAuditorDb {
             }
 
             // Count burns.
-            for tx_out in &block_contents.outputs {
-                if let Ok((amount, _)) = tx_out.view_key_match(&burn_address_view_private()) {
-                    let balance = balance_map.entry(amount.token_id).or_default();
+            log::trace!(self.logger, "Processing burns");
+            let burn_amounts = block_contents
+                .outputs
+                .par_iter()
+                .filter_map(|tx_out| {
+                    tx_out
+                        .view_key_match(&burn_address_view_private())
+                        .ok()
+                        .map(|(amount, _shared_secret)| amount)
+                })
+                .collect::<Vec<_>>();
 
-                    if amount.value > *balance {
-                        log::crit!(
-                            self.logger,
-                            "Block {}: Burned {} of token id {} but only had {}. Setting balance to 0",
-                            block_index,
-                            amount.value,
-                            amount.token_id,
-                            balance
-                        );
-                        *balance = 0;
-                        counters.num_burns_exceeding_balance += 1;
-                    } else {
-                        *balance -= amount.value;
-                        log::info!(
-                            self.logger,
-                            "Block {}: Burned {} of token id {}, balance is now {}",
-                            block_index,
-                            amount.value,
-                            amount.token_id,
-                            balance,
-                        );
-                    }
+            for amount in burn_amounts {
+                let balance = balance_map.entry(amount.token_id).or_default();
+
+                if amount.value > *balance {
+                    log::crit!(
+                        self.logger,
+                        "Block {}: Burned {} of token id {} but only had {}. Setting balance to 0",
+                        block_index,
+                        amount.value,
+                        amount.token_id,
+                        balance
+                    );
+                    *balance = 0;
+                    counters.num_burns_exceeding_balance += 1;
+                } else {
+                    *balance -= amount.value;
+                    log::info!(
+                        self.logger,
+                        "Block {}: Burned {} of token id {}, balance is now {}",
+                        block_index,
+                        amount.value,
+                        amount.token_id,
+                        balance,
+                    );
                 }
             }
 
             // Update the database.
             counters.num_blocks_synced += 1;
+            log::trace!(self.logger, "Updating counters: {:?}", counters);
             counters.set(conn)?;
 
             let block_audit_data = BlockAuditData {
                 block_index: block_index as i64,
             };
+            log::trace!(
+                self.logger,
+                "Storing block audit data: {:?}",
+                block_audit_data
+            );
             block_audit_data.set(conn)?;
 
             BlockBalance::set_balances_for_block(conn, block_index, &balance_map)?;
 
             // Success.
+            log::info!(
+                self.logger,
+                "Done syncing block {}, block_audit_data={:?}, balance_map={:?}",
+                block_index,
+                block_audit_data,
+                balance_map
+            );
             Ok((block_audit_data, balance_map))
         })
     }
