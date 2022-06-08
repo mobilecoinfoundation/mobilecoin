@@ -25,13 +25,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        # Honors rust-toolchain file, installing that version.
-        components: ${{ inputs.components }}
-        default: ${{ inputs.default }}
-        profile: ${{ inputs.profile }}
     # TODO(remoun): Re-enable after fixing missing binaries in target/ dirs.
     #- name: Set up dependency cache
     #  uses: Swatinem/rust-cache@v1
@@ -42,6 +35,17 @@ runs:
       # and writing this to the GITHUB_ENV environment file."
       # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-environment-variable
       run: |
+        # builder-install has cargo set up under /root, so handle that.
+        [[ -d /root/.cargo/bin ]] && {
+          # Hack: Make it writable so we can install tools without sudo.
+          chmod a+w /root/.cargo/bin
+          # Add to env.
+          echo 'CARGO_HOME=/root/.cargo/' >> $GITHUB_ENV
+          echo 'RUSTUP_HOME=/root/.cargo/' >> $GITHUB_ENV
+          # Add to path.
+          echo '/root/.cargo/bin' >> $GITHUB_PATH
+        }
+
         # build config
         echo 'IAS_MODE=DEV' >> $GITHUB_ENV
         echo 'SGX_MODE=SW' >> $GITHUB_ENV
@@ -53,6 +57,14 @@ runs:
 
         HOST_TARGET_TRIPLE="$(rustc -Vv | sed -n 's/^host: //p')"
         echo "HOST_TARGET_TRIPLE=$HOST_TARGET_TRIPLE" >> $GITHUB_ENV
+    # Install rust per `rust-toolchain`. No-op most of the time.
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        # Honors rust-toolchain file, installing that version.
+        components: ${{ inputs.components }}
+        default: ${{ inputs.default }}
+        profile: ${{ inputs.profile }}
     - name: Install SGX SDK
       # NB: Actions' inputs are all strings.
       if: ${{ inputs.sgx_sdk == 'true' }}
