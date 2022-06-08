@@ -398,7 +398,7 @@ impl TxOut {
         if !block_version.masked_token_id_feature_is_supported() {
             masked_amount.masked_token_id.clear();
             if amount.token_id != 0 {
-                return Err(NewTxError::TokenIdNotAllowedAtBlockVersion);
+                return Err(NewTxError::TokenIdNotAllowedAtBlockVersion(block_version));
             }
         }
 

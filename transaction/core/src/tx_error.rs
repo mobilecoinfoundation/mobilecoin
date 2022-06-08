@@ -2,7 +2,7 @@
 
 //! Errors that can occur when creating a new TxOut
 
-use crate::{AmountError, MemoError};
+use crate::{AmountError, BlockVersion, MemoError};
 use alloc::{format, string::String};
 use core::str::Utf8Error;
 use displaydoc::Display;
