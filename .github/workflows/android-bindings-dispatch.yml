@@ -6,7 +6,7 @@ on:
 jobs:
   build_publish:
     runs-on: [self-hosted, Linux, small]
-    container: mobilecoin/rust-sgx-base:latest
+    container: gcr.io/mobilenode-211420/android-bindings-builder:1_4
 
     steps:
       - name: Checkout
