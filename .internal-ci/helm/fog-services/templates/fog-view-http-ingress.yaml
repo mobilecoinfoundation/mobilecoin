@@ -7,6 +7,9 @@ metadata:
     app: fog-view
     {{- include "fogServices.labels" . | nindent 4 }}
   annotations:
+    {{- if .Values.global.certManagerClusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ .Values.global.certManagerClusterIssuer }}
+    {{- end }}
     {{ toYaml (tpl .Values.fogView.ingress.http.annotations . | fromYaml)| nindent 4 }}
 spec:
   tls:

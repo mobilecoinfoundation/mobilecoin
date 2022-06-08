@@ -10,6 +10,8 @@ image:
 
 ### Shared values with child charts.
 global:
+  certManagerClusterIssuer: letsencrypt-production-http
+
   # Shared across all instances of consensusNodeConfig config.
   node:
     ledgerDistribution:
@@ -149,7 +151,6 @@ node:
   client:
     ingress:
       annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-production-http
         # HAProxy Ingress
         haproxy.org/server-proto: 'h2'              # Force GRPC/H2 mode
         haproxy.org/server-ssl: 'false'             # The backend (server) is http
@@ -166,7 +167,6 @@ node:
   peer:
     ingress:
       annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-production-http
         # HAProxy Ingress
         haproxy.org/server-proto: 'h2'              # Force GRPC/H2 mode
         haproxy.org/server-ssl: 'false'             # The backend (server) is http
@@ -187,7 +187,6 @@ grpcGateway:
     name: go-grpc-gateway
   nodeSelector: {}
   ingress:
-    cert-manager.io/cluster-issuer: letsencrypt-production-http
     #HAProxy Ingress
     haproxy.org/path-rewrite: /gw/(.*) /\1      # Strip the /gw prefix
     haproxy.org/server-ssl: 'false'             # The backend (server) is http

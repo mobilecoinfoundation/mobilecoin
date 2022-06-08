@@ -4,6 +4,9 @@ kind: Ingress
 metadata:
   name: {{ include "consensusNode.fullname" . }}-client-grpc
   annotations:
+    {{- if .Values.global.certManagerClusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ .Values.global.certManagerClusterIssuer }}
+    {{- end }}
     {{- toYaml .Values.node.client.ingress.annotations | nindent 4 }}
   labels:
     {{- include "consensusNode.labels" . | nindent 4 }}

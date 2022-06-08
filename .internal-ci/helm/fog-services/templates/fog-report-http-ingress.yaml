@@ -10,6 +10,9 @@ metadata:
     app: fog-report
     {{- include "fogServices.labels" $ | nindent 4 }}
   annotations:
+    {{- if $.Values.global.certManagerClusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ $.Values.global.certManagerClusterIssuer }}
+    {{- end }}
     {{- toYaml $.Values.fogReport.ingress.http.annotations | nindent 4 }}
 spec:
   tls:

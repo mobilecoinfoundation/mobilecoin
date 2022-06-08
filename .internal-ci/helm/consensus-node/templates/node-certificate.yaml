@@ -1,5 +1,5 @@
 # Copyright (c) 2018-2022 The MobileCoin Foundation
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ include "consensusNode.fullname" . }}-internal-tls
@@ -10,9 +10,10 @@ spec:
   secretName: {{ include "consensusNode.fullname" . }}-internal-tls
   duration: 8760h # 365d
   renewBefore: 360h # 15d
-  keySize: 2048
-  keyAlgorithm: rsa
-  keyEncoding: pkcs1
+  privateKey:
+    size: 2048
+    algorithm: RSA
+    encoding: PKCS1
   usages:
   - server auth
   - client auth

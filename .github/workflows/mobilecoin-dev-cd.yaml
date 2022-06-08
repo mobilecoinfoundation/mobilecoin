@@ -106,7 +106,7 @@ jobs:
         VIEW_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
         INGEST_ENCLAVE_PRIVKEY: ${{ env.ENCLAVE_SIGNING_KEY_PATH }}
       run: |
-        ls -al "${ENCLAVE_SIGNING_KEY_PATH}"
+        git config --global --add safe.directory '*'
         cargo build --release \
           -p mc-admin-http-gateway \
           -p mc-consensus-mint-client \
