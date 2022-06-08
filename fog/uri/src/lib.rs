@@ -161,8 +161,10 @@ mod tests {
         );
         assert!(!uri.use_tls());
 
-        let uri =
-            FogViewRouterUri::from_str("insecure-fog-view-router://node1.test.mobilecoin.com:3225/").unwrap();
+        let uri = FogViewRouterUri::from_str(
+            "insecure-fog-view-router://node1.test.mobilecoin.com:3225/",
+        )
+        .unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:3225");
         assert_eq!(
             uri.responder_id().unwrap(),
@@ -171,7 +173,8 @@ mod tests {
         assert!(!uri.use_tls());
 
         let uri =
-            FogViewStoreUri::from_str("insecure-fog-view-store://node1.test.mobilecoin.com:3225/").unwrap();
+            FogViewStoreUri::from_str("insecure-fog-view-store://node1.test.mobilecoin.com:3225/")
+                .unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:3225");
         assert_eq!(
             uri.responder_id().unwrap(),
