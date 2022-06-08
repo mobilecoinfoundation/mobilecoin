@@ -7,6 +7,7 @@
 
 pub mod counters;
 pub mod db;
+pub mod gnosis;
 
 mod convert;
 mod error;

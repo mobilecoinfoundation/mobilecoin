@@ -25,11 +25,15 @@ diesel = { version = "1.4.8", features = ["sqlite", "r2d2"] }
 diesel_migrations = { version = "1.4.0", features = ["sqlite"] }
 displaydoc = "0.2"
 grpcio = "0.10.2"
+hex = "0.4"
 hostname = "0.3.1"
 lazy_static = "1.4"
 prost = { version = "0.10", default-features = false, features = ["prost-derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+serde_with = "1.13"
+toml = "0.5"
+url = "2.2"
 
 [dev-dependencies]
 mc-crypto-keys = { path = "../crypto/keys" }
