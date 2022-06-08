@@ -243,6 +243,8 @@ mod mint_config_tx_tests {
     };
     use rand::{rngs::StdRng, SeedableRng};
 
+    const BLOCK_VERSION: BlockVersion = BlockVersion::MAX;
+
     /// validate_mint_config_tx accepts a valid mint config tx when only a
     /// single token is configured.
     #[test_with_logger]
@@ -252,7 +254,7 @@ mod mint_config_tx_tests {
 
         let mut ledger = create_ledger();
         let n_blocks = 1;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -263,7 +265,7 @@ mod mint_config_tx_tests {
         )])
         .unwrap();
         let mint_tx_manager =
-            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+            MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
         assert_eq!(
             mint_tx_manager.validate_mint_config_tx(&mint_config_tx),
@@ -282,7 +284,7 @@ mod mint_config_tx_tests {
 
         let mut ledger = create_ledger();
         let n_blocks = 1;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -305,7 +307,7 @@ mod mint_config_tx_tests {
         ])
         .unwrap();
         let mint_tx_manager =
-            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+            MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
         assert_eq!(
             mint_tx_manager.validate_mint_config_tx(&mint_config_tx1),
@@ -344,16 +346,12 @@ mod mint_config_tx_tests {
         // setting n_blocks to tombstone_block - 1 means the transaction will be valid
         // for exactly 1 block, but once that's written it will exceed it.
         let n_blocks = mint_config_tx.prefix.tombstone_block - 1;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger.clone(),
-            BlockVersion::MAX,
-            token_id_to_governors,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger.clone(), BLOCK_VERSION, token_id_to_governors, logger);
 
         // At first we should succeed since we have not yet exceeded the tombstone
         // block.
@@ -366,13 +364,13 @@ mod mint_config_tx_tests {
         let parent_block = ledger.get_block(n_blocks - 1).unwrap();
 
         let block_contents = BlockContents {
-            outputs: vec![create_test_tx_out(BlockVersion::MAX, &mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             key_images: vec![KeyImage::from(123)],
             ..Default::default()
         };
 
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -398,7 +396,7 @@ mod mint_config_tx_tests {
 
         let mut ledger = create_ledger();
         let n_blocks = 1;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -408,12 +406,8 @@ mod mint_config_tx_tests {
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
         )])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger.clone(),
-            BlockVersion::MAX,
-            token_id_to_governors,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger.clone(), BLOCK_VERSION, token_id_to_governors, logger);
 
         // At first we should succeed since the nonce is not yet in the ledger.
         assert_eq!(
@@ -430,7 +424,7 @@ mod mint_config_tx_tests {
         };
 
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -457,7 +451,7 @@ mod mint_config_tx_tests {
 
         let mut ledger = create_ledger();
         let n_blocks = 3;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -468,7 +462,7 @@ mod mint_config_tx_tests {
         )])
         .unwrap();
         let mint_tx_manager =
-            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+            MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
         let (mint_config_tx2, _signers) = create_mint_config_tx_and_signers(token_id_2, &mut rng);
         assert_eq!(
@@ -489,7 +483,7 @@ mod mint_config_tx_tests {
 
         let mut ledger = create_ledger();
         let n_blocks = 1;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -500,7 +494,7 @@ mod mint_config_tx_tests {
         )])
         .unwrap();
         let mint_tx_manager =
-            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+            MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
         mint_config_tx.prefix.tombstone_block += 1;
 
@@ -521,7 +515,7 @@ mod mint_config_tx_tests {
 
         let mut ledger = create_ledger();
         let n_blocks = 3;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -535,7 +529,7 @@ mod mint_config_tx_tests {
         )])
         .unwrap();
         let mint_tx_manager =
-            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+            MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
         let mut expected_result = vec![
             mint_config_tx1.clone(),
@@ -572,7 +566,7 @@ mod mint_config_tx_tests {
 
         let mut ledger = create_ledger();
         let n_blocks = 3;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -588,7 +582,7 @@ mod mint_config_tx_tests {
         )])
         .unwrap();
         let mint_tx_manager =
-            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+            MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
         let mut expected_result = vec![
             mint_config_tx1.clone(),
@@ -636,6 +630,8 @@ mod mint_tx_tests {
     use rand::{rngs::StdRng, SeedableRng};
     use std::iter::FromIterator;
 
+    const BLOCK_VERSION: BlockVersion = BlockVersion::MAX;
+
     /// validate_mint_tx accepts a valid mint tx when a single token is
     /// configured.
     #[test_with_logger]
@@ -645,7 +641,7 @@ mod mint_tx_tests {
 
         let mut ledger = create_ledger();
         let n_blocks = 3;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -660,7 +656,7 @@ mod mint_tx_tests {
         };
 
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -675,7 +671,7 @@ mod mint_tx_tests {
         )])
         .unwrap();
         let mint_tx_manager =
-            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+            MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
         // Create a valid MintTx signed by the governor.
         let mint_tx = create_mint_tx(
@@ -697,7 +693,7 @@ mod mint_tx_tests {
 
         let mut ledger = create_ledger();
         let n_blocks = 3;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -716,7 +712,7 @@ mod mint_tx_tests {
         };
 
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -737,7 +733,7 @@ mod mint_tx_tests {
         ])
         .unwrap();
         let mint_tx_manager =
-            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+            MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
         // Check valid transactions.
         let mint_tx1 = create_mint_tx(
@@ -773,7 +769,7 @@ mod mint_tx_tests {
 
         let mut ledger = create_ledger();
         let n_blocks = 3;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -792,7 +788,7 @@ mod mint_tx_tests {
         };
 
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -813,7 +809,7 @@ mod mint_tx_tests {
         ])
         .unwrap();
         let mint_tx_manager =
-            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+            MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
         // Sign the wrong signer.
         let mint_tx = create_mint_tx(
@@ -871,7 +867,7 @@ mod mint_tx_tests {
 
         let mut ledger = create_ledger();
         let n_blocks = 3;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -886,7 +882,7 @@ mod mint_tx_tests {
         };
 
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -900,12 +896,8 @@ mod mint_tx_tests {
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
         )])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger.clone(),
-            BlockVersion::MAX,
-            token_id_to_governors,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger.clone(), BLOCK_VERSION, token_id_to_governors, logger);
 
         // Create a MintTx that exceeds the mint limit
         let mint_tx = create_mint_tx(
@@ -937,12 +929,12 @@ mod mint_tx_tests {
 
         let block_contents = BlockContents {
             mint_txs: vec![mint_tx],
-            outputs: vec![create_test_tx_out(BlockVersion::MAX, &mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -984,7 +976,7 @@ mod mint_tx_tests {
 
         let mut ledger = create_ledger();
         let n_blocks = 3;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -1001,7 +993,7 @@ mod mint_tx_tests {
         };
 
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -1015,12 +1007,8 @@ mod mint_tx_tests {
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
         )])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger.clone(),
-            BlockVersion::MAX,
-            token_id_to_governors,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger.clone(), BLOCK_VERSION, token_id_to_governors, logger);
 
         // Create a MintTx that exceeds the total mint limit
         let mint_tx = create_mint_tx(
@@ -1052,12 +1040,12 @@ mod mint_tx_tests {
 
         let block_contents = BlockContents {
             mint_txs: vec![mint_tx],
-            outputs: vec![create_test_tx_out(BlockVersion::MAX, &mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             ..Default::default()
         };
 
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -1099,7 +1087,7 @@ mod mint_tx_tests {
 
         let mut ledger = create_ledger();
         let n_blocks = 3;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -1114,7 +1102,7 @@ mod mint_tx_tests {
         };
 
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -1129,7 +1117,7 @@ mod mint_tx_tests {
         )])
         .unwrap();
         let mint_tx_manager =
-            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+            MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
         // Create a valid MintTx signed by the governor.
         let mut mint_tx = create_mint_tx(
@@ -1173,7 +1161,7 @@ mod mint_tx_tests {
         // for exactly 1 block, but once that's written it will exceed it. However, we
         // subtract 2 since we also need to add a block for the mint config tx.
         let n_blocks = mint_tx.prefix.tombstone_block - 2;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -1186,7 +1174,7 @@ mod mint_tx_tests {
         };
 
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -1200,12 +1188,8 @@ mod mint_tx_tests {
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
         )])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger.clone(),
-            BlockVersion::MAX,
-            token_id_to_governors,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger.clone(), BLOCK_VERSION, token_id_to_governors, logger);
 
         // At first we should succeed since we have not yet exceeded the tombstone
         // block.
@@ -1215,13 +1199,13 @@ mod mint_tx_tests {
         let parent_block = block;
 
         let block_contents = BlockContents {
-            outputs: vec![create_test_tx_out(BlockVersion::MAX, &mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             key_images: vec![KeyImage::from(123)],
             ..Default::default()
         };
 
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -1246,7 +1230,7 @@ mod mint_tx_tests {
 
         let mut ledger = create_ledger();
         let n_blocks = 3;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -1261,7 +1245,7 @@ mod mint_tx_tests {
         };
 
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -1275,12 +1259,8 @@ mod mint_tx_tests {
             SignerSet::new(signers.iter().map(|s| s.public_key()).collect(), 1),
         )])
         .unwrap();
-        let mint_tx_manager = MintTxManagerImpl::new(
-            ledger.clone(),
-            BlockVersion::MAX,
-            token_id_to_governors,
-            logger,
-        );
+        let mint_tx_manager =
+            MintTxManagerImpl::new(ledger.clone(), BLOCK_VERSION, token_id_to_governors, logger);
 
         // Create a valid MintTx signed by the governor.
         let mint_tx = create_mint_tx(
@@ -1295,14 +1275,14 @@ mod mint_tx_tests {
 
         // Append to the ledger.
         let block_contents = BlockContents {
-            outputs: vec![create_test_tx_out(BlockVersion::MAX, &mut rng)],
+            outputs: vec![create_test_tx_out(BLOCK_VERSION, &mut rng)],
             mint_txs: vec![mint_tx.clone()],
             ..Default::default()
         };
 
         let parent_block = block;
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -1328,7 +1308,7 @@ mod mint_tx_tests {
 
         let mut ledger = create_ledger();
         let n_blocks = 3;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -1343,7 +1323,7 @@ mod mint_tx_tests {
         };
 
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -1384,7 +1364,7 @@ mod mint_tx_tests {
         )])
         .unwrap();
         let mint_tx_manager =
-            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+            MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
         let mut expected_result = mint_txs.clone();
         expected_result.sort();
@@ -1420,7 +1400,7 @@ mod mint_tx_tests {
 
         let mut ledger = create_ledger();
         let n_blocks = 3;
-        let block_version = BlockVersion::MAX;
+        let block_version = BLOCK_VERSION;
         let sender = AccountKey::random(&mut rng);
         initialize_ledger(block_version, &mut ledger, n_blocks, &sender, &mut rng);
 
@@ -1435,7 +1415,7 @@ mod mint_tx_tests {
         };
 
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -1496,7 +1476,7 @@ mod mint_tx_tests {
         )])
         .unwrap();
         let mint_tx_manager =
-            MintTxManagerImpl::new(ledger, BlockVersion::MAX, token_id_to_governors, logger);
+            MintTxManagerImpl::new(ledger, BLOCK_VERSION, token_id_to_governors, logger);
 
         // The expected result is that we get 3 transactions, one for each
         // configuration. We use the amount to sanity check this.
