@@ -164,3 +164,26 @@ mod test {
         assert_eq!(deserialized, the_struct);
     }
 }
+
+#[cfg(all(test, feature = "serde_with"))]
+mod json_u64_tests {
+    use super::*;
+    use serde::{Deserialize, Serialize};
+
+    #[derive(PartialEq, Serialize, Deserialize, Debug)]
+    struct TestStruct {
+        nums: Vec<JsonU64>,
+        block: JsonU64,
+    }
+
+    #[test]
+    fn test_serialize_jsonu64_struct() {
+        let the_struct = TestStruct {
+            nums: (&[0, 1, 2, u64::MAX]).iter().map(Into::into).collect(),
+            block: JsonU64(u64::MAX - 1),
+        };
+        let serialized = serialize(&the_struct).unwrap();
+        let deserialized: TestStruct = deserialize(&serialized).unwrap();
+        assert_eq!(deserialized, the_struct);
+    }
+}
