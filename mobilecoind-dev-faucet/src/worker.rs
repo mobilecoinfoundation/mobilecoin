@@ -258,7 +258,7 @@ impl Worker {
                     log::error!(logger, "Could not get ledger info: {:?}", err);
                 }
             }
-            std::thread::sleep(worker_poll_period);
+            std::thread::sleep(Duration::from_millis(1000));
         };
         log::info!(logger, "Ledger is at block_count = {}", block_count);
 
@@ -282,7 +282,7 @@ impl Worker {
                     log::error!(logger, "Could not get monitor status: {:?}", err);
                 }
             }
-            std::thread::sleep(worker_poll_period);
+            std::thread::sleep(Duration::from_millis(1000));
         }
 
         // Poll all token ids looking for activity, then sleep for a bit

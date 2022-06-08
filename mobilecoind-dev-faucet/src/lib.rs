@@ -91,7 +91,8 @@ pub struct State {
 
 impl State {
     /// Create a new state from config and a logger
-    pub fn new(config: &Config, logger: &Logger) -> Result<State, String> {
+    /// This retries infinitely until it succeeds, logging errors
+    pub fn new(config: &Config, logger: &Logger) -> State {
         // Search for keyfile and load it
         let account_key = read_keyfile(config.keyfile.clone()).expect("Could not load keyfile");
 
@@ -105,10 +106,66 @@ impl State {
 
         let mobilecoind_api_client = MobilecoindApiClient::new(ch);
 
+        let (monitor_id, monitor_public_address, monitor_b58_address, minimum_fees) = loop {
+            match Self::try_new(&mobilecoind_api_client, &account_key) {
+                Ok(result) => break result,
+                Err(err) => log::error!(logger, "Initialization failed, will retry: {}", err),
+            }
+            std::thread::sleep(Duration::from_millis(1000));
+        };
+
+        // The payout amount for each token id is minimum_fee * config.amount_factor
+        let faucet_payout_amounts: HashMap<TokenId, u64> = minimum_fees
+            .iter()
+            .map(|(token_id, fee)| (*token_id, config.amount_factor * fee))
+            .collect();
+
+        // Start background worker, which splits txouts in advance
+        let worker = Worker::new(
+            mobilecoind_api_client.clone(),
+            monitor_id.clone(),
+            monitor_public_address.clone(),
+            minimum_fees,
+            faucet_payout_amounts.clone(),
+            config.target_queue_depth,
+            Duration::from_millis(config.worker_poll_period_ms),
+            logger,
+        );
+
+        let logger = logger.new(o!("thread" => "req-handler"));
+
+        State {
+            mobilecoind_api_client,
+            account_key,
+            monitor_id,
+            monitor_b58_address,
+            faucet_payout_amounts,
+            worker,
+            logger,
+        }
+    }
+
+    // Try to issue commands to mobilecoind to set up a new faucet, returning an
+    // error if any of them fail
+    //
+    // Returns monitor id, monitor public address, monitor b58 address, and the
+    // current network minimum fees
+    fn try_new(
+        mobilecoind_api_client: &MobilecoindApiClient,
+        account_key: &AccountKey,
+    ) -> Result<
+        (
+            Vec<u8>,
+            mc_api::external::PublicAddress,
+            String,
+            HashMap<TokenId, u64>,
+        ),
+        String,
+    > {
         // Create a monitor using our account key
         let monitor_id = {
             let mut req = mc_mobilecoind_api::AddMonitorRequest::new();
-            req.set_account_key((&account_key).into());
+            req.set_account_key(account_key.into());
             req.set_num_subaddresses(2);
             req.set_name("faucet".to_string());
 
@@ -151,35 +208,12 @@ impl State {
             result
         };
 
-        // The payout amount for each token id is minimum_fee * config.amount_factor
-        let faucet_payout_amounts: HashMap<TokenId, u64> = minimum_fees
-            .iter()
-            .map(|(token_id, fee)| (*token_id, config.amount_factor * fee))
-            .collect();
-
-        // Start background worker, which splits txouts in advance
-        let worker = Worker::new(
-            mobilecoind_api_client.clone(),
-            monitor_id.clone(),
-            monitor_public_address.clone(),
-            minimum_fees,
-            faucet_payout_amounts.clone(),
-            config.target_queue_depth,
-            Duration::from_millis(config.worker_poll_period_ms),
-            logger,
-        );
-
-        let logger = logger.new(o!("thread" => "req-handler"));
-
-        Ok(State {
-            mobilecoind_api_client,
-            account_key,
+        Ok((
             monitor_id,
+            monitor_public_address.clone(),
             monitor_b58_address,
-            faucet_payout_amounts,
-            worker,
-            logger,
-        })
+            minimum_fees,
+        ))
     }
 
     /// Handle a "post" to the faucet, which requests a payment from the faucet.
