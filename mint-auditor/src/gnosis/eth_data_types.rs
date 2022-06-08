@@ -7,7 +7,10 @@ use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 
 /// Ethereum 20 byte address.
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+/// We currently do not store the decoded bytes since we want to maintain the
+/// original capitalization (which is how Ethereum addresses represent a
+/// checksum). We don't have a need for the raw bytes.
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct EthAddr(pub String);
 
 impl FromStr for EthAddr {
@@ -33,6 +36,15 @@ impl fmt::Display for EthAddr {
     }
 }
 
+impl PartialEq for EthAddr {
+    fn eq(&self, other: &Self) -> bool {
+        // Ethereum addresses are case-insensitive.
+        self.0.to_lowercase() == other.0.to_lowercase()
+    }
+}
+
+impl Eq for EthAddr {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -42,6 +54,11 @@ mod tests {
         assert_eq!(
             EthAddr::from_str("0xA000000000000000000000000000000000001234").unwrap(),
             EthAddr("0xA000000000000000000000000000000000001234".to_string())
+        );
+
+        assert_eq!(
+            EthAddr::from_str("0xABC0000000000000000000000000000000001234").unwrap(),
+            EthAddr("0xabc0000000000000000000000000000000001234".to_string())
         );
     }
 
