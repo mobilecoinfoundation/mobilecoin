@@ -55,5 +55,5 @@ mc-util-test-helper = { path = "../util/test-helper" }
 lazy_static = "1.4"
 rand_core = "0.6"
 rand_hc = "0.3"
-serial_test = "0.6"
+serial_test = "0.7"
 tempdir = "0.3"
