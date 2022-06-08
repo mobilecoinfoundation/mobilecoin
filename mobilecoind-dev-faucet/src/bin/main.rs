@@ -1,6 +1,5 @@
 // Copyright (c) 2018-2022 The MobileCoin Foundation
 
-
 //! HTTP faucet service backed by mobilecoind
 
 #![deny(missing_docs)]
@@ -18,28 +17,14 @@ async fn post(
     state: &rocket::State<State>,
     req: Json<JsonFaucetRequest>,
 ) -> Json<JsonSubmitTxResponse> {
-    Json(match state.handle_post(&req).await {
-        Ok(resp) => resp.into(),
-        Err(err_str) => JsonSubmitTxResponse {
-            success: false,
-            err_str: Some(err_str),
-            ..Default::default()
-        },
-    })
+    Json(state.handle_post(&req).await.into())
 }
 
 /// Request status of the faucet, and map the rust result onto json for rocket
 /// apporpriately
 #[get("/status")]
 async fn status(state: &rocket::State<State>) -> Json<JsonFaucetStatus> {
-    Json(match state.handle_status().await {
-        Ok(resp) => resp,
-        Err(err_str) => JsonFaucetStatus {
-            success: false,
-            err_str: Some(err_str),
-            ..Default::default()
-        },
-    })
+    Json(state.handle_status().await.into())
 }
 
 #[rocket::main]

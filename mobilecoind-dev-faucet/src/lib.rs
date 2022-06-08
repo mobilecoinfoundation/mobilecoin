@@ -19,7 +19,6 @@ use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, Mobilecoind
 use mc_transaction_core::{ring_signature::KeyImage, TokenId};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_keyfile::read_keyfile;
-use mc_util_serial::JsonU64;
 use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
 /// Command line config, set with defaults that will work with
@@ -238,13 +237,18 @@ impl State {
 
         // Tell the worker that this utxo was submitted, so that it can track and
         // recycle the utxo if this payment fails
-        let _ = utxo_record.sender.send(resp.clone());
+        if let Err(_) = utxo_record.sender.send(resp.clone()) {
+            log::error!(
+                self.logger,
+                "Could not send SubmitTxResponse to worker thread"
+            );
+        }
         Ok(resp)
     }
 
     /// Handle a "get status" request to the faucet.
     /// Returns either the json status report or an error string.
-    pub async fn handle_status(&self) -> Result<JsonFaucetStatus, String> {
+    pub async fn handle_status(&self) -> Result<FaucetStatus, String> {
         // Get up-to-date balances for all the tokens we are tracking
         let mut balances: HashMap<TokenId, u64> = Default::default();
         for (token_id, _) in self.faucet_payout_amounts.iter() {
@@ -273,24 +277,14 @@ impl State {
 
         let queue_depths = self.worker.get_queue_depths();
 
-        Ok(JsonFaucetStatus {
-            success: true,
-            err_str: None,
+        Ok(FaucetStatus {
             b58_address: self.monitor_b58_address.clone(),
-            faucet_payout_amounts: self
-                .faucet_payout_amounts
-                .iter()
-                .map(convert_balance_pair)
-                .collect(),
-            balances: balances.iter().map(convert_balance_pair).collect(),
+            faucet_payout_amounts: self.faucet_payout_amounts.clone(),
+            balances,
             queue_depths: queue_depths
                 .into_iter()
-                .map(|(token_id, depth)| (JsonU64(*token_id), JsonU64(depth as u64)))
+                .map(|(token_id, depth)| (token_id, depth as u64))
                 .collect(),
         })
     }
-}
-
-fn convert_balance_pair(pair: (&TokenId, &u64)) -> (JsonU64, JsonU64) {
-    (JsonU64(**pair.0), JsonU64(*pair.1))
 }

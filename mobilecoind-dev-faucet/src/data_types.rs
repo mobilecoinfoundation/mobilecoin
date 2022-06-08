@@ -3,6 +3,7 @@
 //! Serializeable data types that wrap the mobilecoind API.
 
 use mc_api::external::PublicAddress;
+use mc_transaction_core::TokenId;
 use mc_util_serial::JsonU64;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -39,6 +40,50 @@ pub struct JsonFaucetStatus {
     /// queues run out then the faucet needs some more time to rebuild them.
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub queue_depths: HashMap<JsonU64, JsonU64>,
+}
+
+/// The data obtained when the faucet gets its status successfully
+pub struct FaucetStatus {
+    /// The b58 address of the faucet
+    pub b58_address: String,
+    /// The faucet payout amounts
+    pub faucet_payout_amounts: HashMap<TokenId, u64>,
+    /// The balance in each token id
+    pub balances: HashMap<TokenId, u64>,
+    /// The queue depth for each token id
+    pub queue_depths: HashMap<TokenId, u64>,
+}
+
+impl From<Result<FaucetStatus, String>> for JsonFaucetStatus {
+    fn from(src: Result<FaucetStatus, String>) -> Self {
+        match src {
+            Ok(FaucetStatus {
+                b58_address,
+                faucet_payout_amounts,
+                balances,
+                queue_depths,
+            }) => JsonFaucetStatus {
+                success: true,
+                err_str: None,
+                b58_address: b58_address,
+                faucet_payout_amounts: faucet_payout_amounts
+                    .into_iter()
+                    .map(convert_balance_pair)
+                    .collect(),
+                balances: balances.into_iter().map(convert_balance_pair).collect(),
+                queue_depths: queue_depths.into_iter().map(convert_balance_pair).collect(),
+            },
+            Err(err_str) => JsonFaucetStatus {
+                success: false,
+                err_str: Some(err_str),
+                ..Default::default()
+            },
+        }
+    }
+}
+
+fn convert_balance_pair(pair: (TokenId, u64)) -> (JsonU64, JsonU64) {
+    (JsonU64(*pair.0), JsonU64(pair.1))
 }
 
 /// A Tx receipt that the reciepient of a payment can use (with mobilecoind)
@@ -121,16 +166,23 @@ pub struct JsonSubmitTxResponse {
     pub receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
 }
 
-impl From<mc_mobilecoind_api::SubmitTxResponse> for JsonSubmitTxResponse {
-    fn from(mut src: mc_mobilecoind_api::SubmitTxResponse) -> Self {
-        Self {
-            success: true,
-            err_str: None,
-            receiver_tx_receipt_list: src
-                .take_receiver_tx_receipt_list()
-                .iter()
-                .map(JsonReceiverTxReceipt::from)
-                .collect(),
+impl From<Result<mc_mobilecoind_api::SubmitTxResponse, String>> for JsonSubmitTxResponse {
+    fn from(src: Result<mc_mobilecoind_api::SubmitTxResponse, String>) -> Self {
+        match src {
+            Ok(mut resp) => Self {
+                success: true,
+                err_str: None,
+                receiver_tx_receipt_list: resp
+                    .take_receiver_tx_receipt_list()
+                    .iter()
+                    .map(JsonReceiverTxReceipt::from)
+                    .collect(),
+            },
+            Err(err_str) => Self {
+                success: false,
+                err_str: Some(err_str),
+                ..Default::default()
+            },
         }
     }
 }

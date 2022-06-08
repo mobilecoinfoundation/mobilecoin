@@ -182,8 +182,8 @@ impl Worker {
     /// * minimum_fees: The minimum fees for each token we are interested in
     /// * target_amounts: The target value for UTXOs of each token we are
     ///   interested in
-    /// * target_queue_depth: The target depth of the queue for each token ID. If
-    ///   a queue falls below this number the worker attempts a split Tx.
+    /// * target_queue_depth: The target depth of the queue for each token ID.
+    ///   If a queue falls below this number the worker attempts a split Tx.
     /// * worker_poll_period: A lower bound on how often the worker should poll
     /// * logger
     ///
@@ -499,7 +499,9 @@ impl WorkerTokenState {
                 let (tracker, record) = UtxoTracker::new(utxo.clone());
                 // Add to queue depth before push, because we subtract after pop
                 self.queue_depth.fetch_add(1, Ordering::SeqCst);
-                let _ = self.sender.send(record);
+                if let Err(_) = self.sender.send(record) {
+                    panic!("Queue was closed before worker thread was joined, this is an unexpected program state");
+                }
                 e.insert(tracker);
             }
 
