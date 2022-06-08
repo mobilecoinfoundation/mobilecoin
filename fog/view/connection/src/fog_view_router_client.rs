@@ -57,7 +57,7 @@ impl FogViewRouterGrpcClient {
 
         let receive = async move {
             let mut counter = 0;
-            while let Some(_) = receiver.try_next().await? {
+            while (receiver.try_next().await?).is_some() {
                 counter += 1;
                 log::info!(self.logger, "Got message {} ", counter);
             }

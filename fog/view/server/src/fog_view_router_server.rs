@@ -42,7 +42,7 @@ where
         );
 
         let fog_view_router_service = view_grpc::create_fog_view_router_api(
-            FogViewRouterService::new(enclave.clone(), shards.clone(), logger.clone()),
+            FogViewRouterService::new(enclave.clone(), shards, logger.clone()),
         );
         log::debug!(logger, "Constructed Fog View Router GRPC Service");
 
