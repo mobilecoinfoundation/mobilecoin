@@ -811,6 +811,27 @@ FfiOptOwnedPtr<McData> mc_transaction_builder_add_change_output(FfiRefPtr<McAcco
 /**
  * # Preconditions
  *
+ * * `account_key` - must be a valid account key as the gift code subaddress is
+ *   computed from the account key
+ * * `transaction_builder` - must not have been previously consumed by a call
+ *   to `build`.
+ * * `out_tx_out_confirmation_number` - length must be >= 32.
+ *
+ * # Errors
+ *
+ * * `LibMcError::AttestationVerification`
+ * * `LibMcError::InvalidInput`
+ */
+FfiOptOwnedPtr<McData> mc_transaction_builder_fund_gift_code_output(FfiRefPtr<McAccountKey> account_key,
+                                                                    FfiMutPtr<McTransactionBuilder> transaction_builder,
+                                                                    uint64_t amount,
+                                                                    FfiOptMutPtr<McRngCallback> rng_callback,
+                                                                    FfiMutPtr<McMutableBuffer> out_tx_out_confirmation_number,
+                                                                    FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
  * * `transaction_builder` - must not have been previously consumed by a call
  *   to `build`.
  * * `recipient_address` - must be a valid `PublicAddress`.
@@ -1054,6 +1075,180 @@ bool mc_memo_sender_with_payment_request_memo_get_address_hash(FfiRefPtr<McBuffe
 bool mc_memo_sender_with_payment_request_memo_get_payment_request_id(FfiRefPtr<McBuffer> sender_with_payment_request_memo_data,
                                                                      FfiMutPtr<uint64_t> out_payment_request_id,
                                                                      FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `gift_code_funding_note` - must be a null-terminated C string containing
+ * up to 54 valid UTF-8 bytes. The actual note stored on chain is up to 53 null
+ * terminated UTF-8 bytes unless the note is exactly 53 utf-8 bytes long,
+ * in which case, no null bytes are stored. If the C string passed here is
+ * exactly 54 bytes, the last byte MUST be null and that byte will be
+ * removed prior to storage on chain.
+ */
+FfiOptOwnedPtr<McTxOutMemoBuilder> mc_memo_builder_gift_code_funding_create(FfiStr gift_code_funding_note);
+
+/**
+ * # Preconditions
+ *
+ * * `gift_code_sender_note` - must be a null-terminated C string containing up
+ * to 58 valid UTF-8 bytes. The actual note stored on chain is up to 57 null
+ * terminated UTF-8 bytes unless the note is exactly 57 utf-8 bytes long,
+ * in which case, no null bytes are stored. If the C string passed here is
+ * exactly 58 bytes, the last byte MUST be null and that byte will be
+ * removed prior to storage on chain.
+ */
+FfiOptOwnedPtr<McTxOutMemoBuilder> mc_memo_builder_gift_code_sender_create(FfiStr gift_code_sender_note);
+
+/**
+ * # Preconditions
+ *
+ * * `global_index` - must be the global TxOut index of the originally funded
+ *   gift code TxOut
+ */
+FfiOptOwnedPtr<McTxOutMemoBuilder> mc_memo_builder_gift_code_cancellation_create(uint64_t global_index);
+
+/**
+ * # Preconditions
+ *
+ * * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+ * * `fee` - must be an integer less than or equal to 2^56
+ * * `gift_code_funding_note` - must be a null-terminated C string containing
+ * up to 54 valid UTF-8 bytes. The actual note stored on chain is up to 53 null
+ * terminated UTF-8 bytes unless the note is exactly 53 utf-8 bytes long,
+ * in which case, no null bytes are stored. If the C string passed here is
+ * exactly 54 bytes, the last byte MUST be null and that byte will be
+ * removed prior to storage on chain.
+ * * `out_memo_data` - length must be >= 64.
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_gift_code_funding_memo_create(FfiRefPtr<McBuffer> tx_out_public_key,
+                                           uint64_t fee,
+                                           FfiStr gift_code_funding_note,
+                                           FfiMutPtr<McMutableBuffer> out_memo_data,
+                                           FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `gift_code_funding_memo_data` - must be 64 bytes
+ * * `tx_out_public_key` - must be a valid 32-byte Ristretto-format scalar.
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_gift_code_funding_memo_validate_tx_out(FfiRefPtr<McBuffer> gift_code_funding_memo_data,
+                                                    FfiRefPtr<McBuffer> tx_out_public_key,
+                                                    FfiMutPtr<bool> out_valid,
+                                                    FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `gift_code_funding_memo_data` - must be 64 bytes
+ */
+FfiOptOwnedStr mc_memo_gift_code_funding_memo_get_note(FfiRefPtr<McBuffer> gift_code_funding_memo_data);
+
+/**
+ * # Preconditions
+ *
+ * * `gift_code_funding_memo_data` - must be 64 bytes
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_gift_code_funding_memo_get_fee(FfiRefPtr<McBuffer> gift_code_funding_memo_data,
+                                            FfiMutPtr<uint64_t> out_fee,
+                                            FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `fee` - must be an integer less than or equal to 2^56
+ * * `gift_code_sender_note` - must be a null-terminated C string containing up
+ * to 58 valid UTF-8 bytes. The actual note stored on chain is up to 57 null
+ * terminated UTF-8 bytes unless the note is exactly 57 utf-8 bytes long,
+ * in which case, no null bytes are stored. If the C string passed here is
+ * exactly 58 bytes, the last byte MUST be null and that byte will be
+ * removed prior to storage on chain.
+ * * `out_memo_data` - length must be >= 64.
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_gift_code_sender_memo_create(uint64_t fee,
+                                          FfiStr gift_code_sender_note,
+                                          FfiMutPtr<McMutableBuffer> out_memo_data,
+                                          FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `gift_code_sender_memo_data` - must be 64 bytes
+ */
+FfiOptOwnedStr mc_memo_gift_code_sender_memo_get_note(FfiRefPtr<McBuffer> gift_code_sender_memo_data);
+
+/**
+ * # Preconditions
+ *
+ * * `gift_code_sender_memo_data` - must be 64 bytes
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_gift_code_sender_memo_get_fee(FfiRefPtr<McBuffer> gift_code_sender_memo_data,
+                                           FfiMutPtr<uint64_t> out_fee,
+                                           FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `fee` - must be an integer less than or equal to 2^56
+ * * `global_index` - must be the global TxOut index of the originally funded
+ *   gift code TxOut
+ * * `out_memo_data` - length must be >= 64.
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_gift_code_cancellation_memo_create(uint64_t fee,
+                                                uint64_t global_index,
+                                                FfiMutPtr<McMutableBuffer> out_memo_data,
+                                                FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `gift_code_cancellation_memo_data` - must be 64 bytes
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_gift_code_cancellation_memo_get_gift_code_tx_out_index(FfiRefPtr<McBuffer> gift_code_cancellation_memo_data,
+                                                                    FfiMutPtr<uint64_t> out_index,
+                                                                    FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
+
+/**
+ * # Preconditions
+ *
+ * * `gift_code_cancellation_memo_data` - must be 64 bytes
+ *
+ * # Errors
+ *
+ * * `LibMcError::InvalidInput`
+ */
+bool mc_memo_gift_code_cancellation_memo_get_fee(FfiRefPtr<McBuffer> gift_code_cancellation_memo_data,
+                                                 FfiMutPtr<uint64_t> out_fee,
+                                                 FfiOptMutPtr<FfiOptOwnedPtr<McError>> out_error);
 
 /**
  * # Preconditions
