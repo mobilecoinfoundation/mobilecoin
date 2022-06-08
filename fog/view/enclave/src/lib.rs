@@ -180,12 +180,13 @@ impl ViewEnclaveApi for SgxViewEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn create_multi_view_store_query(
+    fn create_multi_view_store_query_data(
         &self,
         client_query: EnclaveMessage<ClientSession>,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
-        let inbuf =
-            mc_util_serial::serialize(&ViewEnclaveRequest::CreateMultiViewStoreQuery(client_query))?;
+        let inbuf = mc_util_serial::serialize(&ViewEnclaveRequest::CreateMultiViewStoreQuery(
+            client_query,
+        ))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }

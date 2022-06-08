@@ -138,12 +138,11 @@ pub trait ViewEnclaveApi: ReportableEnclave {
     /// enclave's ORAM
     fn add_records(&self, records: Vec<ETxOutRecord>) -> Result<()>;
 
-    /// Transforms a client query request into a list of query requests to be
-    /// sent to each shard.
+    /// Transforms a client query request into a list of query request data.
     ///
     /// The returned list is meant to be used to construct the
-    /// MultiViewStoreQuery.
-    fn create_multi_view_store_query(
+    /// MultiViewStoreQuery, which is sent to each shard.
+    fn create_multi_view_store_query_data(
         &self,
         client_query: EnclaveMessage<ClientSession>,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>>;
@@ -200,6 +199,8 @@ pub enum Error {
     Poison,
     /// Enclave not initialized
     EnclaveNotInitialized,
+    /// Cipher encryption failed
+    Cipher,
 }
 
 impl From<SgxError> for Error {
@@ -253,5 +254,11 @@ impl From<AttestEnclaveError> for Error {
 impl From<AddRecordsError> for Error {
     fn from(src: AddRecordsError) -> Self {
         Error::AddRecords(src)
+    }
+}
+
+impl From<mc_crypto_noise::CipherError> for Error {
+    fn from(_: mc_crypto_noise::CipherError) -> Self {
+        Error::Cipher
     }
 }

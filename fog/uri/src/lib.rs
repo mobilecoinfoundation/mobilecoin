@@ -198,9 +198,10 @@ mod tests {
         );
         assert!(!uri.use_tls());
 
-        let uri =
-            FogViewLoadBalancerUri::from_str("insecure-fog-view-load-balancer://node1.test.mobilecoin.com:3225/")
-                .unwrap();
+        let uri = FogViewLoadBalancerUri::from_str(
+            "insecure-fog-view-load-balancer://node1.test.mobilecoin.com:3225/",
+        )
+        .unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:3225");
         assert_eq!(
             uri.responder_id().unwrap(),

@@ -9,7 +9,10 @@ extern crate alloc;
 mod e_tx_out_store;
 use e_tx_out_store::{ETxOutStore, StorageDataSize, StorageMetaSize};
 
+use aes_gcm::Aes256Gcm;
 use alloc::vec::Vec;
+use core::ops::DerefMut;
+use mc_attest_ake::Ready;
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage};
 use mc_common::logger::{log, Logger};
@@ -39,6 +42,9 @@ where
 
     /// Logger object
     logger: Logger,
+
+    /// Encrypts a QueryRequest for each individual Fog View Store.
+    store_encryptors: Mutex<Vec<Ready<Aes256Gcm>>>,
 }
 
 impl<OSC> ViewEnclave<OSC>
@@ -48,6 +54,7 @@ where
     pub fn new(logger: Logger) -> Self {
         Self {
             e_tx_out_store: Mutex::new(None),
+            store_encryptors: Mutex::new(Vec::new()),
             ake: Default::default(),
             logger,
         }
@@ -182,15 +189,29 @@ where
         for rec in records {
             store.add_record(&rec.search_key, &rec.payload)?;
         }
+
         Ok(())
     }
 
     /// Takes in a client's query request and returns a list of query requests
     /// to be sent off to each Fog View Store shard.
-    fn create_multi_view_store_query(
+    fn create_multi_view_store_query_data(
         &self,
-        _client_query: EnclaveMessage<ClientSession>,
+        client_query: EnclaveMessage<ClientSession>,
     ) -> Result<Vec<EnclaveMessage<ClientSession>>> {
-        todo!()
+        let client_query_bytes = self.ake.client_decrypt(client_query.clone())?;
+
+        let mut encryptors = self.store_encryptors.lock()?;
+        let mut results = Vec::new();
+        for store_encryptor in encryptors.deref_mut() {
+            let data = store_encryptor.encrypt(&client_query.aad, &client_query_bytes)?;
+            results.push(EnclaveMessage {
+                aad: client_query.clone().aad,
+                channel_id: client_query.clone().channel_id,
+                data,
+            });
+        }
+
+        Ok(results)
     }
 }
