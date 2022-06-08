@@ -166,6 +166,7 @@ fn main() {
 
         let tx_private_key = RistrettoPrivate::from_random(&mut rng);
         let tx_out = TxOut::new(
+            BlockVersion::MAX,
             Amount {
                 value: credit.amount,
                 token_id,

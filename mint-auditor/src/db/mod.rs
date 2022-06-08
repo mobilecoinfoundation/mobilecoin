@@ -231,6 +231,8 @@ mod tests {
     use rand_hc::Hc128Rng;
     use std::iter::FromIterator;
 
+    const BLOCK_VERSION: BlockVersion = BlockVersion::MAX;
+
     #[test_with_logger]
     fn test_sync_block_happy_flow(logger: Logger) {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
@@ -246,7 +248,7 @@ mod tests {
         let account_key = AccountKey::random(&mut rng);
         let initial_num_blocks = 3;
         initialize_ledger(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &mut ledger_db,
             initial_num_blocks,
             &account_key,
@@ -289,7 +291,7 @@ mod tests {
             .get_block(ledger_db.num_blocks().unwrap() - 1)
             .unwrap();
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -317,16 +319,14 @@ mod tests {
 
         let block_contents = BlockContents {
             mint_txs: vec![mint_tx1, mint_tx2, mint_tx3],
-            outputs: (0..3).map(|_i| create_test_tx_out(&mut rng)).collect(),
+            outputs: (0..3)
+                .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+                .collect(),
             ..Default::default()
         };
 
-        let block = Block::new_with_parent(
-            BlockVersion::MAX,
-            &block,
-            &Default::default(),
-            &block_contents,
-        );
+        let block =
+            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
 
         ledger_db
             .append_block(&block, &block_contents, None)
@@ -351,6 +351,7 @@ mod tests {
         let burn_recipient = burn_address();
 
         let tx_out1 = TxOut::new(
+            BLOCK_VERSION,
             Amount {
                 value: 50,
                 token_id: token_id1,
@@ -362,6 +363,7 @@ mod tests {
         .unwrap();
 
         let tx_out2 = TxOut::new(
+            BLOCK_VERSION,
             Amount {
                 value: 10,
                 token_id: token_id1,
@@ -372,7 +374,7 @@ mod tests {
         )
         .unwrap();
 
-        let tx_out3 = create_test_tx_out(&mut rng);
+        let tx_out3 = create_test_tx_out(BLOCK_VERSION, &mut rng);
 
         let block_contents = BlockContents {
             outputs: vec![tx_out1, tx_out2, tx_out3],
@@ -380,12 +382,8 @@ mod tests {
             ..Default::default()
         };
 
-        let block = Block::new_with_parent(
-            BlockVersion::MAX,
-            &block,
-            &Default::default(),
-            &block_contents,
-        );
+        let block =
+            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
 
         ledger_db
             .append_block(&block, &block_contents, None)
@@ -412,6 +410,7 @@ mod tests {
         let mint_tx3 = create_mint_tx(token_id3, &signers3, 20000, &mut rng);
 
         let tx_out1 = TxOut::new(
+            BLOCK_VERSION,
             Amount {
                 value: 900,
                 token_id: token_id1,
@@ -423,6 +422,7 @@ mod tests {
         .unwrap();
 
         let tx_out2 = TxOut::new(
+            BLOCK_VERSION,
             Amount {
                 value: 1000,
                 token_id: token_id2,
@@ -433,7 +433,7 @@ mod tests {
         )
         .unwrap();
 
-        let tx_out3 = create_test_tx_out(&mut rng);
+        let tx_out3 = create_test_tx_out(BLOCK_VERSION, &mut rng);
 
         let block_contents = BlockContents {
             outputs: vec![tx_out1, tx_out2, tx_out3],
@@ -441,12 +441,8 @@ mod tests {
             ..Default::default()
         };
 
-        let block = Block::new_with_parent(
-            BlockVersion::MAX,
-            &block,
-            &Default::default(),
-            &block_contents,
-        );
+        let block =
+            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
         ledger_db
             .append_block(&block, &block_contents, None)
             .unwrap();
@@ -489,7 +485,7 @@ mod tests {
         let account_key = AccountKey::random(&mut rng);
         let initial_num_blocks = 3;
         initialize_ledger(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &mut ledger_db,
             initial_num_blocks,
             &account_key,
@@ -521,7 +517,7 @@ mod tests {
         let account_key = AccountKey::random(&mut rng);
         let initial_num_blocks = 3;
         initialize_ledger(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &mut ledger_db,
             initial_num_blocks,
             &account_key,
@@ -553,7 +549,7 @@ mod tests {
         let account_key = AccountKey::random(&mut rng);
         let initial_num_blocks = 3;
         initialize_ledger(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &mut ledger_db,
             initial_num_blocks,
             &account_key,
@@ -591,7 +587,7 @@ mod tests {
         let account_key = AccountKey::random(&mut rng);
         let initial_num_blocks = 3;
         initialize_ledger(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &mut ledger_db,
             initial_num_blocks,
             &account_key,
@@ -622,7 +618,7 @@ mod tests {
             .get_block(ledger_db.num_blocks().unwrap() - 1)
             .unwrap();
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -640,16 +636,14 @@ mod tests {
 
         let block_contents = BlockContents {
             mint_txs: vec![mint_tx1, mint_tx2, mint_tx3],
-            outputs: (0..3).map(|_i| create_test_tx_out(&mut rng)).collect(),
+            outputs: (0..3)
+                .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+                .collect(),
             ..Default::default()
         };
 
-        let block = Block::new_with_parent(
-            BlockVersion::MAX,
-            &block,
-            &Default::default(),
-            &block_contents,
-        );
+        let block =
+            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
 
         ledger_db
             .append_block(&block, &block_contents, None)
@@ -677,6 +671,7 @@ mod tests {
         let burn_recipient = burn_address();
 
         let tx_out1 = TxOut::new(
+            BLOCK_VERSION,
             Amount {
                 value: 50000,
                 token_id: token_id1,
@@ -688,6 +683,7 @@ mod tests {
         .unwrap();
 
         let tx_out2 = TxOut::new(
+            BLOCK_VERSION,
             Amount {
                 value: 2,
                 token_id: token_id2,
@@ -698,7 +694,7 @@ mod tests {
         )
         .unwrap();
 
-        let tx_out3 = create_test_tx_out(&mut rng);
+        let tx_out3 = create_test_tx_out(BLOCK_VERSION, &mut rng);
 
         let block_contents = BlockContents {
             outputs: vec![tx_out1, tx_out2, tx_out3],
@@ -706,12 +702,8 @@ mod tests {
             ..Default::default()
         };
 
-        let block = Block::new_with_parent(
-            BlockVersion::MAX,
-            &block,
-            &Default::default(),
-            &block_contents,
-        );
+        let block =
+            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
 
         ledger_db
             .append_block(&block, &block_contents, None)
@@ -736,6 +728,7 @@ mod tests {
 
         // Over burn once again, see that counter increases.
         let tx_out1 = TxOut::new(
+            BLOCK_VERSION,
             Amount::new(50000, token_id1),
             &burn_recipient,
             &RistrettoPrivate::from_random(&mut rng),
@@ -744,6 +737,7 @@ mod tests {
         .unwrap();
 
         let tx_out2 = TxOut::new(
+            BLOCK_VERSION,
             Amount::new(2, token_id2),
             &burn_recipient,
             &RistrettoPrivate::from_random(&mut rng),
@@ -751,7 +745,7 @@ mod tests {
         )
         .unwrap();
 
-        let tx_out3 = create_test_tx_out(&mut rng);
+        let tx_out3 = create_test_tx_out(BLOCK_VERSION, &mut rng);
 
         let block_contents = BlockContents {
             outputs: vec![tx_out1, tx_out2, tx_out3],
@@ -759,12 +753,8 @@ mod tests {
             ..Default::default()
         };
 
-        let block = Block::new_with_parent(
-            BlockVersion::MAX,
-            &block,
-            &Default::default(),
-            &block_contents,
-        );
+        let block =
+            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
         ledger_db
             .append_block(&block, &block_contents, None)
             .unwrap();
@@ -791,7 +781,7 @@ mod tests {
         let account_key = AccountKey::random(&mut rng);
         let initial_num_blocks = 3;
         initialize_ledger(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &mut ledger_db,
             initial_num_blocks,
             &account_key,
@@ -824,7 +814,7 @@ mod tests {
             .get_block(ledger_db.num_blocks().unwrap() - 1)
             .unwrap();
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -849,16 +839,14 @@ mod tests {
 
             let block_contents = BlockContents {
                 mint_txs: vec![mint_tx1],
-                outputs: (0..3).map(|_i| create_test_tx_out(&mut rng)).collect(),
+                outputs: (0..3)
+                    .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+                    .collect(),
                 ..Default::default()
             };
 
-            let block = Block::new_with_parent(
-                BlockVersion::MAX,
-                &block,
-                &Default::default(),
-                &block_contents,
-            );
+            let block =
+                Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
 
             let _ = transaction(&conn, |conn| -> Result<(), Error> {
                 mint_audit_db
@@ -889,12 +877,8 @@ mod tests {
             ..Default::default()
         };
 
-        let block = Block::new_with_parent(
-            BlockVersion::MAX,
-            &block,
-            &Default::default(),
-            &block_contents,
-        );
+        let block =
+            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
 
         ledger_db
             .append_block(&block, &block_contents, None)
@@ -910,16 +894,14 @@ mod tests {
 
             let block_contents = BlockContents {
                 mint_txs: vec![mint_tx2],
-                outputs: (0..3).map(|_i| create_test_tx_out(&mut rng)).collect(),
+                outputs: (0..3)
+                    .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+                    .collect(),
                 ..Default::default()
             };
 
-            let block = Block::new_with_parent(
-                BlockVersion::MAX,
-                &block,
-                &Default::default(),
-                &block_contents,
-            );
+            let block =
+                Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
 
             let _ = transaction(&conn, |conn| -> Result<(), Error> {
                 mint_audit_db
@@ -947,16 +929,14 @@ mod tests {
 
         let block_contents = BlockContents {
             mint_txs: vec![mint_tx3],
-            outputs: (0..3).map(|_i| create_test_tx_out(&mut rng)).collect(),
+            outputs: (0..3)
+                .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+                .collect(),
             ..Default::default()
         };
 
-        let block = Block::new_with_parent(
-            BlockVersion::MAX,
-            &block,
-            &Default::default(),
-            &block_contents,
-        );
+        let block =
+            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
 
         ledger_db
             .append_block(&block, &block_contents, None)
@@ -990,7 +970,7 @@ mod tests {
         let account_key = AccountKey::random(&mut rng);
         let initial_num_blocks = 3;
         initialize_ledger(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &mut ledger_db,
             initial_num_blocks,
             &account_key,
@@ -1025,7 +1005,7 @@ mod tests {
             .get_block(ledger_db.num_blocks().unwrap() - 1)
             .unwrap();
         let block = Block::new_with_parent(
-            BlockVersion::MAX,
+            BLOCK_VERSION,
             &parent_block,
             &Default::default(),
             &block_contents,
@@ -1048,16 +1028,14 @@ mod tests {
 
         let block_contents = BlockContents {
             mint_txs: vec![mint_tx1],
-            outputs: (0..3).map(|_i| create_test_tx_out(&mut rng)).collect(),
+            outputs: (0..3)
+                .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+                .collect(),
             ..Default::default()
         };
 
-        let block = Block::new_with_parent(
-            BlockVersion::MAX,
-            &block,
-            &Default::default(),
-            &block_contents,
-        );
+        let block =
+            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
 
         mint_audit_db
             .sync_block(&block, &block_contents, &ledger_db)
@@ -1081,16 +1059,14 @@ mod tests {
 
         let block_contents = BlockContents {
             mint_txs: vec![mint_tx1],
-            outputs: (0..3).map(|_i| create_test_tx_out(&mut rng)).collect(),
+            outputs: (0..3)
+                .map(|_i| create_test_tx_out(BLOCK_VERSION, &mut rng))
+                .collect(),
             ..Default::default()
         };
 
-        let block = Block::new_with_parent(
-            BlockVersion::MAX,
-            &block,
-            &Default::default(),
-            &block_contents,
-        );
+        let block =
+            Block::new_with_parent(BLOCK_VERSION, &block, &Default::default(), &block_contents);
 
         mint_audit_db
             .sync_block(&block, &block_contents, &ledger_db)

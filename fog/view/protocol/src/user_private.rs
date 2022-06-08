@@ -111,7 +111,7 @@ mod testing {
     use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
     use mc_crypto_keys::CompressedRistrettoPublic;
     use mc_fog_types::view::{FogTxOut, FogTxOutMetadata};
-    use mc_transaction_core::{fog_hint::FogHint, tokens::Mob, tx::TxOut, Amount, Token};
+    use mc_transaction_core::{tokens::Mob, tx::TxOut, Amount, BlockVersion, Token};
     pub use rand_core::{CryptoRng, RngCore, SeedableRng};
     use rand_hc::Hc128Rng;
 
@@ -147,6 +147,7 @@ mod testing {
         let tx_private_key = RistrettoPrivate::from_random(&mut rng);
         let token_id = Mob::ID;
         let txo = TxOut::new(
+            BlockVersion::MAX,
             Amount {
                 value: 10,
                 token_id,

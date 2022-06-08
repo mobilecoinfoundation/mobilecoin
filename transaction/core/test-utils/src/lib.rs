@@ -333,16 +333,14 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                 // Create an origin block.
                 let outputs: Vec<TxOut> = (0..RING_SIZE)
                     .map(|_i| {
-                        let mut tx_out = TxOut::new(
+                        TxOut::new(
+                            BlockVersion::ZERO,
                             Amount { value, token_id },
                             &account_key.default_subaddress(),
                             &RistrettoPrivate::from_random(rng),
                             Default::default(),
                         )
-                        .expect("Could not create origin block TxOut");
-                        // The origin block did not historically have memo fields
-                        tx_out.e_memo = None;
-                        tx_out
+                        .expect("Could not create origin block TxOut")
                     })
                     .collect();
 
@@ -434,7 +432,8 @@ pub fn get_outputs<T: RngCore + CryptoRng>(
     recipient_and_amount
         .iter()
         .map(|(recipient, value)| {
-            let mut result = TxOut::new(
+            TxOut::new(
+                block_version,
                 Amount {
                     value: *value,
                     token_id: Mob::ID,
@@ -443,20 +442,19 @@ pub fn get_outputs<T: RngCore + CryptoRng>(
                 &RistrettoPrivate::from_random(rng),
                 Default::default(),
             )
-            .unwrap();
-            if !block_version.e_memo_feature_is_supported() {
-                result.e_memo = None;
-            }
-            result.masked_amount.masked_token_id = Default::default();
-            result
+            .unwrap()
         })
         .collect()
 }
 
 /// Generate a dummy txout for testing.
-pub fn create_test_tx_out(rng: &mut (impl RngCore + CryptoRng)) -> TxOut {
+pub fn create_test_tx_out(
+    block_version: BlockVersion,
+    rng: &mut (impl RngCore + CryptoRng),
+) -> TxOut {
     let account_key = AccountKey::random(rng);
     TxOut::new(
+        block_version,
         Amount {
             value: rng.next_u64(),
             token_id: Mob::ID,

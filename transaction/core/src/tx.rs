@@ -2,6 +2,7 @@
 
 //! Definition of a MobileCoin transaction and a MobileCoin TxOut
 
+use crate::BlockVersion;
 use alloc::vec::Vec;
 use core::{convert::TryFrom, fmt};
 use mc_account_keys::PublicAddress;
@@ -18,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 use crate::{
-    amount::{AmountError, MaskedAmount},
+    amount::MaskedAmount,
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
@@ -333,24 +334,26 @@ impl TxOut {
     /// This uses a defaulted (all zeroes) MemoPayload.
     ///
     /// # Arguments
+    /// * `block_version` - Structural rules to target
     /// * `amount` - Amount contained within the TxOut
     /// * `recipient` - Recipient's address.
     /// * `tx_private_key` - The transaction's private key
     /// * `hint` - Encrypted Fog hint for this output.
     pub fn new(
+        block_version: BlockVersion,
         amount: Amount,
         recipient: &PublicAddress,
         tx_private_key: &RistrettoPrivate,
         hint: EncryptedFogHint,
-    ) -> Result<Self, AmountError> {
-        TxOut::new_with_memo(amount, recipient, tx_private_key, hint, |_| {
-            Ok(Some(MemoPayload::default()))
-        })
-        .map_err(|err| match err {
-            NewTxError::Amount(err) => err,
-            // Memo error is unreachable because the memo_fn we passed is infallible
-            NewTxError::Memo(_) => unreachable!(),
-        })
+    ) -> Result<Self, NewTxError> {
+        TxOut::new_with_memo(
+            block_version,
+            amount,
+            recipient,
+            tx_private_key,
+            hint,
+            |_| Ok(MemoPayload::default()),
+        )
     }
 
     /// Creates a TxOut that sends `value` to `recipient`, with a custom memo
@@ -358,6 +361,7 @@ impl TxOut {
     /// passed the value and tx_public_key.
     ///
     /// # Arguments
+    /// * `block_version` - Structural rules to target
     /// * `amount` - Amount contained within the TxOut
     /// * `recipient` - Recipient's address.
     /// * `tx_private_key` - The transaction's private key
@@ -365,24 +369,38 @@ impl TxOut {
     /// * `memo_fn` - A callback taking MemoContext, which produces a
     ///   MemoPayload, or a NewMemo error
     pub fn new_with_memo(
+        block_version: BlockVersion,
         amount: Amount,
         recipient: &PublicAddress,
         tx_private_key: &RistrettoPrivate,
         hint: EncryptedFogHint,
-        memo_fn: impl FnOnce(MemoContext) -> Result<Option<MemoPayload>, NewMemoError>,
+        memo_fn: impl FnOnce(MemoContext) -> Result<MemoPayload, NewMemoError>,
     ) -> Result<Self, NewTxError> {
         let target_key = create_tx_out_target_key(tx_private_key, recipient).into();
         let public_key = create_tx_out_public_key(tx_private_key, recipient.spend_public_key());
 
         let shared_secret = create_shared_secret(recipient.view_public_key(), tx_private_key);
 
-        let masked_amount = MaskedAmount::new(amount, &shared_secret)?;
+        let mut masked_amount = MaskedAmount::new(amount, &shared_secret)?;
 
-        let memo_ctxt = MemoContext {
-            tx_public_key: &public_key,
+        // Only build a memo if memos are supported
+        let e_memo = if block_version.e_memo_feature_is_supported() {
+            let memo_ctxt = MemoContext {
+                tx_public_key: &public_key,
+            };
+            let memo = memo_fn(memo_ctxt).map_err(NewTxError::Memo)?;
+            Some(memo.encrypt(&shared_secret))
+        } else {
+            None
         };
-        let memo = memo_fn(memo_ctxt).map_err(NewTxError::Memo)?;
-        let e_memo = memo.map(|memo| memo.encrypt(&shared_secret));
+
+        // Conform to block version rules
+        if !block_version.masked_token_id_feature_is_supported() {
+            masked_amount.masked_token_id.clear();
+            if amount.token_id != 0 {
+                return Err(NewTxError::TokenIdNotAllowedAtBlockVersion(block_version));
+            }
+        }
 
         Ok(TxOut {
             masked_amount,
@@ -662,7 +680,7 @@ mod tests {
         subaddress_matches_tx_out,
         tokens::Mob,
         tx::{Tx, TxIn, TxOut, TxPrefix},
-        Amount, MaskedAmount, Token,
+        Amount, BlockVersion, MaskedAmount, Token,
     };
     use alloc::vec::Vec;
     use core::convert::TryFrom;
@@ -816,6 +834,7 @@ mod tests {
 
             // A tx out with an empty memo
             let mut tx_out = TxOut::new(
+                BlockVersion::MAX,
                 Amount {
                     value: 13,
                     token_id: Mob::ID,
@@ -858,6 +877,7 @@ mod tests {
             let memo_val = MemoPayload::new([2u8; 2], [4u8; 64]);
             // A tx out with a memo
             let tx_out = TxOut::new_with_memo(
+                BlockVersion::MAX,
                 Amount {
                     value: 13,
                     token_id: Mob::ID,
@@ -865,7 +885,7 @@ mod tests {
                 &bob_addr,
                 &tx_private_key,
                 Default::default(),
-                |_| Ok(Some(memo_val)),
+                |_| Ok(memo_val),
             )
             .unwrap();
 
@@ -894,6 +914,7 @@ mod tests {
             let memo_val = MemoPayload::new([4u8; 2], [9u8; 64]);
             // A tx out with a memo
             let tx_out = TxOut::new_with_memo(
+                BlockVersion::MAX,
                 Amount {
                     value: 13,
                     token_id: Mob::ID,
@@ -901,7 +922,7 @@ mod tests {
                 &bob.change_subaddress(),
                 &tx_private_key,
                 Default::default(),
-                |_| Ok(Some(memo_val)),
+                |_| Ok(memo_val),
             )
             .unwrap();
 

@@ -249,6 +249,7 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
         if block_index == 0 {
             // Create the origin block.
             let mut tx_out = TxOut::new(
+                BlockVersion::ZERO,
                 Amount { value, token_id },
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
@@ -269,6 +270,7 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
         } else {
             // Create a normal block.
             let tx_out = TxOut::new(
+                BlockVersion::MAX,
                 Amount {
                     value: 16,
                     token_id,
@@ -348,7 +350,13 @@ pub fn get_custom_test_ledger_blocks(
                         value: picomob_per_output,
                         token_id: token_id.into(),
                     };
-                    let output = TxOut::new(amount, recipient, &tx_private_key, Default::default());
+                    let output = TxOut::new(
+                        BlockVersion::MAX,
+                        amount,
+                        recipient,
+                        &tx_private_key,
+                        Default::default(),
+                    );
                     outputs.push(output.unwrap());
                 }
             }

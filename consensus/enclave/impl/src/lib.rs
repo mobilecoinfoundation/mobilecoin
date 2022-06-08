@@ -989,6 +989,13 @@ fn mint_output<T: Digestible>(
     amount: Amount,
     counter: usize,
 ) -> Result<TxOut> {
+    // Check if the token id makes sense right now
+    if !block_version.masked_token_id_feature_is_supported() && amount.token_id != 0 {
+        return Err(Error::BlockVersion(
+            "Cannot mint outputs for non-MOB tokens at this block version".to_string(),
+        ));
+    }
+
     // Create a determinstic private key based on the block contents.
     let tx_private_key = {
         let mut hash_value = [0u8; 32];
@@ -1010,24 +1017,14 @@ fn mint_output<T: Digestible>(
     };
 
     // Create a single TxOut
-    let mut output = TxOut::new(amount, recipient, &tx_private_key, Default::default())
-        .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?;
-
-    // The output must conform to block version rules
-    if !block_version.e_memo_feature_is_supported() {
-        output.e_memo = None;
-    }
-
-    if !block_version.masked_token_id_feature_is_supported() {
-        output.masked_amount.masked_token_id.clear();
-        if amount.token_id != 0 {
-            return Err(Error::FormBlock(
-                "Cannot mint outputs for non-MOB tokens until they are supported".to_string(),
-            ));
-        }
-    }
-
-    Ok(output)
+    TxOut::new(
+        block_version,
+        amount,
+        recipient,
+        &tx_private_key,
+        Default::default(),
+    )
+    .map_err(|e| Error::FormBlock(format!("NewTxError: {}", e)))
 }
 
 #[cfg(test)]
@@ -1543,6 +1540,7 @@ mod tests {
             for token_id in [token_id1, token_id2] {
                 for _ in 0..5 {
                     let spendable_output = TxOut::new(
+                        block_version,
                         Amount {
                             value: 10_000_000_000,
                             token_id,

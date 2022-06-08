@@ -46,11 +46,7 @@ pub fn create_output<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
         amount,
         recipient,
         hint,
-        |_| {
-            Ok(block_version
-                .e_memo_feature_is_supported()
-                .then(MemoPayload::default))
-        },
+        |_| Ok(MemoPayload::default()),
         rng,
     )
 }

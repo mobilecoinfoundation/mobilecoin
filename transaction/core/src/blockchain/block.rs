@@ -237,7 +237,8 @@ mod block_tests {
 
         let outputs: Vec<TxOut> = (0..8)
             .map(|_i| {
-                let mut result = TxOut::new(
+                TxOut::new(
+                    BLOCK_VERSION,
                     Amount {
                         value: rng.next_u64(),
                         token_id: Mob::ID,
@@ -246,9 +247,7 @@ mod block_tests {
                     &RistrettoPrivate::from_random(rng),
                     EncryptedFogHint::fake_onetime_hint(rng),
                 )
-                .unwrap();
-                result.masked_amount.masked_token_id = Default::default();
-                result
+                .unwrap()
             })
             .collect();
 
